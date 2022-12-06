@@ -1,0 +1,3884 @@
+diff --git a/cmake/external/dgc.cmake b/cmake/external/dgc.cmake
+index ef1ee1b002..edd46aca80 100644
+--- a/cmake/external/dgc.cmake
++++ b/cmake/external/dgc.cmake
+@@ -23,14 +23,14 @@ set(DGC_INCLUDE_DIR
+ set(DGC_LIBRARIES
+     "${DGC_INSTALL_DIR}/lib/libdgc.a"
+     CACHE FILEPATH "dgc library." FORCE)
+-set(DGC_URL "https://fleet.bj.bcebos.com/dgc/collective_f66ef73.tgz")
++set(DGC_URL "https://fleet.bj.bcebos.com/dgc/collective_7369ff.tgz")
+ include_directories(${DGC_INCLUDE_DIR})
+ 
+ ExternalProject_Add(
+   extern_dgc
+   ${EXTERNAL_PROJECT_LOG_ARGS}
+   URL ${DGC_URL}
+-  URL_MD5 "94e6fa1bc97169d0e1aad44570fe3251"
++  URL_MD5 "ede459281a0f979da8d84f81287369ff"
+   PREFIX "${DGC_PREFIX_DIR}"
+   CONFIGURE_COMMAND ""
+   BUILD_COMMAND make -j${NPROC}
+diff --git a/paddle/phi/kernels/onednn/matmul_grad_kernel.cc b/paddle/phi/kernels/onednn/matmul_grad_kernel.cc
+index ceb752f6d4..fec008e7a1 100644
+--- a/paddle/phi/kernels/onednn/matmul_grad_kernel.cc
++++ b/paddle/phi/kernels/onednn/matmul_grad_kernel.cc
+@@ -101,9 +101,13 @@ void MatmulGradKernel(const Context &dev_ctx,
+ 
+   if (x_dims.size() != ndims) {
+     x_dims = ExtendDimsWithOnes(x_dims, ndims);
+-  } else if (y_dims.size() != ndims) {
++  }
++  if (y_dims.size() != ndims) {
+     y_dims = ExtendDimsWithOnes(y_dims, ndims);
+   }
++  if (dout_dims.size() != ndims) {
++    dout_dims = ExtendDimsWithOnes(dout_dims, ndims);
++  }
+ 
+   // in broadcasting scenario new memory is required because
+   // reduce sum must be calculated upon broadcasted dims
+@@ -150,7 +154,9 @@ void MatmulGradKernel(const Context &dev_ctx,
+   }
+ 
+   dx->Resize(x.dims());
++  dx->set_mem_desc(x.mem_desc().reshape(vectorize(x.dims())));
+   dy->Resize(y.dims());
++  dy->set_mem_desc(y.mem_desc().reshape(vectorize(y.dims())));
+ }
+ 
+ template <typename T, typename Context>
+diff --git a/python/paddle/fluid/contrib/layers/rnn_impl.py b/python/paddle/fluid/contrib/layers/rnn_impl.py
+index 4e23057fc4..9e7034ab66 100644
+--- a/python/paddle/fluid/contrib/layers/rnn_impl.py
++++ b/python/paddle/fluid/contrib/layers/rnn_impl.py
+@@ -151,7 +151,7 @@ class BasicGRUUnit(Layer):
+     def forward(self, input, pre_hidden):
+         concat_input_hidden = layers.concat([input, pre_hidden], 1)
+ 
+-        gate_input = layers.matmul(x=concat_input_hidden, y=self._gate_weight)
++        gate_input = paddle.matmul(x=concat_input_hidden, y=self._gate_weight)
+ 
+         gate_input = paddle.add(gate_input, self._gate_bias)
+ 
+@@ -160,7 +160,7 @@ class BasicGRUUnit(Layer):
+ 
+         r_hidden = r * pre_hidden
+ 
+-        candidate = layers.matmul(
++        candidate = paddle.matmul(
+             layers.concat([input, r_hidden], 1), self._candidate_weight
+         )
+         candidate = paddle.add(candidate, self._candidate_bias)
+@@ -874,7 +874,7 @@ class BasicLSTMUnit(Layer):
+ 
+     def forward(self, input, pre_hidden, pre_cell):
+         concat_input_hidden = layers.concat([input, pre_hidden], 1)
+-        gate_input = layers.matmul(x=concat_input_hidden, y=self._weight)
++        gate_input = paddle.matmul(x=concat_input_hidden, y=self._weight)
+ 
+         gate_input = paddle.add(gate_input, self._bias)
+         i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
+diff --git a/python/paddle/fluid/contrib/slim/tests/test_imperative_out_scale.py b/python/paddle/fluid/contrib/slim/tests/test_imperative_out_scale.py
+index 03a779f026..e978b63645 100644
+--- a/python/paddle/fluid/contrib/slim/tests/test_imperative_out_scale.py
++++ b/python/paddle/fluid/contrib/slim/tests/test_imperative_out_scale.py
+@@ -25,7 +25,7 @@ import paddle.fluid as fluid
+ import paddle.fluid.layers as layers
+ from paddle.fluid import core
+ from paddle.fluid.optimizer import AdamOptimizer
+-from paddle.fluid.framework import IrGraph
++from paddle.fluid.framework import IrGraph, _test_eager_guard
+ from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
+ from paddle.nn import Sequential
+ from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+@@ -139,7 +139,7 @@ class TestImperativeOutSclae(unittest.TestCase):
+     def tearDown(self):
+         self.root_path.cleanup()
+ 
+-    def test_out_scale_acc(self):
++    def func_out_scale_acc(self):
+         seed = 1000
+         lr = 0.001
+ 
+@@ -208,6 +208,11 @@ class TestImperativeOutSclae(unittest.TestCase):
+                 msg='Failed to do the imperative qat.',
+             )
+ 
++    def test_out_scale_acc(self):
++        with _test_eager_guard():
++            self.func_out_scale_acc()
++        self.func_out_scale_acc()
++
+ 
+ if __name__ == '__main__':
+     unittest.main()
+diff --git a/python/paddle/fluid/contrib/slim/tests/test_imperative_ptq.py b/python/paddle/fluid/contrib/slim/tests/test_imperative_ptq.py
+index 161700cb2f..df182f6c9c 100644
+--- a/python/paddle/fluid/contrib/slim/tests/test_imperative_ptq.py
++++ b/python/paddle/fluid/contrib/slim/tests/test_imperative_ptq.py
+@@ -28,6 +28,7 @@ import paddle.fluid as fluid
+ from paddle.fluid.contrib.slim.quantization import *
+ from paddle.fluid.log_helper import get_logger
+ from paddle.dataset.common import download
++from paddle.fluid.framework import _test_eager_guard
+ 
+ from imperative_test_utils import (
+     fix_model_dict,
+@@ -207,7 +208,7 @@ class TestImperativePTQ(unittest.TestCase):
+                 break
+         return top1_correct_num / total_num
+ 
+-    def test_ptq(self):
++    def func_ptq(self):
+         start_time = time.time()
+ 
+         self.set_vars()
+@@ -265,9 +266,14 @@ class TestImperativePTQ(unittest.TestCase):
+             end_time = time.time()
+             print("total time: %ss \n" % (end_time - start_time))
+ 
++    def test_ptq(self):
++        with _test_eager_guard():
++            self.func_ptq()
++        self.func_ptq()
++
+ 
+ class TestImperativePTQfuse(TestImperativePTQ):
+-    def test_ptq(self):
++    def func_ptq(self):
+         start_time = time.time()
+ 
+         self.set_vars()
+@@ -336,6 +342,11 @@ class TestImperativePTQfuse(TestImperativePTQ):
+             end_time = time.time()
+             print("total time: %ss \n" % (end_time - start_time))
+ 
++    def test_ptq(self):
++        with _test_eager_guard():
++            self.func_ptq()
++        self.func_ptq()
++
+ 
+ class TestImperativePTQHist(TestImperativePTQ):
+     def set_vars(self):
+diff --git a/python/paddle/fluid/contrib/slim/tests/test_imperative_qat.py b/python/paddle/fluid/contrib/slim/tests/test_imperative_qat.py
+index a714063dc8..0e0fbd752b 100644
+--- a/python/paddle/fluid/contrib/slim/tests/test_imperative_qat.py
++++ b/python/paddle/fluid/contrib/slim/tests/test_imperative_qat.py
+@@ -33,6 +33,7 @@ from paddle.nn.quant.quant_layers import (
+     QuantizedConv2D,
+     QuantizedConv2DTranspose,
+ )
++from paddle.fluid.framework import _test_eager_guard
+ from imperative_test_utils import fix_model_dict, ImperativeLenet
+ 
+ paddle.enable_static()
+@@ -62,7 +63,7 @@ class TestImperativeQat(unittest.TestCase):
+         self.diff_threshold = 0.03125
+         self.fuse_conv_bn = False
+ 
+-    def test_qat(self):
++    def func_qat(self):
+         self.set_vars()
+ 
+         imperative_qat = ImperativeQuantAware(
+@@ -241,6 +242,11 @@ class TestImperativeQat(unittest.TestCase):
+             delta_value = fp32_acc - quant_acc
+             self.assertLessEqual(delta_value, self.diff_threshold)
+ 
++    def test_qat(self):
++        with _test_eager_guard():
++            self.func_qat()
++        self.func_qat()
++
+ 
+ class TestImperativeQatONNXFormat(unittest.TestCase):
+     def set_vars(self):
+diff --git a/python/paddle/fluid/contrib/slim/tests/test_imperative_qat_amp.py b/python/paddle/fluid/contrib/slim/tests/test_imperative_qat_amp.py
+index 6fbbd83462..d01fc2e63c 100644
+--- a/python/paddle/fluid/contrib/slim/tests/test_imperative_qat_amp.py
++++ b/python/paddle/fluid/contrib/slim/tests/test_imperative_qat_amp.py
+@@ -26,6 +26,7 @@ import paddle.fluid as fluid
+ from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
+ from paddle.fluid.log_helper import get_logger
+ from paddle.dataset.common import download
++from paddle.fluid.framework import _test_eager_guard
+ from imperative_test_utils import fix_model_dict, ImperativeLenet
+ 
+ os.environ["CPU_NUM"] = "1"
+@@ -183,7 +184,7 @@ class TestImperativeQatAmp(unittest.TestCase):
+         acc_top1 = sum(acc_top1_list) / len(acc_top1_list)
+         return acc_top1
+ 
+-    def test_ptq(self):
++    def ptq(self):
+         start_time = time.time()
+ 
+         self.set_vars()
+@@ -234,6 +235,11 @@ class TestImperativeQatAmp(unittest.TestCase):
+         end_time = time.time()
+         print("total time: %ss" % (end_time - start_time))
+ 
++    def test_ptq(self):
++        self.ptq()
++        with _test_eager_guard():
++            self.ptq()
++
+ 
+ if __name__ == '__main__':
+     unittest.main()
+diff --git a/python/paddle/fluid/contrib/slim/tests/test_imperative_qat_lsq.py b/python/paddle/fluid/contrib/slim/tests/test_imperative_qat_lsq.py
+index 98f2c34386..2b06ee5bf0 100644
+--- a/python/paddle/fluid/contrib/slim/tests/test_imperative_qat_lsq.py
++++ b/python/paddle/fluid/contrib/slim/tests/test_imperative_qat_lsq.py
+@@ -38,6 +38,7 @@ from paddle.nn.quant.quant_layers import (
+     QuantizedConv2D,
+     QuantizedConv2DTranspose,
+ )
++from paddle.fluid.framework import _test_eager_guard
+ from imperative_test_utils import fix_model_dict
+ 
+ paddle.enable_static()
+diff --git a/python/paddle/fluid/contrib/slim/tests/test_imperative_qat_user_defined.py b/python/paddle/fluid/contrib/slim/tests/test_imperative_qat_user_defined.py
+index ee91890867..ead2a89c37 100644
+--- a/python/paddle/fluid/contrib/slim/tests/test_imperative_qat_user_defined.py
++++ b/python/paddle/fluid/contrib/slim/tests/test_imperative_qat_user_defined.py
+@@ -26,6 +26,7 @@ from paddle.nn import Sequential
+ from paddle.fluid.dygraph import Linear
+ from paddle.nn.quant.quant_layers import QuantizedConv2DTranspose
+ from paddle.fluid.log_helper import get_logger
++from paddle.fluid.framework import _test_eager_guard
+ 
+ os.environ["CPU_NUM"] = "1"
+ 
+@@ -162,7 +163,7 @@ class TestUserDefinedActPreprocess(unittest.TestCase):
+         _logger.info("test act_preprocess")
+         self.imperative_qat = ImperativeQuantAware(act_preprocess_layer=PACT)
+ 
+-    def test_quant_aware_training(self):
++    def func_quant_aware_training(self):
+         imperative_qat = self.imperative_qat
+         seed = 1
+         np.random.seed(seed)
+@@ -264,6 +265,11 @@ class TestUserDefinedActPreprocess(unittest.TestCase):
+         train(lenet)
+         test(lenet)
+ 
++    def test_quant_aware_training(self):
++        with _test_eager_guard():
++            self.func_quant_aware_training()
++        self.func_quant_aware_training()
++
+ 
+ class TestUserDefinedWeightPreprocess(TestUserDefinedActPreprocess):
+     def setUp(self):
+diff --git a/python/paddle/fluid/contrib/slim/tests/test_imperative_skip_op.py b/python/paddle/fluid/contrib/slim/tests/test_imperative_skip_op.py
+index cbd31cab39..9b8ed24af2 100644
+--- a/python/paddle/fluid/contrib/slim/tests/test_imperative_skip_op.py
++++ b/python/paddle/fluid/contrib/slim/tests/test_imperative_skip_op.py
+@@ -33,6 +33,7 @@ from imperative_test_utils import (
+     train_lenet,
+     ImperativeLenetWithSkipQuant,
+ )
++from paddle.fluid.framework import _test_eager_guard
+ 
+ os.environ["CPU_NUM"] = "1"
+ if core.is_compiled_with_cuda():
+@@ -44,7 +45,7 @@ _logger = get_logger(
+ 
+ 
+ class TestImperativeOutSclae(unittest.TestCase):
+-    def test_out_scale_acc(self):
++    def func_out_scale_acc(self):
+         paddle.disable_static()
+         seed = 1000
+         lr = 0.1
+@@ -140,6 +141,11 @@ class TestImperativeOutSclae(unittest.TestCase):
+         if find_matmul:
+             self.assertTrue(matmul_skip_count == 1)
+ 
++    def test_out_scale_acc(self):
++        with _test_eager_guard():
++            self.func_out_scale_acc()
++        self.func_out_scale_acc()
++
+ 
+ if __name__ == '__main__':
+     unittest.main()
+diff --git a/python/paddle/fluid/contrib/slim/tests/test_quantization_pass.py b/python/paddle/fluid/contrib/slim/tests/test_quantization_pass.py
+index 5aabeee119..7fa95fd13f 100644
+--- a/python/paddle/fluid/contrib/slim/tests/test_quantization_pass.py
++++ b/python/paddle/fluid/contrib/slim/tests/test_quantization_pass.py
+@@ -76,7 +76,7 @@ def residual_block(num, quant_skip_pattern=None):
+     matmul_weight = paddle.create_parameter(
+         shape=[1, 16, 32, 32], dtype='float32'
+     )
+-    hidden = fluid.layers.matmul(hidden, matmul_weight, True, True)
++    hidden = paddle.matmul(hidden, matmul_weight, True, True)
+     if quant_skip_pattern:
+         with fluid.name_scope(quant_skip_pattern):
+             pool = fluid.layers.pool2d(
+@@ -724,7 +724,7 @@ def quant_dequant_residual_block(num, quant_skip_pattern=None):
+         conv = conv_bn_layer(hidden, 16, 3, 1, 1, act=None, bias_attr=True)
+         short = conv_bn_layer(hidden, 16, 1, 1, 0, act=None)
+         hidden = paddle.nn.functional.relu(paddle.add(x=conv, y=short))
+-    hidden = fluid.layers.matmul(hidden, data2, True, True)
++    hidden = paddle.matmul(hidden, data2, True, True)
+     if isinstance(quant_skip_pattern, str):
+         with fluid.name_scope(quant_skip_pattern):
+             pool1 = fluid.layers.pool2d(
+diff --git a/python/paddle/fluid/dygraph/rnn.py b/python/paddle/fluid/dygraph/rnn.py
+index 986d1c562b..d74e0b1bfe 100644
+--- a/python/paddle/fluid/dygraph/rnn.py
++++ b/python/paddle/fluid/dygraph/rnn.py
+@@ -17,11 +17,11 @@ from . import Layer
+ from ..layers import (
+     concat,
+     fill_constant,
+-    matmul,
+     elementwise_mul,
+     split,
+ )
+ import copy
++import paddle
+ 
+ __all__ = ['LSTMCell', 'GRUCell']
+ 
+@@ -215,11 +215,12 @@ class LSTMCell(Layer):
+     def forward(self, input, pre_hidden, pre_cell):
+ 
+         if self._use_cudnn_impl:
+-            igates = matmul(input, y=self._weight_ih, transpose_y=True)
++            igates = paddle.matmul(input, y=self._weight_ih, transpose_y=True)
+             igates = paddle.add(igates, self._bias_ih)
+-            hgates = matmul(pre_hidden, self._weight_hh, transpose_y=True)
++            hgates = paddle.matmul(
++                pre_hidden, self._weight_hh, transpose_y=True
++            )
+             hgates = paddle.add(hgates, self._bias_hh)
+-
+             chunked_igates = split(igates, num_or_sections=4, dim=1)
+             chunked_hgates = split(hgates, num_or_sections=4, dim=1)
+ 
+@@ -241,7 +242,7 @@ class LSTMCell(Layer):
+         else:
+ 
+             concat_input_hidden = concat([input, pre_hidden], 1)
+-            gate_input = matmul(x=concat_input_hidden, y=self._weight)
++            gate_input = paddle.matmul(x=concat_input_hidden, y=self._weight)
+ 
+             gate_input = paddle.add(gate_input, self._bias)
+             i, j, f, o = split(gate_input, num_or_sections=4, dim=-1)
+@@ -461,10 +462,11 @@ class GRUCell(Layer):
+     def forward(self, input, pre_hidden):
+ 
+         if self._use_cudnn_impl:
+-
+-            igates = matmul(input, y=self._weight_ih, transpose_y=True)
++            igates = paddle.matmul(input, y=self._weight_ih, transpose_y=True)
+             igates = paddle.add(igates, self._bias_ih)
+-            hgates = matmul(pre_hidden, self._weight_hh, transpose_y=True)
++            hgates = paddle.matmul(
++                pre_hidden, self._weight_hh, transpose_y=True
++            )
+             hgates = paddle.add(hgates, self._bias_hh)
+ 
+             chunked_igates = split(igates, num_or_sections=3, dim=1)
+@@ -486,7 +488,9 @@ class GRUCell(Layer):
+ 
+             concat_input_hidden = concat([input, pre_hidden], 1)
+ 
+-            gate_input = matmul(x=concat_input_hidden, y=self._gate_weight)
++            gate_input = paddle.matmul(
++                x=concat_input_hidden, y=self._gate_weight
++            )
+ 
+             gate_input = paddle.add(gate_input, self._gate_bias)
+             gate_input = self._gate_activation(gate_input)
+@@ -494,7 +498,7 @@ class GRUCell(Layer):
+ 
+             r_hidden = r * pre_hidden
+ 
+-            candidate = matmul(
++            candidate = paddle.matmul(
+                 concat([input, r_hidden], 1), self._candidate_weight
+             )
+             candidate = paddle.add(candidate, self._candidate_bias)
+diff --git a/python/paddle/fluid/layers/detection.py b/python/paddle/fluid/layers/detection.py
+index 486daac609..3d277705aa 100644
+--- a/python/paddle/fluid/layers/detection.py
++++ b/python/paddle/fluid/layers/detection.py
+@@ -43,11 +43,7 @@ __all__ = [
+     'density_prior_box',
+     'multi_box_head',
+     'bipartite_match',
+-    'target_assign',
+     'detection_output',
+-    'ssd_loss',
+-    'rpn_target_assign',
+-    'retinanet_target_assign',
+     'anchor_generator',
+     'roi_perspective_transform',
+     'generate_proposal_labels',
+@@ -69,460 +65,6 @@ __all__ = [
+ ]
+ 
+ 
+-def retinanet_target_assign(
+-    bbox_pred,
+-    cls_logits,
+-    anchor_box,
+-    anchor_var,
+-    gt_boxes,
+-    gt_labels,
+-    is_crowd,
+-    im_info,
+-    num_classes=1,
+-    positive_overlap=0.5,
+-    negative_overlap=0.4,
+-):
+-    r"""
+-    **Target Assign Layer for the detector RetinaNet.**
+-
+-    This OP finds out positive and negative samples from all anchors
+-    for training the detector `RetinaNet <https://arxiv.org/abs/1708.02002>`_ ,
+-    and assigns target labels for classification along with target locations for
+-    regression to each sample, then takes out the part belonging to positive and
+-    negative samples from category prediction( :attr:`cls_logits`) and location
+-    prediction( :attr:`bbox_pred`) which belong to all anchors.
+-
+-    The searching principles for positive and negative samples are as followed:
+-
+-    1. Anchors are assigned to ground-truth boxes when it has the highest IoU
+-    overlap with a ground-truth box.
+-
+-    2. Anchors are assigned to ground-truth boxes when it has an IoU overlap
+-    higher than :attr:`positive_overlap` with any ground-truth box.
+-
+-    3. Anchors are assigned to background when its IoU overlap is lower than
+-    :attr:`negative_overlap` for all ground-truth boxes.
+-
+-    4. Anchors which do not meet the above conditions do not participate in
+-    the training process.
+-
+-    Retinanet predicts a :math:`C`-vector for classification and a 4-vector for box
+-    regression for each anchor, hence the target label for each positive(or negative)
+-    sample is a :math:`C`-vector and the target locations for each positive sample
+-    is a 4-vector. As for a positive sample, if the category of its assigned
+-    ground-truth box is class :math:`i`, the corresponding entry in its length
+-    :math:`C` label vector is set to 1 and all other entries is set to 0, its box
+-    regression targets are computed as the offset between itself and its assigned
+-    ground-truth box. As for a negative sample, all entries in its length :math:`C`
+-    label vector are set to 0 and box regression targets are omitted because
+-    negative samples do not participate in the training process of location
+-    regression.
+-
+-    After the assignment, the part belonging to positive and negative samples is
+-    taken out from category prediction( :attr:`cls_logits` ), and the part
+-    belonging to positive samples is taken out from location
+-    prediction( :attr:`bbox_pred` ).
+-
+-    Args:
+-        bbox_pred(Variable): A 3-D Tensor with shape :math:`[N, M, 4]` represents
+-            the predicted locations of all anchors. :math:`N` is the batch size( the
+-            number of images in a mini-batch), :math:`M` is the number of all anchors
+-            of one image, and each anchor has 4 coordinate values. The data type of
+-            :attr:`bbox_pred` is float32 or float64.
+-        cls_logits(Variable): A 3-D Tensor with shape :math:`[N, M, C]` represents
+-            the predicted categories of all anchors. :math:`N` is the batch size,
+-            :math:`M` is the number of all anchors of one image, and :math:`C` is
+-            the number of categories (**Notice: excluding background**). The data type
+-            of :attr:`cls_logits` is float32 or float64.
+-        anchor_box(Variable): A 2-D Tensor with shape :math:`[M, 4]` represents
+-            the locations of all anchors. :math:`M` is the number of all anchors of
+-            one image, each anchor is represented as :math:`[xmin, ymin, xmax, ymax]`,
+-            :math:`[xmin, ymin]` is the left top coordinate of the anchor box,
+-            :math:`[xmax, ymax]` is the right bottom coordinate of the anchor box.
+-            The data type of :attr:`anchor_box` is float32 or float64. Please refer
+-            to the OP :ref:`api_fluid_layers_anchor_generator`
+-            for the generation of :attr:`anchor_box`.
+-        anchor_var(Variable): A 2-D Tensor with shape :math:`[M,4]` represents the expanded
+-            factors of anchor locations used in loss function. :math:`M` is number of
+-            all anchors of one image, each anchor possesses a 4-vector expanded factor.
+-            The data type of :attr:`anchor_var` is float32 or float64. Please refer
+-            to the OP :ref:`api_fluid_layers_anchor_generator`
+-            for the generation of :attr:`anchor_var`.
+-        gt_boxes(Variable): A 1-level 2-D LoDTensor with shape :math:`[G, 4]` represents
+-            locations of all ground-truth boxes. :math:`G` is the total number of
+-            all ground-truth boxes in a mini-batch, and each ground-truth box has 4
+-            coordinate values. The data type of :attr:`gt_boxes` is float32 or
+-            float64.
+-        gt_labels(variable): A 1-level 2-D LoDTensor with shape :math:`[G, 1]` represents
+-            categories of all ground-truth boxes, and the values are in the range of
+-            :math:`[1, C]`. :math:`G` is the total number of all ground-truth boxes
+-            in a mini-batch, and each ground-truth box has one category. The data type
+-            of :attr:`gt_labels` is int32.
+-        is_crowd(Variable): A 1-level 1-D LoDTensor with shape :math:`[G]` which
+-            indicates whether a ground-truth box is a crowd. If the value is 1, the
+-            corresponding box is a crowd, it is ignored during training. :math:`G` is
+-            the total number of all ground-truth boxes in a mini-batch. The data type
+-            of :attr:`is_crowd` is int32.
+-        im_info(Variable): A 2-D Tensor with shape [N, 3] represents the size
+-            information of input images. :math:`N` is the batch size, the size
+-            information of each image is a 3-vector which are the height and width
+-            of the network input along with the factor scaling the origin image to
+-            the network input. The data type of :attr:`im_info` is float32.
+-        num_classes(int32): The number of categories for classification, the default
+-            value is 1.
+-        positive_overlap(float32): Minimum overlap required between an anchor
+-            and ground-truth box for the anchor to be a positive sample, the default
+-            value is 0.5.
+-        negative_overlap(float32): Maximum overlap allowed between an anchor
+-            and ground-truth box for the anchor to be a negative sample, the default
+-            value is 0.4. :attr:`negative_overlap` should be less than or equal to
+-            :attr:`positive_overlap`, if not, the actual value of
+-            :attr:`positive_overlap` is :attr:`negative_overlap`.
+-
+-    Returns:
+-        A tuple with 6 Variables:
+-
+-        **predict_scores** (Variable): A 2-D Tensor with shape :math:`[F+B, C]` represents
+-        category prediction belonging to positive and negative samples. :math:`F`
+-        is the number of positive samples in a mini-batch, :math:`B` is the number
+-        of negative samples, and :math:`C` is the number of categories
+-        (**Notice: excluding background**). The data type of :attr:`predict_scores`
+-        is float32 or float64.
+-
+-        **predict_location** (Variable): A 2-D Tensor with shape :math:`[F, 4]` represents
+-        location prediction belonging to positive samples. :math:`F` is the number
+-        of positive samples. :math:`F` is the number of positive samples, and each
+-        sample has 4 coordinate values. The data type of :attr:`predict_location`
+-        is float32 or float64.
+-
+-        **target_label** (Variable): A 2-D Tensor with shape :math:`[F+B, 1]` represents
+-        target labels for classification belonging to positive and negative
+-        samples. :math:`F` is the number of positive samples, :math:`B` is the
+-        number of negative, and each sample has one target category. The data type
+-        of :attr:`target_label` is int32.
+-
+-        **target_bbox** (Variable): A 2-D Tensor with shape :math:`[F, 4]` represents
+-        target locations for box regression belonging to positive samples.
+-        :math:`F` is the number of positive samples, and each sample has 4
+-        coordinate values. The data type of :attr:`target_bbox` is float32 or
+-        float64.
+-
+-        **bbox_inside_weight** (Variable): A 2-D Tensor with shape :math:`[F, 4]`
+-        represents whether a positive sample is fake positive, if a positive
+-        sample is false positive, the corresponding entries in
+-        :attr:`bbox_inside_weight` are set 0, otherwise 1. :math:`F` is the number
+-        of total positive samples in a mini-batch, and each sample has 4
+-        coordinate values. The data type of :attr:`bbox_inside_weight` is float32
+-        or float64.
+-
+-        **fg_num** (Variable): A 2-D Tensor with shape :math:`[N, 1]` represents the number
+-        of positive samples. :math:`N` is the batch size. **Notice: The number
+-        of positive samples is used as the denominator of later loss function,
+-        to avoid the condition that the denominator is zero, this OP has added 1
+-        to the actual number of positive samples of each image.** The data type of
+-        :attr:`fg_num` is int32.
+-
+-    Examples:
+-        .. code-block:: python
+-
+-          import paddle.fluid as fluid
+-          bbox_pred = fluid.data(name='bbox_pred', shape=[1, 100, 4],
+-                            dtype='float32')
+-          cls_logits = fluid.data(name='cls_logits', shape=[1, 100, 10],
+-                            dtype='float32')
+-          anchor_box = fluid.data(name='anchor_box', shape=[100, 4],
+-                            dtype='float32')
+-          anchor_var = fluid.data(name='anchor_var', shape=[100, 4],
+-                            dtype='float32')
+-          gt_boxes = fluid.data(name='gt_boxes', shape=[10, 4],
+-                            dtype='float32')
+-          gt_labels = fluid.data(name='gt_labels', shape=[10, 1],
+-                            dtype='int32')
+-          is_crowd = fluid.data(name='is_crowd', shape=[1],
+-                            dtype='int32')
+-          im_info = fluid.data(name='im_info', shape=[1, 3],
+-                            dtype='float32')
+-          score_pred, loc_pred, score_target, loc_target, bbox_inside_weight, fg_num = \\
+-                fluid.layers.retinanet_target_assign(bbox_pred, cls_logits, anchor_box,
+-                anchor_var, gt_boxes, gt_labels, is_crowd, im_info, 10)
+-
+-    """
+-
+-    check_variable_and_dtype(
+-        bbox_pred,
+-        'bbox_pred',
+-        ['float32', 'float64'],
+-        'retinanet_target_assign',
+-    )
+-    check_variable_and_dtype(
+-        cls_logits,
+-        'cls_logits',
+-        ['float32', 'float64'],
+-        'retinanet_target_assign',
+-    )
+-    check_variable_and_dtype(
+-        anchor_box,
+-        'anchor_box',
+-        ['float32', 'float64'],
+-        'retinanet_target_assign',
+-    )
+-    check_variable_and_dtype(
+-        anchor_var,
+-        'anchor_var',
+-        ['float32', 'float64'],
+-        'retinanet_target_assign',
+-    )
+-    check_variable_and_dtype(
+-        gt_boxes, 'gt_boxes', ['float32', 'float64'], 'retinanet_target_assign'
+-    )
+-    check_variable_and_dtype(
+-        gt_labels, 'gt_labels', ['int32'], 'retinanet_target_assign'
+-    )
+-    check_variable_and_dtype(
+-        is_crowd, 'is_crowd', ['int32'], 'retinanet_target_assign'
+-    )
+-    check_variable_and_dtype(
+-        im_info, 'im_info', ['float32', 'float64'], 'retinanet_target_assign'
+-    )
+-
+-    helper = LayerHelper('retinanet_target_assign', **locals())
+-    # Assign target label to anchors
+-    loc_index = helper.create_variable_for_type_inference(dtype='int32')
+-    score_index = helper.create_variable_for_type_inference(dtype='int32')
+-    target_label = helper.create_variable_for_type_inference(dtype='int32')
+-    target_bbox = helper.create_variable_for_type_inference(
+-        dtype=anchor_box.dtype
+-    )
+-    bbox_inside_weight = helper.create_variable_for_type_inference(
+-        dtype=anchor_box.dtype
+-    )
+-    fg_num = helper.create_variable_for_type_inference(dtype='int32')
+-    helper.append_op(
+-        type="retinanet_target_assign",
+-        inputs={
+-            'Anchor': anchor_box,
+-            'GtBoxes': gt_boxes,
+-            'GtLabels': gt_labels,
+-            'IsCrowd': is_crowd,
+-            'ImInfo': im_info,
+-        },
+-        outputs={
+-            'LocationIndex': loc_index,
+-            'ScoreIndex': score_index,
+-            'TargetLabel': target_label,
+-            'TargetBBox': target_bbox,
+-            'BBoxInsideWeight': bbox_inside_weight,
+-            'ForegroundNumber': fg_num,
+-        },
+-        attrs={
+-            'positive_overlap': positive_overlap,
+-            'negative_overlap': negative_overlap,
+-        },
+-    )
+-
+-    loc_index.stop_gradient = True
+-    score_index.stop_gradient = True
+-    target_label.stop_gradient = True
+-    target_bbox.stop_gradient = True
+-    bbox_inside_weight.stop_gradient = True
+-    fg_num.stop_gradient = True
+-
+-    cls_logits = paddle.reshape(x=cls_logits, shape=(-1, num_classes))
+-    bbox_pred = paddle.reshape(x=bbox_pred, shape=(-1, 4))
+-    predicted_cls_logits = paddle.gather(cls_logits, score_index)
+-    predicted_bbox_pred = paddle.gather(bbox_pred, loc_index)
+-
+-    return (
+-        predicted_cls_logits,
+-        predicted_bbox_pred,
+-        target_label,
+-        target_bbox,
+-        bbox_inside_weight,
+-        fg_num,
+-    )
+-
+-
+-def rpn_target_assign(
+-    bbox_pred,
+-    cls_logits,
+-    anchor_box,
+-    anchor_var,
+-    gt_boxes,
+-    is_crowd,
+-    im_info,
+-    rpn_batch_size_per_im=256,
+-    rpn_straddle_thresh=0.0,
+-    rpn_fg_fraction=0.5,
+-    rpn_positive_overlap=0.7,
+-    rpn_negative_overlap=0.3,
+-    use_random=True,
+-):
+-    """
+-    **Target Assign Layer for region proposal network (RPN) in Faster-RCNN detection.**
+-
+-    This layer can be, for given the  Intersection-over-Union (IoU) overlap
+-    between anchors and ground truth boxes, to assign classification and
+-    regression targets to each each anchor, these target labels are used for
+-    train RPN. The classification targets is a binary class label (of being
+-    an object or not). Following the paper of Faster-RCNN, the positive labels
+-    are two kinds of anchors: (i) the anchor/anchors with the highest IoU
+-    overlap with a ground-truth box, or (ii) an anchor that has an IoU overlap
+-    higher than rpn_positive_overlap(0.7) with any ground-truth box. Note
+-    that a single ground-truth box may assign positive labels to multiple
+-    anchors. A non-positive anchor is when its IoU ratio is lower than
+-    rpn_negative_overlap (0.3) for all ground-truth boxes. Anchors that are
+-    neither positive nor negative do not contribute to the training objective.
+-    The regression targets are the encoded ground-truth boxes associated with
+-    the positive anchors.
+-
+-    Args:
+-        bbox_pred(Variable): A 3-D Tensor with shape [N, M, 4] represents the
+-            predicted locations of M bounding bboxes. N is the batch size,
+-            and each bounding box has four coordinate values and the layout
+-            is [xmin, ymin, xmax, ymax]. The data type can be float32 or float64.
+-        cls_logits(Variable): A 3-D Tensor with shape [N, M, 1] represents the
+-            predicted confidence predictions. N is the batch size, 1 is the
+-            frontground and background sigmoid, M is number of bounding boxes.
+-            The data type can be float32 or float64.
+-        anchor_box(Variable): A 2-D Tensor with shape [M, 4] holds M boxes,
+-            each box is represented as [xmin, ymin, xmax, ymax],
+-            [xmin, ymin] is the left top coordinate of the anchor box,
+-            if the input is image feature map, they are close to the origin
+-            of the coordinate system. [xmax, ymax] is the right bottom
+-            coordinate of the anchor box. The data type can be float32 or float64.
+-        anchor_var(Variable): A 2-D Tensor with shape [M,4] holds expanded
+-            variances of anchors. The data type can be float32 or float64.
+-        gt_boxes (Variable): The ground-truth bounding boxes (bboxes) are a 2D
+-            LoDTensor with shape [Ng, 4], Ng is the total number of ground-truth
+-            bboxes of mini-batch input. The data type can be float32 or float64.
+-        is_crowd (Variable): A 1-D LoDTensor which indicates groud-truth is crowd.
+-                             The data type must be int32.
+-        im_info (Variable): A 2-D LoDTensor with shape [N, 3]. N is the batch size,
+-        3 is the height, width and scale.
+-        rpn_batch_size_per_im(int): Total number of RPN examples per image.
+-                                    The data type must be int32.
+-        rpn_straddle_thresh(float): Remove RPN anchors that go outside the image
+-            by straddle_thresh pixels. The data type must be float32.
+-        rpn_fg_fraction(float): Target fraction of RoI minibatch that is labeled
+-            foreground (i.e. class > 0), 0-th class is background. The data type must be float32.
+-        rpn_positive_overlap(float): Minimum overlap required between an anchor
+-            and ground-truth box for the (anchor, gt box) pair to be a positive
+-            example. The data type must be float32.
+-        rpn_negative_overlap(float): Maximum overlap allowed between an anchor
+-            and ground-truth box for the (anchor, gt box) pair to be a negative
+-            examples. The data type must be float32.
+-
+-    Returns:
+-        tuple:
+-        A tuple(predicted_scores, predicted_location, target_label,
+-        target_bbox, bbox_inside_weight) is returned. The predicted_scores
+-        and predicted_location is the predicted result of the RPN.
+-        The target_label and target_bbox is the ground truth,
+-        respectively. The predicted_location is a 2D Tensor with shape
+-        [F, 4], and the shape of target_bbox is same as the shape of
+-        the predicted_location, F is the number of the foreground
+-        anchors. The predicted_scores is a 2D Tensor with shape
+-        [F + B, 1], and the shape of target_label is same as the shape
+-        of the predicted_scores, B is the number of the background
+-        anchors, the F and B is depends on the input of this operator.
+-        Bbox_inside_weight represents whether the predicted loc is fake_fg
+-        or not and the shape is [F, 4].
+-
+-    Examples:
+-        .. code-block:: python
+-
+-            import paddle.fluid as fluid
+-            bbox_pred = fluid.data(name='bbox_pred', shape=[None, 4], dtype='float32')
+-            cls_logits = fluid.data(name='cls_logits', shape=[None, 1], dtype='float32')
+-            anchor_box = fluid.data(name='anchor_box', shape=[None, 4], dtype='float32')
+-            anchor_var = fluid.data(name='anchor_var', shape=[None, 4], dtype='float32')
+-            gt_boxes = fluid.data(name='gt_boxes', shape=[None, 4], dtype='float32')
+-            is_crowd = fluid.data(name='is_crowd', shape=[None], dtype='float32')
+-            im_info = fluid.data(name='im_infoss', shape=[None, 3], dtype='float32')
+-            loc, score, loc_target, score_target, inside_weight = fluid.layers.rpn_target_assign(
+-                bbox_pred, cls_logits, anchor_box, anchor_var, gt_boxes, is_crowd, im_info)
+-
+-    """
+-
+-    helper = LayerHelper('rpn_target_assign', **locals())
+-
+-    check_variable_and_dtype(
+-        bbox_pred, 'bbox_pred', ['float32', 'float64'], 'rpn_target_assign'
+-    )
+-    check_variable_and_dtype(
+-        cls_logits, 'cls_logits', ['float32', 'float64'], 'rpn_target_assign'
+-    )
+-    check_variable_and_dtype(
+-        anchor_box, 'anchor_box', ['float32', 'float64'], 'rpn_target_assign'
+-    )
+-    check_variable_and_dtype(
+-        anchor_var, 'anchor_var', ['float32', 'float64'], 'rpn_target_assign'
+-    )
+-    check_variable_and_dtype(
+-        gt_boxes, 'gt_boxes', ['float32', 'float64'], 'rpn_target_assign'
+-    )
+-    check_variable_and_dtype(
+-        is_crowd, 'is_crowd', ['int32'], 'rpn_target_assign'
+-    )
+-    check_variable_and_dtype(
+-        im_info, 'im_info', ['float32', 'float64'], 'rpn_target_assign'
+-    )
+-
+-    # Assign target label to anchors
+-    loc_index = helper.create_variable_for_type_inference(dtype='int32')
+-    score_index = helper.create_variable_for_type_inference(dtype='int32')
+-    target_label = helper.create_variable_for_type_inference(dtype='int32')
+-    target_bbox = helper.create_variable_for_type_inference(
+-        dtype=anchor_box.dtype
+-    )
+-    bbox_inside_weight = helper.create_variable_for_type_inference(
+-        dtype=anchor_box.dtype
+-    )
+-    helper.append_op(
+-        type="rpn_target_assign",
+-        inputs={
+-            'Anchor': anchor_box,
+-            'GtBoxes': gt_boxes,
+-            'IsCrowd': is_crowd,
+-            'ImInfo': im_info,
+-        },
+-        outputs={
+-            'LocationIndex': loc_index,
+-            'ScoreIndex': score_index,
+-            'TargetLabel': target_label,
+-            'TargetBBox': target_bbox,
+-            'BBoxInsideWeight': bbox_inside_weight,
+-        },
+-        attrs={
+-            'rpn_batch_size_per_im': rpn_batch_size_per_im,
+-            'rpn_straddle_thresh': rpn_straddle_thresh,
+-            'rpn_positive_overlap': rpn_positive_overlap,
+-            'rpn_negative_overlap': rpn_negative_overlap,
+-            'rpn_fg_fraction': rpn_fg_fraction,
+-            'use_random': use_random,
+-        },
+-    )
+-
+-    loc_index.stop_gradient = True
+-    score_index.stop_gradient = True
+-    target_label.stop_gradient = True
+-    target_bbox.stop_gradient = True
+-    bbox_inside_weight.stop_gradient = True
+-
+-    cls_logits = paddle.reshape(x=cls_logits, shape=(-1, 1))
+-    bbox_pred = paddle.reshape(x=bbox_pred, shape=(-1, 4))
+-    predicted_cls_logits = paddle.gather(cls_logits, score_index)
+-    predicted_bbox_pred = paddle.gather(bbox_pred, loc_index)
+-
+-    return (
+-        predicted_cls_logits,
+-        predicted_bbox_pred,
+-        target_label,
+-        target_bbox,
+-        bbox_inside_weight,
+-    )
+-
+-
+ def detection_output(
+     loc,
+     scores,
+@@ -1340,377 +882,6 @@ def bipartite_match(
+     return match_indices, match_distance
+ 
+ 
+-def target_assign(
+-    input,
+-    matched_indices,
+-    negative_indices=None,
+-    mismatch_value=None,
+-    name=None,
+-):
+-    """
+-
+-    This operator can be, for given the target bounding boxes or labels,
+-    to assign classification and regression targets to each prediction as well as
+-    weights to prediction. The weights is used to specify which prediction would
+-    not contribute to training loss.
+-
+-    For each instance, the output `out` and`out_weight` are assigned based on
+-    `match_indices` and `negative_indices`.
+-    Assumed that the row offset for each instance in `input` is called lod,
+-    this operator assigns classification/regression targets by performing the
+-    following steps:
+-
+-    1. Assigning all outputs based on `match_indices`:
+-
+-    .. code-block:: text
+-
+-        If id = match_indices[i][j] > 0,
+-
+-            out[i][j][0 : K] = X[lod[i] + id][j % P][0 : K]
+-            out_weight[i][j] = 1.
+-
+-        Otherwise,
+-
+-            out[j][j][0 : K] = {mismatch_value, mismatch_value, ...}
+-            out_weight[i][j] = 0.
+-
+-    2. Assigning outputs based on `neg_indices` if `neg_indices` is provided:
+-
+-    Assumed that i-th instance in `neg_indices` is called `neg_indice`,
+-    for i-th instance:
+-
+-    .. code-block:: text
+-
+-        for id in neg_indice:
+-            out[i][id][0 : K] = {mismatch_value, mismatch_value, ...}
+-            out_weight[i][id] = 1.0
+-
+-    Args:
+-       input (Variable): This input is a 3D LoDTensor with shape [M, P, K].
+-           Data type should be int32 or float32.
+-       matched_indices (Variable): The input matched indices
+-           is 2D Tenosr<int32> with shape [N, P], If MatchIndices[i][j] is -1,
+-           the j-th entity of column is not matched to any entity of row in
+-           i-th instance.
+-       negative_indices (Variable, optional): The input negative example indices
+-           are an optional input with shape [Neg, 1] and int32 type, where Neg is
+-           the total number of negative example indices.
+-       mismatch_value (float32, optional): Fill this value to the mismatched
+-           location.
+-       name (string): The default value is None.  Normally there is no need for
+-           user to set this property.  For more information, please refer
+-           to :ref:`api_guide_Name`.
+-
+-    Returns:
+-        tuple: A tuple(out, out_weight) is returned.
+-
+-        out (Variable): a 3D Tensor with shape [N, P, K] and same data type
+-        with `input`, N and P is the same as they are in `matched_indices`,
+-        K is the same as it in input of X.
+-
+-        out_weight (Variable): the weight for output with the shape of [N, P, 1].
+-        Data type is float32.
+-
+-    Examples:
+-
+-        .. code-block:: python
+-
+-            import paddle.fluid as fluid
+-            import paddle
+-            paddle.enable_static()
+-            x = fluid.data(
+-                name='x',
+-                shape=[4, 20, 4],
+-                dtype='float',
+-                lod_level=1)
+-            matched_id = fluid.data(
+-                name='indices',
+-                shape=[8, 20],
+-                dtype='int32')
+-            trg, trg_weight = fluid.layers.target_assign(
+-                x,
+-                matched_id,
+-                mismatch_value=0)
+-    """
+-    helper = LayerHelper('target_assign', **locals())
+-    out = helper.create_variable_for_type_inference(dtype=input.dtype)
+-    out_weight = helper.create_variable_for_type_inference(dtype='float32')
+-    helper.append_op(
+-        type='target_assign',
+-        inputs={
+-            'X': input,
+-            'MatchIndices': matched_indices,
+-            'NegIndices': negative_indices,
+-        },
+-        outputs={'Out': out, 'OutWeight': out_weight},
+-        attrs={'mismatch_value': mismatch_value},
+-    )
+-    return out, out_weight
+-
+-
+-def ssd_loss(
+-    location,
+-    confidence,
+-    gt_box,
+-    gt_label,
+-    prior_box,
+-    prior_box_var=None,
+-    background_label=0,
+-    overlap_threshold=0.5,
+-    neg_pos_ratio=3.0,
+-    neg_overlap=0.5,
+-    loc_loss_weight=1.0,
+-    conf_loss_weight=1.0,
+-    match_type='per_prediction',
+-    mining_type='max_negative',
+-    normalize=True,
+-    sample_size=None,
+-):
+-    r"""
+-	:alias_main: paddle.nn.functional.ssd_loss
+-	:alias: paddle.nn.functional.ssd_loss,paddle.nn.functional.loss.ssd_loss
+-	:old_api: paddle.fluid.layers.ssd_loss
+-
+-    **Multi-box loss layer for object detection algorithm of SSD**
+-
+-    This layer is to compute detection loss for SSD given the location offset
+-    predictions, confidence predictions, prior boxes and ground-truth bounding
+-    boxes and labels, and the type of hard example mining. The returned loss
+-    is a weighted sum of the localization loss (or regression loss) and
+-    confidence loss (or classification loss) by performing the following steps:
+-
+-    1. Find matched bounding box by bipartite matching algorithm.
+-
+-      1.1 Compute IOU similarity between ground-truth boxes and prior boxes.
+-
+-      1.2 Compute matched bounding box by bipartite matching algorithm.
+-
+-    2. Compute confidence for mining hard examples
+-
+-      2.1. Get the target label based on matched indices.
+-
+-      2.2. Compute confidence loss.
+-
+-    3. Apply hard example mining to get the negative example indices and update
+-       the matched indices.
+-
+-    4. Assign classification and regression targets
+-
+-      4.1. Encoded bbox according to the prior boxes.
+-
+-      4.2. Assign regression targets.
+-
+-      4.3. Assign classification targets.
+-
+-    5. Compute the overall objective loss.
+-
+-      5.1 Compute confidence loss.
+-
+-      5.2 Compute localization loss.
+-
+-      5.3 Compute the overall weighted loss.
+-
+-    Args:
+-        location (Variable): The location predictions are a 3D Tensor with
+-            shape [N, Np, 4], N is the batch size, Np is total number of
+-            predictions for each instance. 4 is the number of coordinate values,
+-            the layout is [xmin, ymin, xmax, ymax].The data type is float32 or
+-            float64.
+-        confidence (Variable): The confidence predictions are a 3D Tensor
+-            with shape [N, Np, C], N and Np are the same as they are in
+-            `location`, C is the class number.The data type is float32 or
+-            float64.
+-        gt_box (Variable): The ground-truth bounding boxes (bboxes) are a 2D
+-            LoDTensor with shape [Ng, 4], Ng is the total number of ground-truth
+-            bboxes of mini-batch input.The data type is float32 or float64.
+-        gt_label (Variable): The ground-truth labels are a 2D LoDTensor
+-            with shape [Ng, 1].Ng is the total number of ground-truth bboxes of
+-            mini-batch input, 1 is the number of class. The data type is float32
+-            or float64.
+-        prior_box (Variable): The prior boxes are a 2D Tensor with shape [Np, 4].
+-            Np and 4 are the same as they are in `location`. The data type is
+-            float32 or float64.
+-        prior_box_var (Variable): The variance of prior boxes are a 2D Tensor
+-            with shape [Np, 4]. Np and 4 are the same as they are in `prior_box`
+-        background_label (int): The index of background label, 0 by default.
+-        overlap_threshold (float): If match_type is 'per_prediction', use
+-            'overlap_threshold' to determine the extra matching bboxes when finding \
+-            matched boxes. 0.5 by default.
+-        neg_pos_ratio (float): The ratio of the negative boxes to the positive
+-            boxes, used only when mining_type is 'max_negative', 3.0 by default.
+-        neg_overlap (float): The negative overlap upper bound for the unmatched
+-            predictions. Use only when mining_type is 'max_negative',
+-            0.5 by default.
+-        loc_loss_weight (float): Weight for localization loss, 1.0 by default.
+-        conf_loss_weight (float): Weight for confidence loss, 1.0 by default.
+-        match_type (str): The type of matching method during training, should
+-            be 'bipartite' or 'per_prediction', 'per_prediction' by default.
+-        mining_type (str): The hard example mining type, should be 'hard_example'
+-            or 'max_negative', now only support `max_negative`.
+-        normalize (bool): Whether to normalize the SSD loss by the total number
+-            of output locations, True by default.
+-        sample_size (int): The max sample size of negative box, used only when
+-            mining_type is 'hard_example'.
+-
+-    Returns:
+-        Variable(Tensor):  The weighted sum of the localization loss and confidence loss, \
+-        with shape [N * Np, 1], N and Np are the same as they are in
+-        `location`.The data type is float32 or float64.
+-
+-    Raises:
+-        ValueError: If mining_type is 'hard_example', now only support mining \
+-        type of `max_negative`.
+-
+-    Examples:
+-
+-        .. code-block:: python
+-
+-            import paddle.fluid as fluid
+-            pb = fluid.data(
+-                           name='prior_box',
+-                           shape=[10, 4],
+-                           dtype='float32')
+-            pbv = fluid.data(
+-                           name='prior_box_var',
+-                           shape=[10, 4],
+-                           dtype='float32')
+-            loc = fluid.data(name='target_box', shape=[10, 4], dtype='float32')
+-            scores = fluid.data(name='scores', shape=[10, 21], dtype='float32')
+-            gt_box = fluid.data(
+-                 name='gt_box', shape=[4], lod_level=1, dtype='float32')
+-            gt_label = fluid.data(
+-                 name='gt_label', shape=[1], lod_level=1, dtype='float32')
+-            loss = fluid.layers.ssd_loss(loc, scores, gt_box, gt_label, pb, pbv)
+-    """
+-
+-    helper = LayerHelper('ssd_loss', **locals())
+-    if mining_type != 'max_negative':
+-        raise ValueError("Only support mining_type == max_negative now.")
+-
+-    num, num_prior, num_class = confidence.shape
+-    conf_shape = paddle.shape(confidence)
+-
+-    def __reshape_to_2d(var):
+-        out = paddle.flatten(var, 2, -1)
+-        out = paddle.flatten(out, 0, 1)
+-        return out
+-
+-    # 1. Find matched bounding box by prior box.
+-    #   1.1 Compute IOU similarity between ground-truth boxes and prior boxes.
+-    iou = iou_similarity(x=gt_box, y=prior_box)
+-    #   1.2 Compute matched bounding box by bipartite matching algorithm.
+-    matched_indices, matched_dist = bipartite_match(
+-        iou, match_type, overlap_threshold
+-    )
+-
+-    # 2. Compute confidence for mining hard examples
+-    # 2.1. Get the target label based on matched indices
+-    gt_label = paddle.reshape(
+-        x=gt_label, shape=(len(gt_label.shape) - 1) * (0,) + (-1, 1)
+-    )
+-    gt_label.stop_gradient = True
+-    target_label, _ = target_assign(
+-        gt_label, matched_indices, mismatch_value=background_label
+-    )
+-    # 2.2. Compute confidence loss.
+-    # Reshape confidence to 2D tensor.
+-    confidence = __reshape_to_2d(confidence)
+-    target_label = tensor.cast(x=target_label, dtype='int64')
+-    target_label = __reshape_to_2d(target_label)
+-    target_label.stop_gradient = True
+-    conf_loss = softmax_with_cross_entropy(confidence, target_label)
+-    # 3. Mining hard examples
+-    actual_shape = paddle.slice(conf_shape, axes=[0], starts=[0], ends=[2])
+-    actual_shape.stop_gradient = True
+-    # shape=(-1, 0) is set for compile-time, the correct shape is set by
+-    # actual_shape in runtime.
+-    conf_loss = paddle.reshape(x=conf_loss, shape=actual_shape)
+-    conf_loss.stop_gradient = True
+-    neg_indices = helper.create_variable_for_type_inference(dtype='int32')
+-    dtype = matched_indices.dtype
+-    updated_matched_indices = helper.create_variable_for_type_inference(
+-        dtype=dtype
+-    )
+-    helper.append_op(
+-        type='mine_hard_examples',
+-        inputs={
+-            'ClsLoss': conf_loss,
+-            'LocLoss': None,
+-            'MatchIndices': matched_indices,
+-            'MatchDist': matched_dist,
+-        },
+-        outputs={
+-            'NegIndices': neg_indices,
+-            'UpdatedMatchIndices': updated_matched_indices,
+-        },
+-        attrs={
+-            'neg_pos_ratio': neg_pos_ratio,
+-            'neg_dist_threshold': neg_overlap,
+-            'mining_type': mining_type,
+-            'sample_size': sample_size,
+-        },
+-    )
+-
+-    # 4. Assign classification and regression targets
+-    # 4.1. Encoded bbox according to the prior boxes.
+-    encoded_bbox = box_coder(
+-        prior_box=prior_box,
+-        prior_box_var=prior_box_var,
+-        target_box=gt_box,
+-        code_type='encode_center_size',
+-    )
+-    # 4.2. Assign regression targets
+-    target_bbox, target_loc_weight = target_assign(
+-        encoded_bbox, updated_matched_indices, mismatch_value=background_label
+-    )
+-    # 4.3. Assign classification targets
+-    target_label, target_conf_weight = target_assign(
+-        gt_label,
+-        updated_matched_indices,
+-        negative_indices=neg_indices,
+-        mismatch_value=background_label,
+-    )
+-
+-    # 5. Compute loss.
+-    # 5.1 Compute confidence loss.
+-    target_label = __reshape_to_2d(target_label)
+-    target_label = tensor.cast(x=target_label, dtype='int64')
+-
+-    conf_loss = softmax_with_cross_entropy(confidence, target_label)
+-    target_conf_weight = __reshape_to_2d(target_conf_weight)
+-    conf_loss = conf_loss * target_conf_weight
+-
+-    # the target_label and target_conf_weight do not have gradient.
+-    target_label.stop_gradient = True
+-    target_conf_weight.stop_gradient = True
+-
+-    # 5.2 Compute regression loss.
+-    location = __reshape_to_2d(location)
+-    target_bbox = __reshape_to_2d(target_bbox)
+-
+-    smooth_l1_loss = paddle.nn.loss.SmoothL1Loss()
+-    loc_loss = smooth_l1_loss(location, target_bbox)
+-    target_loc_weight = __reshape_to_2d(target_loc_weight)
+-    loc_loss = loc_loss * target_loc_weight
+-
+-    # the target_bbox and target_loc_weight do not have gradient.
+-    target_bbox.stop_gradient = True
+-    target_loc_weight.stop_gradient = True
+-
+-    # 5.3 Compute overall weighted loss.
+-    loss = conf_loss_weight * conf_loss + loc_loss_weight * loc_loss
+-    # reshape to [N, Np], N is the batch size and Np is the prior box number.
+-    # shape=(-1, 0) is set for compile-time, the correct shape is set by
+-    # actual_shape in runtime.
+-    loss = paddle.reshape(x=loss, shape=actual_shape)
+-    loss = paddle.sum(loss, axis=1, keepdim=True)
+-    if normalize:
+-        normalizer = paddle.sum(target_loc_weight)
+-        loss = loss / normalizer
+-
+-    return loss
+-
+-
+ def prior_box(
+     input,
+     image,
+diff --git a/python/paddle/fluid/layers/nn.py b/python/paddle/fluid/layers/nn.py
+index 860a5375bf..39d4d678ab 100644
+--- a/python/paddle/fluid/layers/nn.py
++++ b/python/paddle/fluid/layers/nn.py
+@@ -73,7 +73,6 @@ __all__ = [
+     'dropout',
+     'split',
+     'l2_normalize',
+-    'matmul',
+     'row_conv',
+     'layer_norm',
+     'spectral_norm',
+@@ -2589,154 +2588,6 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
+     return out
+ 
+ 
+-@deprecated(since="2.0.0", update_to="paddle.matmul")
+-def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
+-    """
+-    Applies matrix multiplication to two tensors.
+-
+-    Currently, the input tensors' rank can be any, but when the rank of any
+-    inputs is bigger than 3, this two inputs' rank should be equal.
+-
+-    The actual behavior depends on the shapes of :math:`x`, :math:`y` and the
+-    flag values of :attr:`transpose_x`, :attr:`transpose_y`. Specifically:
+-
+-    - If a transpose flag is specified, the last two dimensions of the tensor
+-      are transposed. If the tensor is rank-1 of shape :math:`[D]`, then for
+-      :math:`x` it is treated as :math:`[1, D]` in nontransposed form and as
+-      :math:`[D, 1]` in transposed form, whereas for :math:`y` it is the
+-      opposite: It is treated as :math:`[D, 1]` in nontransposed form and as
+-      :math:`[1, D]` in transposed form.
+-
+-    - After transpose, the two tensors are 2-D or n-D and matrix multiplication
+-      performs in the following way.
+-
+-      - If both are 2-D, they are multiplied like conventional matrices.
+-      - If either is n-D, it is treated as a stack of matrices residing in the
+-        last two dimensions and a batched matrix multiply supporting broadcast
+-        applies on the two tensors.
+-
+-    Also note that if the raw tensor :math:`x` or :math:`y` is rank-1 and
+-    nontransposed, the prepended or appended dimension :math:`1` will be
+-    removed after matrix multiplication.
+-
+-    Args:
+-        x (Variable): The input variable which is a Tensor or LoDTensor.
+-        y (Variable): The input variable which is a Tensor or LoDTensor.
+-        transpose_x (bool): Whether to transpose :math:`x` before multiplication.
+-        transpose_y (bool): Whether to transpose :math:`y` before multiplication.
+-        alpha (float): The scale of output. Default 1.0.
+-        name(str|None): A name for this layer(optional). If set None, the layer
+-            will be named automatically.
+-
+-    Returns:
+-        Variable: The product Tensor (or LoDTensor) variable.
+-
+-    Examples:
+-        .. code-block:: python
+-
+-            # Examples to clarify shapes of the inputs and output
+-            # x: [B, ..., M, K], y: [B, ..., K, N]
+-            # fluid.layers.matmul(x, y)  # out: [B, ..., M, N]
+-
+-            # x: [B, M, K], y: [B, K, N]
+-            # fluid.layers.matmul(x, y)  # out: [B, M, N]
+-
+-            # x: [B, M, K], y: [K, N]
+-            # fluid.layers.matmul(x, y)  # out: [B, M, N]
+-
+-            # x: [M, K], y: [K, N]
+-            # fluid.layers.matmul(x, y)  # out: [M, N]
+-
+-            # x: [B, M, K], y: [K]
+-            # fluid.layers.matmul(x, y)  # out: [B, M]
+-
+-            # x: [K], y: [K]
+-            # fluid.layers.matmul(x, y)  # out: [1]
+-
+-            # x: [M], y: [N]
+-            # fluid.layers.matmul(x, y, True, True)  # out: [M, N]
+-
+-            import paddle
+-            import paddle.fluid as fluid
+-            paddle.enable_static()
+-
+-            x = fluid.layers.data(name='x', shape=[2, 3], dtype='float32')
+-            y = fluid.layers.data(name='y', shape=[3, 2], dtype='float32')
+-            out = fluid.layers.matmul(x, y, True, True)
+-    """
+-    if _non_static_mode():
+-        out = _varbase_creator(dtype=x.dtype)
+-        _legacy_C_ops.matmul(
+-            x,
+-            y,
+-            out,
+-            'transpose_X',
+-            transpose_x,
+-            'transpose_Y',
+-            transpose_y,
+-            'alpha',
+-            float(alpha),
+-        )
+-        return out
+-
+-    def __check_input(x, y):
+-        var_names = {'x': x, 'y': y}
+-        for name, val in var_names.items():
+-            check_variable_and_dtype(
+-                val, name, ['float16', 'float32', 'float64'], 'matmul'
+-            )
+-        x_shape = list(x.shape)
+-        y_shape = list(y.shape)
+-        if len(x_shape) == 1:
+-            x_shape = [1] + x_shape
+-        if len(y_shape) == 1:
+-            y_shape = y_shape + [1]
+-
+-        # check the inner 2 dimensions
+-        if transpose_x:
+-            x_shape[-2], x_shape[-1] = x_shape[-1], x_shape[-2]
+-        if transpose_y:
+-            y_shape[-2], y_shape[-1] = y_shape[-1], y_shape[-2]
+-        if x_shape[-1] != y_shape[-2]:
+-            assert (x_shape[-1] == -1) or (y_shape[-2] == -1), (
+-                "After performing an optional transpose, Input X's width should be "
+-                "equal to Y's width for multiplication "
+-                "prerequisites. But received X's shape: %s, Y's shape: %s\n"
+-                % (x_shape, y_shape)
+-            )
+-
+-        if len(y_shape) > 2 and len(x_shape) > 2:
+-            for i, dim_x in enumerate(x_shape[:-2]):
+-                # don't check neg shape
+-                if dim_x < 0 or y_shape[i] < 0:
+-                    continue
+-                if dim_x != y_shape[i]:
+-                    raise ValueError(
+-                        "When the matrix is larger than 2 dimensions, the higher "
+-                        "dimensional values of the two matrices need to be equal. "
+-                        "But received x_shape[%d] != y_shape[%d]. X's shape: %s, "
+-                        "Y's shape: %s.\n" % (i, i, x_shape, y_shape)
+-                    )
+-
+-    attrs = {
+-        'transpose_X': transpose_x,
+-        'transpose_Y': transpose_y,
+-        'alpha': float(alpha),
+-    }
+-
+-    __check_input(x, y)
+-
+-    helper = LayerHelper('matmul', **locals())
+-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+-    helper.append_op(
+-        type='matmul',
+-        inputs={'X': x, 'Y': y},
+-        outputs={'Out': out},
+-        attrs=attrs,
+-    )
+-    return out
+-
+-
+ @templatedoc()
+ def row_conv(input, future_context_size, param_attr=None, act=None):
+     """
+diff --git a/python/paddle/fluid/nets.py b/python/paddle/fluid/nets.py
+index 3d4f187e18..0a781e67a8 100644
+--- a/python/paddle/fluid/nets.py
++++ b/python/paddle/fluid/nets.py
+@@ -621,7 +621,7 @@ def scaled_dot_product_attention(
+ 
+     key_dim_per_head = keys.shape[-1] // num_heads
+     scaled_q = paddle.scale(x=q, scale=key_dim_per_head**-0.5)
+-    product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
++    product = paddle.matmul(x=scaled_q, y=k, transpose_y=True)
+ 
+     x = paddle.reshape(x=product, shape=[-1, product.shape[-1]])
+     x = paddle.nn.functional.softmax(x)
+@@ -631,5 +631,5 @@ def scaled_dot_product_attention(
+         weights = layers.dropout(
+             weights, dropout_prob=dropout_rate, is_test=False
+         )
+-    ctx_multiheads = layers.matmul(weights, v)
++    ctx_multiheads = paddle.matmul(weights, v)
+     return __combine_heads(ctx_multiheads)
+diff --git a/python/paddle/fluid/tests/test_detection.py b/python/paddle/fluid/tests/test_detection.py
+index 7fd3bc2e8b..cf2523947f 100644
+--- a/python/paddle/fluid/tests/test_detection.py
++++ b/python/paddle/fluid/tests/test_detection.py
+@@ -163,74 +163,6 @@ class TestDetection(unittest.TestCase):
+                 code_type='encode_center_size',
+             )
+ 
+-    def test_detection_api(self):
+-        program = Program()
+-        with program_guard(program):
+-            x = layers.data(name='x', shape=[4], dtype='float32')
+-            y = layers.data(name='y', shape=[4], dtype='float32')
+-            z = layers.data(name='z', shape=[4], dtype='float32', lod_level=1)
+-            iou = layers.iou_similarity(x=x, y=y)
+-            bcoder = layers.box_coder(
+-                prior_box=x,
+-                prior_box_var=y,
+-                target_box=z,
+-                code_type='encode_center_size',
+-            )
+-            self.assertIsNotNone(iou)
+-            self.assertIsNotNone(bcoder)
+-
+-            matched_indices, matched_dist = layers.bipartite_match(iou)
+-            self.assertIsNotNone(matched_indices)
+-            self.assertIsNotNone(matched_dist)
+-
+-            gt = layers.data(
+-                name='gt', shape=[1, 1], dtype='int32', lod_level=1
+-            )
+-            trg, trg_weight = layers.target_assign(
+-                gt, matched_indices, mismatch_value=0
+-            )
+-            self.assertIsNotNone(trg)
+-            self.assertIsNotNone(trg_weight)
+-
+-            gt2 = layers.data(
+-                name='gt2', shape=[10, 4], dtype='float32', lod_level=1
+-            )
+-            trg, trg_weight = layers.target_assign(
+-                gt2, matched_indices, mismatch_value=0
+-            )
+-            self.assertIsNotNone(trg)
+-            self.assertIsNotNone(trg_weight)
+-
+-        print(str(program))
+-
+-    def test_ssd_loss(self):
+-        program = Program()
+-        with program_guard(program):
+-            pb = layers.data(
+-                name='prior_box',
+-                shape=[10, 4],
+-                append_batch_size=False,
+-                dtype='float32',
+-            )
+-            pbv = layers.data(
+-                name='prior_box_var',
+-                shape=[10, 4],
+-                append_batch_size=False,
+-                dtype='float32',
+-            )
+-            loc = layers.data(name='target_box', shape=[10, 4], dtype='float32')
+-            scores = layers.data(name='scores', shape=[10, 21], dtype='float32')
+-            gt_box = layers.data(
+-                name='gt_box', shape=[4], lod_level=1, dtype='float32'
+-            )
+-            gt_label = layers.data(
+-                name='gt_label', shape=[1], lod_level=1, dtype='int32'
+-            )
+-            loss = layers.ssd_loss(loc, scores, gt_box, gt_label, pb, pbv)
+-            self.assertIsNotNone(loss)
+-            self.assertEqual(loss.shape[-1], 1)
+-        print(str(program))
+-
+ 
+ class TestPriorBox(unittest.TestCase):
+     def test_prior_box(self):
+@@ -521,87 +453,6 @@ class TestDetectionMAP(unittest.TestCase):
+         print(str(program))
+ 
+ 
+-class TestRpnTargetAssign(unittest.TestCase):
+-    def test_rpn_target_assign(self):
+-        program = Program()
+-        with program_guard(program):
+-            bbox_pred_shape = [10, 50, 4]
+-            cls_logits_shape = [10, 50, 2]
+-            anchor_shape = [50, 4]
+-
+-            bbox_pred = layers.data(
+-                name='bbox_pred',
+-                shape=bbox_pred_shape,
+-                append_batch_size=False,
+-                dtype='float32',
+-            )
+-            cls_logits = layers.data(
+-                name='cls_logits',
+-                shape=cls_logits_shape,
+-                append_batch_size=False,
+-                dtype='float32',
+-            )
+-            anchor_box = layers.data(
+-                name='anchor_box',
+-                shape=anchor_shape,
+-                append_batch_size=False,
+-                dtype='float32',
+-            )
+-            anchor_var = layers.data(
+-                name='anchor_var',
+-                shape=anchor_shape,
+-                append_batch_size=False,
+-                dtype='float32',
+-            )
+-            gt_boxes = layers.data(
+-                name='gt_boxes', shape=[4], lod_level=1, dtype='float32'
+-            )
+-            is_crowd = layers.data(
+-                name='is_crowd',
+-                shape=[1, 10],
+-                dtype='int32',
+-                lod_level=1,
+-                append_batch_size=False,
+-            )
+-            im_info = layers.data(
+-                name='im_info',
+-                shape=[1, 3],
+-                dtype='float32',
+-                lod_level=1,
+-                append_batch_size=False,
+-            )
+-            outs = layers.rpn_target_assign(
+-                bbox_pred=bbox_pred,
+-                cls_logits=cls_logits,
+-                anchor_box=anchor_box,
+-                anchor_var=anchor_var,
+-                gt_boxes=gt_boxes,
+-                is_crowd=is_crowd,
+-                im_info=im_info,
+-                rpn_batch_size_per_im=256,
+-                rpn_straddle_thresh=0.0,
+-                rpn_fg_fraction=0.5,
+-                rpn_positive_overlap=0.7,
+-                rpn_negative_overlap=0.3,
+-                use_random=False,
+-            )
+-            pred_scores = outs[0]
+-            pred_loc = outs[1]
+-            tgt_lbl = outs[2]
+-            tgt_bbox = outs[3]
+-            bbox_inside_weight = outs[4]
+-
+-            self.assertIsNotNone(pred_scores)
+-            self.assertIsNotNone(pred_loc)
+-            self.assertIsNotNone(tgt_lbl)
+-            self.assertIsNotNone(tgt_bbox)
+-            self.assertIsNotNone(bbox_inside_weight)
+-            assert pred_scores.shape[1] == 1
+-            assert pred_loc.shape[1] == 4
+-            assert pred_loc.shape[1] == tgt_bbox.shape[1]
+-            print(str(program))
+-
+-
+ class TestGenerateProposals(LayerTest):
+     def test_generate_proposals(self):
+         scores_np = np.random.rand(2, 3, 4, 4).astype('float32')
+diff --git a/python/paddle/fluid/tests/unittests/auto_parallel/test_dist_matmul.py b/python/paddle/fluid/tests/unittests/auto_parallel/test_dist_matmul.py
+index 5e69d6955a..0a07b98de7 100644
+--- a/python/paddle/fluid/tests/unittests/auto_parallel/test_dist_matmul.py
++++ b/python/paddle/fluid/tests/unittests/auto_parallel/test_dist_matmul.py
+@@ -84,9 +84,7 @@ def matmul_dp2mp2(init_x, init_y, trans_x, trans_y):
+         y = init_y(trans_y)
+         x.stop_gradient = False
+         y.stop_gradient = False
+-        out = paddle.fluid.layers.matmul(
+-            x, y, transpose_x=trans_x, transpose_y=trans_y
+-        )
++        out = paddle.matmul(x, y, transpose_x=trans_x, transpose_y=trans_y)
+         loss = paddle.mean(out)
+     return main_program, start_program, loss
+ 
+@@ -134,22 +132,22 @@ class TestDistMatmul(unittest.TestCase):
+         # [0, -1] * [-1, 1] --> [0, 1]
+         ref_ops = [
+             "c_identity",
+-            "matmul",
++            "matmul_v2",
+             "reduce_mean",
+             "fill_constant",
+             "reduce_mean_grad",
+-            "matmul_grad",
++            "matmul_v2_grad",
+         ]
+         ops = []
+         block = main_program.global_block()
+         for op in block.ops:
+             ops.append(op.type)
+-            if op.type == "matmul":
++            if op.type == "matmul_v2":
+                 out_name = op.output('Out')[0]
+                 out_var = block.vars[out_name]
+                 op_dist_attr = dist_ctx.get_op_dist_attr_for_program(op)
+                 assert op_dist_attr.impl_idx == 0
+-                assert op_dist_attr.impl_type == "matmul"
++                assert op_dist_attr.impl_type == "matmul_v2"
+                 out_dims_mapping = op_dist_attr.get_output_dims_mapping(
+                     out_name
+                 )
+@@ -158,33 +156,33 @@ class TestDistMatmul(unittest.TestCase):
+                     out_var
+                 )
+                 assert tensor_dist_attr.dims_mapping == [0, 1]
+-            if op.type == "matmul_grad":
++            if op.type == "matmul_v2_grad":
+                 op_dist_attr = dist_ctx.get_op_dist_attr_for_program(op)
+                 assert op_dist_attr.impl_idx == 0
+-                assert op_dist_attr.impl_type == "matmul"
++                assert op_dist_attr.impl_type == "matmul_v2"
+ 
+         assert ops == ref_ops
+ 
+     def check_row_program(self, main_program, dist_ctx):
+         # [0, -1, 1] * [1, -1] --> [0, -1, -1]
+         ref_ops = [
+-            "matmul",
++            "matmul_v2",
+             "c_allreduce_sum",
+             "reduce_mean",
+             "fill_constant",
+             "reduce_mean_grad",
+-            "matmul_grad",
++            "matmul_v2_grad",
+         ]
+         ops = []
+         block = main_program.global_block()
+         for op in block.ops:
+             ops.append(op.type)
+-            if op.type == "matmul":
++            if op.type == "matmul_v2":
+                 out_name = op.output('Out')[0]
+                 out_var = block.vars[out_name]
+                 op_dist_attr = dist_ctx.get_op_dist_attr_for_program(op)
+                 assert op_dist_attr.impl_idx == 1
+-                assert op_dist_attr.impl_type == "matmul"
++                assert op_dist_attr.impl_type == "matmul_v2"
+                 out_dims_mapping = op_dist_attr.get_output_dims_mapping(
+                     out_name
+                 )
+@@ -193,10 +191,10 @@ class TestDistMatmul(unittest.TestCase):
+                     out_var
+                 )
+                 assert tensor_dist_attr.dims_mapping == [0, -1, -1]
+-            if op.type == "matmul_grad":
++            if op.type == "matmul_v2_grad":
+                 op_dist_attr = dist_ctx.get_op_dist_attr_for_program(op)
+                 assert op_dist_attr.impl_idx == 1
+-                assert op_dist_attr.impl_type == "matmul"
++                assert op_dist_attr.impl_type == "matmul_v2"
+         assert ops == ref_ops
+ 
+ 
+diff --git a/python/paddle/fluid/tests/unittests/auto_parallel/test_dist_op_cost.py b/python/paddle/fluid/tests/unittests/auto_parallel/test_dist_op_cost.py
+index 163309f3a3..c9a4623911 100644
+--- a/python/paddle/fluid/tests/unittests/auto_parallel/test_dist_op_cost.py
++++ b/python/paddle/fluid/tests/unittests/auto_parallel/test_dist_op_cost.py
+@@ -168,9 +168,7 @@ class TestDistOpCost(unittest.TestCase):
+                     auto.ProcessMesh([0, 1], dim_names=["x"]),
+                     [None, "x"],
+                 )
+-                out1 = paddle.fluid.layers.matmul(
+-                    out, param1
+-                )  # [8, 8] [-1, -1]
++                out1 = paddle.matmul(out, param1)  # [8, 8] [-1, -1]
+                 tmp_param = paddle.create_parameter(
+                     [8, 8], paddle.float32
+                 )  # [8, 8] [-1, -1]
+@@ -179,10 +177,8 @@ class TestDistOpCost(unittest.TestCase):
+                     auto.ProcessMesh([0, 1], dim_names=["x"]),
+                     [None, None],
+                 )
+-                tmp_out = paddle.fluid.layers.matmul(out1, tmp_param)
+-                out2 = paddle.fluid.layers.matmul(
+-                    tmp_out, param2
+-                )  # [8, 4] [-1, 0]
++                tmp_out = paddle.matmul(out1, tmp_param)
++                out2 = paddle.matmul(tmp_out, param2)  # [8, 4] [-1, 0]
+ 
+                 out8 = paddle.transpose(out2, [1, 0])  # [4, 8] [0, -1]
+ 
+diff --git a/python/paddle/fluid/tests/unittests/auto_parallel_gpt_model.py b/python/paddle/fluid/tests/unittests/auto_parallel_gpt_model.py
+index 425f00d121..2edb5360e4 100644
+--- a/python/paddle/fluid/tests/unittests/auto_parallel_gpt_model.py
++++ b/python/paddle/fluid/tests/unittests/auto_parallel_gpt_model.py
+@@ -231,8 +231,10 @@ class MultiHeadAttention(nn.Layer):
+             return self.Cache(key, value)
+ 
+     def core_attn(self, q, k, v, attn_mask):
+-        product = layers.matmul(
+-            x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5
++        product = paddle.matmul(x=q, y=k, transpose_y=True)
++        product = paddle.multiply(
++            product,
++            paddle.to_tensor(self.head_dim**-0.5, dtype=product.dtype),
+         )
+         if attn_mask is not None:
+             product = product + attn_mask
+diff --git a/python/paddle/fluid/tests/unittests/collective/fleet/hybrid_parallel_pp_embedding.py b/python/paddle/fluid/tests/unittests/collective/fleet/hybrid_parallel_pp_embedding.py
+index 0d1e7084ab..3a0afaacb2 100644
+--- a/python/paddle/fluid/tests/unittests/collective/fleet/hybrid_parallel_pp_embedding.py
++++ b/python/paddle/fluid/tests/unittests/collective/fleet/hybrid_parallel_pp_embedding.py
+@@ -20,7 +20,6 @@ import numpy as np
+ import paddle
+ import paddle.distributed as dist
+ import paddle.distributed.fleet as fleet
+-import paddle.fluid as fluid
+ import paddle.nn as nn
+ from paddle.distributed.fleet.meta_parallel import PipelineLayer
+ from paddle.fluid.dygraph.layers import Layer
+@@ -54,7 +53,7 @@ class SimpleNet(Layer):
+ 
+     def forward(self, x1, x2, y1):
+         x_emb = self.word_embeddings(x1)
+-        fc = fluid.layers.matmul(x_emb, self.softmax_weight)
++        fc = paddle.matmul(x_emb, self.softmax_weight)
+         fc = paddle.add(fc, self.softmax_bias)
+         projection = paddle.reshape(fc, shape=[-1, vocab_size])
+         loss = paddle.nn.functional.softmax_with_cross_entropy(
+@@ -83,7 +82,7 @@ class MatmulNet(Layer):
+ 
+     def forward(self, args):
+         x1, x2 = args
+-        fc = fluid.layers.matmul(x1, self.softmax_weight)
++        fc = paddle.matmul(x1, self.softmax_weight)
+ 
+         return fc, x2
+ 
+diff --git a/python/paddle/fluid/tests/unittests/collective/fleet/hybrid_parallel_pp_recompute.py b/python/paddle/fluid/tests/unittests/collective/fleet/hybrid_parallel_pp_recompute.py
+index e2690efcb6..921ed62fc9 100644
+--- a/python/paddle/fluid/tests/unittests/collective/fleet/hybrid_parallel_pp_recompute.py
++++ b/python/paddle/fluid/tests/unittests/collective/fleet/hybrid_parallel_pp_recompute.py
+@@ -24,7 +24,6 @@ import paddle.nn as nn
+ import paddle.nn.functional as F
+ from paddle import framework
+ from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer
+-from paddle.fluid import layers
+ from paddle.fluid.dygraph.layers import Layer
+ 
+ 
+@@ -73,13 +72,12 @@ class TransformerNet(Layer):
+         q = self.q_proj(x)
+         k = self.k_proj(x)
+         v = self.v_proj(x)
+-        product = layers.matmul(
+-            x=q, y=k, transpose_y=True, alpha=d_model**-0.5
+-        )
++        product = paddle.matmul(x=q, y=k, transpose_y=True)
++        product = paddle.scale(product, scale=d_model**-0.5)
+         weights = F.softmax(product)
+ 
+         weights = F.dropout(weights, 0.2)
+-        tgt = layers.matmul(weights, v)
++        tgt = paddle.matmul(weights, v)
+         residual = tgt
+         tgt = self.norm1(tgt)
+         tgt = residual + tgt
+diff --git a/python/paddle/fluid/tests/unittests/collective/fleet/hybrid_parallel_pp_transformer.py b/python/paddle/fluid/tests/unittests/collective/fleet/hybrid_parallel_pp_transformer.py
+index ea0ab82a89..2f9e68188c 100644
+--- a/python/paddle/fluid/tests/unittests/collective/fleet/hybrid_parallel_pp_transformer.py
++++ b/python/paddle/fluid/tests/unittests/collective/fleet/hybrid_parallel_pp_transformer.py
+@@ -23,7 +23,6 @@ import paddle.distributed.fleet as fleet
+ import paddle.nn as nn
+ import paddle.nn.functional as F
+ from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer
+-from paddle.fluid import layers
+ from paddle.fluid.dygraph.layers import Layer
+ 
+ 
+@@ -82,14 +81,13 @@ class TransformerNet(Layer):
+         q = self.q_proj(x)
+         k = self.k_proj(x)
+         v = self.v_proj(x)
+-        product = layers.matmul(
+-            x=q, y=k, transpose_y=True, alpha=d_model**-0.5
+-        )
++        product = paddle.matmul(x=q, y=k, transpose_y=True)
++        product = paddle.scale(product, scale=d_model**-0.5)
+ 
+         weights = F.softmax(product + mask)
+         # TODO(shenliang03) For save/load in PipeLineParallel, can’t support dropout temporarily.
+         # weights = F.dropout(weights, 0.2)
+-        tgt = layers.matmul(weights, v)
++        tgt = paddle.matmul(weights, v)
+         residual = tgt
+         tgt = self.norm1(tgt)
+         tgt = residual + tgt
+diff --git a/python/paddle/fluid/tests/unittests/collective/fleet/hybrid_parallel_pp_transformer_with_virtual_stage.py b/python/paddle/fluid/tests/unittests/collective/fleet/hybrid_parallel_pp_transformer_with_virtual_stage.py
+index aa4b9e0a88..7f3aa674b5 100644
+--- a/python/paddle/fluid/tests/unittests/collective/fleet/hybrid_parallel_pp_transformer_with_virtual_stage.py
++++ b/python/paddle/fluid/tests/unittests/collective/fleet/hybrid_parallel_pp_transformer_with_virtual_stage.py
+@@ -23,7 +23,6 @@ import paddle.distributed.fleet as fleet
+ import paddle.nn as nn
+ import paddle.nn.functional as F
+ from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer
+-from paddle.fluid import layers
+ from paddle.fluid.dygraph.layers import Layer
+ 
+ 
+@@ -83,12 +82,11 @@ class TransformerNet(Layer):
+         q = self.q_proj(x)
+         k = self.k_proj(x)
+         v = self.v_proj(x)
+-        product = layers.matmul(
+-            x=q, y=k, transpose_y=True, alpha=d_model**-0.5
+-        )
++        product = paddle.matmul(x=q, y=k, transpose_y=True)
++        product = paddle.scale(product, scale=d_model**-0.5)
+ 
+         weights = F.softmax(product + mask)
+-        tgt = layers.matmul(weights, v)
++        tgt = paddle.matmul(weights, v)
+         residual = tgt
+         tgt = self.norm1(tgt)
+         tgt = residual + tgt
+diff --git a/python/paddle/fluid/tests/unittests/collective/fleet/hybrid_parallel_shared_weight.py b/python/paddle/fluid/tests/unittests/collective/fleet/hybrid_parallel_shared_weight.py
+index 4560789212..45e20bfad0 100644
+--- a/python/paddle/fluid/tests/unittests/collective/fleet/hybrid_parallel_shared_weight.py
++++ b/python/paddle/fluid/tests/unittests/collective/fleet/hybrid_parallel_shared_weight.py
+@@ -20,7 +20,6 @@ import numpy as np
+ import paddle
+ import paddle.distributed as dist
+ import paddle.distributed.fleet as fleet
+-import paddle.fluid as fluid
+ import paddle.nn as nn
+ from paddle.distributed.fleet.meta_parallel import (
+     LayerDesc,
+@@ -61,7 +60,7 @@ class SimpleNet(Layer):
+ 
+     def forward(self, x1, x2, y1):
+         x_emb = self.word_embeddings(x1)
+-        fc = fluid.layers.matmul(x_emb, self.softmax_weight)
++        fc = paddle.matmul(x_emb, self.softmax_weight)
+         fc = paddle.add(fc, self.softmax_bias)
+         projection = paddle.reshape(fc, shape=[-1, vocab_size])
+ 
+@@ -97,7 +96,7 @@ class MatmulNet(Layer):
+ 
+     def forward(self, args):
+         x1, x2 = args
+-        fc = fluid.layers.matmul(x1, self.softmax_weight)
++        fc = paddle.matmul(x1, self.softmax_weight)
+ 
+         return fc, x2
+ 
+diff --git a/python/paddle/fluid/tests/unittests/collective/fleet/parallel_dygraph_transformer.py b/python/paddle/fluid/tests/unittests/collective/fleet/parallel_dygraph_transformer.py
+index 41c8afd629..52ec9e5b12 100644
+--- a/python/paddle/fluid/tests/unittests/collective/fleet/parallel_dygraph_transformer.py
++++ b/python/paddle/fluid/tests/unittests/collective/fleet/parallel_dygraph_transformer.py
+@@ -334,12 +334,12 @@ class MultiHeadAttentionLayer(Layer):
+         transpose_v = paddle.transpose(x=reshaped_v, perm=[0, 2, 1, 3])
+ 
+         # scale dot product attention
+-        product = fluid.layers.matmul(
++        product = paddle.matmul(
+             x=transpose_q,
+             y=transpose_k,
+             transpose_y=True,
+-            alpha=self._d_model**-0.5,
+         )
++        product = paddle.scale(product, scale=self._d_model**-0.5)
+         if attn_bias is not None:
+             product += attn_bias
+         weights = paddle.nn.functional.softmax(product)
+@@ -350,9 +350,9 @@ class MultiHeadAttentionLayer(Layer):
+                 seed=ModelHyperParams.dropout_seed,
+                 is_test=False,
+             )
+-            out = fluid.layers.matmul(weights_droped, transpose_v)
++            out = paddle.matmul(weights_droped, transpose_v)
+         else:
+-            out = fluid.layers.matmul(weights, transpose_v)
++            out = paddle.matmul(weights, transpose_v)
+ 
+         # combine heads
+         if len(out.shape) != 4:
+@@ -839,7 +839,7 @@ class WrapDecoderLayer(Layer):
+         )
+ 
+         if self._weight_sharing:
+-            predict = fluid.layers.matmul(
++            predict = paddle.matmul(
+                 x=dec_output_reshape,
+                 y=self._prepare_decoder_layer._input_emb.weight,
+                 transpose_y=True,
+diff --git a/python/paddle/fluid/tests/unittests/dist_transformer.py b/python/paddle/fluid/tests/unittests/dist_transformer.py
+index c6165dd753..e56a632c3d 100644
+--- a/python/paddle/fluid/tests/unittests/dist_transformer.py
++++ b/python/paddle/fluid/tests/unittests/dist_transformer.py
+@@ -1174,7 +1174,7 @@ def multi_head_attention(
+         Scaled Dot-Product Attention
+         """
+         scaled_q = paddle.scale(x=q, scale=d_model**-0.5)
+-        product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
++        product = paddle.matmul(x=scaled_q, y=k, transpose_y=True)
+         if attn_bias:
+             product += attn_bias
+         weights = paddle.nn.functional.softmax(product)
+@@ -1185,7 +1185,7 @@ def multi_head_attention(
+                 seed=ModelHyperParams.dropout_seed,
+                 is_test=False,
+             )
+-        out = layers.matmul(weights, v)
++        out = paddle.matmul(weights, v)
+         return out
+ 
+     q, k, v = __compute_qkv(queries, keys, values, n_head, d_key, d_value)
+@@ -1701,7 +1701,7 @@ def wrap_decoder(
+     )
+     # Return logits for training and probs for inference.
+     if weight_sharing:
+-        predict = layers.matmul(
++        predict = paddle.matmul(
+             x=dec_output,
+             y=fluid.framework._get_var(word_emb_param_names[0]),
+             transpose_y=True,
+diff --git a/python/paddle/fluid/tests/unittests/dygraph_to_static/bert_dygraph_model.py b/python/paddle/fluid/tests/unittests/dygraph_to_static/bert_dygraph_model.py
+index d45d775829..43f7f0f6d2 100644
+--- a/python/paddle/fluid/tests/unittests/dygraph_to_static/bert_dygraph_model.py
++++ b/python/paddle/fluid/tests/unittests/dygraph_to_static/bert_dygraph_model.py
+@@ -272,7 +272,7 @@ class BertModelLayer(Layer):
+ 
+         emb_out = self.pre_process_layer(emb_out)
+ 
+-        self_attn_mask = fluid.layers.matmul(
++        self_attn_mask = paddle.matmul(
+             x=input_mask, y=input_mask, transpose_y=True
+         )
+         self_attn_mask = paddle.scale(
+@@ -401,7 +401,7 @@ class PretrainModelLayer(Layer):
+         mask_trans_feat = self.pre_process_layer(mask_trans_feat)
+ 
+         if self._weight_sharing:
+-            fc_out = fluid.layers.matmul(
++            fc_out = paddle.matmul(
+                 x=mask_trans_feat,
+                 y=self.bert_layer._src_emb._w,
+                 transpose_y=True,
+diff --git a/python/paddle/fluid/tests/unittests/dygraph_to_static/seq2seq_dygraph_model.py b/python/paddle/fluid/tests/unittests/dygraph_to_static/seq2seq_dygraph_model.py
+index 5babde40b4..bbca449bde 100644
+--- a/python/paddle/fluid/tests/unittests/dygraph_to_static/seq2seq_dygraph_model.py
++++ b/python/paddle/fluid/tests/unittests/dygraph_to_static/seq2seq_dygraph_model.py
+@@ -70,7 +70,7 @@ class BasicLSTMUnit(Layer):
+ 
+     def forward(self, input, pre_hidden, pre_cell):
+         concat_input_hidden = layers.concat([input, pre_hidden], 1)
+-        gate_input = layers.matmul(x=concat_input_hidden, y=self._weight)
++        gate_input = paddle.matmul(x=concat_input_hidden, y=self._weight)
+ 
+         gate_input = paddle.add(gate_input, self._bias)
+         i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
+@@ -697,14 +697,14 @@ class AttentionModel(fluid.dygraph.Layer):
+     def attention(self, query, enc_output, mask=None):
+         query = fluid.layers.unsqueeze(query, [1])
+         memory = self.attn_fc(enc_output)
+-        attn = fluid.layers.matmul(query, memory, transpose_y=True)
++        attn = paddle.matmul(query, memory, transpose_y=True)
+ 
+         if mask is not None:
+             attn = paddle.transpose(attn, [1, 0, 2])
+             attn = paddle.add(attn, mask * 1000000000)
+             attn = paddle.transpose(attn, [1, 0, 2])
+         weight = paddle.nn.functional.softmax(attn)
+-        weight_memory = fluid.layers.matmul(weight, memory)
++        weight_memory = paddle.matmul(weight, memory)
+ 
+         return weight_memory
+ 
+diff --git a/python/paddle/fluid/tests/unittests/dygraph_to_static/test_bmn.py b/python/paddle/fluid/tests/unittests/dygraph_to_static/test_bmn.py
+index b7461b21aa..17b5282903 100644
+--- a/python/paddle/fluid/tests/unittests/dygraph_to_static/test_bmn.py
++++ b/python/paddle/fluid/tests/unittests/dygraph_to_static/test_bmn.py
+@@ -282,7 +282,7 @@ class BMN(fluid.dygraph.Layer):
+         # PEM
+         xp = paddle.nn.functional.relu(self.p_conv1(x))
+         # BM layer
+-        xp = fluid.layers.matmul(xp, self.sample_mask)
++        xp = paddle.matmul(xp, self.sample_mask)
+         xp = paddle.reshape(xp, shape=[0, 0, -1, self.dscale, self.tscale])
+ 
+         xp = self.p_conv3d1(xp)
+diff --git a/python/paddle/fluid/tests/unittests/dygraph_to_static/test_dict.py b/python/paddle/fluid/tests/unittests/dygraph_to_static/test_dict.py
+index 597580eedc..aa5fa35d9c 100644
+--- a/python/paddle/fluid/tests/unittests/dygraph_to_static/test_dict.py
++++ b/python/paddle/fluid/tests/unittests/dygraph_to_static/test_dict.py
+@@ -66,9 +66,9 @@ class SubNetWithDict(fluid.dygraph.Layer):
+             v = 0.2 * cache_v + v
+             cache["k"], cache["v"] = k, v
+ 
+-        weight = fluid.layers.matmul(x=q, y=k, transpose_y=True)
++        weight = paddle.matmul(x=q, y=k, transpose_y=True)
+         weight = paddle.nn.functional.softmax(weight)
+-        out = fluid.layers.matmul(weight, v)
++        out = paddle.matmul(weight, v)
+ 
+         return out
+ 
+diff --git a/python/paddle/fluid/tests/unittests/dygraph_to_static/test_program_translator.py b/python/paddle/fluid/tests/unittests/dygraph_to_static/test_program_translator.py
+index aee91f6de1..dd581526f4 100644
+--- a/python/paddle/fluid/tests/unittests/dygraph_to_static/test_program_translator.py
++++ b/python/paddle/fluid/tests/unittests/dygraph_to_static/test_program_translator.py
+@@ -42,7 +42,7 @@ np.random.seed(0)
+ def simple_func(x, weight_numpy):
+     x = fluid.dygraph.to_variable(x)
+     w = fluid.dygraph.to_variable(weight_numpy)
+-    y = fluid.layers.matmul(x, w)
++    y = paddle.matmul(x, w)
+     z = paddle.mean(y)
+     return z
+ 
+@@ -51,7 +51,7 @@ def simple_func(x, weight_numpy):
+ def decorated_simple_func(x, weight_numpy):
+     x = fluid.dygraph.to_variable(x)
+     w = fluid.dygraph.to_variable(weight_numpy)
+-    y = fluid.layers.matmul(x, w)
++    y = paddle.matmul(x, w)
+     z = paddle.mean(y)
+     return z
+ 
+diff --git a/python/paddle/fluid/tests/unittests/dygraph_to_static/test_ptb_lm.py b/python/paddle/fluid/tests/unittests/dygraph_to_static/test_ptb_lm.py
+index 62c6c18346..6f821265ca 100644
+--- a/python/paddle/fluid/tests/unittests/dygraph_to_static/test_ptb_lm.py
++++ b/python/paddle/fluid/tests/unittests/dygraph_to_static/test_ptb_lm.py
+@@ -94,7 +94,7 @@ class SimpleLSTMRNN(fluid.Layer):
+                 bias = self.bias_arr[k]
+ 
+                 nn = fluid.layers.concat([step_input, pre_hidden], 1)
+-                gate_input = fluid.layers.matmul(x=nn, y=weight_1)
++                gate_input = paddle.matmul(x=nn, y=weight_1)
+ 
+                 gate_input = paddle.add(gate_input, bias)
+                 i, j, f, o = fluid.layers.split(
+@@ -213,7 +213,7 @@ class PtbModel(fluid.Layer):
+             x_emb, init_h, init_c
+         )
+ 
+-        projection = fluid.layers.matmul(rnn_out, self.softmax_weight)
++        projection = paddle.matmul(rnn_out, self.softmax_weight)
+         projection = paddle.add(projection, self.softmax_bias)
+ 
+         loss = paddle.nn.functional.softmax_with_cross_entropy(
+diff --git a/python/paddle/fluid/tests/unittests/dygraph_to_static/transformer_dygraph_model.py b/python/paddle/fluid/tests/unittests/dygraph_to_static/transformer_dygraph_model.py
+index 16449d00ae..88cc415b4b 100644
+--- a/python/paddle/fluid/tests/unittests/dygraph_to_static/transformer_dygraph_model.py
++++ b/python/paddle/fluid/tests/unittests/dygraph_to_static/transformer_dygraph_model.py
+@@ -148,16 +148,14 @@ class MultiHeadAttention(Layer):
+             v = layers.concat([cache_v, v], axis=2)
+             cache["k"], cache["v"] = k, v
+         # scale dot product attention
+-        product = layers.matmul(
+-            x=q, y=k, transpose_y=True, alpha=self.d_model**-0.5
+-        )
++        product = paddle.matmul(x=q, y=k, transpose_y=True)
++        product = paddle.scale(product, scale=self.d_model**-0.5)
+         if attn_bias is not None:
+             product += attn_bias
+         weights = paddle.nn.functional.softmax(product)
+         if self.dropout_rate:
+             weights = layers.dropout(weights, dropout_prob=self.dropout_rate)
+-            out = layers.matmul(weights, v)
+-
++            out = paddle.matmul(weights, v)
+         out = paddle.transpose(out, perm=[0, 2, 1, 3])
+         out = paddle.reshape(x=out, shape=[0, 0, out.shape[2] * out.shape[3]])
+ 
+@@ -524,7 +522,7 @@ class WrapDecoder(Layer):
+             postprocess_cmd,
+         )
+         if share_input_output_embed:
+-            self.linear = lambda x: layers.matmul(
++            self.linear = lambda x: paddle.matmul(
+                 x=x, y=self.word_embedder.word_embedder.weight, transpose_y=True
+             )
+         else:
+diff --git a/python/paddle/fluid/tests/unittests/ipu/test_matmul_op_ipu.py b/python/paddle/fluid/tests/unittests/ipu/test_matmul_op_ipu.py
+index c6677b31b3..77c19ef30f 100644
+--- a/python/paddle/fluid/tests/unittests/ipu/test_matmul_op_ipu.py
++++ b/python/paddle/fluid/tests/unittests/ipu/test_matmul_op_ipu.py
+@@ -44,7 +44,6 @@ class TestBase(IPUOpTest):
+         self.attrs = {
+             "transpose_x": False,
+             "transpose_y": False,
+-            "alpha": 1.0,
+         }
+ 
+     @IPUOpTest.static_graph
+@@ -56,7 +55,7 @@ class TestBase(IPUOpTest):
+             name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32'
+         )
+ 
+-        out = paddle.fluid.layers.matmul(x, y, **self.attrs)
++        out = paddle.matmul(x, y, **self.attrs)
+         self.fetch_list = [out.name]
+ 
+     def run_model(self, exec_mode):
+@@ -75,7 +74,6 @@ class TestCase1(TestBase):
+         self.attrs = {
+             "transpose_x": True,
+             "transpose_y": True,
+-            "alpha": 1.0,
+         }
+ 
+ 
+@@ -84,7 +82,6 @@ class TestCase2(TestBase):
+         self.attrs = {
+             "transpose_x": True,
+             "transpose_y": True,
+-            "alpha": 3.14,
+         }
+ 
+     def set_atol(self):
+@@ -141,7 +138,6 @@ class TestCase6_2(TestCase6):
+         self.attrs = {
+             "transpose_x": True,
+             "transpose_y": True,
+-            "alpha": 1.0,
+         }
+ 
+ 
+@@ -154,7 +150,10 @@ class TestCase7(TestBase):
+         self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.float16)}
+ 
+     def set_op_attrs(self):
+-        self.attrs = {"transpose_x": False, "transpose_y": True, "alpha": 0.125}
++        self.attrs = {
++            "transpose_x": False,
++            "transpose_y": True,
++        }
+ 
+ 
+ class TestCase8(TestBase):
+@@ -179,7 +178,6 @@ class TestCase8_2(TestBase):
+         self.attrs = {
+             "transpose_x": True,
+             "transpose_y": True,
+-            "alpha": 1.0,
+         }
+ 
+ 
+diff --git a/python/paddle/fluid/tests/unittests/ipu/test_weight_sharing_ipu.py b/python/paddle/fluid/tests/unittests/ipu/test_weight_sharing_ipu.py
+index 65c069c203..b08835de54 100644
+--- a/python/paddle/fluid/tests/unittests/ipu/test_weight_sharing_ipu.py
++++ b/python/paddle/fluid/tests/unittests/ipu/test_weight_sharing_ipu.py
+@@ -67,7 +67,7 @@ class TestWeightSharing(IPUOpTest):
+                 input=y, size=768, param_attr=paddle.fluid.ParamAttr(name="fc")
+             )
+         with paddle.static.ipu_shard_guard(index=0, stage=2):
+-            out = paddle.fluid.layers.matmul(
++            out = paddle.matmul(
+                 x=z,
+                 y=self.main_prog.global_block().var('word_embedding'),
+                 transpose_y=True,
+diff --git a/python/paddle/fluid/tests/unittests/ir/inference/test_mkldnn_matmul_op_output_fuse_pass.py b/python/paddle/fluid/tests/unittests/ir/inference/test_mkldnn_matmul_op_output_fuse_pass.py
+index 2ef22f9057..7b4229e1c3 100644
+--- a/python/paddle/fluid/tests/unittests/ir/inference/test_mkldnn_matmul_op_output_fuse_pass.py
++++ b/python/paddle/fluid/tests/unittests/ir/inference/test_mkldnn_matmul_op_output_fuse_pass.py
+@@ -37,7 +37,7 @@ class TestMKLDNNMatmulFuseOp(InferencePassTest):
+             y = fluid.data(
+                 name='y', shape=[-1] + self.shape_y, dtype=self.d_type
+             )
+-            out = fluid.layers.matmul(x, y)
++            out = paddle.matmul(x, y)
+             out = paddle.transpose(out, perm=[0, 2, 1, 3])
+             out = paddle.reshape(out, [0, 0, self.shape_y[0] * self.shape_y[2]])
+ 
+@@ -79,7 +79,7 @@ class TestMKLDNNMatmulOpNotFusedWrongTransposeAxis(TestMKLDNNMatmulFuseOp):
+             y = fluid.data(
+                 name='y', shape=[-1] + self.shape_y, dtype=self.d_type
+             )
+-            out = fluid.layers.matmul(x, y)
++            out = paddle.matmul(x, y)
+             out = paddle.transpose(out, perm=[0, 1, 2, 3])
+             out = paddle.reshape(out, [0, 0, 0, 0])
+             out = fluid.layers.fc(out, size=1)
+@@ -102,7 +102,7 @@ class TestMKLDNNMatmulOpNotFusedBreakPattern(TestMKLDNNMatmulFuseOp):
+             y = fluid.data(
+                 name='y', shape=[-1] + self.shape_y, dtype=self.d_type
+             )
+-            out = fluid.layers.matmul(x, y)
++            out = paddle.matmul(x, y)
+             out = paddle.transpose(out, perm=[0, 2, 1, 3])
+             out = paddle.transpose(out, perm=[0, 1, 2, 3])  # breaks pattern
+             out = paddle.reshape(out, [0, 0, self.shape_y[0] * self.shape_y[2]])
+diff --git a/python/paddle/fluid/tests/unittests/ir/inference/test_trt_inspector.py b/python/paddle/fluid/tests/unittests/ir/inference/test_trt_inspector.py
+index 829fc39216..9c8e1ee04c 100644
+--- a/python/paddle/fluid/tests/unittests/ir/inference/test_trt_inspector.py
++++ b/python/paddle/fluid/tests/unittests/ir/inference/test_trt_inspector.py
+@@ -30,13 +30,13 @@ class TensorRTInspectorTest(InferencePassTest):
+         self.set_params()
+         with fluid.program_guard(self.main_program, self.startup_program):
+             data = fluid.data(name="data", shape=[1, 16, 16], dtype="float32")
+-            matmul_out = fluid.layers.matmul(
++            matmul_out = paddle.matmul(
+                 x=data,
+                 y=data,
+                 transpose_x=self.transpose_x,
+                 transpose_y=self.transpose_y,
+-                alpha=self.alpha,
+             )
++            matmul_out = paddle.scale(matmul_out, scale=self.alpha)
+             out = fluid.layers.batch_norm(matmul_out, is_test=True)
+ 
+         self.feeds = {
+diff --git a/python/paddle/fluid/tests/unittests/ir/inference/test_trt_matmul.py b/python/paddle/fluid/tests/unittests/ir/inference/test_trt_matmul.py
+index 76ebfc9317..038912fbe4 100644
+--- a/python/paddle/fluid/tests/unittests/ir/inference/test_trt_matmul.py
++++ b/python/paddle/fluid/tests/unittests/ir/inference/test_trt_matmul.py
+@@ -17,6 +17,7 @@ import unittest
+ import numpy as np
+ from inference_pass_test import InferencePassTest
+ 
++import paddle
+ import paddle.fluid as fluid
+ import paddle.fluid.core as core
+ from paddle.fluid.core import AnalysisConfig, PassVersionChecker
+@@ -27,13 +28,13 @@ class TensorRTMatMulDims2Test(InferencePassTest):
+         self.set_params()
+         with fluid.program_guard(self.main_program, self.startup_program):
+             data = fluid.data(name="data", shape=[24, 24], dtype="float32")
+-            matmul_out = fluid.layers.matmul(
++            matmul_out = paddle.matmul(
+                 x=data,
+                 y=data,
+                 transpose_x=self.transpose_x,
+                 transpose_y=self.transpose_y,
+-                alpha=self.alpha,
+             )
++            matmul_out = paddle.scale(matmul_out, scale=self.alpha)
+             out = fluid.layers.batch_norm(matmul_out, is_test=True)
+ 
+         self.feeds = {
+@@ -66,13 +67,13 @@ class TensorRTMatMulTest(InferencePassTest):
+             data = fluid.data(
+                 name="data", shape=[-1, 6, 24, 24], dtype="float32"
+             )
+-            matmul_out = fluid.layers.matmul(
++            matmul_out = paddle.matmul(
+                 x=data,
+                 y=data,
+                 transpose_x=self.transpose_x,
+                 transpose_y=self.transpose_y,
+-                alpha=self.alpha,
+             )
++            matmul_out = paddle.scale(matmul_out, scale=self.alpha)
+             out = fluid.layers.batch_norm(matmul_out, is_test=True)
+ 
+         self.feeds = {
+@@ -128,13 +129,13 @@ class TensorRTMatMulBroadcastTest(InferencePassTest):
+                 name="data_x", shape=[-1, 6, 24], dtype="float32"
+             )
+             data_y = fluid.data(name="data_y", shape=[24, 16], dtype="float32")
+-            matmul_out = fluid.layers.matmul(
++            matmul_out = paddle.matmul(
+                 x=data_x,
+                 y=data_y,
+                 transpose_x=self.transpose_x,
+                 transpose_y=self.transpose_y,
+-                alpha=self.alpha,
+             )
++            matmul_out = paddle.scale(matmul_out, scale=self.alpha)
+             out = fluid.layers.batch_norm(matmul_out, is_test=True)
+ 
+         self.feeds = {
+diff --git a/python/paddle/fluid/tests/unittests/ir/inference/test_trt_matmul_quant_dequant.py b/python/paddle/fluid/tests/unittests/ir/inference/test_trt_matmul_quant_dequant.py
+index b85f530cb0..b8566840d2 100644
+--- a/python/paddle/fluid/tests/unittests/ir/inference/test_trt_matmul_quant_dequant.py
++++ b/python/paddle/fluid/tests/unittests/ir/inference/test_trt_matmul_quant_dequant.py
+@@ -32,13 +32,13 @@ class TensorRTMatMulQuantDequantDims3Test(QuantDequantTest):
+                 name='data', shape=[1, 28, 28], dtype='float32'
+             )
+             self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
+-            matmul_out = fluid.layers.matmul(
++            matmul_out = paddle.matmul(
+                 x=self.data,
+                 y=self.data,
+                 transpose_x=self.transpose_x,
+                 transpose_y=self.transpose_y,
+-                alpha=self.alpha,
+             )
++            matmul_out = paddle.scale(matmul_out, scale=self.alpha)
+             fc_out = fluid.layers.fc(
+                 input=matmul_out,
+                 size=10,
+@@ -128,13 +128,13 @@ class TensorRTMatMulQuantDequantDims4Test(QuantDequantTest):
+             )
+             self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
+             reshape_out = paddle.reshape(self.data, shape=[1, 4, 14, 14])
+-            matmul_out = fluid.layers.matmul(
++            matmul_out = paddle.matmul(
+                 x=reshape_out,
+                 y=reshape_out,
+                 transpose_x=self.transpose_x,
+                 transpose_y=self.transpose_y,
+-                alpha=self.alpha,
+             )
++            matmul_out = paddle.scale(matmul_out, scale=self.alpha)
+             out = fluid.layers.batch_norm(matmul_out, is_test=True)
+             fc_out = fluid.layers.fc(
+                 input=matmul_out,
+@@ -224,13 +224,13 @@ class TensorRTMatMulQuantDequantDims3DynamicTest(QuantDequantTest):
+                 name='data', shape=[-1, 28, 28], dtype='float32'
+             )
+             self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
+-            matmul_out = fluid.layers.matmul(
++            matmul_out = paddle.matmul(
+                 x=self.data,
+                 y=self.data,
+                 transpose_x=self.transpose_x,
+                 transpose_y=self.transpose_y,
+-                alpha=self.alpha,
+             )
++            matmul_out = paddle.scale(matmul_out, scale=self.alpha)
+             out = fluid.layers.batch_norm(matmul_out, is_test=True)
+             fc_out = fluid.layers.fc(
+                 input=matmul_out,
+diff --git a/python/paddle/fluid/tests/unittests/mkldnn/check_flags_mkldnn_ops_on_off.py b/python/paddle/fluid/tests/unittests/mkldnn/check_flags_mkldnn_ops_on_off.py
+index 7f471307ba..7a006e3627 100644
+--- a/python/paddle/fluid/tests/unittests/mkldnn/check_flags_mkldnn_ops_on_off.py
++++ b/python/paddle/fluid/tests/unittests/mkldnn/check_flags_mkldnn_ops_on_off.py
+@@ -48,7 +48,7 @@ def check():
+         a = fluid.dygraph.to_variable(a_np)
+         b = fluid.dygraph.to_variable(b_np)
+         y = paddle.add(x=a, y=b)
+-        y = fluid.layers.matmul(x=y, y=b, transpose_y=True)
++        y = paddle.matmul(x=y, y=b, transpose_y=True)
+         res1 = func(y)
+ 
+         np_res = np.add(a_np, b_np)
+diff --git a/python/paddle/fluid/tests/unittests/mkldnn/test_flags_mkldnn_ops_on_off.py b/python/paddle/fluid/tests/unittests/mkldnn/test_flags_mkldnn_ops_on_off.py
+index 2d136dba6f..1c40608410 100644
+--- a/python/paddle/fluid/tests/unittests/mkldnn/test_flags_mkldnn_ops_on_off.py
++++ b/python/paddle/fluid/tests/unittests/mkldnn/test_flags_mkldnn_ops_on_off.py
+@@ -87,14 +87,14 @@ class TestFlagsUseMkldnn(unittest.TestCase):
+         assert self.not_found(self.matmul_regex, out, err)
+ 
+     def test_flags_use_mkl_dnn_off(self):
+-        env = {str("FLAGS_tracer_mkldnn_ops_off"): str("matmul")}
++        env = {str("FLAGS_tracer_mkldnn_ops_off"): str("matmul_v2")}
+         out, err = self.flags_use_mkl_dnn_common(env)
+         assert self.found(self.relu_regex, out, err)
+         assert self.found(self.ew_add_regex, out, err)
+         assert self.not_found(self.matmul_regex, out, err)
+ 
+     def test_flags_use_mkl_dnn_off_multiple(self):
+-        env = {str("FLAGS_tracer_mkldnn_ops_off"): str("matmul,relu")}
++        env = {str("FLAGS_tracer_mkldnn_ops_off"): str("matmul_v2,relu")}
+         out, err = self.flags_use_mkl_dnn_common(env)
+         assert self.not_found(self.relu_regex, out, err)
+         assert self.found(self.ew_add_regex, out, err)
+@@ -103,7 +103,7 @@ class TestFlagsUseMkldnn(unittest.TestCase):
+     def test_flags_use_mkl_dnn_on_off(self):
+         env = {
+             str("FLAGS_tracer_mkldnn_ops_on"): str("elementwise_add"),
+-            str("FLAGS_tracer_mkldnn_ops_off"): str("matmul"),
++            str("FLAGS_tracer_mkldnn_ops_off"): str("matmul_v2"),
+         }
+         out, err = self.flags_use_mkl_dnn_common(env)
+         assert self.not_found(self.relu_regex, out, err)
+diff --git a/python/paddle/fluid/tests/unittests/parallel_dygraph_sparse_embedding.py b/python/paddle/fluid/tests/unittests/parallel_dygraph_sparse_embedding.py
+index 7c46efe775..e1103c1d59 100644
+--- a/python/paddle/fluid/tests/unittests/parallel_dygraph_sparse_embedding.py
++++ b/python/paddle/fluid/tests/unittests/parallel_dygraph_sparse_embedding.py
+@@ -65,7 +65,7 @@ class SimpleNet(fluid.Layer):
+ 
+     def forward(self, input, label):
+         x_emb = self.embedding(input)
+-        fc = fluid.layers.matmul(x_emb, self.softmax_weight)
++        fc = paddle.matmul(x_emb, self.softmax_weight)
+         fc = paddle.add(fc, self.softmax_bias)
+         projection = paddle.reshape(fc, shape=[-1, self.vocab_size])
+         loss = paddle.nn.functional.softmax_with_cross_entropy(
+diff --git a/python/paddle/fluid/tests/unittests/test_auto_parallel_completion.py b/python/paddle/fluid/tests/unittests/test_auto_parallel_completion.py
+index 113f32d31e..1094c1ae8a 100644
+--- a/python/paddle/fluid/tests/unittests/test_auto_parallel_completion.py
++++ b/python/paddle/fluid/tests/unittests/test_auto_parallel_completion.py
+@@ -24,7 +24,6 @@ import paddle.utils as utils
+ from paddle.distributed.auto_parallel.completion import Completer
+ from paddle.distributed.auto_parallel.dist_context import DistributedContext
+ from paddle.distributed.fleet import auto
+-from paddle.fluid import layers
+ 
+ paddle.enable_static()
+ _global_parallel_strategy = None
+@@ -301,9 +300,8 @@ class AttentionLayer(nn.Layer):
+         v = tensor.transpose(x=v, perm=[0, 2, 1, 3])
+ 
+         # scale dot product attention
+-        product = layers.matmul(
+-            x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5
+-        )
++        product = tensor.matmul(x=q, y=k, transpose_y=True)
++        product = tensor.scale(product, scale=self.head_dim**-0.5)
+ 
+         if self.attn_mask is not None:
+             product = product + self.attn_mask
+@@ -568,9 +566,8 @@ class DecoderLayer(nn.Layer):
+         v = tensor.transpose(x=v, perm=[0, 2, 1, 3])
+ 
+         # scale dot product attention
+-        product = layers.matmul(
+-            x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5
+-        )
++        product = tensor.matmul(x=q, y=k, transpose_y=True)
++        product = tensor.scale(product, scale=self.head_dim**-0.5)
+ 
+         if self.attn_mask is not None:
+             product = product + self.attn_mask
+diff --git a/python/paddle/fluid/tests/unittests/test_auto_parallel_completion_gpt.py b/python/paddle/fluid/tests/unittests/test_auto_parallel_completion_gpt.py
+index 45dd9bb66e..5a5431552b 100644
+--- a/python/paddle/fluid/tests/unittests/test_auto_parallel_completion_gpt.py
++++ b/python/paddle/fluid/tests/unittests/test_auto_parallel_completion_gpt.py
+@@ -210,9 +210,8 @@ class MultiHeadAttention(nn.Layer):
+                 query, key, value, use_cache, cache
+             )
+         # scale dot product attention
+-        product = layers.matmul(
+-            x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5
+-        )
++        product = tensor.matmul(x=q, y=k, transpose_y=True)
++        product = tensor.scale(product, scale=self.head_dim**-0.5)
+ 
+         if attn_mask is not None:
+             product = product + attn_mask
+diff --git a/python/paddle/fluid/tests/unittests/test_auto_parallel_partitioner.py b/python/paddle/fluid/tests/unittests/test_auto_parallel_partitioner.py
+index f745926f5b..8300aaa418 100644
+--- a/python/paddle/fluid/tests/unittests/test_auto_parallel_partitioner.py
++++ b/python/paddle/fluid/tests/unittests/test_auto_parallel_partitioner.py
+@@ -28,7 +28,6 @@ from paddle.distributed.auto_parallel.partitioner import Partitioner
+ from paddle.distributed.auto_parallel.process_group import new_process_group
+ from paddle.distributed.auto_parallel.utils import _get_comm_group
+ from paddle.distributed.fleet import auto
+-from paddle.fluid import layers
+ 
+ paddle.enable_static()
+ _global_parallel_strategy = None
+@@ -695,9 +694,8 @@ class AttentionLayer(nn.Layer):
+         v = tensor.transpose(x=v, perm=[0, 2, 1, 3])
+ 
+         # scale dot product attention
+-        product = layers.matmul(
+-            x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5
+-        )
++        product = tensor.matmul(x=q, y=k, transpose_y=True)
++        product = tensor.scale(product, scale=self.head_dim**-0.5)
+ 
+         if self.attn_mask is not None:
+             product = product + self.attn_mask
+@@ -868,7 +866,8 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
+             'transpose2',
+             'reshape2',
+             'transpose2',
+-            'matmul',
++            'matmul_v2',
++            "scale",
+             'softmax',
+             'dropout',
+             'matmul_v2',
+@@ -976,7 +975,8 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
+             'transpose2',
+             'reshape2',
+             'transpose2',
+-            'matmul',
++            'matmul_v2',
++            "scale",
+             'softmax',
+             'dropout',
+             'matmul_v2',
+@@ -1166,9 +1166,8 @@ class DecoderLayer(nn.Layer):
+         v = tensor.transpose(x=v, perm=[0, 2, 1, 3])
+ 
+         # scale dot product attention
+-        product = layers.matmul(
+-            x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5
+-        )
++        product = tensor.matmul(x=q, y=k, transpose_y=True)
++        product = tensor.scale(product, scale=self.head_dim**-0.5)
+ 
+         if self.attn_mask is not None:
+             product = product + self.attn_mask
+@@ -1347,7 +1346,8 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
+             'transpose2',
+             'reshape2',
+             'transpose2',
+-            'matmul',
++            'matmul_v2',
++            "scale",
+             'softmax',
+             'dropout',
+             'matmul_v2',
+@@ -1399,15 +1399,15 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
+             distributed_attr_check_for_program(dist_main_prog, dist_context)
+         )
+         # check distribured attr
+-        serial_op_idx = [0, 5, 9, 11, 23, 28, 31]
++        serial_op_idx = [0, 5, 9, 11, 24, 29, 32]
+         dist_op_idx = [
+             [0, 1],
+             [6, 7],
+             [11, 12],
+             [14, 15],
+-            [27, 28],
+-            [33, 34],
+-            [37, 38],
++            [28, 29],
++            [34, 35],
++            [38, 39],
+         ]
+         self.assertTrue(
+             distributed_attr_check_for_dist_op(
+@@ -1500,7 +1500,8 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
+             'transpose2',
+             'reshape2',
+             'transpose2',
+-            'matmul',
++            'matmul_v2',
++            "scale",
+             'softmax',
+             'dropout',
+             'matmul_v2',
+diff --git a/python/paddle/fluid/tests/unittests/test_auto_parallel_partitioner_gpt.py b/python/paddle/fluid/tests/unittests/test_auto_parallel_partitioner_gpt.py
+index cefc98cdb5..a41b79d4ef 100644
+--- a/python/paddle/fluid/tests/unittests/test_auto_parallel_partitioner_gpt.py
++++ b/python/paddle/fluid/tests/unittests/test_auto_parallel_partitioner_gpt.py
+@@ -256,9 +256,8 @@ class MultiHeadAttention(nn.Layer):
+                 query, key, value, use_cache, cache
+             )
+         # scale dot product attention
+-        product = layers.matmul(
+-            x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5
+-        )
++        product = tensor.matmul(x=q, y=k, transpose_y=True)
++        product = tensor.scale(product, scale=self.head_dim**-0.5)
+ 
+         if attn_mask is not None:
+             product = product + attn_mask
+diff --git a/python/paddle/fluid/tests/unittests/test_auto_search_dist_matmul_op.py b/python/paddle/fluid/tests/unittests/test_auto_search_dist_matmul_op.py
+index a9430ea4aa..145a4a2724 100644
+--- a/python/paddle/fluid/tests/unittests/test_auto_search_dist_matmul_op.py
++++ b/python/paddle/fluid/tests/unittests/test_auto_search_dist_matmul_op.py
+@@ -103,6 +103,7 @@ def mlp_forward(train_program, start_program):
+     return loss, train_program, start_program
+ 
+ 
++@unittest.skipIf(True, "to delete later")
+ class TestCompatible(unittest.TestCase):
+     def test_matmulv2_matmul_2_compatible(self):
+         valid_op_dist_attr_list = []
+diff --git a/python/paddle/fluid/tests/unittests/test_auto_search_dist_op.py b/python/paddle/fluid/tests/unittests/test_auto_search_dist_op.py
+index 0c36aa2460..676883dfd2 100644
+--- a/python/paddle/fluid/tests/unittests/test_auto_search_dist_op.py
++++ b/python/paddle/fluid/tests/unittests/test_auto_search_dist_op.py
+@@ -26,7 +26,6 @@ from paddle.distributed.auto_parallel.dist_op import DistributedOperator
+ from paddle.distributed.auto_parallel.operators.common import (
+     get_distributed_operator_impl_container,
+ )
+-from paddle.fluid import layers
+ 
+ paddle.enable_static()
+ device = "gpu" if core.is_compiled_with_cuda() else "cpu"
+@@ -85,7 +84,7 @@ def mlp_forward(train_program, start_program):
+             shape=[hidden_size, hidden_size],
+             dtype='float32',
+         )
+-        input = layers.matmul(x=input, y=matmulinput)
++        input = paddle.matmul(x=input, y=matmulinput)
+         label = static.data(
+             name="label", shape=[batch_size, 1], dtype='float32'
+         )
+diff --git a/python/paddle/fluid/tests/unittests/test_cholesky_op.py b/python/paddle/fluid/tests/unittests/test_cholesky_op.py
+index 20ab3e73ab..7525e3e542 100644
+--- a/python/paddle/fluid/tests/unittests/test_cholesky_op.py
++++ b/python/paddle/fluid/tests/unittests/test_cholesky_op.py
+@@ -22,7 +22,6 @@ from op_test import OpTest, skip_check_grad_ci
+ import paddle
+ import paddle.fluid as fluid
+ import paddle.fluid.core as core
+-import paddle.fluid.layers as layers
+ 
+ 
+ @skip_check_grad_ci(
+@@ -77,7 +76,7 @@ class TestCholeskyOp(OpTest):
+                 dtype=root_data.dtype, shape=root_data.shape
+             )
+             root_t = paddle.transpose(root, self.trans_dims)
+-            x = layers.matmul(x=root, y=root_t) + 1e-05
++            x = paddle.matmul(x=root, y=root_t) + 1e-05
+             out = paddle.cholesky(x, upper=self.attrs["upper"])
+             grad_check(root, out, x_init=root_data, place=place)
+ 
+diff --git a/python/paddle/fluid/tests/unittests/test_dist_transpiler.py b/python/paddle/fluid/tests/unittests/test_dist_transpiler.py
+index 45cdf97236..4e4f299db3 100644
+--- a/python/paddle/fluid/tests/unittests/test_dist_transpiler.py
++++ b/python/paddle/fluid/tests/unittests/test_dist_transpiler.py
+@@ -414,9 +414,7 @@ class TestFakeInit(TranspilerTest):
+ 
+         input_emb_re = paddle.reshape(input_emb, shape=[-1, 1, embedding_size])
+ 
+-        neg_matmul = fluid.layers.matmul(
+-            input_emb_re, neg_emb_w_re, transpose_y=True
+-        )
++        neg_matmul = paddle.matmul(input_emb_re, neg_emb_w_re, transpose_y=True)
+         neg_matmul_re = paddle.reshape(neg_matmul, shape=[-1, neg_num])
+         neg_logits = paddle.add(neg_matmul_re, neg_emb_b_vec)
+         # nce loss
+diff --git a/python/paddle/fluid/tests/unittests/test_eager_deletion_padding_rnn.py b/python/paddle/fluid/tests/unittests/test_eager_deletion_padding_rnn.py
+index 921e4a4e43..da0c10f85f 100644
+--- a/python/paddle/fluid/tests/unittests/test_eager_deletion_padding_rnn.py
++++ b/python/paddle/fluid/tests/unittests/test_eager_deletion_padding_rnn.py
+@@ -167,7 +167,7 @@ def lm_model(
+                 bias = bias_arr[k]
+ 
+                 nn = layers.concat([input, pre_hidden], 1)
+-                gate_input = layers.matmul(x=nn, y=weight_1)
++                gate_input = paddle.matmul(x=nn, y=weight_1)
+ 
+                 gate_input = paddle.add(gate_input, bias)
+                 i = paddle.slice(
+@@ -291,7 +291,7 @@ def lm_model(
+                 bias = bias_arr[k]
+ 
+                 nn = layers.concat([input, pre_hidden], 1)
+-                gate_input = layers.matmul(x=nn, y=weight_1)
++                gate_input = paddle.matmul(x=nn, y=weight_1)
+ 
+                 gate_input = paddle.add(gate_input, bias)
+                 i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
+@@ -459,7 +459,7 @@ def lm_model(
+         ),
+     )
+ 
+-    projection = layers.matmul(rnn_out, softmax_weight)
++    projection = paddle.matmul(rnn_out, softmax_weight)
+     projection = paddle.add(projection, softmax_bias)
+     projection = paddle.reshape(projection, shape=[-1, vocab_size])
+ 
+diff --git a/python/paddle/fluid/tests/unittests/test_fused_attention_op.py b/python/paddle/fluid/tests/unittests/test_fused_attention_op.py
+index a73dae3271..47296e48a2 100644
+--- a/python/paddle/fluid/tests/unittests/test_fused_attention_op.py
++++ b/python/paddle/fluid/tests/unittests/test_fused_attention_op.py
+@@ -21,7 +21,6 @@ import paddle
+ import paddle.incubate.nn.functional as incubate_f
+ import paddle.nn.functional as F
+ from paddle import tensor
+-from paddle.fluid import layers
+ from paddle.fluid.framework import default_main_program
+ from paddle.nn.layer.common import Dropout, Linear
+ from paddle.nn.layer.norm import LayerNorm
+@@ -192,9 +191,8 @@ class TestFusedAttentionOp(OpTest):
+ 
+         # [B, n_head, seq_len, head_dim] * [B, n_head, out_seq_len, head_dim]
+         # --> [B, n_head, seq_len, out_seq_len]
+-        qk_out = layers.matmul(
+-            x=q_out, y=k_out, transpose_y=True, alpha=self.head_dim**-0.5
+-        )
++        qk_out = paddle.matmul(x=q_out, y=k_out, transpose_y=True)
++        qk_out = paddle.scale(qk_out, scale=self.head_dim**-0.5)
+ 
+         if attn_mask is not None:
+             attn_mask = _convert_attention_mask(attn_mask, qk_out.dtype)
+diff --git a/python/paddle/fluid/tests/unittests/test_fused_multi_transformer_int8_op.py b/python/paddle/fluid/tests/unittests/test_fused_multi_transformer_int8_op.py
+index fbbe2d6541..d0057ac1b7 100644
+--- a/python/paddle/fluid/tests/unittests/test_fused_multi_transformer_int8_op.py
++++ b/python/paddle/fluid/tests/unittests/test_fused_multi_transformer_int8_op.py
+@@ -19,7 +19,6 @@ import numpy as np
+ import paddle
+ import paddle.nn.functional as F
+ from paddle import _legacy_C_ops, tensor
+-from paddle.fluid import layers
+ from paddle.fluid.framework import default_main_program
+ from paddle.nn.layer.common import Dropout
+ from paddle.nn.layer.norm import LayerNorm
+@@ -388,9 +387,8 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
+ 
+             # [B, n_head, seq_len, head_dim] * [B, n_head, out_seq_len, head_dim]
+             # --> [B, n_head, seq_len, out_seq_len]
+-            qk_out = layers.matmul(
+-                x=q_out, y=k_out, transpose_y=True, alpha=self.head_dim**-0.5
+-            )
++            qk_out = paddle.matmul(x=q_out, y=k_out, transpose_y=True)
++            qk_out = paddle.scale(qk_out, scale=self.head_dim**-0.5)
+ 
+             if self.debug:
+                 print('qk out is')
+diff --git a/python/paddle/fluid/tests/unittests/test_fused_multi_transformer_op.py b/python/paddle/fluid/tests/unittests/test_fused_multi_transformer_op.py
+index 8aadeba437..abbfb3f08b 100644
+--- a/python/paddle/fluid/tests/unittests/test_fused_multi_transformer_op.py
++++ b/python/paddle/fluid/tests/unittests/test_fused_multi_transformer_op.py
+@@ -281,9 +281,8 @@ class TestFusedMultiTransformerOp(OpTest):
+ 
+             # [B, n_head, seq_len, head_dim] * [B, n_head, out_seq_len, head_dim]
+             # --> [B, n_head, seq_len, out_seq_len]
+-            qk_out = layers.matmul(
+-                x=q_out, y=k_out, transpose_y=True, alpha=self.head_dim**-0.5
+-            )
++            qk_out = paddle.matmul(x=q_out, y=k_out, transpose_y=True)
++            qk_out = paddle.scale(qk_out, scale=self.head_dim**-0.5)
+ 
+             if self.debug:
+                 print('qk out is')
+diff --git a/python/paddle/fluid/tests/unittests/test_imperative_basic.py b/python/paddle/fluid/tests/unittests/test_imperative_basic.py
+index a8aa34eb44..375536b8cb 100644
+--- a/python/paddle/fluid/tests/unittests/test_imperative_basic.py
++++ b/python/paddle/fluid/tests/unittests/test_imperative_basic.py
+@@ -1001,7 +1001,7 @@ class TestDygraphGuardWithError(unittest.TestCase):
+         with self.assertRaisesRegexp(
+             TypeError, "Please use `with fluid.dygraph.guard()"
+         ):
+-            y = fluid.layers.matmul(x, x)
++            y = paddle.matmul(x, x)
+ 
+     def test_without_guard(self):
+         with _test_eager_guard():
+diff --git a/python/paddle/fluid/tests/unittests/test_imperative_gnn.py b/python/paddle/fluid/tests/unittests/test_imperative_gnn.py
+index f62dfe436a..db750a5aa1 100644
+--- a/python/paddle/fluid/tests/unittests/test_imperative_gnn.py
++++ b/python/paddle/fluid/tests/unittests/test_imperative_gnn.py
+@@ -46,9 +46,9 @@ class GraphConv(fluid.Layer):
+         )
+ 
+     def forward(self, features, adj):
+-        support = fluid.layers.matmul(features, self.weight)
++        support = paddle.matmul(features, self.weight)
+         # TODO(panyx0718): sparse matmul?
+-        return fluid.layers.matmul(adj, support) + self.bias
++        return paddle.matmul(adj, support) + self.bias
+ 
+ 
+ class GCN(fluid.Layer):
+diff --git a/python/paddle/fluid/tests/unittests/test_imperative_lod_tensor_to_selected_rows.py b/python/paddle/fluid/tests/unittests/test_imperative_lod_tensor_to_selected_rows.py
+index 76733836dd..fe706a78f8 100644
+--- a/python/paddle/fluid/tests/unittests/test_imperative_lod_tensor_to_selected_rows.py
++++ b/python/paddle/fluid/tests/unittests/test_imperative_lod_tensor_to_selected_rows.py
+@@ -64,7 +64,7 @@ class SimpleNet(fluid.Layer):
+ 
+     def forward(self, input, label):
+         x_emb = self.embedding(input)
+-        projection = fluid.layers.matmul(
++        projection = paddle.matmul(
+             x_emb, paddle.transpose(self.embedding.weight, perm=[1, 0])
+         )
+         projection = paddle.add(projection, self.softmax_bias)
+diff --git a/python/paddle/fluid/tests/unittests/test_imperative_ptb_rnn.py b/python/paddle/fluid/tests/unittests/test_imperative_ptb_rnn.py
+index 3980b0dbb2..55f7f1ec31 100644
+--- a/python/paddle/fluid/tests/unittests/test_imperative_ptb_rnn.py
++++ b/python/paddle/fluid/tests/unittests/test_imperative_ptb_rnn.py
+@@ -109,7 +109,7 @@ class SimpleLSTMRNN(fluid.Layer):
+                 bias = self.bias_arr[k]
+ 
+                 nn = fluid.layers.concat([self._input, pre_hidden], 1)
+-                gate_input = fluid.layers.matmul(x=nn, y=weight_1)
++                gate_input = paddle.matmul(x=nn, y=weight_1)
+ 
+                 gate_input = paddle.add(gate_input, bias)
+                 i, j, f, o = fluid.layers.split(
+@@ -225,7 +225,7 @@ class PtbModel(fluid.Layer):
+         rnn_out = paddle.reshape(
+             rnn_out, shape=[-1, self.num_steps, self.hidden_size]
+         )
+-        projection = fluid.layers.matmul(rnn_out, self.softmax_weight)
++        projection = paddle.matmul(rnn_out, self.softmax_weight)
+         projection = paddle.add(projection, self.softmax_bias)
+         projection = paddle.reshape(projection, shape=[-1, self.vocab_size])
+         loss = paddle.nn.functional.softmax_with_cross_entropy(
+diff --git a/python/paddle/fluid/tests/unittests/test_imperative_save_load.py b/python/paddle/fluid/tests/unittests/test_imperative_save_load.py
+index a386e2113f..2e30ea41a1 100644
+--- a/python/paddle/fluid/tests/unittests/test_imperative_save_load.py
++++ b/python/paddle/fluid/tests/unittests/test_imperative_save_load.py
+@@ -104,7 +104,7 @@ class SimpleLSTMRNN(fluid.Layer):
+                 bias = self.bias_arr[k]
+ 
+                 nn = fluid.layers.concat([self._input, pre_hidden], 1)
+-                gate_input = fluid.layers.matmul(x=nn, y=weight_1)
++                gate_input = paddle.matmul(x=nn, y=weight_1)
+ 
+                 gate_input = paddle.add(gate_input, bias)
+                 i, j, f, o = fluid.layers.split(
+@@ -221,7 +221,7 @@ class PtbModel(fluid.Layer):
+             rnn_out, shape=[-1, self.num_steps, self.hidden_size]
+         )
+ 
+-        projection = fluid.layers.matmul(rnn_out, self.softmax_weight)
++        projection = paddle.matmul(rnn_out, self.softmax_weight)
+         projection = paddle.add(projection, self.softmax_bias)
+         projection = paddle.reshape(projection, shape=[-1, self.vocab_size])
+         loss = paddle.nn.functional.softmax_with_cross_entropy(
+diff --git a/python/paddle/fluid/tests/unittests/test_imperative_save_load_v2.py b/python/paddle/fluid/tests/unittests/test_imperative_save_load_v2.py
+index 19f4616d92..4a3c6c64a6 100644
+--- a/python/paddle/fluid/tests/unittests/test_imperative_save_load_v2.py
++++ b/python/paddle/fluid/tests/unittests/test_imperative_save_load_v2.py
+@@ -105,7 +105,7 @@ class SimpleLSTMRNN(fluid.Layer):
+                 bias = self.bias_arr[k]
+ 
+                 nn = fluid.layers.concat([self._input, pre_hidden], 1)
+-                gate_input = fluid.layers.matmul(x=nn, y=weight_1)
++                gate_input = paddle.matmul(x=nn, y=weight_1)
+ 
+                 gate_input = paddle.add(gate_input, bias)
+                 i, j, f, o = fluid.layers.split(
+@@ -222,7 +222,7 @@ class PtbModel(fluid.Layer):
+             rnn_out, shape=[-1, self.num_steps, self.hidden_size]
+         )
+ 
+-        projection = fluid.layers.matmul(rnn_out, self.softmax_weight)
++        projection = paddle.matmul(rnn_out, self.softmax_weight)
+         projection = paddle.add(projection, self.softmax_bias)
+         projection = paddle.reshape(projection, shape=[-1, self.vocab_size])
+         loss = paddle.nn.functional.softmax_with_cross_entropy(
+diff --git a/python/paddle/fluid/tests/unittests/test_imperative_selected_rows_to_lod_tensor.py b/python/paddle/fluid/tests/unittests/test_imperative_selected_rows_to_lod_tensor.py
+index bfba325046..dd490e8d55 100644
+--- a/python/paddle/fluid/tests/unittests/test_imperative_selected_rows_to_lod_tensor.py
++++ b/python/paddle/fluid/tests/unittests/test_imperative_selected_rows_to_lod_tensor.py
+@@ -72,9 +72,9 @@ class SimpleNet(fluid.Layer):
+ 
+     def forward(self, input, label):
+         x_emb = self.embedding(input)
+-        fc = fluid.layers.matmul(x_emb, self.softmax_weight)
++        fc = paddle.matmul(x_emb, self.softmax_weight)
+         fc = paddle.add(fc, self.softmax_bias)
+-        projection = fluid.layers.matmul(
++        projection = paddle.matmul(
+             fc, paddle.transpose(self.embedding.weight, perm=[1, 0])
+         )
+         projection = paddle.reshape(projection, shape=[-1, self.vocab_size])
+diff --git a/python/paddle/fluid/tests/unittests/test_imperative_transformer_sorted_gradient.py b/python/paddle/fluid/tests/unittests/test_imperative_transformer_sorted_gradient.py
+index a88c31dd3f..0bd69f0359 100644
+--- a/python/paddle/fluid/tests/unittests/test_imperative_transformer_sorted_gradient.py
++++ b/python/paddle/fluid/tests/unittests/test_imperative_transformer_sorted_gradient.py
+@@ -495,12 +495,12 @@ class MultiHeadAttentionLayer(Layer):
+         transpose_v = paddle.transpose(x=reshaped_v, perm=[0, 2, 1, 3])
+ 
+         # scale dot product attention
+-        product = fluid.layers.matmul(
++        product = paddle.matmul(
+             x=transpose_q,
+             y=transpose_k,
+             transpose_y=True,
+-            alpha=self._d_model**-0.5,
+         )
++        product = paddle.scale(product, scale=self._d_model**-0.5)
+         if attn_bias is not None:
+             product += attn_bias
+         weights = paddle.nn.functional.softmax(product)
+@@ -511,9 +511,9 @@ class MultiHeadAttentionLayer(Layer):
+                 seed=ModelHyperParams.dropout_seed,
+                 is_test=False,
+             )
+-            out = fluid.layers.matmul(weights_droped, transpose_v)
++            out = paddle.matmul(weights_droped, transpose_v)
+         else:
+-            out = fluid.layers.matmul(weights, transpose_v)
++            out = paddle.matmul(weights, transpose_v)
+ 
+         # combine heads
+         if len(out.shape) != 4:
+@@ -1003,7 +1003,7 @@ class WrapDecoderLayer(Layer):
+         )
+ 
+         if self._weight_sharing:
+-            predict = fluid.layers.matmul(
++            predict = paddle.matmul(
+                 x=dec_output_reshape,
+                 y=self._prepare_decoder_layer._input_emb.weight,
+                 transpose_y=True,
+diff --git a/python/paddle/fluid/tests/unittests/test_layers.py b/python/paddle/fluid/tests/unittests/test_layers.py
+index dcf9d4d100..9297666eea 100644
+--- a/python/paddle/fluid/tests/unittests/test_layers.py
++++ b/python/paddle/fluid/tests/unittests/test_layers.py
+@@ -290,7 +290,7 @@ class TestLayer(LayerTest):
+         with self.static_graph():
+             t = layers.data(name='t', shape=[3, 3], dtype='float32')
+             t2 = layers.data(name='t2', shape=[3, 3], dtype='float32')
+-            ret = layers.matmul(t, t2)
++            ret = paddle.matmul(t, t2)
+             static_ret = self.get_static_graph_result(
+                 feed={
+                     't': np.ones([3, 3], dtype='float32'),
+@@ -303,14 +303,14 @@ class TestLayer(LayerTest):
+             with _test_eager_guard():
+                 t = np.ones([3, 3], dtype='float32')
+                 t2 = np.ones([3, 3], dtype='float32')
+-                dy_eager_ret = layers.matmul(
++                dy_eager_ret = paddle.matmul(
+                     base.to_variable(t), base.to_variable(t2)
+                 )
+                 dy_eager_ret_value = dy_eager_ret.numpy()
+ 
+             t = np.ones([3, 3], dtype='float32')
+             t2 = np.ones([3, 3], dtype='float32')
+-            dy_ret = layers.matmul(base.to_variable(t), base.to_variable(t2))
++            dy_ret = paddle.matmul(base.to_variable(t), base.to_variable(t2))
+             dy_ret_value = dy_ret.numpy()
+ 
+         np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
+@@ -3288,70 +3288,6 @@ class TestBook(LayerTest):
+             )
+         return out
+ 
+-    def test_retinanet_target_assign(self):
+-        with program_guard(
+-            fluid.default_main_program(), fluid.default_startup_program()
+-        ):
+-            bbox_pred = layers.data(
+-                name='bbox_pred',
+-                shape=[1, 100, 4],
+-                append_batch_size=False,
+-                dtype='float32',
+-            )
+-            cls_logits = layers.data(
+-                name='cls_logits',
+-                shape=[1, 100, 10],
+-                append_batch_size=False,
+-                dtype='float32',
+-            )
+-            anchor_box = layers.data(
+-                name='anchor_box',
+-                shape=[100, 4],
+-                append_batch_size=False,
+-                dtype='float32',
+-            )
+-            anchor_var = layers.data(
+-                name='anchor_var',
+-                shape=[100, 4],
+-                append_batch_size=False,
+-                dtype='float32',
+-            )
+-            gt_boxes = layers.data(
+-                name='gt_boxes',
+-                shape=[10, 4],
+-                append_batch_size=False,
+-                dtype='float32',
+-            )
+-            gt_labels = layers.data(
+-                name='gt_labels',
+-                shape=[10, 1],
+-                append_batch_size=False,
+-                dtype='int32',
+-            )
+-            is_crowd = layers.data(
+-                name='is_crowd',
+-                shape=[1],
+-                append_batch_size=False,
+-                dtype='int32',
+-            )
+-            im_info = layers.data(
+-                name='im_info',
+-                shape=[1, 3],
+-                append_batch_size=False,
+-                dtype='float32',
+-            )
+-            return layers.retinanet_target_assign(
+-                bbox_pred,
+-                cls_logits,
+-                anchor_box,
+-                anchor_var,
+-                gt_boxes,
+-                gt_labels,
+-                is_crowd,
+-                im_info,
+-                10,
+-            )
+-
+     def test_addmm(self):
+         with program_guard(
+             fluid.default_main_program(), fluid.default_startup_program()
+diff --git a/python/paddle/fluid/tests/unittests/test_matmul_op.py b/python/paddle/fluid/tests/unittests/test_matmul_op.py
+index a5835fd266..1ac71759de 100644
+--- a/python/paddle/fluid/tests/unittests/test_matmul_op.py
++++ b/python/paddle/fluid/tests/unittests/test_matmul_op.py
+@@ -19,7 +19,6 @@ from op_test import OpTest
+ 
+ import paddle
+ import paddle.fluid as fluid
+-from paddle.fluid import Program, program_guard
+ 
+ 
+ def generate_compatible_shapes(dim_X, dim_Y, transpose_X, transpose_Y):
+@@ -117,151 +116,6 @@ class Generator:
+         )
+ 
+ 
+-class TestMatmulOpError(unittest.TestCase):
+-    def test_errors(self):
+-        with program_guard(Program(), Program()):
+-            # The inputs type of matmul_op must be Variable.
+-            input1 = 12
+-            self.assertRaises(TypeError, fluid.layers.matmul, input1, input1)
+-            # The inputs dtype of matmul_op must be float32, float64.
+-            input2 = fluid.layers.data(
+-                name='input2', shape=[10, 10], dtype="int32"
+-            )
+-            self.assertRaises(TypeError, fluid.layers.matmul, input2, input2)
+-            input3 = fluid.layers.data(
+-                name='input3', shape=[2, 2], dtype="float16"
+-            )
+-            fluid.layers.matmul(input3, input3)
+-
+-
+-# Negative dimension generation
+-def generate_negative_dims(in_shape):
+-    from itertools import combinations
+-
+-    size = len(in_shape)
+-    indexs = list()
+-    shapes = list()
+-    for i in range(size):
+-        indexs.extend(list(combinations([j for j in range(size)], i + 1)))
+-    for idx in indexs:
+-        shapes.append(
+-            [in_shape[i] if i not in idx else -1 for i in range(size)]
+-        )
+-    return shapes
+-
+-
+-# Build program with inputs sizes that contain negative numbers
+-def test_negative_dims_program(obj):
+-    for shape_x in generate_negative_dims(obj.shape_X):
+-        for shape_y in generate_negative_dims(obj.shape_Y):
+-            X = np.random.random(obj.shape_X).astype("float32")
+-            Y = np.random.random(obj.shape_Y).astype("float32")
+-            Ref = reference_matmul(X, Y, obj.transpose_X, obj.transpose_Y)
+-            with program_guard(Program(), Program()):
+-                x = fluid.data(name='x', shape=shape_x, dtype='float32')
+-                y = fluid.data(name='y', shape=shape_y, dtype='float32')
+-                output = fluid.layers.matmul(
+-                    x, y, obj.transpose_X, obj.transpose_Y
+-                )
+-                obj.assertEqual(len(Ref.shape), len(output.shape))
+-                for idx in range(len(Ref.shape)):
+-                    if output.shape[idx] != -1:
+-                        obj.assertEqual(Ref.shape[idx], output.shape[idx])
+-                exe = fluid.Executor(fluid.CPUPlace())
+-                (res,) = exe.run(
+-                    fluid.default_main_program(),
+-                    feed={'x': X, 'y': Y},
+-                    fetch_list=[output],
+-                )
+-                np.allclose(res, Ref, atol=1e-5)
+-
+-
+-# Generate program api cases for all negative possibilities
+-def api_test(dim_x, dim_y, trans_x, trans_y):
+-    test_name = 'TestMatMulAPI_dimX_{}_dim_Y_{}_transX_{}_transY_{}'.format(
+-        dim_x, dim_y, trans_x, trans_y
+-    )
+-    shape_x, shape_y = generate_compatible_shapes(
+-        dim_x, dim_y, trans_x, trans_y
+-    )
+-    globals()[test_name] = type(
+-        test_name,
+-        (unittest.TestCase,),
+-        {
+-            'shape_X': shape_x,
+-            'shape_Y': shape_y,
+-            'transpose_X': trans_x,
+-            'transpose_Y': trans_y,
+-            'test_propram': test_negative_dims_program,
+-        },
+-    )
+-
+-
+-# Generate operators cases for all possibilities
+-def inject_test(dim_x, dim_y, trans_x, trans_y):
+-    test_name = 'TestMatMulOp_dimX_{}_dim_Y_{}_transX_{}_transY_{}'.format(
+-        dim_x, dim_y, trans_x, trans_y
+-    )
+-    shape_x, shape_y = generate_compatible_shapes(
+-        dim_x, dim_y, trans_x, trans_y
+-    )
+-    globals()[test_name] = type(
+-        test_name,
+-        (Generator, OpTest),
+-        {
+-            'shape_X': shape_x,
+-            'shape_Y': shape_y,
+-            'transpose_X': trans_x,
+-            'transpose_Y': trans_y,
+-        },
+-    )
+-
+-
+-for dim_X in (1, 2, 3):
+-    for dim_Y in (1, 2, 3):
+-        for transose_x in (False, True):
+-            for transose_y in (False, True):
+-                inject_test(dim_X, dim_Y, transose_x, transose_y)
+-                api_test(dim_X, dim_Y, transose_x, transose_y)
+-
+-
+-# Test case more batch_size and N, M, K
+-def generate_compatible_shapes_batch(
+-    dim_X, dim_Y, transpose_X, transpose_Y, batch_size
+-):
+-    BATCH_SIZE = 2
+-    M = 3
+-    N = 4
+-    K = 5
+-    if (dim_X == 1 and transpose_X) or (dim_Y == 1 and transpose_Y):
+-        K = 1
+-    if dim_X == 1:
+-        if transpose_X:
+-            shape_X = [M]
+-        else:
+-            shape_X = [K]
+-    if dim_Y == 1:
+-        if transpose_Y:
+-            shape_Y = [N]
+-        else:
+-            shape_Y = [K]
+-    if dim_X >= 2:
+-        if transpose_X:
+-            shape_X = [K, M]
+-        else:
+-            shape_X = [M, K]
+-    if dim_X == 3:
+-        shape_X = [BATCH_SIZE] + shape_X
+-    if dim_Y >= 2:
+-        if transpose_Y:
+-            shape_Y = [N, K]
+-        else:
+-            shape_Y = [K, N]
+-    if dim_Y == 3:
+-        shape_Y = [BATCH_SIZE] + shape_Y
+-    return shape_X, shape_Y
+-
+-
+ # Test case n-dim
+ def generate_compatible_shapes_ndim(dim, transpose_X, transpose_Y):
+     M = 2
+diff --git a/python/paddle/fluid/tests/unittests/test_mul_nn_grad.py b/python/paddle/fluid/tests/unittests/test_mul_nn_grad.py
+index b6c3f03f97..e988a875f8 100644
+--- a/python/paddle/fluid/tests/unittests/test_mul_nn_grad.py
++++ b/python/paddle/fluid/tests/unittests/test_mul_nn_grad.py
+@@ -94,7 +94,7 @@ class TestMatmulDoubleGradCheck(unittest.TestCase):
+         y = paddle.create_parameter(
+             dtype=typename, shape=self.y_shape, name='y'
+         )
+-        out = layers.matmul(
++        out = paddle.matmul(
+             x, y, self.transpose_x, self.transpose_y, name='out'
+         )
+ 
+diff --git a/python/paddle/fluid/tests/unittests/test_recurrent_op.py b/python/paddle/fluid/tests/unittests/test_recurrent_op.py
+index 2b06de33f2..1cf0f8e374 100644
+--- a/python/paddle/fluid/tests/unittests/test_recurrent_op.py
++++ b/python/paddle/fluid/tests/unittests/test_recurrent_op.py
+@@ -616,13 +616,13 @@ class RecurrentOpSubBlockTest(RecurrentOpTest1):
+         rnn = layers.StaticRNN()
+ 
+         def dot_attention(query, memory):
+-            attn = layers.matmul(query, memory, transpose_y=True)
++            attn = paddle.matmul(query, memory, transpose_y=True)
+             weight = paddle.nn.functional.softmax(attn)
+-            weight_memory = layers.matmul(weight, memory)
++            weight_memory = paddle.matmul(weight, memory)
+ 
+             return weight_memory, weight
+ 
+-        y = layers.matmul(emb, w1)
++        y = paddle.matmul(emb, w1)
+         with rnn.step():
+             pre_h = rnn.memory(
+                 shape=(self.sent_len, self.input_dim),
+@@ -631,7 +631,7 @@ class RecurrentOpSubBlockTest(RecurrentOpTest1):
+             )
+             step_in = rnn.step_input(x)
+             concat_in = layers.concat([step_in, pre_h], 1)
+-            new_h = layers.matmul(concat_in, w2)
++            new_h = paddle.matmul(concat_in, w2)
+             new_h = layers.unsqueeze(new_h, [1])
+             new_h, _ = dot_attention(new_h, y)
+             new_h = paddle.squeeze(new_h, [1])
+diff --git a/python/paddle/fluid/tests/unittests/test_rnn_decode_api.py b/python/paddle/fluid/tests/unittests/test_rnn_decode_api.py
+index 67657071db..5a1aaa7833 100644
+--- a/python/paddle/fluid/tests/unittests/test_rnn_decode_api.py
++++ b/python/paddle/fluid/tests/unittests/test_rnn_decode_api.py
+@@ -71,14 +71,14 @@ class DecoderCell(layers.RNNCell):
+         query = layers.fc(
+             hidden, size=encoder_output.shape[-1], bias_attr=False
+         )
+-        attn_scores = layers.matmul(
++        attn_scores = paddle.matmul(
+             layers.unsqueeze(query, [1]), encoder_output, transpose_y=True
+         )
+         if encoder_padding_mask is not None:
+             attn_scores = paddle.add(attn_scores, encoder_padding_mask)
+         attn_scores = paddle.nn.functional.softmax(attn_scores)
+         attn_out = paddle.squeeze(
+-            layers.matmul(attn_scores, encoder_output), [1]
++            paddle.matmul(attn_scores, encoder_output), [1]
+         )
+         attn_out = layers.concat([attn_out, hidden], 1)
+         attn_out = layers.fc(attn_out, size=self.hidden_size, bias_attr=False)
+diff --git a/python/paddle/fluid/tests/unittests/test_rpn_target_assign_op.py b/python/paddle/fluid/tests/unittests/test_rpn_target_assign_op.py
+index 98cad29ac2..d0147d8b70 100644
+--- a/python/paddle/fluid/tests/unittests/test_rpn_target_assign_op.py
++++ b/python/paddle/fluid/tests/unittests/test_rpn_target_assign_op.py
+@@ -23,9 +23,6 @@ from test_generate_proposal_labels_op import (
+     _generate_groundtruth,
+ )
+ 
+-import paddle.fluid as fluid
+-from paddle.fluid import Program, program_guard
+-
+ 
+ def rpn_target_assign(
+     anchor_by_gt_overlap,
+@@ -485,424 +482,5 @@ class TestRetinanetTargetAssignOp(OpTest):
+         self.check_output()
+ 
+ 
+-class TestRetinanetTargetAssignOpError(unittest.TestCase):
+-    def test_errors(self):
+-        with program_guard(Program(), Program()):
+-            bbox_pred1 = fluid.data(
+-                name='bbox_pred1', shape=[1, 100, 4], dtype='float32'
+-            )
+-            cls_logits1 = fluid.data(
+-                name='cls_logits1', shape=[1, 100, 10], dtype='float32'
+-            )
+-            anchor_box1 = fluid.data(
+-                name='anchor_box1', shape=[100, 4], dtype='float32'
+-            )
+-            anchor_var1 = fluid.data(
+-                name='anchor_var1', shape=[100, 4], dtype='float32'
+-            )
+-            gt_boxes1 = fluid.data(
+-                name='gt_boxes1', shape=[10, 4], dtype='float32'
+-            )
+-            gt_labels1 = fluid.data(
+-                name='gt_labels1', shape=[10, 1], dtype='int32'
+-            )
+-            is_crowd1 = fluid.data(name='is_crowd1', shape=[1], dtype='float32')
+-            im_info1 = fluid.data(
+-                name='im_info1', shape=[1, 3], dtype='float32'
+-            )
+-
+-            # The `bbox_pred` must be Variable and the data type of `bbox_pred` Tensor
+-            # one of float32 and float64.
+-            def test_bbox_pred_type():
+-                (
+-                    score_pred,
+-                    loc_pred,
+-                    score_target,
+-                    loc_target,
+-                    bbox_inside_weight,
+-                    fg_num,
+-                ) = fluid.layers.retinanet_target_assign(
+-                    [1],
+-                    cls_logits1,
+-                    anchor_box1,
+-                    anchor_var1,
+-                    gt_boxes1,
+-                    gt_labels1,
+-                    is_crowd1,
+-                    im_info1,
+-                    10,
+-                )
+-
+-            self.assertRaises(TypeError, test_bbox_pred_type)
+-
+-            def test_bbox_pred_tensor_dtype():
+-                bbox_pred2 = fluid.data(
+-                    name='bbox_pred2', shape=[1, 100, 4], dtype='intt32'
+-                )
+-                (
+-                    score_pred,
+-                    loc_pred,
+-                    score_target,
+-                    loc_target,
+-                    bbox_inside_weight,
+-                    fg_num,
+-                ) = fluid.layers.retinanet_target_assign(
+-                    bbox_pred2,
+-                    cls_logits1,
+-                    anchor_box1,
+-                    anchor_var1,
+-                    gt_boxes1,
+-                    gt_labels1,
+-                    is_crowd1,
+-                    im_info1,
+-                    10,
+-                )
+-
+-            self.assertRaises(TypeError, test_bbox_pred_tensor_dtype)
+-
+-            # The `cls_logits` must be Variable and the data type of `cls_logits` Tensor
+-            # one of float32 and float64.
+-            def test_cls_logits_type():
+-                (
+-                    score_pred,
+-                    loc_pred,
+-                    score_target,
+-                    loc_target,
+-                    bbox_inside_weight,
+-                    fg_num,
+-                ) = fluid.layers.retinanet_target_assign(
+-                    bbox_pred1,
+-                    2,
+-                    anchor_box1,
+-                    anchor_var1,
+-                    gt_boxes1,
+-                    gt_labels1,
+-                    is_crowd1,
+-                    im_info1,
+-                    10,
+-                )
+-
+-            self.assertRaises(TypeError, test_cls_logits_type)
+-
+-            def test_cls_logits_tensor_dtype():
+-                cls_logits2 = fluid.data(
+-                    name='cls_logits2', shape=[1, 100, 10], dtype='int32'
+-                )
+-                (
+-                    score_pred,
+-                    loc_pred,
+-                    score_target,
+-                    loc_target,
+-                    bbox_inside_weight,
+-                    fg_num,
+-                ) = fluid.layers.retinanet_target_assign(
+-                    bbox_pred1,
+-                    cls_logits2,
+-                    anchor_box1,
+-                    anchor_var1,
+-                    gt_boxes1,
+-                    gt_labels1,
+-                    is_crowd1,
+-                    im_info1,
+-                    10,
+-                )
+-
+-            self.assertRaises(TypeError, test_cls_logits_tensor_dtype)
+-
+-            # The `anchor_box` must be Variable and the data type of `anchor_box` Tensor
+-            # one of float32 and float64.
+-            def test_anchor_box_type():
+-                (
+-                    score_pred,
+-                    loc_pred,
+-                    score_target,
+-                    loc_target,
+-                    bbox_inside_weight,
+-                    fg_num,
+-                ) = fluid.layers.retinanet_target_assign(
+-                    bbox_pred1,
+-                    cls_logits1,
+-                    [5],
+-                    anchor_var1,
+-                    gt_boxes1,
+-                    gt_labels1,
+-                    is_crowd1,
+-                    im_info1,
+-                    10,
+-                )
+-
+-            self.assertRaises(TypeError, test_anchor_box_type)
+-
+-            def test_anchor_box_tensor_dtype():
+-                anchor_box2 = fluid.data(
+-                    name='anchor_box2', shape=[100, 4], dtype='int32'
+-                )
+-                (
+-                    score_pred,
+-                    loc_pred,
+-                    score_target,
+-                    loc_target,
+-                    bbox_inside_weight,
+-                    fg_num,
+-                ) = fluid.layers.retinanet_target_assign(
+-                    bbox_pred1,
+-                    cls_logits1,
+-                    anchor_box2,
+-                    anchor_var1,
+-                    gt_boxes1,
+-                    gt_labels1,
+-                    is_crowd1,
+-                    im_info1,
+-                    10,
+-                )
+-
+-            self.assertRaises(TypeError, test_anchor_box_tensor_dtype)
+-
+-            # The `anchor_var` must be Variable and the data type of `anchor_var` Tensor
+-            # one of float32 and float64.
+-            def test_anchor_var_type():
+-                (
+-                    score_pred,
+-                    loc_pred,
+-                    score_target,
+-                    loc_target,
+-                    bbox_inside_weight,
+-                    fg_num,
+-                ) = fluid.layers.retinanet_target_assign(
+-                    bbox_pred1,
+-                    cls_logits1,
+-                    anchor_box1,
+-                    5,
+-                    gt_boxes1,
+-                    gt_labels1,
+-                    is_crowd1,
+-                    im_info1,
+-                    10,
+-                )
+-
+-            self.assertRaises(TypeError, test_anchor_var_type)
+-
+-            def test_anchor_var_tensor_dtype():
+-                anchor_var2 = fluid.data(
+-                    name='anchor_var2', shape=[100, 4], dtype='int32'
+-                )
+-                (
+-                    score_pred,
+-                    loc_pred,
+-                    score_target,
+-                    loc_target,
+-                    bbox_inside_weight,
+-                    fg_num,
+-                ) = fluid.layers.retinanet_target_assign(
+-                    bbox_pred1,
+-                    cls_logits1,
+-                    anchor_box1,
+-                    anchor_var2,
+-                    gt_boxes1,
+-                    gt_labels1,
+-                    is_crowd1,
+-                    im_info1,
+-                    10,
+-                )
+-
+-            self.assertRaises(TypeError, test_anchor_var_tensor_dtype)
+-
+-            # The `gt_boxes` must be Variable and the data type of `gt_boxes` Tensor
+-            # one of float32 and float64.
+-            def test_gt_boxes_type():
+-                (
+-                    score_pred,
+-                    loc_pred,
+-                    score_target,
+-                    loc_target,
+-                    bbox_inside_weight,
+-                    fg_num,
+-                ) = fluid.layers.retinanet_target_assign(
+-                    bbox_pred1,
+-                    cls_logits1,
+-                    anchor_box1,
+-                    anchor_var1,
+-                    [4],
+-                    gt_labels1,
+-                    is_crowd1,
+-                    im_info1,
+-                    10,
+-                )
+-
+-            self.assertRaises(TypeError, test_gt_boxes_type)
+-
+-            def test_gt_boxes_tensor_dtype():
+-                gt_boxes2 = fluid.data(
+-                    name='gt_boxes2', shape=[10, 4], dtype='int32'
+-                )
+-                (
+-                    score_pred,
+-                    loc_pred,
+-                    score_target,
+-                    loc_target,
+-                    bbox_inside_weight,
+-                    fg_num,
+-                ) = fluid.layers.retinanet_target_assign(
+-                    bbox_pred1,
+-                    cls_logits1,
+-                    anchor_box1,
+-                    anchor_var1,
+-                    gt_boxes2,
+-                    gt_labels1,
+-                    is_crowd1,
+-                    im_info1,
+-                    10,
+-                )
+-
+-            self.assertRaises(TypeError, test_gt_boxes_tensor_dtype)
+-
+-            # The `gt_label` must be Variable and the data type of `gt_label` Tensor
+-            # int32.
+-            def test_gt_label_type():
+-                (
+-                    score_pred,
+-                    loc_pred,
+-                    score_target,
+-                    loc_target,
+-                    bbox_inside_weight,
+-                    fg_num,
+-                ) = fluid.layers.retinanet_target_assign(
+-                    bbox_pred1,
+-                    cls_logits1,
+-                    anchor_box1,
+-                    anchor_var1,
+-                    gt_boxes1,
+-                    9,
+-                    is_crowd1,
+-                    im_info1,
+-                    10,
+-                )
+-
+-            self.assertRaises(TypeError, test_gt_label_type)
+-
+-            def test_gt_label_tensor_dtype():
+-                gt_labels2 = fluid.data(
+-                    name='label2', shape=[10, 1], dtype='float32'
+-                )
+-                (
+-                    score_pred,
+-                    loc_pred,
+-                    score_target,
+-                    loc_target,
+-                    bbox_inside_weight,
+-                    fg_num,
+-                ) = fluid.layers.retinanet_target_assign(
+-                    bbox_pred1,
+-                    cls_logits1,
+-                    anchor_box1,
+-                    anchor_var1,
+-                    gt_boxes1,
+-                    gt_labels2,
+-                    is_crowd1,
+-                    im_info1,
+-                    10,
+-                )
+-
+-            self.assertRaises(TypeError, test_gt_label_tensor_dtype)
+-
+-            # The `is_crowd` must be Variable and the data type of `is_crowd` Tensor
+-            # int32.
+-            def test_is_crowd_type():
+-                (
+-                    score_pred,
+-                    loc_pred,
+-                    score_target,
+-                    loc_target,
+-                    bbox_inside_weight,
+-                    fg_num,
+-                ) = fluid.layers.retinanet_target_assign(
+-                    bbox_pred1,
+-                    cls_logits1,
+-                    anchor_box1,
+-                    anchor_var1,
+-                    gt_boxes1,
+-                    gt_labels1,
+-                    [10],
+-                    im_info1,
+-                    10,
+-                )
+-
+-            self.assertRaises(TypeError, test_is_crowd_type)
+-
+-            def test_is_crowd_tensor_dtype():
+-                is_crowd2 = fluid.data(
+-                    name='is_crowd2', shape=[10, 1], dtype='float32'
+-                )
+-                (
+-                    score_pred,
+-                    loc_pred,
+-                    score_target,
+-                    loc_target,
+-                    bbox_inside_weight,
+-                    fg_num,
+-                ) = fluid.layers.retinanet_target_assign(
+-                    bbox_pred1,
+-                    cls_logits1,
+-                    anchor_box1,
+-                    anchor_var1,
+-                    gt_boxes1,
+-                    gt_labels1,
+-                    is_crowd2,
+-                    im_info1,
+-                    10,
+-                )
+-
+-            self.assertRaises(TypeError, test_is_crowd_tensor_dtype)
+-
+-            # The `im_info` must be Variable and the data type of `im_info` Tensor
+-            # must be one of float32 and float64.
+-            def test_im_info_type():
+-                (
+-                    score_pred,
+-                    loc_pred,
+-                    score_target,
+-                    loc_target,
+-                    bbox_inside_weight,
+-                    fg_num,
+-                ) = fluid.layers.retinanet_target_assign(
+-                    bbox_pred1,
+-                    cls_logits1,
+-                    anchor_box1,
+-                    anchor_var1,
+-                    gt_boxes1,
+-                    gt_labels1,
+-                    is_crowd1,
+-                    1,
+-                    10,
+-                )
+-
+-            self.assertRaises(TypeError, test_im_info_type)
+-
+-            def test_im_info_tensor_dtype():
+-                im_info2 = fluid.data(
+-                    name='im_info2', shape=[1, 3], dtype='int32'
+-                )
+-                (
+-                    score_pred,
+-                    loc_pred,
+-                    score_target,
+-                    loc_target,
+-                    bbox_inside_weight,
+-                    fg_num,
+-                ) = fluid.layers.retinanet_target_assign(
+-                    bbox_pred1,
+-                    cls_logits1,
+-                    anchor_box1,
+-                    anchor_var1,
+-                    gt_boxes1,
+-                    gt_labels1,
+-                    is_crowd1,
+-                    im_info2,
+-                    10,
+-                )
+-
+-            self.assertRaises(TypeError, test_im_info_tensor_dtype)
+-
+-
+ if __name__ == '__main__':
+     unittest.main()
+diff --git a/python/paddle/fluid/tests/unittests/test_static_save_load.py b/python/paddle/fluid/tests/unittests/test_static_save_load.py
+index a2c44c5fae..a20573edd1 100644
+--- a/python/paddle/fluid/tests/unittests/test_static_save_load.py
++++ b/python/paddle/fluid/tests/unittests/test_static_save_load.py
+@@ -115,7 +115,7 @@ class SimpleLSTMRNN(fluid.Layer):
+                 bias = self.bias_arr[k]
+ 
+                 nn = fluid.layers.concat([self._input, pre_hidden], 1)
+-                gate_input = fluid.layers.matmul(x=nn, y=weight_1)
++                gate_input = paddle.matmul(x=nn, y=weight_1)
+ 
+                 gate_input = paddle.add(gate_input, bias)
+                 i, j, f, o = fluid.layers.split(
+@@ -234,7 +234,7 @@ class PtbModel(fluid.Layer):
+         rnn_out = paddle.reshape(
+             rnn_out, shape=[-1, self.num_steps, self.hidden_size]
+         )
+-        projection = fluid.layers.matmul(rnn_out, self.softmax_weight)
++        projection = paddle.matmul(rnn_out, self.softmax_weight)
+         projection = paddle.add(projection, self.softmax_bias)
+         projection = paddle.reshape(projection, shape=[-1, self.vocab_size])
+         loss = paddle.nn.functional.softmax_with_cross_entropy(
+diff --git a/python/paddle/fluid/tests/unittests/transformer_model.py b/python/paddle/fluid/tests/unittests/transformer_model.py
+index 316241caf8..a338d31f78 100644
+--- a/python/paddle/fluid/tests/unittests/transformer_model.py
++++ b/python/paddle/fluid/tests/unittests/transformer_model.py
+@@ -163,13 +163,13 @@ def multi_head_attention(
+             return layers.elementwise_div(x=exp_out, y=sum_out, axis=0)
+ 
+         scaled_q = paddle.scale(x=q, scale=d_model**-0.5)
+-        product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
++        product = paddle.matmul(x=scaled_q, y=k, transpose_y=True)
+         weights = __softmax(paddle.add(x=product, y=attn_bias))
+         if dropout_rate:
+             weights = layers.dropout(
+                 weights, dropout_prob=dropout_rate, is_test=False
+             )
+-        out = layers.matmul(weights, v)
++        out = paddle.matmul(weights, v)
+         return out
+ 
+     q, k, v = __compute_qkv(queries, keys, values, n_head, d_key, d_value)
+diff --git a/python/paddle/fluid/tests/unittests/xpu/test_fused_attention_op_xpu.py b/python/paddle/fluid/tests/unittests/xpu/test_fused_attention_op_xpu.py
+index 64aa657009..3cdb5094f2 100644
+--- a/python/paddle/fluid/tests/unittests/xpu/test_fused_attention_op_xpu.py
++++ b/python/paddle/fluid/tests/unittests/xpu/test_fused_attention_op_xpu.py
+@@ -31,7 +31,6 @@ import paddle
+ import paddle.incubate.nn.functional as incubate_f
+ import paddle.nn.functional as F
+ from paddle import tensor
+-from paddle.fluid import layers
+ from paddle.fluid.framework import default_main_program
+ from paddle.nn.layer.common import Dropout, Linear
+ from paddle.nn.layer.norm import LayerNorm
+@@ -164,7 +163,7 @@ class XPUTestFusedAttentionOp(XPUOpTestWrapper):
+ 
+             # [B, n_head, seq_len, head_dim] * [B, n_head, out_seq_len, head_dim]
+             # --> [B, n_head, seq_len, out_seq_len]
+-            qk_out = layers.matmul(
++            qk_out = tensor.matmul(
+                 x=q_out * self.head_dim**-0.5, y=k_out, transpose_y=True
+             )
+ 
+diff --git a/python/paddle/fluid/tests/unittests/xpu/test_matmul_op_xpu.py b/python/paddle/fluid/tests/unittests/xpu/test_matmul_op_xpu.py
+index d5ad5cb6f7..c04cc72be4 100644
+--- a/python/paddle/fluid/tests/unittests/xpu/test_matmul_op_xpu.py
++++ b/python/paddle/fluid/tests/unittests/xpu/test_matmul_op_xpu.py
+@@ -27,7 +27,6 @@ from xpu.get_test_cover_info import (
+ 
+ import paddle
+ import paddle.fluid as fluid
+-from paddle.fluid import Program, program_guard
+ 
+ 
+ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
+@@ -135,71 +134,11 @@ def generate_compatible_shapes_2(dim, transpose_X, transpose_Y):
+     return shape_X, shape_Y
+ 
+ 
+-def generate_negative_dims(in_shape):
+-    from itertools import combinations
+-
+-    size = len(in_shape)
+-    indexs = list()
+-    shapes = list()
+-    for i in range(size):
+-        indexs.extend(list(combinations([j for j in range(size)], i + 1)))
+-    for idx in indexs:
+-        shapes.append(
+-            [in_shape[i] if i not in idx else -1 for i in range(size)]
+-        )
+-    return shapes
+-
+-
+-def test_negative_dims_program(obj):
+-    for shape_x in generate_negative_dims(obj.shape_X):
+-        for shape_y in generate_negative_dims(obj.shape_Y):
+-            X = np.random.random(obj.shape_X).astype(obj.in_type)
+-            Y = np.random.random(obj.shape_Y).astype(obj.in_type)
+-            Ref = reference_matmul(X, Y, obj.transpose_X, obj.transpose_Y)
+-            with program_guard(Program(), Program()):
+-                x = fluid.data(name='x', shape=shape_x, dtype=obj.in_type_str)
+-                y = fluid.data(name='y', shape=shape_y, dtype=obj.in_type_str)
+-                output = fluid.layers.matmul(
+-                    x, y, obj.transpose_X, obj.transpose_Y
+-                )
+-                obj.assertEqual(len(Ref.shape), len(output.shape))
+-                for idx in range(len(Ref.shape)):
+-                    if output.shape[idx] != -1:
+-                        obj.assertEqual(Ref.shape[idx], output.shape[idx])
+-                exe = fluid.Executor(fluid.XPUPlace(0))
+-                (res,) = exe.run(
+-                    fluid.default_main_program(),
+-                    feed={'x': X, 'y': Y},
+-                    fetch_list=[output],
+-                )
+-                np.allclose(res, Ref, atol=1e-3)
+-
+-
+ class XPUTestMatmulOpErr(XPUOpTestWrapper):
+     def __init__(self):
+         self.op_name = "matmul"
+         self.use_dynamic_create_class = False
+ 
+-    class TestMatmulOpError(unittest.TestCase):
+-        def test_errors(self):
+-            with program_guard(Program(), Program()):
+-                # The inputs type of matmul_op must be Variable.
+-                input1 = 12
+-                self.assertRaises(
+-                    TypeError, fluid.layers.matmul, input1, input1
+-                )
+-                # The inputs dtype of matmul_op must be float32, float16
+-                input2 = fluid.layers.data(
+-                    name='input2', shape=[10, 10], dtype="int32"
+-                )
+-                self.assertRaises(
+-                    TypeError, fluid.layers.matmul, input2, input2
+-                )
+-                input3 = fluid.layers.data(
+-                    name='input3', shape=[2, 2], dtype="float16"
+-                )
+-                fluid.layers.matmul(input3, input3)
+-
+     class API_TestMm(unittest.TestCase):
+         def test_out(self):
+             with fluid.program_guard(fluid.Program()):
+@@ -399,39 +338,6 @@ class XPUTestMatmulOp1(XPUOpTestWrapper):
+         return base_class, classes
+ 
+ 
+-class XPUTestMatmulOp2(XPUOpTestWrapper):
+-    def __init__(self):
+-        self.op_name = "matmul"
+-        self.use_dynamic_create_class = True
+-
+-    def dynamic_create_class(self):
+-        base_class = unittest.TestCase
+-        classes = []
+-        xpu_support_dims_list = [[1, 1], [2, 2], [3, 3]]
+-        batch_size = [2, 4, 5, 10, 50, 100, 300]
+-        for dims in xpu_support_dims_list:
+-            dim_X = dims[0]
+-            dim_Y = dims[1]
+-            for transose_x in [True, False]:
+-                for transose_y in [True, False]:
+-                    for batch in batch_size:
+-                        class_name = 'TestMatMulAPI_dimX_{}_dim_Y_{}_transX_{}_transY_{}_batch_{}'.format(
+-                            dim_X, dim_Y, transose_x, transose_y, batch
+-                        )
+-                        shape_x, shape_y = generate_compatible_shapes(
+-                            dim_X, dim_Y, transose_x, transose_y, batch
+-                        )
+-                        attr_dict = {
+-                            'shape_X': shape_x,
+-                            'shape_Y': shape_y,
+-                            'transpose_X': transose_x,
+-                            'transpose_Y': transose_y,
+-                            'test_propram': test_negative_dims_program,
+-                        }
+-                        classes.append([class_name, attr_dict])
+-        return base_class, classes
+-
+-
+ class XPUTestMatmulOp3(XPUOpTestWrapper):
+     def __init__(self):
+         self.op_name = "matmul"
+@@ -464,7 +370,6 @@ support_types = get_xpu_op_support_types('matmul')
+ for stype in support_types:
+     create_test_class(globals(), XPUTestMatmulOpErr, stype)
+     create_test_class(globals(), XPUTestMatmulOp1, stype)
+-    create_test_class(globals(), XPUTestMatmulOp2, stype)
+     create_test_class(globals(), XPUTestMatmulOp3, stype)
+ 
+ if __name__ == "__main__":
