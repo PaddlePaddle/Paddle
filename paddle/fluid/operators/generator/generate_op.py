@@ -20,10 +20,13 @@ import yaml
 from filters import (
     cartesian_prod_mapping,
     to_input_name,
+    to_int_array_tensor_name,
+    to_int_array_tensors_name,
     to_op_attr_type,
     to_opmaker_name,
     to_opmaker_name_cstr,
     to_pascal_case,
+    to_scalar_tensor_name,
 )
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 from parse_utils import to_named_dict
@@ -48,6 +51,9 @@ env = Environment(
 env.filters["to_op_attr_type"] = to_op_attr_type
 env.filters["to_opmaker_name"] = to_opmaker_name
 env.filters["to_pascal_case"] = to_pascal_case
+env.filters["to_scalar_tensor_name"] = to_scalar_tensor_name
+env.filters["to_int_array_tensor_name"] = to_int_array_tensor_name
+env.filters["to_int_array_tensors_name"] = to_int_array_tensors_name
 env.filters["to_input_name"] = to_input_name
 env.filters["to_opmaker_name_cstr"] = to_opmaker_name_cstr
 env.filters["cartesian_prod_mapping"] = cartesian_prod_mapping
@@ -66,23 +72,74 @@ def restruct_io(op):
     return op
 
 
-def process_support_tensor(op_item, support_tensor_list):
+def process_scalar(op_item, scalar_configs):
     scalar_map = {
         'Scalar': 'float',
         'Scalar(float)': 'float',
         'Scalar(int)': 'int',
         'Scalar(int64_t)': 'int64_t',
     }
-    for attr_item in op_item['attrs']:
-        if support_tensor_list and attr_item['name'] in support_tensor_list:
-            attr_type = attr_item['typename']
-            assert (
-                attr_type in scalar_map
-            ), f"{op_item['name']}'s support_tensor in op_compat.yaml is error, the data_type of {attr_item['name']} is expected to be one of Scalar, Scalar(float), Scalar(int) or Scalar(int64_t), but now is {attr_type}."
-            attr_item['typename'] = scalar_map[attr_type]
-            attr_item['is_support_tensor'] = True
-        else:
-            attr_item['is_support_tensor'] = False
+    if scalar_configs is not None:
+        for attr_item in op_item['attrs']:
+            if attr_item['name'] in scalar_configs:
+                attr_type = attr_item['typename']
+                assert (
+                    attr_type in scalar_map
+                ), f"{op_item['name']}'s scalar in op_compat.yaml is error, the data_type of {attr_item['name']} is expected to be one of Scalar, Scalar(float), Scalar(int) or Scalar(int64_t), but now is {attr_type}."
+
+                scalar_config = scalar_configs[attr_item['name']]
+                attr_item['is_support_tensor'] = (
+                    True
+                    if 'support_tensor' in scalar_config
+                    and scalar_config['support_tensor']
+                    else False
+                )
+                if attr_item['is_support_tensor']:
+                    attr_item['typename'] = (
+                        scalar_config['data_type']
+                        if 'data_type' in scalar_config
+                        else scalar_map[attr_type]
+                    )
+                else:
+                    attr_item['tensor_name'] = scalar_config['tensor_name']
+
+
+def process_int_array(op_item, int_array_configs):
+    data_type_map = {
+        'int': 'std::vector<int>',
+        'int64_t': 'std::vector<int64_t>',
+    }
+    if int_array_configs is not None:
+        for attr_item in op_item['attrs']:
+            if attr_item['name'] in int_array_configs:
+                attr_type = attr_item['typename']
+                assert (
+                    attr_item['typename'] == "IntArray"
+                ), f"{op_item['name']}'s int_array in op_compat.yaml is error, the data_type of {attr_item['name']} is expected to be one of IntArray, but now is {attr_type}."
+
+                int_array_config = int_array_configs[attr_item['name']]
+                attr_item['is_support_tensor'] = (
+                    True
+                    if 'support_tensor' in int_array_config
+                    and int_array_config['support_tensor']
+                    else False
+                )
+                if attr_item['is_support_tensor']:
+                    attr_item['typename'] = (
+                        int_array_config['data_type']
+                        if 'data_type' in int_array_config
+                        else 'std::vector<int64_t>'
+                    )
+                else:
+                    attr_item['manual_flag'] = True
+                    if 'tensor_name' in int_array_config:
+                        attr_item['tensor_name'] = int_array_config[
+                            'tensor_name'
+                        ]
+                    if 'tensors_name' in int_array_config:
+                        attr_item['tensors_name'] = int_array_config[
+                            'tensors_name'
+                        ]
 
 
 # replace name of op and params for OpMaker
@@ -110,13 +167,16 @@ def replace_compat_name(op_op_map, forward_op_dict, backward_op_dict):
         if new_op_name != op_name:
             forward_op_item['op_name'] = op_name
 
-        support_tensor_list = None
+        scalar_configs = None
+        int_array_configs = None
 
-        if 'support_tensor' in op_args:
-            support_tensor_list = [
-                item.strip() for item in op_args['support_tensor'].split(",")
-            ]
-        process_support_tensor(forward_op_item, support_tensor_list)
+        if 'scalar' in op_args:
+            scalar_configs = op_args['scalar']
+        if 'int_array' in op_args:
+            int_array_configs = op_args['int_array']
+
+        process_scalar(forward_op_item, scalar_configs)
+        process_int_array(forward_op_item, int_array_configs)
 
         if 'backward' in op_args and has_backward:
             backward_op_list = op_args['backward'].split(',')
@@ -124,7 +184,8 @@ def replace_compat_name(op_op_map, forward_op_dict, backward_op_dict):
             forward_op_item['backward'] = bw_op_name
             backward_op_item['op_name'] = bw_op_name
 
-            process_support_tensor(backward_op_item, support_tensor_list)
+            process_scalar(backward_op_item, scalar_configs)
+            process_int_array(backward_op_item, int_array_configs)
 
             # for double grad
             if len(backward_op_list) > 1:
@@ -143,7 +204,8 @@ def replace_compat_name(op_op_map, forward_op_dict, backward_op_dict):
                         double_grad_item['forward']['attrs'], op_args['attrs']
                     )
 
-                process_support_tensor(double_grad_item, support_tensor_list)
+                process_scalar(double_grad_item, scalar_configs)
+                process_int_array(double_grad_item, int_array_configs)
 
                 # for triple grad
                 if len(backward_op_list) > 2:
@@ -163,9 +225,8 @@ def replace_compat_name(op_op_map, forward_op_dict, backward_op_dict):
                             op_args['attrs'],
                         )
 
-                    process_support_tensor(
-                        triple_grad_item, support_tensor_list
-                    )
+                    process_scalar(triple_grad_item, scalar_configs)
+                    process_int_array(triple_grad_item, int_array_configs)
 
         key_set = ['inputs', 'attrs', 'outputs']
         args_map = {}

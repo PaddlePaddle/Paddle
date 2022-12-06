@@ -252,6 +252,22 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : crop (crop_tensor)
+  backward : crop_grad (crop_tensor_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  int_array:
+    shape :
+      data_type : int
+      tensor_name : Shape
+      tensors_name : ShapeTensor
+    offsets :
+      data_type : int
+      tensor_name : Offsets
+      tensors_name : OffsetsTensor
+
 - op : cross
   inputs :
     {x : X, y : Y}
@@ -815,6 +831,10 @@
   outputs :
     out : Out
   support_tensor : num_samples
+  scalar :
+    num_samples :
+      data_type : int
+      support_tensor : true
 
 - op : multiply (elementwise_mul)
   backward : multiply_grad (elementwise_mul_grad)
@@ -1160,6 +1180,22 @@
     x : X
   outputs :
     out : Out
+
+- op : topk (top_k_v2)
+  backward : topk_grad (top_k_v2_grad)
+  inputs :
+    x : X
+  outputs :
+    {out : Out, indices : Indices}
+  scalar :
+    k :
+      data_type : int
+      tensor_name : K
+  # int_array :
+  #   shape :
+  #     data_type : int64_t
+  #     tensor_name : Shape
+  #     tensors_name  : ShapeList
 
 - op : trace
   inputs :

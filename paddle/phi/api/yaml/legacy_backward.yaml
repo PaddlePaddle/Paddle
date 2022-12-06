@@ -325,16 +325,6 @@
   kernel :
     func : conv3d_transpose_grad
 
-- backward_op : crop_grad
-  forward : crop (Tensor x, IntArray shape, IntArray offsets) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, IntArray offsets)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : CropGradInferMeta
-  kernel :
-    func : crop_grad
-    data_type : x
-
 - backward_op : cross_entropy_with_softmax_grad
   forward : cross_entropy_with_softmax (Tensor input, Tensor label, bool soft_label, bool use_softmax, bool numeric_stable_mode, int ignore_index, int axis) -> Tensor(softmax), Tensor(loss)
   args : (Tensor label, Tensor softmax, Tensor loss_grad, bool soft_label, bool use_softmax, bool numeric_stable_mode, int ignore_index, int axis)
@@ -1704,16 +1694,6 @@
     func : tile_grad
   no_need_buffer : x
   backward : tile_double_grad
-
-- backward_op : topk_grad
-  forward : topk (Tensor x, Scalar k, int axis = -1, bool largest = true, bool sorted = true) -> Tensor(out), Tensor(indices)
-  args : (Tensor x, Tensor indices, Tensor out_grad, Scalar k = -1, int axis = -1, bool largest = true, bool sorted = true)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : topk_grad
 
 - backward_op : transpose_double_grad
   forward : transpose_grad (Tensor grad_out, int[] perm) -> Tensor(grad_x)
