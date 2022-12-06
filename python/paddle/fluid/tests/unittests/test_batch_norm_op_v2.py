@@ -129,7 +129,7 @@ class TestBatchNorm(unittest.TestCase):
 
             def compute_v1(x):
                 with fluid.dygraph.guard(p):
-                    bn = nn.layer.norm.BatchNorm()
+                    bn = nn.layer.norm.BatchNorm(shape[1])
                     # bn = paddle.nn.BatchNorm2D(shape[1])
                     x1 = paddle.to_tensor(x)
                     x1.stop_gradient = False

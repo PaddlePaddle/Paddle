@@ -64,7 +64,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
         out = self.conv(inputs)
         out = self.batch_norm(out)
         if self.act == 'leaky':
-            out = fluid.layers.leaky_relu(x=out, alpha=0.1)
+            out = paddle.nn.functional.leaky_relu(x=out, alpha=0.1)
         return out
 
 
