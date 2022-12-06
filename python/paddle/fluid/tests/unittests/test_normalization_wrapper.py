@@ -38,8 +38,9 @@ class TestNormalization(unittest.TestCase):
             dtype="float32",
             append_batch_size=False,
         )
+        paddle.enable_static()
         data.stop_gradient = False
-        l2_norm = paddle.linalg.norm(data, axis=axis, keepdim=True)
+        l2_norm = paddle.linalg.norm(data, axis=axis)
         out = paddle.sum(l2_norm, axis=None)
 
         fluid.backward.append_backward(loss=out)
