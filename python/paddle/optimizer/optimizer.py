@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import warnings
 from collections import defaultdict
 
 import numpy as np
@@ -34,6 +35,7 @@ from paddle.fluid.framework import (
 from ..fluid import framework, layers, unique_name
 from ..fluid.backward import _get_no_grad_set_name, append_backward
 from ..fluid.clip import (
+    ClipGradByGlobalNorm,
     GradientClipBase,
     append_gradient_clip_ops,
     error_clip_callback,
@@ -176,6 +178,8 @@ class Optimizer:
         parameters=None,
         weight_decay=None,
         grad_clip=None,
+        flatten_param_grads=False,
+        align_size=-1,
         name=None,
     ):
 
@@ -238,6 +242,8 @@ class Optimizer:
             self.regularization = weight_decay
         self._grad_clip = grad_clip
         self._learning_rate = learning_rate
+        self._flatten_param_grads = flatten_param_grads
+        self._align_size = align_size
 
         self._dtype = None
         # Infer the dtype form parameter
@@ -259,7 +265,7 @@ class Optimizer:
         # to train. These tensors are called accumulators.
         # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
         self._accumulators = defaultdict(lambda: dict())
-        self.helper = None
+        self.helper = LayerHelper(self.__class__.__name__)
         self._opti_name_list = []
         self._accumulators_holder = {}
         self._param_device_map = dict()
@@ -1093,6 +1099,94 @@ class Optimizer:
                 self._append_dgc_ops(params_grads)
         return params_grads
 
+    def flatten_param_grads(self, params_grads):
+        self.helper = LayerHelper(self.__class__.__name__)
+        need_flatten_params = []
+        need_flatten_grads = []
+        for p, g in params_grads:
+            if g is None:
+                continue
+            g.persistable = True
+            if (
+                getattr(p, 'need_clip', True) is False
+                or getattr(p, 'regularizer', None) is not None
+            ):
+                warnings.warn(
+                    "flatten_param_grads=True will be discarded since paramter '{}''s need_clip is False or "
+                    "the regularizer is set".format(p.name)
+                )
+                self._flatten_param_grads = False
+                return params_grads
+
+            need_flatten_params.append(p)
+            need_flatten_grads.append(g)
+
+        shape = [np.prod(p.shape) for p in need_flatten_params]
+        block = need_flatten_params[0].block
+
+        flatten_param = self.helper.create_global_variable(
+            name='flatten_param',
+            persistable=True,
+            dtype=need_flatten_params[0].dtype,
+            shape=[np.sum(shape)],
+            belong_to_optimizer=True,
+        )
+
+        flatten_param.stop_gradient
+        # flatten_param.trainable = True
+        # flatten_param.optimize_attr = need_flatten_params[0].optimize_attr
+        # flatten_param.regularizer = need_flatten_params[0].regularizer
+
+        flatten_grad = self.helper.create_global_variable(
+            name='flatten_grad',
+            persistable=True,
+            dtype=need_flatten_grads[0].dtype,
+            shape=[np.sum(shape)],
+            belong_to_optimizer=True,
+        )
+
+        with program_guard(default_main_program()):
+            block.append_op(
+                type="coalesce_tensor",
+                inputs={"Input": need_flatten_params},
+                outputs={
+                    "Output": need_flatten_params,
+                    "FusedOutput": flatten_param,
+                },
+                attrs={
+                    "copy_data": True,
+                    "use_align": True,
+                    "align_size": self._align_size,
+                    "dtype": need_flatten_params[0].dtype,
+                },
+            )
+
+            block.append_op(
+                type="coalesce_tensor",
+                inputs={"Input": need_flatten_grads},
+                outputs={
+                    "Output": need_flatten_grads,
+                    "FusedOutput": flatten_grad,
+                },
+                attrs={
+                    "copy_data": True,
+                    "use_align": True,
+                    "align_size": self._align_size,
+                    "dtype": need_flatten_grads[0].dtype,
+                },
+            )
+
+        # NOTE(zhiqiu): the initializer should be set after coalesce_tensor op,
+        # so the shape of flatten_param and flatten_grad will be inferred.
+        self.helper.set_variable_initializer(
+            flatten_param, initializer=Constant(0.0)
+        )
+        self.helper.set_variable_initializer(
+            flatten_grad, initializer=Constant(0.0)
+        )
+
+        return [(flatten_param, flatten_grad)]
+
     def apply_gradients(self, params_grads):
         """
         Second part of `minimize`, appending optimization operators for
@@ -1121,6 +1215,13 @@ class Optimizer:
         """
 
         params_grads = sorted(params_grads, key=lambda x: x[0].name)
+
+        # NOTE(zhiqiu): currently, only support ClipGradByGlobalNorm and without regularization.
+        if self._flatten_param_grads and self.regularization is None:
+            if self._grad_clip is None or isinstance(
+                self._grad_clip, ClipGradByGlobalNorm
+            ):
+                params_grads = self.flatten_param_grads(params_grads)
 
         # 'optimizer(grad_clip)' or 'set_gradient_clip'
         if self._grad_clip is not None:
@@ -1156,6 +1257,16 @@ class Optimizer:
                 framework.default_main_program(),
                 framework.default_startup_program(),
             ):
+                # NOTE(zhiqiu): currently, only support ClipGradByGlobalNorm and without regularization.
+                print("yoki1: ", self._flatten_param_grads)
+                print("yoki2: ", self.regularization)
+                print("yoki3: ", self._grad_clip)
+                if self._flatten_param_grads and self.regularization is None:
+                    if self._grad_clip is None or isinstance(
+                        self._grad_clip, ClipGradByGlobalNorm
+                    ):
+                        params_grads = self.flatten_param_grads(params_grads)
+
                 if isinstance(params_grads, list):
                     if self._grad_clip is not None:
                         params_grads = self._grad_clip(params_grads)

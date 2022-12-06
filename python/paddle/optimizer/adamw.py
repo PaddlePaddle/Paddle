@@ -160,6 +160,8 @@ class AdamW(Optimizer):
         grad_clip=None,
         lazy_mode=False,
         multi_precision=False,
+        flatten_param_grads=False,
+        align_size=-1,
         name=None,
     ):
         assert learning_rate is not None
@@ -260,6 +262,8 @@ class AdamW(Optimizer):
         self._epsilon = epsilon
         self._lazy_mode = lazy_mode
         self._multi_precision = multi_precision
+        self._flatten_param_grads = flatten_param_grads
+        self._align_size = align_size
         self._master_weights = {}
 
         self._default_dict = {
