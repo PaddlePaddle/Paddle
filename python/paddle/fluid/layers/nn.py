@@ -94,7 +94,6 @@ __all__ = [
     'sampling_id',
     'clip',
     'clip_by_norm',
-    'mean',
     'mul',
     'merge_selected_rows',
     'get_tensor_from_selected_rows',
@@ -5076,47 +5075,6 @@ def clip_by_norm(x, max_norm, name=None):
         inputs={"X": x},
         attrs={"max_norm": max_norm},
         outputs={"Out": out},
-    )
-
-    return out
-
-
-@deprecated(since="2.0.0", update_to="paddle.mean")
-@templatedoc()
-def mean(x, name=None):
-    """
-    ${comment}
-
-    Args:
-        x(${x_type}): ${x_comment}
-        name(basestring|None): Name of the output.
-
-    Returns:
-        out(${out_type}): ${out_comment}
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.fluid as fluid
-            paddle.enable_static()
-
-            input = fluid.layers.data(
-                name='data', shape=[2, 3], dtype='float32')
-            mean = paddle.mean(input)
-    """
-
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.mean(x)
-    if in_dygraph_mode():
-        return _C_ops.mean_all(x)
-
-    helper = LayerHelper("mean", **locals())
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'mean')
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    helper.append_op(
-        type="mean", inputs={"X": x}, attrs={}, outputs={"Out": out}
     )
 
     return out

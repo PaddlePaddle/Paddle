@@ -1964,6 +1964,8 @@ def fused_bn_add_act(
             .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
 
             def build_program(main_program, startup_program):
                 with fluid.program_guard(main_program, startup_program):
@@ -1994,7 +1996,7 @@ def fused_bn_add_act(
                     fused_bn_add_act = fluid.contrib.layers.fused_bn_add_act(conv1_2, bn)
                     prediction = fluid.layers.fc(input=fused_bn_add_act, size=10, act='softmax')
                     loss = fluid.layers.cross_entropy(input=prediction, label=y)
-                    loss = fluid.layers.mean(loss)
+                    loss = paddle.mean(loss)
                     sgd = fluid.optimizer.SGD(learning_rate=0.001)
                     sgd = fluid.contrib.mixed_precision.decorate(
                         sgd, use_dynamic_loss_scaling=True, init_loss_scaling=128.0)
