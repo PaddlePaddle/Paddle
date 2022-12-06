@@ -52,9 +52,6 @@ from .logical_transformer import (
 from .loop_transformer import (
     LoopTransformer,
 )
-from .print_transformer import (
-    PrintTransformer,
-)
 from .return_transformer import (
     ReturnTransformer,
 )
@@ -127,7 +124,7 @@ class DygraphToStaticAst(BaseTransformer):
         transformers = [
             EarlyReturnTransformer,
             BasicApiTransformer,  # Basic Api
-            TensorShapeTransformer,  # Tensor.shape -> layers.shape(Tensor)
+            TensorShapeTransformer,  # Tensor.shape -> paddle.shape(Tensor)
             BreakContinueTransformer,  # break/continue in loops
             ReturnTransformer,  # return in functions
             LogicalTransformer,  # logical and/or/not
@@ -135,7 +132,6 @@ class DygraphToStaticAst(BaseTransformer):
             LoopTransformer,  # for/while -> while_op
             IfElseTransformer,  # if/else -> cond_op
             AssertTransformer,  # assert statement
-            PrintTransformer,  # print statement
             CallTransformer,  # transform call recursively
             CastTransformer,  # type casting statement
             DecoratorTransformer,  # transform decorators to function call

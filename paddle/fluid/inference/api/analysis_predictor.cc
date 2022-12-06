@@ -1257,12 +1257,26 @@ void AnalysisPredictor::PrepareArgument() {
       }
     }
   }
-  if (config_.ir_debug_) {
-    pass_builder->TurnOnDebug();
-  }
+
   if (!config_.ir_optim()) {
     argument_.SetEnableIrOptim(false);
-    LOG(INFO) << "ir_optim is turned off, no IR pass will be executed";
+    if (config_.enable_gpu_half_) {
+      argument_.SetEnableIrOptim(true);
+      pass_builder->ClearPasses();
+      pass_builder->AppendPass("float_to_half_pass");
+      LOG(INFO)
+          << "This model run in Paddle-GPU mixed precision mode with no ir "
+             "optimization.";
+    } else {
+      LOG(INFO) << "ir_optim is turned off, no IR pass will be executed.";
+    }
+  } else {
+    if (config_.ir_debug_) {
+      pass_builder->TurnOnDebug();
+    }
+    if (config_.enable_gpu_half_) {
+      LOG(INFO) << "This model run in Paddle-GPU mixed precision mode.";
+    }
   }
   argument_.SetDisableLogs(config_.glog_info_disabled());
   argument_.SetIrAnalysisPasses(pass_builder->AllPasses());
@@ -1272,6 +1286,9 @@ void AnalysisPredictor::PrepareArgument() {
   // mixed precison.
   argument_.SetModelPrecision(static_cast<int>(model_precision_));
   argument_.SetMixedBlackList(config_.mixed_black_list_);
+  argument_.SetEnableGPUHalf(config_.enable_gpu_half_);
+  argument_.SetMixedPrecisionMode(static_cast<int>(
+      paddle::ConvertPrecision(config_.mixed_precision_mode_)));
 }
 
 // NOTE All the members in AnalysisConfig should be copied to Argument.
@@ -2301,9 +2318,10 @@ USE_TRT_CONVERTER(nearest_interp_v2);
 USE_TRT_CONVERTER(bilinear_interp_v2);
 USE_TRT_CONVERTER(reshape);
 USE_TRT_CONVERTER(reshape2);
-USE_TRT_CONVERTER(reduce_sum);
 USE_TRT_CONVERTER(gather_nd);
 USE_TRT_CONVERTER(reduce_mean);
+USE_TRT_CONVERTER(reduce_max);
+USE_TRT_CONVERTER(reduce_sum);
 USE_TRT_CONVERTER(tile);
 USE_TRT_CONVERTER(conv3d);
 USE_TRT_CONVERTER(conv3d_transpose);
@@ -2338,6 +2356,7 @@ USE_TRT_CONVERTER(fill_constant)
 USE_TRT_CONVERTER(fused_token_prune)
 USE_TRT_CONVERTER(celu)
 USE_TRT_CONVERTER(layernorm_shift_partition)
+USE_TRT_CONVERTER(reverse_roll)
 USE_TRT_CONVERTER(preln_layernorm_shift_partition)
 USE_TRT_CONVERTER(merge_layernorm)
 USE_TRT_CONVERTER(skip_merge_layernorm)
