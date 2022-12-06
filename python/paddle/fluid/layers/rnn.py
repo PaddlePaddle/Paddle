@@ -1607,10 +1607,10 @@ def _dynamic_decode_declarative(
     else:
         # inputs and states of all steps must be saved for backward and training
         inputs_arrays = map_structure(
-            lambda x: control_flow.array_write(x, step_idx), initial_inputs
+            lambda x: paddle.tensor.array_write(x, step_idx), initial_inputs
         )
         states_arrays = map_structure(
-            lambda x: control_flow.array_write(x, step_idx), initial_states
+            lambda x: paddle.tensor.array_write(x, step_idx), initial_states
         )
 
     def _maybe_copy(state, new_state, step_mask):
@@ -1647,11 +1647,11 @@ def _dynamic_decode_declarative(
     with while_op.block():
         if not is_test:
             inputs = map_structure(
-                lambda array: control_flow.array_read(array, step_idx),
+                lambda array: paddle.tensor.array_read(array, step_idx),
                 inputs_arrays,
             )
             states = map_structure(
-                lambda array: control_flow.array_read(array, step_idx),
+                lambda array: paddle.tensor.array_read(array, step_idx),
                 states_arrays,
             )
         (outputs, next_states, next_inputs, next_finished) = decoder.step(
@@ -1690,7 +1690,7 @@ def _dynamic_decode_declarative(
         )
 
         map_structure(
-            lambda x, x_array: control_flow.array_write(
+            lambda x, x_array: paddle.tensor.array_write(
                 x, i=step_idx, array=x_array
             ),
             outputs,
@@ -1708,14 +1708,14 @@ def _dynamic_decode_declarative(
             map_structure(tensor.assign, next_states, global_states)
         else:
             map_structure(
-                lambda x, x_array: control_flow.array_write(
+                lambda x, x_array: paddle.tensor.array_write(
                     x, i=step_idx, array=x_array
                 ),
                 next_inputs,
                 inputs_arrays,
             )
             map_structure(
-                lambda x, x_array: control_flow.array_write(
+                lambda x, x_array: paddle.tensor.array_write(
                     x, i=step_idx, array=x_array
                 ),
                 next_states,
@@ -1740,7 +1740,7 @@ def _dynamic_decode_declarative(
         final_states = global_states
     else:
         final_states = map_structure(
-            lambda array: control_flow.array_read(array, step_idx),
+            lambda array: paddle.tensor.array_read(array, step_idx),
             states_arrays,
         )
 

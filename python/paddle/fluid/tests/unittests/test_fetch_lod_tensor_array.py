@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 from simple_nets import simple_fc_net, simple_fc_net_with_inputs
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.static.nn.control_flow as control_flow
@@ -35,11 +36,11 @@ class TestFetchLoDTensorArray(unittest.TestCase):
                 opt = fluid.optimizer.SGD(learning_rate=0.001)
                 opt.minimize(loss)
 
-                array = layers.array_write(x=img, i=i)
+                array = paddle.tensor.array_write(x=img, i=i)
                 i = control_flow.increment(i)
-                layers.array_write(x=label, i=i, array=array)
+                paddle.tensor.array_write(x=label, i=i, array=array)
                 i = control_flow.increment(i)
-                layers.array_write(x=loss, i=i, array=array)
+                paddle.tensor.array_write(x=loss, i=i, array=array)
 
                 return loss, array
 

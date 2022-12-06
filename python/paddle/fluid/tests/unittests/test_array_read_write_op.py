@@ -30,19 +30,19 @@ from paddle.fluid.framework import default_main_program
 def _test_read_write(x):
     i = layers.zeros(shape=[1], dtype='int64')
     i.stop_gradient = False
-    arr = layers.array_write(x=x[0], i=i)
+    arr = paddle.tensor.array_write(x=x[0], i=i)
     i = control_flow.increment(x=i)
-    arr = layers.array_write(x=x[1], i=i, array=arr)
+    arr = paddle.tensor.array_write(x=x[1], i=i, array=arr)
     i = control_flow.increment(x=i)
-    arr = layers.array_write(x=x[2], i=i, array=arr)
+    arr = paddle.tensor.array_write(x=x[2], i=i, array=arr)
 
     i = layers.zeros(shape=[1], dtype='int64')
     i.stop_gradient = False
-    a0 = layers.array_read(array=arr, i=i)
+    a0 = paddle.tensor.array_read(array=arr, i=i)
     i = control_flow.increment(x=i)
-    a1 = layers.array_read(array=arr, i=i)
+    a1 = paddle.tensor.array_read(array=arr, i=i)
     i = control_flow.increment(x=i)
-    a2 = layers.array_read(array=arr, i=i)
+    a2 = paddle.tensor.array_read(array=arr, i=i)
 
     mean_a0 = paddle.mean(a0)
     mean_a1 = paddle.mean(a1)

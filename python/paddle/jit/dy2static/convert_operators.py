@@ -20,7 +20,7 @@ from paddle.jit.dy2static.variable_trans_func import (
 )
 from paddle.fluid.framework import core, Variable
 from paddle.fluid.layers import Print
-from paddle.fluid.layers import (
+from paddle.tensor import (
     array_read,
     array_write,
 )

@@ -693,7 +693,7 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
             arr = paddle.tensor.create_array(dtype="float32")
             for i in range(3):
                 idx = paddle.tensor.array_length(arr)
-                arr = layers.array_write(x=x[i], i=idx, array=arr)
+                arr = paddle.tensor.array_write(x=x[i], i=idx, array=arr)
 
             if case_num == 1:
                 self.sliced_arr = output = arr[0]
