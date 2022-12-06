@@ -85,16 +85,29 @@ void AnalysisConfig::SetModel(const std::string &prog_file_path,
 
   Update();
 }
+
 void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
-                                  int device_id) {
+                                  int device_id,
+                                  Precision precision_mode) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   use_gpu_ = true;
   memory_pool_init_size_mb_ = memory_pool_init_size_mb;
   FLAGS_initial_gpu_memory_in_mb = memory_pool_init_size_mb_;
   gpu_device_id_ = device_id;
+  mixed_precision_mode_ = precision_mode;
+  if (precision_mode == Precision::kFloat32) {
+    // default
+  } else if (precision_mode == Precision::kHalf ||
+             precision_mode == Precision::kBf16) {
+    enable_gpu_half_ = true;
+  } else {
+    LOG(ERROR)
+        << "The Paddle-GPU inference currently only supports "
+           "float32/float16/bfloat16 precision. Please check the parameters "
+           "you specified in EnableUseGpu or enable_use_gpu function.";
+  }
 #else
-  LOG(ERROR) << "Please compile with gpu to EnableGpu()";
-  use_gpu_ = false;
+  LOG(ERROR) << "Please use PaddlePaddle with GPU version.";
 #endif
 
   Update();
@@ -381,8 +394,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(gpu_device_id_);
   CP_MEMBER(memory_pool_init_size_mb_);
 
-  // Mixed related.
+  // Mixed precision related.
   CP_MEMBER(mixed_black_list_);
+  CP_MEMBER(enable_gpu_half_);
+  CP_MEMBER(mixed_precision_mode_);
 
   CP_MEMBER(enable_memory_optim_);
   // TensorRT related.
@@ -679,24 +694,11 @@ void AnalysisConfig::EnableTensorRtEngine(
     bool use_calib_mode) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (!use_gpu()) {
-    LOG(ERROR) << "To use TensorRT engine, please call EnableGpu() first";
+    LOG(ERROR) << "To use TensorRT engine, please call EnableUseGpu() first";
     return;
   }
 
   use_tensorrt_ = true;
-#ifdef PADDLE_WITH_TENSORRT
-  // https://forums.developer.nvidia.com/t/nvinfer1-createexecutioncontextwithoutdevicememory-returns-nullptr/111878/2
-  // when trt version less than 7.2,
-  // createExecutionContextWithoutDeviceMemory() has bug.
-  // so, we cannot enable engine context memory sharing.
-#if IS_TRT_VERSION_GE(7200)
-  trt_engine_memory_sharing_ = true;
-#else
-  LOG(WARNING)
-      << "TensorRT engine context memory sharing needs version 7.2 and after.";
-  trt_engine_memory_sharing_ = false;
-#endif
-#endif
   tensorrt_workspace_size_ = workspace_size;
   tensorrt_max_batchsize_ = max_batch_size;
   tensorrt_min_subgraph_size_ = min_subgraph_size;
@@ -709,6 +711,30 @@ void AnalysisConfig::EnableTensorRtEngine(
   LOG(ERROR)
       << "To use TensorRT engine, please compile inference lib with GPU first.";
 #endif
+}
+
+void AnalysisConfig::EnableTensorRTMemoryOptim(bool engine_memory_sharing,
+                                               int sharing_identifier) {
+  PADDLE_ENFORCE_EQ(
+      use_tensorrt_,
+      true,
+      platform::errors::InvalidArgument(
+          "To enable TensorRT memory optim, please call "
+          "EnableTensorRtEngine or enable_tensorrt_engine first."));
+  PADDLE_ENFORCE_GE(sharing_identifier,
+                    0,
+                    platform::errors::InvalidArgument(
+                        "The value of sharing_identifier must be greater "
+                        "than or equal to 0."));
+  if (!engine_memory_sharing) {
+    PADDLE_ENFORCE_EQ(sharing_identifier,
+                      0,
+                      platform::errors::InvalidArgument(
+                          "The value of sharing_identifier must be equal to 0 "
+                          "when engine_memory_sharing is false."));
+  }
+  trt_engine_memory_sharing_ = engine_memory_sharing;
+  trt_engine_memory_sharing_identifier_ = sharing_identifier;
 }
 
 void AnalysisConfig::EnableDlnne(
@@ -985,6 +1011,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << params_file_;
 
   ss << use_gpu_;
+  ss << enable_gpu_half_;
   ss << use_external_stream_;
   ss << exec_stream_;
   ss << use_fc_padding_;
@@ -1201,6 +1228,7 @@ std::string AnalysisConfig::Summary() {
   os.InsertRow({"use_gpu", use_gpu_ ? "true" : "false"});
   if (use_gpu_) {
     os.InsertRow({"gpu_device_id", std::to_string(gpu_device_id_)});
+    os.InsertRow({"enable_gpu_half_", std::to_string(enable_gpu_half_)});
     os.InsertRow({"memory_pool_init_size",
                   std::to_string(memory_pool_init_size_mb_) + "MB"});
     os.InsertRow(
@@ -1396,7 +1424,7 @@ bool AnalysisConfig::trt_allow_build_at_runtime() const {
   return trt_allow_build_at_runtime_;
 }
 
-void AnalysisConfig::Exp_SetBlackListOpsForMixedModel(
+void AnalysisConfig::Exp_DisableMixedInferOps(
     const std::unordered_set<std::string> &black_list) {
   mixed_black_list_ = black_list;
 }

@@ -42,8 +42,8 @@ class TestAPICase(unittest.TestCase):
             x = layers.fill_constant(shape=[1], dtype='float32', value=0.3)
             y = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
             z = layers.fill_constant(shape=[1], dtype='float32', value=0.2)
-            pred_2 = layers.less_than(x, y)  # false: 0.3 < 0.1
-            pred_1 = layers.less_than(z, x)  # true: 0.2 < 0.3
+            pred_2 = paddle.less_than(x, y)  # false: 0.3 < 0.1
+            pred_1 = paddle.less_than(z, x)  # true: 0.2 < 0.3
 
             # call fn_1
             out_0 = layers.case(
@@ -200,8 +200,8 @@ class TestAPICase_Nested(unittest.TestCase):
             x = layers.fill_constant(shape=[1], dtype='float32', value=0.3)
             y = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
             z = layers.fill_constant(shape=[1], dtype='float32', value=0.2)
-            pred_2 = layers.less_than(x, y)  # false: 0.3 < 0.1
-            pred_1 = layers.less_than(z, x)  # true: 0.2 < 0.3
+            pred_2 = paddle.less_than(x, y)  # false: 0.3 < 0.1
+            pred_1 = paddle.less_than(z, x)  # true: 0.2 < 0.3
 
             out_1 = layers.case(
                 pred_fn_pairs=[(pred_1, fn_1), (pred_2, fn_2)], default=fn_3
@@ -239,7 +239,7 @@ class TestAPICase_Error(unittest.TestCase):
         with program_guard(main_program, startup_program):
             x = layers.fill_constant(shape=[1], dtype='float32', value=0.23)
             z = layers.fill_constant(shape=[1], dtype='float32', value=0.2)
-            pred_1 = layers.less_than(z, x)  # true
+            pred_1 = paddle.less_than(z, x)  # true
 
             # The type of 'pred_fn_pairs' in case must be list or tuple
             def type_error_pred_fn_pairs():
@@ -299,12 +299,12 @@ class TestMutiTask(unittest.TestCase):
         adagrad = optimizer.Adagrad(learning_rate=0.001)
 
         def fn_1():
-            sum = layers.elementwise_mul(x, y)
+            sum = paddle.multiply(x, y)
             loss = paddle.mean(sum, name="f_1_loss")
             adam.minimize(loss)
 
         def fn_2():
-            sum = layers.elementwise_mul(x, y)
+            sum = paddle.multiply(x, y)
             loss = paddle.mean(sum, name="f_2_loss")
             adagrad.minimize(loss)
 

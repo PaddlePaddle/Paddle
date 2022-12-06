@@ -17,8 +17,6 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
-import paddle.fluid as fluid
-
 
 def fsp_matrix(a, b):
     batch = a.shape[0]
@@ -60,31 +58,6 @@ class TestFSPOp(OpTest):
 
     def test_check_grad_normal(self):
         self.check_grad(['X', 'Y'], 'Out')
-
-
-class BadInputTest(unittest.TestCase):
-    def test_error(self):
-        with fluid.program_guard(fluid.Program()):
-
-            def test_bad_x():
-                data = fluid.layers.data(name='data', shape=[3, 32, 32])
-                feature_map_0 = [1, 2, 3]
-                feature_map_1 = fluid.layers.conv2d(
-                    data, num_filters=2, filter_size=3
-                )
-                loss = fluid.layers.fsp_matrix(feature_map_0, feature_map_1)
-
-            self.assertRaises(TypeError, test_bad_x)
-
-            def test_bad_y():
-                data = fluid.layers.data(name='data', shape=[3, 32, 32])
-                feature_map_0 = fluid.layers.conv2d(
-                    data, num_filters=2, filter_size=3
-                )
-                feature_map_1 = [1, 2, 3]
-                loss = fluid.layers.fsp_matrix(feature_map_0, feature_map_1)
-
-            self.assertRaises(TypeError, test_bad_y)
 
 
 if __name__ == '__main__':

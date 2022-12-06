@@ -18,15 +18,10 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.nn.functional as F
-from paddle.fluid.dygraph import (
-    Embedding,
-    Layer,
-    LayerNorm,
-    to_variable,
-)
-from paddle.nn import Linear
+from paddle.fluid.dygraph import Embedding, Layer, to_variable
 from paddle.fluid.layers.utils import map_structure
 from paddle.jit.api import dygraph_to_static_func
+from paddle.nn import Linear
 
 
 def position_encoding_init(n_position, d_pos_vec):
@@ -64,9 +59,9 @@ class PrePostProcessLayer(Layer):
                     self.add_sublayer(
                         "layer_norm_%d"
                         % len([layer for layer in self.children()]),
-                        LayerNorm(
+                        paddle.nn.LayerNorm(
                             normalized_shape=d_model,
-                            param_attr=fluid.ParamAttr(
+                            weight_attr=fluid.ParamAttr(
                                 initializer=fluid.initializer.Constant(1.0)
                             ),
                             bias_attr=fluid.ParamAttr(
@@ -158,7 +153,7 @@ class MultiHeadAttention(Layer):
         )
         if attn_bias is not None:
             product += attn_bias
-        weights = layers.softmax(product)
+        weights = paddle.nn.functional.softmax(product)
         if self.dropout_rate:
             weights = layers.dropout(weights, dropout_prob=self.dropout_rate)
             out = layers.matmul(weights, v)
@@ -581,7 +576,7 @@ class CrossEntropyCriterion:
                 epsilon=self.label_smooth_eps,
             )
 
-        cost = layers.softmax_with_cross_entropy(
+        cost = paddle.nn.functional.softmax_with_cross_entropy(
             logits=predict,
             label=label_out,
             soft_label=True if self.label_smooth_eps else False,
@@ -845,7 +840,7 @@ class Transformer(Layer):
             )
             caches = map_structure(split_batch_beams, caches)
             step_log_probs = split_batch_beams(
-                fluid.layers.log(fluid.layers.softmax(logits))
+                paddle.log(paddle.nn.functional.softmax(logits))
             )
 
             step_log_probs = mask_probs(
@@ -858,9 +853,7 @@ class Transformer(Layer):
                 log_probs, [-1, beam_size * self.trg_vocab_size]
             )
             scores = log_probs
-            topk_scores, topk_indices = fluid.layers.topk(
-                input=scores, k=beam_size
-            )
+            topk_scores, topk_indices = paddle.topk(x=scores, k=beam_size)
             beam_indices = paddle.floor_divide(topk_indices, vocab_size_tensor)
             token_indices = paddle.remainder(topk_indices, vocab_size_tensor)
 
@@ -878,13 +871,13 @@ class Transformer(Layer):
             predict_ids.append(token_indices)
             parent_ids.append(beam_indices)
 
-            if layers.reduce_all(finished).numpy():
+            if paddle.all(finished).numpy():
                 break
 
         predict_ids = paddle.stack(predict_ids, axis=0)
         parent_ids = paddle.stack(parent_ids, axis=0)
         finished_seq = paddle.transpose(
-            layers.gather_tree(predict_ids, parent_ids), [1, 2, 0]
+            paddle.nn.functional.gather_tree(predict_ids, parent_ids), [1, 2, 0]
         )
         finished_scores = topk_scores
 

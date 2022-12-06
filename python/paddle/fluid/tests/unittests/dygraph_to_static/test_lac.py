@@ -24,10 +24,8 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph import Embedding, GRUUnit
-
 from paddle import _legacy_C_ops
+from paddle.fluid.dygraph import Embedding, to_variable
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.fluid.framework import _non_static_mode
 from paddle.jit import ProgramTranslator
@@ -59,13 +57,9 @@ class DynamicGRU(fluid.dygraph.Layer):
     ):
         super().__init__()
 
-        self.gru_unit = GRUUnit(
+        self.gru_unit = paddle.nn.GRUCell(
             size * 3,
-            param_attr=param_attr,
-            bias_attr=bias_attr,
-            activation=candidate_activation,
-            gate_activation=gate_activation,
-            origin_mode=origin_mode,
+            size,
         )
 
         self.size = size
@@ -81,7 +75,7 @@ class DynamicGRU(fluid.dygraph.Layer):
         res = []
         for i in range(inputs.shape[1]):
             if self.is_reverse:
-                j = fluid.layers.shape(inputs)[1] - 1 - i
+                j = paddle.shape(inputs)[1] - 1 - i
             else:
                 j = i
 

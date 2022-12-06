@@ -18,7 +18,6 @@ from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import Linear
 from paddle.nn import Linear
 
 np.random.seed(2021)

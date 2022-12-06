@@ -52,7 +52,7 @@ def resnet_cifar10(input, depth=32):
         tmp = conv_bn_layer(input, ch_out, 3, stride, 1)
         tmp = conv_bn_layer(tmp, ch_out, 3, 1, 1, act=None, bias_attr=True)
         short = shortcut(input, ch_in, ch_out, stride)
-        return fluid.layers.elementwise_add(x=tmp, y=short, act='relu')
+        return paddle.nn.functional.relu(paddle.add(x=tmp, y=short))
 
     def layer_warp(block_func, input, ch_in, ch_out, count, stride):
         tmp = block_func(input, ch_in, ch_out, stride)
@@ -119,7 +119,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
     predict = fluid.layers.fc(input=net, size=classdim, act='softmax')
     cost = fluid.layers.cross_entropy(input=predict, label=label)
     avg_cost = paddle.mean(cost)
-    acc = fluid.layers.accuracy(input=predict, label=label)
+    acc = paddle.static.accuracy(input=predict, label=label)
 
     # Test program
     test_program = fluid.default_main_program().clone(for_test=True)

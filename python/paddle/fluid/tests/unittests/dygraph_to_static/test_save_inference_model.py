@@ -15,16 +15,15 @@
 import os
 import tempfile
 import unittest
+
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
-from paddle.jit.dy2static.partial_program import (
-    partial_program_from,
-)
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.jit.dy2static.partial_program import partial_program_from
 
 SEED = 2020
 
