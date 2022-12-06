@@ -72,9 +72,9 @@ class SimpleNet(fluid.Layer):
 
     def forward(self, input, label):
         x_emb = self.embedding(input)
-        fc = fluid.layers.matmul(x_emb, self.softmax_weight)
+        fc = paddle.matmul(x_emb, self.softmax_weight)
         fc = paddle.add(fc, self.softmax_bias)
-        projection = fluid.layers.matmul(
+        projection = paddle.matmul(
             fc, paddle.transpose(self.embedding.weight, perm=[1, 0])
         )
         projection = paddle.reshape(projection, shape=[-1, self.vocab_size])
