@@ -20,7 +20,7 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
-from paddle.utils import inplace_apis_in_dygraph_only
+from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..common_ops_import import _varbase_creator, fill_constant
 from ..fluid.data_feeder import (
