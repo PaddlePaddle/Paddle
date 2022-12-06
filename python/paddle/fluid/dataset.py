@@ -1134,6 +1134,7 @@ class InMemoryDataset(DatasetBase):
             .. code-block:: python
 
               import paddle.fluid as fluid
+              pass_id = 0
               dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
               dataset.set_pass_id(pass_id)
         """
