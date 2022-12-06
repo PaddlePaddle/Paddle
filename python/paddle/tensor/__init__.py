@@ -525,7 +525,6 @@ tensor_method_func = [  # noqa
     'bucketize',
     'sgn',
     'frexp',
-    'gaussian_random',
 ]
 
 # this list used in math_op_patch.py for magic_method bind
