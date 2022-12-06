@@ -256,9 +256,7 @@ class MobileNetV1(fluid.dygraph.Layer):
         )
         self.dwsl.append(dws6)
 
-        self.pool2d_avg = paddle.fluid.dygraph.nn.Pool2D(
-            pool_type='avg', global_pooling=True
-        )
+        self.pool2d_avg = paddle.nn.AdaptiveAvgPool2D(1)
 
         self.out = Linear(
             int(1024 * scale),
@@ -424,9 +422,7 @@ class MobileNetV2(fluid.dygraph.Layer):
         )
 
         # 4. pool
-        self._pool2d_avg = paddle.fluid.dygraph.nn.Pool2D(
-            pool_type='avg', global_pooling=True
-        )
+        self._pool2d_avg = paddle.nn.AdaptiveAvgPool2D(1)
 
         # 5. fc
         tmp_param = ParamAttr(name=self.full_name() + "fc10_weights")
