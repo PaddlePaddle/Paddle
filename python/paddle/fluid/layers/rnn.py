@@ -1712,6 +1712,144 @@ class SampleEmbeddingHelper(GreedyEmbeddingHelper):
         return sample_ids
 
 
+class BasicDecoder(Decoder):
+    """
+    BasicDecoder is a subclass of Decoder and assembles a RNNCell and DecodeHelper
+    instance as members, where the DecodeHelper helps to implement customed
+    decoding strategies.. It performs one decoding step as following steps:
+
+    1. Perform `cell_outputs, cell_states = cell.call(inputs, states)`
+    to get outputs and new states from cell.
+
+    2. Perform `sample_ids = helper.sample(time, cell_outputs, cell_states)`
+    to sample ids as decoded results of the current time step.
+
+    3. Perform `finished, next_inputs, next_states = helper.next_inputs(time,
+    cell_outputs, cell_states, sample_ids)` to generate inputs, states and
+    finished status for the next decoding step.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+            trg_emb = fluid.data(name="trg_emb",
+                                 shape=[None, None, 128],
+                                 dtype="float32")
+
+            trg_embeder = lambda x: fluid.embedding(
+                x, size=[10000, 128], param_attr=fluid.ParamAttr(name="trg_embedding"))
+            output_layer = lambda x: layers.fc(x,
+                                            size=10000,
+                                            num_flatten_dims=len(x.shape) - 1,
+                                            param_attr=fluid.ParamAttr(name=
+                                                                    "output_w"),
+                                            bias_attr=False)
+            helper = layers.SampleEmbeddingHelper(trg_embeder, start_tokens=0, end_token=1)
+            decoder_cell = layers.GRUCell(hidden_size=128)
+            decoder = layers.BasicDecoder(decoder_cell, helper, output_fn=output_layer)
+            outputs = layers.dynamic_decode(
+                decoder=decoder, inits=decoder_cell.get_initial_states(encoder_output))
+    """
+
+    def __init__(self, cell, helper, output_fn=None):
+        """
+        Constructor of BasicDecoder.
+
+        Parameters:
+            cell(RNNCell): An instance of `RNNCell` or object with the same interface.
+            helper(DecodeHelper): An instance of `DecodeHelper`.
+            output_fn(optional): A callable to apply to the cell's output prior to
+                sampling. Default None.
+        """
+        self.cell = cell
+        self.helper = helper
+        self.output_fn = output_fn
+
+    def initialize(self, initial_cell_states):
+        r"""
+        BasicDecoder initialization includes helper initialization and cell
+        initialization, and cell initialization uses `initial_cell_states` as
+        the result directly.
+
+        Parameters:
+            initial_cell_states(Variable): A (possibly nested structure of)
+                tensor variable[s]. An argument provided by the caller `dynamic_decode`.
+
+        Returns:
+            tuple: A tuple( :code:(initial_inputs, initial_cell_states, finished)` ). \
+                `initial_inputs` and `initial_states` both are a (possibly nested \
+                structure of) tensor variable[s], and `finished` is a tensor with \
+                bool data type. `initial_inputs` and `finished` are the results \
+                of `helper.initialize()`, and `initial_cell_states` is same as \
+                the input argument counterpart.
+        """
+        (initial_inputs, initial_finished) = self.helper.initialize()
+        return initial_inputs, initial_cell_states, initial_finished
+
+    class OutputWrapper(
+        collections.namedtuple("OutputWrapper", ("cell_outputs", "sample_ids"))
+    ):
+        """
+        The structure for the returned value `outputs` of `decoder.step`.
+        A namedtuple includes cell_outputs, sample_ids as fields.
+        """
+
+        pass
+
+    def step(self, time, inputs, states, **kwargs):
+        r"""
+        Perform one decoding step as following steps:
+
+        1. Perform `cell_outputs, cell_states = cell.call(inputs, states)`
+        to get outputs and new states from cell.
+
+        2. Perform `sample_ids = helper.sample(time, cell_outputs, cell_states)`
+        to sample ids as decoded results of the current time step.
+
+        3. Perform `finished, next_inputs, next_states = helper.next_inputs(time,
+        cell_outputs, cell_states, sample_ids)` to generate inputs, states and
+        finished status for the next decoding step.
+
+        Parameters:
+            time(Variable): An `int64` tensor with shape `[1]` provided by the caller,
+                representing the current time step number of decoding.
+            inputs(Variable): A tensor variable. It is same as `initial_inputs`
+                returned by `initialize()` for the first decoding step and
+                `next_inputs` returned by `step()` for the others.
+            states(Variable): A structure of tensor variables.
+                It is same as the `initial_cell_states` returned by `initialize()`
+                for the first decoding step and `next_states` returned by
+                `step()` for the others.
+            **kwargs: Additional keyword arguments, provided by the caller
+                `dynamic_decode`.
+
+        Returns:
+            tuple: A tuple( :code:`(outputs, next_states, next_inputs, finished)` ). \
+                `outputs` is a namedtuple(including cell_outputs, sample_ids, \
+                as fields) of tensor variables, where `cell_outputs` is the result \
+                fof `cell.call()` and `sample_ids` is the result of `helper.sample()`. \
+                `next_states` and `next_inputs` have the same structure, shape \
+                and data type as the input arguments `states` and `inputs` separately. \
+                `finished` is a `bool` tensor with shape `[batch_size]`.
+        """
+        cell_outputs, cell_states = self.cell(inputs, states, **kwargs)
+        if self.output_fn is not None:
+            cell_outputs = self.output_fn(cell_outputs)
+        sample_ids = self.helper.sample(
+            time=time, outputs=cell_outputs, states=cell_states
+        )
+        sample_ids.stop_gradient = True
+        (finished, next_inputs, next_states) = self.helper.next_inputs(
+            time=time,
+            outputs=cell_outputs,
+            states=cell_states,
+            sample_ids=sample_ids,
+        )
+        outputs = self.OutputWrapper(cell_outputs, sample_ids)
+        return (outputs, next_states, next_inputs, finished)
+
+
 def dynamic_lstm(
     input,
     size,
