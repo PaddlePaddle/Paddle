@@ -12,42 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-#include <type_traits>
-#include <vector>
-
-#include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/tile_grad_kernel.h"
 
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/core/kernel_registry.h"
+
 namespace phi {
-
-template <typename Context, typename T, int Dims>
-void TileBackward(const Context& dev_ctx,
-                  const DenseTensor& out_grad,
-                  const std::vector<int>& reshape_dims_vec,
-                  const std::vector<int>& reduce_dims_vec,
-                  DenseTensor* x_grad) {
-  size_t reshape_size = reshape_dims_vec.size();
-  size_t reduce_size = reduce_dims_vec.size();
-  dev_ctx.template Alloc<T>(x_grad);
-
-  auto eigen_x_grad = EigenVector<T>::Flatten(*x_grad);
-  Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;
-  for (size_t i = 0; i < reshape_size; ++i) {
-    reshape_dims[i] = reshape_dims_vec[i];
-  }
-  Eigen::DSizes<Eigen::DenseIndex, Dims> reduce_dims;
-  for (size_t i = 0; i < reduce_size; ++i) {
-    reduce_dims[i] = reduce_dims_vec[i];
-  }
-
-  auto eigen_out_grad = EigenVector<T>::Flatten(out_grad);
-  auto& place = *dev_ctx.eigen_device();
-  funcs::EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::Eval(
-      place, eigen_x_grad, eigen_out_grad, reduce_dims, reshape_dims);
-}
 
 template <typename T, typename Context>
 void TileGradKernel(const Context& dev_ctx,
@@ -77,6 +47,8 @@ void TileGradKernel(const Context& dev_ctx,
     reshape_dims_vec.push_back(vec_x_dims[i]);
   }
 
+  dev_ctx.template Alloc<T>(x_grad);
+
   int dims = reduce_dims_vec.size();
 
   bool just_copy = true;
@@ -88,8 +60,6 @@ void TileGradKernel(const Context& dev_ctx,
   }
   // no need reduce, just copy
   if (just_copy) {
-    dev_ctx.template Alloc<T>(x_grad);
-
     phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     // TensorCopy may change the dims of dx
     x_grad->Resize(x_dims);
@@ -109,38 +79,21 @@ void TileGradKernel(const Context& dev_ctx,
                           "to %d, but the value received is %d.",
                           MAX_RANK_SUPPORTED,
                           dims));
-    switch (dims) {
-      case 1:
-        TileBackward<Context, T, 1>(
-            dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, x_grad);
-        break;
-      case 2:
-        TileBackward<Context, T, 2>(
-            dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, x_grad);
-        break;
-      case 3:
-        TileBackward<Context, T, 3>(
-            dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, x_grad);
-        break;
-      case 4:
-        TileBackward<Context, T, 4>(
-            dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, x_grad);
-        break;
-      case 5:
-        TileBackward<Context, T, 5>(
-            dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, x_grad);
-        break;
-      case 6:
-        TileBackward<Context, T, 6>(
-            dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, x_grad);
-        break;
-      default:
-        PADDLE_THROW(errors::InvalidArgument(
-            "Only support tensor with rank being between 1 and 6. But "
-            "received tensor's rank = %d.",
-            dims));
-    }
+
+    using XPUType = typename XPUTypeTrait<T>::Type;
+    // int reduce_sum(Context* ctx, const T* x, T* y, const std::vector<int>&
+    // xshape, const std::vector<int>& rdims)
+    const auto* out_data = out_grad.data<XPUType>();
+    auto* x_grad_data = x_grad->data<XPUType>();
+    int r = xpu::reduce_sum<XPUType>(dev_ctx.x_context(),
+                                     out_data,
+                                     x_grad_data,
+                                     reshape_dims_vec,
+                                     reduce_dims_vec);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
   }
 }
 
 }  // namespace phi
+
+PD_REGISTER_KERNEL(tile_grad, XPU, ALL_LAYOUT, phi::TileGradKernel, float) {}
