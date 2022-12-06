@@ -10,11 +10,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 #include "paddle/phi/backends/xpu/xpu_op_list.h"
-
 #include <glog/logging.h>
 #include <mutex>
 #include <string>
 #include <unordered_set>
+#include "paddle/phi/backends/xpu/xpu_info.h"
 
 namespace phi {
 namespace backends {
@@ -35,7 +35,7 @@ static void tokenize(const std::string& ops,
   op_set->insert(ops.substr(beg));
 }
 
-bool is_in_xpu_black_list(const std::string& op_name) {
+bool is_in_xpu_black_list(const std::string& fluid_op_name) {
   static bool inited = false;
   static std::unordered_set<std::string> xpu_black_list;
   static std::mutex s_mtx;
@@ -54,7 +54,20 @@ bool is_in_xpu_black_list(const std::string& op_name) {
       }
     }
   }
-  if (xpu_black_list.find(op_name) != xpu_black_list.end()) {
+  if (xpu_black_list.find(fluid_op_name) != xpu_black_list.end()) {
+    return true;
+  }
+  return false;
+}
+
+bool is_xpu_support_op(const std::string& fluid_op_name,
+                       const phi::DataType type) {
+  if (is_in_xpu_black_list(fluid_op_name)) return false;
+  auto v = get_xpu_version(0);
+  auto& ops = (v == phi::backends::xpu::XPUVersion::XPU1) ? get_kl1_ops()
+                                                          : get_kl2_ops();
+  if (ops.find(fluid_op_name) != ops.end() &&
+      ops[fluid_op_name].find(type) != ops[fluid_op_name].end()) {
     return true;
   }
   return false;
