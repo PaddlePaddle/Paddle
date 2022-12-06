@@ -768,6 +768,10 @@ PADDLE_DEFINE_EXPORTED_bool(
     "Check kernel launch status after every kernel compute");
 #endif
 
+PADDLE_DEFINE_EXPORTED_bool(synchronize_kernel,
+                            false,
+                            "Synchronize Kernel stream with CPU stream");
+
 /**
  * CUDNN related FLAG
  * Name: conv2d_disable_cudnn

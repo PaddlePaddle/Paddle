@@ -289,6 +289,7 @@ def source_include(header_file_path):
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 
 DECLARE_bool(conv2d_disable_cudnn);
+DECLARE_bool(synchronize_kernel);
 """
 
 

@@ -1213,6 +1213,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  if (kernel_result.has_fallback_cpu) {{
 {fallback_kernel_output_trans}
 {code_indent}  }}
+{code_indent}  if (FLAGS_synchronize_kernel) dev_ctx->Wait();
 {code_indent}  {self.gene_return_code()}"""
 
     def get_condition_code(self, kernel_name):
