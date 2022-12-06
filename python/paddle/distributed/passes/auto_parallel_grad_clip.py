@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 
+from ..auto_parallel.common import SyncMode
 from ..auto_parallel.dist_attribute import (
     OperatorDistributedAttribute,
     TensorDistributedAttribute,
@@ -373,8 +374,9 @@ class ClipGradByGloblNormPass(PassBase):
                             OP_ROLE_KEY: OpRole.Optimize,
                         },
                     )
+                    # TODO better regular the usage of op namescope
                     allreduce_op._set_attr(
-                        'op_namescope', "/gradient_clip_pass"
+                        'op_namescope', str('/') + SyncMode.GlobalNormSync
                     )
                     self.clip_helper._init_dist_attr(allreduce_op)
 
@@ -395,7 +397,6 @@ class ClipGradByGloblNormPass(PassBase):
                                 prior_op = block.ops[j]
                                 break
                             j -= 1
-                            print("here: ", block.ops[j])
                         assert (
                             prior_op is not None
                         ), "Unexception: ClipByGlobalNorm could not find priory depend op"
