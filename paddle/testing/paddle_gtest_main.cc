@@ -43,7 +43,7 @@ int main(int argc, char** argv) {
   }
 #endif
 
-  const auto& flag_map = paddle::platform::GetExportedFlagInfoMap();
+  const auto& flag_map = phi::GetExportedFlagInfoMap();
   for (const auto& pair : flag_map) {
     const std::string& name = pair.second.name;
     // NOTE(zhiqiu): some names may not linked in some tests, so add to
