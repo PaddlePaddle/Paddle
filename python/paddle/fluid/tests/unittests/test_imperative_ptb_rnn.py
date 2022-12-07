@@ -24,7 +24,7 @@ import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.nn import Embedding
-from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
+from paddle.fluid.framework import _in_legacy_dygraph
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.jit import TracedLayer
 
@@ -239,14 +239,9 @@ class PtbModel(fluid.Layer):
 
 
 class TestDygraphPtbRnn(unittest.TestCase):
-    def func_test_ptb_rnn(self):
+    def test_ptb_rnn(self):
         for is_sparse in [True, False]:
             self.ptb_rnn_cpu_float32(is_sparse)
-
-    def test_ptb_rnn(self):
-        with _test_eager_guard():
-            self.func_test_ptb_rnn()
-        self.func_test_ptb_rnn()
 
     def ptb_rnn_cpu_float32(self, is_sparse):
         seed = 90
