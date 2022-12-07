@@ -17,6 +17,7 @@ import time
 import unittest
 
 import numpy as np
+
 import paddle
 
 PRINT_STEP = 20
@@ -214,7 +215,7 @@ class PtbModel(paddle.nn.Layer):
         )
         loss = paddle.reshape(loss, shape=[-1, self.num_steps])
         loss = paddle.mean(loss, axis=[0])
-        loss = paddle.fluid.layers.reduce_sum(loss)
+        loss = paddle.paddle.sum(loss)
 
         return loss, last_hidden, last_cell
 

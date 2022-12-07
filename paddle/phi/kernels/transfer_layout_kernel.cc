@@ -130,7 +130,7 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
              dst_layout != DataLayout::ONEDNN) {
     // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
     // Do transform via MKLDNN lib
-    funcs::innerTransDataLayoutFromOneDNN(
+    funcs::TransDataLayoutFromOneDNN(
         src_layout, dst_layout, x, out, dev_ctx.GetPlace());
   } else if (src_layout == DataLayout::ONEDNN &&
              dst_layout == DataLayout::ONEDNN) {
@@ -138,7 +138,7 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
         src_layout,
         dst_layout,
         errors::PreconditionNotMet(
-            "No layout transform needed between two MKLDNN OPKernels."));
+            "No layout transform needed between two oneDNN OPKernels."));
   } else {
     TransferLayoutGeneral<Context>(dev_ctx, x, dst_layout, out);
   }

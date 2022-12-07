@@ -184,21 +184,30 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
     (*new_op_func_node.phi_kernel_)(&phi_kernel_context);
   }
 
-  // NOTE(winter-wang): in npu device, D2H kernel is asynchronous. need to
-  // explicit synchronization.
-#ifdef PADDLE_WITH_ASCEND_CL
-  if (op_type == kMemcpyD2H && platform::is_npu_place(dev_ctx->GetPlace())) {
+  const phi::Place& place = dev_ctx->GetPlace();
+
+  // NOTE(winter-wang): in npu and custom device, D2H kernel is asynchronous.
+  // need to explicit synchronization.
+  if ((platform::is_npu_place(place) || platform::is_custom_place(place)) &&
+      op_type == kMemcpyD2H) {
     dev_ctx->Wait();
   }
-#endif
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-  if (op_type == kMemcpyD2H && platform::is_custom_place(dev_ctx->GetPlace())) {
-    dev_ctx->Wait();
+
+  if (platform::is_cpu_place(place)) {
+    new_op_func_node.type_ = OpFuncType::kCpuSync;
+  } else if (platform::is_gpu_place(place)) {
+    // MemcpyD2H in gpu is synchronous, see
+    // https://docs.nvidia.com/cuda/cuda-runtime-api/api-sync-behavior.html#api-sync-behavior__memcpy-async
+    // for more detial.
+    new_op_func_node.type_ =
+        (op_type == kMemcpyD2H ? OpFuncType::kGpuSync : OpFuncType::kGpuAsync);
+  } else if (platform::is_xpu_place(place)) {
+    // Memcpy in xpu is synchronous
+    new_op_func_node.type_ = OpFuncType::kGpuSync;
+  } else {
+    // Memcpy in npu and custom devices is asynchronous
+    new_op_func_node.type_ = OpFuncType::kGpuAsync;
   }
-#endif
-  // NOTE(Aurelius84): data_transform_op is expensive operation, so we tag them
-  // as kQueueSync and execute them in thread pool.
-  new_op_func_node.type_ = OpFuncType::kQueueSync;
   new_op_func_node.dev_ctx_ = dev_ctx;
   new_op_func_node.operator_base_ = op;
   VLOG(3) << "Run " << op_type << " done.";
@@ -230,7 +239,7 @@ std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
 #ifdef PADDLE_WITH_MKLDNN
 
   // NOTE(zhiqiu): hot fix, follow the same logic in DataCopy() in fetch_op.cc
-  if (in_layout == phi::DataLayout::kMKLDNN &&
+  if (in_layout == phi::DataLayout::ONEDNN &&
       var_name == framework::GradVarName("Filter") && is_fetch_v2) {
     VLOG(4) << "Match special case(Filter && fetch_v2) " << var_name;
     out_layout = phi::DataLayout::kNCHW;
@@ -437,8 +446,6 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
 
   VariableNameMap new_ins(op_base->Inputs());
   VariableNameMap new_outs(op_base->Outputs());
-  // record the no need transform variable index.
-  std::unordered_set<int> no_data_transform_index;
 
   const std::unordered_set<std::string>* no_buffer_ins = nullptr;
   auto& no_buffer_inferer = op_base->Info().NoNeedBufferVarsInferer();
@@ -455,7 +462,6 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
   for (auto& var_name_item : *ins_map_temp) {
     bool should_skip_input =
         no_buffer_ins && no_buffer_ins->count(var_name_item.first) > 0;
-
     for (size_t i = 0; i < var_name_item.second.size(); ++i) {
       auto var = var_name_item.second[i];
       auto var_name = new_ins[var_name_item.first].at(i);
@@ -484,11 +490,11 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
           // MKL-DNN shape of Var may differ from kNHWC Var
           // In such situation corressponding resized Var
           // has to be created and registered
-          if ((tensor_in->layout() == DataLayout::kMKLDNN) &&
+          if ((tensor_in->layout() == DataLayout::ONEDNN) &&
               (var->IsType<phi::DenseTensor>() == true) &&
-              (expected_kernel_key.data_layout_ != DataLayout::kMKLDNN) &&
-              (paddle::platform::MKLDNNDeviceContext::tls()
-                   .get_cur_paddle_data_layout() == DataLayout::kNHWC)) {
+              (expected_kernel_key.data_layout_ != DataLayout::ONEDNN) &&
+              (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
+               DataLayout::kNHWC)) {
             VLOG(7) << "Created reshaped dummy input based on MKL-DNN "
                        "phi::DenseTensor , "
                        "but kNHWC layout"
@@ -560,12 +566,6 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
         if (op_base->Type() == "fetch_v2") {
           op_base->SetAttr("deepcopy", false);
         }
-      } else {
-        // record no need data transformer input var_id
-        VLOG(3) << op_base->Type()
-                << " found no data_transform var: " << var_name
-                << " with id: " << var_scope->VarId(var_name);
-        no_data_transform_index.emplace(var_scope->VarId(var_name));
       }
     }
   }
@@ -576,7 +576,6 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
     op_base->Inputs() = new_ins;
     op_base->Outputs() = new_outs;
   }
-  op_func_node->no_data_transform_index = std::move(no_data_transform_index);
 }
 
 void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,

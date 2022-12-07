@@ -113,7 +113,7 @@ class InplaceABNGradOp : public paddle::operators::BatchNormGradOp {
           true,
           platform::errors::InvalidArgument(
               "Using global stats during training is not supported "
-              "in gradient op kernel of batch_norm_mkldnn_op now."));
+              "in oneDNN version of batch_norm_gradient kernel now."));
     }
 
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "InplaceABNGrad");
@@ -147,8 +147,8 @@ class InplaceABNGradOp : public paddle::operators::BatchNormGradOp {
     const phi::DenseTensor* t = nullptr;
     if (var->IsType<Tensor>()) {
       t = &var->Get<Tensor>();
-    } else if (var->IsType<LoDTensor>()) {
-      t = &var->Get<LoDTensor>();
+    } else if (var->IsType<phi::DenseTensor>()) {
+      t = &var->Get<phi::DenseTensor>();
     }
     if (t == nullptr) {
       PADDLE_THROW(

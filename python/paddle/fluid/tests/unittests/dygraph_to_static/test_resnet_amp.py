@@ -16,11 +16,11 @@ import time
 import unittest
 
 import numpy as np
+from test_resnet import SEED, ResNet, optimizer_setting
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import ProgramTranslator
-from test_resnet import ResNet, optimizer_setting, SEED
+from paddle.jit import ProgramTranslator
 
 # NOTE: Reduce batch_size from 8 to 2 to avoid unittest timeout.
 batch_size = 2
@@ -76,8 +76,8 @@ def train(to_static, build_strategy=None):
                     # If we remove it, the loss between dygraph and dy2stat is exactly same.
                     loss = fluid.layers.cross_entropy(input=pred, label=label)
                 avg_loss = paddle.mean(x=pred)
-                acc_top1 = fluid.layers.accuracy(input=pred, label=label, k=1)
-                acc_top5 = fluid.layers.accuracy(input=pred, label=label, k=5)
+                acc_top1 = paddle.static.accuracy(input=pred, label=label, k=1)
+                acc_top5 = paddle.static.accuracy(input=pred, label=label, k=5)
 
                 scaled = scaler.scale(avg_loss)
                 scaled.backward()

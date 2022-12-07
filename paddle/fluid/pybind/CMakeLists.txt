@@ -605,7 +605,6 @@ if(WITH_PYTHON)
     list(APPEND PYBIND_DEPS python)
     list(APPEND PYBIND_DEPS custom_operator)
     list(APPEND PYBIND_DEPS custom_operator_node)
-    list(APPEND PYBIND_DEPS saved_tensors_hooks)
   endif()
 
   # On Linux, cc_library(paddle SHARED ..) will generate the libpaddle.so,
@@ -651,5 +650,4 @@ if(WITH_PYTHON)
   target_link_libraries(${SHARD_LIB_NAME} ${os_dependency_modules})
   add_dependencies(${SHARD_LIB_NAME} op_function_generator_cmd)
 
-  target_link_libraries(${SHARD_LIB_NAME} ${PYTHON_LIBRARIES})
 endif()

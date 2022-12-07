@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
+from paddle import enable_static
 from paddle.fluid.tests.unittests.op_test import skip_check_grad_ci
 from paddle.fluid.tests.unittests.test_elementwise_add_op import (
     TestElementwiseAddOp,
 )
-from paddle import enable_static
 
 
 class TestMKLDNNElementwiseAddOp(TestElementwiseAddOp):

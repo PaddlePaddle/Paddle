@@ -14,13 +14,13 @@
 
 #include "paddle/phi/kernels/auc_kernel.h"
 
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 __global__ void ClearObsoleteDataKernel(int64_t *pos,
                                         int64_t *neg,
@@ -74,9 +74,9 @@ __global__ void AddDataKernel(const int64_t *label_data,
                    "The predict data must gather or equal 0.");
     uint32_t binIdx = static_cast<uint32_t>(predict_data * num_thresholds);
     if (label_data[i]) {
-      paddle::platform::CudaAtomicAdd(pos + cur_step_begin + binIdx, 1);
+      phi::CudaAtomicAdd(pos + cur_step_begin + binIdx, 1);
     } else {
-      paddle::platform::CudaAtomicAdd(neg + cur_step_begin + binIdx, 1);
+      phi::CudaAtomicAdd(neg + cur_step_begin + binIdx, 1);
     }
   }
 }

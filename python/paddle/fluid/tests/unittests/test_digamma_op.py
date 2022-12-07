@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from op_test import OpTest
 from scipy.special import psi
+
 import paddle
 import paddle.fluid as fluid
 import paddle.static as static
-from op_test import OpTest
 from paddle.fluid.framework import _test_eager_guard
 
 

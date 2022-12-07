@@ -30,8 +30,6 @@ enum class ReshapeKernelOpName {
 namespace paddle {
 namespace operators {
 
-using platform::to_void_cast;
-
 static std::vector<int> extract_shape(
     const std::vector<const phi::DenseTensor*>& list_new_shape_tensor) {
   std::vector<int> vec_new_shape;
@@ -61,8 +59,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
 
  private:
   void RunKernel(const framework::ExecutionContext& ctx) const {
-    const auto& dev_ctx =
-        ctx.template device_context<platform::MKLDNNDeviceContext>();
+    const auto& dev_ctx = ctx.template device_context<phi::OneDNNContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
 
     auto* x = ctx.Input<phi::DenseTensor>("X");
@@ -73,24 +70,20 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
 
     auto x_vec_dims = phi::vectorize(x_dims);
 
-    dnnl::memory::data_type x_type =
-        framework::ToMKLDNNDataType(framework::TransToProtoVarType(x->dtype()));
-    platform::ReorderMKLDNNHandler reorder_handler(
-        x_vec_dims,
-        framework::TransToProtoVarType(x->dtype()),
-        x_type,
-        onednn_engine);
+    auto x_type = phi::funcs ::ToOneDNNDataType(x->dtype());
+    phi::funcs::ReorderOneDNNHandler reorder_handler(
+        x_vec_dims, x->dtype(), x_type, onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-        x->mem_desc(), platform::to_void_cast(x->data<T>()));
+        x->mem_desc(), phi::funcs::to_void_cast(x->data<T>()));
     out->Resize(x_dims);  // to match x numel, format is changed later
     // reorder is done into a plain tag to allow usage with blocked formats
     auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-        out, getPlainFormatTag(x), ctx.GetPlace());
+        out, phi::funcs::GetPlainOneDNNFormat(x_dims.size()), ctx.GetPlace());
     auto reorder_p = reorder_handler.AcquireReorder(reorder_dst_memory_p,
                                                     reorder_src_memory_p);
 
-    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    auto& astream = phi::OneDNNContext::tls().get_stream();
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
 
     astream.wait();
@@ -200,31 +193,6 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
   }
 
  protected:
-  static dnnl::memory::format_tag getPlainFormatTag(
-      const phi::DenseTensor* tensor) {
-    auto tensor_dims_size = tensor->dims().size();
-    PADDLE_ENFORCE_EQ(
-        tensor_dims_size <= 6 && tensor_dims_size >= 1,
-        true,
-        platform::errors::InvalidArgument(
-            "Dims for squeeze_grad oneDNN op must be in range <1, 6>"));
-
-    switch (tensor_dims_size) {
-      case 1:
-        return dnnl::memory::format_tag::a;
-      case 2:
-        return dnnl::memory::format_tag::ab;
-      case 3:
-        return dnnl::memory::format_tag::abc;
-      case 4:
-        return dnnl::memory::format_tag::abcd;
-      case 5:
-        return dnnl::memory::format_tag::abcde;
-      default:
-        return dnnl::memory::format_tag::abcdef;
-    }
-  }
-
   static framework::DDim ValidateShape(const std::vector<int>& shape,
                                        const framework::DDim& in_dims) {
     const int64_t in_size = phi::product(in_dims);
@@ -335,8 +303,7 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
 
  private:
   void RunKernel(const framework::ExecutionContext& ctx) const {
-    const auto& dev_ctx =
-        ctx.template device_context<platform::MKLDNNDeviceContext>();
+    const auto& dev_ctx = ctx.template device_context<phi::OneDNNContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
 
     auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
@@ -347,22 +314,20 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
 
     auto dout_vec_dims = phi::vectorize(dout->dims());
 
-    dnnl::memory::data_type dout_type = framework::ToMKLDNNDataType(
-        framework::TransToProtoVarType(dout->dtype()));
-    platform::ReorderMKLDNNHandler reorder_handler(
-        dout_vec_dims,
-        framework::TransToProtoVarType(dout->dtype()),
-        dout_type,
-        onednn_engine);
+    auto dout_type = phi::funcs::ToOneDNNDataType(dout->dtype());
+    phi::funcs::ReorderOneDNNHandler reorder_handler(
+        dout_vec_dims, dout->dtype(), dout_type, onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-        dout->mem_desc(), platform::to_void_cast(dout->data<T>()));
+        dout->mem_desc(), phi::funcs::to_void_cast(dout->data<T>()));
     auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-        dx, this->getPlainFormatTag(dout), ctx.GetPlace());
+        dx,
+        phi::funcs::GetPlainOneDNNFormat(dout_vec_dims.size()),
+        ctx.GetPlace());
     auto reorder_p = reorder_handler.AcquireReorder(reorder_dst_memory_p,
                                                     reorder_src_memory_p);
 
-    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    auto& astream = phi::OneDNNContext::tls().get_stream();
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
     astream.wait();
 

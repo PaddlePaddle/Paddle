@@ -13,19 +13,16 @@
 # limitations under the License.
 """This is the lib for gradient checker unittest."""
 
-import numpy as np
+from collections.abc import Sequence
 from itertools import product
-import paddle
 
+import numpy as np
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.backward import _append_grad_suffix_, _as_list
 from paddle.fluid.framework import _test_eager_guard
-
-try:
-    from collections.abc import Sequence
-except:
-    from collections import Sequence
 
 
 def _product(t):
@@ -59,7 +56,7 @@ def _get_item(t, i, np_dtype):
         raise ValueError("Not supported data type " + str(np_dtype))
 
 
-def _set_item(t, i, e, np_dtype):
+def _set_item(t, i, e, np_dtype, place):
     if np_dtype == np.float16:
         np_t = np.array(t).astype(np.float16)
         shape = np_t.shape
@@ -145,14 +142,14 @@ def _compute_numerical_jacobian(program, x, y, place, scope, delta):
     for i in range(x_size):
         orig = _get_item(x_t, i, np_type)
         x_pos = orig + delta
-        _set_item(x_t, i, x_pos, np_type)
+        _set_item(x_t, i, x_pos, np_type, place)
         y_pos = run()
 
         x_neg = orig - delta
-        _set_item(x_t, i, x_neg, np_type)
+        _set_item(x_t, i, x_neg, np_type, place)
         y_neg = run()
 
-        _set_item(x_t, i, orig, np_type)
+        _set_item(x_t, i, orig, np_type, place)
 
         for j in range(len(y)):
             jacobian[j][i, :] = (y_pos[j] - y_neg[j]) / delta / 2.0
@@ -207,7 +204,7 @@ def _compute_analytical_jacobian(program, x, y, place, scope):
     filted_idx, filted_dx = zip(*filted)
 
     for i in range(y_size):
-        _set_item(dy_t, i, 1, np_type)
+        _set_item(dy_t, i, 1, np_type, place)
 
         dx_res = exe.run(program, scope=scope, fetch_list=filted_dx)
 
@@ -220,7 +217,7 @@ def _compute_analytical_jacobian(program, x, y, place, scope):
                     dx[dx_idx].shape, dtype=np_type
                 ).flatten()
 
-        _set_item(dy_t, i, 0, np_type)
+        _set_item(dy_t, i, 0, np_type, place)
 
     return jacobian
 

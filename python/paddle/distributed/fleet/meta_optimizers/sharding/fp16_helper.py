@@ -13,12 +13,11 @@
 # limitations under the License.
 
 from paddle.distributed.fleet.meta_optimizers.common import (
-    is_optimizer_op,
     OP_ROLE_KEY,
     OpRole,
+    is_optimizer_op,
 )
-
-from paddle.fluid import core
+from paddle.framework import core
 
 __all__ = []
 

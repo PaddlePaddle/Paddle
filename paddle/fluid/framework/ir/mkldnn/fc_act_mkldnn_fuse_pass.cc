@@ -25,7 +25,7 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void FuseFCActOneDNNPass::ApplyImpl(Graph *graph) const {
-  auto act_types = paddle::platform::GetSupportedActivations();
+  auto act_types = phi::funcs::GetSupportedActivations();
 
   for (auto act_type : act_types) FuseFCAct(graph, act_type);
 }
@@ -61,7 +61,7 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
               "is used."));
     }
 
-    auto attr_map = paddle::platform::GetAttributeMap(act_type);
+    auto attr_map = phi::funcs::GetAttributeMap(act_type);
     for (const auto &attr : attr_map) {
       if (act_op->HasAttr(attr.first)) {
         fc_op->SetAttr(attr.second, act_op->GetAttr(attr.first));

@@ -388,11 +388,12 @@ void CPUQuantizePass::GetQuantInfo(Graph* graph) const {
 }
 
 void CPUQuantizePass::QuantizeConv(Graph* graph,
+                                   const std::string& conv_type,
                                    bool with_residual_data) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
   patterns::ConvResidual conv_pattern{pattern, name_scope_};
-  conv_pattern(with_residual_data);
+  conv_pattern(conv_type, with_residual_data);
 
   int quantize_conv_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -510,21 +511,22 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
   AddStatis(quantize_conv_count);
 
   LogQuantizedOpsCounter(
-      "conv2d",
+      conv_type,
       quantize_conv_count,
       ((with_residual_data) ? "with residual connection" : ""));
 }
 
-void CPUQuantizePass::QuantizeFc(Graph* graph) const {
+void CPUQuantizePass::QuantizeFc(Graph* graph, bool with_residual_data) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
   patterns::FCMKLDNN fc_pattern{pattern, name_scope_};
-  fc_pattern(false /* with_residual */);
+  fc_pattern(with_residual_data);
 
   int quantize_fc_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    VLOG(4) << "Quantize fc op";
+    VLOG(4) << "Quantize fc op " << (with_residual_data ? "with" : "without")
+            << " residual data";
     GET_IR_NODE_FROM_SUBGRAPH(fc, fc, fc_pattern);
 
     // skip if should not be quantized
@@ -532,6 +534,7 @@ void CPUQuantizePass::QuantizeFc(Graph* graph) const {
       LogQuantizationDisabled(fc);
       return;
     }
+
     if (!fc->Op()->GetAttrIfExists<bool>("use_mkldnn")) {
       MarkAndLogCannotQuantizeOp(fc, "use_mkldnn attribute set to false");
       return;
@@ -544,6 +547,26 @@ void CPUQuantizePass::QuantizeFc(Graph* graph) const {
     if (!AreScalesPresentForNodes({input, weights})) {
       MarkAndLogCannotQuantizeOp(fc, "No scale available for the operator");
       return;
+    }
+
+    if (with_residual_data) {
+      GET_IR_NODE_FROM_SUBGRAPH(residual_data, residual_data, fc_pattern);
+      if (!AreScalesPresentForNodes({residual_data})) {
+        MarkAndLogCannotQuantizeOp(fc, "No scale available for the operator");
+        return;
+      }
+
+      bool is_residual_unsigned{false};
+      auto residual_scale =
+          GetScaleValueForNode(residual_data, &is_residual_unsigned);
+
+      QuantizeInput(g,
+                    fc,
+                    residual_data,
+                    "ResidualData",
+                    residual_scale,
+                    is_residual_unsigned,
+                    "Scale_in_eltwise");
     }
 
     bool is_input_unsigned{false};
@@ -576,7 +599,9 @@ void CPUQuantizePass::QuantizeFc(Graph* graph) const {
 
   gpd(graph, handler);
   AddStatis(quantize_fc_count);
-  LogQuantizedOpsCounter("fc", quantize_fc_count);
+  LogQuantizedOpsCounter("fc",
+                         quantize_fc_count,
+                         with_residual_data ? "with residual connection" : "");
 }
 
 void CPUQuantizePass::QuantizePool(Graph* graph) const {
@@ -1223,12 +1248,15 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
       platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GetQuantInfo(graph);
-  QuantizeConv(graph, false /* with_residual_data */);
-  QuantizeConv(graph, true /* with_residual_data */);
+  QuantizeConv(graph, "conv2d", false /* with_residual_data */);
+  QuantizeConv(graph, "conv2d", true /* with_residual_data */);
+  QuantizeConv(graph, "fused_conv2d", false /* with_residual_data */);
+  QuantizeConv(graph, "fused_conv2d", true /* with_residual_data */);
   QuantizePool(graph);
   QuantizeConcat(graph);
   QuantizePriorBox(graph);
-  QuantizeFc(graph);
+  QuantizeFc(graph, false /* with_residual_data */);
+  QuantizeFc(graph, true /* with_residual_data */);
   QuantizeMatmul(graph, false /* with_residual_data */);
   QuantizeMatmul(graph, true /* with_residual_data */);
   QuantizeImmutable(graph, "reshape2", "X");

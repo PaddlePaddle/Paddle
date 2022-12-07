@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .. import functional as F
 from paddle.nn import Layer
+
+from .. import functional as F
 
 __all__ = []
 
 
 class ReLU(Layer):
     """
+
     Sparse ReLU Activation, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     .. math::
@@ -44,6 +46,7 @@ class ReLU(Layer):
             relu = paddle.sparse.nn.ReLU()
             out = relu(sparse_x)
             # [0., 0., 1.]
+
     """
 
     def __init__(self, name=None):
@@ -60,6 +63,7 @@ class ReLU(Layer):
 
 class Softmax(Layer):
     r"""
+
     Sparse Softmax Activation, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     Note:
@@ -86,29 +90,32 @@ class Softmax(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-            paddle.seed(100)
+            paddle.seed(2022)
 
-            mask = np.random.rand(3, 4) < 0.5
-            np_x = np.random.rand(3, 4) * mask
-            # [[0.         0.         0.96823406 0.19722934]
-            #  [0.94373937 0.         0.02060066 0.71456372]
-            #  [0.         0.         0.         0.98275049]]
+            mask = paddle.rand((3, 4)) < 0.7
+            x = paddle.rand((3, 4)) * mask
+            print(x)
+            # Tensor(shape=[3, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[0.08325022, 0.27030438, 0.        , 0.83883715],
+            #         [0.        , 0.95856029, 0.24004589, 0.        ],
+            #         [0.14500992, 0.17088132, 0.        , 0.        ]])
 
-            csr = paddle.to_tensor(np_x).to_sparse_csr()
-            # Tensor(shape=[3, 4], dtype=paddle.float64, place=Place(gpu:0), stop_gradient=True,
-            #        crows=[0, 2, 5, 6],
-            #        cols=[2, 3, 0, 2, 3, 3],
-            #        values=[0.96823406, 0.19722934, 0.94373937, 0.02060066, 0.71456372,
-            #                0.98275049])
+            csr = x.to_sparse_csr()
+            print(csr)
+            # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
+            #        crows=[0, 3, 5, 7],
+            #        cols=[0, 1, 3, 1, 2, 0, 1],
+            #        values=[0.08325022, 0.27030438, 0.83883715, 0.95856029, 0.24004589,
+            #                0.14500992, 0.17088132])
 
             softmax = paddle.sparse.nn.Softmax()
             out = softmax(csr)
-            # Tensor(shape=[3, 4], dtype=paddle.float64, place=Place(gpu:0), stop_gradient=True,
-            #        crows=[0, 2, 5, 6],
-            #        cols=[2, 3, 0, 2, 3, 3],
-            #        values=[0.68373820, 0.31626180, 0.45610887, 0.18119845, 0.36269269,
-            #                1.        ])
+            print(out)
+            # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
+            #        crows=[0, 3, 5, 7],
+            #        cols=[0, 1, 3, 1, 2, 0, 1],
+            #        values=[0.23070428, 0.27815846, 0.49113727, 0.67227983, 0.32772022,
+            #                0.49353254, 0.50646752])
     """
 
     def __init__(self, axis=-1, name=None):
@@ -126,6 +133,7 @@ class Softmax(Layer):
 
 class ReLU6(Layer):
     """
+
     Sparse ReLU6 Activation, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     .. math::
@@ -149,6 +157,7 @@ class ReLU6(Layer):
             sparse_x = dense_x.to_sparse_coo(1)
             relu6 = paddle.sparse.nn.ReLU6()
             out = relu6(sparse_x)
+
     """
 
     def __init__(self, name=None):
@@ -165,6 +174,7 @@ class ReLU6(Layer):
 
 class LeakyReLU(Layer):
     r"""
+
     Sparse Leaky ReLU Activation, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     .. math::
@@ -196,6 +206,7 @@ class LeakyReLU(Layer):
             sparse_x = dense_x.to_sparse_coo(1)
             leaky_relu = paddle.sparse.nn.LeakyReLU(0.5)
             out = leaky_relu(sparse_x)
+
     """
 
     def __init__(self, negative_slope=0.01, name=None):

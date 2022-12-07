@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from parallel_executor_test_base import TestParallelExecutorBase, DeviceType
+import unittest
+
+import numpy as np
+from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import numpy as np
-import paddle
-import unittest
 
 
 def norm(*args, **kargs):
@@ -54,7 +56,7 @@ def simple_depthwise_net(use_feed):
     assert use_feed
     img = fluid.layers.data(name='image', shape=[784], dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-    hidden = fluid.layers.reshape(img, (-1, 1, 28, 28))
+    hidden = paddle.reshape(img, (-1, 1, 28, 28))
     for _ in range(4):
         hidden = sep_conv(hidden, channel=200, stride=2, filter=5)
         hidden = fluid.layers.relu(hidden)
@@ -87,7 +89,7 @@ class TestMNIST(TestParallelExecutorBase):
             return optimizer
 
         if only_forward:
-            _optimizer = None
+            _optimizer = None  # noqa: F811
 
         (
             fuse_op_first_loss,

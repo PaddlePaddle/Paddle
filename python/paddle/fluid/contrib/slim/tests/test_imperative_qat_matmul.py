@@ -29,7 +29,7 @@ from paddle.fluid.optimizer import (
     MomentumOptimizer,
 )
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
-from paddle.fluid.dygraph.container import Sequential
+from paddle.nn import Sequential
 from paddle.nn import ReLU, ReLU6, LeakyReLU, Sigmoid, Softmax, PReLU
 from paddle.nn import Linear, Conv2D, Softmax, BatchNorm2D, MaxPool2D
 from paddle.fluid.log_helper import get_logger
@@ -118,7 +118,7 @@ class ImperativeLenet(fluid.dygraph.Layer):
     def forward(self, inputs):
         inputs = self.features(inputs)
         inputs = self.matmul(inputs, inputs, transpose_y=True)
-        inputs = fluid.layers.flatten(inputs, 1)
+        inputs = paddle.flatten(inputs, 1)
         x = self.fc(inputs)
         return x
 
@@ -148,7 +148,6 @@ class TestImperativeQatMatmul(unittest.TestCase):
         lenet = fix_model_dict(lenet)
         imperative_qat.quantize(lenet)
 
-        print(lenet)
         optimizer = MomentumOptimizer(
             learning_rate=0.1, parameter_list=lenet.parameters(), momentum=0.9
         )
@@ -173,7 +172,7 @@ class TestImperativeQatMatmul(unittest.TestCase):
                 img = fluid.dygraph.to_variable(x_data)
                 label = fluid.dygraph.to_variable(y_data)
                 out = lenet(img)
-                acc = fluid.layers.accuracy(out, label)
+                acc = paddle.static.accuracy(out, label)
                 loss = fluid.layers.cross_entropy(out, label)
                 avg_loss = paddle.mean(loss)
 
@@ -205,10 +204,10 @@ class TestImperativeQatMatmul(unittest.TestCase):
                     label = fluid.dygraph.to_variable(y_data)
 
                     out = lenet(img)
-                    acc_top1 = fluid.layers.accuracy(
+                    acc_top1 = paddle.static.accuracy(
                         input=out, label=label, k=1
                     )
-                    acc_top5 = fluid.layers.accuracy(
+                    acc_top5 = paddle.static.accuracy(
                         input=out, label=label, k=5
                     )
 

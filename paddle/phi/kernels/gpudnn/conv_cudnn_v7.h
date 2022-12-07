@@ -23,31 +23,6 @@ namespace phi {
 
 using ConvArgs = ConvArgsBase<cudnnHandle_t, cudnnDataType_t>;
 
-static inline double ToMegaBytes(size_t bytes) {
-  return static_cast<double>(bytes) / (1 << 20);
-}
-
-static inline bool UseFixedWorkspace() {
-  return FLAGS_conv_workspace_size_limit >= 0;
-}
-
-static size_t CalcWorkspaceLimitInBytes(bool use_fixed_workspace) {
-  if (!use_fixed_workspace) {
-    int device_id = phi::backends::gpu::GetCurrentDeviceId();
-    int64_t allocated =
-        paddle::memory::DeviceMemoryStatCurrentValue("Allocated", device_id);
-    int64_t reserved =
-        paddle::memory::DeviceMemoryStatCurrentValue("Reserved", device_id);
-    int64_t availble = paddle::platform::GpuAvailableMemToAlloc();
-    VLOG(3) << "[memory] allocated=" << ToMegaBytes(allocated)
-            << " MB, reserved=" << ToMegaBytes(reserved)
-            << " MB, available_to_alloc=" << ToMegaBytes(availble) << " MB.";
-    return std::max(availble, reserved - allocated);
-  } else {
-    return FLAGS_conv_workspace_size_limit * 1024 * 1024;
-  }
-}
-
 template <typename PerfT>
 std::string GetPerfResultString(std::string prefix,
                                 const std::vector<PerfT>& perf_results,
@@ -584,7 +559,7 @@ struct SearchAlgorithmBase<ConvKind::kBackwardFilter> {
     size_t workspace_size_limit =
         CalcWorkspaceLimitInBytes(UseFixedWorkspace());
     auto workspace_handle = ctx.cudnn_workspace_handle();
-    if (paddle::platform::CudnnDataType<T>::type != CUDNN_DATA_HALF) {
+    if (phi::backends::gpu::CudnnDataType<T>::type != CUDNN_DATA_HALF) {
       size_t max_workspace_size =
           GetMaxWorkspaceSize(args, workspace_size_limit);
       VLOG(3) << "max_workspace_size=" << ToMegaBytes(max_workspace_size)
@@ -699,7 +674,7 @@ struct SearchAlgorithm : public SearchAlgorithmBase<CK> {
                                   bool enable_autotune = true) {
     SearchResult<AlgoT> result;
     bool use_autotune = false;
-    auto dtype = paddle::platform::CudnnDataType<T>::type;
+    auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
     SetConvMathType(ctx, dtype, args.cdesc);
 
     if (deterministic) {
@@ -759,7 +734,7 @@ struct SearchAlgorithm : public SearchAlgorithmBase<CK> {
   static void SetConvMathType(
       const phi::GPUContext& ctx,
       cudnnDataType_t dtype,
-      const paddle::platform::ConvolutionDescriptor& cdesc) {
+      const phi::backends::gpu::ConvolutionDescriptor& cdesc) {
 #if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
     if (ctx.GetComputeCapability() >= 70 && dtype == CUDNN_DATA_HALF) {
       PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetConvolutionMathType(

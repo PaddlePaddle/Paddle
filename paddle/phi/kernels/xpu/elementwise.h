@@ -84,6 +84,17 @@ void XPUElementwise(const XPUContext& dev_ctx,
 
   int ret = xpu::SUCCESS;
 
+  // For [2, 3] + [] --> [2, 3] + [1, 1]
+  // For [] + [2, 3] --> [1, 1] + [2, 3]
+  // For [] + [], Use [1] + [1] to replace [], because xpu not support []
+  if (x_dims_vec.size() == 0) {
+    x_dims_vec = std::vector<int>({1});
+  }
+
+  if (y_dims_vec.size() == 0) {
+    y_dims_vec = std::vector<int>({1});
+  }
+
   ret = func(dev_ctx.x_context(),
              reinterpret_cast<const XPUType*>(x_data),
              reinterpret_cast<const XPUType*>(y_data),
@@ -163,6 +174,15 @@ void XPUElementwiseGrad(const XPUContext& dev_ctx,
   }
   if (dy) {
     dy_data = dev_ctx.template Alloc<T>(dy);
+  }
+
+  // use [1] to replace [], because xpu not support []
+  if (x_dims_vec.size() == 0) {
+    x_dims_vec = std::vector<int>({1});
+  }
+
+  if (y_dims_vec.size() == 0) {
+    y_dims_vec = std::vector<int>({1});
   }
 
   int ret = func(dev_ctx.x_context(),
