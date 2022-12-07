@@ -20,10 +20,6 @@ from paddle.jit.dy2static.variable_trans_func import (
 )
 from paddle.fluid.framework import core, Variable
 from paddle.fluid.layers import Print
-from paddle.tensor import (
-    array_read,
-    array_write,
-)
 from paddle.fluid.layers import (
     assign,
     fill_constant,
@@ -782,8 +778,10 @@ def _run_paddle_pop(array, *args):
         return paddle.less_than(i, arr_len)
 
     def body(i, new_array):
-        item = array_read(array=array, i=i)
-        array_write(item, paddle.tensor.array_length(new_array), new_array)
+        item = paddle.tensor.array_read(array=array, i=i)
+        paddle.tensor.array_write(
+            item, paddle.tensor.array_length(new_array), new_array
+        )
 
         from paddle.static.nn import increment
 
@@ -796,7 +794,7 @@ def _run_paddle_pop(array, *args):
     else:
         idx = fill_constant(shape=[1], dtype="int64", value=idx)
 
-    pop_item = array_read(array, idx)
+    pop_item = paddle.tensor.array_read(array, idx)
 
     new_array = _slice_tensor_array(array, 0, idx)
     i = idx + 1
