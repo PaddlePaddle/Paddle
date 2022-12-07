@@ -22,7 +22,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 constexpr int64_t kNoPadding = -1;
 
 template <typename DeviceContext, typename T>
@@ -53,16 +52,16 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
           .AddOutput(*output_t);
       runner.Run();
     } else {
-      Tensor tmp_table_t(table_t->type());
+      phi::DenseTensor tmp_table_t(table_t->type());
       tmp_table_t.mutable_data<T>(table_t->dims(), ctx.GetPlace());
 
-      Tensor index;
+      phi::DenseTensor index;
       index.mutable_data<int32_t>({1, 1}, ctx.GetPlace());
       FillNpuTensorWithConstant<int32_t>(&index,
                                          static_cast<int32_t>(padding_idx));
 
       auto updata_dim = phi::make_ddim({1, table_t->dims()[1]});
-      Tensor update;
+      phi::DenseTensor update;
       update.mutable_data<T>(updata_dim, ctx.GetPlace());
       FillNpuTensorWithConstant<T>(&update, static_cast<T>(0));
       update.Resize(updata_dim);
@@ -109,7 +108,7 @@ class LookupTableV2GradNPUKernel : public framework::OpKernel<T> {
 
     int embedding_dim = table_grad_t->dims()[1];
     if (embedding_dim % 32 == 0) {
-      // NOTE(pangyoki): The embedding_dim of Tensor used in
+      // NOTE(pangyoki): The embedding_dim of phi::DenseTensor used in
       // EmbeddingDenseGrad must be an integer multiple of 32.
       int num_weights = table_grad_t->dims()[0];
       const auto &runner =
@@ -137,7 +136,7 @@ class LookupTableV2GradNPUKernel : public framework::OpKernel<T> {
                       {{"use_locking", true}});
       runner_scatter.Run(stream);
     } else {
-      Tensor casted_ids_t;
+      phi::DenseTensor casted_ids_t;
       if (framework::TransToProtoVarType(ids_t->dtype()) !=
           framework::proto::VarType::INT32) {
         casted_ids_t.mutable_data<int32_t>(ids_t->dims(), ctx.GetPlace());

@@ -14,7 +14,6 @@
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
-from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 from paddle.framework import core
 
 from ...fluid.data_feeder import check_dtype, check_variable_and_dtype
@@ -1678,11 +1677,12 @@ def glu(x, axis=-1, name=None):
 
             x = paddle.to_tensor(
                 [[-0.22014759, -1.76358426,  0.80566144,  0.04241343],
-                 [-1.94900405, -1.89956081,  0.17134808, -1.11280477]]
+                    [-1.94900405, -1.89956081,  0.17134808, -1.11280477]]
             )
-            print(F.glu(x).numpy())
-            # array([[-0.15216254, -0.9004892 ],
-            #        [-1.0577879 , -0.46985325]], dtype=float32)
+            print(F.glu(x))
+            # Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[-0.15216254, -0.90048921],
+            #         [-1.05778778, -0.46985325]])
 
     """
     check_variable_and_dtype(

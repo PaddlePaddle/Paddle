@@ -27,9 +27,9 @@ from ifelse_simple_func import (
 import paddle
 import paddle.fluid as fluid
 import paddle.jit.dy2static as _jst
-from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
+from paddle.jit.dy2static.utils import func_to_source_code
 from paddle.utils import gast
 
 np.random.seed(0)
@@ -42,7 +42,7 @@ np.random.seed(0)
 def simple_func(x, weight_numpy):
     x = fluid.dygraph.to_variable(x)
     w = fluid.dygraph.to_variable(weight_numpy)
-    y = fluid.layers.matmul(x, w)
+    y = paddle.matmul(x, w)
     z = paddle.mean(y)
     return z
 
@@ -51,7 +51,7 @@ def simple_func(x, weight_numpy):
 def decorated_simple_func(x, weight_numpy):
     x = fluid.dygraph.to_variable(x)
     w = fluid.dygraph.to_variable(weight_numpy)
-    y = fluid.layers.matmul(x, w)
+    y = paddle.matmul(x, w)
     z = paddle.mean(y)
     return z
 

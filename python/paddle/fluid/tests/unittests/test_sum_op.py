@@ -19,7 +19,6 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -426,20 +425,20 @@ class API_Test_Add_n(unittest.TestCase):
 class TestRaiseSumError(unittest.TestCase):
     def test_errors(self):
         def test_type():
-            fluid.layers.sum([11, 22])
+            paddle.add_n([11, 22])
 
         self.assertRaises(TypeError, test_type)
 
         def test_dtype():
             data1 = fluid.data(name="input1", shape=[10], dtype="int8")
             data2 = fluid.data(name="input2", shape=[10], dtype="int8")
-            fluid.layers.sum([data1, data2])
+            paddle.add_n([data1, data2])
 
         self.assertRaises(TypeError, test_dtype)
 
         def test_dtype1():
             data1 = fluid.data(name="input1", shape=[10], dtype="int8")
-            fluid.layers.sum(data1)
+            paddle.add_n(data1)
 
         self.assertRaises(TypeError, test_dtype1)
 

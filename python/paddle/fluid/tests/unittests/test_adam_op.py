@@ -614,7 +614,7 @@ class TestAdamOpV2(unittest.TestCase):
             with fluid.unique_name.guard():
                 data = fluid.data(name="data", shape=shape)
                 conv = fluid.layers.conv2d(data, 8, 3)
-                loss = fluid.layers.reduce_mean(conv)
+                loss = paddle.mean(conv)
 
                 beta1 = fluid.layers.create_global_var(
                     shape=[1], value=0.85, dtype='float32', persistable=True
@@ -807,7 +807,7 @@ class TestAdamOptimizer(unittest.TestCase):
                 )
 
                 cost = fluid.layers.cross_entropy(input=prediction, label=label)
-                loss = fluid.layers.reduce_mean(cost)
+                loss = paddle.mean(cost)
                 beta1_init = 0.9
                 beta2_init = 0.999
                 epsilon_init = 1e-8
@@ -941,7 +941,9 @@ class TestAdamOptimizer(unittest.TestCase):
             y_predict = fluid.layers.fc(
                 input=x, size=1, act=None, param_attr=weight_attr
             )
-            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
             adam = fluid.optimizer.AdamOptimizer(
@@ -965,7 +967,7 @@ class TestAdamOptimizer(unittest.TestCase):
         prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
 
         cost = fluid.layers.cross_entropy(input=prediction, label=label)
-        loss = fluid.layers.reduce_mean(cost)
+        loss = paddle.mean(cost)
         adam = fluid.optimizer.Adam(use_global_beta_pow=True)
         adam.minimize(loss)
         self.assertRaises(Exception, adam._get_global_accumulator, 'tmp')

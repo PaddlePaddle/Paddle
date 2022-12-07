@@ -54,7 +54,7 @@ def fake_simnet_reader():
 
 
 def get_acc(cos_q_nt, cos_q_pt, batch_size):
-    cond = fluid.layers.less_than(cos_q_nt, cos_q_pt)
+    cond = paddle.less_than(cos_q_nt, cos_q_pt)
     cond = fluid.layers.cast(cond, dtype='float64')
     cond_3 = paddle.sum(cond)
     acc = paddle.divide(
@@ -192,8 +192,8 @@ def train_network(
         ),
         bias_attr=fluid.ParamAttr(name="__fc_b__"),
     )
-    cos_q_pt = fluid.layers.cos_sim(q_fc, pt_fc)
-    cos_q_nt = fluid.layers.cos_sim(q_fc, nt_fc)
+    cos_q_pt = paddle.nn.functional.cosine_similarity(q_fc, pt_fc)
+    cos_q_nt = paddle.nn.functional.cosine_similarity(q_fc, nt_fc)
     # loss
     avg_cost = get_loss(cos_q_pt, cos_q_nt)
     # acc

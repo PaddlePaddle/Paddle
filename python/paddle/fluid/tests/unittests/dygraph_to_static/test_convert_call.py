@@ -12,19 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import unittest
 
-import logging
 import numpy as np
+from test_program_translator import get_source_code
 
 import paddle
 import paddle.fluid as fluid
-from paddle.jit import ProgramTranslator
-from paddle.jit.dy2static.convert_call_func import (
-    CONVERSION_OPTIONS,
-)
-from test_program_translator import get_source_code
 import paddle.jit.dy2static as _jst
+from paddle.jit import ProgramTranslator
+from paddle.jit.dy2static.convert_call_func import CONVERSION_OPTIONS
 
 program_translator = ProgramTranslator()
 

@@ -17,16 +17,14 @@ import os
 import tempfile
 import time
 import unittest
-import paddle
+
 import numpy as np
 from predictor_utils import PredictorTools
 
 import paddle
 import paddle.fluid as fluid
-
-from paddle.fluid.dygraph.nn import BatchNorm
-from paddle.jit import ProgramTranslator
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.fluid.dygraph.nn import BatchNorm
 from paddle.jit import ProgramTranslator
 
 SEED = 2020
@@ -186,9 +184,7 @@ class ResNet(fluid.dygraph.Layer):
                 )
                 self.bottleneck_block_list.append(bottleneck_block)
                 shortcut = True
-        self.pool2d_avg = paddle.fluid.dygraph.nn.Pool2D(
-            pool_size=7, pool_type='avg', global_pooling=True
-        )
+        self.pool2d_avg = paddle.nn.AdaptiveAvgPool2D(1)
 
         self.pool2d_avg_output = num_filters[len(num_filters) - 1] * 4 * 1 * 1
 
@@ -278,10 +274,10 @@ class ResNetHelper:
                     pred = resnet(img)
                     loss = fluid.layers.cross_entropy(input=pred, label=label)
                     avg_loss = paddle.mean(x=loss)
-                    acc_top1 = fluid.layers.accuracy(
+                    acc_top1 = paddle.static.accuracy(
                         input=pred, label=label, k=1
                     )
-                    acc_top5 = fluid.layers.accuracy(
+                    acc_top5 = paddle.static.accuracy(
                         input=pred, label=label, k=5
                     )
 

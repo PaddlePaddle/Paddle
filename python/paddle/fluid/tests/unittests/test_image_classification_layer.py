@@ -14,6 +14,7 @@
 
 import unittest
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.nets as nets
 from paddle.fluid.framework import Program
@@ -41,9 +42,9 @@ class TestLayer(unittest.TestCase):
             images = fluid.layers.data(
                 name='pixel', shape=[3, 48, 48], dtype='float32'
             )
-            hidden1 = fluid.layers.batch_norm(input=images)
+            hidden1 = paddle.static.nn.batch_norm(input=images)
             hidden2 = fluid.layers.fc(input=hidden1, size=128, act='relu')
-            fluid.layers.batch_norm(input=hidden2)
+            paddle.static.nn.batch_norm(input=hidden2)
 
         print(str(main_program))
 
@@ -81,7 +82,7 @@ class TestLayer(unittest.TestCase):
             image2 = fluid.layers.data(
                 name='pixel2', shape=[3, 48, 48], dtype='float32'
             )
-            fluid.layers.elementwise_add(x=image1, y=image2, act='relu')
+            paddle.nn.functional.relu(paddle.add(x=image1, y=image2))
         print(main_program)
 
 

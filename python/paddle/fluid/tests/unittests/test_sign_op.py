@@ -46,7 +46,7 @@ class TestSignOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
             # The input type of sign_op must be Variable or numpy.ndarray.
             input1 = 12
-            self.assertRaises(TypeError, fluid.layers.sign, input1)
+            self.assertRaises(TypeError, paddle.sign, input1)
             # The input dtype of sign_op must be float16, float32, float64.
             input2 = fluid.layers.data(
                 name='input2', shape=[12, 10], dtype="int32"
@@ -54,12 +54,12 @@ class TestSignOpError(unittest.TestCase):
             input3 = fluid.layers.data(
                 name='input3', shape=[12, 10], dtype="int64"
             )
-            self.assertRaises(TypeError, fluid.layers.sign, input2)
-            self.assertRaises(TypeError, fluid.layers.sign, input3)
+            self.assertRaises(TypeError, paddle.sign, input2)
+            self.assertRaises(TypeError, paddle.sign, input3)
             input4 = fluid.layers.data(
                 name='input4', shape=[4], dtype="float16"
             )
-            fluid.layers.sign(input4)
+            paddle.sign(input4)
 
 
 class TestSignAPI(unittest.TestCase):

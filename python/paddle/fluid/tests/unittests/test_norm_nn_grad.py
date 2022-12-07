@@ -21,7 +21,6 @@ from decorator_helper import prog_scope
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 
 
 class TestInstanceNormDoubleGradCheck(unittest.TestCase):
@@ -34,7 +33,7 @@ class TestInstanceNormDoubleGradCheck(unittest.TestCase):
             dtype = "float32"
             eps = 0.005
             atol = 1e-4
-            x = layers.create_parameter(dtype=dtype, shape=shape, name='x')
+            x = paddle.create_parameter(dtype=dtype, shape=shape, name='x')
             z = paddle.static.nn.instance_norm(input=x)
             x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
             gradient_checker.double_grad_check(
@@ -62,7 +61,7 @@ class TestInstanceNormDoubleGradCheckWithoutParamBias(
             dtype = "float32"
             eps = 0.005
             atol = 1e-4
-            x = layers.create_parameter(dtype=dtype, shape=shape, name='x')
+            x = paddle.create_parameter(dtype=dtype, shape=shape, name='x')
             z = paddle.static.nn.instance_norm(
                 input=x, param_attr=False, bias_attr=False
             )
@@ -85,7 +84,7 @@ class TestInstanceNormDoubleGradEagerCheck(unittest.TestCase):
             dtype = "float32"
             eps = 0.005
             atol = 1e-4
-            x = layers.create_parameter(dtype=dtype, shape=shape, name='x')
+            x = paddle.create_parameter(dtype=dtype, shape=shape, name='x')
             z = paddle.nn.functional.instance_norm(x)
             x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
             # check for static mode
@@ -127,7 +126,7 @@ class TestInstanceNormDoubleGradEagerCheckWithParams(
             dtype = "float32"
             eps = 0.005
             atol = 1e-4
-            x = layers.create_parameter(dtype=dtype, shape=shape, name='x')
+            x = paddle.create_parameter(dtype=dtype, shape=shape, name='x')
             z = paddle.nn.InstanceNorm2D(3)(x)
             x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
             # check for static mode
@@ -171,8 +170,8 @@ class TestBatchNormDoubleGradCheck(unittest.TestCase):
             dtype = "float32"
             eps = 0.005
             atol = 1e-4
-            x = layers.create_parameter(dtype=dtype, shape=self.shape, name='x')
-            z = fluid.layers.batch_norm(
+            x = paddle.create_parameter(dtype=dtype, shape=self.shape, name='x')
+            z = paddle.static.nn.batch_norm(
                 input=x,
                 data_layout=self.data_layout,
                 use_global_stats=self.use_global_stats,
@@ -251,8 +250,8 @@ class TestBatchNormDoubleGradCheckCase5(TestBatchNormDoubleGradCheck):
             chn = (
                 self.shape[1] if self.data_layout == 'NCHW' else self.shape[-1]
             )
-            x = layers.create_parameter(dtype=dtype, shape=self.shape, name='x')
-            z = fluid.layers.batch_norm(
+            x = paddle.create_parameter(dtype=dtype, shape=self.shape, name='x')
+            z = paddle.static.nn.batch_norm(
                 input=x,
                 data_layout=self.data_layout,
                 use_global_stats=self.use_global_stats,

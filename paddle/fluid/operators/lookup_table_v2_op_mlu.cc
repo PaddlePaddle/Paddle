@@ -17,8 +17,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 class LookupTableV2MLUKernel : public framework::OpKernel<T> {
  public:
@@ -84,7 +82,7 @@ class LookupTableV2GradMLUKernel : public framework::OpKernel<T> {
             "Number of ids greater than int32_t::max , please check "
             "number of ids in LookupTableV2GradMLUKernel."));
 
-    Tensor ids_int32(ids_t->dtype());
+    phi::DenseTensor ids_int32(ids_t->dtype());
     if (ids_t->dtype() != DataType::INT32) {
       ids_int32.mutable_data<int>(ids_t->dims(), ctx.GetPlace());
       MLUCnnlTensorDesc ids_desc(*ids_t);
