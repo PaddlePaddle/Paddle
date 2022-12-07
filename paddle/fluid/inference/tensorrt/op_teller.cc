@@ -2038,7 +2038,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       const auto x_shape = x_var_desc->GetShape();
     }
 
-    if (op_type == "reduce_sum" || op_type == "reduce_mean") {
+    if (op_type == "reduce_sum" || op_type == "reduce_mean" ||
+        op_type == "reduce_max") {
       if (!desc.HasAttr("dim", /*with_attr_var=*/false)) {
         VLOG(3) << "Skip to convert into TRT while found Attribute('dim') is "
                    "Variable type in "
@@ -2324,6 +2325,13 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "reverse_roll") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "The reverse roll fused op does not support static shape "
+                   "mode yet.";
+        return false;
+      }
+    }
     if (op_type == "skip_merge_layernorm") {
       if (!with_dynamic_shape) {
         VLOG(3) << "The merge_layernorm op does not support "
@@ -2463,8 +2471,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "affine_channel",
       "nearest_interp",
       "anchor_generator",
-      "reduce_sum",
+      "reduce_max",
       "reduce_mean",
+      "reduce_sum",
       "conv3d",
       "conv3d_transpose",
       "mish",
@@ -2499,6 +2508,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "squeeze2",
       "unsqueeze2",
       "layernorm_shift_partition",
+      "reverse_roll",
       "take_along_axis",
       "tanh_shrink",
       "logsigmoid",
@@ -2602,8 +2612,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "affine_channel",
       "nearest_interp",
       "anchor_generator",
-      "reduce_sum",
+      "reduce_max",
       "reduce_mean",
+      "reduce_sum",
       "conv3d",
       "conv3d_transpose",
       "mish",
@@ -2639,6 +2650,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "unsqueeze2",
       "fused_token_prune",
       "layernorm_shift_partition",
+      "reverse_roll",
       "tanh_shrink",
       "take_along_axis",
       "logsigmoid",

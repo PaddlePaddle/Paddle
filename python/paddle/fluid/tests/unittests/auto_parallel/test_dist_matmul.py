@@ -84,9 +84,7 @@ def matmul_dp2mp2(init_x, init_y, trans_x, trans_y):
         y = init_y(trans_y)
         x.stop_gradient = False
         y.stop_gradient = False
-        out = paddle.fluid.layers.matmul(
-            x, y, transpose_x=trans_x, transpose_y=trans_y
-        )
+        out = paddle.matmul(x, y, transpose_x=trans_x, transpose_y=trans_y)
         loss = paddle.mean(out)
     return main_program, start_program, loss
 
@@ -134,22 +132,22 @@ class TestDistMatmul(unittest.TestCase):
         # [0, -1] * [-1, 1] --> [0, 1]
         ref_ops = [
             "c_identity",
-            "matmul",
+            "matmul_v2",
             "reduce_mean",
             "fill_constant",
             "reduce_mean_grad",
-            "matmul_grad",
+            "matmul_v2_grad",
         ]
         ops = []
         block = main_program.global_block()
         for op in block.ops:
             ops.append(op.type)
-            if op.type == "matmul":
+            if op.type == "matmul_v2":
                 out_name = op.output('Out')[0]
                 out_var = block.vars[out_name]
                 op_dist_attr = dist_ctx.get_op_dist_attr_for_program(op)
                 assert op_dist_attr.impl_idx == 0
-                assert op_dist_attr.impl_type == "matmul"
+                assert op_dist_attr.impl_type == "matmul_v2"
                 out_dims_mapping = op_dist_attr.get_output_dims_mapping(
                     out_name
                 )
@@ -158,33 +156,33 @@ class TestDistMatmul(unittest.TestCase):
                     out_var
                 )
                 assert tensor_dist_attr.dims_mapping == [0, 1]
-            if op.type == "matmul_grad":
+            if op.type == "matmul_v2_grad":
                 op_dist_attr = dist_ctx.get_op_dist_attr_for_program(op)
                 assert op_dist_attr.impl_idx == 0
-                assert op_dist_attr.impl_type == "matmul"
+                assert op_dist_attr.impl_type == "matmul_v2"
 
         assert ops == ref_ops
 
     def check_row_program(self, main_program, dist_ctx):
         # [0, -1, 1] * [1, -1] --> [0, -1, -1]
         ref_ops = [
-            "matmul",
+            "matmul_v2",
             "c_allreduce_sum",
             "reduce_mean",
             "fill_constant",
             "reduce_mean_grad",
-            "matmul_grad",
+            "matmul_v2_grad",
         ]
         ops = []
         block = main_program.global_block()
         for op in block.ops:
             ops.append(op.type)
-            if op.type == "matmul":
+            if op.type == "matmul_v2":
                 out_name = op.output('Out')[0]
                 out_var = block.vars[out_name]
                 op_dist_attr = dist_ctx.get_op_dist_attr_for_program(op)
                 assert op_dist_attr.impl_idx == 1
-                assert op_dist_attr.impl_type == "matmul"
+                assert op_dist_attr.impl_type == "matmul_v2"
                 out_dims_mapping = op_dist_attr.get_output_dims_mapping(
                     out_name
                 )
@@ -193,10 +191,10 @@ class TestDistMatmul(unittest.TestCase):
                     out_var
                 )
                 assert tensor_dist_attr.dims_mapping == [0, -1, -1]
-            if op.type == "matmul_grad":
+            if op.type == "matmul_v2_grad":
                 op_dist_attr = dist_ctx.get_op_dist_attr_for_program(op)
                 assert op_dist_attr.impl_idx == 1
-                assert op_dist_attr.impl_type == "matmul"
+                assert op_dist_attr.impl_type == "matmul_v2"
         assert ops == ref_ops
 
 
