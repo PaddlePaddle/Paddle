@@ -1880,20 +1880,20 @@ def rnnt_loss(
             return loss_out
         helper = LayerHelper('warprnnt', **locals())
         check_variable_and_dtype(
-            input, 'input', ['float32', 'float64'], "warprnnt"
+            input, 'logits', ['float32', 'float64'], "warprnnt"
         )
         check_variable_and_dtype(label, 'label', ['int32'], "warprnnt")
         check_variable_and_dtype(
-            input_length, 'LogitsLength', ['int32'], "warprnnt"
+            input_length, 'logits_length', ['int32'], "warprnnt"
         )
         check_variable_and_dtype(
-            label_length, 'LabelLength', ['int32'], "warprnnt"
+            label_length, 'labels_length', ['int32'], "warprnnt"
         )
         this_inputs = {
-            'Logits': [input],
-            'Label': [label],
-            'LogitsLength': [input_length],
-            'LabelLength': [label_length],
+            'logits': [input],
+            'label': [label],
+            'logits_length': [input_length],
+            'labels_length': [label_length],
         }
 
         loss_out = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -1902,7 +1902,7 @@ def rnnt_loss(
         helper.append_op(
             type='warprnnt',
             inputs=this_inputs,
-            outputs={'WarpRNNTGrad': [grad_out], 'Loss': [loss_out]},
+            outputs={'warprnntgrad': [grad_out], 'loss': [loss_out]},
             attrs={
                 'blank': blank,
                 'fastemit_lambda': fastemit_lambda,

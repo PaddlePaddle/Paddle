@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@ from op_test import OpTest
 import paddle
 from paddle import _C_ops
 import paddle.fluid.core as core
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 
 paddle.enable_static()
 
@@ -273,83 +275,97 @@ class TestWarpRNNTFP64Op(TestWarpRNNTOp):
             )
 
 
-# class TestWarpRNNTOpError(unittest.TestCase):
+class TestWarpRNNTOpError(unittest.TestCase):
+    def test_errors(self):
+        print("test_errors")
+        with program_guard(Program(), Program()):
+            logits = fluid.data(
+                name='logits', shape=[5, 16, 6], dtype='float32'
+            )
+            logits_length = fluid.data(
+                name='logit_lengths', shape=[None], dtype='int32'
+            )
+            label = fluid.data(name='labels', shape=[16, 3], dtype='int32')
+            label_length = fluid.data(
+                name='label_lengths', shape=[None], dtype='int32'
+            )
 
-#     def test_errors(self):
-#         with program_guard(Program(), Program()):
-#             logits = fluid.data(
-#                 name='logits', shape=[5, 16, 6], dtype='float32'
-#             )
-#             logits_length = fluid.data(
-#                 name='logit_lengths', shape=[None], dtype='int64'
-#             )
-#             label = fluid.data(name='labels', shape=[16, 3], dtype='int32')
-#             label_length = fluid.data(
-#                 name='label_lengths', shape=[None], dtype='int64'
-#             )
+            def test_logits_Variable():
+                logits_data = fluid.data(
+                    name='logits_data', shape=[5, 16, 6], dtype='int32'
+                )
+                paddle.nn.functional.rnnt_loss(
+                    logprobs=logits_data,
+                    labels=label,
+                    logit_lengths=logits_length,
+                    label_lengths=label_length,
+                )
 
-#             def test_logits_Variable():
-#                 logits_data = np.random.rand(5, 16, 6).astype(logits.dtype)
-#                 paddle.nn.functional.rnnt_loss(
-#                     logits=logits,
-#                     labels=label,
-#                     logit_lengths=logits_length,
-#                     label_lengths=label_length,
-#                 )
+            self.assertRaises(TypeError, test_logits_Variable)
 
-#             self.assertRaises(TypeError, test_logits_Variable)
+            def test_label_Variable():
+                label_data = fluid.data(
+                    name='label_data', shape=[16, 3], dtype='int64'
+                )
+                paddle.nn.functional.rnnt_loss(
+                    logprobs=logits,
+                    labels=label_data,
+                    logit_lengths=logits_length,
+                    label_lengths=label_length,
+                )
 
-#             def test_label_Variable():
-#                 label_data = np.random.randint(0, 5, [5, 1]).astype("int32")
-#                 paddle.nn.functional.rnnt_loss(
-#                     logits=logits,
-#                     labels=label_data,
-#                     logit_lengths=logits_length,
-#                     label_lengths=label_length,
-#                 )
+            self.assertRaises(TypeError, test_label_Variable)
 
-#             self.assertRaises(TypeError, test_label_Variable)
+            def test_logits_len_Variable():
+                logits_length_data = fluid.data(
+                    name='logits_length_data', shape=[None], dtype='int64'
+                )
+                paddle.nn.functional.rnnt_loss(
+                    logprobs=logits,
+                    labels=label,
+                    logit_lengths=logits_length_data,
+                    label_lengths=label_length,
+                )
 
-#             def test_logits_len_Variable():
-#                 logits_length_data = np.array([5] * 16).astype("int64")
-#                 paddle.nn.functional.rnnt_loss(
-#                     logits=logits,
-#                     labels=label,
-#                     logit_lengths=logits_length_data,
-#                     label_lengths=label_length,
-#                 )
+            self.assertRaises(TypeError, test_logits_len_Variable)
 
-#             self.assertRaises(TypeError, test_logits_len_Variable)
+            def test_label_len_Variable():
+                label_length_data = fluid.data(
+                    name='label_length_data', shape=[None], dtype='int64'
+                )
+                paddle.nn.functional.rnnt_loss(
+                    logprobs=logits,
+                    labels=label,
+                    logit_lengths=logits_length,
+                    label_lengths=label_length_data,
+                )
 
-#             def test_label_len_Variable():
-#                 label_length_data = np.array([3] * 16).astype("int64")
-#                 paddle.nn.functional.rnnt_loss(
-#                     logits=logits,
-#                     labels=label,
-#                     logit_lengths=logits_length,
-#                     label_lengths=label_length_data,
-#                 )
+            self.assertRaises(TypeError, test_label_len_Variable)
 
-#             self.assertRaises(TypeError, test_label_len_Variable)
+    def test_dygraph_errors(self):
+        def test_dygraph_with_lod():
+            print("test_dygraph_with_lod")
+            logits = np.random.uniform(0.1, 1.0, [20, 15]).astype("float32")
+            # labels should not be blank
+            labels = np.random.randint(0, 15 - 1, [15, 1], dtype="int32")
+            labels_len = np.random.randint(0, 15 - 1, [15, 1], dtype="int64")
+            logits_len = np.random.randint(0, 15 - 1, [15, 1], dtype="int32")
 
-#     def test_dygraph_errors(self):
-#         def test_dygraph_with_lod():
-#             logits = np.random.uniform(0.1, 1.0, [20, 15]).astype("float32")
-#             # labels should not be blank
-#             labels = np.random.randint(0, 15 - 1, [15, 1], dtype="int32")
-#             labels_len = np.random.randint(0, 15 - 1, [15, 1], dtype="int32")
-#             logits_len = np.random.randint(0, 15 - 1, [15, 1], dtype="int32")
+            softmax = paddle.to_tensor(logits)
+            labels = paddle.to_tensor(labels)
+            logits_len = paddle.to_tensor(logits_len)
+            labels_len = paddle.to_tensor(labels_len)
 
-#             softmax = paddle.to_tensor(logits)
-#             labels = paddle.to_tensor(labels)
-#             logits_len = paddle.to_tensor(logits_len)
-#             labels_len = paddle.to_tensor(labels_len)
+            paddle.nn.functional.rnnt_loss(
+                logprobs=softmax,
+                labels=labels,
+                logit_lengths=logits_len,
+                label_lengths=labels_len,
+            )
 
-#             paddle.nn.functional.rnnt_loss(logits=softmax, labels=labels, logit_lengths=logits_len, label_lengths=labels_len)
-
-#         paddle.disable_static()
-#         self.assertRaises(ValueError, test_dygraph_with_lod)
-#         paddle.enable_static()
+        paddle.disable_static()
+        self.assertRaises(ValueError, test_dygraph_with_lod)
+        paddle.enable_static()
 
 
 # class TestCTCLossAPICase(unittest.TestCase):
