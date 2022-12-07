@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 from paddle import _legacy_C_ops
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestCapture:
@@ -59,8 +58,8 @@ class TestBakcwardFunctionHookError(unittest.TestCase):
 
     def test_hook(self):
         # _register_void_function_post_hook do not support in eager mode
-        with _test_eager_guard():
-            pass
+        # with _test_eager_guard():
+        #    pass
         self.func_hook()
 
 
