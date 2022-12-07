@@ -2308,7 +2308,6 @@ class TestBook(LayerTest):
             {
                 "make_gaussian_random",
                 "make_kldiv_loss",
-                "make_sampling_id",
                 "make_uniform_random_batch_size_like",
             }
         )
@@ -2792,20 +2791,6 @@ class TestBook(LayerTest):
             fluid.default_main_program(), fluid.default_startup_program()
         ):
             out = layers.gaussian_random(shape=[20, 30])
-            return out
-
-    def make_sampling_id(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(
-                name="X",
-                shape=[13, 11],
-                dtype='float32',
-                append_batch_size=False,
-            )
-
-            out = layers.sampling_id(x)
             return out
 
     def make_sum(self):
