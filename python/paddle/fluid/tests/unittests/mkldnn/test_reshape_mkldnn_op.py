@@ -201,9 +201,9 @@ def create_reshape_bf16_test_classes(parent):
 
     class TestReshapeBF16OneDNNOp(TestReshape2BF16OneDNNOp):
         def setUp(self):
+            self.x = np.random.random(self.ori_shape).astype("float32")
             super().setUp()
             self.dtype = np.uint16
-            self.x = np.random.random(self.ori_shape).astype("float32")
             self.op_type = "reshape"
 
         def set_outputs(self):
