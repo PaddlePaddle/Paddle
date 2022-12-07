@@ -61,6 +61,7 @@ def _test_read_write(x):
 
 class TestArrayReadWrite(unittest.TestCase):
     def test_read_write(self):
+        paddle.enable_static()
         x = [
             layers.data(name='x0', shape=[100]),
             layers.data(name='x1', shape=[100]),
@@ -132,39 +133,18 @@ class TestArrayReadWrite(unittest.TestCase):
 
 
 class TestArrayReadWriteOpError(unittest.TestCase):
-    def _test_errors(self, use_fluid_api=True):
-        if use_fluid_api:
-            with program_guard(Program(), Program()):
-                x1 = np.random.randn(2, 4).astype('int32')
-                x2 = fluid.layers.fill_constant(
-                    shape=[1], dtype='int32', value=1
-                )
-                x3 = np.random.randn(2, 4).astype('int32')
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            x1 = np.random.randn(2, 4).astype('int32')
+            x2 = paddle.ones(shape=[1], dtype='int32')
+            x3 = np.random.randn(2, 4).astype('int32')
 
-                self.assertRaises(
-                    TypeError, fluid.layers.array_read, array=x1, i=x2
-                )
-                self.assertRaises(
-                    TypeError, fluid.layers.array_write, array=x1, i=x2, out=x3
-                )
-        else:
-            with program_guard(Program(), Program()):
-                x1 = np.random.randn(2, 4).astype('int32')
-                x2 = paddle.ones(shape=[1], dtype='int32')
-                x3 = np.random.randn(2, 4).astype('int32')
-
-                self.assertRaises(
-                    TypeError, paddle.tensor.array_read, array=x1, i=x2
-                )
-                self.assertRaises(
-                    TypeError, paddle.tensor.array_write, array=x1, i=x2, out=x3
-                )
-
-    def test_fluid_api(self):
-        self._test_errors(use_fluid_api=True)
-
-    def test_paddle_api(self):
-        self._test_errors(use_fluid_api=False)
+            self.assertRaises(
+                TypeError, paddle.tensor.array_read, array=x1, i=x2
+            )
+            self.assertRaises(
+                TypeError, paddle.tensor.array_write, array=x1, i=x2, out=x3
+            )
 
 
 class TestArrayReadWriteApi(unittest.TestCase):
