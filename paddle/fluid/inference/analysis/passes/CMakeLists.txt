@@ -30,6 +30,10 @@ cc_library(
   inference_op_replace_pass
   SRCS inference_op_replace_pass.cc
   DEPS analysis_pass graph_to_program_pass)
+cc_library(
+  runtime_context_cache_pass
+  SRCS runtime_context_cache_pass.cc
+  DEPS analysis_pass)
 
 cc_library(
   analysis_passes
@@ -41,6 +45,7 @@ cc_library(
        memory_optim_pass
        convert_to_mixed_precision
        inference_op_replace_pass
+       runtime_context_cache_pass
        ir_graph_to_program_pass)
 
 set(analysis_deps

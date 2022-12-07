@@ -1,4 +1,4 @@
-/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,21 +14,20 @@ limitations under the License. */
 
 #pragma once
 
-#include <memory>
-
-#include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/inference/analysis/analysis_pass.h"
 
 namespace paddle {
-namespace framework {
-namespace ir {
+namespace inference {
+namespace analysis {
 
-class Graph;
+struct Argument;
 
-class RuntimeContextCachePass : public Pass {
+class RuntimeContextCachePass : public AnalysisPass {
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void RunImpl(Argument *argument) override;
+  std::string repr() const override;
 };
 
-}  // namespace ir
-}  // namespace framework
+}  // namespace analysis
+}  // namespace inference
 }  // namespace paddle
