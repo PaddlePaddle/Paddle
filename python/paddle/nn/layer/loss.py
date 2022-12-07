@@ -1129,13 +1129,13 @@ class RNNTLoss(Layer):
             then the mean over the batch is taken. Default: 'mean'
 
     Shape:
-        logits: Tensor of (batch x seqLength x labelLength x outputDim) containing output from network
+        logprobs: Tensor of (batch x seqLength x labelLength x outputDim) containing output from network
         labels: 2 dimensional (batch, labelLength) Tensor containing all the targets of the batch with zero padded
         logit_lens: Tensor of size (batch) containing size of each output sequence from the network
         label_lens: Tensor of (batch) containing label length of each example
 
     Returns:
-     Tensor, The RNN-T loss between ``logits`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is [1]. Data type is the same as ``logits``.
+     Tensor, The RNN-T loss between ``logprobs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is [1]. Data type is the same as ``logprobs``.
 
     Examples:
         .. code-block:: python
@@ -1148,9 +1148,9 @@ class RNNTLoss(Layer):
         self.reduction = reduction
         self.fastemit_lambda = fastemit_lambda
 
-    def forward(self, logits, labels, logit_lens, label_lens):
+    def forward(self, logprobs, labels, logit_lens, label_lens):
         return paddle.nn.functional.rnnt_loss(
-            logits,
+            logprobs,
             labels,
             logit_lens,
             label_lens,

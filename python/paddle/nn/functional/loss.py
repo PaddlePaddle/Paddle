@@ -24,7 +24,6 @@ from ...tensor.manipulation import reshape
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.framework import _varbase_creator
 from ...static import Variable
-from .activation import log_softmax
 from paddle.utils import deprecated
 from paddle import _C_ops, _legacy_C_ops
 from paddle import in_dynamic_mode
@@ -1833,7 +1832,7 @@ def ctc_loss(
 
 
 def rnnt_loss(
-    logits,
+    logprobs,
     labels,
     logit_lengths,
     label_lengths,
@@ -1846,7 +1845,7 @@ def rnnt_loss(
     to compute Sequence Transduction with Recurrent Neural Networks (RNN-T) loss.
 
     Parameters:
-        logits (Tensor): The logits sequence with padding, which is a 4-D Tensor. The tensor shape is [B, Tmax， Umax, D], where Tmax， is the longest length of input logit sequence. The data type should be float32 or float64.
+        logprobs (Tensor): The logprobs sequence with padding, which is a 4-D Tensor. The tensor shape is [B, Tmax， Umax, D], where Tmax， is the longest length of input logit sequence. The data type should be float32 or float64.
         labels (Tensor): The ground truth sequence with padding, which must be a 2-D Tensor. The tensor shape is [B, Umax], where Umax is the longest length of label sequence. The data type must be int32.
         logit_lengths (Tensor): The length for each input sequence, it should have shape [batch_size] and dtype int64.
         label_lengths (Tensor): The length for each label sequence, it should have shape [batch_size] and dtype int64.
@@ -1885,10 +1884,10 @@ def rnnt_loss(
         )
         check_variable_and_dtype(label, 'label', ['int32'], "warprnnt")
         check_variable_and_dtype(
-            input_length, 'LogitsLength', ['int64'], "warprnnt"
+            input_length, 'LogitsLength', ['int32'], "warprnnt"
         )
         check_variable_and_dtype(
-            label_length, 'LabelLength', ['int64'], "warprnnt"
+            label_length, 'LabelLength', ['int32'], "warprnnt"
         )
         this_inputs = {
             'Logits': [input],
@@ -1912,15 +1911,14 @@ def rnnt_loss(
         )
         return loss_out
 
-    B = logits.shape[0]
-    if logits.place.is_cpu_place():
-        # NOTE manually done log_softmax for CPU version,
-        # log_softmax is computed within GPU version.
-        logits = log_softmax(logits, -1)
+    B = logprobs.shape[0]
+
+    # NOTE manually done log_softmax for CPU version,
+    # log_softmax is computed within GPU version.
 
     # (B, 1)
     loss_out = warprnnt(
-        logits, labels, logit_lengths, label_lengths, blank, fastemit_lambda
+        logprobs, labels, logit_lengths, label_lengths, blank, fastemit_lambda
     )
 
     # (B,)
