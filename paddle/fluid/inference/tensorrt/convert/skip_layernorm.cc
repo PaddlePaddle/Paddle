@@ -80,7 +80,7 @@ class SkipLayerNormOpConverter : public OpConverter {
           static_cast<nvinfer1::PluginFieldCollection*>(
               malloc(sizeof(*pluginPtr) +
                      fields.size() * sizeof(nvinfer1::PluginField)));
-      pluginPtr->nbFields = static_cast<int>(fields.size());
+      pluginPtr->nbFields = static_cast<int32_t>(fields.size());
       pluginPtr->fields = fields.data();
 
       auto pluginObj =
@@ -102,18 +102,18 @@ class SkipLayerNormOpConverter : public OpConverter {
           nullptr,
           platform::errors::InvalidArgument(
               "fail to get creator of CustomSkipLayerNormPluginDynamic"));
-      int type = static_cast<int>((engine_->WithFp16() == 1)
-                                      ? nvinfer1::DataType::kHALF
-                                      : nvinfer1::DataType::kFLOAT);
-      auto input_dims = input1->getDimensions();
-      int ld = input_dims.d[input_dims.nbDims - 1];  // hidden dimension
+      int32_t type = static_cast<int32_t>((engine_->WithFp16() == 1)
+                                              ? nvinfer1::DataType::kHALF
+                                              : nvinfer1::DataType::kFLOAT);
+
+      int32_t ld = PADDLE_GET_CONST(int32_t, op_desc.GetAttr("ld"));
       PADDLE_ENFORCE_GT(ld,
                         0,
                         platform::errors::InvalidArgument(
                             "in CustomSkipLayerNormPluginDynamic hidden "
                             "dimension should > 0"));
       if (enable_int8) {
-        type = static_cast<int>(nvinfer1::DataType::kHALF);
+        type = static_cast<int32_t>(nvinfer1::DataType::kHALF);
       }
 
       const std::vector<nvinfer1::PluginField> fields{
@@ -133,7 +133,7 @@ class SkipLayerNormOpConverter : public OpConverter {
               malloc(sizeof(*pluginPtr) +
                      fields.size() *
                          sizeof(nvinfer1::PluginField)));  // remember to free
-      pluginPtr->nbFields = static_cast<int>(fields.size());
+      pluginPtr->nbFields = static_cast<int32_t>(fields.size());
       pluginPtr->fields = fields.data();
 
       auto pluginObj =
