@@ -16,7 +16,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = phi::DenseTensor;
 
 template <typename T>
 class ElementwiseAddMLUKernel : public framework::OpKernel<T> {

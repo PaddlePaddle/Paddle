@@ -388,11 +388,12 @@ void CPUQuantizePass::GetQuantInfo(Graph* graph) const {
 }
 
 void CPUQuantizePass::QuantizeConv(Graph* graph,
+                                   const std::string& conv_type,
                                    bool with_residual_data) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
   patterns::ConvResidual conv_pattern{pattern, name_scope_};
-  conv_pattern(with_residual_data);
+  conv_pattern(conv_type, with_residual_data);
 
   int quantize_conv_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -510,7 +511,7 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
   AddStatis(quantize_conv_count);
 
   LogQuantizedOpsCounter(
-      "conv2d",
+      conv_type,
       quantize_conv_count,
       ((with_residual_data) ? "with residual connection" : ""));
 }
@@ -1247,8 +1248,10 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
       platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GetQuantInfo(graph);
-  QuantizeConv(graph, false /* with_residual_data */);
-  QuantizeConv(graph, true /* with_residual_data */);
+  QuantizeConv(graph, "conv2d", false /* with_residual_data */);
+  QuantizeConv(graph, "conv2d", true /* with_residual_data */);
+  QuantizeConv(graph, "fused_conv2d", false /* with_residual_data */);
+  QuantizeConv(graph, "fused_conv2d", true /* with_residual_data */);
   QuantizePool(graph);
   QuantizeConcat(graph);
   QuantizePriorBox(graph);

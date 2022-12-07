@@ -20,7 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using NPUDeviceContext = platform::NPUDeviceContext;
 
 void UpdateAttr(const framework::DDim& in_dims,
@@ -199,7 +198,7 @@ class SliceGradNPUKernel : public framework::OpKernel<T> {
       paddings[i][1] = static_cast<int64_t>(in_dims[i] - size[i] - offsets[i]);
     }
 
-    Tensor tmp_dout;
+    phi::DenseTensor tmp_dout;
     tmp_dout.ShareDataWith(*dout);
     auto out_dims = dout->dims();
     auto decrease_axis = ctx.Attr<std::vector<int>>("decrease_axis");

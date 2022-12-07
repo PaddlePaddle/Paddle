@@ -102,7 +102,11 @@ void TileKernel(const Context& dev_ctx,
 
   std::vector<int64_t> temp(repeat_times.size(), 1);
   if (repeat_times == temp) {
-    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    out->Resize(x.dims());
+    dev_ctx.template Alloc<T>(out);
+    int r =
+        xpu::copy(dev_ctx.x_context(), x.data<T>(), out->data<T>(), x.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
     return;
   }
 

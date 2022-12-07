@@ -48,7 +48,7 @@ def residual_block(num):
             act=None,
             bias_attr=bias_attr,
         )
-        return fluid.layers.batch_norm(input=tmp, act=act)
+        return paddle.static.nn.batch_norm(input=tmp, act=act)
 
     data = fluid.layers.data(name='image', shape=[1, 32, 32], dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
@@ -72,7 +72,7 @@ def conv_net(img, label):
         pool_stride=2,
         act="relu",
     )
-    conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
+    conv_pool_1 = paddle.static.nn.batch_norm(conv_pool_1)
     conv_pool_2 = fluid.nets.simple_img_conv_pool(
         input=conv_pool_1,
         filter_size=5,
