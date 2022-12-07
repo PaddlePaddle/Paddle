@@ -1172,6 +1172,7 @@ struct PD_INFER_DECL AnalysisConfig {
       "concat",
       "conv2d",
       "depthwise_conv2d",
+      "fused_conv2d",
       "elementwise_add",
       "elementwise_mul",
       "fc",

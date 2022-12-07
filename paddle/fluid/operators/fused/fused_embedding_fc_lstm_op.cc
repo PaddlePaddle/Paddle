@@ -182,16 +182,17 @@ void FusedEmbeddingFCLSTMOpMaker::Make() {
            "contains the ids to be looked up in W. "
            "The last dimension size must be 1.");
   AddInput("Embeddings",
-           "(Tensor) the learnable weights of X."
+           "(phi::DenseTensor) the learnable weights of X."
            " - The shape is (M x 4D), where M is the dim size of x, D is the "
            "hidden size. "
            " - Weight = {W_cx, W_ix, W_fx, W_ox}");
-  AddInput("WeightH",
-           "(Tensor) same as LSTMOp, the learnable hidden-hidden weights."
-           " - The shape is (D x 4D), where D is the hidden size. "
-           " - Weight = {W_ch, W_ih, W_fh, W_oh}");
+  AddInput(
+      "WeightH",
+      "(phi::DenseTensor) same as LSTMOp, the learnable hidden-hidden weights."
+      " - The shape is (D x 4D), where D is the hidden size. "
+      " - Weight = {W_ch, W_ih, W_fh, W_oh}");
   AddInput("Bias",
-           "(Tensor) the learnable weights. Almost same as LSTMOp"
+           "(phi::DenseTensor) the learnable weights. Almost same as LSTMOp"
            "Note: we should add the fc bias into this (1x4D) in bias."
            "input-hidden bias weight and peephole connections weight if "
            "setting `use_peepholes` True. "
@@ -202,13 +203,15 @@ void FusedEmbeddingFCLSTMOpMaker::Make() {
            " - The shape is (1 x 7D). "
            " - Bias = {b_c, b_i, b_f, b_o, W_ic, W_fc, W_oc}.");
   AddInput("H0",
-           "(Tensor, optional) (same as LSTMOp) the initial hidden state is an "
+           "(phi::DenseTensor, optional) (same as LSTMOp) the initial hidden "
+           "state is an "
            "optional "
            "input. This is a tensor with shape (N x D), where N is the "
            "batch size and D is the hidden size.")
       .AsDispensable();
   AddInput("C0",
-           "(Tensor, optional) (same as LSTMOp) (the initial cell state is an "
+           "(phi::DenseTensor, optional) (same as LSTMOp) (the initial cell "
+           "state is an "
            "optional "
            "input. This is a tensor with shape (N x D), where N is the "
            "batch size. `H0` and `C0` can be NULL but only at the same time.")
@@ -318,7 +321,7 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
   /* diagonal weight*/                                               \
   const T* wc_data = bias->data<T>() + D4;                           \
   /* for peephole only*/                                             \
-  Tensor checked_cell;                                               \
+  phi::DenseTensor checked_cell;                                     \
   T* checked_cell_data = nullptr;                                    \
   auto place = ctx.GetPlace();                                       \
   if (use_peepholes) {                                               \

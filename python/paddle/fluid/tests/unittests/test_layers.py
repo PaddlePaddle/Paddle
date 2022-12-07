@@ -2312,7 +2312,6 @@ class TestBook(LayerTest):
             {
                 "make_gaussian_random",
                 "make_kldiv_loss",
-                "make_sampling_id",
                 "make_uniform_random_batch_size_like",
             }
         )
@@ -2798,20 +2797,6 @@ class TestBook(LayerTest):
             out = layers.gaussian_random(shape=[20, 30])
             return out
 
-    def make_sampling_id(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(
-                name="X",
-                shape=[13, 11],
-                dtype='float32',
-                append_batch_size=False,
-            )
-
-            out = layers.sampling_id(x)
-            return out
-
     def make_sum(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
@@ -2882,7 +2867,7 @@ class TestBook(LayerTest):
             data = self._get_data(
                 name='data', shape=[32, 128, 128], dtype="float32"
             )
-            out = layers.batch_norm(data)
+            out = paddle.static.nn.batch_norm(data)
             return out
 
     def make_batch_norm_momentum_variable(self):
@@ -2898,7 +2883,7 @@ class TestBook(LayerTest):
                 dtype='float32',
                 append_batch_size=False,
             )
-            out = layers.batch_norm(data, momentum=momentum)
+            out = paddle.static.nn.batch_norm(data, momentum=momentum)
             return out
 
     def make_range(self):
