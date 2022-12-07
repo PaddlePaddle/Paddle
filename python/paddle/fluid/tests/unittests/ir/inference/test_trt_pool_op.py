@@ -22,6 +22,7 @@ from inference_pass_test import InferencePassTest
 
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.static.nn as nn
 from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
@@ -72,7 +73,7 @@ class TensorRTPoolTest(InferencePassTest):
                 ceil_mode=self.ceil_mode,
                 exclusive=self.exclusive,
             )
-            out = fluid.layers.batch_norm(pool_out, is_test=True)
+            out = nn.batch_norm(pool_out, is_test=True)
             self.fetch_list = [out]
 
     def check_output(self):

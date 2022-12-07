@@ -33,7 +33,6 @@ namespace cub = hipcub;
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 template <typename T>
