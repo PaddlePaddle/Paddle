@@ -46,10 +46,6 @@ class FloatToHalfPass : public FusePassBase {
 
   void SetDefaultBlacklist() const;
 
-  bool OpSupportPrecision(const std::string& op_type,
-                          phi::DataType precision,
-                          phi::Backend backend = phi::Backend::GPU) const;
-
   void SetOpUniqueType() const;
 
   void RestoreOpOriginType() const;
@@ -92,6 +88,20 @@ class FloatToHalfPass : public FusePassBase {
 
   mutable std::unordered_set<std::string> vars_convert_to_half_;
 };
+
+bool OpSupportPrecision(const std::string& op_type,
+                        phi::Backend backend,
+                        phi::DataType precision,
+                        const std::unordered_set<std::string>& black_list);
+
+void DoInsertCastOp(Graph* graph,
+                    Node* var_node,
+                    Node* op_node,
+                    proto::VarType::Type from_type,
+                    proto::VarType::Type to_type,
+                    framework::BlockDesc* block_desc,
+                    int* suffix,
+                    std::unordered_map<Node*, Node*>* cache);
 
 }  // namespace ir
 }  // namespace framework

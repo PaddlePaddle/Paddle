@@ -66,6 +66,23 @@ bool GpuKernelSupportPrecision(
   return support;
 }
 
+inline bool VarNodeHasDtype(Node* var_node) {
+  auto type = var_node->Var()->GetType();
+  return (type == VarType::SELECTED_ROWS) || (type == VarType::LOD_TENSOR) ||
+         (type == VarType::LOD_TENSOR_ARRAY) || (type == VarType::STRINGS) ||
+         (type == VarType::VOCAB);
+}
+
+inline bool IsFloatType(VarType::Type type) {
+  return (type == VarType::FP64) || (type == VarType::FP32);
+}
+
+inline bool IsHalfType(VarType::Type type) {
+  return (type == VarType::FP16) || (type == VarType::BF16);
+}
+
+};  // namespace
+
 void DoInsertCastOp(Graph* graph,
                     Node* var_node,
                     Node* op_node,
@@ -118,22 +135,18 @@ void DoInsertCastOp(Graph* graph,
   IR_NODE_UNLINK(var_node, op_node);
 }
 
-inline bool VarNodeHasDtype(Node* var_node) {
-  auto type = var_node->Var()->GetType();
-  return (type == VarType::SELECTED_ROWS) || (type == VarType::LOD_TENSOR) ||
-         (type == VarType::LOD_TENSOR_ARRAY) || (type == VarType::STRINGS) ||
-         (type == VarType::VOCAB);
+bool OpSupportPrecision(const std::string& op_type,
+                        phi::Backend backend,
+                        phi::DataType precision,
+                        const std::unordered_set<std::string>& black_list) {
+  bool support = false;
+  if (black_list.count(op_type) == 0) {
+    if (backend == phi::Backend::GPU) {
+      support = GpuKernelSupportPrecision(op_type, precision);
+    }
+  }
+  return support;
 }
-
-inline bool IsFloatType(VarType::Type type) {
-  return (type == VarType::FP64) || (type == VarType::FP32);
-}
-
-inline bool IsHalfType(VarType::Type type) {
-  return (type == VarType::FP16) || (type == VarType::BF16);
-}
-
-};  // namespace
 
 // The set of ops that support fp16 calculation and are considered
 // numerically-dangerous, slower and whose effects may also be observed in
@@ -172,10 +185,17 @@ void FloatToHalfPass::SetDefaultBlacklist() const {
 
 void FloatToHalfPass::Init(Graph* graph) const {
   keep_io_types_ = true;
+  if (Has("keep_io_types")) {
+    keep_io_types_ = Get<bool>("keep_io_types");
+  }
   half_precision_ =
       static_cast<phi::DataType>(Get<int>("mixed_precision_mode"));
   black_list_ = Get<std::unordered_set<std::string>>("mixed_black_list");
   SetDefaultBlacklist();
+  VLOG(4) << "black_list has ";
+  for (const auto& name : black_list_) {
+    VLOG(4) << " - " << name;
+  }
 
   auto graph_size = graph->SubGraphsSize();
   VLOG(4) << "graph size: " << graph_size;
@@ -233,18 +253,6 @@ void FloatToHalfPass::ApplyImpl(Graph* graph) const {
   VLOG(4) << "InsertCastOp done";
   RestoreOpOriginType();
   VLOG(4) << "RestoreOpOriginType done";
-}
-
-bool FloatToHalfPass::OpSupportPrecision(const std::string& op_type,
-                                         phi::DataType precision,
-                                         phi::Backend backend) const {
-  bool support = false;
-  if (black_list_.count(op_type) == 0) {
-    if (backend == phi::Backend::GPU) {
-      support = GpuKernelSupportPrecision(op_type, precision);
-    }
-  }
-  return support;
 }
 
 void FloatToHalfPass::SetOpUniqueType() const {
@@ -328,8 +336,10 @@ void FloatToHalfPass::GetOpPrecision() const {
           GetOpOriginalType(op_type) == "fetch") {
         support_half = !keep_io_types_;
       } else {
-        support_half =
-            OpSupportPrecision(GetOpOriginalType(op_type), half_precision_);
+        support_half = OpSupportPrecision(GetOpOriginalType(op_type),
+                                          phi::Backend::GPU,
+                                          half_precision_,
+                                          black_list_);
       }
 
       if (op_node->Op()->HasAttr("dtype")) {
