@@ -24,8 +24,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename DeviceContext, typename T>
 inline void ReorderInitState(const DeviceContext& ctx,
                              const phi::DenseTensor& src,
@@ -74,9 +72,9 @@ class LSTMKernel : public framework::OpKernel<T> {
     framework::DDim dims({in_dims[0], frame_size});
 
     if (bias) {
-      Tensor b = *bias;
+      phi::DenseTensor b = *bias;
       b.Resize({bias->numel(), 1});
-      Tensor gate_bias = b.Slice(0, 4 * frame_size);
+      phi::DenseTensor gate_bias = b.Slice(0, 4 * frame_size);
       phi::funcs::RowwiseAdd<DeviceContext, T> add_bias;
       add_bias(device_ctx, *batch_gate, gate_bias, batch_gate);
     }
@@ -95,7 +93,7 @@ class LSTMKernel : public framework::OpKernel<T> {
       lstm_value.check_og = nullptr;
     }
     lstm_value.prev_state_value = nullptr;
-    Tensor ordered_c0;
+    phi::DenseTensor ordered_c0;
 
     framework::Vector<size_t> order(batch_gate->lod()[2]);
 
@@ -134,10 +132,10 @@ class LSTMKernel : public framework::OpKernel<T> {
       int bstart = static_cast<int>(batch_starts[n]);
       int bend = static_cast<int>(batch_starts[n + 1]);
 
-      Tensor gate_t = batch_gate->Slice(bstart, bend);
-      Tensor out_t = batch_hidden.Slice(bstart, bend);
-      Tensor cell_t = batch_cell.Slice(bstart, bend);
-      Tensor cell_pre_act_t = batch_cell_pre_act->Slice(bstart, bend);
+      phi::DenseTensor gate_t = batch_gate->Slice(bstart, bend);
+      phi::DenseTensor out_t = batch_hidden.Slice(bstart, bend);
+      phi::DenseTensor cell_t = batch_cell.Slice(bstart, bend);
+      phi::DenseTensor cell_pre_act_t = batch_cell_pre_act->Slice(bstart, bend);
 
       int cur_batch_size = bend - bstart;
 
@@ -160,7 +158,7 @@ class LSTMKernel : public framework::OpKernel<T> {
         // Since the batch computing for LSTM reorders the input sequence
         // according to their length. The initialized hidden state also needs
         // to reorder.
-        Tensor ordered_h0;
+        phi::DenseTensor ordered_h0;
         ReorderInitState<DeviceContext, T>(
             device_ctx, *hidden_t0, order, &ordered_h0, true);
         blas.MatMul(ordered_h0,
@@ -237,7 +235,7 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     // ordered_h0/c0 is the reordered hidden/cell initialization.
     // ordered_h0_g/c0_g is the reordered gradient of hidden/cell
     // initialization.
-    Tensor ordered_h0, ordered_c0, ordered_h0_g, ordered_c0_g;
+    phi::DenseTensor ordered_h0, ordered_c0, ordered_h0_g, ordered_c0_g;
     framework::Vector<size_t> order(batch_gate->lod()[2]);
 
     if (c0) {
@@ -328,24 +326,24 @@ class LSTMGradKernel : public framework::OpKernel<T> {
       int bstart = static_cast<int>(batch_starts[n]);
       int bend = static_cast<int>(batch_starts[n + 1]);
 
-      Tensor gate = batch_gate->Slice(bstart, bend);
-      Tensor cell = batch_cell.Slice(bstart, bend);
-      Tensor cell_pre_act = batch_cell_pre_act->Slice(bstart, bend);
+      phi::DenseTensor gate = batch_gate->Slice(bstart, bend);
+      phi::DenseTensor cell = batch_cell.Slice(bstart, bend);
+      phi::DenseTensor cell_pre_act = batch_cell_pre_act->Slice(bstart, bend);
       lstm_value.gate_value = gate.data<T>();
       lstm_value.state_value = cell.data<T>();
       lstm_value.state_active_value = cell_pre_act.data<T>();
 
-      Tensor out_g = batch_hidden_g.Slice(bstart, bend);
-      Tensor gate_g = batch_gate_g.Slice(bstart, bend);
-      Tensor cell_g = batch_cell_g.Slice(bstart, bend);
+      phi::DenseTensor out_g = batch_hidden_g.Slice(bstart, bend);
+      phi::DenseTensor gate_g = batch_gate_g.Slice(bstart, bend);
+      phi::DenseTensor cell_g = batch_cell_g.Slice(bstart, bend);
       lstm_grad.state_grad = cell_g.data<T>();
       lstm_grad.gate_grad = gate_g.data<T>();
       lstm_grad.output_grad = out_g.data<T>();
 
       if (n > 0) {
         int bstart_pre = static_cast<int>(batch_starts[n - 1]);
-        Tensor cell_pre = batch_cell.Slice(bstart_pre, bstart);
-        Tensor cell_pre_g = batch_cell_g.Slice(bstart_pre, bstart);
+        phi::DenseTensor cell_pre = batch_cell.Slice(bstart_pre, bstart);
+        phi::DenseTensor cell_pre_g = batch_cell_g.Slice(bstart_pre, bstart);
         lstm_value.prev_state_value = cell_pre.data<T>();
         lstm_grad.prev_state_grad = cell_pre_g.data<T>();
       } else {
@@ -424,9 +422,9 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     }
     if (bias && bias_g) {
       /* backward bias */
-      Tensor b_g = *bias_g;
+      phi::DenseTensor b_g = *bias_g;
       b_g.Resize({bias_g->numel(), 1});
-      Tensor gate_bias_g = b_g.Slice(0, 4 * frame_size);
+      phi::DenseTensor gate_bias_g = b_g.Slice(0, 4 * frame_size);
       phi::funcs::ColwiseSum<DeviceContext, T> col_sum;
       col_sum(device_ctx, batch_gate_g, &gate_bias_g);
     }

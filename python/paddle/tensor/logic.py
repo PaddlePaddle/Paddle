@@ -96,7 +96,9 @@ def logical_and(x, y, out=None, name=None):
         out = x \&\& y
 
     Note:
-        ``paddle.logical_and`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
+        ``paddle.logical_and`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
@@ -136,7 +138,9 @@ def logical_or(x, y, out=None, name=None):
         out = x || y
 
     Note:
-        ``paddle.logical_or`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
+        ``paddle.logical_or`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
@@ -178,7 +182,9 @@ def logical_xor(x, y, out=None, name=None):
         out = (x || y) \&\& !(x \&\& y)
 
     Note:
-        ``paddle.logical_xor`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
+        ``paddle.logical_xor`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
@@ -220,6 +226,11 @@ def logical_not(x, out=None, name=None):
     .. math::
 
         out = !x
+
+    Note:
+        ``paddle.logical_not`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x(Tensor):  Operand of logical_not operator. Must be a Tensor of type bool, int8, int16, in32, in64, float32, or float64.

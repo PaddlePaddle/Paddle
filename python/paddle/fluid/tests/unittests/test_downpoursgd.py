@@ -58,7 +58,9 @@ class TestListenAndServOp(unittest.TestCase):
             )
             y_predict = fluid.layers.fc(input=x_emb, size=1, act=None)
             y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
             ps_param = pslib.PSParameter()
@@ -120,7 +122,9 @@ class TestListenAndServOp(unittest.TestCase):
             )
             y_predict = fluid.layers.fc(input=x_emb, size=1, act=None)
             y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
             ps_param = pslib.PSParameter()
@@ -180,7 +184,9 @@ class TestListenAndServOp(unittest.TestCase):
             )
             y_predict = fluid.layers.fc(input=x_emb, size=1, act=None)
             y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
             ps_param = pslib.PSParameter()

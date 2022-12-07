@@ -71,7 +71,7 @@ def resnet_cifar10(input, depth=32):
         tmp = conv_bn_layer(input, ch_out, 3, stride, 1)
         tmp = conv_bn_layer(tmp, ch_out, 3, 1, 1, act=None, bias_attr=True)
         short = shortcut(input, ch_in, ch_out, stride)
-        return fluid.layers.elementwise_add(x=tmp, y=short, act='relu')
+        return paddle.nn.functional.relu(paddle.add(x=tmp, y=short))
 
     def layer_warp(block_func, input, ch_in, ch_out, count, stride):
         tmp = block_func(input, ch_in, ch_out, stride)
@@ -110,7 +110,7 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
         net = resnet_cifar10(images)
         logits = fluid.layers.fc(input=net, size=classdim, act="softmax")
-        cost = fluid.layers.softmax_with_cross_entropy(
+        cost = paddle.nn.functional.softmax_with_cross_entropy(
             logits, label, return_softmax=False
         )
         sum_cost = paddle.sum(cost)
