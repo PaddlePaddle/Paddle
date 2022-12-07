@@ -400,7 +400,8 @@ class MultiheadMatMulOpConverter : public OpConverter {
         }
       } else {
         if (input_dims.d[1] <= 384 && !bias_qk_attr &&
-            engine_->precision() != AnalysisConfig::Precision::kFloat32) {
+            engine_->precision() != AnalysisConfig::Precision::kFloat32 &&
+            platform::GetGPUComputeCapability(0) >= 75) {
           /*
             * input_dims.d[0]: batch(-1)
             * input_dims.d[1]: length:256
