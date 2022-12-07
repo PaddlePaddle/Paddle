@@ -19,9 +19,6 @@ import numpy as np
 
 sys.path.append("..")
 
-import paddle
-import paddle.nn.functional as F
-
 from op_test import OpTest
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
@@ -31,6 +28,7 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
+import paddle.nn.functional as F
 
 paddle.enable_static()
 
