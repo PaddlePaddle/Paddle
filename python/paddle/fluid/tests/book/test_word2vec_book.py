@@ -97,7 +97,7 @@ def train(
             input=hidden1, size=dict_size, act='softmax'
         )
         cost = paddle.nn.functional.cross_entropy(
-            input=predict_word, label=words[4]
+            input=predict_word, label=words[4], reduction='none', use_softmax=False
         )
         avg_cost = paddle.mean(cost)
         return avg_cost, predict_word

@@ -30,7 +30,7 @@ def linear_fc(num):
     hidden = data
     for _ in range(num):
         hidden = fluid.layers.fc(hidden, size=128, act='relu')
-    loss = paddle.nn.functional.cross_entropy(input=hidden, label=label)
+    loss = paddle.nn.functional.cross_entropy(input=hidden, label=label, reduction='none', use_softmax=False)
     loss = paddle.mean(loss)
     return loss
 
@@ -58,7 +58,7 @@ def residual_block(num):
         short = conv_bn_layer(hidden, 16, 1, 1, 0, act=None)
         hidden = paddle.nn.functional.relu(paddle.add(x=conv, y=short))
     fc = fluid.layers.fc(input=hidden, size=10)
-    loss = paddle.nn.functional.cross_entropy(input=fc, label=label)
+    loss = paddle.nn.functional.cross_entropy(input=fc, label=label, reduction='none', use_softmax=False)
     loss = paddle.mean(loss)
     return loss
 
@@ -82,7 +82,7 @@ def conv_net(img, label):
         act="relu",
     )
     prediction = fluid.layers.fc(input=conv_pool_2, size=10, act='softmax')
-    loss = paddle.nn.functional.cross_entropy(input=prediction, label=label)
+    loss = paddle.nn.functional.cross_entropy(input=prediction, label=label, reduction='none', use_softmax=False)
     avg_loss = paddle.mean(loss)
     return avg_loss
 

@@ -65,7 +65,7 @@ class TestMNISTIfElseOp(unittest.TestCase):
             prob = merge_lod_tensor(
                 in_true=true_out, in_false=false_out, mask=cond, x=image
             )
-            loss = paddle.nn.functional.cross_entropy(input=prob, label=label)
+            loss = paddle.nn.functional.cross_entropy(input=prob, label=label, reduction='none', use_softmax=False)
             avg_loss = paddle.mean(loss)
 
             optimizer = MomentumOptimizer(learning_rate=0.001, momentum=0.9)
@@ -122,7 +122,7 @@ class TestMNISTIfElseOp(unittest.TestCase):
 
             prob = ie()
             loss = paddle.nn.functional.cross_entropy(
-                input=prob[0], label=label
+                input=prob[0], label=label, reduction='none', use_softmax=False
             )
             avg_loss = paddle.mean(loss)
 
