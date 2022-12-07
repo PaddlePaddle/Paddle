@@ -40,8 +40,6 @@ from .learning_rate_scheduler import *
 from . import io
 from .io import *
 
-from . import dygraph_to_static
-
 from . import rnn
 from .rnn import *
 

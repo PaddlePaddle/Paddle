@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
 
 import paddle
-from paddle.fluid import dygraph
 from paddle import static
+from paddle.fluid import dygraph
 
 paddle.enable_static()
 

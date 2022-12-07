@@ -15,13 +15,12 @@
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/phi/kernels/funcs/transpose_functor.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using phi::DataLayout;
 using phi::OneDNNContext;
 
@@ -37,13 +36,10 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const auto& dnnl_engine = dev_ctx.GetEngine();
     std::vector<int> transpose_axis = ctx.Attr<std::vector<int>>("axis");
     int ndims = transpose_axis.size();
-    const phi::DenseTensor* x = ctx.Input<Tensor>("X");
-    auto* out = ctx.Output<Tensor>("Out");
+    const phi::DenseTensor* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     auto& astream = OneDNNContext::tls().get_stream();
-
-    platform::SetInMemDescWithLogicalLayoutFusesSupport(
-        ctx, const_cast<phi::DenseTensor*>(x), x->mem_desc());
 
     if (ndims == 1) {
       framework::TensorCopy(*x, x->place(), out);
@@ -82,11 +78,8 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
     astream.wait();
 
-    platform::SetOutMemDescWithLogicalLayoutFusesSupport(
-        ctx,
-        out,
-        reorder_dst_memory_p->get_desc().permute_axes(
-            TransposeToPermuteAxis(transpose_axis)));
+    out->set_mem_desc(reorder_dst_memory_p->get_desc().permute_axes(
+        TransposeToPermuteAxis(transpose_axis)));
   }
 
  private:
@@ -128,8 +121,9 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
                       paddle::platform::errors::PreconditionNotMet(
                           "Operator DNNL TransposeGrad must use CPUPlace"));
 
-    const auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    const auto* dout =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     if (!dx) return;
     auto& dev_ctx = ctx.template device_context<OneDNNContext>();
     const auto& dnnl_engine = dev_ctx.GetEngine();
@@ -180,11 +174,3 @@ REGISTER_OP_KERNEL(transpose_grad,
                    MKLDNN,
                    ::paddle::platform::CPUPlace,
                    ops::TransposeMKLDNNGradOpKernel<float>);
-
-REGISTER_OP_KERNEL(transpose2,
-                   MKLDNN,
-                   ::paddle::platform::CPUPlace,
-                   ops::TransposeMKLDNNOpKernel<float>,
-                   ops::TransposeMKLDNNOpKernel<uint8_t>,
-                   ops::TransposeMKLDNNOpKernel<int8_t>,
-                   ops::TransposeMKLDNNOpKernel<paddle::platform::bfloat16>);

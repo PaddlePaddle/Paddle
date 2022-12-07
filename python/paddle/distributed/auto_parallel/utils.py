@@ -12,29 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-import os
 import copy
-import paddle
-import threading
-import numpy as np
-import warnings
 import logging
+import os
+import threading
+import warnings
 from functools import reduce
 
+import numpy as np
+
+import paddle
 import paddle.fluid.core as core
-from paddle.fluid.framework import Variable
-from paddle.distributed.fleet.meta_optimizers.common import OpRole
+from paddle.distributed.auto_parallel.dist_attribute import (
+    OperatorDistributedAttribute,
+    TensorDistributedAttribute,
+)
 from paddle.distributed.auto_parallel.process_group import (
     get_all_process_groups,
 )
-from paddle.fluid.io import is_parameter, is_belong_to_optimizer
-from paddle.distributed.auto_parallel.dist_attribute import (
-    TensorDistributedAttribute,
-    OperatorDistributedAttribute,
-)
+from paddle.distributed.fleet.meta_optimizers.common import OpRole
+from paddle.fluid.framework import Variable
+from paddle.fluid.io import is_belong_to_optimizer, is_parameter
 
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
-OpRole = core.op_proto_and_checker_maker.OpRole
 
 __no_shape_var_type__ = [
     core.VarDesc.VarType.READER,
@@ -255,8 +255,10 @@ def print_program_with_dist_attr(program, dist_context=None):
     """
     lock = threading.Lock()
     lock.acquire()
-    from .dist_context import get_default_distributed_context
-    from .dist_context import set_default_distributed_context
+    from .dist_context import (
+        get_default_distributed_context,
+        set_default_distributed_context,
+    )
 
     if dist_context is None:
         dist_context = get_default_distributed_context()
@@ -1847,6 +1849,7 @@ def get_lr(optimizer):
 
 def initialize_pg_in_full_mode(all_process_groups, cur_rank):
     import socket
+
     from ..collective import _get_global_env
 
     has_recv_by_socket = []
@@ -1983,8 +1986,8 @@ def validate_opt(optimizer):
 
 
 def set_data_parallel(x):
+    from .interface import ProcessMesh, shard_tensor
     from .process_group import get_world_process_group
-    from .interface import shard_tensor, ProcessMesh
 
     world_ranks = get_world_process_group().ranks
     process_mesh = ProcessMesh(world_ranks, ['dp'])

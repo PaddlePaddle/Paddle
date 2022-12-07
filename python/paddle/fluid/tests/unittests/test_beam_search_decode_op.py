@@ -15,10 +15,12 @@
 import unittest
 
 import numpy as np
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
+
+import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid.framework import Program, program_guard
+from paddle.fluid.op import Operator
 
 
 class TestBeamSearchDecodeOp(unittest.TestCase):
@@ -123,7 +125,7 @@ class TestBeamSearchDecodeOpError(unittest.TestCase):
             def test_id_Variable():
                 # the input pre_ids must be Variable
                 test_ids = np.random.randint(1, 5, [5, 1]).astype("int64")
-                scores = fluid.layers.create_array(dtype='float32')
+                scores = paddle.tensor.create_array(dtype='float32')
                 fluid.layers.beam_search_decode(
                     test_ids, scores, beam_size=5, end_id=0
                 )
@@ -132,7 +134,7 @@ class TestBeamSearchDecodeOpError(unittest.TestCase):
 
             def test_score_Variable():
                 # the input pre_scores must be Variable
-                ids = fluid.layers.create_array(dtype='int64')
+                ids = paddle.tensor.create_array(dtype='int64')
                 test_scores = np.random.uniform(1, 5, [5, 1]).astype("float32")
                 fluid.layers.beam_search_decode(
                     ids, test_scores, beam_size=5, end_id=0
@@ -142,8 +144,8 @@ class TestBeamSearchDecodeOpError(unittest.TestCase):
 
             def test_id_dtype():
                 # the dtype of input pre_ids must be int64
-                type_ids = fluid.layers.create_array(dtype='float32')
-                scores = fluid.layers.create_array(dtype='float32')
+                type_ids = paddle.tensor.create_array(dtype='float32')
+                scores = paddle.tensor.create_array(dtype='float32')
                 fluid.layers.beam_search_decode(
                     type_ids, scores, beam_size=5, end_id=0
                 )
@@ -152,8 +154,8 @@ class TestBeamSearchDecodeOpError(unittest.TestCase):
 
             def test_score_dtype():
                 # the dtype of input pre_scores must be float32
-                ids = fluid.layers.create_array(dtype='int64')
-                type_scores = fluid.layers.create_array(dtype='int64')
+                ids = paddle.tensor.create_array(dtype='int64')
+                type_scores = paddle.tensor.create_array(dtype='int64')
                 fluid.layers.beam_search_decode(
                     ids, type_scores, beam_size=5, end_id=0
                 )

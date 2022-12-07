@@ -17,15 +17,13 @@ or nested loop have been covered in file test_ifelse.py and test_loop.py"""
 
 import unittest
 
-from paddle.utils import gast
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
 from paddle.jit import ProgramTranslator
-from paddle.fluid.dygraph.dygraph_to_static.logical_transformer import (
-    cmpop_node_to_str,
-)
+from paddle.jit.dy2static.logical_transformer import cmpop_node_to_str
+from paddle.utils import gast
 
 program_translator = ProgramTranslator()
 
