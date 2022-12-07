@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import tempfile
 import unittest
 
 import paddle
@@ -30,49 +32,47 @@ from paddle.vision.models import resnet50
     'should compile with cuda.',
 )
 class TestConvertToMixedPrecision(unittest.TestCase):
-    def test_convert_to_fp16(self):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
         model = resnet50(True)
         net = to_static(
             model, input_spec=[InputSpec(shape=[None, 3, 224, 224], name='x')]
         )
-        paddle.jit.save(net, 'resnet50/inference')
+        paddle.jit.save(
+            net, os.path.join(self.temp_dir.name, 'resnet50/inference')
+        )
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def test_convert_to_fp16(self):
         convert_to_mixed_precision(
-            'resnet50/inference.pdmodel',
-            'resnet50/inference.pdiparams',
-            'mixed/inference.pdmodel',
-            'mixed/inference.pdiparams',
+            os.path.join(self.temp_dir.name, 'resnet50/inference.pdmodel'),
+            os.path.join(self.temp_dir.name, 'resnet50/inference.pdiparams'),
+            os.path.join(self.temp_dir.name, 'mixed/inference.pdmodel'),
+            os.path.join(self.temp_dir.name, 'mixed/inference.pdiparams'),
             PrecisionType.Half,
             PlaceType.GPU,
             True,
         )
 
     def test_convert_to_fp16_with_fp16_input(self):
-        model = resnet50(True)
-        net = to_static(
-            model, input_spec=[InputSpec(shape=[None, 3, 224, 224], name='x')]
-        )
-        paddle.jit.save(net, 'resnet50/inference')
         convert_to_mixed_precision(
-            'resnet50/inference.pdmodel',
-            'resnet50/inference.pdiparams',
-            'mixed1/inference.pdmodel',
-            'mixed1/inference.pdiparams',
+            os.path.join(self.temp_dir.name, 'resnet50/inference.pdmodel'),
+            os.path.join(self.temp_dir.name, 'resnet50/inference.pdiparams'),
+            os.path.join(self.temp_dir.name, 'mixed1/inference.pdmodel'),
+            os.path.join(self.temp_dir.name, 'mixed1/inference.pdiparams'),
             PrecisionType.Half,
             PlaceType.GPU,
             False,
         )
 
     def test_convert_to_fp16_with_blacklist(self):
-        model = resnet50(True)
-        net = to_static(
-            model, input_spec=[InputSpec(shape=[None, 3, 224, 224], name='x')]
-        )
-        paddle.jit.save(net, 'resnet50/inference')
         convert_to_mixed_precision(
-            'resnet50/inference.pdmodel',
-            'resnet50/inference.pdiparams',
-            'mixed2/inference.pdmodel',
-            'mixed2/inference.pdiparams',
+            os.path.join(self.temp_dir.name, 'resnet50/inference.pdmodel'),
+            os.path.join(self.temp_dir.name, 'resnet50/inference.pdiparams'),
+            os.path.join(self.temp_dir.name, 'mixed2/inference.pdmodel'),
+            os.path.join(self.temp_dir.name, 'mixed2/inference.pdiparams'),
             PrecisionType.Half,
             PlaceType.GPU,
             False,
@@ -80,16 +80,11 @@ class TestConvertToMixedPrecision(unittest.TestCase):
         )
 
     def test_convert_to_bf16(self):
-        model = resnet50(True)
-        net = to_static(
-            model, input_spec=[InputSpec(shape=[None, 3, 224, 224], name='x')]
-        )
-        paddle.jit.save(net, 'resnet50/inference')
         convert_to_mixed_precision(
-            'resnet50/inference.pdmodel',
-            'resnet50/inference.pdiparams',
-            'mixed3/inference.pdmodel',
-            'mixed3/inference.pdiparams',
+            os.path.join(self.temp_dir.name, 'resnet50/inference.pdmodel'),
+            os.path.join(self.temp_dir.name, 'resnet50/inference.pdiparams'),
+            os.path.join(self.temp_dir.name, 'mixed3/inference.pdmodel'),
+            os.path.join(self.temp_dir.name, 'mixed3/inference.pdiparams'),
             PrecisionType.Bfloat16,
             PlaceType.GPU,
             True,
