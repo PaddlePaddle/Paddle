@@ -1765,9 +1765,13 @@ struct SimpleOpTypeSetTeller : public Teller {
           return false;
         }
       }
-      if (op_desc.Input("depth_tensor").size() != 0) {
-        return true;
+      auto one_hot_inputs = desc.Inputs();
+      if (one_hot_inputs.find("depth_tensor") != one_hot_inputs.end()) {
+        if (op_desc.Input("depth_tensor").size() != 0) {
+          return true;
+        }
       }
+
       if (desc.HasAttr("depth")) {
         const int depth = PADDLE_GET_CONST(int, desc.GetAttr("depth"));
         if (depth <= 0) {
@@ -2427,6 +2431,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "shuffle_channel",
       "where",
       "one_hot",
+      "one_hot_v2",
       "swish",
       "silu",
       "celu",
@@ -2560,6 +2565,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "shuffle_channel",
       "where",
       "one_hot",
+      "one_hot_v2",
       "swish",
       "silu",
       "celu",
