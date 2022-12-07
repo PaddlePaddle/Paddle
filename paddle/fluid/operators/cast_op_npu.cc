@@ -32,8 +32,6 @@ static std::map<framework::proto::VarType::Type, aclDataType>
         {framework::proto::VarType::FP64, ACL_DOUBLE},
 };
 
-using Tensor = phi::DenseTensor;
-
 template <typename DeviceContext, typename T>
 class CastNPUKernel : public framework::OpKernel<T> {
  public:
