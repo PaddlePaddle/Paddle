@@ -20,7 +20,6 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-import paddle.fluid.core as core
 from paddle.distributed.collective import (
     Group,
     _default_group_name,

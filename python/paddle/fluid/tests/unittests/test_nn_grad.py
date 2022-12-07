@@ -43,7 +43,7 @@ class TestSliceOpDoubleGradCheck(unittest.TestCase):
         self.ends = [3, 3, 6]
         self.axes = [0, 1, 2]
         self.x_arr = np.random.random([3, 4, 5, 2]).astype("float64")
-        self.inputs = layers.create_parameter(
+        self.inputs = paddle.create_parameter(
             dtype="float64", shape=[3, 4, 5, 2], name='x'
         )
 
@@ -61,7 +61,7 @@ class TestSliceOpDoubleGradCheckCase3(TestSliceOpDoubleGradCheck):
         self.ends = [3, 3, 3]
         self.axes = [0, 1, 2]
         self.x_arr = np.random.random([3, 3, 3]).astype("float64")
-        self.inputs = layers.create_parameter(
+        self.inputs = paddle.create_parameter(
             dtype="float64", shape=[3, 3, 3], name='x3'
         )
 

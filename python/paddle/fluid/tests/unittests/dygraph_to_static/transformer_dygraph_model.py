@@ -18,7 +18,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.nn.functional as F
-from paddle.fluid.dygraph import Embedding, Layer, LayerNorm, to_variable
+from paddle.fluid.dygraph import Embedding, Layer, to_variable
 from paddle.fluid.layers.utils import map_structure
 from paddle.jit.api import dygraph_to_static_func
 from paddle.nn import Linear
@@ -59,9 +59,9 @@ class PrePostProcessLayer(Layer):
                     self.add_sublayer(
                         "layer_norm_%d"
                         % len([layer for layer in self.children()]),
-                        LayerNorm(
+                        paddle.nn.LayerNorm(
                             normalized_shape=d_model,
-                            param_attr=fluid.ParamAttr(
+                            weight_attr=fluid.ParamAttr(
                                 initializer=fluid.initializer.Constant(1.0)
                             ),
                             bias_attr=fluid.ParamAttr(
@@ -148,16 +148,14 @@ class MultiHeadAttention(Layer):
             v = layers.concat([cache_v, v], axis=2)
             cache["k"], cache["v"] = k, v
         # scale dot product attention
-        product = layers.matmul(
-            x=q, y=k, transpose_y=True, alpha=self.d_model**-0.5
-        )
+        product = paddle.matmul(x=q, y=k, transpose_y=True)
+        product = paddle.scale(product, scale=self.d_model**-0.5)
         if attn_bias is not None:
             product += attn_bias
-        weights = layers.softmax(product)
+        weights = paddle.nn.functional.softmax(product)
         if self.dropout_rate:
             weights = layers.dropout(weights, dropout_prob=self.dropout_rate)
-            out = layers.matmul(weights, v)
-
+            out = paddle.matmul(weights, v)
         out = paddle.transpose(out, perm=[0, 2, 1, 3])
         out = paddle.reshape(x=out, shape=[0, 0, out.shape[2] * out.shape[3]])
 
@@ -524,7 +522,7 @@ class WrapDecoder(Layer):
             postprocess_cmd,
         )
         if share_input_output_embed:
-            self.linear = lambda x: layers.matmul(
+            self.linear = lambda x: paddle.matmul(
                 x=x, y=self.word_embedder.word_embedder.weight, transpose_y=True
             )
         else:
@@ -576,7 +574,7 @@ class CrossEntropyCriterion:
                 epsilon=self.label_smooth_eps,
             )
 
-        cost = layers.softmax_with_cross_entropy(
+        cost = paddle.nn.functional.softmax_with_cross_entropy(
             logits=predict,
             label=label_out,
             soft_label=True if self.label_smooth_eps else False,
@@ -840,7 +838,7 @@ class Transformer(Layer):
             )
             caches = map_structure(split_batch_beams, caches)
             step_log_probs = split_batch_beams(
-                paddle.log(fluid.layers.softmax(logits))
+                paddle.log(paddle.nn.functional.softmax(logits))
             )
 
             step_log_probs = mask_probs(
@@ -853,9 +851,7 @@ class Transformer(Layer):
                 log_probs, [-1, beam_size * self.trg_vocab_size]
             )
             scores = log_probs
-            topk_scores, topk_indices = fluid.layers.topk(
-                input=scores, k=beam_size
-            )
+            topk_scores, topk_indices = paddle.topk(x=scores, k=beam_size)
             beam_indices = paddle.floor_divide(topk_indices, vocab_size_tensor)
             token_indices = paddle.remainder(topk_indices, vocab_size_tensor)
 
@@ -873,7 +869,7 @@ class Transformer(Layer):
             predict_ids.append(token_indices)
             parent_ids.append(beam_indices)
 
-            if layers.reduce_all(finished).numpy():
+            if paddle.all(finished).numpy():
                 break
 
         predict_ids = paddle.stack(predict_ids, axis=0)

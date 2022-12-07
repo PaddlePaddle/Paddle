@@ -71,16 +71,14 @@ class DecoderCell(layers.RNNCell):
         query = layers.fc(
             hidden, size=encoder_output.shape[-1], bias_attr=False
         )
-        attn_scores = layers.matmul(
+        attn_scores = paddle.matmul(
             layers.unsqueeze(query, [1]), encoder_output, transpose_y=True
         )
         if encoder_padding_mask is not None:
-            attn_scores = layers.elementwise_add(
-                attn_scores, encoder_padding_mask
-            )
-        attn_scores = layers.softmax(attn_scores)
+            attn_scores = paddle.add(attn_scores, encoder_padding_mask)
+        attn_scores = paddle.nn.functional.softmax(attn_scores)
         attn_out = paddle.squeeze(
-            layers.matmul(attn_scores, encoder_output), [1]
+            paddle.matmul(attn_scores, encoder_output), [1]
         )
         attn_out = layers.concat([attn_out, hidden], 1)
         attn_out = layers.fc(attn_out, size=self.hidden_size, bias_attr=False)
@@ -250,7 +248,7 @@ class Seq2SeqModel:
             ),
         ]
         src_mask = layers.sequence_mask(
-            src_length, maxlen=layers.shape(src)[1], dtype="float32"
+            src_length, maxlen=paddle.shape(src)[1], dtype="float32"
         )
         encoder_padding_mask = (src_mask - 1.0) * 1e9
         encoder_padding_mask = layers.unsqueeze(encoder_padding_mask, [1])
@@ -297,7 +295,7 @@ class Seq2SeqModel:
             decoder_output.sample_ids,
             dec_seq_lengths,
         )
-        probs = layers.softmax(logits)
+        probs = paddle.nn.functional.softmax(logits)
         return probs, samples, sample_length
 
 
@@ -311,7 +309,7 @@ class PolicyGradient:
         """
         update policy model self.model with policy gradient algorithm
         """
-        self.reward = fluid.layers.py_func(
+        self.reward = paddle.static.py_func(
             func=reward_func, x=[action, length], out=reward
         )
         neg_log_prob = layers.cross_entropy(act_prob, action)
@@ -402,7 +400,7 @@ class MLE:
 
     def learn(self, probs, label, weight=None, length=None):
         loss = layers.cross_entropy(input=probs, label=label, soft_label=False)
-        max_seq_len = layers.shape(probs)[1]
+        max_seq_len = paddle.shape(probs)[1]
         mask = layers.sequence_mask(length, maxlen=max_seq_len, dtype="float32")
         loss = loss * mask
         loss = paddle.mean(loss, axis=[0])

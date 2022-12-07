@@ -53,12 +53,15 @@ class SequencePoolOp : public framework::OperatorWithKernel {
 class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(LoDTensor) The variable-length input of SequencePoolOp");
-    AddOutput("Out",
-              "(Tensor) The output of SequencePoolOp does not contain LoD "
-              "information.");
+    AddInput("X",
+             "(phi::DenseTensor) The variable-length input of SequencePoolOp");
+    AddOutput(
+        "Out",
+        "(phi::DenseTensor) The output of SequencePoolOp does not contain LoD "
+        "information.");
     AddOutput("MaxIndex",
-              "(Tensor<int>) This tensor is used for the sequence max-pooling "
+              "(phi::DenseTensor<int>) This tensor is used for the sequence "
+              "max-pooling "
               "to record the max indexes.")
         .AsIntermediate();
     AddAttr<bool>("is_test",
@@ -92,11 +95,11 @@ The following example explains how this works:
 For a mini-batch of 3 variable-length sentences,
 containing 2, 3, and 2 time-steps:
 
-Assume X is a [7,M,N] LoDTensor, and X->lod()[0] = [0, 2, 5, 7], 7=2+3+2.
+Assume X is a [7,M,N] phi::DenseTensor, and X->lod()[0] = [0, 2, 5, 7], 7=2+3+2.
 Besides, for the sake of simplicity, we assume M=1 and N=1,
 and the value of X = [[1, 3], [2, 4, 6], [5, 1]].
 
-Thus, Out is a [3,1,1] Tensor without LoD information.
+Thus, Out is a [3,1,1] phi::DenseTensor without LoD information.
 And for different pooltype, the value of Out is as follows:
 
 - AVERAGE: [2, 4, 3], where 2=(1+3)/2, 4=(2+4+6)/3, 3=(5+1)/2

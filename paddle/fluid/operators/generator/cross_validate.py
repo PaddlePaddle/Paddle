@@ -40,14 +40,14 @@ if __name__ == "__main__":
         '--forward_yaml_paths',
         type=str,
         nargs='+',
-        default=str(current_dir / "op .parsed.yaml"),
+        default=[str(current_dir / "op .parsed.yaml")],
         help="forward op yaml file.",
     )
     parser.add_argument(
         '--backward_yaml_paths',
         type=str,
         nargs='+',
-        default=str(current_dir / "backward_op .parsed.yaml"),
+        default=[str(current_dir / "backward_op .parsed.yaml")],
         help="backward op yaml file.",
     )
 
