@@ -149,6 +149,48 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
       kernel_signature_(std::move(kernel_signature)),
       phi_kernel_(phi_kernel) {}
 
+#ifdef PADDLE_WITH_MLU
+
+static void tokenize(const std::string& ops,
+                     char delim,
+                     std::unordered_set<std::string>* op_set) {
+  std::string::size_type beg = 0;
+  for (uint64_t end = 0; (end = ops.find(delim, end)) != std::string::npos;
+       ++end) {
+    op_set->insert(ops.substr(beg, end - beg));
+    beg = end + 1;
+  }
+
+  op_set->insert(ops.substr(beg));
+}
+
+static bool is_in_mlu_black_list(const std::string& op_name) {
+  static bool inited = false;
+  static std::unordered_set<std::string> mlu_black_list;
+  static std::mutex s_mtx;
+  if (!inited) {
+    std::lock_guard<std::mutex> guard(s_mtx);
+    if (!inited) {
+      if (std::getenv("MLU_BLACK_LIST") != nullptr) {
+        std::string ops(std::getenv("MLU_BLACK_LIST"));
+        tokenize(ops, ',', &mlu_black_list);
+      }
+      inited = true;
+      VLOG(3) << "MLU Black List: ";
+      for (auto iter = mlu_black_list.begin(); iter != mlu_black_list.end();
+           ++iter) {
+        VLOG(3) << *iter << " ";
+      }
+    }
+  }
+  if (mlu_black_list.find(op_name) != mlu_black_list.end()) {
+    return true;
+  }
+  return false;
+}
+
+#endif
+
 template <typename VarType>
 PreparedOp PrepareImpl(
     const NameVarMap<VarType>& ins,
@@ -190,27 +232,38 @@ PreparedOp PrepareImpl(
   std::string phi_kernel_name;
 
 // NOTE(jiahongyu): The registered MKLDNN kernel have library_type =
-// LibraryType::kMKLDNN and data_layout_ = DataLayout::kMKLDNN. But the default
+// LibraryType::kMKLDNN and data_layout_ = DataLayout::ONEDNN. But the default
 // values are kPlain, so we need to modify the library_type and data_layout_
-// here. There are three statements in if condition: The first statement checks
-// whether library_type_ are changed by other high priority backends; the second
-// checks whether this op has specific implementation; the third checks whether
-// mkldnn kernel can be used.
+// here. There are three statements in if condition:
+// 1. Whether mkldnn kernel fallbacks to plain kernel;
+// 2. Whether this op has specific implementation;
+// 3. Whether mkldnn kernel can be used.
 #ifdef PADDLE_WITH_MKLDNN
-  if (expected_kernel_key.library_type_ == framework::LibraryType::kPlain &&
-      !paddle::platform::in_mkldnn_white_list(op.Type()) &&
+  if (!op.DnnFallback() && !paddle::platform::in_mkldnn_white_list(op.Type()) &&
       op.CanMKLDNNBeUsed(dygraph_exe_ctx, expected_kernel_key.data_type_)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
-    expected_kernel_key.data_layout_ = framework::DataLayout::kMKLDNN;
+    expected_kernel_key.data_layout_ = framework::DataLayout::ONEDNN;
+  }
+#endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (op.CanCUDNNBeUsed(dygraph_exe_ctx, expected_kernel_key.data_type_)) {
+    expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
   }
 #endif
 
 #if defined(PADDLE_WITH_XPU)
   bool is_xpu_unsupport =
       paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
-          !paddle::platform::is_xpu_support_op(op.Type(),
-                                               expected_kernel_key) ||
-      paddle::platform::is_in_xpu_black_list(op.Type());
+      !paddle::platform::is_xpu_support_op(
+          op.Type(),
+          framework::TransToPhiDataType(expected_kernel_key.data_type_));
+#endif
+
+#ifdef PADDLE_WITH_MLU
+  if (is_in_mlu_black_list(op.Type())) {
+    expected_kernel_key.place_ = platform::CPUPlace();
+  }
 #endif
 
   bool has_phi_kernel = false;
@@ -239,8 +292,10 @@ PreparedOp PrepareImpl(
 #ifdef PADDLE_WITH_XPU_KP
     if (paddle::platform::is_xpu_place(expected_kernel_key.place_)) {
       bool use_xpu_kp_kernel_rt =
-          FLAGS_run_kp_kernel && paddle::platform::is_xpu_kp_support_op(
-                                     op.Type(), expected_kernel_key);
+          FLAGS_run_kp_kernel &&
+          paddle::platform::is_xpu_support_op(
+              op.Type(),
+              framework::TransToPhiDataType(expected_kernel_key.data_type_));
       bool use_xpu_kp_kernel_debug =
           paddle::platform::is_in_xpu_kpwhite_list(op.Type());
       if (use_xpu_kp_kernel_rt) {
@@ -315,7 +370,9 @@ PreparedOp PrepareImpl(
   bool use_xpu_kp_kernel_rt =
       paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
       FLAGS_run_kp_kernel &&
-      paddle::platform::is_xpu_kp_support_op(op.Type(), expected_kernel_key);
+      paddle::platform::is_xpu_support_op(
+          op.Type(),
+          framework::TransToPhiDataType(expected_kernel_key.data_type_));
   bool use_xpu_kp_kernel_debug =
       paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
       paddle::platform::is_in_xpu_kpwhite_list(op.Type());
@@ -547,7 +604,7 @@ static void PreparedOpRunImpl(
     op.Info().infer_shape_(&infer_shape_ctx);
     record_event.End();
     platform::RecordOpInfoSupplement(
-        op.Type(), op.Attrs(), infer_shape_ctx, ctx);
+        op.Type(), op.Attrs(), infer_shape_ctx, ctx, op.Id());
   }
 
   {

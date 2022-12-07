@@ -13,19 +13,20 @@
 # limitations under the License.
 
 import os
-import unittest
-import numpy as np
 import shutil
-import paddle
-import paddle.fluid as fluid
-import paddle.distributed.fleet.base.role_maker as role_maker
-from paddle.distributed.fleet import fleet
+import unittest
+
+import numpy as np
 from test_dist_sparse_load_ps0 import SparseLoadOp
+
+import paddle
+import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.fluid as fluid
+from paddle.distributed.fleet import fleet
 
 
 @unittest.skip(reason="Skip unstable ut, need rewrite with new implement")
 class TestSparseLoadOpCase2(SparseLoadOp):
-
     def test_2ps_0_load(self):
         # init No.1 server env
         env = {}
@@ -64,7 +65,8 @@ class TestSparseLoadOpCase2(SparseLoadOp):
         optimizer.minimize(loss)
         fleet.init_server(model_path)
         emb = np.array(
-            fluid.global_scope().find_var("embedding.block1").get_tensor())
+            fluid.global_scope().find_var("embedding.block1").get_tensor()
+        )
         assert emb.all() == emb_array[1::2].all()
         shutil.rmtree(model_path)
 

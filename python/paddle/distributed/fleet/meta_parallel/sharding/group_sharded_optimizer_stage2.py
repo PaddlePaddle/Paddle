@@ -24,20 +24,25 @@
 
 import logging
 import warnings
-
 from collections import OrderedDict
 
 import paddle
+import paddle.distributed as dist
+from paddle.distributed import ParallelMode, fleet
 from paddle.fluid import core
-from paddle.optimizer import Optimizer
 from paddle.fluid.clip import ClipGradByGlobalNorm
-from paddle.distributed.collective import _get_global_group, broadcast, new_group
+from paddle.optimizer import Optimizer
 
-from .group_sharded_storage import ParamStorage, GradStorage
-from .group_sharded_utils import Type, device_guard, GroupShardedClipGrad
+HybridParallelClipGrad = (
+    fleet.meta_optimizers.dygraph_optimizer.hybrid_parallel_optimizer.HybridParallelClipGrad
+)
+from paddle.distributed.collective import _get_global_group, new_group
+
+from .group_sharded_storage import GradStorage, ParamStorage
+from .group_sharded_utils import GroupShardedClipGrad, Type, device_guard
 
 # CUDA alignment 256 bytes, cpu alignment 4096 bytes
-alignment = {"gpu": 256, "cpu": 4096}
+alignment = {"gpu": 256, "cpu": 4096, "xpu": 256}
 align = {
     Type.fp16.value: 2,
     Type.bf16.value: 2,
@@ -63,21 +68,26 @@ class GroupShardedOptimizerStage2(Optimizer):
     # 4. Support offload function.
     # 5. Support the establishment of independent communication groups.
     # 6. Broadcast_fp16 is not supported now.
-    def __init__(self,
-                 params,
-                 optim,
-                 group=None,
-                 offload=False,
-                 device="gpu",
-                 pertrain_sync_models=True,
-                 dp_group=None,
-                 **kw):
+    def __init__(
+        self,
+        params,
+        optim,
+        group=None,
+        offload=False,
+        device="gpu",
+        pertrain_sync_models=True,
+        dp_group=None,
+        **kw
+    ):
 
         super().__init__(learning_rate=optim._learning_rate, parameters=params)
-        assert core.is_compiled_with_cuda(), "Only GPU is supported now"
+        assert (
+            core.is_compiled_with_cuda() or core.is_compiled_with_xpu()
+        ), "Only GPU and XPU is supported now"
 
         # Segmentation information
-        self._dtype_rank_params = OrderedDict(
+        self._dtype_rank_params = (
+            OrderedDict()
         )  # {dtype:[param1,param2]} device, rank, params
         self._param2rank = {}
         self.__segment_params = []
@@ -92,8 +102,9 @@ class GroupShardedOptimizerStage2(Optimizer):
         # record the last task used for comm overlap for sharding stage 2
         self._comm_task = None
 
-        assert hasattr(self._optim, "_master_weights"
-                       ), "Must use optimizer with _master_weights attribute"
+        assert hasattr(
+            self._optim, "_master_weights"
+        ), "Must use optimizer with _master_weights attribute"
 
         # Support parameter group and parameter list
         self._local_params = []
@@ -104,10 +115,17 @@ class GroupShardedOptimizerStage2(Optimizer):
             self._local_params.extend(list(params))
 
         self._default_device = device
-        self._pfp16 = len(
-            list(
-                filter(lambda x: x.trainable and x.dtype == Type.fp16.value,
-                       self._local_params))) > 0
+        self._pfp16 = (
+            len(
+                list(
+                    filter(
+                        lambda x: x.trainable and x.dtype == Type.fp16.value,
+                        self._local_params,
+                    )
+                )
+            )
+            > 0
+        )
 
         self._broadcast_overlap = False
         self._forward_pre_hook_remove_helper = []
@@ -116,12 +134,14 @@ class GroupShardedOptimizerStage2(Optimizer):
             # Have to sort the params to make sure all params are in the forward using order.
             self._broadcast_order_params = sorted(
                 self.local_params,
-                key=lambda x: int(x.name.split('.')[0].split('_')[-1]))
+                key=lambda x: int(x.name.split('.')[0].split('_')[-1]),
+            )
         except ValueError:
             self._broadcast_order_params = None
 
-        self._group = new_group(
-            _get_global_group().ranks) if group is None else group
+        self._group = (
+            new_group(_get_global_group().ranks) if group is None else group
+        )
 
         # only support to combine stage2 and dp hybrid parallel now.
         self._dp_group = dp_group
@@ -140,16 +160,29 @@ class GroupShardedOptimizerStage2(Optimizer):
                 "While using ClipGradByGlobalNorm in GroupShardedOptimizerStage2, the grad clip of original optimizer will be changed."
             )
 
-            self._optim._grad_clip = GroupShardedClipGrad(
-                self._optim._grad_clip, paddle.get_device(), self._group)
+            hcg = fleet.fleet._hcg if hasattr(fleet.fleet, "_hcg") else None
+            if (
+                hcg
+                and hcg.get_parallel_mode() is not ParallelMode.DATA_PARALLEL
+            ):
+                self._optim._grad_clip = HybridParallelClipGrad(
+                    self._optim._grad_clip, hcg
+                )
+            else:
+                self._optim._grad_clip = GroupShardedClipGrad(
+                    self._optim._grad_clip, paddle.get_device(), self._group
+                )
             if self._optim._parameter_list and isinstance(
-                    self._optim._parameter_list[0], dict):
+                self._optim._parameter_list[0], dict
+            ):
                 for item in self._optim._param_groups:
                     if "grad_clip" in item.keys():
                         item["grad_clip"] = self._optim._grad_clip
 
         if offload:
-            assert self._pfp16, "Only support offload strategy while using \'Adam\', \'AdamW\' and \'Momentum\' optimizer with AMP/Pure FP16"
+            assert (
+                self._pfp16
+            ), "Only support offload strategy while using \'Adam\', \'AdamW\' and \'Momentum\' optimizer with AMP/Pure FP16"
 
         self.offload = offload  # Using for offload
         self.offload_device = "cpu"
@@ -171,16 +204,17 @@ class GroupShardedOptimizerStage2(Optimizer):
         """
 
         for p in self._local_params:
-            broadcast(p,
-                      src=self._global_root_rank,
-                      group=self._group,
-                      sync_op=True)
+            dist.broadcast(
+                p, src=self._global_root_rank, group=self._group, sync_op=True
+            )
 
             if self._dp_group:
-                broadcast(p,
-                          src=self._dp_group.ranks[0],
-                          group=self._dp_group,
-                          sync_op=True)
+                dist.broadcast(
+                    p,
+                    src=self._dp_group.ranks[0],
+                    group=self._dp_group,
+                    sync_op=True,
+                )
 
     def _update_task(self, task):
         if self._reduce_overlap:
@@ -194,15 +228,15 @@ class GroupShardedOptimizerStage2(Optimizer):
         # Enable gradients' reduces overlap with backward calculation.
         self._reduce_overlap = reduce_overlap
 
-    def _set_broadcast_overlap(self,
-                               broadcast_overlap,
-                               layers=None,
-                               num_groups=None):
+    def _set_broadcast_overlap(
+        self, broadcast_overlap, layers=None, num_groups=None
+    ):
         # Enable post optimizer broadcasts overlap with the forward calculation of next batch.
         self._broadcast_overlap = broadcast_overlap
         if self._broadcast_overlap:
-            assert layers is not None, \
-                "To enable broadcast overlap forward, please pass the module to the function."
+            assert (
+                layers is not None
+            ), "To enable broadcast overlap forward, please pass the module to the function."
             self._layers = layers
             warnings.warn(
                 "Setting overlap broadcast means the `paddle.device.cuda.synchronize()` "
@@ -211,8 +245,9 @@ class GroupShardedOptimizerStage2(Optimizer):
             if self._broadcast_order_params is None:
                 # Params' names should be like column_linear_32.w_0 patter to get the best performance.
                 warnings.warn(
-                    "The param name passed to the optimizer doesn't follow .+_[0-9]+\..+ patter, "
-                    "overlap broadcast may harm the performance.")
+                    r"The param name passed to the optimizer doesn't follow .+_[0-9]+\..+ patter, "
+                    "overlap broadcast may harm the performance."
+                )
                 self._broadcast_order_params = self._local_params
 
         if num_groups is None or num_groups > len(self._broadcast_order_params):
@@ -222,9 +257,9 @@ class GroupShardedOptimizerStage2(Optimizer):
             )
             num_groups = 1
 
-        assert isinstance(
-            num_groups,
-            int) and num_groups > 0, "num_groups should be a positive integer"
+        assert (
+            isinstance(num_groups, int) and num_groups > 0
+        ), "num_groups should be a positive integer"
 
         self._number_of_broadcast_groups = num_groups
         self._broadcast_groups = [
@@ -244,7 +279,8 @@ class GroupShardedOptimizerStage2(Optimizer):
                         name=param.name,
                         value=param.cast(dtype=Type.fp32.value).numpy(),
                         place=core.CPUPlace(),
-                        stop_gradient=param.stop_gradient)
+                        stop_gradient=param.stop_gradient,
+                    )
         else:
             for param in trainable_params:
                 if param.dtype == Type.fp16.value:
@@ -253,8 +289,7 @@ class GroupShardedOptimizerStage2(Optimizer):
                     self._optim._master_weights[param.name] = master_tensor
 
     def _update_opt_status(self):
-        """Update optimizer status and parameter storage information, and special functions to be developed.
-        """
+        """Update optimizer status and parameter storage information, and special functions to be developed."""
         # func 1
         self._integration_params()
 
@@ -301,13 +336,17 @@ class GroupShardedOptimizerStage2(Optimizer):
         """
         if len(self._dtype_rank_params) == 0:
             # Assign the parameters of each rank according to the type
-            for param in self._local_params:
+            trainable_params = list(
+                filter(lambda x: x.trainable, self._local_params)
+            )
+            for param in trainable_params:
                 if param.dtype not in self._dtype_rank_params.keys():
                     self._dtype_rank_params[param.dtype] = [
                         [] for _ in range(self.world_size)
                     ]
-                self._dtype_rank_params[param.dtype][self.param2rank[
-                    param.name]].append(param)
+                self._dtype_rank_params[param.dtype][
+                    self.param2rank[param.name]
+                ].append(param)
 
             # Sort per rank params by size
             for dtype in self._dtype_rank_params.keys():
@@ -327,7 +366,8 @@ class GroupShardedOptimizerStage2(Optimizer):
                 if dtype not in self._rank_buffer_size.keys():
                     self._rank_buffer_size[dtype] = {}
                 for dst_rank, per_rank_params in enumerate(
-                        self.dtype_rank_params[dtype]):
+                    self.dtype_rank_params[dtype]
+                ):
                     if dst_rank not in self._rank_buffer_size[dtype].keys():
                         self._rank_buffer_size[dtype][dst_rank] = 0
                     for param in per_rank_params:
@@ -335,11 +375,15 @@ class GroupShardedOptimizerStage2(Optimizer):
                             continue
                         size = param._numel() * align[dtype]
                         remaining = size % alignment[self._default_device]
-                        ali = 0 if remaining == 0 else alignment[
-                            self._default_device] - remaining
+                        ali = (
+                            0
+                            if remaining == 0
+                            else alignment[self._default_device] - remaining
+                        )
                         align_ = ali // align[dtype]
-                        self._rank_buffer_size[dtype][dst_rank] += param._numel(
-                        ) + align_
+                        self._rank_buffer_size[dtype][dst_rank] += (
+                            param._numel() + align_
+                        )
                         self._param2align[param.name] = align_
 
         return self._rank_buffer_size
@@ -358,23 +402,27 @@ class GroupShardedOptimizerStage2(Optimizer):
 
                     # Merge all the trainable params in a single InternalStorage
                     trainable_params = list(
-                        filter(lambda x: x.trainable, params))
+                        filter(lambda x: x.trainable, params)
+                    )
                     if self._pfp16 and dst_rank == self._rank:
                         self._generate_master_params(trainable_params)
                     if trainable_params:
                         param_storage = ParamStorage(
                             size=self.rank_buffer_size[dtype][dst_rank],
                             dtype=dtype,
-                            device=self._default_device)
+                            device=self._default_device,
+                        )
 
-                        param_storage.add_rank_params(trainable_params,
-                                                      self._param2align)
+                        param_storage.add_rank_params(
+                            trainable_params, self._param2align
+                        )
                         self.param_storages[dtype][dst_rank] = param_storage
 
         # Clear the InternalStorage keys which are not in use anymore
         dtype_in_use = list(self.dtype_rank_params.keys())
         dtype_to_pop = list(
-            filter(lambda x: x not in dtype_in_use, self.param_storages.keys()))
+            filter(lambda x: x not in dtype_in_use, self.param_storages.keys())
+        )
         for d in dtype_to_pop:
             self.param_storages.pop(d)
 
@@ -384,8 +432,11 @@ class GroupShardedOptimizerStage2(Optimizer):
             for param in cpu_master_params:
                 size = param._numel() * align[Type.fp32.value]
                 remaining = size % alignment[self.offload_device]
-                ali = 0 if remaining == 0 else alignment[
-                    self.offload_device] - remaining
+                ali = (
+                    0
+                    if remaining == 0
+                    else alignment[self.offload_device] - remaining
+                )
                 align_ = ali // align[Type.fp32.value]
                 self.offload_buffer_size += param._numel() + align_
                 self.offload_param2align[param.name] = align_
@@ -395,10 +446,12 @@ class GroupShardedOptimizerStage2(Optimizer):
                     self.offload_params = ParamStorage(
                         size=self.offload_buffer_size,
                         dtype=Type.fp32.value,
-                        device=self.offload_device)
+                        device=self.offload_device,
+                    )
                     self.offload_params.buffer.name = "offload_buffer"
                     self.offload_params.add_rank_params(
-                        cpu_master_params, self.offload_param2align, False)
+                        cpu_master_params, self.offload_param2align, False
+                    )
                     self.offload_params.buffer.stop_gradient = False
 
                     self.offload_grads = GradStorage(
@@ -407,14 +460,16 @@ class GroupShardedOptimizerStage2(Optimizer):
                         device=self.offload_device,
                         destination=self._rank,
                         parm2align=self.offload_param2align,
-                        convert_cpu=True)
+                        convert_cpu=True,
+                    )
                     for p in cpu_master_params:
                         self.offload_grads.add_grad(
-                            p, self.offload_param2align[p.name])
+                            p, self.offload_param2align[p.name]
+                        )
 
                     self._optim._master_weights[
-                        self.offload_params.buffer.
-                        name] = self.offload_params.buffer
+                        self.offload_params.buffer.name
+                    ] = self.offload_params.buffer
 
     def _offload_acc_grad(self, param_name, grad_fp32_cpu):
         """accumulate grads with offload strategy"""
@@ -422,12 +477,14 @@ class GroupShardedOptimizerStage2(Optimizer):
             if param_name in self._master_params.keys():
                 if self._master_params[param_name].grad is None:
                     self._master_params[param_name]._copy_gradient_from(
-                        grad_fp32_cpu)
+                        grad_fp32_cpu
+                    )
                 else:
                     self._master_params[param_name].grad.add_(grad_fp32_cpu)
 
         self.offload_params.buffer._copy_gradient_from(
-            self.offload_grads.buffer)
+            self.offload_grads.buffer
+        )
 
     def _offload_scale_grad(self, scale_size):
         """scale grads with offload strategy"""
@@ -439,12 +496,7 @@ class GroupShardedOptimizerStage2(Optimizer):
         with device_guard(self._rank, self.offload_device):
             self.offload_grads.buffer.zero_()
 
-    def step(self):
-        """
-        A wrapper for Optimizer's step function to finish the update operation of the optimizer.
-        """
-        # This method won't be called directly by opt.step()!
-        # The _redefine_opt_step() in class GroupShardedStage2 will wrap this function.
+    def _step(self):
         if self._broadcast_overlap:
             # Clear the pre forward hook in the optimizer step.
             for hook_remove in self._forward_pre_hook_remove_helper:
@@ -454,7 +506,7 @@ class GroupShardedOptimizerStage2(Optimizer):
         if self.offload:
             params_list = [self.offload_params.buffer]
 
-            #TODO(Baibaifan): Offload will support param_groups later
+            # TODO(Baibaifan): Offload will support param_groups later
             if not isinstance(self._optim._param_groups[0], dict):
                 self._optim._parameter_list = params_list
                 self._optim._param_groups = params_list
@@ -466,17 +518,29 @@ class GroupShardedOptimizerStage2(Optimizer):
 
             for param in self._local_params:
                 if param.name in self._master_params.keys():
-                    param.set_value(self._master_params[param.name].cuda(
-                        self.dev_id).cast(dtype=param.dtype))
+                    param.set_value(
+                        self._master_params[param.name]
+                        .cuda(self.dev_id)
+                        .cast(dtype=param.dtype)
+                    )
         else:
             self._optim.step()
 
         # Synchronize all the updated shards in between the ranks
         self._broadcast_params()
 
+    def step(self):
+        """
+        A wrapper for Optimizer's step function to finish the update operation of the optimizer.
+        """
+        # This method won't be called directly by opt.step()!
+        # The _redefine_opt_step() in class GroupShardedStage2 will wrap this function.
+        self._step()
+
     def minimize(self):
         raise RuntimeError(
-            "optimizer.minimize() not support now, please use optimizer.step()")
+            "optimizer.minimize() not support now, please use optimizer.step()"
+        )
 
     def set_state_dict(self, state_dict):
         self._optim.set_state_dict(state_dict)
@@ -499,10 +563,12 @@ class GroupShardedOptimizerStage2(Optimizer):
         else:
             for dtype_per_rank in self.param_storages.values():
                 for dst_rank, internal_storage in dtype_per_rank.items():
-                    broadcast(tensor=internal_storage.buffer,
-                              src=self._group.ranks[dst_rank],
-                              group=self._group,
-                              sync_op=True)
+                    dist.broadcast(
+                        tensor=internal_storage.buffer,
+                        src=self._group.ranks[dst_rank],
+                        group=self._group,
+                        sync_op=True,
+                    )
 
     def _forward_pre_hook_function(self, tasks):
         # Since the layers will call pre hook by `forward_pre_hook(self, inputs)`,
@@ -525,10 +591,12 @@ class GroupShardedOptimizerStage2(Optimizer):
             if x.trainable:
                 group = self._broadcast_groups[group_idx]
                 group_idx = (group_idx + 1) % self._number_of_broadcast_groups
-                task = broadcast(tensor=x,
-                                 src=group.ranks[self._param2rank[x.name]],
-                                 group=group,
-                                 sync_op=False)
+                task = dist.broadcast(
+                    tensor=x,
+                    src=group.ranks[self._param2rank[x.name]],
+                    group=group,
+                    sync_op=False,
+                )
                 assert x.name not in param2task
                 param2task[x.name] = task
 
@@ -542,4 +610,6 @@ class GroupShardedOptimizerStage2(Optimizer):
                             tasks.append(param2task[param.name])
                 self._forward_pre_hook_remove_helper.append(
                     layer.register_forward_pre_hook(
-                        self._forward_pre_hook_function(tasks)))
+                        self._forward_pre_hook_function(tasks)
+                    )
+                )

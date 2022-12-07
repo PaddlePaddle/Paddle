@@ -13,18 +13,19 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
 import paddle
 
 
 class TestMinusOp(OpTest):
-
     def setUp(self):
         self.op_type = "minus"
         self.inputs = {
             'X': np.random.random((32, 84)).astype("float32"),
-            'Y': np.random.random((32, 84)).astype("float32")
+            'Y': np.random.random((32, 84)).astype("float32"),
         }
         self.outputs = {'Out': (self.inputs['X'] - self.inputs['Y'])}
 

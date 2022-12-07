@@ -17,8 +17,8 @@
 # pylint: skip-file
 
 import numpy as np
-from paddle.fluid.core import AnalysisConfig
-from paddle.fluid.core import create_paddle_predictor
+
+from paddle.fluid.core import AnalysisConfig, create_paddle_predictor
 
 
 def main():
@@ -51,7 +51,7 @@ def set_config():
 
 
 def parse_data():
-    """ parse input and output data """
+    """parse input and output data"""
     with open('data/data.txt', 'r') as fr:
         data = np.array([float(_) for _ in fr.read().split()])
 

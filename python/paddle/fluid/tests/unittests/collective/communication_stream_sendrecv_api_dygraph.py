@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import os
+
 import numpy as np
-import paddle
-import paddle.distributed as dist
 import test_collective_api_base as test_collective_base
 
+import paddle
+import paddle.distributed as dist
 
-class StreamSendRecvTestCase():
 
+class StreamSendRecvTestCase:
     def __init__(self):
         self._sync_op = eval(os.getenv("sync_op"))
         self._use_calc_stream = eval(os.getenv("use_calc_stream"))
@@ -30,7 +31,8 @@ class StreamSendRecvTestCase():
         self._seeds = eval(os.getenv("seeds"))
         if self._backend not in ["nccl", "gloo"]:
             raise NotImplementedError(
-                "Only support nccl and gloo as the backend for now.")
+                "Only support nccl and gloo as the backend for now."
+            )
         os.environ["PADDLE_DISTRI_BACKEND"] = self._backend
 
     def run_test_case(self):
@@ -39,9 +41,10 @@ class StreamSendRecvTestCase():
         test_data_list = []
         for seed in self._seeds:
             test_data_list.append(
-                test_collective_base.create_test_data(shape=self._shape,
-                                                      dtype=self._dtype,
-                                                      seed=seed))
+                test_collective_base.create_test_data(
+                    shape=self._shape, dtype=self._dtype, seed=seed
+                )
+            )
 
         src_rank = 0
         dst_rank = 1
@@ -49,15 +52,19 @@ class StreamSendRecvTestCase():
         rank = dist.get_rank()
         tensor = paddle.to_tensor(test_data_list[rank])
         if rank == 0:
-            task = dist.stream.send(tensor,
-                                    dst=dst_rank,
-                                    sync_op=self._sync_op,
-                                    use_calc_stream=self._use_calc_stream)
+            task = dist.stream.send(
+                tensor,
+                dst=dst_rank,
+                sync_op=self._sync_op,
+                use_calc_stream=self._use_calc_stream,
+            )
         else:
-            task = dist.stream.recv(tensor,
-                                    src=src_rank,
-                                    sync_op=self._sync_op,
-                                    use_calc_stream=self._use_calc_stream)
+            task = dist.stream.recv(
+                tensor,
+                src=src_rank,
+                sync_op=self._sync_op,
+                use_calc_stream=self._use_calc_stream,
+            )
         if not self._sync_op:
             task.wait()
 

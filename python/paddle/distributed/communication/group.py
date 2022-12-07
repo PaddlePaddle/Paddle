@@ -12,8 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import warnings
 
-class Group():
+import paddle
+import paddle.distributed as dist
+import paddle.fluid.core as core
+import paddle.fluid.framework as framework
+import paddle.fluid.layer_helper as layer_helper
+
+
+class Group:
     """
     The abstract representation of group.
     """
@@ -51,6 +59,10 @@ class Group():
         return self._world_size
 
     @property
+    def backend(self):
+        return self._pg.name()
+
+    @property
     def id(self):
         return self._id
 
@@ -69,14 +81,15 @@ class Group():
 
     def __repr__(self):
         debug_str = "rank: {}, nranks: {}, id: {}, ranks: ".format(
-            self.rank, self.nranks, self.id)
+            self.rank, self.nranks, self.id
+        )
         debug_str += ", ".join(map(str, self.ranks))
         debug_str += "; name: "
         debug_str += self.name if self.name else "None"
         return debug_str
 
 
-class _GroupManager():
+class _GroupManager:
     global_group_id = 0
     group_map_by_id = {}
 
@@ -89,6 +102,252 @@ def _get_global_group():
 
 def _add_new_group(group):
     if group.id in _GroupManager.group_map_by_id:
-        raise RuntimeError("The group with id {} already exist.".format(
-            group.id))
+        raise RuntimeError(
+            "The group with id {} already exist.".format(group.id)
+        )
     _GroupManager.group_map_by_id[group.id] = group
+
+
+def _is_global_group(group):
+    return group.id == _GroupManager.global_group_id
+
+
+def _warn_cur_rank_not_in_group(group):
+    global_rank = dist.get_rank()
+    if group and not group.is_member():
+        warnings.warn(
+            "Current global rank {} is not in group {}".format(
+                global_rank, group.name
+            )
+        )
+        return True
+    return False
+
+
+def _get_or_throw_group_rank(global_rank, group):
+    group_rank = group.get_group_rank(global_rank)
+    assert (
+        group_rank >= 0
+    ), "The input rank {} can not be found inside the group {}".format(
+        global_rank, group.name
+    )
+    return group_rank
+
+
+def is_initialized():
+    """
+
+    Check whether the distributed environment has been initialized
+
+    Returns:
+        `True` if distributed environment has been initialized, otherwise `False`.
+
+    Warning:
+        This API only supports the dygraph mode.
+
+    Examples:
+        .. code-block:: python
+
+            # required: distributed
+            import paddle
+
+            print(paddle.distributed.is_initialized())
+            # False
+
+            paddle.distributed.init_parallel_env()
+            print(paddle.distributed.is_initialized())
+            # True
+
+    """
+    return _GroupManager.global_group_id in _GroupManager.group_map_by_id
+
+
+def destroy_process_group(group=None):
+    """
+    Destroy a given group for communication
+
+    Args:
+        group (Group, optional): The group to be destroyed. All of process groups, including
+                                        the default group, will be destroyed and the distributed
+                                        environment will be deinitialized.
+
+    Returns : None
+
+    Warning:
+        This API only supports the dygraph mode.
+
+    Examples:
+        .. code-block:: python
+
+            # required: distributed
+            import paddle
+            import paddle.distributed as dist
+
+            dist.init_parallel_env()
+            group = dist.new_group([0, 1])
+
+            dist.destroy_process_group(group)
+            print(dist.is_initialized())
+            # True
+            dist.destroy_process_group()
+            print(dist.is_initialized())
+            # False
+
+    """
+    group = _get_global_group() if group is None else group
+    assert (
+        group.id in _GroupManager.group_map_by_id
+    ), "Destroy group with id {} is invalid.".format(group.id)
+    if _is_global_group(group):
+        _GroupManager.group_map_by_id.clear()
+    else:
+        del _GroupManager.group_map_by_id[group.id]
+
+
+def get_group(id=0):
+    """
+
+    Get group instance by group id.
+
+    Args:
+        id (int): the group id. Default value is 0.
+
+    Returns:
+        Group: the group instance.
+
+    Examples:
+        .. code-block:: python
+
+            # required: distributed
+            import paddle
+            import paddle.distributed as dist
+
+            dist.init_parallel_env()
+            gid = paddle.distributed.new_group([2,4,6])
+            paddle.distributed.get_group(gid.id)
+
+    """
+
+    if id in _GroupManager.group_map_by_id:
+        return _GroupManager.group_map_by_id[id]
+    warnings.warn("Group {} is not initialized.".format(id))
+    return None
+
+
+def _sync_calc_stream(tensor):
+    if framework._non_static_mode():
+        return paddle._legacy_C_ops.c_sync_calc_stream(tensor, tensor)
+
+    op_type = 'c_sync_calc_stream'
+    helper = layer_helper.LayerHelper(op_type, **locals())
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [tensor]},
+        outputs={'Out': [tensor]},
+    )
+
+
+def _sync_comm_stream(tensor, ring_id=0):
+    if framework._non_static_mode():
+        return paddle._legacy_C_ops.c_sync_comm_stream(
+            [tensor], [tensor], 'ring_id', ring_id
+        )
+
+    op_type = 'c_sync_comm_stream'
+    helper = layer_helper.LayerHelper(op_type, **locals())
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [tensor]},
+        outputs={'Out': [tensor]},
+        attrs={'ring_id': ring_id},
+    )
+
+
+def wait(tensor, group=None, use_calc_stream=True):
+    """
+
+    wait to sync stream for group.
+
+    Args:
+        tensor (Tensor): The Tensor used before sync.
+        group (Group): The Group instance to perform sync.
+        use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
+            Default to True.
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            paddle.distributed.init_parallel_env()
+            tindata = paddle.randn(shape=[2, 3])
+            paddle.distributed.all_reduce(tindata, sync_op=True)
+            paddle.distributed.wait(tindata)
+
+    """
+    if group is not None and not group.is_member():
+        return
+
+    if use_calc_stream:
+        _sync_calc_stream(tensor)
+    else:
+        ring_id = 0 if group is None else group.id
+        _sync_comm_stream(tensor, ring_id)
+
+
+def barrier(group=None):
+    """
+
+    Barrier among all participators in the group.
+
+    Args:
+        group (Group): The group instance return by new_group or None for global default group.
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            from paddle.distributed import init_parallel_env
+
+            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
+            init_parallel_env()
+            paddle.distributed.barrier()
+    """
+    if group is not None and not group.is_member():
+        return
+
+    if framework.in_dygraph_mode():
+        group = _get_global_group() if group is None else group
+        place = framework._current_expected_place()
+        if isinstance(place, core.CPUPlace):
+            task = group.process_group.barrier()
+        else:
+            device_id = place.get_device_id()
+            task = group.process_group.barrier(device_id)
+        task.wait()
+        return
+
+    ring_id = 0 if group is None else group.id
+
+    barrier_tensor = paddle.full([1], 1, dtype="int32")
+    if framework._non_static_mode():
+        return paddle._legacy_C_ops.barrier(
+            barrier_tensor, barrier_tensor, 'ring_id', ring_id
+        )
+
+    op_type = 'barrier'
+    if not isinstance(ring_id, int):
+        raise ValueError("The type of 'group' for barrier must be int.")
+    helper = layer_helper.LayerHelper(op_type, **locals())
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [barrier_tensor]},
+        outputs={'Out': [barrier_tensor]},
+        attrs={'ring_id': ring_id},
+    )

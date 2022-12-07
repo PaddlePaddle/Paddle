@@ -28,8 +28,9 @@ class TestDygraphShardingStage3(TestMultipleGpus):
         self.run_mnist_2gpu('dygraph_sharding_stage3.py', eager_mode=False)
 
     def test_dygraph_sharding_stage3_offload(self):
-        self.run_mnist_2gpu('dygraph_sharding_stage3_offload.py',
-                            eager_mode=False)
+        self.run_mnist_2gpu(
+            'dygraph_sharding_stage3_offload.py', eager_mode=False
+        )
 
 
 if __name__ == "__main__":

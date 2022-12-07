@@ -16,9 +16,9 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
-#include "paddle/fluid/platform/device_memory_aligment.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/backends/device_memory_aligment.h"
 
 DEFINE_bool(skip_fused_all_reduce_check, false, "");
 DECLARE_bool(allreduce_record_one_event);
@@ -27,7 +27,8 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-typedef std::vector<std::vector<std::pair<std::string, const LoDTensor *>>>
+typedef std::vector<
+    std::vector<std::pair<std::string, const phi::DenseTensor *>>>
     GradientAndLoDTensor;
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -238,16 +239,15 @@ void FusedAllReduceOpHandle::FusedAllReduceFunc(
     std::sort(
         g_tensor.begin(),
         g_tensor.end(),
-        [](const std::pair<std::string, const LoDTensor *> &grad1,
-           const std::pair<std::string, const LoDTensor *> &grad2) -> bool {
-          return grad1.second->data() < grad2.second->data();
-        });
+        [](const std::pair<std::string, const phi::DenseTensor *> &grad1,
+           const std::pair<std::string, const phi::DenseTensor *> &grad2)
+            -> bool { return grad1.second->data() < grad2.second->data(); });
 
     size_t size_of_dtype = framework::SizeOfType(dtype);
     for (size_t k = 1; k < g_tensor.size(); ++k) {
       const void *cur_address = g_tensor.at(k - 1).second->data();
       int64_t len = g_tensor.at(k - 1).second->numel();
-      auto offset = platform::Alignment(len * size_of_dtype, places_[0]);
+      auto offset = phi::Alignment(len * size_of_dtype, places_[0]);
       void *infer_next_address = reinterpret_cast<void *>(
           reinterpret_cast<uintptr_t>(cur_address) + offset);
       const void *next_address = g_tensor.at(k).second->data();
@@ -320,7 +320,7 @@ bool FusedAllReduceOpHandle::InputIsInDifferentPlace(
           var,
           platform::errors::NotFound(
               "The variable '%s' is not found in local scope.", var_name));
-      auto &lod_tensor = var->Get<LoDTensor>();
+      auto &lod_tensor = var->Get<phi::DenseTensor>();
       if (!platform::is_same_place(lod_tensor.place(), places_.at(scope_idx))) {
         return true;
       }
@@ -333,7 +333,8 @@ void FusedAllReduceOpHandle::GetGradLoDTensor(
     const size_t &scope_idx,
     const std::vector<VarHandle *> &in_var_handles,
     const std::vector<VarHandle *> &out_var_handles,
-    std::vector<std::pair<std::string, const LoDTensor *>> *grad_tensor) const {
+    std::vector<std::pair<std::string, const phi::DenseTensor *>> *grad_tensor)
+    const {
   auto *local_scope = local_exec_scopes_[scope_idx];
   size_t place_num = places_.size();
   for (size_t j = 0; j < in_var_handles.size(); j += place_num) {
@@ -352,7 +353,7 @@ void FusedAllReduceOpHandle::GetGradLoDTensor(
         var,
         platform::errors::NotFound(
             "The variable '%s' is not found in local scope.", var_name));
-    auto &lod_tensor = var->Get<LoDTensor>();
+    auto &lod_tensor = var->Get<phi::DenseTensor>();
 
     PADDLE_ENFORCE_EQ(
         platform::is_same_place(lod_tensor.place(), places_.at(scope_idx)),
@@ -366,7 +367,8 @@ void FusedAllReduceOpHandle::GetGradLoDTensor(
 }
 
 void FusedAllReduceOpHandle::GetDTypeAndNumel(
-    const std::vector<std::pair<std::string, const LoDTensor *>> &grad_tensor,
+    const std::vector<std::pair<std::string, const phi::DenseTensor *>>
+        &grad_tensor,
     proto::VarType::Type *dtype,
     int64_t *numel) const {
   *numel = 0;
@@ -398,8 +400,7 @@ void FusedAllReduceOpHandle::GetDTypeAndNumel(
             "The size of grad tensors of fused_all_reduce_op_handle  "
             "must be > 0, but got %d.",
             len));
-    *numel +=
-        platform::Alignment(len * size_of_dtype, places_[0]) / size_of_dtype;
+    *numel += phi::Alignment(len * size_of_dtype, places_[0]) / size_of_dtype;
   }
 }
 

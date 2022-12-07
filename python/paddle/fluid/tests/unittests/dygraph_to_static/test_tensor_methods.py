@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import paddle
 import unittest
+
+import numpy as np
+
+import paddle
 
 
 @paddle.jit.to_static
@@ -25,7 +27,6 @@ def tensor_clone(x):
 
 
 class TestTensorClone(unittest.TestCase):
-
     def _run(self, to_static):
         prog_trans = paddle.jit.ProgramTranslator()
         prog_trans.enable(to_static)
@@ -46,7 +47,6 @@ def tensor_numpy(x):
 
 
 class TestTensorDygraphOnlyMethodError(unittest.TestCase):
-
     def _run(self, to_static):
         prog_trans = paddle.jit.ProgramTranslator()
         prog_trans.enable(to_static)
@@ -68,7 +68,6 @@ def tensor_item(x):
 
 
 class TestTensorItem(unittest.TestCase):
-
     def _run(self, to_static):
         prog_trans = paddle.jit.ProgramTranslator()
         prog_trans.enable(to_static)
@@ -92,12 +91,11 @@ def tensor_size(x):
 
 
 class TestTensorSize(unittest.TestCase):
-
     def _run(self, to_static):
         prog_trans = paddle.jit.ProgramTranslator()
         prog_trans.enable(to_static)
         x = paddle.ones([1, 2, 3])
-        if to_static == False:
+        if not to_static:
             return tensor_size(x)
         return tensor_size(x).numpy()
 

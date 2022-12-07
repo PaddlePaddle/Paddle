@@ -25,7 +25,6 @@ paddle.enable_static()
 
 
 class TestTopkOp(OpTest):
-
     def setUp(self):
         self.variable_k = False
         self.set_args()
@@ -66,7 +65,6 @@ class TestTopkOp(OpTest):
 
 
 class TestTopkFP16Op(TestTopkOp):
-
     def init_dtype(self):
         self.dtype = np.float16
 

@@ -14,14 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import shlex  # noqa: F401
-from paddle.fluid.tests.unittests.distributed_passes.dist_pass_test_base import remove_path_if_exists  # noqa: F401
 import os
+import shlex  # noqa: F401
+import unittest
+
+from paddle.fluid.tests.unittests.distributed_passes.dist_pass_test_base import (  # noqa: F401
+    remove_path_if_exists,
+)
 
 
 class FlPsTest(unittest.TestCase):
-
     def test_launch_fl_ps(self):
         '''
         cmd = [
@@ -35,7 +37,6 @@ class FlPsTest(unittest.TestCase):
         prepare_python_path_and_return_module(__file__)
         exitcode = os.system(' '.join(cmd))
         '''
-        pass
 
 
 if __name__ == '__main__':

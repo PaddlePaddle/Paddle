@@ -25,9 +25,7 @@ paddle.enable_static()
 
 
 def test_class1(op_type, typename):
-
     class TestExpandAsBasic(OpTest):
-
         def setUp(self):
             self.set_mlu()
             self.op_type = "expand_as_v2"
@@ -54,9 +52,7 @@ def test_class1(op_type, typename):
 
 
 def test_class2(op_type, typename):
-
     class TestExpandAsOpRank2(OpTest):
-
         def setUp(self):
             self.set_mlu()
             self.op_type = "expand_as_v2"
@@ -83,9 +79,7 @@ def test_class2(op_type, typename):
 
 
 def test_class3(op_type, typename):
-
     class TestExpandAsOpRank3(OpTest):
-
         def setUp(self):
             self.set_mlu()
             self.op_type = "expand_as_v2"
@@ -112,9 +106,7 @@ def test_class3(op_type, typename):
 
 
 def test_class4(op_type, typename):
-
     class TestExpandAsOpRank4(OpTest):
-
         def setUp(self):
             self.set_mlu()
             self.op_type = "expand_as_v2"
@@ -142,34 +134,39 @@ def test_class4(op_type, typename):
 
 # Test python API
 class TestExpandAsV2API(unittest.TestCase):
-
     def test_api(self):
         input1 = np.random.random([12, 14]).astype("float32")
         input2 = np.random.random([2, 12, 14]).astype("float32")
-        x = fluid.layers.data(name='x',
-                              shape=[12, 14],
-                              append_batch_size=False,
-                              dtype="float32")
+        x = fluid.layers.data(
+            name='x', shape=[12, 14], append_batch_size=False, dtype="float32"
+        )
 
-        y = fluid.layers.data(name='target_tensor',
-                              shape=[2, 12, 14],
-                              append_batch_size=False,
-                              dtype="float32")
+        y = fluid.layers.data(
+            name='target_tensor',
+            shape=[2, 12, 14],
+            append_batch_size=False,
+            dtype="float32",
+        )
 
         out_1 = paddle.expand_as(x, y=y)
 
         exe = fluid.Executor(place=fluid.MLUPlace(0))
-        res_1 = exe.run(fluid.default_main_program(),
-                        feed={
-                            "x": input1,
-                            "target_tensor": input2
-                        },
-                        fetch_list=[out_1])
+        res_1 = exe.run(
+            fluid.default_main_program(),
+            feed={"x": input1, "target_tensor": input2},
+            fetch_list=[out_1],
+        )
         assert np.array_equal(res_1[0], np.tile(input1, (2, 1, 1)))
 
 
 for _typename in {
-        'float16', 'float32', 'int64', 'int32', 'int8', 'uint8', 'bool'
+    'float16',
+    'float32',
+    'int64',
+    'int32',
+    'int8',
+    'uint8',
+    'bool',
 }:
     test_class1('expand_as_v2', _typename)
     test_class2('expand_as_v2', _typename)

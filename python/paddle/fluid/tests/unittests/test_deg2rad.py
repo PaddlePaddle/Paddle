@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -22,11 +24,11 @@ paddle.enable_static()
 
 
 class TestDeg2radAPI(unittest.TestCase):
-
     def setUp(self):
         self.x_dtype = 'float64'
-        self.x_np = np.array([180.0, -180.0, 360.0, -360.0, 90.0,
-                              -90.0]).astype(np.float64)
+        self.x_np = np.array(
+            [180.0, -180.0, 360.0, -360.0, 90.0, -90.0]
+        ).astype(np.float64)
         self.x_shape = [6]
         self.out_np = np.deg2rad(self.x_np)
 
@@ -37,12 +39,17 @@ class TestDeg2radAPI(unittest.TestCase):
             x = fluid.data(name='input', dtype=self.x_dtype, shape=self.x_shape)
             out = paddle.deg2rad(x)
 
-            place = fluid.CUDAPlace(
-                0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
+            place = (
+                fluid.CUDAPlace(0)
+                if core.is_compiled_with_cuda()
+                else fluid.CPUPlace()
+            )
             exe = fluid.Executor(place)
-            res = exe.run(fluid.default_main_program(),
-                          feed={'input': self.x_np},
-                          fetch_list=[out])
+            res = exe.run(
+                fluid.default_main_program(),
+                feed={'input': self.x_np},
+                fetch_list=[out],
+            )
             self.assertTrue((np.array(out[0]) == self.out_np).all())
 
     def test_dygraph(self):

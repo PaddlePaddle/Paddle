@@ -14,77 +14,65 @@
 
 import paddle
 import paddle.fluid.framework as framework
-from paddle.distributed.communication.group import _get_global_group
-from paddle.distributed.communication.reduce import _get_reduce_op, ReduceOp
+from paddle.distributed.communication.group import (
+    _get_global_group,
+    _warn_cur_rank_not_in_group,
+)
+from paddle.distributed.communication.reduce import ReduceOp, _get_reduce_op
 
 
-def _check_tensor_shape(tensor, shape, nranks=1):
-    expect_shape = list(shape)
-    expect_shape[0] //= nranks
-    if list(tensor.shape) != expect_shape:
-        raise RuntimeError(
-            "The in_tensor for reduce_scatter is not correctly-sized.")
-
-
-def _check_tensor_list_shape(tensor_list, shape, nranks=1):
-    if len(tensor_list) != nranks:
-        raise RuntimeError(
-            "The tensor_list for reduce_scatter is not correctly-sized.")
-    for tensor in tensor_list:
-        if tensor.shape != shape:
-            raise RuntimeError(
-                "The tensor_list for reduce_scatter is not correctly-sized.")
-
-
-def _reduce_scatter_tensor_in_dygraph(out_tensor,
-                                      in_tensor,
-                                      op,
-                                      group,
-                                      sync_op,
-                                      use_calc_stream,
-                                      caller="reduce_scatter"):
+def _reduce_scatter_tensor_in_dygraph(
+    out_tensor,
+    in_tensor,
+    op,
+    group,
+    sync_op,
+    use_calc_stream,
+    caller="reduce_scatter",
+):
     op_type = _get_reduce_op(op, caller)
-    group = _get_global_group() if group is None else group
-
-    _check_tensor_shape(out_tensor, in_tensor.shape, group.nranks)
 
     if use_calc_stream:
         return group.process_group.reduce_scatter_tensor_on_calc_stream(
-            in_tensor, out_tensor, op_type)
+            out_tensor, in_tensor, op_type
+        )
 
-    task = group.process_group.reduce_scatter_tensor(in_tensor, out_tensor,
-                                                     op_type, sync_op)
+    task = group.process_group.reduce_scatter_tensor(
+        out_tensor, in_tensor, op_type, sync_op
+    )
     if sync_op:
         task.wait()
 
     return task
 
 
-def _reduce_scatter_in_dygraph(tensor, tensor_list, op, group, sync_op,
-                               use_calc_stream):
+def _reduce_scatter_in_dygraph(
+    tensor, tensor_list, op, group, sync_op, use_calc_stream
+):
     op_type = _get_reduce_op(op, "reduce_scatter")
-    group = _get_global_group() if group is None else group
-
-    _check_tensor_list_shape(tensor_list, tensor.shape, group.nranks)
 
     if use_calc_stream:
         return group.process_group.reduce_scatter_on_calc_stream(
-            tensor_list, tensor, op_type)
+            tensor, tensor_list, op_type
+        )
 
-    task = group.process_group.reduce_scatter(tensor_list, tensor, op_type,
-                                              sync_op)
+    task = group.process_group.reduce_scatter(
+        tensor, tensor_list, op_type, sync_op
+    )
     if sync_op:
         task.wait()
 
     return task
 
 
-def reduce_scatter(tensor,
-                   tensor_or_tensor_list,
-                   op=ReduceOp.SUM,
-                   group=None,
-                   sync_op=True,
-                   use_calc_stream=False):
+def reduce_scatter(
+    tensor,
+    tensor_or_tensor_list,
+    op=ReduceOp.SUM,
+    group=None,
+    sync_op=True,
+    use_calc_stream=False,
+):
     """
 
     Reduce, then scatter a tensor (or a tensor list) across devices.
@@ -92,7 +80,7 @@ def reduce_scatter(tensor,
     Args:
         tensor (Tensor): The output tensor on each rank. The result will overwrite this tenor after communication. Support
             float16, float32, float64, int32, int64, int8, uint8 or bool as the input data type.
-        tensor_list (List[Tensor]]): The input to scatter.
+        tensor_or_tensor_list (Union[Tensor, List[Tensor]]): The input to scatter.
             If it is a tensor, it should be correctly-sized. If it is a list, it should contain correctly-sized tensors.
         op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD, optional): The reduction used. If none is given, use ReduceOp.SUM as default.
         group (Group, optional): Communicate in which group. If none is given, use the global group as default.
@@ -125,36 +113,48 @@ def reduce_scatter(tensor,
             # [4, 6]  (2 GPUs, out for rank 0)
             # [8, 10] (2 GPUs, out for rank 1)
     """
-    if group is not None and not group.is_member():
-        raise RuntimeError(
-            "The group should not be None and all ranks which invoke this operation should be the member of this group."
-        )
+    if _warn_cur_rank_not_in_group(group):
+        return
 
     if not sync_op and use_calc_stream:
         raise RuntimeError(
-            "use_calc_stream can only be true in sync op behavior.")
+            "use_calc_stream can only be true in sync op behavior."
+        )
 
     if framework.in_dygraph_mode():
+        group = _get_global_group() if group is None else group
         if paddle.is_tensor(tensor_or_tensor_list):
-            return _reduce_scatter_tensor_in_dygraph(tensor,
-                                                     tensor_or_tensor_list, op,
-                                                     group, sync_op,
-                                                     use_calc_stream)
+            return _reduce_scatter_tensor_in_dygraph(
+                tensor,
+                tensor_or_tensor_list,
+                op,
+                group,
+                sync_op,
+                use_calc_stream,
+            )
         else:
-            return _reduce_scatter_in_dygraph(tensor, tensor_or_tensor_list, op,
-                                              group, sync_op, use_calc_stream)
+            return _reduce_scatter_in_dygraph(
+                tensor,
+                tensor_or_tensor_list,
+                op,
+                group,
+                sync_op,
+                use_calc_stream,
+            )
 
     raise RuntimeError(
         "paddle.distributed.stream.reduce_scatter is only supported in dygraph mode now."
     )
 
 
-def _reduce_scatter_base(out_tensor,
-                         in_tensor,
-                         op=ReduceOp.SUM,
-                         group=None,
-                         sync_op=True,
-                         use_calc_stream=False):
+def _reduce_scatter_base(
+    out_tensor,
+    in_tensor,
+    op=ReduceOp.SUM,
+    group=None,
+    sync_op=True,
+    use_calc_stream=False,
+):
     """
 
     Reduce, then scatter a flattened tensor across devices.
@@ -195,20 +195,25 @@ def _reduce_scatter_base(out_tensor,
             # [1, 2, 3] (2 GPUs, out for rank 0)
             # [4, 5, 6] (2 GPUs, out for rank 1)
     """
-    if group is not None and not group.is_member():
-        raise RuntimeError(
-            "The group should not be None and all ranks which invoke this operation should be the member of this group."
-        )
+    if _warn_cur_rank_not_in_group(group):
+        return
 
     if not sync_op and use_calc_stream:
         raise RuntimeError(
-            "use_calc_stream can only be true in sync op behavior.")
+            "use_calc_stream can only be true in sync op behavior."
+        )
 
     if framework.in_dygraph_mode():
-        return _reduce_scatter_tensor_in_dygraph(out_tensor, in_tensor, op,
-                                                 group, sync_op,
-                                                 use_calc_stream,
-                                                 "_reduce_scatter_base")
+        group = _get_global_group() if group is None else group
+        return _reduce_scatter_tensor_in_dygraph(
+            out_tensor,
+            in_tensor,
+            op,
+            group,
+            sync_op,
+            use_calc_stream,
+            "_reduce_scatter_base",
+        )
 
     raise RuntimeError(
         "paddle.distributed.stream._reduce_scatter_base is only supported in dygraph mode now."

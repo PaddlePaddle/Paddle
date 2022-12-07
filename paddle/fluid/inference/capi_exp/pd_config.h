@@ -200,6 +200,7 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigEnableORTOptimization(
 ///       file will be used and autotune will not be performed again.
 /// \param precision Calculation accuracy of multi_encoder
 /// \param adaptive_seqlen Is the input of multi_encoder variable length
+/// \param enable_multi_stream Whether to enable the multi stream of xpu.
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigEnableXpu(
     __pd_keep PD_Config* pd_config,
@@ -208,7 +209,8 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigEnableXpu(
     PD_Bool autotune,
     const char* autotune_file,
     const char* precision,
-    PD_Bool adaptive_seqlen);
+    PD_Bool adaptive_seqlen,
+    PD_Bool enable_multi_stream);
 ///
 /// \brief Turn on NPU.
 ///

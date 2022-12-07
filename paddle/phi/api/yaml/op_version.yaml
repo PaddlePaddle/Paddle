@@ -8,6 +8,14 @@
         - delete_attr : dims
           comment : The attr 'dims' is deleted.
 
+- op : grid_sample
+  version :
+    - checkpoint : Upgrade grid_sampler add a new attribute [mode]
+      action :
+        - add_attr : mode
+          comment : In order to specify interpolation mode
+          default : std::string("bilinear")
+
 - op : trace
   version :
     - checkpoint : Upgrade trace add a new attribute [axis2]

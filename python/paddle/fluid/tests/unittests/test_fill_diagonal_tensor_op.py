@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle
 from op_test import OpTest
+
+import paddle
 
 
 def fill_diagonal_ndarray(x, value, offset=0, dim1=0, dim2=1):
@@ -34,13 +36,15 @@ def fill_diagonal_ndarray(x, value, offset=0, dim1=0, dim2=1):
         diagonal = np.lib.stride_tricks.as_strided(
             x[:, offset:] if dim_sum == 1 else x[:, :, offset:],
             shape=(shape[dim3], diagdim),
-            strides=(strides[dim3], strides[dim1] + strides[dim2]))
+            strides=(strides[dim3], strides[dim1] + strides[dim2]),
+        )
     else:
         diagdim = min(shape[dim2], shape[dim1] + offset)
         diagonal = np.lib.stride_tricks.as_strided(
             x[-offset:, :] if dim_sum in [1, 2] else x[:, -offset:],
             shape=(shape[dim3], diagdim),
-            strides=(strides[dim3], strides[dim1] + strides[dim2]))
+            strides=(strides[dim3], strides[dim1] + strides[dim2]),
+        )
 
     diagonal[...] = value
     return x
@@ -79,13 +83,12 @@ def fill_gt(x, y, offset, dim1, dim2):
 
 
 class TensorFillDiagTensor_Test(OpTest):
-
     def setUp(self):
         self.op_type = "fill_diagonal_tensor"
         self.python_api = paddle.tensor.manipulation.fill_diagonal_tensor
         self.init_kernel_type()
         x = np.random.random((10, 10)).astype(self.dtype)
-        y = np.random.random((10, )).astype(self.dtype)
+        y = np.random.random((10,)).astype(self.dtype)
         dim1 = 0
         dim2 = 1
         offset = 0
@@ -106,7 +109,6 @@ class TensorFillDiagTensor_Test(OpTest):
 
 
 class TensorFillDiagTensor_Test2(TensorFillDiagTensor_Test):
-
     def setUp(self):
         self.op_type = "fill_diagonal_tensor"
         self.python_api = paddle.tensor.manipulation.fill_diagonal_tensor
@@ -127,7 +129,6 @@ class TensorFillDiagTensor_Test2(TensorFillDiagTensor_Test):
 
 
 class TensorFillDiagTensor_Test3(TensorFillDiagTensor_Test):
-
     def setUp(self):
         self.op_type = "fill_diagonal_tensor"
         self.python_api = paddle.tensor.manipulation.fill_diagonal_tensor

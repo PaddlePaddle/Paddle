@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
+
 import paddle
 import paddle.fluid as fluid
-from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 
 paddle.enable_static()
 
 
 class TestCollectiveBarrierAPI(TestCollectiveAPIRunnerBase):
-
     def __init__(self):
         self.global_ring_id = 0
 

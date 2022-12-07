@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy
 import unittest
+
+import numpy
 
 import paddle
 import paddle.fluid as fluid
@@ -21,7 +22,6 @@ import paddle.fluid.core as core
 
 
 class TestException(unittest.TestCase):
-
     def test_exception(self):
         exception = None
         try:
@@ -34,7 +34,6 @@ class TestException(unittest.TestCase):
 
 
 class TestExceptionNoCStack(unittest.TestCase):
-
     def setUp(self):
         paddle.enable_static()
         # test no C++ stack format
@@ -44,7 +43,7 @@ class TestExceptionNoCStack(unittest.TestCase):
         x = fluid.layers.data(name='X', shape=[-1, 13], dtype='float32')
         y = fluid.layers.data(name='Y', shape=[-1, 1], dtype='float32')
         predict = fluid.layers.fc(input=x, size=1, act=None)
-        loss = fluid.layers.square_error_cost(input=predict, label=y)
+        loss = paddle.nn.functional.square_error_cost(input=predict, label=y)
         avg_loss = paddle.mean(loss)
 
         fluid.optimizer.SGD(learning_rate=0.01).minimize(avg_loss)
@@ -57,18 +56,17 @@ class TestExceptionNoCStack(unittest.TestCase):
         y = numpy.random.random(size=(8, 1)).astype('float32')
 
         with self.assertRaises(ValueError):
-            exe.run(fluid.default_main_program(),
-                    feed={
-                        'X': x,
-                        'Y': y
-                    },
-                    fetch_list=[avg_loss.name])
+            exe.run(
+                fluid.default_main_program(),
+                feed={'X': x, 'Y': y},
+                fetch_list=[avg_loss.name],
+            )
 
     def test_exception_in_dynamic_mode(self):
         place = fluid.CPUPlace()
         with fluid.dygraph.guard(place):
             x = numpy.random.random(size=(10, 2)).astype('float32')
-            linear = fluid.dygraph.Linear(1, 10)
+            linear = paddle.nn.Linear(1, 10)
             data = fluid.dygraph.to_variable(x)
             with self.assertRaises(ValueError):
                 res = linear(data)

@@ -1,6 +1,6 @@
 cc_test(
   op_tester
-  SRCS op_tester.cc op_tester_config.cc
+  SRCS op_tester.cc
   DEPS memory
        timer
        framework_proto

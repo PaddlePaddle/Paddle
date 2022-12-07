@@ -269,7 +269,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       if (param_names_.count(x)) continue;
       runtime_input_names_.emplace_back(x);
     }
-    // calibration_mode is ture represents we need to
+    // calibration_mode is true represents we need to
     // generate the calibration table data.
     calibration_mode_ =
         (enable_int8_ && calibration_data_.size() == 0 && use_calib_mode_);
@@ -495,6 +495,18 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
       // convert input and copy to TRT engine's buffer
       auto &t = inference::analysis::GetFromScope<phi::DenseTensor>(scope, x);
+      PADDLE_ENFORCE_GT(
+          t.numel(),
+          0,
+          phi::errors::InvalidArgument(
+              "The input tensor named %s of trt-subgraph must "
+              "have >0 elements, but now have %d elements. "
+              "It's likely that this tensor is connected to a Concat op inside "
+              "a trt-subgraph, "
+              "try to ues API to forbid this op into trt-subgraph.",
+              x,
+              t.numel()));
+
       // check the input_tensor
       if (!platform::is_gpu_place(t.place())) {
         phi::DenseTensor out;
@@ -589,10 +601,14 @@ class TensorRTEngineOp : public framework::OperatorBase {
         buffers[bind_index] = static_cast<void *>(t.data<int32_t>());
       } else if (type == framework::proto::VarType::FP16) {
         buffers[bind_index] = static_cast<void *>(t.data<float16>());
+#if IS_TRT_VERSION_GE(8400)
+      } else if (type == framework::proto::VarType::BOOL) {
+        buffers[bind_index] = static_cast<void *>(t.data<bool>());
+#endif
       } else {
-        PADDLE_THROW(
-            platform::errors::Fatal("The TRT Engine OP only support "
-                                    "float/int32_t/int64_t/float16 input."));
+        PADDLE_THROW(platform::errors::Fatal(
+            "The TRT Engine OP only support "
+            "float/int32_t/int64_t/float16/bool input."));
       }
     }
 

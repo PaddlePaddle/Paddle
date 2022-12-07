@@ -15,13 +15,13 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
-
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -45,12 +45,12 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(name=self.feed_list[0],
-                               shape=self.feed_shape[0],
-                               dtype='float32')
-        y = paddle.static.data(name=self.feed_list[1],
-                               shape=self.feed_shape[1],
-                               dtype='float32')
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+        y = paddle.static.data(
+            name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32'
+        )
         out = paddle.dot(x, y, **self.attrs)
         self.fetch_list = [out.name]
 
@@ -66,7 +66,6 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
-
     def set_data_feed(self):
         x = np.random.uniform(size=[6])
         y = np.random.uniform(size=[6])

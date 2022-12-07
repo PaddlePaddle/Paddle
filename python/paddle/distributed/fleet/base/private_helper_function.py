@@ -11,9 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import socket
 import sys
 import time
-import socket
 from contextlib import closing
 
 __all__ = []
@@ -39,8 +39,9 @@ def wait_server_ready(endpoints):
         not_ready_endpoints = []
         for ep in endpoints:
             ip_port = ep.split(":")
-            with closing(socket.socket(socket.AF_INET,
-                                       socket.SOCK_STREAM)) as sock:
+            with closing(
+                socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            ) as sock:
                 sock.settimeout(2)
                 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 if hasattr(socket, 'SO_REUSEPORT'):
@@ -52,8 +53,9 @@ def wait_server_ready(endpoints):
                     not_ready_endpoints.append(ep)
         if not all_ok:
             sys.stderr.write("server not ready, wait 3 sec to retry...\n")
-            sys.stderr.write("not ready endpoints:" + str(not_ready_endpoints) +
-                             "\n")
+            sys.stderr.write(
+                "not ready endpoints:" + str(not_ready_endpoints) + "\n"
+            )
             sys.stderr.flush()
             time.sleep(3)
         else:

@@ -12,17 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
+
 import numpy as np
+
+import paddle
 from paddle import LazyGuard
-from paddle.nn import Linear, Layer
-from paddle.nn.initializer import *
 from paddle.fluid import unique_name
+from paddle.nn import Layer, Linear
+from paddle.nn.initializer import (
+    Constant,
+    Normal,
+    TruncatedNormal,
+    Uniform,
+    XavierNormal,
+    XavierUniform,
+)
 
 
 class TestInitializerBase(unittest.TestCase):
-
     def setUp(self):
         self.set_initializer()
         self.set_param_attr()
@@ -34,11 +42,13 @@ class TestInitializerBase(unittest.TestCase):
         self.b_initializer = Constant(0.3)
 
     def set_param_attr(self):
-        self.weight_attr = paddle.ParamAttr(name="weight",
-                                            initializer=self.w_initializer)
+        self.weight_attr = paddle.ParamAttr(
+            name="weight", initializer=self.w_initializer
+        )
 
-        self.bias_attr = paddle.ParamAttr(name="bias",
-                                          initializer=self.b_initializer)
+        self.bias_attr = paddle.ParamAttr(
+            name="bias", initializer=self.b_initializer
+        )
 
     def set_init_ops(self):
         self.init_ops = ['fill_constant', 'fill_constant']
@@ -48,29 +58,26 @@ class TestInitializerBase(unittest.TestCase):
 
     def test_wrapper(self):
         with LazyGuard():
-            fc = Linear(10,
-                        10,
-                        weight_attr=self.weight_attr,
-                        bias_attr=self.bias_attr)
+            fc = Linear(
+                10, 10, weight_attr=self.weight_attr, bias_attr=self.bias_attr
+            )
         program = fc._startup_program()
         print(program)
         self.check_program(program)
 
     def check_program(self, program):
         self.assertEqual(program.block(0).var("weight").shape, (10, 10))
-        self.assertEqual(program.block(0).var("bias").shape, (10, ))
+        self.assertEqual(program.block(0).var("bias").shape, (10,))
         ops = [op.type for op in program.block(0).ops]
         self.assertEqual(ops, self.init_ops)
 
 
 class TestDygraphLazy(TestInitializerBase):
-
     def test_wrapper(self):
         with LazyGuard():
-            fc = Linear(10,
-                        10,
-                        weight_attr=self.weight_attr,
-                        bias_attr=self.bias_attr)
+            fc = Linear(
+                10, 10, weight_attr=self.weight_attr, bias_attr=self.bias_attr
+            )
 
         self.check_data(fc)
 
@@ -86,16 +93,17 @@ class TestDygraphLazy(TestInitializerBase):
         out = model(x)
         self.assertEqual(out.shape, [2, 10])
 
-        np.testing.assert_allclose(model.weight.numpy(),
-                                   np.ones([10, 10], dtype=np.float32) * 0.6)
-        np.testing.assert_allclose(model.bias.numpy(),
-                                   np.ones([10], dtype=np.float32) * 0.3)
+        np.testing.assert_allclose(
+            model.weight.numpy(), np.ones([10, 10], dtype=np.float32) * 0.6
+        )
+        np.testing.assert_allclose(
+            model.bias.numpy(), np.ones([10], dtype=np.float32) * 0.3
+        )
 
 
 class NestModel(Layer):
-
     def __init__(self, base_model):
-        super(NestModel, self).__init__()
+        super().__init__()
         self.base_model = base_model
         self.fc = Linear(10, 10)
 
@@ -106,13 +114,11 @@ class NestModel(Layer):
 
 
 class TestNestModelLazy(TestInitializerBase):
-
     def test_wrapper(self):
         with LazyGuard():
-            base_model = Linear(10,
-                                10,
-                                weight_attr=self.weight_attr,
-                                bias_attr=self.bias_attr)
+            base_model = Linear(
+                10, 10, weight_attr=self.weight_attr, bias_attr=self.bias_attr
+            )
             nest_model = NestModel(base_model)
 
         self.check_data(nest_model)
@@ -130,16 +136,19 @@ class TestNestModelLazy(TestInitializerBase):
         out = model(x)
         self.assertEqual(out.shape, [2, 10])
 
-        np.testing.assert_allclose(model.base_model.weight.numpy(),
-                                   np.ones([10, 10], dtype=np.float32) * 0.6)
-        np.testing.assert_allclose(model.base_model.bias.numpy(),
-                                   np.ones([10], dtype=np.float32) * 0.3)
+        np.testing.assert_allclose(
+            model.base_model.weight.numpy(),
+            np.ones([10, 10], dtype=np.float32) * 0.6,
+        )
+        np.testing.assert_allclose(
+            model.base_model.bias.numpy(), np.ones([10], dtype=np.float32) * 0.3
+        )
 
     def check_program(self, model):
         # verify nest_model startup_program
         whole_program = model._startup_program()
         self.assertEqual(whole_program.block(0).var("weight").shape, (10, 10))
-        self.assertEqual(whole_program.block(0).var("bias").shape, (10, ))
+        self.assertEqual(whole_program.block(0).var("bias").shape, (10,))
         ops = [op.type for op in whole_program.block(0).ops]
         init_ops = self.init_ops + ['uniform_random', 'fill_constant']
         self.assertEqual(ops, init_ops)
@@ -147,13 +156,12 @@ class TestNestModelLazy(TestInitializerBase):
         # verify base_model startup_program
         sub_program = model.base_model._startup_program()
         self.assertEqual(sub_program.block(0).var("weight").shape, (10, 10))
-        self.assertEqual(sub_program.block(0).var("bias").shape, (10, ))
+        self.assertEqual(sub_program.block(0).var("bias").shape, (10,))
         ops = [op.type for op in sub_program.block(0).ops]
         self.assertEqual(ops, self.init_ops)
 
 
 class TestUniform(TestInitializerBase):
-
     def set_initializer(self):
         self.w_initializer = Uniform()
         self.b_initializer = Uniform()
@@ -163,7 +171,6 @@ class TestUniform(TestInitializerBase):
 
 
 class TestNormal(TestInitializerBase):
-
     def set_initializer(self):
         self.w_initializer = Normal()
         self.b_initializer = Normal()
@@ -173,26 +180,24 @@ class TestNormal(TestInitializerBase):
 
 
 class TestTruncatedNormal(TestInitializerBase):
-
     def set_initializer(self):
         self.w_initializer = TruncatedNormal()
         self.b_initializer = TruncatedNormal()
 
     def set_init_ops(self):
         self.init_ops = [
-            'truncated_gaussian_random', 'truncated_gaussian_random'
+            'truncated_gaussian_random',
+            'truncated_gaussian_random',
         ]
 
 
 class TestXavierNormal(TestNormal):
-
     def set_initializer(self):
         self.w_initializer = XavierNormal()
         self.b_initializer = XavierNormal()
 
 
 class TestXavierUniform(TestUniform):
-
     def set_initializer(self):
         self.w_initializer = XavierUniform()
         self.b_initializer = XavierUniform()

@@ -290,6 +290,7 @@ def launch():
 
         # legacy mode
         from paddle.distributed.fleet import launch
+
         launch.launch()
 
     else:

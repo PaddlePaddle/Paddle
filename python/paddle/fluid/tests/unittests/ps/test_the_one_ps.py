@@ -14,14 +14,17 @@
 
 import unittest
 
-from paddle.fluid.tests.unittests.distributed_passes.ps_pass_test_base import *
-from paddle.distributed.ps.utils.public import logger, ps_log_root_dir
-import paddle.distributed.fleet.proto.the_one_ps_pb2 as ps_pb2  # noqa: F401
 from google.protobuf import text_format  # noqa: F401
+
+import paddle.distributed.fleet.proto.the_one_ps_pb2 as ps_pb2  # noqa: F401
+from paddle.distributed.ps.utils.public import logger, ps_log_root_dir
+from paddle.fluid.tests.unittests.distributed_passes.ps_pass_test_base import (
+    PsPassTestBase,
+    remove_path_if_exists,
+)
 
 
 class TestTheOnePs(PsPassTestBase):
-
     def setUp(self):
         pass
 
@@ -56,14 +59,16 @@ class TestTheOnePs(PsPassTestBase):
         self.config['run_the_one_ps'] = '1'
 
         self.config['debug_the_one_ps'] = '0'
-        self.config[
-            'log_dir'] = ps_log_root_dir + "async_cpu_log_old_the_one_ps"
+        self.config['log_dir'] = (
+            ps_log_root_dir + "async_cpu_log_old_the_one_ps"
+        )
         remove_path_if_exists(self.config['log_dir'])
         self.ps_launch()
 
         self.config['debug_the_one_ps'] = '1'
-        self.config[
-            'log_dir'] = ps_log_root_dir + "async_cpu_log_new_the_one_ps"
+        self.config['log_dir'] = (
+            ps_log_root_dir + "async_cpu_log_new_the_one_ps"
+        )
         remove_path_if_exists(self.config['log_dir'])
         self.ps_launch()
 

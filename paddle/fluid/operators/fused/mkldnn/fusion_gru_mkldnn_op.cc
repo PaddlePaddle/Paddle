@@ -13,23 +13,23 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/expect.h"
 #include "paddle/fluid/operators/fused/fusion_gru_op.h"
 #include "paddle/fluid/operators/fused/mkldnn/fusion_rnn_mkldnn.h"
+#include "paddle/phi/core/expect.h"
 
 namespace paddle {
 namespace operators {
 
-using paddle::platform::MKLDNNGetDataType;
-using paddle::platform::MKLDNNMemDesc;
-using phi::CPUContext;
-using platform::to_void_cast;
+using phi::OneDNNContext;
+using phi::funcs::OneDNNGetDataType;
+using phi::funcs::OneDNNMemDesc;
+using phi::funcs::RNNReorderType;
 
 template <typename T, typename T_out = T>
 class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
  public:
   GRUMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
-                   const platform::MKLDNNDeviceContext& dev_ctx,
+                   const OneDNNContext& dev_ctx,
                    const dnnl::engine mkldnn_engine,
                    platform::Place cpu_place,
                    const phi::DenseTensor* input,
@@ -73,7 +73,7 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
 
       // Weights for int8 kernel are of a type s8
       const auto weights_dt =
-          is_INT8 ? dnnl::memory::data_type::s8 : MKLDNNGetDataType<T>();
+          is_INT8 ? dnnl::memory::data_type::s8 : OneDNNGetDataType<T>();
 
       // oneDNN RNN dimensions
       const int64_t D = 1;  // Directions
@@ -81,18 +81,18 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
       const int64_t G = 3;  // Number of Gates, 3 for GRU
 
       // Create memory descriptors
-      auto input_md = MKLDNNMemDesc(
-          {Ti, N, IC}, MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::ntc);
+      auto input_md = OneDNNMemDesc(
+          {Ti, N, IC}, OneDNNGetDataType<T>(), OneDNNMemoryFormat::ntc);
       auto weight_x_md =
-          MKLDNNMemDesc({L, D, IC, G, OC}, weights_dt, MKLDNNMemoryFormat::any);
+          OneDNNMemDesc({L, D, IC, G, OC}, weights_dt, OneDNNMemoryFormat::any);
       auto weight_h_md =
-          MKLDNNMemDesc({L, D, OC, G, OC}, weights_dt, MKLDNNMemoryFormat::any);
-      auto bias_md = MKLDNNMemDesc(
-          {L, D, G, OC}, MKLDNNGetDataType<float>(), MKLDNNMemoryFormat::ldgo);
-      auto hidden_md = MKLDNNMemDesc(
-          {Ti, N, OC}, MKLDNNGetDataType<T_out>(), MKLDNNMemoryFormat::ntc);
-      auto h0_md = MKLDNNMemDesc(
-          {L, D, N, OC}, MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::ldnc);
+          OneDNNMemDesc({L, D, OC, G, OC}, weights_dt, OneDNNMemoryFormat::any);
+      auto bias_md = OneDNNMemDesc(
+          {L, D, G, OC}, OneDNNGetDataType<float>(), OneDNNMemoryFormat::ldgo);
+      auto hidden_md = OneDNNMemDesc(
+          {Ti, N, OC}, OneDNNGetDataType<T_out>(), OneDNNMemoryFormat::ntc);
+      auto h0_md = OneDNNMemDesc(
+          {L, D, N, OC}, OneDNNGetDataType<T>(), OneDNNMemoryFormat::ldnc);
 
       // Create GRU oneDNN primitive
       const auto direction =
@@ -121,9 +121,9 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
         std::static_pointer_cast<dnnl::memory>(this->dev_ctx_.GetBlob(wx_key));
 
     if (!memory_p) {
-      auto user_md = MKLDNNMemDesc({1, 1, this->IC, this->G, this->OC},
-                                   MKLDNNGetDataType<U>(),
-                                   MKLDNNMemoryFormat::ldigo);
+      auto user_md = OneDNNMemDesc({1, 1, this->IC, this->G, this->OC},
+                                   OneDNNGetDataType<U>(),
+                                   OneDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, this->engine_);
 
       auto* weight_x_data = reinterpret_cast<U*>(user_memory.get_data_handle());
@@ -144,7 +144,7 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
       memory_p = std::make_shared<dnnl::memory>(
           this->fwd_pd_->weights_layer_desc(), this->engine_);
 
-      auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+      auto& astream = OneDNNContext::tls().get_stream();
       dnnl::reorder(user_memory, *memory_p, this->attr_)
           .execute(astream, user_memory, *memory_p);
 
@@ -161,9 +161,9 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
         std::static_pointer_cast<dnnl::memory>(this->dev_ctx_.GetBlob(wh_key));
 
     if (!memory_p) {
-      auto user_md = MKLDNNMemDesc({1, 1, this->OC, this->G, this->OC},
-                                   MKLDNNGetDataType<U>(),
-                                   MKLDNNMemoryFormat::ldigo);
+      auto user_md = OneDNNMemDesc({1, 1, this->OC, this->G, this->OC},
+                                   OneDNNGetDataType<U>(),
+                                   OneDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, this->engine_);
 
       // Reorder weights_h from PP format [OC, 2OC] + [OC, OC] to
@@ -198,7 +198,7 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
       memory_p = std::make_shared<dnnl::memory>(
           this->fwd_pd_->weights_iter_desc(), this->engine_);
 
-      auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+      auto& astream = OneDNNContext::tls().get_stream();
       dnnl::reorder(user_memory, *memory_p, this->attr_)
           .execute(astream, user_memory, *memory_p);
 
@@ -255,8 +255,7 @@ class FusionGRUMKLDNNKernel : public framework::OpKernel<T> {
 
   template <typename Tout = T>
   void RunKernel(const framework::ExecutionContext& ctx) const {
-    auto& dev_ctx =
-        ctx.template device_context<platform::MKLDNNDeviceContext>();
+    auto& dev_ctx = ctx.template device_context<OneDNNContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
     // Get Tensors
@@ -351,25 +350,25 @@ class FusionGRUMKLDNNKernel : public framework::OpKernel<T> {
 
     auto gru_forward_p = handler.AcquireForwardPrimitive();
 
-    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    auto& astream = OneDNNContext::tls().get_stream();
     gru_forward_p->execute(astream, gru_args);
     astream.wait();
 
     auto* hidden_onednn_data = hidden_onednn_memory_p->get_data_handle();
     auto* hidden_data =
-        to_void_cast(hidden->mutable_data<Tout>(ctx.GetPlace()));
+        phi::funcs::to_void_cast(hidden->mutable_data<Tout>(ctx.GetPlace()));
     if (handler.is_NTC()) {
       handler.reorderRNNdata(hidden_onednn_data,
                              hidden_data,
                              input_lod,
                              is_reverse,
-                             platform::RNNReorderType::NTC_PP);
+                             RNNReorderType::NTC_PP);
     } else {
       handler.reorderRNNdata(hidden_onednn_data,
                              hidden_data,
                              input_lod,
                              is_reverse,
-                             platform::RNNReorderType::TNC_PP);
+                             RNNReorderType::TNC_PP);
     }
   }
 };

@@ -12,25 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
+
+from test_auto_checkpoint import AutoCheckPointACLBase
+
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.collective import fleet
-import os
-
-from paddle.distributed.fleet.utils.fs import LocalFS, HDFSClient
 import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
-
+import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+from paddle.distributed.fleet.utils.fs import HDFSClient, LocalFS
+from paddle.fluid.incubate.fleet.collective import fleet
 from paddle.fluid.tests.unittests.auto_checkpoint_utils import get_logger
-from test_auto_checkpoint import AutoCheckPointACLBase
 
 paddle.enable_static()
 logger = get_logger()
 
 
 class AutoCheckpointTestDist(AutoCheckPointACLBase):
-
     def setUp(self):
         get_logger()
         logger.info("enter tests")
@@ -47,7 +46,7 @@ class AutoCheckpointTestDist(AutoCheckPointACLBase):
             "PADDLE_EDL_HDFS_CHECKPOINT_PATH": "auto_checkpoint_dist_basic",
             "PADDLE_EDL_ONLY_FOR_CE_TEST": "1",
             "PADDLE_EDL_FS_CACHE": ".auto_checkpoint_test_dist_basic",
-            "PADDLE_EDL_SAVE_CHECKPOINT_INTER": "0"
+            "PADDLE_EDL_SAVE_CHECKPOINT_INTER": "0",
         }
         os.environ.update(proc_env)
 
@@ -65,8 +64,9 @@ class AutoCheckpointTestDist(AutoCheckPointACLBase):
         # basic
         exe, main_prog, startup_prog = self._generate()
 
-        compiled, data_loader, optimizer, loss, image, label = \
-            self._init_env(exe, main_prog, startup_prog, minimize=False)
+        compiled, data_loader, optimizer, loss, image, label = self._init_env(
+            exe, main_prog, startup_prog, minimize=False
+        )
 
         # fleet
         os.environ["TRAINING_ROLE"] = "TRAINER"
@@ -91,14 +91,14 @@ class AutoCheckpointTestDist(AutoCheckPointACLBase):
             logger.info("_run_save_0 name:{} epoch_no:{}".format(o.name, i))
 
             for data in data_loader():
-                fetch = exe.run(fleet.main_program,
-                                feed=data,
-                                fetch_list=[loss])
+                fetch = exe.run(
+                    fleet.main_program, feed=data, fetch_list=[loss]
+                )
 
             self.assertEqual(len(o._exe_status), 1)
 
         o = acp._get_train_epoch_range()
-        assert o == None, "now train epoch must not exits now"
+        assert o is None, "now train epoch must not exits now"
         self.assertEqual(i, 2)
 
         fs.delete(save_dir)

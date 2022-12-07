@@ -32,7 +32,17 @@ namespace framework {
 
 using OpKernelComputeFunc = std::function<void(const ExecutionContext&)>;
 
+constexpr const char* kCoalesceTensor = "coalesce_tensor";
+
+// stream types
+constexpr const char* kCustomStream = "CustromStream";
+constexpr const char* kDefaultStream = "DefaultStream";
+constexpr const char* kD2HStream = "D2HStream";
+constexpr const char* kH2DStream = "H2DStream";
+
 constexpr int kEmptyVarIndex = 0;
+
+enum class Priority { kLowest, kNormal };
 
 class InterpretercoreInferShapeContext : public InferShapeContext {
  public:
@@ -235,48 +245,29 @@ class VariableScope {
   std::vector<std::pair<std::string, int>> data_transfer_added_vars_;
 };
 
-class NextInstructionList {
- public:
-  void AddDirectRun(size_t id) { direct_run_.push_back(id); }
-
-  void ADDEventRun(size_t id) { event_wait_run_.push_back(id); }
-
-  void AddSyncRun(size_t id) { synchronize_run_.push_back(id); }
-
-  const std::vector<size_t>& DirectRunIds() const { return direct_run_; }
-
-  const std::vector<size_t>& EventRunIds() const { return event_wait_run_; }
-
-  const std::vector<size_t>& SyncRunIds() const { return synchronize_run_; }
-
- private:
-  std::vector<size_t> direct_run_;
-  std::vector<size_t> event_wait_run_;
-  std::vector<size_t> synchronize_run_;
-};
-
 struct EventInter {
-  explicit EventInter(size_t var_id,
+  explicit EventInter(size_t instr_id,
                       std::shared_ptr<platform::DeviceEvent> event,
                       platform::DeviceType waiter_type)
-      : var_id_(var_id), event_(event), waiter_type_(waiter_type) {}
-  size_t var_id_;
+      : instr_id_(instr_id), event_(event), waiter_type_(waiter_type) {}
+  size_t instr_id_;
   std::shared_ptr<platform::DeviceEvent> event_;
   platform::DeviceType waiter_type_;
 };
 
 enum class OpFuncType {
-  kQueueSync = 0,   // CPU kernel, block host
-  kQueueAsync = 1,  // GPU、XPU Kernel or d2h, h2d, send, recv, broadcast
+  kCpuSync,  // CPU kernel, block host
+  kGpuSync,  // GPU or other device kernel without asynchronous operation
+  kGpuAsync  // GPU or other device kernel with asynchronous operation
 };
 class RuntimeInferShapeContext;
 
 struct OpFuncNode {
   // TODO(zhiqiu): Better make it unique_ptr
   std::shared_ptr<OperatorBase> operator_base_;
+  std::string execution_stream_{kDefaultStream};
   std::map<std::string, std::vector<int>> input_index;
   std::map<std::string, std::vector<int>> output_index;
-  std::unordered_set<int> no_data_transform_index;
 
   std::map<int, int> inplace_back_map;
 
@@ -293,9 +284,47 @@ class Instruction {
  public:
   Instruction(size_t id,
               OpFuncNode&& op_func_node,
-              const platform::DeviceContext& dev_ctx);
+              const platform::DeviceContext& dev_ctx,
+              const Priority priority);
 
-  size_t Id() const;
+  bool IsArtificial() const { return is_artificial_; }
+
+  const std::vector<size_t>& NextInstrsInDifferenceThread() const {
+    return next_instrs_in_different_thread;
+  }
+
+  const std::vector<size_t>& NextInstrsInSameThread() const {
+    return next_instrs_in_same_thread;
+  }
+
+  size_t Id() const { return id_; }
+
+  void AddEventToRecord(std::shared_ptr<platform::DeviceEvent> event,
+                        platform::DeviceType waiter_type) {
+    event_to_record_ = std::make_unique<EventInter>(id_, event, waiter_type);
+  }
+
+  void AddEventToWait(size_t instr_id,
+                      std::shared_ptr<platform::DeviceEvent> event,
+                      platform::DeviceType waiter_type) {
+    events_to_wait_.emplace_back(instr_id, event, waiter_type);
+  }
+
+  const std::vector<EventInter>& EventsToWait() const {
+    return events_to_wait_;
+  }
+
+  void AddNextInstrInDifferentThread(size_t id) {
+    next_instrs_in_different_thread.push_back(id);
+  }
+
+  void AddNextInstrInSameThread(size_t id) {
+    next_instrs_in_same_thread.push_back(id);
+  }
+
+  void RecordEvent(const Place& place) const;
+
+  void WaitEvent(const Place& place) const;
 
   const std::map<std::string, std::vector<int>>& Inputs() const;
 
@@ -312,10 +341,6 @@ class Instruction {
   const std::map<int, int>& InplaceBackMap() const;
 
   OperatorBase* OpBase() const;
-
-  NextInstructionList& NextInstructions();
-
-  const NextInstructionList& NextInstructions() const;
 
   void AddGCCheckVar(size_t id);
 
@@ -343,33 +368,29 @@ class Instruction {
 
   void ClearInplace();
 
-  const std::vector<EventInter>& InputEvents() const;
-
-  const std::vector<EventInter>& OutputEvents() const;
-
-  void AddInputEvent(size_t var_id,
-                     std::shared_ptr<platform::DeviceEvent> event,
-                     platform::DeviceType waiter_type);
-
-  void AddOutputEvent(size_t var_id,
-                      std::shared_ptr<platform::DeviceEvent> event,
-                      platform::DeviceType waiter_type);
+  Priority GetPriority() const { return priority_; }
 
  private:
+  bool is_artificial_;  // Instruction is artificial means that it is only used
+                        // to assist scheduling and no need to be executed.
+
   size_t id_;
+
+  std::vector<size_t> next_instrs_in_different_thread;
+  std::vector<size_t> next_instrs_in_same_thread;
+
+  std::unique_ptr<EventInter> event_to_record_;
+  std::vector<EventInter> events_to_wait_;
+
   OpFuncNode op_func_node_;
   const platform::DeviceContext& dev_ctx_;  // not owned
+  const Priority priority_;
 
   std::shared_ptr<RuntimeContext> runtime_ctx_;
   std::shared_ptr<InterpretercoreInferShapeContext> infershape_ctx_;
   std::shared_ptr<ExecutionContext> execution_ctx_;
 
   std::vector<size_t> gc_check_vars_;
-
-  NextInstructionList next_instruction_;
-
-  std::vector<EventInter> intput_events_;
-  std::vector<EventInter> output_events_;
 
   std::vector<std::pair<Variable*, Variable*>> vec_inplace_in_to_out_;
 };
@@ -378,25 +399,6 @@ namespace interpreter {
 static constexpr char kMemcpyH2D[] = "memcpy_h2d";
 static constexpr char kMemcpyD2H[] = "memcpy_d2h";
 static constexpr char kFetchVarName[] = "fetch";
-
-static bool IsMemcpyH2D(const Instruction& instr) {
-  return instr.OpBase()->Type() == kMemcpyH2D;
-}
-
-static bool IsMemcpyD2H(const Instruction& instr) {
-  return instr.OpBase()->Type() == kMemcpyD2H;
-}
-
-static bool IsCpuOp(const Instruction& instr) {
-  return platform::is_cpu_place(instr.DeviceContext().GetPlace());
-}
-
-// is supported heterogeneous place
-static bool IsSupportedHeterPlace(const phi::Place& place) {
-  return platform::is_gpu_place(place) || platform::is_npu_place(place) ||
-         platform::is_xpu_place(place) || platform::is_ipu_place(place) ||
-         platform::is_custom_place(place);
-}
 
 // static_ref_ is the numer of last live ops calculated to statically after
 // `build` the Instructions. dynamic_ref_  is the runtime version ref which will
@@ -418,6 +420,7 @@ class VarRefInfo {
       dynamic_ref_ = static_ref_;
     }
   }
+  void ResetVariable(Variable* new_var) { var_ = new_var; }
   bool CheckAndDecrease() {
     return static_ref_ == 1 || (dynamic_ref_.fetch_sub(1) == 1);
   }

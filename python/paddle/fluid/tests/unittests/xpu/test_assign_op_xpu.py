@@ -16,7 +16,9 @@ import sys
 
 sys.path.append("..")
 import unittest
+
 import paddle
+
 '''
 class TestAssignOp(op_test.OpTest):
     def setUp(self):

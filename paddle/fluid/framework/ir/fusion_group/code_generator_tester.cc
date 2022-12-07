@@ -89,7 +89,7 @@ inline float elementwise_mul_grad_dy(float x, float y, float out, float dout) {
 }
 
 void CheckOutput(const std::vector<OperationExpression>& expressions,
-                 const std::vector<LoDTensor> cpu_tensors,
+                 const std::vector<phi::DenseTensor> cpu_tensors,
                  const std::vector<int> input_ids_of_subgraph,
                  const std::vector<int> output_ids_of_subgraph,
                  int i,
@@ -152,7 +152,7 @@ void CheckOutput(const std::vector<OperationExpression>& expressions,
 }
 
 template <typename T>
-void SetupRandomCPUTensor(LoDTensor* tensor) {
+void SetupRandomCPUTensor(phi::DenseTensor* tensor) {
   static unsigned int seed = 100;
   std::mt19937 rng(seed++);
   std::uniform_real_distribution<double> uniform_dist(0, 1);

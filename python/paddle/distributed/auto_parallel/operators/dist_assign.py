@@ -12,27 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .common import DistributedOperatorImplContainer
-from .common import DistributedOperatorImpl
-from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl
-from .dist_default import DistributedDefaultImpl0
 from ..utils import compute_compatible_and_update_dim_mapping
+from .common import (
+    DistributedOperatorImpl,
+    DistributedOperatorImplContainer,
+    register_distributed_operator_impl,
+    register_distributed_operator_impl_container,
+)
+from .dist_default import DistributedDefaultImpl0
 
 
 class DistributedAssign(DistributedOperatorImplContainer):
-
     def __init__(self, op_type):
-        super(DistributedAssign, self).__init__(op_type)
+        super().__init__(op_type)
 
 
 register_distributed_operator_impl_container(DistributedAssign("assign"))
 
 
 class DistributedAssignImpl(DistributedOperatorImpl):
-
     def __init__(self, name):
-        super(DistributedAssignImpl, self).__init__(name)
+        super().__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
 
@@ -43,8 +43,9 @@ class DistributedAssignImpl(DistributedOperatorImpl):
         return True
 
     def is_auto_compatible(self, dist_op):
-        if (not self.is_input_compatible(dist_op)) or \
-            (not self.is_output_compatible(dist_op)):
+        if (not self.is_input_compatible(dist_op)) or (
+            not self.is_output_compatible(dist_op)
+        ):
             return False
 
         op_desc = dist_op.serial_op.desc
@@ -70,7 +71,8 @@ class DistributedAssignImpl(DistributedOperatorImpl):
 
         for i in range(len(x_dims_mapping)):
             dim_changed = compute_compatible_and_update_dim_mapping(
-                [x_dims_mapping, out_dims_mapping], [i, i])
+                [x_dims_mapping, out_dims_mapping], [i, i]
+            )
             if dim_changed:
                 changed = True
 

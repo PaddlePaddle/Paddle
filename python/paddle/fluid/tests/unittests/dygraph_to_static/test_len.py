@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import declarative
-from paddle.fluid.dygraph.dygraph_to_static import convert_call
+from paddle.jit.api import declarative
+from paddle.jit.dy2static import Call
 
 SEED = 2020
 np.random.seed(SEED)
@@ -42,10 +43,12 @@ def len_with_lod_tensor_array(x):
 
 
 class TestLen(unittest.TestCase):
-
     def setUp(self):
-        self.place = fluid.CUDAPlace(
-            0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+        self.place = (
+            fluid.CUDAPlace(0)
+            if fluid.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
         self.x_data = np.random.random([10, 16]).astype('float32')
         self.init_func()
 
@@ -70,7 +73,6 @@ class TestLen(unittest.TestCase):
 
 
 class TestLenWithTensorArray(TestLen):
-
     def init_func(self):
         self.func = len_with_lod_tensor_array
 
@@ -80,18 +82,20 @@ class TestLenWithTensorArray(TestLen):
 def len_with_selected_rows(place):
     block = fluid.default_main_program().global_block()
     # create selected_rows variable
-    var = block.create_var(name="X",
-                           dtype="float32",
-                           shape=[-1],
-                           persistable=True,
-                           type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
+    var = block.create_var(
+        name="X",
+        dtype="float32",
+        shape=[-1],
+        persistable=True,
+        type=fluid.core.VarDesc.VarType.SELECTED_ROWS,
+    )
     # y is Variable(SelectedRows)
     y = fluid.layers.merge_selected_rows(var)
-    y_len = convert_call(len)(y)
+    y_len = Call(len)(y)
 
     # z is inner tensor with shape [4, 2]
     z = fluid.layers.get_tensor_from_selected_rows(y)
-    z_len = convert_call(len)(z)
+    z_len = Call(len)(z)
 
     # set data for selected_rows
     x_rows = [0, 2, 2, 4, 19]
@@ -110,14 +114,17 @@ def len_with_selected_rows(place):
 
 
 class TestLenWithSelectedRows(unittest.TestCase):
-
     def setUp(self):
-        self.place = fluid.CUDAPlace(
-            0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+        self.place = (
+            fluid.CUDAPlace(0)
+            if fluid.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
 
     def test_len(self):
         selected_rows_var_len, var_tensor_len = len_with_selected_rows(
-            self.place)
+            self.place
+        )
         self.assertEqual(selected_rows_var_len, var_tensor_len)
 
 

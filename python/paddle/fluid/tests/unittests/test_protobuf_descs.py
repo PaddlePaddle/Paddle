@@ -13,12 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import paddle.fluid.core as core
 from paddle.fluid.framework import Program
 
 
 class TestOpDesc(unittest.TestCase):
-
     def test_op_desc(self):
         program_desc = core.ProgramDesc()
         self.assertIsNotNone(program_desc)
@@ -79,7 +79,6 @@ class TestOpDesc(unittest.TestCase):
 
 
 class TestProgramDesc(unittest.TestCase):
-
     def test_instance(self):
         program_desc = core.ProgramDesc()
         self.assertIsNotNone(program_desc)
@@ -107,7 +106,6 @@ class TestProgramDesc(unittest.TestCase):
 
 
 class TestVarDesc(unittest.TestCase):
-
     def test_shape(self):
         program_desc = core.ProgramDesc()
         block = program_desc.block(0)
@@ -145,8 +143,9 @@ class TestVarDesc(unittest.TestCase):
         var = block.var(b'my_reader')
         var.set_type(core.VarDesc.VarType.READER)
         src_types = [
-            core.VarDesc.VarType.INT32, core.VarDesc.VarType.FP64,
-            core.VarDesc.VarType.FP32
+            core.VarDesc.VarType.INT32,
+            core.VarDesc.VarType.FP64,
+            core.VarDesc.VarType.FP32,
         ]
         var.set_dtypes(src_types)
         self.assertEqual(src_types, var.dtypes())
@@ -164,7 +163,6 @@ class TestVarDesc(unittest.TestCase):
 
 
 class TestBlockDesc(unittest.TestCase):
-
     def test_add_var(self):
         program_desc = core.ProgramDesc()
         self.assertIsNotNone(program_desc)

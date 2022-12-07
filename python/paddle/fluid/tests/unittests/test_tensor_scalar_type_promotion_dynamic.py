@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 import paddle
@@ -28,7 +29,6 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestTensorScalarTypePromotionDynamic(unittest.TestCase):
-
     def check_operation(self, a, b, c, op):
         if op == '+':
             c_rlt = a + b
@@ -320,7 +320,7 @@ class TestTensorScalarTypePromotionDynamic(unittest.TestCase):
             self.func_scalar_pow_tensor()
         self.func_scalar_pow_tensor()
 
-    ## TODO: floordiv op kernel doesn't support float
+    # TODO: floordiv op kernel doesn't support float
     def func_tensor_floordiv_scalar(self):
         # tensor(int64) // scalar(int)
         a = paddle.full([2, 2, 2], 3, dtype='int64')

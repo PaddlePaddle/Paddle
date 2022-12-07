@@ -104,7 +104,7 @@ void InitTensorHolder(Scope* scope,
                       const paddle::platform::Place& place,
                       const char* var_name) {
   auto x = scope->Var(var_name);
-  auto tensor = x->GetMutable<LoDTensor>();
+  auto tensor = x->GetMutable<phi::DenseTensor>();
   tensor->mutable_data(
       place, framework::TransToPhiDataType(proto::VarType::FP32), 1);
 }
@@ -139,7 +139,8 @@ void MainTest(bool convWithExistingBias) {
   int conv_bias_count = 0;
 
   for (auto* node : graph->Nodes()) {
-    if (node->IsOp() && node->Op()->Type() == "conv2d") {
+    if (node->IsOp() && (node->Op()->Type() == "conv2d" ||
+                         node->Op()->Type() == "fused_conv2d")) {
       auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
       EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")));

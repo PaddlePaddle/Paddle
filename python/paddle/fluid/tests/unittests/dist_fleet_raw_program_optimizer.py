@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from functools import reduce
+
 from test_dist_base import TestDistRunnerBase, runtime_main
+
 import paddle
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
-from functools import reduce
 import paddle.fluid as fluid
 
 paddle.enable_static()
@@ -37,8 +39,10 @@ def cnn_model(data):
         pool_size=2,
         pool_stride=2,
         act="relu",
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.01)))
+        param_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.01)
+        ),
+    )
     conv_pool_2 = fluid.nets.simple_img_conv_pool(
         input=conv_pool_1,
         filter_size=5,
@@ -46,25 +50,28 @@ def cnn_model(data):
         pool_size=2,
         pool_stride=2,
         act="relu",
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.01)))
+        param_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.01)
+        ),
+    )
 
     SIZE = 10
     input_shape = conv_pool_2.shape
     param_shape = [reduce(lambda a, b: a * b, input_shape[1:], 1)] + [SIZE]
-    scale = (2.0 / (param_shape[0]**2 * SIZE))**0.5
+    scale = (2.0 / (param_shape[0] ** 2 * SIZE)) ** 0.5
 
     predict = fluid.layers.fc(
         input=conv_pool_2,
         size=SIZE,
         act="softmax",
         param_attr=fluid.param_attr.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01)))
+            initializer=fluid.initializer.Constant(value=0.01)
+        ),
+    )
     return predict
 
 
 class TestFleetMetaOptimizerPrecision(TestDistRunnerBase):
-
     def get_model(self, batch_size=2, single_device=False):
         # Input data
         images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
@@ -76,18 +83,20 @@ class TestFleetMetaOptimizerPrecision(TestDistRunnerBase):
         avg_cost = paddle.mean(x=cost)
 
         # Evaluator
-        batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
-        batch_acc = fluid.layers.accuracy(input=predict,
-                                          label=label,
-                                          total=batch_size_tensor)
+        batch_size_tensor = paddle.tensor.create_tensor(dtype='int64')
+        batch_acc = paddle.static.accuracy(
+            input=predict, label=label, total=batch_size_tensor
+        )
 
         test_program = fluid.default_main_program().clone(for_test=True)
 
         # Reader
-        train_reader = paddle.batch(paddle.dataset.mnist.test(),
-                                    batch_size=batch_size)
-        test_reader = paddle.batch(paddle.dataset.mnist.test(),
-                                   batch_size=batch_size)
+        train_reader = paddle.batch(
+            paddle.dataset.mnist.test(), batch_size=batch_size
+        )
+        test_reader = paddle.batch(
+            paddle.dataset.mnist.test(), batch_size=batch_size
+        )
 
         optimizer = paddle.fluid.optimizer.Adam(0.01)
         if single_device:
@@ -97,11 +106,19 @@ class TestFleetMetaOptimizerPrecision(TestDistRunnerBase):
             fleet.init(role)
             strategy = paddle.distributed.fleet.DistributedStrategy()
             strategy.without_graph_optimization = True
-            optimizer = fleet.distributed_optimizer(optimizer,
-                                                    strategy=strategy)
+            optimizer = fleet.distributed_optimizer(
+                optimizer, strategy=strategy
+            )
             optimizer.minimize(avg_cost)
 
-        return test_program, avg_cost, train_reader, test_reader, batch_acc, predict
+        return (
+            test_program,
+            avg_cost,
+            train_reader,
+            test_reader,
+            batch_acc,
+            predict,
+        )
 
 
 if __name__ == "__main__":

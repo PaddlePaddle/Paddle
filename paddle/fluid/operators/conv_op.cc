@@ -209,24 +209,6 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
             paddle::framework::DataTypeToString(filter_data_type)));
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::CanCUDNNBeUsed(ctx)) {
-#if PADDLE_WITH_CUDA
-    if (input_data_type == framework::proto::VarType::BF16) {
-      PADDLE_ENFORCE_GE(
-          platform::DnnVersion(),
-          8100,
-          platform::errors::InvalidArgument(
-              "bfloat16 can only be used when CUDNN_VERSION >= 8100"));
-    }
-#endif  // PADDLE_WITH_CUDA
-    return framework::OpKernelType(input_data_type,
-                                   ctx.GetPlace(),
-                                   phi::DataLayout::kAnyLayout,
-                                   framework::LibraryType::kCUDNN);
-  }
-#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
-
   return framework::OpKernelType(input_data_type, ctx.GetPlace());
 }
 
@@ -238,8 +220,8 @@ framework::OpKernelType ConvOp::GetKernelTypeForVar(
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
   if ((var_name == "Input") &&
-      (expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
-      (tensor.layout() != phi::DataLayout::kMKLDNN)) {
+      (expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
+      (tensor.layout() != phi::DataLayout::ONEDNN)) {
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_format = ar.Get<std::string>("data_format");
@@ -382,12 +364,6 @@ void Conv3DOpMaker::Make() {
            "is the width of the filter."
            "If the groups attribute is greater than 1, C equals the number of "
            "input image channels divided by the groups.");
-  AddInput("ResidualData",
-           "(Tensor) Tensor with residual data "
-           "to which convolution output will be added."
-           "Used with fuse_residual_connection fusion.")
-      .AsDispensable()
-      .AsExtra();
   AddOutput("Output",
             "(Tensor) The output tensor of convolution operator."
             "It has same data fromat and data type as the Input.");
@@ -476,16 +452,6 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::CanCUDNNBeUsed(ctx)) {
-    return framework::OpKernelType(data_type,
-                                   ctx.GetPlace(),
-                                   phi::DataLayout::kAnyLayout,
-                                   framework::LibraryType::kCUDNN);
-  }
-#endif
-
   return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 
@@ -498,8 +464,8 @@ framework::OpKernelType ConvOpGrad::GetKernelTypeForVar(
   // bias are having shape in NCHW order
   if (((var_name == "Input") ||
        (var_name == framework::GradVarName("Output"))) &&
-      (expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
-      (tensor.layout() != phi::DataLayout::kMKLDNN)) {
+      (expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
+      (tensor.layout() != phi::DataLayout::ONEDNN)) {
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_format = ar.Get<std::string>("data_format");
@@ -657,14 +623,6 @@ void ConvOpDoubleGrad::InferShape(framework::InferShapeContext* ctx) const {
 framework::OpKernelType ConvOpDoubleGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::CanCUDNNBeUsed(ctx)) {
-    return framework::OpKernelType(data_type,
-                                   ctx.GetPlace(),
-                                   framework::DataLayout::kAnyLayout,
-                                   framework::LibraryType::kCUDNN);
-  }
-#endif
   return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 

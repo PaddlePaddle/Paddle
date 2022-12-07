@@ -53,8 +53,8 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
     gpuStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<phi::GPUContext*>(dev_ctx)->stream();
+      // should ExecutionContext for calc stream.
+      stream = ctx.cuda_device_context().stream();
     } else {
       stream = comm->stream();
     }
@@ -108,7 +108,7 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(c_broadcast,
                         ops::CBroadcastOpCUDAKernel<float>,
                         ops::CBroadcastOpCUDAKernel<double>,
-#if CUDNN_VERSION_MIN(8, 1, 0) && NCCL_VERSION_CODE >= 21000
+#if NCCL_VERSION_CODE >= 21000
                         ops::CBroadcastOpCUDAKernel<plat::bfloat16>,
 #endif
                         ops::CBroadcastOpCUDAKernel<int>,

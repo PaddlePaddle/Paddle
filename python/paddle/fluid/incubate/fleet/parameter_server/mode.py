@@ -17,6 +17,7 @@ class PSMode:
     """
     There are various mode for fleet, each of them is designed for different model.
     """
+
     TRANSPILER = 1
     PSLIB = 2
 

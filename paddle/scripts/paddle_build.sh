@@ -58,7 +58,7 @@ function init() {
 
     ENABLE_MAKE_CLEAN=${ENABLE_MAKE_CLEAN:-ON}
 
-    # NOTE(chenweihang): For easy debugging, CI displays the C++ error stacktrace by default 
+    # NOTE(chenweihang): For easy debugging, CI displays the C++ error stacktrace by default
     export FLAGS_call_stack_level=2
 }
 
@@ -255,10 +255,11 @@ function cmake_base() {
         -DWITH_STRIP=${WITH_STRIP:-ON}
         -DON_INFER=${ON_INFER:-OFF}
         -DWITH_HETERPS=${WITH_HETERPS:-OFF}
-        -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} 
+        -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF}
         -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF}
         -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}"
         -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
+        -DWITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -314,8 +315,9 @@ EOF
         -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}" \
         -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}  \
-        -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF};build_error=$?
-        
+        -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}  \
+        -DWITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF};build_error=$?
+
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
@@ -351,10 +353,10 @@ function check_style() {
     mkdir -p $GOPATH/src/github.com/PaddlePaddle/
     ln -sf ${PADDLE_ROOT} $GOPATH/src/github.com/PaddlePaddle/Paddle
 
-    # pre-commit use python3.8.0 
+    # pre-commit use python3.8.0
     OLD_PATH=$PATH
     export PATH=/usr/local/python3.8.0/bin:/usr/local/python3.8.0/include:/usr/local/bin:${PATH}
-    
+
     if ! [[ $(pre-commit --version) == *"2.17.0"* ]]; then
         pip install pre-commit==2.17.0
     fi
@@ -370,14 +372,14 @@ function check_style() {
     done
 
     export PATH=${OLD_PATH}
-    
+
     if [ $commit_files == 'off' ];then
         echo "code format error"
         git diff 2>&1
         exit 4
     fi
     trap : 0
-    set -x 
+    set -x
 }
 
 #=================================================
@@ -629,14 +631,14 @@ function run_mac_test() {
     Running unit tests ...
     ========================================
 EOF
-        #remove proxy here to fix dist ut 'test_fl_listen_and_serv_op' error on mac. 
+        #remove proxy here to fix dist ut 'test_fl_listen_and_serv_op' error on mac.
         #see details: https://github.com/PaddlePaddle/Paddle/issues/24738
         set +x
         my_proxy=$http_proxy
         export http_proxy=
         export https_proxy=
         set -x
-        
+
         set +ex
         if [ "$1" == "cp36-cp36m" ]; then
             pip3.6 uninstall -y paddlepaddle
@@ -671,7 +673,7 @@ EOF
         tmpfile=$tmp_dir/$tmpfile_rand
         set +ex
         ut_startTime_s=`date +%s`
-        get_quickly_disable_ut||disable_ut_quickly='disable_ut' # indicate whether the case was in quickly disable list 
+        get_quickly_disable_ut||disable_ut_quickly='disable_ut' # indicate whether the case was in quickly disable list
         if [ ${NIGHTLY_MODE:-OFF} == "ON" ]; then
             nightly_label="(NIGHTLY_LABEL)"
         else
@@ -766,7 +768,9 @@ function run_linux_cpu_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     pip install hypothesis
-    pip install ${PADDLE_ROOT}/build/python/dist/*whl
+    if [ -d "${PADDLE_ROOT}/build/python/dist/" ]; then
+        pip install ${PADDLE_ROOT}/build/python/dist/*whl
+    fi
     cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/op_test.py ${PADDLE_ROOT}/build/python
     cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/testsuite.py ${PADDLE_ROOT}/build/python
     cp -r ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/white_list ${PADDLE_ROOT}/build/python
@@ -805,10 +809,10 @@ set -x
         fi
 set +x
         EXIT_CODE=0;
-        
+
         tmpfile_rand=`date +%s%N`
         tmpfile=$tmp_dir/$tmpfile_rand
-        get_quickly_disable_ut||disable_ut_quickly='disable_ut' # indicate whether the case was in quickly disable list 
+        get_quickly_disable_ut||disable_ut_quickly='disable_ut' # indicate whether the case was in quickly disable list
         if [ ${NIGHTLY_MODE:-OFF} == "ON" ]; then
             nightly_label="NIGHTLY_LABEL"
         else
@@ -829,7 +833,7 @@ set +x
         fi
         ut_total_endTime_s=`date +%s`
         echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_actual_total_startTime_s ]s"
-        
+
         collect_failed_tests
         rm -f $tmp_dir/*
         exec_times=0
@@ -860,7 +864,7 @@ set +x
                     elif [[ "${exec_times}" == "1" ]] ;then
                         read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
                         need_retry_ut_arr=(${need_retry_ut_str})
-                        need_retry_ut_count=${#need_retry_ut_arr[@]} 
+                        need_retry_ut_count=${#need_retry_ut_arr[@]}
                         if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
                             is_retry_execuate=0
                         else
@@ -883,8 +887,8 @@ set +x
                         echo "This is the ${exec_time_array[$exec_times]} time to re-run"
                         echo "========================================="
                         echo "The following unittest will be re-run:"
-                        echo "${retry_unittests}"    
-                        retry_unittests_regular=''         
+                        echo "${retry_unittests}"
+                        retry_unittests_regular=''
                         for line in ${retry_unittests[@]} ;
                             do
                                 if [[ "$retry_unittests_regular" == "" ]];then
@@ -898,9 +902,9 @@ set +x
                         collect_failed_tests
                         rm -f $tmp_dir/*
                         exec_times=$[$exec_times+1]
-                    else 
+                    else
                         break
-                    fi 
+                    fi
                 done
             retry_unittests_record="$retry_unittests_record$failed_test_lists"
         fi
@@ -915,6 +919,7 @@ set +x
 set -ex
     fi
 }
+
 function get_precision_ut_mac() {
     on_precision=0
     UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
@@ -950,7 +955,7 @@ function get_precision_ut_mac() {
 
 function fetch_upstream_develop_if_not_exist() {
     UPSTREAM_URL='https://github.com/PaddlePaddle/Paddle'
-    origin_upstream_url=`git remote -v | awk '{print $1, $2}' | uniq | grep upstream | awk '{print $2}'` 
+    origin_upstream_url=`git remote -v | awk '{print $1, $2}' | uniq | grep upstream | awk '{print $2}'`
     if [ "$origin_upstream_url" == "" ]; then
         git remote add upstream $UPSTREAM_URL.git
     elif [ "$origin_upstream_url" != "$UPSTREAM_URL" ] \
@@ -958,8 +963,8 @@ function fetch_upstream_develop_if_not_exist() {
         git remote remove upstream
         git remote add upstream $UPSTREAM_URL.git
     fi
-    
-    if [ ! -e "$PADDLE_ROOT/.git/refs/remotes/upstream/$BRANCH" ]; then 
+
+    if [ ! -e "$PADDLE_ROOT/.git/refs/remotes/upstream/$BRANCH" ]; then
         git fetch upstream # develop is not fetched
     fi
 }
@@ -993,6 +998,7 @@ function check_whl_size() {
 }
 
 function generate_upstream_develop_api_spec() {
+    set -x
     cp ${PADDLE_ROOT}/python/requirements.txt /tmp
     pr_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
     mkdir -p ${PADDLE_ROOT}/build/pr_whl && mv ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl/
@@ -1002,16 +1008,18 @@ function generate_upstream_develop_api_spec() {
     cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
 
     cd ${PADDLE_ROOT}
-    git fetch upstream $BRANCH
     git checkout -b develop_base_pr -t upstream/$BRANCH
+    echo "develop git log: "
     git log --pretty=oneline -10
 
     dev_commit=`git log -1|head -1|awk '{print $2}'`
     dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${dev_commit}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl"
     url_return=`curl -s -m 5 -IL ${dev_url} |awk 'NR==1{print $2}'`
     if [ "$url_return" == '200' ];then
+        echo "wget develop whl from bos! "
         mkdir -p ${PADDLE_ROOT}/build/python/dist && wget -q -P ${PADDLE_ROOT}/build/python/dist ${dev_url}
     else
+        echo "compile develop whl localy! "
         if [[ ${cmake_change} ]];then
             rm -rf ${PADDLE_ROOT}/build/third_party
         fi
@@ -1023,6 +1031,7 @@ function generate_upstream_develop_api_spec() {
     endTime_s=`date +%s`
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
     echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+    set +x
 }
 
 function generate_api_spec() {
@@ -1043,7 +1052,9 @@ function generate_api_spec() {
     else
         pip install -r ${PADDLE_ROOT}/python/requirements.txt
     fi
-    pip --no-cache-dir install ${PADDLE_ROOT}/build/python/dist/*whl
+    if [ -d "${PADDLE_ROOT}/build/python/dist/" ]; then
+        pip --no-cache-dir install ${PADDLE_ROOT}/build/python/dist/*whl
+    fi
     spec_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.spec
     python ${PADDLE_ROOT}/tools/print_signatures.py paddle > $spec_path
 
@@ -1065,7 +1076,7 @@ function generate_api_spec() {
 
     awk -F '(' '{print $NF}' $spec_path >${spec_path}.doc
     awk -F '(' '{$NF="";print $0}' $spec_path >${spec_path}.api
-    
+
     python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py \
         ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_${spec_kind}.spec
 
@@ -1251,7 +1262,7 @@ function caught_error() {
 function case_count(){
     cat <<EOF
     ============================================
-    Generating TestCases Count ... 
+    Generating TestCases Count ...
     ============================================
 EOF
     testcases=$1
@@ -1282,7 +1293,7 @@ function collect_failed_tests() {
     done
 }
 
-# getting qucik disable ut list 
+# getting qucik disable ut list
 function get_quickly_disable_ut() {
     python -m pip install requests
     if disable_ut_quickly=$(python ${PADDLE_ROOT}/tools/get_quick_disable_lt.py); then
@@ -1298,7 +1309,7 @@ function get_quickly_disable_ut() {
 function card_test() {
     set -m
     case_count $1 $2
-    ut_startTime_s=`date +%s` 
+    ut_startTime_s=`date +%s`
 
     testcases=$1
     cardnumber=$2
@@ -1354,7 +1365,7 @@ function card_test() {
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
                 (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" -V --timeout 120 -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
-            else  
+            else
                 (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --timeout 120 -V -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             fi
         else
@@ -1430,18 +1441,18 @@ set +x
         single_card_tests_secondary_high_parallel='^job$'   # cases list which would run 15 job each time with single GPU
         single_card_tests_third_high_parallel='^job$'       # cases list which would run 12 job each time with single GPU
         single_card_tests_forth_high_parallel='^job$'       # cases list which would run 7 job each time with single GPU
-        single_card_tests_fifth_high_parallel='^job$'       # cases list which would run 4 job each time with single GPU  
-        single_card_tests_lowest_parallel='^job$'           # cases list which would run 2 job each time with single GPU  
+        single_card_tests_fifth_high_parallel='^job$'       # cases list which would run 4 job each time with single GPU
+        single_card_tests_lowest_parallel='^job$'           # cases list which would run 2 job each time with single GPU
         single_card_tests_non_parallel='^job$'              # cases list which would run 4 job each time with single GPU
         single_card_tests='^job$'                           # all cases list which would take single GPU
-        
+
         multiple_card_tests_medium_parallel='^job$'         # cases list which would run 4 job each time with multiple GPUs, most cases would be two GPUs
         multiple_card_tests_non_parallel='^job$'            # cases list which would run 3 job each time with multiple GPUs, most cases would be two GPUs
-        
+
         exclusive_tests_high_parallel='^job$'               # cases list which would run 7 job exclusively(with all GPUs)
         exclusive_tests_medium_parallel='^job$'             # cases list which would run 4 job exclusively(with all GPUs)
         exclusive_tests_non_parallel='^job$'                # cases list which would run 2 job exclusively(with all GPUs)
-        
+
         is_exclusive=''           # indicate whether the case is exclusive type
         is_multicard=''           # indicate whether the case is multiple GPUs type
         is_nightly=''             # indicate whether the case will only run at night
@@ -1457,7 +1468,7 @@ set +x
         sixth_high_parallel_job=$(echo $output | cut -d ";" -f 6)
         lowest_high_parallel_job=$(echo $output | cut -d ";" -f 7)
         non_parallel_job=$(echo $output | cut -d ";" -f 8)
-        
+
         while read -r line; do
             if [[ "$line" == "" ]]; then
                 continue
@@ -1517,11 +1528,11 @@ set +x
                     elif [[ $(echo $secondary_high_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
                         single_card_tests_secondary_high_parallel="$single_card_tests_secondary_high_parallel|^$testcase$"
                     elif [[ $(echo $third_high_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
-                        single_card_tests_third_high_parallel="$single_card_tests_third_high_parallel|^$testcase$"           
+                        single_card_tests_third_high_parallel="$single_card_tests_third_high_parallel|^$testcase$"
                     elif [[ $(echo $fourth_high_parallel_job$fifth_high_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
                         single_card_tests_forth_high_parallel="$single_card_tests_forth_high_parallel|^$testcase$"
                     elif [[ $(echo $sixth_high_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
-                        single_card_tests_fifth_high_parallel="$single_card_tests_fifth_high_parallel|^$testcase$"               
+                        single_card_tests_fifth_high_parallel="$single_card_tests_fifth_high_parallel|^$testcase$"
                     elif [[ $(echo $lowest_high_parallel_job| grep -o "\^$testcase\\$") != "" ]]; then
                         single_card_tests_lowest_parallel="$single_card_tests_lowest_parallel|^$testcase$"
                     else
@@ -1535,7 +1546,7 @@ set +x
                 matchstr=''
                 testcase=''
         done <<< "$test_cases";
-        
+
         ut_actual_total_startTime_s=`date +%s`
 
         single_ut_startTime_s=`date +%s`
@@ -1547,21 +1558,21 @@ set +x
         card_test "$single_card_tests_lowest_parallel" 1 2              # run cases 2 job each time with single GPU
         card_test "$single_card_tests_non_parallel" 1 4                 # run cases 4 job each time with single GPU
         single_ut_endTime_s=`date +%s`
-        
+
         multi_ut_startTime_s=`date +%s`
         card_test "$multiple_card_tests_medium_parallel" 2 4            # run cases 2 job each time with two GPUs
         card_test "$multiple_card_tests_non_parallel" 2 3               # run cases 1 job each time with two GPUs
         multi_ut_endTime_s=`date +%s`
-        
+
         exclu_ut_startTime_s=`date +%s`
         card_test "$exclusive_tests_high_parallel" -1 7                 # run cases exclusively, in this cases would be run with 2/4/8 GPUs
         card_test "$exclusive_tests_medium_parallel" -1 4                  # run cases exclusively, in this cases would be run with 2/4/8 GPUs
         card_test "$exclusive_tests_non_parallel" -1 2                # run cases exclusively, in this cases would be run with 2/4/8 GPUs
         exclu_ut_endTime_s=`date +%s`
-        
-        echo "ipipe_log_param_1_TestCases_Total_Time: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s" 
-        echo "ipipe_log_param_2_TestCases_Total_Time: $[ $multi_ut_endTime_s - $multi_ut_startTime_s ]s" 
-        echo "ipipe_log_param_Exclusive_TestCases_Total_Time: $[ $exclu_ut_endTime_s - $exclu_ut_startTime_s ]s" 
+
+        echo "ipipe_log_param_1_TestCases_Total_Time: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s"
+        echo "ipipe_log_param_2_TestCases_Total_Time: $[ $multi_ut_endTime_s - $multi_ut_startTime_s ]s"
+        echo "ipipe_log_param_Exclusive_TestCases_Total_Time: $[ $exclu_ut_endTime_s - $exclu_ut_startTime_s ]s"
 
         echo "ipipe_log_param_1_TestCases_Total_Time: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         echo "ipipe_log_param_2_TestCases_Total_Time: $[ $multi_ut_endTime_s - $multi_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
@@ -1596,7 +1607,7 @@ set +x
                     elif [[ "${exec_times}" == "1" ]] ;then
                         read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
                         need_retry_ut_arr=(${need_retry_ut_str})
-                        need_retry_ut_count=${#need_retry_ut_arr[@]} 
+                        need_retry_ut_count=${#need_retry_ut_arr[@]}
                         if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
                             is_retry_execuate=0
                         else
@@ -1619,7 +1630,7 @@ set +x
                         echo "This is the ${exec_time_array[$exec_times]} time to re-run"
                         echo "========================================="
                         echo "The following unittest will be re-run:"
-                        echo "${retry_unittests}"                    
+                        echo "${retry_unittests}"
                         for line in ${retry_unittests[@]} ;
                             do
                                 read tmp_one_tmp <<< "$( echo $single_card_tests | grep -oEi $line )"
@@ -1664,10 +1675,10 @@ set +x
                         rm -f $tmp_dir/*
                         one_card_retry=''
                         multiple_card_retry=''
-                        exclusive_retry='' 
-                    else 
+                        exclusive_retry=''
+                    else
                         break
-                    fi 
+                    fi
                 done
             retry_unittests_record="$retry_unittests_record$failed_test_lists"
         fi
@@ -1714,7 +1725,7 @@ set +x
 
             if [[ "$is_nightly" != "" ]] && [ ${NIGHTLY_MODE:-OFF} == "OFF" ]; then
                 echo $testcase" will only run at night."
-                nightly_tests="$nightly_tests|^$testcase$" 
+                nightly_tests="$nightly_tests|^$testcase$"
                 echo "$testcase" >> ${PADDLE_ROOT}/build/nightly_case
                 continue
             fi
@@ -1735,7 +1746,7 @@ set +x
             is_nightly=''
             matchstr=''
             testcase=''
-    done <<< "$test_cases"; 
+    done <<< "$test_cases";
 set -x
     rm -rf ${PADDLE_ROOT}/build/classify_case_by_cardNum.txt
     touch ${PADDLE_ROOT}/build/classify_case_by_cardNum.txt
@@ -1825,19 +1836,33 @@ function precise_card_test_single {
     set +x
     testcases=$1
     num=$2
-    for case in $(echo $testcases | tr "$|^" "\n")
+    for case in $(echo $testcases | tr "$|^" "\n" | awk '!/^$/')
     do
         cd ${PADDLE_ROOT}/build
         precise_card_test "^${case}$" $num
+
+        #if test failed,continue,if test succeed ,go on 
+        if_test_failed=$(cat $tmp_dir/^${case}$.log| grep "The following tests FAILED:")
+        if [[ "$if_test_failed" == "The following tests FAILED:" ]];then 
+            echo "$testcases has failed,put it into prec_delta"
+            continue
+        else
+            echo "$testcases succeed"
+        fi
+
         # c++ 
         if [ ! -d "${PADDLE_ROOT}/build/ut_map/$case" ];then
             mkdir ${PADDLE_ROOT}/build/ut_map/$case
         fi
         set -x
         find paddle/fluid -name '*.gcda'|xargs -I {} cp --path {} ut_map/$case
+        find paddle/phi -name '*.gcda'|xargs -I {} cp --path {} ut_map/$case
+        find paddle/utils -name '*.gcda'|xargs -I {} cp --path {} ut_map/$case
+        find paddle/phi -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
+        find paddle/utils -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
         find paddle/fluid -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
         python ${PADDLE_ROOT}/tools/get_single_test_cov.py ${PADDLE_ROOT} $case &
-        
+
         # python
         ls python-coverage.data.*
         if [[ $? == 0 ]]
@@ -1847,7 +1872,9 @@ function precise_card_test_single {
             fi
             mv python-coverage.data.* ${PADDLE_ROOT}/build/pytest/$case
         fi
-        find paddle/fluid -name *.gcda | xargs rm -f #delete gcda
+        find paddle/fluid -name *.gcda | xargs rm -f 
+        find paddle/phi -name *.gcda | xargs rm -f 
+        find paddle/utils -name *.gcda | xargs rm -f 
     done
 }
 
@@ -1858,8 +1885,8 @@ function parallel_card_test_single {
     num=$2
     for case in $(echo $testcases | tr "$|^" "\n")
     do
-        cd ${PADDLE_ROOT}/build 
-        parallel_card_test "^${case}$" $num 
+        cd ${PADDLE_ROOT}/build
+        parallel_card_test "^${case}$" $num
     done
 }
 function parallel_card_test() {
@@ -1885,15 +1912,15 @@ function parallel_card_test() {
     echo "****************************************************************"
     echo "***Running ut: $testcases***"
     echo "****************************************************************"
-    
+
     tmpfile=$tmp_dir/$testcases".log"
     tmpfile1=$tmp_dir/$testcases"-gpu.log"
     nvidia-smi --id=0 --query-compute-apps=used_memory --format=csv -lms 10 > $tmpfile1 2>&1 &
     gpu_memory_pid=$!
-    env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I 0,,1 -R "($testcases)" --timeout 500 --output-on-failure -V -j 1 > $tmpfile 
+    env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I 0,,1 -R "($testcases)" --timeout 500 --output-on-failure -V -j 1 > $tmpfile
     kill ${gpu_memory_pid}
-    cat $tmpfile1 | tr -d ' MiB' | awk 'BEGIN {max = 0} {if(NR>1){if ($1 > max) max=$1}} END {print "MAX_GPU_MEMORY_USE=", max}' >> $tmpfile 
-    cat $tmpfile1 | tr -d ' MiB' | awk 'BEGIN {sum = 0} {if(NR>1){sum = sum + $1 }} END {print "AVG_GPU_MEMORY_USE=", sum / (NR-2)}' >> $tmpfile 
+    cat $tmpfile1 | tr -d ' MiB' | awk 'BEGIN {max = 0} {if(NR>1){if ($1 > max) max=$1}} END {print "MAX_GPU_MEMORY_USE=", max}' >> $tmpfile
+    cat $tmpfile1 | tr -d ' MiB' | awk 'BEGIN {sum = 0} {if(NR>1){sum = sum + $1 }} END {print "AVG_GPU_MEMORY_USE=", sum / (NR-2)}' >> $tmpfile
     rm -rf $tmpfile1
     set +m
 }
@@ -1921,9 +1948,9 @@ function precise_card_test() {
     echo "****************************************************************"
     echo "***Running ut: $testcases***"
     echo "****************************************************************"
-    
+
     tmpfile=$tmp_dir/$testcases".log"
-    env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I 0,,1 -R "($testcases)" --timeout 500 --output-on-failure -V -j 1 > $tmpfile 
+    env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I 0,,1 -R "($testcases)" --timeout 500 --output-on-failure -V -j 1 > $tmpfile
     set +m
 }
 
@@ -2008,13 +2035,13 @@ set -x
     wait;
     #get notSuccessut including the failed uniitests and not executed unittests
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_not_success_ut' ${PADDLE_ROOT}
+
+    #rerun the notSuccessut and get the mapping between notSuccessut and .cu files
+    get_failedUts_precise_map_file
     
     #analyze the mapping between unit tests and .cu files
     python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'analy_h_cu_file' $tmp_dir ${PADDLE_ROOT}
-
     wait;
-    #rerun the notSuccessut and get the mapping between notSuccessut and .cu files
-    get_failedUts_precise_map_file
 
     #generate python coverage and generate python file to tests_map_file
     python ${PADDLE_ROOT}/tools/pyCov_multithreading.py ${PADDLE_ROOT}
@@ -2022,7 +2049,7 @@ set -x
 
     #generate ut file map
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_ut_map' ${PADDLE_ROOT}
-    
+
 }
 
 function get_parallel_tests_map_file {
@@ -2105,27 +2132,21 @@ set -x
 
     wait;
     #classify_case_by_cardNum
-    classify_case_by_cardNum    
-    
+    classify_case_by_cardNum
+
     #generate ut mem map
     python ${PADDLE_ROOT}/tools/get_ut_mem_map.py $tmp_dir
     python ${PADDLE_ROOT}/tools/final_ut_parallel_rule.py ${PADDLE_ROOT}
-    
+
 }
 
 function get_failedUts_precise_map_file {
     if [[ -f "${PADDLE_ROOT}/build/utNotSuccess" ]]; then
         rerun_tests=`cat ${PADDLE_ROOT}/build/utNotSuccess`
         #remove pile to full h/cu file
-        python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'remove_pile_from_h_file' ${PADDLE_ROOT}
-        cd ${PADDLE_ROOT}/build
-        cmake_base ${PYTHON_ABI:-""}
-        build ${parallel_number}
-        pip uninstall -y paddlepaddle-gpu
-        pip install ${PADDLE_ROOT}/build/python/dist/*whl
         precise_card_test_single "$rerun_tests"
         wait;
-        
+
     fi
 }
 
@@ -2162,7 +2183,7 @@ EOF
 set +x
         export XPU_OP_LIST_DIR=$tmp_dir
         ut_startTime_s=`date +%s`
-        test_cases=$(ctest -N -V | grep "_xpu" )        # cases list which would be run exclusively
+        test_cases=$(ctest -N -V -LE "(RUN_TYPE=DIST_KUNLUN)" | grep "_xpu" )        # cases list which would be run exclusively
         get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
         while read -r line; do
             if [[ "$line" == "" ]]; then
@@ -2185,7 +2206,7 @@ set -x
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 8;
         fi
-    fi   
+    fi
 }
 
 function parallel_test_base_cinn() {
@@ -2231,7 +2252,7 @@ set -x
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 8;
         fi
-    fi   
+    fi
 }
 
 function parallel_test_base_npu() {
@@ -2307,7 +2328,7 @@ set +x
                     elif [[ "${exec_times}" == "1" ]] ;then
                         need_retry_ut_str=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
                         need_retry_ut_arr=(${need_retry_ut_str})
-                        need_retry_ut_count=${#need_retry_ut_arr[@]} 
+                        need_retry_ut_count=${#need_retry_ut_arr[@]}
                         if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
                             is_retry_execuate=0
                         else
@@ -2330,7 +2351,7 @@ set +x
                         echo "This is the ${exec_time_array[$exec_times]} time to re-run"
                         echo "========================================="
                         echo "The following unittest will be re-run:"
-                        echo "${retry_unittests}"                    
+                        echo "${retry_unittests}"
                         for line in ${retry_unittests[@]} ;
                             do
                                 tmp_one_tmp="$( echo $single_card_tests | grep -oEi $line )"
@@ -2353,7 +2374,7 @@ set +x
                         collect_failed_tests
                         rm -f $tmp_dir/*
                         one_card_retry=''
-                    else 
+                    else
                         break
                     fi
 
@@ -2361,7 +2382,7 @@ set +x
         fi
 
         rerun_ut_endTime_s=`date +%s`
-        
+
         echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         ut_actual_total_endTime_s=`date +%s`
         echo "ipipe_log_param_actual_TestCases_Total_Time: $[ $ut_actual_total_endTime_s - $ut_actual_total_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
@@ -2369,7 +2390,7 @@ set +x
             show_ut_retry_result
         fi
 set -ex
-    fi   
+    fi
 }
 
 function parallel_test_base_mlu() {
@@ -2391,7 +2412,7 @@ set +x
         else
             disable_ut_quickly='disable_ut'
         fi
-        
+
         while read -r line; do
             if [[ "$line" == "" ]]; then
                 continue
@@ -2438,7 +2459,7 @@ set +x
                     elif [[ "${exec_times}" == "1" ]] ;then
                         need_retry_ut_str=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
                         need_retry_ut_arr=(${need_retry_ut_str})
-                        need_retry_ut_count=${#need_retry_ut_arr[@]} 
+                        need_retry_ut_count=${#need_retry_ut_arr[@]}
                         if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
                             is_retry_execuate=0
                         else
@@ -2461,7 +2482,7 @@ set +x
                         echo "This is the ${exec_time_array[$exec_times]} time to re-run"
                         echo "========================================="
                         echo "The following unittest will be re-run:"
-                        echo "${retry_unittests}"                    
+                        echo "${retry_unittests}"
                         for line in ${retry_unittests[@]} ;
                             do
                                 tmp_one_tmp="$( echo $single_card_tests | grep -oEi $line )"
@@ -2484,14 +2505,14 @@ set +x
                         collect_failed_tests
                         rm -f $tmp_dir/*
                         one_card_retry=''
-                    else 
+                    else
                         break
                     fi
                 done
         fi
 
         rerun_ut_endTime_s=`date +%s`
-        
+
         echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         ut_actual_total_endTime_s=`date +%s`
         echo "ipipe_log_param_actual_TestCases_Total_Time: $[ $ut_actual_total_endTime_s - $ut_actual_total_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
@@ -2499,7 +2520,7 @@ set +x
             show_ut_retry_result
         fi
 set -ex
-    fi   
+    fi
 }
 
 function parallel_test_base_gpu_test() {
@@ -2518,6 +2539,7 @@ set -x
         bash $PADDLE_ROOT/tools/check_added_ut.sh
         #check change of pr_unnitests and dev_unnitests
         check_approvals_of_unittest 2
+        ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > ${PADDLE_ROOT}/build/all_ut_list
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
             python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
         fi
@@ -2549,8 +2571,7 @@ set +x
         wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/pre_test/CTestCostData.txt --no-check-certificate
         mkdir -p ${PADDLE_ROOT}/build/Testing/Temporary/
         cp -r ${PADDLE_ROOT}/build/CTestCostData.txt ${PADDLE_ROOT}/build/Testing/Temporary/
-        
-        ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > all_ut_list
+
         get_quickly_disable_ut||disable_ut_quickly='disable_ut'    # indicate whether the case was in quickly disable list
         test_cases=$(ctest -N -V) # get all test cases
 
@@ -2562,7 +2583,7 @@ set +x
             card_test "$line" 1 4
         done < $PADDLE_ROOT/tools/single_card_tests_mem0_new
         single_ut_mem_0_endTime_s=`date +%s`
-        echo "ipipe_log_param_1_mem_0_TestCases_Total_Time: $[ $single_ut_mem_0_endTime_s - $single_ut_mem_0_startTime_s ]s" 
+        echo "ipipe_log_param_1_mem_0_TestCases_Total_Time: $[ $single_ut_mem_0_endTime_s - $single_ut_mem_0_startTime_s ]s"
         echo "ipipe_log_param_1_mem_0_TestCases_Total_Time: $[ $single_ut_mem_0_endTime_s - $single_ut_mem_0_startTime_s ]s"  >> ${PADDLE_ROOT}/build/build_summary.txt
 
         single_ut_startTime_s=`date +%s`
@@ -2575,7 +2596,7 @@ set +x
             card_test "$line" 1 $num
         done < $PADDLE_ROOT/tools/single_card_tests_new
         single_ut_endTime_s=`date +%s`
-        echo "ipipe_log_param_1_TestCases_Total_Time: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s" 
+        echo "ipipe_log_param_1_TestCases_Total_Time: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s"
         echo "ipipe_log_param_1_TestCases_Total_Time: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s"   >> ${PADDLE_ROOT}/build/build_summary.txt
 
         multiple_ut_mem_0_startTime_s=`date +%s`
@@ -2584,7 +2605,7 @@ set +x
             card_test "$line" 2 4
         done < $PADDLE_ROOT/tools/multiple_card_tests_mem0_new
         multiple_ut_mem_0_endTime_s=`date +%s`
-        echo "ipipe_log_param_2_mem0_TestCases_Total_Time: $[ $multiple_ut_mem_0_endTime_s - $multiple_ut_mem_0_startTime_s ]s" 
+        echo "ipipe_log_param_2_mem0_TestCases_Total_Time: $[ $multiple_ut_mem_0_endTime_s - $multiple_ut_mem_0_startTime_s ]s"
         echo "ipipe_log_param_2_mem0_TestCases_Total_Time: $[ $multiple_ut_mem_0_endTime_s - $multiple_ut_mem_0_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         multiple_ut_startTime_s=`date +%s`
         while read line
@@ -2593,11 +2614,11 @@ set +x
             if [ $num -eq 0 ]; then
                 num=1
             fi
-            card_test "$line" 2 $num 
+            card_test "$line" 2 $num
 
         done < $PADDLE_ROOT/tools/multiple_card_tests_new
         multiple_ut_endTime_s=`date +%s`
-        echo "ipipe_log_param_2_TestCases_Total_Time: $[ $multiple_ut_endTime_s - $multiple_ut_startTime_s ]s" 
+        echo "ipipe_log_param_2_TestCases_Total_Time: $[ $multiple_ut_endTime_s - $multiple_ut_startTime_s ]s"
         echo "ipipe_log_param_2_TestCases_Total_Time: $[ $multiple_ut_endTime_s - $multiple_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 
         exclusive_ut_mem_0_startTime_s=`date +%s`
@@ -2606,7 +2627,7 @@ set +x
             card_test "$line" -1 4
         done < $PADDLE_ROOT/tools/exclusive_card_tests_mem0_new
         exclusive_ut_mem_0_endTime_s=`date +%s`
-        echo "ipipe_log_param_-1_mem0_TestCases_Total_Time: $[ $exclusive_ut_mem_0_endTime_s - $exclusive_ut_mem_0_startTime_s ]s" 
+        echo "ipipe_log_param_-1_mem0_TestCases_Total_Time: $[ $exclusive_ut_mem_0_endTime_s - $exclusive_ut_mem_0_startTime_s ]s"
         echo "ipipe_log_param_-1_mem0_TestCases_Total_Time: $[ $exclusive_ut_mem_0_endTime_s - $exclusive_ut_mem_0_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 
         exclusive_ut_startTime_s=`date +%s`
@@ -2616,12 +2637,12 @@ set +x
             if [ $num -eq 0 ]; then
                 num=1
             fi
-            card_test "$line" -1 $num 
+            card_test "$line" -1 $num
         done < $PADDLE_ROOT/tools/exclusive_card_tests_new
         exclusive_ut_endTime_s=`date +%s`
         echo "ipipe_log_param_-1_TestCases_Total_Time: $[ $exclusive_ut_endTime_s - $exclusive_ut_startTime_s ]s"
         echo "ipipe_log_param_-1_TestCases_Total_Time: $[ $exclusive_ut_endTime_s - $exclusive_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
-        
+
         noparallel_ut_startTime_s=`date +%s`
         while read line
         do
@@ -2629,7 +2650,7 @@ set +x
         done < $PADDLE_ROOT/tools/no_parallel_case_file
         noparallel_ut_endTime_s=`date +%s`
         echo "ipipe_log_param_noparallel_TestCases_Total_Time: $[ $noparallel_ut_endTime_s - $noparallel_ut_startTime_s ]s"
-        echo "ipipe_log_param_noparallel_TestCases_Total_Time: $[ $noparallel_ut_endTime_s - $noparallel_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt   
+        echo "ipipe_log_param_noparallel_TestCases_Total_Time: $[ $noparallel_ut_endTime_s - $noparallel_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         ###retry
         collect_failed_tests
         rm -f $tmp_dir/*
@@ -2660,7 +2681,7 @@ set +x
                     elif [[ "${exec_times}" == "1" ]] ;then
                         read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
                         need_retry_ut_arr=(${need_retry_ut_str})
-                        need_retry_ut_count=${#need_retry_ut_arr[@]} 
+                        need_retry_ut_count=${#need_retry_ut_arr[@]}
                         if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
                             is_retry_execuate=0
                         else
@@ -2683,7 +2704,7 @@ set +x
                         echo "This is the ${exec_time_array[$exec_times]} time to re-run"
                         echo "========================================="
                         echo "The following unittest will be re-run:"
-                        echo "${retry_unittests}"                    
+                        echo "${retry_unittests}"
                         for line in ${retry_unittests[@]} ;
                             do
                                 if [[ "$retry_cases" == "" ]]; then
@@ -2701,9 +2722,9 @@ set +x
                         collect_failed_tests
                         rm -f $tmp_dir/*
                         retry_cases=''
-                    else 
+                    else
                         break
-                    fi 
+                    fi
                 done
             retry_unittests_record="$retry_unittests_record$failed_test_lists"
         fi
@@ -2777,7 +2798,7 @@ set +x
                     elif [[ "${exec_times}" == "1" ]] ;then
                         need_retry_ut_str=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
                         need_retry_ut_arr=(${need_retry_ut_str})
-                        need_retry_ut_count=${#need_retry_ut_arr[@]} 
+                        need_retry_ut_count=${#need_retry_ut_arr[@]}
                         if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
                             is_retry_execuate=0
                         else
@@ -2800,7 +2821,7 @@ set +x
                         echo "This is the ${exec_time_array[$exec_times]} time to re-run"
                         echo "========================================="
                         echo "The following unittest will be re-run:"
-                        echo "${retry_unittests}"                    
+                        echo "${retry_unittests}"
                         for line in ${retry_unittests[@]} ;
                             do
                                 tmp_one_tmp="$( echo $single_card_tests | grep -oEi $line )"
@@ -2823,7 +2844,7 @@ set +x
                         collect_failed_tests
                         rm -f $tmp_dir/*
                         one_card_retry=''
-                    else 
+                    else
                         break
                     fi
 
@@ -2831,7 +2852,7 @@ set +x
         fi
 
         rerun_ut_endTime_s=`date +%s`
-        
+
         echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         ut_actual_total_endTime_s=`date +%s`
         echo "ipipe_log_param_actual_TestCases_Total_Time: $[ $ut_actual_total_endTime_s - $ut_actual_total_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
@@ -2839,15 +2860,16 @@ set +x
             show_ut_retry_result
         fi
 set -ex
-    fi   
+    fi
 }
 
 function parallel_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     pip install hypothesis
-    pip install ${PADDLE_ROOT}/build/python/dist/*whl
-    cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/op_test.py ${PADDLE_ROOT}/build/python
+    if [ -d "${PADDLE_ROOT}/build/python/dist/" ]; then
+        pip install ${PADDLE_ROOT}/build/python/dist/*whl
+    fi
     cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/testsuite.py ${PADDLE_ROOT}/build/python
     cp -r ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/white_list ${PADDLE_ROOT}/build/python
     ut_total_startTime_s=`date +%s`
@@ -2872,6 +2894,12 @@ function parallel_test() {
     echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s"
     echo "ipipe_log_param_TestCases_Total_Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 }
+
+function nv_test() {
+    export FLAGS_enable_cudnn_frontend=0
+    ctest -R "conv" --output-on-failure --timeout 150
+}
+
 
 function enable_unused_var_check() {
     # NOTE(zhiqiu): Set FLAGS_enable_unused_var_check=1 here to enable unused_var_check,
@@ -2941,7 +2969,7 @@ function gen_dockerfile() {
     Generate ${PADDLE_ROOT}/build/Dockerfile ...
     ========================================
 EOF
-    
+
     ref_CUDA_MAJOR="$(echo $CUDA_VERSION | cut -d '.' -f 1)"
     if [[ ${WITH_GPU} == "ON"  ]]; then
         ref_gpu=gpu-cuda${ref_CUDA_MAJOR}-cudnn${CUDNN_MAJOR}
@@ -2998,7 +3026,7 @@ EOF
         ref_paddle36_mv1="mv ${ref_paddle36} ${ref_paddle36_whl} &&"
         ref_paddle36_mv2="&& mv ${ref_paddle36_whl} ${ref_paddle36}"
     fi
-    
+
     cat > ${PADDLE_ROOT}/build/Dockerfile <<EOF
     FROM ${BASE_IMAGE}
     MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
@@ -3011,13 +3039,13 @@ EOF
         NCCL_DEPS="true"
     fi
 
-    if [[ ${WITH_GPU} == "ON" && ${CUDA_MAJOR} = "8.0" ]]; then 
+    if [[ ${WITH_GPU} == "ON" && ${CUDA_MAJOR} = "8.0" ]]; then
         NCCL_DEPS="apt-get install -y --allow-downgrades --allow-change-held-packages libnccl2=2.2.13-1+cuda8.0 libnccl-dev=2.2.13-1+cuda8.0"
     fi
 
     PADDLE_VERSION="paddle version"
     CMD='"paddle", "version"'
-    
+
     cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
     # run paddle version to install python packages first
     RUN apt-get update && ${NCCL_DEPS}
@@ -3203,7 +3231,7 @@ EOF
     TEST_EXIT_CODE=$?
     infer_ut_endTime_s=`date +%s`
     echo "infer_ut tests Total time: $[ $infer_ut_endTime_s - $infer_ut_startTime_s ]s"
-    echo "ipipe_log_param_Infer_Ut_Tests_Total_Time: $[ $infer_ut_endTime_s - $infer_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt  
+    echo "ipipe_log_param_Infer_Ut_Tests_Total_Time: $[ $infer_ut_endTime_s - $infer_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
     if [[ "$DEMO_EXIT_CODE" != "0" || "$TEST_EXIT_CODE" != "0" ]]; then
         exit 8;
     fi
@@ -3257,12 +3285,14 @@ function build_document_preview() {
 # origin name: example
 function exec_samplecode_test() {
     if [ -d "${PADDLE_ROOT}/build/pr_whl" ];then
-        pip install ${PADDLE_ROOT}/build/pr_whl/*.whl
+        pip install ${PADDLE_ROOT}/build/pr_whl/*.whl --force-reinstall
     else
-        pip install ${PADDLE_ROOT}/build/python/dist/*.whl
+        echo "WARNING: PR wheel is not found. Use develop wheel !!!"
+        pip install ${PADDLE_ROOT}/build/python/dist/*.whl  --force-reinstall
     fi
 
-    paddle version
+    python -c "import paddle;print(paddle.__version__);paddle.version.show()"
+
     cd ${PADDLE_ROOT}/tools
     if [ "$1" = "cpu" ] ; then
         python sampcd_processor.py cpu; example_error=$?
@@ -3430,9 +3460,221 @@ function check_coverage_build() {
     fi
     set -x
 }
+function run_setup(){
+    rm -rf ${PADDLE_ROOT}/build
+    startTime_s=`date +%s`
 
+    SYSTEM=`uname -s`
+    if [ "$SYSTEM" == "Darwin" ]; then
+        echo "Using python abi: $1"
+        if [ "$1" == "cp36-cp36m" ] || [ "$1" == "" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.6" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.6/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.6/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.6/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.6/bin/python3
+                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.6/include/python3.6m/
+                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.6/lib/libpython3.6m.dylib
+                pip3.6 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+            else
+                exit 1
+            fi
+        elif [ "$1" == "cp37-cp37m" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.7" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.7/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.7/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.7/bin/python3
+                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.7/include/python3.7m/
+                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.7/lib/libpython3.7m.dylib
+
+                pip3.7 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+            else
+                exit 1
+            fi
+        elif [ "$1" == "cp38-cp38" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.8" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.8/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.8/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.8/bin/python3
+                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.8/include/python3.8/
+                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.8/lib/libpython3.8.dylib
+                pip3.8 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+            else
+                exit 1
+            fi
+        elif [ "$1" == "cp39-cp39" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.9" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.9/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.9/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.9/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.9/bin/python3
+                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.9/include/python3.9/
+                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.9/lib/libpython3.9.dylib
+                pip3.9 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+            else
+                exit 1
+            fi
+        elif [ "$1" == "cp310-cp310" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.10" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.10/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.10/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.10/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.9/lib/libpython3.9.dylib
+                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.10/include/python3.10/
+                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.10/lib/libpython3.10.dylib
+                pip3.10 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+            else
+                exit 1
+            fi
+        fi
+    else
+        if [ "$1" != "" ]; then
+            echo "using python abi: $1"
+            if [ "$1" == "cp36-cp36m" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.6.0/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.6.0/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.6.0/bin/python3
+                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.6.0/include/python3.6m
+                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.6.0/lib/libpython3.so
+                pip3.6 install -r ${PADDLE_ROOT}/python/requirements.txt
+            elif [ "$1" == "cp37-cp37m" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.7.0/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.7.0/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.7.0/bin/python3.7
+                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.7.0/include/python3.7m
+                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.7.0/lib/libpython3.so
+                pip3.7 install -r ${PADDLE_ROOT}/python/requirements.txt
+            elif [ "$1" == "cp38-cp38" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.8.0/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.8.0/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.8.0/bin/python3.8
+                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.8.0/include/python3.8
+                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.8.0/lib/libpython3.so
+                pip3.8 install -r ${PADDLE_ROOT}/python/requirements.txt
+            elif [ "$1" == "cp39-cp39" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.9.0/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.9.0/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.9.0/bin/python3.9
+                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.9.0/include/python3.9
+                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.9.0/lib/libpython3.so
+                pip3.9 install -r ${PADDLE_ROOT}/python/requirements.txt
+            elif [ "$1" == "cp310-cp310" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.10.0/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.10.0/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.10.0/bin/python3.10
+                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.10.0/include/python3.10
+                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.10.0/lib/libpython3.so
+                pip3.10 install -r ${PADDLE_ROOT}/python/requirements.txt
+           elif [ "$1" == "conda-python3.7" ]; then
+                export LD_LIBRARY_PATH=/opt/conda/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/conda/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export DPYTHON_EXECUTABLE=/opt/conda/bin/python
+                export PYTHON_INCLUDE_DIR=/opt/conda/include/python3.7m
+                export PYTHON_LIBRARIES=/opt/conda/lib/libpython3.so
+                /opt/conda/bin/pip install -r ${PADDLE_ROOT}/python/requirements.txt
+           fi
+        else
+            pip install -r ${PADDLE_ROOT}/python/requirements.txt
+        fi
+    fi
+
+    if [ "$SYSTEM" == "Darwin" ]; then
+        WITH_DISTRIBUTE="OFF"
+        WITH_AVX=${WITH_AVX:-ON}
+        WITH_ARM=${WITH_ARM:-OFF}
+        INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-~/.cache/inference_demo}
+    else
+        INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo}
+    fi
+
+    distibuted_flag=${WITH_DISTRIBUTE:-OFF}
+    gloo_flag=${distibuted_flag}
+
+    if [ "$CMD" != "assert_file_approvals" ];then
+      which python
+      python -V
+      python -m pip install distro
+      python ${PADDLE_ROOT}/tools/summary_env.py
+      bash ${PADDLE_ROOT}/tools/get_cpu_info.sh
+    fi
+    export CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
+    export WITH_GPU=${WITH_GPU:-OFF}
+    export WITH_TENSORRT=${WITH_TENSORRT:-ON}
+    export WITH_ROCM=${WITH_ROCM:-OFF}
+    export WITH_CINN=${WITH_CINN:-OFF}
+    export WITH_DISTRIBUTE=${distibuted_flag}
+    export WITH_MKL=${WITH_MKL:-ON}
+    export WITH_AVX=${WITH_AVX:-OFF}
+    export CUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
+    export NEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF} 
+    export NEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF}
+    export NEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF}
+    export WITH_PYTHON=${WITH_PYTHON:-ON}
+    export CUDNN_ROOT=/usr/
+    export WITH_TESTING=${WITH_TESTING:-ON}
+    export WITH_COVERAGE=${WITH_COVERAGE:-OFF}
+    export WITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF}
+    export CMAKE_MODULE_PATH=/opt/rocm/hip/cmake
+    export CMAKE_EXPORT_COMPILE_COMMANDS=ON
+    export WITH_CONTRIB=${WITH_CONTRIB:-ON}
+    export WITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
+    export WITH_INFRT=${WITH_INFRT:-OFF}
+    export INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
+    export PY_VERSION=${PY_VERSION:-3.7}
+    export CMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
+    export WITH_PSCORE=${distibuted_flag}
+    export WITH_PSLIB=${WITH_PSLIB:-OFF}
+    export WITH_GLOO=${gloo_flag}
+    export LITE_GIT_TAG=release/v2.10
+    export WITH_XPU=${WITH_XPU:-OFF}
+    export WITH_MLU=${WITH_MLU:-OFF}
+    export WITH_IPU=${WITH_IPU:-OFF}
+    export WITH_CNCL=${WITH_CNCL:-OFF}
+    export XPU_SDK_ROOT=${XPU_SDK_ROOT:-}
+    export WITH_LITE=${WITH_LITE:-OFF}
+    export WITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
+    export WITH_ARM=${WITH_ARM:-OFF}
+    export WITH_ASCEND=${WITH_ASCEND:-OFF}
+    export WITH_ASCEND_CL=${WITH_ASCEND_CL:-OFF}
+    export WITH_ASCEND_INT64=${WITH_ASCEND_INT64:-OFF}
+    export WITH_STRIP=${WITH_STRIP:-ON}
+    export ON_INFER=${ON_INFER:-OFF}
+    export WITH_HETERPS=${WITH_HETERPS:-OFF}
+    export WITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF}
+    export CUDA_ARCH_BIN=${CUDA_ARCH_BIN}
+    export WITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF}
+    export WITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
+    export WITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
+    export WITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
+
+    # reset ccache zero stats for collect PR's actual hit rate
+    ccache -z
+
+    python setup.py install;build_error=$?
+    
+    # ci will collect ccache hit rate
+    collect_ccache_hits
+
+    if [ "$build_error" != 0 ];then
+        exit 7;
+    fi
+
+}
 function main() {
-    local CMD=$1 
+    local CMD=$1
     local parallel_number=$2
     init
     case $CMD in
@@ -3473,7 +3715,6 @@ function main() {
         ;;
       build_and_check_gpu)
         set +e
-        set +x
         example_info_gpu=""
         example_code_gpu=0
         if [ "${WITH_GPU}" == "ON" ] ; then
@@ -3483,7 +3724,6 @@ function main() {
         example_info=$(exec_samplecode_test cpu)
         example_code=$?
         summary_check_problems $[${example_code_gpu} + ${example_code}] "${example_info_gpu}\n${example_info}"
-        set -x
         assert_api_spec_approvals
         ;;
       check_whl_size)
@@ -3571,11 +3811,16 @@ function main() {
         parallel_test
         check_coverage
         ;;
+      nv_cicheck_coverage)
+        parallel_test
+        nv_test
+        check_coverage
+        ;;
       check_coverage_build)
         check_coverage_build
         ;;
       ci_preciseTest)
-        insert_pile_to_h_cu_diff 
+        insert_pile_to_h_cu_diff
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         get_precise_tests_map_file
         ;;
@@ -3601,7 +3846,7 @@ function main() {
         #test_fluid_lib_train
         #go inference test
         test_go_inference_api
-        check_approvals_of_unittest 3 
+        check_approvals_of_unittest 3
         ;;
       build_inference)
         PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
@@ -3624,7 +3869,7 @@ function main() {
         ;;
       assert_file_approvals)
         assert_file_diff_approvals
-        ;; 
+        ;;
       maccheck)
         cmake_gen_and_build_mac ${PYTHON_ABI:-""}
         run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
@@ -3651,7 +3896,7 @@ function main() {
         parallel_test
         ;;
       build_gpubox)
-        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        run_setup ${PYTHON_ABI:-""} 
         ;;
       check_xpu)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}

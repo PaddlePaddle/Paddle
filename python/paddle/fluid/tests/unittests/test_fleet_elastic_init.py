@@ -19,9 +19,7 @@ from paddle.distributed.fleet.launch_utils import DistributeMode
 
 
 class TestElasticInit(unittest.TestCase):
-
     def setUp(self):
-
         class Argument:
             elastic_server = "127.0.0.1:2379"
             job_id = "test_job_id_123"

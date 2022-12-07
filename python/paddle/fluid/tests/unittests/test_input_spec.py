@@ -13,24 +13,25 @@
 # limitations under the License.
 
 import os
-import unittest
 import tempfile
+import unittest
+
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.static import InputSpec
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
-from paddle.fluid.dygraph.dygraph_to_static.utils import _compatible_non_tensor_spec
+from paddle.jit.dy2static.utils import _compatible_non_tensor_spec
+from paddle.static import InputSpec
 
 
 class TestInputSpec(unittest.TestCase):
-
     def test_default(self):
         tensor_spec = InputSpec([3, 4])
-        self.assertEqual(tensor_spec.dtype,
-                         convert_np_dtype_to_dtype_('float32'))
-        self.assertEqual(tensor_spec.name, None)
+        self.assertEqual(
+            tensor_spec.dtype, convert_np_dtype_to_dtype_('float32')
+        )
+        self.assertIsNone(tensor_spec.name)
 
     def test_from_tensor(self):
         x_bool = fluid.layers.fill_constant(shape=[1], dtype='bool', value=True)
@@ -45,15 +46,17 @@ class TestInputSpec(unittest.TestCase):
     def test_from_numpy(self):
         x_numpy = np.ones([10, 12])
         x_np_spec = InputSpec.from_numpy(x_numpy)
-        self.assertEqual(x_np_spec.dtype,
-                         convert_np_dtype_to_dtype_(x_numpy.dtype))
+        self.assertEqual(
+            x_np_spec.dtype, convert_np_dtype_to_dtype_(x_numpy.dtype)
+        )
         self.assertEqual(x_np_spec.shape, x_numpy.shape)
-        self.assertEqual(x_np_spec.name, None)
+        self.assertIsNone(x_np_spec.name)
 
         x_numpy2 = np.array([1, 2, 3, 4]).astype('int64')
         x_np_spec2 = InputSpec.from_numpy(x_numpy2, name='x_np_int64')
-        self.assertEqual(x_np_spec2.dtype,
-                         convert_np_dtype_to_dtype_(x_numpy2.dtype))
+        self.assertEqual(
+            x_np_spec2.dtype, convert_np_dtype_to_dtype_(x_numpy2.dtype)
+        )
         self.assertEqual(x_np_spec2.shape, x_numpy2.shape)
         self.assertEqual(x_np_spec2.name, 'x_np_int64')
 
@@ -84,7 +87,7 @@ class TestInputSpec(unittest.TestCase):
 
         # unbatch
         unbatch_spec = batch_tensor_spec.unbatch()
-        self.assertEqual(unbatch_spec.shape, (10, ))
+        self.assertEqual(unbatch_spec.shape, (10,))
 
         # 1. `unbatch` requires len(shape) > 1
         with self.assertRaises(ValueError):
@@ -116,9 +119,8 @@ class TestInputSpec(unittest.TestCase):
 
 
 class NetWithNonTensorSpec(paddle.nn.Layer):
-
     def __init__(self, in_num, out_num):
-        super(NetWithNonTensorSpec, self).__init__()
+        super().__init__()
         self.linear_1 = paddle.nn.Linear(in_num, out_num)
         self.bn_1 = paddle.nn.BatchNorm1D(out_num)
 
@@ -157,7 +159,6 @@ class NetWithNonTensorSpec(paddle.nn.Layer):
 
 
 class TestNetWithNonTensorSpec(unittest.TestCase):
-
     def setUp(self):
         self.in_num = 16
         self.out_num = 16
@@ -243,9 +244,8 @@ class TestNetWithNonTensorSpec(unittest.TestCase):
 
 
 class NetWithNonTensorSpecPrune(paddle.nn.Layer):
-
     def __init__(self, in_num, out_num):
-        super(NetWithNonTensorSpecPrune, self).__init__()
+        super().__init__()
         self.linear_1 = paddle.nn.Linear(in_num, out_num)
         self.bn_1 = paddle.nn.BatchNorm1D(out_num)
 
@@ -263,7 +263,6 @@ class NetWithNonTensorSpecPrune(paddle.nn.Layer):
 
 
 class TestNetWithNonTensorSpecWithPrune(unittest.TestCase):
-
     def setUp(self):
         self.in_num = 16
         self.out_num = 16
@@ -311,7 +310,6 @@ class TestNetWithNonTensorSpecWithPrune(unittest.TestCase):
 
 
 class UnHashableObject:
-
     def __init__(self, val):
         self.val = val
 
@@ -320,7 +318,6 @@ class UnHashableObject:
 
 
 class TestCompatibleNonTensorSpec(unittest.TestCase):
-
     def test_case(self):
         self.assertTrue(_compatible_non_tensor_spec([1, 2, 3], [1, 2, 3]))
         self.assertFalse(_compatible_non_tensor_spec([1, 2, 3], [1, 2]))
@@ -328,8 +325,10 @@ class TestCompatibleNonTensorSpec(unittest.TestCase):
 
         # not supported unhashable object.
         self.assertTrue(
-            _compatible_non_tensor_spec(UnHashableObject(1),
-                                        UnHashableObject(1)))
+            _compatible_non_tensor_spec(
+                UnHashableObject(1), UnHashableObject(1)
+            )
+        )
 
 
 if __name__ == '__main__':

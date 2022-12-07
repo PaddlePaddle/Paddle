@@ -13,11 +13,11 @@
 # limitations under the License
 
 import copy
+
 from . import constants
 
 
-class BaseConfig(object):
-
+class BaseConfig:
     def __init__(self, category, config_dict=None):
         self._category = category
         self._config_dict = None
@@ -27,7 +27,9 @@ class BaseConfig(object):
             else:
                 raise ValueError(
                     "Expected a dictionary. But received: {}".format(
-                        config_dict))
+                        config_dict
+                    )
+                )
         # Initialize attributes by the default config
         config = constants.get_category_default_config(self._category)
         for field, default_value in config.items():
@@ -73,52 +75,45 @@ class BaseConfig(object):
 
 
 class RecomputeConfig(BaseConfig):
-
     def __init__(self, config_dict=None):
         category = constants.RECOMPUTE
-        super(RecomputeConfig, self).__init__(category, config_dict)
+        super().__init__(category, config_dict)
 
 
 class AMPConfig(BaseConfig):
-
     def __init__(self, config_dict=None):
         category = constants.AMP
-        super(AMPConfig, self).__init__(category, config_dict)
+        super().__init__(category, config_dict)
 
 
 class ShardingConfig(BaseConfig):
-
     def __init__(self, config_dict=None):
         category = constants.SHARDING
-        super(ShardingConfig, self).__init__(category, config_dict)
+        super().__init__(category, config_dict)
 
 
 class GradientMergeConfig(BaseConfig):
-
     def __init__(self, config_dict=None):
         category = constants.GRADIENT_MERGE
-        super(GradientMergeConfig, self).__init__(category, config_dict)
+        super().__init__(category, config_dict)
 
 
 class QATConfig(BaseConfig):
-
     def __init__(self, config_dict=None):
         category = constants.QAT
-        super(QATConfig, self).__init__(category, config_dict)
+        super().__init__(category, config_dict)
 
 
 class TuningConfig(BaseConfig):
-
     def __init__(self, config_dict=None):
         category = constants.TUNING
-        super(TuningConfig, self).__init__(category, config_dict)
+        super().__init__(category, config_dict)
 
 
 class DatasetConfig(BaseConfig):
-
     def __init__(self, config_dict=None):
         category = constants.DATASET
-        super(DatasetConfig, self).__init__(category, config_dict)
+        super().__init__(category, config_dict)
 
 
 class Strategy(BaseConfig):
@@ -161,12 +156,13 @@ class Strategy(BaseConfig):
             #         self._config_dict = yaml.load(yaml_file, Loader=yaml.Loader)
             else:
                 raise ValueError(
-                    "Expected a dictionary. But received: {}".format(config))
+                    "Expected a dictionary. But received: {}".format(config)
+                )
         else:
             self._config_dict = {}
 
         category = constants.BASE
-        super(Strategy, self).__init__(category, self._config_dict)
+        super().__init__(category, self._config_dict)
 
         config_dict = self._config_dict.get(constants.RECOMPUTE, None)
         self.recompute = RecomputeConfig(config_dict)

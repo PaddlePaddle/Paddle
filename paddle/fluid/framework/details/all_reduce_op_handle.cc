@@ -131,7 +131,7 @@ void AllReduceOpHandle::AllReduceImpl(
         var,
         platform::errors::NotFound("Variable %s is not found in local scope.",
                                    in_var_handles[i]->name()));
-    auto &lod_tensor = var->Get<LoDTensor>();
+    auto &lod_tensor = var->Get<phi::DenseTensor>();
 
     if (i == 0) {
       numel = static_cast<int64_t>(lod_tensor.numel());
@@ -246,7 +246,7 @@ void AllReduceOpHandle::AllReduceFunc(
   } else {  // Special handle CPU only Operator's gradient. Like CRF
     auto &trg = *local_exec_scopes_[0]
                      ->FindVar(out_var_names[0])
-                     ->GetMutable<LoDTensor>();
+                     ->GetMutable<phi::DenseTensor>();
 
     // Reduce All phi::DenseTensor to trg in CPU
     ReduceBufferData func(lod_tensor_data, trg.data(), numel);

@@ -13,22 +13,22 @@
 # limitations under the License.
 
 import unittest
-import paddle
 
 from test_collective_base import TestDistBase
+
+import paddle
 
 paddle.enable_static()
 
 
 class TestCWaitOp(TestDistBase):
-
     def _setup_config(self):
         pass
 
     def test_allreduce_wait(self):
-        self.check_with_place("collective_allreduce_op_wait.py",
-                              "allreduce",
-                              check_error_log=True)
+        self.check_with_place(
+            "collective_allreduce_op_wait.py", "allreduce", check_error_log=True
+        )
 
 
 if __name__ == '__main__':

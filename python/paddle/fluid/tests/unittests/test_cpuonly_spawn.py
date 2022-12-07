@@ -15,15 +15,14 @@
 import unittest
 
 import paddle
+import paddle.distributed as dist
 import paddle.nn as nn
 import paddle.optimizer as opt
-import paddle.distributed as dist
 
 
 class LinearNet(nn.Layer):
-
     def __init__(self):
-        super(LinearNet, self).__init__()
+        super().__init__()
         self._linear1 = nn.Linear(10, 10)
         self._linear2 = nn.Linear(10, 1)
 
@@ -58,7 +57,6 @@ def train(print_result=False):
 
 
 class TestSpawn(unittest.TestCase):
-
     def test_spawn(self):
         dist.spawn(train, backend='gloo', nprocs=4)
 

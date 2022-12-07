@@ -209,7 +209,7 @@ class GradOpBaseMakerBase {
   const NameVarBaseMap& var_base_map_in_;
   const NameVarBaseMap& var_base_map_out_;
   const framework::AttributeMap& attrs_;
-  const framework::AttributeMap* default_attrs_;
+  const framework::AttributeMap* default_attrs_ = nullptr;
   const std::map<std::string, std::string>& inplace_map_;
 };
 
@@ -237,7 +237,7 @@ class TracedGradOp {
 
     if (kRole == TracedVarRole::kBackward) {
       for (auto& var : vars) {
-        VLOG(6) << "SetIutput var name: " << var->Name();
+        VLOG(6) << "SetInput var name: " << var->Name();
         if (var && !var->OverridedStopGradient()) {
           var->SetGraphIsFreed(false);
           auto dirty_grad_node = var->GradNode();
@@ -269,8 +269,8 @@ class TracedGradOp {
         return;
       } else {
         for (auto& var : vars) {
-          VLOG(6) << "SetOutput var name: " << var->Name();
           if (var && !var->OverridedStopGradient() && var->GradNode()) {
+            VLOG(6) << "SetOutput var name: " << var->Name();
             if (map_dirty_grad_node_.find(var) != map_dirty_grad_node_.end()) {
               // Because inplace var isn't a leaf var, it should have
               // dirty_grad_node.
@@ -283,8 +283,6 @@ class TracedGradOp {
               // the var with `stop_gradient=True` to the var with
               // `stop_gradient=False`.
               node_->InsertGradPendingNode(var->GradNode());
-              VLOG(6) << (*node_.get())[0].Type() << " insertGradPendingNode "
-                      << (*(var->GradNode().get()))[0].Type();
             }
           }
         }
@@ -353,7 +351,7 @@ class TracedGradOp {
 
   // Get a snapshot of VariableWrapper at a certain inplace version.
   // The inplace version number of VariableWrapper is used for inplace
-  // detection in gradient compution.
+  // detection in gradient computation.
   static const std::shared_ptr<VariableWrapper> SnapshotVarWrapper(
       const std::shared_ptr<VariableWrapper>& var_wrapper) {
     // NOTE(liym27):

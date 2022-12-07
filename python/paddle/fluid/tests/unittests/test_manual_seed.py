@@ -14,13 +14,13 @@
 
 import unittest
 
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-import numpy as np
 
 
 class TestManualSeed(unittest.TestCase):
-
     def test_seed(self):
         fluid.enable_dygraph()
 

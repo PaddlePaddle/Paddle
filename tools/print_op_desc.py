@@ -42,9 +42,10 @@ Usage:
     python print_op_desc.py > op_desc.spec
 """
 
+import json
+
 import paddle.fluid.framework as framework
 from paddle.fluid import core
-import json
 
 INPUTS = "Inputs"
 OUTPUTS = "Outputs"
@@ -87,8 +88,11 @@ def get_attrs_info(op_proto, op_attrs_proto):
         attrs_info[attr_name] = {}
         attrs_info[attr_name][TYPE] = attr_proto.type
         attrs_info[attr_name][GENERATED] = attr_proto.generated
-        attrs_info[attr_name][DEFAULT_VALUE] = attrs_default_values[
-            attr_name] if attr_name in attrs_default_values else None
+        attrs_info[attr_name][DEFAULT_VALUE] = (
+            attrs_default_values[attr_name]
+            if attr_name in attrs_default_values
+            else None
+        )
         attrs_info[attr_name][EXTRA] = attr_proto.extra
         attrs_info[attr_name][QUANT] = attr_proto.quant
     return attrs_info

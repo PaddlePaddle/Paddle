@@ -69,9 +69,7 @@ void LogsumexpKernel(const Context& dev_ctx,
                      DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
 
-  const auto& input_dim_size = x.dims().size();
-  // The dims has full dim, set the reduce_all is True
-  reduce_all |= (static_cast<const int>(axis.size()) == input_dim_size);
+  reduce_all = recompute_reduce_all(x, axis, reduce_all);
 
   if (reduce_all) {
     // Flatten and reduce 1-D tensor
@@ -81,7 +79,7 @@ void LogsumexpKernel(const Context& dev_ctx,
     auto reduce_dim = Eigen::array<int, 1>({{0}});
     LogsumexpFunctor<T>()(place, &input, &output, reduce_dim);
   } else {
-    int ndim = input_dim_size;
+    int ndim = x.dims().size();
     int rdim = axis.size();
     if (ndim > 4) {
       PADDLE_THROW(phi::errors::Unimplemented(

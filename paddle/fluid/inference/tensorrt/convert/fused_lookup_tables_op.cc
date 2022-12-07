@@ -66,7 +66,7 @@ class FusedLookupTablesOpConverter : public OpConverter {
 
     TensorRTEngine::Weight weight;
     auto* w_var = scope.FindVar(w_name);
-    auto* w_tensor = w_var->GetMutable<framework::LoDTensor>();
+    auto* w_tensor = w_var->GetMutable<phi::DenseTensor>();
     auto w_dims = w_tensor->dims();
     weight = engine_->GetTrtWeight(w_name, *w_tensor);
     auto weight_size = phi::product(w_dims);

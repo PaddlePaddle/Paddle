@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
+from test_dist_sparse_tensor_load_sgd import TestSparseLoadProgram
+
 import paddle
 import paddle.fluid as fluid
 from paddle.distributed.fleet import fleet
-from test_dist_sparse_tensor_load_sgd import TestSparseLoadProgram
 
 
 class TestSparseLoadProgramRmsprop(TestSparseLoadProgram):
@@ -29,8 +31,9 @@ class TestSparseLoadProgramRmsprop(TestSparseLoadProgram):
         with fluid.scope_guard(scope):
             with fluid.program_guard(train_program, startup_program):
                 optimizer = fluid.optimizer.SGD(1e-3)
-                optimizer = fleet.distributed_optimizer(optimizer,
-                                                        self.strategy)
+                optimizer = fleet.distributed_optimizer(
+                    optimizer, self.strategy
+                )
                 optimizer.minimize(loss)
                 fleet.init_server()
 

@@ -13,17 +13,16 @@
 # limitations under the License.
 
 import unittest
-import paddle
+
+from fleet_meta_optimizer_base import TestFleetMetaOptimizer
 
 import paddle
 import paddle.fluid as fluid
-from fleet_meta_optimizer_base import TestFleetMetaOptimizer
 
 paddle.enable_static()
 
 
 class TestFleetLocalSGDMetaOptimizer(TestFleetMetaOptimizer):
-
     def test_localsgd_optimizer(self):
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
@@ -32,7 +31,8 @@ class TestFleetLocalSGDMetaOptimizer(TestFleetMetaOptimizer):
 
         ops = [op.type for op in avg_cost.block.ops]
         outs = [
-            ''.join(op.output('Out')) for op in avg_cost.block.ops
+            ''.join(op.output('Out'))
+            for op in avg_cost.block.ops
             if op.type == 'conditional_block'
         ]
 
@@ -48,7 +48,8 @@ class TestFleetLocalSGDMetaOptimizer(TestFleetMetaOptimizer):
 
         ops = [op.type for op in avg_cost.block.ops]
         outs = [
-            ''.join(op.output('Out')) for op in avg_cost.block.ops
+            ''.join(op.output('Out'))
+            for op in avg_cost.block.ops
             if op.type == 'conditional_block'
         ]
 
@@ -61,7 +62,6 @@ class TestFleetLocalSGDMetaOptimizer(TestFleetMetaOptimizer):
 
 
 class TestFleetAdaptiveLocalSGDMetaOptimizer(TestFleetMetaOptimizer):
-
     def test_adaptive_localsgd_optimizer(self):
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
@@ -70,7 +70,8 @@ class TestFleetAdaptiveLocalSGDMetaOptimizer(TestFleetMetaOptimizer):
 
         ops = [op.type for op in avg_cost.block.ops]
         outs = [
-            ''.join(op.output('Out')) for op in avg_cost.block.ops
+            ''.join(op.output('Out'))
+            for op in avg_cost.block.ops
             if op.type == 'conditional_block'
         ]
 
@@ -86,7 +87,8 @@ class TestFleetAdaptiveLocalSGDMetaOptimizer(TestFleetMetaOptimizer):
 
         ops = [op.type for op in avg_cost.block.ops]
         outs = [
-            ''.join(op.output('Out')) for op in avg_cost.block.ops
+            ''.join(op.output('Out'))
+            for op in avg_cost.block.ops
             if op.type == 'conditional_block'
         ]
 

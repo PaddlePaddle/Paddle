@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid import core
-from paddle.fluid import framework
-from paddle.fluid.backward import gradients_with_optimizer  # noqa: F401
 import paddle
+from paddle.fluid import core, framework
+from paddle.fluid.backward import gradients_with_optimizer  # noqa: F401
 
 __all__ = []
 
@@ -83,15 +82,13 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
             assert len(in_out_list) > 0, "{} connot be empyt".format(name)
             for each_var in in_out_list:
                 assert isinstance(
-                    each_var,
-                    (paddle.Tensor, core.eager.Tensor
-                     )), "Elements of {} must be paddle.Tensor".format(name)
+                    each_var, (paddle.Tensor, core.eager.Tensor)
+                ), "Elements of {} must be paddle.Tensor".format(name)
             return in_out_list
         else:
             assert isinstance(
-                in_out_list,
-                (paddle.Tensor, core.eager.Tensor
-                 )), "{} must be Tensor or list of Tensor".format(name)
+                in_out_list, (paddle.Tensor, core.eager.Tensor)
+            ), "{} must be Tensor or list of Tensor".format(name)
             return [in_out_list]
 
     tensors = check_tensors(tensors, "tensors")
@@ -117,12 +114,14 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
 
     if len(grad_tensors) > 0:
         assert len(tensors) == len(
-            grad_tensors), "The length of grad_tensors must be equal to tensors"
+            grad_tensors
+        ), "The length of grad_tensors must be equal to tensors"
 
     assert isinstance(retain_graph, bool), "retain_graph must be True or False"
 
     if framework._in_eager_mode_:
         core.eager.run_backward(tensors, grad_tensors, retain_graph)
     else:
-        core.dygraph_run_backward(tensors, grad_tensors, retain_graph,
-                                  framework._dygraph_tracer())
+        core.dygraph_run_backward(
+            tensors, grad_tensors, retain_graph, framework._dygraph_tracer()
+        )

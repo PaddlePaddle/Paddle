@@ -127,7 +127,7 @@ namespace ops = paddle::operators;
 
 DECLARE_INFER_SHAPE_FUNCTOR(graph_send_recv,
                             GraphSendRecvInferShapeFunctor,
-                            PD_INFER_META(phi::GraphSendRecvInferMeta));
+                            PD_INFER_META(phi::SendURecvInferMeta));
 REGISTER_OPERATOR(graph_send_recv,
                   ops::GraphSendRecvOP,
                   ops::GraphSendRecvOpMaker,

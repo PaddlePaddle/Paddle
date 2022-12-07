@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 
 class TestCreateGlobalVarError(unittest.TestCase):
-
     def test_errors(self):
         with program_guard(Program(), Program()):
 

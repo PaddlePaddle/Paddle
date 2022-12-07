@@ -13,21 +13,22 @@
 # limitations under the License.
 
 import unittest
-import paddle
 
 from test_collective_api_base import TestDistBase
+
+import paddle
 
 paddle.enable_static()
 
 
 class TestCollectiveAllreduceAPI(TestDistBase):
-
     def _setup_config(self):
         pass
 
     def test_allreduce_nccl(self):
-        self.check_with_place("collective_allreduce_new_group_api.py",
-                              "allreduce", "nccl")
+        self.check_with_place(
+            "collective_allreduce_new_group_api.py", "allreduce", "nccl"
+        )
 
 
 if __name__ == '__main__':

@@ -169,8 +169,6 @@ void SetConfig(AnalysisConfig *cfg, bool use_mkldnn = false) {
   }
   if (use_mkldnn) {
     cfg->EnableMKLDNN();
-    cfg->pass_builder()->AppendPass("fc_mkldnn_pass");
-    cfg->pass_builder()->AppendPass("fc_act_mkldnn_fuse_pass");
   }
   // Enable seqpool_concat_fuse_pass, disabled by default since it takes much
   // time

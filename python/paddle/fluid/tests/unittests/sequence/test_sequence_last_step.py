@@ -11,17 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import sys
+import unittest
+
+import numpy as np
+
 import paddle.fluid as fluid
 from paddle.fluid.framework import Program, program_guard
-import numpy as np
-import unittest
-import sys
 
 sys.path.append("../")
 
 
 class TestSequenceLastStepOpError(unittest.TestCase):
-
     def test_errors(self):
         with program_guard(Program(), Program()):
 
@@ -34,11 +35,13 @@ class TestSequenceLastStepOpError(unittest.TestCase):
 
             def test_input_dtype():
                 # the dtype of input must be int64
-                type_data = fluid.layers.data(name='type_data',
-                                              shape=[7, 1],
-                                              append_batch_size=False,
-                                              dtype='int64',
-                                              lod_level=1)
+                type_data = fluid.layers.data(
+                    name='type_data',
+                    shape=[7, 1],
+                    append_batch_size=False,
+                    dtype='int64',
+                    lod_level=1,
+                )
                 fluid.layers.sequence_last_step(type_data)
 
             self.assertRaises(TypeError, test_input_dtype)

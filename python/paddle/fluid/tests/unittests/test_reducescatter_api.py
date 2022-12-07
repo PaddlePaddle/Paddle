@@ -13,16 +13,16 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid as fluid
-import paddle
 
 from test_collective_base import TestDistBase
+
+import paddle
+import paddle.fluid as fluid
 
 paddle.enable_static()
 
 
 class TestReduceScatterAPI(TestDistBase):
-
     def _setup_config(self):
         pass
 

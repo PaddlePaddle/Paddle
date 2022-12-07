@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
 
@@ -30,7 +31,6 @@ def dequantize_log(x, dict_data):
 
 
 class TestDequantizeLogOp(OpTest):
-
     def setUp(self):
         self.op_type = "dequantize_log"
         x = np.random.randint(low=-128, high=127, size=(20, 10)).astype('int8')
@@ -39,7 +39,7 @@ class TestDequantizeLogOp(OpTest):
 
         self.inputs = {
             'X': np.array(x).astype('int8'),
-            'Dict': np.array(dict_data).astype('float32')
+            'Dict': np.array(dict_data).astype('float32'),
         }
         self.outputs = {'Out': xdq}
 

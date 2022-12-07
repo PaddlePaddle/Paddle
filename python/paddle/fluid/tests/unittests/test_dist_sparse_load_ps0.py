@@ -13,19 +13,20 @@
 # limitations under the License.
 
 import os
-import unittest
-import numpy as np
-import tempfile
 import shutil
+import tempfile
+import unittest
+
+import numpy as np
+
 import paddle
-import paddle.fluid as fluid
 import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.fluid as fluid
 from paddle.distributed.fleet import fleet
 
 
 class SparseLoadOp(unittest.TestCase):
-    """ Test load operator.
-    """
+    """Test load operator."""
 
     def net(self, emb_array, fc_array):
         with fluid.unique_name.guard():
@@ -38,7 +39,9 @@ class SparseLoadOp(unittest.TestCase):
                 param_attr=fluid.ParamAttr(
                     name="embedding",
                     initializer=fluid.initializer.NumpyArrayInitializer(
-                        emb_array)),
+                        emb_array
+                    ),
+                ),
             )
 
             fc1 = fluid.layers.fc(
@@ -48,8 +51,11 @@ class SparseLoadOp(unittest.TestCase):
                 param_attr=fluid.ParamAttr(
                     name='fc',
                     initializer=fluid.initializer.NumpyArrayInitializer(
-                        fc_array)))
-            loss = fluid.layers.reduce_mean(fc1)
+                        fc_array
+                    ),
+                ),
+            )
+            loss = paddle.mean(fc1)
         return loss
 
     def save_origin_model(self, emb_array, fc_array):
@@ -64,13 +70,14 @@ class SparseLoadOp(unittest.TestCase):
                 exe = fluid.Executor(fluid.CPUPlace())
                 exe.run(startup_program)
                 model_path = tempfile.mkdtemp()
-                fluid.io.save_persistables(executor=exe, dirname=model_path)
+                paddle.distributed.io.save_persistables(
+                    executor=exe, dirname=model_path
+                )
         return model_path
 
 
 @unittest.skip(reason="Skip unstable ut, need rewrite with new implement")
 class TestSparseLoadOpCase1(SparseLoadOp):
-
     def test_2ps_0_load(self):
         # init No.0 server env
         env = {}
@@ -110,7 +117,8 @@ class TestSparseLoadOpCase1(SparseLoadOp):
         fc_w = np.array(fluid.global_scope().find_var("fc").get_tensor())
 
         emb = np.array(
-            fluid.global_scope().find_var("embedding.block0").get_tensor())
+            fluid.global_scope().find_var("embedding.block0").get_tensor()
+        )
 
         assert fc_w.all() == fc_array.all()
         assert emb.all() == emb_array[::2].all()

@@ -42,6 +42,7 @@ extern void *nvtx_dso_handle;
 
 #define NVTX_ROUTINE_EACH(__macro) \
   __macro(nvtxRangePushA);         \
+  __macro(nvtxRangePushEx);        \
   __macro(nvtxRangePop);
 
 NVTX_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_NVTX_WRAP);

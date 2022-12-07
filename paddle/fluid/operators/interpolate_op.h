@@ -25,8 +25,7 @@ template <typename T,
           size_t D,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
-using Tensor = phi::DenseTensor;
+using EigenTensor = phi::EigenTensor<T, D, MajorType, IndexType>;
 using DataLayout = phi::DataLayout;
 
 inline std::vector<int> get_new_shape(
@@ -502,7 +501,7 @@ HOSTDEVICE inline T cubic_convolution2(T x, T A) {
 
 template <typename T>
 HOSTDEVICE inline void get_cubic_upsample_coefficients(T coeffs[4], T t) {
-  T A = -0.75;
+  T A = static_cast<T>(-0.75);
 
   T x1 = t;
   coeffs[0] = cubic_convolution2<T>(x1 + 1.0, A);
@@ -1344,7 +1343,7 @@ static void Interpolate2DCPUBwd(const framework::ExecutionContext& ctx,
 template <typename T>
 static void Interpolate3DCPUBwd(const framework::ExecutionContext& ctx,
                                 phi::DenseTensor* input_grad,
-                                const Tensor output_grad) {
+                                const phi::DenseTensor output_grad) {
   auto* input = ctx.Input<phi::DenseTensor>("X");
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
   const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);

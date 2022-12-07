@@ -13,12 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
 
 
 class TestProximalGDOp(OpTest):
-
     def setUp(self):
         self.op_type = "proximal_gd"
         w = np.random.random((102, 105)).astype("float32")

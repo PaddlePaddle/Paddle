@@ -55,7 +55,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
-#include "paddle/fluid/framework/save_load_util.h"
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -457,7 +456,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
 #ifdef PADDLE_WITH_XPU_KP
   m.def("get_xpu_device_op_support_types",
         [](const std::string &op_name, phi::backends::xpu::XPUVersion version) {
-          return platform::get_xpu_kp_op_support_type(op_name, version);
+          return platform::get_xpu_op_support_type(op_name, version);
         });
 #else
   m.def("get_xpu_device_op_support_types",
@@ -554,8 +553,11 @@ void BindPlace(pybind11::module &m) {  // NOLINT
 
     Examples:
         .. code-block:: python
+
+          # required: npu
+
           import paddle
-          npu_place = paddle.NPUPlace(0)
+          place = paddle.NPUPlace(0)
 
         )DOC");
   g_npuplace_pytype = reinterpret_cast<PyTypeObject *>(npuplace.ptr());

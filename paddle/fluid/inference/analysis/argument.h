@@ -42,8 +42,6 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-using framework::ir::Graph;
-
 #ifdef PADDLE_WITH_MKLDNN
 using VarQuantScale =
     std::unordered_map<std::string, std::pair<bool, phi::DenseTensor>>;
@@ -141,6 +139,7 @@ struct Argument {
   unique_ptr_t field__##_;
 
   DECL_ARGUMENT_FIELD(predictor_id, PredictorID, int);
+  DECL_ARGUMENT_FIELD(root_predictor_id, RootPredictorID, int);
   // Model path
   DECL_ARGUMENT_FIELD(model_dir, ModelDir, std::string);
   // Model specified with program and parameters files.
@@ -148,7 +147,10 @@ struct Argument {
   DECL_ARGUMENT_FIELD(model_params_path, ModelParamsPath, std::string);
   DECL_ARGUMENT_FIELD(model_from_memory, ModelFromMemory, bool);
   DECL_ARGUMENT_FIELD(optim_cache_dir, OptimCacheDir, std::string);
-  DECL_ARGUMENT_FIELD(enable_analysis_optim, EnableAnalysisOptim, bool);
+  DECL_ARGUMENT_FIELD(enable_ir_optim, EnableIrOptim, bool);
+
+  // For JITLayer
+  DECL_ARGUMENT_FIELD(skip_load_params, SkipLoadParams, bool);
 
   // The overall graph to work on.
   DECL_ARGUMENT_UNIQUE_FIELD(main_graph, MainGraph, framework::ir::Graph);
@@ -285,6 +287,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(xpu_precision, XpuPrecision, std::string);
   DECL_ARGUMENT_FIELD(xpu_adaptive_seqlen, XpuAdaptiveSeqlen, bool);
   DECL_ARGUMENT_FIELD(xpu_device_id, XpuDeviceId, int);
+  DECL_ARGUMENT_FIELD(xpu_enable_multi_stream, XpuEnableMultiStream, bool);
+
+  DECL_ARGUMENT_FIELD(use_opencl, UseOpenCL, bool);
 
   DECL_ARGUMENT_FIELD(use_nnadapter, UseNNAdapter, bool);
   DECL_ARGUMENT_FIELD(nnadapter_model_cache_dir,
@@ -347,6 +352,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(ipu_custom_patterns,
                       IpuCustomPatterns,
                       std::vector<std::vector<std::string>>);
+  DECL_ARGUMENT_FIELD(ipu_enable_model_runtime_executor,
+                      IpuEnableModelRuntimeExecutor,
+                      bool);
 
   // npu related
   DECL_ARGUMENT_FIELD(use_npu, UseNpu, bool);
@@ -357,6 +365,8 @@ struct Argument {
   DECL_ARGUMENT_FIELD(mixed_black_list,
                       MixedBlackList,
                       std::unordered_set<std::string>);
+  DECL_ARGUMENT_FIELD(enable_gpu_half, EnableGPUHalf, bool);
+  DECL_ARGUMENT_FIELD(mixed_precision_mode, MixedPrecisionMode, int);
 
  private:
   std::unordered_set<std::string> valid_fields_;

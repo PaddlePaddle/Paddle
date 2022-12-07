@@ -20,7 +20,10 @@ import sys
 
 sys.path.append("..")
 
-from paddle.fluid.tests.unittests.op_test import OpTest, _set_use_system_allocator
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    _set_use_system_allocator,
+)
 
 from test_sync_batch_norm_base_npu import TestDistBase
 
@@ -29,15 +32,14 @@ paddle.enable_static()
 
 
 class TestSyncBatchNormOp(TestDistBase):
-
     def _setup_config(self):
         pass
 
     def test_identity(self, col_type="identity"):
         dist_env = os.environ
-        self.check_with_place("sync_batch_norm_op_npu.py",
-                              col_type,
-                              need_envs=dist_env)
+        self.check_with_place(
+            "sync_batch_norm_op_npu.py", col_type, need_envs=dist_env
+        )
 
 
 if __name__ == '__main__':

@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import paddle
+import paddle.distributed.communication.stream as stream
 import paddle.fluid.framework as framework
-from paddle.distributed.communication import stream as stream
 from paddle.distributed.communication.reduce import ReduceOp
 
 
@@ -58,30 +58,30 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, sync_op=True):
             # [[5, 7, 9], [5, 7, 9]] (2 GPUs)
     """
     if not framework._in_legacy_dygraph():
-        return stream.all_reduce(tensor,
-                                 op=op,
-                                 group=group,
-                                 sync_op=sync_op,
-                                 use_calc_stream=False)
+        return stream.all_reduce(
+            tensor, op=op, group=group, sync_op=sync_op, use_calc_stream=False
+        )
 
     # code below will be removed after we remove the old dygraph
+    if group is not None and not group.is_member():
+        return
     use_calc_stream = sync_op
     ring_id = 0 if group is None else group.id
     if op == ReduceOp.SUM:
-        return paddle._legacy_C_ops.c_allreduce_sum_(tensor, 'use_calc_stream',
-                                                     use_calc_stream, 'ring_id',
-                                                     ring_id)
+        return paddle._legacy_C_ops.c_allreduce_sum_(
+            tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id
+        )
     elif op == ReduceOp.MAX:
-        return paddle._legacy_C_ops.c_allreduce_max_(tensor, 'use_calc_stream',
-                                                     use_calc_stream, 'ring_id',
-                                                     ring_id)
+        return paddle._legacy_C_ops.c_allreduce_max_(
+            tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id
+        )
     elif op == ReduceOp.MIN:
-        return paddle._legacy_C_ops.c_allreduce_min_(tensor, 'use_calc_stream',
-                                                     use_calc_stream, 'ring_id',
-                                                     ring_id)
+        return paddle._legacy_C_ops.c_allreduce_min_(
+            tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id
+        )
     elif op == ReduceOp.PROD:
-        return paddle._legacy_C_ops.c_allreduce_prod_(tensor, 'use_calc_stream',
-                                                      use_calc_stream,
-                                                      'ring_id', ring_id)
+        return paddle._legacy_C_ops.c_allreduce_prod_(
+            tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id
+        )
     else:
         raise ValueError("Unknown parameter: {}.".format(op))

@@ -102,9 +102,13 @@ class AnalysisPredictor : public PaddlePredictor {
   explicit AnalysisPredictor(const AnalysisConfig &config) : config_(config) {
     if (config_.shape_range_info_collected()) {
       config_.SwitchIrOptim(false);
-      config_.EnableMemoryOptim(false);
     }
-    predictor_id_ = inference::GetUniqueId();
+    auto trt_identifier = config_.trt_engine_memory_sharing_identifier_;
+    if (trt_identifier > 0) {
+      predictor_id_ = -trt_identifier;
+    } else {
+      predictor_id_ = inference::GetUniqueId();
+    }
   }
   ///
   /// \brief Destroy the Analysis Predictor object
@@ -143,13 +147,13 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \return input names
   ///
-  std::vector<std::string> GetInputNames();
+  std::vector<std::string> GetInputNames() override;
   ///
   /// \brief Get the output names
   ///
   /// \return output names
   ///
-  std::vector<std::string> GetOutputNames();
+  std::vector<std::string> GetOutputNames() override;
 
   ///
   /// \brief Get the Input Tensor object
@@ -227,7 +231,7 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \brief Clear the intermediate tensors of the predictor
   ///
   ///
-  void ClearIntermediateTensor();
+  void ClearIntermediateTensor() override;
 
   ///
   /// \brief Release all tmp tensor to compress the size of the memory pool.
@@ -271,6 +275,16 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \return the serialized program
   ///
   std::string GetSerializedProgram() const override;
+
+  ///
+  /// \brief Register a output hook function to operate the intermediate tensor
+  /// of op output. when using this function, memory reuse should be tured off.
+  /// The hook function signature is void(const std::string&, const
+  /// std::string&, const Tensor&>). Here, the first parameter is op's
+  /// type, the second param is output var name of the op, and the third
+  /// parameter is output tensor with the var name.
+  ///
+  void RegisterOutputHook(const Exp_OutputHookFunc &hookfunc) override;
 
   ///
   /// \brief Initialize mkldnn quantizer and execute mkldnn quantization pass
@@ -382,7 +396,7 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   void MkldnnPostReset();
 
-#if PADDLE_WITH_TENSORRT
+#ifdef PADDLE_WITH_TENSORRT
   ///
   /// \brief save calibration table
   ///
@@ -508,8 +522,11 @@ class AnalysisPredictor : public PaddlePredictor {
   int need_collect_var_shapes_{-1};  // -1 for default, 0 for false, 1 for true.
   std::vector<std::map<std::string, std::vector<int>>> batch_var_shapes_;
   int predictor_id_;
+  int root_predictor_id_{-1};
 
  private:
+  std::vector<Exp_OutputHookFunc> hookfuncs_;
+
   // Some status here that help to determine the status inside the predictor.
   bool status_is_cloned_{false};
 

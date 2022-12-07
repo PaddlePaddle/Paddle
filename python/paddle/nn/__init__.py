@@ -15,8 +15,8 @@
 # TODO: import all neural network related api under this directory,
 # including layers, linear, conv, rnn etc.
 from ..fluid.dygraph.layers import Layer  # noqa: F401
-from ..fluid.dygraph.container import LayerList  # noqa: F401
-from ..fluid.dygraph.container import ParameterList  # noqa: F401
+from .layer.container import LayerList  # noqa: F401
+from .layer.container import ParameterList  # noqa: F401
 from ..fluid.dygraph.container import Sequential  # noqa: F401
 
 from .clip import ClipGradByGlobalNorm  # noqa: F401
@@ -163,35 +163,41 @@ from . import quant  # noqa: F401
 import paddle.utils.deprecated as deprecated
 
 
-@deprecated(since="2.0.0",
-            update_to="paddle.nn.funcitional.diag_embed",
-            level=1,
-            reason="diag_embed in paddle.nn will be removed in future")
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.nn.funcitional.diag_embed",
+    level=1,
+    reason="diag_embed in paddle.nn will be removed in future",
+)
 def diag_embed(*args):
     '''
-        alias name of paddle.nn.functional.diag_embed
+    alias name of paddle.nn.functional.diag_embed
     '''
     return functional.diag_embed(*args)
 
 
-@deprecated(since="2.0.0",
-            update_to="paddle.nn.utils.remove_weight_norm",
-            level=1,
-            reason="remove_weight_norm in paddle.nn will be removed in future")
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.nn.utils.remove_weight_norm",
+    level=1,
+    reason="remove_weight_norm in paddle.nn will be removed in future",
+)
 def remove_weight_norm(*args):
     '''
-        alias name of paddle.nn.utils.remove_weight_norm
+    alias name of paddle.nn.utils.remove_weight_norm
     '''
     return utils.remove_weight_norm(*args)
 
 
-@deprecated(since="2.0.0",
-            update_to="paddle.nn.utils.weight_norm",
-            level=1,
-            reason="weight_norm in paddle.nn will be removed in future")
+@deprecated(
+    since="2.0.0",
+    update_to="paddle.nn.utils.weight_norm",
+    level=1,
+    reason="weight_norm in paddle.nn will be removed in future",
+)
 def weight_norm(*args):
     '''
-        alias name of paddle.nn.utils.weight_norm
+    alias name of paddle.nn.utils.weight_norm
     '''
     return utils.weight_norm(*args)
 

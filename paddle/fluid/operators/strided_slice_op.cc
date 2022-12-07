@@ -19,15 +19,12 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/slice_op.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/kernels/funcs/strided_slice.h"
 
 namespace paddle {
 namespace operators {
-
-using Tensor = phi::DenseTensor;
 
 class StridedSliceOp : public framework::OperatorWithKernel {
  public:
@@ -70,7 +67,7 @@ class StridedSliceOp : public framework::OperatorWithKernel {
   }
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "StartsTensor" || var_name == "EndsTensor" ||
         var_name == "StridesTensor") {
@@ -175,7 +172,7 @@ class StridedSliceOpGrad : public framework::OperatorWithKernel {
   }
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "StartsTensor" || var_name == "EndsTensor" ||
         var_name == "StridesTensor") {

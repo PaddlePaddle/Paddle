@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import unittest
-import paddle
 
-from paddle.distributed.fleet import auto
 from get_gpt_model import FakeDataset, generate_model
+
+import paddle
+from paddle.distributed.fleet import auto
 
 paddle.enable_static()
 
@@ -34,7 +35,6 @@ def apply_pass():
 
 
 class TestQuantizationPass(unittest.TestCase):
-
     def test_qat_pass(self):
 
         batch_size = 8

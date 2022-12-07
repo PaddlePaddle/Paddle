@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
+import paddle
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
-import paddle
 
 
 class TestSparseSquareOp(unittest.TestCase):
-
     def check_with_place(self, place):
         scope = core.Scope()
 
@@ -58,7 +59,6 @@ class TestSparseSquareOp(unittest.TestCase):
 
 
 class TestSparseSqrtOp(unittest.TestCase):
-
     def check_with_place(self, place):
         scope = core.Scope()
 

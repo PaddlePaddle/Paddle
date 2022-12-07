@@ -13,16 +13,16 @@
 # limitations under the License.
 
 import numpy as np
-import paddle
-import paddle.fluid as fluid
-import paddle.distributed.fleet as fleet
 from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
+
+import paddle
+import paddle.distributed.fleet as fleet
+import paddle.fluid as fluid
 
 paddle.enable_static()
 
 
 class TestColumnParallelLinearAPI(TestCollectiveAPIRunnerBase):
-
     def __init__(self):
         self.global_ring_id = 0
 
@@ -32,18 +32,22 @@ class TestColumnParallelLinearAPI(TestCollectiveAPIRunnerBase):
             np.random.seed(2020)
             np_array = np.random.rand(1000, 16)
 
-            data = paddle.static.data(name='tindata',
-                                      shape=[10, 1000],
-                                      dtype="float32")
+            data = paddle.static.data(
+                name='tindata', shape=[10, 1000], dtype="float32"
+            )
             paddle.distributed.broadcast(data, src=0)
             if rank == 0:
                 param_attr = paddle.fluid.ParamAttr(
                     initializer=paddle.fluid.initializer.NumpyArrayInitializer(
-                        np_array[:, 0:8]), )
+                        np_array[:, 0:8]
+                    ),
+                )
             else:
                 param_attr = paddle.fluid.ParamAttr(
                     initializer=paddle.fluid.initializer.NumpyArrayInitializer(
-                        np_array[:, 8:16]), )
+                        np_array[:, 8:16]
+                    ),
+                )
 
             linear_out = paddle.distributed.split(
                 data,

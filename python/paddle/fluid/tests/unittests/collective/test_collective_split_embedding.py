@@ -13,21 +13,22 @@
 # limitations under the License.
 
 import unittest
-import paddle
 
 from test_collective_api_base import TestDistBase
+
+import paddle
 
 paddle.enable_static()
 
 
 class TestParallelEmbeddingAPI(TestDistBase):
-
     def _setup_config(self):
         pass
 
     def test_parallel_embedding(self):
-        self.check_with_place("parallel_embedding_api.py", "parallel_embedding",
-                              "nccl")
+        self.check_with_place(
+            "parallel_embedding_api.py", "parallel_embedding", "nccl"
+        )
 
 
 if __name__ == '__main__':

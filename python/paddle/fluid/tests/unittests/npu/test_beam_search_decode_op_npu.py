@@ -42,28 +42,41 @@ class TestBeamSearchDecodeNPUOp(unittest.TestCase):
         # beam_size = 2, end_id = 1
         # start with start_id
         [
-            self.append_lod_tensor(array, [[0, 1, 2], [0, 1, 2]],
-                                   np.array([0, 0], dtype=dtype))
+            self.append_lod_tensor(
+                array, [[0, 1, 2], [0, 1, 2]], np.array([0, 0], dtype=dtype)
+            )
             for array, dtype in ((ids, "int64"), (scores, "float32"))
         ]
         [
-            self.append_lod_tensor(array, [[0, 1, 2], [0, 2, 4]],
-                                   np.array([2, 3, 4, 5], dtype=dtype))
+            self.append_lod_tensor(
+                array,
+                [[0, 1, 2], [0, 2, 4]],
+                np.array([2, 3, 4, 5], dtype=dtype),
+            )
             for array, dtype in ((ids, "int64"), (scores, "float32"))
         ]
         [
-            self.append_lod_tensor(array, [[0, 2, 4], [0, 2, 2, 4, 4]],
-                                   np.array([3, 1, 5, 4], dtype=dtype))
+            self.append_lod_tensor(
+                array,
+                [[0, 2, 4], [0, 2, 2, 4, 4]],
+                np.array([3, 1, 5, 4], dtype=dtype),
+            )
             for array, dtype in ((ids, "int64"), (scores, "float32"))
         ]
         [
-            self.append_lod_tensor(array, [[0, 2, 4], [0, 1, 2, 3, 4]],
-                                   np.array([1, 1, 3, 5], dtype=dtype))
+            self.append_lod_tensor(
+                array,
+                [[0, 2, 4], [0, 1, 2, 3, 4]],
+                np.array([1, 1, 3, 5], dtype=dtype),
+            )
             for array, dtype in ((ids, "int64"), (scores, "float32"))
         ]
         [
-            self.append_lod_tensor(array, [[0, 2, 4], [0, 0, 0, 2, 2]],
-                                   np.array([5, 1], dtype=dtype))
+            self.append_lod_tensor(
+                array,
+                [[0, 2, 4], [0, 0, 0, 2, 2]],
+                np.array([5, 1], dtype=dtype),
+            )
             for array, dtype in ((ids, "int64"), (scores, "float32"))
         ]
 
@@ -89,7 +102,8 @@ class TestBeamSearchDecodeNPUOp(unittest.TestCase):
         self.assertEqual(sentence_scores.lod(), expected_lod)
 
         expected_data = np.array(
-            [0, 2, 3, 1, 0, 2, 1, 0, 4, 5, 3, 5, 0, 4, 5, 3, 1], "int64")
+            [0, 2, 3, 1, 0, 2, 1, 0, 4, 5, 3, 5, 0, 4, 5, 3, 1], "int64"
+        )
         np.testing.assert_array_equal(np.array(sentence_ids), expected_data)
         np.testing.assert_array_equal(np.array(sentence_scores), expected_data)
 

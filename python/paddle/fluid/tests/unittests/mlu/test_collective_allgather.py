@@ -23,32 +23,36 @@ paddle.enable_static()
 
 
 class TestCAllgatherOp(TestDistBase):
-
     def _setup_config(self):
         pass
 
     def test_allgather_fp32(self):
-        self.check_with_place("collective_allgather_op.py", "allgather",
-                              "float32")
+        self.check_with_place(
+            "collective_allgather_op.py", "allgather", "float32"
+        )
 
     def test_allgather_fp16(self):
-        self.check_with_place("collective_allgather_op.py", "allgather",
-                              "float16")
+        self.check_with_place(
+            "collective_allgather_op.py", "allgather", "float16"
+        )
 
     def test_allgather_int32(self):
-        self.check_with_place("collective_allgather_op.py", "allgather",
-                              "int32")
+        self.check_with_place(
+            "collective_allgather_op.py", "allgather", "int32"
+        )
 
     def test_allgather_int16(self):
-        self.check_with_place("collective_allgather_op.py", "allgather",
-                              "int16")
+        self.check_with_place(
+            "collective_allgather_op.py", "allgather", "int16"
+        )
 
     def test_allgather_int8(self):
         self.check_with_place("collective_allgather_op.py", "allgather", "int8")
 
     def test_allgather_uint8(self):
-        self.check_with_place("collective_allgather_op.py", "allgather",
-                              "uint8")
+        self.check_with_place(
+            "collective_allgather_op.py", "allgather", "uint8"
+        )
 
 
 if __name__ == '__main__':

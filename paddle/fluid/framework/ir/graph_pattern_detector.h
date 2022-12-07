@@ -526,6 +526,19 @@ struct ConvBN : public PatternBase {
   PATTERN_DECL_NODE(bn_saved_variance);
 };
 
+struct LayerNormShiftScale : public PatternBase {
+  LayerNormShiftScale(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "layer_norm_shift_scale") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(layer_norm_in);
+  PATTERN_DECL_NODE(layer_norm_op);
+  PATTERN_DECL_NODE(layer_norm_bias);
+  PATTERN_DECL_NODE(layer_norm_scale);
+  PATTERN_DECL_NODE(layer_norm_out);
+};
+
 struct OperatorActivation : public PatternBase {
   OperatorActivation(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "operator_activation") {}
@@ -537,6 +550,44 @@ struct OperatorActivation : public PatternBase {
   PATTERN_DECL_NODE(preceding_op_out);
   PATTERN_DECL_NODE(activation);
   PATTERN_DECL_NODE(activation_out);
+};
+
+struct Squeeze2Transpose2 : public PatternBase {
+  Squeeze2Transpose2(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "squeeze2_transpose2") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(squeeze2_op_in);
+  PATTERN_DECL_NODE(squeeze2_op);
+  PATTERN_DECL_NODE(squeeze2_op_out);
+  PATTERN_DECL_NODE(transpose2_op);
+};
+
+struct OperatorUnsqueeze2 : public PatternBase {
+  OperatorUnsqueeze2(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "operator_unsqueeze2") {}
+
+  PDNode* operator()(const std::string& operator_type,
+                     const int num_of_outputs);
+
+  PATTERN_DECL_NODE(preceding_op);
+  PATTERN_DECL_NODE(preceding_op_out);
+  PATTERN_DECL_NODE(unsqueeze2_op);
+  PATTERN_DECL_NODE(unsqueeze2_out);
+};
+
+struct OperatorReshape2 : public PatternBase {
+  OperatorReshape2(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "operator_reshape2") {}
+
+  PDNode* operator()(const std::string& operator_type,
+                     const int num_of_outputs);
+
+  PATTERN_DECL_NODE(preceding_op);
+  PATTERN_DECL_NODE(preceding_op_out);
+  PATTERN_DECL_NODE(reshape2_op);
+  PATTERN_DECL_NODE(reshape2_out);
 };
 
 // SEQCONV with Elementwise_Add ReLU
@@ -877,6 +928,27 @@ struct ElewiseAddActInplaceGrad : public PatternBase {
   PATTERN_DECL_NODE(ele_y);
 };
 
+// the backward of ele_add(act(x), y)
+// the act is inplace.
+// op: elementwise_add_grad + act_grad
+// named nodes: elementwise_add_grad, act_grad
+//              ele_y, d_ele_y, d_intermeiate_out, intermediate_out, d_x
+struct ActElewiseAddInplaceGrad : public PatternBase {
+  ActElewiseAddInplaceGrad(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "act_elewise_add_grad1") {}
+
+  // ele_add_grad: in["Y", "Out@GRAD"], out["IntermediateOut@GRAD", "Y@GRAD"]
+  // act_grad: in["IntermediateOut", "IntermediateOut@GRAD"], out["X@GRAD"]
+  PDNode* operator()(PDNode* d_out_var, std::unordered_set<std::string> acts);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(ele_add_grad_op);
+  PATTERN_DECL_NODE(act_grad_op);
+  // // declare variable node's name
+  PATTERN_DECL_NODE(intermediate_var);
+  PATTERN_DECL_NODE(d_intermediate_var);
+};
+
 // The following patterns are used to fuse linear and act (ReLu or GeLU)
 // formula: act(F.linear(x))
 // op: matmul_v2 + elementwise_add + act
@@ -985,7 +1057,7 @@ struct ConvResidual : public PatternBase {
   ConvResidual(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "conv_residual") {}
 
-  PDNode* operator()(bool with_residual_data);
+  PDNode* operator()(const std::string& conv_type, bool with_residual_data);
 
   PATTERN_DECL_NODE(conv_op);
   PATTERN_DECL_NODE(conv_input);
@@ -1074,7 +1146,7 @@ struct ResidualElementwise : public PatternBase {
 };
 
 // General struct for immutable ops:
-// reshape, transpose, slice, shape, nearest-interp
+// reshape, transpose, slice, shape, nearest-interp, split
 // Forward pass for no weights-op.
 // immutable_out is a result of the operator.
 struct Immutable : public PatternBase {
@@ -1404,7 +1476,8 @@ struct ConvElementwiseaddAct : public PatternBase {
   ConvElementwiseaddAct(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "conv_elementwiseadd_act") {}
 
-  PDNode* operator()(PDNode* conv_in);
+  PDNode* operator()(PDNode* conv_in,
+                     const std::unordered_set<std::string>& conv_act_set);
 
   PATTERN_DECL_NODE(conv_op);
   PATTERN_DECL_NODE(conv_out);
@@ -1424,7 +1497,8 @@ struct ConvElementwiseadd2Act : public PatternBase {
       : PatternBase(
             pattern, name_scope, "conv_elementwiseadd2_elementwiseadd_act") {}
 
-  PDNode* operator()(PDNode* conv_in);
+  PDNode* operator()(PDNode* conv_in,
+                     const std::unordered_set<std::string>& conv_act_set);
 
   PATTERN_DECL_NODE(conv_op);
   PATTERN_DECL_NODE(conv_filter);
@@ -1714,6 +1788,39 @@ struct DeleteWeightQuantDequantLinearOpPattern : public PatternBase {
   PATTERN_DECL_NODE(any_op2);
 };
 
+struct DeleteWeightDequantLinearOpEncoderPattern : public PatternBase {
+  DeleteWeightDequantLinearOpEncoderPattern(PDPattern* pattern,
+                                            const std::string& name_scope)
+      : PatternBase(pattern,
+                    name_scope,
+                    "delete_weight_quant_dequant_linear_op_pattern") {}
+
+  void operator()();
+
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_x);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_scale);
+  PATTERN_DECL_NODE(while0);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_out);
+  PATTERN_DECL_NODE(any_op2);
+};
+
+struct DeleteWeightDequantLinearOpDecoderPattern : public PatternBase {
+  DeleteWeightDequantLinearOpDecoderPattern(PDPattern* pattern,
+                                            const std::string& name_scope)
+      : PatternBase(pattern,
+                    name_scope,
+                    "delete_weight_quant_dequant_linear_op_pattern") {}
+
+  void operator()();
+
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_x);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_scale);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_out);
+  PATTERN_DECL_NODE(any_op2);
+};
+
 struct DeleteQuantDequantLinearOpPattern : public PatternBase {
   DeleteQuantDequantLinearOpPattern(PDPattern* pattern,
                                     const std::string& name_scope)
@@ -1946,6 +2053,34 @@ struct LayernormShiftPartitionPattern : public PatternBase {
   PATTERN_DECL_NODE(reshape4_out);
 };
 
+//
+// \bref pattern looking for reverse circlic shift in window attention.
+//       The reverse circlic shift based on roll op,
+//       therefore, reverse_roll were adopted as pattern and fused op name.
+//
+struct ReverseRollPattern : public PatternBase {
+  ReverseRollPattern(PDPattern* pattern,
+                     const std::string& name_scope,
+                     bool with_roll)
+      : PatternBase(pattern, name_scope, "reverse_roll"),
+        with_roll_(with_roll) {}
+
+  PDNode* operator()(PDNode* in);
+  bool with_roll_;
+  PATTERN_DECL_NODE(reshape2_00_op);
+  PATTERN_DECL_NODE(reshape2_00_out);
+  PATTERN_DECL_NODE(reshape2_10_op);
+  PATTERN_DECL_NODE(reshape2_10_out);
+  PATTERN_DECL_NODE(transpose2_20_op);
+  PATTERN_DECL_NODE(transpose2_20_out);
+  PATTERN_DECL_NODE(reshape2_30_op);
+  PATTERN_DECL_NODE(reshape2_30_out);
+  PATTERN_DECL_NODE(roll_40_op);
+  PATTERN_DECL_NODE(roll_40_out);
+  PATTERN_DECL_NODE(reshape2_50_op);
+  PATTERN_DECL_NODE(reshaep2_50_out);
+};
+
 // pattern for merge_layernorm
 struct MergeLayernormPattern : public PatternBase {
   MergeLayernormPattern(PDPattern* pattern, const std::string& name_scope)
@@ -1990,11 +2125,25 @@ struct AddSupportInt8 : public PatternBase {
   a->outputs.push_back(b);    \
   b->inputs.push_back(a);
 
+// UnLink 2 ir::Nodes from each other.
+#define IR_NODE_UNLINK(a, b)                                                  \
+  a->outputs.erase(                                                           \
+      std::remove(std::begin(a->outputs), std::end(a->outputs), b),           \
+      std::end(a->outputs));                                                  \
+  b->inputs.erase(std::remove(std::begin(b->inputs), std::end(b->inputs), a), \
+                  std::end(b->inputs));
+
 // Set the out_var as the output of the op
 #define IR_OP_VAR_LINK(op, out_var) \
   op->outputs.push_back(out_var);   \
   out_var->inputs.clear();          \
   out_var->inputs.push_back(op);
+
+// Set the in_var as the input of the op
+#define IR_VAR_OP_LINK(in_var, op) \
+  in_var->outputs.clear();         \
+  in_var->outputs.push_back(op);   \
+  op->inputs.push_back(in_var);
 
 }  // namespace ir
 }  // namespace framework

@@ -12,21 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid.framework as framework
 import paddle.fluid.data_feeder as data_feeder
+import paddle.fluid.framework as framework
 import paddle.fluid.layer_helper as layer_helper
-from paddle.distributed.communication.reduce import _get_reduce_op, ReduceOp
-from paddle.distributed.communication.group import _get_global_group
+from paddle.distributed.communication.group import (
+    _get_global_group,
+    _warn_cur_rank_not_in_group,
+)
+from paddle.distributed.communication.reduce import ReduceOp, _get_reduce_op
 
 
 def _all_reduce_in_dygraph(tensor, op, group, sync_op, use_calc_stream):
-    op_type = _get_reduce_op(op, "all_reduce")
+    op_type = _get_reduce_op(op, "allreduce")
 
-    group = _get_global_group() if group is None else group
     if use_calc_stream:
-        return group.process_group.allreduce_on_calc_stream(tensor, op_type)
+        return group.process_group.all_reduce_on_calc_stream(tensor, op_type)
 
-    task = group.process_group.allreduce(tensor, op_type, sync_op)
+    task = group.process_group.all_reduce(tensor, op_type, sync_op)
     if sync_op:
         task.wait()
 
@@ -34,12 +36,23 @@ def _all_reduce_in_dygraph(tensor, op, group, sync_op, use_calc_stream):
 
 
 def _all_reduce_in_static_mode(tensor, op, group, sync_op, use_calc_stream):
-    data_feeder.check_variable_and_dtype(tensor, 'tensor', [
-        'float16', 'float32', 'float64', 'int32', 'int64', 'int8', 'uint8',
-        'bool'
-    ], 'all_reduce')
+    data_feeder.check_variable_and_dtype(
+        tensor,
+        'tensor',
+        [
+            'float16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'int8',
+            'uint8',
+            'bool',
+        ],
+        'all_reduce',
+    )
 
-    op_type = _get_reduce_op(op, "all_reduce")
+    op_type = _get_reduce_op(op, "allreduce")
     ring_id = 0 if group is None else group.id
 
     if not isinstance(ring_id, int):
@@ -48,22 +61,19 @@ def _all_reduce_in_static_mode(tensor, op, group, sync_op, use_calc_stream):
     # TODO: Support task and use task.wait in static mode
     #       Use use_calc_stream rather than sync_op
     helper = layer_helper.LayerHelper(op_type, **locals())
-    helper.append_op(type=op_type,
-                     inputs={'X': [tensor]},
-                     outputs={'Out': [tensor]},
-                     attrs={
-                         'ring_id': ring_id,
-                         'use_calc_stream': sync_op
-                     })
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [tensor]},
+        outputs={'Out': [tensor]},
+        attrs={'ring_id': ring_id, 'use_calc_stream': sync_op},
+    )
 
     return None
 
 
-def all_reduce(tensor,
-               op=ReduceOp.SUM,
-               group=None,
-               sync_op=True,
-               use_calc_stream=False):
+def all_reduce(
+    tensor, op=ReduceOp.SUM, group=None, sync_op=True, use_calc_stream=False
+):
     """
 
     Perform specific reduction (for example, sum, max) on inputs across devices.
@@ -96,21 +106,24 @@ def all_reduce(tensor,
                 data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
             task = dist.stream.all_reduce(data, sync_op=False)
             task.wait()
-            out = data.numpy()
+            out = data
             # [[5, 7, 9], [5, 7, 9]]
     """
-    if group is not None and not group.is_member():
-        raise RuntimeError(
-            "The group should not be None and all ranks which invoke this operation should be the member of this group."
-        )
+    if _warn_cur_rank_not_in_group(group):
+        return
 
     if not sync_op and use_calc_stream:
         raise RuntimeError(
-            "use_calc_stream can only be true in sync op behavior.")
+            "use_calc_stream can only be true in sync op behavior."
+        )
 
     if framework.in_dygraph_mode():
-        return _all_reduce_in_dygraph(tensor, op, group, sync_op,
-                                      use_calc_stream)
+        group = _get_global_group() if group is None else group
+        return _all_reduce_in_dygraph(
+            tensor, op, group, sync_op, use_calc_stream
+        )
     else:
-        return _all_reduce_in_static_mode(tensor, op, group, sync_op,
-                                          use_calc_stream)
+        assert group is None, "Group can not be used in static mode for now."
+        return _all_reduce_in_static_mode(
+            tensor, op, group, sync_op, use_calc_stream
+        )

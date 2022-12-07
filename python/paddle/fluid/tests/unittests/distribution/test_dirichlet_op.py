@@ -15,8 +15,9 @@
 import sys
 
 import numpy as np
-import paddle
 import scipy.stats
+
+import paddle
 
 sys.path.append("../")
 from op_test import OpTest
@@ -30,7 +31,7 @@ class TestDirichletOp(OpTest):
 
     def setUp(self):
         self.op_type = "dirichlet"
-        self.alpha = np.array((1., 2.))
+        self.alpha = np.array((1.0, 2.0))
         self.sample_shape = (100000, 2)
 
         self.inputs = {'Alpha': np.broadcast_to(self.alpha, self.sample_shape)}
@@ -47,5 +48,7 @@ class TestDirichletOp(OpTest):
             scipy.stats.kstest(
                 outs[0][:, 0],
                 # scipy dirichlet have not cdf, use beta to replace it.
-                scipy.stats.beta(a=self.alpha[0], b=self.alpha[1]).cdf)[0],
-            0.01)
+                scipy.stats.beta(a=self.alpha[0], b=self.alpha[1]).cdf,
+            )[0],
+            0.01,
+        )

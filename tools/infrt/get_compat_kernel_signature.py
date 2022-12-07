@@ -56,16 +56,21 @@ def get_compat_kernels_info():
             content = ""
             registry = False
             for line in txt:
-                if ("KernelSignature(" in line):
+                if "KernelSignature(" in line:
                     content = ""
                     registry = True
-                if (registry):
+                if registry:
                     content += line
-                if (registry and ";" in line):
-                    data = content.replace("\n", "").replace(
-                        " ",
-                        "").strip("return").strip("KernelSignature(").strip(
-                            "\);").replace("\"", "").replace("\\", "")
+                if registry and ";" in line:
+                    data = (
+                        content.replace("\n", "")
+                        .replace(" ", "")
+                        .strip("return")
+                        .strip("KernelSignature(")
+                        .strip(r"\);")
+                        .replace("\"", "")
+                        .replace("\\", "")
+                    )
                     registry = False
                     if is_grad_kernel(data):
                         continue
@@ -74,14 +79,23 @@ def get_compat_kernels_info():
                     if name in kernels_info:
                         cur_reg = kernels_info[name]
                         kernels_info[name]["inputs"] = list(
-                            set(registry_info["inputs"] +
-                                kernels_info[name]["inputs"]))
+                            set(
+                                registry_info["inputs"]
+                                + kernels_info[name]["inputs"]
+                            )
+                        )
                         kernels_info[name]["attrs"] = list(
-                            set(registry_info["attrs"] +
-                                kernels_info[name]["attrs"]))
+                            set(
+                                registry_info["attrs"]
+                                + kernels_info[name]["attrs"]
+                            )
+                        )
                         kernels_info[name]["outputs"] = list(
-                            set(registry_info["outputs"] +
-                                kernels_info[name]["outputs"]))
+                            set(
+                                registry_info["outputs"]
+                                + kernels_info[name]["outputs"]
+                            )
+                        )
                     else:
                         kernels_info[name] = registry_info
 

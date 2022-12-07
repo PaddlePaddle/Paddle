@@ -12,23 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import random
-import numpy as np
-import paddle
+import unittest
 
-from paddle.distributed.fleet import auto
-from paddle.fluid.dygraph.parallel import ParallelEnv
+import numpy as np
 from get_gpt_model import FakeDataset, generate_model
 
+import paddle
+from paddle.distributed.fleet import auto
+from paddle.fluid.dygraph.parallel import ParallelEnv
 
-def apply_pass(use_recompute=False):
+
+def apply_pass(use_recompute=False, no_recompute_segments=[]):
     strategy = auto.Strategy()
     strategy.auto_mode = "semi"
     strategy.reinit = True
     if use_recompute:
         recompute = strategy.recompute
         recompute.enable = True
+        recompute.no_recompute_segments = no_recompute_segments
     return strategy
 
 
@@ -38,7 +40,6 @@ def reset_prog():
 
 
 class TestRecomputePass(unittest.TestCase):
-
     def setUp(self):
         self.rtol = 1e-6
         self.atol = 1e-8
@@ -54,10 +55,10 @@ class TestRecomputePass(unittest.TestCase):
         place = paddle.fluid.CUDAPlace(ParallelEnv().dev_id)
         engine._executor = paddle.static.Executor(place)
 
-    def get_engine(self, use_recompute=False):
+    def get_engine(self, use_recompute=False, no_recompute_segments=[]):
         reset_prog()
 
-        strategy = apply_pass(use_recompute)
+        strategy = apply_pass(use_recompute, no_recompute_segments)
         clip = paddle.nn.ClipGradByGlobalNorm(self.clip_norm)
         opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip)
         model, loss = generate_model("mp")
@@ -73,7 +74,9 @@ class TestRecomputePass(unittest.TestCase):
             rtol=self.rtol,
             atol=self.atol,
             err_msg='pass {} has wrong results!, \nu={}\nv={}\ndiff={}'.format(
-                __class__, ref_losses, check_losses, ref_losses - check_losses))
+                __class__, ref_losses, check_losses, ref_losses - check_losses
+            ),
+        )
 
     def test_recompute_pass(self):
         # mp2 training
@@ -86,6 +89,18 @@ class TestRecomputePass(unittest.TestCase):
         history = rc_engine.fit(self.dataset, 3, batch_size=self.batch_size)
         rc_losses = np.array(history.history["loss"])
         self.check_results(mp_losses, rc_losses)
+
+        # mp2 selective recompute training
+        rc1_engine = self.get_engine(True, [0])
+        history = rc1_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        rc1_losses = np.array(history.history["loss"])
+        self.check_results(mp_losses, rc1_losses)
+
+    def test_recompute_pass_error(self):
+
+        with self.assertRaises(AssertionError):
+            rc_engine = self.get_engine(True, [2])
+            history = rc_engine.fit(self.dataset, 3, batch_size=self.batch_size)
 
 
 if __name__ == "__main__":

@@ -27,7 +27,6 @@ SEED = 2021
 
 
 class TestAccuracy(OpTest):
-
     def setUp(self):
         self.op_type = "accuracy"
         self.set_npu()
@@ -47,7 +46,7 @@ class TestAccuracy(OpTest):
         self.outputs = {
             'Accuracy': np.array([num_correct / float(n)]).astype(self.dtype),
             'Correct': np.array([num_correct]).astype("int32"),
-            'Total': np.array([n]).astype("int32")
+            'Total': np.array([n]).astype("int32"),
         }
 
     def set_npu(self):
@@ -62,7 +61,6 @@ class TestAccuracy(OpTest):
 
 
 class TestAccuracy2(TestAccuracy):
-
     def setUp(self):
         self.op_type = "accuracy"
         self.set_npu()
@@ -82,12 +80,11 @@ class TestAccuracy2(TestAccuracy):
         self.outputs = {
             'Accuracy': np.array([num_correct / float(n)]).astype(self.dtype),
             'Correct': np.array([num_correct]).astype("int32"),
-            'Total': np.array([n]).astype("int32")
+            'Total': np.array([n]).astype("int32"),
         }
 
 
 class TestAccuracyType(TestAccuracy):
-
     def setUp(self):
         self.op_type = "accuracy"
         self.set_npu()
@@ -107,12 +104,11 @@ class TestAccuracyType(TestAccuracy):
         self.outputs = {
             'Accuracy': np.array([num_correct / float(n)]).astype(self.dtype),
             'Correct': np.array([num_correct]).astype("int32"),
-            'Total': np.array([n]).astype("int32")
+            'Total': np.array([n]).astype("int32"),
         }
 
 
 class TestAccuracyType2(TestAccuracy):
-
     def setUp(self):
         self.op_type = "accuracy"
         self.set_npu()
@@ -132,7 +128,7 @@ class TestAccuracyType2(TestAccuracy):
         self.outputs = {
             'Accuracy': np.array([num_correct / float(n)]).astype(self.dtype),
             'Correct': np.array([num_correct]).astype("int32"),
-            'Total': np.array([n]).astype("int32")
+            'Total': np.array([n]).astype("int32"),
         }
 
 
