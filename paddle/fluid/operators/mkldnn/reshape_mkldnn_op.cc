@@ -40,7 +40,7 @@ static std::vector<int> extract_shape(
         tensor->dims(),
         phi::make_ddim({1}),
         platform::errors::InvalidArgument(
-            "If the element type of 'shape' in ReshapeOp is Tensor, "
+            "If the element type of 'shape' in ReshapeOp is phi::DenseTensor, "
             "the element's shape must be [1]. But received the element's shape "
             "is [%s]",
             tensor->dims()));

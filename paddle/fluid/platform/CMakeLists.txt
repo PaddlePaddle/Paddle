@@ -369,10 +369,6 @@ if(WITH_GPU)
          stats
          op_proto_maker
          shape_inference)
-  nv_library(
-    device_memory_aligment
-    SRCS device_memory_aligment.cc
-    DEPS cpu_info gpu_info place)
 elseif(WITH_ROCM)
   hip_library(
     profiler
@@ -385,10 +381,6 @@ elseif(WITH_ROCM)
          stats
          op_proto_maker
          shape_inference)
-  hip_library(
-    device_memory_aligment
-    SRCS device_memory_aligment.cc
-    DEPS cpu_info gpu_info place)
 else()
   cc_library(
     profiler
@@ -400,10 +392,6 @@ else()
          stats
          op_proto_maker
          shape_inference)
-  cc_library(
-    device_memory_aligment
-    SRCS device_memory_aligment.cc
-    DEPS cpu_info place)
 endif()
 
 cc_test(

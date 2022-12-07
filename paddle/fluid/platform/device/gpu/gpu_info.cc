@@ -124,11 +124,6 @@ size_t GpuInitAllocSize() { return GpuAllocSize(/* realloc = */ false); }
 
 size_t GpuReallocSize() { return GpuAllocSize(/* realloc = */ true); }
 
-size_t GpuMinChunkSize() {
-  // Allow to allocate the minimum chunk size is 256 bytes.
-  return 1 << 8;
-}
-
 size_t GpuMaxChunkSize() {
   size_t max_chunk_size = GpuMaxAllocSize();
   VLOG(10) << "Max chunk size " << (max_chunk_size >> 20) << "M";

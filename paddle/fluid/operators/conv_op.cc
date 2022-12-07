@@ -363,12 +363,6 @@ void Conv3DOpMaker::Make() {
            "is the width of the filter."
            "If the groups attribute is greater than 1, C equals the number of "
            "input image channels divided by the groups.");
-  AddInput("ResidualData",
-           "(Tensor) Tensor with residual data "
-           "to which convolution output will be added."
-           "Used with fuse_residual_connection fusion.")
-      .AsDispensable()
-      .AsExtra();
   AddOutput("Output",
             "(Tensor) The output tensor of convolution operator."
             "It has same data fromat and data type as the Input.");
