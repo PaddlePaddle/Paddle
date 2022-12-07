@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/impl/matmul_kernel_impl_via_blasLt.h"
 
 namespace phi {
 
@@ -84,6 +85,157 @@ static void IndexIncreaseFromDims(const int ndim,
   }
 }
 
+template <typename T, class Context>
+struct CublasLt {
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor& X,
+                  const DenseTensor& Y,
+                  const std::vector<std::int64_t>& x_dims,
+                  const std::vector<std::int64_t>& y_dims,
+                  DenseTensor* Out,
+                  bool trans_x,
+                  bool trans_y,
+                  bool& isCublasLt,
+                  bool flag = false) {}
+};
+
+template <typename T>
+struct CublasLt<T, phi::GPUContext> {
+  void operator()(const phi::GPUContext& dev_ctx,
+                  const DenseTensor& X,
+                  const DenseTensor& Y,
+                  const std::vector<std::int64_t>& x_dims,
+                  const std::vector<std::int64_t>& y_dims,
+                  DenseTensor* Out,
+                  bool trans_x,
+                  bool trans_y,
+                  bool& isCublasLt,
+                  bool flag = false) {
+#ifdef PADDLE_WITH_CUDA
+#ifdef CUDA_VERSION >= 11060
+
+    const int x_ndim = x_dims.size();
+    const int y_ndim = y_dims.size();
+
+    // Get data ptr
+    const T* x_data = X.data<T>();
+    const T* y_data = Y.data<T>();
+
+    const int M = trans_x ? x_dims[x_ndim - 1] : x_dims[x_ndim - 2];
+    const int K = trans_x ? x_dims[x_ndim - 2] : x_dims[x_ndim - 1];
+    const int N = trans_y ? y_dims[y_ndim - 2] : y_dims[y_ndim - 1];
+
+    // init data structure
+    cublasLtHandle_t lt_handle;
+    phi::dynload::cublasLtCreate(&lt_handle);
+
+    cudaDataType_t mat_type = CUDA_R_32F;
+    cudaDataType_t scale_type = CUDA_R_32F;
+    cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
+
+    if (std::is_same<T, phi::dtype::float16>::value) {
+      mat_type = CUDA_R_16F;
+    }
+    if (std::is_same<T, phi::dtype::bfloat16>::value) {
+      mat_type = CUDA_R_16BF;
+    }
+    if (std::is_same<T, double>::value) {
+      mat_type = CUDA_R_64F;
+      scale_type = CUDA_R_64F;
+      compute_type = CUBLAS_COMPUTE_64F;
+    }
+
+    cublasLtMatmulDesc_t operation_desc = NULL;
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmulDescCreate(
+        &operation_desc, compute_type, scale_type));
+    cublasOperation_t transx = trans_x ? CUBLAS_OP_T : CUBLAS_OP_N;
+    cublasOperation_t transy = trans_y ? CUBLAS_OP_T : CUBLAS_OP_N;
+
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmulDescSetAttribute(
+        operation_desc, CUBLASLT_MATMUL_DESC_TRANSB, &transx, sizeof(transx)));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmulDescSetAttribute(
+        operation_desc, CUBLASLT_MATMUL_DESC_TRANSA, &transy, sizeof(transy)));
+
+    cublasOperation_t op_transpose = CUBLAS_OP_T;
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmulDescSetAttribute(
+        operation_desc,
+        CUBLASLT_MATMUL_DESC_TRANSA,
+        &op_transpose,
+        sizeof(op_transpose)));
+
+    cublasLtMatrixLayout_t x_desc = NULL, y_desc = NULL, out_desc = NULL;
+    if (trans_x)
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::cublasLtMatrixLayoutCreate(&x_desc, mat_type, M, K, M));
+    else
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::cublasLtMatrixLayoutCreate(&x_desc, mat_type, K, M, K));
+    if (trans_y)
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::cublasLtMatrixLayoutCreate(&y_desc, mat_type, K, N, K));
+    else
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::cublasLtMatrixLayoutCreate(&y_desc, mat_type, N, K, N));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cublasLtMatrixLayoutCreate(&out_desc, mat_type, N, M, N));
+    // FIXME: should use paddle api later
+    char* workspace;
+    size_t work_space_size = static_cast<size_t>(4) * 1024 * 1024;
+    cudaMalloc((void**)&workspace, work_space_size);
+
+    double alpha64 = 1.0, beta64 = 0.0;
+    float alpha32 = 1.0f, beta32 = 0.0f;
+    void *alpha = nullptr, *beta = nullptr;
+    if (std::is_same<T, double>::value) {
+      alpha = &alpha64;
+      alpha = &beta64;
+    } else {
+      alpha = &alpha32;
+      beta = &beta32;
+    }
+    cudaStream_t stream = dev_ctx.stream();
+
+    auto out_data = dev_ctx.template Alloc<T>(Out);
+    auto algo = MatmulAlgoCache::Instance().GetGemmAlgo(lt_handle,
+                                                        operation_desc,
+                                                        y_desc,
+                                                        x_desc,
+                                                        out_desc,
+                                                        alpha,
+                                                        beta,
+                                                        y_data,
+                                                        x_data,
+                                                        out_data,
+                                                        stream,
+                                                        (void*)workspace,
+                                                        work_space_size);
+    std::cout << "----------" << std::endl;
+    std::cout << "Use cublasLt" << std::endl;
+    std::cout << "----------" << std::endl;
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmul(lt_handle,
+                                                            operation_desc,
+                                                            alpha,
+                                                            y_data,
+                                                            y_desc,
+                                                            x_data,
+                                                            x_desc,
+                                                            beta,
+                                                            out_data,
+                                                            out_desc,
+                                                            out_data,
+                                                            out_desc,
+                                                            algo,
+                                                            (void*)workspace,
+                                                            work_space_size,
+                                                            stream));
+    isCublasLt = true;
+    std::cout << "[+++]" << std::endl;
+    return;
+// #endif
+// #endif
+  }
+};
+
 template <typename Context, typename T>
 void MatMulFunction(const Context& dev_ctx,
                     const DenseTensor& X,
@@ -100,7 +252,10 @@ void MatMulFunction(const Context& dev_ctx,
   // Get data ptr
   const T* x_data = X.data<T>();
   const T* y_data = Y.data<T>();
-
+  bool isCublasLt = false;
+  CublasLt<T, Context>()(
+      dev_ctx, X, Y, x_dims, y_dims, Out, trans_x, trans_y, isCublasLt, flag);
+  if (isCublasLt) return;
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
 
   if (x_ndim == 1 && y_ndim == 1) {

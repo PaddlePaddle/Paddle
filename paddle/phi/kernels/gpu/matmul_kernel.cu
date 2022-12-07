@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/matmul_kernel_impl_via_blasLt.h"
 #include "paddle/phi/kernels/impl/matmul_kernel_impl.h"
 
 PD_REGISTER_KERNEL(matmul,
