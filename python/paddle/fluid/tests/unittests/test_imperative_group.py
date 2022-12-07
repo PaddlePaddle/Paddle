@@ -16,11 +16,7 @@ import unittest
 
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.framework import (
-    _in_legacy_dygraph,
-    _test_eager_guard,
-    in_dygraph_mode,
-)
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 
 
 class TestDataParallelGroup(unittest.TestCase):
@@ -171,8 +167,6 @@ class TestDataParallelGroup(unittest.TestCase):
         self.assertEqual([[1, 0], [3], [2]], res)
 
     def test_construct_group_in_legacy_mode(self):
-        with _test_eager_guard():
-            pass
         self.test_construct_group0()
         self.test_construct_group1()
         self.test_construct_group2()
