@@ -56,9 +56,6 @@ class TestDistSpawnRunner(unittest.TestCase):
         self.check_dist_result_with_spawn_func(
             test_class=test_class, delta=delta
         )
-        self.check_dist_result_with_spawn_func(
-            test_class=test_class, delta=delta
-        )
 
     def check_dist_result_with_spawn_func(self, test_class, delta=1e-3):
         # 0. prepare model and args
