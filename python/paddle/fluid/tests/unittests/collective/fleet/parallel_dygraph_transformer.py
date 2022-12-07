@@ -18,7 +18,7 @@ from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 import paddle
 import paddle.fluid as fluid
 import paddle.nn.functional as F
-from paddle.fluid.dygraph import Embedding, Layer, Linear, to_variable
+from paddle.fluid.dygraph import Embedding, Layer, to_variable
 from paddle.optimizer.lr import NoamDecay
 
 """
