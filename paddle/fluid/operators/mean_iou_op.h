@@ -20,7 +20,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = phi::DenseTensor;
 
 template <typename T,
           int D,
@@ -56,9 +55,9 @@ class MeanIoUKernel : public framework::OpKernel<T> {
     auto out_correct_t = EigenTensor<int, 1>::From(*out_correct);
 
     // Tmp tensor
-    Tensor denominator;
-    Tensor valid_count;
-    Tensor iou_sum;
+    phi::DenseTensor denominator;
+    phi::DenseTensor valid_count;
+    phi::DenseTensor iou_sum;
 
     // get data ptr of tmp tensor
     int* denominator_data = denominator.mutable_data<int>(
