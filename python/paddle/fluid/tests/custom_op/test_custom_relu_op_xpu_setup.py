@@ -114,10 +114,8 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         for device in self.devices:
             for dtype in self.dtypes:
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
-                out, x_grad = custom_relu_dynamic(
-                    self.custom_op, device, dtype, x
-                )
-                pd_out, pd_x_grad = custom_relu_dynamic(
+                out = custom_relu_dynamic(self.custom_op, device, dtype, x)
+                pd_out = custom_relu_dynamic(
                     self.custom_op, device, dtype, x, False
                 )
                 np.testing.assert_array_equal(
@@ -125,13 +123,6 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                     pd_out,
                     err_msg='custom op out: {},\n paddle api out: {}'.format(
                         out, pd_out
-                    ),
-                )
-                np.testing.assert_array_equal(
-                    x_grad,
-                    pd_x_grad,
-                    err_msg='custom op x grad: {},\n paddle api x grad: {}'.format(
-                        x_grad, pd_x_grad
                     ),
                 )
 
