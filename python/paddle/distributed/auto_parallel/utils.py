@@ -22,9 +22,9 @@ from functools import reduce
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
 from paddle.fluid.framework import Variable
 from paddle.fluid.io import is_belong_to_optimizer, is_parameter
+from paddle.framework import core
 
 from .dist_attribute import (
     OperatorDistributedAttribute,
@@ -32,8 +32,8 @@ from .dist_attribute import (
 )
 from .process_group import get_all_process_groups
 
-OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
 OpRole = core.op_proto_and_checker_maker.OpRole
+OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
 
 __no_shape_var_type__ = [
     core.VarDesc.VarType.READER,
