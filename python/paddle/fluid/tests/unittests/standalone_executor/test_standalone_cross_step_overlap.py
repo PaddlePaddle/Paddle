@@ -28,7 +28,7 @@ class TestCrossStepOverlap(unittest.TestCase):
         self.x_value = 2
         self.y_value = 3
         self.overlap_op_num = 1500
-        self.step_num = 5
+        self.step_num = 3
 
     def test_cross_step_overlap(self):
         if not paddle.fluid.core.is_compiled_with_cuda():
@@ -68,9 +68,8 @@ class TestCrossStepOverlap(unittest.TestCase):
             exe = static.Executor()
             results = []
             for i in range(self.step_num):
-                with paddle.fluid.profiler._nvprof_range(i, 0, self.step_num):
-                    result = exe.run(program, fetch_list=[z])
-                    results.append(result)
+                result = exe.run(program, fetch_list=[z])
+                results.append(result)
 
             for result in results:
                 self.assertAlmostEqual(
