@@ -2099,10 +2099,6 @@ class TestHardswishAPI(unittest.TestCase):
             )
             F.hardswish(x_fp16)
 
-    def test_api_eager_dygraph(self):
-        self.test_dygraph_api()
-        self.test_errors()
-
 
 class TestSoftRelu(TestActivation):
     def setUp(self):
