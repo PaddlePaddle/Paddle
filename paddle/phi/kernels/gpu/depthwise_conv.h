@@ -1231,7 +1231,7 @@ class DepthwiseConvFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
 
     const T* input_data = input.data<T>();
     const T* filter_data = filter.data<T>();
-    T* output_data = output->mutable_data<T>(context.GetPlace());
+    T* output_data = context.template Alloc<T>(output);
 
     phi::DenseTensor filter_hwc;
     if (data_layout == DataLayout::kNHWC) {
@@ -1240,7 +1240,7 @@ class DepthwiseConvFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
                                        filter.dims()[0],
                                        filter.dims()[1]});
       filter_hwc.Resize(filter_hwc_dims);
-      filter_hwc.mutable_data<T>(context.GetPlace());
+      context.template Alloc<T>(&filter_hwc);
       std::vector<int> perm_axis({2, 3, 0, 1});
       phi::funcs::TransposeNormal<phi::GPUContext, T> trans;
       trans(context, filter, &filter_hwc, perm_axis);
@@ -1409,7 +1409,7 @@ class DepthwiseConvInputGradFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
     const T* input_data = input.data<T>();
     const T* filter_data = filter.data<T>();
     const T* output_grad_data = output_grad.data<T>();
-    T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
+    T* input_grad_data = context.template Alloc<T>(input_grad);
 
     phi::DenseTensor filter_hwc;
     if (data_layout == DataLayout::kNHWC) {
@@ -1418,7 +1418,7 @@ class DepthwiseConvInputGradFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
                                        filter.dims()[0],
                                        filter.dims()[1]});
       filter_hwc.Resize(filter_hwc_dims);
-      filter_hwc.mutable_data<T>(context.GetPlace());
+      context.template Alloc<T>(&filter_hwc);
       std::vector<int> perm_axis({2, 3, 0, 1});
       phi::funcs::TransposeNormal<phi::GPUContext, T> trans;
       trans(context, filter, &filter_hwc, perm_axis);
@@ -1584,7 +1584,7 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
 
     const T* input_data = input.data<T>();
     const T* output_grad_data = output_grad.data<T>();
-    T* filter_grad_data = filter_grad->mutable_data<T>(context.GetPlace());
+    T* filter_grad_data = context.template Alloc<T>(filter_grad);
 
     int block_size = 512;
     int blocks;
@@ -1654,7 +1654,7 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
                                               filter_grad->dims()[0],          \
                                               filter_grad->dims()[1]});        \
         filter_grad_hwc.Resize(filter_grad_hwc_dims);                          \
-        filter_grad_hwc.mutable_data<T>(context.GetPlace());                   \
+        context.template Alloc<T>(&filter_grad_hwc);                           \
         phi::funcs::SetConstant<phi::GPUContext, T> set_zero;                  \
         set_zero(context, &filter_grad_hwc, static_cast<T>(0));                \
         filter_grad_data = filter_grad_hwc.data<T>();                          \

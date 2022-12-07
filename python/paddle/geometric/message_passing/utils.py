@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import numpy as np
+
 import paddle
-from paddle.fluid.framework import Variable
 from paddle.fluid.data_feeder import check_dtype, convert_dtype
+from paddle.fluid.framework import Variable
 from paddle.fluid.layers.tensor import cast
 
 

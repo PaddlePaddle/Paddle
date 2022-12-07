@@ -30,7 +30,7 @@ from paddle.fluid.executor import (
     _is_enable_standalone_executor,
     _is_dy2st_enable_standalone_executor,
 )
-from paddle.fluid.dygraph.dygraph_to_static.partial_program import (
+from paddle.jit.dy2static.partial_program import (
     add_build_strategy_for,
     LazyInitialized,
 )

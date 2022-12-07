@@ -23,8 +23,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class SliceOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -181,7 +179,7 @@ class SliceOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "StartsTensor" || var_name == "EndsTensor") {
       return expected_kernel_type;
@@ -203,9 +201,9 @@ class SliceOpVarTypeInference : public framework::VarTypeInference {
     auto not_decrease =
         paddle::get<std::vector<int>>(decrease_axis).size() == 0;
     if (not_decrease) {
-      // The default type of out is LoDTensor.
+      // The default type of out is phi::DenseTensor.
       // However, if no axis is decreased and the type of input is not
-      // LoDTensor, the type of out should be the same as input.
+      // phi::DenseTensor, the type of out should be the same as input.
       // For example, input is a LoDTensorArray and no axis is decreased, the
       // output should be a LoDTensorArray.
       ctx->SetOutputType(out_name, ctx->GetInputType(x_name));
@@ -349,7 +347,7 @@ class SliceOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "StartsTensor" || var_name == "EndsTensor") {
       return expected_kernel_type;
@@ -369,8 +367,8 @@ class SliceOpGradVarTypeInference : public framework::VarTypeInference {
     auto d_out = framework::GradVarName("Out");
     auto out = framework::GradVarName("Input");
     // The types of grad_input and input should always be the same.
-    // The default type of out is LoDTensor, but the type of input can be
-    // LoDTensor or LoDTensorArray,
+    // The default type of out is phi::DenseTensor, but the type of input can be
+    // phi::DenseTensor or phi::DenseTensorArray,
     // so set the type of both to be the same.
     ctx->SetOutputType(out, ctx->GetInputType(x));
     ctx->SetOutputDataType(out, ctx->GetInputDataType(d_out));

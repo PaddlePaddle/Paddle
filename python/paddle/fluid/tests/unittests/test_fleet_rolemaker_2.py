@@ -13,10 +13,11 @@
 # limitations under the License.
 """Test cases for role makers."""
 
-import paddle
 import os
-import unittest
 import tempfile
+import unittest
+
+import paddle
 
 
 class TestCloudRoleMaker2(unittest.TestCase):
@@ -34,11 +35,13 @@ class TestCloudRoleMaker2(unittest.TestCase):
     def test_pslib_2(self):
         """Test cases for pslib."""
         import paddle.fluid as fluid
+        from paddle.fluid.incubate.fleet.base.role_maker import (
+            GeneralRoleMaker,
+            RoleMakerBase,
+        )
         from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import (
             fleet,
         )
-        from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
-        from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase
 
         paddle.enable_static()
 
@@ -76,7 +79,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
                 append_batch_size=False,
             )
             label_cast = fluid.layers.cast(label, dtype='float32')
-            cost = fluid.layers.log_loss(fc, label_cast)
+            cost = paddle.nn.functional.log_loss(fc, label_cast)
         try:
             adam = fluid.optimizer.Adam(learning_rate=0.000005)
             adam = fleet.distributed_optimizer(adam)

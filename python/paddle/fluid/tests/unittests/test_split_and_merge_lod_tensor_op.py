@@ -13,17 +13,17 @@
 # limitations under the License.
 
 import unittest
-from paddle.fluid import Program, program_guard
+
+import numpy as np
+
 import paddle
 import paddle.fluid.core as core
-import numpy as np
 import paddle.fluid.layers as layers
-from paddle.fluid.framework import Program, program_guard
-from paddle.fluid.executor import Executor
+from paddle.fluid import Program, program_guard
 from paddle.fluid.backward import append_backward
-from paddle.fluid.layers.control_flow import split_lod_tensor
-from paddle.fluid.layers.control_flow import merge_lod_tensor
+from paddle.fluid.executor import Executor
 from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.layers.control_flow import merge_lod_tensor, split_lod_tensor
 
 
 class TestCPULoDTensorArrayOps(unittest.TestCase):

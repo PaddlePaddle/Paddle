@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import sys
 import unittest
 
 from parallel_dygraph_sparse_embedding import TestSparseEmbedding
@@ -61,7 +60,7 @@ class TestParallelDygraphSparseEmdeddingFP64(TestDistBase):
 
 class TestParallelDygraphSparseEmdeddingSpawn(TestDistSpawnRunner):
     def test_sparse_embedding_with_spawn(self):
-        if fluid.core.is_compiled_with_cuda() and sys.version_info >= (3, 4):
+        if fluid.core.is_compiled_with_cuda():
             self.check_dist_result_with_spawn(
                 test_class=TestSparseEmbedding, delta=1e-5
             )

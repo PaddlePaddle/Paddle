@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from paddle.fluid import core
-from paddle.static import program_guard, Program
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
+import paddle
+from paddle.fluid import core
+from paddle.static import Program, program_guard
 
 
 class TestArangeOp(OpTest):

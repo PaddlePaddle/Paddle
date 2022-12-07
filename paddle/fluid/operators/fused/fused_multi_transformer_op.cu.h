@@ -44,8 +44,6 @@ DECLARE_bool(gemm_use_half_precision_compute_type);
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 // for debug
 // #define _DEBUG_FUSED_MULTI_TRANSFORMER
 
@@ -95,7 +93,7 @@ using float16 = plat::float16;
 #define MMHA_USE_FP32_ACUM_FOR_LOGITS
 #define MMHA_USE_FP32_ACUM_FOR_OUT
 #define MMHA_USE_FP32_ACUM_FOR_FMA
-#define MMHA_USE_HMMA_FOR_REDUCTION
+// #define MMHA_USE_HMMA_FOR_REDUCTION
 
 template <typename D>
 class PDDataTypeTraits;
@@ -601,7 +599,8 @@ template <int N>
 inline __device__ float qk_hmma_dot_(const uint32_t (&q)[N],
                                      const uint32_t (&k)[N],
                                      float inv_sqrt_dh) {
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 750
+#if defined(MMHA_USE_HMMA_FOR_REDUCTION) && defined(__CUDA_ARCH__) && \
+    __CUDA_ARCH__ >= 750
 #ifdef MMHA_USE_FP32_ACUM_FOR_FMA
   using K_vec_acum = typename K_vec_acum_fp32_<uint32_t>::Type;
 #else
@@ -641,7 +640,8 @@ struct Qk_dot<float16, 4> {
   static inline __device__ float dot(const uint32_t (&q)[N],
                                      const uint32_t (&k)[N],
                                      float inv_sqrt_dh) {
-#if defined(MMHA_USE_HMMA_FOR_REDUCTION) && __CUDA_ARCH__ >= 750
+#if defined(MMHA_USE_HMMA_FOR_REDUCTION) && defined(__CUDA_ARCH__) && \
+    __CUDA_ARCH__ >= 750
     return qk_hmma_dot_(q, k, inv_sqrt_dh);
 #else
     return qk_dot_<4>(q, k, inv_sqrt_dh);
@@ -1104,7 +1104,8 @@ void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
   if (params.timestep < 32) {
     MMHA_LAUNCH_KERNEL(T, Dh, Dh_MAX, 4, THREADS_PER_VALUE, 64, stream);
   } else if (params.timestep < 2048) {
-#if defined(MMHA_USE_HMMA_FOR_REDUCTION) && __CUDA_ARCH__ >= 750
+#if defined(MMHA_USE_HMMA_FOR_REDUCTION) && defined(__CUDA_ARCH__) && \
+    __CUDA_ARCH__ >= 750
     MMHA_LAUNCH_KERNEL(T, Dh, Dh_MAX, 4, THREADS_PER_VALUE, 256, stream);
 #else
     MMHA_LAUNCH_KERNEL(T, Dh, Dh_MAX, 2, THREADS_PER_VALUE, 128, stream);
@@ -1116,11 +1117,11 @@ void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
 
 template <typename T>
 void fmha(const phi::GPUContext &dev_ctx,
-          const Tensor &qkv_tensor,
-          const Tensor &qkv_bias_tensor,
-          const Tensor &src_mask_tensor,
-          Tensor *cache_kv_tensor,
-          Tensor *out_tensor,
+          const phi::DenseTensor &qkv_tensor,
+          const phi::DenseTensor &qkv_bias_tensor,
+          const phi::DenseTensor &src_mask_tensor,
+          phi::DenseTensor *cache_kv_tensor,
+          phi::DenseTensor *out_tensor,
           int batch_size,
           int max_seq_length,
           int num_head,
@@ -1411,14 +1412,15 @@ class CublasFusedMLP {
  public:
   // (m, n, k) = bsz_seq, hidden_feature, in_feature
   explicit CublasFusedMLP(const phi::GPUContext &dev_ctx) : dev_ctx_(dev_ctx) {
-    // Set Math Type
     cudaDataType_t mat_type = CUDA_R_32F;
     cudaDataType_t scale_type = CUDA_R_32F;
     cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
-
     if (std::is_same<T, paddle::platform::float16>::value) {
       mat_type = CUDA_R_16F;
       if (FLAGS_gemm_use_half_precision_compute_type) {
+        // This option default value is true, it tends to result NaN, but get
+        // better inference speed. you can turn off by using `export
+        // FLAGS_gemm_use_half_precision_compute_type=0`.
         compute_type = CUBLAS_COMPUTE_16F;
         scale_type = CUDA_R_16F;
       }
@@ -1432,7 +1434,6 @@ class CublasFusedMLP {
       compute_type = CUBLAS_COMPUTE_64F;
     }
 
-    // Just for init.
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescCreate(
         &operation_desc_, compute_type, scale_type));
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
@@ -1442,7 +1443,6 @@ class CublasFusedMLP {
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
         &out_desc_, mat_type, 1, 1, 1));
   }
-
   ~CublasFusedMLP() {
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cublasLtMatmulDescDestroy(operation_desc_));
@@ -1454,7 +1454,6 @@ class CublasFusedMLP {
         platform::dynload::cublasLtMatrixLayoutDestroy(out_desc_));
   }
 
-  // Change to use tensor's shape.
   void Setup(const phi::DDim &x_shape,
              const phi::DDim &w_shape,
              bool trans_x,
@@ -1478,39 +1477,34 @@ class CublasFusedMLP {
             &cublas_transB,
             sizeof(cublas_transB)));
 
-    /*
-    cublas use col major: x(M, K) matmul w(K, N) = out(M, N) equals to w_t(N, K)
-    * x_t(K, M) = out(N, M)
-    */
-    SetCublasMatrixLayout_(x_desc_, cublas_transA, K, M);
-    SetCublasMatrixLayout_(w_desc_, cublas_transB, N, K);
-    SetCublasMatrixLayout_(out_desc_, CUBLAS_OP_N, N, M);
+    SetCublasMatrixLayout(x_desc_, trans_x, M, K);
+    SetCublasMatrixLayout(w_desc_, trans_w, K, N);
+    SetCublasMatrixLayout(out_desc_, false, M, N);
   }
 
-  void ComputeForward(const phi::DenseTensor *input,
+  void ComputeForward(const phi::DenseTensor *x,
                       const phi::DenseTensor *weight,
                       const phi::DenseTensor *bias,
                       phi::DenseTensor *residual,
                       phi::DenseTensor *output,
                       const std::string &activation) {
-    // here: (transa, transb): nt, input * weight.
-    // (M * K) * (K * N)
-    cublasLtHandle_t lt_handle = dev_ctx_.cublaslt_handle();
-    size_t workspace_size = static_cast<size_t>(16) * 1024 * 1024;
-    cudaStream_t stream = dev_ctx_.stream();
-    memory::allocation::AllocationPtr workspace =
-        memory::Alloc(dev_ctx_.GetPlace(),
-                      workspace_size,
-                      phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+    T *out_data = output->data<T>();
 
     const bool add_residual = (residual == nullptr) ? false : true;
     const bool add_bias = (bias == nullptr) ? false : true;
-    if (add_bias) {
-      SetCublasBiasPtr_(bias);
-    }
 
-    // Set cublasLt epilogue.
-    cublasLtEpilogue_t epiloque_func = GetEpilogueType_(activation, add_bias);
+    const T *bias_data = nullptr;
+    if (add_bias) {
+      bias_data = bias->data<T>();
+    }
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatmulDescSetAttribute(
+            operation_desc_,
+            CUBLASLT_MATMUL_DESC_BIAS_POINTER,
+            &bias_data,
+            sizeof(bias_data)));
+
+    cublasLtEpilogue_t epiloque_func = GetEpilogueType(activation, add_bias);
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cublasLtMatmulDescSetAttribute(
             operation_desc_,
@@ -1518,24 +1512,43 @@ class CublasFusedMLP {
             &epiloque_func,
             sizeof(epiloque_func)));
 
-    const auto *x_data = input->data<T>();
-    const auto *w_data = weight->data<T>();
-    auto *residual_data =
-        add_residual ? residual->data<T>() : output->data<T>();
-    auto *out_data = output->data<T>();
+    T *residual_data = add_residual ? residual->data<T>() : out_data;
 
-    // if add_residual, we compute result + 1.0 * residual, else result + 0.0 *
-    // out.
+    cublasLtHandle_t lt_handle = dev_ctx_.cublaslt_handle();
+    size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
+    cudaStream_t stream = dev_ctx_.stream();
+    memory::allocation::AllocationPtr workspace = memory::Alloc(
+        dev_ctx_.GetPlace(),
+        workspace_size,
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx_.stream())));
+
+    // if add_residual, we compute result + 1.0 * residual,
+    // else result + 0.0 * out.
     double alpha64 = 1.0, beta64 = add_residual ? 1.0 : 0.0;
     float alpha32 = 1.0f, beta32 = add_residual ? 1.0f : 0.0f;
+    half alpha16 = static_cast<half>(1.0),
+         beta16 =
+             add_residual ? static_cast<half>(1.0) : static_cast<half>(0.0);
+
     void *alpha = nullptr, *beta = nullptr;
     if (std::is_same<T, double>::value) {
       alpha = &alpha64;
       beta = &beta64;
+    } else if (std::is_same<T, float>::value) {
+      alpha = &alpha64;
+      beta = &beta64;
+    } else if (std::is_same<T, phi::dtype::float16>::value) {
+      alpha = &alpha16;
+      beta = &beta16;
     } else {
-      alpha = &alpha32;
-      beta = &beta32;
+      PADDLE_ENFORCE_EQ(true,
+                        false,
+                        platform::errors::InvalidArgument(
+                            "Only support double, float, half data type. "));
     }
+
+    const auto *x_data = x->data<T>();
+    const auto *w_data = weight->data<T>();
 
     auto algo = GemmEpilogueAlgoCache::Instance().GetGemmAlgo(lt_handle,
                                                               operation_desc_,
@@ -1564,15 +1577,15 @@ class CublasFusedMLP {
                                           out_desc_,
                                           out_data,
                                           out_desc_,
-                                          algo /*algo*/,
-                                          workspace->ptr() /*workspace*/,
+                                          algo,
+                                          workspace->ptr(),
                                           workspace_size,
                                           stream));
   }
 
  private:
-  static cublasLtEpilogue_t GetEpilogueType_(const std::string &activation,
-                                             const bool add_bias) {
+  cublasLtEpilogue_t GetEpilogueType(const std::string &activation,
+                                     const bool add_bias) {
     if (activation == "relu") {
       if (add_bias) {
         return CUBLASLT_EPILOGUE_RELU_BIAS;
@@ -1603,23 +1616,41 @@ class CublasFusedMLP {
     }
   }
 
-  void SetCublasMatrixLayout_(cublasLtMatrixLayout_t layout_desc,
-                              cublasOperation_t cublas_trans,
-                              const size_t cublas_m,
-                              const size_t cublas_n) {
+  void SetCublasMatrixLayout(cublasLtMatrixLayout_t layout_desc,
+                             const bool transpose,
+                             const uint64_t cublas_row,
+                             const uint64_t cublas_col) {
+    cudaDataType_t mat_type = CUDA_R_32F;
+    if (std::is_same<T, paddle::platform::float16>::value) {
+      mat_type = CUDA_R_16F;
+    }
+    if (std::is_same<T, platform::bfloat16>::value) {
+      mat_type = CUDA_R_16BF;
+    }
+    if (std::is_same<T, double>::value) {
+      mat_type = CUDA_R_64F;
+    }
+
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatrixLayoutSetAttribute(
+            layout_desc,
+            CUBLASLT_MATRIX_LAYOUT_TYPE,
+            &mat_type,
+            sizeof(mat_type)));
+
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cublasLtMatrixLayoutSetAttribute(
             layout_desc,
             CUBLASLT_MATRIX_LAYOUT_ROWS,
-            cublas_trans == CUBLAS_OP_N ? &cublas_m : &cublas_n,
-            sizeof(cublas_m)));
+            transpose ? &cublas_row : &cublas_col,
+            sizeof(cublas_row)));
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cublasLtMatrixLayoutSetAttribute(
             layout_desc,
             CUBLASLT_MATRIX_LAYOUT_COLS,
-            cublas_trans == CUBLAS_OP_N ? &cublas_n : &cublas_m,
-            sizeof(cublas_m)));
-    const size_t cublas_ld = cublas_trans == CUBLAS_OP_N ? cublas_m : cublas_n;
+            transpose ? &cublas_col : &cublas_row,
+            sizeof(cublas_col)));
+    int64_t cublas_ld = transpose ? cublas_row : cublas_col;
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cublasLtMatrixLayoutSetAttribute(
             layout_desc,
@@ -1628,21 +1659,11 @@ class CublasFusedMLP {
             sizeof(cublas_ld)));
   }
 
-  void SetCublasBiasPtr_(const phi::DenseTensor *bias) {
-    const T *bias_data = bias->data<T>();
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::cublasLtMatmulDescSetAttribute(
-            operation_desc_,
-            CUBLASLT_MATMUL_DESC_BIAS_POINTER,
-            &bias_data,
-            sizeof(bias_data)));
-  }
-
   const phi::GPUContext &dev_ctx_;
-  cublasLtMatmulDesc_t operation_desc_;
-  cublasLtMatrixLayout_t x_desc_;
-  cublasLtMatrixLayout_t w_desc_;
-  cublasLtMatrixLayout_t out_desc_;
+  cublasLtMatmulDesc_t operation_desc_ = NULL;
+  cublasLtMatrixLayout_t x_desc_ = NULL;
+  cublasLtMatrixLayout_t w_desc_ = NULL;
+  cublasLtMatrixLayout_t out_desc_ = NULL;
 };
 
 #endif  // PADDLE_FLUID_OPERATORS_FUSED_FUSED_MULTI_TRANSFORMER_OP_CU_H_

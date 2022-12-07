@@ -36,7 +36,7 @@ template <typename T>
 struct sgd_dense_param_kernel<T,
                               framework::VarTypeTrait<phi::DenseTensor>::kId> {
   void operator()(const framework::ExecutionContext &ctx) const {
-    VLOG(4) << "[CPU]: sgd_dense_param_kernel<T, LoDTensor>";
+    VLOG(4) << "[CPU]: sgd_dense_param_kernel<T, phi::DenseTensor>";
     const auto *learning_rate = ctx.Input<phi::DenseTensor>("LearningRate");
     const auto *param = ctx.Input<phi::DenseTensor>("Param");
     auto *param_out = ctx.Output<phi::DenseTensor>("ParamOut");
@@ -95,7 +95,7 @@ template <>
 struct sgd_dense_param_kernel<platform::bfloat16,
                               framework::VarTypeTrait<phi::DenseTensor>::kId> {
   void operator()(const framework::ExecutionContext &ctx) const {
-    VLOG(4) << "[CPU]: sgd_dense_param_kernel<bfloat16, LoDTensor>";
+    VLOG(4) << "[CPU]: sgd_dense_param_kernel<bfloat16, phi::DenseTensor>";
     const auto *learning_rate = ctx.Input<phi::DenseTensor>("LearningRate");
     const auto *param = ctx.Input<phi::DenseTensor>("Param");
     auto *param_out = ctx.Output<phi::DenseTensor>("ParamOut");

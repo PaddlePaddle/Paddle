@@ -205,70 +205,76 @@ framework::OpKernelType AttentionLSTMOp::GetExpectedKernelType(
 }
 
 void AttentionLSTMOpMaker::Make() {
-  AddInput("X",
-           "(LoDTensor) the input is a LodTensor, which support "
-           "variable-time length input sequence. The underlying tensor in "
-           "this LoDTensor is a matrix with shape (T X M), where T is the "
-           "total time steps in this mini-batch, M is the dim size of x.");
+  AddInput(
+      "X",
+      "(phi::DenseTensor) the input is a LodTensor, which support "
+      "variable-time length input sequence. The underlying tensor in "
+      "this phi::DenseTensor is a matrix with shape (T X M), where T is the "
+      "total time steps in this mini-batch, M is the dim size of x.");
   AddInput("C0",
-           "(Tensor) LSTM C0"
+           "(phi::DenseTensor) LSTM C0"
            "This is a tensor with shape (N x D), where N is the batch size, D "
            "is the gate size."
            "C0 is necessary because of attention.");
   AddInput("H0",
-           "(Tensor, optional) LSTM H0"
+           "(phi::DenseTensor, optional) LSTM H0"
            "This is a tensor with shape (N x D), where N is the "
            "batch size and D is the gate size.")
       .AsDispensable();
   AddInput("AttentionWeight",
-           "(Tensor) the weights of attention fc. Always relu the fc result."
+           "(phi::DenseTensor) the weights of attention fc. Always relu the fc "
+           "result."
            "The shape is ((M+D) x 1), where M is the dim size of x, D is the "
            "gate size of LSTM.");
   AddInput("AttentionBias",
-           "(Tensor, optional) the bias of attention fc."
+           "(phi::DenseTensor, optional) the bias of attention fc."
            "The shape is (1 x 1)")
       .AsDispensable();
   AddInput("AttentionScalar",
-           "(Tensor, optional) the scalar on the result of attentioned fc. "
+           "(phi::DenseTensor, optional) the scalar on the result of "
+           "attentioned fc. "
            "Always relu the Scalar."
            "The shape is (1 x 1)")
       .AsDispensable();
   AddInput("AttentionScalarBias",
-           "(Tensor, optional) the scalar bias of attention fc."
+           "(phi::DenseTensor, optional) the scalar bias of attention fc."
            "The shape is (1 x 1)")
       .AsDispensable();
   AddInput("LSTMWeight",
-           "(Tensor) the combined weight of LSTM"
+           "(phi::DenseTensor) the combined weight of LSTM"
            " - The shape is ((D+M) x 4D), where D is the hidden gate size, M "
            "is the dim size of x"
            " - Weight = {W_forget, W_input, W_output, W_cell}");
   AddInput("LSTMBias",
-           "(Tensor) the combined bias of LSTM, shape (1x4D)."
+           "(phi::DenseTensor) the combined bias of LSTM, shape (1x4D)."
            "Note: we should add the bias of hidden and context accorindg to "
            "the same gate: "
            "{B_forget, B_input, B_output, B_cell}");
-  AddOutput("Hidden",
-            "(LoDTensor) (same as LSTMOp) the hidden state of LSTM operator. "
-            "The shape is (T x D), and lod is the same with the `Input`.");
-  AddOutput("Cell",
-            "(LoDTensor) (same as LSTMOp) the cell state of LSTM operator. "
-            "The shape is (T x D), and lod is the same with the `Input`.");
+  AddOutput(
+      "Hidden",
+      "(phi::DenseTensor) (same as LSTMOp) the hidden state of LSTM operator. "
+      "The shape is (T x D), and lod is the same with the `Input`.");
+  AddOutput(
+      "Cell",
+      "(phi::DenseTensor) (same as LSTMOp) the cell state of LSTM operator. "
+      "The shape is (T x D), and lod is the same with the `Input`.");
   AddOutput("AttentionedX",
-            "(Tensor) shape is (T x 1), the result after X * AttentionWeight,"
+            "(phi::DenseTensor) shape is (T x 1), the result after X * "
+            "AttentionWeight,"
             " where T is the total time steps in this mini-batch,"
             " D is the hidden size.")
       .AsIntermediate();
   AddOutput("AttentionFCOut",
-            "(Tensor) (max_seq_len, 1), compute at each step.")
+            "(phi::DenseTensor) (max_seq_len, 1), compute at each step.")
       .AsIntermediate();
   AddOutput("LSTMX",
-            "(Tensor) the input X of LSTM for each step."
+            "(phi::DenseTensor) the input X of LSTM for each step."
             "Shape is (1 x M), where M is the x frame size")
       .AsIntermediate();
-  AddOutput(
-      "LSTMOUT",
-      "(Tensor) the output of LSTM X(1*(D+M))* weight((D+M)*4D) for each step."
-      "Shape is (1 x 4D), where M is the x frame size")
+  AddOutput("LSTMOUT",
+            "(phi::DenseTensor) the output of LSTM X(1*(D+M))* "
+            "weight((D+M)*4D) for each step."
+            "Shape is (1 x 4D), where M is the x frame size")
       .AsIntermediate();
   AddAttr<std::string>("gate_activation",
                        "(string, default: sigmoid)"
@@ -339,7 +345,7 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     using DeviceContext = phi::CPUContext;
 
-    auto* x = ctx.Input<LoDTensor>("X");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* h0 = ctx.Input<phi::DenseTensor>("H0");
     auto* c0 = ctx.Input<phi::DenseTensor>("C0");
     auto* atten_w = ctx.Input<phi::DenseTensor>("AttentionWeight");
@@ -350,8 +356,8 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
     auto* lstm_w = ctx.Input<phi::DenseTensor>("LSTMWeight");
     auto* lstm_b = ctx.Input<phi::DenseTensor>("LSTMBias");
 
-    auto* hidden_out = ctx.Output<LoDTensor>("Hidden");
-    auto* cell_out = ctx.Output<LoDTensor>("Cell");
+    auto* hidden_out = ctx.Output<phi::DenseTensor>("Hidden");
+    auto* cell_out = ctx.Output<phi::DenseTensor>("Cell");
     auto* atted_x = ctx.Output<phi::DenseTensor>("AttentionedX");
     auto* fc_out = ctx.Output<phi::DenseTensor>("AttentionFCOut");
     auto* lstm_x = ctx.Output<phi::DenseTensor>("LSTMX");

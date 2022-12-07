@@ -28,8 +28,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class FlattenOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -87,6 +85,16 @@ class FlattenOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     phi::DataLayout::ONEDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
@@ -159,6 +167,16 @@ class FlattenGradOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     phi::DataLayout::ONEDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
@@ -223,6 +241,16 @@ class Flatten2Op : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     phi::DataLayout::ONEDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
@@ -275,6 +303,16 @@ class Flatten2GradOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     phi::DataLayout::ONEDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };

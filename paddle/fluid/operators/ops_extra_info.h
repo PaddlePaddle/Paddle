@@ -95,9 +95,11 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"fuse_activation_alpha", ExtraAttrProperty::ONEDNN},
         {"fuse_activation_beta", ExtraAttrProperty::ONEDNN},
         {"fuse_activation_scale", ExtraAttrProperty::ONEDNN},
+        {"fused_output_scale", ExtraAttrProperty::ONEDNN},
         {"fuse_alpha", ExtraAttrProperty::ONEDNN},
         {"fuse_beta", ExtraAttrProperty::ONEDNN},
         {"fuse_relu", ExtraAttrProperty::ONEDNN},
+        {"fused_output_scale", ExtraAttrProperty::ONEDNN},
         {"fuse_residual_connection", ExtraAttrProperty::ONEDNN},
         {"fuse_with_relu", ExtraAttrProperty::ONEDNN},
         {"fused_reshape_Out", ExtraAttrProperty::ONEDNN},
@@ -118,6 +120,9 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"Scale_weights", ExtraAttrProperty::ONEDNN},
         {"x_data_format", ExtraAttrProperty::ONEDNN},
         {"y_data_format", ExtraAttrProperty::ONEDNN},
+        {"fused_squeeze2_axes", ExtraAttrProperty::ONEDNN},
+        {"fused_unsqueeze2_axes", ExtraAttrProperty::ONEDNN},
+        {"fused_reshape2_shape", ExtraAttrProperty::ONEDNN},
         // ONEDNN pass dedicated attributes
         {"Activation_scale", ExtraAttrProperty::ONEDNN},
         {"Bias_scales", ExtraAttrProperty::ONEDNN},
@@ -134,7 +139,7 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
              ExtraAttrPropertySet(ExtraAttrProperty::GPUDNN)},
 };
 
-inline ExtraAttrPropertySet GetExtraAttrPropertys(
+inline ExtraAttrPropertySet GetExtraAttrProperties(
     const std::string& attr_name) {
   auto iter = extra_attr_properties.find(attr_name);
   if (iter != extra_attr_properties.end()) {
@@ -221,7 +226,8 @@ class ExtraInfoUtils {
   std::unordered_map<std::string, std::vector<std::string>>
       g_extra_input_names_map_ = {{"conv2d", {"Bias", "ResidualData"}},
                                   {"conv2d_transpose", {"Bias"}},
-                                  {"conv2d_grad", {"Bias"}}};
+                                  {"conv2d_grad", {"Bias"}},
+                                  {"matmul_v2", {"ResidualData"}}};
   std::vector<std::string> empty_extra_input_names_;
 };
 

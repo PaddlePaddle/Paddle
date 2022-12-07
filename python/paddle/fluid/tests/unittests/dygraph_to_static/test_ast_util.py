@@ -12,20 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import textwrap
-from paddle.utils import gast
 import inspect
-import numpy as np
-import paddle
-import paddle.fluid as fluid
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
+import textwrap
+import unittest
 
+import numpy as np
 from ifelse_simple_func import (
     dyfunc_with_if_else,
     dyfunc_with_if_else2,
     nested_if_else,
 )
+
+import paddle
+import paddle.fluid as fluid
+from paddle.jit.dy2static.utils import ast_to_func
+from paddle.utils import gast
 
 
 class TestAST2Func(unittest.TestCase):

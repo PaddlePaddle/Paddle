@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import inspect
 import numpy as np
 import warnings
@@ -379,7 +380,11 @@ def monkey_patch_varbase():
 
             new_ivar = self._grad_ivar()
             # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
-            if 'npu' in get_all_custom_device_type():
+            if (
+                os.environ.get('FLAGS_npu_storage_format', None)
+                in [1, '1', True, 'True', 'true']
+                and 'npu' in get_all_custom_device_type()
+            ):
                 new_ivar = paddle.incubate._npu_identity(x=new_ivar, format=-1)
             new_ivar = new_ivar._copy_to(core.CPUPlace(), True)
             if self._grad_ivar().type == core.VarDesc.VarType.SELECTED_ROWS:
@@ -886,8 +891,8 @@ def monkey_patch_varbase():
         self.get_tensor()._clear()
 
     @framework.dygraph_only
-    def _use_cudnn(self, use_cudnn=True):
-        return self._tensor_use_cudnn(use_cudnn)
+    def _use_gpudnn(self, use_gpudnn=True):
+        return self._tensor_use_gpudnn(use_gpudnn)
 
     @framework.dygraph_only
     def _uva(self, device_id=0):
@@ -1073,7 +1078,7 @@ def monkey_patch_varbase():
         setattr(core.eager.Tensor, "_uva", _uva)
         setattr(core.eager.Tensor, "_clear_data", _clear_data)
         setattr(core.eager.Tensor, "__hash__", __hash__)
-        setattr(core.eager.Tensor, "_use_cudnn", _use_cudnn)
+        setattr(core.eager.Tensor, "_use_gpudnn", _use_gpudnn)
     else:
         setattr(core.VarBase, "__name__", "Tensor")
         setattr(core.VarBase, "grad", grad)

@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import os
-import sys
 import shutil
+import sys
 import zipfile
+
 from paddle.utils.download import get_path_from_url
 
 __all__ = []

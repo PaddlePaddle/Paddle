@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
+
+import paddle
 
 
 class StaticShapeInferrenceTest(unittest.TestCase):
@@ -22,7 +23,7 @@ class StaticShapeInferrenceTest(unittest.TestCase):
         data = paddle.fluid.layers.data(
             name="x", shape=[-1, 2], dtype='float32'
         )
-        shape = paddle.fluid.layers.shape(data)  # shape should be [-1, 2]
+        shape = paddle.shape(data)  # shape should be [-1, 2]
         x = paddle.fluid.layers.uniform_random(shape)
         self.assertEqual(x.shape, data.shape)
         paddle.disable_static()
