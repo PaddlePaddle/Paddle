@@ -927,8 +927,8 @@ def deform_conv2d(
         name(str, optional): For details, please refer to :ref:`api_guide_Name`.
                         Generally, no setting is required. Default: None.
     Returns:
-        Tensor: The tensor variable storing the deformable convolution \
-                  result. A Tensor with type float32, float64.
+        Tensor: 4-D Tensor storing the deformable convolution result.\
+            A Tensor with type float32, float64.
 
     Examples:
         .. code-block:: python
@@ -1136,7 +1136,7 @@ class DeformConv2D(Layer):
         dilation(int|list|tuple, optional): The dilation size. If dilation is a list/tuple, it must
             contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
             dilation_D = dilation_H = dilation_W = dilation. The default value is 1.
-        deformable_groups (int): The number of deformable group partitions.
+        deformable_groups (int, optional): The number of deformable group partitions.
             Default: deformable_groups = 1.
         groups(int, optional): The groups number of the Conv3D Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
@@ -1495,7 +1495,7 @@ def decode_jpeg(x, mode='unchanged', name=None):
     Args:
         x (Tensor): A one dimensional uint8 tensor containing the raw bytes
             of the JPEG image.
-        mode (str): The read mode used for optionally converting the image.
+        mode (str, optional): The read mode used for optionally converting the image.
             Default: 'unchanged'.
         name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
@@ -1865,7 +1865,7 @@ def roi_align(
             default. Default: None.
 
     Returns:
-        The output of ROIAlignOp is a 4-D tensor with shape (num_boxes,
+        The output of ROIAlignOp is a 4-D tensor with shape (num_boxes,\
             channels, pooled_h, pooled_w). The data type is float32 or float64.
 
     Examples:
@@ -1965,7 +1965,7 @@ class RoIAlign(Layer):
             when pooling. Default: 1.0.
 
     Returns:
-        The output of ROIAlign operator is a 4-D tensor with
+        The output of ROIAlign operator is a 4-D tensor with \
             shape (num_boxes, channels, pooled_h, pooled_w).
 
     Examples:
