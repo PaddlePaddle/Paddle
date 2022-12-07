@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/diagonal_grad_kernel.h"
-#include "paddle/phi/backends/gpu/gpu_info.h"
 
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
