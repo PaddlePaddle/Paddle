@@ -446,6 +446,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_retinanet_detection_output',
     'test_reverse_op',
     'test_rmsprop_op',
+    'test_rnn_cell_api',
     'test_rnn_memory_helper_op',
     'test_roi_align_op',
     'test_roi_perspective_transform_op',
