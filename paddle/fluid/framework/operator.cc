@@ -3314,6 +3314,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
   if (phi::OneDNNContext::classof(dev_ctx)) {
     phi::OneDNNContext* one_dnn_ctx = static_cast<phi::OneDNNContext*>(dev_ctx);
     one_dnn_ctx->ClearDnnAttr();
+    if (!RuntimeAttrs().empty()) need_prepare_phi_data_ = true;
   }
 #endif
 
@@ -3335,7 +3336,6 @@ void OperatorWithKernel::BuildPhiKernelContext(
 #if defined(PADDLE_WITH_MKLDNN) || defined(PADDLE_WITH_CUDA)
   auto& runtime_attrs = RuntimeAttrs();
   for (const auto& attr_iter : runtime_attrs) {
-    need_prepare_phi_data_ = true;
     auto& attr_name = attr_iter.first;
     auto& attr = attr_iter.second;
     auto attr_propertys = paddle::operators::GetExtraAttrProperties(attr_name);
