@@ -49,7 +49,12 @@ class Uniform(distribution.Distribution):
     * :math:`Z`: is the normalizing constant.
 
     The parameters `low` and `high` must be shaped in a way that supports
-    :ref:`user_guide_broadcasting` (e.g., `high - low` is a valid operation).
+    `Boardcasting` (e.g., `high - low` is a valid operation).
+
+    Note:
+        If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         low(int|float|list|tuple|numpy.ndarray|Tensor): The lower boundary of

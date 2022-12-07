@@ -114,9 +114,7 @@ class SqueezeExcitation(fluid.dygraph.Layer):
 
         super().__init__()
         self._num_channels = num_channels
-        self._pool = paddle.fluid.dygraph.nn.Pool2D(
-            pool_size=0, pool_type='avg', global_pooling=True
-        )
+        self._pool = paddle.nn.AdaptiveAvgPool2D(1)
         stdv = 1.0 / math.sqrt(num_channels * 1.0)
         self._squeeze = Linear(
             num_channels,
@@ -205,7 +203,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
         else:
             short = self.short(inputs)
 
-        y = fluid.layers.elementwise_add(x=short, y=scale, act='relu')
+        y = paddle.nn.functional.relu(paddle.add(x=short, y=scale))
         return y
 
 
@@ -295,9 +293,7 @@ class SeResNeXt(fluid.dygraph.Layer):
                 self.bottleneck_block_list.append(bottleneck_block)
                 shortcut = True
 
-        self.pool2d_avg = paddle.fluid.dygraph.nn.Pool2D(
-            pool_size=7, pool_type='avg', global_pooling=True
-        )
+        self.pool2d_avg = paddle.nn.AdaptiveAvgPool2D(1)
         stdv = 1.0 / math.sqrt(2048 * 1.0)
 
         self.pool2d_avg_output = num_filters[len(num_filters) - 1] * 2 * 1 * 1
@@ -353,7 +349,7 @@ class TestSeResNeXt(TestParallelDyGraphRunnerBase):
         label.stop_gradient = True
 
         out = model(img)
-        softmax_out = fluid.layers.softmax(out, use_cudnn=False)
+        softmax_out = paddle.nn.functional.softmax(out, use_cudnn=False)
         loss = fluid.layers.cross_entropy(input=softmax_out, label=label)
         avg_loss = paddle.mean(x=loss)
         return avg_loss

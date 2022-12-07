@@ -44,12 +44,7 @@ def create_test_class(op_type, typename, callback):
                 x = fluid.layers.data(name='x', shape=[2], dtype='int32')
                 y = fluid.layers.data(name='y', shape=[2], dtype='int32')
                 a = fluid.layers.data(name='a', shape=[2], dtype='int16')
-                if self.op_type == "less_than":
-                    self.assertRaises(
-                        TypeError, fluid.layers.less_than, x=x, y=y, force_cpu=1
-                    )
                 op = eval("paddle.%s" % self.op_type)
-                self.assertRaises(TypeError, op, x=x, y=y, cond=1)
                 self.assertRaises(TypeError, op, x=x, y=a)
                 self.assertRaises(TypeError, op, x=a, y=y)
 
@@ -481,7 +476,7 @@ class TestCompareOpPlace(unittest.TestCase):
             place = paddle.CUDAPlace(0)
         label = fluid.layers.assign(np.array([3, 3], dtype="int32"))
         limit = fluid.layers.assign(np.array([3, 2], dtype="int32"))
-        out = fluid.layers.less_than(label, limit, force_cpu=True)
+        out = paddle.less_than(label, limit)
         exe = fluid.Executor(place)
         (res,) = exe.run(fetch_list=[out])
         self.assertEqual((res == np.array([False, False])).all(), True)

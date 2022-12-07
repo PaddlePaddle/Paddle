@@ -2372,14 +2372,8 @@ PDNode *patterns::PriorBox::operator()() {
   return boxes_var;
 }
 
-#if CUDNN_VERSION >= 8000
-std::unordered_set<std::string> conv_act_set(
-    {"identity", "relu", "sigmoid", "tanh"});
-#else
-std::unordered_set<std::string> conv_act_set({"identity", "relu"});
-#endif
-
-PDNode *patterns::ConvElementwiseaddAct::operator()(PDNode *conv_in) {
+PDNode *patterns::ConvElementwiseaddAct::operator()(
+    PDNode *conv_in, const std::unordered_set<std::string> &conv_act_set) {
   conv_in->AsInput();
   auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
   auto conv_out = pattern->NewNode(conv_out_repr())
@@ -2576,7 +2570,8 @@ PDNode *patterns::VitAttention::operator()(PDNode *in) {
   return reshape2_out;
 }
 
-PDNode *patterns::ConvElementwiseadd2Act::operator()(PDNode *conv_in) {
+PDNode *patterns::ConvElementwiseadd2Act::operator()(
+    PDNode *conv_in, const std::unordered_set<std::string> &conv_act_set) {
   auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
   auto conv_filter = pattern->NewNode(conv_filter_repr())
                          ->assert_is_op_input("conv2d", "Filter")
@@ -3804,6 +3799,70 @@ PDNode *patterns::LayernormShiftPartitionPattern::operator()() {
   return reshape4_out;
 }
 
+PDNode *patterns::ReverseRollPattern::operator()(PDNode *in) {
+  in->AsInput();
+  auto reshape2_00_op =
+      pattern->NewNode(reshape2_00_op_repr())->assert_is_op("reshape2");
+
+  auto reshape2_00_out = pattern->NewNode(reshape2_00_out_repr())
+                             ->AsIntermediate()
+                             ->assert_is_op_output("reshape2", "Out")
+                             ->assert_is_op_input("reshape2", "X");
+
+  auto reshape2_10_op =
+      pattern->NewNode(reshape2_10_op_repr())->assert_is_op("reshape2");
+  auto reshape2_10_out = pattern->NewNode(reshape2_10_out_repr())
+                             ->AsIntermediate()
+                             ->assert_is_op_output("reshape2", "Out")
+                             ->assert_is_op_input("transpose2", "X");
+
+  auto transpose2_20_op =
+      pattern->NewNode(transpose2_20_op_repr())->assert_is_op("transpose2");
+  auto transpose2_20_out = pattern->NewNode(transpose2_20_out_repr())
+                               ->AsIntermediate()
+                               ->assert_is_op_output("transpose2", "Out")
+                               ->assert_is_op_input("reshape2", "X");
+
+  auto reshape2_30_op =
+      pattern->NewNode(reshape2_30_op_repr())->assert_is_op("reshape2");
+  auto reshape2_30_out = pattern->NewNode(reshape2_30_out_repr())
+                             ->AsIntermediate()
+                             ->assert_is_op_output("reshape2", "Out");
+  PDNode *roll_40_op = nullptr;
+  PDNode *roll_40_out = nullptr;
+  if (with_roll_) {
+    reshape2_30_out->assert_is_op_input("roll", "X");
+    roll_40_op = pattern->NewNode(roll_40_op_repr())->assert_is_op("roll");
+    roll_40_out = pattern->NewNode(roll_40_out_repr())
+                      ->AsIntermediate()
+                      ->assert_is_op_output("roll", "Out")
+                      ->assert_is_op_input("reshape2", "X");
+  } else {
+    reshape2_30_out->assert_is_op_input("reshape2", "X");
+  }
+  auto reshape2_50_op =
+      pattern->NewNode(reshape2_50_op_repr())->assert_is_op("reshape2");
+  auto reshape2_50_out = pattern->NewNode(reshaep2_50_out_repr())
+                             ->assert_is_op_output("reshape2", "Out")
+                             ->AsOutput();
+  reshape2_00_op->LinksFrom({in});
+  reshape2_00_out->LinksFrom({reshape2_00_op});
+  reshape2_10_op->LinksFrom({reshape2_00_out});
+  reshape2_10_out->LinksFrom({reshape2_10_op});
+  transpose2_20_op->LinksFrom({reshape2_10_out});
+  transpose2_20_out->LinksFrom({transpose2_20_op});
+  reshape2_30_op->LinksFrom({transpose2_20_out});
+  reshape2_30_out->LinksFrom({reshape2_30_op});
+  if (with_roll_) {
+    roll_40_op->LinksFrom({reshape2_30_out});
+    roll_40_out->LinksFrom({roll_40_op});
+    reshape2_50_op->LinksFrom({roll_40_out});
+  } else {
+    reshape2_50_op->LinksFrom({reshape2_30_out});
+  }
+  reshape2_50_out->LinksFrom({reshape2_50_op});
+  return reshape2_50_out;
+}
 PDNode *patterns::MergeLayernormPattern::operator()(PDNode *in) {
   in->AsInput();
   auto reshape2_00_op =
