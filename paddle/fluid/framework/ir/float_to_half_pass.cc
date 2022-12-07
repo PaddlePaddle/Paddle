@@ -16,7 +16,11 @@
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/errors.h"
 
 namespace paddle {
 namespace framework {
@@ -620,34 +624,55 @@ void FloatToHalfPass::ConvertWeightsData() const {
   for (const auto& var_name : var_names) {
     if (vars_convert_to_half_.count(var_name)) {
       VLOG(4) << var_name << "'s data type was convert to half";
-#define CONVERT_TENSOR_DTYPE(DTYPE, dtype)                                 \
-  half_tensor.set_type(DTYPE);                                             \
-  auto* half_data = half_tensor.mutable_data<dtype>(platform::CPUPlace()); \
-  for (int64_t i = 0; i < origin_tensor->numel(); i++) {                   \
-    half_data[i] = static_cast<dtype>(origin_data[i]);                     \
-  }                                                                        \
-  origin_tensor->clear();                                                  \
-  paddle::framework::TensorCopySync(                                       \
-      half_tensor, platform::CPUPlace(), origin_tensor)
 
       auto* var = scope->FindLocalVar(var_name);
+      CHECK_EQ(var->IsType<phi::DenseTensor>(), true);
 
-      if (var->IsType<phi::DenseTensor>()) {
-        auto* origin_tensor = var->GetMutable<phi::DenseTensor>();
-        phi::DenseTensor half_tensor;
-        half_tensor.Resize(origin_tensor->dims());
-        auto* origin_data =
-            origin_tensor->mutable_data<float>(platform::CPUPlace());
-        if (half_precision_ == phi::DataType::FLOAT16) {
-          CONVERT_TENSOR_DTYPE(paddle::experimental::DataType::FLOAT16,
-                               phi::dtype::float16);
-        } else if (half_precision_ == phi::DataType::BFLOAT16) {
-          CONVERT_TENSOR_DTYPE(paddle::experimental::DataType::BFLOAT16,
-                               phi::dtype::bfloat16);
+      auto& pool = platform::DeviceContextPool::Instance();
+      auto* dev_ctx = pool.Get(platform::CPUPlace());
+
+      auto* origin_tensor = var->GetMutable<phi::DenseTensor>();
+      origin_tensor->data();
+
+      phi::DenseTensor half_tensor;
+      half_tensor.Resize(origin_tensor->dims());
+      half_tensor.set_type(half_precision_);
+      auto* half_data = dev_ctx->Alloc(
+          &half_tensor,
+          half_precision_,
+          half_tensor.numel() * experimental::SizeOf(half_precision_));
+
+      if (half_precision_ == phi::DataType::FLOAT16) {
+        using float16 = phi::dtype::float16;
+        for (int64_t i = 0; i < origin_tensor->numel(); i++) {
+          if (origin_tensor->dtype() == phi::DataType::FLOAT64) {
+            auto* origin_data = origin_tensor->data<double>();
+            reinterpret_cast<float16*>(half_data)[i] =
+                static_cast<float16>(origin_data[i]);
+          } else if (origin_tensor->dtype() == phi::DataType::FLOAT32) {
+            auto* origin_data = origin_tensor->data<float>();
+            reinterpret_cast<float16*>(half_data)[i] =
+                static_cast<float16>(origin_data[i]);
+          }
+        }
+      } else if (half_precision_ == phi::DataType::BFLOAT16) {
+        using bfloat16 = phi::dtype::bfloat16;
+        for (int64_t i = 0; i < origin_tensor->numel(); i++) {
+          if (origin_tensor->dtype() == phi::DataType::FLOAT64) {
+            auto* origin_data = origin_tensor->data<double>();
+            reinterpret_cast<bfloat16*>(half_data)[i] =
+                static_cast<bfloat16>(origin_data[i]);
+          } else if (origin_tensor->dtype() == phi::DataType::FLOAT32) {
+            auto* origin_data = origin_tensor->data<float>();
+            reinterpret_cast<bfloat16*>(half_data)[i] =
+                static_cast<bfloat16>(origin_data[i]);
+          }
         }
       }
+      origin_tensor->clear();
+      paddle::framework::TensorCopySync(
+          half_tensor, dev_ctx->GetPlace(), origin_tensor);
     }
-#undef CONVERT_TENSOR_DTYPE
   }
 }
 

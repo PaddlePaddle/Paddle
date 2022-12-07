@@ -22,7 +22,6 @@
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
 
