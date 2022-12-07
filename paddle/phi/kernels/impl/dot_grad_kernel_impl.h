@@ -624,7 +624,7 @@ struct DotTripleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
     const DenseTensor* in_tensor_d_dy = in_tensor_d_dy_opt->get_ptr();
     const DenseTensor* in_tensor_d_ddout = in_tensor_d_ddout_opt->get_ptr();
 #if defined(__NVCC__) || defined(__HIPCC__)
-    if (1 == in_tensor_d_ddout->dims().size()) {
+    if (1 == in_tensor_dout->dims().size()) {
       DenseTensor in_tensor_d_ddout_help;
       auto& dev = *ctx.eigen_device();
       if (out_tensor_d_x || out_tensor_d_y) {
@@ -1029,9 +1029,9 @@ struct DotTripleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
       }
     } else if (out_tensor_d_ddy) {
       FullLikeKernel<T, DeviceContext>(ctx,
-                                       *in_tensor_dout,
+                                       *in_tensor_y,
                                        Scalar(T(0.0, 0.0)),
-                                       in_tensor_dout->dtype(),
+                                       in_tensor_y->dtype(),
                                        out_tensor_d_ddy);
     }
 #endif
@@ -1060,7 +1060,7 @@ struct DotTripleGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
     const DenseTensor* in_tensor_d_dy = in_tensor_d_dy_opt->get_ptr();
     const DenseTensor* in_tensor_d_ddout = in_tensor_d_ddout_opt->get_ptr();
 #if defined(__NVCC__) || defined(__HIPCC__)
-    if (1 == in_tensor_d_ddout->dims().size()) {
+    if (1 == in_tensor_dout->dims().size()) {
       auto& dev = *ctx.eigen_device();
       auto d_ddout = EigenVector<T>::Flatten(*in_tensor_d_ddout);
       if (out_tensor_d_x && in_tensor_d_ddout && in_tensor_ddy) {
@@ -1412,9 +1412,9 @@ struct DotTripleGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
       }
     } else if (out_tensor_d_ddy) {
       FullLikeKernel<T, DeviceContext>(ctx,
-                                       *in_tensor_dout,
+                                       *in_tensor_y,
                                        Scalar(0.0),
-                                       in_tensor_dout->dtype(),
+                                       in_tensor_y->dtype(),
                                        out_tensor_d_ddy);
     }
 #endif
