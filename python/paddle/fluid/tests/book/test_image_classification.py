@@ -40,7 +40,7 @@ def resnet_cifar10(input, depth=32):
             act=None,
             bias_attr=bias_attr,
         )
-        return fluid.layers.batch_norm(input=tmp, act=act)
+        return paddle.static.nn.batch_norm(input=tmp, act=act)
 
     def shortcut(input, ch_in, ch_out, stride):
         if ch_in != ch_out:
@@ -94,7 +94,7 @@ def vgg16_bn_drop(input):
 
     drop = fluid.layers.dropout(x=conv5, dropout_prob=0.5)
     fc1 = fluid.layers.fc(input=drop, size=4096, act=None)
-    bn = fluid.layers.batch_norm(input=fc1, act='relu')
+    bn = paddle.static.nn.batch_norm(input=fc1, act='relu')
     drop2 = fluid.layers.dropout(x=bn, dropout_prob=0.5)
     fc2 = fluid.layers.fc(input=drop2, size=4096, act=None)
     return fc2

@@ -22,7 +22,6 @@ namespace paddle {
 namespace operators {
 
 using phi::PADDLE_CUDA_NUM_THREADS;
-using Tensor = phi::DenseTensor;
 
 template <typename T>
 __global__ void CvmComputeKernel(const bool use_cvm,

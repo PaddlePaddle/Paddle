@@ -177,7 +177,7 @@ class SE_ResNeXt:
             ),
             bias_attr=False,
         )
-        return fluid.layers.batch_norm(input=conv, act=act)
+        return paddle.static.nn.batch_norm(input=conv, act=act)
 
     def squeeze_excitation(self, input, num_channels, reduction_ratio):
         pool = paddle.nn.functional.avg_pool2d(x=input, kernel_size=0)

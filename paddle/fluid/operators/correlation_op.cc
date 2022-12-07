@@ -22,8 +22,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 inline std::vector<int64_t> CorrelationOutputSize(int batch,
                                                   int input_height,
                                                   int input_width,

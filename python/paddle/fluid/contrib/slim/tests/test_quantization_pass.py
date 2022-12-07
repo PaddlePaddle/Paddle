@@ -57,7 +57,7 @@ def residual_block(num, quant_skip_pattern=None):
             act=None,
             bias_attr=bias_attr,
         )
-        return fluid.layers.batch_norm(input=tmp, act=act)
+        return paddle.static.nn.batch_norm(input=tmp, act=act)
 
     data = fluid.layers.data(
         name='image',
@@ -76,7 +76,7 @@ def residual_block(num, quant_skip_pattern=None):
     matmul_weight = paddle.create_parameter(
         shape=[1, 16, 32, 32], dtype='float32'
     )
-    hidden = fluid.layers.matmul(hidden, matmul_weight, True, True)
+    hidden = paddle.matmul(hidden, matmul_weight, True, True)
     if quant_skip_pattern:
         with fluid.name_scope(quant_skip_pattern):
             pool = paddle.nn.functional.avg_pool2d(
@@ -102,7 +102,7 @@ def conv_net(img, label, quant_skip_pattern):
         pool_type='max',
         act="relu",
     )
-    conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
+    conv_pool_1 = paddle.static.nn.batch_norm(conv_pool_1)
     conv_pool_2 = fluid.nets.simple_img_conv_pool(
         input=conv_pool_1,
         filter_size=5,
@@ -712,7 +712,7 @@ def quant_dequant_residual_block(num, quant_skip_pattern=None):
             act=None,
             bias_attr=bias_attr,
         )
-        return fluid.layers.batch_norm(input=tmp, act=act)
+        return paddle.static.nn.batch_norm(input=tmp, act=act)
 
     data1 = fluid.layers.data(name='image', shape=[1, 32, 32], dtype='float32')
     data2 = fluid.layers.data(
@@ -724,7 +724,7 @@ def quant_dequant_residual_block(num, quant_skip_pattern=None):
         conv = conv_bn_layer(hidden, 16, 3, 1, 1, act=None, bias_attr=True)
         short = conv_bn_layer(hidden, 16, 1, 1, 0, act=None)
         hidden = paddle.nn.functional.relu(paddle.add(x=conv, y=short))
-    hidden = fluid.layers.matmul(hidden, data2, True, True)
+    hidden = paddle.matmul(hidden, data2, True, True)
     if isinstance(quant_skip_pattern, str):
         with fluid.name_scope(quant_skip_pattern):
             pool1 = paddle.nn.functional.avg_pool2d(
