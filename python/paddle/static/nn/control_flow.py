@@ -58,10 +58,7 @@ def Assert(cond, data=None, summarize=20, name=None):
             import paddle
             from paddle.static.nn import Assert
 
-<<<<<<< HEAD
-=======
             paddle.enable_static()
->>>>>>> fluid_migration-Assert_increment
             x = paddle.full([2, 3], 2.0, 'float32')
             condition = paddle.max(x) < 1.0 # False
             Assert(condition, [x], 10, "example_assert_layer")

@@ -63,7 +63,7 @@ class HybridParallelInferenceHelper:
                 # write placehold data to global lod_tensor_array,
                 # it need for send_v2 of lod_tensor_array
                 paddle.static.nn.control_flow.increment(x=step_idx, value=1.0, in_place=True)
-                layers.array_write(element_in_arr, i=step_idx, array=arr)
+                paddle.tensor.array_write(element_in_arr, i=step_idx, array=arr)
 
             with paddle.fluid.device_guard(f'{device}:0'):
                 ... some code
