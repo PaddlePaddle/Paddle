@@ -105,7 +105,8 @@ class SkipLayerNormOpConverter : public OpConverter {
       int type = static_cast<int>((engine_->WithFp16() == 1)
                                       ? nvinfer1::DataType::kHALF
                                       : nvinfer1::DataType::kFLOAT);
-      int ld = input1->getDimensions().d[2];  // hidden dimension
+      auto input_dims = input1->getDimensions();
+      int ld = input_dims.d[input_dims.nbDims - 1];  // hidden dimension
       PADDLE_ENFORCE_GT(ld,
                         0,
                         platform::errors::InvalidArgument(
