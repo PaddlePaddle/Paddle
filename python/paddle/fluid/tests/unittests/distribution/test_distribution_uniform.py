@@ -147,8 +147,6 @@ class UniformTest(unittest.TestCase):
     def test_uniform_distribution_dygraph(self):
         self.setUp()
         self.func_uniform_distribution_dygraph()
-        self.setUp()
-        self.func_uniform_distribution_dygraph()
 
 
 class UniformTest2(UniformTest):
