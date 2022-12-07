@@ -14,7 +14,9 @@
 
 #pragma once
 
+#ifdef __LINUX__
 #include <pthread.h>
+#endif
 #include <semaphore.h>
 #include "paddle/fluid/platform/enforce.h"
 
