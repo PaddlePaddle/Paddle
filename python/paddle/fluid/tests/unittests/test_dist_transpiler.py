@@ -414,9 +414,7 @@ class TestFakeInit(TranspilerTest):
 
         input_emb_re = paddle.reshape(input_emb, shape=[-1, 1, embedding_size])
 
-        neg_matmul = fluid.layers.matmul(
-            input_emb_re, neg_emb_w_re, transpose_y=True
-        )
+        neg_matmul = paddle.matmul(input_emb_re, neg_emb_w_re, transpose_y=True)
         neg_matmul_re = paddle.reshape(neg_matmul, shape=[-1, neg_num])
         neg_logits = paddle.add(neg_matmul_re, neg_emb_b_vec)
         # nce loss
