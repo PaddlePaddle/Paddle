@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.tests.unittests.op_test import OpTest, convert_uint16_to_float
 
 
@@ -47,10 +46,6 @@ class TestGaussianRandomOp(OpTest):
 
     def test_check_output(self):
         self.check_output_customized(self.verify_output)
-
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_check_output()
 
     def verify_output(self, outs):
         self.assertEqual(outs[0].shape, (123, 92))
@@ -94,10 +89,6 @@ class TestGaussianRandomBF16Op(OpTest):
         self.check_output_with_place_customized(
             self.verify_output, place=core.CUDAPlace(0)
         )
-
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_check_output()
 
     def verify_output(self, outs):
         outs = convert_uint16_to_float(outs)
