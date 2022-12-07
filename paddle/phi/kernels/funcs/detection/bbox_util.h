@@ -18,10 +18,10 @@ namespace phi {
 namespace funcs {
 
 struct RangeInitFunctor {
-  int start;
-  int delta;
-  int* out;
-  HOSTDEVICE void operator()(size_t i) { out[i] = start + i * delta; }
+  int start_;
+  int delta_;
+  int *out_;
+  __device__ void operator()(size_t i) { out_[i] = start_ + i * delta_; }
 };
 
 }  // namespace funcs
