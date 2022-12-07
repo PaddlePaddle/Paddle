@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/inference/analysis/passes/convert_to_mixed_precision.h"
 
+#include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/ir/float_to_half_pass.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/inference/io.h"
@@ -74,7 +75,7 @@ void ConvertToMixedPrecisionPass::Run() {
   pass.Set("enable_gpu_half", new bool{true});
   pass.Set("keep_io_types", new bool{keep_io_types_});
 
-  main_graph_.reset(pass.Apply(main_graph_.release()));
+  pass.Apply(main_graph_.get());
 
   SaveMixedModel();
 }

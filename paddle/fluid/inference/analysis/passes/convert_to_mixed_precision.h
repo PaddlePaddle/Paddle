@@ -18,7 +18,6 @@
 #include <unordered_set>
 
 #include "paddle/fluid/framework/block_desc.h"
-#include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"

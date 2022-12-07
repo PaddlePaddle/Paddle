@@ -565,7 +565,11 @@ bool FloatToHalfPass::OutputVarsNotConvert(Node* op_node,
 void FloatToHalfPass::SetVarPrecision() const {
   for (const auto& nodes : all_op_nodes_) {
     for (auto* op_node : nodes) {
-      if (op_run_half_.count(op_node->Op()->Type())) {
+      if (op_run_half_.count(op_node->Op()->Type()) == 0) {
+        continue;
+      }
+
+      if (GetOpOriginalType(op_node->Op()->Type()) != "feed") {
         for (auto* in_var_node : op_node->inputs) {
           CHECK_EQ(in_var_node->IsVar(), true);
 
@@ -582,7 +586,9 @@ void FloatToHalfPass::SetVarPrecision() const {
             vars_convert_to_half_.insert(in_var_name);
           }
         }
+      }
 
+      if (GetOpOriginalType(op_node->Op()->Type()) != "fetch") {
         for (auto* out_var_node : op_node->outputs) {
           CHECK_EQ(out_var_node->IsVar(), true);
 
