@@ -728,8 +728,10 @@ class Optimizer:
         if device is None:
             device = self._get_device_for_param(param.name)
 
-        if in_dygraph_mode() and (
-            device == 'cpu' or isinstance(device, core.CPUPlace)
+        if (
+            in_dygraph_mode()
+            and (device == 'cpu' or isinstance(device, core.CPUPlace))
+            and (not core.is_compiled_with_xpu())
         ):
             _C_ops.full_(
                 var,

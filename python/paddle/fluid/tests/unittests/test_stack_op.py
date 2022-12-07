@@ -168,7 +168,7 @@ class TestStackAPIWithLoDTensorArray(unittest.TestCase):
         self.program = fluid.Program()
         with fluid.program_guard(self.program):
             input = fluid.layers.assign(self.x)
-            tensor_array = fluid.layers.create_array(dtype='float32')
+            tensor_array = paddle.tensor.create_array(dtype='float32')
             zero = fluid.layers.fill_constant(shape=[1], value=0, dtype="int64")
 
             for i in range(self.iter_num):
@@ -206,7 +206,7 @@ class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
         self.program = fluid.Program()
         with fluid.program_guard(self.program):
             input = fluid.layers.assign(self.x)
-            tensor_array = fluid.layers.create_array(dtype='float32')
+            tensor_array = paddle.tensor.create_array(dtype='float32')
             zero = fluid.layers.fill_constant(shape=[1], value=0, dtype="int64")
 
             for i in range(self.iter_num):

@@ -28,6 +28,7 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
+import paddle.nn.functional as F
 
 paddle.enable_static()
 
@@ -84,6 +85,87 @@ class XPUTestExpOP(XPUOpTestWrapper):
 support_types = get_xpu_op_support_types('exp')
 for stype in support_types:
     create_test_class(globals(), XPUTestExpOP, stype)
+
+
+class XPUTestSiluOP(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'silu'
+        self.use_dynamic_create_class = False
+
+    class XPUTestSilu(TestActivationOPBase):
+        def set_case(self):
+            self.op_type = "silu"
+            self.dtype = self.in_type
+            self.init_shape()
+
+            np.random.seed(1024)
+            x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+            out = x / (np.exp(-x) + 1)
+
+            self.inputs = {'X': x}
+            self.outputs = {'Out': out}
+            self.attrs = {'use_xpu': True}
+
+        def test_check_grad(self):
+            self.check_grad_with_place(self.place, ['X'], 'Out')
+
+        def init_shape(self):
+            self.shape = [11, 17]
+
+    class TestSilu_ZeroDim(XPUTestSilu):
+        def init_shape(self):
+            self.shape = []
+
+
+class TestSiluAPI(unittest.TestCase):
+    # test paddle.nn.Silu, paddle.nn.functional.silu
+    def setUp(self):
+        self.x_np = np.random.uniform(-1, 1, [11, 17]).astype('float32')
+        self.place = paddle.XPUPlace(0)
+
+    def test_static_api(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.fluid.data('X', [11, 17])
+            out1 = F.silu(x)
+            m = paddle.nn.Silu()
+            out2 = m(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
+        out_ref = self.x_np / (1 + np.exp(-self.x_np))
+        for r in res:
+            np.testing.assert_allclose(out_ref, r, rtol=1e-05)
+
+    def test_dygraph_api(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        out1 = F.silu(x)
+        m = paddle.nn.Silu()
+        out2 = m(x)
+        out_ref = self.x_np / (1 + np.exp(-self.x_np))
+        for r in [out1, out2]:
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+        paddle.enable_static()
+
+    def test_errors(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, F.silu, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = paddle.fluid.data(
+                name='x_int32', shape=[11, 17], dtype='int32'
+            )
+            self.assertRaises(TypeError, F.silu, x_int32)
+            # support the input dtype is float16
+            x_fp16 = paddle.fluid.data(
+                name='x_fp16', shape=[11, 17], dtype='float16'
+            )
+            F.silu(x_fp16)
+
+
+support_types = get_xpu_op_support_types('silu')
+for stype in support_types:
+    create_test_class(globals(), XPUTestSiluOP, stype)
 
 
 class XPUTestSigmoidOP(XPUOpTestWrapper):

@@ -61,6 +61,40 @@ ConvBiasFusePass::ConvBiasFusePass() {
       .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
       .End();
 
+  AddOpCompat(OpCompat("fused_conv2d"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("strides")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("paddings")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsOptional()
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("groups")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("dilations")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("data_format")
+      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
+      .End();
+
   AddOpCompat(OpCompat("elementwise_add"))
       .AddInput("X")
       .IsTensor()
@@ -165,6 +199,40 @@ Conv3DBiasFusePass::Conv3DBiasFusePass() {
       .IsStringIn({"NDHWC", "NCDHW"})
       .End();
 
+  AddOpCompat(OpCompat("fused_conv3d"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("strides")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("paddings")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsOptional()
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("groups")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("dilations")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("data_format")
+      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
+      .End();
+
   AddOpCompat(OpCompat("elementwise_add"))
       .AddInput("X")
       .IsTensor()
@@ -203,6 +271,16 @@ phi::DenseTensor tensor_apply_eltwise(const phi::DenseTensor& vec_a,
 }
 
 void ConvBiasFusePass::ApplyImpl(ir::Graph* graph) const {
+  FuseConvBias(graph, type(), fused_type());
+  if (type() != fused_type()) {
+    // Is the second pass useful?
+    FuseConvBias(graph, fused_type(), fused_type());
+  }
+}
+
+void ConvBiasFusePass::FuseConvBias(ir::Graph* graph,
+                                    const std::string& conv_type,
+                                    const std::string& fused_conv) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
@@ -216,9 +294,9 @@ void ConvBiasFusePass::ApplyImpl(ir::Graph* graph) const {
       gpd.mutable_pattern()
           ->NewNode(patterns::PDNodeName(name_scope_, "conv_input"))
           ->AsInput()
-          ->assert_is_op_input(type(), "Input");
+          ->assert_is_op_input(conv_type, "Input");
   patterns::ConvBias conv_bias_pattern(gpd.mutable_pattern(), name_scope_);
-  conv_bias_pattern(conv_input, type());
+  conv_bias_pattern(conv_input, conv_type);
   int found_conv_bias_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
@@ -249,7 +327,7 @@ void ConvBiasFusePass::ApplyImpl(ir::Graph* graph) const {
     // check if fuse can be done and if MKL-DNN should be used
     FuseOptions fuse_option = FindFuseOption(*conv, *eltwise);
     if (fuse_option == DO_NOT_FUSE || fuse_option == FUSE_NATIVE) {
-      VLOG(3) << "do not perform " + type() + "+bias fuse";
+      VLOG(3) << "do not perform " + conv_type + "+bias fuse";
       return;
     }
 
@@ -294,7 +372,7 @@ void ConvBiasFusePass::ApplyImpl(ir::Graph* graph) const {
       desc.SetInput("Filter", std::vector<std::string>({conv_weight->Name()}));
       desc.SetInput("Bias", std::vector<std::string>({eltwise_bias->Name()}));
       desc.SetOutput("Output", std::vector<std::string>({eltwise_out->Name()}));
-      desc.SetType(type());
+      desc.SetType(fused_conv);
 
       for (auto& attr : conv->Op()->GetAttrMap()) {
         desc.SetAttr(attr.first, attr.second);
@@ -323,6 +401,7 @@ void ConvBiasFusePass::ApplyImpl(ir::Graph* graph) const {
                             type());
   }
 }
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

@@ -22,8 +22,8 @@ import paddle.fluid as fluid
 import paddle.fluid.dygraph as dygraph
 from paddle import to_tensor
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph.dygraph_to_static.utils import is_dygraph_api
 from paddle.jit.api import dygraph_to_static_func
+from paddle.jit.dy2static.utils import is_dygraph_api
 from paddle.utils import gast
 
 SEED = 2020
@@ -113,11 +113,11 @@ class TestDygraphBasicApi_ToVariable(unittest.TestCase):
 
 # 1. test Apis that inherit from layers.Layer
 def dyfunc_BilinearTensorProduct(layer1, layer2):
-    bilinearTensorProduct = fluid.dygraph.nn.BilinearTensorProduct(
-        input1_dim=5,
-        input2_dim=4,
-        output_dim=1000,
-        param_attr=fluid.ParamAttr(
+    bilinearTensorProduct = paddle.nn.Bilinear(
+        5,
+        4,
+        1000,
+        weight_attr=fluid.ParamAttr(
             initializer=fluid.initializer.Constant(value=0.99)
         ),
         bias_attr=fluid.ParamAttr(
@@ -165,12 +165,11 @@ def dyfunc_Conv3D(input):
 
 
 def dyfunc_Conv2DTranspose(input):
-    conv2dTranspose = fluid.dygraph.nn.Conv2DTranspose(
-        num_channels=3,
-        num_filters=12,
-        filter_size=12,
-        use_cudnn=False,
-        param_attr=fluid.ParamAttr(
+    conv2dTranspose = paddle.nn.Conv2DTranspose(
+        3,
+        12,
+        12,
+        weight_attr=fluid.ParamAttr(
             initializer=fluid.initializer.Constant(value=0.99)
         ),
         bias_attr=fluid.ParamAttr(
@@ -221,11 +220,12 @@ def dyfunc_Pool2D(input):
 
 
 def dyfunc_Prelu(input):
-    prelu0 = fluid.PRelu(
-        mode='all',
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(1.0)),
+    prelu0 = paddle.nn.PReLU(
+        weight_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(1.0)
+        ),
     )
-    res = prelu0(input=input)
+    res = prelu0(input)
     return res
 
 
