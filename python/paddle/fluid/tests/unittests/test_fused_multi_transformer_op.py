@@ -12,21 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
+from op_test import OpTest
 
 import paddle
 import paddle.nn.functional as F
-from paddle.nn.layer.norm import LayerNorm
-from paddle.nn.layer.common import Linear, Dropout
-from paddle.nn.layer.transformer import _convert_attention_mask
 from paddle import tensor
 from paddle.fluid import layers
-import unittest
-from op_test import OpTest
 from paddle.fluid.framework import default_main_program
-from paddle.fluid.framework import default_main_program
-from paddle.incubate.nn.functional import fused_multi_transformer
 from paddle.incubate.nn import FusedMultiTransformer
+from paddle.incubate.nn.functional import fused_multi_transformer
+from paddle.nn.layer.common import Dropout, Linear
+from paddle.nn.layer.norm import LayerNorm
+from paddle.nn.layer.transformer import _convert_attention_mask
 
 default_main_program().random_seed = 42
 
@@ -124,6 +124,7 @@ class TestFusedMultiTransformerOp(OpTest):
         self.training = False
 
         self.layers = 4
+
         self.batch_size = 8
         self.query_length = 128
         self.cache_length = 128
@@ -144,21 +145,27 @@ class TestFusedMultiTransformerOp(OpTest):
         )
 
     def generate_input_data(self):
-        self.query = np.random.rand(
-            self.batch_size, self.query_length, self.embed_dim
+        self.query = np.random.uniform(
+            -1, 1, (self.batch_size, self.query_length, self.embed_dim)
         ).astype(self.x_type)
+
         out_seq_len = self.key_length
         if self.has_cache_kv:
             assert self.training is False, ValueError(
                 'cache_kv can only used in inference'
             )
-            self.cache_kv = np.random.rand(
-                2,
-                self.batch_size,
-                self.num_heads,
-                self.cache_length,
-                self.head_dim,
+            self.cache_kv = np.random.uniform(
+                -1,
+                1,
+                (
+                    2,
+                    self.batch_size,
+                    self.num_heads,
+                    self.cache_length,
+                    self.head_dim,
+                ),
             ).astype(self.x_type)
+
             if self.gen_cache_kv:
                 self.cache_kv[:] = 0
             else:
@@ -168,12 +175,16 @@ class TestFusedMultiTransformerOp(OpTest):
 
         if self.has_pre_cache:
             out_seq_len += self.pre_cache_num
-            self.pre_cache_kv = np.random.rand(
-                2,
-                self.batch_size,
-                self.num_heads,
-                self.pre_cache_num,
-                self.head_dim,
+            self.pre_cache_kv = np.random.uniform(
+                -1,
+                1,
+                (
+                    2,
+                    self.batch_size,
+                    self.num_heads,
+                    self.pre_cache_num,
+                    self.head_dim,
+                ),
             ).astype(self.x_type)
 
         if self.has_attn_mask:
@@ -204,8 +215,8 @@ class TestFusedMultiTransformerOp(OpTest):
             self.attn_mask = None
         self.key, self.value = self.query, self.query
 
-        self.dout = np.random.random(
-            (self.batch_size, self.query_length, self.embed_dim)
+        self.dout = np.random.uniform(
+            -1, 1, (self.batch_size, self.query_length, self.embed_dim)
         ).astype(self.x_type)
 
     def GetBaselineOut(self):
@@ -270,9 +281,8 @@ class TestFusedMultiTransformerOp(OpTest):
 
             # [B, n_head, seq_len, head_dim] * [B, n_head, out_seq_len, head_dim]
             # --> [B, n_head, seq_len, out_seq_len]
-            qk_out = layers.matmul(
-                x=q_out, y=k_out, transpose_y=True, alpha=self.head_dim**-0.5
-            )
+            qk_out = paddle.matmul(x=q_out, y=k_out, transpose_y=True)
+            qk_out = paddle.scale(qk_out, scale=self.head_dim**-0.5)
 
             if self.debug:
                 print('qk out is')
@@ -544,6 +554,7 @@ class TestFusedMultiTransformerOp(OpTest):
             time_step=time_step,
             attn_mask=attn_mask,
             dropout_rate=self.dropout_prob,
+            activation=self.act_method,
             training=self.training,
         )
 
@@ -668,6 +679,7 @@ class TestFusedMultiTransformerOp(OpTest):
             self.num_heads,
             4 * self.embed_dim,
             self.dropout_prob,
+            activation=self.act_method,
             normalize_before=self.pre_layer_norm,
             ln_scale_attrs=ln_scales_attr,
             ln_bias_attrs=ln_biases_attr,
@@ -794,6 +806,14 @@ class TestFusedMultiTransformerOpFp16(TestFusedMultiTransformerOp):
     def config(self):
         super().config()
         self.x_type = np.float16
+        self.layers = 3  # odd layers
+
+
+class TestFusedMultiTransformerOpActReluFp16(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.x_type = np.float16
+        self.act_method = "relu"
         self.layers = 3  # odd layers
 
 

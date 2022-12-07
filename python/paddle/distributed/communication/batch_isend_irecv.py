@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import contextlib
+
 import paddle.distributed as dist
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework

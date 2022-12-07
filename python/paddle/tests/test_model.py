@@ -12,31 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
 import os
-import numpy as np
 import shutil
 import tempfile
+import unittest
+
+import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle import to_tensor
-from paddle.nn import Conv2D, Linear, ReLU, Sequential
-
-from paddle import Model
-from paddle.static import InputSpec
-from paddle.nn.layer.loss import CrossEntropyLoss
+import paddle.jit as jit
+import paddle.vision.models as models
+from paddle import Model, fluid, to_tensor
+from paddle.hapi.model import prepare_distributed_context
+from paddle.io import Dataset, DistributedBatchSampler
+from paddle.jit.dy2static.program_translator import ProgramTranslator
 from paddle.metric import Accuracy
+from paddle.nn import Conv2D, Linear, ReLU, Sequential
+from paddle.nn.layer.loss import CrossEntropyLoss
+from paddle.static import InputSpec
 from paddle.vision.datasets import MNIST
 from paddle.vision.models import LeNet
-import paddle.vision.models as models
-import paddle.fluid.dygraph.jit as jit
-from paddle.io import DistributedBatchSampler, Dataset
-from paddle.hapi.model import prepare_distributed_context
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
-    ProgramTranslator,
-)
 
 
 class LeNetDygraph(paddle.nn.Layer):
@@ -46,10 +41,10 @@ class LeNetDygraph(paddle.nn.Layer):
         self.features = Sequential(
             Conv2D(1, 6, 3, stride=1, padding=1),
             ReLU(),
-            paddle.fluid.dygraph.Pool2D(2, 'max', 2),
+            paddle.nn.MaxPool2D(2, 2),
             Conv2D(6, 16, 5, stride=1, padding=0),
             ReLU(),
-            paddle.fluid.dygraph.Pool2D(2, 'max', 2),
+            paddle.nn.MaxPool2D(2, 2),
         )
 
         if num_classes > 0:
@@ -98,10 +93,10 @@ class LeNetListInput(paddle.nn.Layer):
         self.features = Sequential(
             self.cov,
             ReLU(),
-            paddle.fluid.dygraph.Pool2D(2, 'max', 2),
+            paddle.nn.MaxPool2D(2, 2),
             Conv2D(6, 16, 5, stride=1, padding=0),
             ReLU(),
-            paddle.fluid.dygraph.Pool2D(2, 'max', 2),
+            paddle.nn.MaxPool2D(2, 2),
         )
 
         if num_classes > 0:

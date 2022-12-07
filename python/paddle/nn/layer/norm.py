@@ -27,27 +27,24 @@
 
 # TODO: define normalization api
 
-from ...fluid.dygraph import BatchNorm  # noqa: F401
-from ...fluid.dygraph import SpectralNorm  # noqa: F401
-
-from ...framework import get_default_dtype
-
-from ..initializer import Constant
-from ...framework import ParamAttr
-from ...fluid.data_feeder import check_variable_and_dtype
-
-from ..functional import batch_norm, layer_norm, instance_norm
+import numbers
+import os
+import warnings
 
 import numpy as np
-import numbers
-import warnings
-from ...framework import no_grad
-from .. import functional as F
-from paddle import _C_ops, _legacy_C_ops
-from .. import Layer
-from paddle import in_dynamic_mode
+
+from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
 from paddle.device import get_all_custom_device_type
-from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+
+from ...fluid.data_feeder import check_variable_and_dtype
+from ...fluid.dygraph import BatchNorm  # noqa: F401
+from ...fluid.dygraph import SpectralNorm  # noqa: F401
+from ...framework import ParamAttr, get_default_dtype, no_grad
+from .. import Layer
+from .. import functional as F
+from ..functional import batch_norm, instance_norm, layer_norm
+from ..initializer import Constant
 
 __all__ = []
 
@@ -685,7 +682,11 @@ class _BatchNormBase(Layer):
         self._variance.stop_gradient = True
 
         # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
-        if 'npu' in get_all_custom_device_type():
+        if (
+            os.environ.get('FLAGS_npu_storage_format', None)
+            in [1, '1', True, 'True', 'true']
+            and 'npu' in get_all_custom_device_type()
+        ):
             with no_grad():
                 weight_trans = _C_ops.npu_identity(
                     self.weight, 3

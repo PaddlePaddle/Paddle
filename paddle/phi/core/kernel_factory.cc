@@ -132,7 +132,8 @@ BackendResult SelectBackendOrFallback(const std::string& kernel_name,
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
   VLOG(6) << "fluid_op_name: " << TransToFluidOpName(kernel_name);
   if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end()) ||
-      phi::backends::xpu::is_in_xpu_black_list(TransToFluidOpName(kernel_name))
+      !phi::backends::xpu::is_xpu_support_op(TransToFluidOpName(kernel_name),
+                                             kernel_key.dtype())
 #else
   if (FLAGS_enable_api_kernel_fallback)
 #endif
