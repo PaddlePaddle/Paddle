@@ -36,8 +36,6 @@ class ElementwiseOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  using Tensor = phi::DenseTensor;
-
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ElementwiseOp");
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "ElementwiseOp");
@@ -282,7 +280,6 @@ For example:
 class ElementwiseOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  using Tensor = phi::DenseTensor;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     auto out_grad_name = framework::GradVarName("Out");
@@ -330,7 +327,6 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
 class ElementwiseOpDoubleGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  using Tensor = phi::DenseTensor;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     auto x_grad_name = framework::GradVarName("X");
@@ -376,7 +372,6 @@ class ElementwiseOpDoubleGradWithoutDXDY
     : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  using Tensor = phi::DenseTensor;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     if (ctx->HasOutput("DDOut")) {
@@ -427,7 +422,6 @@ class ElementwiseOpDoubleGradWithoutDXDY
 class ElementwiseOpTripleGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  using Tensor = phi::DenseTensor;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     if (ctx->HasOutput("D_DDX")) {

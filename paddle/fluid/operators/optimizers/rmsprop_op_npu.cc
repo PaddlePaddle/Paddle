@@ -15,8 +15,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename DeviceContext, typename T>
 class RMSPROPNPUKernel : public framework::OpKernel<T> {
  public:
@@ -46,18 +44,18 @@ class RMSPROPNPUKernel : public framework::OpKernel<T> {
       auto *grad_tensor = ctx.Input<phi::DenseTensor>("Grad");
       if (centered) {
         framework::NPUAttributeMap attr_input = {{"use_locking", false}};
-        const Tensor *rho_tensor = nullptr;
-        const Tensor *momentum_tensor = nullptr;
-        const Tensor *epsilon_tensor = nullptr;
-        Tensor rho_tmp(experimental::DataType::FLOAT32);
+        const phi::DenseTensor *rho_tensor = nullptr;
+        const phi::DenseTensor *momentum_tensor = nullptr;
+        const phi::DenseTensor *epsilon_tensor = nullptr;
+        phi::DenseTensor rho_tmp(experimental::DataType::FLOAT32);
         rho_tmp.mutable_data<T>({1}, ctx.GetPlace());
         FillNpuTensorWithConstant<T>(&rho_tmp, rho);
         rho_tensor = &rho_tmp;
-        Tensor momentum_tmp(experimental::DataType::FLOAT32);
+        phi::DenseTensor momentum_tmp(experimental::DataType::FLOAT32);
         momentum_tmp.mutable_data<T>({1}, ctx.GetPlace());
         FillNpuTensorWithConstant<T>(&momentum_tmp, momentum);
         momentum_tensor = &momentum_tmp;
-        Tensor epsilon_tmp(experimental::DataType::FLOAT32);
+        phi::DenseTensor epsilon_tmp(experimental::DataType::FLOAT32);
         epsilon_tmp.mutable_data<T>({1}, ctx.GetPlace());
         FillNpuTensorWithConstant<T>(&epsilon_tmp, epsilon);
         epsilon_tensor = &epsilon_tmp;
