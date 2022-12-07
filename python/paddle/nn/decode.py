@@ -77,10 +77,10 @@ class Decoder:
         Called per step of decoding.
 
         Parameters:
-            time(Variable): A Tensor with shape :math:`[1]` provided by the caller.
+            time(Tensor): A Tensor with shape :math:`[1]` provided by the caller.
                 The data type is int64.
-            inputs(Variable): A (possibly nested structure of) tensor variable[s].
-            states(Variable): A (possibly nested structure of) tensor variable[s].
+            inputs(Tensor): A (possibly nested structure of) tensor variable[s].
+            states(Tensor): A (possibly nested structure of) tensor variable[s].
             **kwargs: Additional keyword arguments, provided by the caller.
 
         Returns:
@@ -98,11 +98,11 @@ class Decoder:
         Called once after the decoding iterations if implemented.
 
         Parameters:
-            outputs(Variable): A (possibly nested structure of) tensor variable[s].
+            outputs(Tensor): A (possibly nested structure of) tensor variable[s].
                 The structure and data type is same as `output_dtype`.
                 The tensor stacks all time steps' output thus has shape
                 :math:`[time\_step, batch\_size, ...]` , which is done by the caller.
-            final_states(Variable): A (possibly nested structure of) tensor variable[s].
+            final_states(Tensor): A (possibly nested structure of) tensor variable[s].
                 It is the `next_states` returned by `decoder.step` at last decoding step,
                 thus has the same structure, shape and data type with states at any time
                 step.
@@ -221,12 +221,12 @@ class BeamSearchDecoder(Decoder):
         `beam_size` times.
 
         Parameters:
-            x(Variable): A tensor with shape `[batch_size, ...]`. The data type
+            x(Tensor): A tensor with shape `[batch_size, ...]`. The data type
                 should be float32, float64, int32, int64 or bool.
             beam_size(int): The beam width used in beam search.
 
         Returns:
-            Variable: A tensor with shape `[batch_size * beam_size, ...]`, whose \
+            Tensor: A tensor with shape `[batch_size * beam_size, ...]`, whose \
                 data type is same as `x`.
         """
         x = paddle.unsqueeze(x, [1])  # [batch_size, 1, ...]
@@ -251,11 +251,11 @@ class BeamSearchDecoder(Decoder):
         tensor with shape `[batch_size, beam_size, ...]`.
 
         Parameters:
-            x(Variable): A tensor with shape `[batch_size * beam_size, ...]`. The
+            x(Tensor): A tensor with shape `[batch_size * beam_size, ...]`. The
                 data type should be float32, float64, int32, int64 or bool.
 
         Returns:
-            Variable: A tensor with shape `[batch_size, beam_size, ...]`, whose \
+            Tensor: A tensor with shape `[batch_size, beam_size, ...]`, whose \
                 data type is same as `x`.
         """
         # TODO: avoid fake shape in compile-time like tile_beam_merge_with_batch
@@ -267,11 +267,11 @@ class BeamSearchDecoder(Decoder):
         tensor with shape `[batch_size * beam_size, ...]`.
 
         Parameters:
-            x(Variable): A tensor with shape `[batch_size, beam_size, ...]`. The
+            x(Tensor): A tensor with shape `[batch_size, beam_size, ...]`. The
                 data type should be float32, float64, int32, int64 or bool.
 
         Returns:
-            Variable: A tensor with shape `[batch_size * beam_size, ...]`, whose \
+            Tensor: A tensor with shape `[batch_size * beam_size, ...]`, whose \
                 data type is same as `x`.
         """
         # TODO: avoid fake shape in compile-time like tile_beam_merge_with_batch
@@ -286,11 +286,11 @@ class BeamSearchDecoder(Decoder):
         `beam_size` times.
 
         Parameters:
-            x(Variable): A tensor with shape `[batch_size, ...]`, The data type
+            x(Tensor): A tensor with shape `[batch_size, ...]`, The data type
                 should be float32, float64, int32, int64 or bool.
 
         Returns:
-            Variable: A tensor with shape `[batch_size, beam_size, ...]`, whose \
+            Tensor: A tensor with shape `[batch_size, beam_size, ...]`, whose \
                 data type is same as `x`.
         """
         x = paddle.unsqueeze(x, [1])
@@ -305,14 +305,14 @@ class BeamSearchDecoder(Decoder):
         mass to eos and unfinished beams to remain unchanged.
 
         Parameters:
-            probs(Variable): A tensor with shape `[batch_size, beam_size, vocab_size]`,
+            probs(Tensor): A tensor with shape `[batch_size, beam_size, vocab_size]`,
                 representing the log probabilities. Its data type should be float32 or float64.
-            finished(Variable): A tensor with shape `[batch_size, beam_size]`,
+            finished(Tensor): A tensor with shape `[batch_size, beam_size]`,
                 representing the finished status for all beams. Its data type
                 should be bool.
 
         Returns:
-            Variable: A tensor with the same shape and data type as `x`, \
+            Tensor: A tensor with the same shape and data type as `x`, \
                 where unfinished beams stay unchanged and finished beams are \
                 replaced with a tensor with all probability on the EOS token.
         """
@@ -333,14 +333,14 @@ class BeamSearchDecoder(Decoder):
         Gather from the tensor `x` using `indices`.
 
         Parameters:
-            x(Variable): A tensor with shape `[batch_size, beam_size, ...]`.
-            indices(Variable): A `int64` tensor with shape `[batch_size, beam_size]`,
+            x(Tensor): A tensor with shape `[batch_size, beam_size, ...]`.
+            indices(Tensor): A `int64` tensor with shape `[batch_size, beam_size]`,
                 representing the indices that we use to gather.
-            batch_size(Variable): A tensor with shape `[1]`. Its data type should
+            batch_size(Tensor): A tensor with shape `[1]`. Its data type should
                 be int32 or int64.
 
         Returns:
-            Variable: A tensor with the same shape and data type as `x`, \
+            Tensor: A tensor with the same shape and data type as `x`, \
                 representing the gathered tensor.
         """
         # TODO: compatibility of int32 and int64
@@ -389,7 +389,7 @@ class BeamSearchDecoder(Decoder):
         Initialize the BeamSearchDecoder.
 
         Parameters:
-            initial_cell_states(Variable): A (possibly nested structure of)
+            initial_cell_states(Tensor): A (possibly nested structure of)
                 tensor variable[s]. An argument provided by the caller.
 
         Returns:
@@ -459,15 +459,15 @@ class BeamSearchDecoder(Decoder):
         Calculate scores and select candidate token ids.
 
         Parameters:
-            time(Variable): An `int64` tensor with shape `[1]` provided by the caller,
+            time(Tensor): An `int64` tensor with shape `[1]` provided by the caller,
                 representing the current time step number of decoding.
-            logits(Variable): A tensor with shape `[batch_size, beam_size, vocab_size]`,
+            logits(Tensor): A tensor with shape `[batch_size, beam_size, vocab_size]`,
                 representing the logits at the current time step. Its data type is float32.
-            next_cell_states(Variable): A (possibly nested structure of) tensor variable[s].
+            next_cell_states(Tensor): A (possibly nested structure of) tensor variable[s].
                 It has the same structure, shape and data type as the `cell_states` of
                 `initial_states` returned by `initialize()`. It represents the next state
                 from the cell.
-            beam_state(Variable): A structure of tensor variables.
+            beam_state(Tensor): A structure of tensor variables.
                 It is same as the `initial_states` returned by `initialize()` for
                 the first decoding step and `beam_search_state` returned by
                 `step()` for the others.
@@ -547,12 +547,12 @@ class BeamSearchDecoder(Decoder):
         token ids.
 
         Parameters:
-            time(Variable): An `int64` tensor with shape `[1]` provided by the caller,
+            time(Tensor): An `int64` tensor with shape `[1]` provided by the caller,
                 representing the current time step number of decoding.
-            inputs(Variable): A tensor variable. It is same as `initial_inputs`
+            inputs(Tensor): A tensor variable. It is same as `initial_inputs`
                 returned by `initialize()` for the first decoding step and
                 `next_inputs` returned by `step()` for the others.
-            states(Variable): A structure of tensor variables.
+            states(Tensor): A structure of tensor variables.
                 It is same as the `initial_states` returned by `initialize()` for
                 the first decoding step and `beam_search_state` returned by
                 `step()` for the others.
@@ -602,15 +602,15 @@ class BeamSearchDecoder(Decoder):
         the full predicted sequences.
 
         Parameters:
-            outputs(Variable): A structure(namedtuple) of tensor variables,
+            outputs(Tensor): A structure(namedtuple) of tensor variables,
                 The structure and data type is same as `output_dtype`.
                 The tensor stacks all time steps' output thus has shape
                 `[time_step, batch_size, ...]`, which is done by the caller.
-            final_states(Variable): A structure(namedtuple) of tensor variables.
+            final_states(Tensor): A structure(namedtuple) of tensor variables.
                 It is the `next_states` returned by `decoder.step` at last
                 decoding step, thus has the same structure, shape and data type
                 with states at any time step.
-            sequence_lengths(Variable): An `int64` tensor shaped `[batch_size, beam_size]`.
+            sequence_lengths(Tensor): An `int64` tensor shaped `[batch_size, beam_size]`.
                 It contains sequence lengths for each beam determined during
                 decoding.
 
