@@ -1401,7 +1401,6 @@ template <typename T>
 inline void PermuteAndTranspose(
     const phi::GPUContext& ctx,
     const int& rank,
-    const std::vector<int32_t>& perm,
     const phi::DenseTensor& in,
     phi::DenseTensor* out,
     const phi::funcs::PermuteDimsSimplifier& simplifier) {
@@ -1446,7 +1445,6 @@ template <typename T>
 inline void PermuteWithEigen(
     const phi::GPUContext& ctx,
     const int& rank,
-    const std::vector<int32_t>& perm,
     const phi::DenseTensor& in,
     phi::DenseTensor* out,
     const phi::funcs::PermuteDimsSimplifier& simplifier) {
@@ -1469,46 +1467,33 @@ inline void PermuteWithEigen(
 }
 
 template <typename T>
-inline void PermuteWithSimple(
-    const phi::GPUContext& ctx,
-    const int& rank,
-    const std::vector<int32_t>& perm,
-    const phi::DenseTensor& in,
-    phi::DenseTensor* out,
-    const phi::funcs::PermuteDimsSimplifier& simplifier) {
-  bool ret = TransposeSimple<T>::Run(ctx, in, perm, out, simplifier.GetCount());
-  if (!ret) {
-    TransCompute<phi::GPUContext, T>(rank, ctx, in, out, perm);
-  }
-}
-
-template <typename T>
 void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
                               const phi::DenseTensor& in,
                               const std::vector<int32_t>& perm,
                               phi::DenseTensor* out) {
   const int rank = perm.size();
-  // default kernel.
-  auto* tuner = phi::autotune::MakeTransposeTuner<T>(PermuteWithSimple<T>);
-  tuner->AddCallBack(PermuteWithEigen<T>);
-  tuner->AddCallBack(PermuteAndTranspose<T>);
+  int64_t numel = in.numel();
+  bool ret = TransposeSimple<T>::Run(ctx, in, perm, out, numel);
+  if (!ret) {
+    auto simplifier = phi::funcs::PermuteDimsSimplifier(
+        rank, numel, perm, phi::vectorize<int64_t>(in.dims()));
+    auto* tuner = phi::autotune::MakeTransposeTuner<T>(PermuteWithEigen<T>);
+    tuner->AddCallBack(PermuteAndTranspose<T>);
 
-  auto simplifier = phi::funcs::PermuteDimsSimplifier(
-      rank, in.numel(), perm, phi::vectorize<int64_t>(in.dims()));
-  size_t key = phi::autotune::TransposeKey(
-      simplifier.GetSrcDims(),
-      simplifier.GetPerm(),
-      paddle::experimental::CppTypeToDataType<T>::Type());
+    size_t key = phi::autotune::TransposeKey(
+        simplifier.GetSrcDims(),
+        simplifier.GetPerm(),
+        paddle::experimental::CppTypeToDataType<T>::Type());
 
-  tuner->Run(ctx,
-             phi::autotune::AlgorithmType::kTranspose,
-             key,
-             ctx,
-             rank,
-             perm,
-             in,
-             out,
-             simplifier);
+    tuner->Run(ctx,
+               phi::autotune::AlgorithmType::kTranspose,
+               key,
+               ctx,
+               rank,
+               in,
+               out,
+               simplifier);
+  }
 }
 
 }  // namespace funcs
