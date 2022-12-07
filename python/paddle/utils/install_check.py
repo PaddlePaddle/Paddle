@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import os
 
 import numpy as np
 
@@ -272,7 +273,7 @@ def run_check():
         device_list = paddle.static.npu_places()
     else:
         device_str = "CPU"
-        device_list = paddle.static.cpu_places(device_count=2)
+        device_list = paddle.static.cpu_places(device_count=os.cpu_count())
     device_count = len(device_list)
 
     _run_static_single(use_cuda, use_xpu, use_npu)
