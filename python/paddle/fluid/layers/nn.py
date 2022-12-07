@@ -86,7 +86,6 @@ __all__ = [
     'elementwise_sub',
     'elementwise_mul',
     'gaussian_random',
-    'sampling_id',
     'clip',
     'clip_by_norm',
     'mean',
@@ -3185,45 +3184,6 @@ def gaussian_random(
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='gaussian_random', inputs=inputs, outputs={'Out': out}, attrs=attrs
-    )
-
-    return out
-
-
-@templatedoc()
-def sampling_id(x, min=0.0, max=1.0, seed=0, dtype='float32'):
-    """
-    This op is used for sampling id from multinomial distribution from the input, sampling one id for one sample.
-
-    Parameters:
-        x (Variable): 2-D tensor, [batch_size, input_feature_dimensions]
-        min (Float): minimum , default 0.0.
-        max (Float): maximum, default 1.0.
-        seed (Float): Random seed, default 0. if seed is not 0, will generate same number every time.
-        dtype(np.dtype|core.VarDesc.VarType|str): The type of output data : float32, float_16, int etc
-
-    Returns:
-        Variable: sampling tensor.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            x = fluid.data(
-                name="X",
-                shape=[13, 11],
-                dtype='float32')
-
-            out = fluid.layers.sampling_id(x)
-    """
-
-    helper = LayerHelper('sampling_id', **locals())
-    out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type='sampling_id',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'min': min, 'max': max, 'seed': seed},
     )
 
     return out
