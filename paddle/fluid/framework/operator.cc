@@ -1249,7 +1249,7 @@ struct OperatorWithKernel::CacheImpl {
         last_ddims_[i] = tensors_[i]->dims();
       }
     }
-    VLOG(1) << "need infer shape is " << ret;
+    VLOG(3) << "need infer shape is " << ret;
     return ret;
   }
 

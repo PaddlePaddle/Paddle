@@ -33,15 +33,12 @@ void IrGraphToProgramPass::RunImpl(Argument *argument) {
               new int(argument->memory_optim_sort_kind()));
   }
 
-  std::unique_ptr<framework::ir::Graph> graph(argument->main_graph_ptr());
-  cache_pass->Apply(graph.get());
-
   // Direct using ProgramDesc desc(argument->main_program()) may cause
   // incomplete copies of information.
   framework::ProgramDesc desc;
   desc.CopyFrom(*argument->main_program().Proto());
   pass->SetNotOwned("program", &desc);
-  pass->Apply(graph.release());  // the argument still own the graph.
+  pass->Apply(cache_pass->Apply(argument->main_graph_ptr()));
 
   argument->SetIrAnalyzedProgram(
       new framework::proto::ProgramDesc(*desc.Proto()));
