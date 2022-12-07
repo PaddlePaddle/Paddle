@@ -1366,9 +1366,10 @@ bool OperatorWithKernel::SupportXPU() const {
           op_kernels.end(),
           [this](OpKernelMap::const_reference kern_pair) {
             return platform::is_xpu_place(kern_pair.first.place_) &&
-                   paddle::platform::is_xpu_support_op(type_,
-                                                       kern_pair.first) &&
-                   !paddle::platform::is_in_xpu_black_list(type_);
+                   paddle::platform::is_xpu_support_op(
+                       type_,
+                       framework::TransToPhiDataType(
+                           kern_pair.first.data_type_));
           });
     }
   }
@@ -1456,8 +1457,8 @@ bool OperatorWithKernel::SupportsKernelType(
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
   if (paddle::platform::is_xpu_place(kernel_type.place_)) {
     return kernel_iter != kernels.end() &&
-           paddle::platform::is_xpu_support_op(type_, kernel_type) &&
-           !paddle::platform::is_in_xpu_black_list(type_);
+           paddle::platform::is_xpu_support_op(
+               type_, framework::TransToPhiDataType(kernel_type.data_type_));
   }
 #endif
 
@@ -1465,7 +1466,8 @@ bool OperatorWithKernel::SupportsKernelType(
   if (paddle::platform::is_xpu_place(kernel_type.place_)) {
     bool use_xpu_kp_kernel_rt =
         FLAGS_run_kp_kernel &&
-        paddle::platform::is_xpu_kp_support_op(type_, kernel_type);
+        paddle::platform::is_xpu_support_op(
+            type_, framework::TransToPhiDataType(kernel_type.data_type_));
     bool use_xpu_kp_kernel_debug =
         paddle::platform::is_in_xpu_kpwhite_list(type_);
     bool is_xpu_kp_support = (use_xpu_kp_kernel_rt || use_xpu_kp_kernel_debug);
@@ -1475,8 +1477,8 @@ bool OperatorWithKernel::SupportsKernelType(
       return kernels.find(tmp_kernel_type) != kernels.end();
     }
     return kernel_iter != kernels.end() &&
-           paddle::platform::is_xpu_support_op(type_, kernel_type) &&
-           !paddle::platform::is_in_xpu_black_list(type_);
+           paddle::platform::is_xpu_support_op(
+               type_, framework::TransToPhiDataType(kernel_type.data_type_));
   }
 #endif
 
@@ -1639,7 +1641,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       if (paddle::platform::is_xpu_place(kernel_type_->place_)) {
         bool use_xpu_kp_kernel_rt =
             FLAGS_run_kp_kernel &&
-            paddle::platform::is_xpu_kp_support_op(type_, *kernel_type_);
+            paddle::platform::is_xpu_support_op(
+                type_, framework::TransToPhiDataType(kernel_type_->data_type_));
         bool use_xpu_kp_kernel_debug =
             paddle::platform::is_in_xpu_kpwhite_list(type_);
         if (use_xpu_kp_kernel_rt) {
@@ -1716,7 +1719,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       if (paddle::platform::is_xpu_place(kernel_type_->place_)) {
         bool use_xpu_kp_kernel_rt =
             FLAGS_run_kp_kernel &&
-            paddle::platform::is_xpu_kp_support_op(type_, *kernel_type_);
+            paddle::platform::is_xpu_support_op(
+                type_, framework::TransToPhiDataType(kernel_type_->data_type_));
         bool use_xpu_kp_kernel_debug =
             paddle::platform::is_in_xpu_kpwhite_list(type_);
         if (use_xpu_kp_kernel_rt) {
@@ -1757,14 +1761,15 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 #if defined(PADDLE_WITH_XPU)
     bool is_xpu_unsupport =
         paddle::platform::is_xpu_place(kernel_type_->place_) &&
-            !paddle::platform::is_xpu_support_op(type_, *kernel_type_.get()) ||
-        paddle::platform::is_in_xpu_black_list(type_);
+        !paddle::platform::is_xpu_support_op(
+            type_, framework::TransToPhiDataType(kernel_type_->data_type_));
 #endif
 #ifdef PADDLE_WITH_XPU_KP
     bool use_xpu_kp_kernel_rt =
         paddle::platform::is_xpu_place(kernel_type_->place_) &&
         FLAGS_run_kp_kernel &&
-        paddle::platform::is_xpu_kp_support_op(type_, *kernel_type_);
+        paddle::platform::is_xpu_support_op(
+            type_, framework::TransToPhiDataType(kernel_type_->data_type_));
     bool use_xpu_kp_kernel_debug =
         paddle::platform::is_xpu_place(kernel_type_->place_) &&
         paddle::platform::is_in_xpu_kpwhite_list(type_);
@@ -2121,8 +2126,9 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
   if (platform::is_xpu_place(expected_kernel_key.place_) &&
       (kernel_iter == kernels.end() ||
-       !paddle::platform::is_xpu_support_op(type_, expected_kernel_key) ||
-       paddle::platform::is_in_xpu_black_list(type_))) {
+       !paddle::platform::is_xpu_support_op(
+           type_,
+           framework::TransToPhiDataType(expected_kernel_key.data_type_)))) {
     VLOG(3) << "fluid missing XPU kernel: " << type_
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
@@ -2135,7 +2141,9 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
   if (paddle::platform::is_xpu_place(expected_kernel_key.place_)) {
     bool use_xpu_kp_kernel_rt =
         FLAGS_run_kp_kernel &&
-        paddle::platform::is_xpu_kp_support_op(type_, expected_kernel_key);
+        paddle::platform::is_xpu_support_op(
+            type_,
+            framework::TransToPhiDataType(expected_kernel_key.data_type_));
     bool use_xpu_kp_kernel_debug =
         paddle::platform::is_in_xpu_kpwhite_list(type_);
     if (use_xpu_kp_kernel_rt) {
@@ -2163,9 +2171,8 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
                 << ", using_kernel_key:" << expected_kernel_key;
       }
     }
-    bool is_xpu_unsupport =
-        (!paddle::platform::is_xpu_support_op(type_, expected_kernel_key) ||
-         paddle::platform::is_in_xpu_black_list(type_));
+    bool is_xpu_unsupport = (!paddle::platform::is_xpu_support_op(
+        type_, framework::TransToPhiDataType(expected_kernel_key.data_type_)));
     if (!is_xpu_kp_support &&
         (kernel_iter == kernels.end() || is_xpu_unsupport)) {
       VLOG(3) << "fluid missing XPU kernel: " << type_
@@ -3330,6 +3337,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
 #if defined(PADDLE_WITH_MKLDNN) || defined(PADDLE_WITH_CUDA)
   auto& runtime_attrs = RuntimeAttrs();
   for (const auto& attr_iter : runtime_attrs) {
+    need_prepare_phi_data_ = true;
     auto& attr_name = attr_iter.first;
     auto& attr = attr_iter.second;
     auto attr_propertys = paddle::operators::GetExtraAttrProperties(attr_name);

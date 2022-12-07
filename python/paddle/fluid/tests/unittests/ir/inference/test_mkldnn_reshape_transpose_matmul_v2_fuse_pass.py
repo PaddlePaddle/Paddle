@@ -32,7 +32,7 @@ class TestReshapeTransposeMatmulV2OneDNNFusePass(InferencePassTest):
             data = fluid.data(
                 name="data", shape=self.data_shape, dtype="float32"
             )
-            weight = fluid.layers.create_parameter(
+            weight = paddle.create_parameter(
                 shape=self.weight_shape, dtype="float32"
             )
 
