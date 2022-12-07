@@ -27,6 +27,7 @@
 
 # TODO: define normalization api
 import numbers
+import os
 import warnings
 
 import numpy as np
@@ -686,7 +687,11 @@ class _BatchNormBase(Layer):
         self._variance.stop_gradient = True
 
         # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
-        if 'npu' in get_all_custom_device_type():
+        if (
+            os.environ.get('FLAGS_npu_storage_format', None)
+            in [1, '1', True, 'True', 'true']
+            and 'npu' in get_all_custom_device_type()
+        ):
             with no_grad():
                 weight_trans = _C_ops.npu_identity(
                     self.weight, 3

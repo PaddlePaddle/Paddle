@@ -48,7 +48,7 @@ def check():
         a = fluid.dygraph.to_variable(a_np)
         b = fluid.dygraph.to_variable(b_np)
         y = paddle.add(x=a, y=b)
-        y = fluid.layers.matmul(x=y, y=b, transpose_y=True)
+        y = paddle.matmul(x=y, y=b, transpose_y=True)
         res1 = func(y)
 
         np_res = np.add(a_np, b_np)
