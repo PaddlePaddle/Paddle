@@ -88,7 +88,7 @@ def resnet_cifar10(input, depth=32):
         res1 = layer_warp(basicblock, conv1, 16, 16, n, 1)
         res2 = layer_warp(basicblock, res1, 16, 32, n, 2)
         res3 = layer_warp(basicblock, res2, 32, 64, n, 2)
-    pool = paddle.nn.functional.max_pool2d(x=res3, kernel_size=8, stride=1)
+    pool = paddle.nn.functional.avg_pool2d(x=res3, kernel_size=8, stride=1)
     return pool
 
 
