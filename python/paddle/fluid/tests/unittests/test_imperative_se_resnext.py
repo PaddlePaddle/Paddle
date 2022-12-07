@@ -21,7 +21,6 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.nn import BatchNorm
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.layer_helper import LayerHelper
 
 if fluid.is_compiled_with_cuda():
@@ -419,13 +418,12 @@ class TestImperativeResneXt(unittest.TestCase):
             ) = run_dygraph()
 
         with fluid.dygraph.guard():
-            with _test_eager_guard():
-                (
-                    eager_out,
-                    eager_param_init_value,
-                    eager_param_value,
-                    eager_grad_value,
-                ) = run_dygraph()
+            (
+                eager_out,
+                eager_param_init_value,
+                eager_param_value,
+                eager_grad_value,
+            ) = run_dygraph()
 
         with new_program_scope():
             paddle.seed(seed)
