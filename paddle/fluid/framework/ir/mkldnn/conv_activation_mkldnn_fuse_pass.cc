@@ -64,6 +64,10 @@ void ConvActivationMkldnnFusePass::FuseConvAct(Graph* graph,
     OpDesc* conv_op = conv->Op();
     OpDesc* act_op = activation->Op();
 
+    if (conv_op->Type() == "conv2d") {
+      conv_op->SetType("fused_conv2d");
+    }
+
     auto attr_map = phi::funcs::GetAttributeMap(act_type);
     for (const auto& attrs : attr_map) {
       if (act_op->HasAttr(attrs.first)) {
@@ -134,7 +138,9 @@ void ConvActivationMkldnnFusePass::FuseConvConcatAct(
 
       bool is_not_conv_mkldnn =
           !(prev_op_nodes[0]->Op()->GetAttrIfExists<bool>("use_mkldnn"));
-      if (prev_op_nodes[0]->Op()->Type() != "conv2d" || is_not_conv_mkldnn) {
+      if (prev_op_nodes[0]->Op()->Type() != "conv2d" ||
+          prev_op_nodes[0]->Op()->Type() != "fused_conv2d" ||
+          is_not_conv_mkldnn) {
         LOG(WARNING)
             << "This fuse pass supports only conv2d (mkldnn) + activation.";
         return;
