@@ -18,7 +18,6 @@ from ..layers import (
     concat,
     fill_constant,
     matmul,
-    elementwise_mul,
     split,
 )
 import copy
