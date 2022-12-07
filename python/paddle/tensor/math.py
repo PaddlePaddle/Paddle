@@ -1002,10 +1002,10 @@ def _elementwise_op_with_axis_in_dygraph(
         return op(x, y)
     if len(x_shape) > len(y_shape):
         padding = len(x_shape) - len(y_shape) - axis
-        y = y.reshape(([1] * axis + y_shape + [1] * padding))
+        paddle.reshape_(y, [1] * axis + y_shape + [1] * padding)
     else:
         padding = len(y_shape) - len(x_shape) - axis
-        x = x.reshape(([1] * axis + x_shape + [1] * padding))
+        paddle.reshape_(x, [1] * axis + y_shape + [1] * padding)
     return op(x, y)
 
 
