@@ -18,8 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename DeviceContext, typename T>
 class CropNPUKernel : public framework::OpKernel<T> {
  public:
@@ -71,7 +69,7 @@ class CropNPUKernel : public framework::OpKernel<T> {
                             x->dims().size()));
 
       // shape memory maybe have gc.
-      Tensor tmp_shape(*shape);
+      phi::DenseTensor tmp_shape(*shape);
       tmp_shape.mutable_data<T>(ctx.GetPlace());
 
       const auto& runner =
@@ -90,7 +88,7 @@ class CropNPUKernel : public framework::OpKernel<T> {
                             "(%d) of the Input(X).",
                             shape_size.size(),
                             x->dims().size()));
-      Tensor tmp_shape(x->dtype());
+      phi::DenseTensor tmp_shape(x->dtype());
       tmp_shape.Resize(phi::make_ddim(shape_size));
       tmp_shape.mutable_data<T>(ctx.GetPlace());
       const auto& runner =
