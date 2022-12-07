@@ -657,10 +657,9 @@ def conv2d(
           w_var = paddle.randn((6, 3, 3, 3), dtype='float32')
 
           y_var = F.conv2d(x_var, w_var)
-          y_np = y_var.numpy()
 
-          print(y_np.shape)
-          # (2, 6, 6, 6)
+          print(y_var.shape)
+          # [2, 6, 6, 6]
     """
     # entry checks
     if data_format not in ["NCHW", "NHWC"]:
@@ -1234,10 +1233,9 @@ def conv2d_transpose(
           w_var = paddle.randn((3, 6, 3, 3), dtype='float32')
 
           y_var = F.conv2d_transpose(x_var, w_var)
-          y_np = y_var.numpy()
 
-          print(y_np.shape)
-          # (2, 6, 10, 10)
+          print(y_var.shape)
+          # [2, 6, 10, 10]
     """
 
     if data_format not in ['NCHW', 'NHWC']:
@@ -1523,10 +1521,9 @@ def conv3d(
             w_var = paddle.randn((6, 3, 3, 3, 3), dtype='float32')
 
             y_var = F.conv3d(x_var, w_var)
-            y_np = y_var.numpy()
 
-            print(y_np.shape)
-            # (2, 6, 6, 6, 6)
+            print(y_var.shape)
+            # [2, 6, 6, 6, 6]
     """
     # entry check
     if data_format not in ["NCDHW", "NDHWC"]:
@@ -1738,10 +1735,9 @@ def conv3d_transpose(
           w_var = paddle.randn((3, 6, 3, 3, 3), dtype='float32')
 
           y_var = F.conv3d_transpose(x_var, w_var)
-          y_np = y_var.numpy()
 
-          print(y_np.shape)
-          # (2, 6, 10, 10, 10)
+          print(y_var.shape)
+          # [2, 6, 10, 10, 10]
     """
     # entry checks
     if data_format not in ["NCDHW", "NDHWC"]:
