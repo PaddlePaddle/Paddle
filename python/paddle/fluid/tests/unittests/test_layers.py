@@ -2559,26 +2559,6 @@ class TestBook(LayerTest):
                 x, pool_size=[5, 3], pool_stride=[1, 2], pool_padding=(2, 1)
             )
 
-    def make_lstm_unit(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x_t_data = self._get_data(
-                name='x_t_data', shape=[10, 10], dtype='float32'
-            )
-            x_t = layers.fc(input=x_t_data, size=10)
-            prev_hidden_data = self._get_data(
-                name='prev_hidden_data', shape=[10, 30], dtype='float32'
-            )
-            prev_hidden = layers.fc(input=prev_hidden_data, size=30)
-            prev_cell_data = self._get_data(
-                name='prev_cell', shape=[10, 30], dtype='float32'
-            )
-            prev_cell = layers.fc(input=prev_cell_data, size=30)
-            return layers.lstm_unit(
-                x_t=x_t, hidden_t_prev=prev_hidden, cell_t_prev=prev_cell
-            )
-
     def make_softmax(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
