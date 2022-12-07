@@ -586,12 +586,10 @@ def build_steps():
     build_dir = os.getenv("BUILD_DIR")
     if build_dir is not None:
         build_dir = TOP_DIR + '/' + build_dir
-        if not os.path.exists(build_dir):
-            _mkdir_p(build_dir)
     else:
         build_dir = TOP_DIR + '/build'
-        if not os.path.exists(build_dir):
-            _mkdir_p(build_dir)
+    if not os.path.exists(build_dir):
+        _mkdir_p(build_dir)
     build_path = build_dir
     # run cmake to generate native build files
     cmake_cache_file_path = os.path.join(build_path, "CMakeCache.txt")
@@ -1286,12 +1284,10 @@ def main():
     build_dir = os.getenv("BUILD_DIR")
     if build_dir is not None:
         env_dict_path = TOP_DIR + '/' + build_dir + '/python'
-        sys.path.append(env_dict_path)
-        from env_dict import env_dict as env_dict
     else:
         env_dict_path = TOP_DIR + "/build/python/"
-        sys.path.append(env_dict_path)
-        from env_dict import env_dict as env_dict
+    sys.path.append(env_dict_path)
+    from env_dict import env_dict as env_dict
 
     global env_dict
     global paddle_binary_dir, paddle_source_dir
