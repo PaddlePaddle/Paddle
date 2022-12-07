@@ -28,7 +28,7 @@ from paddle.fluid.tests.unittests.test_reshape_op import TestReshapeOp
 paddle.enable_static()
 
 
-class TestReshapeOneDNNOp(TestReshapeOp):
+class TestReshape2OneDNNOp(TestReshapeOp):
     def setUp(self):
         super().setUp()
         self.attrs['use_mkldnn'] = True
