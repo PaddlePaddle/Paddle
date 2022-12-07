@@ -1214,8 +1214,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
 };
 
 struct OperatorWithKernel::CacheImpl {
-  static const char
-      kNotAllowInferShapeCahce[];  // = "@NOT_ALLOW_INFERSHAPE_CACHE@";
+  static const char kNotAllowInferShapeCahce[];
   explicit CacheImpl(phi::KernelContext* kernel_ctx,
                      RuntimeInferShapeContext* infer_shape_ctx,
                      const std::vector<phi::DenseTensor*>& tensors,
