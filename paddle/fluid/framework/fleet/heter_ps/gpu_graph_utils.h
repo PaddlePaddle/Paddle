@@ -34,6 +34,7 @@ namespace framework {
  */
 struct random_engine_wrapper_t {
   std::default_random_engine engine;
+#if !defined(_WIN32)
   random_engine_wrapper_t() {
     timespec tp;
     clock_gettime(CLOCK_REALTIME, &tp);
@@ -43,9 +44,10 @@ struct random_engine_wrapper_t {
         x++,
         x++,
         x++,
-        (unsigned long)(tp.tv_sec * 1e9 + tp.tv_nsec)};  // NOLINT
+        static_cast<uint64_t>(tp.tv_sec * 1e9 + tp.tv_nsec)};
     engine.seed(sseq);
   }
+#endif
 };
 
 /**
