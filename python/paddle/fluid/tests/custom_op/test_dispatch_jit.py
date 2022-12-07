@@ -42,7 +42,7 @@ class TestJitDispatch(unittest.TestCase):
     def setUp(self):
         paddle.set_device('cpu')
 
-    def test_dispatch_test_impl(self, func, dtype):
+    def run_dispatch_test(self, func, dtype):
         np_x = np.ones([2, 2]).astype(dtype)
         x = paddle.to_tensor(np_x)
         out = func(x)

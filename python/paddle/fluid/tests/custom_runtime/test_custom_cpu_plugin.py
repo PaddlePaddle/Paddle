@@ -56,8 +56,6 @@ class TestCustomCPUPlugin(unittest.TestCase):
         self._test_eager_copy_to()
         self._test_fallback_kernel()
         self._test_scalar()
-        self._test_custom_device_dataloader()
-        self._test_custom_device_mnist()
 
     def _test_custom_device_dataloader(self):
         import paddle
