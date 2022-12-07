@@ -30,15 +30,7 @@ namespace phi {
 namespace funcs {
 
 template <typename T>
-void nchw2nhwc(T* output, const T* input, int n, int c, int hw);
-
-template <typename T>
-void nhwc2nchw(T* output, const T* input, int batch, int c, int hw);
-
-template <typename T>
-void nhwc2nchw(T* output, const T* input, int batch, int ic, int ih, int iw);
-template <typename T>
-void nchw2nhwc(T* output, const T* input, int batch, int ic, int ih, int iw);
+void BatchTranspose(T* output, const T* input, int batch, int m, int n);
 
 template <typename DeviceContext, typename T>
 struct TransposeNormal {

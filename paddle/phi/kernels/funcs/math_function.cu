@@ -29,82 +29,60 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-template <typename T>
-void nchw2nhwc(T* output, const T* input, int batch, int ic, int ih, int iw) {
-  cutlass::Tensor4DCoord a = cutlass::Tensor4DCoord(batch, iw, ic, ih);
-  cutlass::Tensor4DCoord b = cutlass::Tensor4DCoord(batch, ih, iw, ic);
-  cutlass::TensorRef<cutlass::half_t, cutlass::layout::TensorNCHW> c{
-      (cutlass::half_t*)input, cutlass::make_Coord(iw, ih * iw, ic * ih * iw)};
-  cutlass::TensorRef<cutlass::half_t, cutlass::layout::TensorNHWC> d{
-      (cutlass::half_t*)output, cutlass::make_Coord(iw, iw * ih, ic * iw * ih)};
-
-  cutlass::nchw_to_nhwc(a, b, c, d, nullptr);
-}
-
-template <typename T>
-void nhwc2nchw(T* output, const T* input, int batch, int ic, int ih, int iw) {
-  cutlass::Tensor4DCoord a = cutlass::Tensor4DCoord(batch, ih, iw, ic);
-  cutlass::Tensor4DCoord b = cutlass::Tensor4DCoord(batch, iw, ic, ih);
-  cutlass::TensorRef<cutlass::half_t, cutlass::layout::TensorNHWC> c{
-      (cutlass::half_t*)input, cutlass::make_Coord(iw, ih * iw, ic * ih * iw)};
-  cutlass::TensorRef<cutlass::half_t, cutlass::layout::TensorNCHW> d{
-      (cutlass::half_t*)output, cutlass::make_Coord(iw, iw * ih, ic * iw * ih)};
-
-  cutlass::nhwc_to_nchw(a, b, c, d, nullptr);
-}
-
 // The following part of the code refers to NVIDIA-cutlass
 // https://github.com/NVIDIA/cutlass/blob/master/tools/util/include/cutlass/util/device_nchw_to_nhwc.h
+// Copyright (c) 2017 - 2022 NVIDIA CORPORATION & AFFILIATES. All rights
+// reserved. SPDX-License-Identifier: BSD-3-Clause
 template <typename T>
-__global__ void rowmajor2colmajor_kernel(
-    T* output, const T* input, const int n, const int hw, const int c) {
-  const int chw = c * hw;
+__global__ void batch_transpose_kernel(
+    T* output, const T* input, const int batch, const int M, const int N) {
+  const int num = M * N;
   // "+1" to avoid smem bank conflict
   __shared__ T shbuf[32 * (32 + 1)];
   const int32_t tid = threadIdx.y * blockDim.x + threadIdx.x;
   const int32_t wid = tid / 32;
   const int32_t lid = tid % 32;
-  const int32_t ni = blockIdx.z;
-  const int32_t ci0 = blockIdx.y * 32;
-  const int32_t hwi0 = blockIdx.x * 32;
+  const int32_t batch_i = blockIdx.z;
+  const int32_t mi0 = blockIdx.y * 32;
+  const int32_t ni0 = blockIdx.x * 32;
 
-  const size_t input_idx = ni * chw + (ci0 + wid) * hw + hwi0;
+  const size_t input_idx = batch_i * num + (mi0 + wid) * N + ni0;
   const T* A = input + input_idx;
-  if (hwi0 + lid < hw) {
+  if (ni0 + lid < N) {
     const int lid_x_33 = lid * 33;
-    if ((ci0 + 32) <= c) {
-      int ci = wid;  // between 0 and 7
+    if ((mi0 + 32) <= M) {
+      int mi = wid;  // between 0 and 7
 #pragma unroll
-      for (int cLoopIdx = 0; cLoopIdx < 4; cLoopIdx++) {
-        shbuf[lid_x_33 + ci] = A[lid];
-        A = &A[8 * hw];
-        ci += 8;
+      for (int mLoopIdx = 0; mLoopIdx < 4; mLoopIdx++) {
+        shbuf[lid_x_33 + mi] = A[lid];
+        A = &A[8 * N];
+        mi += 8;
       }
     } else {
-      for (int ci = wid; ci < 32; ci += 8) {
-        if ((ci + ci0) < c) {
-          shbuf[lid_x_33 + ci] = A[lid];
+      for (int mi = wid; mi < 32; mi += 8) {
+        if ((mi + mi0) < M) {
+          shbuf[lid_x_33 + mi] = A[lid];
         }
-        A = &A[8 * hw];
+        A = &A[8 * N];
       }
     }
   }
   __syncthreads();
 
-  const int32_t ciOut = ci0 + lid;
-  output = &output[ni * chw + ciOut];
-  if (ciOut < c) {
-    if (hwi0 + 32 < hw) {
-      int hwI = wid;
+  const int32_t miOut = mi0 + lid;
+  output = &output[batch_i * num + miOut];
+  if (miOut < M) {
+    if (ni0 + 32 < N) {
+      int nI = wid;
 #pragma unroll
-      for (int hwLoopIdx = 0; hwLoopIdx < 4; ++hwLoopIdx) {
-        output[(hwi0 + hwI) * c] = shbuf[(hwI)*33 + lid];
-        hwI += 8;
+      for (int nLoopIdx = 0; nLoopIdx < 4; ++nLoopIdx) {
+        output[(ni0 + nI) * M] = shbuf[(nI)*33 + lid];
+        nI += 8;
       }
     } else {
-      for (int hwI = wid; hwI < 32; hwI += 8) {
-        if (hwi0 + hwI < hw) {
-          output[(hwi0 + hwI) * c] = shbuf[(hwI)*33 + lid];
+      for (int nI = wid; nI < 32; nI += 8) {
+        if (ni0 + nI < N) {
+          output[(ni0 + nI) * M] = shbuf[(nI)*33 + lid];
         }
       }
     }
@@ -112,48 +90,22 @@ __global__ void rowmajor2colmajor_kernel(
 }
 
 template <typename T>
-void nchw2nhwc(T* output, const T* input, int n, int c, int hw) {
-  dim3 grid((hw + 31) / 32, (c + 31) / 32, n);
+void BatchTranspose(T* output, const T* input, int batch, int m, int n) {
+  dim3 grid((n + 31) / 32, (m + 31) / 32, batch);
   dim3 block(32, 8);
-  rowmajor2colmajor_kernel<<<grid, block>>>(output, input, n, hw, c);
+  batch_transpose_kernel<<<grid, block>>>(output, input, batch, m, n);
 }
-
-template <typename T>
-void nhwc2nchw(T* output, const T* input, int n, int c, int hw) {
-  dim3 grid((c + 31) / 32, (hw + 31) / 32, n);
-  dim3 block(32, 8);
-  rowmajor2colmajor_kernel<<<grid, block>>>(output, input, n, c, hw);
-}
-
-template void nhwc2nchw(phi::dtype::float16* output,
-                        const phi::dtype::float16* input,
-                        int batch,
-                        int ic,
-                        int ih,
-                        int iw);
-template void nchw2nhwc(phi::dtype::float16* output,
-                        const phi::dtype::float16* input,
-                        int batch,
-                        int ic,
-                        int ih,
-                        int iw);
-
-template void nhwc2nchw(phi::dtype::float16* output,
-                        const phi::dtype::float16* input,
-                        int n,
-                        int c,
-                        int hw);
-template void nchw2nhwc(phi::dtype::float16* output,
-                        const phi::dtype::float16* input,
-                        int n,
-                        int c,
-                        int hw);
 
 using float16 = phi::dtype::float16;
 using bfloat16 = phi::dtype::bfloat16;
 
-template struct SetConstant<phi::GPUContext, phi::dtype::float16>;
-template struct SetConstant<phi::GPUContext, phi::dtype::bfloat16>;
+template void BatchTranspose(
+    float16* output, const float16* input, int batch, int m, int n);
+template void BatchTranspose(
+    float* output, const float* input, int batch, int m, int n);
+
+template struct SetConstant<phi::GPUContext, float16>;
+template struct SetConstant<phi::GPUContext, bfloat16>;
 template struct SetConstant<phi::GPUContext, float>;
 template struct SetConstant<phi::GPUContext, double>;
 template struct SetConstant<phi::GPUContext, uint8_t>;
@@ -164,10 +116,9 @@ template struct SetConstant<phi::GPUContext, bool>;
 template struct SetConstant<phi::GPUContext, phi::dtype::complex<float>>;
 template struct SetConstant<phi::GPUContext, phi::dtype::complex<double>>;
 
+template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, float16>;
 template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext,
-                            phi::dtype::float16>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext,
-                            phi::dtype::bfloat16>;
+                            bfloat16>;
 template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, float>;
 template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, double>;
 template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, uint8_t>;

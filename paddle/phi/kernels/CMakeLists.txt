@@ -122,6 +122,7 @@ if(WITH_MKLDNN)
     "strings/cpu/*.cc"
     "onednn/*.cc"
     "fusion/*.cc"
+    "fusion/onednn/*.cc"
     "fusion/cpu/*.cc")
 else()
   file(

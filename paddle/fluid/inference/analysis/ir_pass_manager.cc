@@ -87,10 +87,14 @@ void IRPassManager::CreatePasses(Argument *argument,
                               argument->tensorrt_tuned_dynamic_shape();
     pass->Set("with_dynamic_shape", new bool(with_dynamic_shape));
 
+    // mixed precision related
     pass->Set("model_precision", new int(argument->model_precision()));
     pass->Set(
         "mixed_black_list",
         new std::unordered_set<std::string>(argument->mixed_black_list()));
+    pass->Set("enable_gpu_half", new bool(argument->enable_gpu_half()));
+    pass->Set("mixed_precision_mode",
+              new int(argument->mixed_precision_mode()));
 
     if (pass_name == "graph_viz_pass") {
       std::string optim_cache_dir = argument->optim_cache_dir();

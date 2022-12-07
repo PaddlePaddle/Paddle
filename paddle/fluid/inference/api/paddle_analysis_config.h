@@ -247,8 +247,12 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \param memory_pool_init_size_mb initial size of the GPU memory pool in MB.
   /// \param device_id device_id the GPU card to use (default is 0).
+  /// \param precision the precision used in Paddle-GPU inference.
   ///
-  void EnableUseGpu(uint64_t memory_pool_init_size_mb, int device_id = 0);
+  void EnableUseGpu(uint64_t memory_pool_init_size_mb,
+                    int device_id = 0,
+                    Precision precision_mode = Precision::kFloat32);
+
   ///
   /// \brief Turn off GPU.
   ///
@@ -1009,7 +1013,7 @@ struct PD_INFER_DECL AnalysisConfig {
   /// interface is in the experimental stage and may change in the future. Note
   /// that the blacklist must be the same as the model conversion blacklist.
   ///
-  void Exp_SetBlackListOpsForMixedModel(
+  void Exp_DisableMixedInferOps(
       const std::unordered_set<std::string>& black_list);
 
   void SetApplyOptim(bool value) { apply_optim_ = value; }
@@ -1028,7 +1032,8 @@ struct PD_INFER_DECL AnalysisConfig {
   mutable std::string prog_file_;
   mutable std::string params_file_;
 
-  // Mixed precision.
+  // Mixed precision related.
+  Precision mixed_precision_mode_{Precision::kFloat32};
   std::unordered_set<std::string> mixed_black_list_;
 
   // GPU related.
@@ -1036,6 +1041,7 @@ struct PD_INFER_DECL AnalysisConfig {
   bool use_cutlass_{false};
   int gpu_device_id_{0};
   uint64_t memory_pool_init_size_mb_{100};  // initial size is 100MB.
+  bool enable_gpu_half_{false};
   bool thread_local_stream_{false};
 
   bool use_cudnn_{false};
@@ -1171,6 +1177,7 @@ struct PD_INFER_DECL AnalysisConfig {
       "concat",
       "conv2d",
       "depthwise_conv2d",
+      "fused_conv2d",
       "elementwise_add",
       "elementwise_mul",
       "fc",

@@ -85,16 +85,29 @@ void AnalysisConfig::SetModel(const std::string &prog_file_path,
 
   Update();
 }
+
 void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
-                                  int device_id) {
+                                  int device_id,
+                                  Precision precision_mode) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   use_gpu_ = true;
   memory_pool_init_size_mb_ = memory_pool_init_size_mb;
   FLAGS_initial_gpu_memory_in_mb = memory_pool_init_size_mb_;
   gpu_device_id_ = device_id;
+  mixed_precision_mode_ = precision_mode;
+  if (precision_mode == Precision::kFloat32) {
+    // default
+  } else if (precision_mode == Precision::kHalf ||
+             precision_mode == Precision::kBf16) {
+    enable_gpu_half_ = true;
+  } else {
+    LOG(ERROR)
+        << "The Paddle-GPU inference currently only supports "
+           "float32/float16/bfloat16 precision. Please check the parameters "
+           "you specified in EnableUseGpu or enable_use_gpu function.";
+  }
 #else
-  LOG(ERROR) << "Please compile with gpu to EnableGpu()";
-  use_gpu_ = false;
+  LOG(ERROR) << "Please use PaddlePaddle with GPU version.";
 #endif
 
   Update();
@@ -393,8 +406,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(gpu_device_id_);
   CP_MEMBER(memory_pool_init_size_mb_);
 
-  // Mixed related.
+  // Mixed precision related.
   CP_MEMBER(mixed_black_list_);
+  CP_MEMBER(enable_gpu_half_);
+  CP_MEMBER(mixed_precision_mode_);
 
   CP_MEMBER(enable_memory_optim_);
   // TensorRT related.
@@ -1008,6 +1023,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << params_file_;
 
   ss << use_gpu_;
+  ss << enable_gpu_half_;
   ss << use_external_stream_;
   ss << exec_stream_;
   ss << use_fc_padding_;
@@ -1225,6 +1241,7 @@ std::string AnalysisConfig::Summary() {
   if (use_gpu_) {
     os.InsertRow({"use_cutlass", use_cutlass_ ? "true" : "false"});
     os.InsertRow({"gpu_device_id", std::to_string(gpu_device_id_)});
+    os.InsertRow({"enable_gpu_half_", std::to_string(enable_gpu_half_)});
     os.InsertRow({"memory_pool_init_size",
                   std::to_string(memory_pool_init_size_mb_) + "MB"});
     os.InsertRow(
@@ -1420,7 +1437,7 @@ bool AnalysisConfig::trt_allow_build_at_runtime() const {
   return trt_allow_build_at_runtime_;
 }
 
-void AnalysisConfig::Exp_SetBlackListOpsForMixedModel(
+void AnalysisConfig::Exp_DisableMixedInferOps(
     const std::unordered_set<std::string> &black_list) {
   mixed_black_list_ = black_list;
 }

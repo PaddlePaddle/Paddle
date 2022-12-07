@@ -2306,40 +2306,6 @@ class SampleEmbeddingHelper(GreedyEmbeddingHelper):
         )
         self.seed = seed
 
-    def sample(self, time, outputs, states):
-        r"""
-        Perform sampling from a categorical distribution, and the distribution
-        is computed by `softmax(outputs/softmax_temperature)`.
-
-        Parameters:
-            time(Variable): An `int64` tensor with shape `[1]` provided by the
-                caller, representing the current time step number of decoding.
-            outputs(Variable): A tensor variable. Usually it's data type is float32
-                or float64, and it's shape is `[batch_size, vocabulary_size]`,
-                representing the predicted logits of current step. It is same as
-                `outputs` returned by `BasicDecoder.output_fn(BasicDecoder.cell.call())`.
-            states(Variable): A (possibly nested structure of) tensor variable[s].
-                It is same as `new_states` returned by `BasicDecoder.cell.call()`.
-
-        Returns:
-            Variable: An `int64` tensor with shape `[batch_size]`, representing \
-                the sampled ids.
-        """
-        logits = (
-            (outputs / self.softmax_temperature)
-            if self.softmax_temperature is not None
-            else outputs
-        )
-        probs = paddle.nn.functional.softmax(logits)
-        # TODO: remove this stop_gradient. The stop_gradient of sample_ids can
-        # not pass to probs, since sampling_id op does not have corresponding
-        # grad op and thus can not pass.
-        probs.stop_gradient = True
-        sample_ids = nn.sampling_id(
-            probs, seed=self.seed, dtype=self.start_tokens.dtype
-        )
-        return sample_ids
-
 
 class BasicDecoder(Decoder):
     """

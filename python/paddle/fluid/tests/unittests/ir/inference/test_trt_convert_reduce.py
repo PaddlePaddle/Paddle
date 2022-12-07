@@ -23,7 +23,7 @@ from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 import paddle.inference as paddle_infer
 
 
-class TrtConvertReduceSumTest(TrtLayerAutoScanTest):
+class TrtConvertReduceTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         attrs = [
@@ -38,14 +38,19 @@ class TrtConvertReduceSumTest(TrtLayerAutoScanTest):
         if len(attrs[0]["dim"]) == 0:
             return False
 
+        ver = paddle_infer.get_trt_compile_version()
+        if ver[0] * 1000 + ver[1] * 100 + ver[0] * 10 < 7000:
+            if attrs[0]['out_dtype'] == 2:
+                return False
+
         return True
 
     def sample_program_configs(self):
         def generate_input1(dtype, attrs: List[Dict[str, Any]]):
             if dtype == -1 or dtype == 5:
-                return np.random.random([1, 3, 32, 32]).astype(np.float32)
+                return np.random.random([1, 3, 64, 64]).astype(np.float32)
             elif dtype == 2:
-                return np.random.random([1, 3, 32, 32]).astype(np.int32)
+                return np.random.random([1, 3, 64, 64]).astype(np.int32)
 
         for keep_dim in [True, False]:
             for dim in [
@@ -61,50 +66,59 @@ class TrtConvertReduceSumTest(TrtLayerAutoScanTest):
             ]:
                 for reduce_all in [True, False]:
                     for out_dtype in [-1, 2, 5]:
-                        dics = [
-                            {
-                                "keep_dim": keep_dim,
-                                "dim": dim,
-                                "reduce_all": reduce_all,
-                                "out_dtype": out_dtype,
-                                "in_dtype": out_dtype,
-                            },
-                            {},
-                        ]
+                        for op_type in [
+                            "reduce_max",
+                            "reduce_mean",
+                            "reduce_sum",
+                        ]:
+                            dics = [
+                                {
+                                    "keep_dim": keep_dim,
+                                    "dim": dim,
+                                    "reduce_all": reduce_all,
+                                    "out_dtype": out_dtype,
+                                    "in_dtype": out_dtype,
+                                },
+                                {},
+                            ]
 
-                        ops_config = [
-                            {
-                                "op_type": "reduce_sum",
-                                "op_inputs": {"X": ["input_data"]},
-                                "op_outputs": {"Out": ["reduce_output_data"]},
-                                "op_attrs": dics[0],
-                            }
-                        ]
-                        ops = self.generate_op_config(ops_config)
+                            ops_config = [
+                                {
+                                    "op_type": op_type,
+                                    "op_inputs": {"X": ["input_data"]},
+                                    "op_outputs": {
+                                        "Out": ["reduce_output_data"]
+                                    },
+                                    "op_attrs": dics[0],
+                                }
+                            ]
+                            ops = self.generate_op_config(ops_config)
 
-                        program_config = ProgramConfig(
-                            ops=ops,
-                            weights={},
-                            inputs={
-                                "input_data": TensorConfig(
-                                    data_gen=partial(
-                                        generate_input1, out_dtype, dics
+                            program_config = ProgramConfig(
+                                ops=ops,
+                                weights={},
+                                inputs={
+                                    "input_data": TensorConfig(
+                                        data_gen=partial(
+                                            generate_input1, out_dtype, dics
+                                        )
                                     )
-                                )
-                            },
-                            outputs=["reduce_output_data"],
-                        )
+                                },
+                                outputs=["reduce_output_data"],
+                            )
 
-                        if not self.is_program_valid(program_config):
-                            continue
+                            if not self.is_program_valid(program_config):
+                                continue
 
-                        yield program_config
+                            yield program_config
 
-    def sample_predictor_configs(self, program_config):
+    def sample_predictor_configs(
+        self, program_config
+    ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
             self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
-            self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 32, 32]}
+            self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
