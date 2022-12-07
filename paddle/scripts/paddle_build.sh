@@ -1008,9 +1008,8 @@ function generate_upstream_develop_api_spec() {
     cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
 
     cd ${PADDLE_ROOT}
-    git fetch upstream $BRANCH
     git checkout -b develop_base_pr -t upstream/$BRANCH
-    echo "upstream develop git log: "
+    echo "develop git log: "
     git log --pretty=oneline -10
 
     dev_commit=`git log -1|head -1|awk '{print $2}'`
