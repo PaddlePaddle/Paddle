@@ -101,6 +101,11 @@ def process_scalar(op_item, scalar_configs):
                         else scalar_map[attr_type]
                     )
                 else:
+                    attr_item['data_type'] = (
+                        scalar_config['data_type']
+                        if 'data_type' in scalar_config
+                        else scalar_map[attr_type]
+                    )
                     attr_item['tensor_name'] = scalar_config['tensor_name']
 
 
@@ -126,11 +131,16 @@ def process_int_array(op_item, int_array_configs):
                 )
                 if attr_item['is_support_tensor']:
                     attr_item['typename'] = (
-                        int_array_config['data_type']
+                        data_type_map[int_array_config['data_type']]
                         if 'data_type' in int_array_config
                         else 'std::vector<int64_t>'
                     )
                 else:
+                    attr_item['data_type'] = (
+                        data_type_map[int_array_config['data_type']]
+                        if 'data_type' in int_array_config
+                        else 'std::vector<int64_t>'
+                    )
                     attr_item['manual_flag'] = True
                     if 'tensor_name' in int_array_config:
                         attr_item['tensor_name'] = int_array_config[
