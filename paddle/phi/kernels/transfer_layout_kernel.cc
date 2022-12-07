@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include <sstream>
 #include <string>
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
@@ -200,7 +199,7 @@ void TransferLayoutKernel(const Context& dev_ctx,
     return;
   }
 
-#ifdef PADDLE_WITH_MKLDNN1
+#ifdef PADDLE_WITH_MKLDNN
   TransferLayoutMKLDNN<Context>(dev_ctx,
                                 x,
                                 static_cast<DataLayout>(src_layout),
