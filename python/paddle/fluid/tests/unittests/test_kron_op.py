@@ -20,7 +20,6 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestKronOp(OpTest):
@@ -105,9 +104,8 @@ class TestKronLayer(unittest.TestCase):
         np.testing.assert_allclose(c, np.kron(a, b))
 
     def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_case()
-            self.test_case_with_output()
+        self.test_case()
+        self.test_case_with_output()
 
 
 class TestComplexKronOp(OpTest):
