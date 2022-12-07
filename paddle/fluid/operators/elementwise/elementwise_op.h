@@ -36,20 +36,19 @@ class ElementwiseOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  using Tensor = phi::DenseTensor;
-
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ElementwiseOp");
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "ElementwiseOp");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "ElementwiseOp");
 
-    PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("Y").front(),
-                      framework::proto::VarType::LOD_TENSOR,
-                      platform::errors::InvalidArgument(
-                          "The input var's type should be LoDTensor, but the "
-                          "received is %s [%s].",
-                          ctx->GetInputsVarType("Y").front(),
-                          ctx->Inputs("Y").front()));
+    PADDLE_ENFORCE_EQ(
+        ctx->GetInputsVarType("Y").front(),
+        framework::proto::VarType::LOD_TENSOR,
+        platform::errors::InvalidArgument(
+            "The input var's type should be phi::DenseTensor, but the "
+            "received is %s [%s].",
+            ctx->GetInputsVarType("Y").front(),
+            ctx->Inputs("Y").front()));
 
     if (ctx->GetInputsVarType("X").front() ==
         framework::proto::VarType::SELECTED_ROWS) {
@@ -114,7 +113,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       // if model is using NHWC and any of shapes in at least 3D
       bool should_rotate =
           ctx->IsRunMKLDNNKernel() &&
-          (platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout() ==
+          (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
            phi::DataLayout::kNHWC) &&
           (x_dims.size() >= 3 || y_dims.size() >= 3);
       if (should_rotate) {
@@ -174,10 +173,10 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       // When elementwise is first oneDNN op (there was some non oneDNN op
       // previously)
       // then we also need to rotate shape NHWC -> NCWH
-      if ((expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
-          (tensor.layout() != phi::DataLayout::kMKLDNN) &&
-          paddle::platform::MKLDNNDeviceContext::tls()
-                  .get_cur_paddle_data_layout() == phi::DataLayout::kNHWC) {
+      if ((expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
+          (tensor.layout() != phi::DataLayout::ONEDNN) &&
+          phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
+              phi::DataLayout::kNHWC) {
         return framework::OpKernelType(expected_kernel_type.data_type_,
                                        tensor.place(),
                                        phi::DataLayout::kNHWC);
@@ -281,7 +280,6 @@ For example:
 class ElementwiseOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  using Tensor = phi::DenseTensor;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     auto out_grad_name = framework::GradVarName("Out");
@@ -329,7 +327,6 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
 class ElementwiseOpDoubleGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  using Tensor = phi::DenseTensor;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     auto x_grad_name = framework::GradVarName("X");
@@ -375,7 +372,6 @@ class ElementwiseOpDoubleGradWithoutDXDY
     : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  using Tensor = phi::DenseTensor;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     if (ctx->HasOutput("DDOut")) {
@@ -426,7 +422,6 @@ class ElementwiseOpDoubleGradWithoutDXDY
 class ElementwiseOpTripleGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  using Tensor = phi::DenseTensor;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     if (ctx->HasOutput("D_DDX")) {

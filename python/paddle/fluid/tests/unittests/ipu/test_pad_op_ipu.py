@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
@@ -125,13 +126,13 @@ class TestCase7(TestBase):
 
 
 @unittest.skip("Only support NCL, NCHW, NCDHW")
-class TestCase7(TestBase):
+class TestCase8(TestBase):
     def set_op_attrs(self):
         self.attrs = {"pad": [1, 2, 3, 4], "data_format": "NHWC"}
 
 
 @unittest.skip("Only support NCL, NCHW, NCDHW")
-class TestCase7(TestBase):
+class TestCase9(TestBase):
     def set_op_attrs(self):
         self.attrs = {"pad": [1, 2, 3, 4, 1, 3], "data_format": "NDHWC"}
 

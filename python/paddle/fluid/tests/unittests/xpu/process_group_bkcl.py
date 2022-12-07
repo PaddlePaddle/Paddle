@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import random
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
 
 import paddle
-from paddle.fluid.framework import _test_eager_guard
-from paddle.fluid.dygraph.parallel import ParallelEnv
 import paddle.distributed as dist
+from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.fluid.framework import _test_eager_guard
 
 
 def init_process_group(strategy=None):
@@ -45,9 +46,8 @@ class TestProcessGroupFp32(unittest.TestCase):
 
     def test_create_process_group_bkcl(self):
         with _test_eager_guard():
-            paddle.set_device(
-                'xpu:%d' % paddle.distributed.ParallelEnv().dev_id
-            )
+            device_id = paddle.distributed.ParallelEnv().dev_id
+            paddle.set_device('xpu:%d' % device_id)
 
             pg = init_process_group()
             sys.stdout.write(
@@ -108,10 +108,10 @@ class TestProcessGroupFp32(unittest.TestCase):
             # test barrier
             # rank 0
             if pg.rank() == 0:
-                dist.barrier()
+                pg.barrier(device_id)
             # rank 1
             else:
-                task = pg.barrier()
+                task = pg.barrier(device_id)
                 task.wait()
 
             sys.stdout.write("rank {}: test barrier api ok\n".format(pg.rank()))
@@ -167,6 +167,27 @@ class TestProcessGroupFp32(unittest.TestCase):
             assert np.array_equal(tensor_y, out_2)
             sys.stdout.write(
                 "rank {}: test allgather api2 ok\n".format(pg.rank())
+            )
+
+            # test Reduce
+            # rank 0
+            x = np.random.random(self.shape).astype(self.dtype)
+            y = np.random.random(self.shape).astype(self.dtype)
+            tensor_x = paddle.to_tensor(x)
+            tensor_y = paddle.to_tensor(y)
+            sum_result = tensor_x + tensor_y
+            if pg.rank() == 0:
+                task = dist.reduce(tensor_x, 0, sync_op=True)
+                paddle.device.xpu.synchronize()
+            # rank 1
+            else:
+                task = dist.reduce(tensor_y, 0, sync_op=False)
+                task.wait()
+                paddle.device.xpu.synchronize()
+            if pg.rank() == 0:
+                assert np.array_equal(tensor_x, sum_result)
+            sys.stdout.write(
+                "rank {}: test reduce sum api ok\n".format(pg.rank())
             )
 
 

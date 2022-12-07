@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.distributed.launch.utils.kv_client import KVClient
-from paddle.distributed.launch.utils.kv_server import KVServer
-
-import time
-import sys
-import threading
 import copy
 import random
+import sys
+import threading
+import time
+
+from paddle.distributed.launch.utils.kv_client import KVClient
+from paddle.distributed.launch.utils.kv_server import KVServer
 
 ETCD_PROTOCAL = 'etcd://'
 

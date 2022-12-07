@@ -15,18 +15,18 @@
 # limitations under the License.
 
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Linear
 from paddle.distributed import fleet
-from paddle.fluid.framework import _test_eager_guard
-
 from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage3 import (
     ShardingStage3,
 )
 from paddle.distributed.fleet.meta_parallel.sharding.sharding_utils import (
     ShardingScaler,
 )
+from paddle.fluid.framework import _test_eager_guard
+from paddle.nn import Linear
 
 epoch = 10
 paddle.seed(2022)

@@ -26,9 +26,6 @@ add_subdirectory(sequence_ops)
 add_subdirectory(string)
 add_subdirectory(jit)
 add_subdirectory(prim_ops)
-if(WITH_MKLDNN)
-    add_subdirectory(mkldnn)
-endif()
 
 
 if(WITH_DISTRIBUTE)
@@ -156,7 +153,7 @@ cc_library(ops_extra_info SRCS ops_extra_info.cc DEPS attribute cudnn_workspace_
 
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_functor selected_rows_utils lapack_function
 lod_tensor maxouting unpooling pooling lod_rank_table context_project
-sequence_pooling executor device_memory_aligment generator)
+sequence_pooling executor generator)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dynload_warpctc)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence_padding sequence_scale cos_sim_functor memory jit_kernel_helper concat_and_split cross_entropy softmax vol2col im2col sampler sample_prob tree2col)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence2batch lstm_compute matrix_bit_code gru_compute activation_functions beam_search fc_functor matrix_inverse matrix_solve)
@@ -170,7 +167,6 @@ if(WITH_XPU)
   cc_test(beam_search_decode_op_xpu_test SRCS beam_search_decode_op_xpu_test.cc DEPS lod_tensor)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} xpulib)
 endif()
-set(COMMON_OP_DEPS ${COMMON_OP_DEPS} device_memory_aligment)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} layer)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} tensor_formatter)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} op_version_registry)
@@ -184,8 +180,6 @@ if (WITH_ASCEND_CL)
 endif()
 
 # FIXME(typhoonzero): operator deps may not needed.
-# op_library(lod_tensor_to_array_op DEPS lod_rank_table_op)
-# op_library(array_to_lod_tensor_op DEPS lod_rank_table_op)
 # op_library(unsqueeze_op DEPS reshape_op)
 # op_library(squeeze_op DEPS reshape_op)
 # op_library(flatten_op DEPS reshape_op)
@@ -246,10 +240,6 @@ if(WITH_UNITY_BUILD)
     # the unity library to lose some symbols.
     # The specified link dependency needs to be displayed here.
     target_link_libraries(paddle_operators_unity ${OP_HEADER_DEPS} ${COMMON_OP_DEPS})
-endif()
-
-if(WITH_ASCEND_CL)
-cc_test(gelu_op_npu_test SRCS gelu_op_npu_test.cc DEPS op_registry gelu_op scope device_context enforce executor)
 endif()
 
 if (WITH_GPU OR WITH_ASCEND_CL)

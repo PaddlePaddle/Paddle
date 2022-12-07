@@ -25,13 +25,15 @@ list(
   pool3d_op_plugin.cu
   deformable_conv_op_plugin.cu
   matmul_op_int8_plugin.cu
-  transformer_input_convert_plugin.cu
+  multihead_matmul_roformer_plugin.cu
+  transformer_input_output_convert_plugin.cu
   remove_padding_plugin.cu
   recover_padding_plugin.cu
   c_allreduce_op_plugin.cu
   preln_residual_bias_plugin.cu
   fused_token_prune_op_plugin.cu
   layernorm_shift_partition_op.cu
+  reverse_roll_op_plugin.cu
   prelnlayernorm_shift_partition_op.cu
   merge_layernorm_op_plugin.cu
   skip_merge_layernorm_op_plugin.cu

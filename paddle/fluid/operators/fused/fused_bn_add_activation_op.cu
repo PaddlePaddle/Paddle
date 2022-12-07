@@ -30,7 +30,6 @@ DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 
 namespace paddle {
 namespace operators {
-using Tensor = phi::DenseTensor;
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 template <typename T>
@@ -120,7 +119,7 @@ class FusedBatchNormAddActKernel<phi::GPUContext, T>
     size_t reserve_space_size = 0;
     void *reserve_space_ptr = nullptr;
     void *workspace_ptr = nullptr;
-    Tensor workspace_tensor;
+    phi::DenseTensor workspace_tensor;
     // Create reserve space and workspace for batch norm.
     // Create tensor for each batchnorm op, it will be used in the
     // backward. Thus this tensor shouldn't be temp.
@@ -296,7 +295,7 @@ class FusedBatchNormAddActGradKernel<phi::GPUContext, T>
 
     size_t workspace_size = 0;
     void *workspace_ptr = nullptr;
-    Tensor workspace_tensor;
+    phi::DenseTensor workspace_tensor;
     auto reserve_space_size = reserve_space->memory_size();
     cudnnBatchNormOps_t bnOps_ = CUDNN_BATCHNORM_OPS_BN_ADD_ACTIVATION;
     platform::ScopedActivationDescriptor scope_act_desc;

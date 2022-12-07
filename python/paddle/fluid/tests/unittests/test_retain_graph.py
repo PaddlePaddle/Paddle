@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-import unittest
 
 paddle.disable_static()
 SEED = 2020
@@ -30,7 +32,7 @@ class Generator(fluid.dygraph.Layer):
 
     def forward(self, x):
         x = self.conv1(x)
-        x = fluid.layers.tanh(x)
+        x = paddle.tanh(x)
         return x
 
 

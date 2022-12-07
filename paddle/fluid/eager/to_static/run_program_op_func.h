@@ -32,7 +32,7 @@ static void clear_no_grad_edges(
   for (size_t i = 0; i < params.size(); ++i) {
     auto p_grad_name = paddle::framework::GradVarName(params[i].name());
     if (!block_desc->HasVar(p_grad_name)) {
-      VLOG(1) << "clear edge of " << p_grad_name;
+      VLOG(3) << "clear edge of " << p_grad_name;
       grad_node->MutableOutputMeta()[slot_id][i].GetMutableEdge().Clear();
     }
   }
@@ -48,7 +48,7 @@ static void clear_no_grad_edges_with_partial_block(
     auto p_grad_name = paddle::framework::GradVarName(params[i].name());
     if (!forward_block_desc->HasVar(p_grad_name) &&
         !backward_block_desc->HasVar(p_grad_name)) {
-      VLOG(1) << "clear edge of " << p_grad_name;
+      VLOG(3) << "clear edge of " << p_grad_name;
       grad_node->MutableOutputMeta()[slot_id][i].GetMutableEdge().Clear();
     }
   }

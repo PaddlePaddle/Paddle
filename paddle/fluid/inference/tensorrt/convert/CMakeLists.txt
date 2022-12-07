@@ -23,7 +23,10 @@ list(
   gelu_op.cc
   layer_norm_op.cc
   multihead_matmul_op.cc
+  multihead_matmul_roformer_op.cc
   shuffle_channel_op.cc
+  fill_any_like_op.cc
+  where_op.cc
   swish_op.cc
   silu_op.cc
   instance_norm_op.cc
@@ -68,6 +71,7 @@ list(
   preln_residual_bias.cc
   c_allreduce_op.cc
   top_k_op.cc
+  range_op.cc
   squeeze2_op.cc
   unsqueeze2_op.cc
   rnn_op.cc
@@ -78,7 +82,9 @@ list(
   fused_token_prune_op.cc
   celu_op.cc
   layernorm_shift_partition_op.cc
+  reverse_roll_op.cc
   tanhshrink_op.cc
+  take_along_axis_op.cc
   logsigmoid_op.cc
   preln_layernorm_shift_partition_op.cc
   merge_layernorm_op.cc

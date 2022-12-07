@@ -14,17 +14,20 @@
 
 import paddle
 from paddle import _legacy_C_ops
-from paddle.fluid import core
-from paddle.fluid.framework import _non_static_mode
-from paddle.fluid.framework import _in_legacy_dygraph
-from paddle.fluid.framework import in_dygraph_mode
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.dygraph import layers
+from paddle.common_ops_import import dygraph_utils
 from paddle.distributed import collective
+from paddle.fluid import core
+from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
+from paddle.framework import (
+    LayerHelper,
+    _in_legacy_dygraph,
+    _varbase_creator,
+    in_dygraph_mode,
+    in_dynamic_mode,
+)
+from paddle.nn import Layer
+
 from ....communication.reduce import ReduceOp, _get_reduce_op
-from paddle.fluid.data_feeder import check_dtype
-import paddle.fluid.dygraph_utils as dygraph_utils
 
 
 def _c_identity(tensor, group=None):
@@ -122,7 +125,7 @@ def _c_concat(tensor, group=None):
     rank = group.rank
     nranks = group.nranks
 
-    if _non_static_mode():
+    if in_dynamic_mode():
         return _legacy_C_ops.c_concat(
             tensor,
             'ring_id',
@@ -188,7 +191,7 @@ def _c_split(tensor, group=None):
         else group.nranks
     )
 
-    if _non_static_mode():
+    if in_dynamic_mode():
         return _legacy_C_ops.c_split(
             tensor,
             'use_calc_stream',
@@ -334,7 +337,7 @@ def _c_lookup_table(table, index, start_index=0, name=None):
     Returns:
         Tensor.
     """
-    if _non_static_mode():
+    if in_dynamic_mode():
         return _legacy_C_ops.c_embedding(
             table, index, "start_index", start_index
         )
@@ -353,7 +356,7 @@ def _c_lookup_table(table, index, start_index=0, name=None):
     return tmp
 
 
-class _Linear(layers.Layer):
+class _Linear(Layer):
     """
     Linear
     """
@@ -423,7 +426,7 @@ def _c_softmax_with_cross_entropy(
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=-1)
 
-    if _non_static_mode():
+    if in_dynamic_mode():
         softmax, loss = _legacy_C_ops.c_softmax_with_cross_entropy(
             logits, label, 'ring_id', ring_id, 'rank', rank, 'nranks', nranks
         )
@@ -457,7 +460,7 @@ def _linear(x, weight, bias=None, name=None):
     """
     Fuction Linear
     """
-    if _non_static_mode():
+    if in_dynamic_mode():
         pre_bias = _varbase_creator(dtype=x.dtype)
         _legacy_C_ops.matmul(
             x,
@@ -824,7 +827,7 @@ def split(
             supported_operations
         )
     )
-    if _non_static_mode():
+    if in_dynamic_mode():
         raise ValueError(
             "paddle.distributed.split cannot be used in dynamic "
             "graph mode, plese use ParallelEmbedding, ParallelRowLinear, "

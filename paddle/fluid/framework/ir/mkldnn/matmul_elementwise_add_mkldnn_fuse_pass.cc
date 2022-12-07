@@ -64,10 +64,6 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
           << "op compat for matmul_elementwise_add_mkldnn_fuse_pass failed.";
       return;
     }
-    if (matmul->Op()->HasAttr("ResidualData")) {
-      LOG(WARNING) << "matmul_elementwise_add can be fused once";
-      return;
-    }
 
     matmul->Op()->SetInput("ResidualData", {elementwise_addend->Name()});
     matmul->Op()->SetOutput("Out", {elementwise_add_out->Name()});

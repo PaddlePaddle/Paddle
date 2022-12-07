@@ -13,15 +13,17 @@
 # limitations under the License.
 
 import os
-import sys
 import site
+import sys
 import unittest
+
+import numpy as np
+
 import paddle
 import paddle.static as static
-import numpy as np
-from paddle.vision.transforms import Compose, Normalize
-from paddle.utils.cpp_extension.extension_utils import run_cmd
 from paddle.fluid.framework import _test_eager_guard
+from paddle.utils.cpp_extension.extension_utils import run_cmd
+from paddle.vision.transforms import Compose, Normalize
 
 
 def custom_relu_dynamic(func, device, dtype, np_x, use_func=True):
@@ -318,8 +320,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         np_data = np.random.random((1, 1, 28, 28)).astype("float32")
         np_label = np.random.random((1, 1)).astype("int64")
         path_prefix = "custom_op_inference/custom_relu"
-        from paddle.inference import Config
-        from paddle.inference import create_predictor
+        from paddle.inference import Config, create_predictor
 
         for device in self.devices:
             predict = custom_relu_static_inference(

@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
+import numpy
+
+from paddle.fluid import Program, core, program_guard
+from paddle.fluid.executor import Executor
 from paddle.fluid.layers import data
 from paddle.fluid.layers.control_flow import lod_rank_table
-from paddle.fluid.executor import Executor
-from paddle.fluid import Program, program_guard, core
-import numpy
-import unittest
 
 
 class TestLoDRankTable(unittest.TestCase):
