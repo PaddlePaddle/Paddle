@@ -22,7 +22,6 @@ import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.nn import BatchNorm, Embedding
-from paddle.fluid.framework import _test_eager_guard
 from paddle.nn import Linear
 
 
@@ -511,12 +510,11 @@ class TestDygraphOCRAttention(unittest.TestCase):
             dy_out, dy_param_init_value, dy_param_value = run_dygraph()
 
         with fluid.dygraph.guard():
-            with _test_eager_guard():
-                (
-                    eager_out,
-                    eager_param_init_value,
-                    eager_param_value,
-                ) = run_dygraph()
+            (
+                eager_out,
+                eager_param_init_value,
+                eager_param_value,
+            ) = run_dygraph()
 
         with new_program_scope():
             paddle.seed(seed)
