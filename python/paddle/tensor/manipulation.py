@@ -29,7 +29,7 @@ from ..fluid.data_feeder import (
     convert_dtype,
 )
 from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
-from ..fluid.framework import _in_legacy_dygraph, _non_static_mode
+from ..fluid.framework import _in_legacy_dygraph, _non_static_mode, Variable
 from ..fluid.layers import utils
 from ..framework import (
     LayerHelper,
@@ -37,7 +37,6 @@ from ..framework import (
     core,
     dygraph_only,
     in_dygraph_mode,
-    Variable,
 )
 from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
 

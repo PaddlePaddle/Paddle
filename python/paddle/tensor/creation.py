@@ -47,11 +47,8 @@ from ..framework import (
     convert_np_dtype_to_dtype_,
     core,
     in_dygraph_mode,
-<<<<<<< HEAD
 ) 
-=======
-)
->>>>>>> 65420271609b8cce860ec8034569292db7d13d71
+
 
 __all__ = []
 
