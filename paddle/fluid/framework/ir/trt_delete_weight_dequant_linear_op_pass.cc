@@ -290,11 +290,8 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
   int found_count = 0;
 
   // Device context
-  auto device_context = std::make_unique<phi::CPUContext>(platform::CPUPlace());
-  device_context->SetHostAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
-          .get());
+  auto* dev_ctx = static_cast<phi::CPUContext*>(
+      platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
@@ -408,7 +405,7 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
     }
     weight_tensor->clear();  // clear int weight
     weight_tensor->Resize(phi::make_ddim(phi::vectorize(w_dims)));
-    float* new_quantized_weight_data = device_context->HostAlloc<float>(
+    float* new_quantized_weight_data = dev_ctx->HostAlloc<float>(
         weight_tensor, weight_tensor->numel() * sizeof(float));
     memcpy(new_quantized_weight_data,
            weight_data_tmp.data(),
