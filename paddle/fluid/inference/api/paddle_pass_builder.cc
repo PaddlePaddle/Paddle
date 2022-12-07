@@ -212,6 +212,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "delete_quant_dequant_linear_op_pass",                          //
         "delete_weight_dequant_linear_op_encoder_pass",                 //
         "delete_weight_dequant_linear_op_decoder_pass",                 //
+        "constant_folding_pass",                                        //
         "map_depthwise_conv_to_conv_pass",                              //
         "conv_bn_fuse_pass",                                            //
         "conv_eltwiseadd_bn_fuse_pass",                                 //
@@ -246,7 +247,6 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_elementwise_add_fuse_pass",      //
 #endif                                         //
         "transpose_flatten_concat_fuse_pass",  //
-        "constant_folding_pass",               //
         // following pass should be located in the last, since it will
         // work on all fused ops.
         "float_to_half_pass",  //
