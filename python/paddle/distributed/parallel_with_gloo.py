@@ -20,7 +20,7 @@ from paddle.distributed.fleet.base.private_helper_function import (
 )
 
 # deprecated module import
-# (TODO: Mine) It will be removed later.
+# (TODO: GhostScreaming) It will be removed later.
 from paddle.fluid import core
 
 __all__ = []

@@ -16,7 +16,7 @@ import datetime
 
 import paddle
 
-# (TODO: Mine) It will be removed later.
+# (TODO: GhostScreaming) It will be removed later.
 import paddle.fluid.core as core
 from paddle.framework import _non_static_mode, in_dygraph_mode
 

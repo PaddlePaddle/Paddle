@@ -38,13 +38,13 @@ from paddle.distributed.fleet.base.private_helper_function import (  # noqa: F40
 from paddle.distributed.fleet.launch_utils import check_backend
 
 # deprecated module import
-# (TODO: Mine) It will be removed later.
+# (TODO: GhostScreaming) It will be removed later.
 from paddle.fluid import core
 
-# (TODO: Mine) It will be removed later.
+# (TODO: GhostScreaming) It will be removed later.
 from paddle.fluid.dygraph.parallel import ParallelEnv
 
-# (TODO: Mine) It will be removed later.
+# (TODO: GhostScreaming) It will be removed later.
 from paddle.framework import (
     _set_expected_place,
     in_dygraph_mode,

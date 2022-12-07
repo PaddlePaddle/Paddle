@@ -16,7 +16,7 @@ import os
 
 from paddle.device import get_available_custom_device
 
-# (TODO: Mine) It will be removed later.
+# (TODO: GhostScreaming) It will be removed later.
 from paddle.fluid import core
 
 

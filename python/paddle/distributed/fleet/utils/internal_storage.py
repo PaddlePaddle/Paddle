@@ -27,7 +27,7 @@ import numpy as np
 import paddle
 from paddle import framework
 
-# (TODO: Mine) It will be removed later.
+# (TODO: GhostScreaming) It will be removed later.
 from paddle.fluid import core
 
 from ..meta_parallel.sharding.sharding_utils import Type, device_guard

@@ -15,7 +15,7 @@
 import paddle
 from paddle import framework
 
-# (TODO: Mine) It will be removed later.
+# (TODO: GhostScreaming) It will be removed later.
 from paddle.fluid import core
 from paddle.framework import (
     _in_legacy_dygraph,

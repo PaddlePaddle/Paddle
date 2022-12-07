@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle.distributed.fleet as fleet
 
-# (TODO: Mine) It will be removed later.
+# (TODO: GhostScreaming) It will be removed later.
 import paddle.fluid.core as core
 from paddle.framework import Block, Program, _non_static_mode
 
