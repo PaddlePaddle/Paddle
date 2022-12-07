@@ -17,7 +17,6 @@ from . import Layer
 from ..layers import (
     concat,
     fill_constant,
-    matmul,
     split,
 )
 import copy
