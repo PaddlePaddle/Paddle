@@ -111,22 +111,18 @@ fused_bias_dropout_residual_layer_normGradNodeCompat::operator()(
       {});
 
   if (outs0.find("Bias@GRAD") != outs0.end()) {
-    VLOG(1) << "=====, Bias@GRAD ";
     outputs[2] = egr::EagerUtils::GetOutputs(outs0["Bias@GRAD"]);
   }
 
   if (outs0.find("LnBias@GRAD") != outs0.end()) {
-    VLOG(1) << "=====, LnBias@GRAD ";
     outputs[4] = egr::EagerUtils::GetOutputs(outs0["LnBias@GRAD"]);
   }
 
   if (outs0.find("LnScale@GRAD") != outs0.end()) {
-    VLOG(1) << "=====, LnScale@GRAD ";
     outputs[3] = egr::EagerUtils::GetOutputs(outs0["LnScale@GRAD"]);
   }
 
   if (outs0.find("Residual@GRAD") != outs0.end()) {
-    VLOG(1) << "=====, Residual@GRAD ";
     outputs[1] = egr::EagerUtils::GetOutputs(outs0["Residual@GRAD"]);
   }
 
