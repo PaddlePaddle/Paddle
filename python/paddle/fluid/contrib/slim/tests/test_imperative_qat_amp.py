@@ -119,7 +119,9 @@ class TestImperativeQatAmp(unittest.TestCase):
                 with paddle.amp.auto_cast():
                     out = model(img)
                     acc = paddle.static.accuracy(out, label)
-                    loss = paddle.nn.functional.cross_entropy(out, label, reduction='none', use_softmax=False)
+                    loss = paddle.nn.functional.cross_entropy(
+                        out, label, reduction='none', use_softmax=False
+                    )
                     avg_loss = paddle.mean(loss)
                 scaled_loss = scaler.scale(avg_loss)
                 scaled_loss.backward()
@@ -129,7 +131,9 @@ class TestImperativeQatAmp(unittest.TestCase):
             else:
                 out = model(img)
                 acc = paddle.static.accuracy(out, label)
-                loss = paddle.nn.functional.cross_entropy(out, label, reduction='none', use_softmax=False)
+                loss = paddle.nn.functional.cross_entropy(
+                    out, label, reduction='none', use_softmax=False
+                )
                 avg_loss = paddle.mean(loss)
                 avg_loss.backward()
 
