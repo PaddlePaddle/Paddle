@@ -17,7 +17,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/operators/fake_dequantize_op.h"
 #include "paddle/fluid/operators/fake_quantize_op.h"
 #include "paddle/fluid/platform/transform.h"
 #include "paddle/phi/common/data_type.h"
@@ -29,6 +28,15 @@ namespace paddle {
 namespace operators {
 
 template <typename DeviceContext, typename T>
+struct DequantizeFunctor {
+  void operator()(const DeviceContext& dev_ctx,
+                  const phi::DenseTensor* in,
+                  const phi::DenseTensor* scale,
+                  T max_range,
+                  phi::DenseTensor* out);
+};
+
+template <typename DeviceContext, typename T>
 struct ChannelDequantizeFunctorV2 {
   void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor* in,
@@ -38,6 +46,7 @@ struct ChannelDequantizeFunctorV2 {
                   const int quant_axis,
                   phi::DenseTensor* out);
 };
+
 
 template <typename DeviceContext, typename T>
 class QuantizeLinearKernel : public framework::OpKernel<T> {
@@ -105,10 +114,11 @@ class QuantizeLinearKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T, typename D>
+template <typename DeviceContext, typename T>
 class DeQuantizeLinearKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
+  template<typename D>
+  void ComputeImpl(const framework::ExecutionContext& context) const {
     auto& dev_ctx = context.template device_context<DeviceContext>();
     auto* in = context.Input<phi::DenseTensor>("X");
 
@@ -142,6 +152,21 @@ class DeQuantizeLinearKernel : public framework::OpKernel<T> {
 
       ChannelDequantizeFunctorV2<DeviceContext, D>()(
           dev_ctx, &in_tmp, scale, static_cast<D>(max_range), quant_axis, out);
+    }
+  }
+  
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* out = context.Output<phi::DenseTensor>("Y");
+    switch (out->dtype()) {
+      case experimental::DataType::FLOAT64:
+          ComputeImpl<double>(context);
+          break;
+      case experimental::DataType::FLOAT32:
+          ComputeImpl<float>(context);
+          break;
+      case experimental::DataType::FLOAT16:
+          ComputeImpl<paddle::platform::float16>(context);
+          break;
     }
   }
 };

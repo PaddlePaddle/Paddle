@@ -25,6 +25,22 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
+struct DequantizeFunctor<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext& dev_ctx,
+                  const phi::DenseTensor* in,
+                  const phi::DenseTensor* scale,
+                  T max_range,
+                  phi::DenseTensor* out) {
+    auto in_e = framework::EigenVector<T>::Flatten(*in);
+    const T* scale_factor = scale->data<T>();
+    auto out_e = framework::EigenVector<T>::Flatten(*out);
+
+    auto& dev = *dev_ctx.eigen_device();
+    out_e.device(dev) = in_e * scale_factor[0] / max_range;
+  }
+};
+
+template <typename T>
 struct ChannelDequantizeFunctorV2<phi::CPUContext, T> {
   void operator()(const phi::CPUContext &dev_ctx,
                   const phi::DenseTensor *in,
@@ -72,6 +88,11 @@ struct ChannelDequantizeFunctorV2<phi::CPUContext, T> {
   }
 };
 
+
+template struct DequantizeFunctor<phi::CPUContext, phi::dtype::float16>;
+template struct DequantizeFunctor<phi::CPUContext, float>;
+template struct DequantizeFunctor<phi::CPUContext, double>;
+template struct ChannelDequantizeFunctorV2<phi::CPUContext, phi::dtype::float16>;
 template struct ChannelDequantizeFunctorV2<phi::CPUContext, float>;
 template struct ChannelDequantizeFunctorV2<phi::CPUContext, double>;
 
@@ -214,6 +235,6 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(dequantize_linear,
-                       ops::DeQuantizeLinearKernel<CPU, float, float>,
-                       ops::DeQuantizeLinearKernel<CPU, int8_t, float>,
-                       ops::DeQuantizeLinearKernel<CPU, double, double>);
+                       ops::DeQuantizeLinearKernel<CPU, float>,
+                       ops::DeQuantizeLinearKernel<CPU, int8_t>,
+                       ops::DeQuantizeLinearKernel<CPU, double>);
