@@ -251,9 +251,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
                 y1 = fluid.create_lod_tensor(
                     np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.XPUPlace(0)
                 )
-                self.assertRaises(
-                    TypeError, paddle.tensor.math._multiply_with_axis, x1, y1
-                )
+                self.assertRaises(TypeError, paddle.multiply, x1, y1)
 
                 # the input dtype of elementwise_mul must be float32
                 x2 = fluid.layers.data(
@@ -262,9 +260,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
                 y2 = fluid.layers.data(
                     name='y2', shape=[3, 4, 5, 6], dtype="uint8"
                 )
-                self.assertRaises(
-                    TypeError, paddle.tensor.math._multiply_with_axis, x2, y2
-                )
+                self.assertRaises(TypeError, paddle.multiply, x2, y2)
 
 
 support_types = get_xpu_op_support_types('elementwise_mul')
