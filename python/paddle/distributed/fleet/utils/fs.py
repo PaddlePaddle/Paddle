@@ -20,6 +20,7 @@ import re
 import shutil
 import time
 
+# (TODO: Mine) It will be removed later.
 from paddle.fluid import core
 
 from .log_util import logger
