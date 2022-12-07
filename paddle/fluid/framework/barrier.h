@@ -24,22 +24,37 @@ class Barrier {
  public:
   explicit Barrier(int count = 1) {
     CHECK(count >= 1);
+#ifdef __LINUX__
     CHECK(0 == pthread_barrier_init(&_barrier, NULL, count));
+#endif
   }
-  ~Barrier() { CHECK(0 == pthread_barrier_destroy(&_barrier)); }
+
+  ~Barrier() {
+#ifdef __LINUX__
+      CHECK(0 == pthread_barrier_destroy(&_barrier));
+#endif
+  }
+
   void reset(int count) {
     CHECK(count >= 1);
+#ifdef __LINUX__
     CHECK(0 == pthread_barrier_destroy(&_barrier));
     CHECK(0 == pthread_barrier_init(&_barrier, NULL, count));
+#endif
   }
+
   void wait() {
+#ifdef __LINUX__
     int err = pthread_barrier_wait(&_barrier);
     CHECK((err = pthread_barrier_wait(&_barrier),
            err == 0 || err == PTHREAD_BARRIER_SERIAL_THREAD));
+#endif
   }
 
  private:
+#ifdef __LINUX__
   pthread_barrier_t _barrier;
+#endif
 };
 // Call func(args...). If interrupted by signal, recall the function.
 template <class FUNC, class... ARGS>
