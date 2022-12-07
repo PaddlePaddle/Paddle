@@ -15,6 +15,7 @@
 from paddle.fluid.framework import Block
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle import static
+import paddle
 from paddle.framework import core
 from paddle.distributed.passes.pass_base import PassBase, register_pass
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
@@ -34,12 +35,15 @@ from paddle.fluid.contrib.mixed_precision.bf16.amp_utils import (
     _valid_types,
     _dtype_to_str,
     find_op_index,
+    find_true_post_op,
     _is_in_fp32_varnames,
 )
 from paddle.fluid.contrib.mixed_precision.fp16_utils import (
     find_true_prev_op,
     _rename_arg,
 )
+
+from ..auto_parallel.utils import is_backward_op, is_forward_op, is_loss_op
 
 from paddle.fluid import unique_name
 
@@ -267,15 +271,24 @@ class BF16State(object):
                             op._set_attr('out_dtype', core.VarDesc.VarType.BF16)
         return num_cast_ops
 
-    def rewrite_backward_program(self, dist_context: DistributedContext):
+    def rewrite_backward_program(
+        self, params_grads, dist_context: DistributedContext
+    ):
         self._block._sync_with_cpp()
         ops = self._block.ops
+        appended_grad_times = 0
         dist_op_context = dist_context.dist_op_context
         loss_op = get_loss_op(self._block)
         idx = find_op_index(self._block.desc, loss_op.desc) + 1
         while idx < len(ops):
             op = ops[idx]
             num_cast_ops = 0
+            op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
+            if is_backward_op(op) and (
+                is_forward_op(ops[idx - 1]) or is_loss_op(ops[idx - 1])
+            ):
+                if not op_dist_attr.is_recompute:
+                    appended_grad_times += 1
             if op.desc.original_id() in dist_op_context.grad_op_id_to_op_id:
                 if (
                     self._op_bf16_dict.get(op.desc.original_id(), False)
@@ -287,6 +300,7 @@ class BF16State(object):
                         core.VarDesc.VarType.BF16,
                         core.VarDesc.VarType.FP32,
                         dist_context,
+                        appended_grad_times,
                     )
                 else:
                     if op.has_attr('use_mkldnn'):
@@ -303,6 +317,7 @@ class BF16State(object):
                         core.VarDesc.VarType.FP32,
                         core.VarDesc.VarType.BF16,
                         dist_context,
+                        appended_grad_times,
                     )
             elif op.type == "sum":
                 in_var_name = op.desc.input_arg_names()[0]
@@ -325,9 +340,16 @@ class BF16State(object):
                 )
             idx += num_cast_ops + 1
         self._block._sync_with_cpp()
+        _update_backward_cast_ops(params_grads, dist_context)
 
     def _insert_cast_op_backward(
-        self, op, idx, src_dtype, dst_dtype, dist_context: DistributedContext
+        self,
+        op,
+        idx,
+        src_dtype,
+        dst_dtype,
+        dist_context: DistributedContext,
+        appended_grad_times,
     ):
         num_cast_ops = 0
         dist_op_context = dist_context.dist_op_context
@@ -341,10 +363,8 @@ class BF16State(object):
             ):
                 if in_name not in {"X", "Y@GRAD"}:
                     for in_var_name in op.input(in_name):
-                        assert (
-                            self._block._find_var_recursive(in_var_name).dtype
-                            == src_dtype
-                        )
+                        in_var = self._block._find_var_recursive(in_var_name)
+                        assert in_var.dtype == core.VarDesc.VarType.FP32
                     continue
             for in_var_name in op.input(in_name):
                 in_var = self._block._find_var_recursive(in_var_name)
@@ -372,17 +392,16 @@ class BF16State(object):
             ]:
                 if out_name != "X@GRAD":
                     for out_var_name in op.output(out_name):
-                        assert (
-                            self._block._find_var_recursive(out_var_name).dtype
-                            == src_dtype
-                        )
+                        out_var = self._block._find_var_recursive(out_var_name)
+                        assert out_var.dtype == core.VarDesc.VarType.FP32
                     continue
 
             for out_var_name in op.output(out_name):
                 out_var = self._block._find_var_recursive(out_var_name)
                 out_var_fwd_var_name = out_var_name[: out_var_name.find('@')]
                 fwd_var = self._block._find_var_recursive(out_var_fwd_var_name)
-                out_var.desc.set_dtype(fwd_var.dtype)
+                if out_var.dtype != fwd_var.dtype:
+                    out_var.desc.set_dtype(fwd_var.dtype)
 
                 if out_var.dtype == src_dtype:
                     if (
@@ -397,7 +416,9 @@ class BF16State(object):
                         ]
                         suffix = ''
                         if "@RENAME" in out_var_name:
-                            suffix = out_var_name[out_var_name.find("@RENAME")]
+                            suffix = out_var_name[
+                                out_var_name.find("@RENAME") :
+                            ]
                         cast_name = fwd_cast_name + "@GRAD" + suffix
                         cast_var = self._block.vars.get(cast_name)
                         if cast_var is None or cast_var.dtype != dst_dtype:
@@ -425,6 +446,10 @@ class BF16State(object):
                                 out_var_dist_attr.process_mesh,
                             )
 
+                            dist_op_context.grad_var_to_var[
+                                appended_grad_times
+                            ][cast_name] = fwd_cast_name
+
                             cast_op = self._block._insert_op(
                                 idx + 1,
                                 type="cast",
@@ -437,7 +462,7 @@ class BF16State(object):
                                 },
                             )
                             cast_op._remove_attr("op_role_var")
-                            cast_op._remove_attr("op_namespace")
+                            cast_op._remove_attr("op_namescope")
                             cast_op._remove_attr("with_quant_attr")
 
                             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
@@ -452,6 +477,73 @@ class BF16State(object):
         return num_cast_ops
 
 
+def _update_backward_cast_ops(params_grads, dist_context):
+    """
+    move param grad cast to the end of backward segment
+    in order to enabel fp16 allreduce
+    """
+    # TODO filter optimize ops in future
+
+    main_block = paddle.static.default_main_program().global_block()
+    main_block._sync_with_cpp()
+
+    for p, g in params_grads:
+        op = g.op
+        if g.dtype == core.VarDesc.VarType.FP32 and op.type == 'cast':
+            if int(op.attr('op_role')) == int(OpRole.Backward) and op.has_attr(
+                'op_role_var'
+            ):
+                op._remove_attr("op_role_var")
+
+            post_ops = find_true_post_op(main_block.ops, op, g.name)
+            if post_ops:
+                raise ValueError(
+                    "The cast op {0}'s output should not be"
+                    "used by a non-optimize op, however, it"
+                    "is used by {1}".format(op, post_ops[0])
+                )
+
+            if op == main_block.ops[-1]:
+                continue
+
+            # add new op in the python and cpp at the same time
+            new_op_desc = main_block.desc.append_op()
+            new_op_desc.copy_from(op.desc)
+            new_op = paddle.fluid.framework.Operator(
+                block=main_block,
+                desc=new_op_desc,
+                type=None,
+                inputs=None,
+                outputs=None,
+                attrs=None,
+            )
+            main_block.ops.append(new_op)
+
+            # dist attr
+            param_dist_attr = dist_context.get_tensor_dist_attr_for_program(p)
+            output_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+                main_block.var(op.output_arg_names[0])
+            )
+            assert param_dist_attr is not None
+            assert output_dist_attr is not None
+            naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                new_op,
+                param_dist_attr.process_mesh,
+                param_dist_attr.dims_mapping,
+                dist_context,
+            )
+
+            output_dist_attr.process_mesh = param_dist_attr.process_mesh
+            output_dist_attr.dims_mapping = param_dist_attr.dims_mapping
+
+            op_idx = find_op_index(main_block.desc, op.desc)
+            if op_idx == -1:
+                raise ValueError("The op {0} is not in program".format(op))
+            main_block._remove_op(op_idx, sync=False)
+
+    main_block._sync_with_cpp()
+
+
 @register_pass("auto_parallel_bf16")
 class BF16Pass(PassBase):
     def __init__(self):
@@ -462,7 +554,7 @@ class BF16Pass(PassBase):
         self.set_attr("custom_fp32_varnames", None)
         self.set_attr("input_data", [])
         self.set_attr("loss", None)
-        # self.set_attr("params_grads", [])
+        self.set_attr("params_grads", [])
         self.set_attr("use_pure_bf16", False)
         self._loss = None
 
@@ -477,7 +569,7 @@ class BF16Pass(PassBase):
 
     def _apply_single_impl(self, main_program, startup_program, context):
         dist_context: DistributedContext = self.get_attr("dist_context")
-        # params_grads = self.get_attr("params_grads")
+        params_grads = self.get_attr("params_grads")
 
         amp_lists = AutoMixedPrecisionListsBF16(
             self.get_attr("custom_bf16_list"),
@@ -496,7 +588,7 @@ class BF16Pass(PassBase):
 
         if training:
             with static.program_guard(main_program, startup_program):
-                amp_state.rewrite_backward_program(dist_context)
+                amp_state.rewrite_backward_program(params_grads, dist_context)
                 loss = self.get_attr("loss")
                 loss_op = loss.op
                 loss_op_dist_attr = dist_context.get_op_dist_attr_for_program(
