@@ -224,7 +224,7 @@ class TestCloneWithStopGradientInSubBlock(unittest.TestCase):
                 hidden2 = fluid.layers.dropout(hidden1, dropout_prob=0.6)
                 return hidden2
 
-            hidden2 = fluid.layers.cond(cond, true_fn, false_fn)
+            hidden2 = paddle.static.nn.cond(cond, true_fn, false_fn)
 
             loss = fluid.layers.cross_entropy(
                 input=fluid.layers.fc(hidden2, size=10, act='softmax'),
@@ -265,7 +265,7 @@ class TestCloneWithRaise(unittest.TestCase):
                 hidden2 = fluid.layers.dropout(hidden1, dropout_prob=0.6)
                 return hidden2
 
-            hidden2 = fluid.layers.cond(cond, true_fn, false_fn)
+            hidden2 = paddle.static.nn.cond(cond, true_fn, false_fn)
             loss = fluid.layers.cross_entropy(
                 input=fluid.layers.fc(hidden2, size=10, act='softmax'),
                 label=fluid.layers.data(name='label', shape=[1], dtype='int64'),

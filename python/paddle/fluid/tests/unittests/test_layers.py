@@ -2473,7 +2473,7 @@ class TestLayer(LayerTest):
             b = fluid.layers.fill_constant(
                 shape=[1], dtype='float32', value=0.23
             )
-            out = fluid.layers.cond(
+            out = fluid.paddle.static.nn.cond(
                 a >= b,
                 lambda: greater_equal_branch(a, b),
                 lambda: less_than_branch(a, b),
@@ -2493,12 +2493,12 @@ class TestLayer(LayerTest):
                 b = fluid.dygraph.to_variable(
                     np.array([0.23]).astype('float32')
                 )
-                out = layers.cond(
+                out = paddle.static.nn.cond(
                     a < b,
                     lambda: less_than_branch(a, b),
                     lambda: greater_equal_branch(a, b),
                 )
-                out2 = layers.cond(
+                out2 = paddle.static.nn.cond(
                     a >= b,
                     lambda: greater_equal_branch(a, b),
                     lambda: less_than_branch(a, b),
@@ -2509,18 +2509,18 @@ class TestLayer(LayerTest):
                     eager_dynamic_res, eager_dynamic_res2
                 )
                 with self.assertRaises(TypeError):
-                    layers.cond(a < b, 'str', 'str')
+                    paddle.static.nn.cond(a < b, 'str', 'str')
                 with self.assertRaises(TypeError):
-                    layers.cond(a >= b, 'str', 'str')
+                    paddle.static.nn.cond(a >= b, 'str', 'str')
 
             a = fluid.dygraph.to_variable(np.array([0.1]).astype('float32'))
             b = fluid.dygraph.to_variable(np.array([0.23]).astype('float32'))
-            out = layers.cond(
+            out = paddle.static.nn.cond(
                 a < b,
                 lambda: less_than_branch(a, b),
                 lambda: greater_equal_branch(a, b),
             )
-            out2 = layers.cond(
+            out2 = paddle.static.nn.cond(
                 a >= b,
                 lambda: greater_equal_branch(a, b),
                 lambda: less_than_branch(a, b),
@@ -2529,9 +2529,9 @@ class TestLayer(LayerTest):
             dynamic_res2 = out2.numpy()
             np.testing.assert_array_equal(dynamic_res, dynamic_res2)
             with self.assertRaises(TypeError):
-                layers.cond(a < b, 'str', 'str')
+                paddle.static.nn.cond(a < b, 'str', 'str')
             with self.assertRaises(TypeError):
-                layers.cond(a >= b, 'str', 'str')
+                paddle.static.nn.cond(a >= b, 'str', 'str')
 
         np.testing.assert_array_equal(static_res, dynamic_res)
         np.testing.assert_array_equal(static_res, eager_dynamic_res)

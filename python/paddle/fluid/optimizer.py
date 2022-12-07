@@ -7647,7 +7647,7 @@ class GradientMergeOptimizer:
                 )
 
         # step3. apply gradient
-        layers.cond(cond, true_fn=true_apply_gradient, false_fn=None)
+        paddle.static.nn.cond(cond, true_fn=true_apply_gradient, false_fn=None)
 
         return self._optimize_ops
 
