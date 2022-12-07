@@ -460,7 +460,6 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("int8_scale_calculation_mkldnn_pass");
     passes_.push_back("params_quantization_mkldnn_pass");
     passes_.push_back("mkldnn_inplace_pass");
-    passes_.push_back("runtime_context_cache_pass");
   }
   use_mkldnn_int8_ = true;
 #else

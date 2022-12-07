@@ -1254,13 +1254,12 @@ struct OperatorWithKernel::CacheImpl {
     return ret;
   }
 
-  std::vector<phi::DDim> last_ddims_;
-
  private:
   std::unique_ptr<phi::KernelContext> kernel_ctx_;
   std::unique_ptr<RuntimeInferShapeContext> infer_shape_ctx_;
   std::vector<phi::DenseTensor*> tensors_;
   bool not_allow_infer_shape_cache_;
+  std::vector<phi::DDim> last_ddims_;
 };
 const char OperatorWithKernel::CacheImpl::kNotAllowInferShapeCahce[] =
     "@NOT_ALLOW_INFERSHAPE_CACHE@";

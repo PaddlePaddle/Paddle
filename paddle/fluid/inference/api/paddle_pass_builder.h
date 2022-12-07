@@ -118,8 +118,7 @@ class PD_INFER_DECL PaddlePassBuilder {
        "ir_analysis_pass",
        "ir_params_sync_among_devices_pass",
        "adjust_cudnn_workspace_size_pass",
-       "inference_op_replace_pass",
-       "runtime_context_cache_pass"}};
+       "inference_op_replace_pass"}};
   std::vector<std::string> passes_;
   std::unordered_set<std::string> deleted_passes_;
   /// \endcond
