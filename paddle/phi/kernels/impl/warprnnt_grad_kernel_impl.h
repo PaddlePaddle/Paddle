@@ -36,17 +36,21 @@ void WarprnntGradKernel(const Context& dev_ctx,
                         DenseTensor* logits_grad) {
   dev_ctx.template Alloc<T>(logits_grad);
 
+  std::cout << "loss_grad: " << loss_grad << std::endl;
+  std::cout << "warprnntgrad: " << warprnntgrad << std::endl;
+  std::cout << "logits_grad: " << *logits_grad << std::endl;
+
   int B = warprnntgrad.dims()[0];     // B
   int Tmax = warprnntgrad.dims()[1];  // Tmax
   int Umax = warprnntgrad.dims()[2];  // Umax
   int D = warprnntgrad.dims()[3];     // D
 
-  // (B, 1)
-  auto loss_grad_e = EigenTensor<T, 2>::From(loss_grad);
-  std::cout << "loss_grad_e: " << loss_grad_e.eval() << std::endl;
+  // (B,)
+  auto loss_grad_e = EigenTensor<T, 1>::From(loss_grad);
+  // std::cout << "loss_grad_e: " << loss_grad_e.eval() << std::endl;
   // (B, T, U, D)
   auto warprnntgrad_e = EigenTensor<T, 4>::From(warprnntgrad);
-  std::cout << "warprnntgrad_e: " << warprnntgrad_e.eval() << std::endl;
+  // std::cout << "warprnntgrad_e: " << warprnntgrad_e.eval() << std::endl;
 
   auto logits_grad_e = EigenTensor<T, 4>::From(*logits_grad);
 
@@ -58,7 +62,7 @@ void WarprnntGradKernel(const Context& dev_ctx,
   auto* place = dev_ctx.eigen_device();
   logits_grad_e.device(*place) = logits_g;
 
-  std::cout << "logits_g: " << logits_g.eval() << std::endl;
+  // std::cout << "logits_g: " << logits_g.eval() << std::endl;
 }
 
 }  // namespace phi

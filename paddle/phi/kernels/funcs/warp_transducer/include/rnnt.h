@@ -98,8 +98,10 @@ struct rnntOptions {
  *              ordering is identical.
  * \param [in]  flat_labels Always in CPU memory.  A concatenation
  *              of all the labels for the minibatch (should be padded to same
- * length) \param [in]  label_lengths Always in CPU memory. The length of each
- * label for each example in the minibatch. \param [in]  input_lengths Always in
+ * length)
+ * \param [in]  label_lengths Always in CPU memory. The length of each
+ * label for each example in the minibatch.
+ * \param [in]  input_lengths Always in
  * CPU memory.  The number of time steps for each sequence in the minibatch.
  * \param [in]  alphabet_size The number of possible output symbols.  There
  *              should be this many probabilities for each time step.
