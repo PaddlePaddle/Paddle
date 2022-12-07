@@ -24,6 +24,7 @@ namespace cub = hipcub;
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/detection/bbox_util.h"
 #include "paddle/phi/kernels/funcs/distribute_fpn_proposals_functor.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
@@ -44,13 +45,6 @@ static inline int NumBlocks(const int N) {
   return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
                   kNumMaxinumNumBlocks);
 }
-
-struct RangeInitFunctor {
-  int start;
-  int delta;
-  int* out;
-  HOSTDEVICE void operator()(size_t i) { out[i] = start + i * delta; }
-};
 
 template <class T>
 __global__ void GPUDistFpnProposalsHelper(const int nthreads,
@@ -172,7 +166,7 @@ void DistributeFpnProposalsKernel(
   index_in_t.Resize({roi_num});
   int* idx_in = dev_ctx.template Alloc<int>(&index_in_t);
   funcs::ForRange<phi::GPUContext> for_range(dev_ctx, roi_num);
-  for_range(RangeInitFunctor{0, 1, idx_in});
+  for_range(funcs::RangeInitFunctor{0, 1, idx_in});
 
   DenseTensor keys_out_t;
   keys_out_t.Resize({roi_num});
