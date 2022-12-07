@@ -56,8 +56,12 @@ def Assert(cond, data=None, summarize=20, name=None):
         .. code-block:: python
 
             import paddle
-            from paddle.static.nn.control_flow import Assert
+            from paddle.static.nn import Assert
 
+<<<<<<< HEAD
+=======
+            paddle.enable_static()
+>>>>>>> fluid_migration-Assert_increment
             x = paddle.full([2, 3], 2.0, 'float32')
             condition = paddle.max(x) < 1.0 # False
             Assert(condition, [x], 10, "example_assert_layer")
@@ -65,7 +69,7 @@ def Assert(cond, data=None, summarize=20, name=None):
             exe = paddle.static.Executor()
             try:
                 exe.run(paddle.static.default_main_program())
-                # Print x and throws paddle.framework.core.EnforceNotMet exception
+                # Print x and throws ValueError
                 # Example printed message for x:
                 #
                 # Variable: fill_constant_0.tmp_0
@@ -75,7 +79,7 @@ def Assert(cond, data=None, summarize=20, name=None):
                 #   - layout: NCHW
                 #   - dtype: float
                 #   - data: [2 2 2 2 2 2]
-            except paddle.framework.core.EnforceNotMet as e:
+            except ValueError as e:
                 print("Assert Exception Example")
 
     '''
