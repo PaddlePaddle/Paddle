@@ -30,7 +30,7 @@ class ComputeRnntLossFunctor {
  public:
   rnntStatus_t operator()(const T* const activations,
                           T* gradients,
-                          const int* const flat_labels,
+                          const int* const labels,
                           const int* const label_lengths,
                           const int* const input_lengths,
                           int alphabet_size,
@@ -47,7 +47,7 @@ class ComputeRnntLossFunctor<Context, float> {
  public:
   rnntStatus_t operator()(const float* const activations,
                           float* gradients,
-                          const int* const flat_labels,
+                          const int* const labels,
                           const int* const label_lengths,
                           const int* const input_lengths,
                           int alphabet_size,
@@ -55,10 +55,9 @@ class ComputeRnntLossFunctor<Context, float> {
                           float* costs,
                           void* workspace,
                           rnntOptions options) {
-    std::cout << "float32..." << std::endl;
     return compute_rnnt_loss(activations,
                              gradients,
-                             flat_labels,
+                             labels,
                              label_lengths,
                              input_lengths,
                              static_cast<int>(alphabet_size),
@@ -74,7 +73,7 @@ class ComputeRnntLossFunctor<Context, double> {
  public:
   rnntStatus_t operator()(const double* const activations,
                           double* gradients,
-                          const int* const flat_labels,
+                          const int* const labels,
                           const int* const label_lengths,
                           const int* const input_lengths,
                           int alphabet_size,
@@ -82,10 +81,9 @@ class ComputeRnntLossFunctor<Context, double> {
                           double* costs,
                           void* workspace,
                           rnntOptions options) {
-    std::cout << "float64..." << std::endl;
     return compute_rnnt_loss_fp64(activations,
                                   gradients,
-                                  flat_labels,
+                                  labels,
                                   label_lengths,
                                   input_lengths,
                                   static_cast<int>(alphabet_size),
@@ -100,31 +98,31 @@ template <typename Context, typename T>
 class WarpRNNTFunctor {
  public:
   /*
-   * \brief Compute the connectionist temporal classification loss,
-   *        and optionally compute the gradient with respect to the inputs.
+   * \brief Compute the RNN-T loss, and optionally compute the gradient
+   *        with respect to the inputs.
    *
-   * If gradient is nullptr, it only computes the ctc loss,
-   * or computes both ctc loss and gradient.
+   * If gradient is nullptr, it only computes the rnnt loss,
+   * or computes both rnnt loss and gradient.
    *
    * \param ctx               execution context of this functor
    * \param input             batch matrix of input probabilities, in
-   *                          B x T x U x D, (row-major) format
+   *                          (B, Tmax, Umax, D), (row-major) format
    * \param gradient          batch matrix of gradient, with the same shape as
-   *                          input.
-   * \param cpu_labels        labels always in CPU memory.
-   * \param cpu_label_lengths length of all labels in CPU memory.
-   * \param cpu_input_lengths length of all sequences in CPU memory.
-   * \param D    number of possible output symbols.
-   * \param B     number of sequence.
-   * \param blank             blank label used in ctc loss function.
-   * \param cpu_losss         cost of each sequence in CPU memory.
+   *                          input,  (B, Tmax, Umax, D)
+   * \param labels            labels, (B, Umax)
+   * \param label_lengths     length of all labels, (B,).
+   * \param input_lengths     length of all sequences, (B,).
+   * \param D                 number of vocab symbols, w/ blank.
+   * \param B                 number of example.
+   * \param blank             blank label used in rnnt loss function.
+   * \param cpu_losss         loss of each example in CPU memory.
    */
   void operator()(const Context& dev_ctx,
                   const T* input,
                   T* gradient,
-                  const int* cpu_labels,
-                  const int* cpu_label_lengths,
-                  const int* cpu_input_lengths,
+                  const int* labels,
+                  const int* label_lengths,
+                  const int* input_lengths,
                   const size_t D,
                   const size_t B,
                   const size_t maxT,
@@ -152,45 +150,39 @@ class WarpRNNTFunctor {
     size_t workspace_bytes = 0;
     status = get_rnnt_workspace_size(
         maxT, maxU, B, gpu, &workspace_bytes, sizeof(T));
-    std::cout << "B: " << B << std::endl;
-    std::cout << "maxT: " << maxT << std::endl;
-    std::cout << "maxU: " << maxU << std::endl;
-    std::cout << "D: " << D << std::endl;
-    std::cout << "gpu: " << gpu << std::endl;
-    std::cout << "worspace_bytes: " << workspace_bytes << std::endl;
 
     PADDLE_ENFORCE_EQ(
         RNNT_STATUS_SUCCESS,
         status,
         errors::PreconditionNotMet(
-            "warp-rnnt [version %d] Error in get_workspace_size: %s",
+            "warp-rnnt [version %d] Error in get_rnnt_workspace_size: %s",
             warprnnt_version_,
             rnntGetStatusString(status)));
     PADDLE_ENFORCE_GT(
         workspace_bytes,
         0UL,
-        errors::InvalidArgument(
-            "Bytes of workspace got by warp-rnnt function, "
-            "get_workspace_size() should be larger than 0, but received %d",
-            workspace_bytes));
+        errors::InvalidArgument("Bytes of workspace got by warp-rnnt function, "
+                                "get_rnnt_workspace_size() should be larger "
+                                "than 0, but received %d",
+                                workspace_bytes));
 
     size_t workspace_elements = workspace_bytes / sizeof(T) + 1UL;
     DenseTensor workspace = phi::Full<T, Context>(
         dev_ctx, {static_cast<int64_t>(workspace_elements)}, static_cast<T>(0));
     T* workspace_data = workspace.data<T>();
-    std::cout << "set workspace: " << workspace << std::endl;
+
     // compute loss and gradient
     status = ComputeRnntLossFunctor<Context, T>()(input,
                                                   gradient,
-                                                  cpu_labels,
-                                                  cpu_label_lengths,
-                                                  cpu_input_lengths,
+                                                  labels,
+                                                  label_lengths,
+                                                  input_lengths,
                                                   static_cast<int>(D),
                                                   static_cast<int>(B),
                                                   cpu_loss,
                                                   workspace_data,
                                                   options_);
-    std::cout << "ComputeRnntLossFunctor done" << std::endl;
+
     PADDLE_ENFORCE_EQ(
         RNNT_STATUS_SUCCESS,
         status,
@@ -241,9 +233,9 @@ class WarpRNNTFunctor {
 
 template <typename T, typename Context>
 void WarprnntKernel(const Context& dev_ctx,
-                    const DenseTensor& logits,
-                    const DenseTensor& label,
-                    const DenseTensor& logits_length,
+                    const DenseTensor& acts,
+                    const DenseTensor& labels,
+                    const DenseTensor& acts_length,
                     const DenseTensor& labels_length,
                     int blank,
                     float fastemit_lambda,
@@ -251,25 +243,25 @@ void WarprnntKernel(const Context& dev_ctx,
                     DenseTensor* loss,
                     DenseTensor* warprnntgrad) {
   PADDLE_ENFORCE_EQ(
-      logits.dims().size(),
+      acts.dims().size(),
       4,
       phi::errors::InvalidArgument("The rank of Input(Logits) should be 4 "
                                    "but received %d. ",
-                                   logits.dims().size()));
+                                   acts.dims().size()));
 
   PADDLE_ENFORCE_EQ(
-      label.dims().size(),
+      labels.dims().size(),
       2,
       phi::errors::InvalidArgument("The rank of Input(Label) should be 2 "
                                    "but received %d. ",
-                                   label.dims().size()));
+                                   labels.dims().size()));
 
-  PADDLE_ENFORCE_EQ(logits_length.dims().size(),
+  PADDLE_ENFORCE_EQ(acts_length.dims().size(),
                     1,
                     phi::errors::InvalidArgument(
                         "The rank of Input(LogitsLength) should be 1 "
                         "but received %d. ",
-                        logits_length.dims().size()));
+                        acts_length.dims().size()));
 
   PADDLE_ENFORCE_EQ(
       labels_length.dims().size(),
@@ -279,12 +271,10 @@ void WarprnntKernel(const Context& dev_ctx,
                                    labels_length.dims().size()));
 
   size_t B, Tmax, Umax, D;
-  B = logits.dims()[0];
-  Tmax = logits.dims()[1];
-  Umax = logits.dims()[2];
-  D = logits.dims()[3];
-  std::cout << "input shape: " << B << "," << Tmax << "," << Umax << "," << D
-            << std::endl;
+  B = acts.dims()[0];
+  Tmax = acts.dims()[1];
+  Umax = acts.dims()[2];
+  D = acts.dims()[3];
 
   PADDLE_ENFORCE_GT(B,
                     0,
@@ -317,29 +307,24 @@ void WarprnntKernel(const Context& dev_ctx,
                         "greater than zero "
                         "but received %d. ",
                         D));
-  std::cout << "logits: " << logits << std::endl;
-  std::cout << "labels: " << label << std::endl;
-  std::cout << "logits_length: " << logits_length << std::endl;
-  std::cout << "labels_length: " << labels_length << std::endl;
 
-  warprnntgrad->Resize(logits.dims());
+  warprnntgrad->Resize(acts.dims());
   T* warprnntgrad_data = dev_ctx.template Alloc<T>(warprnntgrad);
   phi::funcs::SetConstant<Context, T>()(
       dev_ctx, warprnntgrad, static_cast<T>(0));
 
-  // Loss (B)
+  // loss on cpu (B,)
   auto loss_dims = phi::make_ddim({static_cast<int64_t>(B)});
   DenseTensor warprnnt_loss;
   warprnnt_loss.Resize(loss_dims);
   T* warprnnt_loss_data = dev_ctx.template HostAlloc<T>(&warprnnt_loss);
-  std::cout << "warprnnt_loss: " << warprnnt_loss << std::endl;
 
   WarpRNNTFunctor<Context, T>()(dev_ctx,
-                                logits.data<T>(),
+                                acts.data<T>(),
                                 warprnntgrad_data,
-                                label.data<int>(),
+                                labels.data<int>(),
                                 labels_length.data<int>(),
-                                logits_length.data<int>(),
+                                acts_length.data<int>(),
                                 D,
                                 B,
                                 Tmax,
@@ -348,10 +333,8 @@ void WarprnntKernel(const Context& dev_ctx,
                                 fastemit_lambda,
                                 num_threads,
                                 warprnnt_loss_data);
-  std::cout << "warprnntgrad: " << *warprnntgrad << std::endl;
 
   phi::Copy(dev_ctx, warprnnt_loss, dev_ctx.GetPlace(), true, loss);
-  std::cout << "rnnt kernel done." << std::endl;
 }
 
 }  // namespace phi

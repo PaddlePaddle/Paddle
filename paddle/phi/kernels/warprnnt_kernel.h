@@ -21,9 +21,9 @@ namespace phi {
 
 template <typename T, typename Context>
 void WarprnntKernel(const Context& dev_ctx,
-                    const DenseTensor& logits,
-                    const DenseTensor& label,
-                    const DenseTensor& logits_length,
+                    const DenseTensor& acts,
+                    const DenseTensor& labels,
+                    const DenseTensor& acts_length,
                     const DenseTensor& labels_length,
                     int blank,
                     float fastemit_lambda,

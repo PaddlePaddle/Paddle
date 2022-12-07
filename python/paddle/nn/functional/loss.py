@@ -1832,9 +1832,9 @@ def ctc_loss(
 
 
 def rnnt_loss(
-    logprobs,
+    acts,
     labels,
-    logit_lengths,
+    act_lengths,
     label_lengths,
     blank=0,
     reduction='mean',
@@ -1845,16 +1845,16 @@ def rnnt_loss(
     to compute Sequence Transduction with Recurrent Neural Networks (RNN-T) loss.
 
     Parameters:
-        logprobs (Tensor): The logprobs sequence with padding, which is a 4-D Tensor. The tensor shape is [B, Tmax， Umax, D], where Tmax， is the longest length of input logit sequence. The data type should be float32 or float64.
+        acts (Tensor): The logprobs sequence with padding, which is a 4-D Tensor. The tensor shape is [B, Tmax， Umax, D], where Tmax， is the longest length of input logit sequence. The data type should be float32 or float64.
         labels (Tensor): The ground truth sequence with padding, which must be a 2-D Tensor. The tensor shape is [B, Umax], where Umax is the longest length of label sequence. The data type must be int32.
-        logit_lengths (Tensor): The length for each input sequence, it should have shape [batch_size] and dtype int64.
+        act_lengths (Tensor): The length for each input sequence, it should have shape [batch_size] and dtype int64.
         label_lengths (Tensor): The length for each label sequence, it should have shape [batch_size] and dtype int64.
         blank (int, optional): The blank label index of RNN-T loss, which is in the half-opened interval [0, B). The data type must be int32. Default is 0.
         reduction (string, optional): Indicate how to average the loss, the candicates are ``'none'`` | ``'mean'`` | ``'sum'``. If :attr:`reduction` is ``'mean'``, the output loss will be divided by the batch_size, and then return the mean of quotient; If :attr:`reduction` is ``'sum'``, return the sum of loss; If :attr:`reduction` is ``'none'``, no reduction will be applied. Default is ``'mean'``.
         fastemit_lambda (float, default 0.001): Regularization parameter for FastEmit (https://arxiv.org/pdf/2010.11148.pdf)
 
     Returns:
-        Tensor, The RNN-T loss between ``logtis`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is [1]. Data type is the same as ``logtis``.
+        Tensor, The RNN-T loss between ``logprobs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is [1]. Data type is the same as ``logprobs``.
 
     Examples:
 
@@ -1880,19 +1880,19 @@ def rnnt_loss(
             return loss_out
         helper = LayerHelper('warprnnt', **locals())
         check_variable_and_dtype(
-            input, 'logits', ['float32', 'float64'], "warprnnt"
+            input, 'acts', ['float32', 'float64'], "warprnnt"
         )
-        check_variable_and_dtype(label, 'label', ['int32'], "warprnnt")
+        check_variable_and_dtype(label, 'labels', ['int32'], "warprnnt")
         check_variable_and_dtype(
-            input_length, 'logits_length', ['int32'], "warprnnt"
+            input_length, 'acts_length', ['int32'], "warprnnt"
         )
         check_variable_and_dtype(
             label_length, 'labels_length', ['int32'], "warprnnt"
         )
         this_inputs = {
-            'logits': [input],
-            'label': [label],
-            'logits_length': [input_length],
+            'acts': [input],
+            'labels': [label],
+            'acts_length': [input_length],
             'labels_length': [label_length],
         }
 
@@ -1911,18 +1911,16 @@ def rnnt_loss(
         )
         return loss_out
 
-    B = logprobs.shape[0]
+    B = acts.shape[0]
 
     # NOTE manually done log_softmax for CPU version,
     # log_softmax is computed within GPU version.
 
-    # (B, 1)
+    # (B,)
     loss_out = warprnnt(
-        logprobs, labels, logit_lengths, label_lengths, blank, fastemit_lambda
+        acts, labels, act_lengths, label_lengths, blank, fastemit_lambda
     )
 
-    # (B,)
-    loss_out = paddle.squeeze(loss_out, [-1])
     assert reduction in ['mean', 'sum', 'none']
     if reduction == 'mean':
         loss_out = paddle.sum(loss_out) / B

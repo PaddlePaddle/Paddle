@@ -811,12 +811,12 @@
   backward : unfold_grad
 
 - op : warprnnt
-  args : (Tensor logits, Tensor label, Tensor logits_length, Tensor labels_length, int blank = 0, float fastemit_lambda = 0.0, int num_threads = 1)
+  args : (Tensor acts, Tensor labels, Tensor acts_length, Tensor labels_length, int blank = 0, float fastemit_lambda = 0.0, int num_threads = 1)
   output :  Tensor(loss), Tensor(warprnntgrad)
   infer_meta :
     func : WarprnntInferMeta
   kernel :
     func : warprnnt
-    data_type: logits
+    data_type: acts
   intermediate: warprnntgrad
   backward : warprnnt_grad

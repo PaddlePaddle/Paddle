@@ -1026,15 +1026,15 @@
   no_need_buffer : x
 
 - backward_op : warprnnt_grad
-  forward : warprnnt (Tensor logits, Tensor label, Tensor logits_length, Tensor labels_length, int blank = 0, float fastemit_lambda = 0.0, int num_threads = 1) -> Tensor(loss), Tensor(warprnntgrad)
-  args : (Tensor logits, Tensor logits_length, Tensor warprnntgrad, Tensor loss_grad, int blank = 0, float fastemit_lambda = 0.0, int num_threads = 1)
-  output : Tensor(logits_grad)
+  forward : warprnnt (Tensor acts, Tensor labels, Tensor acts_length, Tensor labels_length, int blank = 0, float fastemit_lambda = 0.0, int num_threads = 1) -> Tensor(loss), Tensor(warprnntgrad)
+  args : (Tensor acts, Tensor acts_length, Tensor warprnntgrad, Tensor loss_grad, int blank = 0, float fastemit_lambda = 0.0, int num_threads = 1)
+  output : Tensor(acts_grad)
   infer_meta :
     func : UnchangedInferMeta
-    param : [logits]
+    param : [acts]
   kernel :
     func : warprnnt_grad
-  no_need_buffer : logits
+  no_need_buffer : acts
 
 - backward_op: fold_grad
   forward: fold (Tensor x, int[] output_sizes, int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations) -> Tensor(out)

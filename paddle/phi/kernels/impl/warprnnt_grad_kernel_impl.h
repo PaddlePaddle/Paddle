@@ -26,19 +26,15 @@ namespace phi {
 
 template <typename T, typename Context>
 void WarprnntGradKernel(const Context& dev_ctx,
-                        const DenseTensor& logits,
-                        const DenseTensor& logits_length,
+                        const DenseTensor& acts,
+                        const DenseTensor& acts_length,
                         const DenseTensor& warprnntgrad,
                         const DenseTensor& loss_grad,
                         int blank,
                         float fastemit_lambda,
                         int num_threads,
-                        DenseTensor* logits_grad) {
-  dev_ctx.template Alloc<T>(logits_grad);
-
-  std::cout << "loss_grad: " << loss_grad << std::endl;
-  std::cout << "warprnntgrad: " << warprnntgrad << std::endl;
-  std::cout << "logits_grad: " << *logits_grad << std::endl;
+                        DenseTensor* acts_grad) {
+  dev_ctx.template Alloc<T>(acts_grad);
 
   int B = warprnntgrad.dims()[0];     // B
   int Tmax = warprnntgrad.dims()[1];  // Tmax
@@ -47,22 +43,18 @@ void WarprnntGradKernel(const Context& dev_ctx,
 
   // (B,)
   auto loss_grad_e = EigenTensor<T, 1>::From(loss_grad);
-  // std::cout << "loss_grad_e: " << loss_grad_e.eval() << std::endl;
+
   // (B, T, U, D)
   auto warprnntgrad_e = EigenTensor<T, 4>::From(warprnntgrad);
-  // std::cout << "warprnntgrad_e: " << warprnntgrad_e.eval() << std::endl;
-
-  auto logits_grad_e = EigenTensor<T, 4>::From(*logits_grad);
+  auto acts_grad_e = EigenTensor<T, 4>::From(*acts_grad);
 
   Eigen::DSizes<int, 4> grad_shape(B, 1, 1, 1);
   Eigen::DSizes<int, 4> bcast(1, Tmax, Umax, D);
-  auto logits_g =
+  auto acts_g =
       warprnntgrad_e * loss_grad_e.reshape(grad_shape).broadcast(bcast).eval();
 
   auto* place = dev_ctx.eigen_device();
-  logits_grad_e.device(*place) = logits_g;
-
-  // std::cout << "logits_g: " << logits_g.eval() << std::endl;
+  acts_grad_e.device(*place) = acts_g;
 }
 
 }  // namespace phi
