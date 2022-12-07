@@ -12,12 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/collective/static_check.h"
+#include "paddle/fluid/distributed/collective/check.h"
 
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/errors.h"
+
+#ifdef PADDLE_WITH_RCCL
+#include "paddle/fluid/platform/dynload/rccl.h"
+#else
+#include "paddle/fluid/platform/dynload/nccl.h"
+#endif
 
 namespace paddle {
 namespace distributed {
@@ -102,9 +108,9 @@ void CommStaticCheck::CheckShape(const phi::DenseTensor& out_tensor,
   }
 }
 
-void CommStaticCheck::SingleTensor(const phi::DenseTensor& tensor,
-                                   int rank,
-                                   int world_size) {
+void CommStaticCheck::CheckShape(const phi::DenseTensor& tensor,
+                                 int rank,
+                                 int world_size) {
   CheckPlace(tensor);
   CheckRank(rank, world_size);
 }

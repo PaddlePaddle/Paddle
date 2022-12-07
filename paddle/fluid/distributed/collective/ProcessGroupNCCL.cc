@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/distributed/collective/Common.h"
 #include "paddle/fluid/distributed/collective/NCCLTools.h"
-#include "paddle/fluid/distributed/collective/static_check.h"
+#include "paddle/fluid/distributed/collective/check.h"
 #include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/fluid/platform/place.h"
@@ -443,7 +443,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
     tensor = &partial_tensor;
   }
 
-  CommStaticCheck::SingleTensor(*tensor, rank_, size_);
+  CommStaticCheck::CheckShape(*tensor, rank_, size_);
   return RunFnInNCCLEnv(
       [&](ncclComm_t comm, gpuStream_t stream) {
         NCCL_CHECK(platform::dynload::ncclRecv(
@@ -471,7 +471,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send(
   const phi::DenseTensor& tensor_maybe_partial =
       numel > 0 ? GetPartialTensor(tensor, offset, numel) : tensor;
 
-  CommStaticCheck::SingleTensor(tensor_maybe_partial, rank_, size_);
+  CommStaticCheck::CheckShape(tensor_maybe_partial, rank_, size_);
   return RunFnInNCCLEnv(
       [&](ncclComm_t comm, gpuStream_t stream) {
         NCCL_CHECK(platform::dynload::ncclSend(

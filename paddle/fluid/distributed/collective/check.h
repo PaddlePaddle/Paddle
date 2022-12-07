@@ -49,9 +49,9 @@ struct CommStaticCheck {
                          int in_size_factor);
 
   // for p2p
-  static void SingleTensor(const phi::DenseTensor& tensor,
-                           int rank,
-                           int world_size);
+  static void CheckShape(const phi::DenseTensor& tensor,
+                         int rank,
+                         int world_size);
 
   // for collective
   static void SameShape(const phi::DenseTensor& out_tensor,
