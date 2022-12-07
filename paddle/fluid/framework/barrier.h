@@ -23,31 +23,32 @@ namespace framework {
 class Barrier {
  public:
   explicit Barrier(int count = 1) {
-    CHECK(count >= 1);
 #ifdef __LINUX__
-    CHECK(0 == pthread_barrier_init(&_barrier, NULL, count));
+    CHECK_GE(count, 1);
+    CHECK_EQ(pthread_barrier_init(&_barrier, NULL, count), 0);
 #endif
   }
 
   ~Barrier() {
 #ifdef __LINUX__
-      CHECK(0 == pthread_barrier_destroy(&_barrier));
+    CHECK_EQ(pthread_barrier_destroy(&_barrier), 0);
 #endif
   }
 
   void reset(int count) {
-    CHECK(count >= 1);
 #ifdef __LINUX__
-    CHECK(0 == pthread_barrier_destroy(&_barrier));
-    CHECK(0 == pthread_barrier_init(&_barrier, NULL, count));
+    CHECK_GE(count, 1);
+    CHECK_EQ(pthread_barrier_destroy(&_barrier), 0);
+    CHECK_EQ(pthread_barrier_init(&_barrier, NULL, count), 0);
 #endif
   }
 
   void wait() {
 #ifdef __LINUX__
     int err = pthread_barrier_wait(&_barrier);
-    CHECK((err = pthread_barrier_wait(&_barrier),
-           err == 0 || err == PTHREAD_BARRIER_SERIAL_THREAD));
+    if (err != 0 && err != PTHREAD_BARRIER_SERIAL_THREAD)) {
+      CHECK_EQ(1, 0);
+    }
 #endif
   }
 
@@ -72,10 +73,10 @@ auto ignore_signal_call(FUNC &&func, ARGS &&...args) ->
 }
 class Semaphore {
  public:
-  Semaphore() { CHECK(0 == sem_init(&_sem, 0, 0)); }
-  ~Semaphore() { CHECK(0 == sem_destroy(&_sem)); }
-  void post() { CHECK(0 == sem_post(&_sem)); }
-  void wait() { CHECK(0 == ignore_signal_call(sem_wait, &_sem)); }
+  Semaphore() { CHECK_EQ(sem_init(&_sem, 0, 0), 0); }
+  ~Semaphore() { CHECK_EQ(sem_destroy(&_sem), 0); }
+  void post() { CHECK_EQ(sem_post(&_sem), 0); }
+  void wait() { CHECK_EQ(ignore_signal_call(sem_wait, &_sem), 0); }
   bool try_wait() {
     int err = 0;
     CHECK((err = ignore_signal_call(sem_trywait, &_sem),
