@@ -173,7 +173,7 @@ class Decoder:
             decoder_output,
             decoder_final_state,
             dec_seq_lengths,
-        ) = layers.dynamic_decode(
+        ) = dynamic_decode(
             decoder,
             inits=decoder_initial_states,
             max_step_num=self.max_decoding_length,
