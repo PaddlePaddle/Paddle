@@ -483,6 +483,8 @@ class CompiledProgram:
         # distributed training to keep the broadcast correct.
         self._persistable_vars = list(set(self._persistable_vars))
         self._persistable_vars.sort()
+     
+        self._build_strategy.fuse_bn_add_act_ops = False
 
         return core.ParallelExecutor(
             places,
