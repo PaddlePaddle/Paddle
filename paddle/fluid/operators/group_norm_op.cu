@@ -291,7 +291,7 @@ class GroupNormKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
     var->mutable_data<T>(ctx.GetPlace());
     phi::funcs::SetConstant<phi::GPUContext, T> set_zero;
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
-    Tensor temp_var;
+    phi::DenseTensor temp_var;
     temp_var.mutable_data<T>(var->dims(), ctx.GetPlace());
     auto* x_data = x->data<T>();
     auto* y_data = y->data<T>();
@@ -642,7 +642,7 @@ class GroupNormGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
     phi::funcs::SetConstant<phi::GPUContext, T> set_zero;
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
 
-    Tensor ds, db;
+    phi::DenseTensor ds, db;
     ds.mutable_data<T>({x_dims[0], C}, ctx.GetPlace());
     db.mutable_data<T>({x_dims[0], C}, ctx.GetPlace());
     T* ds_data = ds.data<T>();
@@ -728,7 +728,7 @@ class GroupNormGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
         // p1 = scale * var_inv
         // p2 = (db * scale * mean - ds * scale) * pow(var_inv, 3) * (1/n)
         // p3 = -p2 * mean[ng] - db * scale * var_inv * (1/n);
-        Tensor p1, p2, p3;
+        phi::DenseTensor p1, p2, p3;
         p1.mutable_data<T>({x_dims[0] * C}, ctx.GetPlace());
         p2.mutable_data<T>({x_dims[0], groups}, ctx.GetPlace());
         p3.mutable_data<T>({x_dims[0], groups}, ctx.GetPlace());
@@ -770,12 +770,12 @@ class GroupNormGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
         set_zero(dev_ctx, d_bias, static_cast<T>(0));
       }
 
-      Tensor temp_var;
+      phi::DenseTensor temp_var;
       temp_var.mutable_data<T>(var->dims(), ctx.GetPlace());
       set_zero(dev_ctx, &temp_var, static_cast<T>(0));
       T* temp_var_data = temp_var.data<T>();
 
-      Tensor temp_mean;
+      phi::DenseTensor temp_mean;
       temp_mean.mutable_data<T>(var->dims(), ctx.GetPlace());
       set_zero(dev_ctx, &temp_mean, static_cast<T>(0));
       T* temp_mean_data = temp_mean.data<T>();
