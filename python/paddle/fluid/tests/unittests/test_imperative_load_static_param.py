@@ -21,7 +21,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-from paddle.fluid.dygraph.nn import NCE, BatchNorm, Embedding, GroupNorm, PRelu
+from paddle.fluid.dygraph.nn import BatchNorm, Embedding, GroupNorm
 from paddle.nn import Linear
 
 
@@ -55,8 +55,8 @@ class TestDygraphLoadStatic(unittest.TestCase):
         batchnorm_in = fluid.data(
             name="batchnorm_in", shape=[None, 10], dtype='float32'
         )
-        batchnorm_out_1 = fluid.layers.batch_norm(batchnorm_in)
-        batchnorm_out_2 = fluid.layers.batch_norm(batchnorm_in)
+        batchnorm_out_1 = paddle.static.nn.batch_norm(batchnorm_in)
+        batchnorm_out_2 = paddle.static.nn.batch_norm(batchnorm_in)
 
         emb_in = fluid.data(name='emb_in', shape=[None, 10], dtype='int64')
         emb_out_1 = fluid.embedding(emb_in, [1000, 100])
@@ -211,12 +211,6 @@ class TestDygraphLoadStatic(unittest.TestCase):
 
                     self.layer_norm_1 = paddle.nn.LayerNorm([10])
                     self.layer_norm_2 = paddle.nn.LayerNorm(10)
-
-                    self.nce1 = NCE(10000, 100)
-                    self.nce2 = NCE(10000, 100)
-
-                    self.prelu1 = PRelu("channel", channel=5)
-                    self.prelu2 = PRelu("channel", channel=5)
 
                     self.group_norm1 = GroupNorm(8, 4)
                     self.gourp_norm2 = GroupNorm(8, 4)

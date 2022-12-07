@@ -2038,7 +2038,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       const auto x_shape = x_var_desc->GetShape();
     }
 
-    if (op_type == "reduce_sum" || op_type == "reduce_mean") {
+    if (op_type == "reduce_sum" || op_type == "reduce_mean" ||
+        op_type == "reduce_max") {
       if (!desc.HasAttr("dim", /*with_attr_var=*/false)) {
         VLOG(3) << "Skip to convert into TRT while found Attribute('dim') is "
                    "Variable type in "
@@ -2470,8 +2471,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "affine_channel",
       "nearest_interp",
       "anchor_generator",
-      "reduce_sum",
+      "reduce_max",
       "reduce_mean",
+      "reduce_sum",
       "conv3d",
       "conv3d_transpose",
       "mish",
@@ -2610,8 +2612,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "affine_channel",
       "nearest_interp",
       "anchor_generator",
-      "reduce_sum",
+      "reduce_max",
       "reduce_mean",
+      "reduce_sum",
       "conv3d",
       "conv3d_transpose",
       "mish",
