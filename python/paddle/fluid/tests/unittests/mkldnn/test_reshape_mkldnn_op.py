@@ -203,6 +203,7 @@ def create_reshape_bf16_test_classes(parent):
         def setUp(self):
             super().setUp()
             self.dtype = np.uint16
+            self.x = np.random.random(self.ori_shape).astype("float32")
             self.op_type = "reshape"
 
         def set_outputs(self):
