@@ -115,7 +115,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (use_gpudnn && kernel_key.backend() == Backend::GPU) {
     auto kernel_iter = iter->second.find(
-        {Backend::GPUDNN, kernel_key.layout(), kernel_key.dtype()});
+        {Backend::GPUDNN, phi::DataLayout::ALL_LAYOUT, kernel_key.dtype()});
     if (kernel_iter != iter->second.end()) {
       return {kernel_iter->second, false};
     }
@@ -123,7 +123,8 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
                  << "] is not registered.";
   }
 #endif
-  auto kernel_iter = iter->second.find(kernel_key);
+  auto kernel_iter = iter->second.find(
+      {Backend::GPUDNN, phi::DataLayout::ALL_LAYOUT, kernel_key.dtype()});
 
   PADDLE_ENFORCE_NE(
       kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU,
@@ -143,7 +144,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
   ) {
     // Fallback CPU backend
     phi::KernelKey cpu_kernel_key(
-        phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
+        phi::Backend::CPU, phi::DataLayout::ALL_LAYOUT, kernel_key.dtype());
     kernel_iter = iter->second.find(cpu_kernel_key);
 
     PADDLE_ENFORCE_NE(
