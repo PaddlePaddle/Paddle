@@ -55,8 +55,8 @@ class TestDygraphLoadStatic(unittest.TestCase):
         batchnorm_in = fluid.data(
             name="batchnorm_in", shape=[None, 10], dtype='float32'
         )
-        batchnorm_out_1 = fluid.layers.batch_norm(batchnorm_in)
-        batchnorm_out_2 = fluid.layers.batch_norm(batchnorm_in)
+        batchnorm_out_1 = paddle.static.nn.batch_norm(batchnorm_in)
+        batchnorm_out_2 = paddle.static.nn.batch_norm(batchnorm_in)
 
         emb_in = fluid.data(name='emb_in', shape=[None, 10], dtype='int64')
         emb_out_1 = fluid.embedding(emb_in, [1000, 100])
