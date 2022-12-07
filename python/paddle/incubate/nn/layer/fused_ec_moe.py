@@ -17,7 +17,7 @@ from paddle.nn import Layer
 
 
 class FusedEcMoe(Layer):
-    r"""A FusedEcMoe Layer. 
+    r"""A FusedEcMoe Layer. More details you can refer to `paddle.incubate.nn.functional.fused_ec_moe` . 
 
     Parameters:
         hidden_size (int): The dim size of input units.
@@ -92,8 +92,7 @@ class FusedEcMoe(Layer):
         elif act_type == "relu": 
             self.act = 1 
         else: 
-            # todo refine. 
-            raise Exception("stop")
+            raise NotImplementedError("Fused EcMoe Kernel only support 'gelu' and 'relu' activation. ")
 
     def forward(self, x, gate):
         return F.fused_ec_moe(

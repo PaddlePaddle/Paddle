@@ -55,6 +55,47 @@ def fused_ec_moe(
             out = fused_ec_moe(x, gate, bmm0_weight, bmm0_bias, bmm1_weight, bmm1_bias, act=0)
             print(out.shape) # [batch, seq_len, num_expert]
 
+            # The naive EcMoE process is: 
+
+            def expert_choice_gating(logits, capacity,batch_idx,expert_idx):
+                gates = F.softmax(logits, -1)  # [batch, seq_len, num_expert]
+                indices1_s = paddle.topk(logits.transpose([0, 2, 1]), k=capacity, axis=-1)[1].cast("int32")  # [batch, num_expert, capacity]
+                seqlen_idx = indices1_s.reshape([-1]) # [batch * num_expert * capacity]
+                gather_idx = paddle.stack([batch_idx, seqlen_idx, expert_idx], -1) # [batch * num_expert * capacity, 3]
+                prob = paddle.gather_nd(gates, gather_idx)  # [batch * num_expert * seq_len]
+                return prob, expert_idx, gather_idx, capacity
+
+            self.gate = nn.Linear(d_model, num_expert, bias_attr=False)
+            self.wi_w = self.create_parameter(shape=[num_expert, d_model, d_feed_forward], is_bias=False)
+            self.wi_b = self.create_parameter(shape=[num_expert, 1, d_feed_forward], is_bias=True)
+            self.act = nn.GeLU()
+            self.wo_w = self.create_parameter(shape=[num_expert, d_feed_forward, d_model], is_bias=False)
+            self.wo_b = self.create_parameter(shape=[num_expert, 1, d_model], is_bias=True)
+
+            gate_logits = self.gate(x)  # [batch, seq_len, num_expert]
+            # batch_idx, expert_idx = [batch * num_expert * seq_len]
+            expert_prob_flatten, expert_idx_flatten, gather_idx, cap = expert_choice_gating(
+                gate_logits, k, batch_idx, expert_idx)
+            outputs = paddle.zeros_like(src)
+            batch_prob = expert_prob_flatten.reshape([batch, num_expert, -1, 1]) #[batch, num_expert, capacity, 1]
+            
+            batch_idx = gather_idx[:,:2] #[batch * num_expert * capacity, 2]
+            selected_token = src.gather_nd(batch_idx)  # [batch * num_expert * capacity, d_model]
+
+            batch_selected_token = selected_token.reshape([batch, num_expert, -1, d_model]) # [batch, num_expert, capacity, d_model]
+            batch_selected_token = batch_selected_token.transpose([1,0,2,3]).reshape([num_expert, -1, src.shape[-1]]) # [num_expert, batch * capacity, d_model]
+
+            output = P.bmm(batch_selected_token, self.wi_w) + self.wi_b # [num_expert, batch * capacity, d_feed_forward]
+            output = self.act(output)
+            output = P.bmm(output, self.wo_w) + self.wo_b [num_expert, batch * capacity, d_model]
+
+            output = output.transpose([1,0,2]).reshape([batch, -1, self.moe, src.shape[-1]]) # [batch, capacity, num_expert, d_model] 
+            output = output.transpose([0,2,1,3]) # [batch, num_expert, capacity, d_model] 
+            output = batch_prob * output # [batch, num_expert, capacity, d_model] 
+            output = output.reshape([-1, src.shape[-1]]) # [batch * num_expert * capacity, d_model] 
+            
+            outputs = outputs.scatter_nd_add(batch_idx, output)
+
     """
     helper = LayerHelper('fused_moe', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
