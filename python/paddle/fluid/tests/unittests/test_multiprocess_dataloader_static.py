@@ -79,7 +79,7 @@ def simple_fc_net_static():
                 param_attr=param_attr,
                 bias_attr=bias_attr,
             )
-            loss = fluid.layers.reduce_mean(
+            loss = paddle.mean(
                 fluid.layers.cross_entropy(input=predict_label, label=label)
             )
 

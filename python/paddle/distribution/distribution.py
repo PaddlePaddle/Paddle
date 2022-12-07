@@ -203,7 +203,7 @@ class Distribution:
         dtype = tmp.dtype
         for arg in numpy_args:
             arg_broadcasted, _ = np.broadcast_arrays(arg, tmp)
-            arg_variable = tensor.create_tensor(dtype=dtype)
+            arg_variable = paddle.tensor.create_tensor(dtype=dtype)
             tensor.assign(arg_broadcasted, arg_variable)
             variable_args.append(arg_variable)
 

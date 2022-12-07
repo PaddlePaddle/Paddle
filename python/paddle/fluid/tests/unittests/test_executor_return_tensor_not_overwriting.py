@@ -75,7 +75,7 @@ class TestExecutorReturnTensorNotOverOverwritingWithLayers(unittest.TestCase):
     def calc_add_out(self, place=None, parallel=None):
         x = paddle.ones(shape=[3, 3], dtype='float32')
         y = paddle.ones(shape=[3, 3], dtype='float32')
-        out = fluid.layers.elementwise_add(x=x, y=y)
+        out = paddle.add(x=x, y=y)
         program = fluid.default_main_program()
         if parallel:
             program = fluid.CompiledProgram(program).with_data_parallel(
@@ -88,7 +88,7 @@ class TestExecutorReturnTensorNotOverOverwritingWithLayers(unittest.TestCase):
     def calc_sub_out(self, place=None, parallel=None):
         x = paddle.ones(shape=[2, 2], dtype='float32')
         y = paddle.ones(shape=[2, 2], dtype='float32')
-        out = fluid.layers.elementwise_sub(x=x, y=y)
+        out = paddle.subtract(x=x, y=y)
         program = fluid.default_main_program()
         if parallel:
             program = fluid.CompiledProgram(program).with_data_parallel(

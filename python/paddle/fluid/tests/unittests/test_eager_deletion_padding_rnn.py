@@ -127,7 +127,7 @@ def lm_model(
         cell_array = []
         mask_array = []
         for i in range(num_layers):
-            weight_1 = layers.create_parameter(
+            weight_1 = paddle.create_parameter(
                 [hidden_size * 2, hidden_size * 4],
                 dtype="float32",
                 name="fc_weight1_" + str(i),
@@ -136,7 +136,7 @@ def lm_model(
                 ),
             )
             weight_1_arr.append(weight_1)
-            bias_1 = layers.create_parameter(
+            bias_1 = paddle.create_parameter(
                 [hidden_size * 4],
                 dtype="float32",
                 name="fc_bias1_" + str(i),
@@ -167,7 +167,7 @@ def lm_model(
                 bias = bias_arr[k]
 
                 nn = layers.concat([input, pre_hidden], 1)
-                gate_input = layers.matmul(x=nn, y=weight_1)
+                gate_input = paddle.matmul(x=nn, y=weight_1)
 
                 gate_input = paddle.add(gate_input, bias)
                 i = paddle.slice(
@@ -248,7 +248,7 @@ def lm_model(
         cell_array = []
         mask_array = []
         for i in range(num_layers):
-            weight_1 = layers.create_parameter(
+            weight_1 = paddle.create_parameter(
                 [hidden_size * 2, hidden_size * 4],
                 dtype="float32",
                 name="fc_weight1_" + str(i),
@@ -257,7 +257,7 @@ def lm_model(
                 ),
             )
             weight_1_arr.append(weight_1)
-            bias_1 = layers.create_parameter(
+            bias_1 = paddle.create_parameter(
                 [hidden_size * 4],
                 dtype="float32",
                 name="fc_bias1_" + str(i),
@@ -291,7 +291,7 @@ def lm_model(
                 bias = bias_arr[k]
 
                 nn = layers.concat([input, pre_hidden], 1)
-                gate_input = layers.matmul(x=nn, y=weight_1)
+                gate_input = paddle.matmul(x=nn, y=weight_1)
 
                 gate_input = paddle.add(gate_input, bias)
                 i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
@@ -442,7 +442,7 @@ def lm_model(
 
     rnn_out = paddle.reshape(rnn_out, shape=[-1, num_steps, hidden_size])
 
-    softmax_weight = layers.create_parameter(
+    softmax_weight = paddle.create_parameter(
         [hidden_size, vocab_size],
         dtype="float32",
         name="softmax_weight",
@@ -450,7 +450,7 @@ def lm_model(
             low=-init_scale, high=init_scale
         ),
     )
-    softmax_bias = layers.create_parameter(
+    softmax_bias = paddle.create_parameter(
         [vocab_size],
         dtype="float32",
         name='softmax_bias',
@@ -459,16 +459,16 @@ def lm_model(
         ),
     )
 
-    projection = layers.matmul(rnn_out, softmax_weight)
+    projection = paddle.matmul(rnn_out, softmax_weight)
     projection = paddle.add(projection, softmax_bias)
     projection = paddle.reshape(projection, shape=[-1, vocab_size])
 
-    loss = layers.softmax_with_cross_entropy(
+    loss = paddle.nn.functional.softmax_with_cross_entropy(
         logits=projection, label=y, soft_label=False
     )
 
     loss = paddle.reshape(loss, shape=[-1, num_steps])
-    loss = layers.reduce_mean(loss, dim=[0])
+    loss = paddle.mean(loss, axis=[0])
     loss = paddle.sum(loss)
 
     loss.persistable = True

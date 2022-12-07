@@ -744,7 +744,7 @@ class TestImperative(unittest.TestCase):
                 paddle.reshape(paddle.sum(inp_data2), [1, 1]),
                 [4, -1],
             )
-            cond = fluid.layers.less_than(x=a, y=b)
+            cond = paddle.less_than(x=a, y=b)
 
             ie = fluid.layers.IfElse(cond)
             with ie.true_block():
@@ -1001,7 +1001,7 @@ class TestDygraphGuardWithError(unittest.TestCase):
         with self.assertRaisesRegexp(
             TypeError, "Please use `with fluid.dygraph.guard()"
         ):
-            y = fluid.layers.matmul(x, x)
+            y = paddle.matmul(x, x)
 
     def test_without_guard(self):
         with _test_eager_guard():

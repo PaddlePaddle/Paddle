@@ -20,7 +20,7 @@ from test_lac import DynamicGRU
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph.nn import Embedding, Linear
+from paddle.fluid.dygraph.nn import Embedding
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
 from paddle.nn import Linear
@@ -109,7 +109,7 @@ class CNN(fluid.dygraph.Layer):
 
         cost = fluid.layers.cross_entropy(input=prediction, label=label)
         avg_cost = paddle.mean(x=cost)
-        acc = fluid.layers.accuracy(input=prediction, label=label)
+        acc = paddle.static.accuracy(input=prediction, label=label)
         return avg_cost, prediction, acc
 
 
@@ -152,7 +152,7 @@ class BOW(fluid.dygraph.Layer):
 
         cost = fluid.layers.cross_entropy(input=prediction, label=label)
         avg_cost = paddle.mean(x=cost)
-        acc = fluid.layers.accuracy(input=prediction, label=label)
+        acc = paddle.static.accuracy(input=prediction, label=label)
         return avg_cost, prediction, acc
 
 
@@ -198,7 +198,7 @@ class GRU(fluid.dygraph.Layer):
         prediction = paddle.nn.functional.softmax(prediction)
         cost = fluid.layers.cross_entropy(input=prediction, label=label)
         avg_cost = paddle.mean(x=cost)
-        acc = fluid.layers.accuracy(input=prediction, label=label)
+        acc = paddle.static.accuracy(input=prediction, label=label)
         return avg_cost, prediction, acc
 
 
@@ -257,7 +257,7 @@ class BiGRU(fluid.dygraph.Layer):
         # if label is not None:
         cost = fluid.layers.cross_entropy(input=prediction, label=label)
         avg_cost = paddle.mean(x=cost)
-        acc = fluid.layers.accuracy(input=prediction, label=label)
+        acc = paddle.static.accuracy(input=prediction, label=label)
         return avg_cost, prediction, acc
         # else:
         #     return prediction
