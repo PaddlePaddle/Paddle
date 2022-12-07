@@ -102,9 +102,13 @@ class AnalysisPredictor : public PaddlePredictor {
   explicit AnalysisPredictor(const AnalysisConfig &config) : config_(config) {
     if (config_.shape_range_info_collected()) {
       config_.SwitchIrOptim(false);
-      config_.EnableMemoryOptim(false);
     }
-    predictor_id_ = inference::GetUniqueId();
+    auto trt_identifier = config_.trt_engine_memory_sharing_identifier_;
+    if (trt_identifier > 0) {
+      predictor_id_ = -trt_identifier;
+    } else {
+      predictor_id_ = inference::GetUniqueId();
+    }
   }
   ///
   /// \brief Destroy the Analysis Predictor object
@@ -518,6 +522,7 @@ class AnalysisPredictor : public PaddlePredictor {
   int need_collect_var_shapes_{-1};  // -1 for default, 0 for false, 1 for true.
   std::vector<std::map<std::string, std::vector<int>>> batch_var_shapes_;
   int predictor_id_;
+  int root_predictor_id_{-1};
 
  private:
   std::vector<Exp_OutputHookFunc> hookfuncs_;

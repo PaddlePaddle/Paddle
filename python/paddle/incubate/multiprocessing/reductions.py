@@ -12,18 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
+import copy
 
 # TODO: check the hooks of tensor
 # TODO: check serializing named tensor
 # TODO: check influence on autograd
 import sys
-import copy
 import threading
-from multiprocessing.util import register_after_fork
-from multiprocessing.reduction import ForkingPickler
-
 from collections import OrderedDict
+from multiprocessing.reduction import ForkingPickler
+from multiprocessing.util import register_after_fork
+
+import paddle
 
 
 def _supported_check():

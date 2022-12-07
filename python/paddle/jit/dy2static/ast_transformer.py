@@ -52,16 +52,13 @@ from .logical_transformer import (
 from .loop_transformer import (
     LoopTransformer,
 )
-from .print_transformer import (
-    PrintTransformer,
-)
 from .return_transformer import (
     ReturnTransformer,
 )
 from .create_variable_transformer import (
     CreateVariableTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
+from .static_analysis import (
     StaticAnalysisVisitor,
 )
 from .tensor_shape_transformer import (
@@ -71,8 +68,8 @@ from .decorator_transformer import (
     DecoratorTransformer,
 )
 
-from paddle.fluid.dygraph.dygraph_to_static import logging_utils
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
+from . import logging_utils
+from .utils import ast_to_source_code
 
 __all__ = ['DygraphToStaticAst']
 
@@ -127,7 +124,7 @@ class DygraphToStaticAst(BaseTransformer):
         transformers = [
             EarlyReturnTransformer,
             BasicApiTransformer,  # Basic Api
-            TensorShapeTransformer,  # Tensor.shape -> layers.shape(Tensor)
+            TensorShapeTransformer,  # Tensor.shape -> paddle.shape(Tensor)
             BreakContinueTransformer,  # break/continue in loops
             ReturnTransformer,  # return in functions
             LogicalTransformer,  # logical and/or/not
@@ -135,7 +132,6 @@ class DygraphToStaticAst(BaseTransformer):
             LoopTransformer,  # for/while -> while_op
             IfElseTransformer,  # if/else -> cond_op
             AssertTransformer,  # assert statement
-            PrintTransformer,  # print statement
             CallTransformer,  # transform call recursively
             CastTransformer,  # type casting statement
             DecoratorTransformer,  # transform decorators to function call

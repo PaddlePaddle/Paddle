@@ -16,10 +16,13 @@ import itertools
 import unittest
 
 import numpy as np
+from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
+from paddle.distributed.fleet.meta_optimizers import DGCMomentumOptimizer
 from paddle.fluid import core
+from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.optimizer import (
     AdadeltaOptimizer,
     AdagradOptimizer,
@@ -39,10 +42,6 @@ from paddle.fluid.optimizer import (
     RMSPropOptimizer,
     SGDOptimizer,
 )
-from test_imperative_base import new_program_scope
-from paddle.fluid.framework import _test_eager_guard
-
-from paddle.distributed.fleet.meta_optimizers import DGCMomentumOptimizer
 
 # Note(wangzhongpu)
 # In dygraph, don't support ModelAverage, DGCMomentumOptimizer, ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, RecomputeOptimizer.
@@ -142,7 +141,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
 
                 img = paddle.reshape(img, shape=[batch_size, -1])
                 cost = mlp(img)
-                avg_loss = fluid.layers.reduce_mean(cost)
+                avg_loss = paddle.mean(cost)
                 dy_out = avg_loss.numpy()
 
                 if batch_id == 0:
@@ -181,7 +180,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             img = paddle.reshape(img, shape=[batch_size, 784])
             cost = mlp(img)
-            avg_loss = fluid.layers.reduce_mean(cost)
+            avg_loss = paddle.mean(cost)
             optimizer.minimize(avg_loss)
 
             # initialize params and fetch them
@@ -479,7 +478,7 @@ class TestOptimizerLearningRate(unittest.TestCase):
 
             b = linear(a)
 
-            loss = fluid.layers.reduce_mean(b)
+            loss = paddle.mean(b)
 
             adam = fluid.optimizer.Adam(
                 0.001, parameter_list=linear.parameters()
@@ -510,7 +509,7 @@ class TestOptimizerLearningRate(unittest.TestCase):
 
             b = linear(a)
 
-            loss = fluid.layers.reduce_mean(b)
+            loss = paddle.mean(b)
 
             bd = [2, 4, 6, 8]
             value = [0.2, 0.4, 0.6, 0.8, 1.0]
@@ -546,7 +545,7 @@ class TestOptimizerLearningRate(unittest.TestCase):
 
             b = linear(a)
 
-            loss = fluid.layers.reduce_mean(b)
+            loss = paddle.mean(b)
             base_lr = 1.0
 
             adam = fluid.optimizer.Adam(
@@ -585,7 +584,7 @@ class TestOptimizerLearningRate(unittest.TestCase):
 
             b = linear(a)
 
-            loss = fluid.layers.reduce_mean(b)
+            loss = paddle.mean(b)
 
             adam = fluid.optimizer.Adam(0.1, parameter_list=linear.parameters())
 
@@ -966,7 +965,7 @@ class TestImperativeOptimizerList(unittest.TestCase):
 
             y = linear_1(in_data)
             y = linear_2(y)
-            loss = fluid.layers.reduce_mean(y)
+            loss = paddle.mean(y)
             loss.backward()
             sgd.minimize(loss)
 

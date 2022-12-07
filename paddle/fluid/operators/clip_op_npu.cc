@@ -18,8 +18,6 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename DeviceContext, typename T>
 class ClipNPUKernel : public framework::OpKernel<T> {
  public:
@@ -33,8 +31,8 @@ class ClipNPUKernel : public framework::OpKernel<T> {
     auto max_tensor =
         ctx.HasInput("Max") ? ctx.Input<phi::DenseTensor>("Max") : nullptr;
 
-    Tensor min_tensor_temp(x->type());
-    Tensor max_tensor_temp(x->type());
+    phi::DenseTensor min_tensor_temp(x->type());
+    phi::DenseTensor max_tensor_temp(x->type());
     if (min_tensor == nullptr) {
       auto min_value = static_cast<T>(ctx.Attr<float>("min"));
       min_tensor_temp.mutable_data<T>({1}, ctx.GetPlace());
@@ -74,7 +72,7 @@ class ClipGradNPUKernel : public framework::OpKernel<T> {
 
     auto min_val = ctx.Attr<float>("min");
     if (min_tensor) {
-      Tensor min_data;
+      phi::DenseTensor min_data;
       framework::TensorCopy(
           *min_tensor,
           platform::CPUPlace(),
@@ -86,7 +84,7 @@ class ClipGradNPUKernel : public framework::OpKernel<T> {
 
     auto max_val = ctx.Attr<float>("max");
     if (max_tensor) {
-      Tensor max_data;
+      phi::DenseTensor max_data;
       framework::TensorCopy(
           *max_tensor,
           platform::CPUPlace(),

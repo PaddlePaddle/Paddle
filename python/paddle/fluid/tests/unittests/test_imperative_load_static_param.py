@@ -21,19 +21,8 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-from paddle.fluid.dygraph.nn import (
-    NCE,
-    BatchNorm,
-    Embedding,
-    GroupNorm,
-    LayerNorm,
-    NCE,
-    PRelu,
-)
+from paddle.fluid.dygraph.nn import BatchNorm, Embedding, GroupNorm
 from paddle.nn import Linear
-import numpy as np
-import os
-import tempfile
 
 
 class TestDygraphLoadStatic(unittest.TestCase):
@@ -66,8 +55,8 @@ class TestDygraphLoadStatic(unittest.TestCase):
         batchnorm_in = fluid.data(
             name="batchnorm_in", shape=[None, 10], dtype='float32'
         )
-        batchnorm_out_1 = fluid.layers.batch_norm(batchnorm_in)
-        batchnorm_out_2 = fluid.layers.batch_norm(batchnorm_in)
+        batchnorm_out_1 = paddle.static.nn.batch_norm(batchnorm_in)
+        batchnorm_out_2 = paddle.static.nn.batch_norm(batchnorm_in)
 
         emb_in = fluid.data(name='emb_in', shape=[None, 10], dtype='int64')
         emb_out_1 = fluid.embedding(emb_in, [1000, 100])
@@ -97,11 +86,15 @@ class TestDygraphLoadStatic(unittest.TestCase):
             "t2", shape=[None, 4], dtype="float32"
         )
 
-        bilinear_tensor_pro_out_1 = fluid.layers.bilinear_tensor_product(
-            x=bilinear_tensor_pro_x, y=bilinear_tensor_pro_y, size=1000
+        bilinear_tensor_pro_out_1 = (
+            paddle.static.nn.common.bilinear_tensor_product(
+                x=bilinear_tensor_pro_x, y=bilinear_tensor_pro_y, size=1000
+            )
         )
-        bilinear_tensor_pro_out_2 = fluid.layers.bilinear_tensor_product(
-            x=bilinear_tensor_pro_x, y=bilinear_tensor_pro_y, size=1000
+        bilinear_tensor_pro_out_2 = (
+            paddle.static.nn.common.bilinear_tensor_product(
+                x=bilinear_tensor_pro_x, y=bilinear_tensor_pro_y, size=1000
+            )
         )
 
         conv2d_trans_in = fluid.data(
@@ -153,10 +146,10 @@ class TestDygraphLoadStatic(unittest.TestCase):
             nodes_vector, edge_set, 6, 1, 2
         )
 
-        para1 = fluid.layers.create_parameter(
+        para1 = paddle.create_parameter(
             [100, 100], 'float32', name="weight_test_1"
         )
-        para2 = fluid.layers.create_parameter(
+        para2 = paddle.create_parameter(
             [20, 200], 'float32', name="weight_test_2"
         )
 
@@ -216,14 +209,8 @@ class TestDygraphLoadStatic(unittest.TestCase):
                     self.emb1 = Embedding([1000, 100])
                     self.emb2 = Embedding([2000, 200])
 
-                    self.layer_norm_1 = LayerNorm([10])
-                    self.layer_norm_2 = LayerNorm(10)
-
-                    self.nce1 = NCE(10000, 100)
-                    self.nce2 = NCE(10000, 100)
-
-                    self.prelu1 = PRelu("channel", channel=5)
-                    self.prelu2 = PRelu("channel", channel=5)
+                    self.layer_norm_1 = paddle.nn.LayerNorm([10])
+                    self.layer_norm_2 = paddle.nn.LayerNorm(10)
 
                     self.group_norm1 = GroupNorm(8, 4)
                     self.gourp_norm2 = GroupNorm(8, 4)

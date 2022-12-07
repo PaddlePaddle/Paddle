@@ -18,7 +18,6 @@ import unittest
 import numpy as np
 
 sys.path.append("..")
-import unittest
 
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode
 from paddle.device import (
     get_all_custom_device_type,
@@ -145,22 +147,15 @@ def _conv_nd(
             data_format,
         )
         if bias is not None:
-            channel_dim = (
-                channel_dim + len(x.shape) if channel_dim < 0 else channel_dim
-            )
-            if isinstance(x, tuple):
-                x = x[0]
-            if isinstance(bias, tuple):
-                bias = bias[0]
-            if len(bias.shape) < len(x.shape):
-                bias = _C_ops.reshape(
-                    bias,
-                    [1 for i in range(channel_dim)]
-                    + bias.shape
-                    + [1 for i in range(len(x.shape) - channel_dim - 1)],
-                )
+            new_shape = [1] * len(x.shape)
+            new_shape[channel_dim] = -1
+            bias = bias.reshape(new_shape)
             # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
-            if 'npu' in get_all_custom_device_type():
+            if (
+                os.environ.get('FLAGS_npu_storage_format', None)
+                in [1, '1', True, 'True', 'true']
+                and 'npu' in get_all_custom_device_type()
+            ):
                 with no_grad():
                     bias_storage = _C_ops.npu_identity(
                         bias, 3
@@ -182,16 +177,10 @@ def _conv_nd(
             data_format,
         )
         if bias is not None:
-            channel_dim = (
-                channel_dim + len(x.shape) if channel_dim < 0 else channel_dim
-            )
-            tmp_bias = _C_ops.reshape(
-                bias,
-                [1 for i in range(channel_dim)]
-                + bias.shape
-                + [1 for i in range(len(x.shape) - channel_dim - 1)],
-            )
-            return _C_ops.add(pre_bias, tmp_bias)
+            new_shape = [1] * len(x.shape)
+            new_shape[channel_dim] = -1
+            bias = bias.reshape(new_shape)
+            return _C_ops.add(pre_bias, bias)
         else:
             return pre_bias
 
@@ -207,14 +196,10 @@ def _conv_nd(
             data_format,
         )
         if bias is not None:
-            channel_dim = (
-                channel_dim + len(x.shape) if channel_dim < 0 else channel_dim
-            )
-            tmp_bias = _C_ops.reshape(
-                bias,
-                bias.shape + [1 for i in range(len(x.shape) - channel_dim - 1)],
-            )
-            return _C_ops.add(pre_bias, tmp_bias)
+            new_shape = [1] * len(x.shape)
+            new_shape[channel_dim] = -1
+            bias = bias.reshape(new_shape)
+            return _C_ops.add(pre_bias, bias)
         else:
             return pre_bias
 
@@ -672,10 +657,9 @@ def conv2d(
           w_var = paddle.randn((6, 3, 3, 3), dtype='float32')
 
           y_var = F.conv2d(x_var, w_var)
-          y_np = y_var.numpy()
 
-          print(y_np.shape)
-          # (2, 6, 6, 6)
+          print(y_var.shape)
+          # [2, 6, 6, 6]
     """
     # entry checks
     if data_format not in ["NCHW", "NHWC"]:
@@ -768,7 +752,11 @@ def conv2d(
                         + [1 for i in range(len(x.shape) - channel_dim - 1)],
                     )
                 # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
-                if 'npu' in get_all_custom_device_type():
+                if (
+                    os.environ.get('FLAGS_npu_storage_format', None)
+                    in [1, '1', True, 'True', 'true']
+                    and 'npu' in get_all_custom_device_type()
+                ):
                     with no_grad():
                         bias_storage = _C_ops.npu_identity(
                             bias, 3
@@ -1245,10 +1233,9 @@ def conv2d_transpose(
           w_var = paddle.randn((3, 6, 3, 3), dtype='float32')
 
           y_var = F.conv2d_transpose(x_var, w_var)
-          y_np = y_var.numpy()
 
-          print(y_np.shape)
-          # (2, 6, 10, 10)
+          print(y_var.shape)
+          # [2, 6, 10, 10]
     """
 
     if data_format not in ['NCHW', 'NHWC']:
@@ -1534,10 +1521,9 @@ def conv3d(
             w_var = paddle.randn((6, 3, 3, 3, 3), dtype='float32')
 
             y_var = F.conv3d(x_var, w_var)
-            y_np = y_var.numpy()
 
-            print(y_np.shape)
-            # (2, 6, 6, 6, 6)
+            print(y_var.shape)
+            # [2, 6, 6, 6, 6]
     """
     # entry check
     if data_format not in ["NCDHW", "NDHWC"]:
@@ -1749,10 +1735,9 @@ def conv3d_transpose(
           w_var = paddle.randn((3, 6, 3, 3, 3), dtype='float32')
 
           y_var = F.conv3d_transpose(x_var, w_var)
-          y_np = y_var.numpy()
 
-          print(y_np.shape)
-          # (2, 6, 10, 10, 10)
+          print(y_var.shape)
+          # [2, 6, 10, 10, 10]
     """
     # entry checks
     if data_format not in ["NCDHW", "NDHWC"]:

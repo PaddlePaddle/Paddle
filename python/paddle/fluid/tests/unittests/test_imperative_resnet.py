@@ -20,8 +20,7 @@ from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid import BatchNorm
+from paddle.fluid import BatchNorm, core
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 from paddle.fluid.layer_helper import LayerHelper
@@ -159,7 +158,7 @@ class BottleneckBlock(fluid.Layer):
         else:
             short = self.short(inputs)
 
-        y = fluid.layers.elementwise_add(x=short, y=conv2)
+        y = paddle.add(x=short, y=conv2)
 
         layer_helper = LayerHelper(self.full_name(), act='relu')
         return layer_helper.append_activation(y)
@@ -216,9 +215,7 @@ class ResNet(fluid.Layer):
                 )
                 self.bottleneck_block_list.append(bottleneck_block)
                 shortcut = True
-        self.pool2d_avg = paddle.fluid.dygraph.nn.Pool2D(
-            pool_size=7, pool_type='avg', global_pooling=True
-        )
+        self.pool2d_avg = paddle.nn.AdaptiveAvgPool2D(1)
 
         self.pool2d_avg_output = num_filters[-1] * 4 * 1 * 1
 
