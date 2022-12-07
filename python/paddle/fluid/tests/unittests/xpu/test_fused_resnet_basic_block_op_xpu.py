@@ -113,7 +113,7 @@ class XPUTestResNetBasicBlockOp(XPUOpTestWrapper):
                 bias_attr=None,
                 data_format='NCHW',
             )
-            self.bn1 = nn.layer.nomr.BatchNorm(
+            self.bn1 = nn.layer.norm.BatchNorm(
                 self.out_channels,
                 act='relu',
                 param_attr=bn1_weight,
