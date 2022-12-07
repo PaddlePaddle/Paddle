@@ -1805,26 +1805,23 @@ def dynamic_decode(
         **kwargs: Additional keyword arguments. Arguments passed to `decoder.step`.
 
     Returns:
-        tuple: A tuple( :code:`(final_outputs, final_states, sequence_lengths)` ) \
-            when `return_length` is True, otherwise a tuple( :code:`(final_outputs, final_states)` ). \
-            The final outputs and states, both are Tensor or nested structure of Tensor. \
-            `final_outputs` has the same structure and data types as the :code:`outputs` \
-            returned by :code:`decoder.step()` , and each Tenser in `final_outputs` \
-            is the stacked of all decoding steps' outputs, which might be revised \
-            by :code:`decoder.finalize()` if the decoder has implemented `finalize`. \
-            `final_states` is the counterpart at last time step of initial states \
-            returned by :code:`decoder.initialize()` , thus has the same structure \
-            with it and has tensors with same shapes and data types. `sequence_lengths` \
-            is an `int64` tensor with the same shape as `finished` returned \
-            by :code:`decoder.initialize()` , and it stores the actual lengths of \
-            all decoded sequences.
 
+        - final_outputs (Tensor, nested structure of Tensor), each Tensor in :code:`final_outputs` is the stacked of all decoding steps' outputs, which might be revised
+            by :code:`decoder.finalize()` if the decoder has implemented finalize.
+            And :code:`final_outputs` has the same structure and data types as the :code:`outputs`
+            returned by :code:`decoder.step()`
+
+        - final_states (Tensor, nested structure of Tensor), :code:`final_states` is the counterpart at last time step of initial states \
+            returned by :code:`decoder.initialize()` , thus has the same structure
+            with it and has tensors with same shapes and data types.
+
+        - sequence_lengths (Tensor), stores the actual lengths of all decoded sequences.
+            sequence_lengths is provided only if :code:`return_length` is True.
 
     Examples:
 
         .. code-block:: python
 
-            import numpy as np
             import paddle
             from paddle.nn import BeamSearchDecoder, dynamic_decode
             from paddle.nn import GRUCell, Linear, Embedding
@@ -2305,40 +2302,6 @@ class SampleEmbeddingHelper(GreedyEmbeddingHelper):
             else None
         )
         self.seed = seed
-
-    def sample(self, time, outputs, states):
-        r"""
-        Perform sampling from a categorical distribution, and the distribution
-        is computed by `softmax(outputs/softmax_temperature)`.
-
-        Parameters:
-            time(Variable): An `int64` tensor with shape `[1]` provided by the
-                caller, representing the current time step number of decoding.
-            outputs(Variable): A tensor variable. Usually it's data type is float32
-                or float64, and it's shape is `[batch_size, vocabulary_size]`,
-                representing the predicted logits of current step. It is same as
-                `outputs` returned by `BasicDecoder.output_fn(BasicDecoder.cell.call())`.
-            states(Variable): A (possibly nested structure of) tensor variable[s].
-                It is same as `new_states` returned by `BasicDecoder.cell.call()`.
-
-        Returns:
-            Variable: An `int64` tensor with shape `[batch_size]`, representing \
-                the sampled ids.
-        """
-        logits = (
-            (outputs / self.softmax_temperature)
-            if self.softmax_temperature is not None
-            else outputs
-        )
-        probs = paddle.nn.functional.softmax(logits)
-        # TODO: remove this stop_gradient. The stop_gradient of sample_ids can
-        # not pass to probs, since sampling_id op does not have corresponding
-        # grad op and thus can not pass.
-        probs.stop_gradient = True
-        sample_ids = nn.sampling_id(
-            probs, seed=self.seed, dtype=self.start_tokens.dtype
-        )
-        return sample_ids
 
 
 class BasicDecoder(Decoder):

@@ -22,6 +22,7 @@ from inference_pass_test import InferencePassTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.static.nn as nn
 from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
@@ -39,7 +40,7 @@ class TensorRTSubgraphPassActivationTest(InferencePassTest):
                 name="data", shape=[-1, 6, 32, 32], dtype="float32"
             )
             act_out = self.append_act(data)
-            out = fluid.layers.batch_norm(act_out, is_test=True)
+            out = nn.batch_norm(act_out, is_test=True)
         self.feeds = {
             "data": np.random.random([1, 6, 32, 32]).astype("float32"),
         }

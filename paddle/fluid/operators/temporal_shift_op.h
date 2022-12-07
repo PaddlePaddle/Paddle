@@ -16,7 +16,6 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using DataLayout = phi::DataLayout;
 
 template <typename T>

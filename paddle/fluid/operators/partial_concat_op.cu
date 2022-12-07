@@ -23,8 +23,6 @@ namespace operators {
 
 #define CEIL_DIV(x, y) (((x) + (y)-1) / (y))
 
-using Tensor = phi::DenseTensor;
-
 template <class T>
 __global__ void ConcatPartialCUDAKernel(T **in,
                                         T *out,
@@ -72,7 +70,7 @@ class PartialConcatOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto in_vars = ctx.MultiInput<phi::DenseTensor>("X");
-    Tensor *out = ctx.Output<phi::DenseTensor>("Out");
+    phi::DenseTensor *out = ctx.Output<phi::DenseTensor>("Out");
     PADDLE_ENFORCE_EQ(in_vars[0] != nullptr,
                       true,
                       platform::errors::InvalidArgument(
