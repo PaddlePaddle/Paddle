@@ -99,11 +99,10 @@ class GroupShardedStage3(nn.Layer):
 
         # stage3 support some layer set by users to be unslice
         # _exclude_layer=[layer_name or id(layer)]
+        self._exclude_layer = [] if exclude_layer is None else exclude_layer
         assert isinstance(
-            exclude_layer, (list, tuple)
+            self._exclude_layer, (list, tuple)
         ), "the exclude_layers must be a list with layers' name or layers' id"
-
-        self._exclude_layer = exclude_layer
 
         # segmentation size
         assert segment_size >= 0, "segment_size must be GE than 0."
