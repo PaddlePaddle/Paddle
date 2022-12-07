@@ -186,9 +186,6 @@ class TestAdamOpMultipleSteps(OpTest):
                 "float32"
             )
 
-    def test_api_eager_dygraph(self):
-        self.test_check_output()
-
 
 def adam_step(inputs, attributes):
     '''
@@ -747,13 +744,6 @@ class TestAdamOpV2(unittest.TestCase):
             out.backward()
             adam.step()
         paddle.enable_static()
-
-    def test_api_eager_dygraph(self):
-        self.test_adam_op_dygraph()
-        self.test_adam_op_with_state_dict()
-        self.test_adam_with_grad_clip()
-        self.test_adam_op_with_set_lr()
-        self.test_adam_op_with_sparse_input_and_weight_decay()
 
 
 class TestAdamOptimizer(unittest.TestCase):
