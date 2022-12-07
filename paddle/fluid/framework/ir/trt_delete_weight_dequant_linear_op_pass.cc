@@ -289,6 +289,13 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
   pattern();
   int found_count = 0;
 
+  // Device context
+  auto device_context = std::make_unique<phi::CPUContext>(platform::CPUPlace());
+  device_context->SetHostAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CPUPlace())
+          .get());
+
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     GET_NODES;
@@ -309,8 +316,8 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
     // get weight tensor
     auto* weight_tensor = scope->GetVar(weight_dequantize_linear_op_x->Name())
                               ->GetMutable<phi::DenseTensor>();
-    int8_t* quantized_weight_data =
-        weight_tensor->mutable_data<int8_t>(platform::CPUPlace());
+    int8_t* quantized_weight_data = weight_tensor->data<int8_t>();
+
     auto w_dims = weight_tensor->dims();
 
     // Get weight scale
@@ -318,8 +325,7 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
     auto* weight_scale_tensor =
         scope->GetVar(weight_dequantize_linear_op_scale->Name())
             ->GetMutable<phi::DenseTensor>();
-    float* weight_scale_data =
-        weight_scale_tensor->mutable_data<float>(platform::CPUPlace());
+    float* weight_scale_data = weight_scale_tensor->data<float>();
 
     auto weight_scale_nums = weight_scale_tensor->numel();
     for (int i = 0; i < weight_scale_nums; i++) {
@@ -402,8 +408,8 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
     }
     weight_tensor->clear();  // clear int weight
     weight_tensor->Resize(phi::make_ddim(phi::vectorize(w_dims)));
-    float* new_quantized_weight_data =
-        weight_tensor->mutable_data<float>(platform::CPUPlace());
+    float* new_quantized_weight_data = device_context->HostAlloc<float>(
+        weight_tensor, weight_tensor->numel() * sizeof(float));
     memcpy(new_quantized_weight_data,
            weight_data_tmp.data(),
            weight_tensor->numel() * sizeof(float));
