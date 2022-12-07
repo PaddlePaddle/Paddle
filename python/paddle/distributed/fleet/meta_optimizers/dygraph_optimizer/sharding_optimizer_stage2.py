@@ -23,26 +23,23 @@
 # LICENSE file in the root directory of this source tree.
 
 import logging
-import numpy as np
 from collections import OrderedDict
+
+import numpy as np
 
 import paddle
 import paddle.distributed as dist
-from paddle.fluid import core
-from paddle.optimizer import Optimizer
+from paddle.distributed.collective import _get_global_group, new_group
 from paddle.fluid.clip import ClipGradByGlobalNorm
-from paddle.distributed.collective import (
-    _get_global_group,
-    new_group,
-    wait,
-)
+from paddle.framework import core
+from paddle.optimizer import Optimizer
 
-from ...utils.internal_storage import ParamStorage, GradStorage
 from ...meta_parallel.sharding.sharding_utils import (
+    ShardingClipGrad,
     Type,
     device_guard,
-    ShardingClipGrad,
 )
+from ...utils.internal_storage import GradStorage, ParamStorage
 
 # CUDA alignment 256 bytes, cpu alignment 4096 bytes
 alignment = {"gpu": 256, "cpu": 4096}
@@ -174,7 +171,7 @@ class ShardingOptimizerStage2(Optimizer):
             )
 
         # Multi stream operation will be supported later
-        wait(tensor=p, group=self.group, use_calc_stream=True)
+        dist.wait(tensor=p, group=self.group, use_calc_stream=True)
 
     def _generate_master_params(self, trainable_params):
         if self.offload:
@@ -464,7 +461,7 @@ class ShardingOptimizerStage2(Optimizer):
                 )
 
             # Multi stream operation will be supported later
-            wait(
+            dist.wait(
                 tensor=internal_storage.buffer,
                 group=self.group,
                 use_calc_stream=True,

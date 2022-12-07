@@ -11,9 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 import math
-from typing import List
-from typing import Tuple
-from typing import Union
+from typing import List, Tuple, Union
 
 import paddle
 from paddle import Tensor
@@ -210,7 +208,7 @@ def _tukey(
     if alpha <= 0:
         return paddle.ones((M,), dtype=dtype)
     elif alpha >= 1.0:
-        return hann(M, sym=sym)
+        return _hann(M, sym=sym)
 
     M, needs_trunc = _extend(M, sym)
 

@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
+import math
+import os
+import struct
+import sys
+import tempfile
+import unittest
+
+import numpy
+
 import paddle
 import paddle.fluid as fluid
 import paddle.static.amp as amp
-
-import contextlib
-import numpy
-import unittest
-import math
-import sys
-import os
-import struct
-import tempfile
 
 paddle.enable_static()
 
@@ -55,16 +56,20 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
         if not pure_bf16:
             with amp.bf16.bf16_guard():
                 y_predict = fluid.layers.fc(input=x, size=1, act=None)
-            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
         else:
             y_predict = fluid.layers.fc(input=x, size=1, act=None)
             with amp.bf16.bf16_guard():
-                cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+                cost = paddle.nn.functional.square_error_cost(
+                    input=y_predict, label=y
+                )
                 avg_cost = paddle.mean(cost)
     else:
         y_predict = fluid.layers.fc(input=x, size=1, act=None)
-        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
 
     lr = 5e-3 if use_bf16 else 1e-3

@@ -14,6 +14,7 @@
 """Test cloud role maker."""
 
 import unittest
+
 import paddle
 import paddle.fluid.generator as generator
 

@@ -59,6 +59,11 @@ class DependOp : public framework::OperatorBase {
   }
 };
 
+class DependOpShapeInference : public framework::InferShapeBase {
+ public:
+  void operator()(framework::InferShapeContext *ctx) const override {}
+};
+
 class DependOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -97,4 +102,5 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::DependOpProtoMaker,
+    ops::DependOpShapeInference,
     ops::DependNoNeedBufferVarsInferer);

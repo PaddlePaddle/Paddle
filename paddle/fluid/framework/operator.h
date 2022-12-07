@@ -251,6 +251,10 @@ class OperatorBase {
     return place;
   }
 
+  uint64_t Id() const { return id_; }
+
+  void SetId(uint64_t id) { id_ = id; }
+
  protected:
   std::string type_;
   // NOTE: in case of OpGrad, inputs_ contains:
@@ -272,6 +276,9 @@ class OperatorBase {
 
   // OpInfo
   const OpInfo* info_;
+
+  // OpDesc Id
+  uint64_t id_ = UINT64_MAX;
 
   // Whether this operator executes in an Executor.
   bool run_by_executor_{true};

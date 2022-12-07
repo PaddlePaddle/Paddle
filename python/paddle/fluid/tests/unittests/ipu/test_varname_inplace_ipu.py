@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
@@ -58,12 +59,12 @@ class TestBase(IPUOpTest):
                     shape=self.feed_shape[0],
                     dtype=self.feed_dtype[0],
                 )
-                add1 = paddle.fluid.layers.elementwise_add(x, x)
-                reshape = paddle.fluid.layers.reshape(add1, **self.attrs)
-                add2 = paddle.fluid.layers.elementwise_add(reshape, reshape)
-                scale1 = paddle.fluid.layers.scale(add2)
-                scale2 = paddle.fluid.layers.scale(scale1, scale=1.3, bias=0.5)
-                scale3 = paddle.fluid.layers.scale(scale2, scale=2, bias=0.7)
+                add1 = paddle.add(x, x)
+                reshape = paddle.reshape(add1, **self.attrs)
+                add2 = paddle.add(reshape, reshape)
+                scale1 = paddle.scale(add2)
+                scale2 = paddle.scale(scale1, scale=1.3, bias=0.5)
+                scale3 = paddle.scale(scale2, scale=2, bias=0.7)
 
             fetch_list = [scale3.name]
 

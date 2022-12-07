@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
 import contextlib
 import unittest
+
+import paddle
+import paddle.fluid as fluid
 
 
 def train_simulator(test_batch_size=10):
@@ -29,7 +30,7 @@ def train_simulator(test_batch_size=10):
     y_predict = fluid.layers.fc(input=x, size=1, act=None)
     y = fluid.layers.data(name='y', shape=[1], dtype='float32')
 
-    cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+    cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
     avg_cost = paddle.mean(cost)
 
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)

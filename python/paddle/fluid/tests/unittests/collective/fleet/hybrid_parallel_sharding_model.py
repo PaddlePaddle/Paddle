@@ -12,16 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import numpy as np
 import random
+import unittest
+
+import numpy as np
+
+import paddle
 import paddle.distributed as dist
-import paddle.fluid as fluid
 import paddle.distributed.fleet as fleet
+import paddle.fluid as fluid
 from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding_optimizer import (
     DygraphShardingOptimizer,
 )
-import unittest
 
 vocab_size = 20
 hidden_size = 10

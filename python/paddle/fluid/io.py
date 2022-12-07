@@ -214,8 +214,8 @@ def get_program_parameter(program):
 
             paddle.enable_static()
             data = fluid.data(name="img", shape=[64, 784])
-            w = fluid.layers.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
-            b = fluid.layers.create_parameter(shape=[200], dtype='float32', name='fc_b')
+            w = paddle.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
+            b = paddle.create_parameter(shape=[200], dtype='float32', name='fc_b')
             list_para  = fluid.io.get_program_parameter(  fluid.default_main_program() )
     """
     return list(filter(is_parameter, program.list_vars()))
@@ -240,8 +240,8 @@ def get_program_persistable_vars(program):
 
             paddle.enable_static()
             data = fluid.data(name="img", shape=[64, 784])
-            w = fluid.layers.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
-            b = fluid.layers.create_parameter(shape=[200], dtype='float32', name='fc_b')
+            w = paddle.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
+            b = paddle.create_parameter(shape=[200], dtype='float32', name='fc_b')
             list_para  = fluid.io.get_program_persistable_vars(  fluid.default_main_program() )
     """
     return list(filter(is_persistable, program.list_vars()))
@@ -356,8 +356,8 @@ def save_vars(
             startup_prog = fluid.Program()
             with fluid.program_guard(main_prog, startup_prog):
                 data = fluid.layers.data(name="img", shape=[64, 784], append_batch_size=False)
-                w = fluid.layers.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
-                b = fluid.layers.create_parameter(shape=[200], dtype='float32', name='fc_b')
+                w = paddle.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
+                b = paddle.create_parameter(shape=[200], dtype='float32', name='fc_b')
                 hidden_w = fluid.layers.matmul(x=data, y=w)
                 hidden_b = fluid.layers.elementwise_add(hidden_w, b)
             place = fluid.CPUPlace()
@@ -825,8 +825,8 @@ def load_vars(
             startup_prog = fluid.Program()
             with fluid.program_guard(main_prog, startup_prog):
                 data = fluid.layers.data(name="img", shape=[64, 784], append_batch_size=False)
-                w = fluid.layers.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
-                b = fluid.layers.create_parameter(shape=[200], dtype='float32', name='fc_b')
+                w = paddle.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
+                b = paddle.create_parameter(shape=[200], dtype='float32', name='fc_b')
                 hidden_w = fluid.layers.matmul(x=data, y=w)
                 hidden_b = fluid.layers.elementwise_add(hidden_w, b)
             place = fluid.CPUPlace()
@@ -1590,8 +1590,8 @@ def load_inference_model(
             startup_prog = fluid.Program()
             with fluid.program_guard(main_prog, startup_prog):
                 data = fluid.layers.data(name="img", shape=[64, 784], append_batch_size=False)
-                w = fluid.layers.create_parameter(shape=[784, 200], dtype='float32')
-                b = fluid.layers.create_parameter(shape=[200], dtype='float32')
+                w = paddle.create_parameter(shape=[784, 200], dtype='float32')
+                b = paddle.create_parameter(shape=[200], dtype='float32')
                 hidden_w = fluid.layers.matmul(x=data, y=w)
                 hidden_b = fluid.layers.elementwise_add(hidden_w, b)
             place = fluid.CPUPlace()

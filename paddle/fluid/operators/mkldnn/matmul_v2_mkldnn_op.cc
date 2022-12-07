@@ -11,23 +11,24 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/operators/mkldnn/matmul_mkldnn_op.h"
+
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace {
 using dnnl::memory;
 using paddle::framework::ExecutionContext;
-using paddle::platform::MatMulV2MKLDNNHandler;
-using paddle::platform::MKLDNNDeviceContext;
-using paddle::platform::MKLDNNGetDataType;
-using paddle::platform::to_void_cast;
-using phi::vectorize;
-using Tensor = phi::DenseTensor;
 using paddle::framework::GradVarName;
-using phi::make_ddim;
+using paddle::platform::MatMulV2MKLDNNHandler;
+using phi::OneDNNContext;
+using phi::vectorize;
+using phi::funcs::OneDNNGetDataType;
 
 // Reshape a rank-3 tensor from P x M x N to (P * M) x N.
 // Identity op if the tensor is not of rank 3.
-static Tensor FoldOuterDims(const Tensor &input) {
+static phi::DenseTensor FoldOuterDims(const phi::DenseTensor &input) {
   auto output = input;
   auto in_dims = input.dims();
   if (in_dims.size() == 3) {
@@ -40,64 +41,35 @@ static Tensor FoldOuterDims(const Tensor &input) {
 // (Warning: This requires transposing data and writes into new memory.)
 // Identity op if the tensor is not of rank 3.
 template <typename T>
-static Tensor FoldFirstAndLastDims(const MKLDNNDeviceContext &dev_ctx,
-                                   const Tensor *input) {
+static phi::DenseTensor FoldFirstAndLastDims(const OneDNNContext &dev_ctx,
+                                             const phi::DenseTensor *input) {
   auto input_dims = vectorize(input->dims());
   if (input_dims.size() != 3) {
     return *input;
   }
 
-  Tensor output;
+  phi::DenseTensor output;
   output.Resize({input_dims[1], input_dims[0], input_dims[2]});
 
   auto output_dims = vectorize(output.dims());
 
-  memory::data_type input_type = paddle::framework::ToMKLDNNDataType(
-      paddle::framework::TransToProtoVarType(input->dtype()));
-  paddle::platform::ReorderMKLDNNHandler reorder_handler(
-      output_dims,
-      paddle::framework::TransToProtoVarType(input->dtype()),
-      input_type,
-      dev_ctx.GetEngine());
+  memory::data_type input_type = phi::funcs::ToOneDNNDataType(input->dtype());
+  phi::funcs::ReorderOneDNNHandler reorder_handler(
+      output_dims, input->dtype(), input_type, dev_ctx.GetEngine());
 
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-      memory::format_tag::abc,
-      paddle::platform::to_void_cast(input->data<T>()));
+      memory::format_tag::abc, phi::funcs::to_void_cast(input->data<T>()));
   auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
       &output, memory::format_tag::bac, dev_ctx.GetPlace());
   auto reorder_p = reorder_handler.AcquireReorder(reorder_src_memory_p,
                                                   reorder_dst_memory_p);
 
-  auto &astream = MKLDNNDeviceContext::tls().get_stream();
+  auto &astream = OneDNNContext::tls().get_stream();
   reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
   astream.wait();
 
   output.Resize({input_dims[1], input_dims[0] * input_dims[2]});
   return output;
-}
-
-template <typename T>
-constexpr bool IsInt8() {
-  return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
-}
-
-template <typename T>
-constexpr bool IsBfloat16() {
-  return std::is_same<T, paddle::platform::bfloat16>::value;
-}
-
-// Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
-// original x_dim is returned.
-static paddle::framework::DDim RowMatrixDimsFromVector(
-    const paddle::framework::DDim &x_dim) {
-  return x_dim.size() > 1 ? x_dim : phi::make_ddim({1, x_dim[0]});
-}
-
-// Get column matrix shape from a vector shape. If the ran of y_dim > 1, the
-// original y_dim is returned.
-static paddle::framework::DDim ColumnMatrixDimsFromVector(
-    const paddle::framework::DDim &y_dim) {
-  return y_dim.size() > 1 ? y_dim : phi::make_ddim({y_dim[0], 1});
 }
 
 phi::DDim GetDimForInput(const ExecutionContext &ctx, std::string input_name) {
@@ -112,18 +84,18 @@ phi::DDim GetDimForInput(const ExecutionContext &ctx, std::string input_name) {
 
 template <typename XT, typename YT, typename OT>
 class MatMulMKLDNNHandler
-    : public paddle::platform::MKLDNNHandlerNoCachingT<XT, dnnl::matmul> {
+    : public phi::funcs::OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
  public:
   MatMulMKLDNNHandler(const dnnl::engine engine,
                       paddle::platform::Place cpu_place,
-                      Tensor *x,
+                      phi::DenseTensor *x,
                       bool trans_x,
-                      Tensor *y,
+                      phi::DenseTensor *y,
                       bool trans_y,
-                      Tensor *out,
+                      phi::DenseTensor *out,
                       float scale)
-      : paddle::platform::MKLDNNHandlerNoCachingT<XT, dnnl::matmul>(engine,
-                                                                    cpu_place) {
+      : phi::funcs::OneDNNHandlerNoCachingT<XT, dnnl::matmul>(engine,
+                                                              cpu_place) {
     auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(x->dims(), 0, trans_x);
     auto mat_dim_y = phi::funcs::CreateMatrixDescriptor(y->dims(), 0, trans_y);
 
@@ -146,9 +118,9 @@ class MatMulMKLDNNHandler
         !trans_y ? memory::dims{N * K, N, 1} : memory::dims{N * K, 1, K};
     memory::dims out_strides = memory::dims{M * N, N, 1};
 
-    auto x_md = memory::desc(x_dims, MKLDNNGetDataType<XT>(), x_strides);
-    auto y_md = memory::desc(y_dims, MKLDNNGetDataType<YT>(), y_strides);
-    auto out_md = memory::desc(out_dims, MKLDNNGetDataType<OT>(), out_strides);
+    auto x_md = memory::desc(x_dims, OneDNNGetDataType<XT>(), x_strides);
+    auto y_md = memory::desc(y_dims, OneDNNGetDataType<YT>(), y_strides);
+    auto out_md = memory::desc(out_dims, OneDNNGetDataType<OT>(), out_strides);
 
     dnnl::primitive_attr attrs;
     if (scale != 1.0f) attrs.set_output_scales(0, {scale});
@@ -156,10 +128,11 @@ class MatMulMKLDNNHandler
     this->AcquireForwardPrimitiveDescriptor(attrs, x_md, y_md, out_md);
   }
 
-  std::shared_ptr<memory> AcquireWeightsMemory(const Tensor *input) {
+  std::shared_ptr<memory> AcquireWeightsMemory(const phi::DenseTensor *input) {
     const YT *input_data = input->data<YT>();
-    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc(),
-                                            to_void_cast<YT>(input_data));
+    return this->AcquireMemoryFromPrimitive(
+        this->fwd_pd_->weights_desc(),
+        phi::funcs::to_void_cast<YT>(input_data));
   }
 
  public:
@@ -177,7 +150,7 @@ class MatMulMKLDNNHandler
         {DNNL_ARG_WEIGHTS, *weights_memory_p},
         {DNNL_ARG_DST, *dst_memory_p}};
 
-    auto &astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+    auto &astream = OneDNNContext::tls().get_stream();
 
     // Simulate batch matmul by processing in loop
     void *x_ptr = src_memory_p->get_data_handle();
@@ -202,11 +175,10 @@ class MatMulMKLDNNHandler
     // We cannot use base AcquireDstMemory as it makes an allocation request
     // base on DST memory primitive size. This is fine in general, but in MatMul
     // we have primitive that covers only one batch of Data and then shift
-    // pointer for every new batch. Hence Tensor size is bigger that dst memory
-    // primitive size. So would we request less memory that is there and it
-    // triggers an
-    // assertion.  So as there is no 'any' format here we can leave default size
-    // of Tensor as computed in ComputeInferShape
+    // pointer for every new batch. Hence phi::DenseTensor size is bigger that
+    // dst memory primitive size. So would we request less memory that is there
+    // and it triggers an assertion.  So as there is no 'any' format here we can
+    // leave default size of phi::DenseTensor as computed in ComputeInferShape
     OT *ptr = output->mutable_data<OT>(this->place_);
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
   }
@@ -225,7 +197,7 @@ class MatMulMKLDNNHandler
  * If transposed, `H,W` will be swapped.
  */
 static void ReshapeTensorToMatrixSequence(
-    Tensor *x, const phi::funcs::MatDescriptor &descriptor) {
+    phi::DenseTensor *x, const phi::funcs::MatDescriptor &descriptor) {
   int64_t h, w;
   h = descriptor.height_;
   w = descriptor.width_;
@@ -253,10 +225,13 @@ static void ReshapeTensorToMatrixSequence(
  * If any of `X` and `Y` has batch size BatchSize, the out will have the
  * BatchSize.
  */
-static void ReshapeXYOutToMatrixSequence(
-    Tensor *x, Tensor *y, Tensor *out, bool trans_x, bool trans_y) {
-  auto x_dim = RowMatrixDimsFromVector(x->dims());
-  auto y_dim = ColumnMatrixDimsFromVector(y->dims());
+static void ReshapeXYOutToMatrixSequence(phi::DenseTensor *x,
+                                         phi::DenseTensor *y,
+                                         phi::DenseTensor *out,
+                                         bool trans_x,
+                                         bool trans_y) {
+  auto x_dim = phi::funcs::RowMatrixDimsFromVector(x->dims());
+  auto y_dim = phi::funcs::ColumnMatrixDimsFromVector(y->dims());
   auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(x_dim, 0, trans_x);
   auto mat_dim_y = phi::funcs::CreateMatrixDescriptor(y_dim, 0, trans_y);
   if (mat_dim_x.batch_size_ == 0 && mat_dim_y.batch_size_ == 0) {
@@ -314,8 +289,9 @@ std::vector<int64_t> GetInputStrides(const ExecutionContext &ctx,
     new_dims = input_dims.reshape(shape).transpose(axis);
   }
 
-  auto &MatrixDimsFromVector =
-      input_name == "X" ? RowMatrixDimsFromVector : ColumnMatrixDimsFromVector;
+  auto &MatrixDimsFromVector = input_name == "X"
+                                   ? phi::funcs::RowMatrixDimsFromVector
+                                   : phi::funcs::ColumnMatrixDimsFromVector;
   phi::funcs::MatDescriptor mat_dim = phi::funcs::CreateMatrixDescriptor(
       MatrixDimsFromVector(new_dims),
       0,
@@ -350,18 +326,14 @@ bool IsOutputFused(const ExecutionContext &ctx) {
 
 template <typename T, typename T_out>
 void ExecuteMatMulV2(const ExecutionContext &ctx,
-                     const MKLDNNDeviceContext &dev_ctx,
                      const dnnl::engine onednn_engine,
-                     paddle::platform::Place cpu_place,
-                     const Tensor *x,
+                     const phi::DenseTensor *x,
                      const std::vector<int64_t> &x_dims,
                      bool trans_x,
-                     const Tensor *y,
+                     const phi::DenseTensor *y,
                      const std::vector<int64_t> &y_dims,
                      bool trans_y,
-                     Tensor *out,
-                     const std::vector<int64_t> &out_dims,
-                     int execution_number = 0) {
+                     phi::DenseTensor *out) {
   std::vector<int64_t> x_strides_override = GetInputStrides(ctx, "X");
   std::vector<int64_t> y_strides_override = GetInputStrides(ctx, "Y");
   MatMulV2MKLDNNHandler<T, T, T_out> handler(ctx,
@@ -393,25 +365,24 @@ void ExecuteMatMulV2(const ExecutionContext &ctx,
                         *residual_data_memory_p});
   }
 
-  auto &astream = MKLDNNDeviceContext::tls().get_stream();
+  auto &astream = OneDNNContext::tls().get_stream();
   matmul_p->execute(astream, matmul_args);
   astream.wait();
 
   // TODO(jczaja): Explain why int8 format of dst is ABCD and do not need
   // permute
-  if (IsOutputFused(ctx) && !IsInt8<T_out>()) {
+  if (IsOutputFused(ctx) && !phi::funcs::is_int8<T_out>()) {
     auto axis = ctx.Attr<std::vector<int>>("fused_transpose_Out");
     auto permuted_md = dst_memory_p->get_desc().permute_axes(axis);
-    out->set_mem_desc(
-        permuted_md.reshape(phi::vectorize<int64_t>(out->dims())));
+    out->set_mem_desc(permuted_md.reshape(vectorize<int64_t>(out->dims())));
   } else {
     out->set_mem_desc(
-        dst_memory_p->get_desc().reshape(phi::vectorize<int64_t>(out->dims())));
+        dst_memory_p->get_desc().reshape(vectorize<int64_t>(out->dims())));
   }
 }
 
 template <typename T>
-class MatMulV2MKLDNNKernel : public paddle::framework::OpKernel<T> {
+class MatMulMKLDNNKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const ExecutionContext &ctx) const override {
     if (ctx.HasAttr("head_number")) {
@@ -423,20 +394,75 @@ class MatMulV2MKLDNNKernel : public paddle::framework::OpKernel<T> {
               "head_number=1. But received `head_number` is %d",
               ctx.Attr<int>("head_number")));
     }
-    constexpr bool is_int8 = IsInt8<T>();
-    constexpr bool is_bfloat16 = IsBfloat16<T>();
+    constexpr bool is_int8 = phi::funcs::is_int8<T>();
+    constexpr bool is_bfloat16 = phi::funcs::is_bfloat16<T>();
     const bool force_fp32_output = ctx.HasAttr("force_fp32_output")
                                        ? ctx.Attr<bool>("force_fp32_output")
                                        : false;
     constexpr bool fuse_relu = false;  // TODO(intel): Enable eltwise fuses
+
+    const auto &dev_ctx = ctx.template device_context<OneDNNContext>();
+    const auto &onednn_engine = dev_ctx.GetEngine();
+
+    auto *x = ctx.Input<phi::DenseTensor>("X");
+    auto *y = ctx.Input<phi::DenseTensor>("Y");
+    auto *out = ctx.Output<phi::DenseTensor>("Out");
+    bool trans_x = ctx.HasAttr("trans_x") ? ctx.Attr<bool>("trans_x")
+                                          : ctx.Attr<bool>("transpose_X");
+    bool trans_y = ctx.HasAttr("trans_y") ? ctx.Attr<bool>("trans_y")
+                                          : ctx.Attr<bool>("transpose_Y");
+
+    auto x_dims = vectorize(GetDimForInput(ctx, "X"));
+    auto y_dims = vectorize(GetDimForInput(ctx, "Y"));
+
+    int ndims = std::max(x_dims.size(), y_dims.size());
+    ndims = std::max(ndims, 3);
+
+    std::vector<int64_t> x_bd_dims(ndims, 1);
+    std::vector<int64_t> y_bd_dims(ndims, 1);
+
+    CalculateMatrixDims(ctx, x_dims, y_dims, &x_bd_dims, &y_bd_dims, out);
+
     if (force_fp32_output || ((!is_int8) && (!is_bfloat16))) {
-      RunKernel<float>(ctx);
+      ExecuteMatMulV2<T, float>(ctx,
+                                onednn_engine,
+                                x,
+                                x_bd_dims,
+                                trans_x,
+                                y,
+                                y_bd_dims,
+                                trans_y,
+                                out);
     } else if (is_bfloat16) {
-      RunKernel<paddle::platform::bfloat16>(ctx);
+      ExecuteMatMulV2<T, paddle::platform::bfloat16>(ctx,
+                                                     onednn_engine,
+                                                     x,
+                                                     x_bd_dims,
+                                                     trans_x,
+                                                     y,
+                                                     y_bd_dims,
+                                                     trans_y,
+                                                     out);
     } else if (fuse_relu) {
-      RunKernel<uint8_t>(ctx);
+      ExecuteMatMulV2<T, uint8_t>(ctx,
+                                  onednn_engine,
+                                  x,
+                                  x_bd_dims,
+                                  trans_x,
+                                  y,
+                                  y_bd_dims,
+                                  trans_y,
+                                  out);
     } else {
-      RunKernel<int8_t>(ctx);
+      ExecuteMatMulV2<T, int8_t>(ctx,
+                                 onednn_engine,
+                                 x,
+                                 x_bd_dims,
+                                 trans_x,
+                                 y,
+                                 y_bd_dims,
+                                 trans_y,
+                                 out);
     }
   }
 
@@ -446,8 +472,7 @@ class MatMulV2MKLDNNKernel : public paddle::framework::OpKernel<T> {
                            const std::vector<int64_t> &y_dims,
                            std::vector<int64_t> *x_bd_dims,
                            std::vector<int64_t> *y_bd_dims,
-                           std::vector<int64_t> *out_dims,
-                           Tensor *out) const {
+                           phi::DenseTensor *out) const {
     if (x_dims.size() == 1) {
       (*x_bd_dims)[(*x_bd_dims).size() - 1] = x_dims[0];
     } else if (x_dims.size() == 2) {
@@ -470,514 +495,215 @@ class MatMulV2MKLDNNKernel : public paddle::framework::OpKernel<T> {
     }
 
     if (!IsOutputFused(ctx) && x_dims.size() > 2 && y_dims.size() > 2) {
+      auto out_dims = vectorize(out->dims());
       for (size_t i = 0; i < (*x_bd_dims).size() - 2; ++i) {
         PADDLE_ENFORCE_EQ(
             (*x_bd_dims)[i] == (*y_bd_dims)[i] || (*x_bd_dims)[i] == 1 ||
                 (*y_bd_dims)[i] == 1,
             true,
             paddle::platform::errors::InvalidArgument(
-                "Tensor dimensions are incorrect for broadcasting."
+                "phi::DenseTensor dimensions are incorrect for broadcasting."
                 "Dimensions in X and Y must be same or equal to 1, but "
                 "received x_dim[%d]=%d and y_dims[%d]= %d",
                 i,
                 (*x_bd_dims)[i],
                 i,
                 (*y_bd_dims)[i]));
-        (*out_dims)[i] = std::max((*x_bd_dims)[i], (*y_bd_dims)[i]);
+        (out_dims)[i] = std::max((*x_bd_dims)[i], (*y_bd_dims)[i]);
       }
-      out->Resize(phi::make_ddim((*out_dims)));
+      out->Resize(phi::make_ddim((out_dims)));
     }
   }
+};
 
-  template <typename T_out>
-  void RunKernel(const ExecutionContext &ctx) const {
-    const auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
+template <typename T>
+class MatMulGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
+ public:
+  void Compute(const ExecutionContext &ctx) const override {
+    if (ctx.HasAttr("head_number")) {
+      PADDLE_ENFORCE_EQ(
+          ctx.Attr<int>("head_number"),
+          1,
+          paddle::platform::errors::Unimplemented(
+              "oneDNN matmul doesn't support multiple heads. Expected "
+              "head_number=1. But received `head_number` is %d",
+              ctx.Attr<int>("head_number")));
+    }
+
+    const auto &dev_ctx = ctx.template device_context<OneDNNContext>();
     const auto &onednn_engine = dev_ctx.GetEngine();
 
-    auto *x = ctx.Input<phi::DenseTensor>("X");
-    auto *y = ctx.Input<phi::DenseTensor>("Y");
-    auto *out = ctx.Output<phi::DenseTensor>("Out");
-    bool trans_x = ctx.HasAttr("trans_x") ? ctx.Attr<bool>("trans_x")
-                                          : ctx.Attr<bool>("transpose_X");
-    bool trans_y = ctx.HasAttr("trans_y") ? ctx.Attr<bool>("trans_y")
-                                          : ctx.Attr<bool>("transpose_Y");
+    auto x = *ctx.Input<phi::DenseTensor>("X");
+    auto y = *ctx.Input<phi::DenseTensor>("Y");
+    auto dout =
+        *ctx.Input<phi::DenseTensor>(paddle::framework::GradVarName("Out"));
+    auto *dx =
+        ctx.Output<phi::DenseTensor>(paddle::framework::GradVarName("X"));
+    auto *dy =
+        ctx.Output<phi::DenseTensor>(paddle::framework::GradVarName("Y"));
 
-    auto x_dims = vectorize(GetDimForInput(ctx, "X"));
-    auto y_dims = vectorize(GetDimForInput(ctx, "Y"));
-    auto out_dims = vectorize(out->dims());
+    bool transpose_x = ctx.HasAttr("transpose_X")
+                           ? ctx.Attr<bool>("transpose_X")
+                           : ctx.Attr<bool>("trans_x");
+    bool transpose_y = ctx.HasAttr("transpose_Y")
+                           ? ctx.Attr<bool>("transpose_Y")
+                           : ctx.Attr<bool>("trans_y");
 
-    int ndims = std::max(x_dims.size(), y_dims.size());
-    ndims = std::max(ndims, 3);
+    ReshapeXYOutToMatrixSequence(&x, &y, &dout, transpose_x, transpose_y);
 
-    std::vector<int64_t> x_bd_dims(ndims, 1);
-    std::vector<int64_t> y_bd_dims(ndims, 1);
+    paddle::framework::DDim dx_dims;
+    if (dx) {
+      dx_dims = dx->dims();
+      if (dx_dims != x.dims()) {
+        dx->Resize(x.dims());
+      }
+    }
 
-    CalculateMatrixDims(
-        ctx, x_dims, y_dims, &x_bd_dims, &y_bd_dims, &out_dims, out);
+    paddle::framework::DDim dy_dims;
+    if (dy) {
+      dy_dims = dy->dims();
+      if (dy_dims != y.dims()) {
+        dy->Resize(y.dims());
+      }
+    }
 
-    ExecuteMatMulV2<T, T_out>(ctx,
+    if (transpose_x && transpose_y) {
+      this->ExecuteMatMulGrad(
+          ctx, dev_ctx, onednn_engine, &y, true, true, &dout, true, false, dx);
+      this->ExecuteMatMulGrad(
+          ctx, dev_ctx, onednn_engine, &dout, true, true, &x, true, false, dy);
+    } else if (transpose_x) {
+      this->ExecuteMatMulGrad(ctx,
                               dev_ctx,
                               onednn_engine,
-                              ctx.GetPlace(),
-                              x,
-                              x_bd_dims,
-                              trans_x,
-                              y,
-                              y_bd_dims,
-                              trans_y,
-                              out,
-                              out_dims);
-  }
-};
+                              &y,
+                              false,
+                              false,
+                              &dout,
+                              true,
+                              false,
+                              dx);
+      this->ExecuteMatMulGrad(ctx,
+                              dev_ctx,
+                              onednn_engine,
+                              &x,
+                              false,
+                              false,
+                              &dout,
+                              false,
+                              true,
+                              dy);
+    } else if (transpose_y) {
+      this->ExecuteMatMulGrad(ctx,
+                              dev_ctx,
+                              onednn_engine,
+                              &dout,
+                              false,
+                              false,
+                              &y,
+                              false,
+                              true,
+                              dx);
+      this->ExecuteMatMulGrad(
+          ctx, dev_ctx, onednn_engine, &dout, true, true, &x, false, true, dy);
+    } else {
+      this->ExecuteMatMulGrad(ctx,
+                              dev_ctx,
+                              onednn_engine,
+                              &dout,
+                              false,
+                              false,
+                              &y,
+                              true,
+                              false,
+                              dx);
+      this->ExecuteMatMulGrad(
+          ctx, dev_ctx, onednn_engine, &x, true, true, &dout, false, true, dy);
+    }
 
-template <typename T>
-class MatMulV2GradMKLDNNKernel : public paddle::framework::OpKernel<T> {
- public:
-  void Compute(const ExecutionContext &ctx) const override { RunKernel(ctx); }
-
- private:
-  void CalculateGradMatrixDims(const ExecutionContext &ctx,
-                               Tensor *dx_tmp,
-                               Tensor *dy_tmp,
-                               const std::vector<int64_t> &dx_dims,
-                               const std::vector<int64_t> &dy_dims,
-                               std::vector<int64_t> *dx_bd_dims,
-                               std::vector<int64_t> *dy_bd_dims) const {
-    for (size_t i = 0; i < dx_dims.size() - 2; ++i) {
-      if (dx_dims[i] != dy_dims[i]) {
-        if (dx_dims[i] == 1) {
-          (*dx_bd_dims)[i] = dy_dims[i];
-        } else {
-          (*dy_bd_dims)[i] = dx_dims[i];
-        }
+    if (dx) {
+      if (dx_dims != x.dims()) {
+        dx->Resize(dx_dims);
+        dx->set_mem_desc(x.mem_desc());
       }
     }
-
-    dx_tmp->Resize(phi::make_ddim((*dx_bd_dims)));
-    dx_tmp->mutable_data<T>(ctx.GetPlace());
-    dy_tmp->Resize(phi::make_ddim((*dy_bd_dims)));
-    dy_tmp->mutable_data<T>(ctx.GetPlace());
-  }
-
-  void ReduceSumForMatmulGradOutput(
-      const ExecutionContext &ctx,
-      const MKLDNNDeviceContext &dev_ctx,
-      const dnnl::engine onednn_engine,
-      const Tensor *dx_tmp,
-      Tensor *dx,
-      const std::vector<int64_t> &dx_dims,
-      const std::vector<int64_t> &squeezed_dims) const {
-    paddle::platform::ReductionMKLDNNHandler<T> handler(
-        dnnl::algorithm::reduction_sum,
-        0.0f,
-        0.0f,
-        onednn_engine,
-        ctx.GetPlace(),
-        dx_tmp,
-        dx,
-        dx_dims);
-
-    auto src_memory_p = handler.AcquireSrcMemory(dx_tmp);
-    auto dst_memory_p = handler.AcquireDstMemory(dx);
-
-    std::unordered_map<int, dnnl::memory> reduction_args = {
-        {DNNL_ARG_SRC, *src_memory_p}, {DNNL_ARG_DST, *dst_memory_p}};
-
-    auto &astream = MKLDNNDeviceContext::tls().get_stream();
-    auto reduction_p = handler.AcquireForwardPrimitive();
-
-    reduction_p->execute(astream, reduction_args);
-    astream.wait();
-
-    dx->set_mem_desc(dst_memory_p->get_desc().reshape(squeezed_dims));
-  }
-
-  std::vector<int64_t> ExtendDimsWithOnes(const std::vector<int64_t> &dims,
-                                          int new_size) const {
-    std::vector<int64_t> new_dims(new_size, 1);
-    for (size_t i = 0; i < dims.size(); ++i) {
-      new_dims[new_size - dims.size() + i] = dims[i];
+    if (dy) {
+      if (dy_dims != y.dims()) {
+        dy->Resize(dy_dims);
+        dy->set_mem_desc(y.mem_desc());
+      }
     }
-
-    return new_dims;
-  }
-
-  void RunKernel(const ExecutionContext &ctx) const {
-    const auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
-    const auto &onednn_engine = dev_ctx.GetEngine();
-
-    auto *x = ctx.Input<phi::DenseTensor>("X");
-    auto *y = ctx.Input<phi::DenseTensor>("Y");
-
-    auto x_dims = vectorize(x->dims());
-    auto y_dims = vectorize(y->dims());
-
-    bool is_broadcast = true;
-    if (x_dims.size() <= 2 || y_dims.size() <= 2) {
-      is_broadcast = false;
-    } else if (x_dims.size() != y_dims.size()) {
-      is_broadcast = true;
-    } else {
-      is_broadcast = !std::equal(x_dims.cbegin(),
-                                 x_dims.cbegin() + x_dims.size() - 2,
-                                 y_dims.cbegin());
-    }
-
-    // if no broadcasting is needed, we can simply use matmul's grad and avoid
-    // using reduce_sum
-    if (!is_broadcast) {
-      matmul_v1_grad_mkldnn_kernel.Compute(ctx);
-      return;
-    }
-
-    auto *dout = ctx.Input<phi::DenseTensor>(GradVarName("Out"));
-    auto *dx = ctx.Output<phi::DenseTensor>(GradVarName("X"));
-    auto *dy = ctx.Output<phi::DenseTensor>(GradVarName("Y"));
-
-    bool trans_x = ctx.HasAttr("trans_x") ? ctx.Attr<bool>("trans_x")
-                                          : ctx.Attr<bool>("transpose_X");
-    bool trans_y = ctx.HasAttr("trans_y") ? ctx.Attr<bool>("trans_y")
-                                          : ctx.Attr<bool>("transpose_Y");
-    auto dout_dims = vectorize(dout->dims());
-
-    size_t ndims = std::max(x->dims().size(), y->dims().size());
-    ndims = std::max<size_t>(ndims, 3);
-
-    if (x_dims.size() != ndims) {
-      x_dims = ExtendDimsWithOnes(x_dims, ndims);
-    } else if (y_dims.size() != ndims) {
-      y_dims = ExtendDimsWithOnes(y_dims, ndims);
-    }
-
-    // in broadcasting scenario new memory is required because
-    // reduce sum must be calculated upon broadcasted dims
-    Tensor dx_tmp, dy_tmp;
-
-    std::vector<int64_t> dx_bd_dims(x_dims);
-    std::vector<int64_t> dy_bd_dims(y_dims);
-
-    CalculateGradMatrixDims(
-        ctx, &dx_tmp, &dy_tmp, x_dims, y_dims, &dx_bd_dims, &dy_bd_dims);
-
-    if (trans_x && trans_y) {
-      ExecuteMatMulV2<T, T>(ctx,
-                            dev_ctx,
-                            onednn_engine,
-                            ctx.GetPlace(),
-                            y,
-                            y_dims,
-                            true,
-                            dout,
-                            dout_dims,
-                            true,
-                            &dx_tmp,
-                            dx_bd_dims,
-                            1);
-      ExecuteMatMulV2<T, T>(ctx,
-                            dev_ctx,
-                            onednn_engine,
-                            ctx.GetPlace(),
-                            dout,
-                            dout_dims,
-                            true,
-                            x,
-                            x_dims,
-                            true,
-                            &dy_tmp,
-                            dy_bd_dims,
-                            2);
-    } else if (trans_x) {
-      ExecuteMatMulV2<T, T>(ctx,
-                            dev_ctx,
-                            onednn_engine,
-                            ctx.GetPlace(),
-                            y,
-                            y_dims,
-                            false,
-                            dout,
-                            dout_dims,
-                            true,
-                            &dx_tmp,
-                            dx_bd_dims,
-                            1);
-      ExecuteMatMulV2<T, T>(ctx,
-                            dev_ctx,
-                            onednn_engine,
-                            ctx.GetPlace(),
-                            x,
-                            x_dims,
-                            false,
-                            dout,
-                            dout_dims,
-                            false,
-                            &dy_tmp,
-                            dy_bd_dims,
-                            2);
-    } else if (trans_y) {
-      ExecuteMatMulV2<T, T>(ctx,
-                            dev_ctx,
-                            onednn_engine,
-                            ctx.GetPlace(),
-                            dout,
-                            dout_dims,
-                            false,
-                            y,
-                            y_dims,
-                            false,
-                            &dx_tmp,
-                            dx_bd_dims,
-                            1);
-      ExecuteMatMulV2<T, T>(ctx,
-                            dev_ctx,
-                            onednn_engine,
-                            ctx.GetPlace(),
-                            dout,
-                            dout_dims,
-                            true,
-                            x,
-                            x_dims,
-                            false,
-                            &dy_tmp,
-                            dy_bd_dims,
-                            2);
-    } else {
-      ExecuteMatMulV2<T, T>(ctx,
-                            dev_ctx,
-                            onednn_engine,
-                            ctx.GetPlace(),
-                            dout,
-                            dout_dims,
-                            false,
-                            y,
-                            y_dims,
-                            true,
-                            &dx_tmp,
-                            dx_bd_dims,
-                            1);
-      ExecuteMatMulV2<T, T>(ctx,
-                            dev_ctx,
-                            onednn_engine,
-                            ctx.GetPlace(),
-                            x,
-                            x_dims,
-                            true,
-                            dout,
-                            dout_dims,
-                            false,
-                            &dy_tmp,
-                            dy_bd_dims,
-                            2);
-    }
-
-    if (x_dims != dx_bd_dims) {
-      ReduceSumForMatmulGradOutput(ctx,
-                                   dev_ctx,
-                                   onednn_engine,
-                                   &dx_tmp,
-                                   dx,
-                                   x_dims,
-                                   phi::vectorize(x->dims()));
-    } else {
-      *dx = std::move(dx_tmp);
-    }
-    if (y_dims != dy_bd_dims) {
-      ReduceSumForMatmulGradOutput(ctx,
-                                   dev_ctx,
-                                   onednn_engine,
-                                   &dy_tmp,
-                                   dy,
-                                   y_dims,
-                                   phi::vectorize(y->dims()));
-    } else {
-      *dy = std::move(dy_tmp);
-    }
-
-    dx->Resize(x->dims());
-    dy->Resize(y->dims());
   }
 
  private:
-  paddle::operators::MatMulGradMKLDNNKernel<T> matmul_v1_grad_mkldnn_kernel;
+  void ExecuteMatMulGrad(const ExecutionContext &ctx,
+                         const OneDNNContext &dev_ctx,
+                         const dnnl::engine &engine,
+                         phi::DenseTensor *x,
+                         bool trans_x,
+                         bool is_fold_init_dims_x,
+                         phi::DenseTensor *y,
+                         bool trans_y,
+                         bool is_fold_init_dims_y,
+                         phi::DenseTensor *out) const {
+    // gradient is calculated in a different way when broadcasting is used
+    bool need_combine = (x->dims().size() == 3 || y->dims().size() == 3) &&
+                        out->dims().size() == 2;
+
+    phi::DenseTensor x_combined, y_combined;
+    if (!need_combine) {
+      x_combined = *x;
+      y_combined = *y;
+    } else {
+      x_combined = is_fold_init_dims_x ? FoldOuterDims(*x)
+                                       : FoldFirstAndLastDims<T>(dev_ctx, x);
+      y_combined = is_fold_init_dims_y ? FoldOuterDims(*y)
+                                       : FoldFirstAndLastDims<T>(dev_ctx, y);
+    }
+
+    float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 1.0f;
+
+    MatMulMKLDNNHandler<T, T, T> handler(engine,
+                                         ctx.GetPlace(),
+                                         &x_combined,
+                                         trans_x,
+                                         &y_combined,
+                                         trans_y,
+                                         out,
+                                         alpha);
+
+    const auto src_memory_p = handler.AcquireSrcMemory(&x_combined);
+    const auto weights_memory_p = handler.AcquireWeightsMemory(&y_combined);
+    const auto dst_memory_p = handler.AcquireDstMemory(out);
+
+    auto matmul_p = handler.AcquireForwardPrimitive();
+
+    std::unordered_map<int, dnnl::memory> matmul_args = {
+        {DNNL_ARG_SRC, *src_memory_p},
+        {DNNL_ARG_WEIGHTS, *weights_memory_p},
+        {DNNL_ARG_DST, *dst_memory_p}};
+
+    auto &astream = OneDNNContext::tls().get_stream();
+    matmul_p->execute(astream, matmul_args);
+    astream.wait();
+
+    out->set_mem_desc(
+        dst_memory_p->get_desc().reshape(vectorize<int64_t>(out->dims())));
+  }
 };
+
 }  // anonymous namespace
-
-namespace paddle {
-namespace operators {
-
-template <typename T>
-void MatMulGradMKLDNNKernel<T>::Compute(const ExecutionContext &ctx) const {
-  if (ctx.HasAttr("head_number")) {
-    PADDLE_ENFORCE_EQ(
-        ctx.Attr<int>("head_number"),
-        1,
-        platform::errors::Unimplemented(
-            "oneDNN matmul doesn't support multiple heads. Expected "
-            "head_number=1. But received `head_number` is %d",
-            ctx.Attr<int>("head_number")));
-  }
-  RunKernel(ctx);
-}
-
-template <typename T>
-void MatMulGradMKLDNNKernel<T>::ExecuteMatMulGrad(
-    const ExecutionContext &ctx,
-    const MKLDNNDeviceContext &dev_ctx,
-    const dnnl::engine &engine,
-    Tensor *x,
-    bool trans_x,
-    bool is_fold_init_dims_x,
-    Tensor *y,
-    bool trans_y,
-    bool is_fold_init_dims_y,
-    Tensor *out) const {
-  // gradient is calculated in a different way when broadcasting is used
-  bool need_combine = (x->dims().size() == 3 || y->dims().size() == 3) &&
-                      out->dims().size() == 2;
-
-  Tensor x_combined, y_combined;
-  if (!need_combine) {
-    x_combined = *x;
-    y_combined = *y;
-  } else {
-    x_combined = is_fold_init_dims_x ? FoldOuterDims(*x)
-                                     : FoldFirstAndLastDims<T>(dev_ctx, x);
-    y_combined = is_fold_init_dims_y ? FoldOuterDims(*y)
-                                     : FoldFirstAndLastDims<T>(dev_ctx, y);
-  }
-
-  float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 1.0f;
-
-  MatMulMKLDNNHandler<T, T, T> handler(engine,
-                                       ctx.GetPlace(),
-                                       &x_combined,
-                                       trans_x,
-                                       &y_combined,
-                                       trans_y,
-                                       out,
-                                       alpha);
-
-  const auto src_memory_p = handler.AcquireSrcMemory(&x_combined);
-  const auto weights_memory_p = handler.AcquireWeightsMemory(&y_combined);
-  const auto dst_memory_p = handler.AcquireDstMemory(out);
-
-  auto matmul_p = handler.AcquireForwardPrimitive();
-
-  std::unordered_map<int, dnnl::memory> matmul_args = {
-      {DNNL_ARG_SRC, *src_memory_p},
-      {DNNL_ARG_WEIGHTS, *weights_memory_p},
-      {DNNL_ARG_DST, *dst_memory_p}};
-
-  auto &astream = platform::MKLDNNDeviceContext::tls().get_stream();
-  matmul_p->execute(astream, matmul_args);
-  astream.wait();
-
-  out->set_mem_desc(
-      dst_memory_p->get_desc().reshape(vectorize<int64_t>(out->dims())));
-}
-
-template <typename T>
-void MatMulGradMKLDNNKernel<T>::RunKernel(const ExecutionContext &ctx) const {
-  const auto &dev_ctx =
-      ctx.template device_context<platform::MKLDNNDeviceContext>();
-  const auto &onednn_engine = dev_ctx.GetEngine();
-
-  auto x = *ctx.Input<phi::DenseTensor>("X");
-  auto y = *ctx.Input<phi::DenseTensor>("Y");
-  auto dout = *ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-  auto *dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
-  auto *dy = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
-
-  bool transpose_x = ctx.HasAttr("transpose_X") ? ctx.Attr<bool>("transpose_X")
-                                                : ctx.Attr<bool>("trans_x");
-  bool transpose_y = ctx.HasAttr("transpose_Y") ? ctx.Attr<bool>("transpose_Y")
-                                                : ctx.Attr<bool>("trans_y");
-
-  ReshapeXYOutToMatrixSequence(&x, &y, &dout, transpose_x, transpose_y);
-
-  framework::DDim dx_dims;
-  if (dx) {
-    dx_dims = dx->dims();
-    if (dx_dims != x.dims()) {
-      dx->Resize(x.dims());
-    }
-  }
-
-  framework::DDim dy_dims;
-  if (dy) {
-    dy_dims = dy->dims();
-    if (dy_dims != y.dims()) {
-      dy->Resize(y.dims());
-    }
-  }
-
-  if (transpose_x && transpose_y) {
-    this->ExecuteMatMulGrad(
-        ctx, dev_ctx, onednn_engine, &y, true, true, &dout, true, false, dx);
-    this->ExecuteMatMulGrad(
-        ctx, dev_ctx, onednn_engine, &dout, true, true, &x, true, false, dy);
-  } else if (transpose_x) {
-    this->ExecuteMatMulGrad(
-        ctx, dev_ctx, onednn_engine, &y, false, false, &dout, true, false, dx);
-    this->ExecuteMatMulGrad(
-        ctx, dev_ctx, onednn_engine, &x, false, false, &dout, false, true, dy);
-  } else if (transpose_y) {
-    this->ExecuteMatMulGrad(
-        ctx, dev_ctx, onednn_engine, &dout, false, false, &y, false, true, dx);
-    this->ExecuteMatMulGrad(
-        ctx, dev_ctx, onednn_engine, &dout, true, true, &x, false, true, dy);
-  } else {
-    this->ExecuteMatMulGrad(
-        ctx, dev_ctx, onednn_engine, &dout, false, false, &y, true, false, dx);
-    this->ExecuteMatMulGrad(
-        ctx, dev_ctx, onednn_engine, &x, true, true, &dout, false, true, dy);
-  }
-
-  if (dx) {
-    if (dx_dims != x.dims()) {
-      dx->Resize(dx_dims);
-      dx->set_mem_desc(x.mem_desc());
-    }
-  }
-  if (dy) {
-    if (dy_dims != y.dims()) {
-      dy->Resize(dy_dims);
-      dy->set_mem_desc(y.mem_desc());
-    }
-  }
-}
-
-template class MatMulGradMKLDNNKernel<float>;
-template class MatMulGradMKLDNNKernel<paddle::platform::bfloat16>;
-
-}  // namespace operators
-}  // namespace paddle
-
-namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(matmul,
                    MKLDNN,
                    ::paddle::platform::CPUPlace,
-                   MatMulV2MKLDNNKernel<float>,
-                   MatMulV2MKLDNNKernel<paddle::platform::bfloat16>,
-                   MatMulV2MKLDNNKernel<int8_t>,
-                   MatMulV2MKLDNNKernel<uint8_t>);
+                   MatMulMKLDNNKernel<float>,
+                   MatMulMKLDNNKernel<paddle::platform::bfloat16>,
+                   MatMulMKLDNNKernel<int8_t>,
+                   MatMulMKLDNNKernel<uint8_t>);
 
 REGISTER_OP_KERNEL(matmul_grad,
                    MKLDNN,
                    ::paddle::platform::CPUPlace,
-                   ops::MatMulGradMKLDNNKernel<float>,
-                   ops::MatMulGradMKLDNNKernel<paddle::platform::bfloat16>);
-
-REGISTER_OP_KERNEL(matmul_v2,
-                   MKLDNN,
-                   ::paddle::platform::CPUPlace,
-                   MatMulV2MKLDNNKernel<float>,
-                   MatMulV2MKLDNNKernel<paddle::platform::bfloat16>,
-                   MatMulV2MKLDNNKernel<int8_t>,
-                   MatMulV2MKLDNNKernel<uint8_t>);
-
-REGISTER_OP_KERNEL(matmul_v2_grad,
-                   MKLDNN,
-                   ::paddle::platform::CPUPlace,
-                   MatMulV2GradMKLDNNKernel<float>,
-                   MatMulV2GradMKLDNNKernel<paddle::platform::bfloat16>);
+                   MatMulGradMKLDNNKernel<float>,
+                   MatMulGradMKLDNNKernel<paddle::platform::bfloat16>);

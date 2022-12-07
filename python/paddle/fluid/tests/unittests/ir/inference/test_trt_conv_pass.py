@@ -14,12 +14,14 @@
 
 import os
 import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 os.environ['NVIDIA_TF32_OVERRIDE'] = '0'
 
@@ -109,7 +111,7 @@ class TensorRTSubgraphPassConvTransposeTest(InferencePassTest):
             data = fluid.data(
                 name="data", shape=[-1, 6, 64, 64], dtype="float32"
             )
-            conv_out = fluid.layers.conv2d_transpose(
+            conv_out = paddle.static.nn.conv2d_transpose(
                 input=data,
                 num_filters=self.conv_num_filters,
                 filter_size=self.conv_filter_size,

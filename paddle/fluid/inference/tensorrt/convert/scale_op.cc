@@ -49,9 +49,13 @@ class ScaleOpConverter : public OpConverter {
         PADDLE_GET_CONST(bool, op_desc.GetAttr("bias_after_scale"));
     float bias = PADDLE_GET_CONST(float, op_desc.GetAttr("bias"));
     float scale = PADDLE_GET_CONST(float, op_desc.GetAttr("scale"));
+    bool is_int = input->getType() == nvinfer1::DataType::kINT32;
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
-      nvinfer1::ITensor* bias_tensor = Add1DConstantLayer(bias);
+      nvinfer1::ITensor* bias_tensor =
+          is_int ? Add1DConstantLayer(
+                       static_cast<int>(bias > 0 ? bias + 0.5 : bias - 0.5))
+                 : Add1DConstantLayer(bias);
       bool is_bias_0 = (bias < 1e-06 && bias > -1e-06);
 
       std::vector<int32_t> bias_shapes(input->getDimensions().nbDims, 1);
@@ -72,7 +76,9 @@ class ScaleOpConverter : public OpConverter {
         is_scale_1 = false;
       } else {
         has_scale_tensor = false;
-        scale_tensor = Add1DConstantLayer(scale);
+        scale_tensor = is_int ? Add1DConstantLayer(static_cast<int>(
+                                    scale > 0 ? scale + 0.5 : scale - 0.5))
+                              : Add1DConstantLayer(scale);
         is_scale_1 = ((scale - 1.0) < 1e-06 && (scale - 1.0) > -1e-06);
       }
 

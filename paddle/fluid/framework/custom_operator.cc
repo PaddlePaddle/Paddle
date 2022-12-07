@@ -513,8 +513,8 @@ Custom Operator.
 
 According to the phi::DenseTensor operation function implemented by the user
 independently of the framework, it is encapsulated into a framework
-operator to adapt to various execution scenarios such as dynamic graph,
-mode static graph mode, and inference mode.
+operator to adapt to various execution scenarios such as dynamic graph
+mode, static graph mode, and inference mode.
 
 )DOC");
   }
@@ -979,11 +979,9 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
                       "Custom grad operator infershape error. "
                       "If a custom grad operator contains only one input and "
                       "only one output, the input shape will be directly set "
-                      "to "
-                      "the output shape. Otherwise, Please set the forward "
-                      "input "
-                      "as the grad operator's input or  set the InferShapeFn "
-                      "of custom grad operator by "
+                      "to the output shape. Otherwise, Please set the forward "
+                      "input as the grad operator's input or  set the "
+                      "InferShapeFn of custom grad operator by "
                       ".SetInferShapeFn(PD_INFER_SHAPE(...))"));
               ctx->ShareDim(grad_op_inputs[0], out_name);
             }

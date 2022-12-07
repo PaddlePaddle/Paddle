@@ -70,12 +70,12 @@ framework::OpKernelType FusionSquaredMatSubOp::GetExpectedKernelType(
 }
 
 void FusionSquaredMatSubOpMaker::Make() {
-  AddInput("X", "(Tensor) Input Mat A of this operator.");
-  AddInput("Y", "(Tensor) Input Mat B of this operator.");
-  AddOutput("SquaredX", "(Tensor) Squared X.").AsIntermediate();
-  AddOutput("SquaredY", "(Tensor) Squared Y.").AsIntermediate();
-  AddOutput("SquaredXY", "(Tensor) Squared X*Y.").AsIntermediate();
-  AddOutput("Out", "(Tensor) Output tensor of concat operator.");
+  AddInput("X", "(phi::DenseTensor) Input Mat A of this operator.");
+  AddInput("Y", "(phi::DenseTensor) Input Mat B of this operator.");
+  AddOutput("SquaredX", "(phi::DenseTensor) Squared X.").AsIntermediate();
+  AddOutput("SquaredY", "(phi::DenseTensor) Squared Y.").AsIntermediate();
+  AddOutput("SquaredXY", "(phi::DenseTensor) Squared X*Y.").AsIntermediate();
+  AddOutput("Out", "(phi::DenseTensor) Output tensor of concat operator.");
   AddAttr<float>("scalar", "The scalar on output matrix.").SetDefault(1.f);
   AddComment(R"DOC(
     Fusion Squared Matrix and substrct operator.

@@ -13,16 +13,18 @@
 # limitations under the License.
 
 import unittest
+
+import numpy as np
+from test_imperative_base import new_program_scope
+from utils import DyGraphProgramDescTracerTestHelper
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.dygraph.nn import Embedding
-from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.base import to_variable
-from test_imperative_base import new_program_scope
-import numpy as np
-from utils import DyGraphProgramDescTracerTestHelper
+from paddle.fluid.dygraph.nn import Embedding
 from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.optimizer import SGDOptimizer
 
 
 class SimpleNet(fluid.Layer):
@@ -62,19 +64,17 @@ class SimpleNet(fluid.Layer):
 
     def forward(self, input, label):
         x_emb = self.embedding(input)
-        projection = fluid.layers.matmul(
-            x_emb, fluid.layers.transpose(self.embedding.weight, perm=[1, 0])
+        projection = paddle.matmul(
+            x_emb, paddle.transpose(self.embedding.weight, perm=[1, 0])
         )
-        projection = fluid.layers.elementwise_add(projection, self.softmax_bias)
-        projection = fluid.layers.reshape(
-            projection, shape=[-1, self.vocab_size]
-        )
-        loss = fluid.layers.softmax_with_cross_entropy(
+        projection = paddle.add(projection, self.softmax_bias)
+        projection = paddle.reshape(projection, shape=[-1, self.vocab_size])
+        loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=projection, label=label, soft_label=False
         )
-        loss = fluid.layers.reshape(loss, shape=[-1, self.num_steps])
-        loss = fluid.layers.reduce_mean(loss, dim=[0])
-        loss = fluid.layers.reduce_sum(loss)
+        loss = paddle.reshape(loss, shape=[-1, self.num_steps])
+        loss = paddle.mean(loss, axis=[0])
+        loss = paddle.sum(loss)
 
         return loss
 

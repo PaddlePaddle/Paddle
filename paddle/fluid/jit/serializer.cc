@@ -20,9 +20,7 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device_context.h"
 
-#include "paddle/fluid/jit/engine/executor_engine.h"
 #include "paddle/fluid/jit/engine/interpreter_engine.h"
-#include "paddle/fluid/jit/engine/pe_engine.h"
 #include "paddle/fluid/jit/engine/predictor_engine.h"
 #include "paddle/fluid/jit/layer.h"
 #include "paddle/fluid/jit/property.h"
@@ -74,14 +72,7 @@ Layer Deserializer::operator()(const std::string& path,
     auto& info = it->second;
     VLOG(3) << "Add function type: " << FLAGS_jit_engine_type
             << " Function name: " << func_name;
-    if (FLAGS_jit_engine_type == "Executor") {
-      layer.SetEngine(
-          func_name,
-          utils::MakeEngine<ExecutorEngine>(info, params_dict, place));
-    } else if (FLAGS_jit_engine_type == "PE") {
-      layer.SetEngine(func_name,
-                      utils::MakeEngine<PEEngine>(info, params_dict, place));
-    } else if (FLAGS_jit_engine_type == "New") {
+    if (FLAGS_jit_engine_type == "New") {
       layer.SetEngine(
           func_name,
           utils::MakeEngine<InterpreterEngine>(info, params_dict, place));

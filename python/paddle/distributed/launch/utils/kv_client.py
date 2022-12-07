@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import requests
 import time
+
+import requests
 
 
 class KVClient:
@@ -79,7 +80,7 @@ class KVClient:
 
 
 if __name__ == '__main__':
-    cli = PKVClient("http://localhost:8090")
+    cli = KVClient("http://localhost:8090")
     data = {"/workers/1": "rank1", "/workers/2": "rank2"}
     for k, v in data.items():
         cli.put(k, v)

@@ -58,8 +58,8 @@ framework::OpKernelType PoolOp::GetKernelTypeForVar(
     const phi::DenseTensor& tensor,
     const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
-  if ((expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
-      (tensor.layout() != phi::DataLayout::kMKLDNN)) {
+  if ((expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
+      (tensor.layout() != phi::DataLayout::ONEDNN)) {
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_format = ar.Get<std::string>("data_format");
@@ -92,8 +92,8 @@ framework::OpKernelType PoolOpGrad::GetKernelTypeForVar(
     const phi::DenseTensor& tensor,
     const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
-  if ((expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
-      (tensor.layout() != phi::DataLayout::kMKLDNN)) {
+  if ((expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
+      (tensor.layout() != phi::DataLayout::ONEDNN)) {
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_format = ar.Get<std::string>("data_format");
@@ -109,12 +109,12 @@ framework::OpKernelType PoolOpGrad::GetKernelTypeForVar(
 void Pool2dOpMaker::Make() {
   AddInput(
       "X",
-      "(Tensor) The input tensor of pooling operator. "
+      "(phi::DenseTensor) The input tensor of pooling operator. "
       "The format of input tensor is NCHW, where N is batch size, C is the "
       "number of channels, H is the height of the feature, "
       "and W is the width of the feature.");
   AddOutput("Out",
-            "(Tensor) The output tensor of pooling operator. "
+            "(phi::DenseTensor) The output tensor of pooling operator. "
             "The format of output tensor is also NCHW, "
             "where N is batch size, C is the number of channels, "
             "H is the height of the feature, "
@@ -301,14 +301,14 @@ class PoolOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
 
 void Pool3dOpMaker::Make() {
   AddInput("X",
-           "(Tensor) The input tensor of pooling operator. "
+           "(phi::DenseTensor) The input tensor of pooling operator. "
            "The format of input tensor is NCDHW or NDHWC, where N is batch "
            "size, C is "
            "the number of channels, and D, H and W is the depth, height and "
            "width of "
            "the feature, respectively.");
   AddOutput("Out",
-            "(Tensor) The output tensor of pooling operator."
+            "(phi::DenseTensor) The output tensor of pooling operator."
             "The format of output tensor is also NCDHW or NDHWC, "
             "where N is batch size, C is "
             "the number of channels, and D, H and W is the depth, height and "
