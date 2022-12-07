@@ -38,7 +38,6 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 import paddle
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph.nn import Conv2DTranspose
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
 from paddle.nn.layer.norm import BatchNorm
@@ -432,14 +431,13 @@ class DeConv2D(fluid.dygraph.Layer):
                 initializer=fluid.initializer.Constant(0.0)
             )
 
-        self._deconv = Conv2DTranspose(
+        self._deconv = paddle.nn.Conv2DTranspose(
             num_channels,
             num_filters,
-            filter_size=filter_size,
+            filter_size,
             stride=stride,
             padding=padding,
-            use_cudnn=use_cudnn,
-            param_attr=fluid.ParamAttr(
+            weight_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.NormalInitializer(
                     loc=0.0, scale=stddev
                 )
