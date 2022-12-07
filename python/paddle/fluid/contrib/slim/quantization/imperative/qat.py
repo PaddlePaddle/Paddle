@@ -288,8 +288,8 @@ class ImperativeQuantAware:
             imperative_qat.quantize(model)
         """
         assert isinstance(
-            model, dygraph.Layer
-        ), "The model must be the instance of dygraph.Layer."
+            model, paddle.nn.Layer
+        ), "The model must be the instance of paddle.nn.Layer."
 
         if self.fuse_conv_bn:
             fuse_utils.fuse_conv_bn(model)
@@ -376,7 +376,7 @@ class ImperativeQuantizeInputs:
         ), "activation_bits should be 1, 2,... or 16."
 
         layer_check = lambda method: method is None or issubclass(
-            method, dygraph.layers.Layer
+            method, paddle.nn.Layer
         )
         assert layer_check(
             weight_preprocess_layer
@@ -417,8 +417,8 @@ class ImperativeQuantizeInputs:
         """
 
         assert isinstance(
-            model, dygraph.Layer
-        ), "The model must be the instance of dygraph.Layer."
+            model, paddle.nn.Layer
+        ), "The model must be the instance of paddle.nn.Layer."
 
         for name, cur_layer in model.named_sublayers():
             if not isinstance(cur_layer, self._quantizable_layer_type) or (
@@ -480,8 +480,8 @@ class ImperativeQuantizeOutputs:
             None
         """
         assert isinstance(
-            model, dygraph.Layer
-        ), "The model must be the instance of dygraph.Layer."
+            model, paddle.nn.Layer
+        ), "The model must be the instance of paddle.nn.Layer."
 
         for cur_name, cur_layer in model.named_sublayers():
             if '_act_preprocess' in cur_name:
@@ -535,8 +535,8 @@ class ImperativeQuantizeOutputs:
             None
         """
         assert isinstance(
-            model, dygraph.Layer
-        ), "The model must be the instance of dygraph.Layer."
+            model, paddle.nn.Layer
+        ), "The model must be the instance of paddle.nn.Layer."
 
         paddle.jit.save(layer=model, path=path, input_spec=input_spec, **config)
 
@@ -619,7 +619,7 @@ class ImperativeQuantizeOutputs:
         Whether the layer needs to calculate output scales.
         """
         # exclude fake_quant ops in quant_layers file
-        if not isinstance(layer, dygraph.Layer):
+        if not isinstance(layer, paddle.nn.Layer):
             return False
 
         if self._onnx_format:

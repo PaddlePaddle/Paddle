@@ -18,7 +18,7 @@ import collections
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.dygraph import layers
+from paddle.nn.common import layers
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.layers.utils import pack_sequence_as
 from paddle.fluid.dygraph.base import switch_to_static_graph

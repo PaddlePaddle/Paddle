@@ -23,10 +23,9 @@ import paddle.fluid.core as core
 import paddle.fluid.layers as layers
 import paddle.nn as nn
 from paddle import Model, set_device
-from paddle.fluid.dygraph import Layer
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import _test_eager_guard
-from paddle.nn import BeamSearchDecoder, dynamic_decode
+from paddle.nn import BeamSearchDecoder, Layer, dynamic_decode
 from paddle.static import InputSpec as Input
 
 paddle.enable_static()

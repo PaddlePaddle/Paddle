@@ -22,7 +22,7 @@ import paddle.nn as nn
 from paddle.fluid.framework import _test_eager_guard
 
 
-class LeNetDygraph(fluid.dygraph.Layer):
+class LeNetDygraph(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self.features = nn.Sequential(

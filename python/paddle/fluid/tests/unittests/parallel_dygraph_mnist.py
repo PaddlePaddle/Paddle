@@ -20,7 +20,7 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph.base import to_variable
 
 
-class SimpleImgConvPool(fluid.dygraph.Layer):
+class SimpleImgConvPool(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -69,7 +69,7 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
         return x
 
 
-class MNIST(fluid.dygraph.Layer):
+class MNIST(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 

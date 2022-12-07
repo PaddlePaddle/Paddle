@@ -21,7 +21,7 @@ import paddle
 import paddle.fluid as fluid
 
 
-class SimpleFCLayer(fluid.dygraph.Layer):
+class SimpleFCLayer(paddle.nn.Layer):
     def __init__(self, feature_size, batch_size, fc_size):
         super().__init__()
         self._linear = paddle.nn.Linear(feature_size, fc_size)

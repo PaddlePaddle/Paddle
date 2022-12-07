@@ -21,7 +21,7 @@ import weakref
 
 from paddle.fluid import framework
 from paddle.fluid import _non_static_mode
-from paddle.fluid.dygraph import layers
+from paddle.nn.common import layers
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.dygraph.base import param_guard

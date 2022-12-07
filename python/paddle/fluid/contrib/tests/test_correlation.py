@@ -135,7 +135,7 @@ class TestCorrelationOp(unittest.TestCase):
         np.testing.assert_allclose(res[0], out_np, rtol=1e-05, atol=1e-8)
 
 
-class Net(fluid.dygraph.Layer):
+class Net(paddle.nn.Layer):
     def __init__(self, name_scope):
         super().__init__(name_scope)
 

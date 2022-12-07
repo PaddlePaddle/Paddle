@@ -21,9 +21,9 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.dygraph_utils as dygraph_utils
 from paddle.fluid import core
-from paddle.fluid.dygraph.layer_object_helper import LayerObjectHelper
 from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 from paddle.fluid.layer_helper import LayerHelper
+from paddle.nn.common.layer_object_helper import LayerObjectHelper
 
 
 class MyLayer(fluid.Layer):
@@ -850,7 +850,7 @@ class TestImperative(unittest.TestCase):
         self.func_rnn()
 
     def func_layer_attrs(self):
-        layer = fluid.dygraph.Layer("test")
+        layer = paddle.nn.Layer("test")
         layer.test_attr = 1
         self.assertFalse(hasattr(layer, "whatever"))
         self.assertTrue(hasattr(layer, "test_attr"))

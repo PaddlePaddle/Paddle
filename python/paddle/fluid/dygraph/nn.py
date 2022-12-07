@@ -39,7 +39,7 @@ from ..data_feeder import (
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 from .. import unique_name
-from .layer_object_helper import LayerObjectHelper
+from paddle.nn.common.layer_object_helper import LayerObjectHelper
 from ..data_feeder import check_variable_and_dtype, check_type
 import numpy as np
 import numbers

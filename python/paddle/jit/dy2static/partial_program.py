@@ -20,7 +20,7 @@ from paddle.fluid.executor import (
     _is_enable_standalone_executor,
     _is_dy2st_enable_standalone_executor,
 )
-from paddle.fluid.dygraph import layers
+from paddle.nn.common import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from . import logging_utils
 from .return_transformer import (

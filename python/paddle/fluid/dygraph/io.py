@@ -21,7 +21,7 @@ from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid import backward
 from paddle.fluid import unique_name
-from paddle.fluid.dygraph import layers
+from paddle.nn.common import layers
 from paddle.fluid.layers import nn
 from paddle.fluid.layers.utils import _hash_with_id
 from paddle.fluid.dygraph.base import switch_to_static_graph

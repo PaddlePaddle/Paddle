@@ -120,7 +120,7 @@ class TestRecursiveCall1(unittest.TestCase):
 lambda_fun = lambda x: x
 
 
-class MyConvLayer(fluid.dygraph.Layer):
+class MyConvLayer(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self._conv = paddle.nn.Conv2D(
@@ -148,7 +148,7 @@ class MyConvLayer(fluid.dygraph.Layer):
         return x_v
 
 
-class MyLayer(fluid.dygraph.Layer):
+class MyLayer(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 

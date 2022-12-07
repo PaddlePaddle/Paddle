@@ -95,7 +95,7 @@ class TestImperativeNamedParameters(unittest.TestCase):
     def func_test_dir_layer(self):
         with fluid.dygraph.guard():
 
-            class Mymodel(fluid.dygraph.Layer):
+            class Mymodel(paddle.nn.Layer):
                 def __init__(self):
                     super().__init__()
                     self.linear1 = paddle.nn.Linear(10, 10)

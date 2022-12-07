@@ -37,7 +37,7 @@ from paddle.jit.dy2static.logging_utils import (
 )
 
 from paddle.jit.dy2static.utils import is_paddle_func, unwrap
-from paddle.fluid.dygraph.layers import Layer
+from paddle.nn import Layer
 
 __all__ = ["convert_call"]
 

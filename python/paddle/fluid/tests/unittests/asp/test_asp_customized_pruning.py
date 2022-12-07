@@ -24,7 +24,7 @@ from paddle.fluid.contrib import sparsity
 from paddle.fluid.contrib.sparsity.supported_layer_list import (
     supported_layers_and_prune_func_map,
 )
-from paddle.fluid.dygraph.layers import Layer, _convert_camel_to_snake
+from paddle.nn.common.layers import Layer, _convert_camel_to_snake
 
 
 class MyOwnLayer(Layer):
@@ -99,10 +99,8 @@ class TestASPDynamicCustomerizedPruneFunc(unittest.TestCase):
         sparsity.add_supported_layer(CustomerLayer, my_own_pruning)
 
         self.layer = CustomerLayer()
-        self.customer_prefix = (
-            paddle.fluid.dygraph.layers._convert_camel_to_snake(
-                CustomerLayer.__name__
-            )
+        self.customer_prefix = paddle.nn.common.layers._convert_camel_to_snake(
+            CustomerLayer.__name__
         )
         self.supported_layer_count_ref = 3
 

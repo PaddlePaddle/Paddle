@@ -26,7 +26,7 @@ from paddle.fluid.optimizer import SGDOptimizer
 from paddle.nn import Linear
 
 
-class SimpleImgConvPool(fluid.dygraph.Layer):
+class SimpleImgConvPool(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -74,7 +74,7 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
         return x
 
 
-class MNIST(fluid.dygraph.Layer):
+class MNIST(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 

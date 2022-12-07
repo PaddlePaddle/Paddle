@@ -21,7 +21,7 @@ from paddle.fluid.dygraph.base import to_variable
 from paddle.nn import Conv2D, SyncBatchNorm
 
 
-class TestLayer(fluid.dygraph.Layer):
+class TestLayer(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,

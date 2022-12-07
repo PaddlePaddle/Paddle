@@ -16,7 +16,6 @@ import sys
 import time
 import unittest
 
-import paddle
 import numpy as np
 from test_multiprocess_dataloader_static import (
     BATCH_SIZE,
@@ -35,7 +34,7 @@ from paddle.io import DataLoader
 from paddle.nn import Linear
 
 
-class SimpleFCNet(fluid.dygraph.Layer):
+class SimpleFCNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 

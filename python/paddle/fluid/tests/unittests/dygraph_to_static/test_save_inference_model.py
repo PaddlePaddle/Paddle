@@ -35,7 +35,7 @@ place = (
 program_translator = ProgramTranslator()
 
 
-class SimpleFcLayer(fluid.dygraph.Layer):
+class SimpleFcLayer(paddle.nn.Layer):
     def __init__(self, fc_size):
         super().__init__()
         self._linear = paddle.nn.Linear(fc_size, fc_size)

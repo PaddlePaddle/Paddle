@@ -24,7 +24,7 @@ from paddle.fluid.framework import in_dygraph_mode
 from paddle.jit.api import TracedLayer
 
 
-class TestTracedLayer(fluid.dygraph.Layer):
+class TestTracedLayer(paddle.nn.Layer):
     def __init__(self, name_scope):
         super().__init__(name_scope)
 

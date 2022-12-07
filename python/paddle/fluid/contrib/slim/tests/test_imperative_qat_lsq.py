@@ -52,7 +52,7 @@ _logger = get_logger(
 )
 
 
-class ImperativeLenet(fluid.dygraph.Layer):
+class ImperativeLenet(paddle.nn.Layer):
     def __init__(self, num_classes=10):
         super().__init__()
         conv2d_w1_attr = fluid.ParamAttr(name="conv2d_w_1")

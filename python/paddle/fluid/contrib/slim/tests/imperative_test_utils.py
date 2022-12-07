@@ -84,7 +84,7 @@ def train_lenet(lenet, reader, optimizer):
     return loss_list
 
 
-class ImperativeLenet(fluid.dygraph.Layer):
+class ImperativeLenet(paddle.nn.Layer):
     def __init__(self, num_classes=10):
         super().__init__()
         conv2d_w1_attr = fluid.ParamAttr(name="conv2d_w_1")
@@ -159,7 +159,7 @@ class ImperativeLenet(fluid.dygraph.Layer):
         return x
 
 
-class ImperativeLenetWithSkipQuant(fluid.dygraph.Layer):
+class ImperativeLenetWithSkipQuant(paddle.nn.Layer):
     def __init__(self, num_classes=10):
         super().__init__()
 
@@ -250,7 +250,7 @@ class ImperativeLenetWithSkipQuant(fluid.dygraph.Layer):
         return x
 
 
-class ImperativeLinearBn(fluid.dygraph.Layer):
+class ImperativeLinearBn(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
@@ -282,7 +282,7 @@ class ImperativeLinearBn(fluid.dygraph.Layer):
         return x
 
 
-class ImperativeLinearBn_hook(fluid.dygraph.Layer):
+class ImperativeLinearBn_hook(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 

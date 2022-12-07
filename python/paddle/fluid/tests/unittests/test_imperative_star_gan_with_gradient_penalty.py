@@ -107,7 +107,7 @@ def create_mnist_dataset(cfg):
     return __impl__
 
 
-class InstanceNorm(fluid.dygraph.Layer):
+class InstanceNorm(paddle.nn.Layer):
     def __init__(self, num_channels, epsilon=1e-5):
         super().__init__()
         self.epsilon = epsilon
@@ -130,7 +130,7 @@ class InstanceNorm(fluid.dygraph.Layer):
             )
 
 
-class Conv2DLayer(fluid.dygraph.Layer):
+class Conv2DLayer(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -171,7 +171,7 @@ class Conv2DLayer(fluid.dygraph.Layer):
         return conv
 
 
-class Deconv2DLayer(fluid.dygraph.Layer):
+class Deconv2DLayer(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -213,7 +213,7 @@ class Deconv2DLayer(fluid.dygraph.Layer):
         return deconv
 
 
-class ResidualBlock(fluid.dygraph.Layer):
+class ResidualBlock(paddle.nn.Layer):
     def __init__(self, num_channels, num_filters):
         super().__init__()
         self._conv0 = Conv2DLayer(
@@ -242,7 +242,7 @@ class ResidualBlock(fluid.dygraph.Layer):
         return input + conv1
 
 
-class Generator(fluid.dygraph.Layer):
+class Generator(paddle.nn.Layer):
     def __init__(self, cfg, num_channels=3):
         super().__init__()
         conv_base = Conv2DLayer(
@@ -325,7 +325,7 @@ class Generator(fluid.dygraph.Layer):
         return out
 
 
-class Discriminator(fluid.dygraph.Layer):
+class Discriminator(paddle.nn.Layer):
     def __init__(self, cfg, num_channels=3):
         super().__init__()
 

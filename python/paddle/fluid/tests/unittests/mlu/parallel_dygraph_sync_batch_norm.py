@@ -31,7 +31,7 @@ sys.path.append("..")
 from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
 
 
-class TestLayer(fluid.dygraph.Layer):
+class TestLayer(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,

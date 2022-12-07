@@ -35,7 +35,7 @@ if paddle.fluid.is_compiled_with_cuda():
     paddle.fluid.set_flags({'FLAGS_cudnn_deterministic': True})
 
 
-class SimpleImgConvPool(fluid.dygraph.Layer):
+class SimpleImgConvPool(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -84,7 +84,7 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
         return x
 
 
-class MNIST(fluid.dygraph.Layer):
+class MNIST(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
