@@ -275,7 +275,6 @@ class PositionwiseFeedForwardLayer(Layer):
 
     def forward(self, x):
         hidden = self._i2h(x)
-        hidden = paddle.nn.functional.relu(hidden)
         if self._dropout_rate:
             hidden = fluid.layers.dropout(
                 hidden,
