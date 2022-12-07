@@ -187,7 +187,6 @@ const std::vector<std::string> kGpuLowerPrecisionPasses{
     "fc_fuse_pass",
     "fc_elementwise_layernorm_fuse_pass",
     "embedding_eltwise_layernorm_fuse_pass",
-    "conv2d_fusion_layout_transfer_pass",
 };
 
 const std::vector<std::string> kTrtLowerPrecisionPasses{
