@@ -1159,6 +1159,7 @@ class While:
             import paddle.fluid as fluid
             import numpy as np
 
+            paddle.enable_static()
             i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
             loop_len = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
             one = fluid.layers.fill_constant(shape=[1], dtype='float32', value=1)
