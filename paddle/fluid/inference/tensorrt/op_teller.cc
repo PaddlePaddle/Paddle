@@ -1767,7 +1767,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
       auto one_hot_inputs = desc.Inputs();
       if (one_hot_inputs.find("depth_tensor") != one_hot_inputs.end()) {
-        if (op_desc.Input("depth_tensor").size() != 0) {
+        if (desc.Input("depth_tensor").size() != 0) {
           return true;
         }
       }
