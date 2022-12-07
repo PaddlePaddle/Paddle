@@ -31,10 +31,6 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #endif
 
-#ifdef PADDLE_WITH_HETERPS
-#include "paddle/fluid/framework/barrier.h"
-#endif
-
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/heter_util.h"
