@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/diagonal_grad_kernel.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -63,8 +64,8 @@ void DiagonalGradKernel(const Context& dev_ctx,
   int blocks = (numel + threads - 1) / threads;
 
   int64_t dout_numel = out_grad.numel();
-
-  cudaMemsetAsync(dx_data, 0, numel * sizeof(T), dev_ctx.stream());
+  phi::backends::gpu::GpuMemsetAsync(
+      dx_data, 0, numel * sizeof(T), dev_ctx.stream());
 
   switch (dx_dim_size) {
     case 2:
