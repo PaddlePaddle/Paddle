@@ -19,8 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 class ROIAlignOpMLUKernel : public framework::OpKernel<T> {
  public:
@@ -76,7 +74,7 @@ class ROIAlignOpMLUKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(lod.empty(),
                         false,
                         platform::errors::InvalidArgument(
-                            "Input(ROIs) Tensor of ROIAlignOp "
+                            "Input(ROIs) phi::DenseTensor of ROIAlignOp "
                             "does not contain LoD information."));
       auto rois_lod = lod.back();
       rois_batch_size = rois_lod.size() - 1;
@@ -110,7 +108,7 @@ class ROIAlignOpMLUKernel : public framework::OpKernel<T> {
     }
 
     // only support float32 for now
-    Tensor rois_cpu(framework::TransToPhiDataType(VT::FP32));
+    phi::DenseTensor rois_cpu(framework::TransToPhiDataType(VT::FP32));
     rois_cpu.Resize({rois_num, 4});
     rois_cpu.mutable_data<T>(ctx.GetPlace());
     auto& dev_ctx = ctx.template device_context<platform::MLUDeviceContext>();
@@ -119,8 +117,8 @@ class ROIAlignOpMLUKernel : public framework::OpKernel<T> {
     T* rois_cpu_ptr = rois_cpu.mutable_data<T>(platform::CPUPlace());
 
     // boxes; [batch_idx, x1, y1, x2, y2]
-    Tensor boxes_cpu(framework::TransToPhiDataType(VT::FP32));
-    Tensor boxes_mlu(framework::TransToPhiDataType(VT::FP32));
+    phi::DenseTensor boxes_cpu(framework::TransToPhiDataType(VT::FP32));
+    phi::DenseTensor boxes_mlu(framework::TransToPhiDataType(VT::FP32));
     boxes_cpu.Resize({rois_num, 5});
     boxes_mlu.Resize({rois_num, 5});
     T* boxes_cpu_ptr = boxes_cpu.mutable_data<T>(platform::CPUPlace());
@@ -139,8 +137,8 @@ class ROIAlignOpMLUKernel : public framework::OpKernel<T> {
 
     const std::vector<int> perm_to_nhwc = {0, 2, 3, 1};
     const std::vector<int> perm_to_nchw = {0, 3, 1, 2};
-    Tensor input_nhwc(in->type());
-    Tensor output_nhwc(out->type());
+    phi::DenseTensor input_nhwc(in->type());
+    phi::DenseTensor output_nhwc(out->type());
     TransposeFromMLUTensor<T>(
         ctx, perm_to_nhwc, in, &input_nhwc, true /*need_reshape_or_alloc*/);
     auto output_dims = out->dims();
@@ -221,7 +219,7 @@ class ROIAlignGradOpMLUKernel : public framework::OpKernel<T> {
       }
     }
 
-    Tensor rois_cpu(framework::TransToPhiDataType(VT::FP32));
+    phi::DenseTensor rois_cpu(framework::TransToPhiDataType(VT::FP32));
     rois_cpu.Resize({rois_num, 4});
     rois_cpu.mutable_data<T>(ctx.GetPlace());
     auto& dev_ctx = ctx.template device_context<platform::MLUDeviceContext>();
@@ -230,8 +228,8 @@ class ROIAlignGradOpMLUKernel : public framework::OpKernel<T> {
     T* rois_cpu_ptr = rois_cpu.mutable_data<T>(platform::CPUPlace());
 
     // boxes; [batch_idx, x1, y1, x2, y2]
-    Tensor boxes_cpu(framework::TransToPhiDataType(VT::FP32));
-    Tensor boxes_mlu(framework::TransToPhiDataType(VT::FP32));
+    phi::DenseTensor boxes_cpu(framework::TransToPhiDataType(VT::FP32));
+    phi::DenseTensor boxes_mlu(framework::TransToPhiDataType(VT::FP32));
     boxes_cpu.Resize({rois_num, 5});
     boxes_mlu.Resize({rois_num, 5});
     T* boxes_cpu_ptr = boxes_cpu.mutable_data<T>(platform::CPUPlace());
@@ -250,8 +248,8 @@ class ROIAlignGradOpMLUKernel : public framework::OpKernel<T> {
 
     const std::vector<int> perm_to_nhwc = {0, 2, 3, 1};
     const std::vector<int> perm_to_nchw = {0, 3, 1, 2};
-    Tensor grads_nhwc(out_grad->type());
-    Tensor grads_image_nhwc(in_grad->type());
+    phi::DenseTensor grads_nhwc(out_grad->type());
+    phi::DenseTensor grads_image_nhwc(in_grad->type());
     TransposeFromMLUTensor<T>(ctx,
                               perm_to_nhwc,
                               out_grad,

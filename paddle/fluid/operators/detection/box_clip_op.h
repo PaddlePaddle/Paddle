@@ -19,8 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename DeviceContext, typename T>
 class BoxClipKernel : public framework::OpKernel<T> {
  public:
@@ -42,9 +40,10 @@ class BoxClipKernel : public framework::OpKernel<T> {
     auto box_lod = input_box->lod().back();
     int64_t n = static_cast<int64_t>(box_lod.size() - 1);
     for (int i = 0; i < n; ++i) {
-      Tensor im_info_slice = im_info->Slice(i, i + 1);
-      Tensor box_slice = input_box->Slice(box_lod[i], box_lod[i + 1]);
-      Tensor output_slice = output_box->Slice(box_lod[i], box_lod[i + 1]);
+      phi::DenseTensor im_info_slice = im_info->Slice(i, i + 1);
+      phi::DenseTensor box_slice = input_box->Slice(box_lod[i], box_lod[i + 1]);
+      phi::DenseTensor output_slice =
+          output_box->Slice(box_lod[i], box_lod[i + 1]);
       ClipTiledBoxes<T>(dev_ctx, im_info_slice, box_slice, &output_slice);
     }
   }
