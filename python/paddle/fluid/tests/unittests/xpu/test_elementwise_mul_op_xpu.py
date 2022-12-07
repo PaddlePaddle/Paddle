@@ -252,7 +252,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
                     np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.XPUPlace(0)
                 )
                 self.assertRaises(
-                    TypeError, fluid.layers.elementwise_mul, x1, y1
+                    TypeError, paddle.tensor.math._multiply_with_axis, x1, y1
                 )
 
                 # the input dtype of elementwise_mul must be float32
@@ -263,7 +263,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
                     name='y2', shape=[3, 4, 5, 6], dtype="uint8"
                 )
                 self.assertRaises(
-                    TypeError, fluid.layers.elementwise_mul, x2, y2
+                    TypeError, paddle.tensor.math._multiply_with_axis, x2, y2
                 )
 
 

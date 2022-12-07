@@ -1806,7 +1806,7 @@ def fast_decode(
                 }
                 for cache in caches
             ]
-            pre_pos = layers.elementwise_mul(
+            pre_pos = paddle.tensor.math._multiply_with_axis(
                 x=layers.fill_constant_batch_size_like(
                     input=pre_enc_output,  # can't use pre_ids here since it has lod
                     value=1,

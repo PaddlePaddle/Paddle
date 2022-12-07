@@ -758,7 +758,9 @@ class Transformer(Layer):
                     [-1, -1, self.trg_vocab_size],
                 ),
                 noend_mask_tensor,
-            ) - layers.elementwise_mul(probs, (finished - 1), axis=0)
+            ) - paddle.tensor.math._multiply_with_axis(
+                probs, (finished - 1), axis=0
+            )
             return probs
 
         def gather(input, indices, batch_pos):

@@ -59,7 +59,9 @@ def squeeze_excitation(input, num_channels, reduction_ratio):
     excitation = fluid.layers.fc(
         input=squeeze, size=num_channels, act='sigmoid'
     )
-    scale = fluid.layers.elementwise_mul(x=input, y=excitation, axis=0)
+    scale = paddle.tensor.math._multiply_with_axis(
+        x=input, y=excitation, axis=0
+    )
     return scale
 
 

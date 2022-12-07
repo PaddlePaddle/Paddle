@@ -311,7 +311,7 @@ class SimpleAttention(fluid.dygraph.Layer):
         )
 
         weights_reshape = paddle.nn.functional.softmax(weights_reshape)
-        scaled = fluid.layers.elementwise_mul(
+        scaled = paddle.tensor.math._multiply_with_axis(
             x=encoder_vec, y=weights_reshape, axis=0
         )
         context = paddle.sum(scaled, axis=1)

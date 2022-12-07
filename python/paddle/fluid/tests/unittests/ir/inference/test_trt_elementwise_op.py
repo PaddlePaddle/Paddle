@@ -73,7 +73,7 @@ class TensorRTSubgraphPassElementwiseBroadcastTest2(
     TensorRTSubgraphPassElementwiseBroadcastTest
 ):
     def append_eltwise(self, data1, data2):
-        return fluid.layers.elementwise_mul(x=data1, y=data2, axis=0)
+        return paddle.tensor.math._multiply_with_axis(x=data1, y=data2, axis=0)
 
 
 class TensorRTSubgraphPassElementwiseBroadcastTest3(

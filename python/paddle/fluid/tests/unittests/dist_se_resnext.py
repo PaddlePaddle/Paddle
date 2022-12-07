@@ -206,7 +206,9 @@ class SE_ResNeXt:
             ),
             act='sigmoid',
         )
-        scale = fluid.layers.elementwise_mul(x=input, y=excitation, axis=0)
+        scale = paddle.tensor.math._multiply_with_axis(
+            x=input, y=excitation, axis=0
+        )
         return scale
 
 

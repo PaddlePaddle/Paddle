@@ -984,33 +984,37 @@ def multiply(x, y, name=None):
             return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
-def _elementwise_op_with_axis(x, y, axis=-1, name=None, op_type="Undifined"):
-    if in_dygraph_mode():
-        assert op_type in ["add", "subtract", "multiply", "divide"], (
-            "op_name input error! _elementwise_op_with_axis is an inner function to replace elementwise_add/sub/mul/div. Input op_name=%s, Expect op_name=[add|subtract|multiply|divide]\n"
-            % op_type
-        )
-        op = getattr(_C_ops, op_type)
-        x_shape = list(x.shape)
-        y_shape = list(y.shape)
-        if axis == -1 or len(x_shape) == len(y_shape):
-            return op(x, y)
-        if len(x_shape) > len(y_shape):
-            padding = len(x_shape) - len(y_shape) - axis
-            y = y.reshape(([1] * axis + y_shape + [1] * padding))
-        else:
-            padding = len(y_shape) - len(x_shape) - axis
-            x = x.reshape(([1] * axis + x_shape + [1] * padding))
+@dygraph_only
+def _elementwise_op_with_axis_in_dygraph(
+    x, y, axis=-1, name=None, op_type="Undifined"
+):
+    assert (
+        in_dygraph_mode()
+    ), "You can only call `_elementwise_op_with_axis_in_dygraph` function within in_dygraph_mode"
+    assert op_type in ["add", "subtract", "multiply", "divide"], (
+        "op_name input error! _elementwise_op_with_axis is an inner function to replace elementwise_add/sub/mul/div. Input op_name=%s, Expect op_name=[add|subtract|multiply|divide]\n"
+        % op_type
+    )
+    op = getattr(_C_ops, op_type)
+    x_shape = list(x.shape)
+    y_shape = list(y.shape)
+    if axis == -1 or len(x_shape) == len(y_shape):
         return op(x, y)
-    # opt performance, only dynamic mode needs reshape
+    if len(x_shape) > len(y_shape):
+        padding = len(x_shape) - len(y_shape) - axis
+        y = y.reshape(([1] * axis + y_shape + [1] * padding))
     else:
-        OP_NAMEMAPPING = {
-            'add': 'elementwise_add',
-            'subtract': 'elementwise_sub',
-            'multiply': 'elementwise_mul',
-            'divide': 'elementwise_div',
-        }
-        op_type = OP_NAMEMAPPING[op_type]
+        padding = len(y_shape) - len(x_shape) - axis
+        x = x.reshape(([1] * axis + x_shape + [1] * padding))
+    return op(x, y)
+
+
+def _add_with_axis(x, y, axis=-1, name=None):
+    # opt performance, only dynamic mode needs reshape
+    if in_dygraph_mode():
+        return _elementwise_op_with_axis_in_dygraph(x, y, axis, name, "add")
+    else:
+        op_type = 'elementwise_add'
         act = None
         if _in_legacy_dygraph():
             return _elementwise_op_in_dygraph(
@@ -1025,20 +1029,263 @@ def _elementwise_op_with_axis(x, y, axis=-1, name=None, op_type="Undifined"):
             return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
-def _add_with_axis(x, y, axis=-1, name=None):
-    return _elementwise_op_with_axis(x, y, axis, name, "add")
-
-
 def _subtract_with_axis(x, y, axis=-1, name=None):
-    return _elementwise_op_with_axis(x, y, axis, name, "subtract")
+    # opt performance, only dynamic mode needs reshape
+    if in_dygraph_mode():
+        return _elementwise_op_with_axis_in_dygraph(
+            x, y, axis, name, "subtract"
+        )
+    else:
+        op_type = 'elementwise_sub'
+        act = None
+        if _in_legacy_dygraph():
+            return _elementwise_op_in_dygraph(
+                x, y, axis=axis, act=act, op_name=op_type
+            )
+        else:
+            if x.dtype != y.dtype:
+                raise TypeError(
+                    'Input tensors must be same type, but received type of x: %s, type of y: %s '
+                    % (x.dtype, y.dtype)
+                )
+            return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
 def _multiply_with_axis(x, y, axis=-1, name=None):
-    return _elementwise_op_with_axis(x, y, axis, name, "multiply")
+    """
+    multiply two tensors element-wise. The equation is:
+
+    .. math::
+        out = x * y
+
+    Note:
+        ``paddle.tensor.math._multiply_with_axis`` supports broadcasting. If you would like to know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+    Args:
+        x (Tensor): the input tensor, its data type should be one of float32, float64, int32, int64, bool.
+        y (Tensor): the input tensor, its data type should be one of float32, float64, int32, int64, bool.
+        axis (int32, optional): If X.dimension != Y.dimension, Y.dimension must be a subsequence of x.dimension. And axis is the start dimension index for broadcasting Y onto X.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+            import paddle
+
+            def gen_data():
+                return {
+                    "x": np.array([2, 3, 4]).astype('float32'),
+                    "y": np.array([1, 5, 2]).astype('float32')
+                }
+            paddle.enable_static()
+            x = fluid.data(name="x", shape=[3], dtype='float32')
+            y = fluid.data(name="y", shape=[3], dtype='float32')
+            z = paddle.tensor.math._multiply_with_axis(x, y)
+            # z = x * y
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            z_value = exe.run(feed=gen_data(),
+                                fetch_list=[z.name])
+
+            print(z_value) # [2., 15., 8.]
+
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+            import paddle
+
+            def gen_data():
+                return {
+                    "x": np.ones((2, 3, 4, 5)).astype('float32'),
+                    "y": np.zeros((3, 4)).astype('float32')
+                }
+            paddle.enable_static()
+            x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
+            y = fluid.data(name="y", shape=[3,4], dtype='float32')
+            z = paddle.tensor.math._multiply_with_axis(x, y, axis=1)
+            # z = x * y
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+
+            z_value = exe.run(feed=gen_data(),
+                                fetch_list=[z.name])
+
+            print(z_value) # z.shape=[2,3,4,5]
+
+
+        ..  code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+            import paddle
+
+            def gen_data():
+                return {
+                    "x": np.random.randint(1, 5, size=[2, 3, 4, 5]).astype('float32'),
+                    "y": np.random.randint(1, 5, size=[5]).astype('float32')
+                }
+            paddle.enable_static()
+            x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
+            y = fluid.data(name="y", shape=[5], dtype='float32')
+            z = paddle.tensor.math._multiply_with_axis(x, y, axis=3)
+            # z = x * y
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+
+            z_value = exe.run(feed=gen_data(),
+                                fetch_list=[z.name])
+            print(z_value) # z.shape=[2,3,4,5]
+
+    """
+    # opt performance, only dynamic mode needs reshape
+    if in_dygraph_mode():
+        return _elementwise_op_with_axis_in_dygraph(
+            x, y, axis, name, "multiply"
+        )
+    else:
+        op_type = 'elementwise_mul'
+        act = None
+        if _in_legacy_dygraph():
+            return _elementwise_op_in_dygraph(
+                x, y, axis=axis, act=act, op_name=op_type
+            )
+        else:
+            if x.dtype != y.dtype:
+                raise TypeError(
+                    'Input tensors must be same type, but received type of x: %s, type of y: %s '
+                    % (x.dtype, y.dtype)
+                )
+            return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
 def _divide_with_axis(x, y, axis=-1, name=None):
-    return _elementwise_op_with_axis(x, y, axis, name, "divide")
+    """
+    Divide two tensors element-wise. The equation is:
+
+    .. math::
+        out = x / y
+
+    Note:
+        ``paddle.tensor.math._divide_with_axis`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+    Args:
+        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        axis (int32, optional): If X.dimension != Y.dimension, Y.dimension must be a subsequence of x.dimension. And axis is the start dimension index for broadcasting Y onto X.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+            import paddle
+
+            def gen_data():
+                return {
+                    "x": np.array([2, 3, 4]).astype('float32'),
+                    "y": np.array([1, 5, 2]).astype('float32')
+                }
+            paddle.enable_static()
+            x = fluid.data(name="x", shape=[3], dtype='float32')
+            y = fluid.data(name="y", shape=[3], dtype='float32')
+            z = paddle.tensor.math._divide_with_axis(x, y)
+            # z = x / y
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            z_value = exe.run(feed=gen_data(),
+                                fetch_list=[z.name])
+
+            print(z_value) # [2., 0.6, 2.]
+
+
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+
+            def gen_data():
+                return {
+                    "x": np.ones((2, 3, 4, 5)).astype('float32'),
+                    "y": np.zeros((3, 4)).astype('float32')
+                }
+            paddle.enable_static()
+            x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
+            y = fluid.data(name="y", shape=[3,4], dtype='float32')
+            z = paddle.tensor.math._divide_with_axis(x, y, axis=1)
+            # z = x / y
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+
+            z_value = exe.run(feed=gen_data(),
+                                fetch_list=[z.name])
+
+            print(z_value) # z.shape=[2,3,4,5]
+
+
+        ..  code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+            import paddle
+
+            def gen_data():
+                return {
+                    "x": np.random.randint(1, 5, size=[2, 3, 4, 5]).astype('float32'),
+                    "y": np.random.randint(1, 5, size=[5]).astype('float32')
+                }
+            paddle.enable_static()
+            x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
+            y = fluid.data(name="y", shape=[5], dtype='float32')
+            z = paddle.tensor.math._divide_with_axis(x, y, axis=3)
+            # z = x / y
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+
+            z_value = exe.run(feed=gen_data(),
+                                fetch_list=[z.name])
+            print(z_value) # z.shape=[2,3,4,5]
+
+    """
+    # opt performance, only dynamic mode needs reshape
+    if in_dygraph_mode():
+        return _elementwise_op_with_axis_in_dygraph(x, y, axis, name, "divide")
+    else:
+        op_type = 'elementwise_div'
+        act = None
+        if _in_legacy_dygraph():
+            return _elementwise_op_in_dygraph(
+                x, y, axis=axis, act=act, op_name=op_type
+            )
+        else:
+            if x.dtype != y.dtype:
+                raise TypeError(
+                    'Input tensors must be same type, but received type of x: %s, type of y: %s '
+                    % (x.dtype, y.dtype)
+                )
+            return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
 def maximum(x, y, name=None):
