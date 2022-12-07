@@ -14,8 +14,6 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 
-#include "cutlass/util/device_nchw_to_nhwc.h"
-#include "cutlass/util/device_nhwc_to_nchw.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -231,6 +229,7 @@ struct TransposeNormal<phi::GPUContext, T> {
     auto out_stride = stride(out->dims());
     auto* in_ptr = in.data<T>();
     auto* out_ptr = out->data<T>();
+
     // copy in_stride, out_stride, axis to gpu device
     const phi::GPUPlace& cuda_place = context.GetPlace();
     phi::CPUPlace cpu_place = paddle::platform::CPUPlace();

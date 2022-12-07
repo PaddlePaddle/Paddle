@@ -56,7 +56,6 @@ void Transpose<DeviceContext, T, Rank>::operator()(
     const phi::DenseTensor& in,
     phi::DenseTensor* out,
     const std::vector<int>& axis) {
-  //  std::cout << axis[0] << axis[1] << axis[2] << axis[3] << std::endl;
   Eigen::array<int, Rank> permute;
   for (int i = 0; i < Rank; i++) {
     permute[i] = axis[i];
