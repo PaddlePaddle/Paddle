@@ -27,7 +27,12 @@ void AddVarToScope(Scope* param_scope,
                    const DDim& dims) {
   auto* tensor = param_scope->Var(name)->GetMutable<phi::DenseTensor>();
   tensor->Resize(dims);
-  tensor->mutable_data<T>(platform::CPUPlace());
+  auto device_context = std::make_unique<phi::CPUContext>(platform::CPUPlace());
+  device_context->SetHostAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CPUPlace())
+          .get());
+  device_context->HostAlloc<T>(tensor, tensor->numel() * sizeof(T));
 }
 
 template <typename T>
