@@ -342,12 +342,12 @@ class MultiHeadAttentionLayer(Layer):
         transpose_v = paddle.transpose(x=reshaped_v, perm=[0, 2, 1, 3])
 
         # scale dot product attention
-        product = fluid.layers.matmul(
+        product = paddle.matmul(
             x=transpose_q,
             y=transpose_k,
             transpose_y=True,
-            alpha=self._d_model**-0.5,
         )
+        product = paddle.scale(product, scale=self._d_model**-0.5)
         if attn_bias is not None:
             product += attn_bias
         weights = paddle.nn.functional.softmax(product)
@@ -358,9 +358,9 @@ class MultiHeadAttentionLayer(Layer):
                 seed=ModelHyperParams.dropout_seed,
                 is_test=False,
             )
-            out = fluid.layers.matmul(weights_droped, transpose_v)
+            out = paddle.matmul(weights_droped, transpose_v)
         else:
-            out = fluid.layers.matmul(weights, transpose_v)
+            out = paddle.matmul(weights, transpose_v)
 
         # combine heads
         if len(out.shape) != 4:
@@ -849,7 +849,7 @@ class WrapDecoderLayer(Layer):
         )
 
         if self._weight_sharing:
-            predict = fluid.layers.matmul(
+            predict = paddle.matmul(
                 x=dec_output_reshape,
                 y=self._prepare_decoder_layer._input_emb.weight,
                 transpose_y=True,

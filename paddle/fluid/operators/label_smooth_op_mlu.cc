@@ -18,8 +18,6 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 class LabelSmoothMLUKernel : public framework::OpKernel<T> {
  public:

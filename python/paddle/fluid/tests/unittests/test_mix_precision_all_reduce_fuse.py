@@ -45,7 +45,7 @@ def conv_net(use_feed):
         pool_stride=2,
         act="relu",
     )
-    conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
+    conv_pool_1 = paddle.static.nn.batch_norm(conv_pool_1)
 
     conv_pool_1 = fluid.layers.cast(conv_pool_1, np.float32)
     conv_pool_2 = fluid.nets.simple_img_conv_pool(
