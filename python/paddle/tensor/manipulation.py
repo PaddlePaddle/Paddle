@@ -20,6 +20,7 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
+from paddle.common_ops_import import LayerHelper
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..common_ops_import import _varbase_creator, fill_constant
@@ -32,7 +33,6 @@ from ..fluid.data_feeder import (
 from ..fluid.framework import _in_legacy_dygraph, _non_static_mode
 from ..fluid.layers import utils
 from ..framework import (
-    LayerHelper,
     convert_np_dtype_to_dtype_,
     core,
     dygraph_only,
