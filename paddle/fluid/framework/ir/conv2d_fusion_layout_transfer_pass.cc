@@ -138,9 +138,12 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
   FusePassBase::Init("data_layout_transfer", graph);
   auto *scope = param_scope();
 
-  // conv2d_fusion doesn't not support NHWC now, only cutlass support .
-  auto use_cutlass = Get<bool>("use_cutlass");
-  if (!use_cutlass) return;
+  // only float16 model need insert transfer_layout.
+  auto model_precision =
+      static_cast<phi::DataType>(Get<int>("model_precision"));
+  if (model_precision != phi::DataType::FLOAT16) return;
+  // auto use_cutlass = Get<bool>("use_cutlass");
+  // if (!use_cutlass) return;
 
   PADDLE_ENFORCE_EQ(graph->IsMainGraph(),
                     true,
@@ -174,6 +177,7 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
 
     auto filter_names = op_node->Op()->Input("Filter");
     auto act_type = op_node->Op()->GetAttrIfExists<std::string>("activation");
+    const int cutlass_aligment = 4;
     std::unordered_set<std::string> cutlass_act_set = {
         "relu", "swish", "identity", "leaky_relu"};
     if (!cutlass_act_set.count(act_type)) {
@@ -186,7 +190,8 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
       const auto &filter_tensor = filter_var->Get<phi::DenseTensor>();
       int oc = filter_tensor.dims()[0];
       int ic = filter_tensor.dims()[1];
-      bool cutlass_support = oc % 4 == 0 && ic % 4 == 0;
+      bool cutlass_support =
+          oc % cutlass_aligment == 0 && ic % cutlass_aligment == 0;
       if (filter_tensor.dims().size() == 4 && cutlass_support) {
         return true;
       }
