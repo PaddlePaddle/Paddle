@@ -199,26 +199,18 @@ class TestUniformRandomOpError(unittest.TestCase):
                 x1 = fluid.create_lod_tensor(
                     np.zeros((4, 784)), [[1, 1, 1, 1]], fluid.CPUPlace()
                 )
-                fluid.layers.uniform_random(x1)
+                paddle.uniform(x1)
 
             self.assertRaises(TypeError, test_Variable)
 
             def test_Variable2():
                 x1 = np.zeros((4, 784))
-                fluid.layers.uniform_random(x1)
+                paddle.uniform(x1)
 
             self.assertRaises(TypeError, test_Variable2)
 
-            def test_dtype():
-                x2 = fluid.layers.data(
-                    name='x2', shape=[4, 784], dtype='float32'
-                )
-                fluid.layers.uniform_random(x2, 'int32')
-
-            self.assertRaises(TypeError, test_dtype)
-
             def test_out_dtype():
-                out = fluid.layers.uniform_random(shape=[3, 4], dtype='float64')
+                out = paddle.uniform(shape=[3, 4], dtype='float64')
                 self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP64)
 
             test_out_dtype()
@@ -323,7 +315,7 @@ class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
             dim_tensor = fluid.layers.fill_constant([1], "int64", 3)
-            ret = fluid.layers.nn.uniform_random([1, dim_tensor, 2])
+            ret = paddle.uniform([1, dim_tensor, 2])
 
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
@@ -339,7 +331,7 @@ class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
         with fluid.program_guard(train_program, startup_program):
             dim_1 = fluid.layers.fill_constant([1], "int64", 3)
             dim_2 = fluid.layers.fill_constant([1], "int32", 2)
-            ret = fluid.layers.nn.uniform_random([1, dim_1, dim_2])
+            ret = paddle.uniform([1, dim_1, dim_2])
 
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
@@ -354,7 +346,7 @@ class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
             shape = fluid.data(name='shape_tensor', shape=[2], dtype="int32")
-            ret = fluid.layers.nn.uniform_random(shape)
+            ret = paddle.uniform(shape)
 
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
@@ -377,12 +369,8 @@ class TestUniformRandomOp_API_seed(unittest.TestCase):
             _min = 5
             _max = 10
 
-            ret = fluid.layers.nn.uniform_random(
-                [2, 3, 2], min=_min, max=_max, seed=_seed
-            )
-            ret_2 = fluid.layers.nn.uniform_random(
-                [2, 3, 2], min=_min, max=_max, seed=_seed
-            )
+            ret = paddle.uniform([2, 3, 2], min=_min, max=_max, seed=_seed)
+            ret_2 = paddle.uniform([2, 3, 2], min=_min, max=_max, seed=_seed)
             res = paddle.equal(ret, ret_2)
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
@@ -464,9 +452,7 @@ class TestUniformRandomOpSelectedRowsShapeTensorList(unittest.TestCase):
 class TestUniformRandomDygraphMode(unittest.TestCase):
     def test_check_output(self):
         with fluid.dygraph.guard():
-            x = fluid.layers.uniform_random(
-                [10], dtype="float32", min=0.0, max=1.0
-            )
+            x = paddle.uniform([10], dtype="float32", min=0.0, max=1.0)
             x_np = x.numpy()
             for i in range(10):
                 self.assertTrue((x_np[i] > 0 and x_np[i] < 1.0))
@@ -698,9 +684,7 @@ class TestUniformMinMaxTensor(UnittestBase):
             min_v = paddle.to_tensor([0.1])
             max_v = paddle.to_tensor([0.9])
             y = paddle.uniform([2, 3, 10], min=min_v, max=max_v)
-            z = paddle.fluid.layers.uniform_random(
-                [2, 3, 10], min=min_v, max=max_v
-            )
+            z = paddle.uniform([2, 3, 10], min=min_v, max=max_v)
 
             out = feat + y + z
 
