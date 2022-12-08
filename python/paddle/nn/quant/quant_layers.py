@@ -26,8 +26,6 @@ from paddle.nn.initializer import Constant
 from paddle.nn.quant.lsq import FakeQuantActLSQPlus, FakeQuantWeightLSQPlus
 from paddle.utils import unique_name
 
-from ...tensor import linalg
-
 __all__ = [
     'FakeQuantAbsMax',
     'FakeQuantMovingAverageAbsMax',
@@ -1059,7 +1057,9 @@ class QuantizedMatmul(Layer):
             y = self._act_preprocess_y(y)
         quant_y = self._fake_quant_y(y)
 
-        out = linalg.matmul(quant_x, quant_y, transpose_x, transpose_y, name)
+        out = paddle.tensor.linalg.matmul(
+            quant_x, quant_y, transpose_x, transpose_y, name
+        )
         return out
 
 
