@@ -446,7 +446,7 @@ void generic_moe_gemm_kernelLauncher(const T* A,
 }
 
 template <typename T>
-void gemm_bias_gelu(const T* A,
+void gemm_bias_act(const T* A,
                     const T* B,
                     const T* weight_scales,
                     const T* biases,
@@ -774,7 +774,7 @@ void MoeKernel(const Context& ctx,
   const T* fc1_scales = nullptr;
   const T* fc2_scales = nullptr;
   if (IS_FP16) {
-    gemm_bias_gelu(reinterpret_cast<const __half*>(permuted_data_),
+    gemm_bias_act(reinterpret_cast<const __half*>(permuted_data_),
                    reinterpret_cast<const __half*>(fc1_expert_weights),
                    reinterpret_cast<const __half*>(fc1_scales),
                    reinterpret_cast<const __half*>(fc1_expert_biases),
@@ -799,7 +799,7 @@ void MoeKernel(const Context& ctx,
          multi_processor_count_,
          ctx.stream());
   } else {
-    gemm_bias_gelu<float>(reinterpret_cast<const float*>(permuted_data_),
+    gemm_bias_act<float>(reinterpret_cast<const float*>(permuted_data_),
                           reinterpret_cast<const float*>(fc1_expert_weights),
                           reinterpret_cast<const float*>(fc1_scales),
                           reinterpret_cast<const float*>(fc1_expert_biases),
