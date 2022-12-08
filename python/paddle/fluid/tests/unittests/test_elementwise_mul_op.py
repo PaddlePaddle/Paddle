@@ -299,7 +299,7 @@ class TestElementwiseMulOpError(unittest.TestCase):
             y1 = fluid.create_lod_tensor(
                 np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
             )
-            self.assertRaises(TypeError, paddle.multiply, x1, y1)
+            self.assertRaises(TypeError, fluid.layer.elementwise_sub, x1, y1)
 
             # the input dtype of elementwise_mul must be float16 or float32 or float64 or int32 or int64
             # float16 only can be set on GPU place
