@@ -769,7 +769,7 @@ function run_linux_cpu_test() {
     cd ${PADDLE_ROOT}/build
     pip install hypothesis
     if [ -d "${PADDLE_ROOT}/dist/" ]; then
-        pip install ${PADDLE_ROOT}/build/python/dist/*whl
+        pip install ${PADDLE_ROOT}/dist/*whl
     fi
     cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/op_test.py ${PADDLE_ROOT}/build/python
     cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/testsuite.py ${PADDLE_ROOT}/build/python
@@ -3648,7 +3648,7 @@ function run_setup(){
     # reset ccache zero stats for collect PR's actual hit rate
     ccache -z
 
-    python setup.py bdist_wheel;build_error=$?
+    python setup.py $2;build_error=$?
     
     # ci will collect ccache hit rate
     collect_ccache_hits
@@ -3868,9 +3868,7 @@ function main() {
         build_mac
         ;;
       cicheck_py37)
-        # cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
-        # run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
-        run_setup ${PYTHON_ABI:-""}
+        run_setup ${PYTHON_ABI:-""} bdist_wheel
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       test_cicheck_py37)
