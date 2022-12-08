@@ -45,56 +45,44 @@ class TestConvertToMixedPrecision(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def convert_to_fp16(self):
-        convert_to_mixed_precision(
-            os.path.join(self.temp_dir.name, 'resnet50/inference.pdmodel'),
-            os.path.join(self.temp_dir.name, 'resnet50/inference.pdiparams'),
-            os.path.join(self.temp_dir.name, 'mixed/inference.pdmodel'),
-            os.path.join(self.temp_dir.name, 'mixed/inference.pdiparams'),
+    def test_convert_to_mixed_precision(self):
+        mixed_precision_options = [
             PrecisionType.Half,
-            PlaceType.GPU,
-            True,
-        )
-
-    def convert_to_fp16_with_fp16_input(self):
-        convert_to_mixed_precision(
-            os.path.join(self.temp_dir.name, 'resnet50/inference.pdmodel'),
-            os.path.join(self.temp_dir.name, 'resnet50/inference.pdiparams'),
-            os.path.join(self.temp_dir.name, 'mixed1/inference.pdmodel'),
-            os.path.join(self.temp_dir.name, 'mixed1/inference.pdiparams'),
             PrecisionType.Half,
-            PlaceType.GPU,
-            False,
-        )
-
-    def convert_to_fp16_with_blacklist(self):
-        convert_to_mixed_precision(
-            os.path.join(self.temp_dir.name, 'resnet50/inference.pdmodel'),
-            os.path.join(self.temp_dir.name, 'resnet50/inference.pdiparams'),
-            os.path.join(self.temp_dir.name, 'mixed2/inference.pdmodel'),
-            os.path.join(self.temp_dir.name, 'mixed2/inference.pdiparams'),
             PrecisionType.Half,
-            PlaceType.GPU,
-            False,
-            set('conv2d'),
-        )
-
-    def convert_to_bf16(self):
-        convert_to_mixed_precision(
-            os.path.join(self.temp_dir.name, 'resnet50/inference.pdmodel'),
-            os.path.join(self.temp_dir.name, 'resnet50/inference.pdiparams'),
-            os.path.join(self.temp_dir.name, 'mixed3/inference.pdmodel'),
-            os.path.join(self.temp_dir.name, 'mixed3/inference.pdiparams'),
             PrecisionType.Bfloat16,
-            PlaceType.GPU,
-            True,
-        )
+        ]
+        keep_io_types_options = [True, False, False, True]
+        black_list_options = [set(), set(), set(['conv2d']), set()]
 
-    def test_convert(self):
-        self.convert_to_fp16()
-        self.convert_to_fp16_with_fp16_input()
-        self.convert_to_fp16_with_blacklist()
-        self.convert_to_bf16()
+        test_configs = zip(
+            mixed_precision_options, keep_io_types_options, black_list_options
+        )
+        for mixed_precision, keep_io_types, black_list in test_configs:
+            config = f'{mixed_precision=}-{keep_io_types=}-{black_list=}'
+            with self.subTest(
+                mixed_precision=mixed_precision,
+                keep_io_types=keep_io_types,
+                black_list=black_list,
+            ):
+                convert_to_mixed_precision(
+                    os.path.join(
+                        self.temp_dir.name, 'resnet50/inference.pdmodel'
+                    ),
+                    os.path.join(
+                        self.temp_dir.name, 'resnet50/inference.pdiparams'
+                    ),
+                    os.path.join(
+                        self.temp_dir.name, f'{config}/inference.pdmodel'
+                    ),
+                    os.path.join(
+                        self.temp_dir.name, f'{config}/inference.pdiparams'
+                    ),
+                    backend=PlaceType.GPU,
+                    mixed_precision=mixed_precision,
+                    keep_io_types=keep_io_types,
+                    black_list=black_list,
+                )
 
 
 if __name__ == '__main__':
