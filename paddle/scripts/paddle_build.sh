@@ -768,7 +768,7 @@ function run_linux_cpu_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     pip install hypothesis
-    if [ -d "${PADDLE_ROOT}/build/python/dist/" ]; then
+    if [ -d "${PADDLE_ROOT}/dist/" ]; then
         pip install ${PADDLE_ROOT}/build/python/dist/*whl
     fi
     cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/op_test.py ${PADDLE_ROOT}/build/python
@@ -3537,7 +3537,6 @@ function run_setup(){
                 export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.7.0/bin/python3.7
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.7.0/include/python3.7m
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.7.0/lib/libpython3.so
-                export PADDLE_CUSTOM_PATH=/opt/_internal/cpython-3.7.0/lib/python3.7/site-packages/paddlepaddle-0.0.0-py3.7-linux-x86_64.egg/paddle
                 pip3.7 install -r ${PADDLE_ROOT}/python/requirements.txt
             elif [ "$1" == "cp38-cp38" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.8.0/lib/:${LD_LIBRARY_PATH}
@@ -3649,7 +3648,7 @@ function run_setup(){
     # reset ccache zero stats for collect PR's actual hit rate
     ccache -z
 
-    python setup.py install;build_error=$?
+    python setup.py bdist_wheel;build_error=$?
     
     # ci will collect ccache hit rate
     collect_ccache_hits
