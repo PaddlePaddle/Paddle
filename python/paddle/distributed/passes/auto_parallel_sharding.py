@@ -786,11 +786,11 @@ class ShardingPass(PassBase):
                     assert is_sharding_param_broadcast_op(
                         pre_op
                     ), "Unexpected: sharding broadcast pre op should be broadcast."
-                    prior_var = main_block.vars[op.output("Out")[0]]
-
+                    prior_var = main_block.vars[pre_op.output("Out")[0]]
+                # broadcast order dependencies
                 dep_map[i] = [(i, [prior_var], [broadcast_var])]
 
-                if len(group.vars) > 0:
+                if len(group.vars) > 1:
                     # in shard coalesce depend to optimizer
                     if group.is_in_local_shard:
                         last_grad = group.vars[-1]
