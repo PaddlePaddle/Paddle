@@ -27,7 +27,6 @@ def execute(main_program, startup_program):
         place = paddle.CUDAPlace(0)
     else:
         place = paddle.CPUPlace()
-
     exe = paddle.static.Executor(place)
     exe.run(startup_program)
     exe.run(main_program)
