@@ -15,7 +15,7 @@
 #include "paddle/phi/core/device_context.h"
 
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/device/gpu/cuda/cuda_graph.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
 #endif
 
 #include "paddle/phi/core/dense_tensor.h"
@@ -153,8 +153,9 @@ struct DeviceContext::Impl {
                           : (pinned ? pinned_allocator_ : device_allocator_);
 #ifdef PADDLE_WITH_CUDA
     bool must_cuda_graph_allocator = (tensor->numel() != 0) && !pinned;
-    if (must_cuda_graph_allocator && paddle::platform::is_gpu_place(place) &&
-        paddle::platform::CUDAGraph::IsThisThreadCapturing()) {
+    if (must_cuda_graph_allocator &&
+        place.GetType() == phi::AllocationType::GPU &&
+        phi::backends::gpu::CUDAGraph::IsThisThreadCapturing()) {
       PADDLE_ENFORCE_NOT_NULL(cuda_graph_allocator_,
                               phi::errors::InvalidArgument(
                                   "Required cuda_graph_allocator_ shall not be "
