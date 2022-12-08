@@ -115,6 +115,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "merge_layernorm_fuse_pass",            //
       "preln_residual_bias_fuse_pass",        //
       "preln_layernorm_x_fuse_pass",          //
+      "reverse_roll_fuse_pass",               //
       // "set_transformer_input_convert_pass",       //
       "conv_bn_fuse_pass",                           //
       "unsqueeze2_eltwise_fuse_pass",                //
@@ -187,7 +188,6 @@ const std::vector<std::string> kGpuLowerPrecisionPasses{
     "fc_fuse_pass",
     "fc_elementwise_layernorm_fuse_pass",
     "embedding_eltwise_layernorm_fuse_pass",
-    "runtime_context_cache_pass",
 };
 
 const std::vector<std::string> kTrtLowerPrecisionPasses{
@@ -201,6 +201,13 @@ const std::vector<std::string> kTrtLowerPrecisionPasses{
     "trt_map_matmul_to_mul_pass",
     "fc_fuse_pass",
     "tensorrt_subgraph_pass",
+};
+
+const std::vector<std::string> kCINNCompilerPasses{
+    "gpu_cpu_map_matmul_v2_to_mul_pass",
+    "gpu_cpu_map_matmul_v2_to_matmul_pass",
+    "gpu_cpu_map_matmul_to_mul_pass",
+    "build_cinn_pass",
 };
 
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
@@ -245,10 +252,8 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_elementwise_add_fuse_pass",      //
 #endif                                         //
         "transpose_flatten_concat_fuse_pass",  //
-        "constant_folding_pass",
-        // following pass should be located in the last, since it will
-        // work on all fused ops.
-        "runtime_context_cache_pass"
+        "constant_folding_pass",               //
+        "float_to_half_pass",                  //
   });
 
   use_gpu_ = true;
@@ -313,10 +318,7 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
                   "conv_transpose_bn_fuse_pass",             //
                   "conv_transpose_eltwiseadd_bn_fuse_pass",  //
                   "is_test_pass",                            //
-                  "constant_folding_pass",
-                  // following pass should be located in the last, since
-                  // it will work on all fused ops.
-                  "runtime_context_cache_pass"});
+                  "constant_folding_pass"});
 
   use_gpu_ = false;
 }
@@ -466,7 +468,6 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("int8_scale_calculation_mkldnn_pass");
     passes_.push_back("params_quantization_mkldnn_pass");
     passes_.push_back("mkldnn_inplace_pass");
-    passes_.push_back("runtime_context_cache_pass");
   }
   use_mkldnn_int8_ = true;
 #else

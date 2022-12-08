@@ -21,7 +21,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import to_variable, Layer
+from paddle.fluid.dygraph import Layer, to_variable
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
 
@@ -48,7 +48,7 @@ class Policy(Layer):
         x = fluid.layers.relu(x)
         action_scores = self.affine2(x)
 
-        log_prob = fluid.layers.softmax(action_scores, axis=1)
+        log_prob = paddle.nn.functional.softmax(action_scores, axis=1)
 
         return log_prob
 

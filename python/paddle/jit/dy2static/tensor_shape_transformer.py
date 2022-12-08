@@ -14,13 +14,15 @@
 
 from paddle.utils import gast
 
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
+from .utils import ast_to_source_code
+from .static_analysis import (
     AstNodeWrapper,
 )
 from .base_transformer import (
     BaseTransformer,
 )
+
+__all__ = []
 
 
 class TensorShapeTransformer(BaseTransformer):

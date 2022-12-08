@@ -14,10 +14,11 @@
 
 import os
 import unittest
-import numpy
 
+import numpy
 from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
 from simple_nets import fc_with_batchnorm, init_data, simple_fc_net
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core

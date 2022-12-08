@@ -15,16 +15,15 @@
 import unittest
 
 import numpy as np
+from test_imperative_base import new_program_scope
 from utils import DyGraphProgramDescTracerTestHelper
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
+from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.nn import Linear
-from test_imperative_base import new_program_scope
-from utils import DyGraphProgramDescTracerTestHelper
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
@@ -60,13 +59,10 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
             weight_attr=None,
             bias_attr=None,
         )
-        self._pool2d = paddle.fluid.dygraph.nn.Pool2D(
-            pool_size=pool_size,
-            pool_type=pool_type,
-            pool_stride=pool_stride,
-            pool_padding=pool_padding,
-            global_pooling=global_pooling,
-            use_cudnn=use_cudnn,
+        self._pool2d = paddle.nn.MaxPool2D(
+            kernel_size=pool_size,
+            stride=pool_stride,
+            padding=pool_padding,
         )
 
     def forward(self, inputs):
@@ -157,19 +153,7 @@ class TestImperativeMnist(unittest.TestCase):
                     dy_x_data = img.numpy()
                     label = data[1]
                     label.stop_gradient = True
-
-                    if batch_id % 10 == 0 and _in_legacy_dygraph():
-                        cost, traced_layer = paddle.jit.TracedLayer.trace(
-                            mnist, inputs=img
-                        )
-                        if program is not None:
-                            self.assertTrue(program, traced_layer.program)
-                        program = traced_layer.program
-                        traced_layer.save_inference_model(
-                            './infer_imperative_mnist'
-                        )
-                    else:
-                        cost = mnist(img)
+                    cost = mnist(img)
 
                     if traced_layer is not None:
                         cost_static = traced_layer([img])

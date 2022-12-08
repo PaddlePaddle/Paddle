@@ -45,13 +45,13 @@ class TestProfiler(unittest.TestCase):
             )
             until = layers.fill_constant([1], dtype='int64', value=10)
             data_arr = layers.array_write(hidden1, i)
-            cond = fluid.layers.less_than(x=counter, y=until)
-            while_op = fluid.layers.While(cond=cond)
+            cond = paddle.less_than(x=counter, y=until)
+            while_op = paddle.static.nn.control_flow.While(cond=cond)
             with while_op.block():
                 hidden_n = fluid.layers.fc(input=hidden1, size=64, act='relu')
                 layers.array_write(hidden_n, i, data_arr)
                 fluid.layers.increment(x=counter, value=1, in_place=True)
-                layers.less_than(x=counter, y=until, cond=cond)
+                paddle.assign(paddle.less_than(x=counter, y=until), cond)
 
             hidden_n = layers.array_read(data_arr, i)
             hidden2 = fluid.layers.fc(input=hidden_n, size=64, act='relu')
@@ -59,8 +59,8 @@ class TestProfiler(unittest.TestCase):
             label = fluid.layers.data(name='y', shape=[1], dtype='int64')
             cost = fluid.layers.cross_entropy(input=predict, label=label)
             avg_cost = paddle.mean(cost)
-            batch_size = fluid.layers.create_tensor(dtype='int64')
-            batch_acc = fluid.layers.accuracy(
+            batch_size = paddle.tensor.create_tensor(dtype='int64')
+            batch_acc = paddle.static.accuracy(
                 input=predict, label=label, total=batch_size
             )
 
@@ -296,6 +296,10 @@ class TestFLOPSAPI(unittest.TestCase):
         )
         self.assertTrue(
             flops('softmax', {'X': [[12, 12, 12]]}, {}) == 3 * 12 * 12 * 12
+        )
+        self.assertTrue(
+            flops('c_embedding', {'Ids': [[12, 12]], 'W': [[12, 12, 3]]}, {})
+            == 0
         )
 
 

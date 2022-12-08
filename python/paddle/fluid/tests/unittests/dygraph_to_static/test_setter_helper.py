@@ -14,7 +14,7 @@
 
 import unittest
 
-from paddle.fluid.dygraph.dygraph_to_static.utils import GetterSetterHelper
+from paddle.jit.dy2static.utils import GetterSetterHelper
 
 vars = [1, 2, 3, 4, 5]
 

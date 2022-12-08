@@ -258,6 +258,38 @@ class XPUTestConv3DOp(XPUOpTestWrapper):
             place = paddle.XPUPlace(0)
             self.check_output_with_place(place)
 
+        def test_check_grad(self):
+            place = paddle.XPUPlace(0)
+            # TODO(wangzhongpu): support mkldnn op in dygraph mode
+            self.check_grad_with_place(
+                place,
+                {'Input', 'Filter'},
+                'Output',
+                max_relative_error=0.03,
+            )
+
+        def test_check_grad_no_filter(self):
+            place = paddle.XPUPlace(0)
+            # TODO(wangzhongpu): support mkldnn op in dygraph mode
+            self.check_grad_with_place(
+                place,
+                ['Input'],
+                'Output',
+                max_relative_error=0.03,
+                no_grad_set=set(['Filter']),
+            )
+
+        def test_check_grad_no_input(self):
+            place = paddle.XPUPlace(0)
+            # TODO(wangzhongpu): support mkldnn op in dygraph mode
+            self.check_grad_with_place(
+                place,
+                ['Filter'],
+                'Output',
+                max_relative_error=0.03,
+                no_grad_set=set(['Input']),
+            )
+
         def init_test_case(self):
             self.pad = [0, 0, 0]
             self.stride = [1, 1, 1]
@@ -400,6 +432,32 @@ class XPUTestConv3DOp_v2(XPUOpTestWrapper):
         def test_check_output(self):
             place = paddle.XPUPlace(0)
             self.check_output_with_place(place)
+
+        def test_check_grad(self):
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(
+                place, {'Input', 'Filter'}, 'Output', max_relative_error=0.03
+            )
+
+        def test_check_grad_no_filter(self):
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(
+                place,
+                ['Input'],
+                'Output',
+                max_relative_error=0.03,
+                no_grad_set=set(['Filter']),
+            )
+
+        def test_check_grad_no_input(self):
+            place = paddle.XPUPlace(0)
+            self.check_grad_with_place(
+                place,
+                ['Filter'],
+                'Output',
+                max_relative_error=0.03,
+                no_grad_set=set(['Input']),
+            )
 
         def init_test_case(self):
             self.stride = [1, 1, 1]

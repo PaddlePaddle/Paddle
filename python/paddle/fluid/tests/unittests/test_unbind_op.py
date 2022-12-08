@@ -66,7 +66,7 @@ class TestLayersUnbind(unittest.TestCase):
     def test_layers_unbind(self):
 
         x_1 = fluid.data(shape=[2, 3], dtype='float32', name='x_1')
-        [out_0, out_1] = fluid.layers.unbind(input=x_1, axis=0)
+        [out_0, out_1] = paddle.unbind(input=x_1, axis=0)
         input_1 = np.random.random([2, 3]).astype("float32")
         axis = fluid.data(shape=[1], dtype='int32', name='axis')
         exe = fluid.Executor(place=fluid.CPUPlace())

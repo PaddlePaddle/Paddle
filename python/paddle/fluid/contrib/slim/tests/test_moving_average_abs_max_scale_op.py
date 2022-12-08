@@ -50,10 +50,10 @@ class TestMovingAverageAbsMaxScaleOp(unittest.TestCase):
                 name=fc_tmp.name, dtype=fc_tmp.dtype
             )
             fc_tmp_1 = out_scale(fc_tmp)
-            cross_entropy = fluid.layers.softmax_with_cross_entropy(
+            cross_entropy = paddle.nn.functional.softmax_with_cross_entropy(
                 fc_tmp, label
             )
-            loss = fluid.layers.reduce_mean(cross_entropy)
+            loss = paddle.mean(cross_entropy)
             sgd = fluid.optimizer.SGD(learning_rate=1e-3)
             sgd.minimize(loss)
 

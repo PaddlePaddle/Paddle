@@ -27,24 +27,24 @@ class TestCreateParameterError(unittest.TestCase):
         with program_guard(Program(), Program()):
 
             def test_shape():
-                fluid.layers.create_parameter(1, np.float32)
+                paddle.create_parameter(1, np.float32)
 
             self.assertRaises(TypeError, test_shape)
 
             def test_shape_item():
-                fluid.layers.create_parameter([1.0, 2.0, 3.0], "float32")
+                paddle.create_parameter([1.0, 2.0, 3.0], "float32")
 
             self.assertRaises(TypeError, test_shape_item)
 
             def test_attr():
-                fluid.layers.create_parameter(
+                paddle.create_parameter(
                     [1, 2, 3], np.float32, attr=np.array([i for i in range(6)])
                 )
 
             self.assertRaises(TypeError, test_attr)
 
             def test_default_initializer():
-                fluid.layers.create_parameter(
+                paddle.create_parameter(
                     [1, 2, 3],
                     np.float32,
                     default_initializer=np.array([i for i in range(6)]),
