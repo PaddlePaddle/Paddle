@@ -60,7 +60,9 @@ class TestFetchAndFeed(unittest.TestCase):
             )
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             out = Lenet(data, class_dim=102)
-            loss = fluid.layers.cross_entropy(input=out, label=label)
+            loss = paddle.nn.functional.cross_entropy(
+                input=out, label=label, reduction='none', use_softmax=False
+            )
             loss = paddle.mean(loss)
             opt = fluid.optimizer.Momentum(
                 learning_rate=0.1,
