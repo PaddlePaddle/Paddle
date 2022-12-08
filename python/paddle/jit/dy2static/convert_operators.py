@@ -15,7 +15,7 @@
 import re
 import paddle
 from paddle.fluid.data_feeder import convert_dtype
-from paddle.jit.dy2static.variable_trans_func import (
+from .variable_trans_func import (
     to_static_variable,
 )
 from paddle.fluid.framework import core, Variable
@@ -43,9 +43,12 @@ from .return_transformer import (
 from paddle.jit.dy2static.utils import (
     UndefinedVar,
     Dygraph2StaticException,
+    GetterSetterHelper,
 )
-from paddle.jit.dy2static.utils import GetterSetterHelper
+
 from paddle.fluid.layers.utils import copy_mutable_vars
+
+__all__ = []
 
 
 def convert_attr(x, attr):
