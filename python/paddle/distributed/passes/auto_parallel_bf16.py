@@ -12,40 +12,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.framework import Block
-from paddle.distributed.auto_parallel.dist_context import DistributedContext
-from paddle import static
 import paddle
-from paddle.framework import core
-from paddle.distributed.passes.pass_base import PassBase, register_pass
-from paddle.distributed.fleet.meta_optimizers.common import OpRole
-from paddle.distributed.auto_parallel.utils import (
-    get_loss_op,
-    set_var_dist_attr,
-    naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
-)
-
+from paddle import static
+from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.process_group import (
     get_world_process_group,
 )
+from paddle.distributed.auto_parallel.utils import (
+    get_loss_op,
+    naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
+    set_var_dist_attr,
+)
+from paddle.distributed.fleet.meta_optimizers.common import OpRole
+from paddle.distributed.passes.pass_base import PassBase, register_pass
+from paddle.fluid import unique_name
 from paddle.fluid.contrib.mixed_precision.bf16 import (
     AutoMixedPrecisionListsBF16,
 )
 from paddle.fluid.contrib.mixed_precision.bf16.amp_utils import (
-    _valid_types,
     _dtype_to_str,
+    _is_in_fp32_varnames,
+    _valid_types,
     find_op_index,
     find_true_post_op,
-    _is_in_fp32_varnames,
 )
 from paddle.fluid.contrib.mixed_precision.fp16_utils import (
-    find_true_prev_op,
     _rename_arg,
+    find_true_prev_op,
 )
+from paddle.fluid.framework import Block
+from paddle.framework import core
 
 from ..auto_parallel.utils import is_backward_op, is_forward_op, is_loss_op
-
-from paddle.fluid import unique_name
 
 world_process_group = get_world_process_group()
 
@@ -74,8 +72,7 @@ class BF16State(object):
         for op in ops:
             if int(op.attr("op_role")) == 257:
                 training = True
-            if op.type == "create_py_reader" or op.type == "read":
-                continue
+
             if int(op.attr("op_role")) == int(OpRole.Forward):
                 self._mark_forward_program_op(op, ops)
             elif int(op.attr("op_role")) == int(OpRole.Backward):
@@ -87,10 +84,12 @@ class BF16State(object):
                         op.desc.original_id()
                     ] = self._op_bf16_dict.get(fwd_op_original_id, False)
             elif int(op.attr("op_role")) == int(OpRole.Optimize):
-                return training
+                break
         return training
 
     def _mark_forward_program_op(self, op, ops):
+        if op.type == "create_py_reader" or op.type == "read":
+            return
         if self.fp32_varnames is not None and _is_in_fp32_varnames(op, self):
             self._op_bf16_dict[op.desc.original_id()] = False
             return
