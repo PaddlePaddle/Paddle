@@ -19,7 +19,7 @@ from .variable_trans_func import (
     to_static_variable,
 )
 from paddle.fluid.framework import core, Variable
-from paddle.fluid.layers import Assert, Print
+from paddle.fluid.layers import Print
 from paddle.fluid.layers import (
     array_read,
     array_write,
@@ -35,7 +35,6 @@ from paddle.fluid.layers import (
 from paddle.fluid.layers.control_flow import (
     cond,
     while_loop,
-    increment,
 )
 from .return_transformer import (
     RETURN_NO_VALUE_VAR_NAME,
@@ -734,6 +733,8 @@ def convert_assert(cond, message=""):
     if isinstance(cond, Variable):
         cond = cast(cond, "bool")
         # NOTE: message is not used because Paddle Assert has no corresponding parameter to use.
+        from paddle.static.nn import Assert
+
         return Assert(cond)
     else:
         assert cond, message
@@ -786,6 +787,9 @@ def _run_paddle_pop(array, *args):
     def body(i, new_array):
         item = array_read(array=array, i=i)
         array_write(item, paddle.tensor.array_length(new_array), new_array)
+
+        from paddle.static.nn import increment
+
         i = increment(i)
         return i, new_array
 

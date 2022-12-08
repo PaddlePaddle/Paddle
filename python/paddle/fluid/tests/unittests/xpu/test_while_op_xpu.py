@@ -21,6 +21,7 @@ import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid.backward import append_backward
 from paddle.fluid.executor import Executor
+from paddle.static.nn import increment
 
 paddle.enable_static()
 
@@ -41,9 +42,9 @@ class TestWhileOp(unittest.TestCase):
         init = layers.zeros(shape=[10], dtype='float32')
         mem_array = layers.array_write(x=init, i=i)
         data_array = layers.array_write(x=d0, i=i)
-        i = layers.increment(i)
+        i = increment(i)
         layers.array_write(d1, i, array=data_array)
-        i = layers.increment(i)
+        i = increment(i)
         layers.array_write(d2, i, array=data_array)
         i = layers.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True
@@ -62,7 +63,7 @@ class TestWhileOp(unittest.TestCase):
             prev = layers.array_read(array=mem_array, i=i)
             result = layers.sums(input=[d, prev])
 
-            i = layers.increment(x=i, in_place=True)
+            i = increment(x=i, in_place=True)
             layers.array_write(result, i=i, array=mem_array)
             paddle.assign(paddle.less_than(x=i, y=array_len), cond)
 
@@ -71,7 +72,7 @@ class TestWhileOp(unittest.TestCase):
                 prev2 = layers.array_read(array=mem_array, i=j)
                 result2 = layers.sums(input=[d2, prev2])
 
-                j = layers.increment(x=j, in_place=True)
+                j = increment(x=j, in_place=True)
                 layers.array_write(result2, i=j, array=mem_array)
                 paddle.assign(paddle.less_than(x=j, y=array_len2), cond2)
         sum_result = layers.array_read(array=mem_array, i=j)

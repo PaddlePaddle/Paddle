@@ -91,7 +91,9 @@ class TestHybridParallelInferenceHelperClass(unittest.TestCase):
             with while_op.block():
                 with paddle.fluid.device_guard(f'{device}:all'):
                     input = layers.array_read(array=data, i=step_idx)
-                    layers.increment(x=step_idx, value=1.0, in_place=True)
+                    paddle.static.nn.increment(
+                        x=step_idx, value=1.0, in_place=True
+                    )
                     layers.array_write(input, i=step_idx, array=data)
 
                 with paddle.fluid.device_guard(f'{device}:0'):
