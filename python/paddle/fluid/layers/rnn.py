@@ -1594,7 +1594,7 @@ def _dynamic_decode_declarative(
         max_step_num = tensor.fill_constant(
             shape=[1], dtype="int64", value=max_step_num
         )
-    while_op = control_flow.While(cond, is_test=is_test)
+    while_op = paddle.static.nn.control_flow.While(cond, is_test=is_test)
 
     sequence_lengths = tensor.cast(paddle.zeros_like(initial_finished), "int64")
     sequence_lengths.stop_gradient = True
@@ -1805,26 +1805,23 @@ def dynamic_decode(
         **kwargs: Additional keyword arguments. Arguments passed to `decoder.step`.
 
     Returns:
-        tuple: A tuple( :code:`(final_outputs, final_states, sequence_lengths)` ) \
-            when `return_length` is True, otherwise a tuple( :code:`(final_outputs, final_states)` ). \
-            The final outputs and states, both are Tensor or nested structure of Tensor. \
-            `final_outputs` has the same structure and data types as the :code:`outputs` \
-            returned by :code:`decoder.step()` , and each Tenser in `final_outputs` \
-            is the stacked of all decoding steps' outputs, which might be revised \
-            by :code:`decoder.finalize()` if the decoder has implemented `finalize`. \
-            `final_states` is the counterpart at last time step of initial states \
-            returned by :code:`decoder.initialize()` , thus has the same structure \
-            with it and has tensors with same shapes and data types. `sequence_lengths` \
-            is an `int64` tensor with the same shape as `finished` returned \
-            by :code:`decoder.initialize()` , and it stores the actual lengths of \
-            all decoded sequences.
 
+        - final_outputs (Tensor, nested structure of Tensor), each Tensor in :code:`final_outputs` is the stacked of all decoding steps' outputs, which might be revised
+            by :code:`decoder.finalize()` if the decoder has implemented finalize.
+            And :code:`final_outputs` has the same structure and data types as the :code:`outputs`
+            returned by :code:`decoder.step()`
+
+        - final_states (Tensor, nested structure of Tensor), :code:`final_states` is the counterpart at last time step of initial states \
+            returned by :code:`decoder.initialize()` , thus has the same structure
+            with it and has tensors with same shapes and data types.
+
+        - sequence_lengths (Tensor), stores the actual lengths of all decoded sequences.
+            sequence_lengths is provided only if :code:`return_length` is True.
 
     Examples:
 
         .. code-block:: python
 
-            import numpy as np
             import paddle
             from paddle.nn import BeamSearchDecoder, dynamic_decode
             from paddle.nn import GRUCell, Linear, Embedding

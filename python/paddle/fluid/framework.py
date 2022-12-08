@@ -786,7 +786,8 @@ def disable_signal_handler():
 
     Make sure you called paddle.disable_signal_handler() before using above mentioned frameworks.
 
-    Returns: None
+    Returns:
+        None
 
     Examples:
         .. code-block:: python
