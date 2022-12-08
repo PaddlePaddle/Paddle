@@ -97,6 +97,12 @@ class TestAMPPass(unittest.TestCase):
         history = bf16_o1_engine.fit(
             self.dataset, 3, batch_size=self.batch_size
         )
+        file = open(
+            "/root/paddlejob/workspace/env_run/xuyb/Paddle/gpt_serial_main.log",
+            "w",
+        )
+        print(bf16_o1_engine._dist_main_progs["train"][0], file=file)
+        file.close()
         # bf16_o1_losses = np.array(history.history["loss"])
         # bf16_o1_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
         # self.check_results(serial_losses, bf16_o1_losses)

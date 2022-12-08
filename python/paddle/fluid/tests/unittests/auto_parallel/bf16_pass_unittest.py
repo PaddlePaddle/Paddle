@@ -95,6 +95,7 @@ class TestBF16Pass(unittest.TestCase):
         self.batch_size = 256
         self.batch_num = 10
         self.dataset = MnistDataset("train")
+        self.eval_dataset = MnistDataset("test")
 
     def init(self, engine):
         paddle.seed(2021)
@@ -132,10 +133,15 @@ class TestBF16Pass(unittest.TestCase):
 
         bf16_o1_engine = self.get_engine(True)
         history = bf16_o1_engine.fit(
-            self.dataset, 1, batch_size=self.batch_size
+            self.dataset,
+            2,
+            batch_size=self.batch_size,
+            valid_data=self.eval_dataset,
         )
         bf16_o1_losses = np.array(history.history["loss"])
-        bf16_o1_engine.evaluate(self.dataset, 1, batch_size=self.batch_size)
+        bf16_o1_engine.evaluate(
+            self.eval_dataset, 1, batch_size=self.batch_size
+        )
         # self.check_results(mp_losses, bf16_o1_losses)
 
 
