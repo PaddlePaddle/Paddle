@@ -19,6 +19,7 @@
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 
