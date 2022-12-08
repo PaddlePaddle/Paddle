@@ -2414,15 +2414,6 @@ class TestBook(LayerTest):
             out = paddle.scale(input, scale=scale_var)
             return out
 
-    def make_iou_similarity(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name="x", shape=[4], dtype="float32")
-            y = self._get_data(name="y", shape=[4], dtype="float32")
-            out = layers.iou_similarity(x, y, name='iou_similarity')
-            return out
-
     def make_bilinear_tensor_product_layer(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
