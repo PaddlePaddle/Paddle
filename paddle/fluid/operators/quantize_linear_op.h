@@ -156,7 +156,8 @@ class DeQuantizeLinearKernel : public framework::OpKernel<T> {
 
   void Compute(const framework::ExecutionContext& context) const override {
     auto* out = context.Output<phi::DenseTensor>("Y");
-    switch (out->dtype()) {
+    auto* scale = context.Input<phi::DenseTensor>("Scale");
+    switch (scale->dtype()) {
       case experimental::DataType::FLOAT64:
         ComputeImpl<double>(context);
         break;
