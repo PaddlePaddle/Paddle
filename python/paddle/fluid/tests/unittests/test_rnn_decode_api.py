@@ -25,7 +25,6 @@ import paddle.nn as nn
 from paddle import Model, set_device
 from paddle.fluid.dygraph import Layer
 from paddle.fluid.executor import Executor
-from paddle.fluid.framework import _test_eager_guard
 from paddle.nn import BeamSearchDecoder, dynamic_decode
 from paddle.static import InputSpec as Input
 
@@ -693,18 +692,13 @@ class TestDynamicDecode(unittest.TestCase):
                 fetch_list=[output],
             )[0]
 
-    def func_dynamic_basic_decoder(self):
+    def test_dynamic_basic_decoder(self):
         paddle.disable_static()
         src = paddle.to_tensor(np.random.randint(8, size=(8, 4)))
         src_length = paddle.to_tensor(np.random.randint(8, size=(8)))
         model = Seq2SeqModel(**self.model_hparams)
         probs, samples, sample_length = model(src, src_length)
         paddle.enable_static()
-
-    def test_dynamic_basic_decoder(self):
-        with _test_eager_guard():
-            self.func_dynamic_basic_decoder()
-        self.func_dynamic_basic_decoder()
 
 
 class ModuleApiTest(unittest.TestCase):
@@ -866,15 +860,10 @@ class TestBeamSearch(ModuleApiTest):
         ]
         return inputs
 
-    def func_check_output(self):
+    def test_check_output(self):
         self.setUp()
         self.make_inputs()
         self.check_output()
-
-    def test_check_output(self):
-        with _test_eager_guard():
-            self.func_check_output()
-        self.func_check_output()
 
 
 if __name__ == '__main__':
