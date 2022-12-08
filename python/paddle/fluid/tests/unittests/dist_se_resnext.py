@@ -221,7 +221,9 @@ class DistSeResneXt2x2(TestDistRunnerBase):
         # Train program
         model = SE_ResNeXt(layers=50)
         out = model.net(input=image, class_dim=102)
-        cost = fluid.layers.cross_entropy(input=out, label=label)
+        cost = paddle.nn.functional.cross_entropy(
+            input=out, label=label, reduction='none', use_softmax=False
+        )
 
         avg_cost = paddle.mean(x=cost)
         acc_top1 = paddle.static.accuracy(input=out, label=label, k=1)
