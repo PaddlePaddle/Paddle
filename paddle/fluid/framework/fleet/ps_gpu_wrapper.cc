@@ -218,7 +218,7 @@ void PSGPUWrapper::resize_gputask(std::shared_ptr<HeterContext> gpu_task) {
   }
 }
 
-void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
+void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task, Dataset* dataset_for_pull) {
   VLOG(3) << "PSGPUWrapper::BuildGPUPSTask begin";
   platform::Timer timeline;
   timeline.Start();
@@ -341,7 +341,7 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
               << " seconds.";
     }
   } else {
-    SlotRecordDataset* dataset = reinterpret_cast<SlotRecordDataset*>(dataset_);
+    SlotRecordDataset* dataset = reinterpret_cast<SlotRecordDataset*>(dataset_for_pull);
     const std::vector<uint64_t>& vec_data = dataset->GetGpuGraphTotalKeys();
     timeline.Start();
     add_key_to_local(vec_data);
@@ -1306,7 +1306,8 @@ void PSGPUWrapper::LoadIntoMemory(bool is_shuffle) {
     std::shared_ptr<HeterContext> gpu_task = gpu_task_pool_.Get();
     gpu_task->Reset();
     gpu_task->pass_id_ = (uint16_t)(dataset_->GetPassID());
-    data_ready_channel_->Put(gpu_task);
+
+    data_ready_channel_->Put(std::make_pair(gpu_task, dataset_));
   } else if (hbm_sparse_table_initialized_ == false) {
     SparseTableToHbm();
   }
@@ -1324,15 +1325,17 @@ void PSGPUWrapper::start_build_thread() {
 void PSGPUWrapper::pre_build_thread() {
   // prebuild: process load_data
   while (running_) {
+    std::pair<std::shared_ptr<HeterContext>, Dataset*> task = std::make_pair(nullptr, nullptr);
     std::shared_ptr<HeterContext> gpu_task = nullptr;
-    if (!data_ready_channel_->Get(gpu_task)) {
+    if (!data_ready_channel_->Get(task)) {
       continue;
     }
+    gpu_task = task.first;
     VLOG(3) << "thread PreBuildTask start.";
     platform::Timer timer;
     timer.Start();
     // build cpu ps data process
-    PreBuildTask(gpu_task);
+    PreBuildTask(gpu_task, task.second);
     timer.Pause();
     VLOG(0) << "thread PreBuildTask end, cost time: " << timer.ElapsedSec()
             << " s";
