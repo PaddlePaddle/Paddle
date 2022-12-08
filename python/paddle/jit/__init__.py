@@ -15,7 +15,6 @@
 
 from .api import save
 from .api import load
-from .api import TracedLayer
 from .api import set_code_level
 from .api import set_verbosity
 from .api import declarative as to_static
@@ -34,5 +33,4 @@ __all__ = [  # noqa
     'set_code_level',
     'set_verbosity',
     'not_to_static',
-    'TracedLayer',
 ]

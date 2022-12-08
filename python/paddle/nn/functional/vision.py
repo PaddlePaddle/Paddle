@@ -368,9 +368,8 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
 
             x = paddle.randn(shape=[2,9,4,4])
             out_var = F.pixel_shuffle(x, 3)
-            out = out_var.numpy()
-            print(out.shape)
-            # (2, 1, 12, 12)
+            print(out_var.shape)
+            # [2, 1, 12, 12]
     """
     if not isinstance(upscale_factor, int):
         raise TypeError("upscale factor must be int type")

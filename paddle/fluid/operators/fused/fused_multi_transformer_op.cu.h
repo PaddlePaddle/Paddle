@@ -44,8 +44,6 @@ DECLARE_bool(gemm_use_half_precision_compute_type);
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 // for debug
 // #define _DEBUG_FUSED_MULTI_TRANSFORMER
 
@@ -1119,11 +1117,11 @@ void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
 
 template <typename T>
 void fmha(const phi::GPUContext &dev_ctx,
-          const Tensor &qkv_tensor,
-          const Tensor &qkv_bias_tensor,
-          const Tensor &src_mask_tensor,
-          Tensor *cache_kv_tensor,
-          Tensor *out_tensor,
+          const phi::DenseTensor &qkv_tensor,
+          const phi::DenseTensor &qkv_bias_tensor,
+          const phi::DenseTensor &src_mask_tensor,
+          phi::DenseTensor *cache_kv_tensor,
+          phi::DenseTensor *out_tensor,
           int batch_size,
           int max_seq_length,
           int num_head,

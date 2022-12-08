@@ -370,7 +370,7 @@ class GRUCPUKernel : public framework::OpKernel<T> {
     gru_value.gate_weight = const_cast<T*>(weight_data);
     gru_value.state_weight =
         const_cast<T*>(weight_data + 2 * frame_size * frame_size);
-    Tensor ordered_h0;
+    phi::DenseTensor ordered_h0;
 
     framework::Vector<size_t> order(batch_gate->lod()[2]);
 
@@ -440,10 +440,10 @@ class GRUCPUKernel : public framework::OpKernel<T> {
         int bend = static_cast<int>(batch_starts[n + 1]);
         int cur_batch_size = bend - bstart;
 
-        Tensor gate_t = batch_gate->Slice(bstart, bend);
-        Tensor reset_hidden_prev_t =
+        phi::DenseTensor gate_t = batch_gate->Slice(bstart, bend);
+        phi::DenseTensor reset_hidden_prev_t =
             batch_reset_hidden_prev->Slice(bstart, bend);
-        Tensor hidden_t = batch_hidden->Slice(bstart, bend);
+        phi::DenseTensor hidden_t = batch_hidden->Slice(bstart, bend);
         gru_value.output_value = hidden_t.data<T>();
         gru_value.gate_value = gate_t.data<T>();
         gru_value.reset_output_value = reset_hidden_prev_t.data<T>();
@@ -505,10 +505,10 @@ class GRUCPUKernel : public framework::OpKernel<T> {
         int bend = static_cast<int>(batch_starts[n + 1]);
         int cur_batch_size = bend - bstart;
 
-        Tensor gate_t = batch_gate->Slice(bstart, bend);
-        Tensor reset_hidden_prev_t =
+        phi::DenseTensor gate_t = batch_gate->Slice(bstart, bend);
+        phi::DenseTensor reset_hidden_prev_t =
             batch_reset_hidden_prev->Slice(bstart, bend);
-        Tensor hidden_t = batch_hidden->Slice(bstart, bend);
+        phi::DenseTensor hidden_t = batch_hidden->Slice(bstart, bend);
         gru_value.output_value = hidden_t.data<T>();
         gru_value.gate_value = gate_t.data<T>();
         gru_value.reset_output_value = reset_hidden_prev_t.data<T>();
