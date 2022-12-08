@@ -21,6 +21,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.generator as generator
+from paddle.tensor import random
 
 
 class TestGeneratorSeed(unittest.TestCase):
@@ -34,23 +35,17 @@ class TestGeneratorSeed(unittest.TestCase):
         fluid.enable_dygraph()
 
         gen = paddle.seed(12312321111)
-        x = fluid.layers.uniform_random([10], dtype="float32", min=0.0, max=1.0)
+        x = paddle.uniform([10], dtype="float32", min=0.0, max=1.0)
 
         st1 = gen.get_state()
-        x1 = fluid.layers.uniform_random(
-            [10], dtype="float32", min=0.0, max=1.0
-        )
+        x1 = paddle.uniform([10], dtype="float32", min=0.0, max=1.0)
 
         gen.set_state(st1)
         print(gen.get_state())
-        x2 = fluid.layers.uniform_random(
-            [10], dtype="float32", min=0.0, max=1.0
-        )
+        x2 = paddle.uniform([10], dtype="float32", min=0.0, max=1.0)
 
         paddle.seed(12312321111)
-        x3 = fluid.layers.uniform_random(
-            [10], dtype="float32", min=0.0, max=1.0
-        )
+        x3 = paddle.uniform([10], dtype="float32", min=0.0, max=1.0)
 
         x_np = x.numpy()
         x1_np = x1.numpy()
@@ -71,8 +66,8 @@ class TestGeneratorSeed(unittest.TestCase):
         with fluid.program_guard(train_program, startup_program):
             # example 1:
             # attr shape is a list which doesn't contain tensor Variable.
-            result_1 = fluid.layers.uniform_random(shape=[3, 4])
-            result_2 = fluid.layers.uniform_random(shape=[3, 4])
+            result_1 = paddle.uniform(shape=[3, 4])
+            result_2 = paddle.uniform(shape=[3, 4])
 
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(startup_program)
@@ -101,15 +96,11 @@ class TestGeneratorSeed(unittest.TestCase):
         gen = paddle.seed(111111111)
         st = gen.get_state()
         # x = np.arange(1,101).reshape(2,50).astype("float32")
-        x = fluid.layers.uniform_random(
-            [2, 10], dtype="float32", min=0.0, max=1.0
-        )
+        x = paddle.uniform([2, 10], dtype="float32", min=0.0, max=1.0)
         y = fluid.layers.dropout(x, 0.5)
         gen.manual_seed(111111111)
         # gen.set_state(st)
-        x1 = fluid.layers.uniform_random(
-            [2, 10], dtype="float32", min=0.0, max=1.0
-        )
+        x1 = paddle.uniform([2, 10], dtype="float32", min=0.0, max=1.0)
         y1 = fluid.layers.dropout(x1, 0.5)
         y_np = y.numpy()
         y1_np = y1.numpy()
@@ -128,7 +119,7 @@ class TestGeneratorSeed(unittest.TestCase):
         with fluid.program_guard(train_program, startup_program):
             # example 1:
             # attr shape is a list which doesn't contain tensor Variable.
-            x_1 = fluid.layers.uniform_random(shape=[2, 10])
+            x_1 = paddle.uniform(shape=[2, 10])
             y_1 = fluid.layers.dropout(x_1, 0.5)
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(startup_program)
@@ -148,13 +139,13 @@ class TestGeneratorSeed(unittest.TestCase):
         fluid.enable_dygraph()
 
         gen = paddle.seed(12312321111)
-        x = fluid.layers.gaussian_random([10], dtype="float32")
+        x = random.gaussian([10], dtype="float32")
         st1 = gen.get_state()
-        x1 = fluid.layers.gaussian_random([10], dtype="float32")
+        x1 = random.gaussian([10], dtype="float32")
         gen.set_state(st1)
-        x2 = fluid.layers.gaussian_random([10], dtype="float32")
+        x2 = random.gaussian([10], dtype="float32")
         gen.manual_seed(12312321111)
-        x3 = fluid.layers.gaussian_random([10], dtype="float32")
+        x3 = random.gaussian([10], dtype="float32")
         x_np = x.numpy()
         x1_np = x1.numpy()
         x2_np = x2.numpy()
@@ -175,8 +166,8 @@ class TestGeneratorSeed(unittest.TestCase):
         with fluid.program_guard(train_program, startup_program):
             # example 1:
             # attr shape is a list which doesn't contain tensor Variable.
-            result_1 = fluid.layers.gaussian_random(shape=[3, 4])
-            result_2 = fluid.layers.gaussian_random(shape=[3, 4])
+            result_1 = random.gaussian(shape=[3, 4])
+            result_2 = random.gaussian(shape=[3, 4])
 
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(startup_program)
@@ -234,8 +225,8 @@ class TestGeneratorSeed(unittest.TestCase):
         with fluid.program_guard(train_program, startup_program):
             # example 1:
             # attr shape is a list which doesn't contain tensor Variable.
-            result_1 = fluid.layers.uniform_random(shape=[3, 4])
-            result_2 = fluid.layers.uniform_random(shape=[3, 4])
+            result_1 = paddle.uniform(shape=[3, 4])
+            result_2 = paddle.uniform(shape=[3, 4])
 
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(startup_program)
@@ -383,7 +374,7 @@ class TestGeneratorSeed(unittest.TestCase):
         with fluid.program_guard(train_program, startup_program):
             # example 1:
             # attr shape is a list which doesn't contain tensor Variable.
-            x = fluid.layers.uniform_random(shape=[2, 10])
+            x = paddle.uniform(shape=[2, 10])
             result_1 = fluid.layers.fc(
                 input=x,
                 size=10,

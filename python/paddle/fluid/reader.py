@@ -1351,9 +1351,9 @@ class GeneratorLoader(DataLoaderBase):
         self._use_double_buffer = use_double_buffer
         self._capacity = capacity
         if not self._iterable:
-            # Because layers.io.double_buffer is not supported anymore, and only when iterable and use_double_buffer
-            # are both True layers.io.double_buffer will be in use, here if itrable is False, use_double_buffer will be
-            # forcely set False to avoid using layers.io.double_buffer.
+            # Because layers.io.double_buffer is not supported anymore and that iterable is False and use_double_buffer
+            # is True is not spported, here if itrable is False, use_double_buffer will be
+            # forcely set False to avoid unexpected error.
             # TODO: keep use_double_buffer
             self._use_double_buffer = False
             self._init_non_iterable()
