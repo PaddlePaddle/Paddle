@@ -17,7 +17,7 @@ from paddle.nn import Layer
 
 
 class FusedEcMoe(Layer):
-    r"""A FusedEcMoe Layer. More details you can refer to `paddle.incubate.nn.functional.fused_ec_moe` . 
+    r"""A FusedEcMoe Layer. 
 
     Parameters:
         hidden_size (int): The dim size of input units.
@@ -86,15 +86,11 @@ class FusedEcMoe(Layer):
         self.bmm_bias1 = self.create_parameter(
             shape=bias1_shape, attr=bias_attr, dtype=dtype, is_bias=True
         )
-        self.act = 0 
-        if act_type == "gelu": 
-            self.act = 0
-        elif act_type == "relu": 
-            self.act = 1 
-        else: 
-            raise NotImplementedError("Fused EcMoe Kernel only support 'gelu' and 'relu' activation. ")
+        self.act_type = act_type
+        if self.act_type not in ["gelu", "relu"]: 
+            raise NotImplementedError("Currently only support `gelu`, `relu`. ")
 
     def forward(self, x, gate):
         return F.fused_ec_moe(
-            x, gate, self.bmm_weight0, self.bmm_bias0, self.bmm_weight1, self.bmm_bias1, self.act
+            x, gate, self.bmm_weight0, self.bmm_bias0, self.bmm_weight1, self.bmm_bias1, self.act_type
         )
