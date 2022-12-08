@@ -3881,7 +3881,7 @@ function main() {
         parallel_test
         ;;
       build_gpubox)
-        run_setup ${PYTHON_ABI:-""} 
+        run_setup ${PYTHON_ABI:-""} install
         ;;
       check_xpu)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
