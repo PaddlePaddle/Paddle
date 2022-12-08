@@ -14,20 +14,30 @@
 
 #include "paddle/fluid/distributed/collective/check.h"
 
+#include "paddle/fluid/distributed/collective/NCCLTools.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/errors.h"
 
-#ifdef PADDLE_WITH_RCCL
-#include "paddle/fluid/platform/dynload/rccl.h"
+#ifdef PADDLE_WITH_HIP
+#define gpuMalloc hipMalloc
+#define gpuMemcpy hipMemcpy
+#define gpuMemcpyDeviceToHost hipMemcpyDeviceToHost
+#define gpuMemcpyHostToDevice hipMemcpyHostToDevice
+#define gpuFree hipFree
 #else
-#include "paddle/fluid/platform/dynload/nccl.h"
+#define gpuMalloc cudaMalloc
+#define gpuMemcpy cudaMemcpy
+#define gpuMemcpyDeviceToHost cudaMemcpyDeviceToHost
+#define gpuMemcpyHostToDevice cudaMemcpyHostToDevice
+#define gpuFree cudaFree
 #endif
 
 namespace paddle {
 namespace distributed {
 
+// static checks
 void CommStaticCheck::CheckRank(int rank, int world_size) {
   PADDLE_ENFORCE_GE(rank,
                     0,
@@ -155,6 +165,125 @@ void CommStaticCheck::GatherLikeShape(const phi::DenseTensor& out_tensor,
              world_size,
              /*out_size_factor*/ 1,
              /*in_size_factor*/ world_size);
+}
+
+// dynamic checks
+void CommDynamicCheck::CheckDataType(const phi::DenseTensor& tensor,
+                                     int64_t dtype) {
+  PADDLE_ENFORCE_EQ(
+      static_cast<int64_t>(tensor.dtype()),
+      dtype,
+      phi::errors::InvalidArgument(
+          "Tensors in communication are expected to have the same data type."));
+}
+
+void CommDynamicCheck::CheckDataType(const phi::DenseTensor& tensor,
+                                     int root_rank,
+                                     int cur_rank,
+                                     ncclComm_t comm) {
+  constexpr int kSize = sizeof(int64_t);
+  int64_t dtype_host = static_cast<int64_t>(tensor.dtype());
+  int64_t* dtype_device;
+  PADDLE_ENFORCE_GPU_SUCCESS(gpuMalloc(&dtype_device, kSize));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      gpuMemcpy(dtype_device, &dtype_host, kSize, gpuMemcpyHostToDevice));
+
+  NCCL_CHECK(phi::dynload::ncclBroadcast(dtype_device,
+                                         dtype_device,
+                                         kSize,
+                                         ncclInt64,
+                                         root_rank,
+                                         comm,
+                                         kDefaultStream));
+
+  if (root_rank == cur_rank) {
+    VLOG(3) << "Dynamic check broadcast metadata, dtype: " << dtype_host;
+  } else {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        gpuMemcpy(&dtype_host, dtype_device, kSize, gpuMemcpyDeviceToHost));
+    VLOG(3) << "Dynamic check recv metadata, dtype: " << dtype_host;
+    CheckDataType(tensor, dtype_host);
+  }
+  PADDLE_ENFORCE_GPU_SUCCESS(gpuFree(dtype_device));
+}
+
+void CommDynamicCheck::CheckShape(const phi::DenseTensor& tensor,
+                                  int64_t shape) {
+  PADDLE_ENFORCE_EQ(
+      tensor.numel(),
+      shape,
+      phi::errors::InvalidArgument(
+          "Tensors in communication are expected to have matching sizes."));
+}
+
+void CommDynamicCheck::CheckShape(const phi::DenseTensor& tensor,
+                                  int root_rank,
+                                  int cur_rank,
+                                  ncclComm_t comm) {
+  CheckDataType(tensor, root_rank, cur_rank, comm);
+
+  constexpr int kSize = sizeof(int64_t);
+  int64_t shape_host = tensor.numel();
+  int64_t* shape_device;
+
+  PADDLE_ENFORCE_GPU_SUCCESS(gpuMalloc(&shape_device, kSize));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      gpuMemcpy(shape_device, &shape_host, kSize, gpuMemcpyHostToDevice));
+
+  NCCL_CHECK(phi::dynload::ncclBroadcast(shape_device,
+                                         shape_device,
+                                         kSize,
+                                         ncclInt64,
+                                         root_rank,
+                                         comm,
+                                         kDefaultStream));
+
+  if (root_rank == cur_rank) {
+    VLOG(3) << "Dynamic check broadcast metadata, shape: " << shape_host;
+  } else {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        gpuMemcpy(&shape_host, shape_device, kSize, gpuMemcpyDeviceToHost));
+    VLOG(3) << "Dynamic check recv metadata, shape: " << shape_host;
+    CheckShape(tensor, shape_host);
+  }
+  PADDLE_ENFORCE_GPU_SUCCESS(gpuFree(shape_device));
+}
+
+void CommDynamicCheck::CheckShape(const phi::DenseTensor& out_tensor,
+                                  const phi::DenseTensor& in_tensor,
+                                  const std::vector<int64_t>& in_size_each_rank,
+                                  int cur_rank,
+                                  int world_size,
+                                  ncclComm_t comm) {
+  CheckDataType(out_tensor, /*root_rank*/ 0, cur_rank, comm);
+  CheckDataType(in_tensor, /*root_rank*/ 0, cur_rank, comm);
+
+  constexpr int kSize = sizeof(int64_t);
+  int64_t in_row_size = in_tensor.numel() / in_tensor.dims()[0];
+
+  for (int rank = 0; rank < world_size; ++rank) {
+    int64_t in_shape_host = in_size_each_rank[rank] * in_row_size;
+    int64_t* in_shape_device;
+    PADDLE_ENFORCE_GPU_SUCCESS(gpuMalloc(&in_shape_device, kSize));
+    PADDLE_ENFORCE_GPU_SUCCESS(gpuMemcpy(
+        in_shape_device, &in_shape_host, kSize, gpuMemcpyHostToDevice));
+
+    NCCL_CHECK(phi::dynload::ncclReduce(in_shape_device,
+                                        in_shape_device,
+                                        kSize,
+                                        ncclInt64,
+                                        ncclSum,
+                                        rank,
+                                        comm,
+                                        kDefaultStream));
+    if (rank == cur_rank) {
+      PADDLE_ENFORCE_GPU_SUCCESS(gpuMemcpy(
+          &in_shape_host, in_shape_device, kSize, gpuMemcpyDeviceToHost));
+      VLOG(3) << "Dynamic check recv metadata, shape: " << in_shape_host;
+      CheckShape(out_tensor, in_shape_host);
+    }
+    PADDLE_ENFORCE_GPU_SUCCESS(gpuFree(in_shape_device));
+  }
 }
 
 }  //  namespace distributed
