@@ -1123,6 +1123,7 @@ class ShardingPass(PassBase):
                     is_recompute=False,
                     sync=False,
                 )
+                depend_op.dist_attr.execution_stream = self.gradient_sync_stream
 
         block._sync_with_cpp()
 
