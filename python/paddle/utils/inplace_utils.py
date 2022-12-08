@@ -1,4 +1,4 @@
-#   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..wrapped_decorator import wrap_decorator
-from ..framework import _non_static_mode
 import warnings
 import paddle
 from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.wrapped_decorator import wrap_decorator
 
 
 # NOTE(pangyoki): The Inplace APIs with underline(`_`) is only valid for the method of calling `_C_ops`

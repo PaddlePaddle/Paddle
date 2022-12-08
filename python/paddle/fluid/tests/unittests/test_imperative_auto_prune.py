@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.framework import _test_eager_guard
+from paddle.tensor import random
 
 
 class AutoPruneLayer0(fluid.Layer):
@@ -487,7 +488,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
 
     def func_case4_with_no_grad_op_maker(self):
         with fluid.dygraph.guard():
-            out = fluid.layers.gaussian_random(shape=[20, 30])
+            out = random.gaussian(shape=[20, 30])
             loss = paddle.mean(out)
             loss.backward()
             self.assertIsNone(out._grad_ivar())

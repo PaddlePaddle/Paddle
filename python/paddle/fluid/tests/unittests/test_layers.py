@@ -191,7 +191,7 @@ class TestLayer(LayerTest):
                 dtype='float32',
                 append_batch_size=False,
             )
-            flatten = nn.Flatten()
+            flatten = paddle.nn.Flatten()
             ret = flatten(t)
             static_ret = self.get_static_graph_result(
                 feed={'data': inp}, fetch_list=[ret]
@@ -199,12 +199,12 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             with _test_eager_guard():
                 t = base.to_variable(inp)
-                flatten = nn.Flatten()
+                flatten = paddle.nn.Flatten()
                 dy_eager_ret = flatten(t)
                 dy_eager_ret_value = dy_eager_ret.numpy()
 
             t = base.to_variable(inp)
-            flatten = nn.Flatten()
+            flatten = paddle.nn.Flatten()
             dy_ret = flatten(t)
             dy_ret_value = dy_ret.numpy()
 
@@ -1066,10 +1066,10 @@ class TestLayer(LayerTest):
                 lod_level=1,
                 append_batch_size=False,
             )
-            groupNorm = nn.GroupNorm(
-                channels=shape[1],
-                groups=2,
-                param_attr=fluid.initializer.Uniform(low=-0.5, high=0.5),
+            groupNorm = paddle.nn.GroupNorm(
+                num_channels=shape[1],
+                num_groups=2,
+                weight_attr=fluid.initializer.Uniform(low=-0.5, high=0.5),
                 bias_attr=fluid.initializer.ConstantInitializer(value=1),
             )
             ret = groupNorm(X)
@@ -1084,10 +1084,10 @@ class TestLayer(LayerTest):
             )[0]
 
         with self.dynamic_graph():
-            groupNorm = nn.GroupNorm(
-                channels=shape[1],
-                groups=2,
-                param_attr=fluid.initializer.Uniform(low=-0.5, high=0.5),
+            groupNorm = paddle.nn.GroupNorm(
+                num_channels=shape[1],
+                num_groups=2,
+                weight_attr=fluid.initializer.Uniform(low=-0.5, high=0.5),
                 bias_attr=fluid.initializer.ConstantInitializer(value=1),
             )
             dy_ret = groupNorm(base.to_variable(input))
@@ -1209,7 +1209,7 @@ class TestLayer(LayerTest):
                 lod_level=1,
                 append_batch_size=False,
             )
-            spectralNorm = nn.SpectralNorm(shape, dim=1, power_iters=2)
+            spectralNorm = paddle.nn.SpectralNorm(shape, axis=1, power_iters=2)
             ret = spectralNorm(Weight)
             static_ret2 = self.get_static_graph_result(
                 feed={
@@ -1223,211 +1223,19 @@ class TestLayer(LayerTest):
 
         with self.dynamic_graph():
             with _test_eager_guard():
-                spectralNorm = nn.SpectralNorm(shape, dim=1, power_iters=2)
+                spectralNorm = paddle.nn.SpectralNorm(
+                    shape, axis=1, power_iters=2
+                )
                 dy_eager_ret = spectralNorm(base.to_variable(input))
                 dy_eager_rlt_value = dy_eager_ret.numpy()
 
-            spectralNorm = nn.SpectralNorm(shape, dim=1, power_iters=2)
+            spectralNorm = paddle.nn.SpectralNorm(shape, axis=1, power_iters=2)
             dy_ret = spectralNorm(base.to_variable(input))
             dy_rlt_value = dy_ret.numpy()
 
         np.testing.assert_allclose(static_ret, dy_rlt_value, rtol=1e-05)
         np.testing.assert_allclose(static_ret, dy_eager_rlt_value, rtol=1e-05)
         np.testing.assert_allclose(static_ret, static_ret2, rtol=1e-05)
-
-    def test_tree_conv(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-        adj_array = [1, 2, 1, 3, 1, 4, 1, 5, 2, 6, 2, 7, 2, 8, 4, 9, 4, 10]
-        adj = np.array(adj_array).reshape((1, 9, 2)).astype('int32')
-        adj = np.tile(adj, (1, 1, 1))
-        vectors = np.random.random((1, 10, 5)).astype('float32')
-        with self.static_graph():
-            NodesVector = fluid.layers.data(
-                name='NodesVector',
-                shape=(1, 10, 5),
-                dtype='float32',
-                lod_level=1,
-                append_batch_size=False,
-            )
-            EdgeSet = fluid.layers.data(
-                name='EdgeSet',
-                shape=(1, 9, 2),
-                dtype='int32',
-                lod_level=1,
-                append_batch_size=False,
-            )
-            ret = fluid.contrib.layers.tree_conv(
-                nodes_vector=NodesVector,
-                edge_set=EdgeSet,
-                output_size=6,
-                num_filters=1,
-                max_depth=2,
-            )
-            static_ret = self.get_static_graph_result(
-                feed={
-                    'NodesVector': fluid.create_lod_tensor(
-                        data=vectors, recursive_seq_lens=[[1]], place=place
-                    ),
-                    'EdgeSet': fluid.create_lod_tensor(
-                        data=adj, recursive_seq_lens=[[1]], place=place
-                    ),
-                },
-                fetch_list=[ret],
-                with_lod=False,
-            )[0]
-
-        with self.static_graph():
-            NodesVector = fluid.layers.data(
-                name='NodesVector',
-                shape=(1, 10, 5),
-                dtype='float32',
-                lod_level=1,
-                append_batch_size=False,
-            )
-            EdgeSet = fluid.layers.data(
-                name='EdgeSet',
-                shape=(1, 9, 2),
-                dtype='int32',
-                lod_level=1,
-                append_batch_size=False,
-            )
-            treeConv = nn.TreeConv(
-                feature_size=5, output_size=6, num_filters=1, max_depth=2
-            )
-            ret = treeConv(NodesVector, EdgeSet)
-            static_ret2 = self.get_static_graph_result(
-                feed={
-                    'NodesVector': fluid.create_lod_tensor(
-                        data=vectors, recursive_seq_lens=[[1]], place=place
-                    ),
-                    'EdgeSet': fluid.create_lod_tensor(
-                        data=adj, recursive_seq_lens=[[1]], place=place
-                    ),
-                },
-                fetch_list=[ret],
-                with_lod=False,
-            )[0]
-
-        with self.dynamic_graph():
-            with _test_eager_guard():
-                treeConv = nn.TreeConv(
-                    feature_size=5, output_size=6, num_filters=1, max_depth=2
-                )
-                dy_eager_ret = treeConv(
-                    base.to_variable(vectors), base.to_variable(adj)
-                )
-                dy_eager_rlt_value = dy_eager_ret.numpy()
-
-            treeConv = nn.TreeConv(
-                feature_size=5, output_size=6, num_filters=1, max_depth=2
-            )
-            dy_ret = treeConv(base.to_variable(vectors), base.to_variable(adj))
-            dy_rlt_value = dy_ret.numpy()
-
-        np.testing.assert_allclose(static_ret, static_ret2, rtol=1e-05)
-        np.testing.assert_allclose(static_ret, dy_rlt_value, rtol=1e-05)
-        np.testing.assert_allclose(static_ret, dy_eager_rlt_value, rtol=1e-05)
-
-        with self.dynamic_graph():
-            with _test_eager_guard():
-                custom_weight = np.random.randn(5, 3, 6, 1).astype("float32")
-                weight_attr = fluid.ParamAttr(
-                    initializer=fluid.initializer.NumpyArrayInitializer(
-                        custom_weight
-                    )
-                )
-                treeConv1 = nn.TreeConv(
-                    feature_size=5,
-                    output_size=6,
-                    num_filters=1,
-                    max_depth=2,
-                    bias_attr='eager_tc1_b',
-                )
-                treeConv2 = nn.TreeConv(
-                    feature_size=5,
-                    output_size=6,
-                    num_filters=1,
-                    max_depth=2,
-                    param_attr=weight_attr,
-                    bias_attr='eager_tc2_b',
-                )
-                dy_ret1 = treeConv1(
-                    base.to_variable(vectors), base.to_variable(adj)
-                )
-                dy_ret2 = treeConv2(
-                    base.to_variable(vectors), base.to_variable(adj)
-                )
-                self.assertFalse(
-                    np.array_equal(dy_ret1.numpy(), dy_ret2.numpy())
-                )
-                treeConv2.weight.set_value(treeConv1.weight.numpy())
-                treeConv2.bias.set_value(treeConv1.bias)
-                dy_ret1 = treeConv1(
-                    base.to_variable(vectors), base.to_variable(adj)
-                )
-                dy_ret2 = treeConv2(
-                    base.to_variable(vectors), base.to_variable(adj)
-                )
-                np.testing.assert_array_equal(dy_ret1.numpy(), dy_ret2.numpy())
-
-                treeConv2.weight = treeConv1.weight
-                treeConv2.bias = treeConv1.bias
-                np.testing.assert_array_equal(
-                    treeConv1.weight.numpy(), treeConv2.weight.numpy()
-                )
-                np.testing.assert_array_equal(
-                    treeConv1.bias.numpy(), treeConv2.bias.numpy()
-                )
-
-            custom_weight = np.random.randn(5, 3, 6, 1).astype("float32")
-            weight_attr = fluid.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(
-                    custom_weight
-                )
-            )
-            treeConv1 = nn.TreeConv(
-                feature_size=5,
-                output_size=6,
-                num_filters=1,
-                max_depth=2,
-                bias_attr='tc1_b',
-            )
-            treeConv2 = nn.TreeConv(
-                feature_size=5,
-                output_size=6,
-                num_filters=1,
-                max_depth=2,
-                param_attr=weight_attr,
-                bias_attr='tc2_b',
-            )
-            dy_ret1 = treeConv1(
-                base.to_variable(vectors), base.to_variable(adj)
-            )
-            dy_ret2 = treeConv2(
-                base.to_variable(vectors), base.to_variable(adj)
-            )
-            self.assertFalse(np.array_equal(dy_ret1.numpy(), dy_ret2.numpy()))
-            treeConv2.weight.set_value(treeConv1.weight.numpy())
-            treeConv2.bias.set_value(treeConv1.bias)
-            dy_ret1 = treeConv1(
-                base.to_variable(vectors), base.to_variable(adj)
-            )
-            dy_ret2 = treeConv2(
-                base.to_variable(vectors), base.to_variable(adj)
-            )
-            np.testing.assert_array_equal(dy_ret1.numpy(), dy_ret2.numpy())
-
-            treeConv2.weight = treeConv1.weight
-            treeConv2.bias = treeConv1.bias
-            np.testing.assert_array_equal(
-                treeConv1.weight.numpy(), treeConv2.weight.numpy()
-            )
-            np.testing.assert_array_equal(
-                treeConv1.bias.numpy(), treeConv2.bias.numpy()
-            )
 
     def test_conv3d_transpose(self):
         input_array = (
@@ -1579,7 +1387,7 @@ class TestLayer(LayerTest):
             def body(i):
                 return i + 1
 
-            out = layers.while_loop(cond, body, [i])
+            out = paddle.static.nn.while_loop(cond, body, [i])
             static_ret = self.get_static_graph_result(feed={}, fetch_list=out)
 
         with self.dynamic_graph():
@@ -1592,14 +1400,14 @@ class TestLayer(LayerTest):
             def body1(i):
                 return i + 1
 
-            dy_ret = layers.while_loop(cond1, body1, [i])
+            dy_ret = paddle.static.nn.while_loop(cond1, body1, [i])
             with self.assertRaises(ValueError):
                 j = layers.fill_constant(shape=[1], dtype='int64', value=0)
 
                 def body2(i):
                     return i + 1, i + 2
 
-                layers.while_loop(cond1, body2, [j])
+                paddle.static.nn.while_loop(cond1, body2, [j])
 
         np.testing.assert_array_equal(static_ret[0], dy_ret[0].numpy())
 
@@ -1851,10 +1659,12 @@ class TestLayer(LayerTest):
             pred_2 = paddle.less_than(x, y)  # false: 0.3 < 0.1
             pred_3 = paddle.equal(x, y)  # false: 0.3 == 0.1
 
-            out_1 = layers.case(
+            out_1 = paddle.static.nn.case(
                 pred_fn_pairs=[(pred_1, fn_1), (pred_2, fn_2)], default=fn_3
             )
-            out_2 = layers.case(pred_fn_pairs=[(pred_2, fn_2), (pred_3, fn_3)])
+            out_2 = paddle.static.nn.case(
+                pred_fn_pairs=[(pred_2, fn_2), (pred_3, fn_3)]
+            )
 
             place = (
                 fluid.CUDAPlace(0)
@@ -1874,10 +1684,10 @@ class TestLayer(LayerTest):
                 pred_2 = paddle.less_than(x, y)  # false: 0.3 < 0.1
                 pred_3 = paddle.equal(x, y)  # false: 0.3 == 0.1
 
-                out_1 = layers.case(
+                out_1 = paddle.static.nn.case(
                     pred_fn_pairs=[(pred_1, fn_1), (pred_2, fn_2)], default=fn_3
                 )
-                out_2 = layers.case(
+                out_2 = paddle.static.nn.case(
                     pred_fn_pairs=[(pred_2, fn_2), (pred_3, fn_3)]
                 )
                 eager_dynamic_res1 = out_1.numpy()
@@ -1891,10 +1701,12 @@ class TestLayer(LayerTest):
             pred_2 = paddle.less_than(x, y)  # false: 0.3 < 0.1
             pred_3 = paddle.equal(x, y)  # false: 0.3 == 0.1
 
-            out_1 = layers.case(
+            out_1 = paddle.static.nn.case(
                 pred_fn_pairs=[(pred_1, fn_1), (pred_2, fn_2)], default=fn_3
             )
-            out_2 = layers.case(pred_fn_pairs=[(pred_2, fn_2), (pred_3, fn_3)])
+            out_2 = paddle.static.nn.case(
+                pred_fn_pairs=[(pred_2, fn_2), (pred_3, fn_3)]
+            )
             dynamic_res1 = out_1.numpy()
             dynamic_res2 = out_2.numpy()
 
@@ -1917,17 +1729,17 @@ class TestLayer(LayerTest):
             index_1 = layers.fill_constant(shape=[1], dtype='int32', value=1)
             index_2 = layers.fill_constant(shape=[1], dtype='int32', value=2)
 
-            out_1 = layers.switch_case(
+            out_1 = paddle.static.nn.switch_case(
                 branch_index=index_1,
                 branch_fns={1: fn_1, 2: fn_2},
                 default=fn_3,
             )
-            out_2 = layers.switch_case(
+            out_2 = paddle.static.nn.switch_case(
                 branch_index=index_2,
                 branch_fns=[(1, fn_1), (2, fn_2)],
                 default=fn_3,
             )
-            out_3 = layers.switch_case(
+            out_3 = paddle.static.nn.switch_case(
                 branch_index=index_2,
                 branch_fns=[(0, fn_1), (4, fn_2), (7, fn_3)],
             )
@@ -1951,17 +1763,17 @@ class TestLayer(LayerTest):
                     shape=[1], dtype='int32', value=2
                 )
 
-                out_1 = layers.switch_case(
+                out_1 = paddle.static.nn.switch_case(
                     branch_index=index_1,
                     branch_fns={1: fn_1, 2: fn_2},
                     default=fn_3,
                 )
-                out_2 = layers.switch_case(
+                out_2 = paddle.static.nn.switch_case(
                     branch_index=index_2,
                     branch_fns=[(1, fn_1), (2, fn_2)],
                     default=fn_3,
                 )
-                out_3 = layers.switch_case(
+                out_3 = paddle.static.nn.switch_case(
                     branch_index=index_2,
                     branch_fns=[(0, fn_1), (4, fn_2), (7, fn_3)],
                 )
@@ -1973,17 +1785,17 @@ class TestLayer(LayerTest):
             index_1 = layers.fill_constant(shape=[1], dtype='int32', value=1)
             index_2 = layers.fill_constant(shape=[1], dtype='int32', value=2)
 
-            out_1 = layers.switch_case(
+            out_1 = paddle.static.nn.switch_case(
                 branch_index=index_1,
                 branch_fns={1: fn_1, 2: fn_2},
                 default=fn_3,
             )
-            out_2 = layers.switch_case(
+            out_2 = paddle.static.nn.switch_case(
                 branch_index=index_2,
                 branch_fns=[(1, fn_1), (2, fn_2)],
                 default=fn_3,
             )
-            out_3 = layers.switch_case(
+            out_3 = paddle.static.nn.switch_case(
                 branch_index=index_2,
                 branch_fns=[(0, fn_1), (4, fn_2), (7, fn_3)],
             )
@@ -2557,7 +2369,7 @@ class TestBook(LayerTest):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
         ):
-            out = layers.gaussian_random(shape=[20, 30])
+            out = random.gaussian(shape=[20, 30])
             return out
 
     def make_sum(self):
