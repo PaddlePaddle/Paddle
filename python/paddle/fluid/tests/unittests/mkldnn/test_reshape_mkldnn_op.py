@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import (
-    OpTest,
     OpTestTool,
     convert_float_to_uint16,
 )
@@ -31,6 +30,7 @@ paddle.enable_static()
 class TestReshape2OneDNNOp(TestReshapeOp):
     def setUp(self):
         super().setUp()
+        self.x = self.inputs["X"]
         self.attrs['use_mkldnn'] = True
         self.set_additional_inputs()
         self.set_outputs()
@@ -39,10 +39,11 @@ class TestReshape2OneDNNOp(TestReshapeOp):
         self.dtype = np.float32
 
     def set_additional_inputs(self):
-       pass
+        pass
 
     def set_outputs(self):
         pass
+
 
 class TestReshape2OneDNNOpDimInfer1(TestReshape2OneDNNOp):
     def init_data(self):
@@ -70,7 +71,6 @@ class TestReshape2OneDNNOpDimInfer2(TestReshape2OneDNNOp):
 class TestReshape2OneDNNOp_attr_OnlyShape(TestReshape2OneDNNOp):
     def set_additional_inputs(self):
         self.inputs["Shape"] = np.array(self.new_shape, dtype="int32")
-
 
     def set_outputs(self):
         self.outputs = {
@@ -173,7 +173,6 @@ def create_reshape_bf16_test_classes(parent):
         def setUp(self):
             super().setUp()
             self.dtype = np.uint16
-            self.x = np.random.random(self.ori_shape).astype("float32")
             self.inputs = {"X": convert_float_to_uint16(self.x)}
 
         def calculate_grads(self):
@@ -201,7 +200,6 @@ def create_reshape_bf16_test_classes(parent):
 
     class TestReshapeBF16OneDNNOp(TestReshape2BF16OneDNNOp):
         def setUp(self):
-            self.x = np.random.random(self.ori_shape).astype("float32")
             super().setUp()
             self.dtype = np.uint16
             self.op_type = "reshape"
