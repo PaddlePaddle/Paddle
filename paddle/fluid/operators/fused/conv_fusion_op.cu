@@ -27,7 +27,6 @@ namespace paddle {
 namespace operators {
 
 #if PADDLE_WITH_HIP || CUDNN_VERSION >= 7100
-using Tensor = phi::DenseTensor;
 using ScopedTensorDescriptor = platform::ScopedTensorDescriptor;
 using ScopedFilterDescriptor = platform::ScopedFilterDescriptor;
 using ScopedConvolutionDescriptor = platform::ScopedConvolutionDescriptor;
@@ -77,8 +76,8 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
     const std::string padding_algorithm =
         ctx.Attr<std::string>("padding_algorithm");
 
-    Tensor transformed_input_channel(input->dtype());
-    Tensor transformed_output(output->dtype());
+    phi::DenseTensor transformed_input_channel(input->dtype());
+    phi::DenseTensor transformed_output(output->dtype());
     transformed_input_channel = *input;
     transformed_output = *output;
     T* output_data = transformed_output.data<T>();
@@ -99,7 +98,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
     int data_dim = strides.size();  // 2d or 3d
     bool is_sys_pad = phi::funcs::IsSymmetricPadding(paddings, data_dim);
 
-    Tensor transformed_input;
+    phi::DenseTensor transformed_input;
     std::vector<int> padding_common(data_dim, 0);
     if (!is_sys_pad) {
       std::vector<int> padding_diff(data_dim);
@@ -144,7 +143,8 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
         } break;
         default:
           PADDLE_THROW(platform::errors::PermissionDenied(
-              "Operator Conv2DFusion expects Input to be a 4-D or 5-D Tensor. "
+              "Operator Conv2DFusion expects Input to be a 4-D or 5-D "
+              "phi::DenseTensor. "
               "But received the actual dimension = %d, shape = [%s].",
               rank,
               transformed_input_channel.dims()));

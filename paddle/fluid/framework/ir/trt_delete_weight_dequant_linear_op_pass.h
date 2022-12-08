@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <vector>
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 
@@ -20,10 +21,10 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class DeleteWeightDequantLinearOpDecoderPass : public FusePassBase {
+class TrtDeleteWeightQuantDequantLinearOpPass : public FusePassBase {
  public:
-  DeleteWeightDequantLinearOpDecoderPass();
-  virtual ~DeleteWeightDequantLinearOpDecoderPass() {}
+  TrtDeleteWeightQuantDequantLinearOpPass();
+  virtual ~TrtDeleteWeightQuantDequantLinearOpPass() {}
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;

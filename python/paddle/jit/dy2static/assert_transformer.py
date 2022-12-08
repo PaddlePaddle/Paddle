@@ -22,7 +22,7 @@ from .base_transformer import (
     BaseTransformer,
 )
 
-__all__ = ['AssertTransformer']
+__all__ = []
 
 
 class AssertTransformer(BaseTransformer):

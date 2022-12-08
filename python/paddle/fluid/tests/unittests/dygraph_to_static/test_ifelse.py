@@ -161,7 +161,7 @@ def dyfunc_ifExp_with_while(x):
 
     i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
     ten = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
-    i, ten, y = fluid.layers.while_loop(cond, body, [i, ten, y])
+    i, ten, y = paddle.static.nn.while_loop(cond, body, [i, ten, y])
     return y[0]
 
 
