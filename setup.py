@@ -26,7 +26,7 @@ from contextlib import contextmanager
 from distutils.spawn import find_executable
 from subprocess import CalledProcessError
 
-from setuptools import Command, Distribution, Extension, setup
+from setuptools import Command, Extension, setup
 from setuptools.command.egg_info import egg_info
 from setuptools.command.install import install as InstallCommandBase
 from setuptools.command.install_lib import install_lib
@@ -275,7 +275,7 @@ def _mkdir_p(dir_str):
     try:
         os.makedirs(dir_str)
     except OSError as e:
-        raise RuntimeError("Failed to create folder build/")
+        raise RuntimeError("Failed to create build folder")
 
 
 def get_major():
@@ -583,9 +583,14 @@ def build_run(args, build_path, envrion_var):
 
 def build_steps():
     print('------- Building start ------')
-    if not os.path.exists(TOP_DIR + '/build'):
-        _mkdir_p(TOP_DIR + '/build')
-    build_path = TOP_DIR + '/build'
+    build_dir = os.getenv("BUILD_DIR")
+    if build_dir is not None:
+        build_dir = TOP_DIR + '/' + build_dir
+    else:
+        build_dir = TOP_DIR + '/build'
+    if not os.path.exists(build_dir):
+        _mkdir_p(build_dir)
+    build_path = build_dir
     # run cmake to generate native build files
     cmake_cache_file_path = os.path.join(build_path, "CMakeCache.txt")
     # if rerun_cmake is True,remove CMakeCache.txt and rerun camke
@@ -1276,9 +1281,13 @@ def main():
     # Execute the build process,cmake and make
     if cmake_and_build:
         build_steps()
-
-    sys.path.append(TOP_DIR + "/build/python/")
-    from build.python.env_dict import env_dict as env_dict
+    build_dir = os.getenv("BUILD_DIR")
+    if build_dir is not None:
+        env_dict_path = TOP_DIR + '/' + build_dir + '/python'
+    else:
+        env_dict_path = TOP_DIR + "/build/python/"
+    sys.path.append(env_dict_path)
+    from env_dict import env_dict as env_dict
 
     global env_dict
     global paddle_binary_dir, paddle_source_dir
