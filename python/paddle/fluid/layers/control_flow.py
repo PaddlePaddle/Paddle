@@ -55,7 +55,6 @@ __all__ = [
     'Switch',
     'array_write',
     'array_read',
-    'cond',
     'StaticRNN',
     'Print',
     'while_loop',
