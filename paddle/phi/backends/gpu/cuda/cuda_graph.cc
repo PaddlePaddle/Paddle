@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,14 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/device/gpu/cuda/cuda_graph.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
 
 #include <queue>
 #include <unordered_map>
 #include <unordered_set>
 
-namespace paddle {
-namespace platform {
+namespace phi {
+namespace backends {
+namespace gpu {
 
 std::unique_ptr<CUDAGraph> CUDAGraph::capturing_graph_{nullptr};
 paddle::optional<std::thread::id> CUDAGraph::capturing_thread_id_{paddle::none};
@@ -113,7 +114,7 @@ void CUDAGraph::Replay() {
 #if CUDA_VERSION >= 10010
   PADDLE_ENFORCE_EQ(is_reset_,
                     false,
-                    errors::PermissionDenied(
+                    phi::errors::PermissionDenied(
                         "Cannot replay the CUDA Graph after reset is called."));
   size_t n = exec_graphs_.size();
   for (size_t i = 0; i < n; ++i) {
@@ -131,43 +132,43 @@ void CUDAGraph::Replay() {
 void CUDAGraph::BeginSegmentCapture() {
   ThrowErrorIfNotSupportCUDAGraph();
 #if CUDA_VERSION >= 10010
-  PADDLE_ENFORCE_EQ(
-      IsCapturing(),
-      true,
-      errors::PermissionDenied("BeginSegmentCapture should be called when CUDA "
-                               "Graph is capturing."));
+  PADDLE_ENFORCE_EQ(IsCapturing(),
+                    true,
+                    phi::errors::PermissionDenied(
+                        "BeginSegmentCapture should be called when CUDA "
+                        "Graph is capturing."));
   if (IsThreadLocalCapturing()) {
     PADDLE_ENFORCE_EQ(IsThisThreadCapturing(),
                       true,
-                      platform::errors::PermissionDenied(
+                      phi::errors::PermissionDenied(
                           "When capturing CUDA Graph in the thread local mode, "
                           "you cannot begin segmented capturing in the thread "
                           "which is not the one that starts the capturing."));
   }
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamBeginCapture(
       capturing_graph_->stream_, capturing_graph_->capture_mode_));
-  PADDLE_ENFORCE_EQ(IsValidCapturing(),
-                    true,
-                    platform::errors::PermissionDenied(
-                        "CUDA Graph should not be invalidated."));
+  PADDLE_ENFORCE_EQ(
+      IsValidCapturing(),
+      true,
+      phi::errors::PermissionDenied("CUDA Graph should not be invalidated."));
   VLOG(10) << "Begin to capture CUDA Graph with ID " << capturing_graph_->id_
            << ", segment id " << capturing_graph_->graphs_.size()
            << ", memory pool id " << capturing_graph_->pool_id_;
 #endif
 }
 
-void CUDAGraph::BeginCapture(platform::CUDAPlace place,
+void CUDAGraph::BeginCapture(phi::GPUPlace place,
                              cudaStream_t stream,
                              cudaStreamCaptureMode mode) {
   ThrowErrorIfNotSupportCUDAGraph();
 #if CUDA_VERSION >= 10010
-  PADDLE_ENFORCE_EQ(
-      IsCapturing(),
-      false,
-      errors::PermissionDenied("CUDA Graph can only captured one by one."));
+  PADDLE_ENFORCE_EQ(IsCapturing(),
+                    false,
+                    phi::errors::PermissionDenied(
+                        "CUDA Graph can only captured one by one."));
   PADDLE_ENFORCE_NOT_NULL(
       stream,
-      errors::PermissionDenied(
+      phi::errors::PermissionDenied(
           "CUDA Graph cannot be captured in default CUDA stream 0."));
   capturing_graph_.reset(new CUDAGraph());
   capturing_graph_->place_ = place;
@@ -185,9 +186,10 @@ void CUDAGraph::BeginCapture(platform::CUDAPlace place,
 void CUDAGraph::EndSegmentCapture() {
   ThrowErrorIfNotSupportCUDAGraph();
 #if CUDA_VERSION >= 10010
-  PADDLE_ENFORCE_EQ(IsCapturing(),
-                    true,
-                    errors::PermissionDenied("No CUDA Graph is capturing."));
+  PADDLE_ENFORCE_EQ(
+      IsCapturing(),
+      true,
+      phi::errors::PermissionDenied("No CUDA Graph is capturing."));
   cudaGraph_t graph;
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaStreamEndCapture(capturing_graph_->stream_, &graph));
@@ -299,11 +301,12 @@ void CUDAGraph::PrintToDotFiles(const std::string &dirname,
         cudaGraphDebugDotPrint(graphs_[i], filename.c_str(), flags));
   }
 #else
-  PADDLE_THROW(platform::errors::Unimplemented(
+  PADDLE_THROW(phi::errors::Unimplemented(
       "The print_to_dot_files() method is only supported when CUDA version >= "
       "11.3."));
 #endif
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace gpu
+}  // namespace backends
+}  // namespace phi
