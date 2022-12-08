@@ -774,19 +774,19 @@ class ShardingPass(PassBase):
         for i, op in enumerate(main_block.ops):
             if is_sharding_param_broadcast_op(op):
                 broadcast_varname = op.output("Out")[0]
-                broadcast_var = block.vars[broadcast_varname]
+                broadcast_var = main_block.vars[broadcast_varname]
                 group = broadcast_var_to_group_map[broadcast_varname]
 
                 # FIXME remove me when upgrade to multi-comm version
                 if len(dep_map.keys()) == 0:
                     op = _get_broadcast_first_depend_op(main_block)
-                    prior_var = block.vars[op.output("ParamOut")[0]]
+                    prior_var = main_block.vars[op.output("ParamOut")[0]]
                 else:
                     pre_op = main_block.ops[i - 1]
                     assert is_sharding_param_broadcast_op(
                         pre_op
                     ), "Unexpected: sharding broadcast pre op should be broadcast."
-                    prior_var = block.vars[op.output("Out")[0]]
+                    prior_var = main_block.vars[op.output("Out")[0]]
 
                 dep_map[i] = [(i, [prior_var], [broadcast_var])]
 
