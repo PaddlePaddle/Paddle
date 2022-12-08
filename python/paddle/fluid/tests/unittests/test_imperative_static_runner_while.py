@@ -24,6 +24,8 @@ from paddle.fluid import core, unique_name
 
 LOADED_VAR_SUFFIX = ".load_0"
 
+paddle.enable_static()
+
 
 def while_softmax_regression(img):
     def cond(i, times, pred):
@@ -37,7 +39,7 @@ def while_softmax_regression(img):
     i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
     times = fluid.layers.fill_constant(shape=[1], dtype='int64', value=5)
     pred = fluid.layers.fc(input=img, size=10, act='softmax')
-    i, times, pred = fluid.layers.while_loop(
+    i, times, pred = paddle.static.nn.while_loop(
         cond=cond, body=body, loop_vars=[i, times, pred]
     )
     return pred

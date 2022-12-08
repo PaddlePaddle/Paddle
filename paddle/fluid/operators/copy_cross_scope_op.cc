@@ -30,8 +30,6 @@ class OpBase;
 }  // namespace imperative
 }  // namespace paddle
 
-using Tensor = phi::DenseTensor;
-
 namespace paddle {
 namespace operators {
 

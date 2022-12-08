@@ -25,7 +25,6 @@ namespace operators {
 
 using dnnl::memory;
 using dnnl::reorder;
-using Tensor = phi::DenseTensor;
 
 namespace {
 
