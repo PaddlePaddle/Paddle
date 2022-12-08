@@ -24,7 +24,6 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-using Tensor = phi::DenseTensor;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -405,7 +404,7 @@ class SequencePoolFunctor<phi::CPUContext, T> {
     }
     auto& place = *context.eigen_device();
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
-      Tensor out_t = output->Slice(i, i + 1);
+      phi::DenseTensor out_t = output->Slice(i, i + 1);
       int64_t w = input.numel() / input.dims()[0];
       if (lod[i] == lod[i + 1]) {
         for (int j = 0; j < w; ++j) {
@@ -413,7 +412,7 @@ class SequencePoolFunctor<phi::CPUContext, T> {
         }
         continue;
       }
-      Tensor in_t =
+      phi::DenseTensor in_t =
           input.Slice(static_cast<int>(lod[i]), static_cast<int>(lod[i + 1]));
       int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
       auto in_e = EigenMatrix<T>::From(in_t, phi::make_ddim({h, w}));

@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.framework import Program, program_guard
 
@@ -152,9 +153,7 @@ class TestDygraphSpectralNormOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             shape = (2, 4, 3, 3)
-            spectralNorm = fluid.dygraph.nn.SpectralNorm(
-                shape, dim=1, power_iters=2
-            )
+            spectralNorm = paddle.nn.SpectralNorm(shape, axis=1, power_iters=2)
 
             def test_Variable():
                 weight_1 = np.random.random((2, 4)).astype("float32")

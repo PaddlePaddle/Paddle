@@ -47,7 +47,9 @@ def convolution_net(
     prediction = fluid.layers.fc(
         input=[conv_3, conv_4], size=class_dim, act="softmax"
     )
-    cost = fluid.layers.cross_entropy(input=prediction, label=label)
+    cost = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     avg_cost = paddle.mean(cost)
     accuracy = paddle.static.accuracy(input=prediction, label=label)
     return avg_cost, accuracy, prediction

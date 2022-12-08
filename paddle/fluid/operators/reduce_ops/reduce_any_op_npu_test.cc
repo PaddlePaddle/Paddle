@@ -33,8 +33,6 @@ limitations under the License. */
 namespace f = paddle::framework;
 namespace p = paddle::platform;
 
-using Tensor = phi::DenseTensor;
-
 USE_OP_ITSELF(reduce_any);
 USE_OP_DEVICE_KERNEL(reduce_any, NPU);
 
