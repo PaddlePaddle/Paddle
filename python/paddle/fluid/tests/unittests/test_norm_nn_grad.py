@@ -171,7 +171,7 @@ class TestBatchNormDoubleGradCheck(unittest.TestCase):
             eps = 0.005
             atol = 1e-4
             x = paddle.create_parameter(dtype=dtype, shape=self.shape, name='x')
-            z = fluid.layers.batch_norm(
+            z = paddle.static.nn.batch_norm(
                 input=x,
                 data_layout=self.data_layout,
                 use_global_stats=self.use_global_stats,
@@ -251,7 +251,7 @@ class TestBatchNormDoubleGradCheckCase5(TestBatchNormDoubleGradCheck):
                 self.shape[1] if self.data_layout == 'NCHW' else self.shape[-1]
             )
             x = paddle.create_parameter(dtype=dtype, shape=self.shape, name='x')
-            z = fluid.layers.batch_norm(
+            z = paddle.static.nn.batch_norm(
                 input=x,
                 data_layout=self.data_layout,
                 use_global_stats=self.use_global_stats,

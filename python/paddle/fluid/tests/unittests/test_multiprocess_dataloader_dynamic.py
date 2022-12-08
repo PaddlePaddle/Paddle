@@ -16,7 +16,6 @@ import sys
 import time
 import unittest
 
-import paddle
 import numpy as np
 from test_multiprocess_dataloader_static import (
     BATCH_SIZE,
