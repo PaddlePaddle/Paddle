@@ -16,15 +16,14 @@ import unittest
 
 import numpy as np
 from test_imperative_base import new_program_scope
-from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
+from utils import DyGraphProgramDescTracerTestHelper
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import BatchNorm, core
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
+from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.jit import TracedLayer
 
 # NOTE(zhiqiu): run with FLAGS_cudnn_deterministic=1
 
@@ -301,20 +300,7 @@ class TestDygraphResnet(unittest.TestCase):
                 label.stop_gradient = True
 
                 out = None
-                if batch_id % 5 == 0 and _in_legacy_dygraph():
-                    out, traced_layer = TracedLayer.trace(resnet, img)
-                    if program is not None:
-                        self.assertTrue(
-                            is_equal_program(program, traced_layer.program)
-                        )
-
-                    traced_layer.save_inference_model(
-                        './infer_imperative_resnet'
-                    )
-
-                    program = traced_layer.program
-                else:
-                    out = resnet(img)
+                out = resnet(img)
 
                 if traced_layer is not None:
                     resnet.eval()
