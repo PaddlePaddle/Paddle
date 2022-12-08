@@ -100,7 +100,7 @@ def create_parameter(
 
             import paddle
             paddle.enable_static()
-            W = paddle.static.create_parameter(shape=[784, 200], dtype='float32')
+            W = paddle.create_parameter(shape=[784, 200], dtype='float32')
     """
     check_type(shape, 'shape', (list, tuple, np.ndarray), 'create_parameter')
     for item in shape:
@@ -147,6 +147,48 @@ def create_parameter(
         attr = ParamAttr(name=name)
     return helper.create_parameter(
         attr, shape, convert_dtype(dtype), is_bias, default_initializer
+    )
+
+
+def create_tensor(dtype, name=None, persistable=False):
+    """
+    Create a variable, which will hold a Tensor with data type dtype.
+
+    Args:
+        dtype(string|numpy.dtype): the data type of Tensor to be created, the
+            data type is bool, float16, float32, float64, int8, int16, int32 and int64.
+        name(string, optional): The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+        persistable(bool): Set the persistable flag of the create tensor.
+            default value is False.
+
+    Returns:
+        Variable: The tensor to be created according to dtype.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+          tensor = paddle.tensor.create_tensor(dtype='float32')
+    """
+    check_dtype(
+        dtype,
+        'dtype',
+        [
+            'bool',
+            'float16',
+            'float32',
+            'float64',
+            'int8',
+            'int32',
+            'int32',
+            'int64',
+        ],
+        'create_tensor',
+    )
+    helper = LayerHelper("create_tensor", **locals())
+    return helper.create_variable(
+        name=helper.name, dtype=dtype, persistable=persistable
     )
 
 
@@ -1437,7 +1479,7 @@ def diagflat(x, offset=0, name=None):
     """
     padding_value = 0
     if in_dygraph_mode():
-        if len(x.shape) == 1:
+        if len(x.shape) <= 1:
             return _C_ops.diag(x, offset, padding_value)
         else:
             y = _C_ops.flatten(x, 0, -1)
@@ -1467,7 +1509,7 @@ def diagflat(x, offset=0, name=None):
     out1_shape = helper.create_variable_for_type_inference(x.dtype)
     out2 = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    if len(x.shape) == 1:
+    if len(x.shape) <= 1:
         helper.append_op(
             type='diag_v2',
             inputs={'X': x},

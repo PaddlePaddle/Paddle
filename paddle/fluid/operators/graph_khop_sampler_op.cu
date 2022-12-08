@@ -49,8 +49,6 @@ constexpr int WARP_SIZE = 32;
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 struct MaxFunctor {
   T cap;

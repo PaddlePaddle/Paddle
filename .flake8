@@ -17,13 +17,13 @@ exclude =
 ignore =
     # E, see https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
     E203,
-    E401,E402,
+    E402,
     E501,
     E721,E722,E731,E741,
 
     # F, see https://flake8.pycqa.org/en/latest/user/error-codes.html
     F405,
-    F811,F841,
+    F841,
 
     # W, see https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
     W503

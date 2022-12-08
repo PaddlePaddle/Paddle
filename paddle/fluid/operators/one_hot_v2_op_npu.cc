@@ -17,7 +17,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = phi::DenseTensor;
 
 template <typename T>
 class OneHotV2NPUKernel : public framework::OpKernel<T> {
@@ -53,7 +52,7 @@ class OneHotV2NPUKernel : public framework::OpKernel<T> {
           .AddOutput(*out);
       runner.Run(dev_ctx.stream());
     } else {
-      Tensor transformed_in;
+      phi::DenseTensor transformed_in;
       transformed_in.mutable_data<int32_t>(in->dims(), dev_ctx.GetPlace());
       const auto& cast_runner = NpuOpRunner(
           "Cast", {*in}, {transformed_in}, {{"dst_type", ACL_INT32}});

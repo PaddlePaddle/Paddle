@@ -356,7 +356,8 @@ void StreamAnalyzer::ShrinkEventInfo(
 
 platform::DeviceType StreamAnalyzer::GetWaiterType(
     const Instruction& instr) const {
-  if (instr.KernelType() == OpFuncType::kCpuSync) {
+  if (instr.KernelType() == OpFuncType::kCpuSync ||
+      instr.KernelType() == OpFuncType::kGpuSync) {
     return platform::kCPU;
   } else {
     if (platform::is_xpu_place(place_)) {
