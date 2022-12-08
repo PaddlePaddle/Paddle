@@ -494,6 +494,8 @@ void GraphTable::export_partition_files(int idx, std::string file_path) {
 
   for (size_t i = 0; i < tasks.size(); i++) tasks[i].get();
 }
+#endif
+
 void GraphTable::clear_graph(int idx) {
   for (auto p : edge_shards[idx]) {
     p->clear();
@@ -506,6 +508,7 @@ void GraphTable::clear_graph(int idx) {
   }
 }
 
+#ifdef PADDLE_WITH_HETERPS
 void GraphTable::release_graph() {
   // Before releasing graph, prepare for sampling ids and embedding keys.
   build_graph_type_keys();
@@ -545,6 +548,7 @@ void GraphTable::release_graph_node() {
     feature_shrink_to_fit();
   }
 }
+#endif
 
 void GraphTable::clear_edge_shard() {
   VLOG(0) << "begin clear edge shard";
@@ -590,6 +594,7 @@ void GraphTable::clear_feature_shard() {
   VLOG(0) << "finish clear feature shard";
 }
 
+#ifdef PADDLE_WITH_HETERPS
 void GraphTable::feature_shrink_to_fit() {
   std::vector<std::future<int>> tasks;
   for (auto &type_shards : feature_shards) {
@@ -619,6 +624,8 @@ void GraphTable::merge_feature_shard() {
   feature_shards.resize(1);
 }
 
+#endif
+
 void GraphTable::clear_graph() {
   VLOG(0) << "begin clear_graph";
   clear_edge_shard();
@@ -626,6 +633,7 @@ void GraphTable::clear_graph() {
   VLOG(0) << "finish clear_graph";
 }
 
+#ifdef PADDLE_WITH_HETERPS
 int32_t GraphTable::load_next_partition(int idx) {
   if (next_partition >= static_cast<int>(partitions[idx].size())) {
     VLOG(0) << "partition iteration is done";

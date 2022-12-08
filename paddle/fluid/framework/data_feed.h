@@ -1137,6 +1137,11 @@ class DataFeed {
   virtual void SetDeviceKeys(std::vector<uint64_t>* device_keys, int type) {
     gpu_graph_data_generator_.SetDeviceKeys(device_keys, type);
   }
+  virtual bool get_epoch_finish() {
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+    return gpu_graph_data_generator_.get_epoch_finish();
+#else
+    return false;
 #endif
 
   virtual void SetGpuGraphMode(int gpu_graph_mode) {
