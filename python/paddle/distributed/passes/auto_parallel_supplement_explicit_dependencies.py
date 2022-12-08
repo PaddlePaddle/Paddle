@@ -19,7 +19,7 @@ from paddle.distributed.auto_parallel.operators.common import (
 )
 from paddle.distributed.auto_parallel.utils import (
     OpRole,
-    insert_dependencies_for_two_vars,
+    insert_dependencies_for_vars,
     use_standalone_executor,
 )
 
@@ -94,7 +94,7 @@ class AutoParalSupplementDepPass(PassBase):
         for idx in indice:
             prior_var = main_block.var(deps_map[idx][0])
             post_var = main_block.var(deps_map[idx][1])
-            depend_op = insert_dependencies_for_two_vars(
+            depend_op = insert_dependencies_for_vars(
                 main_block,
                 idx,
                 prior_var,

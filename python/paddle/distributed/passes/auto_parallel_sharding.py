@@ -26,7 +26,7 @@ from paddle.distributed.auto_parallel.utils import (
     _get_comm_group,
     get_logger,
     get_var_numel,
-    insert_dependencies_for_two_vars,
+    insert_dependencies_for_vars,
     is_backward_op,
     is_dep_skip_op,
     is_loss_grad_op,
@@ -767,53 +767,54 @@ class ShardingPass(PassBase):
             # composes many tensor with different dims_mapping. we DO NOT assign dist attr
             # for it currently.
 
-        # add prior depend:
-        # 1. all coalesce var &
-        # 2. single var that not in shard
+        # add dependencies:
+        # 1. all broadcast depend on its pre collective
+        # 2. coalesce broadcast add nop to resolute data flow dependencies
         dep_map = {}
         for i, op in enumerate(main_block.ops):
             if is_sharding_param_broadcast_op(op):
                 broadcast_varname = op.output("Out")[0]
+                broadcast_var = block.vars[broadcast_varname]
                 group = broadcast_var_to_group_map[broadcast_varname]
-                # in shard coalesce depend to adam
-                if group.is_in_local_shard:
 
-                    if len(group.vars) > 1:
-                        last_grad_name = group.vars[-1].name
-                        dep_map[i] = (last_grad_name, broadcast_varname)
-                # not shard var depend to prior collective
+                # FIXME remove me when upgrade to multi-comm version
+                if len(dep_map.keys()) == 0:
+                    op = _get_broadcast_first_depend_op(main_block)
+                    prior_var = block.vars[op.output("ParamOut")[0]]
                 else:
-                    prior_op = main_block.ops[i - 1]
-                    if is_sharding_param_broadcast_op(prior_op):
-                        prior_var = prior_op.output("Out")[0]
-                    elif prior_op.type in _supported_optimizer_type:
-                        prior_var = prior_op.output("ParamOut")[0]
-                    else:
-                        raise NotImplementedError(
-                            "sharding broadcast after op is not supported: {}.".format(
-                                str(prior_op)
-                            )
-                        )
-                    dep_map[i] = (prior_var, broadcast_varname)
+                    pre_op = main_block.ops[i - 1]
+                    assert is_sharding_param_broadcast_op(
+                        pre_op
+                    ), "Unexpected: sharding broadcast pre op should be broadcast."
+                    prior_var = block.vars[op.output("Out")[0]]
+
+                dep_map[i] = [(i, [prior_var], [broadcast_var])]
+
+                if len(group.vars) > 0:
+                    # in shard coalesce depend to optimizer
+                    if group.is_in_local_shard:
+                        last_grad = group.vars[-1]
+                        dep_map[i].append((i, [last_grad], [broadcast_var]))
+                    # coalesce resolution post deps
+                    dep_map[i].append((i + 1, [broadcast_var], group.vars))
 
         # insert deps
         indice = sorted(list(dep_map.keys()), reverse=True)
-        for idx in indice:
-            prior_var = main_block.var(dep_map[idx][0])
-            post_var = main_block.var(dep_map[idx][1])
-            depend_op = insert_dependencies_for_two_vars(
-                main_block,
-                idx,
-                prior_var,
-                post_var,
-                self._dist_context,
-                OpRole.Optimize,
-                process_mesh=[
-                    -1
-                ],  # hack to avoid initialize the dist attr for coalesc var
-                is_recompute=False,
-                sync=False,
-            )
+        for i in indice:
+            for idx, prior_vars, post_vars in dep_map[i][::-1]:
+                depend_op = insert_dependencies_for_vars(
+                    main_block,
+                    idx,
+                    prior_vars,
+                    post_vars,
+                    self._dist_context,
+                    OpRole.Optimize,
+                    process_mesh=[
+                        -1
+                    ],  # hack to avoid initialize the dist attr for coalesc var
+                    is_recompute=False,
+                    sync=False,
+                )
 
         main_block._sync_with_cpp()
 
@@ -978,7 +979,7 @@ class ShardingPass(PassBase):
                 grad_name = op.output_arg_names[0]
                 assert (
                     grad_name == group.vars[-1].name
-                ), "Unexception: it is supposed to sync [{}] but got [{}]".format(
+                ), "Unexpected: it is supposed to sync [{}] but got [{}]".format(
                     group.vars[-1].name, grad_name
                 )
                 op._rename_input(grad_name, group.coalesce_var.name)
@@ -992,7 +993,7 @@ class ShardingPass(PassBase):
                 first_grad_name = group.vars[0].name
                 assert (
                     first_grad_name in op.output_arg_names
-                ), "Unexception: op is supposed to generate grad [{}] but got [{}]".format(
+                ), "Unexpected: op is supposed to generate grad [{}] but got [{}]".format(
                     first_grad_name, str(op)
                 )
                 grad_names = [grad.name for grad in group.vars]
@@ -1021,7 +1022,7 @@ class ShardingPass(PassBase):
                         OP_ROLE_KEY: OpRole.Backward,
                     },
                 )
-                depend_op = insert_dependencies_for_two_vars(
+                depend_op = insert_dependencies_for_vars(
                     block,
                     idx,
                     block.var(group.coalesce_dep_varname),
@@ -1063,6 +1064,14 @@ class ShardingPass(PassBase):
 
         # for idx range(len(ops)):
         #     pass
+
+
+def _get_broadcast_first_depend_op(block):
+    for op in block.ops:
+        if op.type in _supported_optimizer_type:
+            return op
+
+    raise Exception("Could not find optimizer op.")
 
 
 def _insert_init_and_broadcast_op(
