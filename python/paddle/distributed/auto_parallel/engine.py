@@ -609,8 +609,8 @@ class Engine:
         if mode != "train":
             serial_main_prog = serial_main_prog.clone(for_test=True)
 
-        auto_utils.set_recompute_ckpts(
-            self._model, self._strategy, serial_main_prog
+        auto_utils.set_recompute_scope(
+            self._model, self._losses, self._strategy, serial_main_prog
         )
         self._dist_contexts[mode] = DistributedContext(
             serial_main_prog,

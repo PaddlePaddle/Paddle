@@ -1920,27 +1920,17 @@ def initialize_pg_in_full_mode(all_process_groups, cur_rank):
     server_socket.close()
 
 
-def _is_recompute_op(op):
+def is_recompute_op(op):
     return op.has_attr('op_namescope') and "/auto_parallel/rc" in op.attr(
         'op_namescope'
     )
 
 
-def get_checkpoints_from_program(program):
+def set_recompute_scope(model, losses, strategy, program):
+    from ..passes.auto_parallel_recompute import RecomputeState
 
-    ops = program.global_block().ops
-    if not any([_is_recompute_op(op) for op in ops]):
-        return []
-
-    checkpoints = []
-    for idx, op in enumerate(ops):
-        if not _is_recompute_op(op):
-            checkpoints.extend(op.output_arg_names)
-
-    return checkpoints
-
-
-def set_recompute_ckpts(model, strategy, program):
+    if not losses:
+        return
 
     recompute = strategy.recompute
     if not recompute.enable:
@@ -1949,6 +1939,7 @@ def set_recompute_ckpts(model, strategy, program):
     # NOTE: hack to enable recompute in engine api for GPT-3
     # TODO support more PaddleNLP/CV models here
     # extract ckpts by specific model
+    ckpts = []
     if isinstance(model, paddle.nn.Layer):
         if (
             hasattr(model, "gpt")
@@ -1959,16 +1950,54 @@ def set_recompute_ckpts(model, strategy, program):
             ]
             and hasattr(model.gpt, "checkpoints")
         ):
-            exact_ckpts = model.gpt.checkpoints
+            ckpts = model.gpt.checkpoints
         else:
-            exact_ckpts = recompute.checkpoints
+            ckpts = recompute.checkpoints
     else:
-        exact_ckpts = recompute.checkpoints
+        ckpts = recompute.checkpoints
 
-    # modify strategy
-    recompute.checkpoints = exact_ckpts[:] or get_checkpoints_from_program(
-        program
-    )
+    if not ckpts:
+        return
+
+    block = program.global_block()
+    rc_state = RecomputeState(block, block.ops)
+    rc_state.build_stats()
+    checkpoints = rc_state.sort_checkpoints(ckpts)
+
+    segments = []
+    start_idx = -1
+    pre_segment_end_idx = -1
+    while start_idx + 1 < len(checkpoints):
+        if start_idx == -1:
+            ckpt_name = checkpoints[start_idx + 1]
+            if ckpt_name not in rc_state.var_op_deps:
+                start_idx += 1
+                continue
+            op_idx_list = rc_state.var_op_deps[ckpt_name]["var_as_output_ops"]
+            if op_idx_list and max(op_idx_list) > 0:
+                segments.append([0, max(op_idx_list) + 1])
+        else:
+            flag, min_idx, max_idx = rc_state.is_subgraph(
+                [checkpoints[start_idx]], [checkpoints[start_idx + 1]]
+            )
+            if flag:
+                min_idx = rc_state._update_segment_start(
+                    min_idx, pre_segment_end_idx
+                )
+                segments.append([min_idx, max_idx + 1])
+            else:
+                logging.debug(
+                    "Could not recompute op range [{}] - [{}] ".format(
+                        min_idx, max_idx + 1
+                    )
+                )
+        start_idx += 1
+
+    for i, segment in enumerate(segments):
+        for j in range(segment[0], segment[1]):
+            block.ops[j]._set_attr(
+                'op_namescope', "/auto_parallel/rc_" + str(i)
+            )
 
 
 def get_input_split_info(cur_rank, var, dist_context):

@@ -16,8 +16,7 @@ import copy
 import logging
 from abc import ABC, abstractmethod
 
-from ...passes.auto_parallel_recompute import RecomputeState
-from ..utils import get_logger
+from ..utils import get_logger, is_recompute_op
 from .trial import OptimizationTunerTrial as Trial
 from .trial import TrialStatus
 
@@ -167,14 +166,14 @@ class ReccomputeCheckpointAlgorithm(AlgorithmBase):
         self._changed_configs = ["recompute"]
 
     def collect_model_info(self, main_prog, startup_prog):
-        checkpoints = self._config.recompute.get("checkpoints", [])
+        segments = []
+        for op in main_prog.global_block().ops:
+            if not is_recompute_op(op):
+                continue
 
-        rc_state = RecomputeState(
-            main_prog.global_block(), main_prog.global_block().ops
-        )
-        rc_state.build_stats()
-        checkpoints = rc_state.sort_checkpoints(checkpoints)
-        segments = rc_state.get_recompute_segments(checkpoints)
+            seg_name = op.attr('op_namescope')
+            if seg_name not in segments:
+                segments.append(seg_name)
 
         self._total_num_trial = len(segments)
         self._tuning_segments = list(range(len(segments)))
@@ -197,7 +196,6 @@ class ReccomputeCheckpointAlgorithm(AlgorithmBase):
                 new_strategy = copy.deepcopy(self._config.dist_strategy)
                 recompute = new_strategy.recompute
                 recompute.enable = False
-                recompute.checkpoints = []
                 name = "trial-recompute-none-segments"
                 return Trial(new_strategy, name, self.changed_configs)
             elif self._recompute_mode == "part":
