@@ -430,7 +430,7 @@ static std::string PDNodeName(const std::string& name_scope,
                               const std::string& name) {
   // return string::Sprintf("%s/%s/%d/%s", name_scope, repr, id, name);
   std::string pd_node_name= "";
-  pdd_node_name.append(name_scope).append("/").append(repr).append("/").append(std::to_string(id)).append("/").append(name);
+  pd_node_name.append(name_scope).append("/").append(repr).append("/").append(std::to_string(id)).append("/").append(name);
   return pd_node_name;
 }
 // Generate a unique PDNode's name.
