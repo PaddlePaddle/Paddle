@@ -17,8 +17,10 @@ from collections import defaultdict
 import numpy as np
 
 import paddle.distributed.fleet as fleet
+
+# (TODO: GhostScreaming) It will be removed later.
 import paddle.fluid.core as core
-from paddle.fluid.framework import Block, Program, _non_static_mode
+from paddle.framework import Block, Program, _non_static_mode
 
 
 class HybridParallelInferenceHelper:
