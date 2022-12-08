@@ -15,9 +15,11 @@
 import datetime
 
 import paddle
-import paddle.fluid.core as core
 
-from ..fluid.framework import _non_static_mode, in_dygraph_mode
+# (TODO: GhostScreaming) It will be removed later.
+import paddle.fluid.core as core
+from paddle.framework import _non_static_mode, in_dygraph_mode
+
 from .communication.group import Group, _add_new_group, is_initialized
 from .fleet.layers.mpu.mp_ops import _c_concat  # noqa: F401
 from .fleet.layers.mpu.mp_ops import _c_identity  # noqa: F401
