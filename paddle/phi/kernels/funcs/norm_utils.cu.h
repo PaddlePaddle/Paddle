@@ -494,7 +494,7 @@ void NormDoubleGradFunctor(const DeviceContext &ctx,
   }
 
   if (dX) {
-    T *dx_data = dX->mutable_data<T>(ctx.GetPlace());
+    T *dx_data = ctx.template Alloc<T>(dX);
     set_constant(ctx, dX, static_cast<T>(0));
     if (use_global_stats) {
       if (data_layout == DataLayout::kNHWC) {
@@ -551,7 +551,7 @@ void NormDoubleGradFunctor(const DeviceContext &ctx,
     }
   }
   if (dScale) {
-    T *dscale_data = dScale->mutable_data<T>(ctx.GetPlace());
+    T *dscale_data = ctx.template Alloc<T>(dScale);
     set_constant(ctx, dScale, static_cast<T>(0));
     if (use_global_stats) {
       if (data_layout == DataLayout::kNHWC) {
@@ -604,7 +604,7 @@ void NormDoubleGradFunctor(const DeviceContext &ctx,
     }
   }
   if (ddY) {
-    T *ddy_data = ddY->mutable_data<T>(ctx.GetPlace());
+    T *ddy_data = ctx.template Alloc<T>(ddY);
     set_constant(ctx, ddY, static_cast<T>(0));
     if (use_global_stats) {
       if (data_layout == DataLayout::kNHWC) {
