@@ -59,11 +59,11 @@ class TestReshape2OneDNNOpDimInfer2(TestReshape2OneDNNOp):
         self.infered_shape = (2, 3, 20)
 
     def set_additional_inputs(self):
-        self.inputs["Shape"] = np.array(self.actual_shape, dtype="int32")
+        self.inputs["Shape"] = np.array(self.infered_shape, dtype="int32")
 
     def set_outputs(self):
         self.outputs = {
-            "Out": self.inputs["X"].reshape(self.actual_shape),
+            "Out": self.inputs["X"].reshape(self.infered_shape),
             'XShape': np.random.random(self.ori_shape).astype("float32"),
         }
 
