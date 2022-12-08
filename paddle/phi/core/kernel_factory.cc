@@ -126,8 +126,6 @@ BackendResult SelectBackendOrFallback(const std::string& kernel_name,
   BackendSet current_bs = BackendSet(backend);
   if (backend == Backend::GPUDNN) {
     current_bs = current_bs | BackendSet(Backend::GPU);
-  } else if (backend == Backend::ONEDNN) {
-    current_bs = current_bs | BackendSet(Backend::CPU);
   }
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
   VLOG(6) << "fluid_op_name: " << TransToFluidOpName(kernel_name);
