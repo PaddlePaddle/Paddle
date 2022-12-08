@@ -980,11 +980,6 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         Tensor|list(Tensor)|tuple(Tensor): returns ``true_fn()`` if the
         predicate ``pred`` is true else ``false_fn()`` .
 
-    Raises:
-        TypeError: if ``true_fn`` or ``false_fn`` is not callable.
-        ValueError: if ``true_fn`` and ``false_fn`` don't return the same nest
-            structure of tensors.
-
     Examples:
         .. code-block:: python
 
