@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/one_hot_kernel.h"
 
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"

@@ -1008,9 +1008,8 @@ function generate_upstream_develop_api_spec() {
     cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
 
     cd ${PADDLE_ROOT}
-    git fetch upstream $BRANCH
     git checkout -b develop_base_pr -t upstream/$BRANCH
-    echo "upstream develop git log: "
+    echo "develop git log: "
     git log --pretty=oneline -10
 
     dev_commit=`git log -1|head -1|awk '{print $2}'`
@@ -3468,20 +3467,7 @@ function run_setup(){
     SYSTEM=`uname -s`
     if [ "$SYSTEM" == "Darwin" ]; then
         echo "Using python abi: $1"
-        if [ "$1" == "cp36-cp36m" ] || [ "$1" == "" ]; then
-            if [ -d "/Library/Frameworks/Python.framework/Versions/3.6" ]; then
-                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.6/lib/
-                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.6/lib/
-                export PATH=/Library/Frameworks/Python.framework/Versions/3.6/bin/:${PATH}
-                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
-                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.6/bin/python3
-                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.6/include/python3.6m/
-                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.6/lib/libpython3.6m.dylib
-                pip3.6 install --user -r ${PADDLE_ROOT}/python/requirements.txt
-            else
-                exit 1
-            fi
-        elif [ "$1" == "cp37-cp37m" ]; then
+        if [ "$1" == "cp37-cp37m" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.7" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.7/lib/
