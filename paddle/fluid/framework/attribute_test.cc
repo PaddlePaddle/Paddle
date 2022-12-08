@@ -128,7 +128,6 @@ TEST(Attribute, GetAttrValueToAny) {
   paddle::framework::Attribute x_vec_double = vec_double_var;
   auto rlt_vec_double = paddle::framework::GetAttrValue(x_vec_double);
   auto vec_double = paddle::any_cast<std::vector<double>>(rlt_vec_double);
-
   EXPECT_EQ(vec_double.size(), 2UL);
   EXPECT_NEAR(vec_double[0], 3.14, 1e-6);
   EXPECT_NEAR(vec_double[1], 3.14, 1e-6);
