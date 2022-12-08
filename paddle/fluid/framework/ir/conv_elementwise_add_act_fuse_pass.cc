@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/conv_elementwise_add_act_fuse_pass.h"
+
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
 namespace framework {
@@ -161,16 +161,24 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
 
   std::unordered_set<std::string> cutlass_act_set;
   std::unordered_set<std::string> all_act_set = cudnn_act_set;
-  if (Get<bool>("use_cutlass")) {
+
+  auto model_precision =
+      static_cast<phi::DataType>(Get<int>("model_precision"));
+  const int aligment_cutlass = 4;
+  if (model_precision == phi::DataType::FLOAT16) {
+#ifdef PADDLE_WITH_CUTLASS
+    // cutlass now support these activations
     cutlass_act_set.insert("swish");
     cutlass_act_set.insert("relu");
     cutlass_act_set.insert("identity");
     cutlass_act_set.insert("leaky_relu");
 
-    all_act_set.insert("swish");
-    all_act_set.insert("relu");
-    all_act_set.insert("identity");
-    all_act_set.insert("leaky_relu");
+    all_act_set.insert(cutlass_act_set.begin(), cutlass_act_set.end());
+    // all_act_set.insert("swish");
+    // all_act_set.insert("relu");
+    // all_act_set.insert("identity");
+    // all_act_set.insert("leaky_relu");
+#endif
   }
 
   patterns::ConvElementwiseaddAct pattern(gpd.mutable_pattern(), pattern_name);
@@ -195,8 +203,9 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
     // supported by cuDNN, we should not apply this pass
     int oc = filter_tensor->dims()[0];
     int ic = filter_tensor->dims()[1];
-    bool cutlass_fuse =
-        oc % 4 == 0 && ic % 4 == 0 && cutlass_act_set.count(act_op_type);
+    bool cutlass_fuse = oc % aligment_cutlass == 0 &&
+                        ic % aligment_cutlass == 0 &&
+                        cutlass_act_set.count(act_op_type);
     bool cudnn_fuse = cudnn_act_set.count(act_op_type);
     if (!cutlass_fuse && !cudnn_fuse) {
       return;
