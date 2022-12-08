@@ -372,14 +372,14 @@ class TestCondNestedControlFlow(unittest.TestCase):
                 shape=[1], dtype='float32', value=1.24
             )
             b.stop_gradient = False
-            out = fluid.paddle.static.nn.cond(
+            out = paddle.static.nn.cond(
                 a < b,
-                lambda: fluid.paddle.static.nn.cond(
+                lambda: paddle.static.nn.cond(
                     a - b < -1.0,
                     lambda: paddle.add(a, b),
                     lambda: paddle.multiply(a, b),
                 ),
-                lambda: fluid.paddle.static.nn.cond(
+                lambda: paddle.static.nn.cond(
                     a == b,
                     lambda: paddle.subtract(a, b),
                     lambda: paddle.pow(a, b),

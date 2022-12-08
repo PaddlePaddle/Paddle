@@ -1577,7 +1577,7 @@ class TestLayer(LayerTest):
             b = fluid.layers.fill_constant(
                 shape=[1], dtype='float32', value=0.23
             )
-            out = fluid.paddle.static.nn.cond(
+            out = paddle.static.nn.cond(
                 a >= b,
                 lambda: greater_equal_branch(a, b),
                 lambda: less_than_branch(a, b),
