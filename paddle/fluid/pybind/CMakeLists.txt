@@ -262,10 +262,6 @@ if(WITH_PYTHON)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS cncl_context)
   endif()
 
-  if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
-    list(APPEND OP_FUNCTION_GENERETOR_DEPS ${PYTHON_LIBRARIES})
-  endif()
-
   add_executable(op_function_generator op_function_generator.cc)
   target_link_libraries(op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})
   add_executable(eager_legacy_op_function_generator
@@ -605,13 +601,4 @@ if(WITH_PYTHON)
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(${SHARD_LIB_NAME} ${os_dependency_modules})
   add_dependencies(${SHARD_LIB_NAME} op_function_generator_cmd)
-
-  if(APPLE)
-    string(REGEX REPLACE ".+/(.+)" "\\1" PYTHON_LIBRARY_NAME
-                         ${PYTHON_LIBRARIES})
-    # target_link_libraries(${SHARD_LIB_NAME} "-Wl,-rpath,${PYTHON_LIBRARY_NAME}")
-  else()
-    target_link_libraries(${SHARD_LIB_NAME} ${PYTHON_LIBRARIES})
-  endif()
-
 endif()
