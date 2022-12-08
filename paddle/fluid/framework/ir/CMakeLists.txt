@@ -95,9 +95,8 @@ pass_library(quant_conv2d_dequant_fuse_pass inference)
 pass_library(shuffle_channel_detect_pass inference)
 pass_library(delete_quant_dequant_op_pass inference)
 pass_library(delete_quant_dequant_filter_op_pass inference)
+pass_library(trt_delete_weight_dequant_linear_op_pass inference)
 pass_library(delete_weight_dequant_linear_op_pass inference)
-pass_library(delete_weight_dequant_linear_op_encoder_pass inference)
-pass_library(delete_weight_dequant_linear_op_decoder_pass inference)
 pass_library(delete_quant_dequant_linear_op_pass inference)
 pass_library(delete_dropout_op_pass inference)
 pass_library(delete_c_identity_op_pass inference)
@@ -359,6 +358,10 @@ cc_test(
   test_delete_dropout_pass_cc
   SRCS delete_dropout_op_pass_test.cc
   DEPS delete_dropout_op_pass)
+cc_test(
+  test_delete_dequant_weight_linear_op_pass
+  SRCS delete_weight_dequant_linear_op_pass_tester.cc
+  DEPS delete_weight_dequant_linear_op_pass)
 if(WITH_GPU OR WITH_ROCM)
   cc_test(
     test_embedding_eltwise_layernorm_fuse_pass
