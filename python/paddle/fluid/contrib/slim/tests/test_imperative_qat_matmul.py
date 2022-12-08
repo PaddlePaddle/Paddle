@@ -36,7 +36,7 @@ from paddle.fluid.log_helper import get_logger
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn.quant.quant_layers import (
     QuantizedConv2D,
-    QuantizedConv2DTranspose,
+    QuantizedMatmul,
 )
 from paddle.fluid.framework import _test_eager_guard
 from imperative_test_utils import fix_model_dict
@@ -90,7 +90,7 @@ class ImperativeLenet(fluid.dygraph.Layer):
             PReLU(),
             MaxPool2D(kernel_size=2, stride=2),
         )
-
+        self.matmul = QuantizedMatmul()
         self.fc = Sequential(
             Linear(
                 in_features=400,
@@ -116,17 +116,18 @@ class ImperativeLenet(fluid.dygraph.Layer):
         )
 
     def forward(self, inputs):
-        x = self.features(inputs)
-        x = paddle.flatten(x, 1, -1)
-        x = self.fc(x)
+        inputs = self.features(inputs)
+        inputs = self.matmul(inputs, inputs, transpose_y=True)
+        inputs = paddle.flatten(inputs, 1)
+        x = self.fc(inputs)
         return x
 
 
-class TestImperativeQatLSQ(unittest.TestCase):
+class TestImperativeQatMatmul(unittest.TestCase):
     def set_vars(self):
-        self.weight_quantize_type = 'channel_wise_lsq_weight'
-        self.activation_quantize_type = 'lsq_act'
-        self.onnx_format = False
+        self.weight_quantize_type = 'abs_max'
+        self.activation_quantize_type = 'moving_average_abs_max'
+        self.onnx_format = True
         self.fuse_conv_bn = False
 
     def func_qat(self):
@@ -146,6 +147,7 @@ class TestImperativeQatLSQ(unittest.TestCase):
         lenet = ImperativeLenet()
         lenet = fix_model_dict(lenet)
         imperative_qat.quantize(lenet)
+
         optimizer = MomentumOptimizer(
             learning_rate=0.1, parameter_list=lenet.parameters(), momentum=0.9
         )
@@ -154,7 +156,7 @@ class TestImperativeQatLSQ(unittest.TestCase):
             paddle.dataset.mnist.train(), batch_size=64, drop_last=True
         )
         test_reader = paddle.batch(paddle.dataset.mnist.test(), batch_size=32)
-        epoch_num = 2
+        epoch_num = 1
         for epoch in range(epoch_num):
             lenet.train()
             for batch_id, data in enumerate(train_reader()):
@@ -171,9 +173,7 @@ class TestImperativeQatLSQ(unittest.TestCase):
                 label = fluid.dygraph.to_variable(y_data)
                 out = lenet(img)
                 acc = paddle.static.accuracy(out, label)
-                loss = paddle.nn.functional.cross_entropy(
-                    out, label, reduction='none', use_softmax=False
-                )
+                loss = fluid.layers.cross_entropy(out, label)
                 avg_loss = paddle.mean(loss)
 
                 avg_loss.backward()
@@ -225,10 +225,6 @@ class TestImperativeQatLSQ(unittest.TestCase):
             # check eval acc
             eval_acc_top1 = sum(eval_acc_top1_list) / len(eval_acc_top1_list)
             print('eval_acc_top1', eval_acc_top1)
-        self.assertTrue(
-            eval_acc_top1 > 0.9,
-            msg="The test acc {%f} is less than 0.9." % eval_acc_top1,
-        )
 
     def test_qat(self):
         self.func_qat()
