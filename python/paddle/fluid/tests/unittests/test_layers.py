@@ -1387,7 +1387,7 @@ class TestLayer(LayerTest):
             def body(i):
                 return i + 1
 
-            out = layers.while_loop(cond, body, [i])
+            out = paddle.static.nn.while_loop(cond, body, [i])
             static_ret = self.get_static_graph_result(feed={}, fetch_list=out)
 
         with self.dynamic_graph():
@@ -1400,14 +1400,14 @@ class TestLayer(LayerTest):
             def body1(i):
                 return i + 1
 
-            dy_ret = layers.while_loop(cond1, body1, [i])
+            dy_ret = paddle.static.nn.while_loop(cond1, body1, [i])
             with self.assertRaises(ValueError):
                 j = layers.fill_constant(shape=[1], dtype='int64', value=0)
 
                 def body2(i):
                     return i + 1, i + 2
 
-                layers.while_loop(cond1, body2, [j])
+                paddle.static.nn.while_loop(cond1, body2, [j])
 
         np.testing.assert_array_equal(static_ret[0], dy_ret[0].numpy())
 
@@ -1659,10 +1659,12 @@ class TestLayer(LayerTest):
             pred_2 = paddle.less_than(x, y)  # false: 0.3 < 0.1
             pred_3 = paddle.equal(x, y)  # false: 0.3 == 0.1
 
-            out_1 = layers.case(
+            out_1 = paddle.static.nn.case(
                 pred_fn_pairs=[(pred_1, fn_1), (pred_2, fn_2)], default=fn_3
             )
-            out_2 = layers.case(pred_fn_pairs=[(pred_2, fn_2), (pred_3, fn_3)])
+            out_2 = paddle.static.nn.case(
+                pred_fn_pairs=[(pred_2, fn_2), (pred_3, fn_3)]
+            )
 
             place = (
                 fluid.CUDAPlace(0)
@@ -1682,10 +1684,10 @@ class TestLayer(LayerTest):
                 pred_2 = paddle.less_than(x, y)  # false: 0.3 < 0.1
                 pred_3 = paddle.equal(x, y)  # false: 0.3 == 0.1
 
-                out_1 = layers.case(
+                out_1 = paddle.static.nn.case(
                     pred_fn_pairs=[(pred_1, fn_1), (pred_2, fn_2)], default=fn_3
                 )
-                out_2 = layers.case(
+                out_2 = paddle.static.nn.case(
                     pred_fn_pairs=[(pred_2, fn_2), (pred_3, fn_3)]
                 )
                 eager_dynamic_res1 = out_1.numpy()
@@ -1699,10 +1701,12 @@ class TestLayer(LayerTest):
             pred_2 = paddle.less_than(x, y)  # false: 0.3 < 0.1
             pred_3 = paddle.equal(x, y)  # false: 0.3 == 0.1
 
-            out_1 = layers.case(
+            out_1 = paddle.static.nn.case(
                 pred_fn_pairs=[(pred_1, fn_1), (pred_2, fn_2)], default=fn_3
             )
-            out_2 = layers.case(pred_fn_pairs=[(pred_2, fn_2), (pred_3, fn_3)])
+            out_2 = paddle.static.nn.case(
+                pred_fn_pairs=[(pred_2, fn_2), (pred_3, fn_3)]
+            )
             dynamic_res1 = out_1.numpy()
             dynamic_res2 = out_2.numpy()
 
@@ -1725,17 +1729,17 @@ class TestLayer(LayerTest):
             index_1 = layers.fill_constant(shape=[1], dtype='int32', value=1)
             index_2 = layers.fill_constant(shape=[1], dtype='int32', value=2)
 
-            out_1 = layers.switch_case(
+            out_1 = paddle.static.nn.switch_case(
                 branch_index=index_1,
                 branch_fns={1: fn_1, 2: fn_2},
                 default=fn_3,
             )
-            out_2 = layers.switch_case(
+            out_2 = paddle.static.nn.switch_case(
                 branch_index=index_2,
                 branch_fns=[(1, fn_1), (2, fn_2)],
                 default=fn_3,
             )
-            out_3 = layers.switch_case(
+            out_3 = paddle.static.nn.switch_case(
                 branch_index=index_2,
                 branch_fns=[(0, fn_1), (4, fn_2), (7, fn_3)],
             )
@@ -1759,17 +1763,17 @@ class TestLayer(LayerTest):
                     shape=[1], dtype='int32', value=2
                 )
 
-                out_1 = layers.switch_case(
+                out_1 = paddle.static.nn.switch_case(
                     branch_index=index_1,
                     branch_fns={1: fn_1, 2: fn_2},
                     default=fn_3,
                 )
-                out_2 = layers.switch_case(
+                out_2 = paddle.static.nn.switch_case(
                     branch_index=index_2,
                     branch_fns=[(1, fn_1), (2, fn_2)],
                     default=fn_3,
                 )
-                out_3 = layers.switch_case(
+                out_3 = paddle.static.nn.switch_case(
                     branch_index=index_2,
                     branch_fns=[(0, fn_1), (4, fn_2), (7, fn_3)],
                 )
@@ -1781,17 +1785,17 @@ class TestLayer(LayerTest):
             index_1 = layers.fill_constant(shape=[1], dtype='int32', value=1)
             index_2 = layers.fill_constant(shape=[1], dtype='int32', value=2)
 
-            out_1 = layers.switch_case(
+            out_1 = paddle.static.nn.switch_case(
                 branch_index=index_1,
                 branch_fns={1: fn_1, 2: fn_2},
                 default=fn_3,
             )
-            out_2 = layers.switch_case(
+            out_2 = paddle.static.nn.switch_case(
                 branch_index=index_2,
                 branch_fns=[(1, fn_1), (2, fn_2)],
                 default=fn_3,
             )
-            out_3 = layers.switch_case(
+            out_3 = paddle.static.nn.switch_case(
                 branch_index=index_2,
                 branch_fns=[(0, fn_1), (4, fn_2), (7, fn_3)],
             )

@@ -1594,7 +1594,7 @@ def _dynamic_decode_declarative(
         max_step_num = tensor.fill_constant(
             shape=[1], dtype="int64", value=max_step_num
         )
-    while_op = control_flow.While(cond, is_test=is_test)
+    while_op = paddle.static.nn.control_flow.While(cond, is_test=is_test)
 
     sequence_lengths = tensor.cast(paddle.zeros_like(initial_finished), "int64")
     sequence_lengths.stop_gradient = True
