@@ -135,14 +135,14 @@ class TestDistPPTraning(unittest.TestCase):
             if step_id >= 5:
                 return True
 
-            with paddle.amp.auto_cast(enable=True, level='O2'):
+            with paddle.amp.auto_cast.auto_cast(enable=True, level='O2'):
                 loss_a = model_a(img, label)
             scaler_a.scale(loss_a).backward()
             scaler_a.minimize(optimizer_a, loss_a)
             optimizer_a.clear_grad()
             scheduler_a.step()
 
-            with paddle.amp.auto_cast(enable=True, level='O2'):
+            with paddle.amp.auto_cast.auto_cast(enable=True, level='O2'):
                 loss_b = model_b.train_batch(
                     [img, label], optimizer_b, scheduler_b, scaler=scaler_b
                 )

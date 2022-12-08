@@ -548,7 +548,7 @@ class TestGradScalerStateDict(unittest.TestCase):
                 label = paddle.to_tensor(y_data)
             label.stop_gradient = True
 
-            with paddle.amp.auto_cast(enable=enable_amp):
+            with paddle.amp.auto_cast.auto_cast(enable=enable_amp):
                 out = resnet(img)
 
             loss = paddle.nn.functional.cross_entropy(input=out, label=label)
@@ -859,7 +859,7 @@ class TestPureFp16SaveLoad(unittest.TestCase):
                 label = paddle.to_tensor(y_data)
             label.stop_gradient = True
 
-            with paddle.amp.auto_cast(enable=enable_amp, level='O2'):
+            with paddle.amp.auto_cast.auto_cast(enable=enable_amp, level='O2'):
                 out = resnet(img)
 
             loss = paddle.nn.functional.cross_entropy(input=out, label=label)
@@ -973,7 +973,7 @@ class TestPureFp16InferenceSaveLoad(unittest.TestCase):
         def train(layer, loader, loss_fn, opt):
             for epoch_id in range(EPOCH_NUM):
                 for batch_id, (image, label) in enumerate(loader()):
-                    with paddle.amp.auto_cast(
+                    with paddle.amp.auto_cast.auto_cast(
                         enable=True,
                         custom_white_list=None,
                         custom_black_list=None,
@@ -1146,7 +1146,7 @@ class TestResnet2(unittest.TestCase):
                 label = paddle.to_tensor(y_data)
             label.stop_gradient = True
 
-            with paddle.amp.auto_cast(enable=enable_amp, level=level):
+            with paddle.amp.auto_cast.auto_cast(enable=enable_amp, level=level):
                 out = resnet(img)
 
             loss = paddle.nn.functional.cross_entropy(input=out, label=label)
@@ -1361,7 +1361,9 @@ class TestLayerNormFp16(unittest.TestCase):
                 with fluid.dygraph.guard(fluid.CUDAPlace(0)):
                     x = paddle.rand([2, 2, 2, 3])
                     layer_norm = paddle.nn.LayerNorm(x.shape[1:])
-                    with paddle.amp.auto_cast(custom_white_list=['layer_norm']):
+                    with paddle.amp.auto_cast.auto_cast(
+                        custom_white_list=['layer_norm']
+                    ):
                         out = layer_norm(x)
 
                     self.assertTrue(
@@ -1389,7 +1391,7 @@ class TestBf16(unittest.TestCase):
             conv = paddle.amp.decorate(
                 models=conv, level=amp_level, dtype='bfloat16'
             )
-        with paddle.amp.auto_cast(
+        with paddle.amp.auto_cast.auto_cast(
             enable=enable_amp, level=amp_level, dtype='bfloat16'
         ):
             output = conv(input)
@@ -1431,7 +1433,7 @@ class TestAmpWithPyLyer(unittest.TestCase):
         x.stop_gradient = False
         y.stop_gradient = False
 
-        # with paddle.amp.auto_cast():
+        # with paddle.amp.auto_cast.auto_cast():
         res = MyMM.apply(x, y)
         loss = paddle.mean(res)
         loss.backward()
@@ -1451,7 +1453,7 @@ class TestAmpWithHook(unittest.TestCase):
                     return res
 
                 v.register_hook(foo)
-                with paddle.amp.auto_cast():
+                with paddle.amp.auto_cast.auto_cast():
                     a = paddle.mm(v, v)
                     loss = a.sum()
                     self.assertRaises(RuntimeError, loss.backward)
@@ -1469,7 +1471,7 @@ class TestAmpWithHook(unittest.TestCase):
                     return res
 
                 v.register_hook(foo)
-                with paddle.amp.auto_cast():
+                with paddle.amp.auto_cast.auto_cast():
                     a = paddle.mm(v, v)
                     loss = a.sum()
                     self.assertRaises(RuntimeError, loss.backward)

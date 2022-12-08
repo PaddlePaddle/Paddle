@@ -161,7 +161,7 @@ def run_model(
         x = paddle.to_tensor(x_data)
         # x.stop_gradient = False
         level = 'O2' if pure_fp16 else 'O1'
-        with paddle.amp.auto_cast(True, level=level):
+        with paddle.amp.auto_cast.auto_cast(True, level=level):
             y_pred = model(x)
             loss = y_pred.mean()
         if enable_autocast:

@@ -152,7 +152,7 @@ class TestFleetWithASPAMPDynamic(unittest.TestCase):
         loss_fn = paddle.nn.MSELoss(reduction='mean')
         scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
 
-        with paddle.amp.auto_cast(enable=True):
+        with paddle.amp.auto_cast.auto_cast(enable=True):
             output = self.layer(imgs)
             loss = loss_fn(output, labels)
         scaled = scaler.scale(loss)

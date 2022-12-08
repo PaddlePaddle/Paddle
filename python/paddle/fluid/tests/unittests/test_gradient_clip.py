@@ -555,7 +555,7 @@ class TestDygraphGradientClipFP16(unittest.TestCase):
                 inputs = fluid.layers.uniform_random(
                     [1, 5], min=-10, max=10
                 ).astype('float32')
-                with paddle.amp.auto_cast(level='O2'):
+                with paddle.amp.auto_cast.auto_cast(level='O2'):
                     out = model(fluid.dygraph.to_variable(inputs))
                     loss = paddle.mean(out)
                 scaled = scaler.scale(loss)

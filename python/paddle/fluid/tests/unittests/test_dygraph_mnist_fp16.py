@@ -132,7 +132,7 @@ class TestMnist(unittest.TestCase):
             y = fluid.dygraph.to_variable(y)
 
             # using amp.auto_cast because paddle.nn.Conv2D doesn't suppport setting dtype
-            with paddle.amp.auto_cast(dtype='float16'):
+            with paddle.amp.auto_cast.auto_cast(dtype='float16'):
                 loss = model(x, y)
             print(loss.numpy())
 

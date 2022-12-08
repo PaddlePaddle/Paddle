@@ -79,7 +79,7 @@ class TestAMP(TestMNIST):
                 label = paddle.to_tensor(y_data)
                 label.stop_gradient = True
 
-                with paddle.amp.auto_cast():
+                with paddle.amp.auto_cast.auto_cast():
                     prediction, acc, avg_loss = mnist(img, label=label)
 
                 scaled = scaler.scale(avg_loss)

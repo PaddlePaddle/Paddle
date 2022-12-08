@@ -54,7 +54,7 @@ def train_func_ampo1(epoch_id, train_loader, model, cost, optimizer, scaler):
     epoch_start = time.time()
     for batch_id, (images, labels) in enumerate(train_loader()):
         # forward
-        with paddle.amp.auto_cast(
+        with paddle.amp.auto_cast.auto_cast(
             custom_black_list={
                 "flatten_contiguous_range",
                 "greater_than",

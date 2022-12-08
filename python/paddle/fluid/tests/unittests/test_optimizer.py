@@ -1451,7 +1451,7 @@ class TestMasterWeightSaveForFP16(unittest.TestCase):
         model = paddle.amp.decorate(models=model, level='O2')
 
         for i, (data, label) in enumerate(loader):
-            with paddle.amp.auto_cast(level='O2'):
+            with paddle.amp.auto_cast.auto_cast(level='O2'):
                 output = model(data)
                 loss = mse(output, label)
             scaled = scaler.scale(loss)

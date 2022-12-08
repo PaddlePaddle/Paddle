@@ -40,7 +40,7 @@ class TestMPFP16(TestDistMPTraning):
         scaler = paddle.amp.GradScaler(init_loss_scaling=5160)
         if is_mp:
             scaler = fleet.distributed_scaler(scaler)
-        with paddle.amp.auto_cast(enable=True, level="O2"):
+        with paddle.amp.auto_cast.auto_cast(enable=True, level="O2"):
             output = model(batch)
             loss = output.mean()
 

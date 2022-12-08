@@ -88,7 +88,7 @@ class TestPureFP16(TestMNIST):
                 label = paddle.to_tensor(y_data)
                 label.stop_gradient = True
 
-                with paddle.amp.auto_cast(
+                with paddle.amp.auto_cast.auto_cast(
                     enable=True,
                     custom_white_list=None,
                     custom_black_list=None,

@@ -80,7 +80,7 @@ class LayoutAutoTune(unittest.TestCase):
         )
         scaler = paddle.amp.GradScaler()
         for i in range(2):
-            with paddle.amp.auto_cast(level="O2"):
+            with paddle.amp.auto_cast.auto_cast(level="O2"):
                 conv_out, predict = model(data)
                 loss = F.cross_entropy(predict, label=label_data)
                 loss = loss.mean()
@@ -103,7 +103,7 @@ class LayoutAutoTune(unittest.TestCase):
             learning_rate=0.0001, parameters=conv.parameters()
         )
         scaler = paddle.amp.GradScaler()
-        with paddle.amp.auto_cast(level="O2"):
+        with paddle.amp.auto_cast.auto_cast(level="O2"):
             conv_out = conv(data)
             # conv_out.shape = [1, 14, 12, 8] with NHWC
             # layout tuner will transpose conv_out to
@@ -121,7 +121,7 @@ class LayoutAutoTune(unittest.TestCase):
         conv = paddle.nn.Conv2D(3, 8, (3, 3))
         flatten = paddle.nn.Flatten(start_axis=1, stop_axis=2)
         data = paddle.rand([1, 3, 16, 14])
-        with paddle.amp.auto_cast(level="O2"):
+        with paddle.amp.auto_cast.auto_cast(level="O2"):
             conv_out = conv(data)
             # conv_out.shape = [1, 14, 12, 8] with NHWC
             # layout tuner will transpose conv_out to
@@ -135,7 +135,7 @@ class LayoutAutoTune(unittest.TestCase):
     def test_argmax_op_transposer_keep_dims(self):
         conv = paddle.nn.Conv2D(3, 8, (3, 3))
         data = paddle.rand([1, 3, 16, 14])
-        with paddle.amp.auto_cast(level="O2"):
+        with paddle.amp.auto_cast.auto_cast(level="O2"):
             conv_out = conv(data)
             # conv_out.shape = [1, 14, 12, 8] with NHWC
             out = paddle.argmax(conv_out, axis=1, keepdim=True)
@@ -146,7 +146,7 @@ class LayoutAutoTune(unittest.TestCase):
         in1 = paddle.rand([1, 8, 14, 12])
         conv = paddle.nn.Conv2D(3, 8, (3, 3))
         data = paddle.rand([1, 3, 16, 14])
-        with paddle.amp.auto_cast(level="O2"):
+        with paddle.amp.auto_cast.auto_cast(level="O2"):
             conv_out = conv(data)
             # conv_out.shape = [1, 14, 12, 8] with NHWC
             out = paddle.concat(x=[conv_out, in1], axis=0)
@@ -158,7 +158,7 @@ class LayoutAutoTune(unittest.TestCase):
         conv = paddle.nn.Conv2D(3, 8, (3, 3))
         data1 = paddle.rand([1, 3, 16, 14])
         data2 = paddle.rand([1, 3, 16, 14])
-        with paddle.amp.auto_cast(level="O2"):
+        with paddle.amp.auto_cast.auto_cast(level="O2"):
             conv_out1 = conv(data1)
             conv_out2 = conv(data2)
             # conv_out.shape = [1, 14, 12, 8] with NHWC

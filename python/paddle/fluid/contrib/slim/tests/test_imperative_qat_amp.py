@@ -116,7 +116,7 @@ class TestImperativeQatAmp(unittest.TestCase):
             label = paddle.to_tensor(y_data)
 
             if use_amp:
-                with paddle.amp.auto_cast():
+                with paddle.amp.auto_cast.auto_cast():
                     out = model(img)
                     acc = paddle.static.accuracy(out, label)
                     loss = fluid.layers.cross_entropy(out, label)
@@ -165,7 +165,7 @@ class TestImperativeQatAmp(unittest.TestCase):
             img = paddle.to_tensor(x_data)
             label = paddle.to_tensor(y_data)
 
-            with paddle.amp.auto_cast(use_amp):
+            with paddle.amp.auto_cast.auto_cast(use_amp):
                 out = model(img)
                 acc_top1 = paddle.static.accuracy(input=out, label=label, k=1)
                 acc_top5 = paddle.static.accuracy(input=out, label=label, k=5)

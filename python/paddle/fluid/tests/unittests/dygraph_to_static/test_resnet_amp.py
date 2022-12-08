@@ -69,7 +69,7 @@ def train(to_static, build_strategy=None):
                 img.stop_gradient = True
                 label.stop_gradient = True
 
-                with paddle.amp.auto_cast():
+                with paddle.amp.auto_cast.auto_cast():
                     pred = resnet(img)
                     # FIXME(Aurelius84): The followding cross_entropy seems to bring out a
                     # precision problem, need to figure out the underlying reason.

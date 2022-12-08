@@ -189,12 +189,12 @@ class TestDygraphHybridFp16(TestCollectiveAPIRunnerBase):
 
         for _ in range(2):
             if pp_degree > 1:
-                with paddle.amp.auto_cast(True, level='O2'):
+                with paddle.amp.auto_cast.auto_cast(True, level='O2'):
                     loss = model.train_batch(
                         [x, y], optimizer=optimizer, scaler=scaler
                     )
             else:
-                with paddle.amp.auto_cast(True, level='O2'):
+                with paddle.amp.auto_cast.auto_cast(True, level='O2'):
                     output = model(x)
                     loss = crit(output, y)
                 scaler.scale(loss).backward()
@@ -202,7 +202,7 @@ class TestDygraphHybridFp16(TestCollectiveAPIRunnerBase):
                 optimizer.clear_grad()
 
             # baseline loss
-            with paddle.amp.auto_cast(True, level='O2'):
+            with paddle.amp.auto_cast.auto_cast(True, level='O2'):
                 output_base = model_base(x)
                 loss_base = crit(output_base, y)
             loss_base.backward()

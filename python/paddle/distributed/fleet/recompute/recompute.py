@@ -162,7 +162,7 @@ class LegacyRecomputeFunction(LegacyPyLayer):
                 with swith_rng_state_tracker(
                     ctx.fw_cuda_rng_state, ctx.fwd_cuda_rng_state_tracker
                 ):
-                    with paddle.amp.auto_cast(
+                    with paddle.amp.auto_cast.auto_cast(
                         enable=ctx.is_fw_autocast,
                         custom_white_list=ctx.amp_white_list,
                         custom_black_list=ctx.amp_black_list,
@@ -172,7 +172,7 @@ class LegacyRecomputeFunction(LegacyPyLayer):
                         detached_inputs = detach_variable(tuple(inputs))
                         outputs = ctx.run_function(*detached_inputs)
             else:
-                with paddle.amp.auto_cast(
+                with paddle.amp.auto_cast.auto_cast(
                     enable=ctx.is_fw_autocast,
                     custom_white_list=ctx.amp_white_list,
                     custom_black_list=ctx.amp_black_list,
@@ -207,7 +207,7 @@ class LegacyRecomputeFunction(LegacyPyLayer):
                 )
 
             # actually backward
-            with paddle.amp.auto_cast(enable=False):
+            with paddle.amp.auto_cast.auto_cast(enable=False):
                 paddle.autograd.backward(
                     forward_outputs_with_grad, backward_inputs_with_grad
                 )
@@ -315,7 +315,7 @@ class RecomputeFunction(PyLayer):
                 with swith_rng_state_tracker(
                     ctx.fw_cuda_rng_state, ctx.fwd_cuda_rng_state_tracker
                 ):
-                    with paddle.amp.auto_cast(
+                    with paddle.amp.auto_cast.auto_cast(
                         enable=ctx.is_fw_autocast,
                         custom_white_list=ctx.amp_white_list,
                         custom_black_list=ctx.amp_black_list,
@@ -327,7 +327,7 @@ class RecomputeFunction(PyLayer):
                             *detached_inputs, **ctx.kwargs
                         )
             else:
-                with paddle.amp.auto_cast(
+                with paddle.amp.auto_cast.auto_cast(
                     enable=ctx.is_fw_autocast,
                     custom_white_list=ctx.amp_white_list,
                     custom_black_list=ctx.amp_black_list,
@@ -362,7 +362,7 @@ class RecomputeFunction(PyLayer):
                 )
 
             # actually backward
-            with paddle.amp.auto_cast(enable=False):
+            with paddle.amp.auto_cast.auto_cast(enable=False):
                 paddle.autograd.backward(
                     forward_outputs_with_grad, backward_inputs_with_grad
                 )

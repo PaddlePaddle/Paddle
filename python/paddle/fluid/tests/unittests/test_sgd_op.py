@@ -329,7 +329,7 @@ class TestSGDMultiPrecision2_0(unittest.TestCase):
 
         for idx in range(5):
             if mp:
-                with paddle.amp.auto_cast(level='O2'):
+                with paddle.amp.auto_cast.auto_cast(level='O2'):
                     output = model(input)
                     loss = paddle.mean(output)
                 scaled = scaler.scale(loss)
@@ -437,7 +437,7 @@ class TestSGDMultiPrecision1_0(unittest.TestCase):
 
         for idx in range(5):
             if mp:
-                with paddle.amp.auto_cast(level='O2'):
+                with paddle.amp.auto_cast.auto_cast(level='O2'):
                     output = model(input)
                     loss = paddle.mean(output)
                 scaled = scaler.scale(loss)

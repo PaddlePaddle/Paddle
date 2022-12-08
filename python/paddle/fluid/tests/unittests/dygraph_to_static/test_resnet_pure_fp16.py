@@ -68,7 +68,7 @@ def train(to_static, build_strategy=None):
             img.stop_gradient = True
             label.stop_gradient = True
 
-            with paddle.amp.auto_cast(
+            with paddle.amp.auto_cast.auto_cast(
                 enable=True,
                 custom_white_list=None,
                 custom_black_list=None,

@@ -36,7 +36,7 @@ class GradScaler(AmpScaler):
     `update` is used to update the loss_scaling.
 
 
-    Commonly, it is used together with `paddle.amp.auto_cast` to achieve Auto-Mixed-Precision in
+    Commonly, it is used together with `paddle.amp.auto_cast.auto_cast` to achieve Auto-Mixed-Precision in
     dynamic graph mode.
 
     Args:
@@ -65,7 +65,7 @@ class GradScaler(AmpScaler):
             scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
             data = paddle.rand([10, 3, 32, 32])
 
-            with paddle.amp.auto_cast():
+            with paddle.amp.auto_cast.auto_cast():
                 conv = model(data)
                 loss = paddle.mean(conv)
 
@@ -116,7 +116,7 @@ class GradScaler(AmpScaler):
                 scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
                 data = paddle.rand([10, 3, 32, 32])
 
-                with paddle.amp.auto_cast():
+                with paddle.amp.auto_cast.auto_cast():
                     conv = model(data)
                     loss = paddle.mean(conv)
 
@@ -152,7 +152,7 @@ class GradScaler(AmpScaler):
                 scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
                 data = paddle.rand([10, 3, 32, 32])
 
-                with paddle.amp.auto_cast():
+                with paddle.amp.auto_cast.auto_cast():
                     conv = model(data)
                     loss = paddle.mean(conv)
 
@@ -184,7 +184,7 @@ class GradScaler(AmpScaler):
                 optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
                 scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
                 data = paddle.rand([10, 3, 32, 32])
-                with paddle.amp.auto_cast():
+                with paddle.amp.auto_cast.auto_cast():
                     conv = model(data)
                     loss = paddle.mean(conv)
                 scaled = scaler.scale(loss)  # scale the loss
@@ -232,7 +232,7 @@ class GradScaler(AmpScaler):
                 optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
                 scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
                 data = paddle.rand([10, 3, 32, 32])
-                with paddle.amp.auto_cast():
+                with paddle.amp.auto_cast.auto_cast():
                     conv = model(data)
                     loss = paddle.mean(conv)
                 scaled = scaler.scale(loss)     # scale the loss
@@ -270,7 +270,7 @@ class GradScaler(AmpScaler):
                 optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
                 scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
                 data = paddle.rand([10, 3, 32, 32])
-                with paddle.amp.auto_cast():
+                with paddle.amp.auto_cast.auto_cast():
                     conv = model(data)
                     loss = paddle.mean(conv)
                 scaled = scaler.scale(loss)  # scale the loss

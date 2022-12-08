@@ -204,7 +204,7 @@ class _HPRecomputeFunction(PyLayer):
             with swith_rng_state_tracker(
                 ctx.fwd_cuda_rng_state, ctx.fwd_cuda_rng_state_tracker
             ):
-                with paddle.amp.auto_cast(
+                with paddle.amp.auto_cast.auto_cast(
                     enable=ctx.is_fw_autocast,
                     custom_white_list=ctx.amp_white_list,
                     custom_black_list=ctx.amp_black_list,

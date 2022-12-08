@@ -195,7 +195,7 @@ class PipelineParallel(MetaParallelBase):
             p2p.send_backward(input_tensor_grad, self.is_pipeline_first_stage())
 
         self._layers.allreduce_shared_weight_gradients()
-        with paddle.amp.auto_cast(enable=False):
+        with paddle.amp.auto_cast.auto_cast(enable=False):
             train_loss = self._broadcast_final_loss()
         return train_loss
 
@@ -233,7 +233,7 @@ class PipelineParallel(MetaParallelBase):
         train_loss = self.forward_backward_pipeline(data, scaler)
 
         # optimizer
-        with paddle.amp.auto_cast(enable=False):
+        with paddle.amp.auto_cast.auto_cast(enable=False):
             self._optimizer_step()
 
         return train_loss
@@ -311,7 +311,7 @@ class PipelineParallel(MetaParallelBase):
                     output_tensor, (paddle.Tensor, core.eager.Tensor)
                 ), "Currently, loss_fn should obtain Paddle.Tensor dtype"
 
-                with paddle.amp.auto_cast(enable=False):
+                with paddle.amp.auto_cast.auto_cast(enable=False):
                     if self.accumulate_steps > 1:
                         output_tensor = output_tensor / self.accumulate_steps
 
@@ -326,7 +326,7 @@ class PipelineParallel(MetaParallelBase):
         return output_tensor
 
     def _backward_step(self, input_tensor, output_tensor, output_tensor_grad):
-        with paddle.amp.auto_cast(enable=False):
+        with paddle.amp.auto_cast.auto_cast(enable=False):
             if self.is_pipeline_last_stage():
                 assert output_tensor_grad is None
                 if self.scaler:
@@ -752,7 +752,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         if compute_loss:
             # return loss if compute loss
-            with paddle.amp.auto_cast(enable=False):
+            with paddle.amp.auto_cast.auto_cast(enable=False):
                 train_loss = self._broadcast_final_loss()
         else:
             # else just return all intermediate output tensor for all micro steps
@@ -766,7 +766,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
         train_loss = self.forward_backward_pipeline(data, scaler)
 
         # optimizer
-        with paddle.amp.auto_cast(enable=False):
+        with paddle.amp.auto_cast.auto_cast(enable=False):
             self._optimizer_step()
 
         return train_loss

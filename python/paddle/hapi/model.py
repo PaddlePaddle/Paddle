@@ -783,7 +783,7 @@ class DynamicGraphAdapter:
         if self._amp_level != "O0" and self.model._scaler is None:
             self.model._scaler = paddle.amp.GradScaler(**self._amp_configs)
 
-        with paddle.amp.auto_cast(
+        with paddle.amp.auto_cast.auto_cast(
             enable=self._amp_level != 'O0',
             **self._amp_custom_lists,
             level=self._amp_level

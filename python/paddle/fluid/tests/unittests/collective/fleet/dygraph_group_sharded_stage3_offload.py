@@ -121,7 +121,7 @@ def train_mlp(
             img, label = data
             label.stop_gradient = True
             img.stop_gradient = True
-            with paddle.amp.auto_cast(True, level='O2'):
+            with paddle.amp.auto_cast.auto_cast(True, level='O2'):
                 out = model(img)
                 loss = paddle.nn.functional.cross_entropy(
                     input=out, label=label

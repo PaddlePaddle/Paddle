@@ -43,7 +43,7 @@ class TestMPClipGrad(TestDistMPTraning):
         scaler = paddle.amp.GradScaler(init_loss_scaling=5160)
         if is_mp:
             scaler = fleet.distributed_scaler(scaler)
-        with paddle.amp.auto_cast():
+        with paddle.amp.auto_cast.auto_cast():
             output = model(batch)
             loss = output.mean()
 

@@ -865,7 +865,7 @@ def _release_param(
             param._clear_data()
             if param.name in task_flow.full_param.keys():
                 start, end = param2buffer[param.name][rank]
-                with paddle.amp.auto_cast(enable=False):
+                with paddle.amp.auto_cast.auto_cast(enable=False):
                     param.fw_storage = (
                         task_flow.full_param[param.name][0]
                         ._slice(start, end)
@@ -935,12 +935,12 @@ def _allgather_buffer(
             param.fw_storage = _cpu2device(param)
 
         buffer_size = param2buffer_size[param.name]
-        with paddle.amp.auto_cast(enable=False):
+        with paddle.amp.auto_cast.auto_cast(enable=False):
             full_param, task = _all_gather(param.fw_storage, buffer_size, group)
 
         # Allgather current layer in the 1st step synchronously
         if sync_wait:
-            with paddle.amp.auto_cast(enable=False):
+            with paddle.amp.auto_cast.auto_cast(enable=False):
                 task.wait()
             full_param._slice(0, param._numel())._share_buffer_to(param)
             param.fw_storage._clear()

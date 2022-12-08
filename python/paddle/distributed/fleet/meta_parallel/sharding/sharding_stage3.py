@@ -873,7 +873,7 @@ def _release_param(
             param._clear()
             if param.name in task_flow.full_param.keys():
                 start, end = param2buffer[param.name][rank]
-                with paddle.amp.auto_cast(enable=False):
+                with paddle.amp.auto_cast.auto_cast(enable=False):
                     param.fw_storage = (
                         core.VarBase(
                             task_flow.full_param[param.name]._slice(start, end),
@@ -939,14 +939,14 @@ def _allgather_buffer(
         if offload:
             param.fw_storage = _cpu2device(param)
 
-        with paddle.amp.auto_cast(enable=False):
+        with paddle.amp.auto_cast.auto_cast(enable=False):
             full_param = _all_gather(
                 param.fw_storage, group, use_calc_stream=use_calc_stream
             )
 
         # Allgather current layer in the 1st step synchronously
         if sync_wait:
-            with paddle.amp.auto_cast(enable=False):
+            with paddle.amp.auto_cast.auto_cast(enable=False):
                 dist.wait(
                     tensor=full_param,
                     group=group,

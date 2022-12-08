@@ -500,7 +500,7 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
                 model = paddle.amp.decorate(models=model, level='O2')
                 scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
             if place == 'mlu' and use_amp == True:
-                with paddle.amp.auto_cast(level='O2'):
+                with paddle.amp.auto_cast.auto_cast(level='O2'):
                     output = model(input)
                     loss = paddle.mean(output)
                 scaled = scaler.scale(loss)
