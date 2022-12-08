@@ -561,8 +561,8 @@ def cmake_run(args, build_path):
     with cd(build_path):
         cmake_args = []
         cmake_args.append(CMAKE)
-        cmake_args.append('-DWITH_SETUP_INSTALL=ON')
         cmake_args += args
+        cmake_args.append('-DWITH_SETUP_INSTALL=ON')
         cmake_args.append(TOP_DIR)
         print("cmake_args:", cmake_args)
         subprocess.check_call(cmake_args)
@@ -593,10 +593,19 @@ def build_steps():
     build_path = build_dir
     # run cmake to generate native build files
     cmake_cache_file_path = os.path.join(build_path, "CMakeCache.txt")
+    build_ninja_file_path = os.path.join(build_path, "build.ninja")
     # if rerun_cmake is True,remove CMakeCache.txt and rerun camke
     if os.path.isfile(cmake_cache_file_path) and rerun_cmake is True:
         os.remove(cmake_cache_file_path)
-    if not os.path.exists(cmake_cache_file_path):
+    USE_NINJA = os.getenv("USE_NINJA")
+    if os.path.exists(cmake_cache_file_path) and not (
+        USE_NINJA and not os.path.exists(build_ninja_file_path)
+    ):
+        print("Do not need rerun camke,everything is ready,run build now")
+    else:
+        args = []
+        if USE_NINJA:
+            args.append("-GNinja")
         env_var = os.environ.copy()  # get env variables
         paddle_build_options = {}
         other_options = {}
@@ -634,7 +643,6 @@ def build_steps():
             if option_key.startswith(("CMAKE_", "WITH_")):
                 paddle_build_options[option_key] = option_value
             if option_key in other_options:
-                print("type:", type(other_options[option_key]))
                 if (
                     option_key == 'PYTHON_EXECUTABLE'
                     or option_key == 'PYTHON_LIBRARY'
@@ -649,7 +657,7 @@ def build_steps():
                     key = other_options[option_key]
                 if key not in paddle_build_options:
                     paddle_build_options[key] = option_value
-        args = []
+
         options_process(args, paddle_build_options)
         print("args:", args)
         cmake_run(args, build_path)
