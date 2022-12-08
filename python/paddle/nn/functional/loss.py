@@ -1861,6 +1861,33 @@ def rnnt_loss(
         .. code-block:: python
 
             # declarative mode
+            import paddle.nn.functional as F
+            import numpy as np
+            import paddle
+            import functools
+
+            fn = functools.partial(F.rnnt_loss, reduction='sum', fastemit_lambda=0.0, blank=0)
+
+            acts = np.array([[[[0.1, 0.6, 0.1, 0.1, 0.1],
+                            [0.1, 0.1, 0.6, 0.1, 0.1],
+                            [0.1, 0.1, 0.2, 0.8, 0.1]],
+                            [[0.1, 0.6, 0.1, 0.1, 0.1],
+                            [0.1, 0.1, 0.2, 0.1, 0.1],
+                            [0.7, 0.1, 0.2, 0.1, 0.1]]]])
+            labels = [[1, 2]]
+
+            acts = paddle.to_tensor(acts, stop_gradient=False)
+
+            lengths = [acts.shape[1]] * acts.shape[0]
+            label_lengths = [len(l) for l in labels]
+            labels = paddle.to_tensor(labels, paddle.int32)
+            lengths = paddle.to_tensor(lengths, paddle.int32)
+            label_lengths = paddle.to_tensor(label_lengths, paddle.int32)
+
+            costs = fn(acts, labels, lengths, label_lengths)
+            print(costs)
+            # Tensor(shape=[1], dtype=float64, place=Place(gpu:0), stop_gradient=False,
+            #        [4.49566677])
     """
 
     def warprnnt(
