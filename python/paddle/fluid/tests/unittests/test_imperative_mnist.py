@@ -159,7 +159,9 @@ class TestImperativeMnist(unittest.TestCase):
                         cost_static = traced_layer([img])
                         helper.assertEachVar(cost, cost_static)
 
-                    loss = fluid.layers.cross_entropy(cost, label)
+                    loss = paddle.nn.functional.cross_entropy(
+                        cost, label, reduction='none', use_softmax=False
+                    )
                     avg_loss = paddle.mean(loss)
 
                     dy_out = avg_loss.numpy()
@@ -199,7 +201,9 @@ class TestImperativeMnist(unittest.TestCase):
             )
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             cost = mnist(img)
-            loss = fluid.layers.cross_entropy(cost, label)
+            loss = paddle.nn.functional.cross_entropy(
+                cost, label, reduction='none', use_softmax=False
+            )
             avg_loss = paddle.mean(loss)
             sgd.minimize(avg_loss)
 
