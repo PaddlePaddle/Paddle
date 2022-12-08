@@ -18,13 +18,11 @@ import paddle
 paddle.set_default_dtype("float64")
 
 import unittest
-from paddle import fluid
 
 import numpy as np
-import unittest
 
+from paddle import fluid
 from paddle.fluid import framework
-
 
 bidirectional_list = ["bidirectional", "bidirect"]
 
@@ -107,9 +105,9 @@ class TestSimpleRNN(unittest.TestCase):
 
         paddle.disable_static(self.place)
         if test_seq_len:
-            seq_len = np.array([9, 10, 8, 12])
+            seq_len = np.array([9, 10, 8, 12], "int64")
         else:
-            seq_len = np.array([12, 12, 12, 12])
+            seq_len = np.array([12, 12, 12, 12], "int64")
 
         y1, h1 = self.rnn_net(
             paddle.to_tensor(x),
@@ -210,9 +208,9 @@ class TestGRU(unittest.TestCase):
 
         paddle.disable_static(self.place)
         if test_seq_len:
-            seq_len = np.array([9, 10, 8, 12])
+            seq_len = np.array([9, 10, 8, 12], "int64")
         else:
-            seq_len = np.array([12, 12, 12, 12])
+            seq_len = np.array([12, 12, 12, 12], "int64")
 
         y1, h1 = self.rnn_net(
             paddle.to_tensor(x),
@@ -322,9 +320,9 @@ class TestGRUBackward(unittest.TestCase):
 
         paddle.disable_static(self.place)
         if test_seq_len:
-            seq_len = np.array([9, 10, 8, 12])
+            seq_len = np.array([9, 10, 8, 12], "int64")
         else:
-            seq_len = np.array([12, 12, 12, 12])
+            seq_len = np.array([12, 12, 12, 12], "int64")
 
         x_in = paddle.to_tensor(x)
         h_in = paddle.to_tensor(prev_h)
