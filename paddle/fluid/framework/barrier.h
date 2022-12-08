@@ -16,8 +16,8 @@
 
 #ifdef __LINUX__
 #include <pthread.h>
-#endif
 #include <semaphore.h>
+#endif
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
