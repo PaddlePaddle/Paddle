@@ -88,8 +88,8 @@ class TestAMPPass(unittest.TestCase):
 
     def test_bf16_pass(self):
         # mp2 training
-        # serial_engine = self.get_engine()
-        # history = serial_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        serial_engine = self.get_engine()
+        history = serial_engine.fit(self.dataset, 3, batch_size=self.batch_size)
         # serial_losses = np.array(history.history["loss"])
 
         # mp2 amp-o1 training
