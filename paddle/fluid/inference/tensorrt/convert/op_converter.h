@@ -76,7 +76,7 @@ class OpConverter {
           static std::unordered_set<std::string> add_tensor_op_set{
               "add", "mul", "sub", "div", "max", "min", "pow"};
           static std::unordered_set<std::string> add_weight_op_set{
-              "add", "mul", "sub", "div", "pow"};
+              "add", "mul", "sub", "div", "max", "min", "pow"};
           PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(),
                             1UL,
                             platform::errors::InvalidArgument(
@@ -495,7 +495,7 @@ class OpConverter {
 
     int data_size = std::accumulate(
         shape.d, shape.d + shape.nbDims, 1, std::multiplies<int>());
-    std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
+    std::unique_ptr<phi::DenseTensor> tmp_tensor(new phi::DenseTensor());
     tmp_tensor->Resize({data_size});
     auto* tmp_data = tmp_tensor->mutable_data<T>(platform::CPUPlace());
     for (int i = 0; i < data_size; i++) {
@@ -530,7 +530,7 @@ class OpConverter {
           "supports float, half or int32_t."));
     }
 
-    std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
+    std::unique_ptr<phi::DenseTensor> tmp_tensor(new phi::DenseTensor());
     int data_size = data.size();
     tmp_tensor->Resize({data_size});
     auto* tmp_data = tmp_tensor->mutable_data<T>(platform::CPUPlace());

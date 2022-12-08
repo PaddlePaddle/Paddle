@@ -20,13 +20,15 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/quant_dequant_kernel.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
+using phi::backends::gpu::GpuLaunchConfig;
 
 template <typename T>
 class AttnMatmulINT8 {
@@ -36,21 +38,23 @@ class AttnMatmulINT8 {
       : dev_ctx_(dev_ctx), m_(m), n_(n), k_(k), compute_bias_(compute_bias) {
     auto helper = std::make_shared<CublasLtHelper>(m, k, n);
     helpers_.emplace_back(helper);
+    gpu_config_ = std::make_unique<GpuLaunchConfig>(
+        phi::backends::gpu::GetGpuLaunchConfig1D(
+            dev_ctx, m * n, DequantKernelVecSize));
   }
   ~AttnMatmulINT8() {}
 
   // This function is used to execute GEMM, with input and output's types are
   // both T.
-  void ComputeForward(const framework::Tensor* weight,
-                      const framework::Tensor* input,
-                      framework::Tensor* input_tmp,
-                      const framework::Tensor* bias,
-                      framework::Tensor* output,
-                      framework::Tensor* output_tmp,
-                      framework::Tensor* bias_out,
+  void ComputeForward(const phi::DenseTensor* weight,
+                      const phi::DenseTensor* input,
+                      phi::DenseTensor* input_tmp,
+                      const phi::DenseTensor* bias,
+                      phi::DenseTensor* output,
+                      phi::DenseTensor* output_tmp,
+                      phi::DenseTensor* bias_out,
                       const float quant_in_scale,
-                      const framework::Tensor* dequant_out_scale,
-                      const int quant_out_scale_offset,
+                      const phi::DenseTensor* dequant_out_scale,
                       const int quant_round_type = 1,
                       const float quant_max_bound = 127.0,
                       const float quant_min_bound = -127.0) {
@@ -74,14 +78,14 @@ class AttnMatmulINT8 {
                                   m_,
                                   n_,
                                   dev_ctx_.stream(),
+                                  gpu_config_.get(),
                                   quant_in_scale,
-                                  dequant_out_scale->data<float>(),
-                                  quant_out_scale_offset);
+                                  dequant_out_scale->data<float>());
 
     if (compute_bias_) {
       // bias_out = output + bias
-      std::vector<const framework::Tensor*> ins = {output, bias};
-      std::vector<framework::Tensor*> outs = {bias_out};
+      std::vector<const phi::DenseTensor*> ins = {output, bias};
+      std::vector<phi::DenseTensor*> outs = {bias_out};
       phi::funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
           dev_ctx_, ins, &outs, -1, phi::funcs::AddFunctor<T>());
       PADDLE_ENFORCE_EQ(cudaGetLastError(),
@@ -95,28 +99,29 @@ class AttnMatmulINT8 {
 
   // This function is used to execute GEMM, with input and output's types are
   // both INT8.
-  void ComputeForwardINT8ToINT8(const framework::Tensor* weight,
-                                framework::Tensor* input,
-                                const framework::Tensor* bias,
-                                framework::Tensor* output,
-                                framework::Tensor* bias_out) {
+  void ComputeForwardINT8ToINT8(const phi::DenseTensor* weight,
+                                phi::DenseTensor* input,
+                                const phi::DenseTensor* bias,
+                                phi::DenseTensor* output,
+                                phi::DenseTensor* bias_out,
+                                void* workspace = nullptr) {
     helpers_[0]->GEMM(input->data<int8_t>(),
                       weight->data<int8_t>(),
                       output->data<int32_t>(),
-                      dev_ctx_.stream());
+                      dev_ctx_.stream(),
+                      workspace);
   }
 
   // This function is used to execute GEMM, with input and output's types are
   // INT8 and T.
-  void ComputeForwardINT8ToT(const framework::Tensor* weight,
+  void ComputeForwardINT8ToT(const phi::DenseTensor* weight,
                              const float quant_in_scale,
-                             framework::Tensor* input,
-                             const framework::Tensor* bias,
-                             framework::Tensor* output,
-                             framework::Tensor* output_tmp,
-                             framework::Tensor* bias_out,
-                             const framework::Tensor* dequant_out_scale,
-                             const int quant_out_scale_offset) {
+                             phi::DenseTensor* input,
+                             const phi::DenseTensor* bias,
+                             phi::DenseTensor* output,
+                             phi::DenseTensor* output_tmp,
+                             phi::DenseTensor* bias_out,
+                             const phi::DenseTensor* dequant_out_scale) {
     helpers_[0]->GEMM(input->data<int8_t>(),
                       weight->data<int8_t>(),
                       output_tmp->data<int32_t>(),
@@ -127,14 +132,14 @@ class AttnMatmulINT8 {
                                   m_,
                                   n_,
                                   dev_ctx_.stream(),
+                                  gpu_config_.get(),
                                   quant_in_scale,
-                                  dequant_out_scale->data<float>(),
-                                  quant_out_scale_offset);
+                                  dequant_out_scale->data<float>());
 
     if (compute_bias_) {
       // bias_out = output + bias
-      std::vector<const framework::Tensor*> ins = {output, bias};
-      std::vector<framework::Tensor*> outs = {bias_out};
+      std::vector<const phi::DenseTensor*> ins = {output, bias};
+      std::vector<phi::DenseTensor*> outs = {bias_out};
       phi::funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
           dev_ctx_, ins, &outs, -1, phi::funcs::AddFunctor<T>());
       PADDLE_ENFORCE_EQ(cudaGetLastError(),
@@ -148,13 +153,13 @@ class AttnMatmulINT8 {
 
   // This function is used to execute GEMM, with input and output's types are T
   // and INT8.
-  void ComputeForwardTToINT8(const framework::Tensor* weight,
+  void ComputeForwardTToINT8(const phi::DenseTensor* weight,
                              const float quant_in_scale,
-                             const framework::Tensor* input,
-                             framework::Tensor* input_tmp,
-                             const framework::Tensor* bias,
-                             framework::Tensor* output,
-                             framework::Tensor* bias_out,
+                             const phi::DenseTensor* input,
+                             phi::DenseTensor* input_tmp,
+                             const phi::DenseTensor* bias,
+                             phi::DenseTensor* output,
+                             phi::DenseTensor* bias_out,
                              const int quant_round_type = 1,
                              const float quant_max_bound = 127.0,
                              const float quant_min_bound = -127.0) {
@@ -183,6 +188,7 @@ class AttnMatmulINT8 {
 
   int compute_bias_;
   std::vector<std::shared_ptr<CublasLtHelper>> helpers_;
+  std::unique_ptr<GpuLaunchConfig> gpu_config_;
 };
 
 }  // namespace operators

@@ -19,6 +19,7 @@
 
 #include "glog/logging.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/inference/analysis/pass_result_info.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -76,6 +77,7 @@ void MemoryOptimizePass::CollectLifeCycle(
     } else {
       // Normal operators.
       for (const Node* node : requires) {
+        if (!node->Var()) continue;
         if (node->Var()->Persistable()) continue;
         std::string var = node->Name();
         if (!lifecycles->count(var)) {
@@ -133,7 +135,7 @@ void MemoryOptimizePass::CollectVarMemorySize(
   // between performance and underlying principle.
   std::unordered_set<std::string> black_list;
   for (auto* node : graph->Nodes()) {
-    if (node->IsVar() &&
+    if (node->IsVar() && node->Var() &&
         node->Var()->GetType() ==
             framework::proto::VarType::Type::VarType_Type_LOD_TENSOR) {
       if (!valid_var(node)) {
@@ -144,7 +146,7 @@ void MemoryOptimizePass::CollectVarMemorySize(
 
   // Collect tensors from graph.
   for (auto* node : graph->Nodes()) {
-    if (node->IsVar() &&
+    if (node->IsVar() && node->Var() &&
         node->Var()->GetType() ==
             framework::proto::VarType::Type::VarType_Type_LOD_TENSOR &&
         !black_list.count(node->Var()->Name())) {
@@ -294,7 +296,7 @@ void UpdateOpDescsByReuse(
   }
 }
 
-std::string MemoryOptimizePass::repr() const { return "memory optimize pass"; }
+std::string MemoryOptimizePass::repr() const { return "memory_optimize_pass"; }
 
 void MemoryOptimizePass::RunImpl(Argument* argument) {
   // Memory optimization.
@@ -309,7 +311,7 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
   // mapping table.
   if (!argument->enable_memory_optim()) return;
   // Because of pass is a singleton, graph can not be member
-  // variables，otherwise，errors will be caused under multithreading
+  // variables，otherwise, errors will be caused under multithreading
   // conditions.
   auto graph = argument->main_graph_ptr();
 
@@ -322,7 +324,11 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
   CollectLifeCycle(graph, &lifecycles, sort_kind);
   CollectVarMemorySize(graph, &space_table);
   MakeSimpleReusePlan(lifecycles, space_table, &node2cluster, &cluster_size);
-  UpdateOpDescsByReuse(graph, node2cluster, sort_kind);
+
+  auto* pass_res_info = PassResultInfoForRuntime::Instance();
+  pass_res_info->Set(
+      argument->root_predictor_id(), "memory_optimize_pass", node2cluster);
+
   return;
 }
 

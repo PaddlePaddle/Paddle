@@ -36,15 +36,6 @@ using string::PrettyLogEndl;
 using string::Style;
 
 IRPassManager::IRPassManager(Argument *argument) {
-  ARGUMENT_CHECK_FIELD(argument, main_program);
-  graph_ = std::unique_ptr<Graph>(new Graph(argument->main_program()));
-  if (argument->Has("scope")) {
-    auto *scope_ptr = argument->scope_ptr();
-    PADDLE_ENFORCE_NOT_NULL(scope_ptr,
-                            platform::errors::PreconditionNotMet(
-                                "The scope ptr should not be nullptr."));
-    graph_->SetNotOwned(framework::ir::kParamScopeAttr, scope_ptr);
-  }
   disable_logs_ = argument->disable_logs();
 
   ARGUMENT_CHECK_FIELD(argument, ir_analysis_passes);
@@ -77,6 +68,15 @@ void IRPassManager::CreatePasses(Argument *argument,
     pass->Set("optim_input_shape",
               new std::map<std::string, std::vector<int>>(
                   argument->optim_input_shape()));
+    // Now, shape tensor value is not explicit set by user,
+    // it is collected through API CollectShapeRangeInfo.
+    pass->Set("max_shape_tensor",
+              new std::map<std::string, std::vector<int>>());
+    pass->Set("min_shape_tensor",
+              new std::map<std::string, std::vector<int>>());
+    pass->Set("optim_shape_tensor",
+              new std::map<std::string, std::vector<int>>());
+
     // tuned trt dynamic_shape
     pass->Set("trt_tuned_dynamic_shape",
               new bool(argument->tensorrt_tuned_dynamic_shape()));
@@ -229,6 +229,8 @@ void IRPassManager::CreatePasses(Argument *argument,
                     argument->dlnne_input_shape_dict()));
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
+    } else if (pass_name == "memory_optimize_pass") {
+      pass->Set("root_predictor_id", new int(argument->root_predictor_id()));
     }
     if (pass_name == "lite_subgraph_pass") {
       bool lite_enable_int8 =
@@ -245,6 +247,7 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("use_xpu", new bool(argument->use_xpu()));
       pass->Set("xpu_l3_workspace_size",
                 new int(argument->xpu_l3_workspace_size()));
+      pass->Set("use_opencl", new bool(argument->use_opencl()));
       pass->Set("cpu_math_library_num_threads",
                 new int(argument->cpu_math_library_num_threads()));
       pass->Set("locked", new bool(argument->xpu_locked()));
@@ -254,6 +257,8 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("precision", new std::string(argument->xpu_precision()));
       pass->Set("adaptive_seqlen", new bool(argument->xpu_adaptive_seqlen()));
       pass->Set("xpu_device_id", new int(argument->xpu_device_id()));
+      pass->Set("enable_multi_stream",
+                new bool(argument->xpu_enable_multi_stream()));
       // NNAdapter Related
       pass->Set("use_nnadapter", new bool(argument->use_nnadapter()));
       pass->Set("nnadapter_model_cache_dir",

@@ -17,7 +17,6 @@ import os
 os.environ['FLAGS_enable_eager_mode'] = '0'
 
 import unittest
-import paddle.fluid as fluid
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
@@ -29,8 +28,9 @@ class TestDygraphShardingStage3(TestMultipleGpus):
         self.run_mnist_2gpu('dygraph_sharding_stage3.py', eager_mode=False)
 
     def test_dygraph_sharding_stage3_offload(self):
-        self.run_mnist_2gpu('dygraph_sharding_stage3_offload.py',
-                            eager_mode=False)
+        self.run_mnist_2gpu(
+            'dygraph_sharding_stage3_offload.py', eager_mode=False
+        )
 
 
 if __name__ == "__main__":

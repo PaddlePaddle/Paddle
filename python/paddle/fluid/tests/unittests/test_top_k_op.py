@@ -13,14 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
-import paddle.fluid.core as core
+
 import paddle
 
 
 class TestTopkOp(OpTest):
-
     def setUp(self):
         self.variable_k = False
         self.set_args()

@@ -12,21 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..framework import core, _non_static_mode
-from ..framework import LayerHelper
-from ..fluid.data_feeder import check_variable_and_dtype
-from ..fluid.data_feeder import check_type
-
-from .creation import assign
-from .creation import _complex_to_real_dtype
-
 # TODO: define functions to get tensor attributes
-import paddle
-from paddle import _C_ops, _legacy_C_ops
-from ..static import Variable
-from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 
 import numpy as np
+
+import paddle
+from paddle import _C_ops, _legacy_C_ops
+
+from ..fluid.data_feeder import check_type, check_variable_and_dtype
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from ..framework import LayerHelper, core
+from ..static import Variable
+from .creation import _complex_to_real_dtype, assign
 
 __all__ = []
 
@@ -115,16 +112,29 @@ def shape(input):
         out.stop_gradient = True
         return out
 
-    check_variable_and_dtype(input, 'input', [
-        'bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'complex64',
-        'complex128'
-    ], 'shape')
+    check_variable_and_dtype(
+        input,
+        'input',
+        [
+            'bool',
+            'float16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'complex64',
+            'complex128',
+        ],
+        'shape',
+    )
     helper = LayerHelper('shape', **locals())
     out = helper.create_variable_for_type_inference(dtype='int32')
-    helper.append_op(type='shape',
-                     inputs={'Input': input},
-                     outputs={'Out': out},
-                     stop_gradient=True)
+    helper.append_op(
+        type='shape',
+        inputs={'Input': input},
+        outputs={'Out': out},
+        stop_gradient=True,
+    )
 
     return out
 
@@ -156,11 +166,14 @@ def is_complex(x):
             # False
     """
     if not isinstance(x, (paddle.Tensor, paddle.static.Variable)):
-        raise TypeError("Expected Tensor, but received type of x: {}".format(
-            type(x)))
+        raise TypeError(
+            "Expected Tensor, but received type of x: {}".format(type(x))
+        )
     dtype = x.dtype
-    is_complex_dtype = (dtype == core.VarDesc.VarType.COMPLEX64
-                        or dtype == core.VarDesc.VarType.COMPLEX128)
+    is_complex_dtype = (
+        dtype == core.VarDesc.VarType.COMPLEX64
+        or dtype == core.VarDesc.VarType.COMPLEX128
+    )
     return is_complex_dtype
 
 
@@ -187,13 +200,16 @@ def is_floating_point(x):
             # False
     """
     if not isinstance(x, (paddle.Tensor, paddle.static.Variable)):
-        raise TypeError("Expected Tensor, but received type of x: {}".format(
-            type(x)))
+        raise TypeError(
+            "Expected Tensor, but received type of x: {}".format(type(x))
+        )
     dtype = x.dtype
-    is_fp_dtype = (dtype == core.VarDesc.VarType.FP32
-                   or dtype == core.VarDesc.VarType.FP64
-                   or dtype == core.VarDesc.VarType.FP16
-                   or dtype == core.VarDesc.VarType.BF16)
+    is_fp_dtype = (
+        dtype == core.VarDesc.VarType.FP32
+        or dtype == core.VarDesc.VarType.FP64
+        or dtype == core.VarDesc.VarType.FP16
+        or dtype == core.VarDesc.VarType.BF16
+    )
     return is_fp_dtype
 
 
@@ -224,14 +240,17 @@ def is_integer(x):
             # True
     """
     if not isinstance(x, (paddle.Tensor, paddle.static.Variable)):
-        raise TypeError("Expected Tensor, but received type of x: {}".format(
-            type(x)))
+        raise TypeError(
+            "Expected Tensor, but received type of x: {}".format(type(x))
+        )
     dtype = x.dtype
-    is_int_dtype = (dtype == core.VarDesc.VarType.UINT8
-                    or dtype == core.VarDesc.VarType.INT8
-                    or dtype == core.VarDesc.VarType.INT16
-                    or dtype == core.VarDesc.VarType.INT32
-                    or dtype == core.VarDesc.VarType.INT64)
+    is_int_dtype = (
+        dtype == core.VarDesc.VarType.UINT8
+        or dtype == core.VarDesc.VarType.INT8
+        or dtype == core.VarDesc.VarType.INT16
+        or dtype == core.VarDesc.VarType.INT32
+        or dtype == core.VarDesc.VarType.INT64
+    )
     return is_int_dtype
 
 
@@ -276,7 +295,8 @@ def real(x, name=None):
     check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'real')
     helper = LayerHelper('real', **locals())
     out = helper.create_variable_for_type_inference(
-        dtype=_complex_to_real_dtype(helper.input_dtype()))
+        dtype=_complex_to_real_dtype(helper.input_dtype())
+    )
     helper.append_op(type='real', inputs={'X': x}, outputs={'Out': out})
     return out
 
@@ -322,6 +342,7 @@ def imag(x, name=None):
     check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'imag')
     helper = LayerHelper('imag', **locals())
     out = helper.create_variable_for_type_inference(
-        dtype=_complex_to_real_dtype(helper.input_dtype()))
+        dtype=_complex_to_real_dtype(helper.input_dtype())
+    )
     helper.append_op(type='imag', inputs={'X': x}, outputs={'Out': out})
     return out

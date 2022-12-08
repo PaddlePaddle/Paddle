@@ -55,7 +55,7 @@ class RunProgramOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const framework::Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     return expected_kernel_type;
   }
@@ -65,18 +65,18 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(vector<LoDTensor>)"
+             "(vector<phi::DenseTensor>)"
              "The input tensors of RunProgram operator, also the feed targets "
              "of loaded program.")
         .AsDuplicable();
     AddInput("Params",
-             "(vector<LoDTensor or SelecetedRows>)"
+             "(vector<phi::DenseTensor or SelecetedRows>)"
              "The input parameter of RunProgram operator, also the parameters "
              "of the loaded program.")
         .AsDuplicable()
         .AsDispensable();
     AddOutput("Out",
-              "(vector<LoDTensor>)"
+              "(vector<phi::DenseTensor>)"
               "The output tensors of RunProgram operator, also the fetch "
               "targets of the loaded program.")
         .AsDuplicable();
@@ -87,7 +87,7 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
               "NOTE: Do not use Scope directly because Scope output is not "
               "currently supported.");
     AddOutput("DOut",
-              "(vector<LoDTensor>)"
+              "(vector<phi::DenseTensor>)"
               "The output tensors for GRAD Tensors in RunProgram forward "
               "operator, the forward operator contains GRAD Tensors when it "
               "computes double grad.")
@@ -173,7 +173,7 @@ class RunProgramGradOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const framework::Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     return expected_kernel_type;
   }

@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
+
+import paddle
 
 
 class TestCifar10(unittest.TestCase):
-
     def test_main(self):
         reader = paddle.dataset.cifar.train10(cycle=False)
         sample_num = 0

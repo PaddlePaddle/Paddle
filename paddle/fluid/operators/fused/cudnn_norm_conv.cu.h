@@ -19,7 +19,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 namespace dynload = platform::dynload;
 
 template <typename T>
@@ -45,6 +45,14 @@ struct NormConvolutionArgs {
            int stride,
            int dilation,
            int group) {
+    PADDLE_ENFORCE_LT(
+        ctx.GetComputeCapability(),
+        90,
+        phi::errors::PreconditionNotMet(
+            "Expect compute compatiblity to be less than 90, but got %d. "
+            "CUDNN FusedOps is no longer available on H100 and later "
+            "devices.",
+            ctx.GetComputeCapability()));
     PADDLE_ENFORCE_EQ(
         input_shape.size(),
         4U,
@@ -155,11 +163,11 @@ struct NormConvolutionArgs {
   std::vector<int> paddings;
   std::vector<int> dilations;
 
-  platform::TensorDescriptor in_desc;
-  platform::FilterDescriptor filter_desc;
-  platform::TensorDescriptor out_desc;
-  platform::TensorDescriptor out_stats_desc;
-  platform::ConvolutionDescriptor conv_desc;
+  phi::backends::gpu::TensorDescriptor in_desc;
+  phi::backends::gpu::FilterDescriptor filter_desc;
+  phi::backends::gpu::TensorDescriptor out_desc;
+  phi::backends::gpu::TensorDescriptor out_stats_desc;
+  phi::backends::gpu::ConvolutionDescriptor conv_desc;
 
   bool is_support;
 };

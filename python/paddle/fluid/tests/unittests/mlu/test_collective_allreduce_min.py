@@ -23,33 +23,38 @@ paddle.enable_static()
 
 
 class TestCAllreduceOp(TestDistBase):
-
     def _setup_config(self):
         pass
 
     def test_allreduce_min_fp32(self):
-        self.check_with_place("collective_allreduce_op.py", "allreduce_min",
-                              "float32")
+        self.check_with_place(
+            "collective_allreduce_op.py", "allreduce_min", "float32"
+        )
 
     def test_allreduce_min_fp16(self):
-        self.check_with_place("collective_allreduce_op.py", "allreduce_min",
-                              "float16")
+        self.check_with_place(
+            "collective_allreduce_op.py", "allreduce_min", "float16"
+        )
 
     def test_allreduce_min_int32(self):
-        self.check_with_place("collective_allreduce_op.py", "allreduce_min",
-                              "int32")
+        self.check_with_place(
+            "collective_allreduce_op.py", "allreduce_min", "int32"
+        )
 
     def test_allreduce_min_int16(self):
-        self.check_with_place("collective_allreduce_op.py", "allreduce_min",
-                              "int16")
+        self.check_with_place(
+            "collective_allreduce_op.py", "allreduce_min", "int16"
+        )
 
     def test_allreduce_min_int8(self):
-        self.check_with_place("collective_allreduce_op.py", "allreduce_min",
-                              "int8")
+        self.check_with_place(
+            "collective_allreduce_op.py", "allreduce_min", "int8"
+        )
 
     def test_allreduce_min_uint8(self):
-        self.check_with_place("collective_allreduce_op.py", "allreduce_min",
-                              "uint8")
+        self.check_with_place(
+            "collective_allreduce_op.py", "allreduce_min", "uint8"
+        )
 
 
 if __name__ == '__main__':

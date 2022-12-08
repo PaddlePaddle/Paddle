@@ -18,7 +18,6 @@ import paddle.profiler.statistic_helper as statistic_helper
 
 
 class TestStatisticHelper(unittest.TestCase):
-
     def test_sum_ranges_case1(self):
         src = [(1, 3), (4, 10), (11, 15)]
         self.assertEqual(statistic_helper.sum_ranges(src), 12)

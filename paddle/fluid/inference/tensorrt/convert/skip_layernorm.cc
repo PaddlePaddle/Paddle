@@ -47,7 +47,7 @@ class SkipLayerNormOpConverter : public OpConverter {
           [&](const std::string& arg_name) -> TensorRTEngine::Weight {
         std::string var_name = op_desc.Input(arg_name).front();
         auto* temp_var = scope.FindVar(var_name);
-        auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
+        auto* temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
         auto weight = engine_->GetTrtWeight(var_name, *temp_tensor);
         return weight;
       };
@@ -154,7 +154,7 @@ class SkipLayerNormOpConverter : public OpConverter {
           [&](const std::string& arg_name) -> TensorRTEngine::Weight {
         std::string var_name = op_desc.Input(arg_name).front();
         auto* temp_var = scope.FindVar(var_name);
-        auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
+        auto* temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
         auto weight = engine_->GetFp16TrtWeight(var_name, *temp_tensor);
         return weight;
       };
@@ -163,7 +163,7 @@ class SkipLayerNormOpConverter : public OpConverter {
           [&](const std::string& arg_name) -> TensorRTEngine::Weight {
         std::string var_name = op_desc.Input(arg_name).front();
         auto* temp_var = scope.FindVar(var_name);
-        auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
+        auto* temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
         auto weight = engine_->GetFp32TrtWeight(var_name, *temp_tensor);
         return weight;
       };

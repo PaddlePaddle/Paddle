@@ -19,25 +19,26 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class ProximalGDOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* param_out = ctx.Output<Tensor>("ParamOut");
+    auto* param_out = ctx.Output<phi::DenseTensor>("ParamOut");
 
     param_out->mutable_data<T>(ctx.GetPlace());
 
-    auto grad = ctx.Input<Tensor>("Grad");
+    auto grad = ctx.Input<phi::DenseTensor>("Grad");
 
     auto l1 = static_cast<T>(ctx.Attr<float>("l1"));
     auto l2 = static_cast<T>(ctx.Attr<float>("l2"));
 
-    auto p = framework::EigenVector<T>::Flatten(*ctx.Input<Tensor>("Param"));
+    auto p = framework::EigenVector<T>::Flatten(
+        *ctx.Input<phi::DenseTensor>("Param"));
     auto g = framework::EigenVector<T>::Flatten(*grad);
-    auto lr =
-        framework::EigenVector<T>::Flatten(*ctx.Input<Tensor>("LearningRate"));
+    auto lr = framework::EigenVector<T>::Flatten(
+        *ctx.Input<phi::DenseTensor>("LearningRate"));
 
     auto p_out = framework::EigenVector<T>::Flatten(*param_out);
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();

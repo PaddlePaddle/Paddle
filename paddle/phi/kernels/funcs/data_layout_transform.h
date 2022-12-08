@@ -42,9 +42,9 @@ inline OneDNNMemoryFormat ToOneDNNFormat(const DataLayout& layout) {
     case DataLayout::NDHWC:
       return OneDNNMemoryFormat::ndhwc;
     default:
-      PADDLE_THROW(errors::InvalidArgument(
-          "Fail to convert layout %s to MKLDNN format.",
-          ::paddle::framework::DataLayoutToString(layout)));
+      PADDLE_THROW(
+          errors::InvalidArgument("Fail to convert layout %s to oneDNN format.",
+                                  ::phi::DataLayoutToString(layout)));
   }
 }
 
@@ -77,12 +77,12 @@ inline OneDNNDataType ToOneDNNDataType(DataType type) {
   return OneDNNDataType::undef;
 }
 
-void innerTransDataLayoutFromOneDNN(DataLayout in_layout,
-                                    DataLayout out_layout,
-                                    const DenseTensor& in,
-                                    DenseTensor* out,
-                                    Place place,
-                                    bool always_copy = false);
+void TransDataLayoutFromOneDNN(DataLayout in_layout,
+                               DataLayout out_layout,
+                               const DenseTensor& in,
+                               DenseTensor* out,
+                               Place place,
+                               bool always_copy = false);
 void* GetDataFromTensor(const DenseTensor& tensor, OneDNNDataType type);
 
 #endif

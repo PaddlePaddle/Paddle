@@ -23,17 +23,18 @@ paddle.enable_static()
 
 
 class TestCReduceOp(TestDistBase):
-
     def _setup_config(self):
         pass
 
     def test_reduce_min_fp32(self):
-        self.check_with_place("collective_reduce_op.py", "reduce_min",
-                              "float32")
+        self.check_with_place(
+            "collective_reduce_op.py", "reduce_min", "float32"
+        )
 
     def test_reduce_min_fp16(self):
-        self.check_with_place("collective_reduce_op.py", "reduce_min",
-                              "float16")
+        self.check_with_place(
+            "collective_reduce_op.py", "reduce_min", "float16"
+        )
 
     def test_reduce_min_int32(self):
         self.check_with_place("collective_reduce_op.py", "reduce_min", "int32")

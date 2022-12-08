@@ -13,26 +13,23 @@
 # limitations under the License.
 
 import os
+import subprocess
 import sys
 import time
-import threading
-import subprocess
 import unittest
+
 import numpy
 
 import paddle
-import paddle.fluid as fluid
-
-import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.distributed.fleet as fleet
-
+import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.fluid as fluid
 from paddle.distributed.utils.launch_utils import find_free_ports
 
 paddle.enable_static()
 
 
 class TestCommunicatorGeoEnd2End(unittest.TestCase):
-
     def net(self):
         x = fluid.layers.data(name='x', shape=[13], dtype='float32')
         x1 = fluid.layers.data(name='x1', shape=[1], dtype='int64', lod_level=1)
@@ -42,20 +39,21 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
             size=[10000, 10],
             param_attr=fluid.ParamAttr(
                 name="embedding",
-                initializer=fluid.initializer.Constant(value=0.01)),
-            is_sparse=True)
+                initializer=fluid.initializer.Constant(value=0.01),
+            ),
+            is_sparse=True,
+        )
 
         pool = fluid.layers.sequence_pool(input=emb, pool_type="sum")
         z = fluid.layers.concat(input=[x, pool], axis=1)
         y_predict = fluid.layers.fc(input=z, size=1, act=None)
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
 
-        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
         return avg_cost, x, x1, y
 
     def fake_reader(self):
-
         def reader():
             for i in range(10000):
                 x = numpy.random.random((1, 13)).astype('float32')
@@ -92,9 +90,11 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
         feeder = fluid.DataFeeder(place=place, feed_list=[x, z, y])
 
         for batch_id, data in enumerate(train_reader()):
-            exe.run(fluid.default_main_program(),
-                    feed=feeder.feed(data),
-                    fetch_list=[])
+            exe.run(
+                fluid.default_main_program(),
+                feed=feeder.feed(data),
+                fetch_list=[],
+            )
 
         fleet.stop_worker()
 
@@ -167,9 +167,11 @@ half_run_server.run_ut()
 
         ps_cmd = "{} {}".format(_python, server_file)
 
-        ps_proc = subprocess.Popen(ps_cmd.strip().split(" "),
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE)
+        ps_proc = subprocess.Popen(
+            ps_cmd.strip().split(" "),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
 
         time.sleep(5)
 

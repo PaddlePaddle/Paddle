@@ -74,9 +74,9 @@ class LiteEngineOp : public framework::OperatorBase {
     const platform::DeviceContext *ctx =
         platform::DeviceContextPool::Instance().Get(dev_place);
     for (size_t i = 0; i < in_names_.size(); i++) {
-      framework::LoDTensor src_t =
-          inference::analysis::GetFromScope<framework::LoDTensor>(scope,
-                                                                  in_names_[i]);
+      phi::DenseTensor src_t =
+          inference::analysis::GetFromScope<phi::DenseTensor>(scope,
+                                                              in_names_[i]);
       paddle::lite_api::Tensor dst_t = *(engine_->GetInput(i));
       VLOG(3) << "== fluid -> lite (" << in_names_[i] << " -> "
               << engine_->GetInputNames()[i] << ")";
@@ -93,9 +93,9 @@ class LiteEngineOp : public framework::OperatorBase {
     VLOG(3) << "lite engine run done";
     for (size_t i = 0; i < out_names_.size(); i++) {
       paddle::lite_api::Tensor src_t = *(engine_->GetOutput(i));
-      framework::LoDTensor *dst_t =
-          &inference::analysis::GetFromScope<framework::LoDTensor>(
-              scope, out_names_[i]);
+      phi::DenseTensor *dst_t =
+          &inference::analysis::GetFromScope<phi::DenseTensor>(scope,
+                                                               out_names_[i]);
       VLOG(3) << "== lite -> fluid (" << out_names_[i] << " -> "
               << engine_->GetOutputNames()[i] << ")";
       inference::lite::utils::TensorCopy(dst_t, &src_t, *ctx, zero_copy_);

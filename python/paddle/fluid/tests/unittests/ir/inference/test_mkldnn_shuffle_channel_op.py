@@ -12,38 +12,41 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import MkldnnAutoScanTest
-from program_config import TensorConfig, ProgramConfig, OpConfig
-import numpy as np
-from functools import partial
 import unittest
-from hypothesis import given
+from functools import partial
+
 import hypothesis.strategies as st
+import numpy as np
+from auto_scan_test import MkldnnAutoScanTest
+from hypothesis import given
+from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestMKLDNNShuffleChannelOp(MkldnnAutoScanTest):
-
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self, *args, **kwargs):
-
         def generate_input(*args, **kwargs):
             return np.random.random(kwargs['in_shape']).astype(np.float32)
 
-        shuffle_channel_op = OpConfig(type="shuffle_channel",
-                                      inputs={"X": ["input_data"]},
-                                      outputs={"Out": ["output_data"]},
-                                      attrs={"group": kwargs['group']})
+        shuffle_channel_op = OpConfig(
+            type="shuffle_channel",
+            inputs={"X": ["input_data"]},
+            outputs={"Out": ["output_data"]},
+            attrs={"group": kwargs['group']},
+        )
 
         program_config = ProgramConfig(
             ops=[shuffle_channel_op],
             weights={},
             inputs={
-                "input_data":
-                TensorConfig(data_gen=partial(generate_input, *args, **kwargs)),
+                "input_data": TensorConfig(
+                    data_gen=partial(generate_input, *args, **kwargs)
+                ),
             },
-            outputs=["output_data"])
+            outputs=["output_data"],
+        )
 
         yield program_config
 
@@ -51,8 +54,10 @@ class TestMKLDNNShuffleChannelOp(MkldnnAutoScanTest):
         config = self.create_inference_config(use_mkldnn=True)
         yield config, (1e-5, 1e-5)
 
-    @given(group=st.sampled_from([1, 2, 8, 32, 128]),
-           in_shape=st.sampled_from([[5, 512, 2, 3], [2, 256, 5, 4]]))
+    @given(
+        group=st.sampled_from([1, 2, 8, 32, 128]),
+        in_shape=st.sampled_from([[5, 512, 2, 3], [2, 256, 5, 4]]),
+    )
     def test(self, *args, **kwargs):
         self.run_test(quant=False, *args, **kwargs)
 

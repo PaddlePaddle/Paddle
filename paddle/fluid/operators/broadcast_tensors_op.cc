@@ -21,7 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 using framework::DDim;
-using framework::Tensor;
 
 class BroadcastTensorsOp : public framework::OperatorWithKernel {
  public:
@@ -42,12 +41,13 @@ class BroadcastTensorsOp : public framework::OperatorWithKernel {
 class BroadcastTensorsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X",
-             "A Varaible list. The shape and data type of the list elements"
-             "should be consistent. Variable can be multi-dimensional Tensor"
-             "or LoDTensor, and data types can be: bool, float16, float32, "
-             "float64, int32, "
-             "int64.")
+    AddInput(
+        "X",
+        "A Varaible list. The shape and data type of the list elements"
+        "should be consistent. Variable can be multi-dimensional Tensor"
+        "or phi::DenseTensor, and data types can be: bool, float16, float32, "
+        "float64, int32, "
+        "int64.")
         .AsDuplicable();
     AddOutput("Out",
               "the sum of input :code:`x`. its shape and data types are "
@@ -55,7 +55,7 @@ class BroadcastTensorsOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDuplicable();
     AddComment(
         R"DOC(This OP is used to broadcast a vector of inputs
-                     with Tensor or LoDTensor type, following broadcast semantics.)DOC");
+                     with phi::DenseTensor type, following broadcast semantics.)DOC");
   }
 };
 

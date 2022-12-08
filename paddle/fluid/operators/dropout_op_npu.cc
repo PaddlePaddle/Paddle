@@ -23,17 +23,17 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class DropoutNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* seed_tensor =
-        ctx.HasInput("Seed") ? ctx.Input<Tensor>("Seed") : nullptr;
-    auto* out = ctx.Output<Tensor>("Out");
-    auto* mask = ctx.Output<Tensor>("Mask");
+        ctx.HasInput("Seed") ? ctx.Input<phi::DenseTensor>("Seed") : nullptr;
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* mask = ctx.Output<phi::DenseTensor>("Mask");
 
     auto dropout_prob = ctx.Attr<float>("dropout_prob");
     auto is_test = ctx.Attr<bool>("is_test");
@@ -151,9 +151,9 @@ template <typename DeviceContext, typename T>
 class DropoutGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* mask = ctx.Input<Tensor>("Mask");
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* mask = ctx.Input<phi::DenseTensor>("Mask");
 
     auto dropout_prob = ctx.Attr<float>("dropout_prob");
     auto is_test = ctx.Attr<bool>("is_test");

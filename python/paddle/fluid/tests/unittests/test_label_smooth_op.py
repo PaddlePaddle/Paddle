@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
 import paddle
 
 
 class TestLabelSmoothOp(OpTest):
-
     def config(self):
         self.op_type = "label_smooth"
         self.python_api = paddle.nn.functional.label_smooth
@@ -32,7 +33,8 @@ class TestLabelSmoothOp(OpTest):
     def setUp(self):
         self.config()
         smoothed_label = (
-            1 - self.epsilon) * self.label + self.epsilon / self.label_dim
+            1 - self.epsilon
+        ) * self.label + self.epsilon / self.label_dim
         self.inputs = {'X': self.label}
         self.attrs = {'epsilon': self.epsilon}
         self.outputs = {'Out': smoothed_label}
@@ -45,7 +47,6 @@ class TestLabelSmoothOp(OpTest):
 
 
 class TestLabelSmoothOpWithPriorDist(TestLabelSmoothOp):
-
     def setUp(self):
         self.config()
         dist = np.random.random((1, self.label_dim))
@@ -56,23 +57,25 @@ class TestLabelSmoothOpWithPriorDist(TestLabelSmoothOp):
 
 
 class TestLabelSmoothOp3D(TestLabelSmoothOp):
-
     def setUp(self):
-        super(TestLabelSmoothOp3D, self).setUp()
+        super().setUp()
         self.inputs['X'] = self.inputs['X'].reshape(
-            [2, -1, self.inputs['X'].shape[-1]])
+            [2, -1, self.inputs['X'].shape[-1]]
+        )
         self.outputs['Out'] = self.outputs['Out'].reshape(
-            self.inputs['X'].shape)
+            self.inputs['X'].shape
+        )
 
 
 class TestLabelSmoothOpWithPriorDist3D(TestLabelSmoothOpWithPriorDist):
-
     def setUp(self):
-        super(TestLabelSmoothOpWithPriorDist3D, self).setUp()
+        super().setUp()
         self.inputs['X'] = self.inputs['X'].reshape(
-            [2, -1, self.inputs['X'].shape[-1]])
+            [2, -1, self.inputs['X'].shape[-1]]
+        )
         self.outputs['Out'] = self.outputs['Out'].reshape(
-            self.inputs['X'].shape)
+            self.inputs['X'].shape
+        )
 
 
 if __name__ == '__main__':

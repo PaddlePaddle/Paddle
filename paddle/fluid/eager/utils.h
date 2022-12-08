@@ -257,24 +257,78 @@ class EagerUtils {
     } else {
       tensor_name_str = t.name();
     }
-    const char* TENSOR_INFO_TEMPLATE = "Type: %s, Dtype: %s, Place: %s";
+    const char* TENSOR_INFO_TEMPLATE =
+        "Type: %s, Dtype: %s, Place: %s, Shape: %s";
     std::string tensor_info_str = "";
     if (t.defined()) {
       if (t.initialized()) {
         tensor_info_str += paddle::string::Sprintf(TENSOR_INFO_TEMPLATE,
                                                    t.impl()->type_info().name(),
                                                    t.dtype(),
-                                                   t.place().DebugString());
+                                                   t.place().DebugString(),
+                                                   t.dims());
       } else {
         tensor_info_str += paddle::string::Sprintf(TENSOR_INFO_TEMPLATE,
                                                    t.impl()->type_info().name(),
+                                                   "Unknown",
                                                    "Unknown",
                                                    "Unknown");
       }
     } else {
       tensor_info_str += "Unknown";
     }
-    if (VLOG_IS_ON(6)) {
+    if (VLOG_IS_ON(11)) {
+      const char* TENSOR_PRINT_TEMPLATE =
+          "{Name: %s, Initialized: %d, Ptr: %d "
+          "TensorInfo: [ %s ], Value:[ %s ], ADInfo:[ %s ]}";
+      auto* ad_meta = nullable_autograd_meta(t);
+      if (ad_meta && (ad_meta->WeakGrad().lock().get())) {
+        std::string ad_info_str = "";
+        const char* AD_INFO_TEMPLATE =
+            "Grad: [ %s ],  GradNode: [ %s ], StopGradient: [ %d ]";
+        ad_info_str += paddle::string::Sprintf(AD_INFO_TEMPLATE,
+                                               TensorStr(ad_meta->Grad()),
+                                               GradNodeStr(t),
+                                               ad_meta->StopGradient());
+        auto* data_ptr = dynamic_cast<phi::DenseTensor*>(t.impl().get());
+        if (t.is_initialized() && data_ptr) {
+          return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
+                                         tensor_name_str,
+                                         t.initialized(),
+                                         t.impl(),
+                                         tensor_info_str,
+                                         *data_ptr,
+                                         ad_info_str);
+        } else {
+          return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
+                                         tensor_name_str,
+                                         t.initialized(),
+                                         t.impl(),
+                                         tensor_info_str,
+                                         "None",
+                                         ad_info_str);
+        }
+      } else {
+        auto* data_ptr = dynamic_cast<phi::DenseTensor*>(t.impl().get());
+        if (t.is_initialized() && data_ptr) {
+          return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
+                                         tensor_name_str,
+                                         t.initialized(),
+                                         t.impl(),
+                                         tensor_info_str,
+                                         *data_ptr,
+                                         "None");
+        } else {
+          return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
+                                         tensor_name_str,
+                                         t.initialized(),
+                                         t.impl(),
+                                         tensor_info_str,
+                                         "None",
+                                         "None");
+        }
+      }
+    } else if (VLOG_IS_ON(6)) {
       const char* TENSOR_PRINT_TEMPLATE =
           "{Name: %s, Initialized: %d, Ptr: %d "
           "TensorInfo: [ %s ], ADInfo:[ %s ]}";

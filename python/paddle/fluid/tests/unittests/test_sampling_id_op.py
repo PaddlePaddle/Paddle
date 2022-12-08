@@ -13,17 +13,14 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-from op_test import OpTest
 
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid.op import Operator
+import numpy as np
+
 import paddle
+import paddle.fluid as fluid
 
 
 class TestSamplingIdShape(unittest.TestCase):
-
     def test_shape(self):
         paddle.enable_static()
         x = fluid.layers.data(name='x', shape=[3], dtype='float32')

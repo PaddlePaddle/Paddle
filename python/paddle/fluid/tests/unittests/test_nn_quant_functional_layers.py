@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
 
 
 class TestFunctionalLayers(unittest.TestCase):
-    """
-    """
+    """ """
 
     def setUp(self):
         paddle.disable_static()

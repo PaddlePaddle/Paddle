@@ -36,7 +36,7 @@ class OpBase;
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 class SetValue : public framework::OperatorWithKernel {
  public:
@@ -104,7 +104,8 @@ class SetValueMaker : public framework::OpProtoAndCheckerMaker {
                  framework::proto::VarType::INT32,
                  framework::proto::VarType::INT64,
                  framework::proto::VarType::FP32,
-                 framework::proto::VarType::FP64})
+                 framework::proto::VarType::FP64,
+                 framework::proto::VarType::FP16})
         .SetDefault(framework::proto::VarType::FP32);
     AddAttr<std::vector<int64_t>>(
         "axes", "(list<int64_t>) Axes that `starts` and `ends` apply to.");
@@ -134,6 +135,8 @@ class SetValueMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int64_t>>("int64_values", "Store the int64 values.")
         .SetDefault({});
     AddAttr<std::vector<double>>("fp64_values", "Store the float64 values.")
+        .SetDefault({});
+    AddAttr<std::vector<float>>("fp16_values", "Store the float16 values.")
         .SetDefault({});
 
     AddAttr<std::vector<int64_t>>("shape", "(vector<int64_t>) Shape of values.")
@@ -210,7 +213,7 @@ class SetValueGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto in_tensor = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto in_tensor = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
                                        ctx, framework::GradVarName("Out")),
                                    in_tensor->place());

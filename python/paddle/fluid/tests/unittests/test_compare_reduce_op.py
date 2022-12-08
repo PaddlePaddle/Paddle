@@ -12,18 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import op_test
 import unittest
+
 import numpy as np
+import op_test
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
 
 
 def create_test_not_equal_class(op_type, typename, callback):
-
     class Cls(op_test.OpTest):
-
         def setUp(self):
             x = np.random.random(size=(10, 7)).astype(typename)
             y = np.random.random(size=(10, 7)).astype(typename)
@@ -42,9 +41,7 @@ def create_test_not_equal_class(op_type, typename, callback):
 
 
 def create_test_not_shape_equal_class(op_type, typename, callback):
-
     class Cls(op_test.OpTest):
-
         def setUp(self):
             x = np.random.random(size=(10, 7)).astype(typename)
             y = np.random.random(size=(10)).astype(typename)
@@ -63,9 +60,7 @@ def create_test_not_shape_equal_class(op_type, typename, callback):
 
 
 def create_test_equal_class(op_type, typename, callback):
-
     class Cls(op_test.OpTest):
-
         def setUp(self):
             x = y = np.random.random(size=(10, 7)).astype(typename)
             z = callback(x, y)
@@ -83,9 +78,7 @@ def create_test_equal_class(op_type, typename, callback):
 
 
 def create_test_dim1_class(op_type, typename, callback):
-
     class Cls(op_test.OpTest):
-
         def setUp(self):
             x = y = np.random.random(size=(1)).astype(typename)
             x = np.array([True, False, True]).astype(typename)
@@ -113,7 +106,6 @@ for _type_name in {'float32', 'float64', 'int32', 'int64', 'bool'}:
 
 
 class TestEqualReduceAPI(unittest.TestCase):
-
     def test_name(self):
         x = fluid.layers.assign(np.array([3, 4], dtype="int32"))
         y = fluid.layers.assign(np.array([3, 4], dtype="int32"))
@@ -125,7 +117,7 @@ class TestEqualReduceAPI(unittest.TestCase):
         x = paddle.ones(shape=[10, 10], dtype="int32")
         y = paddle.ones(shape=[10, 10], dtype="int32")
         out = paddle.equal_all(x, y)
-        assert out.numpy()[0] == True
+        assert out.numpy()[0] is np.True_
         paddle.enable_static()
 
 

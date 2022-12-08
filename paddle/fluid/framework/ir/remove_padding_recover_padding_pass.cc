@@ -131,6 +131,21 @@ void Activation::operator()() {
   // Add links for activation op.
   activation_op->LinksFrom({activation_input}).LinksTo({activation_out});
 }
+
+void FusedTokenPrune::operator()() {
+  // Create nodes for fused_token_prune.
+  auto* fused_token_prune_input =
+      pattern->NewNode(fused_token_prune_input_repr())
+          ->assert_is_op_input("fused_token_prune", "X");
+  auto* fused_token_prune_op = pattern->NewNode(fused_token_prune_op_repr())
+                                   ->assert_is_op("fused_token_prune");
+  auto* fused_token_prune_output =
+      pattern->NewNode(fused_token_prune_output_repr())
+          ->assert_is_op_output("fused_token_prune", "SlimmedX");
+
+  fused_token_prune_op->LinksFrom({fused_token_prune_input})
+      .LinksTo({fused_token_prune_output});
+}
 }  // namespace patterns
 
 void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
@@ -209,7 +224,7 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
     // create variable in scope
     scope->Var(remove_padding_out_name);
     auto* remove_padding_out_tensor =
-        scope->FindVar(remove_padding_out_name)->GetMutable<LoDTensor>();
+        scope->FindVar(remove_padding_out_name)->GetMutable<phi::DenseTensor>();
     remove_padding_out_tensor->mutable_data<float>(platform::CUDAPlace());
 
     // rename
@@ -279,7 +294,8 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
     // create variable in scope
     scope->Var(recover_padding_input_name);
     auto* recover_padding_input_tensor =
-        scope->FindVar(recover_padding_input_name)->GetMutable<LoDTensor>();
+        scope->FindVar(recover_padding_input_name)
+            ->GetMutable<phi::DenseTensor>();
     recover_padding_input_tensor->mutable_data<float>(platform::CUDAPlace());
 
     // rename
@@ -423,9 +439,6 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
                  "remove_padding pass.";
       return;
     }
-    fc_op->Op()->RemoveAttr("in_num_col_dims");
-    fc_op->Op()->SetAttr("in_num_col_dims", 1);
-
     insert_remove_padding_op(fc_input, fc_op);
     insert_recover_padding_op(fc_op, fc_op->outputs[0]);
     found_subgraph_count++;
@@ -561,6 +574,48 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
     found_subgraph_count++;
   };
   gpd6(graph, handler6);
+
+  GraphPatternDetector gpd7;
+  patterns::FusedTokenPrune fused_token_prune(
+      gpd7.mutable_pattern(), "remove_padding_recover_padding_pass");
+  fused_token_prune();
+
+  auto handler7 = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                      Graph* graph) {
+    VLOG(3) << "remove_padding_recover_padding_pass for transformer: "
+               "fused_token_prune";
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        fused_token_prune_input, fused_token_prune_input, fused_token_prune);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        fused_token_prune_op, fused_token_prune_op, fused_token_prune);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        fused_token_prune_output, fused_token_prune_output, fused_token_prune);
+
+    std::vector<int64_t> fused_token_prune_input_shape =
+        fused_token_prune_input->Var()->GetShape();
+    check_flag = true;
+    if (fused_token_prune_input_shape.size() !=
+        multihead_matmul_input_shape.size()) {
+      check_flag = false;
+      VLOG(3) << "Transformer model remove_padding shape check failed, return "
+                 "remove_padding pass.";
+      return;
+    }
+    for (size_t i = 0; i < fused_token_prune_input_shape.size(); ++i) {
+      if (fused_token_prune_input_shape[i] != multihead_matmul_input_shape[i]) {
+        check_flag = false;
+      }
+    }
+    if (!check_flag) {
+      VLOG(3) << "Transformer model remove_padding shape check failed, return "
+                 "remove_padding pass.";
+      return;
+    }
+    insert_recover_padding_op(fused_token_prune_op, fused_token_prune_output);
+    found_subgraph_count++;
+  };
+  gpd7(graph, handler7);
 
   AddStatis(found_subgraph_count);
 }

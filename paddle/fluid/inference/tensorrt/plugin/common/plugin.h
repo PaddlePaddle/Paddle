@@ -14,8 +14,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef PADDLE_FLUID_INFERENCE_TENSORRT_PLUGIN_COMMON_PLUGIN_H_
-#define PADDLE_FLUID_INFERENCE_TENSORRT_PLUGIN_COMMON_PLUGIN_H_
+#pragma once
+
 #include <cuda_runtime.h>
 #include <cstring>
 #include <iostream>
@@ -60,4 +60,3 @@ class BaseCreator : public IPluginCreator {
 };
 
 }  // namespace nvinfer1
-#endif  // PADDLE_FLUID_INFERENCE_TENSORRT_PLUGIN_COMMON_PLUGIN_H_

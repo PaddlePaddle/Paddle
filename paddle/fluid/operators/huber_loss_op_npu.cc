@@ -18,14 +18,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 void HuberLossSub(const platform::Place& place,
                   const aclrtStream& stream,
-                  const Tensor* x,
-                  const Tensor* y,
-                  Tensor* z) {
+                  const phi::DenseTensor* x,
+                  const phi::DenseTensor* y,
+                  phi::DenseTensor* z) {
   //  Calculate z = x - y
   z->mutable_data<T>(x->dims(), place);
   const auto& runner = NpuOpRunner("Sub", {*x, *y}, {*z}, {});
@@ -35,9 +35,9 @@ void HuberLossSub(const platform::Place& place,
 template <typename T>
 void HuberLossMuls(const platform::Place& place,
                    const aclrtStream& stream,
-                   const Tensor* x,
+                   const phi::DenseTensor* x,
                    float scalar,
-                   Tensor* y) {
+                   phi::DenseTensor* y) {
   //  Calculate y = x + scale
   y->mutable_data<T>(x->dims(), place);
   const auto& runner = NpuOpRunner("Muls", {*x}, {*y}, {{"value", scalar}});
@@ -47,8 +47,8 @@ void HuberLossMuls(const platform::Place& place,
 template <typename T>
 void HuberLossZerosLike(const platform::Place& place,
                         const aclrtStream& stream,
-                        const Tensor* x,
-                        Tensor* y) {
+                        const phi::DenseTensor* x,
+                        phi::DenseTensor* y) {
   y->mutable_data<T>(x->dims(), place);
   const auto& runner = NpuOpRunner("ZerosLike", {*x}, {*y}, {});
   runner.Run(stream);
@@ -57,10 +57,10 @@ void HuberLossZerosLike(const platform::Place& place,
 template <typename T>
 void HuberLossSmoothL1Loss(const platform::Place& place,
                            const aclrtStream& stream,
-                           const Tensor* x,
-                           const Tensor* y,
+                           const phi::DenseTensor* x,
+                           const phi::DenseTensor* y,
                            float delta,
-                           Tensor* z) {
+                           phi::DenseTensor* z) {
   z->mutable_data<T>(x->dims(), place);
   const auto& runner =
       NpuOpRunner("SmoothL1Loss", {*x, *y}, {*z}, {{"sigma", delta}});
@@ -70,11 +70,11 @@ void HuberLossSmoothL1Loss(const platform::Place& place,
 template <typename T>
 void HuberLossSmoothL1LossGrad(const platform::Place& place,
                                const aclrtStream& stream,
-                               const Tensor* pred,
-                               const Tensor* lab,
-                               const Tensor* dout,
+                               const phi::DenseTensor* pred,
+                               const phi::DenseTensor* lab,
+                               const phi::DenseTensor* dout,
                                float sigma,
-                               Tensor* grad) {
+                               phi::DenseTensor* grad) {
   grad->mutable_data<T>(pred->dims(), place);
   const auto& runner = NpuOpRunner(
       "SmoothL1LossGrad", {*pred, *lab, *dout}, {*grad}, {{"sigma", sigma}});
@@ -85,10 +85,10 @@ template <typename T>
 class HuberLossNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in0 = ctx.Input<Tensor>("X");
-    auto* in1 = ctx.Input<Tensor>("Y");
-    auto* residual = ctx.Output<Tensor>("Residual");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* in0 = ctx.Input<phi::DenseTensor>("X");
+    auto* in1 = ctx.Input<phi::DenseTensor>("Y");
+    auto* residual = ctx.Output<phi::DenseTensor>("Residual");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     auto delta = ctx.Attr<float>("delta");
 
     auto stream =
@@ -106,10 +106,10 @@ template <typename T>
 class HuberLossGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* residual = ctx.Input<Tensor>("Residual");
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    auto* residual = ctx.Input<phi::DenseTensor>("Residual");
+    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
     auto delta = ctx.Attr<float>("delta");
 
     auto stream =

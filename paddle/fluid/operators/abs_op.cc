@@ -21,9 +21,6 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
 
 namespace paddle {
 namespace operators {
@@ -36,15 +33,6 @@ class AbsOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
@@ -86,15 +74,6 @@ class AbsGradOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
@@ -153,7 +132,7 @@ class AbsDoubleGradOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const framework::Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     return framework::OpKernelType(
         framework::TransToProtoVarType(tensor.dtype()),

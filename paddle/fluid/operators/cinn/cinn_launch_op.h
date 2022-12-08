@@ -34,7 +34,6 @@ DECLARE_bool(enable_pe_launch_cinn);
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
 using CinnCompiler = framework::paddle2cinn::CinnCompiler;
 using CinnCompiledObject = framework::paddle2cinn::CinnCompiledObject;
 
@@ -76,29 +75,30 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
             << "value:\n"
             << CinnCompiler::GetInstance()->ReadableKey(compilation_key);
 
-    std::map<std::string, const LoDTensor*> inputs_name2tensor;
+    std::map<std::string, const phi::DenseTensor*> inputs_name2tensor;
     std::vector<std::string> input_x_variable_names;
     std::vector<std::string> input_no_need_buffer_variable_names;
     auto add_name2tensor_fn =
-        [&inputs_name2tensor](const std::vector<std::string>& variable_names,
-                              const std::vector<const LoDTensor*>& tensors) {
+        [&inputs_name2tensor](
+            const std::vector<std::string>& variable_names,
+            const std::vector<const phi::DenseTensor*>& tensors) {
           std::transform(
               variable_names.begin(),
               variable_names.end(),
               tensors.begin(),
               std::inserter(inputs_name2tensor, inputs_name2tensor.end()),
-              [](const std::string& name, const LoDTensor* tensor) {
+              [](const std::string& name, const phi::DenseTensor* tensor) {
                 return std::make_pair(name, tensor);
               });
         };
 
-    auto input_x_tensors = ctx.MultiInput<LoDTensor>(kX);
+    auto input_x_tensors = ctx.MultiInput<phi::DenseTensor>(kX);
     if (!input_x_tensors.empty()) {
       input_x_variable_names = std::move(ctx.InputNames(kX));
       add_name2tensor_fn(input_x_variable_names, input_x_tensors);
     }
     auto input_no_need_buffer_tensors =
-        ctx.MultiInput<LoDTensor>(kNoNeedBufferX);
+        ctx.MultiInput<phi::DenseTensor>(kNoNeedBufferX);
     if (!input_no_need_buffer_tensors.empty()) {
       input_no_need_buffer_variable_names =
           std::move(ctx.InputNames(kNoNeedBufferX));

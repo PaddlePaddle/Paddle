@@ -18,8 +18,7 @@
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 class FusionRepeatedFCReluOp : public framework::OperatorWithKernel {
  public:

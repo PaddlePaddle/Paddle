@@ -13,26 +13,26 @@
 # limitations under the License.
 
 import unittest
-from paddle.fluid.framework import default_main_program, Program, convert_np_dtype_to_dtype_, _non_static_mode, in_dygraph_mode
+
+import numpy as np
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-import paddle.fluid.core as core
-from paddle.fluid.dygraph.jit import TracedLayer
-import numpy as np
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
+from paddle.fluid.framework import in_dygraph_mode
+from paddle.jit.api import TracedLayer
 
 
 class TestTracedLayer(fluid.dygraph.Layer):
-
     def __init__(self, name_scope):
-        super(TestTracedLayer, self).__init__(name_scope)
+        super().__init__(name_scope)
 
     def forward(self, input):
         return _legacy_C_ops.relu(input)
 
 
 class TestVariable(unittest.TestCase):
-
     def setUp(self):
         self.shape = [512, 768]
         self.dtype = np.float32
@@ -46,7 +46,7 @@ class TestVariable(unittest.TestCase):
             y = fluid.dygraph.to_variable(b)
             x.stop_gradient = False
 
-            res1 = layers.elementwise_add(x, y)
+            res1 = paddle.add(x, y)
             res2 = _legacy_C_ops.elementwise_add(x, y)
 
             np.testing.assert_array_equal(res1.numpy(), res2.numpy())
@@ -58,7 +58,7 @@ class TestVariable(unittest.TestCase):
             x = fluid.dygraph.to_variable(a)
             y = fluid.dygraph.to_variable(b)
 
-            res1 = layers.elementwise_mul(x, y)
+            res1 = paddle.multiply(x, y)
             res2 = _legacy_C_ops.elementwise_mul(x, y)
 
             np.testing.assert_array_equal(res1.numpy(), res2.numpy())
@@ -101,7 +101,8 @@ class TestVariable(unittest.TestCase):
             a = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
             x = fluid.dygraph.to_variable(a)
             res_dygraph, static_layer = TracedLayer.trace(
-                layer, inputs=x)  # dygraph out
+                layer, inputs=x
+            )  # dygraph out
             res_static_graph = static_layer([x])[0]
 
             np.testing.assert_array_equal(res_dygraph.numpy(), res_static_graph)

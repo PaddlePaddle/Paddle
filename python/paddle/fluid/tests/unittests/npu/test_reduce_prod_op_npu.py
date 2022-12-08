@@ -25,7 +25,6 @@ paddle.enable_static()
 
 
 class TestNPUReduceProd(OpTest):
-
     def setUp(self):
         self.op_type = "reduce_prod"
         self.set_npu()
@@ -49,7 +48,6 @@ class TestNPUReduceProd(OpTest):
 
 
 class TestNPUReduceProd2(TestNPUReduceProd):
-
     def setUp(self):
         self.op_type = "reduce_prod"
         self.set_npu()
@@ -61,7 +59,6 @@ class TestNPUReduceProd2(TestNPUReduceProd):
 
 
 class TestNPUReduceProd3(TestNPUReduceProd):
-
     def setUp(self):
         self.op_type = "reduce_prod"
         self.set_npu()
@@ -73,7 +70,6 @@ class TestNPUReduceProd3(TestNPUReduceProd):
 
 
 class TestNPUReduceProd6D(TestNPUReduceProd):
-
     def setUp(self):
         self.op_type = "reduce_prod"
         self.set_npu()
@@ -89,7 +85,6 @@ class TestNPUReduceProd6D(TestNPUReduceProd):
 
 
 class TestNPUReduceProd8D(TestNPUReduceProd):
-
     def setUp(self):
         self.op_type = "reduce_prod"
         self.set_npu()
@@ -105,7 +100,6 @@ class TestNPUReduceProd8D(TestNPUReduceProd):
 
 
 class TestReduceAll(TestNPUReduceProd):
-
     def setUp(self):
         self.op_type = "reduce_prod"
         self.set_npu()
@@ -117,7 +111,6 @@ class TestReduceAll(TestNPUReduceProd):
 
 
 class TestNPUReduceProdWithOutDtype_bool(TestNPUReduceProd):
-
     def setUp(self):
         self.op_type = "reduce_prod"
         self.set_npu()
@@ -126,14 +119,13 @@ class TestNPUReduceProdWithOutDtype_bool(TestNPUReduceProd):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {'dim': [0], 'out_dtype': int(core.VarDesc.VarType.BOOL)}
         self.outputs = {
-            'Out':
-            self.inputs['X'].prod(axis=tuple(self.attrs['dim'])).astype(
-                np.bool_)
+            'Out': self.inputs['X']
+            .prod(axis=tuple(self.attrs['dim']))
+            .astype(np.bool_)
         }
 
 
 class TestNPUReduceProdWithOutDtype_int16(TestNPUReduceProd):
-
     def setUp(self):
         self.op_type = "reduce_prod"
         self.set_npu()
@@ -142,14 +134,13 @@ class TestNPUReduceProdWithOutDtype_int16(TestNPUReduceProd):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {'dim': [0], 'out_dtype': int(core.VarDesc.VarType.INT16)}
         self.outputs = {
-            'Out':
-            self.inputs['X'].prod(axis=tuple(self.attrs['dim'])).astype(
-                np.int16)
+            'Out': self.inputs['X']
+            .prod(axis=tuple(self.attrs['dim']))
+            .astype(np.int16)
         }
 
 
 class TestNPUReduceProdWithOutDtype_int32(TestNPUReduceProd):
-
     def setUp(self):
         self.op_type = "reduce_prod"
         self.set_npu()
@@ -158,14 +149,13 @@ class TestNPUReduceProdWithOutDtype_int32(TestNPUReduceProd):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {'dim': [0], 'out_dtype': int(core.VarDesc.VarType.INT32)}
         self.outputs = {
-            'Out':
-            self.inputs['X'].prod(axis=tuple(self.attrs['dim'])).astype(
-                np.int32)
+            'Out': self.inputs['X']
+            .prod(axis=tuple(self.attrs['dim']))
+            .astype(np.int32)
         }
 
 
 class TestNPUReduceProdWithOutDtype_int64(TestNPUReduceProd):
-
     def setUp(self):
         self.op_type = "reduce_prod"
         self.set_npu()
@@ -174,14 +164,13 @@ class TestNPUReduceProdWithOutDtype_int64(TestNPUReduceProd):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {'dim': [0], 'out_dtype': int(core.VarDesc.VarType.INT64)}
         self.outputs = {
-            'Out':
-            self.inputs['X'].prod(axis=tuple(self.attrs['dim'])).astype(
-                np.int64)
+            'Out': self.inputs['X']
+            .prod(axis=tuple(self.attrs['dim']))
+            .astype(np.int64)
         }
 
 
 class TestNPUReduceProdWithOutDtype_fp16(TestNPUReduceProd):
-
     def setUp(self):
         self.op_type = "reduce_prod"
         self.set_npu()
@@ -190,9 +179,9 @@ class TestNPUReduceProdWithOutDtype_fp16(TestNPUReduceProd):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {'dim': [0], 'out_dtype': int(core.VarDesc.VarType.FP16)}
         self.outputs = {
-            'Out':
-            self.inputs['X'].prod(axis=tuple(self.attrs['dim'])).astype(
-                np.float16)
+            'Out': self.inputs['X']
+            .prod(axis=tuple(self.attrs['dim']))
+            .astype(np.float16)
         }
 
     def test_check_output(self):
@@ -200,7 +189,6 @@ class TestNPUReduceProdWithOutDtype_fp16(TestNPUReduceProd):
 
 
 class TestNPUReduceProdWithOutDtype_fp32(TestNPUReduceProd):
-
     def setUp(self):
         self.op_type = "reduce_prod"
         self.set_npu()
@@ -209,14 +197,13 @@ class TestNPUReduceProdWithOutDtype_fp32(TestNPUReduceProd):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {'dim': [0], 'out_dtype': int(core.VarDesc.VarType.FP32)}
         self.outputs = {
-            'Out':
-            self.inputs['X'].prod(axis=tuple(self.attrs['dim'])).astype(
-                np.float32)
+            'Out': self.inputs['X']
+            .prod(axis=tuple(self.attrs['dim']))
+            .astype(np.float32)
         }
 
 
 class TestNPUReduceProdWithOutDtype_fp64(TestNPUReduceProd):
-
     def setUp(self):
         self.op_type = "reduce_prod"
         self.set_npu()
@@ -225,15 +212,14 @@ class TestNPUReduceProdWithOutDtype_fp64(TestNPUReduceProd):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {'dim': [0], 'out_dtype': int(core.VarDesc.VarType.FP64)}
         self.outputs = {
-            'Out':
-            self.inputs['X'].prod(axis=tuple(self.attrs['dim'])).astype(
-                np.float64)
+            'Out': self.inputs['X']
+            .prod(axis=tuple(self.attrs['dim']))
+            .astype(np.float64)
         }
 
 
 @skip_check_grad_ci(reason="right now not implement grad op")
 class TestNPUReduceProdWithOutDtype_fp32_2(TestNPUReduceProd):
-
     def setUp(self):
         self.op_type = "reduce_prod"
         self.set_npu()
@@ -242,9 +228,9 @@ class TestNPUReduceProdWithOutDtype_fp32_2(TestNPUReduceProd):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {'dim': [0], 'out_dtype': int(core.VarDesc.VarType.FP32)}
         self.outputs = {
-            'Out':
-            self.inputs['X'].prod(axis=tuple(self.attrs['dim'])).astype(
-                np.float32)
+            'Out': self.inputs['X']
+            .prod(axis=tuple(self.attrs['dim']))
+            .astype(np.float32)
         }
 
     def init_dtype(self):

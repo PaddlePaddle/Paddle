@@ -33,7 +33,7 @@ class SizeOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const framework::Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     return expected_kernel_type;
   }
@@ -62,7 +62,7 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(SizeOpNoNeedBufferVarInferer, "Input");
 namespace ops = paddle::operators;
 DECLARE_INFER_SHAPE_FUNCTOR(size,
                             SizeInferShapeFunctor,
-                            PD_INFER_META(phi::SizeInferMeta));
+                            PD_INFER_META(phi::NumelInferMeta));
 REGISTER_OPERATOR(
     size,
     ops::SizeOp,

@@ -13,13 +13,11 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid as fluid
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
 class TestAutoParallelAutoConvert(TestMultipleGpus):
-
     def test_auto_parallel_autoconvert(self):
         self.run_mnist_2gpu('auto_parallel_autoconvert.py')
 

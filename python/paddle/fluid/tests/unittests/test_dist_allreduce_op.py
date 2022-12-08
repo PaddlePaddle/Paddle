@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import unittest
+
 from test_dist_base import TestDistBase
+
 import paddle
 
 paddle.enable_static()
 
 
 class TestDistMnistNCCL2(TestDistBase):
-
     def _setup_config(self):
         self._sync_mode = True
         self._use_reduce = False
@@ -30,6 +31,7 @@ class TestDistMnistNCCL2(TestDistBase):
 
     def test_dist_train(self):
         import paddle.fluid as fluid
+
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place("dist_allreduce_op.py", delta=1e-5)
 

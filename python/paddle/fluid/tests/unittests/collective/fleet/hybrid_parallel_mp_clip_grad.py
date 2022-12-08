@@ -12,26 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import numpy as np
-from hybrid_parallel_mp_model import TestDistMPTraning
 import unittest
-import logging
 
-#log = logging.getLogger("HybridParallel")
-#log.setLevel(logging.WARNING)
+from hybrid_parallel_mp_model import TestDistMPTraning
+
+import paddle
+
+# log = logging.getLogger("HybridParallel")
+# log.setLevel(logging.WARNING)
 
 
 class TestMPClipGrad(TestDistMPTraning):
-
     def build_optimizer(self, model):
         grad_clip = paddle.nn.ClipGradByGlobalNorm(2.0)
-        scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=0.001,
-                                                         gamma=0.999,
-                                                         verbose=True)
-        optimizer = paddle.optimizer.SGD(scheduler,
-                                         grad_clip=grad_clip,
-                                         parameters=model.parameters())
+        scheduler = paddle.optimizer.lr.ExponentialDecay(
+            learning_rate=0.001, gamma=0.999, verbose=True
+        )
+        optimizer = paddle.optimizer.SGD(
+            scheduler, grad_clip=grad_clip, parameters=model.parameters()
+        )
         return optimizer
 
 

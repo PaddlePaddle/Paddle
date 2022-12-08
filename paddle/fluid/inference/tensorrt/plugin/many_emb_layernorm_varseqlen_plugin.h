@@ -18,7 +18,10 @@
 #include <cuda.h>
 #include "NvInferPlugin.h"
 #include "NvInferRuntime.h"
-#include "common/bertCommon.h"
+
+#include "paddle/fluid/inference/tensorrt/plugin/common/bertCommon.h"
+#include "paddle/fluid/inference/tensorrt/plugin/common/plugin.h"
+#include "paddle/fluid/inference/tensorrt/plugin/common/serialize.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -28,32 +31,121 @@ namespace tensorrt {
 namespace plugin {
 
 template <typename T>
-int32_t embSkipLayerNormHFace(cudaStream_t stream,
-                              int32_t ld,
-                              int32_t B,
-                              int32_t S,
-                              int32_t** inputIds,
-                              int32_t const nbLookupTables,
-                              float const* beta,
-                              float const* gamma,
-                              T** idsEmb,
-                              int32_t*,
-                              T* output);
+int32_t embSkipLayerNormHFace_2(cudaStream_t,
+                                int32_t,
+                                int32_t,
+                                int32_t,
+                                int32_t const*,
+                                int32_t const*,
+                                int32_t,
+                                float const*,
+                                float const*,
+                                T const*,
+                                T const*,
+                                int32_t,
+                                int32_t,
+                                T*);
 
 template <typename T>
-int32_t embSkipLayerNormMTron(cudaStream_t stream,
-                              int32_t ld,
-                              int32_t B,
-                              int32_t S,
-                              int32_t** inputIds,
-                              int32_t const nbLookupTables,
-                              float const* beta,
-                              float const* gamma,
-                              T** idsEmb,
-                              int32_t*,
-                              T* output,
-                              T* skip);
+int32_t embSkipLayerNormHFace_3(cudaStream_t,
+                                int32_t,
+                                int32_t,
+                                int32_t,
+                                int32_t const*,
+                                int32_t const*,
+                                int32_t const*,
+                                int32_t,
+                                float const*,
+                                float const*,
+                                T const*,
+                                T const*,
+                                T const*,
+                                int32_t,
+                                int32_t,
+                                int32_t,
+                                T*);
 
+template <typename T>
+int32_t embSkipLayerNormHFace_4(cudaStream_t,
+                                int32_t,
+                                int32_t,
+                                int32_t,
+                                int32_t const*,
+                                int32_t const*,
+                                int32_t const*,
+                                int32_t const*,
+                                int32_t,
+                                float const*,
+                                float const*,
+                                T const*,
+                                T const*,
+                                T const*,
+                                T const*,
+                                int32_t,
+                                int32_t,
+                                int32_t,
+                                int32_t,
+                                T*);
+
+template <typename T>
+int32_t embSkipLayerNormMTron_2(cudaStream_t,
+                                int32_t,
+                                int32_t,
+                                int32_t,
+                                int32_t const*,
+                                int32_t const*,
+                                int32_t,
+                                float const*,
+                                float const*,
+                                T const*,
+                                T const*,
+                                int32_t,
+                                int32_t,
+                                T*,
+                                T*);
+
+template <typename T>
+int32_t embSkipLayerNormMTron_3(cudaStream_t,
+                                int32_t,
+                                int32_t,
+                                int32_t,
+                                int32_t const*,
+                                int32_t const*,
+                                int32_t const*,
+                                int32_t,
+                                float const*,
+                                float const*,
+                                T const*,
+                                T const*,
+                                T const*,
+                                int32_t,
+                                int32_t,
+                                int32_t,
+                                T*,
+                                T*);
+
+template <typename T>
+int32_t embSkipLayerNormMTron_4(cudaStream_t,
+                                int32_t,
+                                int32_t,
+                                int32_t,
+                                int32_t const*,
+                                int32_t const*,
+                                int32_t const*,
+                                int32_t const*,
+                                int32_t,
+                                float const*,
+                                float const*,
+                                T const*,
+                                T const*,
+                                T const*,
+                                T const*,
+                                int32_t,
+                                int32_t,
+                                int32_t,
+                                int32_t,
+                                T*,
+                                T*);
 class EmbLayerNormVarSeqlenPluginBase : public nvinfer1::IPluginV2DynamicExt {
  public:
   EmbLayerNormVarSeqlenPluginBase(
@@ -101,7 +193,8 @@ class EmbLayerNormVarSeqlenPluginBase : public nvinfer1::IPluginV2DynamicExt {
   std::string mNamespace;
   cuda_unique_ptr<float> mGammaDev;
   cuda_unique_ptr<float> mBetaDev;
-  std::vector<void*> mIdsEmbDev;
+  std::vector<void*> mIdsEmbPtrs;
+  // std::vector<void*> mIdsEmbDev;
   size_t mLd;  // leading dim = hidden size
   std::vector<int32_t> mIdsVocabSize;
   WeightsWithOwnership mBeta;

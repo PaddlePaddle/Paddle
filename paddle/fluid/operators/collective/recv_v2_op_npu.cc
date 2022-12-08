@@ -29,7 +29,7 @@ class CRecvOpASCENDKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
-    auto out = ctx.Output<framework::LoDTensor>("Out");
+    auto out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(out->dims(), ctx.GetPlace());
     void* ptr = reinterpret_cast<void*>(const_cast<T*>(out->data<T>()));
     int numel = out->numel();

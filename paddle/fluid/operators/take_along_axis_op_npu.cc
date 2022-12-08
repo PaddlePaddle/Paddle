@@ -22,16 +22,16 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class NPUTakeAlongAxisKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto input = ctx.Input<Tensor>("Input");
+    auto input = ctx.Input<phi::DenseTensor>("Input");
     auto axis = ctx.Attr<int>("Axis");
-    auto index = ctx.Input<Tensor>("Index");
-    auto result = ctx.Output<Tensor>("Result");
+    auto index = ctx.Input<phi::DenseTensor>("Index");
+    auto result = ctx.Output<phi::DenseTensor>("Result");
     result->mutable_data<T>(ctx.GetPlace());
 
     auto stream =
@@ -48,10 +48,12 @@ class NPUTakeAlongAxisGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto axis = ctx.Attr<int>("Axis");
-    auto index = ctx.Input<Tensor>("Index");
-    auto result_grad = ctx.Input<Tensor>(framework::GradVarName("Result"));
+    auto index = ctx.Input<phi::DenseTensor>("Index");
+    auto result_grad =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Result"));
 
-    auto input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
+    auto input_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Input"));
     input_grad->mutable_data<T>(ctx.GetPlace());
 
     auto stream =

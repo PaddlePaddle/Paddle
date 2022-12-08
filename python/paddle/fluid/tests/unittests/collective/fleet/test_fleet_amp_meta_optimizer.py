@@ -13,26 +13,27 @@
 # limitations under the License.
 
 import unittest
-import paddle
-import paddle.fluid as fluid
-import paddle.distributed.fleet as fleet
-from paddle.distributed.fleet.meta_optimizers import AMPOptimizer
-import os
+
 from fleet_meta_optimizer_base import TestFleetMetaOptimizer
+
+import paddle
+import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.fluid as fluid
+from paddle.distributed.fleet.meta_optimizers import AMPOptimizer
 
 paddle.enable_static()
 
 
 class TestFleetAMPOptimizer(TestFleetMetaOptimizer):
-
     def test_amp_optimizer_backward(self):
-        """ test amp optimizer backward """
+        """test amp optimizer backward"""
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
 
-        opt = fluid.optimizer.MomentumOptimizer(learning_rate=0.001,
-                                                momentum=0.9)
+        opt = fluid.optimizer.MomentumOptimizer(
+            learning_rate=0.001, momentum=0.9
+        )
         opt = AMPOptimizer(opt)
 
         self.set_strategy(strategy, 'amp')
@@ -45,12 +46,13 @@ class TestFleetAMPOptimizer(TestFleetMetaOptimizer):
         self.assertNotIn('check_finite_and_unscale', ops)
 
     def test_amp_optimizer_backward_gradients(self):
-        """ test amp optimizer backward + gradients"""
+        """test amp optimizer backward + gradients"""
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
 
-        opt = fluid.optimizer.MomentumOptimizer(learning_rate=0.001,
-                                                momentum=0.9)
+        opt = fluid.optimizer.MomentumOptimizer(
+            learning_rate=0.001, momentum=0.9
+        )
         opt = AMPOptimizer(opt)
 
         self.set_strategy(strategy, 'amp')
@@ -65,12 +67,13 @@ class TestFleetAMPOptimizer(TestFleetMetaOptimizer):
         self.assertIn('check_finite_and_unscale', ops)
 
     def test_amp_optimizer_backward_optimize(self):
-        """ test amp optimizer backward + optimizer """
+        """test amp optimizer backward + optimizer"""
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
 
-        opt = fluid.optimizer.MomentumOptimizer(learning_rate=0.001,
-                                                momentum=0.9)
+        opt = fluid.optimizer.MomentumOptimizer(
+            learning_rate=0.001, momentum=0.9
+        )
         opt = AMPOptimizer(opt)
 
         self.set_strategy(strategy, 'amp')
@@ -84,7 +87,7 @@ class TestFleetAMPOptimizer(TestFleetMetaOptimizer):
         self.assertIn('check_finite_and_unscale', ops)
 
     def test_amp_optimizer(self):
-        """ test amp """
+        """test amp"""
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'amp')
@@ -95,7 +98,7 @@ class TestFleetAMPOptimizer(TestFleetMetaOptimizer):
         self.assertIn('check_finite_and_unscale', ops)
 
     def test_pure_fp16_optimizer(self):
-        """ test pure fp16 """
+        """test pure fp16"""
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'pure_fp16')
@@ -110,7 +113,7 @@ class TestFleetAMPOptimizer(TestFleetMetaOptimizer):
         self.assertIn('check_finite_and_unscale', ops)
 
     def test_amp_distributed_optimizer(self):
-        """ test amp when distributed """
+        """test amp when distributed"""
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'amp')
@@ -126,7 +129,7 @@ class TestFleetAMPOptimizer(TestFleetMetaOptimizer):
         self.assertEqual(check_count, len(train_prog.all_parameters()))
 
     def test_amp_recompute_optimizer(self):
-        """ test amp + recompute """
+        """test amp + recompute"""
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'amp')
@@ -146,7 +149,7 @@ class TestFleetAMPOptimizer(TestFleetMetaOptimizer):
         self.assertIn('subprog', ''.join(outs))
 
     def test_amp_recompute_lars_optimizer(self):
-        """ test amp + recompute """
+        """test amp + recompute"""
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'amp')

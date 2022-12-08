@@ -26,9 +26,7 @@ SEED = 2022
 
 
 def gen_test_class(dtype, axis, descending):
-
     class TestArgsortOp(OpTest):
-
         def setUp(self):
             np.random.seed(SEED)
             self.set_mlu()
@@ -48,9 +46,11 @@ def gen_test_class(dtype, axis, descending):
         def get_output(self):
             if descending:
                 self.indices = np.flip(
-                    np.argsort(self.x, kind='heapsort', axis=axis), axis)
+                    np.argsort(self.x, kind='heapsort', axis=axis), axis
+                )
                 self.sorted_x = np.flip(
-                    np.sort(self.x, kind='heapsort', axis=axis), axis)
+                    np.sort(self.x, kind='heapsort', axis=axis), axis
+                )
             else:
                 self.indices = np.argsort(self.x, kind='heapsort', axis=axis)
                 self.sorted_x = np.sort(self.x, kind='heapsort', axis=axis)

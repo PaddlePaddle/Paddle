@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
 import paddle.fluid as fluid
 
 
@@ -23,7 +25,6 @@ def sigmoid_array(x):
 
 
 class TestLogLossOp(OpTest):
-
     def setUp(self):
         self.op_type = 'log_loss'
         samples_num = 100
@@ -38,8 +39,9 @@ class TestLogLossOp(OpTest):
         }
 
         self.attrs = {'epsilon': epsilon}
-        loss = -labels * np.log(predicted + epsilon) - (
-            1 - labels) * np.log(1 - predicted + epsilon)
+        loss = -labels * np.log(predicted + epsilon) - (1 - labels) * np.log(
+            1 - predicted + epsilon
+        )
         self.outputs = {'Loss': loss}
 
     def test_check_output(self):
@@ -50,7 +52,6 @@ class TestLogLossOp(OpTest):
 
 
 class TestLogLossOpError(unittest.TestCase):
-
     def test_errors(self):
         with fluid.program_guard(fluid.Program()):
 

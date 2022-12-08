@@ -64,10 +64,6 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
           << "op compat for matmul_elementwise_add_mkldnn_fuse_pass failed.";
       return;
     }
-    if (matmul->Op()->HasAttr("ResidualData")) {
-      LOG(WARNING) << "matmul_elementwise_add can be fused once";
-      return;
-    }
 
     matmul->Op()->SetInput("ResidualData", {elementwise_addend->Name()});
     matmul->Op()->SetOutput("Out", {elementwise_add_out->Name()});
@@ -82,7 +78,8 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
 
   gpd(graph, handler);
   AddStatis(found_matmul_elementwise_add_count);
-  if (!Has("disable_logs") || !Get<bool>("disable_logs")) {
+  if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
+      (found_matmul_elementwise_add_count > 0)) {
     PrettyLogDetail("---    fused %d %s (as %s) with elementwise_add",
                     found_matmul_elementwise_add_count,
                     matmul_type,

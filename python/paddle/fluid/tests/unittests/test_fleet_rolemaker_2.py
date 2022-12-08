@@ -13,12 +13,11 @@
 # limitations under the License.
 """Test cases for role makers."""
 
-import paddle
 import os
-import unittest
 import tempfile
+import unittest
 
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+import paddle
 
 
 class TestCloudRoleMaker2(unittest.TestCase):
@@ -36,9 +35,13 @@ class TestCloudRoleMaker2(unittest.TestCase):
     def test_pslib_2(self):
         """Test cases for pslib."""
         import paddle.fluid as fluid
-        from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-        from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
-        from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase
+        from paddle.fluid.incubate.fleet.base.role_maker import (
+            GeneralRoleMaker,
+            RoleMakerBase,
+        )
+        from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import (
+            fleet,
+        )
 
         paddle.enable_static()
 
@@ -60,11 +63,21 @@ class TestCloudRoleMaker2(unittest.TestCase):
         startup_program = fluid.Program()
         scope = fluid.Scope()
         with fluid.program_guard(train_program, startup_program):
-            show = fluid.layers.data(name="show", shape=[-1, 1], \
-                                     dtype="float32", lod_level=1, append_batch_size=False)
+            show = fluid.layers.data(
+                name="show",
+                shape=[-1, 1],
+                dtype="float32",
+                lod_level=1,
+                append_batch_size=False,
+            )
             fc = fluid.layers.fc(input=show, size=1, act=None)
-            label = fluid.layers.data(name="click", shape=[-1, 1], \
-                                      dtype="int64", lod_level=1, append_batch_size=False)
+            label = fluid.layers.data(
+                name="click",
+                shape=[-1, 1],
+                dtype="int64",
+                lod_level=1,
+                append_batch_size=False,
+            )
             label_cast = fluid.layers.cast(label, dtype='float32')
             cost = fluid.layers.log_loss(fc, label_cast)
         try:
@@ -161,8 +174,9 @@ class TestCloudRoleMaker2(unittest.TestCase):
         role23._get_size()
         role23._get_size()
 
-        path = os.path.join(self.temp_dir.name,
-                            "test_fleet_gloo_role_maker_1.txt")
+        path = os.path.join(
+            self.temp_dir.name, "test_fleet_gloo_role_maker_1.txt"
+        )
         with open(path, "w") as f:
             data = "1 1 1 1\n"
             f.write(data)
@@ -174,7 +188,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
         dataset.get_memory_data_size(fleet)
         dataset.get_shuffle_data_size(fleet)
 
-        class TmpClass():
+        class TmpClass:
             """
             dummy tmp class
             """
@@ -206,7 +220,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
             """
 
             def __init__(self):
-                super(TmpFleet, self).__init__()
+                super().__init__()
                 self._role_maker = None
 
             def init_worker(self):
@@ -264,13 +278,16 @@ class TestCloudRoleMaker2(unittest.TestCase):
         tmp.all_reduce_worker([], [])
         tmp.barrier_worker()
         from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
+
         tmp = RoleMakerBase()
         tmp.all_gather(1)
         tmp.all_reduce_worker([], [])
         tmp.barrier_worker()
         tmp.barrier_all()
-        from paddle.fluid.incubate.fleet.base.role_maker import \
-            MPISymetricRoleMaker
+        from paddle.fluid.incubate.fleet.base.role_maker import (
+            MPISymetricRoleMaker,
+        )
+
         tmp1 = MPISymetricRoleMaker()
         tmp1.all_gather(1)
         tmp1.all_gather(1)

@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest, randomize_probability
 
+import paddle
+
 
 class TestBprLossOp1(OpTest):
-    """Test BprLoss with discrete one-hot labels.
-    """
+    """Test BprLoss with discrete one-hot labels."""
 
     def setUp(self):
         self.op_type = "bpr_loss"
@@ -33,7 +35,7 @@ class TestBprLossOp1(OpTest):
             for j in range(class_num):
                 if j == label[i][0]:
                     continue
-                sum += (-np.log(1.0 + np.exp(X[i][j] - X[i][label[i][0]])))
+                sum += -np.log(1.0 + np.exp(X[i][j] - X[i][label[i][0]]))
             bpr_loss_result.append(-sum / (class_num - 1))
         bpr_loss = np.asmatrix([[x] for x in bpr_loss_result], dtype="float64")
         self.inputs = {"X": X, "Label": label}
@@ -47,4 +49,5 @@ class TestBprLossOp1(OpTest):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

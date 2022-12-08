@@ -25,7 +25,6 @@ paddle.enable_static()
 
 
 class TestSizeOp(OpTest):
-
     def setUp(self):
         self.op_type = "size"
         self.shape = []
@@ -42,31 +41,26 @@ class TestSizeOp(OpTest):
 
 
 class TestRank1Tensor(TestSizeOp):
-
     def config(self):
         self.shape = [2]
 
 
 class TestRank2Tensor(TestSizeOp):
-
     def config(self):
         self.shape = [2, 3]
 
 
 class TestRank3Tensor(TestSizeOp):
-
     def config(self):
         self.shape = [2, 3, 100]
 
 
 class TestLargeTensor(TestSizeOp):
-
     def config(self):
         self.shape = [2**10]
 
 
 class TestSizeAPI(unittest.TestCase):
-
     def test_size_static(self):
         main_program = fluid.Program()
         startup_program = fluid.Program()
@@ -77,20 +71,22 @@ class TestSizeAPI(unittest.TestCase):
             x_2 = paddle.fluid.data(shape=shape2, dtype='int32', name='x_2')
             input_1 = np.random.random(shape1).astype("int32")
             input_2 = np.random.random(shape2).astype("int32")
-            out_1 = paddle.fluid.layers.size(x_1)
-            out_2 = paddle.fluid.layers.size(x_2)
+            out_1 = paddle.numel(x_1)
+            out_2 = paddle.numel(x_2)
             exe = paddle.static.Executor(place=paddle.MLUPlace(0))
-            res_1, res_2 = exe.run(feed={
-                "x_1": input_1,
-                "x_2": input_2,
-            },
-                                   fetch_list=[out_1, out_2])
-            assert (np.array_equal(res_1,
-                                   np.array([np.size(input_1)
-                                             ]).astype("int64")))
-            assert (np.array_equal(res_2,
-                                   np.array([np.size(input_2)
-                                             ]).astype("int64")))
+            res_1, res_2 = exe.run(
+                feed={
+                    "x_1": input_1,
+                    "x_2": input_2,
+                },
+                fetch_list=[out_1, out_2],
+            )
+            assert np.array_equal(
+                res_1, np.array([np.size(input_1)]).astype("int64")
+            )
+            assert np.array_equal(
+                res_2, np.array([np.size(input_2)]).astype("int64")
+            )
 
     def test_size_imperative(self):
         paddle.disable_static(paddle.MLUPlace(0))
@@ -98,10 +94,10 @@ class TestSizeAPI(unittest.TestCase):
         input_2 = np.random.random([1, 4, 5]).astype("int32")
         x_1 = paddle.to_tensor(input_1)
         x_2 = paddle.to_tensor(input_2)
-        out_1 = paddle.fluid.layers.size(x_1)
-        out_2 = paddle.fluid.layers.size(x_2)
-        assert (np.array_equal(out_1.numpy().item(0), np.size(input_1)))
-        assert (np.array_equal(out_2.numpy().item(0), np.size(input_2)))
+        out_1 = paddle.numel(x_1)
+        out_2 = paddle.numel(x_2)
+        assert np.array_equal(out_1.numpy().item(0), np.size(input_1))
+        assert np.array_equal(out_2.numpy().item(0), np.size(input_2))
         paddle.enable_static()
 
     def test_error(self):
@@ -112,7 +108,7 @@ class TestSizeAPI(unittest.TestCase):
             def test_x_type():
                 shape = [1, 4, 5]
                 input_1 = np.random.random(shape).astype("int32")
-                out_1 = paddle.fluid.layers.size(input_1)
+                out_1 = paddle.numel(input_1)
 
             self.assertRaises(TypeError, test_x_type)
 

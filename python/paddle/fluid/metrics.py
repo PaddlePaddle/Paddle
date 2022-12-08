@@ -17,8 +17,6 @@ Fluid Metrics
 
 import numpy as np
 import copy
-import warnings
-import six
 
 from .layer_helper import LayerHelper
 from .initializer import Constant
@@ -45,15 +43,19 @@ def _is_numpy_(var):
 
 
 def _is_number_(var):
-    return isinstance(var, int) or isinstance(var, np.int64) or isinstance(
-        var, float) or (isinstance(var, np.ndarray) and var.shape == (1, ))
+    return (
+        isinstance(var, int)
+        or isinstance(var, np.int64)
+        or isinstance(var, float)
+        or (isinstance(var, np.ndarray) and var.shape == (1,))
+    )
 
 
 def _is_number_or_matrix_(var):
     return _is_number_(var) or isinstance(var, np.ndarray)
 
 
-class MetricBase(object):
+class MetricBase:
     """
     In many cases, we usually have to split the test data into mini-batches for evaluating
     deep neural networks, therefore we need to collect the evaluation results of each
@@ -97,7 +99,7 @@ class MetricBase(object):
             The MetricBase or its succeed classes
 
         """
-        self._name = str(name) if name != None else self.__class__.__name__
+        self._name = str(name) if name is not None else self.__class__.__name__
 
     def __str__(self):
         return self._name
@@ -118,14 +120,14 @@ class MetricBase(object):
         """
         states = {
             attr: value
-            for attr, value in six.iteritems(self.__dict__)
+            for attr, value in self.__dict__.items()
             if not attr.startswith("_")
         }
-        for attr, value in six.iteritems(states):
+        for attr, value in states.items():
             if isinstance(value, int):
                 setattr(self, attr, 0)
             elif isinstance(value, float):
-                setattr(self, attr, .0)
+                setattr(self, attr, 0.0)
             elif isinstance(value, (np.ndarray, np.generic)):
                 setattr(self, attr, np.zeros_like(value))
             else:
@@ -147,7 +149,7 @@ class MetricBase(object):
         """
         states = {
             attr: value
-            for attr, value in six.iteritems(self.__dict__)
+            for attr, value in self.__dict__.items()
             if not attr.startswith("_")
         }
         config = {}
@@ -174,7 +176,8 @@ class MetricBase(object):
 
         """
         raise NotImplementedError(
-            "Should not use it directly, please extend it.")
+            "Should not use it directly, please extend it."
+        )
 
     def eval(self):
         """
@@ -191,7 +194,8 @@ class MetricBase(object):
             float|list(float)|numpy.array: the metrics via Python.
         """
         raise NotImplementedError(
-            "Should not use it directly, please extend it.")
+            "Should not use it directly, please extend it."
+        )
 
 
 class CompositeMetric(MetricBase):
@@ -227,7 +231,7 @@ class CompositeMetric(MetricBase):
     """
 
     def __init__(self, name=None):
-        super(CompositeMetric, self).__init__(name)
+        super().__init__(name)
         self._metrics = []
 
     def add_metric(self, metric):
@@ -304,7 +308,7 @@ class Precision(MetricBase):
     """
 
     def __init__(self, name=None):
-        super(Precision, self).__init__(name)
+        super().__init__(name)
         self.tp = 0  # true positive
         self.fp = 0  # false positive
 
@@ -344,7 +348,7 @@ class Precision(MetricBase):
             float: Results of the calculated Precision. Scalar output with float dtype.
         """
         ap = self.tp + self.fp
-        return float(self.tp) / ap if ap != 0 else .0
+        return float(self.tp) / ap if ap != 0 else 0.0
 
 
 class Recall(MetricBase):
@@ -387,7 +391,7 @@ class Recall(MetricBase):
     """
 
     def __init__(self, name=None):
-        super(Recall, self).__init__(name)
+        super().__init__(name)
         self.tp = 0  # true positive
         self.fn = 0  # false negative
 
@@ -427,7 +431,7 @@ class Recall(MetricBase):
             float: results of the calculated Recall. Scalar output with float dtype.
         """
         recall = self.tp + self.fn
-        return float(self.tp) / recall if recall != 0 else .0
+        return float(self.tp) / recall if recall != 0 else 0.0
 
 
 class Accuracy(MetricBase):
@@ -468,9 +472,9 @@ class Accuracy(MetricBase):
     """
 
     def __init__(self, name=None):
-        super(Accuracy, self).__init__(name)
-        self.value = .0
-        self.weight = .0
+        super().__init__(name)
+        self.value = 0.0
+        self.weight = 0.0
 
     def update(self, value, weight):
         r"""
@@ -486,7 +490,8 @@ class Accuracy(MetricBase):
         """
         if not _is_number_or_matrix_(value):
             raise ValueError(
-                "The 'value' must be a number(int, float) or a numpy ndarray.")
+                "The 'value' must be a number(int, float) or a numpy ndarray."
+            )
         if not _is_number_(weight):
             raise ValueError("The 'weight' must be a number(int, float).")
         if _is_number_(weight) and weight < 0:
@@ -503,8 +508,10 @@ class Accuracy(MetricBase):
 
         """
         if self.weight == 0:
-            raise ValueError("There is no data in Accuracy Metrics. \
-                Please check layers.accuracy output has added to Accuracy.")
+            raise ValueError(
+                "There is no data in Accuracy Metrics. \
+                Please check layers.accuracy output has added to Accuracy."
+            )
         return self.value / self.weight
 
 
@@ -553,7 +560,7 @@ class ChunkEvaluator(MetricBase):
     """
 
     def __init__(self, name=None):
-        super(ChunkEvaluator, self).__init__(name)
+        super().__init__(name)
         self.num_infer_chunks = 0
         self.num_label_chunks = 0
         self.num_correct_chunks = 0
@@ -596,13 +603,21 @@ class ChunkEvaluator(MetricBase):
             float: mean precision, recall and f1 score.
 
         """
-        precision = float(
-            self.num_correct_chunks
-        ) / self.num_infer_chunks if self.num_infer_chunks else 0
-        recall = float(self.num_correct_chunks
-                       ) / self.num_label_chunks if self.num_label_chunks else 0
-        f1_score = float(2 * precision * recall) / (
-            precision + recall) if self.num_correct_chunks else 0
+        precision = (
+            float(self.num_correct_chunks) / self.num_infer_chunks
+            if self.num_infer_chunks
+            else 0
+        )
+        recall = (
+            float(self.num_correct_chunks) / self.num_label_chunks
+            if self.num_label_chunks
+            else 0
+        )
+        f1_score = (
+            float(2 * precision * recall) / (precision + recall)
+            if self.num_correct_chunks
+            else 0
+        )
         return precision, recall, f1_score
 
 
@@ -656,8 +671,8 @@ class EditDistance(MetricBase):
     """
 
     def __init__(self, name):
-        super(EditDistance, self).__init__(name)
-        self.total_distance = .0
+        super().__init__(name)
+        self.total_distance = 0.0
         self.seq_num = 0
         self.instance_error = 0
 
@@ -687,7 +702,7 @@ class EditDistance(MetricBase):
         """
         if self.seq_num == 0:
             raise ValueError(
-                "There is no data in EditDistance Metric. Please check layers.edit_distance output has been added to EditDistance."
+                "There is no data in EditDistance Metric. Please check paddle.nn.functional.loss.edit_distance output has been added to EditDistance."
             )
         avg_distance = self.total_distance / self.seq_num
         avg_instance_error = self.instance_error / float(self.seq_num)
@@ -699,7 +714,7 @@ class Auc(MetricBase):
     The auc metric is for binary classification.
     Refer to https://en.wikipedia.org/wiki/Receiver_operating_characteristic#Area_under_the_curve.
     Please notice that the auc metric is implemented with python, which may be a little bit slow.
-    If you concern the speed, please use the fluid.layers.auc instead.
+    If you concern the speed, please use the paddle.static.auc instead.
 
     The `auc` function creates four local variables, `true_positives`,
     `true_negatives`, `false_positives` and `false_negatives` that are used to
@@ -742,7 +757,7 @@ class Auc(MetricBase):
     """
 
     def __init__(self, name, curve='ROC', num_thresholds=4095):
-        super(Auc, self).__init__(name=name)
+        super().__init__(name=name)
         self._curve = curve
         self._num_thresholds = num_thresholds
 
@@ -793,14 +808,17 @@ class Auc(MetricBase):
             tot_neg_prev = tot_neg
             tot_pos += self._stat_pos[idx]
             tot_neg += self._stat_neg[idx]
-            auc += self.trapezoid_area(tot_neg, tot_neg_prev, tot_pos,
-                                       tot_pos_prev)
+            auc += self.trapezoid_area(
+                tot_neg, tot_neg_prev, tot_pos, tot_pos_prev
+            )
             idx -= 1
 
-        return auc / tot_pos / tot_neg if tot_pos > 0.0 and tot_neg > 0.0 else 0.0
+        return (
+            auc / tot_pos / tot_neg if tot_pos > 0.0 and tot_neg > 0.0 else 0.0
+        )
 
 
-class DetectionMAP(object):
+class DetectionMAP:
     """
     Calculate the detection mean average precision (mAP).
 
@@ -883,16 +901,18 @@ class DetectionMAP(object):
 
     """
 
-    def __init__(self,
-                 input,
-                 gt_label,
-                 gt_box,
-                 gt_difficult=None,
-                 class_num=None,
-                 background_label=0,
-                 overlap_threshold=0.5,
-                 evaluate_difficult=True,
-                 ap_version='integral'):
+    def __init__(
+        self,
+        input,
+        gt_label,
+        gt_box,
+        gt_difficult=None,
+        class_num=None,
+        background_label=0,
+        overlap_threshold=0.5,
+        evaluate_difficult=True,
+        ap_version='integral',
+    ):
 
         self.helper = LayerHelper('map_eval')
         gt_label = layers.cast(x=gt_label, dtype=gt_box.dtype)
@@ -903,30 +923,36 @@ class DetectionMAP(object):
             label = layers.concat([gt_label, gt_box], axis=1)
 
         # calculate mean average precision (mAP) of current mini-batch
-        map = detection.detection_map(input,
-                                      label,
-                                      class_num,
-                                      background_label,
-                                      overlap_threshold=overlap_threshold,
-                                      evaluate_difficult=evaluate_difficult,
-                                      ap_version=ap_version)
+        map = detection.detection_map(
+            input,
+            label,
+            class_num,
+            background_label,
+            overlap_threshold=overlap_threshold,
+            evaluate_difficult=evaluate_difficult,
+            ap_version=ap_version,
+        )
 
         states = []
         states.append(
-            self._create_state(dtype='int32',
-                               shape=None,
-                               suffix='accum_pos_count'))
+            self._create_state(
+                dtype='int32', shape=None, suffix='accum_pos_count'
+            )
+        )
         states.append(
-            self._create_state(dtype='float32',
-                               shape=None,
-                               suffix='accum_true_pos'))
+            self._create_state(
+                dtype='float32', shape=None, suffix='accum_true_pos'
+            )
+        )
         states.append(
-            self._create_state(dtype='float32',
-                               shape=None,
-                               suffix='accum_false_pos'))
+            self._create_state(
+                dtype='float32', shape=None, suffix='accum_false_pos'
+            )
+        )
         var = self._create_state(dtype='int32', shape=[1], suffix='has_state')
-        self.helper.set_variable_initializer(var,
-                                             initializer=Constant(value=int(0)))
+        self.helper.set_variable_initializer(
+            var, initializer=Constant(value=int(0))
+        )
         self.has_state = var
 
         # calculate accumulative mAP
@@ -940,12 +966,15 @@ class DetectionMAP(object):
             has_state=self.has_state,
             input_states=states,
             out_states=states,
-            ap_version=ap_version)
+            ap_version=ap_version,
+        )
 
-        layers.fill_constant(shape=self.has_state.shape,
-                             value=1,
-                             dtype=self.has_state.dtype,
-                             out=self.has_state)
+        layers.fill_constant(
+            shape=self.has_state.shape,
+            value=1,
+            dtype=self.has_state.dtype,
+            out=self.has_state,
+        )
 
         self.cur_map = map
         self.accum_map = accum_map
@@ -959,11 +988,12 @@ class DetectionMAP(object):
             shape(tuple|list): the shape of state
         Returns: State variable
         """
-        state = self.helper.create_variable(name="_".join(
-            [unique_name.generate(self.helper.name), suffix]),
-                                            persistable=True,
-                                            dtype=dtype,
-                                            shape=shape)
+        state = self.helper.create_variable(
+            name="_".join([unique_name.generate(self.helper.name), suffix]),
+            persistable=True,
+            dtype=dtype,
+            shape=shape,
+        )
         return state
 
     def get_map_var(self):
@@ -985,19 +1015,20 @@ class DetectionMAP(object):
 
         def _clone_var_(block, var):
             assert isinstance(var, Variable)
-            return block.create_var(name=var.name,
-                                    shape=var.shape,
-                                    dtype=var.dtype,
-                                    type=var.type,
-                                    lod_level=var.lod_level,
-                                    persistable=var.persistable)
+            return block.create_var(
+                name=var.name,
+                shape=var.shape,
+                dtype=var.dtype,
+                type=var.type,
+                lod_level=var.lod_level,
+                persistable=var.persistable,
+            )
 
         if reset_program is None:
             reset_program = Program()
         with program_guard(main_program=reset_program):
             var = _clone_var_(reset_program.current_block(), self.has_state)
-            layers.fill_constant(shape=var.shape,
-                                 value=0,
-                                 dtype=var.dtype,
-                                 out=var)
+            layers.fill_constant(
+                shape=var.shape, value=0, dtype=var.dtype, out=var
+            )
         executor.run(reset_program)

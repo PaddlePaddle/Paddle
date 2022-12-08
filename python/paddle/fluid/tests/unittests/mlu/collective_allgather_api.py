@@ -20,7 +20,6 @@ import signal
 import time
 import socket
 from contextlib import closing
-from six import string_types
 import math
 import paddle
 import paddle.fluid as fluid
@@ -31,22 +30,24 @@ import unittest
 from multiprocessing import Process
 import paddle.fluid.layers as layers
 from functools import reduce
-from test_collective_api_base_mlu import TestCollectiveAPIRunnerBase, runtime_main
+from test_collective_api_base_mlu import (
+    TestCollectiveAPIRunnerBase,
+    runtime_main,
+)
 
 paddle.enable_static()
 
 
 class TestCollectiveAllgatherAPI(TestCollectiveAPIRunnerBase):
-
     def __init__(self):
         self.global_ring_id = 0
 
     def get_model(self, main_prog, startup_program, rank):
         with fluid.program_guard(main_prog, startup_program):
             tensor_list = []
-            tindata = layers.data(name="tindata",
-                                  shape=[10, 1000],
-                                  dtype='float32')
+            tindata = layers.data(
+                name="tindata", shape=[10, 1000], dtype='float32'
+            )
             paddle.distributed.all_gather(tensor_list, tindata)
             return tensor_list
 

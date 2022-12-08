@@ -30,9 +30,7 @@
 #include "paddle/fluid/inference/analysis/passes/convert_to_mixed_precision.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
-#include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
@@ -41,15 +39,6 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 namespace {
-
-bool IsFloat(framework::proto::VarType::Type t) {
-  if (t == framework::proto::VarType::FP16 ||
-      t == framework::proto::VarType::FP32 ||
-      t == framework::proto::VarType::FP64 ||
-      t == framework::proto::VarType::BF16)
-    return true;
-  return false;
-}
 
 // if in mixed model precision, we should make all tensorrt_engine's output
 // floats dtype to float32 dtype.
@@ -85,7 +74,7 @@ void OutputProcess(framework::ir::Graph *graph,
     for (auto *var_node : op_node->outputs) {
       if (!trt_outputs.count(var_node)) continue;
       if (!var_node->Var()->Persistable() &&
-          IsFloat(var_node->Var()->GetDataType()) &&
+          tensorrt::IsFloatVar(var_node->Var()->GetDataType()) &&
           var_node->Var()->GetDataType() != framework::proto::VarType::FP32) {
         for (auto *next_op : var_node->outputs) {
           // if next_op support mixed_precision, we need to add cast op.
@@ -334,6 +323,13 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   auto opt_input_shape =
       Get<std::map<std::string, std::vector<int>>>("optim_input_shape");
 
+  auto min_shape_tensor =
+      Get<std::map<std::string, std::vector<int>>>("min_shape_tensor");
+  auto max_shape_tensor =
+      Get<std::map<std::string, std::vector<int>>>("max_shape_tensor");
+  auto opt_shape_tensor =
+      Get<std::map<std::string, std::vector<int>>>("optim_shape_tensor");
+
   auto allow_build_at_runtime = Get<bool>("trt_allow_build_at_runtime");
   auto shape_range_info_path = Get<std::string>("trt_shape_range_info_path");
   auto trt_tuned_dynamic_shape = Get<bool>("trt_tuned_dynamic_shape");
@@ -343,7 +339,10 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     inference::DeserializeShapeRangeInfo(shape_range_info_path,
                                          &min_input_shape,
                                          &max_input_shape,
-                                         &opt_input_shape);
+                                         &opt_input_shape,
+                                         &min_shape_tensor,
+                                         &max_shape_tensor,
+                                         &opt_shape_tensor);
   }
 
   // The following procedure is used to rename all the intermediate
@@ -530,6 +529,9 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                   min_input_shape,
                   max_input_shape,
                   opt_input_shape,
+                  min_shape_tensor,
+                  max_shape_tensor,
+                  opt_shape_tensor,
                   disable_trt_plugin_fp16,
                   static_cast<phi::DataType>(Get<int>("model_precision")));
   trt_engine->SetUseOSS(Get<bool>("use_varseqlen"));

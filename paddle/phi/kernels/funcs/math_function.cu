@@ -14,18 +14,90 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 
-#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/math_function_impl.h"
 
 namespace phi {
 namespace funcs {
+
+// The following part of the code refers to NVIDIA-cutlass
+// https://github.com/NVIDIA/cutlass/blob/master/tools/util/include/cutlass/util/device_nchw_to_nhwc.h
+template <typename T>
+__global__ void rowmajor_to_colmajor_kernel(
+    T* output, const T* input, const int n, const int hw, const int c) {
+  const int chw = c * hw;
+  __shared__ T shbuf[32 * (32 + 1)];
+  const int32_t tid = threadIdx.y * blockDim.x + threadIdx.x;
+  const int32_t wid = tid / 32;
+  const int32_t lid = tid % 32;
+  const int32_t ni = blockIdx.z;
+  const int32_t ci0 = blockIdx.y * 32;
+  const int32_t hwi0 = blockIdx.x * 32;
+
+  const size_t input_idx = ni * chw + (ci0 + wid) * hw + hwi0;
+  const T* A = input + input_idx;
+  if (hwi0 + lid < hw) {
+    const int lid_x_33 = lid * 33;
+    if ((ci0 + 32) <= c) {
+      int ci = wid;  // between 0 and 7
+      for (int cLoopIdx = 0; cLoopIdx < 4; cLoopIdx++) {
+        shbuf[lid_x_33 + ci] = A[lid];
+        A = &A[8 * hw];
+        ci += 8;
+      }
+    } else {
+      for (int ci = wid; ci < 32; ci += 8) {
+        if ((ci + ci0) < c) {
+          shbuf[lid_x_33 + ci] = A[lid];
+        }
+        A = &A[8 * hw];
+      }
+    }
+  }
+  __syncthreads();
+
+  const int32_t ciOut = ci0 + lid;
+  output = &output[ni * chw + ciOut];
+  if (ciOut < c) {
+    if (hwi0 + 32 < hw) {
+      int hwI = wid;
+      for (int hwLoopIdx = 0; hwLoopIdx < 4; ++hwLoopIdx) {
+        output[(hwi0 + hwI) * c] = shbuf[(hwI)*33 + lid];
+        hwI += 8;
+      }
+    } else {
+      for (int hwI = wid; hwI < 32; hwI += 8) {
+        if (hwi0 + hwI < hw) {
+          output[(hwi0 + hwI) * c] = shbuf[(hwI)*33 + lid];
+        }
+      }
+    }
+  }
+}
+
+template <typename T>
+void nchw2nhwc(const T* input, T* output, int n, int c, int hw) {
+  dim3 grid((hw + 31) / 32, (c + 31) / 32, n);
+  dim3 block(32, 8);
+  rowmajor_to_colmajor_kernel<<<grid, block>>>(output, input, n, hw, c);
+}
+
+template <typename T>
+void nhwc2nchw(const T* input, T* output, int n, int c, int hw) {
+  dim3 grid((c + 31) / 32, (hw + 31) / 32, n);
+  dim3 block(32, 8);
+  rowmajor_to_colmajor_kernel<<<grid, block>>>(output, input, n, c, hw);
+}
+
+template void nhwc2nchw(const half* input, half* output, int n, int c, int hw);
+template void nchw2nhwc(const half* input, half* output, int n, int c, int hw);
 
 using float16 = phi::dtype::float16;
 using bfloat16 = phi::dtype::bfloat16;
@@ -58,18 +130,20 @@ template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext,
 template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext,
                             phi::dtype::complex<double>>;
 
-#define DEFINE_GPU_TRANS(RANK)                                \
-  template struct Transpose<phi::GPUContext, bool, RANK>;     \
-  template struct Transpose<phi::GPUContext, float, RANK>;    \
-  template struct Transpose<phi::GPUContext, double, RANK>;   \
-  template struct Transpose<phi::GPUContext, float16, RANK>;  \
-  template struct Transpose<phi::GPUContext, bfloat16, RANK>; \
-  template struct Transpose<phi::GPUContext, int8_t, RANK>;   \
-  template struct Transpose<phi::GPUContext, int32_t, RANK>;  \
-  template struct Transpose<phi::GPUContext, int64_t, RANK>;  \
-  template struct Transpose<phi::GPUContext,                  \
-                            phi::dtype::complex<float>,       \
-                            RANK>;                            \
+#define DEFINE_GPU_TRANS(RANK)                                     \
+  template struct Transpose<phi::GPUContext, bool, RANK>;          \
+  template struct Transpose<phi::GPUContext, unsigned char, RANK>; \
+  template struct Transpose<phi::GPUContext, float, RANK>;         \
+  template struct Transpose<phi::GPUContext, double, RANK>;        \
+  template struct Transpose<phi::GPUContext, float16, RANK>;       \
+  template struct Transpose<phi::GPUContext, bfloat16, RANK>;      \
+  template struct Transpose<phi::GPUContext, int8_t, RANK>;        \
+  template struct Transpose<phi::GPUContext, int16_t, RANK>;       \
+  template struct Transpose<phi::GPUContext, int32_t, RANK>;       \
+  template struct Transpose<phi::GPUContext, int64_t, RANK>;       \
+  template struct Transpose<phi::GPUContext,                       \
+                            phi::dtype::complex<float>,            \
+                            RANK>;                                 \
   template struct Transpose<phi::GPUContext, phi::dtype::complex<double>, RANK>;
 
 DEFINE_GPU_TRANS(1);
@@ -105,8 +179,8 @@ __global__ void TransposeNormalKernel(const T* in_ptr,
 template <typename DeviceContext, typename T>
 void TransposeNormal<DeviceContext, T>::operator()(
     const DeviceContext& context,
-    const paddle::framework::Tensor& in,
-    paddle::framework::Tensor* out,
+    const phi::DenseTensor& in,
+    phi::DenseTensor* out,
     const std::vector<int>& axis) {
   const int rank = axis.size();
   auto in_stride = phi::stride(in.dims());
@@ -156,6 +230,26 @@ struct TransposeNormal<phi::GPUContext, T> {
     auto out_stride = stride(out->dims());
     auto* in_ptr = in.data<T>();
     auto* out_ptr = out->data<T>();
+
+    std::vector<int> axis_nchw_nhwc = {0, 2, 3, 1};
+    std::vector<int> axis_nhwc_nchw = {0, 3, 1, 2};
+    if (axis == axis_nchw_nhwc) {
+      funcs::nchw2nhwc(
+          reinterpret_cast<const half*>(in.data<phi::dtype::float16>()),
+          reinterpret_cast<half*>(out->data<phi::dtype::float16>()),
+          in.dims()[0],
+          in.dims()[1],
+          in.dims()[2] * in.dims()[3]);
+      return;
+    } else if (axis == axis_nhwc_nchw) {
+      funcs::nhwc2nchw(
+          reinterpret_cast<const half*>(in.data<phi::dtype::float16>()),
+          reinterpret_cast<half*>(out->data<phi::dtype::float16>()),
+          in.dims()[0],
+          in.dims()[3],
+          in.dims()[1] * in.dims()[2]);
+      return;
+    }
 
     // copy in_stride, out_stride, axis to gpu device
     const phi::GPUPlace& cuda_place = context.GetPlace();
@@ -215,7 +309,7 @@ DEFINE_GPU_TRANS_NORMAL(phi::dtype::complex<double>);
 
 struct TensorSetConstantGPU {
   TensorSetConstantGPU(const paddle::platform::DeviceContext& context,
-                       paddle::framework::Tensor* tensor,
+                       phi::DenseTensor* tensor,
                        float value)
       : context_(context), tensor_(tensor), value_(value) {}
 
@@ -228,14 +322,14 @@ struct TensorSetConstantGPU {
   }
 
   const paddle::platform::DeviceContext& context_;
-  paddle::framework::Tensor* tensor_;
+  phi::DenseTensor* tensor_;
   float value_;
 };
 
 template <>
 void set_constant_with_place<paddle::platform::CUDAPlace>(
     const paddle::platform::DeviceContext& context,
-    paddle::framework::Tensor* tensor,
+    phi::DenseTensor* tensor,
     float value) {
   phi::VisitDataType(tensor->dtype(),
                      TensorSetConstantGPU(context, tensor, value));
@@ -255,9 +349,9 @@ __global__ void RowwiseAddKernel(
 template <typename T>
 struct RowwiseAdd<phi::GPUContext, T> {
   void operator()(const phi::GPUContext& context,
-                  const paddle::framework::Tensor& input,
-                  const paddle::framework::Tensor& vector,
-                  paddle::framework::Tensor* output) {
+                  const phi::DenseTensor& input,
+                  const phi::DenseTensor& vector,
+                  phi::DenseTensor* output) {
     auto in_dims = input.dims();
     auto out_dims = output->dims();
     auto size = input.numel() / in_dims[0];
@@ -304,8 +398,8 @@ template struct ColwiseSum<phi::GPUContext, int64_t>;
 template <>
 void ColwiseSum<phi::GPUContext, double>::operator()(
     const phi::GPUContext& context,
-    const paddle::framework::Tensor& input,
-    paddle::framework::Tensor* vector) {
+    const phi::DenseTensor& input,
+    phi::DenseTensor* vector) {
   auto in_dims = input.dims();
   auto size = input.numel() / in_dims[0];
   PADDLE_ENFORCE_EQ(vector->numel(),
@@ -316,7 +410,7 @@ void ColwiseSum<phi::GPUContext, double>::operator()(
                         " dimension. Expected vector size=%d, but received %d",
                         size,
                         vector->numel()));
-  paddle::framework::Tensor one;
+  phi::DenseTensor one;
   one.mutable_data<double>({in_dims[0]}, context.GetPlace());
   SetConstant<phi::GPUContext, double> set;
   set(context, &one, static_cast<double>(1.0));
@@ -340,8 +434,8 @@ template struct RowwiseSum<phi::GPUContext, float>;
 template <>
 void RowwiseSum<phi::GPUContext, double>::operator()(
     const phi::GPUContext& context,
-    const paddle::framework::Tensor& input,
-    paddle::framework::Tensor* vector) {
+    const phi::DenseTensor& input,
+    phi::DenseTensor* vector) {
   auto in_dims = input.dims();
   auto size = input.numel() / in_dims[0];
   PADDLE_ENFORCE_EQ(vector->numel(),
@@ -352,7 +446,7 @@ void RowwiseSum<phi::GPUContext, double>::operator()(
                         " dimension. Expected vector size=%d, but received %d",
                         in_dims[0],
                         vector->numel()));
-  paddle::framework::Tensor one;
+  phi::DenseTensor one;
   one.mutable_data<double>({size}, context.GetPlace());
   SetConstant<phi::GPUContext, double> set;
   set(context, &one, static_cast<double>(1.0));

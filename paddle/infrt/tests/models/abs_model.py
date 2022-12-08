@@ -12,17 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from paddle.nn import Layer
-from paddle.static import InputSpec
-from paddle.jit import to_static
 import sys
+
+import paddle
+from paddle.jit import to_static
+from paddle.static import InputSpec
 
 
 class AbsNet(paddle.nn.Layer):
-
     def __init__(self):
-        super(AbsNet, self).__init__()
+        super().__init__()
 
     def forward(self, x):
         x = paddle.abs(x)
@@ -33,6 +32,7 @@ if __name__ == '__main__':
     # build network
     model = AbsNet()
     # save inferencing format model
-    net = to_static(model,
-                    input_spec=[InputSpec(shape=[None, 1, 28, 28], name='x')])
+    net = to_static(
+        model, input_spec=[InputSpec(shape=[None, 1, 28, 28], name='x')]
+    )
     paddle.jit.save(net, sys.argv[1])

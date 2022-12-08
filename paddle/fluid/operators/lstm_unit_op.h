@@ -23,8 +23,6 @@ https://github.com/caffe2/caffe2/blob/master/caffe2/operators/lstm_unit_op.h
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 template <typename T>
 inline T sigmoid(T x) {
   return 1. / (1. + exp(-x));
@@ -44,10 +42,10 @@ class LstmUnitKernel : public framework::OpKernel<T> {
         true,
         paddle::platform::errors::PreconditionNotMet("It must use CPUPlace."));
 
-    auto* x_tensor = ctx.Input<framework::Tensor>("X");
-    auto* c_prev_tensor = ctx.Input<framework::Tensor>("C_prev");
-    auto* c_tensor = ctx.Output<framework::Tensor>("C");
-    auto* h_tensor = ctx.Output<framework::Tensor>("H");
+    auto* x_tensor = ctx.Input<phi::DenseTensor>("X");
+    auto* c_prev_tensor = ctx.Input<phi::DenseTensor>("C_prev");
+    auto* c_tensor = ctx.Output<phi::DenseTensor>("C");
+    auto* h_tensor = ctx.Output<phi::DenseTensor>("H");
 
     auto forget_bias = static_cast<T>(ctx.Attr<float>("forget_bias"));
 
@@ -89,16 +87,19 @@ class LstmUnitGradKernel : public framework::OpKernel<T> {
         true,
         paddle::platform::errors::PreconditionNotMet("It must use CPUPlace."));
 
-    auto x_tensor = ctx.Input<Tensor>("X");
-    auto c_prev_tensor = ctx.Input<Tensor>("C_prev");
-    auto c_tensor = ctx.Input<Tensor>("C");
+    auto x_tensor = ctx.Input<phi::DenseTensor>("X");
+    auto c_prev_tensor = ctx.Input<phi::DenseTensor>("C_prev");
+    auto c_tensor = ctx.Input<phi::DenseTensor>("C");
 
-    auto hdiff_tensor = ctx.Input<Tensor>(framework::GradVarName("H"));
-    auto cdiff_tensor = ctx.Input<Tensor>(framework::GradVarName("C"));
+    auto hdiff_tensor =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("H"));
+    auto cdiff_tensor =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("C"));
 
-    auto xdiff_tensor = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto xdiff_tensor =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto c_prev_diff_tensor =
-        ctx.Output<Tensor>(framework::GradVarName("C_prev"));
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("C_prev"));
 
     auto* X = x_tensor->data<T>();
     auto* C_prev = c_prev_tensor->data<T>();

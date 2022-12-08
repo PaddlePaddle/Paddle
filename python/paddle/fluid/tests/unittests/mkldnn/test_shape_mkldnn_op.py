@@ -13,16 +13,16 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool
+
 import paddle
 from paddle.fluid import core
-from paddle.fluid.op import Operator
+from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool
 
 
 @OpTestTool.skip_if_not_cpu_bf16()
 class TestShape3DFP32OneDNNOp(OpTest):
-
     def setUp(self):
         self.op_type = "shape"
         self.config()
@@ -39,21 +39,18 @@ class TestShape3DFP32OneDNNOp(OpTest):
 
 
 class TestShape6DBF16OneDNNOp(TestShape3DFP32OneDNNOp):
-
     def config(self):
         self.shape = [10, 2, 3, 4, 5, 2]
         self.dtype = np.uint16
 
 
 class TestShape9DINT8OneDNNOp(TestShape3DFP32OneDNNOp):
-
     def config(self):
         self.shape = [1, 2, 3, 4, 5, 6, 7, 8, 9]
         self.dtype = np.int8
 
 
 class TestShape2DUINT8OneDNNOp(TestShape3DFP32OneDNNOp):
-
     def config(self):
         self.shape = [7, 11]
         self.dtype = np.uint8

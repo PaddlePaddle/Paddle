@@ -21,15 +21,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 class ElementwiseSubNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     out->mutable_data<T>(ctx.GetPlace());
 
@@ -46,9 +46,9 @@ template <typename T>
 class ElementwiseSubGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -75,7 +75,7 @@ class ElementwiseSubGradNPUKernel : public framework::OpKernel<T> {
       for (auto i = 0; i < reduce_ndim; ++i) {
         axes.push_back(i);
       }
-      Tensor* tmp_dout = const_cast<Tensor*>(dout);
+      phi::DenseTensor* tmp_dout = const_cast<phi::DenseTensor*>(dout);
       Tensor reduced_dout(dx->type());
       if (axes.size() != 0) {
         std::vector<int64_t> reduced_dout_dims;
@@ -123,7 +123,7 @@ class ElementwiseSubGradNPUKernel : public framework::OpKernel<T> {
       for (auto i = 0; i < reduce_ndim; ++i) {
         axes.push_back(i);
       }
-      Tensor* tmp_dout = const_cast<Tensor*>(dout);
+      phi::DenseTensor* tmp_dout = const_cast<phi::DenseTensor*>(dout);
       Tensor reduced_dy(dy->type());
       Tensor reduced_dout(dy->type());
 
@@ -145,7 +145,7 @@ class ElementwiseSubGradNPUKernel : public framework::OpKernel<T> {
 
       // stage 2
       axes.clear();
-      Tensor* tmp_dy = tmp_dout;
+      phi::DenseTensor* tmp_dy = tmp_dout;
       for (auto i = 0; i < dy->dims().size(); ++i) {
         if (dy->dims()[i] == 1) {
           axes.push_back(i);
