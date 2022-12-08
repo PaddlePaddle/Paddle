@@ -21,7 +21,6 @@ from paddle.static import default_main_program
 
 from ..fluid.data_feeder import convert_dtype
 from ..fluid.layers import BeamSearchDecoder  # noqa: F401
-from ..fluid.layers import control_flow
 from ..fluid.layers.utils import map_structure
 
 __all__ = []
@@ -186,7 +185,7 @@ def _dynamic_decode_declarative(
             shape=[1], fill_value=max_step_num, dtype="int64"
         )
 
-    while_op = control_flow.While(cond, is_test=is_test)
+    while_op = paddle.static.nn.control_flow.While(cond, is_test=is_test)
 
     sequence_lengths = paddle.cast(paddle.zeros_like(initial_finished), "int64")
     sequence_lengths.stop_gradient = True
