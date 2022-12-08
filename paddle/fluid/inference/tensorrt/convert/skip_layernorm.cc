@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -47,7 +47,10 @@ class SkipLayerNormOpConverter : public OpConverter {
     inputs.push_back(input1);
     inputs.push_back(input2);
 
-    bool enable_int8 = op_desc.HasAttr("enable_int8");
+    bool enable_int8 = false;
+    if (op_desc.HasAttr("enable_int8")) {
+      enable_int8 = PADDLE_GET_CONST(bool, op_desc.GetAttr("enable_int8"));
+    }
     auto bias_weight = GetWeight("Bias").get();
     auto scale_weight = GetWeight("Scale").get();
     nvinfer1::ILayer* layer = nullptr;
@@ -105,16 +108,15 @@ class SkipLayerNormOpConverter : public OpConverter {
       int32_t type = static_cast<int32_t>((engine_->WithFp16() == 1)
                                               ? nvinfer1::DataType::kHALF
                                               : nvinfer1::DataType::kFLOAT);
-
+      if (enable_int8) {
+        type = static_cast<int32_t>(nvinfer1::DataType::kHALF);
+      }
       int32_t ld = PADDLE_GET_CONST(int32_t, op_desc.GetAttr("ld"));
       PADDLE_ENFORCE_GT(ld,
                         0,
                         platform::errors::InvalidArgument(
                             "in CustomSkipLayerNormPluginDynamic hidden "
                             "dimension should > 0"));
-      if (enable_int8) {
-        type = static_cast<int32_t>(nvinfer1::DataType::kHALF);
-      }
 
       const std::vector<nvinfer1::PluginField> fields{
           {"type_id", &type, nvinfer1::PluginFieldType::kINT32, 1},
