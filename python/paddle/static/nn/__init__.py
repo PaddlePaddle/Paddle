@@ -36,6 +36,7 @@ from ...fluid.layers import layer_norm  # noqa: F401
 from ...fluid.layers import multi_box_head  # noqa: F401
 from .loss import nce  # noqa: F401
 from .common import prelu  # noqa: F401
+from .control_flow import Assert, increment  # noqa: F401
 from ...fluid.layers import row_conv  # noqa: F401
 from ...fluid.layers import spectral_norm  # noqa: F401
 
@@ -101,4 +102,6 @@ __all__ = [  # noqa
     'sequence_reverse',
     'StaticRNN',
     'prelu',
+    'Assert',
+    'increment',
 ]

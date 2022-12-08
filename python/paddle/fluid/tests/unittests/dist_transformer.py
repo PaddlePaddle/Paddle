@@ -1813,7 +1813,9 @@ def fast_decode(
                     shape=[-1, 1, 1],
                     dtype=pre_ids.dtype,
                 ),
-                y=layers.increment(x=step_idx, value=1.0, in_place=False),
+                y=paddle.static.nn.increment(
+                    x=step_idx, value=1.0, in_place=False
+                ),
                 axis=0,
             )
             logits = wrap_decoder(
@@ -1852,7 +1854,7 @@ def fast_decode(
                 end_id=eos_idx,
             )
 
-            layers.increment(x=step_idx, value=1.0, in_place=True)
+            paddle.static.nn.increment(x=step_idx, value=1.0, in_place=True)
             # update states
             layers.array_write(selected_ids, i=step_idx, array=ids)
             layers.array_write(selected_scores, i=step_idx, array=scores)
