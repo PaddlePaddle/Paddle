@@ -576,7 +576,7 @@ class TestDygraphTripleGradMatmulcase2(TestCase):
     # case1: no d_ddout, dims = 1, dtype is complex64
     def test_matmul_triple_grad_case1(self):
         def init_data():
-            self.input_numpy_x = np.random.random([3,]).astype(
+            self.input_numpy_x = np.random.random([3]).astype(
                 'float32'
             ) + 1j * np.random.random(
                 [
@@ -585,7 +585,7 @@ class TestDygraphTripleGradMatmulcase2(TestCase):
             ).astype(
                 'float32'
             )
-            self.input_numpy_y = np.random.random([3,]).astype(
+            self.input_numpy_y = np.random.random([3]).astype(
                 'float32'
             ) + 1j * np.random.random(
                 [
@@ -923,7 +923,7 @@ class TestDygraphTripleGradMatmulcase4(TestCase):
     # case1: no d_ddout,no d_dx, dims = 1
     def test_matmul_triple_grad_case1(self):
         def init_data():
-            self.input_numpy_x = np.random.random([3,]).astype(
+            self.input_numpy_x = np.random.random([3]).astype(
                 'float32'
             ) + 1j * np.random.random(
                 [
@@ -932,7 +932,7 @@ class TestDygraphTripleGradMatmulcase4(TestCase):
             ).astype(
                 'float32'
             )
-            self.input_numpy_y = np.random.random([3,]).astype(
+            self.input_numpy_y = np.random.random([3]).astype(
                 'float32'
             ) + 1j * np.random.random(
                 [
@@ -1258,7 +1258,7 @@ class TestDygraphTripleGradMatmulcase6(TestCase):
     # case1: no d_ddout,no d_dy, dims = 1
     def test_matmul_triple_grad_case1(self):
         def init_data():
-            self.input_numpy_x = np.random.random([3,]).astype(
+            self.input_numpy_x = np.random.random([3]).astype(
                 'float32'
             ) + 1j * np.random.random(
                 [
@@ -1267,7 +1267,7 @@ class TestDygraphTripleGradMatmulcase6(TestCase):
             ).astype(
                 'float32'
             )
-            self.input_numpy_y = np.random.random([3,]).astype(
+            self.input_numpy_y = np.random.random([3]).astype(
                 'float32'
             ) + 1j * np.random.random(
                 [
