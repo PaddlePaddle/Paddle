@@ -69,7 +69,7 @@ class TestAMPPass(unittest.TestCase):
         strategy = apply_pass(use_bf16)
         clip = paddle.nn.ClipGradByGlobalNorm(self.clip_norm)
         opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip)
-        model, loss = generate_model("mp")
+        model, loss = generate_model("serial")
 
         engine = auto.Engine(model, loss, opt, strategy=strategy)
         self.init(engine)
@@ -88,18 +88,18 @@ class TestAMPPass(unittest.TestCase):
 
     def test_bf16_pass(self):
         # mp2 training
-        # mp_engine = self.get_engine()
-        # history = mp_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        # mp_losses = np.array(history.history["loss"])
+        # serial_engine = self.get_engine()
+        # history = serial_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        # serial_losses = np.array(history.history["loss"])
 
-        # mp2 bf16-o1 training
+        # mp2 amp-o1 training
         bf16_o1_engine = self.get_engine(True)
         history = bf16_o1_engine.fit(
             self.dataset, 3, batch_size=self.batch_size
         )
         # bf16_o1_losses = np.array(history.history["loss"])
         # bf16_o1_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
-        # self.check_results(mp_losses, bf16_o1_engine)
+        # self.check_results(serial_losses, bf16_o1_losses)
 
 
 if __name__ == "__main__":
