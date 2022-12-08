@@ -122,6 +122,8 @@ void trt_ernie(bool with_fp16, std::vector<float> result) {
   config.EnableTensorRtEngine(1 << 30, 1, 12, precision, false, false);
   config.SetTRTDynamicShapeInfo(
       min_input_shape, max_input_shape, opt_input_shape);
+  paddle_infer::experimental::InternalUtils::SetTransformerMaskid(
+      &config, "read_file_0.tmp_3");
   std::vector<float> out_data;
   run(config, &out_data);
 
