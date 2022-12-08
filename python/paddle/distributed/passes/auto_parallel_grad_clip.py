@@ -29,7 +29,7 @@ from ..auto_parallel.utils import (
     OP_ROLE_KEY,
     OpRole,
     _get_comm_group,
-    insert_dependencies_for_two_vars,
+    insert_dependencies_for_vars,
     is_gradient_clip_op,
     is_optimize_op,
     use_standalone_executor,
@@ -399,12 +399,12 @@ class ClipGradByGloblNormPass(PassBase):
                             j -= 1
                         assert (
                             prior_op is not None
-                        ), "Unexception: ClipByGlobalNorm could not find priory depend op"
+                        ), "Unexpected: ClipByGlobalNorm could not find priory depend op"
                         prior_var = block.vars[prior_op.output_arg_names[0]]
                         assert (
                             prior_var is not None
-                        ), "Unexception: ClipByGlobalNorm could not find priory depend var"
-                        insert_dependencies_for_two_vars(
+                        ), "Unexpected: ClipByGlobalNorm could not find priory depend var"
+                        insert_dependencies_for_vars(
                             block,
                             idx,
                             prior_var,
