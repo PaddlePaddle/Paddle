@@ -22,79 +22,12 @@ import paddle.fluid.core as core
 import paddle.fluid.layers as layers
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, program_guard
-from paddle.fluid.layers.control_flow import (
-    ConditionalBlock,
-    merge_lod_tensor,
-    split_lod_tensor,
-)
 from paddle.fluid.optimizer import MomentumOptimizer
 
 paddle.enable_static()
 
 
 class TestMNISTIfElseOp(unittest.TestCase):
-    # FIXME: https://github.com/PaddlePaddle/Paddle/issues/12245#issuecomment-406462379
-    def not_test_raw_api(self):
-        prog = Program()
-        startup_prog = Program()
-        with program_guard(prog, startup_prog):
-            image = layers.data(name='x', shape=[784], dtype='float32')
-
-            label = layers.data(name='y', shape=[1], dtype='int64')
-
-            limit = layers.fill_constant(shape=[1], dtype='int64', value=5)
-            cond = paddle.less_than(x=label, y=limit)
-            true_image, false_image = split_lod_tensor(input=image, mask=cond)
-
-            true_out = paddle.tensor.create_tensor(dtype='float32')
-            true_cond = ConditionalBlock([cond])
-
-            with true_cond.block():
-                hidden = layers.fc(input=true_image, size=100, act='tanh')
-                prob = layers.fc(input=hidden, size=10, act='softmax')
-                layers.assign(input=prob, output=true_out)
-
-            false_out = paddle.tensor.create_tensor(dtype='float32')
-            false_cond = ConditionalBlock([cond])
-
-            with false_cond.block():
-                hidden = layers.fc(input=false_image, size=200, act='tanh')
-                prob = layers.fc(input=hidden, size=10, act='softmax')
-                layers.assign(input=prob, output=false_out)
-
-            prob = merge_lod_tensor(
-                in_true=true_out, in_false=false_out, mask=cond, x=image
-            )
-            loss = layers.cross_entropy(input=prob, label=label)
-            avg_loss = paddle.mean(loss)
-
-            optimizer = MomentumOptimizer(learning_rate=0.001, momentum=0.9)
-            optimizer.minimize(avg_loss, startup_prog)
-
-        train_reader = paddle.batch(
-            paddle.reader.shuffle(paddle.dataset.mnist.train(), buf_size=8192),
-            batch_size=10,
-        )
-
-        place = core.CPUPlace()
-        exe = Executor(place)
-
-        exe.run(startup_prog)
-        PASS_NUM = 100
-        for pass_id in range(PASS_NUM):
-            for data in train_reader():
-                x_data = np.array([x[0] for x in data]).astype("float32")
-                y_data = np.array([x[1] for x in data]).astype("int64")
-                y_data = np.expand_dims(y_data, axis=1)
-
-                outs = exe.run(
-                    prog, feed={'x': x_data, 'y': y_data}, fetch_list=[avg_loss]
-                )
-                print(outs[0])
-                if outs[0] < 1.0:
-                    return
-        self.assertFalse(True)
-
     # FIXME: https://github.com/PaddlePaddle/Paddle/issues/12245#issuecomment-406462379
     def not_test_ifelse(self):
         prog = Program()

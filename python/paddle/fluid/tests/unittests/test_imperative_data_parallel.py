@@ -18,8 +18,8 @@ import numpy as np
 
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.distributed import init_parallel_env
 import paddle.fluid.dygraph as dygraph
+from paddle.distributed import init_parallel_env
 from paddle.nn import Linear
 
 
