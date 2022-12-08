@@ -272,7 +272,12 @@ class ResNetHelper:
                     img, label = data
 
                     pred = resnet(img)
-                    loss = fluid.layers.cross_entropy(input=pred, label=label)
+                    loss = paddle.nn.functional.cross_entropy(
+                        input=pred,
+                        label=label,
+                        reduction='none',
+                        use_softmax=False,
+                    )
                     avg_loss = paddle.mean(x=loss)
                     acc_top1 = paddle.static.accuracy(
                         input=pred, label=label, k=1

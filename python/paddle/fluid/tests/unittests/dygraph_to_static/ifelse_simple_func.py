@@ -22,7 +22,9 @@ def add_fn(x):
 
 
 def loss_fn(x, lable):
-    loss = fluid.layers.cross_entropy(x, lable)
+    loss = paddle.nn.functional.cross_entropy(
+        x, lable, reduction='none', use_softmax=False
+    )
     return loss
 
 
@@ -45,7 +47,9 @@ def dyfunc_with_if_else(x_v, label=None):
         x_v = x_v + 1
     # plain if in python
     if label is not None:
-        loss = fluid.layers.cross_entropy(x_v, label)
+        loss = paddle.nn.functional.cross_entropy(
+            x_v, label, reduction='none', use_softmax=False
+        )
         return loss
     return x_v
 
@@ -302,7 +306,9 @@ def if_with_and_or(x_v, label=None):
         x_v = x_v + 1
 
     if label is not None:
-        loss = fluid.layers.cross_entropy(x_v, label)
+        loss = paddle.nn.functional.cross_entropy(
+            x_v, label, reduction='none', use_softmax=False
+        )
         return loss
     return x_v
 
