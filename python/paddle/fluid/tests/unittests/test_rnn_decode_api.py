@@ -143,15 +143,13 @@ class Decoder:
         output_layer = kwargs.pop("output_layer", None)
 
         beam_size = kwargs.get("beam_size", 4)
-        encoder_output = layers.BeamSearchDecoder.tile_beam_merge_with_batch(
+        encoder_output = BeamSearchDecoder.tile_beam_merge_with_batch(
             encoder_output, beam_size
         )
-        encoder_padding_mask = (
-            layers.BeamSearchDecoder.tile_beam_merge_with_batch(
-                encoder_padding_mask, beam_size
-            )
+        encoder_padding_mask = BeamSearchDecoder.tile_beam_merge_with_batch(
+            encoder_padding_mask, beam_size
         )
-        decoder = layers.BeamSearchDecoder(
+        decoder = BeamSearchDecoder(
             cell=self.decoder_cell, output_fn=output_layer, **kwargs
         )
 
