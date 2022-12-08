@@ -23,9 +23,8 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
+from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.jit import TracedLayer
 from paddle.nn import Embedding
 
 
