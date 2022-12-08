@@ -13,8 +13,11 @@ set(eager_deps
     eager_nan_inf_utils
     grad_node_info
     grad_tensor_holder
-    accumulation_node
     custom_operator_node)
+
+if(NOT (NOT WITH_PYTHON AND ON_INFER))
+  set(eager_deps ${eager_deps} accumulation_node)
+endif()
 
 set(fluid_deps
     tracer
@@ -33,9 +36,9 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
 endif()
 
 add_subdirectory(api)
-add_subdirectory(accumulation)
 add_subdirectory(custom_operator)
 if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
+  add_subdirectory(accumulation)
   add_subdirectory(tests)
   add_subdirectory(pylayer)
   cc_library(
