@@ -17,17 +17,21 @@ from abc import abstractmethod
 from ..graph import Graph
 
 _PATTERNS = {}
+_PATTERN_MAP = {}
 
 
 def register_pattern(cls):
     """Register pattern for rule-based tuner."""
-    name = cls.name
 
-    def register(name):
+    def register():
         global _PATTERNS
-        _PATTERNS[name] = cls()
+        global _PATTERN_MAP
+        pattern = cls()
+        _PATTERNS.append(pattern)
+        _PATTERNS.sort(key=lambda x: -x.attrs["weights"])
+        _PATTERN_MAP[pattern.name] = pattern
 
-    register(name)
+    register()
 
     return cls
 
@@ -45,8 +49,8 @@ class BasePattern(Graph):
 
 
 @register_pattern
-class QKVPattern(BasePattern):
-    name = "qkv"
+class SelfAttentionPattern(BasePattern):
+    name = "self_attention"
 
     def __init__(self):
         super().__init__()
@@ -54,81 +58,245 @@ class QKVPattern(BasePattern):
     def build(self):
         query = self.add_node(0, **{"type": "var"})
 
+        # define q, k, v weight
         q_weight = self.add_node(1, **{"dim": 2, "type": "param"})
         k_weight = self.add_node(2, **{"dim": 2, "type": "param"})
         v_weight = self.add_node(3, **{"dim": 2, "type": "param"})
-
-        q_matmul = self.add_node(4, **{"type": "matmul_v2"})
-        k_matmul = self.add_node(5, **{"type": "matmul_v2"})
-        v_matmul = self.add_node(6, **{"type": "matmul_v2"})
-
-        q_x = self.add_edge(0, 4, **{"input_name": "X"})
-        k_x = self.add_edge(0, 5, **{"input_name": "X"})
-        v_x = self.add_edge(0, 6, **{"input_name": "X"})
-        q_y = self.add_edge(1, 4, **{"input_name": "Y"})
-        k_y = self.add_edge(2, 5, **{"input_name": "Y"})
-        v_y = self.add_edge(3, 6, **{"input_name": "Y"})
-
+        # define q, k, v matmul_v2
+        q_matmul_v2 = self.add_node(4, **{"type": "matmul_v2"})
+        k_matmul_v2 = self.add_node(5, **{"type": "matmul_v2"})
+        v_matmul_v2 = self.add_node(6, **{"type": "matmul_v2"})
+        # define input edge
+        q_x_edge = self.add_edge(
+            query.id, q_matmul_v2.id, **{"input_name": "X"}
+        )
+        k_x_edge = self.add_edge(
+            query.id, k_matmul_v2.id, **{"input_name": "X"}
+        )
+        v_x_edge = self.add_edge(
+            query.id, v_matmul_v2.id, **{"input_name": "X"}
+        )
+        q_y_edge = self.add_edge(
+            q_weight.id, q_matmul_v2.id, **{"input_name": "Y"}
+        )
+        k_y_edge = self.add_edge(
+            k_weight.id, k_matmul_v2.id, **{"input_name": "Y"}
+        )
+        v_y_edge = self.add_edge(
+            v_weight.id, v_matmul_v2.id, **{"input_name": "Y"}
+        )
+        # define q, k, v matmul_v2 output
         q = self.add_node(7, **{"type": "var"})
         k = self.add_node(8, **{"type": "var"})
         v = self.add_node(9, **{"type": "var"})
+        # define output edge
+        q_out_edge = self.add_edge(
+            q_matmul_v2.id, q.id, **{"output_name": "Out"}
+        )
+        k_out_edge = self.add_edge(
+            k_matmul_v2.id, k.id, **{"output_name": "Out"}
+        )
+        v_out_edge = self.add_edge(
+            v_matmul_v2.id, v.id, **{"output_name": "Out"}
+        )
 
-        q_out = self.add_edge(4, 7, **{"output_name": "Out"})
-        k_out = self.add_edge(5, 8, **{"output_name": "Out"})
-        v_out = self.add_edge(6, 9, **{"output_name": "Out"})
+        # define add weight
+        q_bias = self.add_node(10, **{"dim": 1, "type": "param"})
+        k_bias = self.add_node(11, **{"dim": 1, "type": "param"})
+        v_bias = self.add_node(12, **{"dim": 1, "type": "param"})
+        # define add
+        q_add = self.add_node(13, **{"type": "elementwise_add"})
+        k_add = self.add_node(14, **{"type": "elementwise_add"})
+        v_add = self.add_node(15, **{"type": "elementwise_add"})
+        # define add input edge
+        q_x_edge = self.add_edge(q.id, q_add.id, **{"input_name": "X"})
+        k_x_edge = self.add_edge(k.id, k_add.id, **{"input_name": "X"})
+        v_x_edge = self.add_edge(v.id, v_add.id, **{"input_name": "X"})
+        q_y_edge = self.add_edge(q_bias.id, q_add.id, **{"input_name": "Y"})
+        k_y_edge = self.add_edge(k_bias.id, k_add.id, **{"input_name": "Y"})
+        v_y_edge = self.add_edge(v_bias.id, v_add.id, **{"input_name": "Y"})
+        # define add output
+        q = self.add_node(16, **{"type": "var"})
+        k = self.add_node(17, **{"type": "var"})
+        v = self.add_node(18, **{"type": "var"})
+        # define add output egde
+        q_out_edge = self.add_edge(q_add.id, q.id, **{"output_name": "Out"})
+        k_out_edge = self.add_edge(k_add.id, k.id, **{"output_name": "Out"})
+        v_out_edge = self.add_edge(v_add.id, v.id, **{"output_name": "Out"})
 
-        # Pattern
-        self.attrs["shard_spec"] = [
-            [(1, 2, 3), [[-1, 0], [-1, 1]]],
-        ]  # 2-tuple list such as [(tensor_id, shard_sepc)]
+        # define reshape
+        q_reshape = self.add_node(19, **{"type": "reshape2"})
+        k_reshape = self.add_node(20, **{"type": "reshape2"})
+        v_reshape = self.add_node(21, **{"type": "reshape2"})
+        # define reshape input egde
+        q_x_edge = self.add_edge(q.id, q_reshape.id, **{"input_name": "X"})
+        k_x_edge = self.add_edge(k.id, k_reshape.id, **{"input_name": "X"})
+        v_x_edge = self.add_edge(v.id, v_reshape.id, **{"input_name": "X"})
+        # define reshape out
+        q = self.add_node(22, **{"type": "var"})
+        k = self.add_node(23, **{"type": "var"})
+        v = self.add_node(24, **{"type": "var"})
+        # define reshape output edge
+        q_out_edge = self.add_edge(q_reshape.id, q.id, **{"output_name": "Out"})
+        k_out_edge = self.add_edge(k_reshape.id, k.id, **{"output_name": "Out"})
+        v_out_edge = self.add_edge(v_reshape.id, v.id, **{"output_name": "Out"})
+
+        # define transpose
+        q_transpose = self.add_node(25, **{"type": "transpose2"})
+        k_transpose = self.add_node(26, **{"type": "transpose2"})
+        v_transpose = self.add_node(27, **{"type": "transpose2"})
+        # define transpose input edge
+        q_x_edge = self.add_edge(q.id, q_transpose.id, **{"input_name": "X"})
+        k_x_edge = self.add_edge(k.id, k_transpose.id, **{"input_name": "X"})
+        v_x_edge = self.add_edge(v.id, v_transpose.id, **{"input_name": "X"})
+        # define transpose output
+        q = self.add_node(28, **{"type": "var"})
+        k = self.add_node(29, **{"type": "var"})
+        v = self.add_node(30, **{"type": "var"})
+        # define transpose output edege
+        q_out_edge = self.add_edge(
+            q_transpose.id, q.id, **{"output_name": "Out"}
+        )
+        k_out_edge = self.add_edge(
+            k_transpose.id, k.id, **{"output_name": "Out"}
+        )
+        v_out_edge = self.add_edge(
+            v_transpose.id, v.id, **{"output_name": "Out"}
+        )
+
+        # define matmul
+        matmul = self.add_node(31, **{"type": "matmul"})
+        # define matmul input edge
+        x_edge = self.add_edge(q.id, matmul.id, **{"input_name": "X"})
+        y_edge = self.add_edge(k.id, matmul.id, **{"input_name": "Y"})
+        # define matmul output
+        out = self.add_node(32, **{"type": "var"})
+        # define matmul output edge
+        out_edge = self.add_edge(matmul.id, out.id, **{"output_name": "Out"})
+
+        # define add y
+        attention_mask = self.add_node(33, **{"type": "data"})
+        # define add
+        add = self.add_node(34, **{"type": "elementwise_add"})
+        # define add input edge
+        x_edge = self.add_edge(out.id, add.id, **{"input_name": "X"})
+        y_edge = self.add_edge(attention_mask.id, add.id, **{"input_name": "Y"})
+        # define add output
+        out = self.add_node(35, **{"type": "var"})
+        # define add output egde
+        out_edge = self.add_edge(add.id, out.id, **{"output_name": "Out"})
+
+        # define softmax
+        softmax = self.add_node(36, **{"type": "softmax"})
+        # define input edge
+        input_edge = self.add_edge(out.id, softmax.id, **{"input_name": "X"})
+        # define softmax output
+        out = self.add_node(37, **{"type": "var"})
+        # define softmax output edge
+        output_edge = self.add_edge(
+            softmax.id, out.id, **{"output_name": "Out"}
+        )
+
+        # define matmul_v2
+        matmul_v2 = self.add_node(38, **{"type": "matmul_v2"})
+        # define input edge
+        x_edge = self.add_edge(out.id, matmul_v2.id, **{"input_name": "X"})
+        y_edge = self.add_edge(v.id, matmul_v2.id, **{"input_name": "Y"})
+        # define output
+        out = self.add_node(39, **{"type": "var"})
+        # define output edge
+        out_edge = self.add_edge(matmul_v2.id, out.id, **{"output_name": "Out"})
+
+        # define transpose
+        transpose = self.add_node(40, **{"type": "transpose2"})
+        # define transpose input edge
+        x_edge = self.add_edge(out.id, transpose.id, **{"input_name": "X"})
+        # define transpose output
+        out = self.add_node(41, **{"type": "var"})
+        # define transpose output edege
+        out_edge = self.add_edge(transpose.id, out.id, **{"output_name": "Out"})
+
+        # define reshape
+        reshape = self.add_node(42, **{"type": "reshape2"})
+        # define reshape input egde
+        x_edge = self.add_edge(out.id, reshape.id, **{"input_name": "X"})
+        # define reshape out
+        out = self.add_node(43, **{"type": "var"})
+        # define reshape output edge
+        out_edge = self.add_edge(reshape.id, out.id, **{"output_name": "Out"})
+
+        # define matmul_v2 weight
+        y = self.add_node(44, **{"type": "param", "dim": 2})
+        # define matmul_v2
+        matmul_v2 = self.add_node(45, **{"type": "matmul_v2"})
+        # define input edge
+        x_edge = self.add_edge(out.id, matmul_v2.id, **{"input_name": "X"})
+        y_edge = self.add_edge(y.id, matmul_v2.id, **{"input_name": "Y"})
+        # define output
+        out = self.add_node(46, **{"type": "var"})
+        # define output edge
+        out_edge = self.add_edge(matmul_v2.id, out.id, **{"output_name": "Out"})
+
+        # define add weight
+        bias = self.add_node(47, **{"dim": 1, "type": "param"})
+        # define add
+        add = self.add_node(48, **{"type": "elementwise_add"})
+        # define add input edge
+        x_edge = self.add_edge(out.id, add.id, **{"input_name": "X"})
+        y_edge = self.add_edge(bias.id, add.id, **{"input_name": "Y"})
+        # define add output
+        out = self.add_node(49, **{"type": "var"})
+        # define add output egde
+        out_edge = self.add_edge(add.id, out.id, **{"output_name": "Out"})
+
+        # pattern: pure mp or hybrid dp+mp
+        shard_spec = {
+            "dp0mp1": {
+                0: [0, -1, -1],
+                1: [-1, 1],
+                2: [-1, 1],
+                3: [-1, 1],
+                44: [1, -1],
+            },
+            "dp1mp0": {
+                0: [1, -1, -1],
+                1: [-1, 0],
+                2: [-1, 0],
+                3: [-1, 0],
+                44: [0, -1],
+            },
+            "mp": {1: [-1, 0], 2: [-1, 0], 3: [-1, 0], 44: [0, -1]},
+        }
+        self.attrs["shard_spec"] = shard_spec
+        self.attrs["weights"] = 4
 
 
-def convert_to_graph(ops, block):
-    """Convert ops to graph."""
-    graph = Graph()
-    graph.attrs["var_to_id"] = {}  # {var_name: node_id}
-    graph.attrs["id_to_var"] = {}  # {node_id: var_name}
-    graph.attrs["op_to_id"] = {}  # {op_id: node_id}
-    graph.attrs["id_to_op"] = {}  # {node_id: op_id}
+class GraphUtil:
+    @staticmethod
+    def convert_to_graph(block):
+        """Convert ops to graph."""
+        graph = Graph()
+        graph.attrs["var_to_id"] = {}  # {var_name: node_id}
+        graph.attrs["id_to_var_desc_id"] = {}  # {node_id: var_desc_id}
+        graph.attrs["id_to_var_name"] = {}
+        graph.attrs["op_to_id"] = {}  # {op_id: node_id}
+        graph.attrs["id_to_op"] = {}  # {node_id: op}
 
-    node_id = -1
-    for op in ops:
-        attrs = op.all_attrs()
-        attrs["type"] = op.type
-        node_id += 1
+        ops = block.ops
+        node_id = -1
+        for op in ops:
+            attrs = op.all_attrs()
+            attrs["type"] = op.type
+            node_id += 1
 
-        # create op node
-        op_node = graph.add_node(node_id, **attrs)
-        graph.attrs["op_to_id"][op.desc.id()] = op_node.id
-        graph.attrs["id_to_op"][op_node.id] = op.desc.id()
-        graph._attr_to_nodes[op_node.id] = {}
-        for input_name in op.input_names:
-            graph._attr_to_nodes[op_node.id][input_name] = []
-            for var_name in op.input(input_name):
-                if var_name not in graph.attrs["var_to_id"]:
-                    # create var node
-                    node_id += 1
-                    var_node = graph.add_node(node_id)
-                    var = block._var_recursive(var_name)
-                    if var.is_parameter:
-                        var_node.attrs["type"] = "param"
-                        var_node.attrs["dim"] = len(var.shape)
-                    else:
-                        var_node.attrs["type"] = "var"
-                    graph.attrs["var_to_id"][var_name] = var_node.id
-                    graph.attrs["id_to_var"][var_node.id] = var_name
-                else:
-                    var_node_id = graph.attrs["var_to_id"][var_name]
-                    var_node = graph._nodes[var_node_id]
-
-                # create edge that input -> op
-                input_edge = graph.add_edge(var_node.id, op_node.id)
-                input_edge.attrs["input_name"] = input_name
-                graph._attr_to_nodes[op_node.id][input_name].append(var_node)
-
-            for output_name in op.output_names:
-                graph._attr_to_nodes[op_node.id][output_name] = []
-                for var_name in op.output(output_name):
+            # create op node
+            op_node = graph.add_node(node_id, **attrs)
+            graph.attrs["op_to_id"][op.desc.id()] = op_node.id
+            graph.attrs["id_to_op"][op_node.id] = op
+            graph._attr_to_nodes[op_node.id] = {}
+            for input_name in op.input_names:
+                graph._attr_to_nodes[op_node.id][input_name] = []
+                for var_name in op.input(input_name):
                     if var_name not in graph.attrs["var_to_id"]:
                         # create var node
                         node_id += 1
@@ -136,198 +304,260 @@ def convert_to_graph(ops, block):
                         var = block._var_recursive(var_name)
                         if var.is_parameter:
                             var_node.attrs["type"] = "param"
+                            var_node.attrs["dim"] = len(var.shape)
+                        elif var.is_data:
+                            var_node.attrs["type"] = "data"
+                            var_node.attrs["dim"] = len(var.shape)
                         else:
                             var_node.attrs["type"] = "var"
                         graph.attrs["var_to_id"][var_name] = var_node.id
-                        graph.attrs["id_to_var"][var_node.id] = var_name
+                        graph.attrs["id_to_var_desc_id"][
+                            var_node.id
+                        ] = var.desc.original_id()
+                        graph.attrs["id_to_var_name"][var_node.id] = var_name
                     else:
                         var_node_id = graph.attrs["var_to_id"][var_name]
                         var_node = graph._nodes[var_node_id]
 
-                    # create edge that op -> output
-                    output_edge = graph.add_edge(op_node.id, var_node.id)
-                    output_edge.attrs["output_name"] = output_name
-
-                    graph._attr_to_nodes[op_node.id][output_name].append(
+                    # create edge that input -> op
+                    input_edge = graph.add_edge(var_node.id, op_node.id)
+                    input_edge.attrs["input_name"] = input_name
+                    graph._attr_to_nodes[op_node.id][input_name].append(
                         var_node
                     )
 
-    return graph
+                for output_name in op.output_names:
+                    graph._attr_to_nodes[op_node.id][output_name] = []
+                    for var_name in op.output(output_name):
+                        if var_name not in graph.attrs["var_to_id"]:
+                            # create var node
+                            node_id += 1
+                            var_node = graph.add_node(node_id)
+                            var = block._var_recursive(var_name)
+                            if var.is_parameter:
+                                var_node.attrs["type"] = "param"
+                            else:
+                                var_node.attrs["type"] = "var"
+                            graph.attrs["var_to_id"][var_name] = var_node.id
+                            graph.attrs["id_to_var_desc_id"][
+                                var_node.id
+                            ] = var.desc.original_id()
+                            graph.attrs["id_to_var_name"][
+                                var_node.id
+                            ] = var_name
+                        else:
+                            var_node_id = graph.attrs["var_to_id"][var_name]
+                            var_node = graph._nodes[var_node_id]
 
+                        # create edge that op -> output
+                        output_edge = graph.add_edge(op_node.id, var_node.id)
+                        output_edge.attrs["output_name"] = output_name
 
-def match(pattern, graph):
-    def _is_op_node(node):
-        """Judge whether node is op node"""
-        if node.attrs["type"] not in ["var", "param", "data"]:
-            return True
+                        graph._attr_to_nodes[op_node.id][output_name].append(
+                            var_node
+                        )
 
-        return False
+        return graph
 
-    def _compare_op_node(src, tgt):
-        """Compare whether two op nodes are equal"""
-        if src.attrs["type"] != tgt.attrs["type"]:
+    @staticmethod
+    def match_pattern(pattern, graph):
+        def _is_op_node(node):
+            """Judge whether node is op node"""
+            if node.attrs["type"] not in ["var", "param", "data"]:
+                return True
+
             return False
 
-        return True
-
-    def _compare_var_node(src, tgt):
-        """Compare whether two var nodes are equal"""
-        for key in src.attrs:
-            if key not in tgt.attrs:
-                return False
-            if src.attrs[key] != tgt.attrs[key]:
+        def _compare_op_node(src, tgt):
+            """Compare whether two op nodes are equal"""
+            if src.attrs["type"] != tgt.attrs["type"]:
                 return False
 
-        return True
+            return True
 
-    def _match_core(src_node, tgt_node):
-        nonlocal not_matched
-        # do not support one input name or output name corresponding to multiple vars
-        if not_matched:
-            return
+        def _compare_var_node(src, tgt):
+            """Compare whether two var nodes are equal"""
+            for key in src.attrs:
+                if key not in tgt.attrs:
+                    return False
+                if src.attrs[key] != tgt.attrs[key]:
+                    return False
 
-        if _is_op_node(src_node):
-            # compare op node whether equal
-            if not _compare_op_node(src_node, tgt_node):
+            return True
+
+        def _match_core(src_node, tgt_node):
+            nonlocal not_matched
+            # do not support one input name or output name corresponding to multiple vars
+            if not_matched:
                 return
 
-            result[src_node.id] = tgt_node.id
-
-            # input var nodes
-            src_input_nodes = src_reverse_adjs[src_node.id]
-            for node in src_input_nodes:
-                # has visited
-                if node.id in result:
-                    continue
-                edge = src_edges[node.id][src_node.id]
-                input_name = edge.attrs["input_name"]
-
-                # NOTE: do not support one input name or output name corresponding to multiple vars
-                compare_nodes = tgt_attr_to_nodes[tgt_node.id].get(
-                    input_name, None
-                )
-                if not compare_nodes:
+            if _is_op_node(src_node):
+                # compare op node whether equal
+                if not _compare_op_node(src_node, tgt_node):
                     not_matched = True
                     return
-                _match_core(node, compare_nodes[0])
 
-            # output var nodes
-            src_output_node_ids = src_edges[src_node.id].keys()
-            for node_id in src_output_node_ids:
-                # has visited
-                if node_id in result:
-                    continue
-                node = src_nodes[node_id]
-                edge = src_edges[src_node.id][node_id]
-                output_name = edge.attrs["output_name"]
+                result[src_node.id] = tgt_node.id
 
-                # NOTE: do not support one input name or output name corresponding to multiple vars
-                compare_nodes = tgt_attr_to_nodes[tgt_node.id].get(
-                    output_name, None
-                )
-                if not compare_nodes:
-                    not_matched = True
-                    return
-                _match_core(node, compare_nodes[0])
+                # input var nodes
+                src_input_nodes = src_reverse_adjs[src_node.id]
+                for node in src_input_nodes:
+                    # has visited
+                    if node.id in result:
+                        continue
+                    edge = src_edges[node.id][src_node.id]
+                    input_name = edge.attrs["input_name"]
 
-        else:
-            # compare var node whether equal
-            if not _compare_var_node(src_node, tgt_node):
-                not_matched = True
-                return
+                    # NOTE: do not support one input name or output name corresponding to multiple vars
+                    compare_nodes = tgt_attr_to_nodes[tgt_node.id].get(
+                        input_name, None
+                    )
+                    if not compare_nodes:
+                        not_matched = True
+                        return
+                    _match_core(node, compare_nodes[0])
 
-            result[src_node.id] = tgt_node.id
+                # output var nodes
+                src_output_node_ids = src_edges[src_node.id].keys()
+                for node_id in src_output_node_ids:
+                    # has visited
+                    if node_id in result:
+                        continue
+                    node = src_nodes[node_id]
+                    edge = src_edges[src_node.id][node_id]
+                    output_name = edge.attrs["output_name"]
 
-            # as input for op nodes
-            src_as_input_node_ids = src_edges[src_node.id].keys()
-            for node_id in src_as_input_node_ids:
-                if node_id in result:
-                    continue
+                    # NOTE: do not support one input name or output name corresponding to multiple vars
+                    compare_nodes = tgt_attr_to_nodes[tgt_node.id].get(
+                        output_name, None
+                    )
+                    if not compare_nodes:
+                        not_matched = True
+                        return
+                    _match_core(node, compare_nodes[0])
 
-                src_edge = src_edges[src_node.id][node_id]
-                input_name = src_edge.attrs["input_name"]
-                compare_node_ids = tgt_edges[tgt_node.id].keys()
-
-                compare_node = None
-                for compare_node_id in compare_node_ids:
-                    edge = tgt_edges[tgt_node.id][compare_node_id]
-                    if (
-                        edge.attrs["input_name"] == input_name
-                        and compare_node_id not in result.values()
-                    ):
-                        compare_node = tgt_nodes[compare_node_id]
-                        break
-
-                if not compare_node:
-                    not_matched = True
-                    return
-                _match_core(src_nodes[node_id], compare_node)
-
-            # as output for nodes
-            src_as_output_nodes = src_reverse_adjs[src_node.id]
-            for node in src_as_output_nodes:
-                if node.id in result:
-                    continue
-
-                src_edge = src_edges[node.id][src_node.id]
-                output_name = src_edge.attrs["output_name"]
-
-                compare_node_ids = tgt_reverse_adjs[tgt_node.id]
-
-                compare_node = None
-                for node_id in compare_node_ids:
-                    edge = tgt_edges[node_id][tgt_node.id]
-                    if edge.attrs["output_name"] == output_name:
-                        compare_node = tgt_nodes[node_id]
-                        break
-                if not compare_node:
-                    not_matched = True
-                    return
-                _match_core(src_nodes[node_id], compare_node)
-
-    results = []
-    result = {}
-    has_matched = set()
-    src_nodes = pattern.nodes
-    src_edges = pattern._adjs
-    src_reverse_adjs = pattern._reverse_adjs
-
-    tgt_nodes = graph.nodes
-    tgt_edges = graph._adjs
-    tgt_reverse_adjs = graph._reverse_adjs
-    tgt_attr_to_nodes = graph._attr_to_nodes
-    not_matched = False
-
-    # starts with a op node
-    src_start_node = None
-    for node_id in src_nodes:
-        node = src_nodes[node_id]
-        if node.attrs["type"] not in ["var", "param", "data"]:
-            src_start_node = node
-            break
-    assert src_start_node is not None
-
-    for node_id in tgt_nodes:
-        node = tgt_nodes[node_id]
-        if node.attrs["type"] == src_start_node.attrs["type"]:
-            _match_core(src_start_node, node)
-            if not not_matched:
-                need_to_append = True
-                for value in result.values():
-                    if value in has_matched:
-                        result = {}
-                        need_to_append = False
-                        break
-                if need_to_append:
-                    results.append(result)
-                    for value in result.values():
-                        has_matched.add(value)
-                    result = {}
             else:
-                not_matched = False
-                result = {}
+                # compare var nodes whether equal
+                if not _compare_var_node(src_node, tgt_node):
+                    not_matched = True
+                    return
 
-    return results
+                result[src_node.id] = tgt_node.id
+
+                # as input for op node
+                src_as_input_node_ids = src_edges[src_node.id].keys()
+                for node_id in src_as_input_node_ids:
+                    if node_id in result:
+                        continue
+
+                    src_edge = src_edges[src_node.id][node_id]
+                    input_name = src_edge.attrs["input_name"]
+                    compare_node_ids = tgt_edges[tgt_node.id].keys()
+
+                    compare_node = None
+                    for compare_node_id in compare_node_ids:
+                        edge = tgt_edges[tgt_node.id][compare_node_id]
+                        if (
+                            edge.attrs["input_name"] == input_name
+                            and compare_node_id not in result.values()
+                        ):
+                            compare_node = tgt_nodes[compare_node_id]
+                            break
+
+                    if not compare_node:
+                        not_matched = True
+                        return
+                    _match_core(src_nodes[node_id], compare_node)
+
+                # as output for op node
+                src_as_output_nodes = src_reverse_adjs[src_node.id]
+                for node in src_as_output_nodes:
+                    if node.id in result:
+                        continue
+
+                    src_edge = src_edges[node.id][src_node.id]
+                    output_name = src_edge.attrs["output_name"]
+
+                    compare_nodes = tgt_reverse_adjs[tgt_node.id]
+
+                    compare_node = None
+                    for item in compare_nodes:
+                        node_id = item.id
+                        edge = tgt_edges[node_id][tgt_node.id]
+                        if edge.attrs["output_name"] == output_name:
+                            compare_node = tgt_nodes[node_id]
+                            break
+                    if not compare_node:
+                        not_matched = True
+                        return
+                    _match_core(src_nodes[node.id], compare_node)
+
+        results = []
+        matched_ids = set()
+        matched_op_node_ids = set()
+        result = {}
+        src_nodes = pattern.nodes
+        src_edges = pattern._adjs
+        src_reverse_adjs = pattern._reverse_adjs
+
+        tgt_nodes = graph.nodes
+        tgt_edges = graph._adjs
+        tgt_reverse_adjs = graph._reverse_adjs
+        tgt_attr_to_nodes = graph._attr_to_nodes
+
+        # starts with a op node
+        src_start_node = None
+        for node_id in src_nodes:
+            node = src_nodes[node_id]
+            if node.attrs["type"] not in ["var", "param", "data"]:
+                src_start_node = node
+                break
+        assert src_start_node is not None
+
+        for node_id in tgt_nodes:
+            node = tgt_nodes[node_id]
+            if node.attrs["type"] == src_start_node.attrs["type"]:
+                not_matched = False
+                _match_core(src_start_node, node)
+                if not not_matched:
+                    need_to_append = True
+                    for value in result.values():
+                        if value in matched_op_node_ids:
+                            result = {}
+                            need_to_append = False
+                            break
+                    if need_to_append:
+                        results.append(result)
+                        for value in result.values():
+                            matched_ids.add(value)
+                            if value in graph.attrs["id_to_op"].keys():
+                                matched_op_node_ids.add(value)
+                        result = {}
+                else:
+                    not_matched = False
+                    result = {}
+
+        return results, matched_ids
+
+    @staticmethod
+    def match_all_patterns(graph):
+        matched_results = (
+            {}
+        )  # {"pattern_name": [{0: graph_node}, {0: graph_node}]}
+        matched_ids = set()
+        for pattern in _PATTERNS:
+            has_matched = False
+            results, matched = GraphUtil.match_pattern(pattern, graph)
+            for id in matched:
+                if id in matched_ids:
+                    has_matched = True
+                    break
+            if not has_matched:
+                for item in matched:
+                    matched_ids.add(item)
+                matched_results[pattern.name] = results
+
+        return matched_results
 
 
 class OperatorClusteringUtil:
@@ -509,9 +739,9 @@ class RuleBasedTuner:
         self._dist_context = dist_context
         self._mode = mode
 
-    def cluster_operators(self, ops):
+    def cluster_operators(self):
         """
-        Cluster operators to layers.
+        Group operators to layers.
 
         Args:
             ops (list): A operator list.
@@ -519,6 +749,7 @@ class RuleBasedTuner:
         Returns:
             List: The list contains the list of operators which belong to the same layer.
         """
+        ops = self._dist_context._serial_main_program.global_block().ops
         seq = [op.type for op in ops]
 
         while not OperatorClusteringUtil.stop_replace(seq):
