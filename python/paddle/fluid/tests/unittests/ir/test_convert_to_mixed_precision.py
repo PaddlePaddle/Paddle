@@ -45,7 +45,7 @@ class TestConvertToMixedPrecision(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def test_convert_to_fp16(self):
+    def convert_to_fp16(self):
         convert_to_mixed_precision(
             os.path.join(self.temp_dir.name, 'resnet50/inference.pdmodel'),
             os.path.join(self.temp_dir.name, 'resnet50/inference.pdiparams'),
@@ -56,7 +56,7 @@ class TestConvertToMixedPrecision(unittest.TestCase):
             True,
         )
 
-    def test_convert_to_fp16_with_fp16_input(self):
+    def convert_to_fp16_with_fp16_input(self):
         convert_to_mixed_precision(
             os.path.join(self.temp_dir.name, 'resnet50/inference.pdmodel'),
             os.path.join(self.temp_dir.name, 'resnet50/inference.pdiparams'),
@@ -67,7 +67,7 @@ class TestConvertToMixedPrecision(unittest.TestCase):
             False,
         )
 
-    def test_convert_to_fp16_with_blacklist(self):
+    def convert_to_fp16_with_blacklist(self):
         convert_to_mixed_precision(
             os.path.join(self.temp_dir.name, 'resnet50/inference.pdmodel'),
             os.path.join(self.temp_dir.name, 'resnet50/inference.pdiparams'),
@@ -79,7 +79,7 @@ class TestConvertToMixedPrecision(unittest.TestCase):
             set('conv2d'),
         )
 
-    def test_convert_to_bf16(self):
+    def convert_to_bf16(self):
         convert_to_mixed_precision(
             os.path.join(self.temp_dir.name, 'resnet50/inference.pdmodel'),
             os.path.join(self.temp_dir.name, 'resnet50/inference.pdiparams'),
@@ -89,6 +89,12 @@ class TestConvertToMixedPrecision(unittest.TestCase):
             PlaceType.GPU,
             True,
         )
+
+    def test_convert(self):
+        self.convert_to_fp16()
+        self.convert_to_fp16_with_fp16_input()
+        self.convert_to_fp16_with_blacklist()
+        self.convert_to_bf16()
 
 
 if __name__ == '__main__':
