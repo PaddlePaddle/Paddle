@@ -1058,12 +1058,73 @@ class ShardingPass(PassBase):
             return
 
         ops = block.ops
+        self.gradient_sync_stream = "sharding_gradient_comm_stream"
+
         # analyze dependencies
         unsync_coalesce_grad_in_shard = []
         unsync_coalesce_grad_not_in_shard = []
+        dep_map = {}
+        for idx, op in enumerate(ops):
+            if is_data_parallel_reduce_op(op):
 
-        # for idx range(len(ops)):
-        #     pass
+                if op.type == "c_allreduce":
+                    continue
+
+                reduce_varname = op.output("Out")
+                grad_group = coalesce_to_group_map[reduce_varname]
+                assert grad_group.coalesce_var.name == reduce_varname
+
+                # coalesce deps
+                if len(grad_group.vars) > 1:
+                    # NOTE should prior vars to be all grads ?
+                    # when the grad_ops' order is random
+                    # prior dep
+                    dep_map[idx] = [
+                        (idx, grad_group.vars[-1], grad_group.coalesce_var)
+                    ]
+                    # post dep
+                    post_idx = idx + 1
+                    if self.sharding_hybrid_dp and grad_group.is_in_local_shard:
+                        post_idx += 1
+                    dep_map[idx].append(
+                        (post_idx, grad_group.coalesce_var, grad_group.vars)
+                    )
+
+                # assign stream
+                op.dist_attr.execution_stream = self.gradient_sync_stream
+                if self.sharding_hybrid_dp and grad_group.is_in_local_shard:
+                    next_op = ops[idx + 1]
+                    assert next_op.type == "c_allreduce"
+                    assert next_op.output("Out") == reduce_varname
+                    next_op.dist_attr.execution_stream = (
+                        self.gradient_sync_stream
+                    )
+                    idx += 1
+                    unsync_coalesce_grad_in_shard.append(reduce_varname)
+                else:
+                    unsync_coalesce_grad_not_in_shard.append(reduce_varname)
+
+            idx += 1
+
+        # insert deps
+        indice = sorted(list(dep_map.keys()), reverse=True)
+        for i in indice:
+            for idx, prior_vars, post_vars in dep_map[i][::-1]:
+                depend_op = insert_dependencies_for_vars(
+                    block,
+                    idx,
+                    prior_vars,
+                    post_vars,
+                    self._dist_context,
+                    OpRole.Backward,
+                    process_mesh=[
+                        -1
+                    ],  # hack to avoid initialize the dist attr for coalesc var
+                    is_recompute=False,
+                    sync=False,
+                )
+
+        block._sync_with_cpp()
 
 
 def _get_broadcast_first_depend_op(block):
