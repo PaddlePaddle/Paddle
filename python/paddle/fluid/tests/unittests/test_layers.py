@@ -2557,7 +2557,7 @@ class TestBook(LayerTest):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
         ):
-            out = layers.gaussian_random(shape=[20, 30])
+            out = random.gaussian(shape=[20, 30])
             return out
 
     def make_sum(self):
