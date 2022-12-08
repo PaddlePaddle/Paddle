@@ -1726,6 +1726,27 @@
   inplace : (x -> out)
   backward : scale_grad
 
+- op : scatter
+  args : (Tensor x, Tensor index, Tensor updates, bool overwrite)
+  output : Tensor(out)
+  infer_meta :
+    func : ScatterInferMeta
+    dtype : x
+  kernel :
+    func : scatter
+  inplace : (x -> out)
+  backward : scatter_grad
+
+- op : scatter_nd_add
+  args : (Tensor x, Tensor index, Tensor updates)
+  output : Tensor
+  infer_meta :
+    func : ScatterNdAddInferMeta
+    dtype : x
+  kernel :
+    func : scatter_nd_add
+  backward : scatter_nd_add_grad
+
 - op : segment_pool
   args : (Tensor x, Tensor segment_ids, str pooltype)
   output : Tensor(out), Tensor(summed_ids)
@@ -1735,6 +1756,16 @@
     func : segment_pool
     data_type : x
   backward : segment_pool_grad
+
+- op : selu
+  args : (Tensor x, float scale, float alpha)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : selu
+  backward : selu_grad
 
 - op : send_u_recv
   args : (Tensor x, Tensor src_index, Tensor dst_index, str reduce_op = "SUM", IntArray out_size = {0})
@@ -1783,6 +1814,14 @@
            shape_sr {selected_rows -> selected_rows}
   data_transform:
     skip_transform : input
+
+- op : shard_index
+  args : (Tensor input, int index_num, int nshards, int shard_id, int ignore_value)
+  output : Tensor(out)
+  infer_meta :
+    func : ShardIndexInferMeta
+  kernel :
+    func : shard_index
 
 - op : sigmoid_cross_entropy_with_logits
   args : (Tensor x, Tensor label, bool normalize, int ignore_index)

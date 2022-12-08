@@ -1322,6 +1322,28 @@
   output : Tensor(x_grad)
   invoke : scale(out_grad, scale, 0.0, bias_after_scale)
 
+- backward_op : scatter_grad
+  forward : scatter (Tensor x, Tensor index, Tensor updates, bool overwrite) -> Tensor(out)
+  args : (Tensor index, Tensor updates, Tensor out_grad, bool overwrite)
+  output : Tensor(x_grad), Tensor(updates_grad)
+  infer_meta :
+    func : ScatterGradInferMeta
+    param : [index, updates, out_grad, overwrite]
+  kernel :
+    func : scatter_grad
+  no_need_buffer : updates
+
+- backward_op : scatter_nd_add_grad
+  forward : scatter_nd_add (Tensor x, Tensor index, Tensor updates) -> Tensor(out)
+  args : (Tensor index, Tensor updates, Tensor out_grad)
+  output : Tensor(x_grad), Tensor(updates_grad)
+  infer_meta :
+    func : ScatterNdAddGradInferMeta
+    param : [index, updates, out_grad]
+  kernel :
+    func : scatter_nd_add_grad
+  no_need_buffer : updates
+
 - backward_op : segment_pool_grad
   forward : segment_pool (Tensor x, Tensor segment_ids, str pooltype) -> Tensor(out), Tensor(summed_ids)
   args : (Tensor x, Tensor segment_ids, Tensor out, Tensor summed_ids, Tensor out_grad, str pooltype)
@@ -1333,6 +1355,16 @@
     func : segment_pool_grad
     data_type : x
   optional : summed_ids
+
+- backward_op : selu_grad
+  forward : selu (Tensor x, float scale, float alpha) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad, float scale, float alpha)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : selu_grad
 
 - backward_op : send_u_recv_grad
   forward : send_u_recv (Tensor x, Tensor src_index, Tensor dst_index, str reduce_op = "SUM", IntArray out_size = {0}) -> Tensor(out), Tensor(dst_count)

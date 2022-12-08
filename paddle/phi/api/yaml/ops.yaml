@@ -802,27 +802,6 @@
   inplace : (x -> out)
   backward : rsqrt_grad
 
-- op : scatter
-  args : (Tensor x, Tensor index, Tensor updates, bool overwrite = true)
-  output : Tensor(out)
-  infer_meta :
-    func : ScatterInferMeta
-    dtype : x
-  kernel :
-    func : scatter
-  inplace : (x -> out)
-  backward : scatter_grad
-
-- op : scatter_nd_add
-  args : (Tensor x, Tensor index, Tensor updates)
-  output : Tensor
-  infer_meta :
-    func : ScatterNdAddInferMeta
-    dtype : x
-  kernel :
-    func : scatter_nd_add
-  backward : scatter_nd_add_grad
-
 - op : searchsorted
   args : (Tensor sorted_sequence, Tensor values, bool out_int32 = false, bool right = false)
   output : Tensor(out)
@@ -831,16 +810,6 @@
   kernel :
     func : searchsorted
     data_type : sorted_sequence
-
-- op : selu
-  args : (Tensor x, float scale = 1.0507009873554804934193349852946, float alpha = 1.6732632423543772848170429916717)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : selu
-  backward : selu_grad
 
 - op : send_uv
   args : (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str message_op = "ADD")
@@ -851,14 +820,6 @@
     func : send_uv
     data_type : x
   backward : send_uv_grad
-
-- op : shard_index
-  args : (Tensor input, int index_num, int nshards, int shard_id, int ignore_value = -1)
-  output : Tensor(out)
-  infer_meta :
-    func : ShardIndexInferMeta
-  kernel :
-    func : shard_index
 
 - op : sigmoid
   args : (Tensor x)
@@ -970,8 +931,8 @@
   args : (Tensor arr, Tensor indices, int axis)
   output : Tensor
   infer_meta :
-    func : UnchangedInferMeta
-    param : [indices]
+    func : TakeAlongAxisInferMeta
+    param : [arr, indices, axis]
   kernel :
     func : take_along_axis
     data_type : arr
