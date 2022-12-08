@@ -45,6 +45,49 @@ class BasePattern(Graph):
 
 
 @register_pattern
+class SharedWordEmbeddingPattern(BasePattern):
+    name = "shared_word_embedding"
+
+    def __init__(self):
+        super().__init__()
+
+    def build(self):
+        # define embedding input
+        tokens = self.add_node(0, **{"type": "data"})
+        word_embeddings = self.add_node(1, **{"dim": 2, "type": "param"})
+        # define embedding
+        embedding = self.add_node(2, **{"type": "lookup_table_v2"})
+        # define embedding input edge
+        ids = self.add_edge(0, 2, **{"input_name": "Ids"})
+        w = self.add_edge(1, 2, **{"input_name": "W"})
+        # define embedding output
+        out = self.add_node(3, **{"type": "var"})
+        # define embedding output edge
+        out_edge = self.add_edge(2, 3, **{"output_name": "Out"})
+
+        # define matmul_v2 input
+        x = self.add_node(4, **{"type": "var"})
+        # define matmul_v2
+        matmul = self.add_node(5, **{"type": "matmul_v2"})
+        # define matmul_v2 input edge
+        x_edge = self.add_edge(4, 5, **{"input_name": "X"})
+        y_edge = self.add_edge(1, 5, **{"input_name": "Y"})
+        # define matmul_v2 output
+        out = self.add_node(6, **{"type": "var"})
+        # define matmul_v2 output edge
+        out_edge = self.add_edge(5, 6, **{"output_name": "Out"})
+
+        # pattern: pure mp or hybrid dp+mp
+        shard_spec = {
+            "dp0mp1": {0: [0, -1], 1: [1, -1]},
+            "dp1mp0": {0: [1, -1], 1: [0, -1]},
+            "mp": {1: [0, -1]},
+        }
+        self.attrs["shard_spec"] = shard_spec
+        self.attrs["weights"] = 1
+
+
+@register_pattern
 class QKVPattern(BasePattern):
     name = "qkv"
 
