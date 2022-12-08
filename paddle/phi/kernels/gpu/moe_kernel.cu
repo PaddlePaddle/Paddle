@@ -206,6 +206,12 @@ void invokeMaskedSoftMax(T* buffer,
     SOFTMAX_KERNEL(2)
   } else if (block.x > 0) {
     SOFTMAX_KERNEL(1)
+  } else {
+    PADDLE_ENFORCE_EQ(
+              true,
+              false, 
+              phi::errors::InvalidArgument(
+                  "Softmax kernel only support columns in 0 - 4096. "));
   }
 }
 
@@ -492,6 +498,12 @@ void gemm_bias_act(const T* A,
           num_experts,
           multi_processor_count_,
           stream);
+    } else {
+      PADDLE_ENFORCE_EQ(
+        true,
+        false, 
+        phi::errors::InvalidArgument(
+            "EcMoe gemm_bias_act Kernel only support SM75/SM80/SM86. "));
     }
   } else {
     // act type is relu. 
@@ -527,6 +539,12 @@ void gemm_bias_act(const T* A,
           num_experts,
           multi_processor_count_,
           stream);
+    } else {
+      PADDLE_ENFORCE_EQ(
+        true,
+        false, 
+        phi::errors::InvalidArgument(
+            "EcMoe gemm_bias_act Kernel only support SM75/SM80/SM86. "));
     }
   }
 }
@@ -543,7 +561,22 @@ void gemm(const T* A,
           int sm_,
           int multi_processor_count_,
           cudaStream_t stream) {
-  if (sm_ == 80 || sm_ == 86) {
+  if (sm_ == 75) {
+    generic_moe_gemm_kernelLauncher<T,
+                                    T,
+                                    cutlass::arch::Sm75,
+                                    EpilogueOpNoBias>(A,
+                                                      B,
+                                                      weight_scales,
+                                                      nullptr,
+                                                      C,
+                                                      total_rows_before_expert,
+                                                      gemm_n,
+                                                      gemm_k,
+                                                      num_experts,
+                                                      multi_processor_count_,
+                                                      stream);
+  } else if (sm_ == 80 || sm_ == 86) {
     generic_moe_gemm_kernelLauncher<T,
                                     T,
                                     cutlass::arch::Sm80,
@@ -558,6 +591,12 @@ void gemm(const T* A,
                                                       num_experts,
                                                       multi_processor_count_,
                                                       stream);
+  } else {
+    PADDLE_ENFORCE_EQ(
+        true,
+        false, 
+        phi::errors::InvalidArgument(
+            "EcMoe gemm Kernel only support SM75/SM80/SM86. "));
   }
 }
 
