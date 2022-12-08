@@ -75,19 +75,39 @@ auto ignore_signal_call(FUNC &&func, ARGS &&...args) ->
 }
 class Semaphore {
  public:
-  Semaphore() { CHECK_EQ(sem_init(&_sem, 0, 0), 0); }
-  ~Semaphore() { CHECK_EQ(sem_destroy(&_sem), 0); }
-  void post() { CHECK_EQ(sem_post(&_sem), 0); }
-  void wait() { CHECK_EQ(ignore_signal_call(sem_wait, &_sem), 0); }
+  Semaphore() {
+#ifdef __LINUX__
+    CHECK_EQ(sem_init(&_sem, 0, 0), 0);
+#endif
+  }
+  ~Semaphore() {
+#ifdef __LINUX__
+    CHECK_EQ(sem_destroy(&_sem), 0);
+#endif
+  }
+  void post() {
+#ifdef __LINUX__
+    CHECK_EQ(sem_post(&_sem), 0);
+#endif
+  }
+  void wait() {
+#ifdef __LINUX__
+    CHECK_EQ(ignore_signal_call(sem_wait, &_sem), 0);
+#endif
+  }
   bool try_wait() {
     int err = 0;
+#ifdef __LINUX__
     CHECK((err = ignore_signal_call(sem_trywait, &_sem),
            err == 0 || errno == EAGAIN));
+#endif
     return err == 0;
   }
 
  private:
+#ifdef __LINUX__
   sem_t _sem;
+#endif
 };
 }  // namespace framework
 }  // namespace paddle
