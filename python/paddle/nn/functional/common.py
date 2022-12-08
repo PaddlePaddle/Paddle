@@ -13,35 +13,28 @@
 # limitations under the License.
 
 import paddle
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.tensor import fill_constant
-from ...tensor import concat
-from ...tensor.creation import zeros
-from paddle.static import Variable
+from paddle.framework import core, in_dynamic_mode
+from paddle.static import Variable, default_main_program
+from paddle.tensor.creation import full
 
-# TODO: define the common functions to build a neural network
-from ...tensor.manipulation import squeeze
-from ...tensor.manipulation import unsqueeze
-from ...tensor import clip
-from ...tensor import sum
-from ...tensor import sqrt
 from ...fluid.data_feeder import (
-    check_variable_and_dtype,
     check_dtype,
     check_type,
+    check_variable_and_dtype,
 )
 from ...fluid.framework import (
     _in_legacy_dygraph,
     _non_static_mode,
     in_dygraph_mode,
 )
+from ...tensor import clip, concat, sqrt, sum
+from ...tensor.creation import zeros
 
-from paddle import _C_ops, _legacy_C_ops
-from paddle.framework import in_dynamic_mode
-from paddle.tensor.creation import full
-from paddle.framework import core
-from paddle.fluid.framework import _in_legacy_dygraph
-from paddle.static import default_main_program
+# TODO: define the common functions to build a neural network
+from ...tensor.manipulation import squeeze, unsqueeze
 
 __all__ = []
 

@@ -13,18 +13,16 @@
 # limitations under the License.
 
 import os
+import pickle
 import sys
 
 import numpy as np
-import pickle
+from dist_simnet_bow import DATA_MD5, DATA_URL, TestDistSimnetBow2x2
+from test_dist_base import RUN_STEP, runtime_main
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid import io
-
-from test_dist_base import RUN_STEP, runtime_main
-from dist_simnet_bow import TestDistSimnetBow2x2, DATA_URL, DATA_MD5
+from paddle.fluid import core, io
 
 
 class TestDistSaveLoad2x2(TestDistSimnetBow2x2):

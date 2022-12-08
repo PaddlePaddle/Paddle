@@ -12,31 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-import unittest
 import copy
+import unittest
+
+import numpy as np
 
 import paddle
-import numpy as np
 import paddle.nn as nn
-import paddle.static as static
 import paddle.nn.functional as F
-
+import paddle.static as static
 from paddle.distributed import fleet
-from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.dist_context import (
     DistributedContext,
     set_default_distributed_context,
 )
-from paddle.distributed.auto_parallel.utils import (
-    _copy_dist_attr_to_cpp,
-    _copy_dist_attr_from_cpp,
-    _copy_dist_attr_to_cpp_for_graph,
-    _copy_dist_attr_from_cpp_for_graph,
-)
-
-from paddle.fluid.core import TensorDistAttr
-from paddle.fluid.core import OperatorDistAttr
 from paddle.distributed.auto_parallel.process_mesh_v2 import ProcessMesh
+from paddle.distributed.auto_parallel.utils import (
+    _copy_dist_attr_from_cpp,
+    _copy_dist_attr_from_cpp_for_graph,
+    _copy_dist_attr_to_cpp,
+    _copy_dist_attr_to_cpp_for_graph,
+)
+from paddle.distributed.fleet import auto
+from paddle.fluid.core import OperatorDistAttr, TensorDistAttr
 
 paddle.enable_static()
 

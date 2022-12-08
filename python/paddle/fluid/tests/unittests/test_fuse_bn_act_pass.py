@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import paddle
 import paddle.fluid as fluid
-import unittest
 
 
 class TestFuseBatchNormActPass(unittest.TestCase):
@@ -40,7 +41,7 @@ class TestFuseBatchNormActPass(unittest.TestCase):
                 name='batch_norm_b',
                 initializer=fluid.initializer.Constant(value=0.0),
             )
-            hidden2 = fluid.layers.batch_norm(
+            hidden2 = paddle.static.nn.batch_norm(
                 input=hidden1,
                 param_attr=param_attr,
                 bias_attr=bias_attr,
@@ -48,7 +49,7 @@ class TestFuseBatchNormActPass(unittest.TestCase):
                 data_layout='NHWC',
             )
             hidden3 = fluid.layers.fc(input=hidden2, size=32, act='relu')
-            hidden4 = fluid.layers.batch_norm(
+            hidden4 = paddle.static.nn.batch_norm(
                 input=hidden3, act='relu', data_layout='NHWC'
             )
             prediction = fluid.layers.fc(input=hidden4, size=10, act='softmax')

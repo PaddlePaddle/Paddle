@@ -93,6 +93,7 @@ from .tensor.attribute import shape  # noqa: F401
 from .tensor.attribute import real  # noqa: F401
 from .tensor.attribute import imag  # noqa: F401
 from .tensor.attribute import is_floating_point  # noqa: F401
+from .tensor.creation import create_parameter  # noqa: F401
 from .tensor.creation import to_tensor  # noqa: F401
 from .tensor.creation import diag  # noqa: F401
 from .tensor.creation import diagflat  # noqa: F401
@@ -326,7 +327,6 @@ from .framework.random import seed  # noqa: F401
 from .framework.random import get_cuda_rng_state  # noqa: F401
 from .framework.random import set_cuda_rng_state  # noqa: F401
 from .framework import ParamAttr  # noqa: F401
-from .framework import create_parameter  # noqa: F401
 from .framework import CPUPlace  # noqa: F401
 from .framework import IPUPlace  # noqa: F401
 from .framework import CUDAPlace  # noqa: F401

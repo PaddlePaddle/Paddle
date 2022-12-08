@@ -23,7 +23,6 @@ from paddle.optimizer import Adam
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
 from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
 from paddle.nn import Sequential
-from paddle.fluid.dygraph import Pool2D
 from paddle.fluid.dygraph import Linear
 from paddle.nn.quant.quant_layers import QuantizedConv2DTranspose
 from paddle.fluid.log_helper import get_logger
@@ -132,7 +131,7 @@ class ImperativeLenet(paddle.nn.Layer):
                 stride=1,
                 padding=1,
             ),
-            Pool2D(pool_size=2, pool_type='max', pool_stride=2),
+            paddle.nn.MaxPool2D(kernel_size=2, stride=2),
             paddle.nn.Conv2D(
                 in_channels=6,
                 out_channels=16,
@@ -140,7 +139,7 @@ class ImperativeLenet(paddle.nn.Layer):
                 stride=1,
                 padding=0,
             ),
-            Pool2D(pool_size=2, pool_type='max', pool_stride=2),
+            paddle.nn.MaxPool2D(kernel_size=2, stride=2),
         )
 
         self.fc = Sequential(

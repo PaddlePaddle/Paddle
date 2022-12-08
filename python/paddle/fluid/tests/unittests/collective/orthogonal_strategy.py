@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import unittest
+
 import paddle.distributed as dist
+from paddle.distributed.fleet.base.orthogonal_strategy import OrthogonalStrategy
 from paddle.distributed.fleet.base.strategy_group import (
     DPGroup,
-    ShardingGroup,
     MPGroup,
     PPGroup,
+    ShardingGroup,
 )
-from paddle.distributed.fleet.base.orthogonal_strategy import OrthogonalStrategy
 
 
 class TestOrthogonalStrategyAPI(unittest.TestCase):

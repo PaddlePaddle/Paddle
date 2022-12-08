@@ -1197,7 +1197,6 @@ All parameter, weight, gradient are variables in Paddle.
           -> const paddle::framework::AttributeMap & {
         return operators::ExtraInfoUtils::Instance().GetExtraAttrsMap(op_type);
       });
-
   m.def(
       "get_attrtibute_type",
       [](const std::string &op_type,
@@ -2261,6 +2260,9 @@ All parameter, weight, gradient are variables in Paddle.
                      &paddle::platform::HostPythonNode::input_shapes)
       .def_readwrite("dtypes", &paddle::platform::HostPythonNode::dtypes)
       .def_readwrite("callstack", &paddle::platform::HostPythonNode::callstack)
+      .def_readwrite("attributes",
+                     &paddle::platform::HostPythonNode::attributes)
+      .def_readwrite("op_id", &paddle::platform::HostPythonNode::op_id)
       .def_readwrite("children_node",
                      &paddle::platform::HostPythonNode::children_node_ptrs)
       .def_readwrite("runtime_node",
@@ -2334,10 +2336,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("load_profiler_result", &paddle::platform::LoadProfilerResult);
   m.def("enable_memory_recorder", &paddle::platform::EnableMemoryRecorder);
   m.def("disable_memory_recorder", &paddle::platform::DisableMemoryRecorder);
-  m.def("enable_input_shape_recorder",
-        &paddle::platform::EnableInputShapeRecorder);
-  m.def("disable_input_shape_recorder",
-        &paddle::platform::DisableInputShapeRecorder);
+  m.def("enable_op_info_recorder", &paddle::platform::EnableOpInfoRecorder);
+  m.def("disable_op_info_recorder", &paddle::platform::DisableOpInfoRecorder);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("set_cublas_switch", platform::SetAllowTF32Cublas);

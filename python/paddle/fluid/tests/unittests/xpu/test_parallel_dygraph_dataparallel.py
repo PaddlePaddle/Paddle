@@ -12,19 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import time
-import paddle
-import paddle.fluid as fluid
 import copy
 import os
 import subprocess
+import time
+import unittest
 
+import paddle
+import paddle.fluid as fluid
 from paddle.distributed.utils.launch_utils import (
-    find_free_ports,
-    watch_local_trainers,
-    get_cluster,
     TrainerProc,
+    find_free_ports,
+    get_cluster,
+    watch_local_trainers,
 )
 
 

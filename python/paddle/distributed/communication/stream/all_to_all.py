@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import paddle
-import paddle.fluid.framework as framework
 import paddle.distributed as dist
 import paddle.fluid.data_feeder as data_feeder
+import paddle.fluid.framework as framework
 import paddle.fluid.layer_helper as layer_helper
 from paddle.distributed.communication.group import (
     _get_global_group,
@@ -23,29 +23,9 @@ from paddle.distributed.communication.group import (
 )
 
 
-def _check_tensor_shape(tensor, shape, nranks=1):
-    if tensor.shape != shape:
-        raise RuntimeError('The tensor for alltoall is not correctly-sized.')
-
-
-def _check_tensor_list_shape(tensor_list, shape, nranks=1):
-    if len(tensor_list) != nranks:
-        raise RuntimeError(
-            'The tensor_list for alltoall is not correctly-sized.'
-        )
-    for tensor in tensor_list:
-        if tensor.shape != shape:
-            raise RuntimeError(
-                'The tensor_list for alltoall is not correctly-sized.'
-            )
-
-
 def _all_to_all_tensor_in_dygraph(
     out_tensor, in_tensor, group, sync_op, use_calc_stream
 ):
-
-    _check_tensor_shape(out_tensor, in_tensor.shape, group.nranks)
-
     if use_calc_stream:
         return group.process_group.all_to_all_tensor_on_calc_stream(
             in_tensor, out_tensor
@@ -68,10 +48,6 @@ def _all_to_all_in_dygraph(
         out_tensor_list += [
             paddle.empty_like(tensor) for tensor in in_tensor_list
         ]
-    else:
-        _check_tensor_list_shape(
-            out_tensor_list, in_tensor_list[0].shape, group.nranks
-        )
 
     if use_calc_stream:
         return group.process_group.all_to_all_on_calc_stream(

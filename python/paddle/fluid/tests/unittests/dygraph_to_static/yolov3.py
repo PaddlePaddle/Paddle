@@ -15,15 +15,13 @@
 import os
 import sys
 
-import paddle
+from darknet import ConvBNLayer, DarkNet53_conv_body
 
+import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import declarative
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
-
-from darknet import DarkNet53_conv_body
-from darknet import ConvBNLayer
+from paddle.jit.api import declarative
 
 
 class AttrDict(dict):
@@ -205,19 +203,18 @@ class Upsample(fluid.dygraph.Layer):
 
     def forward(self, inputs):
         # get dynamic upsample output shape
-        shape_nchw = fluid.layers.shape(inputs)
-        shape_hw = fluid.layers.slice(
-            shape_nchw, axes=[0], starts=[2], ends=[4]
-        )
+        shape_nchw = paddle.shape(inputs)
+        shape_hw = paddle.slice(shape_nchw, axes=[0], starts=[2], ends=[4])
         shape_hw.stop_gradient = True
         in_shape = fluid.layers.cast(shape_hw, dtype='int32')
         out_shape = in_shape * self.scale
         out_shape.stop_gradient = True
 
         # reisze by actual_shape
-        out = fluid.layers.resize_nearest(
-            input=inputs, scale=self.scale, actual_shape=out_shape
+        out = paddle.nn.functional.interpolate(
+            x=inputs, size=out_shape, mode='nearest'
         )
+
         return out
 
 
@@ -317,7 +314,7 @@ class YOLOv3(fluid.dygraph.Layer):
         for i, out in enumerate(self.outputs):
             anchor_mask = cfg.anchor_masks[i]
             if self.is_train:
-                loss = fluid.layers.yolov3_loss(
+                loss = paddle.vision.ops.yolo_loss(
                     x=out,
                     gt_box=self.gtbox,
                     gt_label=self.gtlabel,
@@ -329,14 +326,14 @@ class YOLOv3(fluid.dygraph.Layer):
                     downsample_ratio=self.downsample,
                     use_label_smooth=cfg.label_smooth,
                 )
-                self.losses.append(fluid.layers.reduce_mean(loss))
+                self.losses.append(paddle.mean(loss))
 
             else:
                 mask_anchors = []
                 for m in anchor_mask:
                     mask_anchors.append(cfg.anchors[2 * m])
                     mask_anchors.append(cfg.anchors[2 * m + 1])
-                boxes, scores = fluid.layers.yolo_box(
+                boxes, scores = paddle.vision.ops.yolo_box(
                     x=out,
                     img_size=self.im_shape,
                     anchors=mask_anchors,

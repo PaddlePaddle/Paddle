@@ -14,10 +14,10 @@
 
 import unittest
 
+from test_to_static import MLPLayer, MyDataset
+
 import paddle
 from paddle.distributed.fleet import auto
-
-from test_to_static import MLPLayer, MyDataset
 
 paddle.enable_static()
 

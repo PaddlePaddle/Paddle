@@ -414,8 +414,3 @@ PD_REGISTER_KERNEL(elementwise_pow,
                    float,
                    phi::dtype::float16) {}
 #endif
-
-#if defined PADDLE_WITH_MKLDNN
-PD_REGISTER_KERNEL(
-    divide, OneDNN, ONEDNN, phi::DivideKernel, float, phi::dtype::bfloat16) {}
-#endif

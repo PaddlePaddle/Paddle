@@ -13,18 +13,17 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from test_imperative_base import new_program_scope
+from utils import DyGraphProgramDescTracerTestHelper
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid import Pool2D, BatchNorm, Linear
+from paddle.fluid import BatchNorm, core
 from paddle.fluid.dygraph.base import to_variable
-from test_imperative_base import new_program_scope
-from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
-from paddle.fluid.dygraph import TracedLayer
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.layer_helper import LayerHelper
 
 # NOTE(zhiqiu): run with FLAGS_cudnn_deterministic=1
 
@@ -158,7 +157,7 @@ class BottleneckBlock(fluid.Layer):
         else:
             short = self.short(inputs)
 
-        y = fluid.layers.elementwise_add(x=short, y=conv2)
+        y = paddle.add(x=short, y=conv2)
 
         layer_helper = LayerHelper(self.full_name(), act='relu')
         return layer_helper.append_activation(y)
@@ -193,8 +192,8 @@ class ResNet(fluid.Layer):
             act='relu',
             use_cudnn=use_cudnn,
         )
-        self.pool2d_max = Pool2D(
-            pool_size=3, pool_stride=2, pool_padding=1, pool_type='max'
+        self.pool2d_max = paddle.nn.MaxPool2D(
+            kernel_size=3, stride=2, padding=1
         )
 
         self.bottleneck_block_list = []
@@ -215,10 +214,7 @@ class ResNet(fluid.Layer):
                 )
                 self.bottleneck_block_list.append(bottleneck_block)
                 shortcut = True
-
-        self.pool2d_avg = Pool2D(
-            pool_size=7, pool_type='avg', global_pooling=True
-        )
+        self.pool2d_avg = paddle.nn.AdaptiveAvgPool2D(1)
 
         self.pool2d_avg_output = num_filters[-1] * 4 * 1 * 1
 
@@ -226,11 +222,10 @@ class ResNet(fluid.Layer):
 
         stdv = 1.0 / math.sqrt(2048 * 1.0)
 
-        self.out = Linear(
+        self.out = paddle.nn.Linear(
             self.pool2d_avg_output,
             class_dim,
-            act='softmax',
-            param_attr=fluid.param_attr.ParamAttr(
+            weight_attr=fluid.param_attr.ParamAttr(
                 initializer=fluid.initializer.Uniform(-stdv, stdv)
             ),
         )
@@ -243,6 +238,7 @@ class ResNet(fluid.Layer):
         y = self.pool2d_avg(y)
         y = paddle.reshape(y, shape=[-1, self.pool2d_avg_output])
         y = self.out(y)
+        y = paddle.nn.functional.softmax(y)
         return y
 
 
@@ -304,20 +300,7 @@ class TestDygraphResnet(unittest.TestCase):
                 label.stop_gradient = True
 
                 out = None
-                if batch_id % 5 == 0 and _in_legacy_dygraph():
-                    out, traced_layer = TracedLayer.trace(resnet, img)
-                    if program is not None:
-                        self.assertTrue(
-                            is_equal_program(program, traced_layer.program)
-                        )
-
-                    traced_layer.save_inference_model(
-                        './infer_imperative_resnet'
-                    )
-
-                    program = traced_layer.program
-                else:
-                    out = resnet(img)
+                out = resnet(img)
 
                 if traced_layer is not None:
                     resnet.eval()

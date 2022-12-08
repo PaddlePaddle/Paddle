@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
@@ -85,7 +87,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
                 bias_attr=False,
                 data_format='NHWC',
             )
-            bn = fluid.layers.batch_norm(
+            bn = paddle.static.nn.batch_norm(
                 input=conv1_1,
                 param_attr=self.bn_param_attr1,
                 bias_attr=self.bn_bias_attr1,
@@ -131,7 +133,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
                 bias_attr=False,
                 data_format='NHWC',
             )
-            bn1 = fluid.layers.batch_norm(
+            bn1 = paddle.static.nn.batch_norm(
                 input=conv1_1,
                 param_attr=self.bn_param_attr1,
                 bias_attr=self.bn_bias_attr1,
@@ -148,7 +150,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
                 bias_attr=False,
                 data_format='NHWC',
             )
-            bn2 = fluid.layers.batch_norm(
+            bn2 = paddle.static.nn.batch_norm(
                 input=conv1_1,
                 param_attr=self.bn_param_attr2,
                 bias_attr=self.bn_bias_attr2,

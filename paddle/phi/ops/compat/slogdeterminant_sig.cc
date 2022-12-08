@@ -19,10 +19,13 @@ namespace phi {
 KernelSignature SlogDeterminantGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "slogdeterminant_grad", {"Input", "Out", "Out@GRAD"}, {}, {"Input@GRAD"});
+      "slogdet_grad", {"Input", "Out", "Out@GRAD"}, {}, {"Input@GRAD"});
 }
 
 }  // namespace phi
+
+PD_REGISTER_BASE_KERNEL_NAME(slogdeterminant, slogdet);
+PD_REGISTER_BASE_KERNEL_NAME(slogdeterminant_grad, slogdet_grad);
 
 PD_REGISTER_ARG_MAPPING_FN(slogdeterminant_grad,
                            phi::SlogDeterminantGradOpArgumentMapping);

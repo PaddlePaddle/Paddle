@@ -13,29 +13,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from ...fluid.data_feeder import check_variable_and_dtype
-
 # TODO: define loss functions of neural network
 import paddle
 import paddle.fluid as fluid
-from ...fluid.layers.nn import _elementwise_op_in_dygraph
-from ...tensor.manipulation import reshape
-from ...fluid.layer_helper import LayerHelper
-from ...fluid.framework import _varbase_creator
-from ...static import Variable
+from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
+from paddle.framework import core
 from paddle.utils import deprecated
-from paddle import _C_ops, _legacy_C_ops
-from paddle import in_dynamic_mode
-from paddle.framework import core, _non_static_mode
+
+from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.framework import (
-    _in_legacy_dygraph,
-    in_dygraph_mode,
-    _non_static_mode,
     _current_expected_place,
+    _in_legacy_dygraph,
+    _non_static_mode,
+    _varbase_creator,
+    in_dygraph_mode,
 )
+from ...fluid.layer_helper import LayerHelper
+from ...fluid.layers.nn import _elementwise_op_in_dygraph
+from ...static import Variable
+from ...tensor.manipulation import reshape
 
 __all__ = []
+
+kIgnoreIndex = -100
 
 
 def dice_loss(input, label, epsilon=0.00001, name=None):
@@ -729,8 +729,6 @@ def binary_cross_entropy_with_logits(
 ):
     r"""
     This operator combines the sigmoid layer and the :ref:`api_nn_loss_BCELoss` layer.
-    Also, we can see it as the combine of ``sigmoid_cross_entropy_with_logits``
-    layer and some reduce operations.
 
     This measures the element-wise probability error in classification tasks
     in which each class is independent.
@@ -885,8 +883,15 @@ def binary_cross_entropy_with_logits(
     if reduction == 'none' and pos_weight is None and weight is None:
         sigmoid_name = name
 
-    out = paddle.fluid.layers.sigmoid_cross_entropy_with_logits(
-        logit, label, name=sigmoid_name
+    helper = LayerHelper("sigmoid_cross_entropy_with_logits", **locals())
+
+    out = helper.create_variable_for_type_inference(dtype=logit.dtype)
+
+    helper.append_op(
+        type="sigmoid_cross_entropy_with_logits",
+        inputs={"X": logit, "Label": label},
+        attrs={"ignore_index": kIgnoreIndex, 'normalize': False},
+        outputs={"Out": out},
     )
 
     one = paddle.full(shape=[1], fill_value=1.0, dtype=logit.dtype)
@@ -1348,17 +1353,20 @@ def l1_loss(input, label, reduction='mean', name=None):
             label = paddle.to_tensor([[1.7, 1], [0.4, 0.5]])
 
             l1_loss = paddle.nn.functional.l1_loss(input, label)
-            print(l1_loss.numpy())
-            # [0.35]
+            print(l1_loss)
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [0.34999999])
 
             l1_loss = paddle.nn.functional.l1_loss(input, label, reduction='none')
-            print(l1_loss.numpy())
-            # [[0.20000005 0.19999999]
-            # [0.2        0.79999995]]
+            print(l1_loss)
+            # Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[0.20000005, 0.19999999],
+            #         [0.20000000, 0.79999995]])
 
             l1_loss = paddle.nn.functional.l1_loss(input, label, reduction='sum')
-            print(l1_loss.numpy())
-            # [1.4]
+            print(l1_loss)
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [1.39999998])
 
     """
     if reduction not in ['sum', 'mean', 'none']:
@@ -1818,7 +1826,70 @@ def ctc_loss(
 
     """
 
-    loss_out = fluid.layers.warpctc(
+    def warpctc(
+        input,
+        label,
+        blank=0,
+        norm_by_times=False,
+        input_length=None,
+        label_length=None,
+    ):
+        if in_dygraph_mode():
+            if input_length is None or label_length is None:
+                raise ValueError(
+                    "input_length and label_length must not be None in dygraph mode!"
+                )
+            loss_out = _C_ops.warpctc(
+                input, label, input_length, label_length, blank, norm_by_times
+            )
+            return loss_out
+        if _non_static_mode():
+            if input_length is None or label_length is None:
+                raise ValueError(
+                    "input_length and label_length must not be None in dygraph mode!"
+                )
+            grad, loss_out = _legacy_C_ops.warpctc(
+                input,
+                label,
+                input_length,
+                label_length,
+                'blank',
+                blank,
+                'norm_by_times',
+                norm_by_times,
+            )
+            return loss_out
+        helper = LayerHelper('warpctc', **locals())
+        check_variable_and_dtype(
+            input, 'input', ['float32', 'float64'], "warpctc"
+        )
+        check_variable_and_dtype(label, 'label', ['int32'], "warpctc")
+        this_inputs = {'Logits': [input], 'Label': [label]}
+        if input_length is not None and label_length is not None:
+            check_variable_and_dtype(
+                input_length, 'LogitsLength', ['int64'], "warpctc"
+            )
+            check_variable_and_dtype(
+                label_length, 'LabelLength', ['int64'], "warpctc"
+            )
+            this_inputs['LogitsLength'] = [input_length]
+            this_inputs['LabelLength'] = [label_length]
+
+        loss_out = helper.create_variable_for_type_inference(dtype=input.dtype)
+        grad_out = helper.create_variable_for_type_inference(dtype=input.dtype)
+
+        helper.append_op(
+            type='warpctc',
+            inputs=this_inputs,
+            outputs={'WarpCTCGrad': [grad_out], 'Loss': [loss_out]},
+            attrs={
+                'blank': blank,
+                'norm_by_times': norm_by_times,
+            },
+        )
+        return loss_out
+
+    loss_out = warpctc(
         log_probs, labels, blank, norm_by_times, input_lengths, label_lengths
     )
 
@@ -2587,9 +2658,11 @@ def cross_entropy(
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
                 weight=weight, reduction=reduction)
             dy_ret = cross_entropy_loss(
-                                       input,
-                                       label)
-            print(dy_ret.numpy()) #[5.41993642]
+                                        input,
+                                        label)
+            print(dy_ret)
+            # Tensor(shape=[1], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+            #        [5.34043430])
 
         .. code-block:: python
 
@@ -2607,13 +2680,15 @@ def cross_entropy(
             labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
             labels /= paddle.sum(labels, axis=axis, keepdim=True)
             paddle_loss_mean = paddle.nn.functional.cross_entropy(
-                                                                  logits,
-                                                                  labels,
-                                                                  soft_label=True,
-                                                                  axis=axis,
-                                                                  weight=weight,
-                                                                  reduction=reduction)
-            print(paddle_loss_mean.numpy()) #[1.12908343]
+                                                                    logits,
+                                                                    labels,
+                                                                    soft_label=True,
+                                                                    axis=axis,
+                                                                    weight=weight,
+                                                                    reduction=reduction)
+            print(paddle_loss_mean)
+            # Tensor(shape=[1], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+            #        [1.11043464])
 
     """
 
