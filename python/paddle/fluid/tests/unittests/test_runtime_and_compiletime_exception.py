@@ -31,8 +31,7 @@ class TestRunTimeException(unittest.TestCase):
         startup_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
             label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-            # paddle.nn.functional.one_hot(label, 100)
-            fluid.one_hot(label, 100)
+            paddle.nn.functional.one_hot(label, 100)
 
         def _run_program():
             x = np.random.random(size=(10)).astype('int64')
