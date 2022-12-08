@@ -25,7 +25,6 @@ namespace cub = hipcub;
 #endif
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/batch_norm_op.h"
-#include "paddle/fluid/operators/norm_utils.cu.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 

@@ -24,8 +24,7 @@ limitations under the License. */
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
 #endif
-#include "paddle/fluid/framework/data_layout.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/common/layout.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 #ifdef __HIPCC__
@@ -34,8 +33,8 @@ namespace cub = hipcub;
 #define LAUNCH_BOUNDS(BlockDim)
 #endif
 
-namespace paddle {
-namespace operators {
+namespace phi {
+namespace funcs {
 
 using DataLayout = phi::DataLayout;
 
@@ -670,5 +669,5 @@ void NormDoubleGradFunctor(const DeviceContext &ctx,
     }
   }
 }
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi
