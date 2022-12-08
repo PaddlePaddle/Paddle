@@ -19,6 +19,8 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/place.h"
 
+USE_OP_ITSELF(share_buffer);
+
 namespace paddle {
 namespace framework {
 

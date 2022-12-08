@@ -3190,6 +3190,10 @@ void OperatorWithKernel::BuildPhiKernelContext(
             phi_kernel_context->EmplaceBackAttr(
                 PADDLE_GET_CONST(std::vector<int>, attr_iter->second));
             break;
+          case phi::AttributeType::BOOLS:
+            phi_kernel_context->EmplaceBackAttr(
+                PADDLE_GET_CONST(std::vector<bool>, attr_iter->second));
+            break;
           case phi::AttributeType::DATA_TYPE: {
             auto data_type = framework::TransToPhiDataType(
                 static_cast<framework::proto::VarType::Type>(
