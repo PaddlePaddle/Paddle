@@ -26,8 +26,6 @@ __all__ = []
 
 class Decoder:
     """
-        :api_attr: Static Graph
-
     Decoder is the base class for any decoder instance used in `dynamic_decode`.
     It provides interface for output generation for one time step, which can be
     used to generate sequences.
@@ -146,13 +144,14 @@ class BeamSearchDecoder(Decoder):
     Please refer to `Beam search <https://en.wikipedia.org/wiki/Beam_search>`_
     for more details.
 
-    **NOTE** When decoding with beam search, the `inputs` and `states` of cell
-    would be tiled to `beam_size` (unsqueeze and tile), resulting to shapes like
-    `[batch_size * beam_size, ...]` , which is built into `BeamSearchDecoder` and
-    done automatically. Thus any other tensor with shape `[batch_size, ...]` used
-    in `cell.call` needs to be tiled manually first, which can be completed by using
-    :code:`BeamSearchDecoder.tile_beam_merge_with_batch` . The most common case
-    for this is the encoder output in attention mechanism.
+    Note:
+        When decoding with beam search, the `inputs` and `states` of cell
+        would be tiled to `beam_size` (unsqueeze and tile), resulting to shapes like
+        `[batch_size * beam_size, ...]` , which is built into `BeamSearchDecoder` and
+        done automatically. Thus any other tensor with shape `[batch_size, ...]` used
+        in `cell.call` needs to be tiled manually first, which can be completed by using
+        :code:`BeamSearchDecoder.tile_beam_merge_with_batch` . The most common case
+        for this is the encoder output in attention mechanism.
 
     Returns:
         BeamSearchDecoder: An instance of decoder which can be used in \

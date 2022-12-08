@@ -18,7 +18,7 @@ from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 import paddle
 import paddle.fluid as fluid
 import paddle.nn.functional as F
-from paddle.fluid.dygraph import Embedding, Layer, Linear, to_variable
+from paddle.fluid.dygraph import Embedding, Layer, to_variable
 from paddle.optimizer.lr import NoamDecay
 
 """
@@ -269,8 +269,8 @@ class PrePostProcessLayer(Layer):
 class PositionwiseFeedForwardLayer(Layer):
     def __init__(self, d_inner_hid, d_hid, dropout_rate):
         super().__init__()
-        self._i2h = Linear(d_hid, d_inner_hid, act="relu")
-        self._h2o = Linear(d_inner_hid, d_hid)
+        self._i2h = paddle.nn.Linear(d_hid, d_inner_hid)
+        self._h2o = paddle.nn.Linear(d_inner_hid, d_hid)
         self._dropout_rate = dropout_rate
 
     def forward(self, x):
@@ -304,10 +304,18 @@ class MultiHeadAttentionLayer(Layer):
         self._d_value = d_value
         self._d_model = d_model
         self._dropout_rate = dropout_rate
-        self._q_fc = Linear(self._d_model, d_key * n_head, bias_attr=False)
-        self._k_fc = Linear(self._d_model, d_key * n_head, bias_attr=False)
-        self._v_fc = Linear(self._d_model, d_value * n_head, bias_attr=False)
-        self._proj_fc = Linear(d_value * n_head, self._d_model, bias_attr=False)
+        self._q_fc = paddle.nn.Linear(
+            self._d_model, d_key * n_head, bias_attr=False
+        )
+        self._k_fc = paddle.nn.Linear(
+            self._d_model, d_key * n_head, bias_attr=False
+        )
+        self._v_fc = paddle.nn.Linear(
+            self._d_model, d_value * n_head, bias_attr=False
+        )
+        self._proj_fc = paddle.nn.Linear(
+            d_value * n_head, self._d_model, bias_attr=False
+        )
 
     def forward(self, queries, keys, values, attn_bias):
         # compute q ,k ,v
@@ -825,7 +833,9 @@ class WrapDecoderLayer(Layer):
         )
         self._weight_sharing = weight_sharing
         if not weight_sharing:
-            self._fc = Linear(d_model, trg_vocab_size, bias_attr=False)
+            self._fc = paddle.nn.Linear(
+                d_model, trg_vocab_size, bias_attr=False
+            )
 
     def forward(self, dec_inputs=None, enc_output=None):
         trg_word, trg_pos, trg_slf_attn_bias, trg_src_attn_bias = dec_inputs
