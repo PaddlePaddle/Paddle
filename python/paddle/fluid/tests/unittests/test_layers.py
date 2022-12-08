@@ -2121,8 +2121,8 @@ class TestBook(LayerTest):
             fluid.default_main_program(), fluid.default_startup_program()
         ):
             x = self._get_data(name='x', shape=[3, 224, 224], dtype='float32')
-            return layers.pool2d(
-                x, pool_size=[5, 3], pool_stride=[1, 2], pool_padding=(2, 1)
+            return paddle.nn.functional.max_pool2d(
+                x, kernel_size=[5, 3], stride=[1, 2], padding=(2, 1)
             )
 
     def make_pool2d_infershape(self):
@@ -2133,8 +2133,8 @@ class TestBook(LayerTest):
             x = paddle.nn.functional.affine_grid(
                 theta, out_shape=[2, 3, 244, 244]
             )
-            return layers.pool2d(
-                x, pool_size=[5, 3], pool_stride=[1, 2], pool_padding=(2, 1)
+            return paddle.nn.functional.max_pool2d(
+                x, kernel_size=[5, 3], stride=[1, 2], padding=(2, 1)
             )
 
     def make_lstm_unit(self):
