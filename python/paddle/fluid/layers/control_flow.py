@@ -90,6 +90,26 @@ def select_output(input, outputs, mask):
     return outputs
 
 
+def _select_input_infer_shape(first_shape, second_shape):
+    """
+    This function infer the output shape by following algorithm:
+    1. if the dims is different, raise a error.
+    2. compare axis one by one:
+        if a == b: we set axis to a
+        if a != b: we set axis to -1
+    for compatibility，non declarative mode, we just return second_shape.
+    """
+    if len(first_shape) != len(second_shape):
+        warnings.warn(
+            f"the input shapes of select_input should have the same rank, but get {first_shape}, {second_shape}"
+        )
+        return second_shape
+    out_shape = list(
+        map(lambda a, b: a if a == b else -1, first_shape, second_shape)
+    )
+    return out_shape
+
+
 def select_input(inputs, mask):
     """
     **select_input**
@@ -111,24 +131,6 @@ def select_input(inputs, mask):
 
     # Select input should expand the shape. If it is - 1 and valid number, use - 1 first. If the dim is different, an error will be reported directly
     # assert inputs[0].dtype == inputs[1].dtype, f"Expect the inputs should have the same dtype, but get {inputs[0].dtype} and {inputs[1].dtype}"
-    def _select_input_infer_shape(first_shape, second_shape):
-        """
-        This function infer the output shape by following algorithm:
-        1. if the dims is different, raise a error.
-        2. compare axis one by one:
-            if a == b: we set axis to a
-            if a != b: we set axis to -1
-        for compatibility，non declarative mode, we just return second_shape.
-        """
-        if len(first_shape) != len(second_shape):
-            warnings.warn(
-                f"the input shapes of select_input should have the same rank, but get {first_shape}, {second_shape}"
-            )
-            return second_shape
-        out_shape = list(
-            map(lambda a, b: a if a == b else -1, first_shape, second_shape)
-        )
-        return out_shape
 
     output_shape = _select_input_infer_shape(inputs[0].shape, inputs[1].shape)
     output_dtype = inputs[1].dtype
