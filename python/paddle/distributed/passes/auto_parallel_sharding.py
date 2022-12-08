@@ -1061,8 +1061,6 @@ class ShardingPass(PassBase):
         self.gradient_sync_stream = "sharding_gradient_comm_stream"
 
         # analyze dependencies
-        unsync_coalesce_grad_in_shard = []
-        unsync_coalesce_grad_not_in_shard = []
         dep_map = {}
         for idx, op in enumerate(ops):
             if is_data_parallel_reduce_op(op):
@@ -1070,7 +1068,7 @@ class ShardingPass(PassBase):
                 if op.type == "c_allreduce":
                     continue
 
-                reduce_varname = op.output("Out")
+                reduce_varname = op.output("Out")[0]
                 grad_group = coalesce_to_group_map[reduce_varname]
                 assert grad_group.coalesce_var.name == reduce_varname
 
@@ -1100,9 +1098,6 @@ class ShardingPass(PassBase):
                         self.gradient_sync_stream
                     )
                     idx += 1
-                    unsync_coalesce_grad_in_shard.append(reduce_varname)
-                else:
-                    unsync_coalesce_grad_not_in_shard.append(reduce_varname)
 
             idx += 1
 
@@ -1124,6 +1119,7 @@ class ShardingPass(PassBase):
                     sync=False,
                 )
                 depend_op.dist_attr.execution_stream = self.gradient_sync_stream
+                print("grad comm insert dep: {}".format(str(depend_op)))
 
         block._sync_with_cpp()
 
