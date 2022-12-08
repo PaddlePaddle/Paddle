@@ -30,6 +30,7 @@ def apply_pass(use_bf16=False):
     strategy.auto_mode = "semi"
     strategy.reinit = True
     if use_bf16:
+        print("use_bf16")
         amp = strategy.amp
         amp.enable = True
         amp.enable_bf16 = True
@@ -39,6 +40,11 @@ def apply_pass(use_bf16=False):
             'elementwise_div',
             'reduce_sum',
         ]
+    else:
+        print("don not use_bf16")
+        amp = strategy.amp
+        amp.enable = False
+        amp.enable_bf16 = False
     return strategy
 
 
@@ -93,15 +99,15 @@ class TestAMPPass(unittest.TestCase):
         # serial_losses = np.array(history.history["loss"])
 
         # mp2 amp-o1 training
-        bf16_o1_engine = self.get_engine(True)
-        history = bf16_o1_engine.fit(
-            self.dataset, 3, batch_size=self.batch_size
-        )
+        # bf16_o1_engine = self.get_engine(True)
+        # history = bf16_o1_engine.fit(
+        #     self.dataset, 3, batch_size=self.batch_size
+        # )
         file = open(
             "/root/paddlejob/workspace/env_run/xuyb/Paddle/gpt_serial_main.log",
             "w",
         )
-        print(bf16_o1_engine._dist_main_progs["train"][0], file=file)
+        print(serial_engine._dist_main_progs["train"][0], file=file)
         file.close()
         # bf16_o1_losses = np.array(history.history["loss"])
         # bf16_o1_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
