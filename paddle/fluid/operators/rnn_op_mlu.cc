@@ -20,7 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using DDim = framework::DDim;
 using TensorList = std::vector<phi::DenseTensor>;
 template <typename TensorType, typename T>
@@ -459,7 +458,7 @@ class RNNMLUGradKernel : public framework::OpKernel<T> {
     input_grad->mutable_data<T>(input->dims(), ctx.GetPlace());
     FillMLUTensorWithHostValue(ctx, static_cast<T>(0.0), input_grad);
 
-    Tensor a, b;
+    phi::DenseTensor a, b;
     phi::DenseTensor* dynamic_grad_pre_h = &a;
     phi::DenseTensor* dynamic_grad_pre_c = &b;
     if (init_h_grad) {

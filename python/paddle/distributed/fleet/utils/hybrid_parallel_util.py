@@ -14,13 +14,16 @@
 
 import paddle
 from paddle import framework
+
+# (TODO: GhostScreaming) It will be removed later.
 from paddle.fluid import core
-from paddle.fluid.dygraph.parallel import (
+from paddle.framework import (
+    _in_legacy_dygraph,
     _split_tensors,
     build_groups,
+    in_dygraph_mode,
     sync_params_buffers,
 )
-from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 
 from .log_util import logger
 

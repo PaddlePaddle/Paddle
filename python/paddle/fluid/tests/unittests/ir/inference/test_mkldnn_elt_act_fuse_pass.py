@@ -102,7 +102,7 @@ class ElementwiseActivationMkldnnFusePassTest_Add_HardSwish(
 ):
     def set_params(self):
         self.operand = paddle.add
-        self.act = fluid.layers.hard_swish
+        self.act = paddle.nn.functional.hardswish
 
 
 class ElementwiseActivationMkldnnFusePassTest_Add_SQRT(
@@ -202,7 +202,7 @@ class ElementwiseActivationMkldnnFusePassTest_Sub_HardSwish(
 ):
     def set_params(self):
         self.operand = paddle.subtract
-        self.act = fluid.layers.hard_swish
+        self.act = paddle.nn.functional.hardswish
 
 
 class ElementwiseActivationMkldnnFusePassTest_Sub_ABS(
@@ -294,7 +294,7 @@ class ElementwiseActivationMkldnnFusePassTest_Mul_HardSwish(
 ):
     def set_params(self):
         self.operand = paddle.multiply
-        self.act = fluid.layers.hard_swish
+        self.act = paddle.nn.functional.hardswish
 
 
 class ElementwiseActivationMkldnnFusePassTest_Mul_SQRT(
