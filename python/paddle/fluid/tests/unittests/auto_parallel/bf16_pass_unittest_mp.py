@@ -30,6 +30,7 @@ def apply_pass(use_bf16=False):
     strategy.auto_mode = "semi"
     strategy.reinit = True
     if use_bf16:
+        print("bf16")
         amp = strategy.amp
         amp.enable = True
         amp.enable_bf16 = True
@@ -38,7 +39,10 @@ def apply_pass(use_bf16=False):
             'c_softmax_with_cross_entropy',
             'elementwise_div',
             'reduce_sum',
+            'reshape2',
         ]
+    else:
+        print("fp32")
     return strategy
 
 
@@ -88,18 +92,18 @@ class TestAMPPass(unittest.TestCase):
 
     def test_bf16_pass(self):
         # mp2 training
-        # mp_engine = self.get_engine()
-        # history = mp_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        # mp_losses = np.array(history.history["loss"])
+        mp_engine = self.get_engine()
+        history = mp_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        mp_losses = np.array(history.history["loss"])
 
         # mp2 bf16-o1 training
         bf16_o1_engine = self.get_engine(True)
         history = bf16_o1_engine.fit(
             self.dataset, 3, batch_size=self.batch_size
         )
-        # bf16_o1_losses = np.array(history.history["loss"])
-        # bf16_o1_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
-        # self.check_results(mp_losses, bf16_o1_engine)
+        bf16_o1_losses = np.array(history.history["loss"])
+        bf16_o1_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
+        self.check_results(mp_losses, bf16_o1_losses)
 
 
 if __name__ == "__main__":

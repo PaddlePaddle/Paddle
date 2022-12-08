@@ -97,22 +97,22 @@ class TestAMPPass(unittest.TestCase):
         # mp2 training
         serial_engine = self.get_engine()
         history = serial_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        # serial_losses = np.array(history.history["loss"])
+        serial_losses = np.array(history.history["loss"])
 
         # mp2 amp-o1 training
         bf16_o1_engine = self.get_engine(True)
         history = bf16_o1_engine.fit(
             self.dataset, 3, batch_size=self.batch_size
         )
-        file = open(
-            "/workspace/Paddle/gpt_serial_main.log",
-            "w",
-        )
-        print(serial_engine._dist_main_progs["train"][0], file=file)
-        file.close()
-        # bf16_o1_losses = np.array(history.history["loss"])
-        # bf16_o1_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
-        # self.check_results(serial_losses, bf16_o1_losses)
+        # file = open(
+        #     "/workspace/Paddle/gpt_serial_main.log",
+        #     "w",
+        # )
+        # print(serial_engine._dist_main_progs["train"][0], file=file)
+        # file.close()
+        bf16_o1_losses = np.array(history.history["loss"])
+        bf16_o1_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
+        self.check_results(serial_losses, bf16_o1_losses)
 
 
 if __name__ == "__main__":
