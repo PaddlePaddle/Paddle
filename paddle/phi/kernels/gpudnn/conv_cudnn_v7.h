@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "paddle/phi/kernels/gpudnn/conv_gpudnn_base.h"
 
