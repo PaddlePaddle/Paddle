@@ -382,16 +382,11 @@ def layer_norm(
         )
 
     if in_dygraph_mode():
-        (
-            pre_act,
-            _,
-            _,
-        ) = _C_ops.layer_norm(x, weight, bias, epsilon, begin_norm_axis)
-
-        return dygraph_utils._append_activation_in_dygraph(pre_act, act=None)
+        out, _, _ = _C_ops.layer_norm(x, weight, bias, epsilon, begin_norm_axis)
+        return out
 
     if _in_legacy_dygraph():
-        pre_act, _, _ = _legacy_C_ops.layer_norm(
+        out, _, _ = _legacy_C_ops.layer_norm(
             x,
             weight,
             bias,
@@ -400,7 +395,7 @@ def layer_norm(
             'begin_norm_axis',
             begin_norm_axis,
         )
-        return dygraph_utils._append_activation_in_dygraph(pre_act, act=None)
+        return out
 
     check_variable_and_dtype(
         x, 'input', ['float16', 'float32', 'float64'], 'LayerNorm'

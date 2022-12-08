@@ -30,8 +30,6 @@ class BCEWithLogitsLoss(Layer):
     r"""
 
     This operator combines the sigmoid layer and the :ref:`api_paddle_nn_BCELoss` layer.
-    Also, we can see it as the combine of ``sigmoid_cross_entropy_with_logits``
-    layer and some reduce operations.
 
     This measures the element-wise probability error in classification tasks
     in which each class is independent.
@@ -104,7 +102,9 @@ class BCEWithLogitsLoss(Layer):
             label = paddle.to_tensor([1.0, 0.0, 1.0], dtype="float32")
             bce_logit_loss = paddle.nn.BCEWithLogitsLoss()
             output = bce_logit_loss(logit, label)
-            print(output.numpy())  # [0.45618808]
+            print(output)
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [0.45618814])
 
     """
 
@@ -321,9 +321,11 @@ class CrossEntropyLoss(Layer):
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
                 weight=weight, reduction=reduction)
             dy_ret = cross_entropy_loss(
-                                       input,
-                                       label)
-            print(dy_ret.numpy()) #[5.41993642]
+                                        input,
+                                        label)
+            print(dy_ret)
+            # Tensor(shape=[1], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+            #        [5.34043430])
 
         .. code-block:: python
 
@@ -341,13 +343,15 @@ class CrossEntropyLoss(Layer):
             labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
             labels /= paddle.sum(labels, axis=axis, keepdim=True)
             paddle_loss_mean = paddle.nn.functional.cross_entropy(
-                                                                  logits,
-                                                                  labels,
-                                                                  soft_label=True,
-                                                                  axis=axis,
-                                                                  weight=weight,
-                                                                  reduction=reduction)
-            print(paddle_loss_mean.numpy()) #[1.12908343]
+                                                                    logits,
+                                                                    labels,
+                                                                    soft_label=True,
+                                                                    axis=axis,
+                                                                    weight=weight,
+                                                                    reduction=reduction)
+            print(paddle_loss_mean)
+            # Tensor(shape=[1], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+            #        [1.11043464])
 
     """
 
@@ -524,24 +528,16 @@ class MSELoss(Layer):
     r"""
     **Mean Square Error Loss**
     Computes the mean square error (squared L2 norm) of given input and label.
-
     If :attr:`reduction` is set to ``'none'``, loss is calculated as:
-
     .. math::
         Out = (input - label)^2
-
     If :attr:`reduction` is set to ``'mean'``, loss is calculated as:
-
     .. math::
         Out = \operatorname{mean}((input - label)^2)
-
     If :attr:`reduction` is set to ``'sum'``, loss is calculated as:
-
     .. math::
         Out = \operatorname{sum}((input - label)^2)
-
     where `input` and `label` are `float32` tensors of same shape.
-
     Parameters:
         reduction (string, optional): The reduction method for the output,
             could be 'none' | 'mean' | 'sum'.
@@ -549,17 +545,13 @@ class MSELoss(Layer):
             If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
             Default is ``'mean'``.
-
     Shape:
         input (Tensor): Input tensor, the data type is float32 or float64
         label (Tensor): Label tensor, the data type is float32 or float64
         output (Tensor): output tensor storing the MSE loss of input and label, the data type is same as input.
-
     Examples:
         .. code-block:: python
-
             import paddle
-
             mse_loss = paddle.nn.loss.MSELoss()
             input = paddle.to_tensor([1.5])
             label = paddle.to_tensor([1.7])
@@ -598,7 +590,7 @@ class MSELoss(Layer):
             square_out = paddle.sum(square_out)
             return square_out
 
-        return getattr(fluid.layers, reduce_op)(square_out)
+        return paddle.mean(square_out)
 
 
 class L1Loss(Layer):
@@ -649,19 +641,22 @@ class L1Loss(Layer):
 
             l1_loss = paddle.nn.L1Loss()
             output = l1_loss(input, label)
-            print(output.numpy())
-            # [0.35]
+            print(output)
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [0.34999999])
 
             l1_loss = paddle.nn.L1Loss(reduction='sum')
             output = l1_loss(input, label)
-            print(output.numpy())
-            # [1.4]
+            print(output)
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [1.39999998])
 
             l1_loss = paddle.nn.L1Loss(reduction='none')
             output = l1_loss(input, label)
             print(output)
-            # [[0.20000005 0.19999999]
-            # [0.2        0.79999995]]
+            # Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[0.20000005, 0.19999999],
+            #         [0.20000000, 0.79999995]])
 
     """
 

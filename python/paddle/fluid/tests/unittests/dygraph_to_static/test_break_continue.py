@@ -13,14 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 from paddle.jit.api import declarative
-from paddle.jit.dy2static.program_translator import (
-    ProgramTranslator,
-)
-from paddle.fluid.dygraph.dygraph_to_static.utils import Dygraph2StaticException
+from paddle.jit.dy2static.program_translator import ProgramTranslator
+from paddle.jit.dy2static.utils import Dygraph2StaticException
 
 SEED = 2020
 np.random.seed(SEED)

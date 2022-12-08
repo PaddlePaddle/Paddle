@@ -15,24 +15,25 @@
 from collections import OrderedDict
 
 import paddle
-from paddle.fluid import unique_name
-from paddle.fluid.framework import default_main_program
-from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-from .pass_base import PassBase, PassType, register_pass
 from paddle.distributed.auto_parallel.operators.common import (
-    is_data_parallel_scale_op,
     is_data_parallel_reduce_op,
+    is_data_parallel_scale_op,
 )
 from paddle.distributed.auto_parallel.utils import (
     find_higher_order_backward_op,
+    get_var_numel,
+    insert_dependencies_for_two_vars,
+    is_forward_op,
     is_loss_grad_op,
     is_optimize_op,
-    is_forward_op,
     ring_id_to_process_group,
-    get_var_numel,
     use_standalone_executor,
-    insert_dependencies_for_two_vars,
 )
+from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
+from paddle.fluid import unique_name
+from paddle.fluid.framework import default_main_program
+
+from .pass_base import PassBase, PassType, register_pass
 
 # add new optimizers supporting rescale_grad here
 __rescale_grad_supported_opts__ = [

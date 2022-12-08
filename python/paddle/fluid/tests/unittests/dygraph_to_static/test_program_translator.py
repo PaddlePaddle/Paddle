@@ -12,25 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import astor
-from paddle.utils import gast
 import inspect
-import numpy as np
 import textwrap
 import unittest
 
-import paddle
-import paddle.fluid as fluid
-from paddle.jit import ProgramTranslator
-from paddle.jit.api import declarative
-from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
-import paddle.jit.dy2static as _jst
-
+import astor
+import numpy as np
 from ifelse_simple_func import (
     dyfunc_with_if_else,
     dyfunc_with_if_else_early_return1,
     dyfunc_with_if_else_early_return2,
 )
+
+import paddle
+import paddle.fluid as fluid
+import paddle.jit.dy2static as _jst
+from paddle.jit import ProgramTranslator
+from paddle.jit.api import declarative
+from paddle.jit.dy2static.utils import func_to_source_code
+from paddle.utils import gast
 
 np.random.seed(0)
 
@@ -42,7 +42,7 @@ np.random.seed(0)
 def simple_func(x, weight_numpy):
     x = fluid.dygraph.to_variable(x)
     w = fluid.dygraph.to_variable(weight_numpy)
-    y = fluid.layers.matmul(x, w)
+    y = paddle.matmul(x, w)
     z = paddle.mean(y)
     return z
 
@@ -51,7 +51,7 @@ def simple_func(x, weight_numpy):
 def decorated_simple_func(x, weight_numpy):
     x = fluid.dygraph.to_variable(x)
     w = fluid.dygraph.to_variable(weight_numpy)
-    y = fluid.layers.matmul(x, w)
+    y = paddle.matmul(x, w)
     z = paddle.mean(y)
     return z
 
@@ -204,7 +204,7 @@ class StaticCode2:
 class NetWithError(fluid.dygraph.layers.Layer):
     @declarative
     def forward(self, x):
-        linear = fluid.dygraph.Linear(32, 64)
+        linear = paddle.nn.Linear(32, 64)
         y = linear(x)
         return y
 

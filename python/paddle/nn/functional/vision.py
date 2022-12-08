@@ -91,7 +91,7 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
             if isinstance(out_shape, Variable)
             else out_shape
         )
-        theta = theta._use_cudnn(use_cudnn)
+        theta = theta._use_gpudnn(use_cudnn)
         return _C_ops.affine_grid(theta, _out_shape, align_corners)
     elif in_dynamic_mode():
         _out_shape = (
@@ -368,9 +368,8 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
 
             x = paddle.randn(shape=[2,9,4,4])
             out_var = F.pixel_shuffle(x, 3)
-            out = out_var.numpy()
-            print(out.shape)
-            # (2, 1, 12, 12)
+            print(out_var.shape)
+            # [2, 1, 12, 12]
     """
     if not isinstance(upscale_factor, int):
         raise TypeError("upscale factor must be int type")

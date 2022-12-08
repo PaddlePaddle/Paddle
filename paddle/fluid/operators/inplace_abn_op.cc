@@ -145,8 +145,8 @@ class InplaceABNGradOp : public paddle::operators::BatchNormGradOp {
           "can't find gradient variable of Y"));
     }
     const phi::DenseTensor* t = nullptr;
-    if (var->IsType<Tensor>()) {
-      t = &var->Get<Tensor>();
+    if (var->IsType<phi::DenseTensor>()) {
+      t = &var->Get<phi::DenseTensor>();
     } else if (var->IsType<phi::DenseTensor>()) {
       t = &var->Get<phi::DenseTensor>();
     }
@@ -323,9 +323,9 @@ class InplaceABNGradKernel : public framework::OpKernel<T> {
     auto* mean = ctx.Input<phi::DenseTensor>("ReserveSpace");
     auto* variance = ctx.Input<phi::DenseTensor>("ReserveSpace");
 
-    paddle::optional<Tensor> space_opt;
-    paddle::optional<Tensor> mean_opt;
-    paddle::optional<Tensor> variance_opt;
+    paddle::optional<phi::DenseTensor> space_opt;
+    paddle::optional<phi::DenseTensor> mean_opt;
+    paddle::optional<phi::DenseTensor> variance_opt;
 
     if (reserve_space != nullptr) {
       space_opt = *reserve_space;
