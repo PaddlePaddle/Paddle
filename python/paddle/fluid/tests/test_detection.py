@@ -77,49 +77,6 @@ class LayerTest(unittest.TestCase):
 
 
 class TestDetection(unittest.TestCase):
-    def test_detection_output(self):
-        program = Program()
-        with program_guard(program):
-            pb = layers.data(
-                name='prior_box',
-                shape=[10, 4],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            pbv = layers.data(
-                name='prior_box_var',
-                shape=[10, 4],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            loc = layers.data(
-                name='target_box',
-                shape=[2, 10, 4],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            scores = layers.data(
-                name='scores',
-                shape=[2, 10, 20],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            out = layers.detection_output(
-                scores=scores, loc=loc, prior_box=pb, prior_box_var=pbv
-            )
-            out2, index = layers.detection_output(
-                scores=scores,
-                loc=loc,
-                prior_box=pb,
-                prior_box_var=pbv,
-                return_index=True,
-            )
-            self.assertIsNotNone(out)
-            self.assertIsNotNone(out2)
-            self.assertIsNotNone(index)
-            self.assertEqual(out.shape[-1], 6)
-        print(str(program))
-
     def test_box_coder_api(self):
         program = Program()
         with program_guard(program):
