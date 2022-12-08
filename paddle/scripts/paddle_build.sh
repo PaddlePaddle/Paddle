@@ -769,7 +769,7 @@ function run_linux_cpu_test() {
     cd ${PADDLE_ROOT}/build
     pip install hypothesis
     if [ -d "${PADDLE_ROOT}/dist/" ]; then
-        pip install ${PADDLE_ROOT}/build/python/dist/*whl
+        pip install ${PADDLE_ROOT}/dist/*whl
     fi
     cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/op_test.py ${PADDLE_ROOT}/build/python
     cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/testsuite.py ${PADDLE_ROOT}/build/python
