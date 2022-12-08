@@ -477,6 +477,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   // profile related.
   CP_MEMBER(with_profile_);
 
+  // cinn compiler related.
+  CP_MEMBER(use_cinn_compiler_);
+
   // glog related.
   CP_MEMBER(with_glog_info_);
 
@@ -542,7 +545,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 #undef CP_MEMBER
 
   Update();
-  if (use_tensorrt_) {
+  if (use_tensorrt_ || use_cinn_compiler_) {
     // Update() will reset all the passes, when some tensorRT pass is deleted in
     // other.pass_builder(), it will set again, so we just remove the
     // deleted_pass.
@@ -868,6 +871,14 @@ void AnalysisConfig::Update() {
           (pass == "conv_bn_fuse_pass")) {
         continue;
       }
+      pass_builder()->AppendPass(pass);
+    }
+  }
+
+  // TODO(wilber): An ugly method to update pass, need to be fixed.
+  if (use_cinn_compiler_) {
+    pass_builder()->ClearPasses();
+    for (const auto &pass : kCINNCompilerPasses) {
       pass_builder()->AppendPass(pass);
     }
   }
@@ -1316,6 +1327,9 @@ std::string AnalysisConfig::Summary() {
     os.InsertRow({"use_lite", use_lite_ ? "true" : "false"});
   }
 
+  // cinn compiler
+  os.InsertRow({"use_cinn_compiler", use_cinn_compiler_ ? "true" : "false"});
+
   // ir info
   os.InsertRow({"ir_optim", enable_ir_optim_ ? "true" : "false"});
   os.InsertRow({"ir_debug", ir_debug_ ? "true" : "false"});
@@ -1427,6 +1441,21 @@ bool AnalysisConfig::trt_allow_build_at_runtime() const {
 void AnalysisConfig::Exp_DisableMixedInferOps(
     const std::unordered_set<std::string> &black_list) {
   mixed_black_list_ = black_list;
+}
+
+void AnalysisConfig::Exp_EnableCINNCompiler() {
+#ifdef PADDLE_WITH_CINN
+  use_cinn_compiler_ = true;
+  Update();
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "You tried to use CINN compiler, but Paddle was not compiled "
+      "with CINN."));
+#endif
+}
+
+bool AnalysisConfig::cinn_compiler_enabled() const {
+  return use_cinn_compiler_;
 }
 
 }  // namespace paddle
