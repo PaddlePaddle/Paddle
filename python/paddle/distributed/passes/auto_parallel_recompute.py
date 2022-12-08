@@ -118,14 +118,14 @@ class RecomputeState(ProgramStats):
             cur_op = self.ops[op_idx]
             if "grad" in cur_op.type:
                 break
+            if cur_op.type == "seed":
+                self._reserved_vars.extend(cur_op.output_arg_names)
+                op_idx += 1
+                continue
             if cur_op.type != "dropout":
                 op_idx += 1
                 continue
             if cur_op.input("Seed") is not None and len(cur_op.input("Seed")):
-                op_idx += 1
-                continue
-            if cur_op.type == "seed":
-                self._reserved_vars.extend(cur_op.output_arg_names)
                 op_idx += 1
                 continue
 
