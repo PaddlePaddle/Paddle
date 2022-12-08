@@ -67,14 +67,12 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
 #endif
   } else if (reduce_op == "MAX") {
     thrust::device_ptr<T> p_output_ptr(p_output);
-    thrust::fill(thrust::device,
-                 p_output_ptr,
+    thrust::fill(p_output_ptr,
                  p_output_ptr + memset_size,
                  std::numeric_limits<T>::lowest());
   } else if (reduce_op == "MIN") {
     thrust::device_ptr<T> p_output_ptr(p_output);
-    thrust::fill(thrust::device,
-                 p_output_ptr,
+    thrust::fill(p_output_ptr,
                  p_output_ptr + memset_size,
                  std::numeric_limits<T>::max());
   }

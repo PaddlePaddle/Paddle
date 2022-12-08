@@ -65,15 +65,13 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
 #endif
   } else if (reduce_op == "MAX") {
     thrust::device_ptr<T> out_data_ptr(out_data);
-    thrust::fill(thrust::device,
-                 out_data_ptr,
+    thrust::fill(out_data_ptr,
                  out_data_ptr + memset_size,
                  std::numeric_limits<T>::lowest());
 
   } else if (reduce_op == "MIN") {
     thrust::device_ptr<T> out_data_ptr(out_data);
-    thrust::fill(thrust::device,
-                 out_data_ptr,
+    thrust::fill(out_data_ptr,
                  out_data_ptr + memset_size,
                  std::numeric_limits<T>::max());
   }

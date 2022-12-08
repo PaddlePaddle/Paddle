@@ -261,7 +261,7 @@ static void UniqueFlattendCUDATensor(const Context& context,
     counts->Resize(phi::make_ddim({num_out}));
     auto count_data = context.template Alloc<IndexT>(counts);
     // init 'count_data' as 0
-    thrust::fill(thrust::device, count_data, count_data + num_out, 0);
+    thrust::fill(count_data, count_data + num_out, 0);
     thrust::device_ptr<IndexT> range_data_ptr_dev(range_data_ptr);
     range_data_ptr_dev[num_out] = num_input;
     thrust::adjacent_difference(thrust::device,
@@ -333,7 +333,7 @@ static void ComputeUniqueDims(const Context& context,
   // 3. counts: 'counts'
   counts->Resize(phi::make_ddim({num_out}));
   auto* count_data = context.template Alloc<IndexT>(counts);
-  thrust::fill(thrust::device, count_data, count_data + num_out, 0);
+  thrust::fill(count_data, count_data + num_out, 0);
   thrust::adjacent_difference(thrust::device,
                               range_data_ptr + 1,
                               range_data_ptr + num_out + 1,
