@@ -818,7 +818,8 @@ class Engine:
         collate_fn=None,
         callbacks=None,
         verbose=2,
-        profile_dir=""
+        profile_dir="",
+        max_steps=-1,
     ):
         """
         Trains the model for a fixed number of epochs. If `valid_data` is set,
@@ -970,6 +971,9 @@ class Engine:
                 cbks.on_batch_end('train', step, logs)
                 reader_start = time.time()
 
+                if max_steps > 1 and step > max_steps:
+                    return
+                    
             if valid_data and (epoch + 1) % valid_freq == 0:
                 val_logs = self.evaluate(
                     valid_data,
@@ -990,6 +994,7 @@ class Engine:
                 self._reset_metrics()
 
             cbks.on_epoch_end(epoch, logs)
+
         cbks.on_end('train', logs)
         return self.history
 
