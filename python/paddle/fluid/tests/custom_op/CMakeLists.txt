@@ -23,6 +23,11 @@ endif()
 
 if(WITH_XPU)
   py_test(test_custom_relu_op_xpu_setup SRCS test_custom_relu_op_xpu_setup.py)
+  set_tests_properties(test_custom_relu_op_xpu_setup PROPERTIES TIMEOUT 180)
+  set_tests_properties(test_custom_relu_op_xpu_setup
+                       PROPERTIES ENVIRONMENT FLAGS_CONVERT_GRAPH_TO_PROGRAM=1)
+  set_tests_properties(test_custom_relu_op_xpu_setup
+                       PROPERTIES ENVIRONMENT FLAGS_init_allocated_mem=0)
 endif()
 
 py_test(test_custom_raw_op_kernel_op SRCS test_custom_raw_op_kernel_op.py)
