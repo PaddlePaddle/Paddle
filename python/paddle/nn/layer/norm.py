@@ -110,7 +110,7 @@ class _InstanceNormBase(Layer):
 
 
 class InstanceNorm1D(_InstanceNormBase):
-    r"""
+    """
     Create a callable object of `InstanceNorm1D`. Applies Instance Normalization over a 3D input (a mini-batch of 1D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
     DataLayout: NCL `[batch, in_channels, length]`
@@ -180,7 +180,7 @@ Where `H` means height of feature map, `W` means width of feature map.
 
 
 class InstanceNorm2D(_InstanceNormBase):
-    r"""
+    """
     Create a callable object of `InstanceNorm2D`. Applies Instance Normalization over a 4D input (a mini-batch of 2D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
     DataLayout: NCHW `[batch, in_channels, in_height, in_width]`
@@ -247,7 +247,7 @@ Where `H` means height of feature map, `W` means width of feature map.
 
 
 class InstanceNorm3D(_InstanceNormBase):
-    r"""
+    """
     Create a callable object of `InstanceNorm3D`. Applies Instance Normalization over a 5D input (a mini-batch of 3D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
     DataLayout: NCHW `[batch, in_channels, D, in_height, in_width]`
