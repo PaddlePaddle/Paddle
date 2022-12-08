@@ -34,7 +34,6 @@ DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using DataLayout = phi::DataLayout;
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;

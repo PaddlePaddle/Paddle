@@ -22,7 +22,6 @@
 
 namespace paddle {
 namespace operators {
-using Tensor = phi::DenseTensor;
 using DDim = framework::DDim;
 template <typename DeviceContext, typename T>
 class TreeConvKernel : public framework::OpKernel<T> {
@@ -40,7 +39,7 @@ class TreeConvKernel : public framework::OpKernel<T> {
     auto &dev_ctx = ctx.template device_context<DeviceContext>();
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
 
-    Tensor W;
+    phi::DenseTensor W;
     W.ShareDataWith(*Filter);
     W.Resize(phi::flatten_to_2d(Filter->dims(), 2));
 
@@ -67,7 +66,7 @@ class TreeConvKernel : public framework::OpKernel<T> {
       auto embeddings =
           Embeddings->Slice(idx, idx + 1).Resize(embedding_slicedim);
       auto out_vec = output_emb->Slice(idx, idx + 1).Resize(output_slicedim);
-      Tensor patch;
+      phi::DenseTensor patch;
       tree2col(dev_ctx, edge_set, embeddings, &patch, max_depth);
       constant(dev_ctx, &out_vec, 0);
       blas.MatMul(patch, W, &out_vec);
@@ -93,7 +92,7 @@ class TreeConvGradKernel : public framework::OpKernel<T> {
     auto &dev_ctx = ctx.template device_context<DeviceContext>();
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
 
-    Tensor W;
+    phi::DenseTensor W;
     W.ShareDataWith(*Filter);
     W.Resize(phi::flatten_to_2d(Filter->dims(), 1));
 
@@ -110,7 +109,7 @@ class TreeConvGradKernel : public framework::OpKernel<T> {
     out_grad_dims = phi::flatten_to_2d(out_grad_dims, 1);
     if (filter_g) {
       filter_g->mutable_data<T>(Filter->dims(), ctx.GetPlace());
-      Tensor f_g;
+      phi::DenseTensor f_g;
       f_g.ShareDataWith(*filter_g);
       f_g.Resize(phi::flatten_to_2d(Filter->dims(), 2));
       constant(dev_ctx, filter_g, 0);
@@ -121,7 +120,7 @@ class TreeConvGradKernel : public framework::OpKernel<T> {
                               .Resize(embedding_slicedim);
         auto out_grad =
             out_g->Slice(batch_id, batch_id + 1).Resize(out_grad_dims);
-        Tensor patch;
+        phi::DenseTensor patch;
         tree2col(dev_ctx, edge_set, embeddings, &patch, max_depth);
         blas.MatMul(patch, true, out_grad, false, T(1.0), &f_g, T(1.0));
       }
@@ -138,7 +137,7 @@ class TreeConvGradKernel : public framework::OpKernel<T> {
             out_g->Slice(batch_id, batch_id + 1).Resize(out_grad_dims);
         auto in_grad =
             in_g->Slice(batch_id, batch_id + 1).Resize(input_grad_dims);
-        Tensor in_grad_temp;
+        phi::DenseTensor in_grad_temp;
         col2tree(dev_ctx, edge_set, out_grad, &in_grad_temp, max_depth);
         blas.MatMul(in_grad_temp, false, W, true, &in_grad);
       }
