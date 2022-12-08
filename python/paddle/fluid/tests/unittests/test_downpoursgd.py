@@ -13,17 +13,19 @@
 # limitations under the License.
 """Test cases for Downpour."""
 
+import os
+import sys
+import unittest
+
+from google.protobuf import text_format
+
 import paddle
 import paddle.fluid as fluid
-import os
-import unittest
-import sys
-from paddle.fluid.incubate.fleet.parameter_server.pslib.node import (
-    DownpourWorker,
-    DownpourServer,
-)
-from google.protobuf import text_format
 import paddle.fluid.incubate.fleet.parameter_server.pslib.ps_pb2 as pslib
+from paddle.fluid.incubate.fleet.parameter_server.pslib.node import (
+    DownpourServer,
+    DownpourWorker,
+)
 from paddle.fluid.trainer_factory import TrainerFactory
 
 cache_path = os.path.expanduser('~/.cache/paddle/dataset')
@@ -56,7 +58,9 @@ class TestListenAndServOp(unittest.TestCase):
             )
             y_predict = fluid.layers.fc(input=x_emb, size=1, act=None)
             y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
             ps_param = pslib.PSParameter()
@@ -118,7 +122,9 @@ class TestListenAndServOp(unittest.TestCase):
             )
             y_predict = fluid.layers.fc(input=x_emb, size=1, act=None)
             y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
             ps_param = pslib.PSParameter()
@@ -178,7 +184,9 @@ class TestListenAndServOp(unittest.TestCase):
             )
             y_predict = fluid.layers.fc(input=x_emb, size=1, act=None)
             y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
             ps_param = pslib.PSParameter()

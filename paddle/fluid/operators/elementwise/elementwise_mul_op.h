@@ -25,7 +25,6 @@ namespace operators {
 
 class ElementwiseMulOp : public ElementwiseOp {
  public:
-  using Tensor = phi::DenseTensor;
   using ElementwiseOp::ElementwiseOp;
 
   framework::OpKernelType GetExpectedKernelType(

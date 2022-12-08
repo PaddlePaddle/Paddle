@@ -12,20 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import multiprocessing
 import os
 import unittest
 
 import paddle
 import paddle.distributed as dist
 from paddle.distributed.spawn import (
+    _get_default_nprocs,
     _get_subprocess_env_list,
     _options_valid_check,
-    _get_default_nprocs,
 )
-
 from paddle.fluid import core
 from paddle.fluid.dygraph import parallel_helper
-import multiprocessing
 
 # NOTE(chenweihang): Coverage CI is currently not able to count python3
 # unittest, so the unittests here covers some cases that will only be

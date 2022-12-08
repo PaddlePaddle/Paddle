@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 from paddle.fluid.incubate.fleet.parameter_server.ir.ps_dispatcher import (
-    RoundRobin,
     HashName,
     PSDispatcher,
+    RoundRobin,
 )
 
 

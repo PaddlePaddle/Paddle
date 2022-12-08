@@ -12,21 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import unittest
 
-import contextlib
 import numpy as np
+import seresnext_net
+from fake_reader import fake_imdb_reader
+from simple_nets import fc_with_batchnorm, init_data, simple_fc_net
+from test_parallel_executor_transformer import (
+    DeviceType,
+    get_feed_data_reader,
+    transformer,
+)
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from simple_nets import init_data, simple_fc_net, fc_with_batchnorm
-import seresnext_net
-from test_parallel_executor_transformer import (
-    transformer,
-    get_feed_data_reader,
-    DeviceType,
-)
-from fake_reader import fake_imdb_reader
-import paddle
 
 
 def lstm_net(use_feed):
@@ -75,7 +76,7 @@ def simple_fc_net_with_accuracy(use_feed):
     prediction = fluid.layers.fc(hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
     loss = paddle.mean(loss)
-    accuracy_out = fluid.layers.accuracy(input=prediction, label=label, k=5)
+    accuracy_out = paddle.static.accuracy(input=prediction, label=label, k=5)
     return loss
 
 
@@ -91,7 +92,9 @@ def cond_net(use_feed=None):
         return avg_loss
 
     def loss2(pred, label):
-        loss = fluid.layers.softmax_with_cross_entropy(logits=pred, label=label)
+        loss = paddle.nn.functional.softmax_with_cross_entropy(
+            logits=pred, label=label
+        )
         avg_loss = paddle.mean(loss, name='mean_softmax_loss')
         return avg_loss
 
@@ -118,7 +121,9 @@ def optimization_in_cond_net(with_optimize=False):
         return avg_loss
 
     def loss2(opt, pred, label, with_optimize):
-        loss = fluid.layers.softmax_with_cross_entropy(logits=pred, label=label)
+        loss = paddle.nn.functional.softmax_with_cross_entropy(
+            logits=pred, label=label
+        )
         avg_loss = paddle.mean(loss, name='mean_softmax_loss')
         if with_optimize:
             opt.minimize(avg_loss)

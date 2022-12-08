@@ -22,6 +22,7 @@ from inference_pass_test import InferencePassTest
 
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.static.nn as nn
 from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
@@ -43,8 +44,8 @@ class TRTInstanceNormTest(InferencePassTest):
         with fluid.program_guard(self.main_program, self.startup_program):
             shape = [-1, self.channel, self.height, self.width]
             data = fluid.data(name='in', shape=shape, dtype='float32')
-            instance_norm_out = fluid.layers.instance_norm(data)
-            out = fluid.layers.batch_norm(instance_norm_out, is_test=True)
+            instance_norm_out = nn.instance_norm(data)
+            out = nn.batch_norm(instance_norm_out, is_test=True)
 
         shape[0] = self.bs
         self.feeds = {

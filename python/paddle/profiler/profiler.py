@@ -12,30 +12,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import datetime
+import importlib
+import json
 import os
 import socket
-import datetime
 from enum import Enum
 from typing import Any, Callable, Iterable, Optional, Union
 from warnings import warn
-import importlib
-import json
 
 import paddle
 from paddle.fluid.core import (
-    _Profiler,
     ProfilerOptions,
     TracerEventType,
-    enable_memory_recorder,
-    enable_op_info_recorder,
+    _Profiler,
     disable_memory_recorder,
     disable_op_info_recorder,
+    enable_memory_recorder,
+    enable_op_info_recorder,
 )
-
-from .utils import RecordEvent, wrap_optimizers
-from .profiler_statistic import StatisticData, _build_table, SortedKeys
 from paddle.profiler import utils
+
+from .profiler_statistic import (
+    SortedKeys,
+    StatisticData,
+    _build_table,
+    gen_layer_flops,
+)
 from .timer import benchmark
+from .utils import RecordEvent, wrap_optimizers
 
 
 class SummaryView(Enum):
@@ -351,6 +356,7 @@ class Profiler:
             be timed and profiled. Default: False.
         record_shapes (bool, optional): If it is True, collect op's input shape information. Default: False.
         profile_memory (bool, optional): If it is True, collect tensor memory allocation and release information. Default: False.
+        custom_device_types (list, optional): If targets contain profiler.ProfilerTarget.CUSTOM_DEVICE, custom_device_types select the custom device type for profiling. The default value represents all custom devices will be selected.
         with_flops (bool, optional): If it is True, the flops of the op will be calculated. Default: False.
 
     Examples:
@@ -882,6 +888,18 @@ class Profiler:
                     views=views,
                 )
             )
+
+        if self.with_flops:
+            self._print_flops()
+
+    def _print_flops(self, repeat=1):
+        if not self.with_flops:
+            print('ERROR: with_flops disabled.')
+            return
+
+        print(" Flops Profiler Begin ".center(100, "-"))
+        print(gen_layer_flops(self.profiler_result.get_data(), repeat))
+        print("- Flops Profiler End -".center(100, "-"))
 
 
 def get_profiler(config_path):

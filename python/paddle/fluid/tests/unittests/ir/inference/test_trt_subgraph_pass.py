@@ -22,6 +22,7 @@ from inference_pass_test import InferencePassTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.static.nn as nn
 from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
@@ -62,7 +63,7 @@ class TensorRTSubgraphPassConcatTest(InferencePassTest):
                 name="data2", shape=[-1, 3, 64, 64], dtype="float32"
             )
             concat_out = fluid.layers.concat([data1, data2], axis=2)
-            out = fluid.layers.batch_norm(concat_out, is_test=True)
+            out = nn.batch_norm(concat_out, is_test=True)
         self.feeds = {
             "data1": np.random.random([1, 3, 64, 64]).astype("float32"),
             "data2": np.random.random([1, 3, 64, 64]).astype("float32"),
@@ -89,7 +90,7 @@ class TensorRTSubgraphPassSplitTest(InferencePassTest):
                 name="data", shape=[-1, 3, 64, 64], dtype="float32"
             )
             split_out = fluid.layers.split(data, dim=-1, num_or_sections=2)
-            out = fluid.layers.batch_norm(split_out[0], is_test=True)
+            out = nn.batch_norm(split_out[0], is_test=True)
         self.feeds = {
             "data": np.random.random([1, 3, 64, 64]).astype("float32"),
         }
@@ -115,7 +116,7 @@ class TensorRTSubgraphPassSplitSerializeTest(InferencePassTest):
                 name="data", shape=[-1, 3, 64, 64], dtype="float32"
             )
             split_out = fluid.layers.split(data, dim=-1, num_or_sections=2)
-            out = fluid.layers.batch_norm(split_out[0], is_test=True)
+            out = nn.batch_norm(split_out[0], is_test=True)
         self.feeds = {
             "data": np.random.random([1, 3, 64, 64]).astype("float32"),
         }
@@ -143,7 +144,7 @@ class TensorRTSubgraphPassDynamicSplitFp16SerializeTest(InferencePassTest):
                 name="data", shape=[-1, 3, 64, 64], dtype="float32"
             )
             split_out = fluid.layers.split(data, dim=-1, num_or_sections=2)
-            out = fluid.layers.batch_norm(split_out[0], is_test=True)
+            out = nn.batch_norm(split_out[0], is_test=True)
         self.feeds = {
             "data": np.random.random([1, 3, 64, 64]).astype("float32"),
         }
@@ -186,7 +187,7 @@ class TensorRTSubgraphPassInstanceNormTest(InferencePassTest):
                 name='instance_norm_b',
                 initializer=fluid.initializer.Constant(value=0.0),
             )
-            out = fluid.layers.instance_norm(
+            out = paddle.static.nn.instance_norm(
                 input=data, param_attr=param_attr, bias_attr=bias_attr
             )
         self.feeds = {
@@ -216,7 +217,7 @@ class TensorRTSubgraphPassTransposeTest(InferencePassTest):
                 name="data", shape=[-1, 6, 64, 64], dtype="float32"
             )
             transpose_out = self.append_transpose(data)
-            out = fluid.layers.batch_norm(transpose_out, is_test=True)
+            out = nn.batch_norm(transpose_out, is_test=True)
         self.feeds = {
             "data": np.random.random([1, 6, 64, 64]).astype("float32"),
         }
@@ -366,7 +367,7 @@ class TensorRTSubgraphPassElementwiseTest(InferencePassTest):
                 name="data2", shape=[-1, 3, 64, 64], dtype="float32"
             )
             eltwise_out = self.append_eltwise(data1, data2)
-            out = fluid.layers.batch_norm(eltwise_out, is_test=True)
+            out = nn.batch_norm(eltwise_out, is_test=True)
         self.feeds = {
             "data1": np.random.random([1, 3, 64, 64]).astype("float32"),
             "data2": np.random.random([1, 3, 64, 64]).astype("float32"),
@@ -378,7 +379,7 @@ class TensorRTSubgraphPassElementwiseTest(InferencePassTest):
         self.fetch_list = [out]
 
     def append_eltwise(self, data1, data2):
-        return fluid.layers.elementwise_add(x=data1, y=data2)
+        return paddle.add(x=data1, y=data2)
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -419,7 +420,7 @@ class TensorRTSubgraphPassElementwiseBroadcastDynamicTest(InferencePassTest):
             )
             data2 = fluid.data(name="data2", shape=[64, 64], dtype="float32")
             eltwise_out = self.append_eltwise(data1, data2)
-            out = fluid.layers.batch_norm(eltwise_out, is_test=True)
+            out = nn.batch_norm(eltwise_out, is_test=True)
         self.feeds = {
             "data1": np.random.random([1, 3, 64, 64]).astype("float32"),
             "data2": np.random.random([64, 64]).astype("float32"),
@@ -439,7 +440,7 @@ class TensorRTSubgraphPassElementwiseBroadcastDynamicTest(InferencePassTest):
         self.fetch_list = [out]
 
     def append_eltwise(self, data1, data2):
-        return fluid.layers.elementwise_add(x=data1, y=data2)
+        return paddle.add(x=data1, y=data2)
 
     def test_check_output(self):
         if os.path.exists(self.path + "_opt_cache"):

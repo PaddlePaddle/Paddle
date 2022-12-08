@@ -63,10 +63,10 @@ def net():
         hidden = fluid.layers.fc(input=hidden, size=400, act="sigmoid")
 
     hidden = fluid.layers.fc(input=hidden, size=3, act=None)
-    cost, y_predict = fluid.layers.softmax_with_cross_entropy(
+    cost, y_predict = paddle.nn.functional.softmax_with_cross_entropy(
         hidden, y, return_softmax=True
     )
-    acc_top1 = fluid.layers.accuracy(input=y_predict, label=y, k=1)
+    acc_top1 = paddle.static.accuracy(input=y_predict, label=y, k=1)
     avg_cost = paddle.mean(cost)
 
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.05)

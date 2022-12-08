@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest, convert_uint16_to_float
+
 import paddle
+import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
-import paddle.fluid as fluid
 from paddle.fluid.tests.unittests.test_uniform_random_op import (
     output_hist,
     output_hist_diag,
@@ -193,7 +195,7 @@ class TestUniformRandomOpAPISeed(unittest.TestCase):
             ret_2 = fluid.layers.nn.uniform_random(
                 [2, 3, 2], min=_min, max=_max, seed=_seed
             )
-            res = fluid.layers.equal(ret, ret_2)
+            res = paddle.equal(ret, ret_2)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
 

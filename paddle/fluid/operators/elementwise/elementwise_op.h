@@ -36,8 +36,6 @@ class ElementwiseOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  using Tensor = phi::DenseTensor;
-
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ElementwiseOp");
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "ElementwiseOp");
@@ -115,7 +113,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       // if model is using NHWC and any of shapes in at least 3D
       bool should_rotate =
           ctx->IsRunMKLDNNKernel() &&
-          (platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout() ==
+          (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
            phi::DataLayout::kNHWC) &&
           (x_dims.size() >= 3 || y_dims.size() >= 3);
       if (should_rotate) {
@@ -177,8 +175,8 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       // then we also need to rotate shape NHWC -> NCWH
       if ((expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
           (tensor.layout() != phi::DataLayout::ONEDNN) &&
-          paddle::platform::MKLDNNDeviceContext::tls()
-                  .get_cur_paddle_data_layout() == phi::DataLayout::kNHWC) {
+          phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
+              phi::DataLayout::kNHWC) {
         return framework::OpKernelType(expected_kernel_type.data_type_,
                                        tensor.place(),
                                        phi::DataLayout::kNHWC);
@@ -282,7 +280,6 @@ For example:
 class ElementwiseOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  using Tensor = phi::DenseTensor;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     auto out_grad_name = framework::GradVarName("Out");
@@ -330,7 +327,6 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
 class ElementwiseOpDoubleGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  using Tensor = phi::DenseTensor;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     auto x_grad_name = framework::GradVarName("X");
@@ -376,7 +372,6 @@ class ElementwiseOpDoubleGradWithoutDXDY
     : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  using Tensor = phi::DenseTensor;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     if (ctx->HasOutput("DDOut")) {
@@ -427,7 +422,6 @@ class ElementwiseOpDoubleGradWithoutDXDY
 class ElementwiseOpTripleGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  using Tensor = phi::DenseTensor;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     if (ctx->HasOutput("D_DDX")) {

@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import sys
-import signal
-import unittest
 import multiprocessing
+import os
+import signal
+import sys
 import time
+import unittest
 
 from paddle.fluid import core
 from paddle.fluid.framework import _test_eager_guard
