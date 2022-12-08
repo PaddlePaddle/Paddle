@@ -237,7 +237,7 @@ class TestWarpRNNTOp(OpTest):
             self.check_grad(
                 ["acts"],
                 "loss",
-                max_relative_error=0.008,
+                max_relative_error=0.01,
                 check_dygraph=False,
                 check_eager=True,
             )
@@ -245,7 +245,7 @@ class TestWarpRNNTOp(OpTest):
             self.check_grad(
                 ["acts"],
                 "loss",
-                max_relative_error=0.008,
+                max_relative_error=0.01,
                 check_dygraph=False,
                 check_eager=True,
             )
@@ -263,7 +263,7 @@ class TestWarpRNNTFP64Op(TestWarpRNNTOp):
             self.check_grad(
                 ["acts"],
                 "loss",
-                max_relative_error=0.008,
+                max_relative_error=0.01,
                 check_dygraph=False,
                 check_eager=True,
             )
@@ -271,7 +271,7 @@ class TestWarpRNNTFP64Op(TestWarpRNNTOp):
             self.check_grad(
                 ["acts"],
                 "loss",
-                max_relative_error=0.008,
+                max_relative_error=0.01,
                 check_dygraph=False,
                 check_eager=True,
             )
