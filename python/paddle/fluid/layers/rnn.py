@@ -19,6 +19,7 @@ import warnings
 
 import paddle
 from paddle.utils import deprecated
+from paddle.tensor.manipulation import tensor_array_to_tensor
 from . import nn
 from . import tensor
 from . import control_flow
@@ -1099,9 +1100,7 @@ def _dynamic_decode_declarative(
             paddle.logical_not(paddle.all(global_finished), cond)
 
     final_outputs = map_structure(
-        lambda array: tensor.tensor_array_to_tensor(
-            array, axis=0, use_stack=True
-        )[0],
+        lambda array: tensor_array_to_tensor(array, axis=0, use_stack=True)[0],
         outputs_arrays,
     )
     if is_test:

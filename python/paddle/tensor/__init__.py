@@ -133,6 +133,7 @@ from .manipulation import moveaxis  # noqa: F401
 from .manipulation import repeat_interleave  # noqa: F401
 from .manipulation import index_add  # noqa: F401
 from .manipulation import index_add_  # noqa: F401
+from .manipulation import tensor_array_to_tensor  # noqa: F401
 from .math import abs  # noqa: F401
 from .math import acos  # noqa: F401
 from .math import asin  # noqa: F401
