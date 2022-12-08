@@ -2183,7 +2183,7 @@ def insert_dependencies_for_two_ops(
         [block.var(name) for name in posterior_op.input_arg_names]
     )
 
-    return insert_dependencies_for_two_vars(
+    return insert_dependencies_for_vars(
         block,
         idx,
         first_var,
@@ -2196,11 +2196,11 @@ def insert_dependencies_for_two_ops(
     )
 
 
-def insert_dependencies_for_two_vars(
+def insert_dependencies_for_vars(
     block,
     idx,
-    prior_var,
-    post_var,
+    prior_vars,
+    post_vars,
     dist_context,
     oprole,
     process_mesh=None,
@@ -2208,13 +2208,21 @@ def insert_dependencies_for_two_vars(
     sync=False,
 ):
     """
-    dependency: op that generates prior_var should be run before op that generates post_var
+    dependency: op that generates prior_vars should be run before op that generates post_vars
     """
-    assert block.has_var(prior_var.name)
-    assert block.has_var(post_var.name)
+
+    if isinstance(prior_vars, Variable):
+        prior_vars = [prior_vars]
+    if isinstance(post_vars, Variable):
+        post_vars = [post_vars]
+    for prior_var in prior_vars:
+        assert block.has_var(prior_var.name)
+    for post_var in post_vars:
+        assert block.has_var(post_var.name)
+
     if process_mesh is None:
         process_mesh = dist_context.get_tensor_dist_attr_for_program(
-            post_var
+            post_vars[0]
         ).process_mesh
     assert process_mesh is not None
 
@@ -2222,9 +2230,9 @@ def insert_dependencies_for_two_vars(
         idx,
         type='nop',
         inputs={
-            "X": prior_var,
+            "X": prior_vars,
         },
-        outputs={"Out": post_var},
+        outputs={"Out": post_vars},
     )
     # depend_op.desc.set_type("depend")
     depend_op._set_attr(OP_ROLE_KEY, oprole)

@@ -22,7 +22,7 @@ from paddle.distributed.auto_parallel.operators.common import (
 from paddle.distributed.auto_parallel.utils import (
     find_higher_order_backward_op,
     get_var_numel,
-    insert_dependencies_for_two_vars,
+    insert_dependencies_for_vars,
     is_forward_op,
     is_loss_grad_op,
     is_optimize_op,
@@ -153,12 +153,12 @@ class DataParallelOptimizationPass(PassBase):
                     continue
                 assert op.has_attr(
                     "ring_id"
-                ), "Unexception: comm op [{}] has NOT ring id.".format(str(op))
+                ), "Unexpected: comm op [{}] has NOT ring id.".format(str(op))
                 group = ring_id_to_process_group(op.attr("ring_id"))
 
                 assert (
                     group is not None
-                ), "Unexception: data parallel group of [{}] from op [{}] is None".format(
+                ), "Unexpected: data parallel group of [{}] from op [{}] is None".format(
                     grad_name, str(op)
                 )
 
@@ -187,7 +187,7 @@ class DataParallelOptimizationPass(PassBase):
                 not_synchronized_grads.append(grad_name)
         assert (
             len(not_synchronized_grads) == 0
-        ), "Unexception: gradients [{}] is scaled BUT NOT synchronized.".format(
+        ), "Unexpected: gradients [{}] is scaled BUT NOT synchronized.".format(
             not_synchronized_grads
         )
 
@@ -251,12 +251,12 @@ class DataParallelOptimizationPass(PassBase):
             ):
                 assert op.has_attr(
                     'rescale_grad'
-                ), "Unexception: op [{}] is supported to have [rescale_grad] attribute.".format(
+                ), "Unexpected: op [{}] is supported to have [rescale_grad] attribute.".format(
                     str(op)
                 )
                 assert (
                     len(op.input("Grad")) == 1
-                ), "Unexception: op [{}] is supported to have only one input grad var.".format(
+                ), "Unexpected: op [{}] is supported to have only one input grad var.".format(
                     str(op)
                 )
 
@@ -271,7 +271,7 @@ class DataParallelOptimizationPass(PassBase):
 
         assert scaled_grads == set(
             self._grad_name_to_group_map.keys()
-        ), "Unexception: gradients [{}] are unscaled.".format(
+        ), "Unexpected: gradients [{}] are unscaled.".format(
             set(self._grad_name_to_group_map.keys()) - scaled_grads
         )
 
@@ -508,9 +508,7 @@ class DataParallelOptimizationPass(PassBase):
             for idx in sorted(remove_op_indices, reverse=True):
                 assert (
                     block.ops[idx].type in remove_op_types
-                ), "Unexception: try to remove op {}".format(
-                    str(block.ops[idx])
-                )
+                ), "Unexpected: try to remove op {}".format(str(block.ops[idx]))
                 block._remove_op(idx, False)
 
             # insert coalecse op
@@ -596,7 +594,7 @@ class DataParallelOptimizationPass(PassBase):
                     not_sync_coalesces.remove(var_name)
         assert (
             len(not_sync_coalesces) == 0
-        ), "Unexception: {} has NOT been add prior Dep before allreduce.".format(
+        ), "Unexpected: {} has NOT been add prior Dep before allreduce.".format(
             not_sync_coalesces
         )
 
@@ -628,7 +626,7 @@ class DataParallelOptimizationPass(PassBase):
 
         assert (
             len(not_sync_coalesces) == 0
-        ), "Unexception: {} has NOT been add post Dep after allreduce.".format(
+        ), "Unexpected: {} has NOT been add post Dep after allreduce.".format(
             not_sync_coalesces
         )
 
@@ -642,7 +640,7 @@ class DataParallelOptimizationPass(PassBase):
         for idx, prior_name, post_name in dep_var_pairs:
             prior_var = block.var(prior_name)
             post_var = block.var(post_name)
-            depend_op = insert_dependencies_for_two_vars(
+            depend_op = insert_dependencies_for_vars(
                 block,
                 idx,
                 prior_var,

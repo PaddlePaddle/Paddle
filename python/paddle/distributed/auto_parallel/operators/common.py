@@ -446,7 +446,7 @@ def sync_and_scale_gradients(dist_ctx, op, dp_group, allreduce_var_names):
         dims_mapping = op_dist_attr.get_output_dims_mapping(grad_var.name)
         assert (
             dims_mapping is not None
-        ), "Unexception: dims_mapping of output [{}] of op [{}] is None".format(
+        ), "Unexpected: dims_mapping of output [{}] of op [{}] is None".format(
             grad_var.name, op_dist_attr.op_type
         )
         # NOTE auxiliary op's dist attr should follow dist_op not dist_tensor
