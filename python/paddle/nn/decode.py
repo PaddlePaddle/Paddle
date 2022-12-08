@@ -21,7 +21,7 @@ from paddle.static import default_main_program
 
 from ..fluid.data_feeder import convert_dtype
 from ..fluid.layers import BeamSearchDecoder  # noqa: F401
-from ..fluid.layers import control_flow, tensor
+from ..fluid.layers import control_flow
 from ..fluid.layers.utils import map_structure
 
 __all__ = []
@@ -323,7 +323,7 @@ def _dynamic_decode_declarative(
             paddle.logical_not(paddle.all(global_finished), cond)
 
     final_outputs = map_structure(
-        lambda array: tensor.tensor_array_to_tensor(
+        lambda array: paddle.tensor.manipulation.tensor_array_to_tensor(
             array, axis=0, use_stack=True
         )[0],
         outputs_arrays,
