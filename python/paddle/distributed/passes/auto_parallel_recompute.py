@@ -86,6 +86,24 @@ class RecomputeState(ProgramStats):
                 ), "The recompute segment's ops should be continuous"
                 self.seg_op_deps[seg_name].extend([i])
 
+    def get_recompute_segments(self, no_recompute_segments=[]):
+        segments = []
+        for segment_idx in self.seg_op_deps.values():
+            if len(segment_idx) == 1:
+                continue
+            segments.append([segment_idx[0], segment_idx[-1] + 1])
+            self._checkpoints.extend(self.ops[segment_idx[-1]].output_arg_names)
+
+        for i in reversed(sorted(no_recompute_segments)):
+            assert i < len(
+                segments
+            ), "the no_recompute_segments idx [{}] should be lower the number of segment [{}]".format(
+                i, len(segments)
+            )
+            segments.pop(i)
+
+        return segments
+
     def modify_forward_desc_for_recompute(self, dist_context):
         """
         If program's foward part has 'dropout' op, this function will insert
@@ -118,7 +136,7 @@ class RecomputeState(ProgramStats):
                 ".".join([op_unique_name, 'tmp'])
             )
             self._reserved_vars.append(var_unique_name)
-            seed_var = self._block.create_var(
+            seed_var = self.block.create_var(
                 name=var_unique_name,
                 dtype='int32',
                 type=core.VarDesc.VarType.LOD_TENSOR,
@@ -139,13 +157,14 @@ class RecomputeState(ProgramStats):
                 else int(cur_op.attr("seed"))
             )
             # TODO add dependency for seed op to ensure it be issued just before recompute.
-            seed_op = self._block._insert_op_without_sync(
+            seed_op = self.block._insert_op_without_sync(
                 index=cur_op.idx,
                 type="seed",
                 inputs={},
                 outputs={"Out": seed_var},
                 attrs={"seed": seed, "force_cpu": True},
             )
+            seed_op._set_attr('op_namescope', cur_op.attr('op_namescope'))
             # set new seed op's dist_attr
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
                 seed_op, ref_process_mesh, ref_dims_mapping, dist_context
@@ -161,25 +180,7 @@ class RecomputeState(ProgramStats):
             )
             op_idx += 2
 
-        self._block._sync_with_cpp()
-
-    def get_recompute_segments(self, no_recompute_segments=[]):
-        segments = []
-        for segment_idx in self.seg_op_deps.values():
-            if len(segment_idx) == 1:
-                continue
-            segments.append([segment_idx[0], segment_idx[-1] + 1])
-            self._checkpoints.extend(self.ops[segment_idx[-1]].output_arg_names)
-
-        for i in reversed(sorted(no_recompute_segments)):
-            assert i < len(
-                segments
-            ), "the no_recompute_segments idx [{}] should be lower the number of segment [{}]".format(
-                i, len(segments)
-            )
-            segments.pop(i)
-
-        return segments
+        self.block._sync_with_cpp()
 
 
 def _find_op_index(block, cur_op):
