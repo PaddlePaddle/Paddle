@@ -22,6 +22,7 @@ from inference_pass_test import InferencePassTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.static.nn as nn
 from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
@@ -35,7 +36,7 @@ class TensorRTSubgraphPassElementwiseBroadcastTest(InferencePassTest):
                 name="data2", shape=[-1, 3, 64, 1], dtype="float32"
             )
             eltwise_out = self.append_eltwise(data1, data2)
-            out = fluid.layers.batch_norm(eltwise_out, is_test=True)
+            out = nn.batch_norm(eltwise_out, is_test=True)
         self.feeds = {
             "data1": np.random.random([1, 3, 64, 64]).astype("float32"),
             "data2": np.random.random([1, 3, 64, 1]).astype("float32"),

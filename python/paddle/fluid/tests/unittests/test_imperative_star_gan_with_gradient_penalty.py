@@ -185,10 +185,10 @@ class Deconv2DLayer(fluid.dygraph.Layer):
     ):
         super().__init__()
 
-        self._deconv = fluid.dygraph.Conv2DTranspose(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
+        self._deconv = paddle.nn.Conv2DTranspose(
+            num_channels,
+            num_filters,
+            filter_size,
             stride=stride,
             padding=padding,
             bias_attr=None if use_bias else False,
