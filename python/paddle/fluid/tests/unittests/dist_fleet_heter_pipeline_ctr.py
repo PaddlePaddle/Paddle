@@ -125,7 +125,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
 
             cost = fluid.layers.cross_entropy(input=predict, label=label)
             avg_cost = paddle.mean(x=cost)
-            fluid.layers.Print(avg_cost, message="avg_cost")
+            paddle.static.Print(avg_cost, message="avg_cost")
 
         self.feeds = datas
         self.train_file_path = ["fake1", "fake2"]
