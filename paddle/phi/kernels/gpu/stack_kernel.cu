@@ -59,7 +59,6 @@ void StackKernel(const Context& dev_ctx,
                  int axis,
                  DenseTensor* out) {
   if (axis < 0) axis += (x[0]->dims().size() + 1);
-
   int n = static_cast<int>(x.size());
   T* y_data = dev_ctx.template Alloc<T>(out);
   
@@ -72,6 +71,7 @@ void StackKernel(const Context& dev_ctx,
   int64_t out_col = x_col * n;
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig2D(dev_ctx, out_col, x_row);
+
 
 #define IMPL_STACK_CUDA_KERNEL(index_t, input_data)       \
     StackCUDAKernel<T, index_t, decltype(input_data)><<<  \
@@ -115,7 +115,6 @@ void StackKernel(const Context& dev_ctx,
     }
   }
 #undef IMPL_STACK_CUDA_KERNEL
-
 }
 }  // namespace phi
 
