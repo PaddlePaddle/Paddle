@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
+from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from test_imperative_base import new_program_scope
 
 LOADED_VAR_SUFFIX = ".load_0"
 
@@ -33,7 +33,7 @@ def convolutional_neural_network(img):
         pool_stride=2,
         act="relu",
     )
-    conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
+    conv_pool_1 = paddle.static.nn.batch_norm(conv_pool_1)
     conv_pool_2 = fluid.nets.simple_img_conv_pool(
         input=conv_pool_1,
         filter_size=5,

@@ -13,23 +13,21 @@
 # limitations under the License.
 
 import unittest
+
 import numpy
-
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle.fluid.core as core
-from paddle.fluid.framework import program_guard, Program
-
-from paddle.fluid.executor import Executor
-from paddle.fluid import framework
-
-from paddle.fluid.layers.rnn import LSTMCell, GRUCell, RNNCell
-from paddle.fluid.layers import rnn as dynamic_rnn
-from paddle.fluid import contrib
-from paddle.fluid.contrib.layers import basic_lstm
-import paddle.fluid.layers.utils as utils
-
 import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+import paddle.fluid.layers.utils as utils
+from paddle.fluid import contrib, framework
+from paddle.fluid.contrib.layers import basic_lstm
+from paddle.fluid.executor import Executor
+from paddle.fluid.framework import Program, program_guard
+from paddle.fluid.layers import rnn as dynamic_rnn
+from paddle.fluid.layers.rnn import GRUCell, LSTMCell, RNNCell
 
 
 class TestLSTMCellError(unittest.TestCase):
@@ -335,7 +333,7 @@ class TestRnnError(unittest.TestCase):
                 name="sequence_length", shape=[None], dtype='int64'
             )
 
-            inputs_dynamic_rnn = layers.transpose(
+            inputs_dynamic_rnn = paddle.transpose(
                 inputs_basic_lstm, perm=[1, 0, 2]
             )
             cell = LSTMCell(hidden_size, name="LSTMCell_for_rnn")
@@ -428,7 +426,7 @@ class TestRnn(unittest.TestCase):
             name="sequence_length", shape=[None], dtype='int64'
         )
 
-        inputs_dynamic_rnn = layers.transpose(inputs_basic_lstm, perm=[1, 0, 2])
+        inputs_dynamic_rnn = paddle.transpose(inputs_basic_lstm, perm=[1, 0, 2])
         cell = LSTMCell(self.hidden_size, name="LSTMCell_for_rnn")
         output, final_state = dynamic_rnn(
             cell=cell,
@@ -436,7 +434,7 @@ class TestRnn(unittest.TestCase):
             sequence_length=sequence_length,
             is_reverse=False,
         )
-        output_new = layers.transpose(output, perm=[1, 0, 2])
+        output_new = paddle.transpose(output, perm=[1, 0, 2])
 
         rnn_out, last_hidden, last_cell = basic_lstm(
             inputs_basic_lstm,
@@ -633,17 +631,17 @@ def def_seq2seq_model(
     )
 
     # loss
-    loss = layers.softmax_with_cross_entropy(
+    loss = paddle.nn.functional.softmax_with_cross_entropy(
         logits=logits, label=label, soft_label=False
     )
     loss = layers.unsqueeze(loss, axes=[2])
-    max_tar_seq_len = layers.shape(target)[1]
+    max_tar_seq_len = paddle.shape(target)[1]
     tar_mask = layers.sequence_mask(
         target_length, maxlen=max_tar_seq_len, dtype="float32"
     )
     loss = loss * tar_mask
-    loss = layers.reduce_mean(loss, dim=[0])
-    loss = layers.reduce_sum(loss)
+    loss = paddle.mean(loss, axis=[0])
+    loss = paddle.sum(loss)
 
     # optimizer
     optimizer = fluid.optimizer.Adam(0.001)

@@ -17,7 +17,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = phi::DenseTensor;
 
 class ResNetBasicBlockOp : public framework::OperatorWithKernel {
  public:

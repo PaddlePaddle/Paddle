@@ -14,9 +14,9 @@
 
 #include "paddle/phi/kernels/take_along_axis_kernel.h"
 
-#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/operators/gather_scatter_kernel.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -36,12 +36,11 @@ void TakeAlongAxisKernel(const Context& dev_ctx,
   out->Resize(index.dims());
   dev_ctx.template Alloc<T>(out);
 
-  const auto& index_type =
-      paddle::framework::TransToProtoVarType(index.dtype());
-  if (index_type == paddle::framework::proto::VarType::INT32) {
+  const auto& index_type = index.dtype();
+  if (index_type == DataType::INT32) {
     paddle::operators::cpu_gather_kernel<T, int32_t>(
         x, axis, index, *out, dev_ctx);
-  } else if (index_type == paddle::framework::proto::VarType::INT64) {
+  } else if (index_type == DataType::INT64) {
     paddle::operators::cpu_gather_kernel<T, int64_t>(
         x, axis, index, *out, dev_ctx);
   }

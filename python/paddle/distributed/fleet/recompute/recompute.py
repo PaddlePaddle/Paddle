@@ -12,20 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
+import contextlib
 import weakref
-from paddle.framework import core, in_dygraph_mode
+
+import paddle
+from paddle import framework
 from paddle.autograd import PyLayer
 from paddle.autograd.py_layer import LegacyPyLayer
-
-import contextlib
-from paddle import framework
-
-from ..utils.log_util import logger
-
 from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
     get_rng_state_tracker,
 )
+from paddle.framework import core, in_dygraph_mode
+
+from ..utils.log_util import logger
 
 __all__ = []
 

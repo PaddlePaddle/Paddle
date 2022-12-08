@@ -13,16 +13,17 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from test_imperative_base import new_program_scope
+from utils import DyGraphProgramDescTracerTestHelper
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
+from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.dygraph.nn import Pool2D, Linear
-from test_imperative_base import new_program_scope
-from utils import DyGraphProgramDescTracerTestHelper
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+from paddle.nn import Linear
 
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
@@ -58,14 +59,10 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
             weight_attr=None,
             bias_attr=None,
         )
-
-        self._pool2d = Pool2D(
-            pool_size=pool_size,
-            pool_type=pool_type,
-            pool_stride=pool_stride,
-            pool_padding=pool_padding,
-            global_pooling=global_pooling,
-            use_cudnn=use_cudnn,
+        self._pool2d = paddle.nn.MaxPool2D(
+            kernel_size=pool_size,
+            stride=pool_stride,
+            padding=pool_padding,
         )
 
     def forward(self, inputs):
@@ -92,19 +89,17 @@ class MNIST(fluid.dygraph.Layer):
         self._fc = Linear(
             self.pool_2_shape,
             10,
-            param_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.NormalInitializer(
-                    loc=0.0, scale=scale
-                )
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Normal(mean=0.0, std=scale)
             ),
-            act="softmax",
         )
 
     def forward(self, inputs):
         x = self._simple_img_conv_pool_1(inputs)
         x = self._simple_img_conv_pool_2(x)
-        x = fluid.layers.reshape(x, shape=[-1, self.pool_2_shape])
+        x = paddle.reshape(x, shape=[-1, self.pool_2_shape])
         x = self._fc(x)
+        x = paddle.nn.functional.softmax(x)
         return x
 
 
@@ -158,19 +153,7 @@ class TestImperativeMnist(unittest.TestCase):
                     dy_x_data = img.numpy()
                     label = data[1]
                     label.stop_gradient = True
-
-                    if batch_id % 10 == 0 and _in_legacy_dygraph():
-                        cost, traced_layer = paddle.jit.TracedLayer.trace(
-                            mnist, inputs=img
-                        )
-                        if program is not None:
-                            self.assertTrue(program, traced_layer.program)
-                        program = traced_layer.program
-                        traced_layer.save_inference_model(
-                            './infer_imperative_mnist'
-                        )
-                    else:
-                        cost = mnist(img)
+                    cost = mnist(img)
 
                     if traced_layer is not None:
                         cost_static = traced_layer([img])

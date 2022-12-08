@@ -14,6 +14,7 @@
 
 import copy
 import numpy as np
+import paddle
 
 from .framework import (
     Variable,
@@ -114,7 +115,7 @@ class LayerHelperBase:
             )
 
     def _create_weight_normalize(self, attr, shape, dtype):
-        from .layers import elementwise_mul, elementwise_div, reshape
+        from .layers import elementwise_mul
 
         # Remove these ops when LayerHelper and layers support indicating
         # program and block.
@@ -265,7 +266,7 @@ class LayerHelperBase:
             norm = __norm_except_dim(
                 v, dim=dim, block=self.main_program.current_block()
             )
-            scale = elementwise_div(
+            scale = paddle.divide(
                 x=g, y=norm
             )  # The shapes of g and norm are the same.
             # Currently, elementwise_mul only support broadcast when the shape
@@ -275,7 +276,7 @@ class LayerHelperBase:
                 x=v,
                 y=scale
                 if dim is None
-                else reshape(x=scale, shape=[v.shape[dim]]),
+                else paddle.reshape(x=scale, shape=[v.shape[dim]]),
                 axis=-1 if dim is None else dim,
             )
             # To serialize the original parameter for inference, maybe a

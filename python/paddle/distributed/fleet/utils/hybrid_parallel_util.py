@@ -12,15 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import framework
 import paddle
+from paddle import framework
+
+# (TODO: GhostScreaming) It will be removed later.
 from paddle.fluid import core
-from paddle.fluid.dygraph.parallel import (
+from paddle.framework import (
+    _in_legacy_dygraph,
     _split_tensors,
-    sync_params_buffers,
     build_groups,
+    in_dygraph_mode,
+    sync_params_buffers,
 )
-from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
+
 from .log_util import logger
 
 __all__ = []

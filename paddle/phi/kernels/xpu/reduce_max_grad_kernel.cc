@@ -31,6 +31,7 @@ void ReduceMaxGradKernel(const Context& dev_ctx,
                          bool keep_dim,
                          bool reduce_all,
                          DenseTensor* x_grad) {
+  reduce_all = recompute_reduce_all(x, dims_arr, reduce_all);
   auto dims = dims_arr.GetData();
 
   dev_ctx.template Alloc<T>(x_grad);

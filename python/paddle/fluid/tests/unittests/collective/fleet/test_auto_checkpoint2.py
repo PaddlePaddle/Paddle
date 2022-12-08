@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
 import os
+import unittest
 
-from paddle.fluid.tests.unittests.auto_checkpoint_utils import get_logger
 from test_auto_checkpoint import AutoCheckPointACLBase
+
+import paddle
+from paddle.fluid.tests.unittests.auto_checkpoint_utils import get_logger
 
 paddle.enable_static()
 logger = get_logger()

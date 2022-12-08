@@ -16,11 +16,11 @@ import paddle
 
 paddle.framework.set_default_dtype("float64")
 
-import numpy as np
 import unittest
 
-from rnn_numpy import SimpleRNNCell, LSTMCell, GRUCell
+import numpy as np
 from convert import convert_params_for_cell
+from rnn_numpy import GRUCell, LSTMCell, SimpleRNNCell
 
 
 class TestSimpleRNNCell(unittest.TestCase):

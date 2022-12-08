@@ -16,12 +16,13 @@ import os
 
 os.environ['FLAGS_enable_eager_mode'] = '1'
 
+import random
 import unittest
+
 import numpy as np
 
 import paddle
 from paddle.distributed.fleet.utils import recompute
-import random
 
 
 class Model(paddle.nn.Layer):

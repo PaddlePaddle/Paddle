@@ -355,8 +355,8 @@ def _set_current_stream(stream):
 @signature_safe_contextmanager
 def stream_guard(stream):
     '''
-    **Notes**:
-        **This API only supports dygraph mode currently.**
+    Notes:
+        This API only supports dynamic graph mode currently.
 
     A context manager that specifies the current stream context by the given stream.
 

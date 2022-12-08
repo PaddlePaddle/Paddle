@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-from paddle import fluid, nn
-import paddle.fluid.dygraph as dg
-import paddle.nn.functional as F
-import paddle.fluid.initializer as I
-import paddle
-from paddle.fluid.framework import _test_eager_guard
 import unittest
+
+import numpy as np
+
+import paddle
+import paddle.fluid.dygraph as dg
+import paddle.fluid.initializer as I
+import paddle.nn.functional as F
+from paddle import fluid, nn
+from paddle.fluid.framework import _test_eager_guard
 
 
 class Conv3DTestCase(unittest.TestCase):
@@ -101,7 +103,7 @@ class Conv3DTestCase(unittest.TestCase):
                     bias_attr = False
                 else:
                     bias_attr = I.NumpyArrayInitializer(self.bias)
-                y_var = fluid.layers.conv3d(
+                y_var = paddle.static.nn.conv3d(
                     x_var,
                     self.num_filters,
                     self.filter_size,

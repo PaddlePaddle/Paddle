@@ -22,9 +22,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/attn_gemm.h"
 #include "paddle/fluid/operators/fused/fmha_ref.h"
 #include "paddle/fluid/operators/fused/fused_dropout_helper.h"
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -37,8 +37,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-
-using Tensor = phi::DenseTensor;
 
 template <typename T>
 static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
@@ -528,7 +526,7 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
     int input_size = dim_embed;
 
     bool add_residual = ctx.Attr<bool>("add_residual");
-    Tensor d_residual;
+    phi::DenseTensor d_residual;
     T *d_residual_data = nullptr;
     if (add_residual) {
       d_residual.Resize(input_x_dims);
@@ -728,8 +726,8 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
 
     if (add_residual) {
       // gradient accumulation
-      std::vector<const Tensor *> ins = {&d_residual, d_x};
-      std::vector<Tensor *> outs = {d_x};
+      std::vector<const phi::DenseTensor *> ins = {&d_residual, d_x};
+      std::vector<phi::DenseTensor *> outs = {d_x};
       phi::funcs::ElementwiseKernel<T>(
           ctx.cuda_device_context(), ins, &outs, phi::funcs::AddFunctor<T>());
     }

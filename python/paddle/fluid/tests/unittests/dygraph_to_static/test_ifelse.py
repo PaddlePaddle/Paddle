@@ -12,17 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import unittest
 
-import paddle
-from paddle.fluid.dygraph.jit import declarative
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
-    ProgramTranslator,
-)
-from paddle.fluid.dygraph.dygraph_to_static.utils import Dygraph2StaticException
-import paddle.fluid.core as core
-
+import numpy as np
 from ifelse_simple_func import (
     NetWithControlFlowIf,
     add_fn,
@@ -48,6 +40,12 @@ from ifelse_simple_func import (
     nested_if_else_2,
     nested_if_else_3,
 )
+
+import paddle
+import paddle.fluid.core as core
+from paddle.jit.api import declarative
+from paddle.jit.dy2static.program_translator import ProgramTranslator
+from paddle.jit.dy2static.utils import Dygraph2StaticException
 
 np.random.seed(1)
 
@@ -163,7 +161,7 @@ def dyfunc_ifExp_with_while(x):
 
     i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
     ten = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
-    i, ten, y = fluid.layers.while_loop(cond, body, [i, ten, y])
+    i, ten, y = paddle.static.nn.while_loop(cond, body, [i, ten, y])
     return y[0]
 
 
@@ -310,7 +308,7 @@ class NetWithExternalFunc(fluid.dygraph.Layer):
 
 # Test to call function behind caller.
 def softmax(x):
-    return fluid.layers.softmax(x)
+    return paddle.nn.functional.softmax(x)
 
 
 class TestNetWithExternalFunc(TestDygraphIfElseNet):
