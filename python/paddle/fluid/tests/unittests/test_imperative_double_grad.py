@@ -766,9 +766,9 @@ class TestDoubleGradBasics(TestCase):
             )
 
 
-# case1: ddy is none, no boardcast,dims != 1
-class TestDygraphDoubleGradMatmulCase1(TestCase):
-    def test_matmul_double_grad(self):
+class TestDygraphDoubleGradMatmul(TestCase):
+    # case1: ddy is none, no broadcast,dims != 1
+    def test_matmul_double_grad_case1(self):
         input_numpy_x = np.random.random([3, 3]).astype('float32')
         input_numpy_y = np.random.random([3, 3]).astype('float32')
 
@@ -801,18 +801,24 @@ class TestDygraphDoubleGradMatmulCase1(TestCase):
                 return dx_double_grad, dy_double_grad, ddout
 
         def expected():
-            dx_double_grad_actual = np.zeros([3, 3], dtype="float32")
-            dy_double_grad = np.matmul(
+            dx_double_grad_expected = np.zeros([3, 3], dtype="float32")
+            dy_double_grad_expected = np.matmul(
                 np.ones([3, 3], dtype="float32"),
                 np.ones([3, 3], dtype="float32"),
             )
-            ddout_actual = np.matmul(
+            ddout_expected = np.matmul(
                 np.ones([3, 3], dtype="float32"), input_numpy_y
             )
-            return dx_double_grad_actual, dy_double_grad, ddout_actual
+            return (
+                dx_double_grad_expected,
+                dy_double_grad_expected,
+                ddout_expected,
+            )
 
         expected_results = expected()
-        places = ["cpu", "gpu:0"]
+        places = ["cpu"]
+        if paddle.is_compiled_with_cuda():
+            places.append("gpu")
         for place in places:
             paddle.device.set_device(place)
             actual_results = actual()
@@ -823,10 +829,8 @@ class TestDygraphDoubleGradMatmulCase1(TestCase):
                     expected_result, actual_result, rtol=1e-6
                 )
 
-
-# case2: ddx is none,no boardcast, dims != 1
-class TestDygraphDoubleGradMatmulCase2(TestCase):
-    def test_matmul_double_grad(self):
+    # case2: ddx is none,no broadcast, dims != 1
+    def test_matmul_double_grad_case2(self):
         input_numpy_x = np.random.random([3, 3]).astype('float32')
         input_numpy_y = np.random.random([3, 3]).astype('float32')
 
@@ -859,18 +863,24 @@ class TestDygraphDoubleGradMatmulCase2(TestCase):
                 return dx_double_grad, dy_double_grad, ddout
 
         def expected():
-            dx_double_grad_actual = np.matmul(
+            dx_double_grad_expected = np.matmul(
                 np.ones([3, 3], dtype="float32"),
                 np.ones([3, 3], dtype="float32"),
             )
-            dy_double_grad = np.zeros([3, 3], dtype="float32")
-            ddout_actual = np.matmul(
+            dy_double_grad_expected = np.zeros([3, 3], dtype="float32")
+            ddout_expected = np.matmul(
                 input_numpy_x, np.ones([3, 3], dtype="float32")
             )
-            return dx_double_grad_actual, dy_double_grad, ddout_actual
+            return (
+                dx_double_grad_expected,
+                dy_double_grad_expected,
+                ddout_expected,
+            )
 
         expected_results = expected()
-        places = ["cpu", "gpu:0"]
+        places = ["cpu"]
+        if paddle.is_compiled_with_cuda():
+            places.append("gpu")
         for place in places:
             paddle.device.set_device(place)
             actual_results = actual()
@@ -881,10 +891,8 @@ class TestDygraphDoubleGradMatmulCase2(TestCase):
                     expected_result, actual_result, rtol=1e-6
                 )
 
-
-# case3: ddx is none, dims = 1
-class TestDygraphDoubleGradMatmulCase3(TestCase):
-    def test_matmul_double_grad(self):
+    # case3: ddx is none, dims = 1
+    def test_matmul_double_grad_case3(self):
         input_numpy_x = np.random.random([3]).astype('float32')
         input_numpy_y = np.random.random([3]).astype('float32')
 
@@ -917,15 +925,21 @@ class TestDygraphDoubleGradMatmulCase3(TestCase):
                 return dx_double_grad, dy_double_grad, ddout
 
         def expected():
-            dx_double_grad_actual = np.ones([3], dtype="float32")
-            dy_double_grad = np.zeros([3], dtype="float32")
-            ddout_actual = np.matmul(
+            dx_double_grad_expected = np.ones([3], dtype="float32")
+            dy_double_grad_expected = np.zeros([3], dtype="float32")
+            ddout_expected = np.matmul(
                 input_numpy_x, np.ones([3], dtype="float32")
             )
-            return dx_double_grad_actual, dy_double_grad, ddout_actual
+            return (
+                dx_double_grad_expected,
+                dy_double_grad_expected,
+                ddout_expected,
+            )
 
         expected_results = expected()
-        places = ["cpu", "gpu:0"]
+        places = ["cpu"]
+        if paddle.is_compiled_with_cuda():
+            places.append("gpu")
         for place in places:
             paddle.device.set_device(place)
             actual_results = actual()
@@ -936,10 +950,8 @@ class TestDygraphDoubleGradMatmulCase3(TestCase):
                     expected_result, actual_result, rtol=1e-6
                 )
 
-
-# case4: ddy is none, dims = 1
-class TestDygraphDoubleGradMatmulCase4(TestCase):
-    def test_matmul_double_grad(self):
+    # case4: ddy is none, dims = 1
+    def test_matmul_double_grad_case4(self):
         input_numpy_x = np.random.random([3]).astype('float32')
         input_numpy_y = np.random.random([3]).astype('float32')
 
@@ -972,15 +984,21 @@ class TestDygraphDoubleGradMatmulCase4(TestCase):
                 return dx_double_grad, dy_double_grad, ddout
 
         def expected():
-            dx_double_grad_actual = np.zeros([3], dtype="float32")
-            dy_double_grad = np.ones([3], dtype="float32")
-            ddout_actual = np.matmul(
+            dx_double_grad_expected = np.zeros([3], dtype="float32")
+            dy_double_grad_expected = np.ones([3], dtype="float32")
+            ddout_expected = np.matmul(
                 input_numpy_y, np.ones([3], dtype="float32")
             )
-            return dx_double_grad_actual, dy_double_grad, ddout_actual
+            return (
+                dx_double_grad_expected,
+                dy_double_grad_expected,
+                ddout_expected,
+            )
 
         expected_results = expected()
-        places = ["cpu", "gpu:0"]
+        places = ["cpu"]
+        if paddle.is_compiled_with_cuda():
+            places.append("gpu")
         for place in places:
             paddle.device.set_device(place)
             actual_results = actual()
@@ -991,10 +1009,8 @@ class TestDygraphDoubleGradMatmulCase4(TestCase):
                     expected_result, actual_result, rtol=1e-6
                 )
 
-
-# case5: ddx is none, boardcast, dims != 1
-class TestDygraphDoubleGradMatmulCase5(TestCase):
-    def test_matmul_double_grad(self):
+    # case5: ddx is none, broadcast, dims != 1
+    def test_matmul_double_grad_case5(self):
         input_numpy_x = np.random.random([2, 1]).astype('float32')
         input_numpy_y = np.random.random([1]).astype('float32')
 
@@ -1027,15 +1043,21 @@ class TestDygraphDoubleGradMatmulCase5(TestCase):
                 return dx_double_grad, dy_double_grad, ddout
 
         def expected():
-            dx_double_grad_actual = np.ones([2, 1], dtype="float32")
-            dy_double_grad = np.zeros([1], dtype="float32")
-            ddout_actual = np.matmul(
+            dx_double_grad_expected = np.ones([2, 1], dtype="float32")
+            dy_double_grad_expected = np.zeros([1], dtype="float32")
+            ddout_expected = np.matmul(
                 input_numpy_x, np.ones([1], dtype="float32")
             )
-            return dx_double_grad_actual, dy_double_grad, ddout_actual
+            return (
+                dx_double_grad_expected,
+                dy_double_grad_expected,
+                ddout_expected,
+            )
 
         expected_results = expected()
-        places = ["cpu", "gpu:0"]
+        places = ["cpu"]
+        if paddle.is_compiled_with_cuda():
+            places.append("gpu")
         for place in places:
             paddle.device.set_device(place)
             actual_results = actual()
@@ -1046,10 +1068,8 @@ class TestDygraphDoubleGradMatmulCase5(TestCase):
                     expected_result, actual_result, rtol=1e-6
                 )
 
-
-# case6: ddy is none, boardcast, dims != 1
-class TestDygraphDoubleGradMatmulCase6(TestCase):
-    def test_matmul_double_grad(self):
+    # case6: ddy is none, broadcast, dims != 1
+    def test_matmul_double_grad_case6(self):
         input_numpy_x = np.random.random([2, 1]).astype('float32')
         input_numpy_y = np.random.random([1]).astype('float32')
 
@@ -1082,13 +1102,19 @@ class TestDygraphDoubleGradMatmulCase6(TestCase):
                 return dx_double_grad, dy_double_grad, ddout
 
         def expected():
-            dx_double_grad_actual = np.zeros([2, 1], dtype="float32")
-            dy_double_grad = np.ones([1], dtype="float32") * 2
-            ddout_actual = np.ones([2], dtype="float32") * input_numpy_y[0]
-            return dx_double_grad_actual, dy_double_grad, ddout_actual
+            dx_double_grad_expected = np.zeros([2, 1], dtype="float32")
+            dy_double_grad_expected = np.ones([1], dtype="float32") * 2
+            ddout_expected = np.ones([2], dtype="float32") * input_numpy_y[0]
+            return (
+                dx_double_grad_expected,
+                dy_double_grad_expected,
+                ddout_expected,
+            )
 
         expected_results = expected()
-        places = ["cpu", "gpu:0"]
+        places = ["cpu"]
+        if paddle.is_compiled_with_cuda():
+            places.append("gpu")
         for place in places:
             paddle.device.set_device(place)
             actual_results = actual()
@@ -1099,10 +1125,8 @@ class TestDygraphDoubleGradMatmulCase6(TestCase):
                     expected_result, actual_result, rtol=1e-6
                 )
 
-
-# case7: ddx is none, dims = 1, complex dtype
-class TestDygraphDoubleGradMatmulCase7(TestCase):
-    def test_matmul_double_grad(self):
+    # case7: ddx is none, dims = 1, complex dtype
+    def test_matmul_double_grad_case7(self):
         input_numpy_x = np.random.random([3]).astype(
             'float32'
         ) + 1j * np.random.random([3]).astype('float32')
@@ -1140,19 +1164,25 @@ class TestDygraphDoubleGradMatmulCase7(TestCase):
                 return dx_double_grad, dy_double_grad, ddout
 
         def expected():
-            dx_double_grad_actual = np.zeros(
+            dx_double_grad_expected = np.zeros(
                 [3], dtype="float32"
             ) + 0j * np.zeros([3], dtype="float32")
-            dy_double_grad = np.ones([3], dtype="float32") + 0j * np.ones(
+            dy_double_grad_expected = np.ones(
                 [3], dtype="float32"
-            )
-            ddout_actual = np.matmul(
+            ) + 0j * np.ones([3], dtype="float32")
+            ddout_expected = np.matmul(
                 input_numpy_y_conj, np.ones([3], dtype="float32")
             )
-            return dx_double_grad_actual, dy_double_grad, ddout_actual
+            return (
+                dx_double_grad_expected,
+                dy_double_grad_expected,
+                ddout_expected,
+            )
 
         expected_results = expected()
-        places = ["cpu", "gpu:0"]
+        places = ["cpu"]
+        if paddle.is_compiled_with_cuda():
+            places.append("gpu")
         for place in places:
             paddle.device.set_device(place)
             actual_results = actual()
@@ -1163,10 +1193,8 @@ class TestDygraphDoubleGradMatmulCase7(TestCase):
                     expected_result, actual_result, rtol=1e-6
                 )
 
-
-# case8: ddy is none, dims = 1, complex dtype
-class TestDygraphDoubleGradMatmulCase8(TestCase):
-    def test_matmul_double_grad(self):
+    # case8: ddy is none, dims = 1, complex dtype
+    def test_matmul_double_grad_case8(self):
         input_numpy_x = np.random.random([3]).astype(
             'float32'
         ) + 1j * np.random.random([3]).astype('float32')
@@ -1204,15 +1232,21 @@ class TestDygraphDoubleGradMatmulCase8(TestCase):
                 return dx_double_grad, dy_double_grad, ddout
 
         def expected():
-            dx_double_grad_actual = np.ones([3], dtype="float32")
-            dy_double_grad = np.zeros([3], dtype="float32")
-            ddout_actual = np.matmul(
+            dx_double_grad_expected = np.ones([3], dtype="float32")
+            dy_double_grad_expected = np.zeros([3], dtype="float32")
+            ddout_expected = np.matmul(
                 input_numpy_x_conj, np.ones([3], dtype="float32")
             )
-            return dx_double_grad_actual, dy_double_grad, ddout_actual
+            return (
+                dx_double_grad_expected,
+                dy_double_grad_expected,
+                ddout_expected,
+            )
 
         expected_results = expected()
-        places = ["cpu", "gpu:0"]
+        places = ["cpu"]
+        if paddle.is_compiled_with_cuda():
+            places.append("gpu")
         for place in places:
             paddle.device.set_device(place)
             actual_results = actual()
