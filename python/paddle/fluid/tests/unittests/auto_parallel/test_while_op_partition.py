@@ -174,7 +174,7 @@ def get_program():
         cond = paddle.less_than(x=i, y=loop_len)
         auto.shard_tensor(cond, _g_process_mesh, [None])
 
-        while_op = fluid.layers.While(cond=cond)
+        while_op = paddle.static.nn.control_flow.While(cond=cond)
         with while_op.block():
 
             pre_input = fluid.layers.array_read(array=input_array, i=i)

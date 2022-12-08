@@ -1217,6 +1217,10 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetMKLDNNEnabledOpTypes(config_.mkldnn_enabled_op_types_);
   }
 
+  if (config_.use_cinn_compiler_) {
+    argument_.SetUseCinnCompiler(config_.use_cinn_compiler_);
+  }
+
 #ifdef PADDLE_WITH_MKLDNN
   if (config_.mkldnn_quantizer_enabled()) {
     LOG(INFO) << "Quantization is enabled";
@@ -1239,21 +1243,25 @@ void AnalysisPredictor::PrepareArgument() {
 #endif
 
   auto *pass_builder = config_.pass_builder();
+  // TODO(inference): Need to reconstruct the pass_builder, pass should be
+  // processed in a single
   if (model_precision_ != phi::DataType::FLOAT32) {
     LOG(INFO) << "Model is mixed precision type with " << model_precision_
               << ", we will use a new PassStrategy. Note that only the GPU "
                  "backend is supported for now.";
-    pass_builder->ClearPasses();
-    const auto &deleted_passes = pass_builder->GetAllDeletedPasses();
-    if (config_.tensorrt_engine_enabled()) {
-      for (const auto &pass : kTrtLowerPrecisionPasses) {
-        if (deleted_passes.count(pass)) continue;
-        pass_builder->AppendPass(pass);
-      }
-    } else if (config_.use_gpu()) {
-      for (const auto &pass : kGpuLowerPrecisionPasses) {
-        if (deleted_passes.count(pass)) continue;
-        pass_builder->AppendPass(pass);
+    if (!config_.use_cinn_compiler_) {
+      pass_builder->ClearPasses();
+      const auto &deleted_passes = pass_builder->GetAllDeletedPasses();
+      if (config_.tensorrt_engine_enabled()) {
+        for (const auto &pass : kTrtLowerPrecisionPasses) {
+          if (deleted_passes.count(pass)) continue;
+          pass_builder->AppendPass(pass);
+        }
+      } else if (config_.use_gpu()) {
+        for (const auto &pass : kGpuLowerPrecisionPasses) {
+          if (deleted_passes.count(pass)) continue;
+          pass_builder->AppendPass(pass);
+        }
       }
     }
   }
@@ -2291,6 +2299,8 @@ USE_TRT_CONVERTER(conv2d_transpose);
 USE_TRT_CONVERTER(leaky_relu);
 USE_TRT_CONVERTER(shuffle_channel);
 USE_TRT_CONVERTER(where);
+USE_TRT_CONVERTER(one_hot);
+USE_TRT_CONVERTER(one_hot_v2);
 USE_TRT_CONVERTER(swish);
 USE_TRT_CONVERTER(silu);
 USE_TRT_CONVERTER(group_norm);
