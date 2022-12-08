@@ -174,6 +174,7 @@ def create_reshape_bf16_test_classes(parent):
             super().setUp()
             self.dtype = np.uint16
             self.inputs = {"X": convert_float_to_uint16(self.x)}
+            self.attrs['use_mkldnn'] = True
 
         def calculate_grads(self):
             self.dout = self.outputs['Out']
