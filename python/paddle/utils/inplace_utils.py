@@ -13,8 +13,7 @@
 # limitations under the License.
 
 import warnings
-import paddle
-from paddle import _C_ops, _legacy_C_ops
+
 from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
 
