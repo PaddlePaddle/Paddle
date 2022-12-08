@@ -215,7 +215,7 @@ class TestRnn(unittest.TestCase):
             },
             fetch_list=[dynamic_output],
         )[0]
-        np.testing.assert_allclose(o1, o2, rtol=0.0001)
+        np.testing.assert_allclose(o1, o2, rtol=0.001)
 
 
 class TestRnnUtil(unittest.TestCase):
