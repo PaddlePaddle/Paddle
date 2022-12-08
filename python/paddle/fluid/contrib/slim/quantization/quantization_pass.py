@@ -2134,7 +2134,9 @@ class InsertQuantizeLinear:
         self._moving_rate = moving_rate
         self._scale_dict = scale_dict
 
-    def insert_quant_op(self, graph, var_node, var_name=None):
+    def insert_quant_op(
+        self, graph, var_node, var_name=None, scale_var_node=None
+    ):
         assert var_node.is_var(), '{} is not a var'.format(var_node.name())
         var_name = var_node.name() if not var_name else var_name
         quant_var_node = graph.create_var_node(
@@ -2143,40 +2145,43 @@ class InsertQuantizeLinear:
             shape=var_node.shape(),
             var_dtype=var_node.dtype(),
         )
-        data_type = (
-            'float64'
-            if var_node.dtype() == core.VarDesc.VarType.FP64
-            else 'float32'
-        )
-        scale_name = self._quantized_scale_name(var_name)
-        if self.channel_wise:
-            scale_var_shape = var_node.shape()[self.quant_axis]
-            scale_var_type = core.VarDesc.VarType.LOD_TENSOR
-            init_scale_value = (
-                np.ones(scale_var_shape, dtype=data_type) * _SCALE_DEFAULT_VALUE
+        if not scale_var_node:
+            data_type = (
+                'float64'
+                if var_node.dtype() == core.VarDesc.VarType.FP64
+                else 'float32'
             )
-        else:
-            scale_var_shape = 1
-            scale_var_type = var_node.type()
-            init_scale_value = np.array([_SCALE_DEFAULT_VALUE], dtype=data_type)
+            scale_name = self._quantized_scale_name(var_name)
+            if self.channel_wise:
+                scale_var_shape = var_node.shape()[self.quant_axis]
+                scale_var_type = core.VarDesc.VarType.LOD_TENSOR
+                init_scale_value = (
+                    np.ones(scale_var_shape, dtype=data_type)
+                    * _SCALE_DEFAULT_VALUE
+                )
+            else:
+                scale_var_shape = 1
+                scale_var_type = var_node.type()
+                init_scale_value = np.array(
+                    [_SCALE_DEFAULT_VALUE], dtype=data_type
+                )
 
-        if (
-            self._scale_dict is not None
-            and var_node.name() in self._scale_dict.keys()
-        ):
-            init_scale_value = np.array(
-                [self._scale_dict[var_node.name()]], dtype=data_type
+            if (
+                self._scale_dict is not None
+                and var_node.name() in self._scale_dict.keys()
+            ):
+                init_scale_value = np.array(
+                    [self._scale_dict[var_node.name()]], dtype=data_type
+                )
+            scale_var_node = graph.create_persistable_node(
+                name=scale_name,
+                var_type=scale_var_type,
+                shape=[scale_var_shape],
+                var_dtype=var_node.dtype(),
             )
-
-        scale_var_node = graph.create_persistable_node(
-            name=scale_name,
-            var_type=scale_var_type,
-            shape=[scale_var_shape],
-            var_dtype=var_node.dtype(),
-        )
-        _init_var_node(
-            scale_var_node, init_scale_value, self._scope, self._place
-        )
+            _init_var_node(
+                scale_var_node, init_scale_value, self._scope, self._place
+            )
 
         zero_point_node = None
         if zero_point_node is None:
@@ -2510,6 +2515,7 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
 
     def _transform_forward(self, graph, op):
         op.op()._set_attr("quantization_type", "qat_with_weight")
+        weight_scale_node = None
         inputs = op.inputs
         for var_node in inputs:
             if var_node.name() not in op.input_arg_names():
@@ -2595,7 +2601,10 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
                 )
 
                 self.dequantized_vars[name] = dequant_var_node
+                if is_weight:
+                    weight_scale_node = scale_var_node
             graph.update_input_link(var_node, dequant_var_node, op)
+        return weight_scale_node
 
     def _transform_backward(self, graph, op):
         for var_node in op.inputs:
@@ -2610,10 +2619,48 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
         for var_node in op.inputs:
             if var_node.name() not in op.input_arg_names():
                 continue
-            name = var_node.name()
             if var_node.name() in self.persistable_vars:
                 has_weight = True
         return has_weight
+
+    def _quant_conv1d(self, graph, op):
+        conv_weight_var_name = op.input("Filter")[0]
+        scale_var_node = None
+        # quant unsqueeze2
+        for _op in graph.all_op_nodes():
+            var_names = utils._get_op_output_var_names(_op)
+            if conv_weight_var_name in var_names and self._has_weight(_op):
+                scale_var_node = self._transform_forward(graph, _op)
+        # insert qdq before conv2d
+        for var_node in op.inputs:
+            quant_bits = self._weight_bits
+            quant_type = self._weight_quantize_type
+            quant_axis = -1
+            channel_wise = False
+            if quant_type == 'channel_wise_abs_max':  # Weight quantization
+                channel_wise = True
+                quant_axis = (
+                    1 if op.name() in utils._channelwise_quant_axis1_ops else 0
+                )
+            insert_quant_pass = InsertQuantizeLinear(
+                self._place,
+                self._scope,
+                quant_bits=quant_bits,
+                quant_axis=quant_axis,
+                channel_wise=channel_wise,
+                moving_rate=self._moving_rate,
+                is_test=self._is_test,
+            )
+            (quant_var_node, _,) = insert_quant_pass.insert_quant_op(
+                graph,
+                var_node,
+                var_name=var_node.name(),
+                scale_var_node=scale_var_node,
+            )
+            dequant_var_node = insert_quant_pass.insert_dequant_op(
+                graph, quant_var_node, scale_var_node
+            )
+            graph.update_input_link(var_node, dequant_var_node, op)
 
     def apply(self, graph):
         """
@@ -2664,6 +2711,12 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
                         op
                     ):
                         self._transform_forward(graph, op)
+                    # support conv1d quantization
+                    if (
+                        op.name() == "conv2d"
+                        and "unsqueeze2" in op.input("Filter")[0]
+                    ):
+                        self._quant_conv1d(graph, op)
                 t.update()
         # The loop for renaming the inputs of backward op.
         for op in ops:
