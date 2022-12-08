@@ -12,6 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <algorithm>
+#include <iostream>
+#include <iterator>
+
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
@@ -47,7 +51,7 @@ class EyeOpConverter : public OpConverter {
 
     // Set data type
     nvinfer1::DataType nv_type = nvinfer1::DataType::kFLOAT;
-    switch (type) {
+    switch (dtype) {
       case phi::DataType::FLOAT32:
         nv_type = nvinfer1::DataType::kFLOAT;
         break;
@@ -61,7 +65,7 @@ class EyeOpConverter : public OpConverter {
         paddle::platform::errors::InvalidArgument(
             "Paddle-TRT loads weighths failed, found not supported data type "
             "%s.",
-            type);
+            dtype);
         break;
     }
 
@@ -72,6 +76,7 @@ class EyeOpConverter : public OpConverter {
     input_shape.d[1] = num_columns;
     if (-1 == num_columns) {
       input_shape.d[1] = num_rows;
+      num_columns = num_rows;
     }
 
     std::vector<dtype> constant_arr(num_rows * num_columns, 0);
