@@ -29,6 +29,8 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.layers import rnn as dynamic_rnn
 
+paddle.enable_static()
+
 
 class TestRnnError(unittest.TestCase):
     def test_errors(self):
