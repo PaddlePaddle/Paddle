@@ -38,8 +38,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
                       const int ring_id,
@@ -528,7 +526,7 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
     int input_size = dim_embed;
 
     bool add_residual = ctx.Attr<bool>("add_residual");
-    Tensor d_residual;
+    phi::DenseTensor d_residual;
     T *d_residual_data = nullptr;
     if (add_residual) {
       d_residual.Resize(input_x_dims);
@@ -728,8 +726,8 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
 
     if (add_residual) {
       // gradient accumulation
-      std::vector<const Tensor *> ins = {&d_residual, d_x};
-      std::vector<Tensor *> outs = {d_x};
+      std::vector<const phi::DenseTensor *> ins = {&d_residual, d_x};
+      std::vector<phi::DenseTensor *> outs = {d_x};
       phi::funcs::ElementwiseKernel<T>(
           ctx.cuda_device_context(), ins, &outs, phi::funcs::AddFunctor<T>());
     }

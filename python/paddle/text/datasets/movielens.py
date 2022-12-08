@@ -134,7 +134,7 @@ class Movielens(Dataset):
 
                 model = SimpleNet()
                 category, title, rating = model(category, title, rating)
-                print(category.numpy().shape, title.numpy().shape, rating.numpy().shape)
+                print(category.shape, title.shape, rating.shape)
 
     """
 
