@@ -24,6 +24,7 @@ if [ -z ${BRANCH} ]; then
     BRANCH="develop"
 fi
 
+
 function print_usage() {
     echo -e "\n${RED}Usage${NONE}:
     ${BOLD}${SCRIPT_NAME}${NONE} [OPTION]"
@@ -3467,20 +3468,7 @@ function run_setup(){
     SYSTEM=`uname -s`
     if [ "$SYSTEM" == "Darwin" ]; then
         echo "Using python abi: $1"
-        if [ "$1" == "cp36-cp36m" ] || [ "$1" == "" ]; then
-            if [ -d "/Library/Frameworks/Python.framework/Versions/3.6" ]; then
-                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.6/lib/
-                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.6/lib/
-                export PATH=/Library/Frameworks/Python.framework/Versions/3.6/bin/:${PATH}
-                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
-                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.6/bin/python3
-                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.6/include/python3.6m/
-                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.6/lib/libpython3.6m.dylib
-                pip3.6 install --user -r ${PADDLE_ROOT}/python/requirements.txt
-            else
-                exit 1
-            fi
-        elif [ "$1" == "cp37-cp37m" ]; then
+        if [ "$1" == "cp37-cp37m" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.7" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.7/lib/

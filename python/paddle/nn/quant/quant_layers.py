@@ -628,10 +628,8 @@ class QuantizedConv2DTranspose(Layer):
           conv_quantized = QuantizedConv2DTranspose(conv)
           y_quantized = conv_quantized(x_var)
           y_var = conv(x_var)
-          y_quantized_np = y_quantized.numpy()
-          y_np = y_var.numpy()
-          print(y_np.shape, y_quantized_np.shape)
-          # (2, 6, 10, 10), (2, 6, 10, 10)
+          print(y_var.shape, y_quantized.shape)
+          # [2, 6, 10, 10], [2, 6, 10, 10]
 
     """
 
