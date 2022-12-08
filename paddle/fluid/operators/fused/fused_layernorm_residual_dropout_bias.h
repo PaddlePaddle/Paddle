@@ -109,7 +109,8 @@ template <typename T,
           typename MaskType,
           int VecSize,
           typename U,
-          bool ScaleBiasWithSameTypeX = false>
+          bool ScaleBiasWithSameTypeX = false,
+          bool HasDropout = true>
 __global__ void FusedLayernormResidualDropoutBias(
     const size_t rows,
     const size_t cols,
@@ -133,7 +134,9 @@ __global__ void FusedLayernormResidualDropoutBias(
   int row_id = blockIdx.x;
   int idx = row_id * cols + col_id;
   curandStatePhilox4_32_10_t state;
-  curand_init(seed, idx, increment, &state);
+  if (HasDropout) {
+    curand_init(seed, idx, increment, &state);
+  }
 
   T factor = GetFactor<T>(dropout_prob, is_upscale_in_train, is_test);
 
@@ -151,21 +154,24 @@ __global__ void FusedLayernormResidualDropoutBias(
                                       VecSize,
                                       true,
                                       false,
-                                      phi::funcs::ReluFunctor<T>>(row_id,
-                                                                  i,
-                                                                  cols,
-                                                                  &state,
-                                                                  dropout_prob,
-                                                                  factor,
-                                                                  src,
-                                                                  residual,
-                                                                  bias,
-                                                                  dst,
-                                                                  mask,
-                                                                  is_test,
-                                                                  &mean_val,
-                                                                  &var_val,
-                                                                  relu);
+                                      phi::funcs::ReluFunctor<T>,
+                                      T,
+                                      T,
+                                      HasDropout>(row_id,
+                                                  i,
+                                                  cols,
+                                                  &state,
+                                                  dropout_prob,
+                                                  factor,
+                                                  src,
+                                                  residual,
+                                                  bias,
+                                                  dst,
+                                                  mask,
+                                                  is_test,
+                                                  &mean_val,
+                                                  &var_val,
+                                                  relu);
   }
 
   mean_val = BlockReduceSum<U>(mean_val, shared_mean);

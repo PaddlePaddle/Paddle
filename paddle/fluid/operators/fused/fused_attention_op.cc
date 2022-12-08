@@ -547,8 +547,10 @@ class FusedAttentionGradOp : public framework::OperatorWithKernel {
                       ctx->GetInputDim("QKOut"));
     ctx->SetOutputDim(framework::GradVarName("SoftmaxOut"),
                       ctx->GetInputDim("SoftmaxOut"));
-    ctx->SetOutputDim(framework::GradVarName("AttnDropoutOut"),
-                      ctx->GetInputDim("AttnDropoutOut"));
+    if (ctx->HasOutput(framework::GradVarName("AttnDropoutOut"))) {
+      ctx->SetOutputDim(framework::GradVarName("AttnDropoutOut"),
+                        ctx->GetInputDim("AttnDropoutOut"));
+    }
 
     if (ctx->HasOutput(framework::GradVarName("SrcMaskOut"))) {
       ctx->SetOutputDim(framework::GradVarName("SrcMaskOut"),
@@ -709,7 +711,8 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(FusedAttentionGradNoNeedBufferInferer,
                                     "QKVOut",
                                     "QKOut",
                                     "QKTVOut",
-                                    "OutLinearOut");
+                                    "OutLinearOut",
+                                    "SrcMask");
 
 }  // namespace operators
 }  // namespace paddle
