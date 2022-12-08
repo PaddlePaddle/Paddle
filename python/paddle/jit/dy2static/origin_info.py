@@ -24,6 +24,8 @@ from paddle.fluid.framework import Program
 
 from collections.abc import Sequence
 
+__all__ = []
+
 
 class Location:
     """
