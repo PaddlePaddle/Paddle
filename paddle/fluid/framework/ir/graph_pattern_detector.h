@@ -428,21 +428,35 @@ static std::string PDNodeName(const std::string& name_scope,
                               const std::string& repr,
                               size_t id,
                               const std::string& name) {
-  return string::Sprintf("%s/%s/%d/%s", name_scope, repr, id, name);
+  // return string::Sprintf("%s/%s/%d/%s", name_scope, repr, id, name);
+  std::string pd_node_name= "";
+  pdd_node_name.append(name_scope).append("/").append(repr).append("/").append(std::to_string(id)).append("/").append(name);
+  return pd_node_name;
 }
 // Generate a unique PDNode's name.
 // The format is {name_scope}/{repr}/{id}
 static std::string PDNodeName(const std::string& name_scope,
                               const std::string& repr) {
-  return string::Sprintf(
-      "%s/%s/%d", name_scope, repr, KeyCounter::Instance().IncCounter(repr));
+  // return string::Sprintf(
+  //    "%s/%s/%d", name_scope, repr, KeyCounter::Instance().IncCounter(repr));
+
+  std::string pd_node_name = "";
+  int id = KeyCounter::Instance().IncCounter(repr);
+  pd_node_name.append(name_scope).append("/").append(repr).append("/").append(std::to_string(id));
+  return pd_node_name;
 }
 // Generate a unique key. It can be used for a universally unique temporary
 // name.
 // The format is {repr}/{id}
 static std::string UniqueKey(const std::string& repr) {
-  return string::Sprintf(
-      "%s/%d", repr, KeyCounter::Instance().IncCounter(repr));
+  // return string::Sprintf(
+  //    "%s/%d", repr, KeyCounter::Instance().IncCounter(repr));
+
+  std::string pd_node_name = "";
+  int id = KeyCounter::Instance().IncCounter(repr);
+  pd_node_name.append(repr).append("/").append(std::to_string(id));
+  return pd_node_name;
+
 }
 
 // Declare a PDNode in a pattern, will create two methods:
