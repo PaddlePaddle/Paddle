@@ -45,6 +45,54 @@ class BasePattern(Graph):
 
 
 @register_pattern
+class UnsqueezeDataPattern(BasePattern):
+    name = "unsqueeze_data"
+
+    def __init__(self):
+        super().__init__()
+
+    def build(self):
+        # define unsequeeze input
+        tokens = self.add_node(0, **{"type": "data"})
+        # define unsequeeze
+        unsqueeze = self.add_node(1, **{"type": "unsqueeze2"})
+        # define unsequeeze input edge
+        x_edge = self.add_edge(0, 1, **{"input_name": "X"})
+        # pattern: pure mp or hybrid dp+mp
+        shard_spec = {
+            "dp0mp1": {0: [0, -1]},
+            "dp1mp0": {0: [1, -1]},
+            "mp": {0: [-1, -1]},
+        }
+        self.attrs["shard_spec"] = shard_spec
+        self.attrs["weights"] = 1
+
+
+@register_pattern
+class ReshapeDataPattern(BasePattern):
+    name = "reshape_data"
+
+    def __init__(self):
+        super().__init__()
+
+    def build(self):
+        # define unsequeeze input
+        data = self.add_node(0, **{"type": "data"})
+        # define unsequeeze
+        reshape = self.add_node(1, **{"type": "reshape2"})
+        # define unsequeeze input edge
+        x_edge = self.add_edge(0, 1, **{"input_name": "X"})
+        # pattern: pure mp or hybrid dp+mp
+        shard_spec = {
+            "dp0mp1": {0: [0, -1]},
+            "dp1mp0": {0: [1, -1]},
+            "mp": {0: [-1, -1]},
+        }
+        self.attrs["shard_spec"] = shard_spec
+        self.attrs["weights"] = 1
+
+
+@register_pattern
 class QKVPattern(BasePattern):
     name = "qkv"
 
