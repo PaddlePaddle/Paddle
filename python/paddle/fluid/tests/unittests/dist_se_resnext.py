@@ -112,7 +112,7 @@ class SE_ResNeXt:
                     reduction_ratio=reduction_ratio,
                 )
 
-        pool = paddle.nn.functional.avg_pool2d(x=conv, kernel_size=7)
+        pool = paddle.nn.functional.adaptive_avg_pool2d(x=conv, output_size=1)
         drop = fluid.layers.dropout(x=pool, dropout_prob=0.2)
         stdv = 1.0 / math.sqrt(drop.shape[1] * 1.0)
         out = fluid.layers.fc(
@@ -180,7 +180,7 @@ class SE_ResNeXt:
         return paddle.static.nn.batch_norm(input=conv, act=act)
 
     def squeeze_excitation(self, input, num_channels, reduction_ratio):
-        pool = paddle.nn.functional.avg_pool2d(x=input, kernel_size=0)
+        pool = paddle.nn.functional.adaptive_avg_pool2d(x=input, output_size=1)
         stdv = 1.0 / math.sqrt(pool.shape[1] * 1.0)
         squeeze = fluid.layers.fc(
             input=pool,
