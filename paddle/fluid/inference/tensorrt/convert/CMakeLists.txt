@@ -32,6 +32,7 @@ list(
   silu_op.cc
   instance_norm_op.cc
   stack_op.cc
+  eye_op.cc
   transpose_op.cc
   flatten_op.cc
   flatten_contiguous_range_op.cc
