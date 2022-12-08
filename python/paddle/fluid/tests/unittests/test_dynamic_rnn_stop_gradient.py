@@ -20,6 +20,8 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 
+paddle.enable_static()
+
 
 def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
     fluid.default_startup_program().random_seed = 1
@@ -37,10 +39,10 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
         shape=[1], dtype="int64", value=10, force_cpu=True
     )
     cond = paddle.less_than(x=step_idx, y=max_len)
-    while_op = layers.While(cond)
+    while_op = paddle.static.nn.control_flow.While(cond)
     scores = layers.array_write(x, step_idx)
     with while_op.block():
-        bs = layers.cast(layers.shape(x)[0], "int64")
+        bs = layers.cast(paddle.shape(x)[0], "int64")
         for _ in range(20):
             bs = layers.cast(bs, 'int64')
         bs.stop_gradient = stop_gradient

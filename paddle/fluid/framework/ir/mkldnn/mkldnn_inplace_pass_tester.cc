@@ -25,7 +25,7 @@
 USE_OP_ITSELF(softmax);
 PD_DECLARE_KERNEL(softmax, OneDNN, ONEDNN);
 USE_OP_ITSELF(elementwise_add);
-USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
+PD_DECLARE_KERNEL(add_raw, OneDNN, ONEDNN);
 USE_OP_ITSELF(leaky_relu);
 PD_DECLARE_KERNEL(leaky_relu, OneDNN, ONEDNN);
 USE_OP_ITSELF(gelu);

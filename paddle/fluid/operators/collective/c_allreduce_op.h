@@ -151,10 +151,9 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
 inline bool ContainsNan(const paddle::platform::NPUDeviceContext& dev_ctx,
                         aclrtStream stream,
                         const phi::DenseTensor* in) {
-  using Tensor = phi::DenseTensor;
-  Tensor out(in->type());
+  phi::DenseTensor out(in->type());
 
-  Tensor mean(in->type());
+  phi::DenseTensor mean(in->type());
   mean.Resize({1});
   mean.mutable_data<float>(dev_ctx.GetPlace());
   std::vector<int> axes;

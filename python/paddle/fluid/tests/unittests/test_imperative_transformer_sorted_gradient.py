@@ -20,15 +20,14 @@ from test_imperative_base import new_program_scope
 import paddle
 import paddle.fluid as fluid
 import paddle.nn.functional as F
-from paddle.fluid import Embedding, Layer, LayerNorm, core
+from paddle.fluid import Embedding, Layer, core
 from paddle.fluid.dygraph import guard, to_variable
 from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
-from paddle.jit import TracedLayer
 from paddle.nn import Linear
 
 np.set_printoptions(suppress=True)
 
-from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
+from utils import DyGraphProgramDescTracerTestHelper
 
 
 # Copy from models
@@ -399,9 +398,9 @@ class PrePostProcessLayer(Layer):
         super().__init__()
         for cmd in process_cmd:
             if cmd == "n":
-                self._layer_norm = LayerNorm(
+                self._layer_norm = paddle.nn.LayerNorm(
                     normalized_shape=d_model,
-                    param_attr=fluid.ParamAttr(
+                    weight_attr=fluid.ParamAttr(
                         initializer=fluid.initializer.Constant(1.0)
                     ),
                     bias_attr=fluid.ParamAttr(
@@ -495,15 +494,15 @@ class MultiHeadAttentionLayer(Layer):
         transpose_v = paddle.transpose(x=reshaped_v, perm=[0, 2, 1, 3])
 
         # scale dot product attention
-        product = fluid.layers.matmul(
+        product = paddle.matmul(
             x=transpose_q,
             y=transpose_k,
             transpose_y=True,
-            alpha=self._d_model**-0.5,
         )
+        product = paddle.scale(product, scale=self._d_model**-0.5)
         if attn_bias is not None:
             product += attn_bias
-        weights = fluid.layers.softmax(product)
+        weights = paddle.nn.functional.softmax(product)
         if self._dropout_rate:
             weights_droped = fluid.layers.dropout(
                 weights,
@@ -511,9 +510,9 @@ class MultiHeadAttentionLayer(Layer):
                 seed=ModelHyperParams.dropout_seed,
                 is_test=False,
             )
-            out = fluid.layers.matmul(weights_droped, transpose_v)
+            out = paddle.matmul(weights_droped, transpose_v)
         else:
-            out = fluid.layers.matmul(weights, transpose_v)
+            out = paddle.matmul(weights, transpose_v)
 
         # combine heads
         if len(out.shape) != 4:
@@ -1003,7 +1002,7 @@ class WrapDecoderLayer(Layer):
         )
 
         if self._weight_sharing:
-            predict = fluid.layers.matmul(
+            predict = paddle.matmul(
                 x=dec_output_reshape,
                 y=self._prepare_decoder_layer._input_emb.weight,
                 transpose_y=True,
@@ -1013,7 +1012,7 @@ class WrapDecoderLayer(Layer):
 
         if dec_inputs is None:
             # Return probs for independent decoder program.
-            predict_out = fluid.layers.softmax(predict)
+            predict_out = paddle.nn.functional.softmax(predict)
             return predict_out
         return predict
 
@@ -1171,27 +1170,7 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
 
             for i in range(batch_num):
                 enc_inputs, dec_inputs, label, weights = create_data()
-                if False:
-                    outs, traced_layer = TracedLayer.trace(
-                        transformer, [enc_inputs, dec_inputs, label, weights]
-                    )
-
-                    ins_static = enc_inputs + dec_inputs + [label, weights]
-                    outs_static = traced_layer(ins_static)
-                    helper.assertEachVar(outs, outs_static)
-                    if program is not None:
-                        self.assertTrue(
-                            is_equal_program(program, traced_layer.program)
-                        )
-
-                    program = traced_layer.program
-                    traced_layer.save_inference_model(
-                        './infer_imperative_transformer',
-                        feed=list(range(len(ins_static))),
-                        fetch=list(range(len(outs_static))),
-                    )
-                else:
-                    outs = transformer(enc_inputs, dec_inputs, label, weights)
+                outs = transformer(enc_inputs, dec_inputs, label, weights)
 
                 dy_sum_cost, dy_avg_cost, dy_predict, dy_token_num = outs
 

@@ -114,12 +114,13 @@ void FusionSeqExpandConcatFCOpMaker::Make() {
            "ref lod "
            "for sequence expand, and the rest input should have same lod.")
       .AsDuplicable();
-  AddInput("FCWeight", "(Tensor) the weights of fc.");
-  AddInput("FCBias", "(Tensor, optional) the bias of fc.").AsDispensable();
+  AddInput("FCWeight", "(phi::DenseTensor) the weights of fc.");
+  AddInput("FCBias", "(phi::DenseTensor, optional) the bias of fc.")
+      .AsDispensable();
   AddOutput("Out", "(phi::DenseTensor) Output LodTensor.");
   AddOutput(
       "FCOut",
-      "(Tensor) the intermediate tensor to keep the result of fc."
+      "(phi::DenseTensor) the intermediate tensor to keep the result of fc."
       "Shape is (N x D), where N is the batch size, D is the output dim of fc")
       .AsIntermediate();
   AddAttr<std::string>("fc_activation",

@@ -21,6 +21,7 @@
 #include "paddle/phi/core/compat/convert_utils.h"
 #endif
 #include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/utils/string/string_helper.h"
 
 DECLARE_bool(enable_api_kernel_fallback);
 
@@ -28,8 +29,8 @@ namespace phi {
 
 const static Kernel empty_kernel;  // NOLINT
 
-std::string kernel_selection_error_message(const std::string& kernel_name,
-                                           const KernelKey& target_key);
+std::string KernelSelectionErrorMessage(const std::string& kernel_name,
+                                        const KernelKey& target_key);
 
 uint32_t KernelKey::Hash::operator()(const KernelKey& key) const {
   uint32_t hash_value = 0;
@@ -146,12 +147,13 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
           "The kernel with key %s of kernel `%s` is not registered. %s",
           kernel_key,
           kernel_name,
-          kernel_selection_error_message(kernel_name, kernel_key)));
+          KernelSelectionErrorMessage(kernel_name, kernel_key)));
 
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
   VLOG(6) << "fluid_op_name: " << TransToFluidOpName(kernel_name);
   if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end()) ||
-      phi::backends::xpu::is_in_xpu_black_list(TransToFluidOpName(kernel_name))
+      !phi::backends::xpu::is_xpu_support_op(TransToFluidOpName(kernel_name),
+                                             kernel_key.dtype())
 #else
   if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end())
 #endif
@@ -175,7 +177,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
             "fail to fallback to CPU one. %s",
             kernel_key,
             kernel_name,
-            kernel_selection_error_message(kernel_name, kernel_key)));
+            KernelSelectionErrorMessage(kernel_name, kernel_key)));
 
     VLOG(3) << "missing " << kernel_key.backend() << " kernel: " << kernel_name
             << ", expected_kernel_key:" << kernel_key
@@ -194,7 +196,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
           " to CPU one, please set the flag true before run again.",
           kernel_key,
           kernel_name,
-          kernel_selection_error_message(kernel_name, kernel_key)));
+          KernelSelectionErrorMessage(kernel_name, kernel_key)));
 
   return {kernel_iter->second, false};
 }
@@ -367,8 +369,8 @@ std::ostream& operator<<(std::ostream& os, KernelFactory& kernel_factory) {
 //   (GPU, Undefined(AnyLayout), [float32, float64, ...]);
 //   ...
 // }
-std::string kernel_selection_error_message(const std::string& kernel_name,
-                                           const KernelKey& target_key) {
+std::string KernelSelectionErrorMessage(const std::string& kernel_name,
+                                        const KernelKey& target_key) {
   PADDLE_ENFORCE_NE(
       KernelFactory::Instance().kernels().find(kernel_name),
       KernelFactory::Instance().kernels().end(),
@@ -401,12 +403,7 @@ std::string kernel_selection_error_message(const std::string& kernel_name,
   // 1. If target_key not supports target backend, output "Selected wrong
   // Backend ..."
   if (!support_backend) {
-    std::string error_message = "";
-    for (auto iter = backend_set.begin(); iter != backend_set.end(); ++iter) {
-      error_message += *iter;
-      error_message += ", ";
-    }
-    error_message = error_message.substr(0, error_message.length() - 2);
+    std::string error_message = paddle::string::join_strings(backend_set, ", ");
     return "Selected wrong Backend `" +
            paddle::experimental::BackendToString(target_key.backend()) +
            "`. Paddle support following Backends: " + error_message + ".";
@@ -414,12 +411,7 @@ std::string kernel_selection_error_message(const std::string& kernel_name,
   // 2. If target_key not supports target datatype, output "Selected wrong
   // DataType ..."
   if (!support_dtype) {
-    std::string error_message = "";
-    for (auto iter = dtype_set.begin(); iter != dtype_set.end(); ++iter) {
-      error_message += *iter;
-      error_message += ", ";
-    }
-    error_message = error_message.substr(0, error_message.length() - 2);
+    std::string error_message = paddle::string::join_strings(dtype_set, ", ");
     return "Selected wrong DataType `" +
            paddle::experimental::DataTypeToString(target_key.dtype()) +
            "`. Paddle support following DataTypes: " + error_message + ".";
@@ -430,14 +422,9 @@ std::string kernel_selection_error_message(const std::string& kernel_name,
                         kernel_name + "`: { ";
   for (auto iter = all_kernel_key.begin(); iter != all_kernel_key.end();
        ++iter) {
-    message += "(" + iter->first + ", [";
     std::vector<std::string>& dtype_vec = iter->second;
-    for (std::size_t i = 0; i < dtype_vec.size(); ++i) {
-      message += dtype_vec[i];
-      if (i + 1 != dtype_vec.size()) {
-        message += ", ";
-      }
-    }
+    message += "(" + iter->first + ", [";
+    message += paddle::string::join_strings(dtype_vec, ", ");
     message += "]); ";
   }
   message += "}.";

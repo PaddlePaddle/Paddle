@@ -23,7 +23,7 @@ import paddle.fluid.core as core
 
 
 def norm(*args, **kargs):
-    return fluid.layers.batch_norm(*args, **kargs)
+    return paddle.static.nn.batch_norm(*args, **kargs)
 
 
 def sep_conv(input, channel, stride, filter, dilation=1, act=None):
@@ -89,7 +89,7 @@ class TestMNIST(TestParallelExecutorBase):
             return optimizer
 
         if only_forward:
-            _optimizer = None
+            _optimizer = None  # noqa: F811
 
         (
             fuse_op_first_loss,

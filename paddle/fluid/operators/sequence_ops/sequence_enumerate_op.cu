@@ -21,7 +21,6 @@
 namespace paddle {
 namespace operators {
 using phi::PADDLE_CUDA_NUM_THREADS;
-using LoDTensor = phi::DenseTensor;
 
 template <typename T>
 __global__ void CalcOutPut(const T* in_data,
@@ -52,8 +51,8 @@ template <typename T>
 class SequenceEnumerateOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in = context.Input<LoDTensor>("X");
-    auto* out = context.Output<LoDTensor>("Out");
+    auto* in = context.Input<phi::DenseTensor>("X");
+    auto* out = context.Output<phi::DenseTensor>("Out");
     int win_size = context.Attr<int>("win_size");
     int pad_value = context.Attr<int>("pad_value");
 

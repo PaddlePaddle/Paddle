@@ -20,8 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename DeviceContext, typename T>
 class FillConstantBatchSizeLikeOpNPUKernel : public framework::OpKernel<T> {
  public:
@@ -80,7 +78,7 @@ class FillConstantBatchSizeLikeOpNPUKernel : public framework::OpKernel<T> {
     } else {
       out->mutable_data(ctx.GetPlace(),
                         framework::TransToPhiDataType(data_type));
-      Tensor tensor_tmp(framework::TransToPhiDataType(data_type));
+      phi::DenseTensor tensor_tmp(framework::TransToPhiDataType(data_type));
       tensor_tmp.mutable_data<T>({1}, ctx.GetPlace());
       FillNpuTensorWithConstant<T>(&tensor_tmp, value);
 

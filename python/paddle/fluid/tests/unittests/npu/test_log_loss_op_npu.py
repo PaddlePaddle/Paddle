@@ -76,37 +76,5 @@ class TestLogLossOp(OpTest):
         self.check_grad_with_place(self.place, ['Predicted'], 'Loss')
 
 
-@unittest.skipIf(
-    not paddle.is_compiled_with_npu(), "core is not compiled with NPU"
-)
-class TestLogLossOpError(unittest.TestCase):
-    def test_errors(self):
-        with fluid.program_guard(fluid.Program()):
-
-            def test_x_type():
-                input_data = np.random.random(100, 1).astype("float32")
-                fluid.layers.log_loss(input_data)
-
-            self.assertRaises(TypeError, test_x_type)
-
-            def test_x_dtype():
-                x2 = fluid.layers.data(name='x2', shape=[100, 1], dtype='int32')
-                fluid.layers.log_loss(x2)
-
-            self.assertRaises(TypeError, test_x_dtype)
-
-            def test_label_type():
-                input_data = np.random.random(100, 1).astype("float32")
-                fluid.layers.log_loss(input_data)
-
-            self.assertRaises(TypeError, test_label_type)
-
-            def test_label_dtype():
-                x2 = fluid.layers.data(name='x2', shape=[100, 1], dtype='int32')
-                fluid.layers.log_loss(x2)
-
-            self.assertRaises(TypeError, test_label_dtype)
-
-
 if __name__ == '__main__':
     unittest.main()
