@@ -767,6 +767,8 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"unbind", XPUKernelSet({phi::DataType::FLOAT32})},
       {"uniform_random", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"unpool_grad", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"unpool", XPUKernelSet({phi::DataType::FLOAT32})},
       {"unsqueeze2_grad",
        XPUKernelSet({phi::DataType::FLOAT64,
                      phi::DataType::INT64,
