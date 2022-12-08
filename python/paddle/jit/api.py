@@ -74,9 +74,7 @@ from paddle.fluid.framework import dygraph_only, _non_static_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
 
 __all__ = [
-    'TracedLayer',
     'declarative',
-    'dygraph_to_static_func',
     'set_code_level',
     'set_verbosity',
     'save',
