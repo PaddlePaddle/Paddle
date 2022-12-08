@@ -56,7 +56,7 @@ class TestReshape2OneDNNOpDimInfer2(TestReshape2OneDNNOp):
     def init_data(self):
         self.ori_shape = (6, 20)
         self.new_shape = (0, -1, 20)
-        self.actual_shape = (2, 3, 20)
+        self.infered_shape = (2, 3, 20)
 
     def set_additional_inputs(self):
         self.inputs["Shape"] = np.array(self.actual_shape, dtype="int32")
