@@ -156,9 +156,11 @@ class TestRnn(unittest.TestCase):
 
         state = numpy_cell.parameters
         for k, v in dynamic_cell.named_parameters():
-            fluid.global_scope().find_var(v.name).get_tensor().set(
-                state[k].astype('float32'), place
+            param = np.random.uniform(-0.1, 0.1, size=state[k].shape).astype(
+                'float32'
             )
+            setattr(numpy_cell, k, param)
+            fluid.global_scope().find_var(v.name).get_tensor().set(param, place)
 
         sequence_length = fluid.data(
             name="sequence_length", shape=[None], dtype='int64'
