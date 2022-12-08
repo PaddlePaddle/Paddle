@@ -111,7 +111,6 @@ struct ChannelDequantizeFunctorV2<phi::GPUContext, T> {
   }
 };
 
-
 template struct DequantizeFunctor<phi::GPUContext, phi::dtype::float16>;
 template struct DequantizeFunctor<phi::GPUContext, float>;
 template struct DequantizeFunctor<phi::GPUContext, double>;

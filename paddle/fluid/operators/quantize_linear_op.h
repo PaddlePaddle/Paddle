@@ -47,7 +47,6 @@ struct ChannelDequantizeFunctorV2 {
                   phi::DenseTensor* out);
 };
 
-
 template <typename DeviceContext, typename T>
 class QuantizeLinearKernel : public framework::OpKernel<T> {
  public:
@@ -117,7 +116,7 @@ class QuantizeLinearKernel : public framework::OpKernel<T> {
 template <typename DeviceContext, typename T>
 class DeQuantizeLinearKernel : public framework::OpKernel<T> {
  public:
-  template<typename D>
+  template <typename D>
   void ComputeImpl(const framework::ExecutionContext& context) const {
     auto& dev_ctx = context.template device_context<DeviceContext>();
     auto* in = context.Input<phi::DenseTensor>("X");
@@ -154,19 +153,19 @@ class DeQuantizeLinearKernel : public framework::OpKernel<T> {
           dev_ctx, &in_tmp, scale, static_cast<D>(max_range), quant_axis, out);
     }
   }
-  
+
   void Compute(const framework::ExecutionContext& context) const override {
     auto* out = context.Output<phi::DenseTensor>("Y");
     switch (out->dtype()) {
       case experimental::DataType::FLOAT64:
-          ComputeImpl<double>(context);
-          break;
+        ComputeImpl<double>(context);
+        break;
       case experimental::DataType::FLOAT32:
-          ComputeImpl<float>(context);
-          break;
+        ComputeImpl<float>(context);
+        break;
       case experimental::DataType::FLOAT16:
-          ComputeImpl<paddle::platform::float16>(context);
-          break;
+        ComputeImpl<paddle::platform::float16>(context);
+        break;
     }
   }
 };
