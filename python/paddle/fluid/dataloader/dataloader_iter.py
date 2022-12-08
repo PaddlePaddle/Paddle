@@ -21,7 +21,6 @@ import logging
 import itertools
 import threading
 import numpy as np
-import multiprocessing
 from collections import namedtuple
 from paddle.fluid.framework import (
     _set_expected_place,
@@ -90,7 +89,7 @@ def _clear_loader():
 CleanupFuncRegistrar.register(_clear_loader)
 
 
-class _DataLoaderIterBase(object):
+class _DataLoaderIterBase:
     """
     Iterator implement of DataLoader, will load and feed mini-batch
     data by setting in given dataloader.
@@ -354,10 +353,6 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
 
             self._thread = None
 
-    # python2 compatibility
-    def next(self):
-        return self.__next__()
-
     def _try_shutdown_all(self):
         if not self._shutdown:
             try:
@@ -426,6 +421,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._shutdown = False
 
     def _init_workers(self):
+        import paddle.incubate.multiprocessing as multiprocessing
+
         # multiprocess worker and indice queue list initial as empty
         self._workers = []
         self._worker_status = []
@@ -853,10 +850,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         finally:
             if in_profiler_mode():
                 trace_event.end()
-
-    # python2 compatibility
-    def next(self):
-        return self.__next__()
 
     def _on_output_batch(self):
         for _ in range(len(self._places)):

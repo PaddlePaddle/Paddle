@@ -107,7 +107,7 @@ def _check_grandchild_op_node(op_node, grandchild_op_name):
     return False
 
 
-class QuantizationTransformPass(object):
+class QuantizationTransformPass:
     """
     Quantize the ops that have weights. Add quant and dequant ops for
     the quantized ops's inputs.
@@ -1068,7 +1068,7 @@ class QuantizationTransformPass(object):
         return is_skip
 
 
-class QuantizationFreezePass(object):
+class QuantizationFreezePass:
     def __init__(
         self,
         scope,
@@ -1444,7 +1444,7 @@ class QuantizationFreezePass(object):
         )
 
 
-class ConvertToInt8Pass(object):
+class ConvertToInt8Pass:
     def __init__(self, scope, place, quantizable_op_type=None):
         """
         Convert the weights into int8_t type.
@@ -1537,7 +1537,7 @@ class ConvertToInt8Pass(object):
         graph.safe_remove_nodes(all_unused_vars)
 
 
-class TransformForMobilePass(object):
+class TransformForMobilePass:
     def __init__(self):
         """
         This pass is used to convert the frozen graph for paddle-mobile execution.
@@ -1579,7 +1579,7 @@ class TransformForMobilePass(object):
         return graph
 
 
-class OutScaleForTrainingPass(object):
+class OutScaleForTrainingPass:
     def __init__(
         self,
         scope=None,
@@ -1745,7 +1745,7 @@ class OutScaleForTrainingPass(object):
         return "%s@scale" % (var_name)
 
 
-class OutScaleForInferencePass(object):
+class OutScaleForInferencePass:
     def __init__(self, scope=None):
         """
         This pass is used for setting output scales of some operators.
@@ -1815,7 +1815,7 @@ class OutScaleForInferencePass(object):
         return "%s@scale" % (var_name)
 
 
-class AddQuantDequantPass(object):
+class AddQuantDequantPass:
     """
     Quantize the ops that do not have weights, and add quant_dequant op for the
     quantized ops's inputs.
@@ -1939,6 +1939,15 @@ class AddQuantDequantPass(object):
                     op_node.op()._set_attr("activation_bits", self._quant_bits)
                     op_node.op()._set_attr("with_quant_attr", True)
                     arg_names = utils._get_op_input_var_names(op_node)
+                    # If already quanted, skip it.
+                    skip_quant = False
+                    for arg_name in arg_names:
+                        if "quantized.dequantized" in arg_name:
+                            skip_quant = True
+                            break
+                    if skip_quant:
+                        continue
+
                     for arg_name in arg_names:
                         in_node = graph._find_node_by_name(
                             op_node.inputs, arg_name
@@ -1956,7 +1965,7 @@ class AddQuantDequantPass(object):
                         graph.update_input_link(
                             in_node, quant_var_node, op_node
                         )
-            t.update()
+                t.update()
 
         # Backward stage, update input link
         for op_node in all_op_nodes:
@@ -2087,7 +2096,7 @@ class AddQuantDequantPass(object):
         return quant_var_node, scale_out_node
 
 
-class InsertQuantizeLinear(object):
+class InsertQuantizeLinear:
     """
     Insert quantize_linear and dequantize_linear op before ops.
 
@@ -2481,11 +2490,6 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
         self.create_var_map = {}
         self.create_op_map = {}
 
-        # marked the variable which has been dequantized.
-        self.dequantized_vars = collections.OrderedDict()
-        self.persistable_vars = []
-        self.processed_vars = []
-
     def _quant_preprocess(self, op_node):
         user_skipped = False
         if isinstance(self._skip_pattern, list):
@@ -2627,6 +2631,10 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
         ), 'graph must be the instance of IrGraph.'
         if self._is_test is None:
             self._is_test = graph.is_test()
+        # marked the variable which has been dequantized.
+        self.dequantized_vars = collections.OrderedDict()
+        self.persistable_vars = []
+        self.processed_vars = []
 
         self.persistable_vars = [
             p.name() for p in graph.all_persistable_nodes()
@@ -2664,7 +2672,7 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
         return graph
 
 
-class AddQuantDequantPassV2(object):
+class AddQuantDequantPassV2:
     """
     Quantize the ops that do not have weights, and add quant_linear and dequant_linear
     op for the quantized ops's inputs. It is used in the new format of quantization.
@@ -2798,6 +2806,15 @@ class AddQuantDequantPassV2(object):
                         continue
 
                     arg_names = utils._get_op_input_var_names(op_node)
+                    # If already quanted, skip it.
+                    skip_quant = False
+                    for arg_name in arg_names:
+                        if "quantized.dequantized" in arg_name:
+                            skip_quant = True
+                            break
+                    if skip_quant:
+                        continue
+
                     for arg_name in arg_names:
                         in_node = graph._find_node_by_name(
                             op_node.inputs, arg_name
@@ -2850,7 +2867,7 @@ class AddQuantDequantPassV2(object):
         return graph
 
 
-class ReplaceFakeQuantDequantPass(object):
+class ReplaceFakeQuantDequantPass:
     """
     replace quant-dequant ops with quantize_linear and dequantize_linear ops.
     """
@@ -2890,13 +2907,31 @@ class ReplaceFakeQuantDequantPass(object):
             graph, IrGraph
         ), 'graph must be the instance of IrGraph.'
         fake_quant_dequant_ops = []
+        remove_fake_quant_ops = []
+        observer_out_node_names = []
+        for op in graph.all_op_nodes():
+            # collect observer node
+            if op.name() == "moving_average_abs_max_scale":
+                observer_out_node_names.append(op.output("Out")[0])
 
         for op in graph.all_op_nodes():
             if (
                 op.name() in _fake_quant_dequant_op_list
                 or op.name() == "moving_average_abs_max_scale"
             ):
-                fake_quant_dequant_ops.append(op)
+                var_name = op.input("X")[0]
+                if var_name in observer_out_node_names:
+                    remove_fake_quant_ops.append(op)
+                else:
+                    fake_quant_dequant_ops.append(op)
+
+        for _op in remove_fake_quant_ops:
+            x_node = graph._find_node_by_name(_op.inputs, _op.input("X")[0])
+            out_node = graph._find_node_by_name(
+                _op.outputs, _op.output("Out")[0]
+            )
+            for next_op_node in out_node.outputs:
+                graph.update_input_link(out_node, x_node, next_op_node)
 
         for _op in fake_quant_dequant_ops:
             self._replace_op(graph, _op)
@@ -2987,7 +3022,7 @@ class ReplaceFakeQuantDequantPass(object):
         return "%s@zero_point" % (var_name)
 
 
-class QuantWeightPass(object):
+class QuantWeightPass:
     """
     quant weights and remove weights input quantize_linear node. for example:
     `weight -> quant -> dequant -> conv2d` will be frozen into `weight -> dequant -> conv2d`,
@@ -3129,7 +3164,7 @@ class QuantWeightPass(object):
         tensor.set(array, self._place)
 
 
-class AddQuantDequantForInferencePass(object):
+class AddQuantDequantForInferencePass:
     """
     When export quant model, it will traverse to find the output of each op, and then insert the quant/dequant op after it.
     """

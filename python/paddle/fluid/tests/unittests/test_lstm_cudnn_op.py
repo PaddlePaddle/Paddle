@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import math
+import random
+import unittest
 
-import paddle.fluid.core as core
+import numpy as np
 from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle.fluid.layers as layers
-import random
 
 random.seed(2)
 np.set_printoptions(threshold=np.inf)
@@ -59,7 +60,7 @@ class RandomWeight:
 weight = RandomWeight()
 
 
-class LayerMixin(object):
+class LayerMixin:
     def __call__(self, *args, **kwargs):
         return self.forward(*args, **kwargs)
 

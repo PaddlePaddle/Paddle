@@ -15,6 +15,7 @@
 #pragma once
 
 #include <future>
+#include <memory>
 #include <mutex>
 
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
@@ -98,21 +99,42 @@ class ProcessGroupGloo : public ProcessGroup {
     std::shared_ptr<::gloo::transport::Device> device;
   };
 
-  explicit ProcessGroupGloo(
+  ProcessGroupGloo(const std::shared_ptr<paddle::distributed::Store>& store,
+                   int rank,
+                   int world_size,
+                   int gid,
+                   std::shared_ptr<GlooOptions> options);
+
+  static std::shared_ptr<ProcessGroupGloo> CreateProcessGroupGloo(
       const std::shared_ptr<paddle::distributed::Store>& store,
       int rank,
       int world_size,
-      const platform::Place& place,
-      int gid,
-      std::shared_ptr<GlooOptions> options);
+      int gid);
 
   ~ProcessGroupGloo() = default;
+
+  std::shared_ptr<ProcessGroup::Task> AllGather(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      int64_t offset,  // for compatibility, no use now
+      int64_t numel,   // for compatibility, no use now
+      bool sync_op) override;
 
   std::shared_ptr<ProcessGroup::Task> Broadcast(
       phi::DenseTensor* out_tensor,
       const phi::DenseTensor& in_tensor,
       const BroadcastOptions& opts,
       bool sync_op) override;
+
+  std::shared_ptr<ProcessGroup::Task> Reduce(phi::DenseTensor* out_tensor,
+                                             const phi::DenseTensor& in_tensor,
+                                             const ReduceOptions& opts,
+                                             bool sync_op) override;
+
+  std::shared_ptr<ProcessGroup::Task> Scatter(phi::DenseTensor* out_tensor,
+                                              const phi::DenseTensor& in_tensor,
+                                              const ScatterOptions& opts,
+                                              bool sync_op) override;
 
   // TODO(sunyilun): methods below will be removed later
   std::shared_ptr<ProcessGroup::Task> Broadcast(
@@ -144,22 +166,15 @@ class ProcessGroupGloo : public ProcessGroup {
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors) override;
 
-  std::shared_ptr<ProcessGroup::Task> Reduce(
+  std::shared_ptr<ProcessGroup::Task> AllGather(
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors,
-      const ReduceOptions& opts,
       bool sync_op) override;
 
   std::shared_ptr<ProcessGroup::Task> Reduce(
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors,
       const ReduceOptions& opts) override;
-
-  std::shared_ptr<ProcessGroup::Task> Scatter(
-      std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors,
-      const ScatterOptions&,
-      bool sync_op) override;
 
   std::shared_ptr<ProcessGroup::Task> Scatter(
       std::vector<phi::DenseTensor>& in_tensors,
@@ -171,9 +186,8 @@ class ProcessGroupGloo : public ProcessGroup {
 
   std::string GetBackendName() const override { return "GLOO"; }
 
-  const phi::DeviceContext& GetDeviceContext(
-      const Place& place) const override {
-    return *platform::DeviceContextPool::Instance().Get(place);
+  phi::DeviceContext* GetDeviceContext(const Place& place) const override {
+    return platform::DeviceContextPool::Instance().Get(place);
   }
 
   // Helper functions for Gloo.
@@ -183,7 +197,7 @@ class ProcessGroupGloo : public ProcessGroup {
       const std::string& ifname);
   static std::shared_ptr<::gloo::transport::Device> createDefaultDevice();
 
- protected:
+ private:
   uint32_t _tag;
   std::shared_ptr<gloo::rendezvous::Context> _context;
   std::shared_ptr<::gloo::rendezvous::Store> _store;

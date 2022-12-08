@@ -257,7 +257,9 @@ if(WITH_ROCM)
   string(REPLACE "-Werror" "-Wno-error" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
 endif()
 
-if(WITH_PSCORE OR WITH_PSLIB)
+if(WITH_PSCORE
+   OR WITH_PSLIB
+   OR WITH_TENSORRT)
   string(REPLACE "-Wnon-virtual-dtor" "-Wno-non-virtual-dtor" CMAKE_CXX_FLAGS
                  ${CMAKE_CXX_FLAGS})
   string(REPLACE "-Wnon-virtual-dtor" "-Wno-non-virtual-dtor" CMAKE_C_FLAGS

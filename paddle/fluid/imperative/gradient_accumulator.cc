@@ -31,6 +31,7 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 #ifdef PADDLE_WITH_XPU
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "xpu/refactor/math.h"
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -92,13 +93,30 @@ void XPUTensorAddFunctor(const platform::Place& place,
       platform::DeviceContextPool::Instance().Get(place));
   const XPUType* x = reinterpret_cast<const XPUType*>(src.data<T>());
   XPUType* y = reinterpret_cast<XPUType*>(dst->mutable_data<T>(place));
-  int r = xpu::add<XPUType>(
-      ctx->x_context(), x, y, y, static_cast<int>(src.numel()));
-  PADDLE_ENFORCE_EQ(
-      r,
-      XPU_SUCCESS,
-      platform::errors::External(
-          "XPU add kernel return wrong value[%d %s]", r, XPUAPIErrorMsg[r]));
+  int r = -1;
+  int numel = static_cast<int>(src.numel());
+  if (std::is_same<T, double>::value) {
+    xpu::ctx_guard RAII_GUARD(ctx->x_context());
+    float* x_cast_to_fp32 = RAII_GUARD.alloc<float>(numel);
+    PADDLE_ENFORCE_XDNN_NOT_NULL(x_cast_to_fp32);
+    float* y_cast_to_fp32 = RAII_GUARD.alloc<float>(numel);
+    PADDLE_ENFORCE_XDNN_NOT_NULL(y_cast_to_fp32);
+    r = xpu::cast<XPUType, float>(ctx->x_context(), x, x_cast_to_fp32, numel);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    r = xpu::cast<XPUType, float>(ctx->x_context(), y, y_cast_to_fp32, numel);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    r = xpu::add<float>(ctx->x_context(),
+                        x_cast_to_fp32,
+                        y_cast_to_fp32,
+                        y_cast_to_fp32,
+                        numel);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "add");
+    r = xpu::cast<float, XPUType>(ctx->x_context(), y_cast_to_fp32, y, numel);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+  } else {
+    r = xpu::add<XPUType>(ctx->x_context(), x, y, y, numel);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "add");
+  }
 }
 #endif
 
@@ -206,13 +224,13 @@ void TensorAdd(const VarType& src, VarType* dst) {
 #endif
   }
 
-#define TENSOR_ADD_EIGEN(T)                                           \
-  auto cpu_ctx = static_cast<phi::CPUContext*>(                       \
-      platform::DeviceContextPool::Instance().Get(place));            \
-  auto in = paddle::framework::EigenVector<T>::Flatten(src_tensor);   \
-  auto out = paddle::framework::EigenVector<T>::Flatten(*dst_tensor); \
-  auto& p = *(cpu_ctx->eigen_device());                               \
-  out.device(p) = out + in;                                           \
+#define TENSOR_ADD_EIGEN(T)                                \
+  auto cpu_ctx = static_cast<phi::CPUContext*>(            \
+      platform::DeviceContextPool::Instance().Get(place)); \
+  auto in = phi::EigenVector<T>::Flatten(src_tensor);      \
+  auto out = phi::EigenVector<T>::Flatten(*dst_tensor);    \
+  auto& p = *(cpu_ctx->eigen_device());                    \
+  out.device(p) = out + in;                                \
   return;
 
   if (platform::is_cpu_place(place)) {
@@ -286,6 +304,8 @@ void TensorAdd(const VarType& src, VarType* dst) {
     } else if (data_type ==
                framework::DataTypeTrait<platform::float16>::DataType()) {
       XPUTensorAddFunctor<platform::float16>(place, src_tensor, dst_tensor);
+    } else if (data_type == framework::DataTypeTrait<double>::DataType()) {
+      XPUTensorAddFunctor<double>(place, src_tensor, dst_tensor);
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Gradient accumulation of data type (%s) on place (%s) is not "
@@ -624,11 +644,11 @@ void GradientAccumulator::CallGradientHooks() {
       true,
       platform::errors::PreconditionNotMet(
           "Only can call gradient hooks after sum gradient completed."));
-  PADDLE_ENFORCE_EQ(
-      HasInnerVar(),
-      true,
-      platform::errors::PreconditionNotMet(
-          "Leaf Tensor's inner var is nullptr when call gradient hook."));
+  PADDLE_ENFORCE_EQ(HasInnerVar(),
+                    true,
+                    platform::errors::PreconditionNotMet(
+                        "Leaf Tensor's inner var is nullptr when "
+                        "call gradient hook."));
   PADDLE_ENFORCE_EQ(
       inner_var_->Var().IsInitialized(),
       true,

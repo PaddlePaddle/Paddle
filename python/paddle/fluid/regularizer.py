@@ -22,7 +22,7 @@ from paddle import _C_ops, _legacy_C_ops
 __all__ = ['L1Decay', 'L2Decay', 'L1DecayRegularizer', 'L2DecayRegularizer']
 
 
-class WeightDecayRegularizer(object):
+class WeightDecayRegularizer:
     """Base class for weight decay regularizers
 
     Defines the common interface of weight-decay regularizers.

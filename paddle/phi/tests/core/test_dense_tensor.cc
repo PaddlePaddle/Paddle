@@ -156,16 +156,12 @@ TEST(dense_tensor, storage_properties) {
   // test custom device storage properties
   EXPECT_FALSE(tensor.storage_properties_initialized());
   auto npu_properties = std::make_unique<NPUStorageProperties>();
-  npu_properties->origin_format = 0;
   npu_properties->storage_format = 3;
-  npu_properties->origin_dims = {1, 8, 5, 5};
-  npu_properties->storage_dims = {1, 1, 5, 5, 16};
+  npu_properties->storage_dims = {1, 1, 1, 1, 16};
   tensor.set_storage_properties(std::move(npu_properties));
   EXPECT_TRUE(tensor.storage_properties_initialized());
   auto get_npu_properties = tensor.storage_properties<NPUStorageProperties>();
-  CHECK_EQ(get_npu_properties.origin_format, 0);
   CHECK_EQ(get_npu_properties.storage_format, 3);
-  CHECK_EQ(get_npu_properties.origin_dims.size(), 4);
   CHECK_EQ(get_npu_properties.storage_dims.size(), 5);
 
   // test error type storage properties
@@ -183,9 +179,7 @@ TEST(dense_tensor, storage_properties) {
   auto cp_tensor = tensor;
   auto get_cp_npu_properties =
       cp_tensor.storage_properties<NPUStorageProperties>();
-  CHECK_EQ(get_cp_npu_properties.origin_format, 0);
   CHECK_EQ(get_cp_npu_properties.storage_format, 3);
-  CHECK_EQ(get_cp_npu_properties.origin_dims.size(), 4);
   CHECK_EQ(get_cp_npu_properties.storage_dims.size(), 5);
 }
 

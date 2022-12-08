@@ -12,24 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import random
 import time
 import unittest
 
+import numpy as np
+from yolov3 import YOLOv3, cfg
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import ProgramTranslator
 from paddle.fluid.dygraph import to_variable
-
-from yolov3 import cfg, YOLOv3
+from paddle.jit import ProgramTranslator
 
 paddle.enable_static()
 random.seed(0)
 np.random.seed(0)
 
 
-class SmoothedValue(object):
+class SmoothedValue:
     """Track a series of values and provide access to smoothed values over a
     window or the global series average.
     """
@@ -46,7 +46,7 @@ class SmoothedValue(object):
         return self.loss_sum / self.iter_cnt
 
 
-class FakeDataReader(object):
+class FakeDataReader:
     def __init__(self):
         self.generator_out = []
         self.total_iter = cfg.max_iter

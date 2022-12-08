@@ -40,12 +40,12 @@ import re
 import shutil
 
 
-class LambConfig(object):
+class LambConfig:
     def __init__(self):
         pass
 
 
-class DistFCConfig(object):
+class DistFCConfig:
     def __init__(self):
         pass
 
@@ -154,7 +154,9 @@ class Collective(Fleet):
             "must be as Program type."
         )
 
-        io.save_persistables(executor, dirname, main_program, filename=filename)
+        paddle.distributed.io.save_persistables(
+            executor, dirname, main_program, filename=filename
+        )
 
     def save_checkpoint(
         self,

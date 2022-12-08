@@ -278,16 +278,6 @@ In the final state, we should come up with a MKLDNN_Tensor and move the
 following codes there.
 */
 #ifdef PADDLE_WITH_MKLDNN
-  /**
-   * @brief the detail format of memory block which have layout as kMKLDNN
-   *
-   * @note MKLDNN lib support various memory format like nchw, nhwc, nChw8C,
-   *       nChw16c, etc. For a MKLDNN memory block, layout will be set as
-   *       DataLayout::kMKLDNN meanwhile detail memory format will be kept in
-   *       this field.
-   */
-  dnnl::memory::format_tag format_ = dnnl::memory::format_tag::undef;
-
   /// \brief memory descriptor of tensor which have layout set as kMKLDNN
   dnnl::memory::desc mem_desc_;
 #endif

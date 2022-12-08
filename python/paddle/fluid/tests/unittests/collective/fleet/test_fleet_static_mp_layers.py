@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import paddle
-import paddle.fluid as fluid
 import paddle.distributed.fleet as fleet
-import os
+import paddle.fluid as fluid
 
 paddle.enable_static()
 
@@ -128,7 +128,7 @@ class TestDistTraning(unittest.TestCase):
             ops = [op.type for op in ops]
             self.assertEqual(
                 ops,
-                ['c_split', 'matmul_v2', 'c_allreduce_sum', 'elementwise_add'],
+                ['c_split', 'matmul_v2', 'mp_allreduce_sum', 'elementwise_add'],
             )
 
             weight = model_a.parallel_linear.weight
@@ -156,7 +156,7 @@ class TestDistTraning(unittest.TestCase):
             # print(main_program)
             ops = main_program.global_block().ops
             ops = [op.type for op in ops]
-            self.assertEqual(ops, ['c_embedding', 'c_allreduce_sum'])
+            self.assertEqual(ops, ['c_embedding', 'mp_allreduce_sum'])
 
             weight = model_a.embedding.weight
             self.assertEqual(

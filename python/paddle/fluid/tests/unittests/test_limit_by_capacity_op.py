@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import unittest
-import paddle
+
 import numpy as np
+
+import paddle
 from paddle.distributed.models.moe import utils
 from paddle.fluid import core
 from paddle.fluid.framework import _test_eager_guard

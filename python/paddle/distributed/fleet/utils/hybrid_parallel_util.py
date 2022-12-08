@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import framework
 import paddle
+from paddle import framework
 from paddle.fluid import core
 from paddle.fluid.dygraph.parallel import (
     _split_tensors,
-    sync_params_buffers,
     build_groups,
+    sync_params_buffers,
 )
-from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+
 from .log_util import logger
 
 __all__ = []

@@ -161,13 +161,10 @@ TEST(test_add_functor, add_functor) {
                          static_cast<platform::float16>(1.0),
                          static_cast<platform::float16>(2.0));
   EXPECT_EQ(cpu_res, 0);
-
-#ifndef PADDLE_WITH_XPU
-  // does not support double when compiled using xpu
+  // double
   cpu_res = TensorddTest(
       cpu_place, cpu_place, static_cast<double>(1.0), static_cast<double>(2.0));
   EXPECT_EQ(cpu_res, 0);
-#endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   int gpu_res = 1;
@@ -217,6 +214,9 @@ TEST(test_add_functor, add_functor) {
                          static_cast<platform::float16>(1.0),
                          static_cast<platform::float16>(2.0));
   EXPECT_EQ(xpu_res, 0);
+  xpu_res = TensorddTest(
+      xpu_place, xpu_place, static_cast<double>(1.0), static_cast<double>(2.0));
+  EXPECT_EQ(xpu_res, 0);
   // different places
   xpu_res = TensorddTest(
       cpu_place, xpu_place, static_cast<float>(1.0), static_cast<float>(2.0));
@@ -233,6 +233,12 @@ TEST(test_add_functor, add_functor) {
                          cpu_place,
                          static_cast<platform::float16>(1.0),
                          static_cast<platform::float16>(2.0));
+  EXPECT_EQ(xpu_res, 0);
+  xpu_res = TensorddTest(
+      cpu_place, xpu_place, static_cast<double>(1.0), static_cast<double>(2.0));
+  EXPECT_EQ(xpu_res, 0);
+  xpu_res = TensorddTest(
+      xpu_place, cpu_place, static_cast<double>(1.0), static_cast<double>(2.0));
   EXPECT_EQ(xpu_res, 0);
 #endif
 }

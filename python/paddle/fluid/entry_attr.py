@@ -15,7 +15,7 @@
 __all__ = ['ProbabilityEntry', 'CountFilterEntry']
 
 
-class EntryAttr(object):
+class EntryAttr:
     """
     Examples:
         .. code-block:: python

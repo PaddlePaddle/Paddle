@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import zipfile
 import re
+import zipfile
 
-from paddle.io import Dataset
+import numpy as np
+
 from paddle.dataset.common import _check_exists_and_download
+from paddle.io import Dataset
 
 __all__ = []
 
@@ -27,7 +28,7 @@ URL = 'https://dataset.bj.bcebos.com/movielens%2Fml-1m.zip'
 MD5 = 'c4d9eecfca2ab87c1945afe126590906'
 
 
-class MovieInfo(object):
+class MovieInfo:
     """
     Movie id, title and categories information are stored in MovieInfo.
     """
@@ -58,7 +59,7 @@ class MovieInfo(object):
         return self.__str__()
 
 
-class UserInfo(object):
+class UserInfo:
     """
     User id, gender, age, and job information are stored in UserInfo.
     """
@@ -133,7 +134,7 @@ class Movielens(Dataset):
 
                 model = SimpleNet()
                 category, title, rating = model(category, title, rating)
-                print(category.numpy().shape, title.numpy().shape, rating.numpy().shape)
+                print(category.shape, title.shape, rating.shape)
 
     """
 

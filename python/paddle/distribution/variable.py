@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle.distribution import constraint
 
 
-class Variable(object):
+class Variable:
     """Random variable of probability distribution.
 
     Args:

@@ -13,27 +13,23 @@
 # limitations under the License.
 
 import math
+from collections.abc import Sequence
 from functools import reduce
 
 import numpy as np
+
 import paddle
-from paddle import framework
-from paddle.nn import functional as F
-from paddle.nn import initializer as I
-from paddle.nn import Layer, LayerList
+from paddle import _C_ops, _legacy_C_ops, framework, in_dynamic_mode
+from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layers import utils
 from paddle.fluid.layers.utils import flatten, map_structure
-from paddle import _C_ops, _legacy_C_ops
-from paddle import in_dynamic_mode
-from paddle.fluid.framework import in_dygraph_mode
 from paddle.framework import core
-from paddle.static import default_startup_program
-from paddle.static import program_guard
+from paddle.nn import Layer
+from paddle.nn import functional as F
+from paddle.nn import initializer as I
+from paddle.static import default_startup_program, program_guard
 
-try:
-    from collections.abc import Sequence
-except:
-    from collections import Sequence
+from .container import LayerList
 
 __all__ = []
 
@@ -188,7 +184,7 @@ class RNNCellBase(Layer):
                 return True
             return isinstance(seq, Sequence) and not isinstance(seq, str)
 
-        class Shape(object):
+        class Shape:
             def __init__(self, shape):
                 self.shape = shape if shape[0] == -1 else ([-1] + list(shape))
 

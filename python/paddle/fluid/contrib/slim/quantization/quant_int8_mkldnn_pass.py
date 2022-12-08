@@ -21,7 +21,7 @@ from ....framework import _get_paddle_place
 __all__ = ['QuantInt8MkldnnPass']
 
 
-class QuantInt8MkldnnPass(object):
+class QuantInt8MkldnnPass:
     """
     Convert QuantizationFreezePass generated IrGraph to MKL-DNN supported INT8
     IrGraph. Following transformations did in this pass:

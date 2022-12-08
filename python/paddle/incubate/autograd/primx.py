@@ -115,7 +115,7 @@ def output_vars_on_path(path):
     return vars
 
 
-class VarMap(object):
+class VarMap:
     """A general map data structure for linking variables to variables.
 
     An example is linking variables to their gradients.
@@ -180,7 +180,7 @@ class VarMap(object):
 
 
 # TODO(lml): supporting control flow, nested blocks, and block other than current block of main program.
-class Transform(object):
+class Transform:
     """An object that maintains the state of transformations applied to a
     primitve program."""
 

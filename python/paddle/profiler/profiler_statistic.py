@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import collections
-from enum import Enum
 import re
+from enum import Enum
 
 from paddle.fluid.core import TracerEventType, TracerMemEventType
+from paddle.utils.flops import flops
 
 from .statistic_helper import (
     intersection_ranges,
@@ -77,6 +78,16 @@ class SortedKeys(Enum):
     GPUMin = 7
 
 
+def _nodename2opname(name):
+    r'''
+    convert static host node name to operator name
+    '''
+    op_name = name.replace(' compute', '')
+    op_name = op_name.replace(' dygraph', '')
+    op_name = op_name.replace(' pybind_imperative_func', '')
+    return op_name
+
+
 class HostStatisticNode:
     r'''
     Wrap original node for calculating statistic metrics.
@@ -92,24 +103,38 @@ class HostStatisticNode:
         self.self_gpu_time = 0
         self.general_gpu_time = 0  # besides kernel, include time of gpu events like memcpy and memset
         self.self_general_gpu_time = 0
+        self.flops = 0
+
+    def cal_flops(self):
+        if self.hostnode.type == TracerEventType.Operator:
+            if hasattr(self.hostnode, 'input_shapes'):
+                op_name = _nodename2opname(self.hostnode.name)
+                self.flops = flops(
+                    op_name,
+                    self.hostnode.input_shapes,
+                    self.hostnode.attributes,
+                )
 
     def cal_statistic(self):
-        for child in self.children_node:
-            child.cal_statistic()
-        for rt in self.runtime_node:
-            rt.cal_statistic()
         self.cpu_time = self.hostnode.end_ns - self.hostnode.start_ns
         self.self_cpu_time = self.cpu_time
+        self.cal_flops()
         for child in self.children_node:
+            child.cal_flops()
+            child.cal_statistic()
             self.gpu_time += child.gpu_time
             self.general_gpu_time += child.general_gpu_time
             self.self_cpu_time -= child.end_ns - child.start_ns
+            self.flops += child.flops
+
         for rt in self.runtime_node:
+            rt.cal_statistic()
             self.self_cpu_time -= rt.end_ns - rt.start_ns
             self.gpu_time += rt.gpu_time
             self.self_gpu_time += rt.gpu_time
             self.general_gpu_time += rt.general_gpu_time
             self.self_general_gpu_time += rt.general_gpu_time
+
         for device in self.hostnode.device_node:
             if device.type == TracerEventType.Kernel:
                 self.gpu_time += device.end_ns - device.start_ns
@@ -158,6 +183,117 @@ def get_device_nodes(hostnode):
             for devicenode in runtimenode.device_node:
                 device_nodes.append(devicenode)
     return device_nodes
+
+
+def _build_layer_from_tree(nodetrees):
+    def build_layer(node, depth=0):
+
+        if "GradNode" in node.name:
+            return [], 0
+
+        if node.type in [
+            TracerEventType.Backward,
+            TracerEventType.Optimization,
+        ]:
+            return [], 0
+
+        if node.type == TracerEventType.Operator:
+            stat_node = HostStatisticNode(node)
+            stat_node.cal_statistic()
+            return stat_node, stat_node.flops
+
+        layer = []
+        nflops = 0
+        for c in node.children_node:
+            l, f = build_layer(c, depth + 1)
+            if l:
+                nflops += f
+                layer.append(l)
+
+        if node.type == TracerEventType.Forward:
+            stat_node = HostStatisticNode(node)
+            stat_node.cal_statistic()
+            stat_node.flops = nflops
+            return [stat_node, layer], nflops
+
+        return layer, nflops
+
+    ret = []
+    for _, rootnode in nodetrees.items():
+        layer, _ = build_layer(rootnode)
+        ret.append(layer)
+
+    return ret
+
+
+def _format_large_number(n, precision=2):
+    if n // 1e12 > 0:
+        return "{} T".format(round(n / 1e12, precision))
+    if n // 1e9 > 0:
+        return "{} G".format(round(n / 1e9, precision))
+    if n // 1e6 > 0:
+        return "{} M".format(round(n / 1e6, precision))
+    if n // 1e3 > 0:
+        return "{} K".format(round(n / 1e3, precision))
+    return "{}".format(round(n, precision))
+
+
+def _format_time(n, precision=2):
+    if n // 1e9 > 0:
+        return "{} s".format(round(n / 1e9, precision))
+    if n // 1e6 > 0:
+        return "{} ms".format(round(n / 1e6, precision))
+    if n // 1e3 > 0:
+        return "{} us".format(round(n / 1e3, precision))
+    return "{} ns".format(round(n, precision))
+
+
+def _gen_layer_flops(node, repeat=1):
+    ret = []
+    offset = []
+    loop = []
+
+    def print_layer_tree(node, depth=0):
+        if isinstance(node, list):
+            for n in node:
+                print_layer_tree(n, depth + 1)
+
+        elif node.type in [TracerEventType.Forward, TracerEventType.Operator]:
+            if len(offset) == 0:
+                offset.append(depth)
+
+            name = _nodename2opname(node.name)
+
+            if (
+                depth == offset[-1] and len(ret) > 0 and ret[0].startswith(name)
+            ):  # repeat begin
+                loop.append(1)
+
+            if len(loop) >= repeat:
+                return "".join(ret)
+
+            align = " " * (depth - offset[-1])
+            tm = _format_time(node.cpu_time)
+            flops_n = _format_large_number(node.flops)
+            flops_s = _format_large_number(node.flops * 1e9 / node.cpu_time)
+            ret.append(
+                "{}{} latency: {}, FLOPs: {}, FLOPS: {}\n".format(
+                    align, name, tm, flops_n, flops_s
+                )
+            )
+
+    for n in node[1:]:
+        print_layer_tree(n)
+
+    return "".join(ret)
+
+
+def gen_layer_flops(nodetrees, repeat=1):
+    r'''
+    gen_layer_flops generate flops/runtime information depend on layer/operator.
+    '''
+    layer_tree = _build_layer_from_tree(nodetrees)
+    return _gen_layer_flops(layer_tree, repeat)
 
 
 def wrap_tree(nodetrees):
@@ -229,6 +365,7 @@ class TimeRangeSummary:
                 )
             )  # device_id/type/stream_id
             for hostnode in hostnodes[1:]:  # skip root node
+
                 CPUTimeRange[hostnode.type].append(
                     (hostnode.start_ns, hostnode.end_ns)
                 )
@@ -369,30 +506,7 @@ class EventSummary:
     Analyse operator event in profiling data, correlate with its device event.
     """
 
-    class DeviceItem:
-        def __init__(self, name):
-            self.name = name
-            self.call = 0
-            self.gpu_time = 0
-            self.max_gpu_time = 0
-            self.min_gpu_time = float('inf')
-
-        @property
-        def avg_gpu_time(self):
-            return self.gpu_time / self.call
-
-        def add_gpu_time(self, time):
-            if time > self.max_gpu_time:
-                self.max_gpu_time = time
-            if time < self.min_gpu_time:
-                self.min_gpu_time = time
-            self.gpu_time += time
-
-        def add_item(self, node):
-            self.call += 1
-            self.add_gpu_time(node.end_ns - node.start_ns)
-
-    class OperatorItem:
+    class ItemBase:
         def __init__(self, name):
             self.name = name
             self.call = 0
@@ -407,6 +521,11 @@ class EventSummary:
             self.general_gpu_time = 0
             self.min_general_gpu_time = float('inf')
             self.max_general_gpu_time = 0
+            self._flops = 0
+
+        @property
+        def flops(self):
+            return self._flops
 
         @property
         def avg_cpu_time(self):
@@ -444,11 +563,24 @@ class EventSummary:
         def add_call(self):
             self.call += 1
 
+        def add_flops(self, flops):
+            self._flops += flops
+
+        def add_item(self, node):
+            raise NotImplementedError
+
+    class DeviceItem(ItemBase):
+        def add_item(self, node):
+            self.call += 1
+            self.add_gpu_time(node.end_ns - node.start_ns)
+
+    class OperatorItem(ItemBase):
         def add_item(self, node):
             self.add_call()
             self.add_cpu_time(node.cpu_time)
             self.add_gpu_time(node.gpu_time)
             self.add_general_gpu_time(node.general_gpu_time)
+            self.add_flops(node.flops)
             for child in node.children_node:
                 if child.type != TracerEventType.Operator:
                     if child.name not in self.operator_inners:
@@ -464,56 +596,22 @@ class EventSummary:
                         self.devices[name] = EventSummary.DeviceItem(name)
                     self.devices[name].add_item(devicenode)
 
-    class GeneralItem:
-        def __init__(self, name):
-            self.name = name
-            self.call = 0
-            self.cpu_time = 0
-            self.max_cpu_time = 0
-            self.min_cpu_time = float('inf')
-            self.gpu_time = 0
-            self.max_gpu_time = 0
-            self.min_gpu_time = float('inf')
-            self.general_gpu_time = 0
-            self.min_general_gpu_time = float('inf')
-            self.max_general_gpu_time = 0
+    class ForwardItem(ItemBase):
+        def add_item(self, node):
+            self.add_call()
+            self.add_cpu_time(node.cpu_time)
+            self.add_gpu_time(node.gpu_time)
+            self.add_general_gpu_time(node.general_gpu_time)
+            self.add_flops(node.flops)
+            for child in node.children_node:
+                if child.type != TracerEventType.Operator:
+                    if child.name not in self.operator_inners:
+                        self.operator_inners[
+                            child.name
+                        ] = EventSummary.OperatorItem(child.name)
+                    self.operator_inners[child.name].add_item(child)
 
-        @property
-        def avg_cpu_time(self):
-            return self.cpu_time / self.call
-
-        @property
-        def avg_gpu_time(self):
-            return self.gpu_time / self.call
-
-        @property
-        def avg_general_gpu_time(self):
-            return self.general_gpu_time / self.call
-
-        def add_cpu_time(self, time):
-            if time > self.max_cpu_time:
-                self.max_cpu_time = time
-            if time < self.min_cpu_time:
-                self.min_cpu_time = time
-            self.cpu_time += time
-
-        def add_gpu_time(self, time):
-            if time > self.max_gpu_time:
-                self.max_gpu_time = time
-            if time < self.min_gpu_time:
-                self.min_gpu_time = time
-            self.gpu_time += time
-
-        def add_general_gpu_time(self, time):
-            if time > self.max_general_gpu_time:
-                self.max_general_gpu_time = time
-            if time < self.min_general_gpu_time:
-                self.min_general_gpu_time = time
-            self.general_gpu_time += time
-
-        def add_call(self):
-            self.call += 1
-
+    class GeneralItem(ItemBase):
         def add_item(self, node):
             self.add_call()
             self.add_cpu_time(node.cpu_time)
@@ -585,6 +683,9 @@ class EventSummary:
                         if child.type == TracerEventType.ProfileStep:
                             self.add_model_perspective_item(child)
                         deque.append(child)
+
+    def add_forward_item(self, operator_node):
+        pass
 
     def add_operator_item(self, operator_node):
         if operator_node.name not in self.items:
@@ -837,7 +938,7 @@ def _build_table(
 
     if views is None or SummaryView.DeviceView in views:
 
-        ###### Print Device Summary ######
+        # ----- Print Device Summary ----- #
         headers = ['Device', 'Utilization (%)']
         name_column_width = 30
         DEFAULT_COLUMN_WIDTH = 20
@@ -893,7 +994,7 @@ def _build_table(
             return ''.join(result)
 
     if views is None or SummaryView.OverView in views:
-        ###### Print Overview Summary ######
+        # ----- Print Overview Summary ----- #
         headers = ['Event Type', 'Calls', 'CPU Time', 'Ratio (%)']
         row_format_list = [""]
         header_sep_list = [""]
@@ -1028,7 +1129,7 @@ def _build_table(
 
     if views is None or SummaryView.ModelView in views:
 
-        ###### Print Model Summary Report ######
+        # ----- Print Model Summary Report ----- #
         model_perspective_items = (
             statistic_data.event_summary.model_perspective_items
         )
@@ -1153,7 +1254,7 @@ def _build_table(
 
     if views is None or SummaryView.DistributedView in views:
 
-        ###### Print Distribution Summary Report ######
+        # ----- Print Distribution Summary Report ----- #
         if statistic_data.distributed_summary.communication_range:
             headers = [
                 'Name',
@@ -1233,7 +1334,7 @@ def _build_table(
 
     if views is None or SummaryView.OperatorView in views:
 
-        ###### Print Operator Summary Report ######
+        # ----- Print Operator Summary Report ----- #
         if statistic_data.event_summary.items:
             all_row_values = []
             name_column_width = 52
@@ -1328,6 +1429,7 @@ def _build_table(
                             ),
                             format_ratio(gpu_ratio),
                         ),
+                        item.flops,
                     ]
                     all_row_values.append(row_values)
                     if op_detail:
@@ -1393,6 +1495,7 @@ def _build_table(
                                     ),
                                     format_ratio(gpu_ratio),
                                 ),
+                                '-',
                             ]
                             all_row_values.append(row_values)
                             for (
@@ -1436,6 +1539,7 @@ def _build_table(
                                         ),
                                         format_ratio(gpu_ratio),
                                     ),
+                                    '-',
                                 ]
                                 all_row_values.append(row_values)
                         for (
@@ -1473,12 +1577,14 @@ def _build_table(
                                     ),
                                     format_ratio(gpu_ratio),
                                 ),
+                                '-',
                             ]
                             all_row_values.append(row_values)
             # Calculate the column width
             calltime_width = 6
             cpu_data_description_width = 40
             gpu_data_description_width = 40
+            flops_width = 10
             for row_values in all_row_values:
                 if isinstance(row_values, str):
                     continue
@@ -1496,6 +1602,7 @@ def _build_table(
                 'Calls',
                 'CPU Total / Avg / Max / Min / Ratio(%)',
                 'GPU Total / Avg / Max / Min / Ratio(%)',
+                'FLOPs',
             ]
             row_format_list = [""]
             header_sep_list = [""]
@@ -1504,6 +1611,7 @@ def _build_table(
             add_column(calltime_width)
             add_column(cpu_data_description_width)
             add_column(gpu_data_description_width)
+            add_column(flops_width)
 
             row_format = row_format_list[0]
             header_sep = header_sep_list[0]
@@ -1526,7 +1634,7 @@ def _build_table(
 
     if views is None or SummaryView.KernelView in views:
 
-        ###### Print Kernel Summary Report ######
+        # ----- Print Kernel Summary Report ----- #
         if statistic_data.event_summary.kernel_items:
             all_row_values = []
             kernel_items = statistic_data.event_summary.kernel_items
@@ -1627,7 +1735,7 @@ def _build_table(
 
     if views is None or SummaryView.MemoryManipulationView in views:
 
-        ###### Print Memory Manipulation Summary Report ######
+        # ----- Print Memory Manipulation Summary Report ----- #
         if statistic_data.event_summary.memory_manipulation_items:
             all_row_values = []
             memory_manipulation_items = (
@@ -1713,7 +1821,7 @@ def _build_table(
 
     if views is None or SummaryView.UDFView in views:
 
-        ###### Print UserDefined Summary Report ######
+        # ----- Print UserDefined Summary Report ----- #
         if statistic_data.event_summary.userdefined_items:
             all_row_values = []
             gpu_total_time = (
@@ -1862,7 +1970,7 @@ def _build_table(
 
     if views is None or SummaryView.MemoryView in views:
 
-        ###### Print Memory Summary Report ######
+        # ----- Print Memory Summary Report ----- #
         if (
             statistic_data.memory_summary.allocated_items
             or statistic_data.memory_summary.reserved_items

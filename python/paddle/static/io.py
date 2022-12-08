@@ -17,22 +17,22 @@ import inspect
 import logging
 import os
 import warnings
+
 import numpy as np
 
 import paddle
 from paddle.fluid import (
-    core,
-    Variable,
     CompiledProgram,
-    default_main_program,
     Program,
-    layers,
-    unique_name,
+    Variable,
+    core,
+    default_main_program,
     program_guard,
+    unique_name,
 )
-from paddle.fluid.io import prepend_feed_ops, append_fetch_ops
-from paddle.fluid.framework import static_only, Parameter
 from paddle.fluid.executor import global_scope
+from paddle.fluid.framework import Parameter, static_only
+from paddle.fluid.io import append_fetch_ops, prepend_feed_ops
 from paddle.fluid.log_helper import get_logger
 
 __all__ = []
@@ -201,7 +201,7 @@ def normalize_program(program, feed_vars, fetch_vars):
         uniq_fetch_vars = []
         for i, var in enumerate(fetch_vars):
             if var.dtype != paddle.bool:
-                var = layers.scale(
+                var = paddle.scale(
                     var, 1.0, name="save_infer_model/scale_{}".format(i)
                 )
             uniq_fetch_vars.append(var)

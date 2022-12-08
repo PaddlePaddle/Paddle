@@ -12,16 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import os
 import shutil
 import unittest
-import itertools
+
 import numpy as np
 from inference_pass_test import InferencePassTest
+
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
+import paddle.static.nn as nn
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class TensorRTPoolTest(InferencePassTest):
@@ -71,7 +73,7 @@ class TensorRTPoolTest(InferencePassTest):
                 ceil_mode=self.ceil_mode,
                 exclusive=self.exclusive,
             )
-            out = fluid.layers.batch_norm(pool_out, is_test=True)
+            out = nn.batch_norm(pool_out, is_test=True)
             self.fetch_list = [out]
 
     def check_output(self):

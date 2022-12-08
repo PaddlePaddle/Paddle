@@ -33,5 +33,7 @@ bool CheckTensorsInCudaPlace(const std::vector<phi::DenseTensor>& tensors);
 bool CheckTensorsInCustomPlace(const std::vector<phi::DenseTensor>& tensors,
                                const std::string& dev_type);
 
+bool CheckTensorsInXPUPlace(const std::vector<phi::DenseTensor>& tensors);
+
 }  //  namespace distributed
 }  //  namespace paddle

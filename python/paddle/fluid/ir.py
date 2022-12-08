@@ -140,7 +140,7 @@ def apply_build_strategy(
     return build_strategy
 
 
-class RegisterPassHelper(object):
+class RegisterPassHelper:
     _register_helpers = list()
 
     def __init__(self, pass_pairs, pass_type=str(), input_specs=dict()):
@@ -286,8 +286,8 @@ class RegisterPassHelper(object):
         return multi_pass_desc.SerializeToString()
 
 
-class PassDesc(object):
-    class AttrHelper(object):
+class PassDesc:
+    class AttrHelper:
         def __init__(self, obj, name, element_index=None):
             self._obj = obj
             self._name = name
@@ -422,7 +422,7 @@ class PassDesc(object):
                 self._attrs[name] = attr
             return attr
 
-    class OpHelper(object):
+    class OpHelper:
         def __init__(self, type=None):
             self._type = type
 

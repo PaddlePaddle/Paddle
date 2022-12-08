@@ -69,6 +69,9 @@ void SetOp(ProgramDesc* prog,
   } else if (type == "slice") {
     op->SetInput("Input", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
+  } else if (type == "split") {
+    op->SetInput("X", {inputs[0]});
+    op->SetOutput("Out", {outputs});
   } else if (type == "dropout") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
@@ -556,8 +559,12 @@ void TestImmutableOpWithManyOutputs(const std::string tested_op) {
            SCALE * S8_MAX);
 }
 
-const std::vector<std::string> immutables = {
-    "reshape2", "transpose2", "slice", "nearest_interp", "nearest_interp_v2"};
+const std::vector<std::string> immutables = {"reshape2",
+                                             "transpose2",
+                                             "slice",
+                                             "nearest_interp",
+                                             "nearest_interp_v2",
+                                             "split"};
 
 class TestImmutables : public testing::TestWithParam<std::string> {};
 

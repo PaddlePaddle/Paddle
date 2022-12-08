@@ -14,15 +14,15 @@
 
 # TODO: define statistical functions of a tensor
 
-from ..static import Variable
-from ..framework import LayerHelper
-from ..framework import core
-from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
-from .search import where
-from ..fluid.data_feeder import check_type, check_variable_and_dtype
 import paddle
 from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+
+from ..fluid.data_feeder import check_type, check_variable_and_dtype
+from ..framework import LayerHelper, core
+from ..static import Variable
 from .math import _get_reduce_axis_with_tensor
+from .search import where
 
 __all__ = []
 
@@ -79,11 +79,10 @@ def mean(x, axis=None, keepdim=False, name=None):
             out4 = paddle.mean(x, axis=[0, 2])
             # [ 8.5 12.5 16.5]
     """
-
-    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
-
     if in_dygraph_mode():
         return _C_ops.mean(x, axis, keepdim)
+
+    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
     if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_mean(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
@@ -159,7 +158,7 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
     )
     n = n.astype(dtype)
     if unbiased:
-        one_const = paddle.ones([1], x.dtype)
+        one_const = paddle.ones([], x.dtype)
         n = where(n > one_const, n - 1.0, one_const)
     out /= n
     return out
@@ -206,8 +205,11 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
             x = paddle.to_tensor([[1.0, 2.0, 3.0], [1.0, 4.0, 5.0]])
             out1 = paddle.std(x)
             # [1.63299316]
-            out2 = paddle.std(x, axis=1)
+            out2 = paddle.std(x, unbiased=False)
+            # [1.49071205]
+            out3 = paddle.std(x, axis=1)
             # [1.       2.081666]
+
     """
     if not paddle.in_dynamic_mode():
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'std')

@@ -13,15 +13,15 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid.framework import dygraph_only
-from paddle.fluid.dygraph.amp.auto_cast import amp_state
 from paddle.amp.auto_cast import auto_cast
 from paddle.fluid import core
+from paddle.fluid.dygraph.amp.auto_cast import amp_state
+from paddle.fluid.framework import dygraph_only
 
 __all__ = []
 
 
-class LegacyPyLayerContext(object):
+class LegacyPyLayerContext:
     """
     The object of this class is a context that is used in PyLayer to enhance the function.
 
@@ -131,7 +131,7 @@ def with_mateclass(meta, *bases):
     return type.__new__(impl, "impl", (), {})
 
 
-class CPyLayer(object):
+class CPyLayer:
     @classmethod
     @dygraph_only
     def apply(cls, *args, **kwargs):
@@ -336,7 +336,7 @@ class LegacyPyLayer(with_mateclass(LayerMeta, CPyLayer)):
         )
 
 
-class EagerPyLayerContext(object):
+class EagerPyLayerContext:
     def save_for_backward(self, *tensors):
         """
         Saves given tensors that backward need. Use ``saved_tensor`` in the `backward` to get the saved tensors.

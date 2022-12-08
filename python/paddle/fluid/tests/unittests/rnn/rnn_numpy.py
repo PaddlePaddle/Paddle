@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import math
 
+import numpy as np
 
-class LayerMixin(object):
+
+class LayerMixin:
     def __call__(self, *args, **kwargs):
         return self.forward(*args, **kwargs)
 

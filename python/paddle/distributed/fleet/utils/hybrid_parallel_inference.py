@@ -13,14 +13,15 @@
 # limitations under the License.
 
 from collections import defaultdict
-from paddle.fluid.framework import Block, Program
-from paddle.fluid.framework import _non_static_mode
-import paddle.fluid.core as core
-import paddle.distributed.fleet as fleet
+
 import numpy as np
 
+import paddle.distributed.fleet as fleet
+import paddle.fluid.core as core
+from paddle.fluid.framework import Block, Program, _non_static_mode
 
-class HybridParallelInferenceHelper(object):
+
+class HybridParallelInferenceHelper:
     """
     A helper class to split program for inference with hybrid parallelism.
 
@@ -128,7 +129,7 @@ class HybridParallelInferenceHelper(object):
                 data = layers.array_write(X, step_idx)
 
                 cond_int = layers.fill_constant(shape=[1], dtype="int64", value=0, force_cpu=False, name="cond_int")
-                cond = layers.less_than(x=step_idx, y=max_len)
+                cond = paddle.less_than(x=step_idx, y=max_len)
                 while_op = layers.While(cond, is_test=True)
 
             with while_op.block():
@@ -152,7 +153,7 @@ class HybridParallelInferenceHelper(object):
                     layers.array_write(hidden2, i=step_idx, array=data)
 
                     # update cond and assign to cond_int, we will sync cond_int
-                    layers.less_than(x=step_idx, y=max_len, cond=cond)
+                    paddle.assign(paddle.less_than(x=step_idx, y=max_len), cond)
                     layers.assign(layers.cast(cond, dtype="int32"), cond_int)
 
                 with paddle.fluid.device_guard(f'{device}:all'):

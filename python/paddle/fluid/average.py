@@ -39,7 +39,7 @@ def _is_number_or_matrix_(var):
     return _is_number_(var) or isinstance(var, np.ndarray)
 
 
-class WeightedAverage(object):
+class WeightedAverage:
     """
     Calculate weighted average.
 

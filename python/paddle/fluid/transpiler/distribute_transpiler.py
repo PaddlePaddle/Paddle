@@ -143,7 +143,7 @@ def slice_variable(var_list, slice_count, min_block_size):
     return blocks
 
 
-class DistributeTranspilerConfig(object):
+class DistributeTranspilerConfig:
     """
         :api_attr: Static Graph
 
@@ -248,7 +248,7 @@ class DistributeTranspilerConfig(object):
         self.__sync_mode = value
 
 
-class ServerRuntimeConfig(object):
+class ServerRuntimeConfig:
     def __init__(self):
         self._rpc_send_thread_num = int(
             os.getenv("FLAGS_rpc_send_thread_num", "12")
@@ -261,7 +261,7 @@ class ServerRuntimeConfig(object):
         )
 
 
-class DistributeTranspiler(object):
+class DistributeTranspiler:
     """
         :api_attr: Static Graph
 
@@ -283,11 +283,16 @@ class DistributeTranspiler(object):
     Examples:
         .. code-block:: python
 
+            import paddle
+            import paddle.fluid as fluid
+
+            paddle.enable_static()
+
             x = fluid.data(name='x', shape=[13], dtype='float32')
             y = fluid.data(name='y', shape=[1], dtype='float32')
             y_predict = fluid.layers.fc(input=x, size=1, act=None)
 
-            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            cost =paddle.nn.functional.square_error_cost(input=y_predict, label=y)
             avg_loss = fluid.layers.mean(cost)
 
             sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)

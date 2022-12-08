@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import os
+
 import numpy as np
 
 os.environ[str("FLAGS_check_nan_inf")] = str("1")
 os.environ[str("GLOG_vmodule")] = str("nan_inf_utils_detail=10")
 
-import paddle.fluid.core as core
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 paddle.enable_static()
 
@@ -62,10 +63,10 @@ def net():
         hidden = fluid.layers.fc(input=hidden, size=400, act="sigmoid")
 
     hidden = fluid.layers.fc(input=hidden, size=3, act=None)
-    cost, y_predict = fluid.layers.softmax_with_cross_entropy(
+    cost, y_predict = paddle.nn.functional.softmax_with_cross_entropy(
         hidden, y, return_softmax=True
     )
-    acc_top1 = fluid.layers.accuracy(input=y_predict, label=y, k=1)
+    acc_top1 = paddle.static.accuracy(input=y_predict, label=y, k=1)
     avg_cost = paddle.mean(cost)
 
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.05)

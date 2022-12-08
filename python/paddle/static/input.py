@@ -13,11 +13,10 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid import core, Variable
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid import Variable, core
 from paddle.fluid.data_feeder import check_type
-from paddle.fluid.framework import convert_np_dtype_to_dtype_
-from paddle.fluid.framework import static_only
+from paddle.fluid.framework import convert_np_dtype_to_dtype_, static_only
+from paddle.fluid.layer_helper import LayerHelper
 
 __all__ = []
 
@@ -120,7 +119,7 @@ def data(name, shape, dtype=None, lod_level=0):
         )
 
 
-class InputSpec(object):
+class InputSpec:
     """
     InputSpec describes the signature information of the model input, such as ``shape`` , ``dtype`` , ``name`` .
 

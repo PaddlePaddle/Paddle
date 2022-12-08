@@ -300,6 +300,7 @@ try:
     from .libpaddle import _promote_types_if_complex_exists
     from .libpaddle import _set_cached_executor_build_strategy
     from .libpaddle import _device_synchronize
+    from .libpaddle import _xpu_device_synchronize
     from .libpaddle import _get_current_stream
     from .libpaddle import _Profiler, _ProfilerResult, _RecordEvent
     from .libpaddle import _set_current_stream

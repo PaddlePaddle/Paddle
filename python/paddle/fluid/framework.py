@@ -786,7 +786,8 @@ def disable_signal_handler():
 
     Make sure you called paddle.disable_signal_handler() before using above mentioned frameworks.
 
-    Returns: None
+    Returns:
+        None
 
     Examples:
         .. code-block:: python
@@ -1077,7 +1078,7 @@ def mlu_places(device_ids=None):
     return [core.MLUPlace(dev_id) for dev_id in device_ids]
 
 
-class NameScope(object):
+class NameScope:
     def __init__(self, name="", parent=None):
         self._children = dict()
         self._name = name
@@ -1352,12 +1353,13 @@ class ParameterMetaClass(VariableMetaClass):
 
 class Variable(metaclass=VariableMetaClass):
     """
-    **Notes**:
-        **The constructor of Variable should not be invoked directly.**
 
-        **In Static Graph Mode: Please use** `Block.create_var` **to create a Static variable which has no data until being feed.**
+    Notes:
+        The constructor of Variable should not be invoked directly.
 
-        **In Dygraph Mode: Please use** :ref:`api_fluid_dygraph_to_variable` **to create a dygraph variable with real data**
+        In Static Graph Mode: Please use ** `Block.create_var` ** to create a Static variable which has no data until being feed.
+
+        In Dygraph Mode: Please use ** :ref:`api_fluid_dygraph_to_variable` ** to create a dygraph variable with real data.
 
     In Fluid, every input and output of an OP is a variable. In most
     cases, variables are used for holding different kinds of data or training
@@ -1513,12 +1515,13 @@ class Variable(metaclass=VariableMetaClass):
 
     def detach(self):
         """
+
         Returns a new Variable, detached from the current graph.
         It will share data with origin Variable and without tensor copy.
         In addition, the detached Variable doesn't provide gradient propagation.
 
         Returns:
-             ( :ref:`api_guide_Variable_en` | dtype is same as current Variable): The detached Variable.
+             ( :ref:`api_guide_Variable_en` | dtype is same as current Variable), The detached Variable.
 
         Examples:
             .. code-block:: python
@@ -1532,6 +1535,7 @@ class Variable(metaclass=VariableMetaClass):
 
                 # create a detached Variable
                 y = x.detach()
+
         """
 
         assert (
@@ -1637,6 +1641,7 @@ class Variable(metaclass=VariableMetaClass):
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import numpy as np
 
@@ -1649,7 +1654,7 @@ class Variable(metaclass=VariableMetaClass):
                         tmp.stop_gradient=False
                         inputs2.append(tmp)
                     ret2 = fluid.layers.sums(inputs2)
-                    loss2 = fluid.layers.reduce_sum(ret2)
+                    loss2 = paddle.sum(ret2)
                     loss2.backward()
                     print(loss2.gradient())
 
@@ -1684,6 +1689,7 @@ class Variable(metaclass=VariableMetaClass):
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import numpy as np
 
@@ -1695,7 +1701,7 @@ class Variable(metaclass=VariableMetaClass):
                         tmp.stop_gradient=False
                         inputs2.append(tmp)
                     ret2 = fluid.layers.sums(inputs2)
-                    loss2 = fluid.layers.reduce_sum(ret2)
+                    loss2 = paddle.sum(ret2)
                     loss2.backward()
                     print(loss2.gradient())
                     loss2.clear_gradient()
@@ -2081,6 +2087,7 @@ class Variable(metaclass=VariableMetaClass):
     @property
     def T(self):
         """
+
         Permute current Variable with its dimensions reversed.
 
         If `n` is the dimensions of `x` , `x.T` is equivalent to `x.transpose([n-1, n-2, ..., 0])`.
@@ -2099,6 +2106,7 @@ class Variable(metaclass=VariableMetaClass):
                 x_T_np = exe.run(paddle.static.default_main_program(), fetch_list=[x_T])[0]
                 print(x_T_np.shape)
                 # (5, 3, 2)
+
         """
         if len(self.shape) == 1:
             return self
@@ -2137,7 +2145,7 @@ class Variable(metaclass=VariableMetaClass):
         as ``out = assign(tensor)`` .
 
         Returns:
-            Variable: The cloned Variable.
+            Variable, The cloned Variable.
 
         Examples:
             .. code-block:: python
@@ -2167,6 +2175,7 @@ class Variable(metaclass=VariableMetaClass):
 
     def _set_error_clip(self, error_clip):
         """
+
         Set the error_clip.
 
         Args:
@@ -2174,11 +2183,13 @@ class Variable(metaclass=VariableMetaClass):
 
         Returns:
             None
+
         """
         self.error_clip = error_clip
 
     def _set_info(self, key, value):
         """
+
         Set key-value information for this variable.
 
         Args:
@@ -2187,6 +2198,7 @@ class Variable(metaclass=VariableMetaClass):
 
         Returns:
             None
+
         """
         if not hasattr(self, "_info"):
             self._info = {}
@@ -2194,6 +2206,7 @@ class Variable(metaclass=VariableMetaClass):
 
     def _get_info(self, key):
         """
+
         Get the information of this variable corresponding to key.
 
         Args:
@@ -2201,6 +2214,7 @@ class Variable(metaclass=VariableMetaClass):
 
         Returns:
             object
+
         """
         if hasattr(self, "_info") and key in self._info:
             return self._info[key]
@@ -2208,7 +2222,9 @@ class Variable(metaclass=VariableMetaClass):
 
     def _slice_indices(self, slice, length):
         """
+
         Reference implementation for the slice.indices method.
+
         """
         # Compute step and length as integers.
         step = 1 if slice.step is None else slice.step
@@ -2379,7 +2395,7 @@ class Variable(metaclass=VariableMetaClass):
                 Default: None
 
         Returns:
-            Tensor: the value in given scope.
+            Tensor, the value in given scope.
 
         Examples:
             .. code-block:: python
@@ -2434,6 +2450,7 @@ class Variable(metaclass=VariableMetaClass):
 
     def set_value(self, value, scope=None):
         '''
+
         Set the value to the tensor in given scope.
 
         Args:
@@ -2473,6 +2490,7 @@ class Variable(metaclass=VariableMetaClass):
                     if var.persistable:
                         t_load = paddle.load(path+var.name+'.pdtensor')
                         var.set_value(t_load)
+
         '''
 
         # The 'framework' is a low-level module, and 'executor'
@@ -2543,10 +2561,11 @@ class Variable(metaclass=VariableMetaClass):
 
     def size(self):
         """
+
         Returns the number of elements for current Variable, which is a int64 Variable with shape [1]
 
         Returns:
-            Variable: the number of elements for current Variable
+            Variable, the number of elements for current Variable
 
         Examples:
             .. code-block:: python
@@ -2560,6 +2579,7 @@ class Variable(metaclass=VariableMetaClass):
 
                 # get the number of elements of the Variable
                 y = x.size()
+
         """
 
         output = self.block.create_var(
@@ -2574,23 +2594,27 @@ class Variable(metaclass=VariableMetaClass):
 
     def _set_attr(self, name, val):
         """
+
         Set the value of attribute by attribute's name.
 
         Args:
             name(str): the attribute name.
             val(int|str|list): the value of the attribute.
+
         """
         self._update_desc_attr(name, val)
 
     def _has_attr(self, name):
         """
+
         Whether this Variable has the attribute with the name `name` or not.
 
         Args:
             name(str): the attribute name.
 
         Returns:
-            bool: True if has this attribute.
+            bool, True if has this attribute.
+
         """
         return self.desc.has_attr(name)
 
@@ -2620,7 +2644,7 @@ class Variable(metaclass=VariableMetaClass):
             name(str): the attribute name.
 
         Returns:
-            int|str|list: The attribute value. The return value
+            int|str|list, The attribute value. The return value
             can be any valid attribute type.
         """
         return self.desc.attr(name)
@@ -2655,7 +2679,7 @@ def get_all_op_protos():
     return ret_values
 
 
-class OpProtoHolder(object):
+class OpProtoHolder:
     """
     A global variable to hold all OpProtos from C++ as a map
     """
@@ -2709,7 +2733,7 @@ class OpProtoHolder(object):
         }
 
 
-class Operator(object):
+class Operator:
     """
     In Fluid, all the operation are represented by Operator, and Operator
     is regarded as a build in an instruction of a Block. Users can use the
@@ -3193,14 +3217,16 @@ class Operator(object):
 
     def input(self, name):
         r"""
+
         Get the input arguments according to the input parameter name.
 
         Args:
             name(str): The input parameter name.
 
         Returns:
-            list: return the list of argument names that associated with \
+            list, return the list of argument names that associated with \
                 the specific parameter name.
+
         """
         return self.desc.input(name)
 
@@ -3550,7 +3576,7 @@ class Operator(object):
         self.desc.dist_attr = dist_attr
 
 
-class Block(object):
+class Block:
     """
     In Fluid, a Program is consistence of multi-Block, and Block stores
     VarDesc and OpDesc. In a specific Block, a VarDesc have a unique name.
@@ -4342,7 +4368,7 @@ def _apply_pass(
     return attrs
 
 
-class IrNode(object):
+class IrNode:
     """
     Python IrNode. Beneath it is a core.Node, which is used for Ir Pass.
     """
@@ -4783,7 +4809,7 @@ class IrOpNode(IrNode):
         return [IrVarNode(n) for n in self.node.outputs]
 
 
-class IrGraph(object):
+class IrGraph:
     """
     Python IrGraph. Beneath it is a core.Graph, which is used for
     creating a c++ Ir Pass Graph. An IrGraph is just a graph view of
@@ -5218,7 +5244,7 @@ class IrGraph(object):
             desc._set_attr(name, val)
 
 
-class Program(object):
+class Program:
     """
     Create Python Program.  It has at least one :ref:`api_guide_Block_en`, when the
     control flow op like conditional_block, while :ref:`api_paddle_fluid_layers_While` is included,
@@ -6175,8 +6201,8 @@ class Program(object):
                     if not find:
                         remove_output_list.append(name)
                 # The extra output of op will be removed in the future
-                # for name in remove_output_list:
-                #     op.remove_output(name)
+                for name in remove_output_list:
+                    op.remove_output(name)
 
                 op_quant_name = (
                     core.op_proto_and_checker_maker.kOpWithQuantAttrName()

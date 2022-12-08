@@ -13,10 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.static.nn as nn
 from paddle.fluid.core import AnalysisConfig
 
 
@@ -41,10 +45,8 @@ class SlicePluginTRTTest(InferencePassTest):
             axes = self.params_axes
             starts = self.params_starts
             ends = self.params_ends
-            slice_out = fluid.layers.slice(
-                data, axes=axes, starts=starts, ends=ends
-            )
-            out = fluid.layers.batch_norm(slice_out, is_test=True)
+            slice_out = paddle.slice(data, axes=axes, starts=starts, ends=ends)
+            out = nn.batch_norm(slice_out, is_test=True)
 
         self.feeds = {
             "data": np.random.random((3, 3, 3, 3)).astype("float32"),
@@ -112,11 +114,9 @@ class SlicePluginTRTTestInt32(SlicePluginTRTTest):
             axes = self.params_axes
             starts = self.params_starts
             ends = self.params_ends
-            slice_out = fluid.layers.slice(
-                data, axes=axes, starts=starts, ends=ends
-            )
+            slice_out = paddle.slice(data, axes=axes, starts=starts, ends=ends)
             cast_out = fluid.layers.cast(slice_out, 'float32')
-            out = fluid.layers.batch_norm(cast_out, is_test=True)
+            out = nn.batch_norm(cast_out, is_test=True)
 
         self.feeds = {
             "data": np.random.random((3, 3, 3, 3)).astype("int32"),
@@ -139,11 +139,9 @@ class StaticSlicePluginTRTTestInt32(SlicePluginTRTTest):
             axes = self.params_axes
             starts = self.params_starts
             ends = self.params_ends
-            slice_out = fluid.layers.slice(
-                data, axes=axes, starts=starts, ends=ends
-            )
+            slice_out = paddle.slice(data, axes=axes, starts=starts, ends=ends)
             cast_out = fluid.layers.cast(slice_out, 'float32')
-            out = fluid.layers.batch_norm(cast_out, is_test=True)
+            out = nn.batch_norm(cast_out, is_test=True)
 
         self.feeds = {
             "data": np.random.random((3, 3, 3, 3)).astype("int32"),

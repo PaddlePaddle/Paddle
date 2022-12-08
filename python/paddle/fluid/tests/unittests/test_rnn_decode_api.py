@@ -14,21 +14,20 @@
 
 import random
 import unittest
+
 import numpy as np
 
 import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
 import paddle.nn as nn
 from paddle import Model, set_device
-from paddle.static import InputSpec as Input
 from paddle.fluid.dygraph import Layer
-from paddle.nn import BeamSearchDecoder, dynamic_decode
-
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle.fluid.core as core
-
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import _test_eager_guard
+from paddle.nn import BeamSearchDecoder, dynamic_decode
+from paddle.static import InputSpec as Input
 
 paddle.enable_static()
 
@@ -72,16 +71,14 @@ class DecoderCell(layers.RNNCell):
         query = layers.fc(
             hidden, size=encoder_output.shape[-1], bias_attr=False
         )
-        attn_scores = layers.matmul(
+        attn_scores = paddle.matmul(
             layers.unsqueeze(query, [1]), encoder_output, transpose_y=True
         )
         if encoder_padding_mask is not None:
-            attn_scores = layers.elementwise_add(
-                attn_scores, encoder_padding_mask
-            )
-        attn_scores = layers.softmax(attn_scores)
-        attn_out = layers.squeeze(
-            layers.matmul(attn_scores, encoder_output), [1]
+            attn_scores = paddle.add(attn_scores, encoder_padding_mask)
+        attn_scores = paddle.nn.functional.softmax(attn_scores)
+        attn_out = paddle.squeeze(
+            paddle.matmul(attn_scores, encoder_output), [1]
         )
         attn_out = layers.concat([attn_out, hidden], 1)
         attn_out = layers.fc(attn_out, size=self.hidden_size, bias_attr=False)
@@ -105,7 +102,7 @@ class DecoderCell(layers.RNNCell):
         return out, [new_lstm_states, out]
 
 
-class Encoder(object):
+class Encoder:
     def __init__(self, num_layers, hidden_size, dropout_prob=0.0):
         self.encoder_cell = EncoderCell(num_layers, hidden_size, dropout_prob)
 
@@ -119,7 +116,7 @@ class Encoder(object):
         return encoder_output, encoder_final_state
 
 
-class Decoder(object):
+class Decoder:
     def __init__(
         self,
         num_layers,
@@ -191,7 +188,7 @@ class Decoder(object):
         return decoder_output, decoder_final_state, dec_seq_lengths
 
 
-class Seq2SeqModel(object):
+class Seq2SeqModel:
     """Seq2Seq model: RNN encoder-decoder with attention"""
 
     def __init__(
@@ -251,7 +248,7 @@ class Seq2SeqModel(object):
             ),
         ]
         src_mask = layers.sequence_mask(
-            src_length, maxlen=layers.shape(src)[1], dtype="float32"
+            src_length, maxlen=paddle.shape(src)[1], dtype="float32"
         )
         encoder_padding_mask = (src_mask - 1.0) * 1e9
         encoder_padding_mask = layers.unsqueeze(encoder_padding_mask, [1])
@@ -298,11 +295,11 @@ class Seq2SeqModel(object):
             decoder_output.sample_ids,
             dec_seq_lengths,
         )
-        probs = layers.softmax(logits)
+        probs = paddle.nn.functional.softmax(logits)
         return probs, samples, sample_length
 
 
-class PolicyGradient(object):
+class PolicyGradient:
     """policy gradient"""
 
     def __init__(self, lr=None):
@@ -312,15 +309,15 @@ class PolicyGradient(object):
         """
         update policy model self.model with policy gradient algorithm
         """
-        self.reward = fluid.layers.py_func(
+        self.reward = paddle.static.py_func(
             func=reward_func, x=[action, length], out=reward
         )
         neg_log_prob = layers.cross_entropy(act_prob, action)
         cost = neg_log_prob * reward
         cost = (
-            (layers.reduce_sum(cost) / layers.reduce_sum(length))
+            (paddle.sum(cost) / paddle.sum(length))
             if length is not None
-            else layers.reduce_mean(cost)
+            else paddle.mean(cost)
         )
         optimizer = fluid.optimizer.Adam(self.lr)
         optimizer.minimize(cost)
@@ -395,7 +392,7 @@ def reward_func(samples, sample_length):
     )
 
 
-class MLE(object):
+class MLE:
     """teacher-forcing MLE training"""
 
     def __init__(self, lr=None):
@@ -403,17 +400,17 @@ class MLE(object):
 
     def learn(self, probs, label, weight=None, length=None):
         loss = layers.cross_entropy(input=probs, label=label, soft_label=False)
-        max_seq_len = layers.shape(probs)[1]
+        max_seq_len = paddle.shape(probs)[1]
         mask = layers.sequence_mask(length, maxlen=max_seq_len, dtype="float32")
         loss = loss * mask
-        loss = layers.reduce_mean(loss, dim=[0])
-        loss = layers.reduce_sum(loss)
+        loss = paddle.mean(loss, axis=[0])
+        loss = paddle.sum(loss)
         optimizer = fluid.optimizer.Adam(self.lr)
         optimizer.minimize(loss)
         return loss
 
 
-class SeqPGAgent(object):
+class SeqPGAgent:
     def __init__(
         self,
         model_cls,

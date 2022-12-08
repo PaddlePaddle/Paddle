@@ -34,7 +34,7 @@ import paddle
 __all__ = ["decorate"]
 
 
-class OptimizerWithMixedPrecision(object):
+class OptimizerWithMixedPrecision:
     """
     Optimizer with mixed-precision (MP) training. This is a wrapper of a common
     optimizer, plus the support of mixed-precision pre-training. The object
@@ -460,7 +460,7 @@ class OptimizerWithMixedPrecision(object):
         if self._is_distributed or self._use_pure_fp16:
             with self._train_program._optimized_guard([]):
                 all_infs = layers.concat(found_infs)
-                found_inf = layers.reduce_any(all_infs)
+                found_inf = paddle.any(all_infs)
 
         return found_inf
 

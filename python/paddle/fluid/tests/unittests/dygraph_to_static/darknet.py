@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 import paddle.fluid as fluid
+from paddle.fluid.dygraph.nn import BatchNorm
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
-
-from paddle.fluid.dygraph.nn import Conv2D, BatchNorm
 
 
 class ConvBNLayer(fluid.dygraph.Layer):
@@ -33,18 +33,17 @@ class ConvBNLayer(fluid.dygraph.Layer):
     ):
         super().__init__()
 
-        self.conv = Conv2D(
-            num_channels=ch_in,
-            num_filters=ch_out,
-            filter_size=filter_size,
+        self.conv = paddle.nn.Conv2D(
+            in_channels=ch_in,
+            out_channels=ch_out,
+            kernel_size=filter_size,
             stride=stride,
             padding=padding,
             groups=groups,
-            param_attr=ParamAttr(
+            weight_attr=ParamAttr(
                 initializer=fluid.initializer.Normal(0.0, 0.02)
             ),
             bias_attr=False,
-            act=None,
         )
         self.batch_norm = BatchNorm(
             num_channels=ch_out,
@@ -65,7 +64,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
         out = self.conv(inputs)
         out = self.batch_norm(out)
         if self.act == 'leaky':
-            out = fluid.layers.leaky_relu(x=out, alpha=0.1)
+            out = paddle.nn.functional.leaky_relu(out, 0.1)
         return out
 
 
@@ -115,7 +114,7 @@ class BasicBlock(fluid.dygraph.Layer):
     def forward(self, inputs):
         conv1 = self.conv1(inputs)
         conv2 = self.conv2(conv1)
-        out = fluid.layers.elementwise_add(x=inputs, y=conv2, act=None)
+        out = paddle.add(x=inputs, y=conv2)
         return out
 
 

@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.utils import gast
 import inspect
-import numpy as np
-import paddle
-import paddle.fluid as fluid
 import unittest
 
-from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import NameVisitor
-from paddle.fluid.dygraph.jit import declarative
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+from paddle.jit.api import declarative
+from paddle.jit.dy2static.loop_transformer import NameVisitor
+from paddle.utils import gast
 
 SEED = 2020
 np.random.seed(SEED)
@@ -153,7 +154,7 @@ def while_loop_bool_op2(x):
 
 
 def while_loop_class_var(x):
-    class Foo(object):
+    class Foo:
         def __init__(self):
             self.a = 3
             self.b = 4
@@ -179,7 +180,7 @@ def loop_var_contains_property(x):
 
 
 def for_loop_class_var(max_len):
-    class Foo(object):
+    class Foo:
         def __init__(self):
             self.a = 3
             self.b = 4

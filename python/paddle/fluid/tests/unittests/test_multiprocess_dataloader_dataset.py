@@ -13,19 +13,20 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid.framework import _test_eager_guard
 from paddle.io import (
+    ChainDataset,
+    ComposeDataset,
+    DataLoader,
     Dataset,
     IterableDataset,
     TensorDataset,
-    ComposeDataset,
-    ChainDataset,
-    DataLoader,
 )
-from paddle.fluid.framework import _test_eager_guard
 
 IMAGE_SIZE = 32
 

@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
 import contextlib
 import math
-import sys
-import numpy
-import unittest
 import os
+import sys
 import tempfile
+import unittest
+
+import numpy
+
+import paddle
+import paddle.fluid as fluid
 
 paddle.enable_static()
 
@@ -38,7 +40,7 @@ def resnet_cifar10(input, depth=32):
             act=None,
             bias_attr=bias_attr,
         )
-        return fluid.layers.batch_norm(input=tmp, act=act)
+        return paddle.static.nn.batch_norm(input=tmp, act=act)
 
     def shortcut(input, ch_in, ch_out, stride):
         if ch_in != ch_out:
@@ -50,7 +52,7 @@ def resnet_cifar10(input, depth=32):
         tmp = conv_bn_layer(input, ch_out, 3, stride, 1)
         tmp = conv_bn_layer(tmp, ch_out, 3, 1, 1, act=None, bias_attr=True)
         short = shortcut(input, ch_in, ch_out, stride)
-        return fluid.layers.elementwise_add(x=tmp, y=short, act='relu')
+        return paddle.nn.functional.relu(paddle.add(x=tmp, y=short))
 
     def layer_warp(block_func, input, ch_in, ch_out, count, stride):
         tmp = block_func(input, ch_in, ch_out, stride)
@@ -94,7 +96,7 @@ def vgg16_bn_drop(input):
 
     drop = fluid.layers.dropout(x=conv5, dropout_prob=0.5)
     fc1 = fluid.layers.fc(input=drop, size=4096, act=None)
-    bn = fluid.layers.batch_norm(input=fc1, act='relu')
+    bn = paddle.static.nn.batch_norm(input=fc1, act='relu')
     drop2 = fluid.layers.dropout(x=bn, dropout_prob=0.5)
     fc2 = fluid.layers.fc(input=drop2, size=4096, act=None)
     return fc2
@@ -119,7 +121,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
     predict = fluid.layers.fc(input=net, size=classdim, act='softmax')
     cost = fluid.layers.cross_entropy(input=predict, label=label)
     avg_cost = paddle.mean(cost)
-    acc = fluid.layers.accuracy(input=predict, label=label)
+    acc = paddle.static.accuracy(input=predict, label=label)
 
     # Test program
     test_program = fluid.default_main_program().clone(for_test=True)

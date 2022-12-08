@@ -31,7 +31,6 @@ DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 namespace op = paddle::operators;
-using Tensor = phi::DenseTensor;
 
 USE_OP_ITSELF(batch_norm);
 PD_DECLARE_KERNEL(batch_norm, GPU, ALL_LAYOUT);
@@ -149,15 +148,15 @@ void ComputeInplaceRelu(phi::DenseTensor *cpu_x) {
 }
 
 void ComputeBatchNormForward(const phi::GPUContext &ctx,
-                             const Tensor &cpu_x,
-                             const Tensor &cpu_scale,
-                             const Tensor &cpu_bias,
-                             Tensor *cpu_mean,
-                             Tensor *cpu_var,
-                             Tensor *cpu_saved_mean,
-                             Tensor *cpu_saved_var,
-                             Tensor *cpu_y,
-                             Tensor *saved_reserve_space) {
+                             const phi::DenseTensor &cpu_x,
+                             const phi::DenseTensor &cpu_scale,
+                             const phi::DenseTensor &cpu_bias,
+                             phi::DenseTensor *cpu_mean,
+                             phi::DenseTensor *cpu_var,
+                             phi::DenseTensor *cpu_saved_mean,
+                             phi::DenseTensor *cpu_saved_var,
+                             phi::DenseTensor *cpu_y,
+                             phi::DenseTensor *saved_reserve_space) {
   framework::Scope scope;
   auto *x = scope.Var("X")->GetMutable<phi::DenseTensor>();
   auto *scale = scope.Var("Scale")->GetMutable<phi::DenseTensor>();
@@ -215,16 +214,16 @@ void ComputeBatchNormForward(const phi::GPUContext &ctx,
 }
 
 void ComputeFusedBNAddReluForward(const phi::GPUContext &ctx,
-                                  const Tensor &cpu_x,
-                                  const Tensor &cpu_z,
-                                  const Tensor &cpu_scale,
-                                  const Tensor &cpu_bias,
-                                  Tensor *cpu_mean,
-                                  Tensor *cpu_var,
-                                  Tensor *cpu_saved_mean,
-                                  Tensor *cpu_saved_var,
-                                  Tensor *cpu_y,
-                                  Tensor *saved_reserve_space) {
+                                  const phi::DenseTensor &cpu_x,
+                                  const phi::DenseTensor &cpu_z,
+                                  const phi::DenseTensor &cpu_scale,
+                                  const phi::DenseTensor &cpu_bias,
+                                  phi::DenseTensor *cpu_mean,
+                                  phi::DenseTensor *cpu_var,
+                                  phi::DenseTensor *cpu_saved_mean,
+                                  phi::DenseTensor *cpu_saved_var,
+                                  phi::DenseTensor *cpu_y,
+                                  phi::DenseTensor *saved_reserve_space) {
   framework::Scope scope;
   auto *x = scope.Var("X")->GetMutable<phi::DenseTensor>();
   auto *z = scope.Var("Z")->GetMutable<phi::DenseTensor>();
@@ -278,18 +277,18 @@ void ComputeFusedBNAddReluForward(const phi::GPUContext &ctx,
 }
 
 void ComputeFusedBNAddReluBackward(const phi::GPUContext &ctx,
-                                   const Tensor &cpu_dy,
-                                   const Tensor &cpu_x,
-                                   const Tensor &cpu_scale,
-                                   const Tensor &cpu_bias,
-                                   const Tensor &cpu_saved_mean,
-                                   const Tensor &cpu_saved_var,
-                                   const Tensor &cpu_y,
-                                   const Tensor &saved_reserve_space,
-                                   Tensor *cpu_dx,
-                                   Tensor *cpu_dz,
-                                   Tensor *cpu_dscale,
-                                   Tensor *cpu_dbias) {
+                                   const phi::DenseTensor &cpu_dy,
+                                   const phi::DenseTensor &cpu_x,
+                                   const phi::DenseTensor &cpu_scale,
+                                   const phi::DenseTensor &cpu_bias,
+                                   const phi::DenseTensor &cpu_saved_mean,
+                                   const phi::DenseTensor &cpu_saved_var,
+                                   const phi::DenseTensor &cpu_y,
+                                   const phi::DenseTensor &saved_reserve_space,
+                                   phi::DenseTensor *cpu_dx,
+                                   phi::DenseTensor *cpu_dz,
+                                   phi::DenseTensor *cpu_dscale,
+                                   phi::DenseTensor *cpu_dbias) {
   framework::Scope scope;
   auto *x = scope.Var("X")->GetMutable<phi::DenseTensor>();
   auto *y = scope.Var("Y")->GetMutable<phi::DenseTensor>();
@@ -383,7 +382,9 @@ class CudnnBNAddReluTester {
     phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
         platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
-    auto select = [&](Tensor *in) { return has_shortcut_ ? in : nullptr; };
+    auto select = [&](phi::DenseTensor *in) {
+      return has_shortcut_ ? in : nullptr;
+    };
 
     phi::DenseTensor cpu_mean_base_x;
     phi::DenseTensor cpu_var_base_x;
@@ -506,10 +507,10 @@ class CudnnBNAddReluTester {
     InitRandomTensor<T>({batch_size_, height_, width_, channels_}, &cpu_dy_);
   }
 
-  void InitMeanVar(Tensor *cpu_mean,
-                   Tensor *cpu_var,
-                   Tensor *cpu_saved_mean,
-                   Tensor *cpu_saved_var) {
+  void InitMeanVar(phi::DenseTensor *cpu_mean,
+                   phi::DenseTensor *cpu_var,
+                   phi::DenseTensor *cpu_saved_mean,
+                   phi::DenseTensor *cpu_saved_var) {
     InitConstantTensor<float>({channels_}, static_cast<float>(0.0f), cpu_mean);
     InitConstantTensor<float>({channels_}, static_cast<float>(1.0f), cpu_var);
     InitConstantTensor<float>(
@@ -519,17 +520,17 @@ class CudnnBNAddReluTester {
   }
 
   void BaselineForward(const phi::GPUContext &ctx,
-                       Tensor *cpu_mean_x,
-                       Tensor *cpu_var_x,
-                       Tensor *cpu_saved_mean_x,
-                       Tensor *cpu_saved_var_x,
-                       Tensor *cpu_y,
-                       Tensor *saved_reserve_space_x,
-                       Tensor *cpu_mean_z = nullptr,
-                       Tensor *cpu_var_z = nullptr,
-                       Tensor *cpu_saved_mean_z = nullptr,
-                       Tensor *cpu_saved_var_z = nullptr,
-                       Tensor *saved_reserve_space_z = nullptr) {
+                       phi::DenseTensor *cpu_mean_x,
+                       phi::DenseTensor *cpu_var_x,
+                       phi::DenseTensor *cpu_saved_mean_x,
+                       phi::DenseTensor *cpu_saved_var_x,
+                       phi::DenseTensor *cpu_y,
+                       phi::DenseTensor *saved_reserve_space_x,
+                       phi::DenseTensor *cpu_mean_z = nullptr,
+                       phi::DenseTensor *cpu_var_z = nullptr,
+                       phi::DenseTensor *cpu_saved_mean_z = nullptr,
+                       phi::DenseTensor *cpu_saved_var_z = nullptr,
+                       phi::DenseTensor *saved_reserve_space_z = nullptr) {
     InitMeanVar(cpu_mean_x, cpu_var_x, cpu_saved_mean_x, cpu_saved_var_x);
     ComputeBatchNormForward(ctx,
                             cpu_x_,
@@ -566,12 +567,12 @@ class CudnnBNAddReluTester {
   }
 
   void BaselineForwardFusedBNAddRelu(const phi::GPUContext &ctx,
-                                     Tensor *cpu_mean,
-                                     Tensor *cpu_var,
-                                     Tensor *cpu_saved_mean,
-                                     Tensor *cpu_saved_var,
-                                     Tensor *cpu_y,
-                                     Tensor *saved_reserve_space) {
+                                     phi::DenseTensor *cpu_mean,
+                                     phi::DenseTensor *cpu_var,
+                                     phi::DenseTensor *cpu_saved_mean,
+                                     phi::DenseTensor *cpu_saved_var,
+                                     phi::DenseTensor *cpu_y,
+                                     phi::DenseTensor *saved_reserve_space) {
     InitMeanVar(cpu_mean, cpu_var, cpu_saved_mean, cpu_saved_var);
     ComputeFusedBNAddReluForward(ctx,
                                  cpu_x_,
@@ -587,10 +588,10 @@ class CudnnBNAddReluTester {
   }
 
   void BaselineBackwardFusedBNAddRelu(const phi::GPUContext &ctx,
-                                      Tensor *cpu_dx,
-                                      Tensor *cpu_dz,
-                                      Tensor *cpu_dscale,
-                                      Tensor *cpu_dbias) {
+                                      phi::DenseTensor *cpu_dx,
+                                      phi::DenseTensor *cpu_dz,
+                                      phi::DenseTensor *cpu_dscale,
+                                      phi::DenseTensor *cpu_dbias) {
     ComputeFusedBNAddReluBackward(ctx,
                                   cpu_dy_,
                                   cpu_x_,
@@ -607,19 +608,19 @@ class CudnnBNAddReluTester {
   }
 
   void ComputeFusedBNStatsFinalize(const phi::GPUContext &ctx,
-                                   const Tensor &cpu_x,
-                                   const Tensor &cpu_bn_scale,
-                                   const Tensor &cpu_bn_bias,
-                                   Tensor *sum,
-                                   Tensor *sum_of_square,
-                                   Tensor *bn_scale,
-                                   Tensor *bn_bias,
-                                   Tensor *mean,
-                                   Tensor *var,
-                                   Tensor *saved_mean,
-                                   Tensor *saved_var,
-                                   Tensor *equiv_scale,
-                                   Tensor *equiv_bias) {
+                                   const phi::DenseTensor &cpu_x,
+                                   const phi::DenseTensor &cpu_bn_scale,
+                                   const phi::DenseTensor &cpu_bn_bias,
+                                   phi::DenseTensor *sum,
+                                   phi::DenseTensor *sum_of_square,
+                                   phi::DenseTensor *bn_scale,
+                                   phi::DenseTensor *bn_bias,
+                                   phi::DenseTensor *mean,
+                                   phi::DenseTensor *var,
+                                   phi::DenseTensor *saved_mean,
+                                   phi::DenseTensor *saved_var,
+                                   phi::DenseTensor *equiv_scale,
+                                   phi::DenseTensor *equiv_bias) {
     phi::DenseTensor cpu_sum;
     phi::DenseTensor cpu_sum_of_square;
     ComputeSumAndSquareSum<T>(cpu_x, &cpu_sum, &cpu_sum_of_square);
@@ -664,16 +665,16 @@ class CudnnBNAddReluTester {
 
   // Get forward results of CudnnBNStatsFinalize + CudnnScaleBiasAddRelu
   void FusedForward(const phi::GPUContext &ctx,
-                    Tensor *cpu_mean_x,
-                    Tensor *cpu_var_x,
-                    Tensor *cpu_saved_mean_x,
-                    Tensor *cpu_saved_var_x,
-                    Tensor *cpu_y,
-                    Tensor *cpu_bitmask,
-                    Tensor *cpu_mean_z = nullptr,
-                    Tensor *cpu_var_z = nullptr,
-                    Tensor *cpu_saved_mean_z = nullptr,
-                    Tensor *cpu_saved_var_z = nullptr) {
+                    phi::DenseTensor *cpu_mean_x,
+                    phi::DenseTensor *cpu_var_x,
+                    phi::DenseTensor *cpu_saved_mean_x,
+                    phi::DenseTensor *cpu_saved_var_x,
+                    phi::DenseTensor *cpu_y,
+                    phi::DenseTensor *cpu_bitmask,
+                    phi::DenseTensor *cpu_mean_z = nullptr,
+                    phi::DenseTensor *cpu_var_z = nullptr,
+                    phi::DenseTensor *cpu_saved_mean_z = nullptr,
+                    phi::DenseTensor *cpu_saved_var_z = nullptr) {
     phi::DenseTensor x;
     phi::DenseTensor sum_x;
     phi::DenseTensor sum_of_square_x;
@@ -802,10 +803,10 @@ class CudnnBNAddReluTester {
 
   // Get backward results of CudnnBNStatsFinalize + CudnnScaleBiasAddRelu
   void FusedBackward(const phi::GPUContext &ctx,
-                     Tensor *cpu_dx,
-                     Tensor *cpu_dz,
-                     Tensor *cpu_dscale,
-                     Tensor *cpu_dbias) {
+                     phi::DenseTensor *cpu_dx,
+                     phi::DenseTensor *cpu_dz,
+                     phi::DenseTensor *cpu_dscale,
+                     phi::DenseTensor *cpu_dbias) {
     phi::DenseTensor dy;
     phi::DenseTensor x;
     phi::DenseTensor bn_scale;

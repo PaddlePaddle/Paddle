@@ -1027,7 +1027,7 @@ def _fleet_embedding_v2(
     )
 
 
-class fleet_embedding(object):
+class fleet_embedding:
     """
     fleet embedding class, it is used as a wrapper
     Example:

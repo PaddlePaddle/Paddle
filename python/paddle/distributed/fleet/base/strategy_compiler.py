@@ -106,7 +106,7 @@ def maximum_path_len_algo(optimizer_list):
     return candidate
 
 
-class StrategyCompilerBase(object):
+class StrategyCompilerBase:
     def __init__(self):
         pass
 

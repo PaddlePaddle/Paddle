@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+
 import paddle.fluid as fluid
 from paddle.device import get_available_custom_device
 
@@ -27,7 +28,7 @@ class DeviceType:
     CUSTOM_DEVICE = 'custom_device'
 
 
-class Device(object):
+class Device:
     def __init__(self, dtype=None, memory="", labels=""):
         self._dtype = dtype
         self._memory = memory

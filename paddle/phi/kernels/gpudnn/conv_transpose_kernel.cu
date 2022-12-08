@@ -26,16 +26,16 @@ limitations under the License. */
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 #ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/device/gpu/rocm/miopen_helper.h"
+#include "paddle/phi/backends/gpu/rocm/miopen_helper.h"
 #include "paddle/phi/kernels/gpudnn/conv_miopen_helper.h"
 #else
-#include "paddle/fluid/platform/device/gpu/cuda/cudnn_helper.h"
+#include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
 #endif
 
 namespace phi {
 
-using GPUDNNDataLayout = paddle::platform::DataLayout;
+using GPUDNNDataLayout = phi::backends::gpu::DataLayout;
 
 template <typename T, typename Context>
 void ConvTransposeRawGPUDNNKernel(const Context& ctx,
@@ -194,10 +194,10 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
 #endif
   // ------------------- cudnn conv algorithm ---------------------
   auto handle = ctx.cudnn_handle();
-  auto layout_tensor = paddle::platform::GetCudnnTensorFormat(layout);
+  auto layout_tensor = phi::backends::gpu::GetCudnnTensorFormat(layout);
   bool deterministic = FLAGS_cudnn_deterministic;
 
-  auto dtype = paddle::platform::CudnnDataType<T>::type;
+  auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
   // ------------------- cudnn descriptors ---------------------
   ConvArgs args{handle,
                 &transformed_out,
@@ -227,7 +227,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
       search::Find<T>(args, false, deterministic, workspace_size, ctx);
 #else
   SearchResult<cudnnConvolutionBwdDataAlgo_t> bwd_result;
-  using search = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
+  using search = SearchAlgorithm<ConvKind::kBackwardData>;
   bwd_result = search::Find<T>(ctx, args, false, deterministic, false);
   workspace_size =
       std::max(workspace_size, search::GetWorkspaceSize(args, bwd_result.algo));
@@ -240,8 +240,8 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
   ScalingParamType<T> alpha = 1.0f;
   ScalingParamType<T> beta = 0.0f;
   auto workspace_handle = ctx.cudnn_workspace_handle();
-  for (int g = 0; g < groups; g++) {
 #ifdef PADDLE_WITH_HIP
+  for (int g = 0; g < groups; g++) {
     auto cudnn_func = [&](void* cudnn_workspace) {
       PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenConvolutionBackwardData(
           handle,
@@ -258,26 +258,24 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
           cudnn_workspace,
           workspace_size));
     };
-#else   // PADDLE_WITH_HIP
-    auto cudnn_func = [&](void* cudnn_workspace) {
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnConvolutionBackwardData(
-          handle,
-          &alpha,
-          args.wdesc.desc(),
-          filter_data + filter_offset * g,
-          args.odesc.desc(),
-          x_data + x_offset * g,
-          args.cdesc.desc(),
-          bwd_result.algo,
-          cudnn_workspace,
-          workspace_size,
-          &beta,
-          args.idesc.desc(),
-          transformed_out_data + out_offset * g));
-    };
-#endif  // PADDLE_WITH_HIP
     workspace_handle.RunFunc(cudnn_func, workspace_size);
   }
+#else   // PADDLE_WITH_HIP
+  ConvRunner<T, ConvKind::kBackwardData>::Apply(ctx,
+                                                args,
+                                                bwd_result,
+                                                x_data,
+                                                filter_data,
+                                                transformed_out_data,
+                                                groups,
+                                                out_offset,
+                                                filter_offset,
+                                                x_offset,
+                                                workspace_size,
+                                                &workspace_handle,
+                                                false);
+#endif  // PADDLE_WITH_HIP
+
   if (!is_sys_pad && strides.size() == 2U) {
     funcs::Slice<Context, T, 4>(ctx, &transformed_out, out, starts, ends, axes);
   } else if (!is_sys_pad && strides.size() == 3U) {

@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 #ifdef PADDLE_WITH_MKLML
-#include "paddle/fluid/platform/dynload/mklml.h"
+#include "paddle/phi/backends/dynload/mklml.h"
 #endif
 
 #ifdef PADDLE_USE_OPENBLAS
@@ -26,10 +26,10 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function_impl.h"
 #include "unsupported/Eigen/CXX11/Tensor"
@@ -168,7 +168,13 @@ void set_constant_with_place<paddle::platform::XPUPlace>(
     const paddle::platform::DeviceContext& context,
     phi::DenseTensor* tensor,
     float value) {
-  PADDLE_THROW(phi::errors::Unimplemented("XPUPlace is not supported"));
+#ifdef PADDLE_WITH_XPU
+  phi::VisitDataType(
+      tensor->dtype(),
+      TensorSetConstantXPU<float>(tensor, value, tensor->place()));
+#else
+  PADDLE_THROW(phi::errors::PreconditionNotMet("Not compiled with XPU!"));
+#endif
 }
 
 template <>
@@ -257,6 +263,8 @@ void set_constant(const paddle::platform::DeviceContext& context,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // tensor->place().apply_visitor(func);
   paddle::platform::VisitPlace(tensor->place(), func);
+#elif defined(PADDLE_WITH_XPU)
+  func(phi::XPUPlace());
 #else
   func(phi::CPUPlace());
 #endif
@@ -299,9 +307,9 @@ struct RowwiseAdd<phi::CPUContext, T> {
                           in_dims_cstr,
                           out_dims_cstr));
 
-    auto in = paddle::framework::EigenMatrix<T>::From(input);
-    auto vec = paddle::framework::EigenVector<T>::Flatten(vector);
-    auto out = paddle::framework::EigenMatrix<T>::From(*output);
+    auto in = phi::EigenMatrix<T>::From(input);
+    auto vec = phi::EigenVector<T>::Flatten(vector);
+    auto out = phi::EigenMatrix<T>::From(*output);
 
     for (int64_t i = 0; i < in_dims[0]; ++i) {
       out.chip(i, 0) = in.chip(i, 0) + vec;

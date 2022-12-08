@@ -17,7 +17,7 @@ from paddle.fluid import framework as framework
 __all__ = ["extend_with_decoupled_weight_decay"]
 
 
-class DecoupledWeightDecay(object):
+class DecoupledWeightDecay:
     def __init__(self, coeff=0.0, apply_decay_param_fun=None, **kwargs):
         if not isinstance(coeff, float) and not isinstance(
             coeff, framework.Variable
@@ -95,9 +95,7 @@ class DecoupledWeightDecay(object):
             with param.block.program._optimized_guard(
                 [param, grad]
             ), framework.name_scope('weight decay'):
-                updated_param = paddle.fluid.layers.elementwise_sub(
-                    x=param, y=scaled_param
-                )
+                updated_param = paddle.subtract(x=param, y=scaled_param)
                 paddle.fluid.layers.assign(input=updated_param, output=param)
 
         optimize_ops = self.apply_optimize(

@@ -54,7 +54,7 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 
 
-class DistributedOptimizerImplBase(object):
+class DistributedOptimizerImplBase:
     """
     DistributedOptimizerImplBase
     base class of optimizers

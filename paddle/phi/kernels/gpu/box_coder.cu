@@ -18,8 +18,8 @@
 #include <thrust/host_vector.h>
 
 #include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/box_coder.h"
 

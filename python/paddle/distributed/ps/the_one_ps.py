@@ -12,25 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import warnings
 
-import os
-import paddle.fluid as fluid
+from google.protobuf import text_format
+
+import paddle
 from paddle.distributed import fleet
-from paddle.fluid import core
-from paddle.distributed.ps.utils.public import *  # noqa: F403
-from paddle.fluid.framework import Program
-from paddle.fluid.compiler import CompiledProgram
-from paddle.fluid.executor import Executor
-from paddle.fluid.parallel_executor import ParallelExecutor
-from paddle.distributed.fleet.runtime.runtime_base import RuntimeBase
+from paddle.distributed.communicator import Communicator, HeterClient
 from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
 from paddle.distributed.fleet.proto import the_one_ps_pb2
-from paddle.fluid.communicator import Communicator, HeterClient
-from google.protobuf import text_format
+from paddle.distributed.fleet.runtime.runtime_base import RuntimeBase
 from paddle.distributed.ps.coordinator import Coordinator
+from paddle.distributed.ps.utils.public import *  # noqa: F403
+from paddle.framework import core
+from paddle.static import CompiledProgram, Executor, ParallelExecutor, Program
 
 __all__ = [
     'Table',
@@ -914,7 +912,7 @@ class fsClient:
         proto.hadoop_bin = self.fs_client_param.hadoop_bin
 
 
-class PsDescBuilder(object):
+class PsDescBuilder:
     def __init__(self, context):
         self.context = context
         self.is_sync = context['is_sync']
@@ -1035,7 +1033,7 @@ class TheOnePSRuntime(RuntimeBase):
         super().__init__()
         self._communicator = None
         self._server = None
-        self._worker = fluid.core.DistFleetWrapper()
+        self._worker = core.DistFleetWrapper()
         self._coordinator = None
         self._server_sub_program = []
         self._heter_client = None
@@ -1092,7 +1090,7 @@ class TheOnePSRuntime(RuntimeBase):
         self.string_hosts = []
         for idx, ep in enumerate(self.endpoints):
             host, port = ep.split(":")
-            pshost = fluid.core.PSHost(host, int(port), idx)
+            pshost = core.PSHost(host, int(port), idx)
             self.string_hosts.append(pshost.serialize_to_string())
 
         self.with_coordinator = self.role_maker._with_coordinator
@@ -1102,7 +1100,7 @@ class TheOnePSRuntime(RuntimeBase):
             coordinator_endpoints = self.role_maker._get_coordinator_endpoints()
             for idx, ep in enumerate(coordinator_endpoints):
                 ip, port = ep.split(":")
-                pshost = fluid.core.PSHost(ip, int(port), idx)
+                pshost = core.PSHost(ip, int(port), idx)
                 self.coordinator_hosts.append(pshost.serialize_to_string())
 
         self.ps_desc_builder = PsDescBuilder(self.context)
@@ -1173,7 +1171,7 @@ class TheOnePSRuntime(RuntimeBase):
             gpus_env = os.getenv("FLAGS_selected_gpus")
             gpus_env = [int(s) for s in gpus_env.split(",")]
             main_program._fleet_opt["worker_places"] = gpus_env
-            PSGPU = fluid.core.PSGPU()
+            PSGPU = core.PSGPU()
             PSGPU.init_gpu_ps(gpus_env)
 
         def sync_strategy_envs():
@@ -1241,7 +1239,7 @@ class TheOnePSRuntime(RuntimeBase):
                 dense_map,
                 worker_desc,
                 self.string_hosts,
-                fluid.global_scope(),
+                paddle.static.global_scope(),
             )
         fleet.util.barrier()
 
@@ -1273,7 +1271,7 @@ class TheOnePSRuntime(RuntimeBase):
                 raise ValueError(
                     "You must set the scope list when you have Multiple programs"
                 )
-            scopes = [fluid.global_scope()]
+            scopes = [paddle.static.global_scope()]
         if len(self.origin_main_programs) != len(scopes):
             raise VauleError("len(programs) != len(scopes)")
 
@@ -1350,7 +1348,7 @@ class TheOnePSRuntime(RuntimeBase):
         if self.debug:
             print("server_desc: \n{}".format(server_desc))
 
-        self._server = fluid.core.DistFleetWrapper()
+        self._server = core.DistFleetWrapper()
         self._server.init_server(
             server_desc,
             self.string_hosts,

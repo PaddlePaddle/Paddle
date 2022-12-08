@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/dropout_kernel.h"
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -82,7 +82,13 @@ void DropoutRawKernel(const Context& dev_ctx,
     } else {
       seed_data = fix_seed ? seed : 0;
     }
-    auto engine = paddle::framework::GetCPURandomEngine(seed_data);
+    std::shared_ptr<std::mt19937_64> engine;
+    if (seed_data) {
+      engine = std::make_shared<std::mt19937_64>();
+      engine->seed(seed_data);
+    } else {
+      engine = dev_ctx.GetGenerator()->GetCPUEngine();
+    }
 
     std::uniform_real_distribution<float> dist(0, 1);
 
@@ -147,7 +153,13 @@ void DropoutNdKernel(const Context& dev_ctx,
     } else {
       seed_data = fix_seed ? seed : 0;
     }
-    auto engine = paddle::framework::GetCPURandomEngine(seed_data);
+    std::shared_ptr<std::mt19937_64> engine;
+    if (seed_data) {
+      engine = std::make_shared<std::mt19937_64>();
+      engine->seed(seed_data);
+    } else {
+      engine = dev_ctx.GetGenerator()->GetCPUEngine();
+    }
 
     std::uniform_real_distribution<float> dist(0, 1);
 

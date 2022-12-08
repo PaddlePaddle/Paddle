@@ -51,7 +51,6 @@ from .dataloader.batch_sampler import _InfiniteIterableSampler
 from .layers.io import (
     monkey_patch_reader_methods,
     _copy_reader_var_,
-    double_buffer,
 )
 from .unique_name import UniqueNameGenerator
 from .framework import _get_paddle_place, _get_paddle_place_list
@@ -145,21 +144,12 @@ def _reader_process_loop(batch_reader, data_queue):
         raise
 
 
-class DataLoaderBase(object):
+class DataLoaderBase:
     def __init__(self):
         self._places = None
 
     def __call__(self):
         return self
-
-    def next(self):
-        '''
-        Get the next item in the DataLoader object. This method
-        should not be called by users directly. It is used for
-        implementing iterator protocol of Python 2.x inside
-        PaddlePaddle framework.
-        '''
-        return self.__next__()
 
     def __iter__(self):
         raise NotImplementedError()
@@ -181,7 +171,7 @@ class DataLoaderBase(object):
         return arr
 
 
-class AuToTune(object):
+class AuToTune:
     def __init__(self, loader):
         self.loader = loader
         self.max_num_worker = multiprocessing.cpu_count() / 2
@@ -318,7 +308,7 @@ class AuToTune(object):
         return best_workers
 
 
-class DataLoader(object):
+class DataLoader:
     """
     DataLoader prodives an iterator which iterates given dataset
     once by the batch_sampler.
@@ -1361,6 +1351,11 @@ class GeneratorLoader(DataLoaderBase):
         self._use_double_buffer = use_double_buffer
         self._capacity = capacity
         if not self._iterable:
+            # Because layers.io.double_buffer is not supported anymore, and only when iterable and use_double_buffer
+            # are both True layers.io.double_buffer will be in use, here if itrable is False, use_double_buffer will be
+            # forcely set False to avoid using layers.io.double_buffer.
+            # TODO: keep use_double_buffer
+            self._use_double_buffer = False
             self._init_non_iterable()
 
     def _wait_thread_ends(self):
@@ -1415,7 +1410,6 @@ class GeneratorLoader(DataLoaderBase):
             'lod_tensor_blocking_queue'
         )
         reader_name = data_loader_unique_name_generator('create_py_reader')
-        double_buffer_name = data_loader_unique_name_generator('double_buffer')
 
         var = global_scope().var(queue_name)
         self._queue = core.init_lod_tensor_blocking_queue(
@@ -1460,15 +1454,6 @@ class GeneratorLoader(DataLoaderBase):
             main_prog_var.persistable = True
 
             reader = monkey_patch_reader_methods(main_prog_var)
-
-        if self._use_double_buffer:
-            double_buffer_reader = double_buffer(
-                reader, name=double_buffer_name
-            )
-            # we return a double buffer reader. However, the reset method comes from
-            # py_reader.
-            double_buffer_reader.reset = reader.reset
-            reader = double_buffer_reader
 
         self._reader = reader
 

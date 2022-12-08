@@ -18,7 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 template <typename DeviceContext, typename T>
 class ReduceMinNPUKernel : public framework::OpKernel<T> {
  public:
@@ -76,8 +75,8 @@ class ReduceMinNPUKernel : public framework::OpKernel<T> {
     const auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
     if (x->dtype() == experimental::DataType::INT64) {
-      auto op_func = [](const std::vector<Tensor>& inputs,
-                        const std::vector<Tensor>& outputs,
+      auto op_func = [](const std::vector<phi::DenseTensor>& inputs,
+                        const std::vector<phi::DenseTensor>& outputs,
                         const NPUAttributeMap& attrs,
                         const platform::NPUDeviceContext& dev_ctx) {
         const auto& runner =

@@ -18,7 +18,7 @@ from google.protobuf import text_format
 __all__ = ['Fleet']
 
 
-class Fleet(object):
+class Fleet:
     """ """
 
     def __init__(self):
