@@ -99,12 +99,12 @@ class TestAMPPass(unittest.TestCase):
         # serial_losses = np.array(history.history["loss"])
 
         # mp2 amp-o1 training
-        # bf16_o1_engine = self.get_engine(True)
-        # history = bf16_o1_engine.fit(
-        #     self.dataset, 3, batch_size=self.batch_size
-        # )
+        bf16_o1_engine = self.get_engine(True)
+        history = bf16_o1_engine.fit(
+            self.dataset, 3, batch_size=self.batch_size
+        )
         file = open(
-            "/root/paddlejob/workspace/env_run/xuyb/Paddle/gpt_serial_main.log",
+            "/workspace/Paddle/gpt_serial_main.log",
             "w",
         )
         print(serial_engine._dist_main_progs["train"][0], file=file)
