@@ -26,6 +26,7 @@ namespace cub = hipcub;
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/detection/bbox_util.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -38,13 +39,6 @@ int const kThreadsPerBlock = sizeof(uint64_t) * 8;
 
 static const double kBBoxClipDefault = std::log(1000.0 / 16.0);
 
-struct RangeInitFunctor {
-  int start_;
-  int delta_;
-  int *out_;
-  __device__ void operator()(size_t i) { out_[i] = start_ + i * delta_; }
-};
-
 template <typename T>
 static void SortDescending(const phi::GPUContext &ctx,
                            const DenseTensor &value,
@@ -55,7 +49,7 @@ static void SortDescending(const phi::GPUContext &ctx,
   index_in_t.Resize(phi::make_ddim({num}));
   int *idx_in = ctx.template Alloc<int>(&index_in_t);
   phi::funcs::ForRange<phi::GPUContext> for_range(ctx, num);
-  for_range(RangeInitFunctor{0, 1, idx_in});
+  for_range(funcs::RangeInitFunctor{0, 1, idx_in});
 
   index_out->Resize(phi::make_ddim({num}));
   int *idx_out = ctx.template Alloc<int>(index_out);
