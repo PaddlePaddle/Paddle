@@ -1963,8 +1963,11 @@ def fused_bn_add_act(
     Examples:
             .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
 
+            paddle.enable_static()
+            # required: gpu
             def build_program(main_program, startup_program):
                 with fluid.program_guard(main_program, startup_program):
                     x = fluid.layers.data(name='x', shape=[1, 28, 28], dtype='float32')
@@ -1987,7 +1990,7 @@ def fused_bn_add_act(
                         act=None,
                         bias_attr=False,
                         data_format='NHWC')
-                    bn = fluid.layers.batch_norm(
+                    bn = paddle.static.nn.batch_norm(
                         input=conv1_1,
                         act=None,
                         data_layout='NHWC')

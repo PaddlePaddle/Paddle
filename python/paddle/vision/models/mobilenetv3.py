@@ -19,7 +19,7 @@ import paddle.nn as nn
 from paddle.utils.download import get_weights_path_from_url
 
 from ..ops import ConvNormActivation
-from .utils import _make_divisible
+from ._utils import _make_divisible
 
 __all__ = []
 

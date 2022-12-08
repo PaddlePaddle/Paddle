@@ -20,16 +20,15 @@ limitations under the License. */
 namespace {
 using dnnl::memory;
 using paddle::framework::ExecutionContext;
+using paddle::framework::GradVarName;
 using paddle::platform::MatMulV2MKLDNNHandler;
 using phi::OneDNNContext;
 using phi::vectorize;
 using phi::funcs::OneDNNGetDataType;
-using Tensor = phi::DenseTensor;
-using paddle::framework::GradVarName;
 
 // Reshape a rank-3 tensor from P x M x N to (P * M) x N.
 // Identity op if the tensor is not of rank 3.
-static Tensor FoldOuterDims(const Tensor &input) {
+static phi::DenseTensor FoldOuterDims(const phi::DenseTensor &input) {
   auto output = input;
   auto in_dims = input.dims();
   if (in_dims.size() == 3) {
@@ -42,14 +41,14 @@ static Tensor FoldOuterDims(const Tensor &input) {
 // (Warning: This requires transposing data and writes into new memory.)
 // Identity op if the tensor is not of rank 3.
 template <typename T>
-static Tensor FoldFirstAndLastDims(const OneDNNContext &dev_ctx,
-                                   const Tensor *input) {
+static phi::DenseTensor FoldFirstAndLastDims(const OneDNNContext &dev_ctx,
+                                             const phi::DenseTensor *input) {
   auto input_dims = vectorize(input->dims());
   if (input_dims.size() != 3) {
     return *input;
   }
 
-  Tensor output;
+  phi::DenseTensor output;
   output.Resize({input_dims[1], input_dims[0], input_dims[2]});
 
   auto output_dims = vectorize(output.dims());
@@ -89,11 +88,11 @@ class MatMulMKLDNNHandler
  public:
   MatMulMKLDNNHandler(const dnnl::engine engine,
                       paddle::platform::Place cpu_place,
-                      Tensor *x,
+                      phi::DenseTensor *x,
                       bool trans_x,
-                      Tensor *y,
+                      phi::DenseTensor *y,
                       bool trans_y,
-                      Tensor *out,
+                      phi::DenseTensor *out,
                       float scale)
       : phi::funcs::OneDNNHandlerNoCachingT<XT, dnnl::matmul>(engine,
                                                               cpu_place) {
@@ -129,7 +128,7 @@ class MatMulMKLDNNHandler
     this->AcquireForwardPrimitiveDescriptor(attrs, x_md, y_md, out_md);
   }
 
-  std::shared_ptr<memory> AcquireWeightsMemory(const Tensor *input) {
+  std::shared_ptr<memory> AcquireWeightsMemory(const phi::DenseTensor *input) {
     const YT *input_data = input->data<YT>();
     return this->AcquireMemoryFromPrimitive(
         this->fwd_pd_->weights_desc(),
@@ -176,11 +175,10 @@ class MatMulMKLDNNHandler
     // We cannot use base AcquireDstMemory as it makes an allocation request
     // base on DST memory primitive size. This is fine in general, but in MatMul
     // we have primitive that covers only one batch of Data and then shift
-    // pointer for every new batch. Hence Tensor size is bigger that dst memory
-    // primitive size. So would we request less memory that is there and it
-    // triggers an
-    // assertion.  So as there is no 'any' format here we can leave default size
-    // of Tensor as computed in ComputeInferShape
+    // pointer for every new batch. Hence phi::DenseTensor size is bigger that
+    // dst memory primitive size. So would we request less memory that is there
+    // and it triggers an assertion.  So as there is no 'any' format here we can
+    // leave default size of phi::DenseTensor as computed in ComputeInferShape
     OT *ptr = output->mutable_data<OT>(this->place_);
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
   }
@@ -199,7 +197,7 @@ class MatMulMKLDNNHandler
  * If transposed, `H,W` will be swapped.
  */
 static void ReshapeTensorToMatrixSequence(
-    Tensor *x, const phi::funcs::MatDescriptor &descriptor) {
+    phi::DenseTensor *x, const phi::funcs::MatDescriptor &descriptor) {
   int64_t h, w;
   h = descriptor.height_;
   w = descriptor.width_;
@@ -227,8 +225,11 @@ static void ReshapeTensorToMatrixSequence(
  * If any of `X` and `Y` has batch size BatchSize, the out will have the
  * BatchSize.
  */
-static void ReshapeXYOutToMatrixSequence(
-    Tensor *x, Tensor *y, Tensor *out, bool trans_x, bool trans_y) {
+static void ReshapeXYOutToMatrixSequence(phi::DenseTensor *x,
+                                         phi::DenseTensor *y,
+                                         phi::DenseTensor *out,
+                                         bool trans_x,
+                                         bool trans_y) {
   auto x_dim = phi::funcs::RowMatrixDimsFromVector(x->dims());
   auto y_dim = phi::funcs::ColumnMatrixDimsFromVector(y->dims());
   auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(x_dim, 0, trans_x);
@@ -326,13 +327,13 @@ bool IsOutputFused(const ExecutionContext &ctx) {
 template <typename T, typename T_out>
 void ExecuteMatMulV2(const ExecutionContext &ctx,
                      const dnnl::engine onednn_engine,
-                     const Tensor *x,
+                     const phi::DenseTensor *x,
                      const std::vector<int64_t> &x_dims,
                      bool trans_x,
-                     const Tensor *y,
+                     const phi::DenseTensor *y,
                      const std::vector<int64_t> &y_dims,
                      bool trans_y,
-                     Tensor *out) {
+                     phi::DenseTensor *out) {
   std::vector<int64_t> x_strides_override = GetInputStrides(ctx, "X");
   std::vector<int64_t> y_strides_override = GetInputStrides(ctx, "Y");
   MatMulV2MKLDNNHandler<T, T, T_out> handler(ctx,
@@ -471,7 +472,7 @@ class MatMulMKLDNNKernel : public paddle::framework::OpKernel<T> {
                            const std::vector<int64_t> &y_dims,
                            std::vector<int64_t> *x_bd_dims,
                            std::vector<int64_t> *y_bd_dims,
-                           Tensor *out) const {
+                           phi::DenseTensor *out) const {
     if (x_dims.size() == 1) {
       (*x_bd_dims)[(*x_bd_dims).size() - 1] = x_dims[0];
     } else if (x_dims.size() == 2) {
@@ -501,7 +502,7 @@ class MatMulMKLDNNKernel : public paddle::framework::OpKernel<T> {
                 (*y_bd_dims)[i] == 1,
             true,
             paddle::platform::errors::InvalidArgument(
-                "Tensor dimensions are incorrect for broadcasting."
+                "phi::DenseTensor dimensions are incorrect for broadcasting."
                 "Dimensions in X and Y must be same or equal to 1, but "
                 "received x_dim[%d]=%d and y_dims[%d]= %d",
                 i,
@@ -649,7 +650,7 @@ class MatMulGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
     bool need_combine = (x->dims().size() == 3 || y->dims().size() == 3) &&
                         out->dims().size() == 2;
 
-    Tensor x_combined, y_combined;
+    phi::DenseTensor x_combined, y_combined;
     if (!need_combine) {
       x_combined = *x;
       y_combined = *y;

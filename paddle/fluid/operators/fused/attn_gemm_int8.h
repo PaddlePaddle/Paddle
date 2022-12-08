@@ -27,7 +27,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using phi::backends::gpu::GpuLaunchConfig;
 
 template <typename T>

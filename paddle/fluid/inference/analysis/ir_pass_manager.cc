@@ -235,6 +235,8 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new framework::ProgramDesc *(&argument->main_program()));
     } else if (pass_name == "memory_optimize_pass") {
       pass->Set("root_predictor_id", new int(argument->root_predictor_id()));
+    } else if (pass_name == "build_cinn_pass") {
+      pass->Set("is_inference_stage", new bool(argument->use_cinn_compiler()));
     } else if (pass_name == "lite_subgraph_pass") {
       bool lite_enable_int8 =
           argument->lite_precision_mode() == AnalysisConfig::Precision::kInt8;
