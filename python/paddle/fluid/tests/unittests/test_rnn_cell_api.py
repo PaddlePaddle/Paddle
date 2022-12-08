@@ -16,6 +16,8 @@ import unittest
 
 import numpy
 import numpy as np
+from rnn.rnn_numpy import LSTMCell
+from rnn.rnn_numpy import rnn as numpy_rnn
 
 import paddle
 import paddle.fluid as fluid
@@ -23,7 +25,6 @@ import paddle.fluid.core as core
 import paddle.fluid.layers as layers
 import paddle.fluid.layers.utils as utils
 from paddle.fluid import framework
-from paddle.fluid.contrib.layers import basic_lstm
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.layers import rnn as dynamic_rnn
@@ -142,38 +143,9 @@ class TestRnn(unittest.TestCase):
         self.seq_len = 4
 
     def test_run(self):
-        inputs_basic_lstm = fluid.data(
-            name='inputs_basic_lstm',
-            shape=[None, None, self.input_size],
-            dtype='float32',
-        )
-        sequence_length = fluid.data(
-            name="sequence_length", shape=[None], dtype='int64'
-        )
 
-        inputs_dynamic_rnn = paddle.transpose(inputs_basic_lstm, perm=[1, 0, 2])
-        cell = paddle.nn.LSTMCell(
-            self.input_size, self.hidden_size, name="LSTMCell_for_rnn"
-        )
-        output, final_state = dynamic_rnn(
-            cell=cell,
-            inputs=inputs_dynamic_rnn,
-            sequence_length=sequence_length,
-            is_reverse=False,
-        )
-        output_new = paddle.transpose(output, perm=[1, 0, 2])
-
-        rnn_out, last_hidden, last_cell = basic_lstm(
-            inputs_basic_lstm,
-            None,
-            None,
-            self.hidden_size,
-            num_layers=1,
-            batch_first=False,
-            bidirectional=False,
-            sequence_length=sequence_length,
-            forget_bias=1.0,
-        )
+        numpy_cell = LSTMCell(self.input_size, self.hidden_size)
+        dynamic_cell = paddle.nn.LSTMCell(self.input_size, self.hidden_size)
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
@@ -182,16 +154,41 @@ class TestRnn(unittest.TestCase):
         exe = Executor(place)
         exe.run(framework.default_startup_program())
 
-        inputs_basic_lstm_np = np.random.uniform(
-            -0.1, 0.1, (self.seq_len, self.batch_size, self.input_size)
+        state = numpy_cell.parameters
+        for k, v in dynamic_cell.named_parameters():
+            fluid.global_scope().find_var(v.name).get_tensor().set(
+                state[k].astype('float32'), place
+            )
+
+        sequence_length = fluid.data(
+            name="sequence_length", shape=[None], dtype='int64'
+        )
+        inputs_rnn = fluid.data(
+            name='inputs_rnn',
+            shape=[None, None, self.input_size],
+            dtype='float32',
+        )
+        pre_hidden = fluid.data(
+            name='pre_hidden', shape=[None, self.hidden_size], dtype='float32'
+        )
+        pre_cell = fluid.data(
+            name='pre_cell', shape=[None, self.hidden_size], dtype='float32'
+        )
+
+        dynamic_output, dynamic_final_state = dynamic_rnn(
+            cell=dynamic_cell,
+            inputs=inputs_rnn,
+            sequence_length=sequence_length,
+            initial_states=(pre_hidden, pre_cell),
+            is_reverse=False,
+        )
+
+        inputs_rnn_np = np.random.uniform(
+            -0.1, 0.1, (self.batch_size, self.seq_len, self.input_size)
         ).astype('float32')
         sequence_length_np = (
             np.ones(self.batch_size, dtype='int64') * self.seq_len
         )
-
-        inputs_np = np.random.uniform(
-            -0.1, 0.1, (self.batch_size, self.input_size)
-        ).astype('float32')
         pre_hidden_np = np.random.uniform(
             -0.1, 0.1, (self.batch_size, self.hidden_size)
         ).astype('float32')
@@ -199,43 +196,24 @@ class TestRnn(unittest.TestCase):
             -0.1, 0.1, (self.batch_size, self.hidden_size)
         ).astype('float32')
 
-        param_names = [
-            [
-                "LSTMCell_for_rnn/BasicLSTMUnit_0.w_0",
-                "basic_lstm_layers_0/BasicLSTMUnit_0.w_0",
-            ],
-            [
-                "LSTMCell_for_rnn/BasicLSTMUnit_0.b_0",
-                "basic_lstm_layers_0/BasicLSTMUnit_0.b_0",
-            ],
-        ]
+        o1, _ = numpy_rnn(
+            cell=numpy_cell,
+            inputs=inputs_rnn_np,
+            initial_states=(pre_hidden_np, pre_cell_np),
+            sequence_length=sequence_length_np,
+            is_reverse=False,
+        )
 
-        for names in param_names:
-            param = np.array(
-                fluid.global_scope().find_var(names[0]).get_tensor()
-            )
-            param = np.random.uniform(-0.1, 0.1, size=param.shape).astype(
-                'float32'
-            )
-            fluid.global_scope().find_var(names[0]).get_tensor().set(
-                param, place
-            )
-            fluid.global_scope().find_var(names[1]).get_tensor().set(
-                param, place
-            )
-
-        out = exe.run(
+        o2 = exe.run(
             feed={
-                'inputs_basic_lstm': inputs_basic_lstm_np,
+                'inputs_rnn': inputs_rnn_np,
                 'sequence_length': sequence_length_np,
-                'inputs': inputs_np,
                 'pre_hidden': pre_hidden_np,
                 'pre_cell': pre_cell_np,
             },
-            fetch_list=[output_new, rnn_out],
-        )
-
-        np.testing.assert_allclose(out[0], out[1], rtol=0.0001)
+            fetch_list=[dynamic_output],
+        )[0]
+        np.testing.assert_allclose(o1, o2, rtol=0.0001)
 
 
 class TestRnnUtil(unittest.TestCase):
