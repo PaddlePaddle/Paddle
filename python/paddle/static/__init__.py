@@ -74,11 +74,13 @@ from ..fluid.layers import create_global_var  # noqa: F401
 from ..fluid.contrib.layers import ctr_metric_bundle  # noqa: F401
 from ..fluid.layers import exponential_decay  # noqa: F401
 
+from .nn.common import batch_norm  # noqa: F401
 from paddle.static.nn.metric import auc  # noqa: F401
 from paddle.static.nn.metric import accuracy  # noqa: F401
 
 __all__ = [  # noqa
     'append_backward',
+    'batch_norm',
     'gradients',
     'Executor',
     'global_scope',
