@@ -22,6 +22,8 @@ import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 from paddle.tensor.manipulation import tensor_array_to_tensor
 
+paddle.enable_static()
+
 
 class TestTensorArrayToTensorError(unittest.TestCase):
     """Tensor_array_to_tensor error message enhance"""
@@ -287,7 +289,9 @@ class TestTensorArrayToTensorAPI(unittest.TestCase):
                 fluid.layers.array_write(prev, i, array)
                 return i + 1, end, array
 
-            _, _, array = fluid.layers.while_loop(cond, body, [i, ten, array])
+            _, _, array = paddle.static.nn.while_loop(
+                cond, body, [i, ten, array]
+            )
 
             self.assertTrue(paddle.tensor.array_length(array), 10)
             last = fluid.layers.fill_constant(shape=[1], dtype='int64', value=9)

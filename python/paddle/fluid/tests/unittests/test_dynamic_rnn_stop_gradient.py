@@ -21,6 +21,8 @@ import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.tensor.manipulation import tensor_array_to_tensor
 
+paddle.enable_static()
+
 
 def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
     fluid.default_startup_program().random_seed = 1
@@ -38,7 +40,7 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
         shape=[1], dtype="int64", value=10, force_cpu=True
     )
     cond = paddle.less_than(x=step_idx, y=max_len)
-    while_op = layers.While(cond)
+    while_op = paddle.static.nn.control_flow.While(cond)
     scores = layers.array_write(x, step_idx)
     with while_op.block():
         bs = layers.cast(paddle.shape(x)[0], "int64")
