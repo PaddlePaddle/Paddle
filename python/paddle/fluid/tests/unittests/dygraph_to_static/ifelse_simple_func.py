@@ -85,7 +85,7 @@ def dyfunc_with_if_else3(x):
         m = x + 2
         n = x + 3
         return q, x, y, z
-    q, x, y, z = fluid.layers.cond(paddle.mean(x)[0] < 5, lambda :
+    q, x, y, z = paddle.static.nn.cond(paddle.mean(x)[0] < 5, lambda :
         paddle.jit.dy2static.convert_call(true_fn_0)(q, x, y),
         lambda : paddle.jit.dy2static.convert_call(false_fn_0)(q,
         x, y))

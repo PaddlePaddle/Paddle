@@ -41,6 +41,7 @@ from paddle.framework import in_dygraph_mode
 __all__ = [
     'Assert',
     'increment',
+    'cond',
 ]
 
 
