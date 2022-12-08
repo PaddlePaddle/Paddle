@@ -15,16 +15,12 @@
 All layers just related to metric.
 """
 
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.initializer import Constant
-from paddle.fluid.framework import (
-    Variable,
-    _non_static_mode,
-    _varbase_creator,
-)
-from paddle.fluid.layers import tensor
-from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle import _legacy_C_ops
+from paddle.fluid.data_feeder import check_variable_and_dtype
+from paddle.fluid.framework import Variable, _non_static_mode, _varbase_creator
+from paddle.fluid.initializer import Constant
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.layers import tensor
 
 __all__ = ['accuracy', 'auc']
 
