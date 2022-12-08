@@ -76,51 +76,6 @@ class LayerTest(unittest.TestCase):
             yield
 
 
-class TestDetection(unittest.TestCase):
-    def test_box_coder_api(self):
-        program = Program()
-        with program_guard(program):
-            x = layers.data(name='x', shape=[4], dtype='float32')
-            y = layers.data(name='z', shape=[4], dtype='float32', lod_level=1)
-            bcoder = layers.box_coder(
-                prior_box=x,
-                prior_box_var=[0.1, 0.2, 0.1, 0.2],
-                target_box=y,
-                code_type='encode_center_size',
-            )
-            self.assertIsNotNone(bcoder)
-        print(str(program))
-
-    def test_box_coder_error(self):
-        program = Program()
-        with program_guard(program):
-            x1 = fluid.data(name='x1', shape=[10, 4], dtype='int32')
-            y1 = fluid.data(
-                name='y1', shape=[10, 4], dtype='float32', lod_level=1
-            )
-            x2 = fluid.data(name='x2', shape=[10, 4], dtype='float32')
-            y2 = fluid.data(
-                name='y2', shape=[10, 4], dtype='int32', lod_level=1
-            )
-
-            self.assertRaises(
-                TypeError,
-                layers.box_coder,
-                prior_box=x1,
-                prior_box_var=[0.1, 0.2, 0.1, 0.2],
-                target_box=y1,
-                code_type='encode_center_size',
-            )
-            self.assertRaises(
-                TypeError,
-                layers.box_coder,
-                prior_box=x2,
-                prior_box_var=[0.1, 0.2, 0.1, 0.2],
-                target_box=y2,
-                code_type='encode_center_size',
-            )
-
-
 class TestPriorBox(unittest.TestCase):
     def test_prior_box(self):
         program = Program()

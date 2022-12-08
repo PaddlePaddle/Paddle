@@ -72,16 +72,5 @@ class TestCase2(TestPolygonBoxRestoreOp):
         self.input_shape = (3, 12, 4, 5)
 
 
-class TestPolygonBoxInvalidInput(unittest.TestCase):
-    def test_error(self):
-        def test_invalid_input():
-            input = fluid.data(
-                name='input', shape=[None, 3, 32, 32], dtype='int64'
-            )
-            out = fluid.layers.polygon_box_transform(input)
-
-        self.assertRaises(TypeError, test_invalid_input)
-
-
 if __name__ == '__main__':
     unittest.main()
