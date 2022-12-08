@@ -113,7 +113,9 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
       kernels_.end(),
       phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
 
-  KernelKey kernel_key = const_kernel_key;
+  KernelKey kernel_key = KernelKey(const_kernel_key.backend(),
+                                   phi::DataLayout::ALL_LAYOUT,
+                                   const_kernel_key.dtype());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (kernel_key.backend() == Backend::GPUDNN) {
     auto kernel_iter = iter->second.find(
@@ -125,8 +127,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
         KernelKey(Backend::GPU, kernel_key.layout(), kernel_key.dtype());
   }
 #endif
-  auto kernel_iter = iter->second.find(
-      {Backend::GPUDNN, phi::DataLayout::ALL_LAYOUT, kernel_key.dtype()});
+  auto kernel_iter = iter->second.find(kernel_key);
 
   PADDLE_ENFORCE_NE(
       kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU,
@@ -148,7 +149,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
   ) {
     // Fallback CPU backend
     phi::KernelKey cpu_kernel_key(
-        phi::Backend::CPU, phi::DataLayout::ALL_LAYOUT, kernel_key.dtype());
+        phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
     kernel_iter = iter->second.find(cpu_kernel_key);
 
     PADDLE_ENFORCE_NE(
