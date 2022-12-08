@@ -1057,9 +1057,7 @@ class QuantizedMatmul(Layer):
             y = self._act_preprocess_y(y)
         quant_y = self._fake_quant_y(y)
 
-        out = paddle.tensor.linalg.matmul(
-            quant_x, quant_y, transpose_x, transpose_y, name
-        )
+        out = paddle.matmul(quant_x, quant_y, transpose_x, transpose_y, name)
         return out
 
 
