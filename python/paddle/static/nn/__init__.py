@@ -23,6 +23,8 @@ from .common import conv2d_transpose  # noqa: F401
 from .common import conv3d_transpose  # noqa: F401
 from .common import bilinear_tensor_product  # noqa: F401
 from .common import py_func  # noqa: F401
+from .common import row_conv  # noqa: F401
+from .common import spectral_norm  # noqa: F401
 from ...tensor.creation import create_parameter  # noqa: F401
 from ...fluid.layers import case  # noqa: F401
 from ...fluid.layers import cond  # noqa: F401
@@ -32,8 +34,6 @@ from ...fluid.layers import layer_norm  # noqa: F401
 from ...fluid.layers import multi_box_head  # noqa: F401
 from .loss import nce  # noqa: F401
 from .common import prelu  # noqa: F401
-from ...fluid.layers import row_conv  # noqa: F401
-from ...fluid.layers import spectral_norm  # noqa: F401
 from ...fluid.layers import switch_case  # noqa: F401
 from ...fluid.layers import while_loop  # noqa: F401
 

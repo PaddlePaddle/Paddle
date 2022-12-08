@@ -1581,7 +1581,7 @@ def transformer(
     label, weights = make_all_inputs(label_data_input_fields)
     if label_smooth_eps:
         label = F.label_smooth(
-            label=layers.one_hot(input=label, depth=trg_vocab_size),
+            label=paddle.nn.functional.one_hot(label, trg_vocab_size),
             epsilon=label_smooth_eps,
         )
 

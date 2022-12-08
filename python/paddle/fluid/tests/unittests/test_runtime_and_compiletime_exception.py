@@ -19,6 +19,8 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 
+paddle.enable_static()
+
 
 class TestRunTimeException(unittest.TestCase):
     def test_run_time_exception(self):
@@ -29,7 +31,8 @@ class TestRunTimeException(unittest.TestCase):
         startup_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
             label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-            fluid.layers.one_hot(input=label, depth=100)
+            # paddle.nn.functional.one_hot(label, 100)
+            fluid.one_hot(label, 100)
 
         def _run_program():
             x = np.random.random(size=(10)).astype('int64')
@@ -49,7 +52,8 @@ class TestCompileTimeException(unittest.TestCase):
             label = fluid.layers.data(
                 name="label", shape=[1], dtype="int64", append_batch_size=False
             )
-            fluid.layers.one_hot(input=label, depth=100)
+            # paddle.nn.functional.one_hot(label, 100)
+            fluid.one_hot(label, 100)
 
 
 if __name__ == '__main__':
