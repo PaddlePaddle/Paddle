@@ -33,7 +33,6 @@ from paddle.fluid.layers import (
     control_flow,
 )
 from paddle.fluid.layers.control_flow import (
-    cond,
     while_loop,
 )
 from .return_transformer import (
@@ -394,7 +393,7 @@ def _run_paddle_cond(
             return ret
 
     try:
-        cond_outs = control_flow.cond(
+        cond_outs = paddle.static.nn.cond(
             pred, new_true_fn, new_false_fn, None, return_name_ids
         )
     except Exception as e:
@@ -820,7 +819,9 @@ def _slice_tensor_array(array, start, end):
         new_array = paddle.slice(array, starts=[start], ends=[end], axes=[0])
         return new_array
 
-    new_array = cond(start == end, true_fn, lambda: false_fn(array, start, end))
+    new_array = paddle.static.nn.cond(
+        start == end, true_fn, lambda: false_fn(array, start, end)
+    )
     return new_array
 
 

@@ -24,6 +24,7 @@ from paddle.common_ops_import import (
     check_type,
     check_variable_and_dtype,
     convert_dtype,
+    in_dygraph_mode,
 )
 from paddle.fluid.framework import Operator, Program, Variable
 
@@ -40,7 +41,6 @@ from paddle.fluid.layers.utils import (
     pack_sequence_as,
     to_sequence,
 )
-from paddle.framework import in_dygraph_mode
 
 __all__ = [
     'Assert',
