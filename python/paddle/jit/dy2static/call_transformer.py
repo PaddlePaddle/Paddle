@@ -60,8 +60,9 @@ class CallTransformer(BaseTransformer):
                 'zip',
                 'range',
                 'enumerate',
+                'print',
             }
-            is_builtin = eval("is_builtin({})".format(func_str))
+            is_builtin = eval("is_builtin({})".format(func_str))  # noqa: F811
             need_convert = func_str in need_convert_builtin_func_list
             return is_builtin and not need_convert
         except Exception:

@@ -115,6 +115,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "merge_layernorm_fuse_pass",            //
       "preln_residual_bias_fuse_pass",        //
       "preln_layernorm_x_fuse_pass",          //
+      "reverse_roll_fuse_pass",               //
       // "set_transformer_input_convert_pass",       //
       "conv_bn_fuse_pass",                           //
       "unsqueeze2_eltwise_fuse_pass",                //
@@ -203,6 +204,13 @@ const std::vector<std::string> kTrtLowerPrecisionPasses{
     "tensorrt_subgraph_pass",
 };
 
+const std::vector<std::string> kCINNCompilerPasses{
+    "gpu_cpu_map_matmul_v2_to_mul_pass",
+    "gpu_cpu_map_matmul_v2_to_matmul_pass",
+    "gpu_cpu_map_matmul_to_mul_pass",
+    "build_cinn_pass",
+};
+
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
     //   "identity_scale_op_clean_pass",             //
@@ -245,9 +253,10 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_elementwise_add_fuse_pass",      //
 #endif                                         //
         "transpose_flatten_concat_fuse_pass",  //
-        "constant_folding_pass",
+        "constant_folding_pass",               //
         // following pass should be located in the last, since it will
         // work on all fused ops.
+        "float_to_half_pass",  //
         "runtime_context_cache_pass"
   });
 

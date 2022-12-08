@@ -27,8 +27,6 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 class SamplingIdKernel : public framework::OpKernel<T> {
  public:

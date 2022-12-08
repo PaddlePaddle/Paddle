@@ -237,7 +237,8 @@ void CommonElementwiseBroadcastBackward(const CPUContext &ctx,
   // result.
   if (dx && dx->IsSharedBufferWith(dout)) {
     dx->clear();
-    dx->mutable_data<T>(x_dims, ctx.GetPlace());
+    dx->Resize(x_dims);
+    ctx.template Alloc<T>(dx);
   }
 
   VLOG(3) << "CommonElementwiseBroadcastBackward xdims:"
@@ -1680,7 +1681,8 @@ void CommonElementwiseBroadcastBackward(const GPUContext &ctx,
   // result.
   if (dx && dx->IsSharedBufferWith(dout)) {
     dx->clear();
-    dx->mutable_data<T>(x_dims, ctx.GetPlace());
+    dx->Resize(x_dims);
+    ctx.template Alloc<T>(dx);
   }
 
   VLOG(3) << "CommonElementwiseBroadcastBackward xdims:"

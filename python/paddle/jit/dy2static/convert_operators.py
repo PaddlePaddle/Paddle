@@ -736,17 +736,15 @@ def convert_assert(cond, message=""):
         assert cond, message
 
 
-def convert_print(*args):
+def convert_print(*objects, sep=' ', end='\n', file=None, flush=False):
     """
-    A function representing Python ``print`` statement. Note: this is a basic
-    python function so we haven't handle sep, end, file and flush parameters of
-    python function.
+    A function representing Python ``print`` function. It will print all arguments
+    at compile time and only print the Tensor values at runtime.
     """
-    for var in args:
-        if isinstance(var, Variable):
-            var = Print(var)
-        else:
-            print(var)
+    for obj in objects:
+        if isinstance(obj, Variable):
+            Print(obj)
+    print(*objects, sep=sep, end=end, file=file, flush=flush)
 
 
 def convert_pop(target, *args):
