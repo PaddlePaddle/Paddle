@@ -31,8 +31,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 static void AllReduce(phi::DenseTensor& tensor,  // NOLINT
                       const int ring_id,

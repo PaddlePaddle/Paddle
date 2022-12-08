@@ -20,8 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 class ExpandAsV2MLUKernel : public framework::OpKernel<T> {
  public:
