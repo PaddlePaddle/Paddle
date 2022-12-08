@@ -874,7 +874,7 @@ class DataParallel(layers.Layer):
                 dist.init_parallel_env()
 
                 emb = paddle.nn.Embedding(10, 10)
-                emb = fluid.dygraph.DataParallel(emb)
+                emb = paddle.fluid.dygraph.DataParallel(emb)
 
                 state_dict = emb.state_dict()
                 paddle.save(state_dict, "paddle_dy.pdparams")
@@ -908,7 +908,7 @@ class DataParallel(layers.Layer):
                 dist.init_parallel_env()
 
                 emb = paddle.nn.Embedding(10, 10)
-                emb = fluid.dygraph.DataParallel(emb)
+                emb = paddle.fluid.dygraph.DataParallel(emb)
 
                 state_dict = emb.state_dict()
                 paddle.save(state_dict, "paddle_dy.pdparams")
