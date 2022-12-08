@@ -457,9 +457,9 @@ void gemm_bias_act(const T* A,
                     int num_experts,
                     int sm_,
                     int multi_processor_count_,
-                    int act,
+                    const std::string& act_type,
                     cudaStream_t stream) {
-  if (act == 0) {
+  if (act_type == "gelu") {
     if (sm_ == 75) {
       generic_moe_gemm_kernelLauncher<T,
                                       T,
@@ -494,6 +494,7 @@ void gemm_bias_act(const T* A,
           stream);
     }
   } else {
+    // act type is relu. 
     if (sm_ == 75) {
       generic_moe_gemm_kernelLauncher<T,
                                       T,
@@ -600,7 +601,7 @@ void MoeKernel(const Context& ctx,
                const DenseTensor& bias0,
                const DenseTensor& bmm1,
                const DenseTensor& bias1,
-               int act,
+               const std::string& act_type,
                DenseTensor* output) {
   const T* input_activations = x.data<T>();
   T* gating_output = const_cast<T*>(gate.data<T>());
@@ -608,7 +609,7 @@ void MoeKernel(const Context& ctx,
   const T* fc1_expert_biases = bias0.data<T>();
   const T* fc2_expert_weights = bmm1.data<T>();
   const T* fc2_expert_biases = bias1.data<T>();
-  int moe_act = static_cast<int>(act);
+  // int moe_act = static_cast<int>(act);
   T* output_ = ctx.template Alloc<T>(output);
   auto stream = ctx.stream();
 
@@ -785,7 +786,7 @@ void MoeKernel(const Context& ctx,
                    num_experts,
                    sm_,
                    multi_processor_count_,
-                   moe_act,
+                   act_type,
                    ctx.stream());
     gemm(reinterpret_cast<const __half*>(fc1_result_),
          reinterpret_cast<const __half*>(fc2_expert_weights),
@@ -810,7 +811,7 @@ void MoeKernel(const Context& ctx,
                           num_experts,
                           sm_,
                           multi_processor_count_,
-                          moe_act,
+                          act_type,
                           ctx.stream());
     gemm<float>(reinterpret_cast<const float*>(fc1_result_),
                 reinterpret_cast<const float*>(fc2_expert_weights),

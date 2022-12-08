@@ -26,7 +26,7 @@ void MoeKernel(const Context& ctx,
                const DenseTensor& bias0,
                const DenseTensor& bmm1,
                const DenseTensor& bias1,
-               int act,
+               const std::string& act_type,
                DenseTensor* output);
 
 }  // namespace phi

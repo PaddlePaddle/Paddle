@@ -2049,20 +2049,6 @@ void MatrixRankTolInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
-void MoeInferMeta(const MetaTensor& x,
-                  const MetaTensor& gate,
-                  const MetaTensor& bmm0,
-                  const MetaTensor& bias0,
-                  const MetaTensor& bmm1,
-                  const MetaTensor& bias1,
-                  int act,
-                  MetaTensor* out) {
-  out->set_dims(x.dims());
-  out->share_lod(x);
-  out->set_dtype(x.dtype());
-  out->set_layout(x.layout());
-}
-
 void MvInferMeta(const MetaTensor& x, const MetaTensor& vec, MetaTensor* out) {
   auto dim_x = x.dims();
   auto dim_vec = vec.dims();
