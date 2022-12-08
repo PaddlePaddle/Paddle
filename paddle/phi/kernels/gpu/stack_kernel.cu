@@ -21,8 +21,15 @@
 
 namespace phi {
 
-template <typename T, typename IntType>
-__global__ void StackCUDAKernel(T** input_ptrs,
+constexpr int kWarpperSize = 256;
+template <typename T>
+struct DataWarpper {
+  const T* data[kWarpperSize];
+  HOSTDEVICE inline const T* operator[](int i) const { return data[i]; }
+};
+
+template <typename T, typename IntType, typename WarpT>
+__global__ void StackCUDAKernel(WarpT input_ptrs,
                                 IntType split_size,
                                 IntType rows,
                                 IntType cols,
@@ -55,56 +62,61 @@ void StackKernel(const Context& dev_ctx,
 
   int n = static_cast<int>(x.size());
   T* y_data = dev_ctx.template Alloc<T>(out);
-  std::vector<const T*> x_datas(n);
-  for (int i = 0; i < n; i++) {
-    x_datas[i] = x[i]->data<T>();
-  }
-
-  auto tmp_x_data = paddle::memory::Alloc(
-      dev_ctx.GetPlace(),
-      x_datas.size() * sizeof(T*),
-      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-  paddle::memory::Copy(dev_ctx.GetPlace(),
-                       tmp_x_data->ptr(),
-                       phi::CPUPlace(),
-                       reinterpret_cast<void*>(x_datas.data()),
-                       x_datas.size() * sizeof(T*),
-                       dev_ctx.stream());
-
+  
   // Split x dim from axis to matrix
   int64_t x_row = 1, x_col = 1;
   for (int i = 0; i < axis; ++i) {
-    x_row *= x[0]->dims()[i];
+      x_row *= x[0]->dims()[i];
   }
   x_col = x[0]->numel() / x_row;
   int64_t out_col = x_col * n;
-
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig2D(dev_ctx, out_col, x_row);
 
-  if (out->numel() < std::numeric_limits<int32_t>::max()) {
-    StackCUDAKernel<T, int32_t>
-        <<<config.block_per_grid,
-           config.thread_per_block,
-           0,
-           dev_ctx.stream()>>>(reinterpret_cast<T**>(tmp_x_data->ptr()),
-                               static_cast<int32_t>(x_col),
-                               static_cast<int32_t>(x_row),
-                               static_cast<int32_t>(out_col),
-                               y_data);
-  } else {
-    StackCUDAKernel<T, int64_t>
-        <<<config.block_per_grid,
-           config.thread_per_block,
-           0,
-           dev_ctx.stream()>>>(reinterpret_cast<T**>(tmp_x_data->ptr()),
-                               x_col,
-                               x_row,
-                               out_col,
-                               y_data);
-  }
-}
+#define IMPL_STACK_CUDA_KERNEL(index_t, input_data)       \
+    StackCUDAKernel<T, index_t, decltype(input_data)><<<  \
+                config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>( \
+                                input_data,                      \
+                                static_cast<index_t>(x_col),     \
+                                static_cast<index_t>(x_row),     \
+                                static_cast<index_t>(out_col),   \
+                                y_data);
 
+  if (n <= kWarpperSize) {
+    DataWarpper<T> data_warpper;
+    for (auto i = 0; i < n; ++i) {
+        data_warpper.data[i] = x[i]->data<T>();
+    }
+    if (out->numel() < std::numeric_limits<int32_t>::max()) {
+        IMPL_STACK_CUDA_KERNEL(int32_t, data_warpper);
+    } else {
+        IMPL_STACK_CUDA_KERNEL(int64_t, data_warpper);
+    }
+  } else {
+    std::vector<const T*> x_datas(n);
+    for (int i = 0; i < n; i++) {
+      x_datas[i] = x[i]->data<T>();
+    }
+    auto tmp_x_data = paddle::memory::Alloc(
+        dev_ctx.GetPlace(),
+        x_datas.size() * sizeof(T*),
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+    paddle::memory::Copy(dev_ctx.GetPlace(),
+                         tmp_x_data->ptr(),
+                         phi::CPUPlace(),
+                         reinterpret_cast<void*>(x_datas.data()),
+                         x_datas.size() * sizeof(T*),
+                         dev_ctx.stream());
+
+    if (out->numel() < std::numeric_limits<int32_t>::max()) {
+        IMPL_STACK_CUDA_KERNEL(int32_t, reinterpret_cast<T**>(tmp_x_data->ptr()));
+    } else {
+        IMPL_STACK_CUDA_KERNEL(int64_t, reinterpret_cast<T**>(tmp_x_data->ptr()));
+    }
+  }
+#undef IMPL_STACK_CUDA_KERNEL
+
+}
 }  // namespace phi
 
 PD_REGISTER_KERNEL(stack,
