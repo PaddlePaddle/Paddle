@@ -35,8 +35,7 @@ def current_device(device_type):
     Return the device used for computation.
 
     Parameters:
-        device(paddle.CustomPlace()|str): The device or the type of the device.
-        device_id(int, Optional): The id of the device. Default: 0.
+        device_type(str): The type of the device.
 
     Returns:
         int: the id of custom device used for computation.
@@ -174,8 +173,8 @@ def current_stream(device, device_id=None):
 @signature_safe_contextmanager
 def stream_guard(stream):
     '''
-    **Notes**:
-        **This API only supports dygraph mode currently.**
+    Note:
+        This API only supports dygraph mode currently.
 
     A context manager that specifies the current stream context by the given stream.
 
