@@ -23,12 +23,11 @@ import paddle.nn.functional as F
 from paddle.fluid import Layer, core
 from paddle.fluid.dygraph import guard, to_variable
 from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
-from paddle.jit import TracedLayer
 from paddle.nn import Linear
 
 np.set_printoptions(suppress=True)
 
-from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
+from utils import DyGraphProgramDescTracerTestHelper
 
 
 # Copy from models
@@ -1172,27 +1171,7 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
 
             for i in range(batch_num):
                 enc_inputs, dec_inputs, label, weights = create_data()
-                if False:
-                    outs, traced_layer = TracedLayer.trace(
-                        transformer, [enc_inputs, dec_inputs, label, weights]
-                    )
-
-                    ins_static = enc_inputs + dec_inputs + [label, weights]
-                    outs_static = traced_layer(ins_static)
-                    helper.assertEachVar(outs, outs_static)
-                    if program is not None:
-                        self.assertTrue(
-                            is_equal_program(program, traced_layer.program)
-                        )
-
-                    program = traced_layer.program
-                    traced_layer.save_inference_model(
-                        './infer_imperative_transformer',
-                        feed=list(range(len(ins_static))),
-                        fetch=list(range(len(outs_static))),
-                    )
-                else:
-                    outs = transformer(enc_inputs, dec_inputs, label, weights)
+                outs = transformer(enc_inputs, dec_inputs, label, weights)
 
                 dy_sum_cost, dy_avg_cost, dy_predict, dy_token_num = outs
 

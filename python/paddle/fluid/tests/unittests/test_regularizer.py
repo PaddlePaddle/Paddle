@@ -263,7 +263,7 @@ class TestRegularizer(unittest.TestCase):
             regularizer=paddle.regularizer.L1Decay()
         )
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            x = fluid.layers.uniform_random([2, 2, 3])
+            x = paddle.uniform([2, 2, 3])
             out = fluid.layers.fc(x, 5, param_attr=fc_param_attr)
             loss = paddle.sum(out)
             sgd = fluid.optimizer.SGD(learning_rate=0.1, regularization=l2)

@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 from test_imperative_base import new_program_scope
-from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
+from utils import DyGraphProgramDescTracerTestHelper
 
 import paddle
 import paddle.fluid as fluid
@@ -298,25 +298,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 y = to_variable(y_data)
                 init_hidden = to_variable(init_hidden_data)
                 init_cell = to_variable(init_cell_data)
-                if i % 5 == 0 and _in_legacy_dygraph():
-                    outs, traced_layer = TracedLayer.trace(
-                        ptb_model, [x, y, init_hidden, init_cell]
-                    )
-                    outs_static = traced_layer([x, y, init_hidden, init_cell])
-                    helper.assertEachVar(outs, outs_static)
 
-                    if program is not None:
-                        self.assertTrue(
-                            is_equal_program(traced_layer.program, program)
-                        )
-
-                    program = traced_layer.program
-
-                    traced_layer.save_inference_model(
-                        './infe_imperative_ptb_rnn', feed=list(range(4))
-                    )
-                else:
-                    outs = ptb_model(x, y, init_hidden, init_cell)
+                outs = ptb_model(x, y, init_hidden, init_cell)
 
                 dy_loss, last_hidden, last_cell = outs
 

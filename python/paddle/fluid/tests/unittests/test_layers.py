@@ -1845,7 +1845,7 @@ class TestLayer(LayerTest):
     def test_shard_index(self):
         with self.static_graph():
             x = fluid.layers.data(name="label", shape=[4, 1], dtype='int64')
-            shard_label = fluid.layers.shard_index(
+            shard_label = paddle.shard_index(
                 input=x, index_num=20, nshards=2, shard_id=0
             )
 
@@ -2344,7 +2344,7 @@ class TestBook(LayerTest):
             fluid.default_main_program(), fluid.default_startup_program()
         ):
             input = self._get_data(name="input", shape=[16], dtype="float32")
-            out = layers.mish(input, name='mish')
+            out = paddle.nn.functional.mish(input, name='mish')
             return out
 
     def make_cross_entropy(self):
@@ -2414,15 +2414,6 @@ class TestBook(LayerTest):
                 append_batch_size=False,
             )
             out = paddle.scale(input, scale=scale_var)
-            return out
-
-    def make_iou_similarity(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name="x", shape=[4], dtype="float32")
-            y = self._get_data(name="y", shape=[4], dtype="float32")
-            out = layers.iou_similarity(x, y, name='iou_similarity')
             return out
 
     def make_bilinear_tensor_product_layer(self):
@@ -2805,7 +2796,7 @@ class TestBook(LayerTest):
     def test_unfold(self):
         with self.static_graph():
             x = layers.data(name='x', shape=[3, 20, 20], dtype='float32')
-            out = layers.unfold(x, [3, 3], 1, 1, 1)
+            out = paddle.nn.functional.unfold(x, [3, 3], 1, 1, 1)
             return out
 
     def test_partial_concat(self):
@@ -2819,40 +2810,6 @@ class TestBook(LayerTest):
                 x, start_index=0, length=-1
             )
             return concat1, concat2
-
-    def test_deform_roi_pooling(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            input = layers.data(
-                name='input',
-                shape=[2, 3, 32, 32],
-                dtype='float32',
-                append_batch_size=False,
-            )
-            rois = layers.data(
-                name="rois", shape=[4], dtype='float32', lod_level=1
-            )
-            trans = layers.data(
-                name="trans",
-                shape=[2, 3, 32, 32],
-                dtype='float32',
-                append_batch_size=False,
-            )
-            out = layers.deformable_roi_pooling(
-                input=input,
-                rois=rois,
-                trans=trans,
-                no_trans=False,
-                spatial_scale=1.0,
-                group_size=(1, 1),
-                pooled_height=8,
-                pooled_width=8,
-                part_size=(8, 8),
-                sample_per_part=4,
-                trans_std=0.1,
-            )
-        return out
 
     def test_addmm(self):
         with program_guard(
