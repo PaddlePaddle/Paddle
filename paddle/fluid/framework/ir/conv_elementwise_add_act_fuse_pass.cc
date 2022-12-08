@@ -256,5 +256,5 @@ REGISTER_PASS_CAPABILITY(conv_elementwise_add_act_fuse_pass)
             .EQ("sigmoid", 0)
             .EQ("tanh", 0)
             .EQ("identity", 0)
-            .EQ("leaky_relu", 0)
+            .LE("leaky_relu", 1)
             .EQ("swish", 0));
