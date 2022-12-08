@@ -12,21 +12,21 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the Licnse. */
 
-#include "paddle/fluid/operators/kldiv_loss_op.h"
+#include <string>
+
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
 template <typename T>
 class KLDivLossNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<Tensor>("X");
-    auto* target = ctx.Input<Tensor>("Target");
-    auto* loss = ctx.Output<Tensor>("Loss");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* target = ctx.Input<phi::DenseTensor>("Target");
+    auto* loss = ctx.Output<phi::DenseTensor>("Loss");
     auto reduction = ctx.Attr<std::string>("reduction");
     loss->mutable_data<T>(ctx.GetPlace());
 
@@ -76,17 +76,21 @@ class KLDivLossNPUKernel : public framework::OpKernel<T> {
           NpuOpRunner("Mul", {*loss, cliped_target}, {*loss}, {});
       mul_runner.Run(stream);
     } else if ("batchmean" == reduction || "sum" == reduction) {
-      const auto& runner = NpuOpRunner("KLDiv", {*input, *target}, {*loss},
-                                       {{"reduction", reduction}});
+      const auto& runner = NpuOpRunner(
+          "KLDiv", {*input, *target}, {*loss}, {{"reduction", reduction}});
       runner.Run(stream);
     } else if ("mean" == reduction) {
-      const auto& runner = NpuOpRunner("KLDiv", {*input, *target}, {*loss},
+      const auto& runner = NpuOpRunner("KLDiv",
+                                       {*input, *target},
+                                       {*loss},
                                        {{"reduction", std::string("sum")}});
       runner.Run(stream);
 
       const int numel = input->numel();
       const auto& muls_runner =
-          NpuOpRunner("Muls", {*loss}, {*loss},
+          NpuOpRunner("Muls",
+                      {*loss},
+                      {*loss},
                       {{"value", static_cast<float>(1.0 / numel)}});
       muls_runner.Run(stream);
     }
@@ -97,16 +101,18 @@ template <typename T>
 class KLDivLossGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* target = ctx.Input<Tensor>("Target");
-    auto* loss_grad = ctx.Input<Tensor>(framework::GradVarName("Loss"));
-    auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* target = ctx.Input<phi::DenseTensor>("Target");
+    auto* loss_grad =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Loss"));
+    auto* input_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto reduction = ctx.Attr<std::string>("reduction");
     input_grad->mutable_data<T>(ctx.GetPlace());
 
     auto& dev_ctx = ctx.template device_context<platform::NPUDeviceContext>();
     auto stream = dev_ctx.stream();
 
-    Tensor loss_grad_transformed;
+    phi::DenseTensor loss_grad_transformed;
     if ("none" == reduction) {
       loss_grad_transformed.ShareDataWith(*loss_grad);
     } else {
@@ -115,7 +121,7 @@ class KLDivLossGradNPUKernel : public framework::OpKernel<T> {
       NpuOpRunner broadcast_runner;
       broadcast_runner.SetType("BroadcastTo");
       broadcast_runner.AddInput(*loss_grad);
-      broadcast_runner.AddInput(framework::vectorize<int>(input_grad->dims()));
+      broadcast_runner.AddInput(phi::vectorize<int>(input_grad->dims()));
       broadcast_runner.AddOutput(loss_grad_transformed);
       broadcast_runner.Run(stream);
     }
@@ -156,8 +162,10 @@ class KLDivLossGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(kldiv_loss, ops::KLDivLossNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(kldiv_loss,
+                       ops::KLDivLossNPUKernel<float>,
                        ops::KLDivLossNPUKernel<plat::float16>);
 
-REGISTER_OP_NPU_KERNEL(kldiv_loss_grad, ops::KLDivLossGradNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(kldiv_loss_grad,
+                       ops::KLDivLossGradNPUKernel<float>,
                        ops::KLDivLossGradNPUKernel<plat::float16>);

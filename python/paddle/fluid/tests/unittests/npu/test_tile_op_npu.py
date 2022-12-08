@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -28,7 +27,7 @@ paddle.enable_static()
 np.random.seed(10)
 
 
-#Situation 1: repeat_times is a list (without tensor)
+# Situation 1: repeat_times is a list (without tensor)
 class TestTileOpRank1(OpTest):
     def setUp(self):
         self.set_npu()
@@ -55,7 +54,7 @@ class TestTileOpRank1(OpTest):
         pass
 
 
-#with dimension expanding
+# with dimension expanding
 class TestTileOpRank2Expanding(TestTileOpRank1):
     def init_data(self):
         self.ori_shape = [120]
@@ -101,8 +100,9 @@ class TestTileOpRank1_tensor_attr(OpTest):
         self.init_data()
         repeat_times_tensor = []
         for index, ele in enumerate(self.repeat_times):
-            repeat_times_tensor.append(("x" + str(index), np.ones(
-                (1)).astype('int32') * ele))
+            repeat_times_tensor.append(
+                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+            )
 
         self.inputs = {
             'X': np.random.random(self.ori_shape).astype("float32"),
@@ -184,8 +184,7 @@ class TestTileOpInteger(OpTest):
         self.place = paddle.NPUPlace(0)
         self.op_type = "tile"
         self.inputs = {
-            'X': np.random.randint(
-                10, size=(4, 4, 5)).astype("int32")
+            'X': np.random.randint(10, size=(4, 4, 5)).astype("int32")
         }
         self.attrs = {'repeat_times': [2, 1, 4]}
         output = np.tile(self.inputs['X'], (2, 1, 4))
@@ -205,8 +204,7 @@ class TestTileOpInt64_t(OpTest):
         self.place = paddle.NPUPlace(0)
         self.op_type = "tile"
         self.inputs = {
-            'X': np.random.randint(
-                10, size=(2, 4, 5)).astype("int64")
+            'X': np.random.randint(10, size=(2, 4, 5)).astype("int64")
         }
         self.attrs = {'repeat_times': [2, 1, 4]}
         output = np.tile(self.inputs['X'], (2, 1, 4))

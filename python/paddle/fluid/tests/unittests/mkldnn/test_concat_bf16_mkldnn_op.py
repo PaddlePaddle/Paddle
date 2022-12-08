@@ -12,19 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-import struct
 
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 from paddle import enable_static
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 
 
-@unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
+@unittest.skipIf(
+    not core.supports_bfloat16(), "place does not support BF16 evaluation"
+)
 class TestConcatBf16Op(OpTest):
     def setUp(self):
         self.op_type = "concat"
@@ -37,14 +36,15 @@ class TestConcatBf16Op(OpTest):
         self.attrs = {
             'axis': self.axis,
             'use_mkldnn': True,
-            'mkldnn_data_type': self.mkldnn_data_type
+            'mkldnn_data_type': self.mkldnn_data_type,
         }
 
         self.sections = [self.x0.shape[self.axis]] * 2
         self.sections[1] += self.x1.shape[self.axis]
 
         self.output = np.concatenate(
-            (self.x0, self.x1, self.x2), axis=self.axis).astype(np.uint16)
+            (self.x0, self.x1, self.x2), axis=self.axis
+        ).astype(np.uint16)
         self.outputs = {'Out': self.output}
 
     def calculate_grads(self):
@@ -57,20 +57,25 @@ class TestConcatBf16Op(OpTest):
     def test_check_grad(self):
         self.calculate_grads()
         self.check_grad_with_place(
-            core.CPUPlace(), ["x0", "x1", "x2"],
+            core.CPUPlace(),
+            ["x0", "x1", "x2"],
             "Out",
             user_defined_grads=[self.dxs[0], self.dxs[1], self.dxs[2]],
-            user_defined_grad_outputs=[self.dout])
+            user_defined_grad_outputs=[self.dout],
+        )
 
-# --------------------test concat bf16 in with axis 0--------------------
+    # --------------------test concat bf16 in with axis 0--------------------
 
     def init_test_data(self):
         self.x0 = convert_float_to_uint16(
-            np.random.random(self.x0_shape).astype(np.float32))
+            np.random.random(self.x0_shape).astype(np.float32)
+        )
         self.x1 = convert_float_to_uint16(
-            np.random.random(self.x1_shape).astype(np.float32))
+            np.random.random(self.x1_shape).astype(np.float32)
+        )
         self.x2 = convert_float_to_uint16(
-            np.random.random(self.x2_shape).astype(np.float32))
+            np.random.random(self.x2_shape).astype(np.float32)
+        )
 
     def init_axis(self):
         self.axis = 0

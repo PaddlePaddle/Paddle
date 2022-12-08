@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -50,11 +49,11 @@ class TestArgsortOp(OpTest):
     def get_output(self):
         if self.descending:
             self.indices = np.flip(
-                np.argsort(
-                    self.x, kind='heapsort', axis=self.axis), self.axis)
+                np.argsort(self.x, kind='heapsort', axis=self.axis), self.axis
+            )
             self.sorted_x = np.flip(
-                np.sort(
-                    self.x, kind='heapsort', axis=self.axis), self.axis)
+                np.sort(self.x, kind='heapsort', axis=self.axis), self.axis
+            )
         else:
             self.indices = np.argsort(self.x, kind='heapsort', axis=self.axis)
             self.sorted_x = np.sort(self.x, kind='heapsort', axis=self.axis)
@@ -134,8 +133,8 @@ class TestArgsortOpDescendingAxisNeg2NPU(TestArgsortOpAxisNeg2NPU):
         self.descending = True
 
 
-# liurui25: argsort of npu has bug with type fp32, 
-# it will change the type from fp32 to fp16, 
+# liurui25: argsort of npu has bug with type fp32,
+# it will change the type from fp32 to fp16,
 # so the check_output_with_place add thw atol
 # this test is only used to test the grad
 # issue： https://gitee.com/ascend/modelzoo/issues/I44I7K
@@ -156,7 +155,8 @@ class TestArgsortOpAxis0NPUFP32(TestArgsortOp):
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            self.place, ["X"], "Out", max_relative_error=0.03)
+            self.place, ["X"], "Out", max_relative_error=0.03
+        )
 
 
 class TestArgsortOpAxis1NPUFP32(TestArgsortOpAxis0NPUFP32):
@@ -221,8 +221,8 @@ class TestArgsortOpAxis0NPUINT64(TestArgsortOp):
         self.init_direction()
 
         self.x = np.random.randint(
-            low=-100, high=100, size=self.input_shape,
-            dtype=self.dtype).astype(self.dtype)
+            low=-100, high=100, size=self.input_shape, dtype=self.dtype
+        ).astype(self.dtype)
         self.inputs = {"X": self.x}
         self.attrs = {"axis": self.axis, "descending": self.descending}
         self.get_output()

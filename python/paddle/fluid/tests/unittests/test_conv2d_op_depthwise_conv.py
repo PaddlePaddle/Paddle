@@ -12,20 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
 
 import paddle
-paddle.enable_static()
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from op_test import OpTest
-from paddle.fluid import Program, program_guard
-from test_conv2d_op import TestConv2DOp, TestConv2DOp_v2, create_test_padding_SAME_class, create_test_padding_VALID_class, create_test_channel_last_class, create_test_cudnn_padding_SAME_class, create_test_cudnn_channel_last_class
 
-#----------------TestDepthwiseConv -----
+paddle.enable_static()
+from test_conv2d_op import (
+    TestConv2DOp,
+    TestConv2DOp_v2,
+    create_test_channel_last_class,
+    create_test_cudnn_channel_last_class,
+    create_test_cudnn_padding_SAME_class,
+    create_test_padding_SAME_class,
+    create_test_padding_VALID_class,
+)
+
+import paddle.fluid.core as core
+
+# ----------------TestDepthwiseConv -----
 
 
 class TestDepthwiseConv(TestConv2DOp):
@@ -366,12 +372,14 @@ create_test_channel_last_class(TestDepthwiseConvWithDilationandFuse_AsyPadding)
 if core.is_compiled_with_rocm():
     create_test_cudnn_padding_SAME_class(TestDepthwiseConv_AsyPadding)
     create_test_cudnn_padding_SAME_class(
-        TestDepthwiseConvWithDilation_AsyPadding)
+        TestDepthwiseConvWithDilation_AsyPadding
+    )
     create_test_padding_VALID_class(TestDepthwiseConv_AsyPadding)
     create_test_padding_VALID_class(TestDepthwiseConvWithDilation_AsyPadding)
     create_test_cudnn_channel_last_class(TestDepthwiseConv_AsyPadding)
     create_test_cudnn_channel_last_class(
-        TestDepthwiseConvWithDilation2_AsyPadding)
+        TestDepthwiseConvWithDilation2_AsyPadding
+    )
 
 if __name__ == '__main__':
     unittest.main()

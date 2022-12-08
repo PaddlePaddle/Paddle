@@ -18,7 +18,9 @@
 #include <string>
 #include <vector>
 
-namespace infrt::paddle::cpp {
+namespace infrt {
+namespace paddle {
+namespace cpp {
 
 /*
  * Compatible interfaces for all the different kinds of XXXDesc. All the XXXDesc
@@ -226,4 +228,6 @@ class ProgramDescAPI {
   virtual void SetVersion(int64_t version) = 0;
 };
 
-}  // namespace infrt::paddle::cpp
+}  // namespace cpp
+}  // namespace paddle
+}  // namespace infrt

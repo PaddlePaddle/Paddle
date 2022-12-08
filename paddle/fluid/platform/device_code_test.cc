@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/device_code.h"
+
 #include <utility>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/init.h"
@@ -54,13 +56,13 @@ TEST(DeviceCode, cuda) {
   paddle::platform::CUDAPlace place = paddle::platform::CUDAPlace(0);
   paddle::platform::CUDADeviceCode code(place, "saxpy_kernel", saxpy_code);
 
-  paddle::framework::Tensor cpu_x;
-  paddle::framework::Tensor cpu_y;
-  paddle::framework::Tensor cpu_z;
+  phi::DenseTensor cpu_x;
+  phi::DenseTensor cpu_y;
+  phi::DenseTensor cpu_z;
 
   float scale = 2;
-  auto dims = paddle::framework::make_ddim(
-      {static_cast<int64_t>(256), static_cast<int64_t>(1024)});
+  auto dims =
+      phi::make_ddim({static_cast<int64_t>(256), static_cast<int64_t>(1024)});
   cpu_x.mutable_data<float>(dims, paddle::platform::CPUPlace());
   cpu_y.mutable_data<float>(dims, paddle::platform::CPUPlace());
 
@@ -72,16 +74,16 @@ TEST(DeviceCode, cuda) {
     cpu_y.data<float>()[i] = static_cast<float>(0.5);
   }
 
-  paddle::framework::Tensor x;
-  paddle::framework::Tensor y;
-  paddle::framework::Tensor z;
+  phi::DenseTensor x;
+  phi::DenseTensor y;
+  phi::DenseTensor z;
 
   float* x_data = x.mutable_data<float>(dims, place);
   float* y_data = y.mutable_data<float>(dims, place);
   float* z_data = z.mutable_data<float>(dims, place);
 
-  TensorCopySync(cpu_x, place, &x);
-  TensorCopySync(cpu_y, place, &y);
+  paddle::framework::TensorCopySync(cpu_x, place, &x);
+  paddle::framework::TensorCopySync(cpu_y, place, &y);
 
   EXPECT_EQ(code.Compile(), true);
 
@@ -93,7 +95,7 @@ TEST(DeviceCode, cuda) {
   auto* dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
   dev_ctx->Wait();
 
-  TensorCopySync(z, paddle::platform::CPUPlace(), &cpu_z);
+  paddle::framework::TensorCopySync(z, paddle::platform::CPUPlace(), &cpu_z);
   for (size_t i = 0; i < n; i++) {
     EXPECT_EQ(cpu_z.data<float>()[i], static_cast<float>(i) * scale + 0.5);
   }

@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, skip_check_grad_ci
+
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool
 
 
 @OpTestTool.skip_if_not_cpu()
@@ -45,7 +46,8 @@ class TestStack2DOneDNNOp(OpTest):
 
         for i in range(self.num_inputs):
             self.op_inputs.append(
-                np.random.random(size=self.input_dim).astype(np.float32))
+                np.random.random(size=self.input_dim).astype(np.float32)
+            )
 
         input_list = []
         input_names = self.getInputNames()
@@ -66,13 +68,13 @@ class TestStack2DOneDNNOp(OpTest):
 
 class TestStack1DOneDNNOp(TestStack2DOneDNNOp):
     def initParameters(self):
-        self.input_dim = (100)
+        self.input_dim = 100
         self.axis = 0
 
 
 class TestStack1DAxis1OneDNNOp(TestStack2DOneDNNOp):
     def initParameters(self):
-        self.input_dim = (100)
+        self.input_dim = 100
         self.axis = 1
 
 

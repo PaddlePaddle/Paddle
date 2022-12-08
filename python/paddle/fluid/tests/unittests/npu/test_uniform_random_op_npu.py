@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
 import subprocess
 import unittest
 import numpy as np
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -26,7 +25,10 @@ import paddle
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-from test_uniform_random_op import TestUniformRandomOp, TestUniformRandomOpSelectedRows
+from test_uniform_random_op import (
+    TestUniformRandomOp,
+    TestUniformRandomOpSelectedRows,
+)
 
 paddle.enable_static()
 
@@ -53,7 +55,7 @@ class TestNPUUniformRandomOp(OpTest):
             "shape": [1000, 784],
             "min": -5.0,
             "max": 10.0,
-            "seed": 10
+            "seed": 10,
         }
         self.output_hist = output_hist
 
@@ -69,9 +71,7 @@ class TestNPUUniformRandomOp(OpTest):
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
-        self.assertTrue(
-            np.allclose(
-                hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 class TestNPUUniformRandomOpSelectedRows(unittest.TestCase):
@@ -95,13 +95,12 @@ class TestNPUUniformRandomOpSelectedRows(unittest.TestCase):
             shape=[1000, 784],
             min=-5.0,
             max=10.0,
-            seed=10)
+            seed=10,
+        )
         op.run(scope, place)
         self.assertEqual(out.get_tensor().shape(), [1000, 784])
         hist, prob = output_hist(np.array(out.get_tensor()))
-        self.assertTrue(
-            np.allclose(
-                hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 if __name__ == "__main__":

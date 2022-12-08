@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
+
 import unittest
+
+import paddle
+import paddle.fluid as fluid
 
 
 class TestAttrSet(unittest.TestCase):
@@ -21,12 +24,15 @@ class TestAttrSet(unittest.TestCase):
         x = fluid.layers.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
         param_attr = fluid.ParamAttr(
             name='batch_norm_w',
-            initializer=fluid.initializer.Constant(value=1.0))
+            initializer=fluid.initializer.Constant(value=1.0),
+        )
         bias_attr = fluid.ParamAttr(
             name='batch_norm_b',
-            initializer=fluid.initializer.Constant(value=0.0))
-        bn = fluid.layers.batch_norm(
-            input=x, param_attr=param_attr, bias_attr=bias_attr)
+            initializer=fluid.initializer.Constant(value=0.0),
+        )
+        bn = paddle.static.nn.batch_norm(
+            input=x, param_attr=param_attr, bias_attr=bias_attr
+        )
         block = fluid.default_main_program().desc.block(0)
         op = block.op(0)
         before_type = op.attr_type('is_test')

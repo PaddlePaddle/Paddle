@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import unittest
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
+
 sys.path.append("../")
-import paddle.fluid as fluid
 from op_test import OpTest
+
+import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 

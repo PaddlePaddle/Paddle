@@ -39,20 +39,36 @@ function match_cu_file_directory {
   LOG "[INFO] run function match_cu_file_directory"
   local sub_dir cu_file_dir
   cu_file_dir=$(dirname ${1})
-  for sub_dir in "" "/elementwise" "/reduce_ops"
+  # the operators under paddle/fluid/operators directory
+  [ "${cu_file_dir}" == "paddle/fluid/operators" ] && return 0
+  # the operators under paddle/phi/kernels directory
+  for sub_dir in "" "/gpu" "/gpudnn" "/sparse/gpu"
   do
-    [ "${cu_file_dir}" == "paddle/fluid/operators${sub_dir}" ] && return 0
+    [ "${cu_file_dir}" == "paddle/phi/kernels${sub_dir}" ] && return 0
   done
   return 1
+}
+
+# Limit h file directory
+function match_h_file_directory {
+  LOG "[INFO] run function match_h_file_directory"
+  local sub_dir h_file_dir
+  h_file_dir=$(dirname ${1})
+  # '.h' file should not in directory below
+  for sub_dir in "" "/cpu"
+  do
+    [ "${h_file_dir}" == "paddle/phi/kernels${sub_dir}" ] && return 1
+  done
+  return 0
 }
 
 # Load op files by header file
 function load_CHANGE_OP_FILES_by_header_file {
   LOG "[INFO] run function load_CHANGE_OP_FILES_by_header_file"
   local change_file
-  for change_file in $(grep -rl "${1}" paddle/fluid/operators)
+  for change_file in $(grep -rl "${1}" paddle/fluid/operators paddle/phi/kernels/)
   do
-    if [[ "$change_file" =~ "_op.cu" ]]
+    if [[ "$change_file" =~ "_op.cu" || "$change_file" =~ "_kernel.cu" ||  "$change_file" =~ "_kernel_gpudnn.cu" ]]
     then
       # match cu file directory limit
       match_cu_file_directory $change_file || continue
@@ -60,6 +76,7 @@ function load_CHANGE_OP_FILES_by_header_file {
       CHANGE_OP_FILES[${#CHANGE_OP_FILES[@]}]="$change_file"
     elif [[ "$change_file" =~ ".h" ]]
     then
+      match_h_file_directory $change_file || continue
       [ -n "${INCLUDE_SEARCH_MAP[$change_file]}" ] && continue
       LOG "[INFO] Found \"${1}\" include by \"${change_file}\", keep searching."
       INCLUDE_SEARCH_MAP[$change_file]="searched"
@@ -76,9 +93,9 @@ function load_CHANGE_OP_FILES {
   for change_file in $(git diff --name-only develop)
   do
     # match directory limit
-    [[ "$change_file" =~ "paddle/fluid/operators/" ]] || continue
+    [[ "$change_file" =~ "paddle/fluid/operators/" ]] || [[ "$change_file" =~ "paddle/phi/kernels/" ]]  || continue
     # match file name limit
-    if [[ "$change_file" =~ "_op.cu" ]]
+    if [[ "$change_file" =~ "_op.cu" || "$change_file" =~ "_kernel.cu" || "$change_file" =~ "_kernel_gpudnn.cu" ]]
     then
       # match cu file directory limit
       match_cu_file_directory $change_file || continue
@@ -86,6 +103,7 @@ function load_CHANGE_OP_FILES {
       CHANGE_OP_FILES[${#CHANGE_OP_FILES[@]}]="$change_file"
     elif [[ "$change_file" =~ ".h" ]]
     then
+      match_h_file_directory $change_file || continue
       LOG "[INFO] Found \"${change_file}\" changed, keep searching."
       INCLUDE_SEARCH_MAP[${change_file}]="searched"
       load_CHANGE_OP_FILES_by_header_file $change_file
@@ -96,13 +114,13 @@ function load_CHANGE_OP_FILES {
 }
 
 # Clone benchmark repo
-function prepare_benchmark_environment {
+function clone_and_collect_op_info {
   LOG "[INFO] Clone benchmark repo ..."
   git clone https://github.com/PaddlePaddle/benchmark.git
   [ $? -ne 0 ] && LOG "[FATAL] Clone benchmark repo fail." && exit -1
   LOG "[INFO] Collect api info ..."
   python benchmark/api/deploy/collect_api_info.py \
-      --test_module_name tests_v2                 \
+      --test_module_name tests                    \
       --info_file api_info.txt >& 2
   [ $? -ne 0 ] && LOG "[FATAL] Collect api info fail." && exit -1
   [ ! -f benchmark/ci/scripts/op_benchmark.config ] && LOG "[FATAL] Missing op_benchmark.config!" && exit -1
@@ -116,6 +134,8 @@ function load_CHANGE_OP_MAP {
   for change_file in ${CHANGE_OP_FILES[@]}
   do
     change_file_name=${change_file#*paddle/fluid/operators/}
+    change_file_name=${change_file_name#*paddle/phi/kernels/gpu/}
+    change_file_name=${change_file_name#*paddle/phi/kernels/gpudnn/}
     if [ -n "${PADDLE_FILENAME_OP_MAP[$change_file_name]}" ]
     then
       for op_name in ${PADDLE_FILENAME_OP_MAP[$change_file_name]}
@@ -127,6 +147,8 @@ function load_CHANGE_OP_MAP {
       op_name=${change_file_name##*/}
       op_name=${op_name%_cudnn_op*}
       op_name=${op_name%_op*}
+      op_name=${op_name%_grad_kernel*}
+      op_name=${op_name%_kernel*}
       [ -n "${SKIP_OP_MAP[$op_name]}" ] && continue
       LOG "[INFO] Load op: \"${op_name}\"."
       CHANGE_OP_MAP[${op_name}]="$change_file"
@@ -171,7 +193,7 @@ function run_op_benchmark_test {
     echo "$api_info" >> $api_info_file
   done
   # install tensorflow for testing accuary
-  pip install tensorflow==2.3.0 tensorflow-probability
+  # pip install tensorflow==2.3.0 tensorflow-probability
   for branch_name in "dev_whl" "pr_whl"
   do
     LOG "[INFO] Uninstall Paddle ..."
@@ -181,12 +203,12 @@ function run_op_benchmark_test {
     logs_dir="$(pwd)/logs-${branch_name}"
     [ -d $logs_dir ] && rm -rf $logs_dir/* || mkdir -p $logs_dir
     pushd benchmark/api > /dev/null
-    bash deploy/main_control.sh tests_v2 \
+    bash deploy/main_control.sh tests \
                                 tests_v2/configs \
                                 $logs_dir \
                                 $VISIBLE_DEVICES \
                                 "gpu" \
-                                "both" \
+                                "speed" \
                                 $api_info_file \
                                 "paddle"
     popd > /dev/null
@@ -208,7 +230,7 @@ function check_op_benchmark_result {
       # there is no need to recompile and install paddle
       LOG "[INFO] retry ${retry_time} times ..."
       pushd benchmark/api > /dev/null
-      bash deploy/main_control.sh tests_v2 \
+      bash deploy/main_control.sh tests \
                                   tests_v2/configs \
                                   ${logs_dir} \
                                   $VISIBLE_DEVICES \
@@ -243,7 +265,7 @@ function check_CHANGE_OP_MAP {
   done
   if [ $exit_code -ne 0 ]; then
     LOG "[INFO] See https://github.com/PaddlePaddle/Paddle/wiki/PR-CI-OP-benchmark-Manual for details."
-    LOG "[INFO] Or you can apply for one RD (Avin0323(Recommend), Xreki, luotao1) approval to pass this PR."
+    LOG "[INFO] Or you can apply for one RD (ZzSean(Recommend), JamesLim-sy, Xreki, luotao1) approval to pass this PR."
     exit ${exit_code}
   fi
 }
@@ -262,13 +284,13 @@ function summary_problems {
 }
 
 
-function cpu_op_benchmark {
-  LOG "[INFO] Start run op benchmark cpu test ..."
+function prepare_env {
+  LOG "[INFO] Start preparing op benchmark environment ..."
   load_CHANGE_OP_FILES
-  prepare_benchmark_environment
+  clone_and_collect_op_info
   load_CHANGE_OP_MAP
   load_BENCHMARK_OP_MAP
-  LOG "[INFO] Op benchmark run success and no error!"
+  LOG "[INFO] Op benchmark environment is prepared success!"
 }
 
 
@@ -282,11 +304,11 @@ function gpu_op_benchmark {
 
 
 # The PR will pass quickly when get approval from specific person.
-# Xreki 12538138, luotao1 6836917, Avin0323 23427135
+# Xreki 12538138, luotao1 6836917, ZzSean 32410583, JamesLim-sy 61349199
 set +x
 approval_line=$(curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000)
 if [ -n "${approval_line}" ]; then
-  APPROVALS=$(echo ${approval_line} | python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 23427135 12538138 6836917)
+  APPROVALS=$(echo ${approval_line} | python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 32410583 12538138 6836917 61349199)
   LOG "[INFO] current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
   if [ "${APPROVALS}" == "TRUE" ]; then
     LOG "[INFO] ==================================="
@@ -295,11 +317,10 @@ if [ -n "${approval_line}" ]; then
     exit 0
   fi
 fi
-set -x
 
 case $1 in
   run_op_benchmark)
-    cpu_op_benchmark
+    prepare_env
     gpu_op_benchmark 
   ;;
 esac

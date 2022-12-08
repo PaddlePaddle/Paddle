@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import paddle.fluid.core as core
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestDiffOp(unittest.TestCase):
@@ -36,13 +37,16 @@ class TestDiffOp(unittest.TestCase):
                 n=self.n,
                 axis=self.axis,
                 prepend=self.prepend,
-                append=self.append)
+                append=self.append,
+            )
         elif self.prepend is not None:
             self.output = np.diff(
-                self.input, n=self.n, axis=self.axis, prepend=self.prepend)
+                self.input, n=self.n, axis=self.axis, prepend=self.prepend
+            )
         elif self.append is not None:
             self.output = np.diff(
-                self.input, n=self.n, axis=self.axis, append=self.append)
+                self.input, n=self.n, axis=self.axis, append=self.append
+            )
         else:
             self.output = np.diff(self.input, n=self.n, axis=self.axis)
 
@@ -53,9 +57,9 @@ class TestDiffOp(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
 
-    def test_dygraph(self):
+    def func_dygraph(self):
         for place in self.places:
-            paddle.disable_static(place)
+            paddle.disable_static()
             x = paddle.to_tensor(self.input, place=place)
             if self.prepend is not None:
                 self.prepend = paddle.to_tensor(self.prepend, place=place)
@@ -66,8 +70,16 @@ class TestDiffOp(unittest.TestCase):
                 n=self.n,
                 axis=self.axis,
                 prepend=self.prepend,
-                append=self.append)
+                append=self.append,
+            )
             self.assertTrue((out.numpy() == self.output).all(), True)
+
+    def test_dygraph(self):
+        with _test_eager_guard():
+            self.setUp()
+            self.func_dygraph()
+        self.setUp()
+        self.func_dygraph()
 
     def test_static(self):
         paddle.enable_static()
@@ -77,9 +89,8 @@ class TestDiffOp(unittest.TestCase):
         for place in places:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 x = paddle.fluid.data(
-                    name="input",
-                    shape=self.input.shape,
-                    dtype=self.input.dtype)
+                    name="input", shape=self.input.shape, dtype=self.input.dtype
+                )
                 has_pend = False
                 prepend = None
                 append = None
@@ -88,27 +99,32 @@ class TestDiffOp(unittest.TestCase):
                     prepend = paddle.fluid.data(
                         name="prepend",
                         shape=self.prepend.shape,
-                        dtype=self.prepend.dtype)
+                        dtype=self.prepend.dtype,
+                    )
                 if self.append is not None:
                     has_pend = True
                     append = paddle.fluid.data(
                         name="append",
                         shape=self.append.shape,
-                        dtype=self.append.dtype)
+                        dtype=self.append.dtype,
+                    )
 
                 exe = fluid.Executor(place)
                 out = paddle.diff(
-                    x, n=self.n, axis=self.axis, prepend=prepend, append=append)
-                fetches = exe.run(fluid.default_main_program(),
-                                  feed={
-                                      "input": self.input,
-                                      "prepend": self.prepend,
-                                      "append": self.append
-                                  },
-                                  fetch_list=[out])
+                    x, n=self.n, axis=self.axis, prepend=prepend, append=append
+                )
+                fetches = exe.run(
+                    fluid.default_main_program(),
+                    feed={
+                        "input": self.input,
+                        "prepend": self.prepend,
+                        "append": self.append,
+                    },
+                    fetch_list=[out],
+                )
                 self.assertTrue((fetches[0] == self.output).all(), True)
 
-    def test_grad(self):
+    def func_grad(self):
         for place in self.places:
             x = paddle.to_tensor(self.input, place=place, stop_gradient=False)
             if self.prepend is not None:
@@ -120,12 +136,20 @@ class TestDiffOp(unittest.TestCase):
                 n=self.n,
                 axis=self.axis,
                 prepend=self.prepend,
-                append=self.append)
+                append=self.append,
+            )
             try:
                 out.backward()
                 x_grad = x.grad
             except:
                 raise RuntimeError("Check Diff Gradient Failed")
+
+    def test_grad(self):
+        with _test_eager_guard():
+            self.setUp()
+            self.func_grad()
+        self.setUp()
+        self.func_grad()
 
 
 class TestDiffOpAxis(TestDiffOp):
@@ -170,7 +194,8 @@ class TestDiffOpPrependAxis(TestDiffOp):
         self.n = 1
         self.axis = 0
         self.prepend = np.array(
-            [[0, 2, 3, 4], [1, 3, 5, 7], [2, 5, 8, 0]]).astype('float32')
+            [[0, 2, 3, 4], [1, 3, 5, 7], [2, 5, 8, 0]]
+        ).astype('float32')
         self.append = None
 
 
@@ -211,4 +236,5 @@ class TestDiffOpPreAppendAxis(TestDiffOp):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

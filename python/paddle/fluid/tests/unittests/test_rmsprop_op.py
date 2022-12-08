@@ -12,24 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import numpy as np
+
+import paddle
+import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
-import paddle.fluid as fluid
-import paddle
 
 
-def create_selected_rows_and_tensor(scope, place, height, row_num,
-                                    embedding_size):
+def create_selected_rows_and_tensor(
+    scope, place, height, row_num, embedding_size
+):
     sr = scope.var("@selected_rows@").get_selected_rows()
     tensor = scope.var("grad").get_tensor()
 
     rows = np.random.random_integers(
-        low=0, high=height - 1, size=[row_num, ]).astype('int64')
+        low=0,
+        high=height - 1,
+        size=[
+            row_num,
+        ],
+    ).astype('int64')
     sr_val = np.random.random(size=[row_num, embedding_size]).astype('float32')
 
     sr.set_height(height)
@@ -46,13 +51,9 @@ def create_selected_rows_and_tensor(scope, place, height, row_num,
 
 
 class TestBase(unittest.TestCase):
-    def setup(self,
-              place,
-              is_sparse,
-              centered,
-              size,
-              row_num=None,
-              epsilon=1e-6):
+    def setup(
+        self, place, is_sparse, centered, size, row_num=None, epsilon=1e-6
+    ):
         np.random.seed(5)  # fix seed
 
         self.scope = fluid.global_scope()
@@ -62,8 +63,9 @@ class TestBase(unittest.TestCase):
         self.param = np.random.random(size).astype("float32")
 
         self.mean_square_name = "mean_square"
-        self.mean_square = np.random.uniform(
-            low=1, high=2, size=size).astype("float32")
+        self.mean_square = np.random.uniform(low=1, high=2, size=size).astype(
+            "float32"
+        )
 
         self.mean_grad_name = "mean_grad"
         self.mean_grad = np.random.random(size).astype("float32")
@@ -77,31 +79,44 @@ class TestBase(unittest.TestCase):
         if self.is_sparse:
             self.grad_sr_name = "@selected_rows@"
             self.grad, self.grad_sr = create_selected_rows_and_tensor(
-                self.scope, place, size[0], row_num, size[1])
+                self.scope, place, size[0], row_num, size[1]
+            )
         else:
             self.grad = np.random.random(size).astype("float32")
             grad_tensor = self.scope.var(self.grad_name).get_tensor()
             grad_tensor.set(self.grad, place)
 
         self.moment_name = "moment"
-        self.moment = np.random.uniform(
-            low=0, high=1, size=size).astype("float32")
+        self.moment = np.random.uniform(low=0, high=1, size=size).astype(
+            "float32"
+        )
 
         self.epsilon = epsilon
         self.decay = 0.9
         self.momentum = 0.1
         self.centered = centered
 
-        self.ms_out = self.decay * self.mean_square + (1 - self.decay
-                                                       ) * self.grad * self.grad
+        self.ms_out = (
+            self.decay * self.mean_square
+            + (1 - self.decay) * self.grad * self.grad
+        )
         if centered:
-            self.mg_out = self.decay * self.mean_grad + (1 - self.decay
-                                                         ) * self.grad
-            self.moment_out = self.momentum * self.moment + \
-                              self.learning_rate * self.grad / np.sqrt(self.ms_out - np.square(self.mg_out) + self.epsilon)
+            self.mg_out = (
+                self.decay * self.mean_grad + (1 - self.decay) * self.grad
+            )
+            self.moment_out = (
+                self.momentum * self.moment
+                + self.learning_rate
+                * self.grad
+                / np.sqrt(self.ms_out - np.square(self.mg_out) + self.epsilon)
+            )
         else:
-            self.moment_out = self.momentum * self.moment + \
-                              self.learning_rate * self.grad / np.sqrt(self.ms_out + self.epsilon)
+            self.moment_out = (
+                self.momentum * self.moment
+                + self.learning_rate
+                * self.grad
+                / np.sqrt(self.ms_out + self.epsilon)
+            )
 
         self.param_out = self.param - self.moment_out
 
@@ -110,7 +125,8 @@ class TestBase(unittest.TestCase):
         self.param_tensor.set(self.param, place)
 
         self.mean_square_tensor = self.scope.var(
-            self.mean_square_name).get_tensor()
+            self.mean_square_name
+        ).get_tensor()
         self.mean_square_tensor.set(self.mean_square, place)
 
         lr = self.scope.var(self.lr_name).get_tensor()
@@ -121,25 +137,32 @@ class TestBase(unittest.TestCase):
 
         if self.centered:
             self.mean_grad_tensor = self.scope.var(
-                self.mean_grad_name).get_tensor()
+                self.mean_grad_name
+            ).get_tensor()
             self.mean_grad_tensor.set(self.mean_grad, place)
 
     def check(self, actual_t, expect_t, place, out_name, atol=1e-5):
-        self.assertTrue(
-            np.allclose(
-                actual_t, expect_t, atol=atol),
-            "Output (" + out_name + ") has diff at " + str(place) + "\nExpect "
-            + str(expect_t) + "\n" + "But Got" + str(actual_t))
+        np.testing.assert_allclose(
+            actual_t,
+            expect_t,
+            rtol=1e-05,
+            atol=atol,
+            err_msg='Output ('
+            + out_name
+            + ') has diff at '
+            + str(place)
+            + '\nExpect '
+            + str(expect_t)
+            + '\n'
+            + 'But Got'
+            + str(actual_t),
+        )
 
 
 class TestRmspropOp(TestBase):
-    def check_with_place(self,
-                         place,
-                         is_sparse,
-                         centered,
-                         size,
-                         row_num=None,
-                         epsilon=1e-6):
+    def check_with_place(
+        self, place, is_sparse, centered, size, row_num=None, epsilon=1e-6
+    ):
         self.setup(place, is_sparse, centered, size, row_num, epsilon)
         self.run_and_check()
 
@@ -158,7 +181,7 @@ class TestRmspropOp(TestBase):
             'epsilon': self.epsilon,
             'decay': self.decay,
             'momentum': self.momentum,
-            'centered': self.centered
+            'centered': self.centered,
         }
 
         if self.centered:
@@ -175,24 +198,30 @@ class TestRmspropOp(TestBase):
             self.ms_out,
             self.place,
             self.mean_square_name,
-            atol=atol)
+            atol=atol,
+        )
         self.check(
             np.array(self.moment_tensor),
             self.moment_out,
             self.place,
             self.moment_name,
-            atol=atol)
+            atol=atol,
+        )
         self.check(
             np.array(self.param_tensor),
             self.param_out,
             self.place,
             self.param_name,
-            atol=atol)
+            atol=atol,
+        )
 
         if self.centered:
             self.check(
-                np.array(self.mean_grad_tensor), self.mg_out, self.place,
-                self.mean_grad_name)
+                np.array(self.mean_grad_tensor),
+                self.mg_out,
+                self.place,
+                self.mean_grad_name,
+            )
 
     def test_rmsprop(self):
         places = [core.CPUPlace()]
@@ -204,7 +233,8 @@ class TestRmspropOp(TestBase):
             for centered in [False, True]:
                 with fluid.scope_guard(core.Scope()):
                     self.check_with_place(
-                        place, is_sparse=False, centered=centered, size=size)
+                        place, is_sparse=False, centered=centered, size=size
+                    )
 
                 with fluid.scope_guard(core.Scope()):
                     self.check_with_place(
@@ -212,7 +242,8 @@ class TestRmspropOp(TestBase):
                         is_sparse=True,
                         centered=centered,
                         row_num=512,
-                        size=size)
+                        size=size,
+                    )
 
                 with fluid.scope_guard(core.Scope()):
                     self.check_with_place(
@@ -220,7 +251,8 @@ class TestRmspropOp(TestBase):
                         is_sparse=True,
                         centered=centered,
                         row_num=60,
-                        size=size)
+                        size=size,
+                    )
 
 
 class TestRMSPropV2(unittest.TestCase):
@@ -233,7 +265,8 @@ class TestRMSPropV2(unittest.TestCase):
         adam = paddle.optimizer.RMSProp(
             learning_rate=0.01,
             parameters=linear.parameters(),
-            weight_decay=0.01)
+            weight_decay=0.01,
+        )
         out = linear(a)
         out.backward()
         adam.step()
@@ -247,15 +280,18 @@ class TestRMSPropV2(unittest.TestCase):
             x = fluid.layers.data(name='x', shape=[13], dtype='float32')
             y = fluid.layers.data(name='y', shape=[1], dtype='float32')
             y_predict = fluid.layers.fc(input=x, size=1, act=None)
-            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-            avg_cost = fluid.layers.mean(cost)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
+            avg_cost = paddle.mean(cost)
 
             rms_optimizer = paddle.optimizer.RMSProp(learning_rate=0.1)
             rms_optimizer.minimize(avg_cost)
 
             fetch_list = [avg_cost]
             train_reader = paddle.batch(
-                paddle.dataset.uci_housing.train(), batch_size=1)
+                paddle.dataset.uci_housing.train(), batch_size=1
+            )
             feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
@@ -265,30 +301,36 @@ class TestRMSPropV2(unittest.TestCase):
     def test_raise_error(self):
         self.assertRaises(ValueError, paddle.optimizer.RMSProp, None)
         self.assertRaises(
-            ValueError, paddle.optimizer.RMSProp, learning_rate=0.1, rho=None)
+            ValueError, paddle.optimizer.RMSProp, learning_rate=0.1, rho=None
+        )
         self.assertRaises(
             ValueError,
             paddle.optimizer.RMSProp,
             learning_rate=0.1,
-            epsilon=None)
+            epsilon=None,
+        )
         self.assertRaises(
             ValueError,
             paddle.optimizer.RMSProp,
             learning_rate=0.1,
-            momentum=None)
+            momentum=None,
+        )
 
     def test_rmsprop_op_invalid_input(self):
         paddle.disable_static()
         linear = paddle.nn.Linear(10, 10)
         with self.assertRaises(ValueError):
             adam = paddle.optimizer.RMSProp(
-                0.1, epsilon=-1, parameters=linear.parameters())
+                0.1, epsilon=-1, parameters=linear.parameters()
+            )
         with self.assertRaises(ValueError):
             adam = paddle.optimizer.RMSProp(
-                0.1, momentum=-1, parameters=linear.parameters())
+                0.1, momentum=-1, parameters=linear.parameters()
+            )
         with self.assertRaises(ValueError):
             adam = paddle.optimizer.RMSProp(
-                0.1, rho=-1, parameters=linear.parameters())
+                0.1, rho=-1, parameters=linear.parameters()
+            )
 
 
 class TestRMSPropV2Group(TestRMSPropV2):
@@ -301,13 +343,12 @@ class TestRMSPropV2Group(TestRMSPropV2):
         # This can be any optimizer supported by dygraph.
         adam = paddle.optimizer.RMSProp(
             learning_rate=0.01,
-            parameters=[{
-                'params': linear_1.parameters()
-            }, {
-                'params': linear_2.parameters(),
-                'weight_decay': 0.001
-            }],
-            weight_decay=0.01)
+            parameters=[
+                {'params': linear_1.parameters()},
+                {'params': linear_2.parameters(), 'weight_decay': 0.001},
+            ],
+            weight_decay=0.01,
+        )
         out = linear_1(a)
         out = linear_2(out)
         out.backward()
@@ -316,4 +357,5 @@ class TestRMSPropV2Group(TestRMSPropV2):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

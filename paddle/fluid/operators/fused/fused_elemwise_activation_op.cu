@@ -17,36 +17,28 @@ limitations under the License. */
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     fused_elemwise_activation,
-    ops::FusedElemwiseActivationKernel<paddle::platform::CUDADeviceContext,
-                                       float>,
-    ops::FusedElemwiseActivationKernel<paddle::platform::CUDADeviceContext,
-                                       double>,
-    ops::FusedElemwiseActivationKernel<paddle::platform::CUDADeviceContext,
+    ops::FusedElemwiseActivationKernel<phi::GPUContext, float>,
+    ops::FusedElemwiseActivationKernel<phi::GPUContext, double>,
+    ops::FusedElemwiseActivationKernel<phi::GPUContext,
                                        paddle::platform::float16>);
 
 REGISTER_OP_CUDA_KERNEL(
     fused_elemwise_activation_grad,
-    ops::FusedElemwiseActivationGradKernel<paddle::platform::CUDADeviceContext,
-                                           float>,
-    ops::FusedElemwiseActivationGradKernel<paddle::platform::CUDADeviceContext,
-                                           double>,
-    ops::FusedElemwiseActivationGradKernel<paddle::platform::CUDADeviceContext,
+    ops::FusedElemwiseActivationGradKernel<phi::GPUContext, float>,
+    ops::FusedElemwiseActivationGradKernel<phi::GPUContext, double>,
+    ops::FusedElemwiseActivationGradKernel<phi::GPUContext,
                                            paddle::platform::float16>);
 
 REGISTER_OP_CUDA_KERNEL(
     fused_elemwise_add_activation,
-    ops::FusedElemwiseActivationKernel<paddle::platform::CUDADeviceContext,
-                                       float>,
-    ops::FusedElemwiseActivationKernel<paddle::platform::CUDADeviceContext,
-                                       double>,
-    ops::FusedElemwiseActivationKernel<paddle::platform::CUDADeviceContext,
+    ops::FusedElemwiseActivationKernel<phi::GPUContext, float>,
+    ops::FusedElemwiseActivationKernel<phi::GPUContext, double>,
+    ops::FusedElemwiseActivationKernel<phi::GPUContext,
                                        paddle::platform::float16>);
 
 REGISTER_OP_CUDA_KERNEL(
     fused_elemwise_add_activation_grad,
-    ops::FusedElemwiseActivationGradKernel<paddle::platform::CUDADeviceContext,
-                                           float>,
-    ops::FusedElemwiseActivationGradKernel<paddle::platform::CUDADeviceContext,
-                                           double>,
-    ops::FusedElemwiseActivationGradKernel<paddle::platform::CUDADeviceContext,
+    ops::FusedElemwiseActivationGradKernel<phi::GPUContext, float>,
+    ops::FusedElemwiseActivationGradKernel<phi::GPUContext, double>,
+    ops::FusedElemwiseActivationGradKernel<phi::GPUContext,
                                            paddle::platform::float16>);

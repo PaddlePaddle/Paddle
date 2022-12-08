@@ -17,8 +17,16 @@ from ... import core
 
 __all__ = ["CustomOpLists", "AutoMixedPrecisionLists"]
 
+# lookup_table fp16 is slower than fp32, though fp16 is supported.
+_extra_unsupported_fp16_list = {
+    'lookup_table',
+    'lookup_table_v2',
+    'scatter',
+    'scatter_grad',
+}
 
-class AutoMixedPrecisionLists(object):
+
+class AutoMixedPrecisionLists:
     """
     AutoMixedPrecisionLists is a class for black/white list. It can update
     pre-defined black list and white list according to users' custom black
@@ -31,10 +39,12 @@ class AutoMixedPrecisionLists(object):
         custom_black_varnames (set): Users' custom black varibles' names.
     """
 
-    def __init__(self,
-                 custom_white_list=None,
-                 custom_black_list=None,
-                 custom_black_varnames=None):
+    def __init__(
+        self,
+        custom_white_list=None,
+        custom_black_list=None,
+        custom_black_varnames=None,
+    ):
         self._custom_white_list = custom_white_list
         self._custom_black_list = custom_black_list
         self.white_list = copy.copy(white_list)
@@ -51,8 +61,9 @@ class AutoMixedPrecisionLists(object):
         if self._custom_white_list and self._custom_black_list:
             for op_name in self._custom_white_list:
                 if op_name in self._custom_black_list:
-                    raise ValueError("Custom white list overlap "
-                                     "custom black list")
+                    raise ValueError(
+                        "Custom white list overlap " "custom black list"
+                    )
         if self._custom_white_list:
             for op_name in self._custom_white_list:
                 if op_name in self.black_list:
@@ -60,6 +71,8 @@ class AutoMixedPrecisionLists(object):
                 elif op_name in self.gray_list:
                     self.gray_list.remove(op_name)
                 self.white_list.add(op_name)
+                if op_name in _extra_unsupported_fp16_list:
+                    self.unsupported_list.remove(op_name)
         if self._custom_black_list:
             for op_name in self._custom_black_list:
                 if op_name in self.white_list:
@@ -100,6 +113,11 @@ black_list = {
     # fp16 is slower than fp32, though fp16 is supported.
     'lookup_table',
     'lookup_table_v2',
+    'linear_interp_v2',
+    'nearest_interp_v2',
+    'bilinear_interp_v2',
+    'bicubic_interp_v2',
+    'trilinear_interp_v2',
     # default fp32 can avoid return inf when the sum value large than 65504
     'reduce_sum',
 }
@@ -155,6 +173,7 @@ gray_list = {
     'split',
     'fused_feedforward',
     'fused_attention',
+    'fused_multi_transformer',
 }
 
 # The set of ops that don't support fp16 calculation
@@ -162,15 +181,23 @@ gray_list = {
 _sys_unsupported_fp16_list = []
 if core.is_compiled_with_xpu():
     _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
-        'XPU', core.VarDesc.VarType.FP16)
+        'XPU', core.VarDesc.VarType.FP16
+    )
 elif core.is_compiled_with_npu():
     _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
-        'NPU', core.VarDesc.VarType.FP16)
+        'NPU', core.VarDesc.VarType.FP16
+    )
+elif core.is_compiled_with_mlu():
+    _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
+        'MLU', core.VarDesc.VarType.FP16
+    )
 else:
     _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
-        'GPU', core.VarDesc.VarType.FP16)
+        'GPU', core.VarDesc.VarType.FP16
+    )
 
-unsupported_fp16_list = {'lookup_table',
-                         'lookup_table_v2'} | _sys_unsupported_fp16_list
+unsupported_fp16_list = (
+    _extra_unsupported_fp16_list | _sys_unsupported_fp16_list
+)
 
 CustomOpLists = AutoMixedPrecisionLists

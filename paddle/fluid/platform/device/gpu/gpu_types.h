@@ -1,4 +1,5 @@
 // Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 NVIDIA Corporation. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,12 +19,15 @@
 
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
+
 #include "paddle/fluid/platform/dynload/miopen.h"
 #include "paddle/fluid/platform/dynload/rocblas.h"
 
 #else
 #include <cuda_runtime.h>
+
 #include "paddle/fluid/platform/dynload/cublas.h"
+#include "paddle/fluid/platform/dynload/cublasLt.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #endif
 
@@ -45,30 +49,44 @@ DECLARE_TYPE_FOR_GPU(gpuMemcpyKind, cudaMemcpyKind, hipMemcpyKind);
 DECLARE_TYPE_FOR_GPU(gpuDeviceProp, cudaDeviceProp, hipDeviceProp_t);
 
 DECLARE_TYPE_FOR_GPU(dnnDataType_t, cudnnDataType_t, miopenDataType_t);
-DECLARE_TYPE_FOR_GPU(dnnActivationDescriptor, cudnnActivationStruct,
+DECLARE_TYPE_FOR_GPU(dnnActivationDescriptor,
+                     cudnnActivationStruct,
                      miopenActivationDescriptor);
-DECLARE_TYPE_FOR_GPU(dnnActivationMode_t, cudnnActivationMode_t,
+DECLARE_TYPE_FOR_GPU(dnnActivationMode_t,
+                     cudnnActivationMode_t,
                      miopenActivationMode_t);
-DECLARE_TYPE_FOR_GPU(dnnTensorDescriptor, cudnnTensorStruct,
+DECLARE_TYPE_FOR_GPU(dnnTensorDescriptor,
+                     cudnnTensorStruct,
                      miopenTensorDescriptor);
-DECLARE_TYPE_FOR_GPU(dnnTensorFormat_t, cudnnTensorFormat_t,
+DECLARE_TYPE_FOR_GPU(dnnTensorFormat_t,
+                     cudnnTensorFormat_t,
                      miopenTensorFormat_t);
-DECLARE_TYPE_FOR_GPU(dnnFilterDescriptor, cudnnFilterStruct,
+DECLARE_TYPE_FOR_GPU(dnnFilterDescriptor,
+                     cudnnFilterStruct,
                      miopenTensorDescriptor);
-DECLARE_TYPE_FOR_GPU(dnnFilterDescriptor_t, cudnnFilterDescriptor_t,
+DECLARE_TYPE_FOR_GPU(dnnFilterDescriptor_t,
+                     cudnnFilterDescriptor_t,
                      miopenTensorDescriptor_t);
-DECLARE_TYPE_FOR_GPU(dnnConvolutionDescriptor, cudnnConvolutionStruct,
+DECLARE_TYPE_FOR_GPU(dnnConvolutionDescriptor,
+                     cudnnConvolutionStruct,
                      miopenConvolutionDescriptor);
-DECLARE_TYPE_FOR_GPU(dnnConvolutionDescriptor_t, cudnnConvolutionDescriptor_t,
+DECLARE_TYPE_FOR_GPU(dnnConvolutionDescriptor_t,
+                     cudnnConvolutionDescriptor_t,
                      miopenConvolutionDescriptor_t);
-DECLARE_TYPE_FOR_GPU(dnnPoolingDescriptor_t, cudnnPoolingDescriptor_t,
+DECLARE_TYPE_FOR_GPU(dnnPoolingDescriptor_t,
+                     cudnnPoolingDescriptor_t,
                      miopenPoolingDescriptor_t);
 DECLARE_TYPE_FOR_GPU(dnnPoolingMode_t, cudnnPoolingMode_t, miopenPoolingMode_t);
-DECLARE_TYPE_FOR_GPU(dnnDropoutDescriptor_t, cudnnDropoutDescriptor_t,
+DECLARE_TYPE_FOR_GPU(dnnDropoutDescriptor_t,
+                     cudnnDropoutDescriptor_t,
                      miopenDropoutDescriptor_t);
 DECLARE_TYPE_FOR_GPU(dnnHandle_t, cudnnHandle_t, miopenHandle_t);
 
 DECLARE_TYPE_FOR_GPU(blasHandle_t, cublasHandle_t, rocblas_handle);
+
+// TODO(Ming Huang): Since there is no blasLt handler,
+// use rocblas_handle for workround.
+DECLARE_TYPE_FOR_GPU(blasLtHandle_t, cublasLtHandle_t, rocblas_handle);
 
 using CUDAGraphID = unsigned long long;  // NOLINT
 
@@ -83,7 +101,8 @@ using CUDAGraphID = unsigned long long;  // NOLINT
   constexpr auto GPU_CV = CUDA_CV;
 #endif
 
-DECLARE_CONSTANT_FOR_GPU(gpuErrorOutOfMemory, cudaErrorMemoryAllocation,
+DECLARE_CONSTANT_FOR_GPU(gpuErrorOutOfMemory,
+                         cudaErrorMemoryAllocation,
                          hipErrorOutOfMemory);
 DECLARE_CONSTANT_FOR_GPU(gpuErrorNotReady, cudaErrorNotReady, hipErrorNotReady);
 DECLARE_CONSTANT_FOR_GPU(gpuSuccess, cudaSuccess, hipSuccess);

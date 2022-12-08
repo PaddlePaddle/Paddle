@@ -16,13 +16,11 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_npu.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
 
 template <typename T>
 class ElementwiseAddNPUKernel : public framework::OpKernel<T> {
@@ -30,9 +28,9 @@ class ElementwiseAddNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* y = ctx.Input<framework::LoDTensor>("Y");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
     int axis = ctx.Attr<int>("axis");
@@ -41,7 +39,10 @@ class ElementwiseAddNPUKernel : public framework::OpKernel<T> {
     auto x_dims = x->dims();
     auto y_dims = y->dims();
     axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
-    if (x_dims.size() >= y_dims.size()) {
+
+    if (x_dims.size() == y_dims.size()) {
+      direct_compute = true;
+    } else if (x_dims.size() > y_dims.size()) {
       direct_compute = x_dims.size() == (y_dims.size() + axis);
     } else {
       direct_compute = y_dims.size() == (x_dims.size() + axis);
@@ -51,9 +52,9 @@ class ElementwiseAddNPUKernel : public framework::OpKernel<T> {
       const auto& runner = NpuOpRunner("Add", {*x, *y}, {*out}, {});
       runner.Run(dev_ctx.stream());
     } else {
-      Tensor transformed_x, transformed_y;
-      NpuElementWiseOpBroadcast<T>(dev_ctx, x, y, axis, &transformed_x,
-                                   &transformed_y);
+      phi::DenseTensor transformed_x, transformed_y;
+      NpuElementWiseOpBroadcast<T>(
+          dev_ctx, x, y, axis, &transformed_x, &transformed_y);
       const auto& runner =
           NpuOpRunner("Add", {transformed_x, transformed_y}, {*out}, {});
       runner.Run(dev_ctx.stream());
@@ -67,11 +68,11 @@ class ElementwiseAddGradNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
-    auto* x = ctx.Input<framework::Tensor>("X");
-    auto* y = ctx.Input<framework::Tensor>("Y");
-    auto* dout = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-    auto* dy = ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
     int axis = ctx.Attr<int>("axis");
 
     axis = (axis == -1 ? std::abs(x->dims().size() - y->dims().size()) : axis);
@@ -94,11 +95,13 @@ class ElementwiseAddGradNPUKernel : public framework::OpKernel<T> {
           }
         }
         if (!reduce_axes.empty()) {
-          Tensor tmp;
+          phi::DenseTensor tmp;
           tmp.ShareDataWith(*dx);
-          tmp.Resize(framework::make_ddim(dst_dims_vec));
+          tmp.Resize(phi::make_ddim(dst_dims_vec));
           const auto& runner =
-              NpuOpRunner("ReduceSumD", {*dout}, {tmp},
+              NpuOpRunner("ReduceSumD",
+                          {*dout},
+                          {tmp},
                           {{"axes", reduce_axes}, {"keep_dims", false}});
           runner.Run(stream);
         }
@@ -124,11 +127,13 @@ class ElementwiseAddGradNPUKernel : public framework::OpKernel<T> {
           }
         }
         if (!reduce_axes.empty()) {
-          Tensor tmp;
+          phi::DenseTensor tmp;
           tmp.ShareDataWith(*dy);
-          tmp.Resize(framework::make_ddim(dst_dims_vec));
+          tmp.Resize(phi::make_ddim(dst_dims_vec));
           const auto& runner =
-              NpuOpRunner("ReduceSumD", {*dout}, {tmp},
+              NpuOpRunner("ReduceSumD",
+                          {*dout},
+                          {tmp},
                           {{"axes", reduce_axes}, {"keep_dims", false}});
           runner.Run(stream);
         }
@@ -145,7 +150,8 @@ class ElementwiseAddGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(elementwise_add, ops::ElementwiseAddNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(elementwise_add,
+                       ops::ElementwiseAddNPUKernel<float>,
 #ifdef PADDLE_WITH_ASCEND_INT64
                        ops::ElementwiseAddNPUKernel<int64_t>,
 #endif

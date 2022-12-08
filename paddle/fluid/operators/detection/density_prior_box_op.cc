@@ -19,44 +19,52 @@ class DensityPriorBoxOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input",
-                   "DensityPriorBoxOp");
-    OP_INOUT_CHECK(ctx->HasInput("Image"), "Input", "Image",
-                   "DensityPriorBoxOp");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Input"), "Input", "Input", "DensityPriorBoxOp");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Image"), "Input", "Image", "DensityPriorBoxOp");
 
     auto image_dims = ctx->GetInputDim("Image");
     auto input_dims = ctx->GetInputDim("Input");
     PADDLE_ENFORCE_EQ(
-        image_dims.size(), 4,
+        image_dims.size(),
+        4,
         platform::errors::InvalidArgument(
             "The Input(Image) of Op(density_prior_box) should be a 4-D Tensor "
             "and data format is NCHW. But received Image's dimensions = %d, "
             "shape = [%s].",
-            image_dims.size(), image_dims));
+            image_dims.size(),
+            image_dims));
     PADDLE_ENFORCE_EQ(
-        input_dims.size(), 4,
+        input_dims.size(),
+        4,
         platform::errors::InvalidArgument(
             "The Input(Input) of Op(density_prior_box) should be a 4-D Tensor "
             "and data format is NCHW. But received Input's dimensions = %d, "
             "shape = [%s].",
-            input_dims.size(), input_dims));
+            input_dims.size(),
+            input_dims));
 
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_LT(
-          input_dims[2], image_dims[2],
+          input_dims[2],
+          image_dims[2],
           platform::errors::InvalidArgument(
               "The input tensor Input's height"
               "of DensityPriorBoxOp should be smaller than input tensor Image's"
               "height. But received Input's height = %d, Image's height = %d",
-              input_dims[2], image_dims[2]));
+              input_dims[2],
+              image_dims[2]));
 
       PADDLE_ENFORCE_LT(
-          input_dims[3], image_dims[3],
+          input_dims[3],
+          image_dims[3],
           platform::errors::InvalidArgument(
               "The input tensor Input's width"
               "of DensityPriorBoxOp should be smaller than input tensor Image's"
               "width. But received Input's width = %d, Image's width = %d",
-              input_dims[3], image_dims[3]));
+              input_dims[3],
+              image_dims[3]));
     }
     auto variances = ctx->Attrs().Get<std::vector<float>>("variances");
 
@@ -66,12 +74,14 @@ class DensityPriorBoxOp : public framework::OperatorWithKernel {
     bool flatten = ctx->Attrs().Get<bool>("flatten_to_2d");
 
     PADDLE_ENFORCE_EQ(
-        fixed_sizes.size(), densities.size(),
+        fixed_sizes.size(),
+        densities.size(),
         platform::errors::InvalidArgument(
             "The length of fixed_sizes and densities must be equal. "
             "But received: fixed_sizes's length is %d, densities's length "
             "is %d",
-            fixed_sizes.size(), densities.size()));
+            fixed_sizes.size(),
+            densities.size()));
     size_t num_priors = 0;
     for (size_t i = 0; i < densities.size(); ++i) {
       num_priors += (fixed_ratios.size()) * (pow(densities[i], 2));
@@ -82,8 +92,8 @@ class DensityPriorBoxOp : public framework::OperatorWithKernel {
       dim_vec[1] = input_dims[3];
       dim_vec[2] = num_priors;
       dim_vec[3] = 4;
-      ctx->SetOutputDim("Boxes", framework::make_ddim(dim_vec));
-      ctx->SetOutputDim("Variances", framework::make_ddim(dim_vec));
+      ctx->SetOutputDim("Boxes", phi::make_ddim(dim_vec));
+      ctx->SetOutputDim("Variances", phi::make_ddim(dim_vec));
     } else if (ctx->IsRuntime()) {
       int64_t dim0 = input_dims[2] * input_dims[3] * num_priors;
       ctx->SetOutputDim("Boxes", {dim0, 4});
@@ -126,17 +136,21 @@ class DensityPriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
                                 "(vector<float>) List of variances to be "
                                 "encoded in density prior boxes.")
         .AddCustomChecker([](const std::vector<float>& variances) {
-          PADDLE_ENFORCE_EQ(variances.size(), 4,
+          PADDLE_ENFORCE_EQ(variances.size(),
+                            4,
                             platform::errors::InvalidArgument(
                                 "The length of variance must "
                                 "be 4. But received: variances' length is %d.",
                                 variances.size()));
           for (size_t i = 0; i < variances.size(); ++i) {
-            PADDLE_ENFORCE_GT(variances[i], 0.0,
+            PADDLE_ENFORCE_GT(variances[i],
+                              0.0,
                               platform::errors::OutOfRange(
                                   "variance[%d] must be greater "
                                   "than 0. But received: variance[%d] = %f",
-                                  i, i, variances[i]));
+                                  i,
+                                  i,
+                                  variances[i]));
           }
         });
     AddAttr<bool>("clip", "(bool) Whether to clip out-of-boundary boxes.")
@@ -150,7 +164,8 @@ class DensityPriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
         "Density prior boxes step across width, 0.0 for auto calculation.")
         .SetDefault(0.0)
         .AddCustomChecker([](const float& step_w) {
-          PADDLE_ENFORCE_GE(step_w, 0.0,
+          PADDLE_ENFORCE_GE(step_w,
+                            0.0,
                             platform::errors::InvalidArgument(
                                 "step_w should be larger "
                                 "than 0. But received: step_w = %f.",
@@ -161,7 +176,8 @@ class DensityPriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
         "Density prior boxes step across height, 0.0 for auto calculation.")
         .SetDefault(0.0)
         .AddCustomChecker([](const float& step_h) {
-          PADDLE_ENFORCE_GE(step_h, 0.0,
+          PADDLE_ENFORCE_GE(step_h,
+                            0.0,
                             platform::errors::InvalidArgument(
                                 "step_h should be larger "
                                 "than 0. But received: step_h = %f.",
@@ -179,11 +195,14 @@ class DensityPriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
         .AddCustomChecker([](const std::vector<float>& fixed_sizes) {
           for (size_t i = 0; i < fixed_sizes.size(); ++i) {
             PADDLE_ENFORCE_GT(
-                fixed_sizes[i], 0.0,
+                fixed_sizes[i],
+                0.0,
                 platform::errors::OutOfRange(
                     "fixed_sizes[%d] should be "
                     "larger than 0. But received: fixed_sizes[%d] = %f",
-                    i, i, fixed_sizes[i]));
+                    i,
+                    i,
+                    fixed_sizes[i]));
           }
         });
 
@@ -194,11 +213,14 @@ class DensityPriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
         .AddCustomChecker([](const std::vector<float>& fixed_ratios) {
           for (size_t i = 0; i < fixed_ratios.size(); ++i) {
             PADDLE_ENFORCE_GT(
-                fixed_ratios[i], 0.0,
+                fixed_ratios[i],
+                0.0,
                 platform::errors::OutOfRange(
                     "fixed_ratios[%d] should be "
                     "larger than 0. But received: fixed_ratios[%d] = %f",
-                    i, i, fixed_ratios[i]));
+                    i,
+                    i,
+                    fixed_ratios[i]));
           }
         });
 
@@ -209,11 +231,14 @@ class DensityPriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
         .AddCustomChecker([](const std::vector<int>& densities) {
           for (size_t i = 0; i < densities.size(); ++i) {
             PADDLE_ENFORCE_GT(
-                densities[i], 0,
+                densities[i],
+                0,
                 platform::errors::OutOfRange(
                     "densities[%d] should be "
                     "larger than 0. But received: densities[%d] = %f.",
-                    i, i, densities[i]));
+                    i,
+                    i,
+                    densities[i]));
           }
         });
     AddComment(R"DOC(
@@ -231,9 +256,12 @@ class DensityPriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    density_prior_box, ops::DensityPriorBoxOp, ops::DensityPriorBoxOpMaker,
+    density_prior_box,
+    ops::DensityPriorBoxOp,
+    ops::DensityPriorBoxOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(density_prior_box, ops::DensityPriorBoxOpKernel<float>,
+REGISTER_OP_CPU_KERNEL(density_prior_box,
+                       ops::DensityPriorBoxOpKernel<float>,
                        ops::DensityPriorBoxOpKernel<double>);

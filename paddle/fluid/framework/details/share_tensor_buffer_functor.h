@@ -40,22 +40,22 @@ namespace framework {
 namespace details {
 
 // TODO(zjl): support SelectedRows
-static inline const Tensor &GetTensorFromVar(const Variable *var) {
-  if (var->IsType<LoDTensor>()) {
-    return var->Get<LoDTensor>();
+static inline const phi::DenseTensor &GetTensorFromVar(const Variable *var) {
+  if (var->IsType<phi::DenseTensor>()) {
+    return var->Get<phi::DenseTensor>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Variable must be type of LoDTensor, but received %s.",
+        "Variable must be type of phi::DenseTensor, but received %s.",
         framework::ToTypeName(var->Type())));
   }
 }
 
-static inline Tensor *GetMutableTensorFromVar(Variable *var) {
-  if (var->IsType<LoDTensor>()) {
-    return var->GetMutable<LoDTensor>();
+static inline phi::DenseTensor *GetMutableTensorFromVar(Variable *var) {
+  if (var->IsType<phi::DenseTensor>()) {
+    return var->GetMutable<phi::DenseTensor>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Variable must be type of LoDTensor, but received %s.",
+        "Variable must be type of phi::DenseTensor, but received %s.",
         framework::ToTypeName(var->Type())));
   }
 }
@@ -70,10 +70,13 @@ static inline Tensor *GetMutableTensorFromVar(Variable *var) {
 class ShareTensorBufferFunctor {
  public:
   ShareTensorBufferFunctor(
-      Scope *scope, size_t scope_idx, const std::string &op_type,
+      Scope *scope,
+      size_t scope_idx,
+      const std::string &op_type,
       const std::vector<const ir::MemOptVarInfo *> &in_var_infos,
       const std::vector<std::string> &out_var_names,
-      const bool &is_variant_scope, bool share_dims_and_dtype = false);
+      const bool &is_variant_scope,
+      bool share_dims_and_dtype = false);
 
   void AddReuseVarPair(const ir::MemOptVarInfo *in_var_info,
                        const std::string &out_var_name);

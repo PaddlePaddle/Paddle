@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/collective/gen_hccl_id_op_helper.h"
+
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -49,13 +50,13 @@ constexpr char COMM_HEAD[] = "_pd_gen_comm_id_";
     CHECK_SYS_CALL_VAL(call, name, retval); \
   } while (false)
 
-#define CHECK_SYS_CALL_VAL(call, name, retval)                            \
-  do {                                                                    \
-    RETRY_SYS_CALL_VAL(call, name, retval);                               \
-    if (retval == -1) {                                                   \
-      PADDLE_THROW(platform::errors::Unavailable("Call to %s failed: %s", \
-                                                 name, strerror(errno))); \
-    }                                                                     \
+#define CHECK_SYS_CALL_VAL(call, name, retval)              \
+  do {                                                      \
+    RETRY_SYS_CALL_VAL(call, name, retval);                 \
+    if (retval == -1) {                                     \
+      PADDLE_THROW(platform::errors::Unavailable(           \
+          "Call to %s failed: %s", name, strerror(errno))); \
+    }                                                       \
   } while (false)
 
 #define RETRY_SYS_CALL_VAL(call, name, retval)                           \
@@ -109,12 +110,18 @@ static int SocketRecv(int fd, char* buffer, int size) {
   return offset;
 }
 
-static void BindOrConnectFailed(int timeout, int* try_times, int* total_time,
-                                const char* op, const std::string& ep) {
+static void BindOrConnectFailed(int timeout,
+                                int* try_times,
+                                int* total_time,
+                                const char* op,
+                                const std::string& ep) {
   PADDLE_ENFORCE_LT(
-      *total_time, timeout,
-      platform::errors::Unavailable("%s addr=%s timeout, failed reason: %s", op,
-                                    ep.c_str(), strerror(errno)));
+      *total_time,
+      timeout,
+      platform::errors::Unavailable("%s addr=%s timeout, failed reason: %s",
+                                    op,
+                                    ep.c_str(),
+                                    strerror(errno)));
   ++(*try_times);
   int retry_time = std::min(*try_times * 500, 3000);  // max 3 seconds
   *total_time += retry_time;
@@ -128,7 +135,8 @@ static void BindOrConnectFailed(int timeout, int* try_times, int* total_time,
 int CreateListenSocket(const std::string& ep) {
   auto addr = paddle::string::Split(ep, ':');
   PADDLE_ENFORCE_EQ(
-      addr.size(), 2UL,
+      addr.size(),
+      2UL,
       platform::errors::InvalidArgument(
           "The endpoint should contain host and port, but got %s.", ep));
   std::string host = addr[0];
@@ -148,8 +156,11 @@ int CreateListenSocket(const std::string& ep) {
   int opt = 1;
 #if defined(SO_REUSEPORT)
   // since Linux kernel 3.9
-  CHECK_SYS_CALL(setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT,
-                            &opt, sizeof(opt)),
+  CHECK_SYS_CALL(setsockopt(server_fd,
+                            SOL_SOCKET,
+                            SO_REUSEADDR | SO_REUSEPORT,
+                            &opt,
+                            sizeof(opt)),
                  "setsockopt");
 #else
   CHECK_SYS_CALL(
@@ -169,7 +180,8 @@ int CreateListenSocket(const std::string& ep) {
   while (true) {
     int ret_val = -1;
     RETRY_SYS_CALL_VAL(
-        bind(server_fd, (struct sockaddr*)&address, sizeof(address)), "bind",
+        bind(server_fd, (struct sockaddr*)&address, sizeof(address)),
+        "bind",
         ret_val);
 
     if (ret_val == -1) {
@@ -193,10 +205,11 @@ static int SocketAccept(int server_fd, const char* head) {
   int conn = -1;
 
   while (true) {
-    CHECK_SYS_CALL_VAL(
-        accept(server_fd, reinterpret_cast<struct sockaddr*>(&client_addr),
-               &addr_length),
-        "accept", conn);
+    CHECK_SYS_CALL_VAL(accept(server_fd,
+                              reinterpret_cast<struct sockaddr*>(&client_addr),
+                              &addr_length),
+                       "accept",
+                       conn);
 
     int ret_val = SocketRecv(conn, buffer, strlen(head));
     if (ret_val > 0 && strncmp(buffer, head, strlen(head)) == 0) {
@@ -212,7 +225,8 @@ static int SocketAccept(int server_fd, const char* head) {
 static int ConnectAddr(const std::string& ep, const char* head) {
   auto addr = paddle::string::Split(ep, ':');
   PADDLE_ENFORCE_EQ(
-      addr.size(), 2UL,
+      addr.size(),
+      2UL,
       platform::errors::InvalidArgument(
           "The endpoint should contain host and port, but got %s.", ep));
   std::string host = addr[0];
@@ -237,8 +251,9 @@ static int ConnectAddr(const std::string& ep, const char* head) {
     std::this_thread::sleep_for(std::chrono::seconds(2));
     LOG(WARNING) << "gethostbyname " << host.c_str() << " error!";
   }
-  PADDLE_ENFORCE_NOT_NULL(hp, platform::errors::InvalidArgument(
-                                  "Fail to get host by name %s.", host));
+  PADDLE_ENFORCE_NOT_NULL(
+      hp,
+      platform::errors::InvalidArgument("Fail to get host by name %s.", host));
 
   int i = 0;
   while (hp->h_addr_list[i] != NULL) {
@@ -247,9 +262,10 @@ static int ConnectAddr(const std::string& ep, const char* head) {
     break;
   }
 
-  PADDLE_ENFORCE_GT(inet_pton(AF_INET, ip, &server_addr.sin_addr), 0,
-                    platform::errors::Unavailable("Open address %s failed: %s",
-                                                  ep, strerror(errno)));
+  PADDLE_ENFORCE_GT(inet_pton(AF_INET, ip, &server_addr.sin_addr),
+                    0,
+                    platform::errors::Unavailable(
+                        "Open address %s failed: %s", ep, strerror(errno)));
 
   // TODO(wangxi) Set from env, default 900s=15min
   int timeout = 900 * 1000;
@@ -259,7 +275,8 @@ static int ConnectAddr(const std::string& ep, const char* head) {
     int ret_val = -1;
     RETRY_SYS_CALL_VAL(
         connect(sock, (struct sockaddr*)&server_addr, sizeof(server_addr)),
-        "connect", ret_val);
+        "connect",
+        ret_val);
 
     if (ret_val == -1) {
       BindOrConnectFailed(timeout, &try_times, &total_time, "connect", ep);
@@ -290,7 +307,8 @@ static void SendHCCLID(int conn, HcclRootInfo* hccl_id) {
                  "send hccl id");
 }
 
-void SendBroadCastHCCLID(std::vector<std::string> servers, int hccl_comm_num,
+void SendBroadCastHCCLID(std::vector<std::string> servers,
+                         int hccl_comm_num,
                          std::function<std::string(size_t)> func,
                          const framework::Scope& scope) {
   // connect with server
@@ -306,8 +324,9 @@ void SendBroadCastHCCLID(std::vector<std::string> servers, int hccl_comm_num,
     std::string var_name = func(i);
     auto var = scope.FindVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(
-        var, platform::errors::NotFound("Variable with name %s is not found",
-                                        var_name.c_str()));
+        var,
+        platform::errors::NotFound("Variable with name %s is not found",
+                                   var_name.c_str()));
     auto hccl_id = var->GetMutable<HcclRootInfo>();
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclGetRootInfo(hccl_id));
 
@@ -327,7 +346,8 @@ void SendBroadCastHCCLID(std::vector<std::string> servers, int hccl_comm_num,
   }
 }
 
-void RecvBroadCastHCCLID(std::string endpoint, int hccl_comm_num,
+void RecvBroadCastHCCLID(std::string endpoint,
+                         int hccl_comm_num,
                          std::function<std::string(size_t)> func,
                          const framework::Scope& scope) {
   int server = CreateListenSocket(endpoint);
@@ -335,7 +355,9 @@ void RecvBroadCastHCCLID(std::string endpoint, int hccl_comm_num,
   CloseSocket(server);
 }
 
-void RecvBroadCastHCCLID(int server_fd, std::string endpoint, int hccl_comm_num,
+void RecvBroadCastHCCLID(int server_fd,
+                         std::string endpoint,
+                         int hccl_comm_num,
                          std::function<std::string(size_t)> func,
                          const framework::Scope& scope) {
   int client = SocketAccept(server_fd, COMM_HEAD);
@@ -344,8 +366,9 @@ void RecvBroadCastHCCLID(int server_fd, std::string endpoint, int hccl_comm_num,
     std::string var_name = func(i);
     auto var = scope.FindVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(
-        var, platform::errors::NotFound("Variable with name %s is not found",
-                                        var_name.c_str()));
+        var,
+        platform::errors::NotFound("Variable with name %s is not found",
+                                   var_name.c_str()));
     auto hccl_id = var->GetMutable<HcclRootInfo>();
 
     VLOG(3) << "trainer: " << endpoint << " receiving hccl_id_var: " << var_name

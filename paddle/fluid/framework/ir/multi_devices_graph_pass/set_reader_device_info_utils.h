@@ -29,7 +29,8 @@ namespace ir {
 
 class Graph;
 
-void InitReaderQueueDeviceCount(Graph *graph, const Scope &scope,
+void InitReaderQueueDeviceCount(Graph *graph,
+                                const Scope &scope,
                                 size_t dev_cnt);
 
 void SetReaderOpDeviceInfo(Graph *graph, size_t dev_cnt, size_t dev_idx = -1UL);

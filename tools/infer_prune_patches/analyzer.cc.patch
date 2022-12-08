@@ -1,0 +1,14 @@
+diff --git a/paddle/fluid/inference/analysis/analyzer.cc b/paddle/fluid/inference/analysis/analyzer.cc
+index be7d6ab868..498e09cb4d 100644
+--- a/paddle/fluid/inference/analysis/analyzer.cc
++++ b/paddle/fluid/inference/analysis/analyzer.cc
+@@ -32,6 +32,9 @@ void Analyzer::RunAnalysis(Argument *argument) {
+                         "analsis_passes is not valid in the argument."));
+   const bool disable_logs = argument->disable_logs();
+   for (auto &pass : argument->analysis_passes()) {
++    if (pass == "ir_params_sync_among_devices_pass") {
++      continue;
++    }
+     if (!disable_logs) {
+       string::PrettyLogH1("--- Running analysis [%s]", pass);
+     }

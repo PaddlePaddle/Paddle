@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/fuse_bn_act_pass.h"
+
 #include <string>
+
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -48,8 +50,9 @@ void FuseBatchNormActPass::ApplyImpl(ir::Graph *graph) const {
 ir::Graph *FuseBatchNormActPass::FuseBatchNormAct(
     ir::Graph *graph, const std::unordered_set<std::string> &act_types) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::InvalidArgument(
-                 "The input graph of FuseBatchNormAct should not be nullptr."));
+      graph,
+      platform::errors::InvalidArgument(
+          "The input graph of FuseBatchNormAct should not be nullptr."));
   FusePassBase::Init("bn_act", graph);
 
   GraphPatternDetector gpd;
@@ -75,11 +78,11 @@ ir::Graph *FuseBatchNormActPass::FuseBatchNormAct(
     // BN outputs
     GET_IR_NODE_FROM_SUBGRAPH(bn_mean_out, bn_mean_out, bn_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(bn_variance_out, bn_variance_out, bn_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(bn_saved_variance, bn_saved_variance,
-                              bn_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        bn_saved_variance, bn_saved_variance, bn_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(bn_saved_mean, bn_saved_mean, bn_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(bn_reserve_space, bn_reserve_space,
-                              bn_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        bn_reserve_space, bn_reserve_space, bn_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(bn_out, bn_out, bn_act_pattern);
     // ACT output
     GET_IR_NODE_FROM_SUBGRAPH(act_out, act_out, bn_act_pattern);
@@ -100,10 +103,20 @@ ir::Graph *FuseBatchNormActPass::FuseBatchNormAct(
     std::string bn_out_n = bn_out->Name();
     std::string act_out_n = act_out->Name();
 
-    Node *fused_bn_act_node = CreateFusedBatchNormActNode(
-        g, act, batch_norm, bn_x_n, bn_scale_n, bn_bias_n, bn_variance_n,
-        bn_mean_n, bn_mean_out_n, bn_variance_out_n, bn_saved_variance_n,
-        bn_saved_mean_n, bn_reserve_space_n, act_out_n);
+    Node *fused_bn_act_node = CreateFusedBatchNormActNode(g,
+                                                          act,
+                                                          batch_norm,
+                                                          bn_x_n,
+                                                          bn_scale_n,
+                                                          bn_bias_n,
+                                                          bn_variance_n,
+                                                          bn_mean_n,
+                                                          bn_mean_out_n,
+                                                          bn_variance_out_n,
+                                                          bn_saved_variance_n,
+                                                          bn_saved_mean_n,
+                                                          bn_reserve_space_n,
+                                                          act_out_n);
 
     VLOG(4) << "\n\t " << bn_x_n << ", " << bn_scale_n << ", " << bn_bias_n
             << ", " << bn_variance_n << " and " << bn_mean_n << " -> "
@@ -125,12 +138,20 @@ ir::Graph *FuseBatchNormActPass::FuseBatchNormAct(
 }
 
 Node *FuseBatchNormActPass::CreateFusedBatchNormActNode(
-    Graph *g, const Node *act, const Node *bn, const std::string &bn_x_n,
-    const std::string &bn_scale_n, const std::string &bn_bias_n,
-    const std::string &bn_variance_n, const std::string &bn_mean_n,
-    const std::string &bn_mean_out_n, const std::string &bn_variance_out_n,
-    const std::string &bn_saved_variance_n, const std::string &bn_saved_mean_n,
-    const std::string &bn_reserve_space_n, const std::string &act_out_n) const {
+    Graph *g,
+    const Node *act,
+    const Node *bn,
+    const std::string &bn_x_n,
+    const std::string &bn_scale_n,
+    const std::string &bn_bias_n,
+    const std::string &bn_variance_n,
+    const std::string &bn_mean_n,
+    const std::string &bn_mean_out_n,
+    const std::string &bn_variance_out_n,
+    const std::string &bn_saved_variance_n,
+    const std::string &bn_saved_mean_n,
+    const std::string &bn_reserve_space_n,
+    const std::string &act_out_n) const {
   OpDesc desc;
   desc.SetInput("X", std::vector<std::string>({bn_x_n}));
   desc.SetInput("Scale", std::vector<std::string>({bn_scale_n}));
@@ -190,20 +211,20 @@ ir::Graph *FuseBatchNormActPass::FuseBatchNormActGrad(
                      Graph *g) {
     VLOG(4) << "handle FuseBatchNormActGrad fuse";
     GET_IR_NODE_FROM_SUBGRAPH(act_grad, act_grad, bn_act_grad_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(batch_norm_grad, batch_norm_grad,
-                              bn_act_grad_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        batch_norm_grad, batch_norm_grad, bn_act_grad_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(act_out, act_out, bn_act_grad_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(d_itermediate_out, d_itermediate_out,
-                              bn_act_grad_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        d_itermediate_out, d_itermediate_out, bn_act_grad_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(bn_x, bn_x, bn_act_grad_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(bn_scale, bn_scale, bn_act_grad_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(bn_bias, bn_bias, bn_act_grad_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(bn_saved_mean, bn_saved_mean,
-                              bn_act_grad_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(bn_saved_variance, bn_saved_variance,
-                              bn_act_grad_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(bn_reserve_space, bn_reserve_space,
-                              bn_act_grad_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        bn_saved_mean, bn_saved_mean, bn_act_grad_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        bn_saved_variance, bn_saved_variance, bn_act_grad_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        bn_reserve_space, bn_reserve_space, bn_act_grad_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(d_bn_x, d_bn_x, bn_act_grad_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(d_bn_scale, d_bn_scale, bn_act_grad_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(d_bn_bias, d_bn_bias, bn_act_grad_pattern);
@@ -269,7 +290,8 @@ ir::Graph *FuseBatchNormActPass::FuseBatchNormActGrad(
 }
 
 void FuseBatchNormActPass::ReLinkNodes(Graph *graph,
-                                       const Node *intermediate_out, Node *op_1,
+                                       const Node *intermediate_out,
+                                       Node *op_1,
                                        Node *op_2,
                                        Node *fused_op) const {  // delete act
   for (auto &in : op_1->inputs) {
@@ -281,7 +303,8 @@ void FuseBatchNormActPass::ReLinkNodes(Graph *graph,
   for (auto &out : op_1->outputs) {
     // intermediate_out or ctr_var
     auto result_iter =
-        std::find_if(op_2->inputs.begin(), op_2->inputs.end(),
+        std::find_if(op_2->inputs.begin(),
+                     op_2->inputs.end(),
                      [&out](const Node *node) -> bool { return node == out; });
 
     if (result_iter == op_2->inputs.end()) {
@@ -313,15 +336,16 @@ std::vector<Node *> FuseBatchNormActPass::ReplaceNode(
     Node *cur_node, Node *new_node, const std::vector<Node *> &nodes) const {
   std::vector<Node *> new_list(nodes.size());
   bool has_replaced = false;
-  std::transform(nodes.begin(), nodes.end(), new_list.begin(),
-                 [&](Node *node) -> Node * {
-                   if (node == cur_node) {
-                     has_replaced = true;
-                     return new_node;
-                   }
-                   return node;
-                 });
-  PADDLE_ENFORCE_EQ(has_replaced, true,
+  std::transform(
+      nodes.begin(), nodes.end(), new_list.begin(), [&](Node *node) -> Node * {
+        if (node == cur_node) {
+          has_replaced = true;
+          return new_node;
+        }
+        return node;
+      });
+  PADDLE_ENFORCE_EQ(has_replaced,
+                    true,
                     platform::errors::NotFound("Not found %s in the node list.",
                                                cur_node->Name()));
   return new_list;

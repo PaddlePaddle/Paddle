@@ -12,24 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest, IgnoreReasons
-from program_config import TensorConfig, ProgramConfig, OpConfig
-import numpy as np
-import paddle.inference as paddle_infer
-from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
+from functools import partial
 
-import hypothesis
-from hypothesis import given, settings, seed, example, assume, reproduce_failure
 import hypothesis.strategies as st
+import numpy as np
+from auto_scan_test import IgnoreReasons, PassAutoScanTest
+from program_config import OpConfig, ProgramConfig, TensorConfig
+
+import paddle.inference as paddle_infer
 
 
 class TestConvBnFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
         # mainly for TRT, which is invalid for current pass test framework!!
         if attrs[0]['data_format'] == "NHWC":
@@ -50,23 +47,28 @@ class TestConvBnFusePass(PassAutoScanTest):
         batch_size = draw(st.integers(min_value=1, max_value=4))
         dilations = draw(
             st.lists(
-                st.integers(
-                    min_value=1, max_value=2), min_size=2, max_size=2))
+                st.integers(min_value=1, max_value=2), min_size=2, max_size=2
+            )
+        )
         paddings = draw(
             st.lists(
-                st.integers(
-                    min_value=0, max_value=2), min_size=2, max_size=2))
+                st.integers(min_value=0, max_value=2), min_size=2, max_size=2
+            )
+        )
         strides = draw(
             st.lists(
-                st.integers(
-                    min_value=1, max_value=2), min_size=2, max_size=2))
+                st.integers(min_value=1, max_value=2), min_size=2, max_size=2
+            )
+        )
         has_bias = draw(st.booleans())
         use_mkldnn = draw(st.booleans())
         epsilon = draw(st.floats(min_value=0.0, max_value=0.001))
 
-        x_shape = [
-            batch_size, in_channel, 64, 64
-        ] if data_format == "NCHW" else [batch_size, 64, 64, in_channel]
+        x_shape = (
+            [batch_size, in_channel, 64, 64]
+            if data_format == "NCHW"
+            else [batch_size, 64, 64, in_channel]
+        )
         w_shape = [out_channel, filter_channel, filter_size, filter_size]
         scale_shape = [out_channel]
         bias_shape = [out_channel]
@@ -109,7 +111,8 @@ class TestConvBnFusePass(PassAutoScanTest):
             strides=strides,
             use_mkldnn=use_mkldnn,
             has_bias=has_bias,
-            is_test=True)
+            is_test=True,
+        )
         bn_op = OpConfig(
             "batch_norm",
             inputs={
@@ -130,29 +133,34 @@ class TestConvBnFusePass(PassAutoScanTest):
             epsilon=epsilon,
             trainable_statistics=False,
             data_layout=data_format,
-            is_test=True)
-        if has_bias == True:
+            is_test=True,
+        )
+        if has_bias:
             conv2d_op.inputs["Bias"] = ["conv2d_bias"]
         ops = [conv2d_op, bn_op]
 
         program_config = ProgramConfig(
             ops=ops,
             inputs={
-                "conv2d_input":
-                TensorConfig(data_gen=partial(generate_conv2d_Input)),
+                "conv2d_input": TensorConfig(
+                    data_gen=partial(generate_conv2d_Input)
+                ),
             },
             weights={
-                "conv2d_weight":
-                TensorConfig(data_gen=partial(generate_conv2d_Filter)),
+                "conv2d_weight": TensorConfig(
+                    data_gen=partial(generate_conv2d_Filter)
+                ),
                 "batch_norm_Scale": TensorConfig(data_gen=generate_bn_Scale),
                 "batch_norm_Bias": TensorConfig(data_gen=generate_bn_Bias),
                 "batch_norm_Mean": TensorConfig(data_gen=generate_bn_Mean),
                 "batch_norm_Variance": TensorConfig(data_gen=generate_bn_Var),
             },
-            outputs=["batch_norm_Y"])
-        if has_bias == True:
+            outputs=["batch_norm_Y"],
+        )
+        if has_bias:
             program_config.weights["conv2d_bias"] = TensorConfig(
-                data_gen=partial(generate_conv2d_Bias))
+                data_gen=partial(generate_conv2d_Bias)
+            )
         return program_config
 
     def sample_predictor_configs(self, program_config):
@@ -175,7 +183,8 @@ class TestConvBnFusePass(PassAutoScanTest):
                 min_subgraph_size=1,
                 precision_mode=paddle_infer.PrecisionType.Float32,
                 use_static=False,
-                use_calib_mode=False)
+                use_calib_mode=False,
+            )
             if program_config.ops[0].attrs['has_bias']:
                 yield config, ['conv2d', 'elementwise_add'], (1e-5, 1e-5)
             else:  # it will enter conv_elementwise_add_fuse_pass
@@ -183,28 +192,37 @@ class TestConvBnFusePass(PassAutoScanTest):
 
     def add_ignore_pass_case(self):
         def teller1(program_config, predictor_config):
-            if program_config.ops[0].attrs['data_format'] == "NHWC":
+            if (
+                program_config.ops[0].attrs['data_format'] == "NHWC"
+                and not predictor_config.mkldnn_enabled()
+            ):
                 return True
             return False
 
         # mkldnn Output has diff with bias!
         def teller2(program_config, predictor_config):
-            return predictor_config.mkldnn_enabled() and program_config.ops[
-                0].attrs['has_bias'] == True
+            return (
+                predictor_config.mkldnn_enabled()
+                and program_config.ops[0].attrs['has_bias']
+            )
 
         self.add_ignore_check_case(
-            teller1, IgnoreReasons.PASS_ACCURACY_ERROR,
-            "The output format of conv2d is wrong when data_format attribute is NHWC"
+            teller1,
+            IgnoreReasons.PASS_ACCURACY_ERROR,
+            "The output format of conv2d is wrong when data_format attribute is NHWC",
         )
 
         self.add_ignore_check_case(
-            teller2, IgnoreReasons.PASS_ACCURACY_ERROR,
-            "Currently mkldnn Output has diff with bias!")
+            teller2,
+            IgnoreReasons.PASS_ACCURACY_ERROR,
+            "Currently mkldnn Output has diff with bias!",
+        )
 
     def test(self):
         self.run_and_statis(
             quant=False,
-            passes=["conv_bn_fuse_pass"], )
+            passes=["conv_bn_fuse_pass"],
+        )
 
 
 if __name__ == "__main__":

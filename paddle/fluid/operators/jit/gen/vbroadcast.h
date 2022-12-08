@@ -26,7 +26,8 @@ namespace gen {
 
 class VBroadcastJitCode : public JitCode {
  public:
-  explicit VBroadcastJitCode(const int64_t& w, size_t code_size = 256 * 1024,
+  explicit VBroadcastJitCode(const int64_t& w,
+                             size_t code_size = 256 * 1024,
                              void* code_ptr = nullptr)
       : JitCode(code_size, code_ptr), w_(w) {
     this->genCode();

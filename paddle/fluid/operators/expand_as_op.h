@@ -23,11 +23,13 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-template <typename T, size_t D, int MajorType = Eigen::RowMajor,
+template <typename T,
+          size_t D,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 
@@ -35,7 +37,7 @@ template <typename DeviceContext, typename T>
 class ExpandAsKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto rank = context.Input<Tensor>("X")->dims().size();
+    auto rank = context.Input<phi::DenseTensor>("X")->dims().size();
     switch (rank) {
       case 1:
         ExpandAs<1>(context);
@@ -66,17 +68,18 @@ class ExpandAsKernel : public framework::OpKernel<T> {
  protected:
   template <int Rank>
   void ExpandAs(const framework::ExecutionContext& context) const {
-    auto* in0 = context.Input<Tensor>("X");
+    auto* in0 = context.Input<phi::DenseTensor>("X");
     auto in_dims = in0->dims();
-    auto* target_tensor = context.Input<Tensor>("target_tensor");
-    auto* out0 = context.Output<Tensor>("Out");
+    auto* target_tensor = context.Input<phi::DenseTensor>("target_tensor");
+    auto* out0 = context.Output<phi::DenseTensor>("Out");
     Eigen::DSizes<Eigen::DenseIndex, Rank> bcast_dims;
     int bcast_dims_remainder = 0;
     auto x_dims = in0->dims();
     auto y_dims = target_tensor->dims();
     for (int i = 0; i < y_dims.size(); ++i) {
       PADDLE_ENFORCE_NE(
-          x_dims[i], 0UL,
+          x_dims[i],
+          0UL,
           platform::errors::InvalidArgument(
               "X(input) should not have 0 dim. But received x_dims[%d] = 0.",
               i));
@@ -84,7 +87,8 @@ class ExpandAsKernel : public framework::OpKernel<T> {
       bcast_dims_remainder += y_dims[i] % x_dims[i];
     }
     PADDLE_ENFORCE_EQ(
-        bcast_dims_remainder, 0UL,
+        bcast_dims_remainder,
+        0UL,
         platform::errors::InvalidArgument(
             "X(input) could not be broadcast together with remapped "
             "shape(expand tensor's shape)"));
@@ -99,8 +103,8 @@ class ExpandAsKernel : public framework::OpKernel<T> {
     auto y = EigenTensor<T, Rank>::From(*out0);
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
-    EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(place, y, x,
-                                                                 bcast_dims);
+    EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
+        place, y, x, bcast_dims);
   }
 };
 
@@ -108,8 +112,8 @@ template <typename DeviceContext, typename T>
 class ExpandAsGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in0 = context.Input<Tensor>("X");
-    auto* target_tensor = context.Input<Tensor>("target_tensor");
+    auto* in0 = context.Input<phi::DenseTensor>("X");
+    auto* target_tensor = context.Input<phi::DenseTensor>("target_tensor");
     auto x_dims = in0->dims();
     auto y_dims = target_tensor->dims();
     std::vector<int> bcast_dims;
@@ -133,24 +137,29 @@ class ExpandAsGradKernel : public framework::OpKernel<T> {
     }
     // no need reduce, just copy
     if (just_copy) {
-      auto* in0 = context.Input<Tensor>(framework::GradVarName("Out"));
-      auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
+      auto* in0 =
+          context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+      auto* out0 =
+          context.Output<phi::DenseTensor>(framework::GradVarName("X"));
       out0->mutable_data<T>(context.GetPlace());
-      framework::TensorCopy(*in0, context.GetPlace(), context.device_context(),
-                            out0);
+      framework::TensorCopy(
+          *in0, context.GetPlace(), context.device_context(), out0);
     } else {
-      PADDLE_ENFORCE_GE(dims, 1,
+      PADDLE_ENFORCE_GE(dims,
+                        1,
                         platform::errors::InvalidArgument(
                             "The rank of the input 'Out@GRAD' for "
                             "expand_as_grad op must be greater than or "
                             "equal to 1, but the value received is %d.",
                             dims));
-      PADDLE_ENFORCE_LE(dims, MAX_RANK_SUPPORTED,
+      PADDLE_ENFORCE_LE(dims,
+                        MAX_RANK_SUPPORTED,
                         platform::errors::InvalidArgument(
                             "The rank of the input 'Out@GRAD' for "
                             "expand_as_grad op must be less than or equal "
                             "to %d, but the value received is %d.",
-                            MAX_RANK_SUPPORTED, dims));
+                            MAX_RANK_SUPPORTED,
+                            dims));
       switch (dims) {
         case 1:
           ExpandAsBackward<1>(context, reshape_dims_vec, reduce_dims_vec);
@@ -186,8 +195,8 @@ class ExpandAsGradKernel : public framework::OpKernel<T> {
                         const std::vector<int>& reduce_dims_vec) const {
     size_t reshape_size = reshape_dims_vec.size();
     size_t reduce_size = reduce_dims_vec.size();
-    auto* in0 = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
+    auto* in0 = context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* out0 = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     out0->mutable_data<T>(context.GetPlace());
     auto x_grad = EigenVector<T>::Flatten(*out0);
     Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;

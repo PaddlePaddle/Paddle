@@ -12,7 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/inference/analysis/ir_passes/lite_subgraph_pass.h"
+
 #include <algorithm>
+#include <fstream>
+#include <iostream>
 #include <map>
 #include <memory>
 #include <set>
@@ -21,28 +25,22 @@
 #include <unordered_set>
 #include <vector>
 
-#include <fstream>
-#include <iostream>
-
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/inference/lite/op_teller.h"
-#include "paddle/fluid/inference/utils/singleton.h"
-
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
-#include "paddle/fluid/inference/analysis/ir_passes/lite_subgraph_pass.h"
-#include "paddle/fluid/string/pretty_log.h"
-
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/inference/lite/engine.h"
+#include "paddle/fluid/inference/lite/op_teller.h"
+#include "paddle/fluid/inference/utils/singleton.h"
+#include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-using framework::ir::Node;
 using framework::ir::Agent;
-using framework::ir::SubGraphFuser;
 using framework::ir::Graph;
+using framework::ir::Node;
+using framework::ir::SubGraphFuser;
 
 namespace lite {
 
@@ -78,7 +76,8 @@ void StrToBinaryFile(const std::string& path, const std::string& str) {
 }
 
 void ModifyHostSubgraphOps(
-    framework::ProgramDesc* host_program, framework::BlockDesc* host_sub_block,
+    framework::ProgramDesc* host_program,
+    framework::BlockDesc* host_sub_block,
     const std::vector<framework::OpDesc*>& subgraph_ops) {
   for (auto* op_desc : subgraph_ops) {
     auto* sub_block_op = host_sub_block->AppendOp();
@@ -170,15 +169,17 @@ void ModifyEngineProgram(Node* merged_node,
   PrependFetchOps(engine_global_block, IOVarsFilter(merged_node->outputs));
 
   // 2. Append sub blocks in the lite program.
-  AppendLiteSubBlocks(subgraph_ops, engine_program, host_program,
-                      host_sub_block_id);
+  AppendLiteSubBlocks(
+      subgraph_ops, engine_program, host_program, host_sub_block_id);
 }
 
-void OrganizeProgram(Node* merged_node, framework::ProgramDesc* host_program,
+void OrganizeProgram(Node* merged_node,
+                     framework::ProgramDesc* host_program,
                      framework::ProgramDesc* engine_program,
                      std::vector<std::string>* repetitive_params) {
   std::vector<framework::ir::Node*>& subgraph = *Agent(merged_node).subgraph();
-  PADDLE_ENFORCE_EQ(subgraph.empty(), false,
+  PADDLE_ENFORCE_EQ(subgraph.empty(),
+                    false,
                     platform::errors::NotFound(
                         "No subgraph found in lite subgraph pass. Please use "
                         "the full model call from Analysis Predictor."));
@@ -202,8 +203,12 @@ void OrganizeProgram(Node* merged_node, framework::ProgramDesc* host_program,
   }
 
   ModifyHostProgram(host_program, host_sub_block, io_var_nodes, subgraph_ops);
-  ModifyEngineProgram(merged_node, host_program, engine_program,
-                      host_sub_block->ID(), io_var_nodes, subgraph_ops);
+  ModifyEngineProgram(merged_node,
+                      host_program,
+                      engine_program,
+                      host_sub_block->ID(),
+                      io_var_nodes,
+                      subgraph_ops);
   *repetitive_params = ExtractParameters(io_var_nodes, true);
   for (const auto& param : *repetitive_params) {
     VLOG(3) << "Repetitive param: " << param;
@@ -216,7 +221,8 @@ void OrganizeProgram(Node* merged_node, framework::ProgramDesc* host_program,
 void LiteSubgraphPass::SetUpEngine(
     framework::ProgramDesc* program,
     const std::vector<std::string>& repetitive_params,
-    const std::string& unique_key, bool dump_model) const {
+    const std::string& unique_key,
+    bool dump_model) const {
   inference::lite::EngineConfig config;
   auto* scope = param_scope();
 
@@ -224,17 +230,18 @@ void LiteSubgraphPass::SetUpEngine(
   // main block are read. Fluid seems to allow persistence variables
   // in the sub block, but they are controlled by context, so the
   // support is suspended here.
-  auto serialize_params = [](std::string* str, framework::Scope* scope,
+  auto serialize_params = [](std::string* str,
+                             framework::Scope* scope,
                              const std::vector<std::string>& params) {
     std::ostringstream os;
-    platform::CPUDeviceContext ctx;
+    phi::CPUContext ctx;
     for (const auto& param : params) {
       VLOG(3) << "Serialize param: " << param;
       PADDLE_ENFORCE_NOT_NULL(
           scope->FindVar(param),
           platform::errors::NotFound(
               "Block should already have a '%s' variable", param));
-      auto* tensor = scope->FindVar(param)->GetMutable<framework::LoDTensor>();
+      auto* tensor = scope->FindVar(param)->GetMutable<phi::DenseTensor>();
       framework::SerializeToStream(os, *tensor, ctx);
     }
     *str = os.str();
@@ -245,12 +252,14 @@ void LiteSubgraphPass::SetUpEngine(
   bool use_xpu = Get<bool>("use_xpu");
   int xpu_device_id = Get<int>("xpu_device_id");
   int xpu_l3_workspace_size = Get<int>("xpu_l3_workspace_size");
+  bool use_opencl = Get<bool>("use_opencl");
   int cpu_math_library_num_threads = Get<int>("cpu_math_library_num_threads");
   bool locked = Get<bool>("locked");
   bool autotune = Get<bool>("autotune");
   std::string autotune_file = Get<std::string>("autotune_file");
   std::string precision = Get<std::string>("precision");
   bool adaptive_seqlen = Get<bool>("adaptive_seqlen");
+  bool enable_multi_stream = Get<bool>("enable_multi_stream");
   // NNAdapter Related
   bool use_nnadapter = Get<bool>("use_nnadapter");
   std::string nnadapter_model_cache_dir =
@@ -268,7 +277,7 @@ void LiteSubgraphPass::SetUpEngine(
   auto nnadapter_model_cache_token =
       Get<std::vector<std::string>>("nnadapter_model_cache_token");
 
-  lite_api::TargetType target_type;
+  lite_api::TargetType target_type = TARGET(kX86);
   if (use_gpu) {
     target_type = TARGET(kCUDA);
   } else if (use_xpu) {
@@ -277,6 +286,8 @@ void LiteSubgraphPass::SetUpEngine(
 #ifdef LITE_WITH_NNADAPTER
     target_type = TARGET(kNNAdapter);
 #endif
+  } else if (use_opencl) {
+    target_type = TARGET(kOpenCL);
   } else {
 #ifdef PADDLE_WITH_ARM
     target_type = TARGET(kARM);
@@ -295,7 +306,6 @@ void LiteSubgraphPass::SetUpEngine(
       // input tensor of the Lite engine is located, and then affects
       // whether tensor sharing is feasible.
       paddle::lite_api::Place({target_type, precision_type}),
-      paddle::lite_api::Place({target_type, PRECISION(kInt64)}),
       paddle::lite_api::Place({target_type, PRECISION(kFloat)}),
 #ifdef PADDLE_WITH_ARM
       paddle::lite_api::Place({TARGET(kARM), precision_type}),
@@ -306,6 +316,33 @@ void LiteSubgraphPass::SetUpEngine(
 #endif
       paddle::lite_api::Place({TARGET(kHost), PRECISION(kFloat)}),
   };
+
+  // opencl has no int64, and has bugs with image io.
+  if (use_opencl) {
+    config.valid_places = {
+        paddle::lite_api::Place{
+            TARGET(kOpenCL), PRECISION(kFP16), DATALAYOUT(kImageDefault)},
+        paddle::lite_api::Place{
+            TARGET(kOpenCL), PRECISION(kFP16), DATALAYOUT(kImageFolder)},
+        paddle::lite_api::Place{
+            TARGET(kOpenCL), PRECISION(kFloat), DATALAYOUT(kNCHW)},
+        paddle::lite_api::Place{
+            TARGET(kOpenCL), PRECISION(kAny), DATALAYOUT(kImageDefault)},
+        paddle::lite_api::Place{
+            TARGET(kOpenCL), PRECISION(kAny), DATALAYOUT(kImageFolder)},
+        paddle::lite_api::Place{
+            TARGET(kOpenCL), PRECISION(kAny), DATALAYOUT(kNCHW)},
+        paddle::lite_api::Place{
+            TARGET(kOpenCL), PRECISION(kInt32), DATALAYOUT(kNCHW)},
+#ifdef PADDLE_WITH_ARM
+        paddle::lite_api::Place{TARGET(kARM), PRECISION(kFloat)},
+#else
+        paddle::lite_api::Place{TARGET(kX86), PRECISION(kFloat)},
+#endif
+        paddle::lite_api::Place{TARGET(kHost), PRECISION(kFloat)},
+    };
+  }
+
   config.cpu_math_library_num_threads = cpu_math_library_num_threads;
   config.xpu_l3_workspace_size = xpu_l3_workspace_size;
   config.device_id = xpu_device_id;
@@ -314,6 +351,7 @@ void LiteSubgraphPass::SetUpEngine(
   config.autotune_file = autotune_file;
   config.precision = precision;
   config.adaptive_seqlen = adaptive_seqlen;
+  config.enable_multi_stream = enable_multi_stream;
   // NNAdapter Related
   config.nnadapter_model_cache_dir = nnadapter_model_cache_dir;
   config.nnadapter_device_names = nnadapter_device_names;
@@ -334,7 +372,8 @@ void LiteSubgraphPass::SetUpEngine(
 }
 
 void LiteSubgraphPass::BuildOperator(
-    Node* merged_node, framework::ProgramDesc* global_program,
+    Node* merged_node,
+    framework::ProgramDesc* global_program,
     std::vector<std::string>* repetitive_params) const {
   framework::ProgramDesc engine_program;
 
@@ -345,8 +384,8 @@ void LiteSubgraphPass::BuildOperator(
       lite::IOVarsFilter(merged_node->outputs);
   const std::string unique_key = lite::UniqueKey(input_names, output_names, id);
 
-  lite::OrganizeProgram(merged_node, global_program, &engine_program,
-                        repetitive_params);
+  lite::OrganizeProgram(
+      merged_node, global_program, &engine_program, repetitive_params);
   SetUpEngine(&engine_program, *repetitive_params, unique_key);
 
   auto* op_desc = merged_node->Op();
@@ -371,7 +410,8 @@ void LiteSubgraphPass::ApplyImpl(framework::ir::Graph* graph) const {
       return false;
     else if (node->Op()->Type() == "feed" || node->Op()->Type() == "fetch")
       return false;
-    else if (std::find(lite_ops_filter.begin(), lite_ops_filter.end(),
+    else if (std::find(lite_ops_filter.begin(),
+                       lite_ops_filter.end(),
                        node->Op()->Type()) != lite_ops_filter.end())
       return false;
     return inference::lite::OpTeller::Global().Tell(node->Op()->Type(),

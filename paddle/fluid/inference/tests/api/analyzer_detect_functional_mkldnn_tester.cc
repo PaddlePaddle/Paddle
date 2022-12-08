@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
+
 #include <fstream>
 #include <iostream>
+
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
@@ -58,7 +60,8 @@ void SetConfig(AnalysisConfig *cfg) {
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
-              const std::string &line, const std::string &shape_line) {
+              const std::string &line,
+              const std::string &shape_line) {
   auto record = ProcessALine(line, shape_line);
 
   PaddleTensor input;
@@ -76,8 +79,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
 int GetNumCachedObjects(void) {
   auto &pool = platform::DeviceContextPool::Instance();
   platform::CPUPlace place;
-  auto onednn_dev_ctx =
-      dynamic_cast<platform::MKLDNNDeviceContext *>(pool.Get(place));
+  auto onednn_dev_ctx = dynamic_cast<phi::OneDNNContext *>(pool.Get(place));
   return onednn_dev_ctx->GetCachedObjectsNumber();
 }
 
@@ -126,8 +128,8 @@ void validate_cache_onednn(int cache_capacity = 1) {
   auto output_names = predictor->GetOutputNames();
   auto output_t = predictor->GetOutputTensor(output_names[0]);
   std::vector<int> output_shape = output_t->shape();
-  size_t out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
-                                   std::multiplies<int>());
+  size_t out_num = std::accumulate(
+      output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
   std::vector<float> out_data;
   out_data.resize(out_num);
   output_t->CopyToCpu(out_data.data());
@@ -140,7 +142,8 @@ void validate_cache_onednn(int cache_capacity = 1) {
   // First and last value should be equal e.g. before using cache (empty) and
   // after releasing executor
   PADDLE_ENFORCE_EQ(
-      cache_filling[0], cache_filling[cache_filling.size() - 1],
+      cache_filling[0],
+      cache_filling[cache_filling.size() - 1],
       platform::errors::Fatal("Cache size before execution and after "
                               "releasing Executor do not match"));
 
@@ -149,7 +152,8 @@ void validate_cache_onednn(int cache_capacity = 1) {
   if (cache_capacity != 0) {
     for (int i = cache_capacity + 1; i < num_samples + 1; ++i) {
       PADDLE_ENFORCE_EQ(
-          cache_filling[cache_capacity], cache_filling[i],
+          cache_filling[cache_capacity],
+          cache_filling[i],
           platform::errors::Fatal("Cache capacity should not increase "
                                   "after full capacity is used"));
     }

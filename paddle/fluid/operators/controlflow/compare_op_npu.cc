@@ -11,7 +11,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/controlflow/compare_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
@@ -23,9 +23,9 @@ template <typename DeviceContext, typename T>
 class EqualNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* y = ctx.Input<framework::LoDTensor>("Y");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<bool>(ctx.GetPlace());
 
     const auto& runner = NpuOpRunner("Equal", {*x, *y}, {*out}, {});
@@ -40,9 +40,9 @@ template <typename DeviceContext, typename T>
 class NotEqualNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* y = ctx.Input<framework::LoDTensor>("Y");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<bool>(ctx.GetPlace());
 
     const auto& runner = NpuOpRunner("NotEqual", {*x, *y}, {*out}, {});
@@ -57,9 +57,9 @@ template <typename DeviceContext, typename T>
 class LessThanNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* y = ctx.Input<framework::LoDTensor>("Y");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<bool>(ctx.GetPlace());
 
     const auto& runner = NpuOpRunner("Less", {*x, *y}, {*out}, {});
@@ -74,9 +74,9 @@ template <typename DeviceContext, typename T>
 class LessEqualNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* y = ctx.Input<framework::LoDTensor>("Y");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<bool>(ctx.GetPlace());
 
     const auto& runner = NpuOpRunner("LessEqual", {*x, *y}, {*out}, {});
@@ -91,9 +91,9 @@ template <typename DeviceContext, typename T>
 class GreaterThanNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* y = ctx.Input<framework::LoDTensor>("Y");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     out->mutable_data<bool>(ctx.GetPlace());
     const auto& runner = NpuOpRunner("Greater", {*x, *y}, {*out}, {});
@@ -108,9 +108,9 @@ template <typename DeviceContext, typename T>
 class GreaterEqualNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* y = ctx.Input<framework::LoDTensor>("Y");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     out->mutable_data<bool>(ctx.GetPlace());
     const auto& runner = NpuOpRunner("GreaterEqual", {*x, *y}, {*out}, {});
@@ -128,7 +128,8 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(
-    equal, ops::EqualNPUKernel<plat::NPUDeviceContext, plat::float16>,
+    equal,
+    ops::EqualNPUKernel<plat::NPUDeviceContext, plat::float16>,
     ops::EqualNPUKernel<plat::NPUDeviceContext, float>,
     ops::EqualNPUKernel<plat::NPUDeviceContext, double>,
     ops::EqualNPUKernel<plat::NPUDeviceContext, int8_t>,
@@ -139,7 +140,8 @@ REGISTER_OP_NPU_KERNEL(
     ops::EqualNPUKernel<plat::NPUDeviceContext, bool>);
 
 REGISTER_OP_NPU_KERNEL(
-    not_equal, ops::NotEqualNPUKernel<plat::NPUDeviceContext, plat::float16>,
+    not_equal,
+    ops::NotEqualNPUKernel<plat::NPUDeviceContext, plat::float16>,
     ops::NotEqualNPUKernel<plat::NPUDeviceContext, float>,
     ops::NotEqualNPUKernel<plat::NPUDeviceContext, double>,
     ops::NotEqualNPUKernel<plat::NPUDeviceContext, int8_t>,
@@ -149,7 +151,8 @@ REGISTER_OP_NPU_KERNEL(
     ops::NotEqualNPUKernel<plat::NPUDeviceContext, int64_t>);
 
 REGISTER_OP_NPU_KERNEL(
-    less_than, ops::LessThanNPUKernel<plat::NPUDeviceContext, plat::float16>,
+    less_than,
+    ops::LessThanNPUKernel<plat::NPUDeviceContext, plat::float16>,
     ops::LessThanNPUKernel<plat::NPUDeviceContext, float>,
     ops::LessThanNPUKernel<plat::NPUDeviceContext, double>,
     ops::LessThanNPUKernel<plat::NPUDeviceContext, int8_t>,
@@ -159,7 +162,8 @@ REGISTER_OP_NPU_KERNEL(
     ops::LessThanNPUKernel<plat::NPUDeviceContext, int64_t>);
 
 REGISTER_OP_NPU_KERNEL(
-    less_equal, ops::LessEqualNPUKernel<plat::NPUDeviceContext, plat::float16>,
+    less_equal,
+    ops::LessEqualNPUKernel<plat::NPUDeviceContext, plat::float16>,
     ops::LessEqualNPUKernel<plat::NPUDeviceContext, float>,
     ops::LessEqualNPUKernel<plat::NPUDeviceContext, double>,
     ops::LessEqualNPUKernel<plat::NPUDeviceContext, int8_t>,

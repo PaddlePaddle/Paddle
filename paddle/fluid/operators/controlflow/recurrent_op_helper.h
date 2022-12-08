@@ -23,7 +23,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/controlflow/op_variant.h"
 #include "paddle/fluid/operators/recurrent_op.h"
-#include "paddle/fluid/platform/variant.h"
+
 #include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
@@ -50,7 +50,8 @@ void PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
 // input all ops in the block. The function will find all recurrent and
 // recurrent_grad ops across blocks.
 void PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
-    const framework::ProgramDesc &program, int block_id,
+    const framework::ProgramDesc &program,
+    int block_id,
     const std::vector<std::unique_ptr<paddle::framework::OperatorBase>>
         &all_ops);
 

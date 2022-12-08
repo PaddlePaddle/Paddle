@@ -17,7 +17,7 @@ import unittest
 import json
 import random
 import numpy as np
-import six
+import tempfile
 import paddle.fluid as fluid
 import paddle
 from paddle.fluid.framework import IrGraph
@@ -43,8 +43,9 @@ def conv_net(img, label):
         pool_size=2,
         pool_stride=2,
         pool_type='max',
-        act="relu")
-    conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
+        act="relu",
+    )
+    conv_pool_1 = paddle.static.nn.batch_norm(conv_pool_1)
     conv_pool_2 = fluid.nets.simple_img_conv_pool(
         input=conv_pool_1,
         filter_size=5,
@@ -52,11 +53,12 @@ def conv_net(img, label):
         pool_size=2,
         pool_stride=2,
         pool_type='avg',
-        act="relu")
+        act="relu",
+    )
     hidden = fluid.layers.fc(input=conv_pool_2, size=100, act='relu')
     prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
-    avg_loss = fluid.layers.mean(loss)
+    avg_loss = paddle.mean(loss)
     return avg_loss
 
 
@@ -68,37 +70,40 @@ def pact(x, name=None):
         name=x.name + '_pact',
         initializer=fluid.initializer.ConstantInitializer(value=init_thres),
         regularizer=fluid.regularizer.L2Decay(0.0001),
-        learning_rate=1)
+        learning_rate=1,
+    )
     u_param = helper.create_parameter(attr=u_param_attr, shape=[1], dtype=dtype)
-    x = fluid.layers.elementwise_sub(
-        x, fluid.layers.relu(fluid.layers.elementwise_sub(x, u_param)))
-    x = fluid.layers.elementwise_add(
-        x, fluid.layers.relu(fluid.layers.elementwise_sub(-u_param, x)))
+    x = paddle.subtract(x, fluid.layers.relu(paddle.subtract(x, u_param)))
+    x = paddle.add(x, fluid.layers.relu(paddle.subtract(-u_param, x)))
 
     return x
 
 
 class TestUserDefinedQuantization(unittest.TestCase):
-    def quantization_scale(self,
-                           use_cuda,
-                           seed,
-                           activation_quant_type,
-                           weight_quant_type='abs_max',
-                           for_ci=False,
-                           act_preprocess_func=None,
-                           weight_preprocess_func=None,
-                           act_quantize_func=None,
-                           weight_quantize_func=None):
+    def quantization_scale(
+        self,
+        use_cuda,
+        seed,
+        activation_quant_type,
+        weight_quant_type='abs_max',
+        for_ci=False,
+        act_preprocess_func=None,
+        weight_preprocess_func=None,
+        act_quantize_func=None,
+        weight_quantize_func=None,
+    ):
         def build_program(main, startup, is_test):
             main.random_seed = seed
             startup.random_seed = seed
             with fluid.unique_name.guard():
                 with fluid.program_guard(main, startup):
                     img = fluid.layers.data(
-                        name='image', shape=[1, 28, 28], dtype='float32')
+                        name='image', shape=[1, 28, 28], dtype='float32'
+                    )
                     img.stop_gradient = False
                     label = fluid.layers.data(
-                        name='label', shape=[1], dtype='int64')
+                        name='label', shape=[1], dtype='int64'
+                    )
                     loss = conv_net(img, label)
                     if not is_test:
                         opt = fluid.optimizer.SGD(learning_rate=0.0001)
@@ -108,18 +113,20 @@ class TestUserDefinedQuantization(unittest.TestCase):
         def get_optimizer():
             return fluid.optimizer.MomentumOptimizer(0.0001, 0.9)
 
-        def load_dict():
-            with open('mapping_table_for_saving_inference_model', 'r') as file:
+        def load_dict(mapping_table_path):
+            with open(mapping_table_path, 'r') as file:
                 data = file.read()
                 data = json.loads(data)
                 return data
 
-        def save_dict(Dict):
-            with open('mapping_table_for_saving_inference_model', 'w') as file:
+        def save_dict(Dict, mapping_table_path):
+            with open(mapping_table_path, 'w') as file:
                 file.write(json.dumps(Dict))
 
         random.seed(0)
         np.random.seed(0)
+        tempdir = tempfile.TemporaryDirectory()
+        mapping_table_path = os.path.join(tempdir.name, 'inference')
 
         main = fluid.Program()
         startup = fluid.Program()
@@ -145,7 +152,8 @@ class TestUserDefinedQuantization(unittest.TestCase):
             act_quantize_func=act_quantize_func,
             weight_quantize_func=weight_quantize_func,
             optimizer_func=get_optimizer,
-            executor=exe)
+            executor=exe,
+        )
         train_transform_pass.apply(main_graph)
         test_transform_pass = QuantizationTransformPass(
             scope=scope,
@@ -157,10 +165,11 @@ class TestUserDefinedQuantization(unittest.TestCase):
             act_quantize_func=act_quantize_func,
             weight_quantize_func=weight_quantize_func,
             optimizer_func=get_optimizer,
-            executor=exe)
+            executor=exe,
+        )
 
         test_transform_pass.apply(test_graph)
-        save_dict(test_graph.out_node_mapping_table)
+        save_dict(test_graph.out_node_mapping_table, mapping_table_path)
 
         add_quant_dequant_pass = AddQuantDequantPass(scope=scope, place=place)
         add_quant_dequant_pass.apply(main_graph)
@@ -176,21 +185,22 @@ class TestUserDefinedQuantization(unittest.TestCase):
         build_strategy.enable_inplace = False
         build_strategy.fuse_all_reduce_ops = False
         binary = fluid.CompiledProgram(main_graph.graph).with_data_parallel(
-            loss_name=loss.name, build_strategy=build_strategy)
+            loss_name=loss.name, build_strategy=build_strategy
+        )
         iters = 5
         batch_size = 8
 
         train_reader = paddle.batch(
-            paddle.reader.shuffle(
-                paddle.dataset.mnist.train(), buf_size=500),
-            batch_size=batch_size)
+            paddle.reader.shuffle(paddle.dataset.mnist.train(), buf_size=500),
+            batch_size=batch_size,
+        )
         feeder = fluid.DataFeeder(feed_list=feeds, place=place)
         with fluid.scope_guard(scope):
             for _ in range(iters):
                 data = next(train_reader())
-                loss_v = exe.run(binary,
-                                 feed=feeder.feed(data),
-                                 fetch_list=[loss])
+                loss_v = exe.run(
+                    binary, feed=feeder.feed(data), fetch_list=[loss]
+                )
 
         out_scale_infer_pass = OutScaleForInferencePass(scope=scope)
         out_scale_infer_pass.apply(test_graph)
@@ -200,12 +210,14 @@ class TestUserDefinedQuantization(unittest.TestCase):
             place=place,
             weight_bits=8,
             activation_bits=8,
-            weight_quantize_type=weight_quant_type)
+            weight_quantize_type=weight_quant_type,
+        )
 
-        mapping_table = load_dict()
+        mapping_table = load_dict(mapping_table_path)
         test_graph.out_node_mapping_table = mapping_table
-        if act_quantize_func == None and weight_quantize_func == None:
+        if act_quantize_func is None and weight_quantize_func is None:
             freeze_pass.apply(test_graph)
+        tempdir.cleanup()
 
     def test_act_preprocess_cuda(self):
         if fluid.core.is_compiled_with_cuda():
@@ -216,7 +228,8 @@ class TestUserDefinedQuantization(unittest.TestCase):
                     activation_quant_type='moving_average_abs_max',
                     weight_quant_type='channel_wise_abs_max',
                     for_ci=True,
-                    act_preprocess_func=pact)
+                    act_preprocess_func=pact,
+                )
 
     def test_act_preprocess_cpu(self):
         with fluid.unique_name.guard():
@@ -226,7 +239,8 @@ class TestUserDefinedQuantization(unittest.TestCase):
                 activation_quant_type='moving_average_abs_max',
                 weight_quant_type='channel_wise_abs_max',
                 for_ci=True,
-                act_preprocess_func=pact)
+                act_preprocess_func=pact,
+            )
 
     def test_weight_preprocess_cuda(self):
         if fluid.core.is_compiled_with_cuda():
@@ -237,7 +251,8 @@ class TestUserDefinedQuantization(unittest.TestCase):
                     activation_quant_type='moving_average_abs_max',
                     weight_quant_type='channel_wise_abs_max',
                     for_ci=True,
-                    weight_preprocess_func=pact)
+                    weight_preprocess_func=pact,
+                )
 
     def test_weight_preprocess_cpu(self):
         with fluid.unique_name.guard():
@@ -247,7 +262,8 @@ class TestUserDefinedQuantization(unittest.TestCase):
                 activation_quant_type='moving_average_abs_max',
                 weight_quant_type='channel_wise_abs_max',
                 for_ci=True,
-                weight_preprocess_func=pact)
+                weight_preprocess_func=pact,
+            )
 
     def test_act_quantize_cuda(self):
         if fluid.core.is_compiled_with_cuda():
@@ -258,7 +274,8 @@ class TestUserDefinedQuantization(unittest.TestCase):
                     activation_quant_type='moving_average_abs_max',
                     weight_quant_type='channel_wise_abs_max',
                     for_ci=True,
-                    act_quantize_func=pact)
+                    act_quantize_func=pact,
+                )
 
     def test_act_quantize_cpu(self):
         with fluid.unique_name.guard():
@@ -268,7 +285,8 @@ class TestUserDefinedQuantization(unittest.TestCase):
                 activation_quant_type='moving_average_abs_max',
                 weight_quant_type='channel_wise_abs_max',
                 for_ci=True,
-                act_quantize_func=pact)
+                act_quantize_func=pact,
+            )
 
     def test_weight_quantize_cuda(self):
         if fluid.core.is_compiled_with_cuda():
@@ -279,7 +297,8 @@ class TestUserDefinedQuantization(unittest.TestCase):
                     activation_quant_type='moving_average_abs_max',
                     weight_quant_type='channel_wise_abs_max',
                     for_ci=True,
-                    weight_quantize_func=pact)
+                    weight_quantize_func=pact,
+                )
 
     def test_weight_quantize_cpu(self):
         with fluid.unique_name.guard():
@@ -289,7 +308,8 @@ class TestUserDefinedQuantization(unittest.TestCase):
                 activation_quant_type='moving_average_abs_max',
                 weight_quant_type='channel_wise_abs_max',
                 for_ci=True,
-                weight_quantize_func=pact)
+                weight_quantize_func=pact,
+            )
 
 
 if __name__ == '__main__':

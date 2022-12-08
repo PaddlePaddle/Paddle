@@ -42,6 +42,8 @@ function ref_whl(){
       ref_version=.post110
   elif [[ ${ref_CUDA_MAJOR} == "11.2" ]];then
       ref_version=.post112
+  elif [[ ${ref_CUDA_MAJOR} == "11.4" ]];then
+      ref_version=.post114
   elif [[ ${ref_CUDA_MAJOR} == "10" ]];then
       ref_version=.post100
   elif [[ ${ref_CUDA_MAJOR} == "10.1" ]];then
@@ -96,6 +98,25 @@ function install_whl(){
 }
 
 
+function set_cuda_env(){
+  if [[ ${WITH_GPU} == "ON" ]]; then
+      sed -i "s#<setcuda>#ENV LD_LIBRARY_PATH=/usr/local/cuda-${ref_CUDA_MAJOR}/targets/x86_64-linux/lib:\$LD_LIBRARY_PATH #g" Dockerfile.tmp
+  else
+      sed -i 's#<setcuda>##g' Dockerfile.tmp
+  fi
+}
+
+
+function install_package_for_cpu(){
+  if [[ ${WITH_GPU} != "ON" ]]; then
+    sed -i 's#<install_cpu_package>#RUN apt-get update \
+      RUN apt install -y make gcc g++ #g' Dockerfile.tmp
+  else
+    sed -i 's#<install_cpu_package>##g' Dockerfile.tmp
+  fi
+}
+
+
 function install_gcc(){
   if [ "${gcc_version}" == "8.2.0" ];then
     sed -i 's#<install_gcc>#WORKDIR /usr/bin \
@@ -118,12 +139,18 @@ function install_gcc(){
 
 
 function make_dockerfile(){
-  sed "s/<baseimg>/${docker_name}/g" tools/dockerfile/Dockerfile.ubuntu18 >Dockerfile.tmp
+  if [[ ${WITH_GPU} == "ON" ]]; then
+      sed "s#<baseimg>#nvidia/cuda:${docker_name}#g" tools/dockerfile/Dockerfile.ubuntu18 >Dockerfile.tmp
+  else
+      sed "s#<baseimg>#${docker_name}#g" tools/dockerfile/Dockerfile.ubuntu18 >Dockerfile.tmp
+  fi
 }
 
 
 function main(){
   make_dockerfile
+  set_cuda_env
+  install_package_for_cpu
   install_gcc
   ref_whl
   install_whl

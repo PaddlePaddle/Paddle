@@ -14,14 +14,15 @@
 
 # Test set_value op in static mode
 
-from __future__ import print_function
-
 import unittest
+from functools import reduce
+
 import numpy as np
 
 import paddle
+import paddle.fluid as fluid
+from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.layer_helper import LayerHelper
-from functools import reduce
 
 
 class TestSetValueBase(unittest.TestCase):
@@ -69,18 +70,27 @@ class TestSetValueApi(TestSetValueBase):
         paddle.enable_static()
         return out
 
-    def test_api(self):
+    def func_test_api(self):
         static_out = self._run_static()
         dynamic_out = self._run_dynamic()
         self._get_answer()
 
-        error_msg = "\nIn {} mode: \nExpected res = \n{}, \n\nbut received : \n{}"
+        error_msg = (
+            "\nIn {} mode: \nExpected res = \n{}, \n\nbut received : \n{}"
+        )
         self.assertTrue(
             (self.data == static_out).all(),
-            msg=error_msg.format("static", self.data, static_out))
+            msg=error_msg.format("static", self.data, static_out),
+        )
         self.assertTrue(
             (self.data == dynamic_out).all(),
-            msg=error_msg.format("dynamic", self.data, dynamic_out))
+            msg=error_msg.format("dynamic", self.data, dynamic_out),
+        )
+
+    def test_api(self):
+        with _test_eager_guard():
+            self.func_test_api()
+        self.func_test_api()
 
 
 # 1. Test different type of item: int, Python slice, Paddle Tensor
@@ -145,8 +155,8 @@ class TestSetValueItemSliceInWhile(TestSetValueApi):
             i = i + 1
             return i, x
 
-        i = paddle.zeros(shape=(1, ), dtype='int32')
-        i, x = paddle.fluid.layers.while_loop(cond, body, [i, x])
+        i = paddle.zeros(shape=(1,), dtype='int32')
+        i, x = paddle.static.nn.while_loop(cond, body, [i, x])
 
     def _get_answer(self):
         self.data[0] = self.value
@@ -461,12 +471,14 @@ class TestSetValueItemBool4(TestSetValueApi):
 class TestSetValueItemBool5(TestSetValueApi):
     def _call_setitem(self, x):
         idx = paddle.assign(
-            np.array([[False, True, False], [True, True, False]]))
+            np.array([[False, True, False], [True, True, False]])
+        )
         x[idx] = self.value
 
     def _get_answer(self):
-        self.data[np.array([[False, True, False], [True, True, False]
-                            ])] = self.value
+        self.data[
+            np.array([[False, True, False], [True, True, False]])
+        ] = self.value
 
 
 class TestSetValueItemBool6(TestSetValueApi):
@@ -521,6 +533,26 @@ create_test_value_int64(TestSetValueItemSlice)
 create_test_value_int64(TestSetValueItemSlice2)
 create_test_value_int64(TestSetValueItemSlice3)
 create_test_value_int64(TestSetValueItemSlice4)
+
+
+def create_test_value_fp16(parent):
+    class TestValueInt(parent):
+        def set_value(self):
+            self.value = 3.7
+
+        def set_dtype(self):
+            self.dtype = "float16"
+
+    cls_name = "{0}_{1}".format(parent.__name__, "Valuefp16")
+    TestValueInt.__name__ = cls_name
+    globals()[cls_name] = TestValueInt
+
+
+create_test_value_fp16(TestSetValueItemInt)
+create_test_value_fp16(TestSetValueItemSlice)
+create_test_value_fp16(TestSetValueItemSlice2)
+create_test_value_fp16(TestSetValueItemSlice3)
+create_test_value_fp16(TestSetValueItemSlice4)
 
 
 def create_test_value_fp32(parent):
@@ -831,7 +863,8 @@ class TestSetValueValueShape2(TestSetValueApi):
 class TestSetValueValueShape3(TestSetValueApi):
     def set_value(self):
         self.value = np.array(
-            [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]])  # shape is (3,4)
+            [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]]
+        )  # shape is (3,4)
 
     def _call_setitem(self, x):
         x[0] = self.value
@@ -843,8 +876,10 @@ class TestSetValueValueShape3(TestSetValueApi):
 class TestSetValueValueShape4(TestSetValueApi):
     def set_value(self):
         self.value = np.array(
-            [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]]).astype(
-                self.dtype)  # shape is (3,4)
+            [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]]
+        ).astype(
+            self.dtype
+        )  # shape is (3,4)
 
     def _call_setitem(self, x):
         x[0] = paddle.assign(self.value)  # x is Paddle.Tensor
@@ -871,8 +906,8 @@ class TestSetValueValueShape5(TestSetValueApi):
 class TestError(TestSetValueBase):
     def _value_type_error(self):
         with self.assertRaisesRegexp(
-                TypeError,
-                "Only support to assign an integer, float, numpy.ndarray or paddle.Tensor"
+            TypeError,
+            "Only support to assign an integer, float, numpy.ndarray or paddle.Tensor",
         ):
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
             value = [1]
@@ -880,8 +915,8 @@ class TestError(TestSetValueBase):
 
     def _dtype_error(self):
         with self.assertRaisesRegexp(
-                TypeError,
-                "When assign a numpy.ndarray, integer or float to a paddle.Tensor, "
+            TypeError,
+            "When assign a numpy.ndarray, integer or float to a paddle.Tensor, ",
         ):
             y = paddle.ones(shape=self.shape, dtype="float16")
             y[0] = 1
@@ -893,7 +928,8 @@ class TestError(TestSetValueBase):
 
     def _ellipsis_error(self):
         with self.assertRaisesRegexp(
-                IndexError, "An index can only have a single ellipsis"):
+            IndexError, "An index can only have a single ellipsis"
+        ):
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
             x[..., ...] = self.value
         with self.assertRaisesRegexp(ValueError, "the start or end is None"):
@@ -930,7 +966,6 @@ class TestError(TestSetValueBase):
         paddle.enable_static()
         with paddle.static.program_guard(self.program):
             self._value_type_error()
-            self._dtype_error()
             self._step_error()
             self._bool_list_error()
             self._bool_tensor_error()
@@ -942,7 +977,7 @@ class TestError(TestSetValueBase):
 
 class Model(paddle.nn.Layer):
     def __init__(self):
-        super(Model, self).__init__()
+        super().__init__()
         self.conv = paddle.nn.Conv2D(12, 12, 3)
 
     def forward(self, x, y):
@@ -970,7 +1005,8 @@ class TestBackward(unittest.TestCase):
             y = paddle.static.data(name="y", shape=[4, 4], dtype='float32')
 
             label = paddle.static.data(
-                name="label", shape=[4, 1], dtype='int64')
+                name="label", shape=[4, 1], dtype='int64'
+            )
 
             z = paddle.add(x, y)
             var = y[0, :]
@@ -979,7 +1015,8 @@ class TestBackward(unittest.TestCase):
             prediction = paddle.static.nn.fc(x=z, size=2, activation='softmax')
 
             cost = paddle.nn.functional.cross_entropy(
-                input=prediction, label=label)
+                input=prediction, label=label
+            )
             loss = paddle.mean(cost)
             sgd = paddle.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
@@ -989,15 +1026,14 @@ class TestBackward(unittest.TestCase):
 
         var_grad, z_grad = exe.run(
             main_program,
-            feed={"x": x_np,
-                  "y": y_np,
-                  "label": label_np},
-            fetch_list=[var.name + "@GRAD", z.name + "@GRAD"])
+            feed={"x": x_np, "y": y_np, "label": label_np},
+            fetch_list=[var.name + "@GRAD", z.name + "@GRAD"],
+        )
 
         self.assertTrue((var_grad == z_grad[0, :]).all())
-
-    def test_dynamic(self):
         paddle.disable_static()
+
+    def func_test_dynamic(self):
         model = Model()
         x = paddle.ones([1, 12, 3, 3]).astype("float32")
         y = paddle.ones([1, 12, 3, 3]).astype("float32")
@@ -1005,12 +1041,18 @@ class TestBackward(unittest.TestCase):
         loss.backward()
 
         self.assertTrue(var.grad.shape == x.grad[0, :, 0, 0].shape)
-        # 
         self.assertTrue((0 == x.grad[0, :, 0, 0]).all())
+
+    def test_dynamic(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        with _test_eager_guard():
+            self.func_test_dynamic()
+        self.func_test_dynamic()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 
 class TestGradientTruncated(unittest.TestCase):
-    def test_consistent_with_competitor(self):
+    def func_test_consistent_with_competitor(self):
         paddle.disable_static()
 
         def set_value(t, value):
@@ -1020,8 +1062,9 @@ class TestGradientTruncated(unittest.TestCase):
             return y.sum()
 
         # case 1
-        array = np.arange(
-            1, 1 + 2 * 3 * 4, dtype="float32").reshape([1, 2, 1, 3, 1, 4])
+        array = np.arange(1, 1 + 2 * 3 * 4, dtype="float32").reshape(
+            [1, 2, 1, 3, 1, 4]
+        )
         value = np.arange(100, 104, dtype="float32").reshape(1, 4)
 
         inps = paddle.to_tensor(array, stop_gradient=False)
@@ -1030,19 +1073,41 @@ class TestGradientTruncated(unittest.TestCase):
         loss = set_value(inps, value)
         loss.backward()
 
-        value_grad = np.array([[600., 606., 612., 618.]])
+        value_grad = np.array([[600.0, 606.0, 612.0, 618.0]])
         input_grad = np.array(
-            [[[[[[4., 32., 108., 256.]], [[500., 864., 1372., 2048.]],
-                [[2916., 4000., 5324., 6912.]]]],
-              [[[[0., 0., 0., 0.]], [[0., 0., 0., 0.]], [[0., 0., 0., 0.]]]]]])
-        self.assertTrue(
-            np.array_equal(inps.grad.numpy(), input_grad),
-            msg="The gradient of value should be \n{},\n but reveived {}".
-            format(input_grad, inps.grad.numpy()))
-        self.assertTrue(
-            np.array_equal(value.grad.numpy(), value_grad),
-            msg="The gradient of input should be \n{},\n but reveived {}".
-            format(value_grad, value.grad.numpy()))
+            [
+                [
+                    [
+                        [
+                            [[4.0, 32.0, 108.0, 256.0]],
+                            [[500.0, 864.0, 1372.0, 2048.0]],
+                            [[2916.0, 4000.0, 5324.0, 6912.0]],
+                        ]
+                    ],
+                    [
+                        [
+                            [[0.0, 0.0, 0.0, 0.0]],
+                            [[0.0, 0.0, 0.0, 0.0]],
+                            [[0.0, 0.0, 0.0, 0.0]],
+                        ]
+                    ],
+                ]
+            ]
+        )
+        np.testing.assert_array_equal(
+            inps.grad.numpy(),
+            input_grad,
+            err_msg='The gradient of value should be \n{},\n but reveived {}'.format(
+                input_grad, inps.grad.numpy()
+            ),
+        )
+        np.testing.assert_array_equal(
+            value.grad.numpy(),
+            value_grad,
+            err_msg='The gradient of input should be \n{},\n but reveived {}'.format(
+                value_grad, value.grad.numpy()
+            ),
+        )
 
         # case 2
         array = np.arange(1, 2 * 3 * 4 + 1, dtype="float32").reshape([4, 2, 3])
@@ -1054,20 +1119,29 @@ class TestGradientTruncated(unittest.TestCase):
         loss = set_value(inps2, value2)
         loss.backward()
 
-        value_grad2 = np.array([600.])
+        value_grad2 = np.array([600.0])
         input_grad2 = np.array(
-            [[[4., 32., 108.], [0., 0., 0.]], [[1372., 2048., 2916.],
-                                               [4000., 5324., 6912.]],
-             [[8788., 10976., 13500.], [16384., 19652., 23328.]],
-             [[27436., 32000., 37044.], [42592., 48668., 55296.]]])
-        self.assertTrue(
-            np.array_equal(inps2.grad.numpy(), input_grad2),
-            msg="The gradient of value should be \n{},\n but reveived {}".
-            format(input_grad, inps2.grad.numpy()))
-        self.assertTrue(
-            np.array_equal(value2.grad.numpy(), value_grad2),
-            msg="The gradient of input should be \n{},\n but reveived {}".
-            format(value_grad, value2.grad.numpy()))
+            [
+                [[4.0, 32.0, 108.0], [0.0, 0.0, 0.0]],
+                [[1372.0, 2048.0, 2916.0], [4000.0, 5324.0, 6912.0]],
+                [[8788.0, 10976.0, 13500.0], [16384.0, 19652.0, 23328.0]],
+                [[27436.0, 32000.0, 37044.0], [42592.0, 48668.0, 55296.0]],
+            ]
+        )
+        np.testing.assert_array_equal(
+            inps2.grad.numpy(),
+            input_grad2,
+            err_msg='The gradient of value should be \n{},\n but reveived {}'.format(
+                input_grad, inps2.grad.numpy()
+            ),
+        )
+        np.testing.assert_array_equal(
+            value2.grad.numpy(),
+            value_grad2,
+            err_msg='The gradient of input should be \n{},\n but reveived {}'.format(
+                value_grad, value2.grad.numpy()
+            ),
+        )
 
         # case 3
         def set_value3(t, value):
@@ -1076,8 +1150,9 @@ class TestGradientTruncated(unittest.TestCase):
             y = a * a
             return y.sum()
 
-        array = np.arange(
-            1, 1 + 2 * 3 * 4, dtype="float32").reshape([4, 3, 1, 1, 2, 1])
+        array = np.arange(1, 1 + 2 * 3 * 4, dtype="float32").reshape(
+            [4, 3, 1, 1, 2, 1]
+        )
         value = np.arange(100, 100 + 2, dtype="float32").reshape(1, 2, 1)
 
         inps = paddle.to_tensor(array, stop_gradient=False)
@@ -1086,33 +1161,52 @@ class TestGradientTruncated(unittest.TestCase):
         loss = set_value3(inps, value)
         loss.backward()
 
-        value_grad = np.array([[[600.], [606.]]])
+        value_grad = np.array([[[600.0], [606.0]]])
         input_grad = np.array(
-            [[[[[[0.], [0.]]]], [[[[0.], [0.]]]], [[[[0.], [0.]]]]],
-             [[[[[1372.], [2048.]]]], [[[[2916.], [4000.]]]],
-              [[[[5324.], [6912.]]]]], [[[[[8788.], [10976.]]]], [[[[13500.],
-                                                                    [16384.]]]],
-                                        [[[[19652.], [23328.]]]]],
-             [[[[[27436.], [32000.]]]], [[[[37044.], [42592.]]]],
-              [[[[48668.], [55296.]]]]]])
-        self.assertTrue(
-            np.array_equal(inps.grad.numpy(), input_grad),
-            msg="The gradient of value should be \n{},\n but reveived {}".
-            format(input_grad, inps.grad.numpy()))
-        self.assertTrue(
-            np.array_equal(value.grad.numpy(), value_grad),
-            msg="The gradient of input should be \n{},\n but reveived {}".
-            format(value_grad, value.grad.numpy()))
+            [
+                [[[[[0.0], [0.0]]]], [[[[0.0], [0.0]]]], [[[[0.0], [0.0]]]]],
+                [
+                    [[[[1372.0], [2048.0]]]],
+                    [[[[2916.0], [4000.0]]]],
+                    [[[[5324.0], [6912.0]]]],
+                ],
+                [
+                    [[[[8788.0], [10976.0]]]],
+                    [[[[13500.0], [16384.0]]]],
+                    [[[[19652.0], [23328.0]]]],
+                ],
+                [
+                    [[[[27436.0], [32000.0]]]],
+                    [[[[37044.0], [42592.0]]]],
+                    [[[[48668.0], [55296.0]]]],
+                ],
+            ]
+        )
+        np.testing.assert_array_equal(
+            inps.grad.numpy(),
+            input_grad,
+            err_msg='The gradient of value should be \n{},\n but reveived {}'.format(
+                input_grad, inps.grad.numpy()
+            ),
+        )
+        np.testing.assert_array_equal(
+            value.grad.numpy(),
+            value_grad,
+            err_msg='The gradient of input should be \n{},\n but reveived {}'.format(
+                value_grad, value.grad.numpy()
+            ),
+        )
 
-        #case 4: step >0
+        # case 4: step >0
         def set_value4(t, value):
             a = t * t
             a[0, :, 0, ::3] = value
             y = a * a
             return y.sum()
 
-        array = np.arange(
-            1, 1 + 2 * 3 * 4, dtype="float32").reshape([2, 3, 1, 4, 1])
+        array = np.arange(1, 1 + 2 * 3 * 4, dtype="float32").reshape(
+            [2, 3, 1, 4, 1]
+        )
         value = np.arange(100, 100 + 2, dtype="float32").reshape(1, 2, 1)
 
         inps = paddle.to_tensor(array, stop_gradient=False)
@@ -1121,21 +1215,35 @@ class TestGradientTruncated(unittest.TestCase):
         loss = set_value4(inps, value)
         loss.backward()
 
-        value_grad = np.array([[[600.], [606.]]])
-        input_grad = np.array([[[[[0.], [32.], [108.],
-                                  [0.]]], [[[0.], [864.], [1372.], [0.]]],
-                                [[[0.], [4000.], [5324.], [0.]]]],
-                               [[[[8788.], [10976.], [13500.], [16384.]]],
-                                [[[19652.], [23328.], [27436.], [32000.]]],
-                                [[[37044.], [42592.], [48668.], [55296.]]]]])
-        self.assertTrue(
-            np.array_equal(inps.grad.numpy(), input_grad),
-            msg="The gradient of value should be \n{},\n but reveived {}".
-            format(input_grad, inps.grad.numpy()))
-        self.assertTrue(
-            np.array_equal(value.grad.numpy(), value_grad),
-            msg="The gradient of input should be \n{},\n but reveived {}".
-            format(value_grad, value.grad.numpy()))
+        value_grad = np.array([[[600.0], [606.0]]])
+        input_grad = np.array(
+            [
+                [
+                    [[[0.0], [32.0], [108.0], [0.0]]],
+                    [[[0.0], [864.0], [1372.0], [0.0]]],
+                    [[[0.0], [4000.0], [5324.0], [0.0]]],
+                ],
+                [
+                    [[[8788.0], [10976.0], [13500.0], [16384.0]]],
+                    [[[19652.0], [23328.0], [27436.0], [32000.0]]],
+                    [[[37044.0], [42592.0], [48668.0], [55296.0]]],
+                ],
+            ]
+        )
+        np.testing.assert_array_equal(
+            inps.grad.numpy(),
+            input_grad,
+            err_msg='The gradient of value should be \n{},\n but reveived {}'.format(
+                input_grad, inps.grad.numpy()
+            ),
+        )
+        np.testing.assert_array_equal(
+            value.grad.numpy(),
+            value_grad,
+            err_msg='The gradient of input should be \n{},\n but reveived {}'.format(
+                value_grad, value.grad.numpy()
+            ),
+        )
 
         # case 5:a[0].shape==value.shape
         def set_value5(t, value):
@@ -1153,22 +1261,41 @@ class TestGradientTruncated(unittest.TestCase):
         loss = set_value5(inps, value)
         loss.backward()
 
-        value_grad = np.array([[200., 202., 204., 206.],
-                               [208., 210., 212., 214.],
-                               [216., 218., 220., 222.]])
-        input_grad = np.array([[[0., 0., 0., 0.], [0., 0., 0., 0.],
-                                [0., 0., 0., 0.]],
-                               [[8788., 10976., 13500., 16384.],
-                                [19652., 23328., 27436., 32000.],
-                                [37044., 42592., 48668., 55296.]]])
-        self.assertTrue(
-            np.array_equal(inps.grad.numpy(), input_grad),
-            msg="The gradient of value should be \n{},\n but reveived {}".
-            format(input_grad, inps.grad.numpy()))
-        self.assertTrue(
-            np.array_equal(value.grad.numpy(), value_grad),
-            msg="The gradient of input should be \n{},\n but reveived {}".
-            format(value_grad, value.grad.numpy()))
+        value_grad = np.array(
+            [
+                [200.0, 202.0, 204.0, 206.0],
+                [208.0, 210.0, 212.0, 214.0],
+                [216.0, 218.0, 220.0, 222.0],
+            ]
+        )
+        input_grad = np.array(
+            [
+                [
+                    [0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0],
+                ],
+                [
+                    [8788.0, 10976.0, 13500.0, 16384.0],
+                    [19652.0, 23328.0, 27436.0, 32000.0],
+                    [37044.0, 42592.0, 48668.0, 55296.0],
+                ],
+            ]
+        )
+        np.testing.assert_array_equal(
+            inps.grad.numpy(),
+            input_grad,
+            err_msg='The gradient of value should be \n{},\n but reveived {}'.format(
+                input_grad, inps.grad.numpy()
+            ),
+        )
+        np.testing.assert_array_equal(
+            value.grad.numpy(),
+            value_grad,
+            err_msg='The gradient of input should be \n{},\n but reveived {}'.format(
+                value_grad, value.grad.numpy()
+            ),
+        )
 
         # case 6: pass stop_gradient from value to x
         x = paddle.zeros([8, 8], dtype='float32')
@@ -1179,33 +1306,47 @@ class TestGradientTruncated(unittest.TestCase):
 
         x[0, :] = value
 
-        self.assertTrue(~x.stop_gradient)
-        self.assertTrue(~x.is_leaf)
+        self.assertTrue(not x.stop_gradient)
+        self.assertTrue(not x.is_leaf)
+
+    def test_consistent_with_competitor(self):
+        with _test_eager_guard():
+            self.func_test_consistent_with_competitor()
+        self.func_test_consistent_with_competitor()
 
     def test_static_graph(self):
         paddle.enable_static()
 
-        to_string = lambda x, i, : x + '_' + str(i)
+        to_string = lambda x, i: x + '_' + str(i)
         numel = lambda input_shape: reduce(lambda x, y: x * y, input_shape)
 
         def op1(x):
             value = paddle.fluid.layers.fill_constant([1], "float32", 1)
-            # test stop_gradient 
+            # test stop_gradient
             value.stop_gradient = True
             x.stop_gradient = False
             start = paddle.fluid.layers.fill_constant(
-                [1], "int32", 5, force_cpu=True)
+                [1], "int32", 5, force_cpu=True
+            )
             end = paddle.fluid.layers.fill_constant(
-                [1], "int32", 0, force_cpu=True)
+                [1], "int32", 0, force_cpu=True
+            )
             step = paddle.fluid.layers.fill_constant(
-                [1], "int32", -2, force_cpu=True)
+                [1], "int32", -2, force_cpu=True
+            )
 
             inputs = {
                 'Input': x,
                 'ValueTensor': value,
-                'StartsTensorList': [start, ],
-                'EndsTensorList': [end, ],
-                'StepsTensorList': [step, ]
+                'StartsTensorList': [
+                    start,
+                ],
+                'EndsTensorList': [
+                    end,
+                ],
+                'StepsTensorList': [
+                    step,
+                ],
             }
 
             helper = LayerHelper("set_value")
@@ -1215,13 +1356,14 @@ class TestGradientTruncated(unittest.TestCase):
                 type="set_value",
                 inputs=inputs,
                 outputs={'Out': y},
-                attrs={'axes': [0]})
+                attrs={'axes': [0]},
+            )
 
             return y, value
 
         def op2(x):
             value = paddle.fluid.layers.fill_constant([1, 3, 2], "float32", 1)
-            # test stop_gradient 
+            # test stop_gradient
             value.stop_gradient = False
             x.stop_gradient = False
             attrs = {
@@ -1231,7 +1373,7 @@ class TestGradientTruncated(unittest.TestCase):
                 'steps': [-4],
                 'decrease_axes': [],
                 'none_axes': [],
-                'dtype': paddle.float32
+                'dtype': paddle.float32,
             }
             inputs = {'Input': x, 'ValueTensor': value}
 
@@ -1239,10 +1381,8 @@ class TestGradientTruncated(unittest.TestCase):
             y = helper.create_variable_for_type_inference(dtype=x.dtype)
 
             helper.append_op(
-                type="set_value",
-                inputs=inputs,
-                outputs={'Out': y},
-                attrs=attrs)
+                type="set_value", inputs=inputs, outputs={'Out': y}, attrs=attrs
+            )
 
             return y, value
 
@@ -1251,18 +1391,27 @@ class TestGradientTruncated(unittest.TestCase):
             x.stop_gradient = True
             value.stop_gradient = False
             start = paddle.fluid.layers.fill_constant(
-                [1], "int32", 0, force_cpu=True)
+                [1], "int32", 0, force_cpu=True
+            )
             end = paddle.fluid.layers.fill_constant(
-                [1], "int32", 5, force_cpu=True)
+                [1], "int32", 5, force_cpu=True
+            )
             step = paddle.fluid.layers.fill_constant(
-                [1], "int32", 3, force_cpu=True)
+                [1], "int32", 3, force_cpu=True
+            )
 
             inputs = {
                 'Input': x,
                 'ValueTensor': value,
-                'StartsTensorList': [start, ],
-                'EndsTensorList': [end, ],
-                'StepsTensorList': [step, ]
+                'StartsTensorList': [
+                    start,
+                ],
+                'EndsTensorList': [
+                    end,
+                ],
+                'StepsTensorList': [
+                    step,
+                ],
             }
 
             helper = LayerHelper("set_value")
@@ -1272,27 +1421,30 @@ class TestGradientTruncated(unittest.TestCase):
                 type="set_value",
                 inputs=inputs,
                 outputs={'Out': y},
-                attrs={'axes': [0]})
+                attrs={'axes': [0]},
+            )
 
             return y, value
 
         def set_value(array, i, op):
             name_x = to_string('x', i)
             x = paddle.static.data(
-                name=name_x, shape=array.shape, dtype='float32')
+                name=name_x, shape=array.shape, dtype='float32'
+            )
 
-            # set_value_op in __get/setitem__ is an inplace operation. 
-            # When `input.stop_gradient = True` and `value.stop_gradient = False`, 
+            # set_value_op in __get/setitem__ is an inplace operation.
+            # When `input.stop_gradient = True` and `value.stop_gradient = False`,
             # set_value_grad_op will not be run during backward.
             y, value = op(x)
-
             y2 = y + 1
-            loss = paddle.fluid.layers.reduce_sum(y2)
+            loss = paddle.paddle.sum(y2)
             sgd = paddle.optimizer.Adam()
             sgd.minimize(loss)
-            place = paddle.fluid.CPUPlace(
-            ) if not paddle.fluid.core.is_compiled_with_cuda(
-            ) else paddle.fluid.CUDAPlace(0)
+            place = (
+                paddle.fluid.CPUPlace()
+                if not paddle.fluid.core.is_compiled_with_cuda()
+                else paddle.fluid.CUDAPlace(0)
+            )
 
             prog = paddle.static.default_main_program()
             exe = paddle.static.Executor(place)
@@ -1307,8 +1459,9 @@ class TestGradientTruncated(unittest.TestCase):
 
         input_shape = [7, 6, 5, 4, 3, 2]
 
-        array = np.arange(
-            0, numel(input_shape), dtype="float32").reshape(input_shape)
+        array = np.arange(0, numel(input_shape), dtype="float32").reshape(
+            input_shape
+        )
 
         for i in range(len(input_shape)):
             program = paddle.static.Program()
@@ -1328,6 +1481,25 @@ class TestGradientTruncated(unittest.TestCase):
                 self.assertTrue((numel(out1[0][0:5:3].shape) == out3[0]).all())
 
             array = array[0]
+        paddle.disable_static()
+
+
+class TestSetValueInplace(unittest.TestCase):
+    def test_inplace(self):
+        paddle.disable_static()
+        with paddle.fluid.dygraph.guard():
+            paddle.seed(100)
+            a = paddle.rand(shape=[1, 4])
+            a.stop_gradient = False
+            b = a[:]
+            c = b
+            b[paddle.to_tensor(0)] = 1.0
+
+            self.assertTrue(id(b) == id(c))
+            np.testing.assert_array_equal(b.numpy(), c.numpy())
+            self.assertEqual(b.inplace_version, 1)
+
+        paddle.enable_static()
 
 
 class TestSetValueInplaceLeafVar(unittest.TestCase):
@@ -1361,8 +1533,8 @@ class TestSetValueInplaceLeafVar(unittest.TestCase):
             a_grad_2 = a.grad.numpy()
             b_grad_2 = b.grad.numpy()
 
-        self.assertTrue(np.array_equal(a_grad_1, a_grad_2))
-        self.assertTrue(np.array_equal(b_grad_1, b_grad_2))
+        np.testing.assert_array_equal(a_grad_1, a_grad_2)
+        np.testing.assert_array_equal(b_grad_1, b_grad_2)
         paddle.enable_static()
 
 

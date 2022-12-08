@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 from test_activation_op import ref_leaky_relu
@@ -63,8 +62,11 @@ class TestLeadyRelu(OpTest):
 
     def test_check_grad(self):
         if self.dtype == np.float16:
-            return
-        self.check_grad_with_place(self.place, ['X'], 'Out')
+            self.check_grad_with_place(
+                self.place, ['X'], 'Out', max_relative_error=0.006
+            )
+        else:
+            self.check_grad_with_place(self.place, ['X'], 'Out')
 
 
 class TestLeadyReluFP16(TestLeadyRelu):
@@ -96,7 +98,8 @@ class TestLeakyReluNet(unittest.TestCase):
         with paddle.static.program_guard(main_prog, startup_prog):
             x = paddle.static.data(name="x", shape=[32, 32], dtype='float32')
             label = paddle.static.data(
-                name="label", shape=[32, 1], dtype='int64')
+                name="label", shape=[32, 1], dtype='int64'
+            )
 
             y = paddle.nn.functional.leaky_relu(x)
 
@@ -104,7 +107,7 @@ class TestLeakyReluNet(unittest.TestCase):
             prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
 
             cost = fluid.layers.cross_entropy(input=prediction, label=label)
-            loss = fluid.layers.reduce_mean(cost)
+            loss = paddle.mean(cost)
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
 
@@ -119,13 +122,17 @@ class TestLeakyReluNet(unittest.TestCase):
         print("Start run on {}".format(place))
         for epoch in range(100):
 
-            pred_res, loss_res = exe.run(main_prog,
-                                         feed={"x": x_np,
-                                               "label": label_np},
-                                         fetch_list=[prediction, loss])
+            pred_res, loss_res = exe.run(
+                main_prog,
+                feed={"x": x_np, "label": label_np},
+                fetch_list=[prediction, loss],
+            )
             if epoch % 10 == 0:
-                print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
-                    epoch, pred_res[0], loss_res))
+                print(
+                    "Epoch {} | Prediction[0]: {}, Loss: {}".format(
+                        epoch, pred_res[0], loss_res
+                    )
+                )
 
         return pred_res, loss_res
 
@@ -133,8 +140,8 @@ class TestLeakyReluNet(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         npu_pred, npu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(npu_pred, cpu_pred))
-        self.assertTrue(np.allclose(npu_loss, cpu_loss))
+        np.testing.assert_allclose(npu_pred, cpu_pred, rtol=1e-6)
+        np.testing.assert_allclose(npu_loss, cpu_loss, rtol=1e-6)
 
 
 if __name__ == '__main__':

@@ -12,17 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
+
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    OpTestTool,
+    convert_float_to_uint16,
+)
 
 
-@OpTestTool.skip_if(core.is_compiled_with_cuda(),
-                    "CUDA has to be skipped because it forces dygraph")
+@OpTestTool.skip_if(
+    core.is_compiled_with_cuda(),
+    "CUDA has to be skipped because it forces dygraph",
+)
 class TestSqueeze2OneDNNOp(OpTest):
     def set_op_type(self):
         self.op_type = "squeeze2"
@@ -41,7 +47,7 @@ class TestSqueeze2OneDNNOp(OpTest):
     def set_outputs(self):
         self.outputs = {
             "Out": self.x.reshape(self.new_shape),
-            "XShape": np.random.random(self.ori_shape).astype("float32")
+            "XShape": np.random.random(self.ori_shape).astype("float32"),
         }
 
     def setUp(self):
@@ -127,10 +133,12 @@ def create_squeeze_bf16_test_classes(parent):
         def test_check_grad(self):
             self.calculate_grads()
             self.check_grad_with_place(
-                core.CPUPlace(), ["X"],
+                core.CPUPlace(),
+                ["X"],
                 "Out",
                 user_defined_grads=[self.dx],
-                user_defined_grad_outputs=[self.dout])
+                user_defined_grad_outputs=[self.dout],
+            )
 
     cls_name = "{0}_{1}".format(parent.__name__, "Squeeze2_BF16")
     TestSqueeze2BF16OneDNNOp.__name__ = cls_name

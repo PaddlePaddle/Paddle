@@ -18,7 +18,9 @@
 #include "paddle/infrt/paddle/cpp/desc_api.h"
 #include "paddle/infrt/paddle/framework.pb.h"
 
-namespace infrt::paddle::pb {
+namespace infrt {
+namespace paddle {
+namespace pb {
 
 namespace framework_proto = ::paddle::framework::proto;
 
@@ -74,4 +76,6 @@ class BlockDesc : public cpp::BlockDescAPI {
   framework_proto::BlockDesc* desc_;  // not_own
 };
 
-}  // namespace infrt::paddle::pb
+}  // namespace pb
+}  // namespace paddle
+}  // namespace infrt

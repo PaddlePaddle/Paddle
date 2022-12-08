@@ -21,8 +21,6 @@
 namespace paddle {
 namespace framework {
 
-class Tensor;
-
 class DLPackTensor {
  public:
   using LaneType = decltype(::DLTensor::dtype.lanes);  // uint16_t
@@ -30,7 +28,7 @@ class DLPackTensor {
       std::remove_reference<decltype(::DLTensor::shape[0])>::type;  // int64_t
 
   // lanes is only used in CPU to enable vectorization
-  explicit DLPackTensor(const Tensor& tensor, LaneType lanes = 1);
+  explicit DLPackTensor(const phi::DenseTensor& tensor, LaneType lanes = 1);
 
   inline operator const ::DLTensor&() const { return t_; }
 

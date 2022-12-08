@@ -3,7 +3,8 @@
 		*paddle*;
 		*Pass*;
 		*profile*;
+		*phi*;
+		*cinn*;
 	local:
 		*;
 };
-

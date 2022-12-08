@@ -13,69 +13,84 @@
 // limitations under the License.
 
 #pragma once
+
+#include <list>
+#include <map>
+#include <set>
+
+#include "paddle/fluid/memory/allocation/allocator.h"
+#include "paddle/fluid/memory/allocation/spin_lock.h"
+#include "paddle/fluid/platform/place.h"
+
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
 #else
 #include <hip/hip_runtime.h>
 #endif
 
-#include <deque>
-#include <map>
-#include <memory>
-#include <mutex>
-#include <set>
-#include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/memory/allocation/spin_lock.h"
-#include "paddle/fluid/platform/place.h"
-
 namespace paddle {
 namespace memory {
 namespace allocation {
 
+class StreamSafeCUDAAllocator;
+
 class StreamSafeCUDAAllocation : public Allocation {
  public:
-  StreamSafeCUDAAllocation(AllocationPtr underlying_allocation,
-                           gpuStream_t owning_stream);
+  StreamSafeCUDAAllocation(DecoratedAllocationPtr underlying_allocation,
+                           gpuStream_t owning_stream,
+                           StreamSafeCUDAAllocator *allocator);
+
   void RecordStream(gpuStream_t stream);
-  std::shared_ptr<std::set<gpuStream_t>> GetRecordedStreams();
+  bool CanBeFreed();
+  gpuStream_t GetOwningStream() const;
 
  private:
-  AllocationPtr underlying_allocation_;
+  void RecordGraphCapturingStreams();
+  void RecordStreamWithNoGraphCapturing(gpuStream_t stream);
+  DecoratedAllocationPtr underlying_allocation_;
+  std::set<gpuStream_t> graph_capturing_stream_set_;
+  std::map<gpuStream_t, gpuEvent_t> outstanding_event_map_;
   gpuStream_t owning_stream_;
-  std::shared_ptr<std::set<gpuStream_t>> recorded_streams_;
-  SpinLock spin_lock_;
+  SpinLock outstanding_event_map_lock_;
+  // To compatiable with CUDA Graph, hold the allocator shared_ptr so that
+  // Allocator will not deconstruct before Allocation
+  std::shared_ptr<Allocator> allocator_;
 };
 
-class StreamSafeCUDAAllocator : public Allocator {
+class StreamSafeCUDAAllocator
+    : public Allocator,
+      public std::enable_shared_from_this<StreamSafeCUDAAllocator> {
  public:
-  StreamSafeCUDAAllocator(
-      const std::shared_ptr<Allocator> &underlying_allocator,
-      const platform::CUDAPlace &place, const gpuStream_t default_stream);
+  StreamSafeCUDAAllocator(std::shared_ptr<Allocator> underlying_allocator,
+                          platform::CUDAPlace place,
+                          gpuStream_t default_stream,
+                          bool in_cuda_graph_capturing = false);
   ~StreamSafeCUDAAllocator();
+
   bool IsAllocThreadSafe() const override;
+  gpuStream_t GetDefaultStream() const;
+  void SetDefaultStream(gpuStream_t stream);
 
  protected:
-  Allocation *AllocateImpl(size_t size) override;
-  void FreeImpl(Allocation *allocation) override;
+  phi::Allocation *AllocateImpl(size_t size) override;
+  void FreeImpl(phi::Allocation *allocation) override;
   uint64_t ReleaseImpl(const platform::Place &place) override;
 
  private:
-  void CreateEventForAllRecordedStream(
-      std::set<gpuStream_t> *recorded_streams,
-      std::deque<gpuEvent_t> *outstanding_events);
-  void FreeStreamSafeCUDAAllocation(Allocation *allocation);
-  void ProcessEventsAndFree();
-  uint64_t ProcessEventsAndFreeWithRelease();
+  void ProcessUnfreedAllocations();
+  uint64_t ProcessUnfreedAllocationsAndRelease();
 
-  static std::map<platform::CUDAPlace, std::vector<StreamSafeCUDAAllocator *>>
-      allocators_map_;
-  static SpinLock allocators_map_lock_;
+  static std::map<platform::Place, std::vector<StreamSafeCUDAAllocator *>>
+      allocator_map_;
+  static SpinLock allocator_map_lock_;
 
   std::shared_ptr<Allocator> underlying_allocator_;
   platform::CUDAPlace place_;
   gpuStream_t default_stream_;
-  std::map<Allocation *, std::deque<gpuEvent_t>> outstanding_events_map_;
-  SpinLock outstanding_events_map_lock_;
+  std::list<StreamSafeCUDAAllocation *> unfreed_allocations_;
+  SpinLock unfreed_allocation_lock_;
+
+  bool in_cuda_graph_capturing_;
 };
 
 }  // namespace allocation

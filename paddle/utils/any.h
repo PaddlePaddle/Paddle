@@ -6,8 +6,7 @@
 
 // See http://www.boost.org/libs/any for Documentation.
 
-#ifndef PADDLE_ANY_INCLUDED
-#define PADDLE_ANY_INCLUDED
+#pragma once
 
 // what:  variant type boost::any
 // who:   contributed by Kevlin Henney,
@@ -168,12 +167,10 @@ template <typename ValueType>
 inline const ValueType *unsafe_any_cast(const any *operand) {
   return unsafe_any_cast<ValueType>(const_cast<any *>(operand));
 }
-}
+}  // namespace paddle
 
 // Copyright Kevlin Henney, 2000, 2001, 2002. All rights reserved.
 //
 // Distributed under the Boost Software License, Version 1.0. (See
 // accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
-
-#endif

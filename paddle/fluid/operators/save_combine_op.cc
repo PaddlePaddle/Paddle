@@ -12,14 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <string>
-
 #include "paddle/fluid/operators/save_combine_op.h"
+
+#include <string>
 
 namespace paddle {
 namespace operators {
-
-using Tensor = framework::Tensor;
 
 class SaveCombineOp : public framework::OperatorWithKernel {
  public:
@@ -36,9 +34,11 @@ class SaveCombineOp : public framework::OperatorWithKernel {
   // TODO(lujun): The override here is just to bypass transform
   //  in operator impl, which is not elegant enough.
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
+      const std::string& var_name,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
-    return expected_kernel_type;
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place());
   }
 };
 
@@ -52,7 +52,7 @@ class SaveCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 SaveCombine operator
 
-This operator will serialize and write a list of input LoDTensor variables
+This operator will serialize and write a list of input phi::DenseTensor variables
 to a file on disk.
 )DOC");
     AddAttr<bool>("overwrite",
@@ -68,7 +68,7 @@ to a file on disk.
     AddAttr<std::string>(
         "file_path",
         "(string)"
-        "The \"file_path\" where the LoDTensor variables will be saved.")
+        "The \"file_path\" where the phi::DenseTensor variables will be saved.")
         .AddCustomChecker(
             [](const std::string& path) { return !path.empty(); });
     AddAttr<bool>("save_to_memory",
@@ -85,8 +85,8 @@ to a file on disk.
 class SaveCombineOpInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const override {
-    ctx->SetOutputType("Y", framework::proto::VarType::RAW,
-                       framework::ALL_ELEMENTS);
+    ctx->SetOutputType(
+        "Y", framework::proto::VarType::RAW, framework::ALL_ELEMENTS);
   }
 };
 
@@ -95,14 +95,15 @@ class SaveCombineOpInferVarType : public framework::VarTypeInference {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(save_combine, ops::SaveCombineOp,
-                  ops::SaveCombineOpProtoMaker, ops::SaveCombineOpInferVarType);
+REGISTER_OPERATOR(save_combine,
+                  ops::SaveCombineOp,
+                  ops::SaveCombineOpProtoMaker,
+                  ops::SaveCombineOpInferVarType);
 
 REGISTER_OP_CPU_KERNEL(
     save_combine,
-    ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::bfloat16>,
-    ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::SaveCombineOpKernel<phi::CPUContext, float>,
+    ops::SaveCombineOpKernel<phi::CPUContext, double>,
+    ops::SaveCombineOpKernel<phi::CPUContext, paddle::platform::bfloat16>,
+    ops::SaveCombineOpKernel<phi::CPUContext, int>,
+    ops::SaveCombineOpKernel<phi::CPUContext, int64_t>);

@@ -24,16 +24,15 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
 template <typename T>
-typename std::enable_if<std::is_same<T, bool>::value>::type CopyVecotorToTensor(
-    const char* value_name, framework::Tensor* out,
+typename std::enable_if<std::is_same<T, bool>::value>::type CopyVectorToTensor(
+    const char* value_name,
+    phi::DenseTensor* out,
     const framework::ExecutionContext& ctx) {
-  // If attribute value dtype is vector<bool>, it will be converted to
-  // vector<int>.
-  // at the same time, we can not use vector<bool> to hold the value, because
-  // the c++ use bit value to replace byte value.
+  // phi::DenseTensore dtype is vector<bool>, it will be converted to
+  //  vector<int>.
+  //  at the same time, we can not use vector<bool> to hold the value, because
+  //  the c++ use bit value to replace byte value.
   auto values = ctx.Attr<std::vector<int>>(value_name);
   framework::TensorFromVector(values, ctx.device_context(), out);
 
@@ -42,15 +41,16 @@ typename std::enable_if<std::is_same<T, bool>::value>::type CopyVecotorToTensor(
   for (unsigned int i = 0; i < values.size(); i++) {
     array_ptr[i] = static_cast<T>(values[i]);
   }
-  framework::TensorFromArray(array_ptr, values.size(), ctx.device_context(),
-                             out);
+  framework::TensorFromArray(
+      array_ptr, values.size(), ctx.device_context(), out);
   delete[] array_ptr;
 }
 
 template <typename T>
-typename std::enable_if<!std::is_same<T, bool>::value>::type
-CopyVecotorToTensor(const char* value_name, framework::Tensor* out,
-                    const framework::ExecutionContext& ctx) {
+typename std::enable_if<!std::is_same<T, bool>::value>::type CopyVectorToTensor(
+    const char* value_name,
+    phi::DenseTensor* out,
+    const framework::ExecutionContext& ctx) {
   auto values = ctx.Attr<std::vector<T>>(value_name);
   framework::TensorFromVector(values, ctx.device_context(), out);
 }
@@ -60,7 +60,7 @@ class AssignValueKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& ctx) const {
     auto shape = ctx.Attr<std::vector<int>>("shape");
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     int dtype = ctx.Attr<int>("dtype");
     const char* value_name = nullptr;
     switch (dtype) {
@@ -83,8 +83,8 @@ class AssignValueKernel : public framework::OpKernel<T> {
             dtype));
         break;
     }
-    CopyVecotorToTensor<T>(value_name, out, ctx);
-    out->Resize(framework::make_ddim(shape));
+    CopyVectorToTensor<T>(value_name, out, ctx);
+    out->Resize(phi::make_ddim(shape));
   }
 };
 

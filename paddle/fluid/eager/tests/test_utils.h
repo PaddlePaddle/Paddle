@@ -18,36 +18,38 @@
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/utils.h"
-
-#include "paddle/pten/api/all.h"
-#include "paddle/pten/core/dense_tensor.h"
-#include "paddle/pten/core/tensor_meta.h"
-
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
+#include "paddle/phi/api/all.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/tensor_meta.h"
 
 namespace eager_test {
 
 template <typename T>
-bool CompareGradTensorWithValue(const egr::EagerTensor& target, T value) {
+bool CompareGradTensorWithValue(const paddle::experimental::Tensor& target,
+                                T value) {
   egr::AutogradMeta* meta = egr::EagerUtils::unsafe_autograd_meta(target);
   auto grad_dense =
-      std::dynamic_pointer_cast<pten::DenseTensor>(meta->Grad().impl());
-  T* ptr = grad_dense->mutable_data<T>();
+      std::dynamic_pointer_cast<phi::DenseTensor>(meta->Grad().impl());
+  T* ptr = grad_dense->data<T>();
 
   std::vector<T> host_data(grad_dense->numel());
   if (paddle::platform::is_gpu_place(grad_dense->place())) {
 #ifdef PADDLE_WITH_CUDA
     paddle::platform::DeviceContextPool& pool =
         paddle::platform::DeviceContextPool::Instance();
-    auto* dev_ctx = dynamic_cast<paddle::platform::CUDADeviceContext*>(
-        pool.Get(paddle::platform::CUDAPlace()));
+    auto* dev_ctx =
+        dynamic_cast<phi::GPUContext*>(pool.Get(paddle::platform::CUDAPlace()));
     auto stream = dev_ctx->stream();
 
-    paddle::memory::Copy(paddle::platform::CPUPlace(), host_data.data(),
-                         paddle::platform::CUDAPlace(), ptr,
-                         sizeof(T) * grad_dense->numel(), stream);
+    paddle::memory::Copy(paddle::platform::CPUPlace(),
+                         host_data.data(),
+                         paddle::platform::CUDAPlace(),
+                         ptr,
+                         sizeof(T) * grad_dense->numel(),
+                         stream);
     ptr = host_data.data();
 #endif
   }
@@ -58,29 +60,35 @@ bool CompareGradTensorWithValue(const egr::EagerTensor& target, T value) {
                        "Numerical Error in Compare Grad Variable With Value of "
                        "%d, we expected got value: %f, but got: %f instead. "
                        "Please check it later.",
-                       i, value, ptr[i]));
+                       i,
+                       value,
+                       ptr[i]));
   }
   return true;
 }
 
 template <typename T>
-bool CompareTensorWithValue(const egr::EagerTensor& target, T value) {
+bool CompareTensorWithValue(const paddle::experimental::Tensor& target,
+                            T value) {
   // TODO(jiabin): Support Selected Rows later
-  auto dense_t = std::dynamic_pointer_cast<pten::DenseTensor>(target.impl());
-  T* ptr = dense_t->mutable_data<T>();
+  auto dense_t = std::dynamic_pointer_cast<phi::DenseTensor>(target.impl());
+  T* ptr = dense_t->data<T>();
 
   std::vector<T> host_data(dense_t->numel());
   if (paddle::platform::is_gpu_place(dense_t->place())) {
 #ifdef PADDLE_WITH_CUDA
     paddle::platform::DeviceContextPool& pool =
         paddle::platform::DeviceContextPool::Instance();
-    auto* dev_ctx = dynamic_cast<paddle::platform::CUDADeviceContext*>(
-        pool.Get(paddle::platform::CUDAPlace()));
+    auto* dev_ctx =
+        dynamic_cast<phi::GPUContext*>(pool.Get(paddle::platform::CUDAPlace()));
     auto stream = dev_ctx->stream();
 
-    paddle::memory::Copy(paddle::platform::CPUPlace(), host_data.data(),
-                         paddle::platform::CUDAPlace(), ptr,
-                         sizeof(T) * dense_t->numel(), stream);
+    paddle::memory::Copy(paddle::platform::CPUPlace(),
+                         host_data.data(),
+                         paddle::platform::CUDAPlace(),
+                         ptr,
+                         sizeof(T) * dense_t->numel(),
+                         stream);
     ptr = host_data.data();
 #endif
   }
@@ -92,74 +100,9 @@ bool CompareTensorWithValue(const egr::EagerTensor& target, T value) {
                        "Numerical Error in Compare Grad Variable With Value of "
                        "%d, we expected got value: %f, but got: %f instead. "
                        "Please check it later.",
-                       i, value, ptr[i]));
-  }
-  return true;
-}
-
-template <typename T>
-bool CompareVariableWithValue(const egr::EagerTensor& target, T value) {
-  // TODO(jiabin): Support Selected Rows later
-  auto lod_tensor = target.Var().Get<paddle::framework::LoDTensor>();
-  T* ptr = lod_tensor.data<T>();
-
-  std::vector<T> host_data(lod_tensor.numel());
-  if (paddle::platform::is_gpu_place(lod_tensor.place())) {
-#ifdef PADDLE_WITH_CUDA
-    paddle::platform::DeviceContextPool& pool =
-        paddle::platform::DeviceContextPool::Instance();
-    auto* dev_ctx = dynamic_cast<paddle::platform::CUDADeviceContext*>(
-        pool.Get(paddle::platform::CUDAPlace()));
-    auto stream = dev_ctx->stream();
-
-    paddle::memory::Copy(paddle::platform::CPUPlace(), host_data.data(),
-                         paddle::platform::CUDAPlace(), ptr,
-                         sizeof(T) * lod_tensor.numel(), stream);
-    ptr = host_data.data();
-#endif
-  }
-  VLOG(6) << "CompareVariableWithValue";
-  for (int i = 0; i < lod_tensor.numel(); i++) {
-    PADDLE_ENFORCE(value == ptr[i],
-                   paddle::platform::errors::PreconditionNotMet(
-                       "Numerical Error in Compare Grad Variable With Value of "
-                       "%d, we expected got value: %f, but got: %f instead. "
-                       "Please check it later.",
-                       i, value, ptr[i]));
-  }
-  return true;
-}
-
-template <typename T>
-bool CompareGradVariableWithValue(const egr::EagerTensor& target, T value) {
-  // TODO(jiabin): Support Selected Rows later
-  egr::AutogradMeta* meta = egr::EagerUtils::unsafe_autograd_meta(target);
-  auto lod_tensor = meta->Grad().Var().Get<paddle::framework::LoDTensor>();
-  T* ptr = lod_tensor.data<T>();
-
-  std::vector<T> host_data(lod_tensor.numel());
-  if (paddle::platform::is_gpu_place(lod_tensor.place())) {
-#ifdef PADDLE_WITH_CUDA
-    paddle::platform::DeviceContextPool& pool =
-        paddle::platform::DeviceContextPool::Instance();
-    auto* dev_ctx = dynamic_cast<paddle::platform::CUDADeviceContext*>(
-        pool.Get(paddle::platform::CUDAPlace()));
-    auto stream = dev_ctx->stream();
-
-    paddle::memory::Copy(paddle::platform::CPUPlace(), host_data.data(),
-                         paddle::platform::CUDAPlace(), ptr,
-                         sizeof(T) * lod_tensor.numel(), stream);
-    ptr = host_data.data();
-#endif
-  }
-  VLOG(6) << "CompareGradVariableWithValue";
-  for (int i = 0; i < lod_tensor.numel(); i++) {
-    PADDLE_ENFORCE(value == ptr[i],
-                   paddle::platform::errors::PreconditionNotMet(
-                       "Numerical Error in Compare Grad Variable With Value of "
-                       "%d, we expected got value: %f, but got: %f instead. "
-                       "Please check it later.",
-                       i, value, ptr[i]));
+                       i,
+                       value,
+                       ptr[i]));
   }
   return true;
 }

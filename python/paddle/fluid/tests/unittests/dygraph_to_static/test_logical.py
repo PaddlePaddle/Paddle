@@ -14,17 +14,16 @@
 """Tests for logical operators of Dynamic-to-Static.
 Only test simple cases here. The complex test samples like nested ifelse
 or nested loop have been covered in file test_ifelse.py and test_loop.py"""
-from __future__ import print_function
 
 import unittest
 
-from paddle.utils import gast
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import ProgramTranslator
-from paddle.fluid.dygraph.dygraph_to_static.logical_transformer import cmpop_node_to_str
+from paddle.jit import ProgramTranslator
+from paddle.jit.dy2static.logical_transformer import cmpop_node_to_str
+from paddle.utils import gast
 
 program_translator = ProgramTranslator()
 
@@ -174,13 +173,17 @@ def test_shape_not_equal(x):
 class TestLogicalBase(unittest.TestCase):
     def setUp(self):
         self.input = np.array([3]).astype('int32')
-        self.place = paddle.CUDAPlace(0) if fluid.is_compiled_with_cuda(
-        ) else paddle.CPUPlace()
+        self.place = (
+            paddle.CUDAPlace(0)
+            if fluid.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
         self._set_test_func()
 
     def _set_test_func(self):
         raise NotImplementedError(
-            "Method 'set_test_func' should be implemented.")
+            "Method 'set_test_func' should be implemented."
+        )
 
     def _run(self, to_static):
         program_translator.enable(to_static)
@@ -202,10 +205,14 @@ class TestLogicalNot(TestLogicalBase):
     def test_transformed_result(self):
         dygraph_res = self._run_dygraph()
         static_res = self._run_static()
-        self.assertTrue(
-            np.allclose(dygraph_res, static_res),
-            msg='dygraph result is {}\nstatic_result is {}'.format(dygraph_res,
-                                                                   static_res))
+        np.testing.assert_allclose(
+            dygraph_res,
+            static_res,
+            rtol=1e-05,
+            err_msg='dygraph result is {}\nstatic_result is {}'.format(
+                dygraph_res, static_res
+            ),
+        )
 
 
 class TestLogicalNot2(TestLogicalBase):
@@ -215,10 +222,14 @@ class TestLogicalNot2(TestLogicalBase):
     def test_transformed_result(self):
         dygraph_res = self._run_dygraph()
         static_res = self._run_static()
-        self.assertTrue(
-            np.allclose(dygraph_res, static_res),
-            msg='dygraph result is {}\nstatic_result is {}'.format(dygraph_res,
-                                                                   static_res))
+        np.testing.assert_allclose(
+            dygraph_res,
+            static_res,
+            rtol=1e-05,
+            err_msg='dygraph result is {}\nstatic_result is {}'.format(
+                dygraph_res, static_res
+            ),
+        )
 
 
 class TestLogicalAnd(TestLogicalNot):

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
+
 from paddle.fluid.tests.unittests.test_fusion_lstm_op import TestFusionLSTMOp
 
 
@@ -77,5 +77,6 @@ class TestFusionLSTMONEDNNOpPeepholesInit(TestFusionLSTMONEDNNOp):
 
 if __name__ == '__main__':
     from paddle import enable_static
+
     enable_static()
     unittest.main()

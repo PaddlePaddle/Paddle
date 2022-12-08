@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
+from test_eager_deletion_padding_rnn import PaddingRNNTestBase, RNNConfig
+
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from test_eager_deletion_padding_rnn import RNNConfig, PaddingRNNTestBase
 
 
 class FusionGroupPaddingRNNTest(PaddingRNNTestBase):

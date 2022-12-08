@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/center_loss_op.h"
+
 #include <memory>
 #include <string>
 
@@ -30,15 +31,19 @@ class CenterLossOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "CenterLoss");
     auto x_dims = ctx->GetInputDim("X");
 
-    OP_INOUT_CHECK(ctx->HasInput("CenterUpdateRate"), "Input",
-                   "CenterUpdateRate", "CenterLoss");
+    OP_INOUT_CHECK(ctx->HasInput("CenterUpdateRate"),
+                   "Input",
+                   "CenterUpdateRate",
+                   "CenterLoss");
     OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "CenterLoss");
     OP_INOUT_CHECK(ctx->HasInput("Centers"), "Input", "Centers", "CenterLoss");
-    OP_INOUT_CHECK(ctx->HasOutput("SampleCenterDiff"), "Output",
-                   "SampleCenterDiff", "CenterLoss");
-    OP_INOUT_CHECK(ctx->HasOutput("Loss"), "Output", "Loss", "CenterLoss");
-    OP_INOUT_CHECK(ctx->HasOutput("CentersOut"), "Output", "CentersOut",
+    OP_INOUT_CHECK(ctx->HasOutput("SampleCenterDiff"),
+                   "Output",
+                   "SampleCenterDiff",
                    "CenterLoss");
+    OP_INOUT_CHECK(ctx->HasOutput("Loss"), "Output", "Loss", "CenterLoss");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("CentersOut"), "Output", "CentersOut", "CenterLoss");
 
     ctx->SetOutputDim("SampleCenterDiff",
                       {x_dims[0], product(x_dims) / x_dims[0]});
@@ -75,10 +80,10 @@ class CenterLossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("need_update", "whether need to update center info.");
     AddComment(R"DOC(
 **CenterLoss operator**
-implemention of the center loss function in the papper<<A Discriminative 
+implemention of the center loss function in the papper<<A Discriminative
 Feature Learning Approach for Deep Face Recognition>>, equations in this  implement
 is:loss = 1/2 * (x-y)^2 ,where x(X) means the deep feature(output of last hidden layer )
-and y(Label) the target label 
+and y(Label) the target label
 )DOC");
   }
 };
@@ -88,12 +93,18 @@ class CenterLossGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("SampleCenterDiff"), "Input",
-                   "SampleCenterDiff", "CenterLossGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Loss")), "Input",
-                   framework::GradVarName("Loss"), "CenterLossGrad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   framework::GradVarName("X"), "CenterLossGrad");
+    OP_INOUT_CHECK(ctx->HasInput("SampleCenterDiff"),
+                   "Input",
+                   "SampleCenterDiff",
+                   "CenterLossGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Loss")),
+                   "Input",
+                   framework::GradVarName("Loss"),
+                   "CenterLossGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output",
+                   framework::GradVarName("X"),
+                   "CenterLossGrad");
 
     auto x_dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");
@@ -135,16 +146,20 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(CenterLossGradNoNeedBufVarsInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPUCtx = paddle::platform::CPUDeviceContext;
+using CPUCtx = phi::CPUContext;
 
-REGISTER_OPERATOR(center_loss, ops::CenterLossOp, ops::CenterLossOpMaker,
+REGISTER_OPERATOR(center_loss,
+                  ops::CenterLossOp,
+                  ops::CenterLossOpMaker,
                   ops::CenterLossOpGradMaker<paddle::framework::OpDesc>,
                   ops::CenterLossOpGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(center_loss_grad, ops::CenterLossGradOp,
+REGISTER_OPERATOR(center_loss_grad,
+                  ops::CenterLossGradOp,
                   ops::CenterLossGradNoNeedBufVarsInferer);
 
-REGISTER_OP_CPU_KERNEL(center_loss, ops::CenterLossKernel<CPUCtx, float>,
+REGISTER_OP_CPU_KERNEL(center_loss,
+                       ops::CenterLossKernel<CPUCtx, float>,
                        ops::CenterLossKernel<CPUCtx, double>);
 
 REGISTER_OP_CPU_KERNEL(center_loss_grad,

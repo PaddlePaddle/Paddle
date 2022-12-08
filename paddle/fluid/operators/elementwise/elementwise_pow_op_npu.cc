@@ -16,13 +16,10 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/operators/elementwise/elementwise_npu.h"
-#include "paddle/fluid/operators/elementwise/elementwise_pow_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
-
-using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
 class ElementwisePowNPUKernel : public framework::OpKernel<T> {
@@ -31,9 +28,9 @@ class ElementwisePowNPUKernel : public framework::OpKernel<T> {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
 
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     auto place = ctx.GetPlace();
     int axis = ctx.Attr<int>("axis");
@@ -46,11 +43,9 @@ class ElementwisePowNPUKernel : public framework::OpKernel<T> {
     axis =
         (axis < 0 ? std::abs(x_dims.size() - y_dims.size()) + axis + 1 : axis);
     if (x_dims.size() >= y_dims.size()) {
-      direct_compute =
-          y_dims == framework::slice_ddim(x_dims, axis, x_dims.size());
+      direct_compute = y_dims == phi::slice_ddim(x_dims, axis, x_dims.size());
     } else {
-      direct_compute =
-          x_dims == framework::slice_ddim(y_dims, axis, y_dims.size());
+      direct_compute = x_dims == phi::slice_ddim(y_dims, axis, y_dims.size());
     }
 
     auto stream = dev_ctx.stream();
@@ -59,9 +54,9 @@ class ElementwisePowNPUKernel : public framework::OpKernel<T> {
       const auto& runner = NpuOpRunner("Pow", {*x, *y}, {*out}, {});
       runner.Run(stream);
     } else {
-      Tensor transformed_x, transformed_y;
-      NpuElementWiseOpBroadcast<T>(dev_ctx, x, y, axis, &transformed_x,
-                                   &transformed_y);
+      phi::DenseTensor transformed_x, transformed_y;
+      NpuElementWiseOpBroadcast<T>(
+          dev_ctx, x, y, axis, &transformed_x, &transformed_y);
       const auto& runner =
           NpuOpRunner("Pow", {transformed_x, transformed_y}, {*out}, {});
       runner.Run(stream);
@@ -75,11 +70,11 @@ class ElementwisePowGradNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
     int axis = ctx.Attr<int>("axis");
     auto place = ctx.GetPlace();
 
@@ -87,43 +82,43 @@ class ElementwisePowGradNPUKernel : public framework::OpKernel<T> {
     auto y_dims = y->dims();
     axis =
         (axis < 0 ? std::abs(x_dims.size() - y_dims.size()) + axis + 1 : axis);
-    Tensor transformed_x, transformed_y;
-    NpuElementWiseOpBroadcast<T>(dev_ctx, x, y, axis, &transformed_x,
-                                 &transformed_y);
+    phi::DenseTensor transformed_x, transformed_y;
+    NpuElementWiseOpBroadcast<T>(
+        dev_ctx, x, y, axis, &transformed_x, &transformed_y);
 
     auto dout_dims = dout->dims();
     auto stream = dev_ctx.stream();
     // Reshape info vector.
     std::vector<int> reduce_axes;
     if (dx) {
-      Tensor zero_tensor(dout->type());
+      phi::DenseTensor zero_tensor(dout->type());
       zero_tensor.mutable_data<T>(dout_dims, place);
       FillNpuTensorWithConstant<T>(&zero_tensor, static_cast<T>(0));
 
       dx->mutable_data<T>(place);
-      Tensor tmp_dx;
+      phi::DenseTensor tmp_dx;
       tmp_dx.mutable_data<T>(dout_dims, place);
 
       // dx = dout * y * pow(x, y - 1);
-      Tensor PowGrad_dx_temp1(dout->type());
+      phi::DenseTensor PowGrad_dx_temp1(dout->type());
       PowGrad_dx_temp1.mutable_data<T>(dout->dims(), place);
       const auto& runner_PowGrad_dx_temp1 =
           NpuOpRunner("Mul", {*dout, transformed_y}, {PowGrad_dx_temp1}, {});
       runner_PowGrad_dx_temp1.Run(stream);
 
-      Tensor one_dx(transformed_y.type());
+      phi::DenseTensor one_dx(transformed_y.type());
       one_dx.mutable_data<T>(transformed_y.dims(), place);
       const auto& runner_one_dx =
           NpuOpRunner("OnesLike", {transformed_y}, {one_dx}, {});
       runner_one_dx.Run(stream);
 
-      Tensor sub_dx(transformed_y.type());
+      phi::DenseTensor sub_dx(transformed_y.type());
       sub_dx.mutable_data<T>(transformed_y.dims(), place);
       const auto& runner_sub_dx =
           NpuOpRunner("Sub", {transformed_y, one_dx}, {sub_dx}, {});
       runner_sub_dx.Run(stream);
 
-      Tensor PowGrad_dx_temp2(transformed_x.type());
+      phi::DenseTensor PowGrad_dx_temp2(transformed_x.type());
       PowGrad_dx_temp2.mutable_data<T>(transformed_x.dims(), place);
       const auto& runner_PowGrad_dx_temp2 =
           NpuOpRunner("Pow", {transformed_x, sub_dx}, {PowGrad_dx_temp2}, {});
@@ -145,7 +140,9 @@ class ElementwisePowGradNPUKernel : public framework::OpKernel<T> {
         }
         if (!reduce_axes.empty()) {
           const auto& runner =
-              NpuOpRunner("ReduceSumD", {tmp_dx}, {*dx},
+              NpuOpRunner("ReduceSumD",
+                          {tmp_dx},
+                          {*dx},
                           {{"axes", reduce_axes}, {"keep_dims", false}});
           runner.Run(stream);
         }
@@ -154,39 +151,39 @@ class ElementwisePowGradNPUKernel : public framework::OpKernel<T> {
       }
     }
     if (dy) {
-      Tensor zero_tensor(dout->type());
+      phi::DenseTensor zero_tensor(dout->type());
       zero_tensor.mutable_data<T>(dout_dims, place);
       FillNpuTensorWithConstant<T>(&zero_tensor, static_cast<T>(0));
 
       dy->mutable_data<T>(place);
-      Tensor tmp_dy;
+      phi::DenseTensor tmp_dy;
       tmp_dy.mutable_data<T>(dout_dims, place);
 
       // dy = dout * log(x) * pow(x, y)
-      Tensor PowGrad_dy_temp1(transformed_x.type());
+      phi::DenseTensor PowGrad_dy_temp1(transformed_x.type());
       PowGrad_dy_temp1.mutable_data<T>(transformed_x.dims(), place);
       const auto& runner_PowGrad_dy_temp1 = NpuOpRunner(
           "Pow", {transformed_x, transformed_y}, {PowGrad_dy_temp1}, {});
       runner_PowGrad_dy_temp1.Run(stream);
 
-      Tensor one_dy(transformed_x.type());
+      phi::DenseTensor one_dy(transformed_x.type());
       one_dy.mutable_data<T>(transformed_x.dims(), place);
       const auto& runner_one_dy =
           NpuOpRunner("OnesLike", {transformed_x}, {one_dy}, {});
       runner_one_dy.Run(stream);
 
-      Tensor sub_dy(transformed_x.type());
+      phi::DenseTensor sub_dy(transformed_x.type());
       sub_dy.mutable_data<T>(transformed_x.dims(), place);
       const auto& runner_sub_dy =
           NpuOpRunner("Sub", {transformed_x, one_dy}, {sub_dy}, {});
       runner_sub_dy.Run(stream);
 
-      Tensor log_dy(transformed_x.type());
+      phi::DenseTensor log_dy(transformed_x.type());
       log_dy.mutable_data<T>(transformed_x.dims(), place);
       const auto& runner_log_dy = NpuOpRunner("Log1p", {sub_dy}, {log_dy}, {});
       runner_log_dy.Run(stream);
 
-      Tensor PowGrad_dy_temp2(transformed_x.type());
+      phi::DenseTensor PowGrad_dy_temp2(transformed_x.type());
       PowGrad_dy_temp2.mutable_data<T>(transformed_x.dims(), place);
       const auto& runner_PowGrad_dy_temp2 = NpuOpRunner(
           "Mul", {log_dy, PowGrad_dy_temp1}, {PowGrad_dy_temp2}, {});
@@ -208,7 +205,9 @@ class ElementwisePowGradNPUKernel : public framework::OpKernel<T> {
         }
         if (!reduce_axes.empty()) {
           const auto& runner =
-              NpuOpRunner("ReduceSumD", {tmp_dy}, {*dy},
+              NpuOpRunner("ReduceSumD",
+                          {tmp_dy},
+                          {*dy},
                           {{"axes", reduce_axes}, {"keep_dims", false}});
           runner.Run(stream);
         }

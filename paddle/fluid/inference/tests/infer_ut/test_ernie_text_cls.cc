@@ -69,16 +69,16 @@ TEST(gpu_tester_ernie_text_cls, analysis_gpu_bz2_buffer) {
   std::string params_file = FLAGS_modeldir + "/inference.pdiparams";
   std::string prog_str = paddle::test::read_file(prog_file);
   std::string params_str = paddle::test::read_file(params_file);
-  config.SetModelBuffer(prog_str.c_str(), prog_str.size(), params_str.c_str(),
-                        params_str.size());
+  config.SetModelBuffer(
+      prog_str.c_str(), prog_str.size(), params_str.c_str(), params_str.size());
   // get groudtruth by disbale ir
   paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);
-  SingleThreadPrediction(pred_pool_no_ir.Retrive(0), &my_input_data_map,
-                         &truth_output_data, 1);
+  SingleThreadPrediction(
+      pred_pool_no_ir.Retrive(0), &my_input_data_map, &truth_output_data, 1);
   // get infer results
   paddle_infer::services::PredictorPool pred_pool(config, 1);
-  SingleThreadPrediction(pred_pool.Retrive(0), &my_input_data_map,
-                         &infer_output_data);
+  SingleThreadPrediction(
+      pred_pool.Retrive(0), &my_input_data_map, &infer_output_data);
   // check outputs
   CompareRecord(&truth_output_data, &infer_output_data);
   std::cout << "finish test" << std::endl;
@@ -106,16 +106,18 @@ TEST(mkldnn_tester_ernie_text_cls, multi_thread4_mkl_fp32_bz2) {
   config.SetCpuMathLibraryNumThreads(10);
   // get groudtruth by disbale ir
   paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);
-  SingleThreadPrediction(pred_pool_no_ir.Retrive(0), &my_input_data_map,
-                         &truth_output_data, 1);
+  SingleThreadPrediction(
+      pred_pool_no_ir.Retrive(0), &my_input_data_map, &truth_output_data, 1);
 
   // get infer results from multi threads
   std::vector<std::thread> threads;
   services::PredictorPool pred_pool(config, thread_num);
   for (int i = 0; i < thread_num; ++i) {
     threads.emplace_back(paddle::test::SingleThreadPrediction,
-                         pred_pool.Retrive(i), &my_input_data_map,
-                         &infer_output_data, 2);
+                         pred_pool.Retrive(i),
+                         &my_input_data_map,
+                         &infer_output_data,
+                         2);
   }
 
   // thread join & check outputs

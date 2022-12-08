@@ -16,17 +16,23 @@ import argparse
 import logging
 import time
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import (
+    fleet,
+)
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
+    StrategyFactory,
+)
 
 from paddle.fluid.log_helper import get_logger
 
 import ctr_dataset_reader
 
 logger = get_logger(
-    "fluid", logging.INFO, fmt='%(asctime)s - %(levelname)s - %(message)s')
+    "fluid", logging.INFO, fmt='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 
 def parse_args():
@@ -37,53 +43,64 @@ def parse_args():
         '--role',
         type=str,
         default='pserver',  # trainer or pserver
-        help='The path for model to store (default: models)')
+        help='The path for model to store (default: models)',
+    )
     parser.add_argument(
         '--endpoints',
         type=str,
         default='127.0.0.1:6000',
-        help='The pserver endpoints, like: 127.0.0.1:6000,127.0.0.1:6001')
+        help='The pserver endpoints, like: 127.0.0.1:6000,127.0.0.1:6001',
+    )
     parser.add_argument(
         '--current_endpoint',
         type=str,
         default='127.0.0.1:6000',
-        help='The path for model to store (default: 127.0.0.1:6000)')
+        help='The path for model to store (default: 127.0.0.1:6000)',
+    )
     parser.add_argument(
         '--trainer_id',
         type=int,
         default=0,
-        help='The path for model to store (default: models)')
+        help='The path for model to store (default: models)',
+    )
     parser.add_argument(
         '--trainers',
         type=int,
         default=1,
-        help='The num of trainers, (default: 1)')
+        help='The num of trainers, (default: 1)',
+    )
 
     return parser.parse_args()
 
 
 def model():
-    dnn_input_dim, lr_input_dim, train_file_path = ctr_dataset_reader.prepare_data(
-    )
+    (
+        dnn_input_dim,
+        lr_input_dim,
+        train_file_path,
+    ) = ctr_dataset_reader.prepare_data()
     """ network definition """
     dnn_data = fluid.layers.data(
         name="dnn_data",
         shape=[-1, 1],
         dtype="int64",
         lod_level=1,
-        append_batch_size=False)
+        append_batch_size=False,
+    )
     lr_data = fluid.layers.data(
         name="lr_data",
         shape=[-1, 1],
         dtype="int64",
         lod_level=1,
-        append_batch_size=False)
+        append_batch_size=False,
+    )
     label = fluid.layers.data(
         name="click",
         shape=[-1, 1],
         dtype="int64",
         lod_level=0,
-        append_batch_size=False)
+        append_batch_size=False,
+    )
 
     datas = [dnn_data, lr_data, label]
 
@@ -95,8 +112,10 @@ def model():
         size=[dnn_input_dim, dnn_layer_dims[0]],
         param_attr=fluid.ParamAttr(
             name="deep_embedding",
-            initializer=fluid.initializer.Constant(value=0.01)),
-        is_sparse=True)
+            initializer=fluid.initializer.Constant(value=0.01),
+        ),
+        is_sparse=True,
+    )
     dnn_pool = fluid.layers.sequence_pool(input=dnn_embedding, pool_type="sum")
     dnn_out = dnn_pool
     for i, dim in enumerate(dnn_layer_dims[1:]):
@@ -105,8 +124,10 @@ def model():
             size=dim,
             act="relu",
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01)),
-            name='dnn-fc-%d' % i)
+                initializer=fluid.initializer.Constant(value=0.01)
+            ),
+            name='dnn-fc-%d' % i,
+        )
         dnn_out = fc
 
     # build lr model
@@ -116,18 +137,21 @@ def model():
         size=[lr_input_dim, 1],
         param_attr=fluid.ParamAttr(
             name="wide_embedding",
-            initializer=fluid.initializer.Constant(value=0.01)),
-        is_sparse=True)
+            initializer=fluid.initializer.Constant(value=0.01),
+        ),
+        is_sparse=True,
+    )
     lr_pool = fluid.layers.sequence_pool(input=lr_embbding, pool_type="sum")
 
     merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
 
     predict = fluid.layers.fc(input=merge_layer, size=2, act='softmax')
-    acc = fluid.layers.accuracy(input=predict, label=label)
-    auc_var, batch_auc_var, auc_states = fluid.layers.auc(input=predict,
-                                                          label=label)
+    acc = paddle.static.accuracy(input=predict, label=label)
+    auc_var, batch_auc_var, auc_states = paddle.static.auc(
+        input=predict, label=label
+    )
     cost = fluid.layers.cross_entropy(input=predict, label=label)
-    avg_cost = fluid.layers.mean(x=cost)
+    avg_cost = paddle.mean(x=cost)
 
     return datas, avg_cost, predict, train_file_path
 
@@ -143,9 +167,11 @@ def train(args):
     role = role_maker.UserDefinedRoleMaker(
         current_id=current_id,
         role=role_maker.Role.WORKER
-        if args.role.upper() == "TRAINER" else role_maker.Role.SERVER,
+        if args.role.upper() == "TRAINER"
+        else role_maker.Role.SERVER,
         worker_num=args.trainers,
-        server_endpoints=endpoints)
+        server_endpoints=endpoints,
+    )
 
     exe = fluid.Executor(fluid.CPUPlace())
     fleet.init(role)
@@ -192,10 +218,12 @@ def train(args):
                 fetch_list=[avg_cost],
                 fetch_info=["cost"],
                 print_period=100,
-                debug=False)
+                debug=False,
+            )
             pass_time = time.time() - pass_start
-            logger.info("epoch {} finished, pass_time {}".format(epoch_id,
-                                                                 pass_time))
+            logger.info(
+                "epoch {} finished, pass_time {}".format(epoch_id, pass_time)
+            )
         fleet.stop_worker()
 
 

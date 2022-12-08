@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import os
-import unittest
-import tempfile
 import shutil
+import tempfile
+import unittest
+
 import numpy as np
 
 import paddle
-from paddle.static import InputSpec
 import paddle.vision.models as models
+from paddle.static import InputSpec
 
 
 # test the predicted resutls of static graph and dynamic graph are equal
@@ -56,11 +57,13 @@ class TestPretrainedModel(unittest.TestCase):
 
     def test_models(self):
         # TODO (LielinJiang): when model file cache is ok. add following test back
-        # 'resnet18', 'vgg16', 'alexnet', 'resnext50_32x4d', 'inception_v3', 
-        # 'densenet121', 'googlenet', 'wide_resnet50_2', 'wide_resnet101_2'  
+        # 'resnet18', 'vgg16', 'alexnet', 'resnext50_32x4d', 'inception_v3',
+        # 'densenet121', 'googlenet', 'wide_resnet50_2', 'wide_resnet101_2'
         arches = [
             'mobilenet_v1',
             'mobilenet_v2',
+            'mobilenet_v3_small',
+            'mobilenet_v3_large',
             'squeezenet1_0',
             'shufflenet_v2_x0_25',
         ]

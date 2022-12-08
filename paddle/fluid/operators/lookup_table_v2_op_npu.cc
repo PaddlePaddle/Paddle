@@ -14,6 +14,7 @@ limitations under the License. */
 #include <iostream>
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
@@ -21,21 +22,21 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 constexpr int64_t kNoPadding = -1;
 
 template <typename DeviceContext, typename T>
 class LookupTableV2NPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *ids_t = ctx.Input<framework::LoDTensor>("Ids");      // int tensor
-    auto *output_t = ctx.Output<framework::LoDTensor>("Out");  // float tensor
-    auto *table_t = ctx.Input<framework::LoDTensor>("W");
+    auto *ids_t = ctx.Input<phi::DenseTensor>("Ids");      // int tensor
+    auto *output_t = ctx.Output<phi::DenseTensor>("Out");  // float tensor
+    auto *table_t = ctx.Input<phi::DenseTensor>("W");
 
     auto *table_var = ctx.InputVar("W");
     PADDLE_ENFORCE_EQ(
-        table_var->IsType<framework::LoDTensor>(), true,
-        platform::errors::InvalidArgument("npu only accept LoDTensor"));
+        table_var->IsType<phi::DenseTensor>(),
+        true,
+        platform::errors::InvalidArgument("npu only accept phi::DenseTensor"));
     output_t->mutable_data<T>(ctx.GetPlace());
 
     int64_t padding_idx = ctx.Attr<int64_t>("padding_idx");
@@ -51,16 +52,16 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
           .AddOutput(*output_t);
       runner.Run();
     } else {
-      Tensor tmp_table_t(table_t->type());
+      phi::DenseTensor tmp_table_t(table_t->type());
       tmp_table_t.mutable_data<T>(table_t->dims(), ctx.GetPlace());
 
-      Tensor index;
+      phi::DenseTensor index;
       index.mutable_data<int32_t>({1, 1}, ctx.GetPlace());
       FillNpuTensorWithConstant<int32_t>(&index,
                                          static_cast<int32_t>(padding_idx));
 
-      auto updata_dim = framework::make_ddim({1, table_t->dims()[1]});
-      Tensor update;
+      auto updata_dim = phi::make_ddim({1, table_t->dims()[1]});
+      phi::DenseTensor update;
       update.mutable_data<T>(updata_dim, ctx.GetPlace());
       FillNpuTensorWithConstant<T>(&update, static_cast<T>(0));
       update.Resize(updata_dim);
@@ -91,11 +92,11 @@ template <typename T>
 class LookupTableV2GradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *ids_t = ctx.Input<framework::LoDTensor>("Ids");
+    auto *ids_t = ctx.Input<phi::DenseTensor>("Ids");
     auto *output_grad_t =
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto *table_grad_t =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("W"));
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("W"));
     table_grad_t->mutable_data<T>(ctx.GetPlace());
 
     auto stream =
@@ -107,7 +108,7 @@ class LookupTableV2GradNPUKernel : public framework::OpKernel<T> {
 
     int embedding_dim = table_grad_t->dims()[1];
     if (embedding_dim % 32 == 0) {
-      // NOTE(pangyoki): The embedding_dim of Tensor used in
+      // NOTE(pangyoki): The embedding_dim of phi::DenseTensor used in
       // EmbeddingDenseGrad must be an integer multiple of 32.
       int num_weights = table_grad_t->dims()[0];
       const auto &runner =
@@ -129,15 +130,18 @@ class LookupTableV2GradNPUKernel : public framework::OpKernel<T> {
       // can be different tensor, but in cann 20.2+, it does inplace operation.
       // Thus, the first input and output should be same tensor.
       const auto &runner_scatter =
-          NpuOpRunner("ScatterAdd", {*table_grad_t, *ids_t, *output_grad_t},
-                      {*table_grad_t}, {{"use_locking", true}});
+          NpuOpRunner("ScatterAdd",
+                      {*table_grad_t, *ids_t, *output_grad_t},
+                      {*table_grad_t},
+                      {{"use_locking", true}});
       runner_scatter.Run(stream);
     } else {
-      Tensor casted_ids_t;
-      if (ids_t->type() != framework::proto::VarType::INT32) {
+      phi::DenseTensor casted_ids_t;
+      if (framework::TransToProtoVarType(ids_t->dtype()) !=
+          framework::proto::VarType::INT32) {
         casted_ids_t.mutable_data<int32_t>(ids_t->dims(), ctx.GetPlace());
-        const auto &cast_runner = NpuOpRunner("Cast", {*ids_t}, {casted_ids_t},
-                                              {{"dst_type", ACL_INT32}});
+        const auto &cast_runner = NpuOpRunner(
+            "Cast", {*ids_t}, {casted_ids_t}, {{"dst_type", ACL_INT32}});
         cast_runner.Run(stream);
       } else {
         casted_ids_t.ShareDataWith(*ids_t);
@@ -167,6 +171,7 @@ REGISTER_OP_NPU_KERNEL(
                                 paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    lookup_table_v2_grad, ops::LookupTableV2GradNPUKernel<float>,
+    lookup_table_v2_grad,
+    ops::LookupTableV2GradNPUKernel<float>,
     ops::LookupTableV2GradNPUKernel<int>,
     ops::LookupTableV2GradNPUKernel<paddle::platform::float16>);

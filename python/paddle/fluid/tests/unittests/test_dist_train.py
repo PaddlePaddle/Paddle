@@ -12,28 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
+import signal
 import time
 import unittest
 from multiprocessing import Process
-import signal
 
-import numpy
+import numpy as np
+from dist_test_utils import remove_ps_flag
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-from paddle.fluid.layers.io import ListenAndServ
-from paddle.fluid.layers.io import Recv
-from paddle.fluid.layers.io import Send
 import paddle.fluid.layers.ops as ops
-from dist_test_utils import *
-
 from paddle.fluid import core
+from paddle.fluid.layers.io import ListenAndServ, Recv, Send
 
-RPC_OP_ROLE_ATTR_NAME = op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(
-)
+RPC_OP_ROLE_ATTR_NAME = (
+    op_role_attr_name
+) = core.op_proto_and_checker_maker.kOpRoleAttrName()
 RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
 
 
@@ -43,7 +40,7 @@ class TestSendOp(unittest.TestCase):
         # Run init_serv in a thread
         place = fluid.CPUPlace()
         # NOTE: python thread will not work here due to GIL.
-        p = Process(target=self.init_serv, args=(place, ))
+        p = Process(target=self.init_serv, args=(place,))
         p.daemon = True
         p.start()
 
@@ -55,7 +52,7 @@ class TestSendOp(unittest.TestCase):
         self.init_client(place, selected_port)
 
         self.run_local(place)
-        self.assertTrue(numpy.allclose(self.local_out, self.dist_out))
+        np.testing.assert_allclose(self.local_out, self.dist_out, rtol=1e-05)
 
         os.kill(p.pid, signal.SIGINT)
         p.join()
@@ -84,12 +81,14 @@ class TestSendOp(unittest.TestCase):
                     name="scale_0.tmp_0",
                     psersistable=True,
                     dtype="float32",
-                    shape=[32, 32])
+                    shape=[32, 32],
+                )
                 x = layers.data(
                     shape=[32, 32],
                     dtype='float32',
                     name="X",
-                    append_batch_size=False)
+                    append_batch_size=False,
+                )
                 fluid.initializer.Constant(value=1.0)(x, main.global_block())
                 ops._scale(x=x, scale=10.0, out=out_var)
 
@@ -105,14 +104,16 @@ class TestSendOp(unittest.TestCase):
                 outputs={"Out": []},
                 attrs={
                     "endpoints": ["127.0.0.1:{0}".format(port)],
-                    RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-                })
+                    RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
+                },
+            )
 
             x = layers.data(
                 shape=[32, 32],
                 dtype='float32',
                 name='X',
-                append_batch_size=False)
+                append_batch_size=False,
+            )
             x.persistable = True
             fluid.initializer.Constant(value=2.3)(x, main.global_block())
 
@@ -120,16 +121,17 @@ class TestSendOp(unittest.TestCase):
                 name="scale_0.tmp_0",  # server side var
                 dtype="float32",
                 persistable=False,
-                shape=[32, 32])
+                shape=[32, 32],
+            )
             fluid.initializer.Constant(value=2.3)(get_var, main.global_block())
 
-            # NOTE(zjl): `Send` is async send, which means that the sent 
-            # variable would be needed even though `Send` op runs. 
+            # NOTE(zjl): `Send` is async send, which means that the sent
+            # variable would be needed even though `Send` op runs.
             # Is it a right design? If I do not set `x.persistable = True`,
-            # this unittest would hang in rpc client after x is deleted. 
+            # this unittest would hang in rpc client after x is deleted.
             #
-            # BTW, `Send` is not a public API to users. So I set 
-            # `x.persistable = True` to be a hot fix of this unittest. 
+            # BTW, `Send` is not a public API to users. So I set
+            # `x.persistable = True` to be a hot fix of this unittest.
             Send("127.0.0.1:%d" % port, [x])
             o = Recv("127.0.0.1:%d" % port, [get_var])
 
@@ -143,9 +145,10 @@ class TestSendOp(unittest.TestCase):
                 shape=[32, 32],
                 dtype='float32',
                 name='X',
-                append_batch_size=False)
+                append_batch_size=False,
+            )
             fluid.initializer.Constant(value=2.3)(x, main.global_block())
-            o = layers.scale(x=x, scale=10.0)
+            o = paddle.scale(x=x, scale=10.0)
         exe = fluid.Executor(place)
         self.local_out = exe.run(main, fetch_list=[o])
 

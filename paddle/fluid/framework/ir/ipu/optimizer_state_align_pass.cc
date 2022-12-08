@@ -13,38 +13,36 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/ipu/optimizer_state_align_pass.h"
+
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
-#include "paddle/fluid/platform/device/ipu/common.h"
 #include "paddle/fluid/platform/device/ipu/ipu_backend.h"
+#include "paddle/fluid/platform/device/ipu/ipu_names.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
-
-using paddle::platform::ipu::IpuBackend;
-using framework::ir::Graph;
-using framework::ir::Node;
 
 void IpuOptimizerStateAlignPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(10) << "enter IpuOptimizerStateAlignPass::ApplyImpl";
   VLOG(10) << "Raw Graph: ";
   VLOG(10) << DebugString(graph);
 
-  auto ipu_backend = IpuBackend::GetInstance();
+  auto ipu_backend = platform::ipu::IpuBackend::GetInstance();
   const auto* scope_ = ipu_backend->GetScope();
 
   for (auto* node : graph->Nodes()) {
     if (node->IsOp() && node->Op()) {
-      int op_role = BOOST_GET_CONST(
-          int, node->Op()->GetAttr(
-                   framework::OpProtoAndCheckerMaker::OpRoleAttrName()));
+      int op_role = PADDLE_GET_CONST(
+          int,
+          node->Op()->GetAttr(
+              framework::OpProtoAndCheckerMaker::OpRoleAttrName()));
 
       if ((op_role == static_cast<int>(framework::OpRole::kOptimize))) {
         auto inputs = node->Op()->Inputs();
         if (inputs.count(platform::ipu::sBeta1Pow)) {
           auto var = scope_->GetVar(inputs.at(platform::ipu::sBeta1Pow)[0]);
-          auto data = var->GetMutable<framework::LoDTensor>()->data<float>();
-          auto beta = BOOST_GET_CONST(
+          auto data = var->GetMutable<phi::DenseTensor>()->data<float>();
+          auto beta = PADDLE_GET_CONST(
               float, node->Op()->GetAttr(platform::ipu::sBeta1));
 
           // ensure current save with beta1pow, rather than step.

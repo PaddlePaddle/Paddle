@@ -13,15 +13,14 @@
 # limitations under the License.
 """Test fleet metric."""
 
-from __future__ import print_function
-import numpy as np
-import paddle
-import paddle.fluid as fluid
-import os
 import unittest
+
 import numpy as np
-import paddle.distributed.fleet.metrics.metric as metric
+
+import paddle
 import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.metrics.metric as metric
+import paddle.fluid as fluid
 from paddle.distributed.fleet.base.util_factory import UtilBase
 
 paddle.enable_static()
@@ -35,7 +34,7 @@ class TestFleetMetric(unittest.TestCase):
 
         class FakeUtil(UtilBase):
             def __init__(self, fake_fleet):
-                super(FakeUtil, self).__init__()
+                super().__init__()
                 self.fleet = fake_fleet
 
             def all_reduce(self, input, mode="sum", comm_world="worker"):
@@ -85,13 +84,15 @@ class TestFleetMetric(unittest.TestCase):
                 value=1,
                 dtype='int64',
                 persistable=True,
-                force_cpu=True)
+                force_cpu=True,
+            )
             t1 = fluid.layers.create_global_var(
                 shape=[1, 1],
                 value=1,
                 dtype='int64',
                 persistable=True,
-                force_cpu=True)
+                force_cpu=True,
+            )
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         scope = fluid.Scope()

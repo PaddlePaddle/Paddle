@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/ipu/ipu_pass_base.h"
+#include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
 namespace framework {
@@ -26,7 +26,7 @@ namespace ir {
  * include Adam/Lamb.
  */
 
-class IpuOptimizerStateAlignPass : public IPUPassBase {
+class IpuOptimizerStateAlignPass : public Pass {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 };

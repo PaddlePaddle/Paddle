@@ -13,12 +13,10 @@
 # limitations under the License.
 """Test cloud role maker."""
 
-from __future__ import print_function
-import os
 import unittest
+
 import paddle
 import paddle.fluid.generator as generator
-import time  # temp for debug
 
 
 class TestGenerator(unittest.TestCase):
@@ -37,7 +35,8 @@ class TestGenerator(unittest.TestCase):
     def test_basic_generator_error(self):
         if paddle.fluid.core.is_compiled_with_cuda():
             self.assertRaises(
-                ValueError, generator.Generator, place=paddle.CUDAPlace(0))
+                ValueError, generator.Generator, place=paddle.CUDAPlace(0)
+            )
 
 
 if __name__ == "__main__":

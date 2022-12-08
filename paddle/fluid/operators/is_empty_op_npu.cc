@@ -18,5 +18,6 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(
-    is_empty, ops::IsEmptyOpKernel<plat::NPUDeviceContext, float>,
+    is_empty,
+    ops::IsEmptyOpKernel<plat::NPUDeviceContext, float>,
     ops::IsEmptyOpKernel<plat::NPUDeviceContext, plat::float16>);

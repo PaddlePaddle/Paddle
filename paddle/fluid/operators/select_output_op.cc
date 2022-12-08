@@ -48,17 +48,19 @@ class SelectOutputOp : public framework::OperatorBase {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
 
-    auto &mask = scope.FindVar(Input("Mask"))->Get<framework::LoDTensor>();
+    auto &mask = scope.FindVar(Input("Mask"))->Get<phi::DenseTensor>();
     size_t output_branch = static_cast<size_t>(GetBranchNumber(mask));
 
     const std::vector<std::string> &out_names = Outputs("Out");
     PADDLE_ENFORCE_LT(
-        output_branch, out_names.size(),
+        output_branch,
+        out_names.size(),
         platform::errors::InvalidArgument(
             "Input 'Mask' in SelectOutputOp is invalid. "
             "'Mask' must be less than the size of output vector 'Out'. "
             "But received Mask = %d, Out's size = %d.",
-            output_branch, out_names.size()));
+            output_branch,
+            out_names.size()));
 
     const framework::Variable *x = scope.FindVar(Input("X"));
     framework::Variable *selected_out = scope.FindVar(out_names[output_branch]);
@@ -69,7 +71,9 @@ class SelectOutputOp : public framework::OperatorBase {
 class SelectOutputOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "The input LoDTensor or LoDTensorArray or SelectedRows.");
+    AddInput(
+        "X",
+        "The input phi::DenseTensor or phi::DenseTensorArray or SelectedRows.");
     AddInput("Mask", "Tensor with numel 1 specifying which branch to output");
     AddOutput("Out",
               "The output can contains multiple variables. The output of "
@@ -81,7 +85,7 @@ class SelectOutputOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     // (minimal viable product) here.
     AddComment(R"DOC(
 Split input variable into one output branch. The mask is an integer tensor to
-specify which output branch should copy the input. 
+specify which output branch should copy the input.
 )DOC");
   }
 };
@@ -114,7 +118,9 @@ class SelectOutputGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(select_output, ops::SelectOutputOp,
-                  ops::SelectOutputOpProtoMaker, ops::SelectOutputInferShape,
+REGISTER_OPERATOR(select_output,
+                  ops::SelectOutputOp,
+                  ops::SelectOutputOpProtoMaker,
+                  ops::SelectOutputInferShape,
                   ops::SelectOutputGradMaker<paddle::framework::OpDesc>,
                   ops::SelectOutputGradMaker<paddle::imperative::OpBase>);

@@ -14,7 +14,9 @@
 
 #include "paddle/infrt/paddle/pb/block_desc.h"
 
-namespace infrt::paddle::pb {
+namespace infrt {
+namespace paddle {
+namespace pb {
 
 template <>
 framework_proto::VarDesc* BlockDesc::GetVar<framework_proto::VarDesc>(
@@ -40,4 +42,6 @@ framework_proto::OpDesc* BlockDesc::AddOp<framework_proto::OpDesc>() {
   return desc_->add_ops();
 }
 
-}  // namespace infrt::paddle::pb
+}  // namespace pb
+}  // namespace paddle
+}  // namespace infrt

@@ -17,7 +17,6 @@ NOT_CHECK_OP_LIST = ['deformable_conv', 'row_conv', 'kron']
 
 # TODO(Shixiaowei02): Check if the items do not need fix.
 # no_grad_set has value in NEED_TO_FIX_OP_LIST
-# yapf: disable
 NEED_TO_FIX_OP_LIST = [
     'affine_channel',
     'affine_grid',
@@ -37,11 +36,14 @@ NEED_TO_FIX_OP_LIST = [
     'dot',
     'elementwise_add',
     'elementwise_div',
+    'elementwise_heaviside',
     'elementwise_max',
     'elementwise_min',
     'elementwise_mul',
     'elementwise_sub',
     'elementwise_pow',
+    'elementwise_fmin',
+    'elementwise_fmax',
     'filter_by_instag',
     'fused_elemwise_activation',
     'fused_emb_seq_pool',
@@ -66,6 +68,6 @@ NEED_TO_FIX_OP_LIST = [
     'rank_loss',
     'sequence_conv',
     'smooth_l1_loss',
-    'spectral_norm'
+    'spectral_norm',
+    'complex',
 ]
-# yapf: enable

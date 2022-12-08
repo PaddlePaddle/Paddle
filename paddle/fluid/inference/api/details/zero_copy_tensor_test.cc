@@ -25,14 +25,20 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_tensor.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle_infer {
 
 struct TensorWrapper : public Tensor {
-  TensorWrapper(paddle_infer::PlaceType place, paddle::framework::Scope* scope,
-                const std::string& name)
-      : Tensor{static_cast<void*>(scope)} {
+  TensorWrapper(
+      paddle_infer::PlaceType place,
+      paddle::framework::Scope* scope,
+      const std::map<phi::Place,
+                     std::shared_future<std::unique_ptr<phi::DeviceContext>>>*
+          dev_ctxs,
+      const std::string& name)
+      : Tensor{static_cast<void*>(scope), dev_ctxs} {
     SetPlace(place, 0 /*device_id*/);
     SetName(name);
     input_or_output_ = true;
@@ -42,7 +48,11 @@ struct TensorWrapper : public Tensor {
 std::unique_ptr<Tensor> CreateTensor(paddle_infer::PlaceType place,
                                      paddle::framework::Scope* scope,
                                      const std::string& name) {
-  return std::unique_ptr<Tensor>(new TensorWrapper{place, scope, name});
+  paddle::platform::DeviceContextPool& pool =
+      paddle::platform::DeviceContextPool::Instance();
+  const auto& dev_ctxs = pool.device_contexts();
+  return std::unique_ptr<Tensor>(
+      new TensorWrapper{place, scope, &dev_ctxs, name});
 }
 
 template <typename T>
@@ -58,7 +68,9 @@ struct RandomGenerator {
 };
 
 template <typename T, template <typename> class G>
-bool FillRandomDataAndCheck(PlaceType place, size_t length, G<T>&& generator,
+bool FillRandomDataAndCheck(PlaceType place,
+                            size_t length,
+                            G<T>&& generator,
                             float threshold = 10e-5) {
   std::vector<T> data_in(length);
   std::generate(data_in.begin(), data_in.end(), std::forward<G<T>>(generator));
@@ -108,14 +120,14 @@ bool SetPlaceAndCheck(PlaceType place, size_t length) {
 bool FillRandomDataAndCheck(PlaceType place) {
   const size_t length{RandomGenerator<size_t>{1, 1000}()};
   VLOG(3) << "FillRandomDataAndCheck: length = " << length;
-  return FillRandomDataAndCheck<float>(place, length,
-                                       RandomGenerator<float>{}) &&
-         FillRandomDataAndCheck<int64_t>(place, length,
-                                         RandomGenerator<int64_t>{}) &&
-         FillRandomDataAndCheck<int32_t>(place, length,
-                                         RandomGenerator<int32_t>{}) &&
-         FillRandomDataAndCheck<uint8_t>(place, length,
-                                         RandomGenerator<uint8_t>{});
+  return FillRandomDataAndCheck<float>(
+             place, length, RandomGenerator<float>{}) &&
+         FillRandomDataAndCheck<int64_t>(
+             place, length, RandomGenerator<int64_t>{}) &&
+         FillRandomDataAndCheck<int32_t>(
+             place, length, RandomGenerator<int32_t>{}) &&
+         FillRandomDataAndCheck<uint8_t>(
+             place, length, RandomGenerator<uint8_t>{});
 }
 
 bool SetPlaceAndCheck(PlaceType place) {

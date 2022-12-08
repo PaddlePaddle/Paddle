@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import unittest
+
 import numpy as np
 
 import paddle
-from paddle.static import InputSpec
 import paddle.vision.models as models
+from paddle.static import InputSpec
 
 
 class TestVisonModels(unittest.TestCase):
@@ -39,6 +40,12 @@ class TestVisonModels(unittest.TestCase):
 
     def test_mobilenetv1(self):
         self.models_infer('mobilenet_v1')
+
+    def test_mobilenetv3_small(self):
+        self.models_infer('mobilenet_v3_small')
+
+    def test_mobilenetv3_large(self):
+        self.models_infer('mobilenet_v3_large')
 
     def test_vgg11(self):
         self.models_infer('vgg11')

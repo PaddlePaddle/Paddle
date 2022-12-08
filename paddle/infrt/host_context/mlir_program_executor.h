@@ -15,14 +15,14 @@
 #pragma once
 
 #include <mlir/Dialect/StandardOps/IR/Ops.h>
+#include <mlir/IR/BuiltinOps.h>
+#include <mlir/IR/BuiltinTypes.h>
 #include <mlir/IR/Diagnostics.h>
-#include <mlir/IR/Function.h>
-#include <mlir/IR/Module.h>
 #include <mlir/IR/OperationSupport.h>
-#include <unordered_map>
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 #include "paddle/infrt/host_context/core_runtime.h"
 #include "paddle/infrt/host_context/kernel_registry.h"

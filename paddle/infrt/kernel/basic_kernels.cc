@@ -23,7 +23,8 @@
 
 using infrt::host_context::Attribute;
 
-namespace infrt::kernel {
+namespace infrt {
+namespace kernel {
 
 template <typename T>
 T add(T a, T b) {
@@ -82,4 +83,5 @@ void RegisterFloatBasicKernels(host_context::KernelRegistry *registry) {
   registry->AddKernel("infrt.print.f32", INFRT_KERNEL(print<float>));
 }
 
-}  // namespace infrt::kernel
+}  // namespace kernel
+}  // namespace infrt

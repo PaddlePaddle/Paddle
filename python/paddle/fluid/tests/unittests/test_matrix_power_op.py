@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from op_test import OpTest
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle
-from op_test import OpTest
 
 paddle.enable_static()
 
@@ -45,7 +47,8 @@ class TestMatrixPowerOp(OpTest):
 
     def test_grad(self):
         self.check_grad(
-            ["X"], "Out", numeric_grad_delta=1e-5, max_relative_error=1e-7)
+            ["X"], "Out", numeric_grad_delta=1e-5, max_relative_error=1e-7
+        )
 
 
 class TestMatrixPowerOpN1(TestMatrixPowerOp):
@@ -105,7 +108,8 @@ class TestMatrixPowerOpNMinus(TestMatrixPowerOp):
 
     def test_grad(self):
         self.check_grad(
-            ["X"], "Out", numeric_grad_delta=1e-5, max_relative_error=1e-6)
+            ["X"], "Out", numeric_grad_delta=1e-5, max_relative_error=1e-6
+        )
 
 
 class TestMatrixPowerOpNMinus2(TestMatrixPowerOpNMinus):
@@ -151,7 +155,8 @@ class TestMatrixPowerOpNMinus10(TestMatrixPowerOp):
 
     def test_grad(self):
         self.check_grad(
-            ["X"], "Out", numeric_grad_delta=1e-5, max_relative_error=1e-6)
+            ["X"], "Out", numeric_grad_delta=1e-5, max_relative_error=1e-6
+        )
 
 
 class TestMatrixPowerOpBatched1(TestMatrixPowerOp):
@@ -249,11 +254,14 @@ class TestMatrixPowerAPI(unittest.TestCase):
             result_np = np.linalg.matrix_power(input_np, -2)
 
             exe = fluid.Executor(place)
-            fetches = exe.run(fluid.default_main_program(),
-                              feed={"input_x": input_np},
-                              fetch_list=[result])
-            self.assertTrue(
-                np.allclose(fetches[0], np.linalg.matrix_power(input_np, -2)))
+            fetches = exe.run(
+                fluid.default_main_program(),
+                feed={"input_x": input_np},
+                fetch_list=[result],
+            )
+            np.testing.assert_allclose(
+                fetches[0], np.linalg.matrix_power(input_np, -2), rtol=1e-05
+            )
 
     def test_static(self):
         for place in self.places:
@@ -265,9 +273,11 @@ class TestMatrixPowerAPI(unittest.TestCase):
                 input_np = np.random.random([4, 4]).astype("float64")
                 input = paddle.to_tensor(input_np)
                 result = paddle.linalg.matrix_power(input, -2)
-                self.assertTrue(
-                    np.allclose(result.numpy(),
-                                np.linalg.matrix_power(input_np, -2)))
+                np.testing.assert_allclose(
+                    result.numpy(),
+                    np.linalg.matrix_power(input_np, -2),
+                    rtol=1e-05,
+                )
 
 
 class TestMatrixPowerAPIError(unittest.TestCase):
@@ -280,10 +290,11 @@ class TestMatrixPowerAPIError(unittest.TestCase):
         # n must be int
         for n in [2.0, '2', -2.0]:
             input = fluid.data(
-                name="input_float32", shape=[4, 4], dtype='float32')
+                name="input_float32", shape=[4, 4], dtype='float32'
+            )
             self.assertRaises(TypeError, paddle.linalg.matrix_power, input, n)
 
-        # The data type of input must be float32 or float64.        
+        # The data type of input must be float32 or float64.
         for dtype in ["bool", "int32", "int64", "float16"]:
             input = fluid.data(name="input_" + dtype, shape=[4, 4], dtype=dtype)
             self.assertRaises(TypeError, paddle.linalg.matrix_power, input, 2)
@@ -317,15 +328,15 @@ class TestMatrixPowerSingularAPI(unittest.TestCase):
 
             exe = fluid.Executor(place)
             try:
-                fetches = exe.run(fluid.default_main_program(),
-                                  feed={"input": input_np},
-                                  fetch_list=[result])
+                fetches = exe.run(
+                    fluid.default_main_program(),
+                    feed={"input": input_np},
+                    fetch_list=[result],
+                )
             except RuntimeError as ex:
                 print("The mat is singular")
-                pass
             except ValueError as ex:
                 print("The mat is singular")
-                pass
 
     def test_static(self):
         paddle.enable_static()
@@ -342,10 +353,8 @@ class TestMatrixPowerSingularAPI(unittest.TestCase):
                     result = paddle.linalg.matrix_power(input, -2)
                 except RuntimeError as ex:
                     print("The mat is singular")
-                    pass
                 except ValueError as ex:
                     print("The mat is singular")
-                    pass
 
 
 if __name__ == "__main__":

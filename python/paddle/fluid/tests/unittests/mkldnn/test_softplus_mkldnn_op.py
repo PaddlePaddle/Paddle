@@ -12,40 +12,52 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool
+
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.framework import _current_expected_place
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    OpTestTool,
+    convert_float_to_uint16,
+)
 
 
 def ref_softplus(x, beta, threshold):
     x_beta = beta * x
-    out = np.select([x_beta <= threshold, x_beta > threshold],
-                    [np.log(1 + np.exp(x_beta)) / beta, x])
+    out = np.select(
+        [x_beta <= threshold, x_beta > threshold],
+        [np.log(1 + np.exp(x_beta)) / beta, x],
+    )
     return out
 
 
-@OpTestTool.skip_if(not (isinstance(_current_expected_place(), core.CPUPlace)),
-                    "GPU is not supported")
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestSoftplusOneDNNOp(OpTest):
     def setUp(self):
         self.op_type = "softplus"
         self.beta = 1
         self.threshold = 20
         self.config()
+        self.set_dtype()
         self.attrs = {'use_mkldnn': True, 'beta': self.beta}
-        self.inputs = {'X': np.random.random(self.x_shape).astype(np.float32)}
+        self.x = np.random.random(self.x_shape)
+        self.out = ref_softplus(self.x, self.beta, self.threshold)
+
+        if self.dtype != np.float32:
+            self.x = convert_float_to_uint16(self.x)
+
+        self.inputs = {'X': self.out}
         self.outputs = {
-            'Out': ref_softplus(self.inputs['X'], self.beta, self.threshold)
+            'Out': ref_softplus(self.out, self.beta, self.threshold)
         }
 
     def config(self):
         self.x_shape = (10, 10)
+
+    def set_dtype(self):
+        self.dtype = np.float32
 
     def test_check_output(self):
         self.check_output()
@@ -71,6 +83,28 @@ class TestSoftplus3DExtendedFunctorOneDNNOp(TestSoftplusOneDNNOp):
     def config(self):
         self.x_shape = (20, 4, 2)
         self.beta = 0.4
+
+
+class TestSoftplusBF16OneDNNOp(TestSoftplusOneDNNOp):
+    def set_dtype(self):
+        self.dtype = np.uint16
+
+
+class TestSoftplus4DBF16OneDNNOp(TestSoftplus4DOneDNNOp):
+    def set_dtype(self):
+        self.dtype = np.uint16
+
+
+class TestSoftplus6DBF16OneDNNOp(TestSoftplus6DOneDNNOp):
+    def set_dtype(self):
+        self.dtype = np.uint16
+
+
+class TestSoftplus3DExtendedFunctorBF16OneDNNOp(
+    TestSoftplus3DExtendedFunctorOneDNNOp
+):
+    def set_dtype(self):
+        self.dtype = np.uint16
 
 
 if __name__ == "__main__":

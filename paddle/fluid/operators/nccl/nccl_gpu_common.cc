@@ -25,7 +25,7 @@ size_t last_num_gpus = -1;
 // TODO(panyx0718): Need to decide whether Paddle supports parallel
 // runs with different number GPUs. If true, current solution is not enough.
 std::mutex comm_mu;
-}
+}  // namespace
 
 int Communicator::GetCommId(int device_id) const {
   std::lock_guard<std::mutex> guard(comm_mu);

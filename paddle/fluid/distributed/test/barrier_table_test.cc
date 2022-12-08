@@ -13,18 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <ThreadPool.h>
+
 #include <unordered_map>
 #include <vector>
+
 #include "gtest/gtest.h"
-#include "paddle/fluid/distributed/ps.pb.h"
-#include "paddle/fluid/distributed/table/common_table.h"
-#include "paddle/fluid/distributed/table/table.h"
+#include "paddle/fluid/distributed/ps/table/common_table.h"
+#include "paddle/fluid/distributed/ps/table/table.h"
+#include "paddle/fluid/distributed/the_one_ps.pb.h"
 
 namespace paddle {
 namespace distributed {
 
 TEST(BarrierTable, Barrier) {
-  int emb_dim = 10;
   int trainers = 2;
   bool sync = true;
 
@@ -39,19 +40,19 @@ TEST(BarrierTable, Barrier) {
   common_config->set_trainer_num(trainers);
   common_config->set_sync(sync);
 
-  auto ret = table->initialize(table_config, fs_config);
+  auto ret = table->Initialize(table_config, fs_config);
 
   std::unordered_map<uint32_t, std::shared_ptr<Table>> maps =
       std::unordered_map<uint32_t, std::shared_ptr<Table>>();
 
-  table->set_table_map(&maps);
+  table->SetTableMap(&maps);
 
   std::shared_ptr<::ThreadPool> pool_ =
       std::make_shared<::ThreadPool>(trainers);
   std::vector<std::future<void>> task_status;
 
   for (auto x = 0; x < trainers; x++) {
-    auto task = [table, x] { table->barrier(x, 0); };
+    auto task = [table, x] { table->Barrier(x, 0); };
     task_status.push_back(pool_->enqueue(std::move(task)));
   }
 

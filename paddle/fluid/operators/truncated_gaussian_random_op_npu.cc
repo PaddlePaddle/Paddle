@@ -12,15 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/truncated_gaussian_random_op.h"
 #include <memory>
 #include <string>
+
+#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/operators/truncated_gaussian_random_op.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
-
-using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
 class TruncatedGaussianRandomNPUKernel : public framework::OpKernel<T> {
@@ -28,40 +28,42 @@ class TruncatedGaussianRandomNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     // TODO(zhiqiu): support dynamic shape and call ParameterizedTruncatedNormal
     std::vector<int> shape = ctx.Attr<std::vector<int>>("shape");
-    Tensor shape_tensor(framework::proto::VarType::INT32);
+    phi::DenseTensor shape_tensor(experimental::DataType::INT32);
     shape_tensor.mutable_data<int32_t>({static_cast<int>(shape.size())},
                                        ctx.GetPlace());
-    TensorFromVector(shape, ctx.device_context(), &shape_tensor);
+    paddle::framework::TensorFromVector(
+        shape, ctx.device_context(), &shape_tensor);
     float mean = ctx.Attr<float>("mean");
-    Tensor mean_tensor(framework::proto::VarType::FP32);
+    phi::DenseTensor mean_tensor(experimental::DataType::FLOAT32);
     mean_tensor.mutable_data<float>({1}, ctx.GetPlace());
     FillNpuTensorWithConstant<float>(&mean_tensor, mean);
 
     float std = ctx.Attr<float>("std");
-    Tensor std_tensor(framework::proto::VarType::FP32);
+    phi::DenseTensor std_tensor(experimental::DataType::FLOAT32);
     std_tensor.mutable_data<float>({1}, ctx.GetPlace());
     FillNpuTensorWithConstant<float>(&std_tensor, std);
 
     int32_t seed_var = ctx.Attr<int32_t>("seed");
 
-    Tensor min_tensor(framework::proto::VarType::FP32);
+    phi::DenseTensor min_tensor(experimental::DataType::FLOAT32);
     min_tensor.mutable_data<float>({1}, ctx.GetPlace());
     float min_value = mean - std * 2.0;
     FillNpuTensorWithConstant<float>(&min_tensor, min_value);
 
-    Tensor max_tensor(framework::proto::VarType::FP32);
+    phi::DenseTensor max_tensor(experimental::DataType::FLOAT32);
     max_tensor.mutable_data<float>({1}, ctx.GetPlace());
     float max_value = mean + std * 2.0;
     FillNpuTensorWithConstant<float>(&max_tensor, max_value);
 
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
     const auto& runner = NpuOpRunner(
         "ParameterizedTruncatedNormal",
-        {shape_tensor, mean_tensor, std_tensor, min_tensor, max_tensor}, {*out},
+        {shape_tensor, mean_tensor, std_tensor, min_tensor, max_tensor},
+        {*out},
         {{"seed", seed_var}});
     runner.Run(stream);
   }
@@ -76,10 +78,10 @@ class NPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     float mean = context.Attr<float>("mean");
     float std = context.Attr<float>("std");
-    auto* tensor = context.Output<framework::Tensor>("Out");
+    auto* tensor = context.Output<phi::DenseTensor>("Out");
     tensor->mutable_data<T>(context.GetPlace());
 
-    Tensor cpu_tensor(tensor->type());
+    phi::DenseTensor cpu_tensor(tensor->dtype());
     cpu_tensor.Resize(tensor->dims());
     T* cpu_data = cpu_tensor.mutable_data<T>(platform::CPUPlace());
     std::uniform_real_distribution<T> dist(std::numeric_limits<float>::min(),
@@ -93,8 +95,10 @@ class NPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
       cpu_data[i] = truncated_normal(dist(*engine));
     }
     framework::TensorCopy(
-        cpu_tensor, context.GetPlace(),
-        context.template device_context<platform::DeviceContext>(), tensor);
+        cpu_tensor,
+        context.GetPlace(),
+        context.template device_context<platform::DeviceContext>(),
+        tensor);
     context.template device_context<paddle::platform::NPUDeviceContext>()
         .Wait();
   }

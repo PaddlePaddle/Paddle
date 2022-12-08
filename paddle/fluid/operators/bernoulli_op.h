@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/hostdevice.h"
+#include "paddle/phi/core/hostdevice.h"
 
 namespace paddle {
 namespace operators {
@@ -25,10 +25,12 @@ namespace operators {
 
 template <typename T>
 inline HOSTDEVICE T BernoulliFunctor(T p, T rand) {
-  PADDLE_ENFORCE_LE(p, 1.0,
+  PADDLE_ENFORCE_LE(p,
+                    1.0,
                     platform::errors::OutOfRange(
                         "The probability should be <= 1, but got %f", p));
-  PADDLE_ENFORCE_GE(p, 0.0,
+  PADDLE_ENFORCE_GE(p,
+                    0.0,
                     platform::errors::OutOfRange(
                         "The probability should be >= 0, but got %f", p));
   return static_cast<T>(rand < p);

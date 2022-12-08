@@ -12,12 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import unicode_literals
-from __future__ import print_function
-
 import os
-import sys
-import time
+
 import numpy as np
 
 os.environ[str("FLAGS_check_nan_inf")] = str("1")
@@ -25,6 +21,7 @@ os.environ[str("GLOG_vmodule")] = str("nan_inf_utils_detail=10")
 
 import paddle
 import paddle.nn as nn
+from paddle.fluid.framework import _test_eager_guard
 
 np.random.seed(0)
 
@@ -33,7 +30,8 @@ def generator():
     batch_size = 5
     for i in range(5):
         curr_train_x = np.random.randint(
-            batch_size, size=(batch_size, 3)).astype("float32")
+            batch_size, size=(batch_size, 3)
+        ).astype("float32")
         if i >= 2:
             curr_train_x[0, :] = np.nan
             curr_train_x[-1, :] = np.inf
@@ -47,7 +45,7 @@ def generator():
 
 class TestLayer(nn.Layer):
     def __init__(self):
-        super(TestLayer, self).__init__()
+        super().__init__()
         self.linear1 = nn.Linear(3, 400)
         self.linear2 = nn.Linear(400, 400)
         self.linear3 = nn.Linear(400, 3)
@@ -85,14 +83,17 @@ def check(use_cuda):
 
         acc_top1 = paddle.metric.accuracy(input=y_pred, label=y, k=1)
 
-        print('iter={:.0f}, cost={}, acc1={}'.format(
-            step, avg_cost.numpy(), acc_top1.numpy()))
+        print(
+            'iter={:.0f}, cost={}, acc1={}'.format(
+                step, avg_cost.numpy(), acc_top1.numpy()
+            )
+        )
 
         sgd.step()
         sgd.clear_grad()
 
 
-if __name__ == '__main__':
+def run_check():
     if paddle.is_compiled_with_cuda():
         try:
             check(use_cuda=True)
@@ -110,3 +111,9 @@ if __name__ == '__main__':
         print(e)
         print(type(e))
         assert type(e) == RuntimeError
+
+
+if __name__ == '__main__':
+    with _test_eager_guard():
+        run_check()
+    run_check()

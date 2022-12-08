@@ -24,15 +24,19 @@ void ForwardGraphExtractPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(10) << "enter ForwardGraphExtractPass::ApplyImpl";
 
   std::unordered_map<OpRole, std::unordered_set<ir::Node*>> all_ops{
-      {OpRole::kForward, {}},  {OpRole::kBackward, {}},
-      {OpRole::kOptimize, {}}, {OpRole::kRPC, {}},
-      {OpRole::kDist, {}},     {OpRole::kLRSched, {}},
-      {OpRole::kLoss, {}},     {OpRole::kNotSpecified, {}}};
+      {OpRole::kForward, {}},
+      {OpRole::kBackward, {}},
+      {OpRole::kOptimize, {}},
+      {OpRole::kRPC, {}},
+      {OpRole::kDist, {}},
+      {OpRole::kLRSched, {}},
+      {OpRole::kLoss, {}},
+      {OpRole::kNotSpecified, {}}};
   for (auto* node : graph->Nodes()) {
     if (!node->IsOp()) {
       continue;
     }
-    auto op_role = BOOST_GET_MUTABLE(int, node->Op()->GetAttr("op_role"));
+    auto op_role = PADDLE_GET_MUTABLE(int, node->Op()->GetAttr("op_role"));
     if (op_role == static_cast<int>(OpRole::kForward)) {
       all_ops[OpRole::kForward].insert(node);
     } else if (op_role == static_cast<int>(OpRole::kBackward)) {
@@ -61,6 +65,19 @@ void ForwardGraphExtractPass::ApplyImpl(ir::Graph* graph) const {
       }
       for (auto* out_node : node->outputs) {
         forward_vars.insert(out_node);
+      }
+    }
+  }
+  // learning_rate var
+  for (auto* node : all_ops[OpRole::kOptimize]) {
+    if (node->Op()->Inputs().count("LearningRate") &&
+        !node->Op()->Inputs().at("LearningRate").empty()) {
+      auto lr_var_name = node->Op()->Inputs().at("LearningRate").front();
+      for (auto* in_var : node->inputs) {
+        if (in_var->Name() == lr_var_name) {
+          VLOG(10) << "found LearningRate var: " << in_var->Name();
+          forward_vars.insert(in_var);
+        }
       }
     }
   }

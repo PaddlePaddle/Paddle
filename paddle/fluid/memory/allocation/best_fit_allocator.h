@@ -14,17 +14,14 @@
 
 #pragma once
 #include <stdint.h>
+
 #include <array>
 #include <list>
 #include <map>
 
 #include "paddle/fluid/memory/allocation/allocator.h"
-
-namespace paddle {
-namespace platform {
-class Place;
-}  // namespace platform
-}  // namespace paddle
+#include "paddle/fluid/memory/allocation/spin_lock.h"
+#include "paddle/fluid/platform//place.h"
 
 namespace paddle {
 namespace memory {
@@ -108,7 +105,7 @@ class BestFitAllocation : public Allocation {
 // the prev-chunk and the next-chunk when possible.
 class BestFitAllocator : public Allocator {
  public:
-  explicit BestFitAllocator(Allocation* allocation);
+  explicit BestFitAllocator(phi::Allocation* allocation);
 
   void* BasePtr() const { return allocation_->ptr(); }
 
@@ -116,24 +113,28 @@ class BestFitAllocator : public Allocator {
 
   size_t NumFreeChunks() const;
 
+  bool IsAllocThreadSafe() const override { return true; }
+
  private:
   size_t FreeSize() const;
   using MapIt = typename details::FreeChunkBin::value_type::iterator;
   using ListIt = typename details::ChunkList::iterator;
 
-  ListIt SplitChunk(size_t request_size, size_t free_chunk_offset,
+  ListIt SplitChunk(size_t request_size,
+                    size_t free_chunk_offset,
                     MapIt bin_iterator);
   void EraseFreeNode(const ListIt& it);
   void InsertFreeNode(const ListIt& it);
 
  protected:
-  void FreeImpl(Allocation* allocation) override;
-  Allocation* AllocateImpl(size_t size) override;
+  void FreeImpl(phi::Allocation* allocation) override;
+  phi::Allocation* AllocateImpl(size_t size) override;
 
  private:
-  Allocation* allocation_;  // not owned
+  phi::Allocation* allocation_;  // not owned
   details::ChunkList chunks_;
   details::FreeChunkBin free_chunks_;
+  SpinLock spinlock_;
 };
 }  // namespace allocation
 }  // namespace memory

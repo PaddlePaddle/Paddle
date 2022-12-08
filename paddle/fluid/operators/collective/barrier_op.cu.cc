@@ -27,19 +27,20 @@ class BarrierOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    auto in = ctx.Input<framework::Tensor>("X");
-    auto out = ctx.Output<framework::Tensor>("Out");
+    auto in = ctx.Input<phi::DenseTensor>("X");
+    auto out = ctx.Output<phi::DenseTensor>("Out");
 
     auto place = ctx.GetPlace();
-    ncclDataType_t dtype = platform::ToNCCLDataType(in->type());
+    ncclDataType_t dtype =
+        platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype()));
     int64_t numel = in->numel();
-    const void* sendbuff = in->data<void>();
+    const void* sendbuff = in->data();
     void* recvbuff = out->mutable_data<T>(place);
 
     int rid = ctx.Attr<int>("ring_id");
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
-    auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-    auto stream = static_cast<platform::CUDADeviceContext*>(dev_ctx)->stream();
+    // should ExecutionContext for calc stream.
+    auto stream = ctx.cuda_device_context().stream();
     ncclRedOp_t nccl_red_type = ncclSum;
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
         sendbuff, recvbuff, numel, dtype, nccl_red_type, comm->comm(), stream));

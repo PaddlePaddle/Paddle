@@ -14,10 +14,9 @@
 
 #include "paddle/fluid/framework/ir/ipu/avg_shard_pass.h"
 
-#include "paddle/fluid/platform/device/ipu/ipu_backend.h"
-
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
+#include "paddle/fluid/platform/device/ipu/ipu_backend.h"
 
 namespace paddle {
 namespace framework {
@@ -26,13 +25,15 @@ namespace ir {
 void AvgShardPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(10) << "enter AvgShardPass::ApplyImpl";
 
-  std::shared_ptr<platform::ipu::IpuBackend> ipu_backend =
-      platform::ipu::IpuBackend::GetInstance();
+  auto ipu_backend = platform::ipu::IpuBackend::GetInstance();
 
   if (ipu_backend->GetIpuStrategy()->need_avg_shard) {
     VLOG(10) << "start AvgShardPass";
     auto nodes = ir::TopologySortOperations(*graph);
     auto num_ipus = ipu_backend->GetIpuStrategy()->num_ipus;
+    auto replica_factor =
+        ipu_backend->GetIpuStrategy()->popart_options.replicatedGraphCount;
+    num_ipus = num_ipus / replica_factor;
 
     int shard_position = nodes.size() / num_ipus;
     int index_and_stage = -1;

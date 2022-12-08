@@ -14,27 +14,28 @@
 
 #pragma once
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
 using DDim = framework::DDim;
 
 template <typename DeviceContext, typename T, typename IndexT = int>
 void IndexSelectInner(const framework::ExecutionContext& context,
-                      LoDTensor* input, const LoDTensor& index,
-                      LoDTensor* output, int dim) {
+                      phi::DenseTensor* input,
+                      const phi::DenseTensor& index,
+                      phi::DenseTensor* output,
+                      int dim) {
   auto input_dim = input->dims();
   auto input_dim_size = input_dim.size();
   auto output_dim = output->dims();
   auto index_size = index.dims()[0];
 
-  LoDTensor index_cpu_copy;
+  phi::DenseTensor index_cpu_copy;
   if (!platform::is_cpu_place(index.place())) {
     framework::TensorCopySync(index, platform::CPUPlace(), &index_cpu_copy);
   }
@@ -55,29 +56,33 @@ void IndexSelectInner(const framework::ExecutionContext& context,
 
   for (int i = 0; i < index_size; i++) {
     PADDLE_ENFORCE_GE(
-        index_data[i], 0,
+        index_data[i],
+        0,
         platform::errors::InvalidArgument(
             "Variable value (index) of OP(index_select) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
-            input_dim[dim], index_data[i]));
+            input_dim[dim],
+            index_data[i]));
     PADDLE_ENFORCE_LT(
-        index_data[i], input_dim[dim],
+        index_data[i],
+        input_dim[dim],
         platform::errors::InvalidArgument(
             "Variable value (index) of OP(index_select) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
-            input_dim[dim], index_data[i]));
+            input_dim[dim],
+            index_data[i]));
   }
 
   VLOG(3) << "Index_Select_Debug; outer_nums: " << outer_nums
           << "; slice_size: " << slice_size << "; index_size: " << index_size;
 
-  input->Resize(framework::make_ddim({outer_nums, input_dim[dim], slice_size}));
-  output->Resize(framework::make_ddim({outer_nums, index_size, slice_size}));
+  input->Resize(phi::make_ddim({outer_nums, input_dim[dim], slice_size}));
+  output->Resize(phi::make_ddim({outer_nums, index_size, slice_size}));
 
-  auto input_tensor = framework::EigenTensor<T, 3>::From(*input);
-  auto output_tensor = framework::EigenTensor<T, 3>::From(*output);
+  auto input_tensor = phi::EigenTensor<T, 3>::From(*input);
+  auto output_tensor = phi::EigenTensor<T, 3>::From(*output);
 
   auto& place =
       *context.template device_context<DeviceContext>().eigen_device();
@@ -91,45 +96,13 @@ void IndexSelectInner(const framework::ExecutionContext& context,
   output->Resize(output_dim);
 }
 
-template <typename DeviceContext, typename T>
-class IndexSelectKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto inputs = *context.Input<framework::LoDTensor>("X");
-    auto* index = context.Input<framework::LoDTensor>("Index");
-    auto* output = context.Output<framework::LoDTensor>("Out");
-
-    int dim = context.Attr<int>("dim");
-    if (dim < 0) {
-      dim += inputs.dims().size();
-    }
-    const auto& index_type = index->type();
-    bool index_type_match = index_type == framework::proto::VarType::INT32 ||
-                            index_type == framework::proto::VarType::INT64;
-    PADDLE_ENFORCE_EQ(index_type_match, true,
-                      platform::errors::InvalidArgument(
-                          "Input(Index) holds the wrong type, it holds %s, but "
-                          "desires to be %s or %s",
-                          paddle::framework::DataTypeToString(index_type),
-                          paddle::framework::DataTypeToString(
-                              framework::proto::VarType::INT32),
-                          paddle::framework::DataTypeToString(
-                              framework::proto::VarType::INT64)));
-
-    if (index_type == framework::proto::VarType::INT32) {
-      IndexSelectInner<DeviceContext, T, int>(context, &inputs, *index, output,
-                                              dim);
-    } else if (index_type == framework::proto::VarType::INT64) {
-      IndexSelectInner<DeviceContext, T, int64_t>(context, &inputs, *index,
-                                                  output, dim);
-    }
-  }
-};
-
 template <typename DeviceContext, typename T, class Enable = void>
 struct IndexSelectAdd {
-  void operator()(const framework::ExecutionContext& ctx, int slice_size,
-                  const T* src_pointer, const T* p_pointer, T* dist_pointer) {
+  void operator()(const framework::ExecutionContext& ctx,
+                  int slice_size,
+                  const T* src_pointer,
+                  const T* p_pointer,
+                  T* dist_pointer) {
     for (int i = 0; i < slice_size; i++) {
       dist_pointer[i] = src_pointer[i] + p_pointer[i];
     }
@@ -137,19 +110,25 @@ struct IndexSelectAdd {
 };
 template <typename DeviceContext, typename T>
 struct IndexSelectAdd<
-    DeviceContext, T,
+    DeviceContext,
+    T,
     typename std::enable_if<std::is_floating_point<T>::value>::type> {
-  void operator()(const framework::ExecutionContext& ctx, int slice_size,
-                  const T* src_pointer, const T* p_pointer, T* dist_pointer) {
-    auto blas = math::GetBlas<DeviceContext, T>(ctx);
+  void operator()(const framework::ExecutionContext& ctx,
+                  int slice_size,
+                  const T* src_pointer,
+                  const T* p_pointer,
+                  T* dist_pointer) {
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
     blas.VADD(slice_size, src_pointer, p_pointer, dist_pointer);
   }
 };
 
 template <typename DeviceContext, typename T, typename IndexT = int>
 void IndexSelectGradInner(const framework::ExecutionContext& context,
-                          const LoDTensor& out_grad, const LoDTensor& index,
-                          LoDTensor* x_grad, int dim) {
+                          const phi::DenseTensor& out_grad,
+                          const phi::DenseTensor& index,
+                          phi::DenseTensor* x_grad,
+                          int dim) {
   const T* input_data = out_grad.data<T>();
   const IndexT* index_data = index.data<IndexT>();
   const T* p_output = x_grad->mutable_data<T>(context.GetPlace());
@@ -159,7 +138,7 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
   auto output_dim = x_grad->dims();
 
   auto& dev_ctx = context.template device_context<DeviceContext>();
-  math::SetConstant<DeviceContext, T> set_constant;
+  phi::funcs::SetConstant<DeviceContext, T> set_constant;
   set_constant(dev_ctx, x_grad, static_cast<T>(0.0));
 
   auto slice_size = 1;
@@ -196,44 +175,6 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
   }
   x_grad->Resize(output_dim);
 }
-
-template <typename DeviceContext, typename T>
-class IndexSelectGradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* x_grad =
-        context.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    auto* index = context.Input<framework::LoDTensor>("Index");
-    auto* out_grad =
-        context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-
-    int dim = context.Attr<int>("dim");
-    if (dim < 0) {
-      dim += out_grad->dims().size();
-    }
-    const auto& index_type = index->type();
-
-    bool index_type_match = index_type == framework::proto::VarType::INT32 ||
-                            index_type == framework::proto::VarType::INT64;
-    PADDLE_ENFORCE_EQ(index_type_match, true,
-                      platform::errors::InvalidArgument(
-                          "Input(Index) holds the wrong type, it holds %s, but "
-                          "desires to be %s or %s",
-                          paddle::framework::DataTypeToString(index_type),
-                          paddle::framework::DataTypeToString(
-                              framework::proto::VarType::INT32),
-                          paddle::framework::DataTypeToString(
-                              framework::proto::VarType::INT64)));
-
-    if (index_type == framework::proto::VarType::INT32) {
-      IndexSelectGradInner<DeviceContext, T, int>(context, *out_grad, *index,
-                                                  x_grad, dim);
-    } else if (index_type == framework::proto::VarType::INT64) {
-      IndexSelectGradInner<DeviceContext, T, int64_t>(context, *out_grad,
-                                                      *index, x_grad, dim);
-    }
-  }
-};
 
 }  // namespace operators
 }  // namespace paddle

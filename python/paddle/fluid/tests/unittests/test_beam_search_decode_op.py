@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import numpy as np
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
+
+import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid.framework import Program, program_guard
+from paddle.fluid.op import Operator
 
 
 class TestBeamSearchDecodeOp(unittest.TestCase):
@@ -44,36 +44,40 @@ class TestBeamSearchDecodeOp(unittest.TestCase):
         # start with start_id
         [
             self.append_lod_tensor(
-                array, [[0, 1, 2], [0, 1, 2]], np.array(
-                    [0, 0], dtype=dtype))
+                array, [[0, 1, 2], [0, 1, 2]], np.array([0, 0], dtype=dtype)
+            )
             for array, dtype in ((ids, "int64"), (scores, "float32"))
         ]
         [
             self.append_lod_tensor(
-                array, [[0, 1, 2], [0, 2, 4]],
-                np.array(
-                    [2, 3, 4, 5], dtype=dtype))
+                array,
+                [[0, 1, 2], [0, 2, 4]],
+                np.array([2, 3, 4, 5], dtype=dtype),
+            )
             for array, dtype in ((ids, "int64"), (scores, "float32"))
         ]
         [
             self.append_lod_tensor(
-                array, [[0, 2, 4], [0, 2, 2, 4, 4]],
-                np.array(
-                    [3, 1, 5, 4], dtype=dtype))
+                array,
+                [[0, 2, 4], [0, 2, 2, 4, 4]],
+                np.array([3, 1, 5, 4], dtype=dtype),
+            )
             for array, dtype in ((ids, "int64"), (scores, "float32"))
         ]
         [
             self.append_lod_tensor(
-                array, [[0, 2, 4], [0, 1, 2, 3, 4]],
-                np.array(
-                    [1, 1, 3, 5], dtype=dtype))
+                array,
+                [[0, 2, 4], [0, 1, 2, 3, 4]],
+                np.array([1, 1, 3, 5], dtype=dtype),
+            )
             for array, dtype in ((ids, "int64"), (scores, "float32"))
         ]
         [
             self.append_lod_tensor(
-                array, [[0, 2, 4], [0, 0, 0, 2, 2]],
-                np.array(
-                    [5, 1], dtype=dtype))
+                array,
+                [[0, 2, 4], [0, 0, 0, 2, 2]],
+                np.array([5, 1], dtype=dtype),
+            )
             for array, dtype in ((ids, "int64"), (scores, "float32"))
         ]
 
@@ -89,7 +93,8 @@ class TestBeamSearchDecodeOp(unittest.TestCase):
             SentenceIds="sentence_ids",
             SentenceScores="sentence_scores",
             beam_size=2,
-            end_id=1, )
+            end_id=1,
+        )
 
         beam_search_decode_op.run(self.scope, self.place)
 
@@ -98,14 +103,15 @@ class TestBeamSearchDecodeOp(unittest.TestCase):
         self.assertEqual(sentence_scores.lod(), expected_lod)
 
         expected_data = np.array(
-            [0, 2, 3, 1, 0, 2, 1, 0, 4, 5, 3, 5, 0, 4, 5, 3, 1], "int64")
-        self.assertTrue(np.array_equal(np.array(sentence_ids), expected_data))
-        self.assertTrue(
-            np.array_equal(np.array(sentence_scores), expected_data))
+            [0, 2, 3, 1, 0, 2, 1, 0, 4, 5, 3, 5, 0, 4, 5, 3, 1], "int64"
+        )
+        np.testing.assert_array_equal(np.array(sentence_ids), expected_data)
+        np.testing.assert_array_equal(np.array(sentence_scores), expected_data)
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestBeamSearchDecodeOpGPU(TestBeamSearchDecodeOp):
     def setUp(self):
         self.scope = core.Scope()
@@ -119,36 +125,40 @@ class TestBeamSearchDecodeOpError(unittest.TestCase):
             def test_id_Variable():
                 # the input pre_ids must be Variable
                 test_ids = np.random.randint(1, 5, [5, 1]).astype("int64")
-                scores = fluid.layers.create_array(dtype='float32')
+                scores = paddle.tensor.create_array(dtype='float32')
                 fluid.layers.beam_search_decode(
-                    test_ids, scores, beam_size=5, end_id=0)
+                    test_ids, scores, beam_size=5, end_id=0
+                )
 
             self.assertRaises(TypeError, test_id_Variable)
 
             def test_score_Variable():
                 # the input pre_scores must be Variable
-                ids = fluid.layers.create_array(dtype='int64')
+                ids = paddle.tensor.create_array(dtype='int64')
                 test_scores = np.random.uniform(1, 5, [5, 1]).astype("float32")
                 fluid.layers.beam_search_decode(
-                    ids, test_scores, beam_size=5, end_id=0)
+                    ids, test_scores, beam_size=5, end_id=0
+                )
 
             self.assertRaises(TypeError, test_score_Variable)
 
             def test_id_dtype():
                 # the dtype of input pre_ids must be int64
-                type_ids = fluid.layers.create_array(dtype='float32')
-                scores = fluid.layers.create_array(dtype='float32')
+                type_ids = paddle.tensor.create_array(dtype='float32')
+                scores = paddle.tensor.create_array(dtype='float32')
                 fluid.layers.beam_search_decode(
-                    type_ids, scores, beam_size=5, end_id=0)
+                    type_ids, scores, beam_size=5, end_id=0
+                )
 
             self.assertRaises(TypeError, test_id_dtype)
 
             def test_score_dtype():
                 # the dtype of input pre_scores must be float32
-                ids = fluid.layers.create_array(dtype='int64')
-                type_scores = fluid.layers.create_array(dtype='int64')
+                ids = paddle.tensor.create_array(dtype='int64')
+                type_scores = paddle.tensor.create_array(dtype='int64')
                 fluid.layers.beam_search_decode(
-                    ids, type_scores, beam_size=5, end_id=0)
+                    ids, type_scores, beam_size=5, end_id=0
+                )
 
             self.assertRaises(TypeError, test_score_dtype)
 

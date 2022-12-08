@@ -12,15 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
-import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.executor import Executor
 
 BATCH_SIZE = 20
 
@@ -37,14 +33,17 @@ class TestNetWithDtype(unittest.TestCase):
             x = fluid.layers.data(name='x', shape=[13], dtype=self.dtype)
             y = fluid.layers.data(name='y', shape=[1], dtype=self.dtype)
             y_predict = fluid.layers.fc(input=x, size=1, act=None)
-            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-            avg_cost = fluid.layers.mean(cost)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
+            avg_cost = paddle.mean(cost)
             sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
             sgd_optimizer.minimize(avg_cost)
 
         fetch_list = [avg_cost]
         train_reader = paddle.batch(
-            paddle.dataset.uci_housing.train(), batch_size=BATCH_SIZE)
+            paddle.dataset.uci_housing.train(), batch_size=BATCH_SIZE
+        )
         feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
         exe = fluid.Executor(place)
         exe.run(startup)

@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -29,8 +29,8 @@ def get_lines(info_file):
     Returns:
         float: Coverage rate.
     """
-    hits = .0
-    total = .0
+    hits = 0.0
+    total = 0.0
 
     with open(info_file) as info_file:
         for line in info_file:
@@ -68,10 +68,16 @@ if __name__ == '__main__':
     actual = round(actual, 3)
 
     if actual < expected:
-        print('expected >= {} %, actual {} %, failed'.format(
-            round(expected * 100, 1), round(actual * 100, 1)))
+        print(
+            'expected >= {} %, actual {} %, failed'.format(
+                round(expected * 100, 1), round(actual * 100, 1)
+            )
+        )
 
         exit(1)
 
-    print('expected >= {} %, actual {} %, passed'.format(
-        round(expected * 100, 1), round(actual * 100, 1)))
+    print(
+        'expected >= {} %, actual {} %, passed'.format(
+            round(expected * 100, 1), round(actual * 100, 1)
+        )
+    )

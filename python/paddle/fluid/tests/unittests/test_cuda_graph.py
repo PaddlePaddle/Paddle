@@ -1,27 +1,28 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
-from paddle.device.cuda.graphs import CUDAGraph
-import unittest
-import numpy as np
 import os
 import pathlib
 import shutil
-from paddle.fluid.dygraph.base import switch_to_static_graph
+import unittest
+
+import numpy as np
 from simple_nets import simple_fc_net_with_inputs
+
+import paddle
+from paddle.device.cuda.graphs import CUDAGraph
+from paddle.fluid.dygraph.base import switch_to_static_graph
 
 
 def can_use_cuda_graph():
@@ -31,17 +32,19 @@ def can_use_cuda_graph():
 class TestCUDAGraph(unittest.TestCase):
     def setUp(self):
         if can_use_cuda_graph():
-            paddle.set_flags({
-                'FLAGS_allocator_strategy': 'auto_growth',
-                'FLAGS_sync_nccl_allreduce': False,
-                'FLAGS_cudnn_deterministic': True,
-                'FLAGS_use_stream_safe_cuda_allocator': False,
-            })
+            paddle.set_flags(
+                {
+                    'FLAGS_allocator_strategy': 'auto_growth',
+                    'FLAGS_sync_nccl_allreduce': False,
+                    'FLAGS_cudnn_deterministic': True,
+                    'FLAGS_use_stream_safe_cuda_allocator': False,
+                }
+            )
 
     def random_tensor(self, shape):
         return paddle.to_tensor(
-            np.random.randint(
-                low=0, high=10, size=shape).astype("float32"))
+            np.random.randint(low=0, high=10, size=shape).astype("float32")
+        )
 
     @switch_to_static_graph
     def test_cuda_graph_static_graph(self):
@@ -50,9 +53,11 @@ class TestCUDAGraph(unittest.TestCase):
 
         seed = 100
         loss_cuda_graph = self.cuda_graph_static_graph_main(
-            seed, use_cuda_graph=True)
+            seed, use_cuda_graph=True
+        )
         loss_no_cuda_graph = self.cuda_graph_static_graph_main(
-            seed, use_cuda_graph=False)
+            seed, use_cuda_graph=False
+        )
         self.assertEqual(loss_cuda_graph, loss_no_cuda_graph)
 
     def cuda_graph_static_graph_main(self, seed, use_cuda_graph):
@@ -67,15 +72,18 @@ class TestCUDAGraph(unittest.TestCase):
         main = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
             image = paddle.static.data(
-                name="image", shape=image_shape, dtype='float32')
+                name="image", shape=image_shape, dtype='float32'
+            )
             label = paddle.static.data(
-                name="label", shape=label_shape, dtype='int64')
+                name="label", shape=label_shape, dtype='int64'
+            )
             image.persistable = True
             label.persistable = True
             loss = simple_fc_net_with_inputs(image, label, class_num)
             loss.persistable = True
             lr = paddle.optimizer.lr.PiecewiseDecay(
-                boundaries=[2, 3, 4], values=[0.01, 0.02, 0.03, 0.04])
+                boundaries=[2, 3, 4], values=[0.01, 0.02, 0.03, 0.04]
+            )
             optimizer = paddle.optimizer.SGD(learning_rate=lr)
             optimizer.minimize(loss)
         place = paddle.CUDAPlace(0)
@@ -88,10 +96,10 @@ class TestCUDAGraph(unittest.TestCase):
             build_strategy.fix_op_run_order = True
             build_strategy.fuse_all_optimizer_ops = True
             compiled_program = paddle.static.CompiledProgram(
-                main).with_data_parallel(
-                    loss_name=loss.name,
-                    build_strategy=build_strategy,
-                    places=place)
+                main
+            ).with_data_parallel(
+                loss_name=loss.name, build_strategy=build_strategy, places=place
+            )
             image_t = scope.var(image.name).get_tensor()
             label_t = scope.var(label.name).get_tensor()
             loss_t = scope.var(loss.name).get_tensor()
@@ -101,10 +109,14 @@ class TestCUDAGraph(unittest.TestCase):
             cuda_graph = None
             for batch_id in range(20):
                 image_t.set(
-                    np.random.rand(*image_shape).astype('float32'), place)
-                label_t.set(np.random.randint(
-                    low=0, high=class_num, size=label_shape, dtype='int64'),
-                            place)
+                    np.random.rand(*image_shape).astype('float32'), place
+                )
+                label_t.set(
+                    np.random.randint(
+                        low=0, high=class_num, size=label_shape, dtype='int64'
+                    ),
+                    place,
+                )
 
                 if batch_id == 1 and use_cuda_graph:
                     cuda_graph = CUDAGraph(place, mode="global")
@@ -171,10 +183,10 @@ class TestCUDAGraph(unittest.TestCase):
 
         y_np = y.numpy()
         y_np_expected = np.concatenate(xs_np)
-        self.assertTrue(np.array_equal(y_np, y_np_expected))
+        np.testing.assert_array_equal(y_np, y_np_expected)
         self.assertEqual(len(zs), len(xs_np))
         for i, z in enumerate(zs):
-            self.assertTrue(np.array_equal(z.numpy(), xs_np[i]))
+            np.testing.assert_array_equal(z.numpy(), xs_np[i])
 
         output_dir = 'cuda_graph_dot_{}'.format(os.getpid())
         try:
@@ -207,7 +219,8 @@ class TestCUDAGraph(unittest.TestCase):
         dtype = 'int64'
         dataset = AutoIncDataset(n, dtype)
         data_loader = paddle.io.DataLoader(
-            dataset, batch_size=1, num_workers=2, use_buffer_reader=True)
+            dataset, batch_size=1, num_workers=2, use_buffer_reader=True
+        )
         x = None
         y = None
 
@@ -227,8 +240,18 @@ class TestCUDAGraph(unittest.TestCase):
             graph.replay()
             actual_x = np.array([[i]]).astype(dtype)
             actual_y = np.array([[i * i]]).astype(dtype)
-            self.assertTrue(np.array_equal(actual_x, x.numpy()))
-            self.assertTrue(np.array_equal(actual_y, y.numpy()))
+            np.testing.assert_array_equal(actual_x, x.numpy())
+            np.testing.assert_array_equal(actual_y, y.numpy())
+
+    def test_dev_ctx_alloc(self):
+        if not can_use_cuda_graph():
+            return
+
+        x = paddle.to_tensor([2], dtype='float32')
+        graph = CUDAGraph()
+        graph.capture_begin()
+        y = paddle.cast(x, dtype='float16')
+        graph.capture_end()
 
 
 if __name__ == "__main__":

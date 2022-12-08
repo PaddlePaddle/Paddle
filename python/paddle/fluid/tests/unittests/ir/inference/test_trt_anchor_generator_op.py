@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import itertools
+
 import numpy as np
 from inference_pass_test import InferencePassTest
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
+import paddle.static.nn as nn
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class TRTAnchorGeneratorBaseTest(InferencePassTest):
@@ -30,38 +30,45 @@ class TRTAnchorGeneratorBaseTest(InferencePassTest):
         self.channel = 16
         self.height = 32
         self.width = 32
-        self.anchor_sizes = [64., 128., 256., 512.]
-        self.aspect_ratios = [.5, 1., 2.]
-        self.variance = [.1, .1, .2, .2]
-        self.stride = [8., 8.]
+        self.anchor_sizes = [64.0, 128.0, 256.0, 512.0]
+        self.aspect_ratios = [0.5, 1.0, 2.0]
+        self.variance = [0.1, 0.1, 0.2, 0.2]
+        self.stride = [8.0, 8.0]
         self.precision = AnalysisConfig.Precision.Float32
         self.serialize = False
         self.enable_trt = True
         self.feeds = {
-            'data':
-            np.random.random([self.bs, self.channel, self.height,
-                              self.width]).astype('float32'),
+            'data': np.random.random(
+                [self.bs, self.channel, self.height, self.width]
+            ).astype('float32'),
         }
 
     def build(self):
         min_graph_size = 3 if self.dynamic_shape_params is not None else 2
         self.trt_parameters = InferencePassTest.TensorRTParam(
-            1 << 30, self.bs, min_graph_size, self.precision, self.serialize,
-            False)
+            1 << 30,
+            self.bs,
+            min_graph_size,
+            self.precision,
+            self.serialize,
+            False,
+        )
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
                 name='data',
                 shape=[-1, self.channel, self.height, self.width],
-                dtype='float32')
+                dtype='float32',
+            )
             anchor, var = fluid.layers.detection.anchor_generator(
                 data,
                 anchor_sizes=self.anchor_sizes,
                 aspect_ratios=self.aspect_ratios,
                 variance=self.variance,
-                stride=self.stride)
+                stride=self.stride,
+            )
             if self.dynamic_shape_params is not None:
-                anchor = fluid.layers.transpose(anchor, [2, 3, 0, 1])
-            out = fluid.layers.batch_norm(anchor, is_test=True)
+                anchor = paddle.transpose(anchor, [2, 3, 0, 1])
+            out = nn.batch_norm(anchor, is_test=True)
 
         self.fetch_list = [out, var]
 
@@ -70,11 +77,19 @@ class TRTAnchorGeneratorBaseTest(InferencePassTest):
         self.check_output()
 
     def set_dynamic(self):
-        self.dynamic_shape_params = InferencePassTest.DynamicShapeParam({
-            'data': [self.bs, self.channel, self.height // 2, self.width // 2]
-        }, {
-            'data': [self.bs, self.channel, self.height, self.width]
-        }, {'data': [self.bs, self.channel, self.height, self.width]}, False)
+        self.dynamic_shape_params = InferencePassTest.DynamicShapeParam(
+            {
+                'data': [
+                    self.bs,
+                    self.channel,
+                    self.height // 2,
+                    self.width // 2,
+                ]
+            },
+            {'data': [self.bs, self.channel, self.height, self.width]},
+            {'data': [self.bs, self.channel, self.height, self.width]},
+            False,
+        )
 
     def test_base(self):
         self.run_test()
@@ -115,7 +130,8 @@ class TRTAnchorGeneratorBaseTest(InferencePassTest):
                 atol = 1e-3
             self.check_output_with_option(use_gpu, atol, flatten=True)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 if __name__ == "__main__":

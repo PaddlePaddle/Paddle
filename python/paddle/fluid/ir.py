@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,10 +20,12 @@ from . import core, unique_name
 from .framework import _apply_pass, OpProtoHolder
 
 from .proto import framework_pb2
+
 try:
     from .proto import pass_desc_pb2
 except ModuleNotFoundError:
     import sys
+
     sys.path.append(path.join(path.dirname(__file__), 'proto'))
     from .proto import pass_desc_pb2
 
@@ -65,8 +67,9 @@ def _update_grad_persistable(main_program):
             g_var.persistable = True
 
 
-def apply_build_strategy(main_program, startup_program, build_strategy,
-                         pass_attrs):
+def apply_build_strategy(
+    main_program, startup_program, build_strategy, pass_attrs
+):
     def update_attr(attrs, attr_types, name, value, typ=None):
         if name not in attrs:
             attrs[name] = value
@@ -79,8 +82,13 @@ def apply_build_strategy(main_program, startup_program, build_strategy,
         update_attr(attrs, attr_types, "nranks", 1, "size_t")
         update_attr(attrs, attr_types, "use_cuda", False, "bool")
         # TODO(zjl): how to skip fetch variables ?
-        update_attr(attrs, attr_types, "mem_opt_skip_vars",
-                    get_data_vars(main_program), "list[str]")
+        update_attr(
+            attrs,
+            attr_types,
+            "mem_opt_skip_vars",
+            get_data_vars(main_program),
+            "list[str]",
+        )
         _apply_pass(main_program, startup_program, name, attrs, attr_types)
 
     _update_grad_persistable(main_program)
@@ -101,23 +109,28 @@ def apply_build_strategy(main_program, startup_program, build_strategy,
     if build_strategy.enable_auto_fusion and use_cuda:
         apply_pass("fusion_group_pass")
         build_strategy.enable_auto_fusion = False
+    if build_strategy.fuse_gemm_epilogue:
+        apply_pass("fuse_gemm_epilogue_pass")
+        build_strategy.fuse_gemm_epilogue = False
     if build_strategy.fuse_elewise_add_act_ops:
         apply_pass("fuse_elewise_add_act_pass")
         build_strategy.fuse_elewise_add_act_ops = False
     if build_strategy.fuse_all_optimizer_ops:
-        apply_pass([
-            "coalesce_grad_tensor_pass",
-            "fuse_adam_op_pass",
-            "fuse_sgd_op_pass",
-            "fuse_momentum_op_pass",
-        ])
+        apply_pass(
+            [
+                "coalesce_grad_tensor_pass",
+                "fuse_adam_op_pass",
+                "fuse_sgd_op_pass",
+                "fuse_momentum_op_pass",
+            ]
+        )
         build_strategy.fuse_all_optimizer_ops = False
     # TODO(zjl): support fuse all reduce ops
     if build_strategy.cache_runtime_context:
         apply_pass("runtime_context_cache_pass")
         build_strategy.cache_runtime_context = False
     if build_strategy.enable_addto and use_cuda:
-        # NOTE: how to get fetch vars to skip memory optimization?  
+        # NOTE: how to get fetch vars to skip memory optimization?
         apply_pass("inplace_addto_op_pass")
         build_strategy.enable_addto = False
     if build_strategy.enable_inplace:
@@ -127,7 +140,7 @@ def apply_build_strategy(main_program, startup_program, build_strategy,
     return build_strategy
 
 
-class RegisterPassHelper(object):
+class RegisterPassHelper:
     _register_helpers = list()
 
     def __init__(self, pass_pairs, pass_type=str(), input_specs=dict()):
@@ -143,8 +156,10 @@ class RegisterPassHelper(object):
             input_spec = self._input_specs.get(arg_name)
             if isinstance(input_spec, paddle.static.InputSpec):
                 args.append(
-                    PassDesc.VarHelper(arg_name, input_spec.shape,
-                                       input_spec.dtype))
+                    PassDesc.VarHelper(
+                        arg_name, input_spec.shape, input_spec.dtype
+                    )
+                )
             elif isinstance(input_spec, paddle.ParamAttr):
                 args.append(paddle.ParamAttr(arg_name))
             else:
@@ -154,12 +169,15 @@ class RegisterPassHelper(object):
     def _prune_program_desc(self, ops):
         for op_desc in ops:
             default_attrs = core.get_op_attrs_default_value(
-                paddle.compat.to_bytes(op_desc.type))
+                op_desc.type.encode()
+            )
             remove_attrs = list()
             for attr in op_desc.attrs:
                 # attr must not in
                 if attr.name not in [
-                        "op_namescope", "op_callstack", "op_device"
+                    "op_namescope",
+                    "op_callstack",
+                    "op_device",
                 ]:
                     attr_list_fields = attr.ListFields()
                     # attr format must be: name, type, value
@@ -188,8 +206,10 @@ class RegisterPassHelper(object):
                     op_outs = out.Outputs()
                     if len(op_outs) != 1:
                         raise ValueError(
-                            "Operator '{}' has multiple outputs, please specify one output variable.".
-                            format(out._type))
+                            "Operator '{}' has multiple outputs, please specify one output variable.".format(
+                                out._type
+                            )
+                        )
                     for op_out in op_outs.values():
                         vars.extend(op_out)
                 else:
@@ -247,24 +267,27 @@ class RegisterPassHelper(object):
         multi_pass_desc = pass_desc_pb2.MultiPassDesc()
         multi_pass_desc.pass_type = self._pass_type
         # Traverse all pass pairs and convert them to PassDesc data.
-        # Here need to add cache in the future. 
+        # Here need to add cache in the future.
         for (pattern, replace) in self._pass_pairs:
             pass_desc = multi_pass_desc.pass_descs.add()
             # Convert ProgramDescs of pattern and replace subgraphs.
             pattern_vars, pattern_ops = self._func_to_program_desc(
-                pattern, pass_desc.pattern)
+                pattern, pass_desc.pattern
+            )
             replace_vars, replace_ops = self._func_to_program_desc(
-                replace, pass_desc.replace)
-            self._convert_vars_to_pass_desc(pattern_vars, replace_vars,
-                                            pass_desc)
+                replace, pass_desc.replace
+            )
+            self._convert_vars_to_pass_desc(
+                pattern_vars, replace_vars, pass_desc
+            )
             self._convert_ops_to_pass_desc(pattern_ops, replace_ops, pass_desc)
         if switch_static_mode:
             paddle.disable_static()
         return multi_pass_desc.SerializeToString()
 
 
-class PassDesc(object):
-    class AttrHelper(object):
+class PassDesc:
+    class AttrHelper:
         def __init__(self, obj, name, element_index=None):
             self._obj = obj
             self._name = name
@@ -277,7 +300,8 @@ class PassDesc(object):
 
         def __getitem__(self, index):
             element = PassDesc.AttrHelper(
-                self._obj, self._name, element_index=index)
+                self._obj, self._name, element_index=index
+            )
             self._elements.append(element)
             return element
 
@@ -303,8 +327,9 @@ class PassDesc(object):
                 raise NotImplementedError("Unimplemented transform operation.")
 
         def _clone_with_operation(self, type, value=None):
-            attr = PassDesc.AttrHelper(self._obj, self._name,
-                                       self._element_index)
+            attr = PassDesc.AttrHelper(
+                self._obj, self._name, self._element_index
+            )
             self._elements.append(attr)
             if value is None:
                 attr._operation_type = type
@@ -321,19 +346,23 @@ class PassDesc(object):
 
         def __sub__(self, value):
             return self._clone_with_operation(
-                pass_desc_pb2.PassDesc.OperationType.kSub, value)
+                pass_desc_pb2.PassDesc.OperationType.kSub, value
+            )
 
         def __add__(self, value):
             return self._clone_with_operation(
-                pass_desc_pb2.PassDesc.OperationType.kAdd, value)
+                pass_desc_pb2.PassDesc.OperationType.kAdd, value
+            )
 
         def Mod(self, value):
             return self._clone_with_operation(
-                pass_desc_pb2.PassDesc.OperationType.kMod, value)
+                pass_desc_pb2.PassDesc.OperationType.kMod, value
+            )
 
         def Size(self):
             return self._clone_with_operation(
-                pass_desc_pb2.PassDesc.OperationType.kSize)
+                pass_desc_pb2.PassDesc.OperationType.kSize
+            )
 
         def _set_with_condition(self, type, value):
             condition = pass_desc_pb2.PassDesc.AttrCondition()
@@ -348,30 +377,32 @@ class PassDesc(object):
             self._condition = condition
 
         def EQ(self, value):
-            self._set_with_condition(pass_desc_pb2.PassDesc.ConditionType.kEQ,
-                                     value)
+            self._set_with_condition(
+                pass_desc_pb2.PassDesc.ConditionType.kEQ, value
+            )
 
-        def MappedPattern(self,
-                          var=None,
-                          op=None,
-                          index=0,
-                          name=None,
-                          element_index=None):
+        def MappedPattern(
+            self, var=None, op=None, index=0, name=None, element_index=None
+        ):
             if all([var, op]):
                 raise ValueError("Only mapped one of which var or op.")
 
             def mapped_var(pattern_ops):
                 raise NotImplementedError(
-                    "Mapping to variable is not implemented.")
+                    "Mapping to variable is not implemented."
+                )
 
             def mapped_op(pattern_ops):
                 ops = [o for o in pattern_ops if o._type == op]
                 if len(ops) <= index:
                     raise ValueError(
                         "Index '{}' of operator '{}' is incorrect.".format(
-                            index, op))
+                            index, op
+                        )
+                    )
                 return PassDesc.AttrHelper(
-                    ops[index], name, element_index=element_index)
+                    ops[index], name, element_index=element_index
+                )
 
             self._mapped = mapped_op if var is None else mapped_var
 
@@ -391,7 +422,7 @@ class PassDesc(object):
                 self._attrs[name] = attr
             return attr
 
-    class OpHelper(object):
+    class OpHelper:
         def __init__(self, type=None):
             self._type = type
 
@@ -403,18 +434,23 @@ class PassDesc(object):
         def __call__(self, *args, **kwargs):
             if len(args) > 0:
                 raise ValueError(
-                    "Each input argument needs to specify a parameter name.")
+                    "Each input argument needs to specify a parameter name."
+                )
             for (in_name, in_args) in kwargs.items():
                 op_input = self._inputs.get(in_name)
                 if op_input is None:
                     raise ValueError(
                         "Operator '{}' does not have input named '{}'.".format(
-                            self._type, in_name))
+                            self._type, in_name
+                        )
+                    )
                 if isinstance(in_args, (list, tuple)):
                     if len(in_args) == 0:
                         raise ValueError(
-                            "Input '{}' of operator '{}' cannot be empty.".
-                            format(in_name, self._type))
+                            "Input '{}' of operator '{}' cannot be empty.".format(
+                                in_name, self._type
+                            )
+                        )
                 else:
                     in_args = [in_args]
                 for in_arg in in_args:
@@ -422,8 +458,10 @@ class PassDesc(object):
                         op_outs = in_arg.Outputs()
                         if len(op_outs) != 1:
                             raise ValueError(
-                                "The size of outputs of operator '{}' is not equal 1, please specify one output variable.".
-                                format(in_arg._type))
+                                "The size of outputs of operator '{}' is not equal 1, please specify one output variable.".format(
+                                    in_arg._type
+                                )
+                            )
                         for op_out in op_outs.values():
                             op_input.extend(op_out)
                     else:
@@ -442,7 +480,9 @@ class PassDesc(object):
             if self._proto is None:
                 raise AttributeError(
                     "type object 'OpHelper' has no attribute '{}'".format(
-                        self._type))
+                        self._type
+                    )
+                )
             self._index = len(block.ops)
             self._desc = block.desc.append_op()
             self._desc.set_type(self._type)
@@ -469,7 +509,9 @@ class PassDesc(object):
             if output is None:
                 raise ValueError(
                     "Operator '{}' does not have output named '{}'.".format(
-                        self._type, name))
+                        self._type, name
+                    )
+                )
             return output
 
         def Outputs(self):
@@ -530,7 +572,8 @@ def RegisterPass(function=None, input_specs=dict()):
         signature = inspect.signature(python_func)
         if len(signature.parameters) > 0:
             raise NotImplementedError(
-                "Pass function with parameter is not supported now.")
+                "Pass function with parameter is not supported now."
+            )
         elif len(signature.parameters) == 0:
             pass_pairs = python_func()
             if _is_pass_pair(pass_pairs):

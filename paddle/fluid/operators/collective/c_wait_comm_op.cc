@@ -28,22 +28,26 @@ namespace operators {
 
 class CWaitCommOp : public framework::OperatorBase {
  public:
-  CWaitCommOp(const std::string& type, const framework::VariableNameMap& inputs,
+  CWaitCommOp(const std::string& type,
+              const framework::VariableNameMap& inputs,
               const framework::VariableNameMap& outputs,
               const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
-    PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
-                      platform::errors::PreconditionNotMet(
-                          "wait_comm op can run on gpu place only for now."));
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(place),
+        true,
+        platform::errors::PreconditionNotMet(
+            "wait_comm op can run on gpu place only for now, but got %s",
+            place.DebugString()));
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     int ring_id = Attr<int>("ring_id");
 
     auto compute_stream =
-        static_cast<platform::CUDADeviceContext*>(
+        static_cast<phi::GPUContext*>(
             platform::DeviceContextPool::Instance().Get(place))
             ->stream();
     auto comm_stream =

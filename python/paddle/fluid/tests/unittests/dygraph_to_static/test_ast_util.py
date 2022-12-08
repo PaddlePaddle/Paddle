@@ -12,17 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import unittest
-import textwrap
-from paddle.utils import gast
 import inspect
-import numpy as np
-import paddle.fluid as fluid
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
+import textwrap
+import unittest
 
-from ifelse_simple_func import dyfunc_with_if_else, dyfunc_with_if_else2, nested_if_else
+import numpy as np
+from ifelse_simple_func import (
+    dyfunc_with_if_else,
+    dyfunc_with_if_else2,
+    nested_if_else,
+)
+
+import paddle
+import paddle.fluid as fluid
+from paddle.jit.dy2static.utils import ast_to_func
+from paddle.utils import gast
 
 
 class TestAST2Func(unittest.TestCase):
@@ -57,7 +61,7 @@ class TestAST2Func(unittest.TestCase):
     def test_ast2func_static(self):
         def func(x):
             y = fluid.layers.relu(x)
-            loss = fluid.layers.mean(y)
+            loss = paddle.mean(y)
             return loss
 
         x_data = np.random.random([10, 16]).astype('float32')
@@ -73,8 +77,9 @@ class TestAST2Func(unittest.TestCase):
     def test_ast2func_error(self):
         with self.assertRaises(Exception) as e:
             self.assertRaises(TypeError, ast_to_func("x = a + b", 'foo'))
-        self.assertTrue("Type of ast_root should be gast.AST or ast.AST" in
-                        str(e.exception))
+        self.assertTrue(
+            "Type of ast_root should be gast.AST or ast.AST" in str(e.exception)
+        )
 
 
 if __name__ == '__main__':

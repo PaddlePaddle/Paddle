@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 #include <vector>
 
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -26,22 +26,34 @@ namespace math {
 template <typename T>
 class PreluChannelWiseDirectCUDAFunctor {
  public:
-  void operator()(gpuStream_t stream, const T *input, const T *alpha, T *output,
-                  size_t batch_size, size_t channel, bool channel_last,
+  void operator()(gpuStream_t stream,
+                  const T *input,
+                  const T *alpha,
+                  T *output,
+                  size_t batch_size,
+                  size_t channel,
+                  bool channel_last,
                   size_t numel);
 };
 
 template <typename T>
 class PreluElementWiseDirectCUDAFunctor {
  public:
-  void operator()(gpuStream_t stream, const T *input, const T *alpha, T *output,
-                  size_t batch_size, size_t numel);
+  void operator()(gpuStream_t stream,
+                  const T *input,
+                  const T *alpha,
+                  T *output,
+                  size_t batch_size,
+                  size_t numel);
 };
 
 template <typename T>
 class PreluScalarDirectCUDAFunctor {
  public:
-  void operator()(gpuStream_t stream, const T *input, const T *alpha, T *output,
+  void operator()(gpuStream_t stream,
+                  const T *input,
+                  const T *alpha,
+                  T *output,
                   size_t numel);
 };
 

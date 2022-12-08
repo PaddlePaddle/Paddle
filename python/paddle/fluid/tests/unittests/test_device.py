@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import paddle
@@ -64,7 +62,8 @@ class TestImperativeDeviceManage(unittest.TestCase):
             device = paddle.get_device()
             self.assertEqual(
                 isinstance(framework._current_expected_place(), core.CPUPlace),
-                True)
+                True,
+            )
             self.assertEqual(device, "cpu")
 
     def test_gpu(self):
@@ -76,8 +75,11 @@ class TestImperativeDeviceManage(unittest.TestCase):
                 out3 = paddle.concat(x=[out1, out2], axis=0)
                 device = paddle.get_device()
                 self.assertEqual(
-                    isinstance(framework._current_expected_place(),
-                               core.CUDAPlace), True)
+                    isinstance(
+                        framework._current_expected_place(), core.CUDAPlace
+                    ),
+                    True,
+                )
                 self.assertEqual(device, "gpu:0")
 
     def test_xpu(self):
@@ -86,8 +88,11 @@ class TestImperativeDeviceManage(unittest.TestCase):
                 out = paddle.to_tensor([1, 2])
                 device = paddle.get_device()
                 self.assertEqual(
-                    isinstance(framework._current_expected_place(),
-                               core.XPUPlace), True)
+                    isinstance(
+                        framework._current_expected_place(), core.XPUPlace
+                    ),
+                    True,
+                )
                 self.assertTrue(out.place.is_xpu_place())
                 self.assertEqual(device, "xpu:0")
 
@@ -100,8 +105,11 @@ class TestImperativeDeviceManage(unittest.TestCase):
                 out3 = paddle.concat(x=[out1, out2], axis=0)
                 device = paddle.get_device()
                 self.assertEqual(
-                    isinstance(framework._current_expected_place(),
-                               core.NPUPlace), True)
+                    isinstance(
+                        framework._current_expected_place(), core.NPUPlace
+                    ),
+                    True,
+                )
                 self.assertTrue(out1.place.is_npu_place())
                 self.assertTrue(out2.place.is_npu_place())
                 self.assertTrue(out3.place.is_npu_place())

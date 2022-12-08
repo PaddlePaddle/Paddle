@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
-import six
+
 import paddle
-from paddle import fluid
-from paddle import static
+from paddle import fluid, static
 
 paddle.enable_static()
 
@@ -71,7 +69,8 @@ class GraphToProgramPassTest(unittest.TestCase):
             c_attr = c_attrs[attr_idx]
             self.assertEqual(o_attr, c_attr)
             self.assertEqual(
-                o_op.desc.attr_type(o_attr), c_op.desc.attr_type(c_attr))
+                o_op.desc.attr_type(o_attr), c_op.desc.attr_type(c_attr)
+            )
 
 
 class SingleGraphToProgramPass(GraphToProgramPassTest):
@@ -92,9 +91,11 @@ class SingleGraphToProgramPass(GraphToProgramPassTest):
 
     def test_check_parameter(self):
         origin_parameter = sorted(
-            self.origin_program.all_parameters(), key=lambda p: p.name)
+            self.origin_program.all_parameters(), key=lambda p: p.name
+        )
         converted_parameter = sorted(
-            self.converted_program.all_parameters(), key=lambda p: p.name)
+            self.converted_program.all_parameters(), key=lambda p: p.name
+        )
 
         self.assertEqual(len(origin_parameter), len(converted_parameter))
 

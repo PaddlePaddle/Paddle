@@ -1,4 +1,4 @@
-#Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
+from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
-from op_test import OpTest
-from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
@@ -40,14 +39,18 @@ class TestEmptyOp(OpTest):
 
             always_full_zero = max_value == 0.0 and min_value == 0.0
             always_non_full_zero = max_value >= min_value
-            self.assertTrue(always_full_zero or always_non_full_zero,
-                            'always_full_zero or always_non_full_zero.')
+            self.assertTrue(
+                always_full_zero or always_non_full_zero,
+                'always_full_zero or always_non_full_zero.',
+            )
         elif data_type in ['bool']:
             total_num = outs[0].size
-            true_num = np.sum(outs[0] == True)
-            false_num = np.sum(outs[0] == False)
-            self.assertTrue(total_num == true_num + false_num,
-                            'The value should always be True or False.')
+            true_num = np.sum(outs[0])
+            false_num = np.sum(~outs[0])
+            self.assertTrue(
+                total_num == true_num + false_num,
+                'The value should always be True or False.',
+            )
         else:
             self.assertTrue(False, 'invalid data type')
 
@@ -125,14 +128,18 @@ class TestEmptyOp_ShapeTensor(OpTest):
 
             always_full_zero = max_value == 0.0 and min_value == 0.0
             always_non_full_zero = max_value >= min_value
-            self.assertTrue(always_full_zero or always_non_full_zero,
-                            'always_full_zero or always_non_full_zero.')
+            self.assertTrue(
+                always_full_zero or always_non_full_zero,
+                'always_full_zero or always_non_full_zero.',
+            )
         elif data_type in ['bool']:
             total_num = outs[0].size
-            true_num = np.sum(outs[0] == True)
-            false_num = np.sum(outs[0] == False)
-            self.assertTrue(total_num == true_num + false_num,
-                            'The value should always be True or False.')
+            true_num = np.sum(outs[0])
+            false_num = np.sum(~outs[0])
+            self.assertTrue(
+                total_num == true_num + false_num,
+                'The value should always be True or False.',
+            )
         else:
             self.assertTrue(False, 'invalid data type')
 
@@ -152,8 +159,9 @@ class TestEmptyOp_ShapeTensorList(OpTest):
 
         shape_tensor_list = []
         for index, ele in enumerate(self.shape):
-            shape_tensor_list.append(("x" + str(index), np.ones(
-                (1)).astype('int32') * ele))
+            shape_tensor_list.append(
+                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+            )
 
         self.inputs = {"ShapeTensorList": shape_tensor_list}
         self.attrs = {'shape': self.infer_shape, 'dtype': dtype_inner}
@@ -170,14 +178,18 @@ class TestEmptyOp_ShapeTensorList(OpTest):
 
             always_full_zero = max_value == 0.0 and min_value == 0.0
             always_non_full_zero = max_value >= min_value
-            self.assertTrue(always_full_zero or always_non_full_zero,
-                            'always_full_zero or always_non_full_zero.')
+            self.assertTrue(
+                always_full_zero or always_non_full_zero,
+                'always_full_zero or always_non_full_zero.',
+            )
         elif data_type in ['bool']:
             total_num = outs[0].size
-            true_num = np.sum(outs[0] == True)
-            false_num = np.sum(outs[0] == False)
-            self.assertTrue(total_num == true_num + false_num,
-                            'The value should always be True or False.')
+            true_num = np.sum(outs[0])
+            false_num = np.sum(~outs[0])
+            self.assertTrue(
+                total_num == true_num + false_num,
+                'The value should always be True or False.',
+            )
         else:
             self.assertTrue(False, 'invalid data type')
 
@@ -188,8 +200,10 @@ class TestEmptyAPI(unittest.TestCase):
         min_value = np.nanmin(np.array(out))
         always_non_full_zero = max_value >= min_value
         always_full_zero = max_value == 0.0 and min_value == 0.0
-        self.assertTrue(always_full_zero or always_non_full_zero,
-                        'always_full_zero or always_non_full_zero.')
+        self.assertTrue(
+            always_full_zero or always_non_full_zero,
+            'always_full_zero or always_non_full_zero.',
+        )
 
     def test_dygraph_api_out(self):
         paddle.disable_static()
@@ -229,31 +243,40 @@ class TestEmptyAPI(unittest.TestCase):
         positive_2_int64 = fluid.layers.fill_constant([1], "int64", 3)
 
         shape_tensor_int32 = fluid.data(
-            name="shape_tensor_int32", shape=[2], dtype="int32")
+            name="shape_tensor_int32", shape=[2], dtype="int32"
+        )
         shape_tensor_int64 = fluid.data(
-            name="shape_tensor_int64", shape=[2], dtype="int64")
+            name="shape_tensor_int64", shape=[2], dtype="int64"
+        )
+        shape_tensor_unknown = fluid.data(
+            name="shape_tensor_unknown", shape=[-1], dtype="int64"
+        )
 
         out_1 = paddle.empty(shape=[200, 3], dtype=dtype)
         out_2 = paddle.empty(shape=shape_tensor_int32, dtype=dtype)
         out_3 = paddle.empty(shape=shape_tensor_int64, dtype=dtype)
         out_4 = paddle.empty(shape=[200, positive_2_int32], dtype=dtype)
         out_5 = paddle.empty(shape=[200, positive_2_int64], dtype=dtype)
+        out_6 = paddle.empty(shape=shape_tensor_unknown, dtype=dtype)
 
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
-        res_1, res_2, res_3, res_4, res_5 = exe.run(
+        res_1, res_2, res_3, res_4, res_5, res_6 = exe.run(
             fluid.default_main_program(),
             feed={
                 "shape_tensor_int32": np.array([200, 3]).astype("int32"),
                 "shape_tensor_int64": np.array([200, 3]).astype("int64"),
+                "shape_tensor_unknown": np.array([200, 3]).astype("int64"),
             },
-            fetch_list=[out_1, out_2, out_3, out_4, out_5])
+            fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6],
+        )
 
         self.__check_out__(res_1, dtype)
         self.__check_out__(res_2, dtype)
         self.__check_out__(res_3, dtype)
         self.__check_out__(res_4, dtype)
         self.__check_out__(res_5, dtype)
+        self.__check_out__(res_6, dtype)
 
 
 class TestEmptyError(unittest.TestCase):

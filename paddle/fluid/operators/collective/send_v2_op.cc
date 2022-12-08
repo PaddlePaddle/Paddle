@@ -26,11 +26,13 @@ class SendOpV2 : public framework::OperatorWithKernel {
     int peer = ctx->Attrs().Get<int>("peer");
     int ring_id = ctx->Attrs().Get<int>("ring_id");
     PADDLE_ENFORCE_GE(
-        peer, 0,
+        peer,
+        0,
         platform::errors::InvalidArgument(
             "The peer (%d) for send_v2 op must be non-negative.", peer));
     PADDLE_ENFORCE_GE(
-        ring_id, 0,
+        ring_id,
+        0,
         platform::errors::InvalidArgument(
             "The ring_id (%d) for send_v2 op must be non-negative.", ring_id));
   }
@@ -70,6 +72,10 @@ class SendOpV2Maker : public framework::OpProtoAndCheckerMaker {
         "use_calc_stream",
         "(bool default false) eject CUDA operations to calculation stream.")
         .SetDefault(false);
+    AddAttr<bool>(
+        "dynamic_shape",
+        "(bool default false) the send/recv will be done with dynamic shape.")
+        .SetDefault(false);
     AddComment(R"DOC(
 Send Operator
 
@@ -86,7 +92,8 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(send_v2, ops::SendOpV2, ops::SendOpV2Maker);
 
-REGISTER_OP_CPU_KERNEL(send_v2, ops::SendOpV2CPUKernel<float>,
+REGISTER_OP_CPU_KERNEL(send_v2,
+                       ops::SendOpV2CPUKernel<float>,
                        ops::SendOpV2CPUKernel<double>,
                        ops::SendOpV2CPUKernel<int>,
                        ops::SendOpV2CPUKernel<int64_t>,

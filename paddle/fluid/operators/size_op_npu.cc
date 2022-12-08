@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/mul_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
@@ -22,16 +22,19 @@ template <typename DeviceContext, typename T>
 class SizeNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::Tensor>("Input");
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("Input");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
     Tensor cpu_tensor;
     auto cpu_data =
         cpu_tensor.mutable_data<int64_t>(out->dims(), platform::CPUPlace());
     cpu_data[0] = x->numel();
-    TensorCopy(cpu_tensor, ctx.GetPlace(),
-               ctx.template device_context<platform::DeviceContext>(), out);
+    paddle::framework::TensorCopy(
+        cpu_tensor,
+        ctx.GetPlace(),
+        ctx.template device_context<platform::DeviceContext>(),
+        out);
     ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
   }
 };
@@ -42,7 +45,8 @@ class SizeNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    size, ops::SizeNPUKernel<paddle::platform::NPUDeviceContext, int>,
+    size,
+    ops::SizeNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::SizeNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
     ops::SizeNPUKernel<paddle::platform::NPUDeviceContext,
                        paddle::platform::float16>,

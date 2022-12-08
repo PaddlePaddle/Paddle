@@ -12,19 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import numpy as np
 from collections import Counter
 
+import numpy as np
+from test_fetch_feed import Linear, Pool2D
+
+import paddle
 import paddle.fluid as fluid
-
-from paddle.fluid.dygraph.jit import declarative
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
-from paddle.fluid.dygraph.dygraph_to_static import convert_to_static
-
-from test_fetch_feed import Pool2D, Linear
+from paddle.jit import ProgramTranslator
+from paddle.jit.api import declarative
+from paddle.jit.dy2static import convert_to_static
 
 
 class TestCacheProgram(unittest.TestCase):
@@ -45,18 +43,31 @@ class TestCacheProgram(unittest.TestCase):
                 cur_out = out
                 # Check forward ops
                 prev_ops = cur_ops
-                cur_ops = Counter([
-                    op.type for op in fluid.default_main_program().block(0).ops
-                ])
+                cur_ops = Counter(
+                    [
+                        op.type
+                        for op in fluid.default_main_program().block(0).ops
+                    ]
+                )
                 if batch_id > 0:
-                    prev_out_numpy = prev_out[0].numpy() if isinstance(
-                        prev_out, (tuple, list)) else prev_out.numpy()
-                    cur_out_numpy = cur_out[0].numpy() if isinstance(
-                        cur_out, (tuple, list)) else cur_out.numpy()
-                    self.assertTrue(
-                        np.allclose(prev_out_numpy, cur_out_numpy),
-                        msg='Output in previous batch is {}\n Output in current batch is \n{}'
-                        .format(prev_out_numpy, cur_out_numpy))
+                    prev_out_numpy = (
+                        prev_out[0].numpy()
+                        if isinstance(prev_out, (tuple, list))
+                        else prev_out.numpy()
+                    )
+                    cur_out_numpy = (
+                        cur_out[0].numpy()
+                        if isinstance(cur_out, (tuple, list))
+                        else cur_out.numpy()
+                    )
+                    np.testing.assert_allclose(
+                        prev_out_numpy,
+                        cur_out_numpy,
+                        rtol=1e-05,
+                        err_msg='Output in previous batch is {}\n Output in current batch is \n{}'.format(
+                            prev_out_numpy, cur_out_numpy
+                        ),
+                    )
                     self.assertEqual(prev_ops, cur_ops)
 
 
@@ -86,7 +97,8 @@ class TestCacheProgramWithOptimizer(unittest.TestCase):
         with fluid.dygraph.guard(fluid.CPUPlace()):
             dygraph_net = self.dygraph_class()
             adam = fluid.optimizer.AdamOptimizer(
-                learning_rate=0.001, parameter_list=dygraph_net.parameters())
+                learning_rate=0.001, parameter_list=dygraph_net.parameters()
+            )
             loss_data = []
             for batch_id in range(self.batch_num):
                 input = fluid.dygraph.to_variable(self.data)
@@ -102,15 +114,19 @@ class TestCacheProgramWithOptimizer(unittest.TestCase):
     def test_with_optimizer(self):
         dygraph_loss = self.train_dygraph()
         static_loss = self.train_static()
-        self.assertTrue(
-            np.allclose(dygraph_loss, static_loss),
-            msg='dygraph is {}\n static_res is \n{}'.format(dygraph_loss,
-                                                            static_loss))
+        np.testing.assert_allclose(
+            dygraph_loss,
+            static_loss,
+            rtol=1e-05,
+            err_msg='dygraph is {}\n static_res is \n{}'.format(
+                dygraph_loss, static_loss
+            ),
+        )
 
 
 def simple_func(x):
     inputs = fluid.dygraph.to_variable(x)
-    mean = fluid.layers.mean(inputs)
+    mean = paddle.mean(inputs)
     return mean
 
 

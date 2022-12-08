@@ -54,18 +54,19 @@ struct BlockAllocation : public Allocation {
 class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
  public:
   VirtualMemoryAutoGrowthBestFitAllocator(
-      const std::shared_ptr<Allocator> &underlying_allocator, size_t alignment,
+      const std::shared_ptr<Allocator> &underlying_allocator,
+      size_t alignment,
       const platform::CUDAPlace &place);
 
   bool IsAllocThreadSafe() const override { return true; }
 
  protected:
-  Allocation *AllocateImpl(size_t size) override;
+  phi::Allocation *AllocateImpl(size_t size) override;
 
-  void FreeImpl(Allocation *allocation) override;
+  void FreeImpl(phi::Allocation *allocation) override;
 
  private:
-  Allocation *AllocFromFreeBlocks(size_t size);
+  phi::Allocation *AllocFromFreeBlocks(size_t size);
   void ExtendAndMerge(size_t size);
   void TryMergeBlock2Blocks(std::list<Block>::iterator iter);
 

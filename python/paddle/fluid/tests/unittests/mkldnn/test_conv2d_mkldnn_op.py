@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
 
-import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
-from paddle.fluid.tests.unittests.test_conv2d_op import TestConv2DOp, TestConv2DOp_v2
+from paddle.fluid.tests.unittests.test_conv2d_op import (
+    TestConv2DOp,
+    TestConv2DOp_v2,
+)
 
 
 def conv2d_bias_naive(out, bias):
@@ -60,7 +61,6 @@ class TestConv2DMKLDNNOp(TestConv2DOp):
         self.fuse_activation = ""
         self.fuse_alpha = 0
         self.fuse_beta = 0
-        self.fuse_brelu_threshold = 6.0
         self.fuse_residual_connection = False
         self.input_residual_size = None
 
@@ -68,7 +68,7 @@ class TestConv2DMKLDNNOp(TestConv2DOp):
 
         output = self.outputs['Output']
 
-        #mkldnn only support either conv-sum-relu, or conv-relu.
+        # mkldnn only support either conv-sum-relu, or conv-relu.
         if self.fuse_bias and self.bias_size is not None:
             bias = np.random.random(self.bias_size).astype(self.dtype)
             output = conv2d_bias_naive(output, bias)
@@ -76,36 +76,43 @@ class TestConv2DMKLDNNOp(TestConv2DOp):
             self.attrs['fuse_bias'] = self.fuse_bias
             self.inputs['Bias'] = OpTest.np_dtype_to_fluid_dtype(bias)
 
-        if self.fuse_residual_connection and self.input_residual_size is not None:
+        if (
+            self.fuse_residual_connection
+            and self.input_residual_size is not None
+        ):
             input_residual = np.random.random(self.input_residual_size).astype(
-                self.dtype)
+                self.dtype
+            )
             output = conv2d_residual_naive(output, input_residual)
 
             self.attrs[
-                'fuse_residual_connection'] = self.fuse_residual_connection
+                'fuse_residual_connection'
+            ] = self.fuse_residual_connection
             self.inputs['ResidualData'] = OpTest.np_dtype_to_fluid_dtype(
-                input_residual)
+                input_residual
+            )
 
         if self.fuse_activation == "relu":
             output = np.maximum(output, 0).astype(self.dsttype)
 
         if self.fuse_activation == "relu6":
-            output = np.minimum(np.maximum(output, 0),
-                                self.fuse_alpha).astype(self.dsttype)
+            output = np.minimum(np.maximum(output, 0), self.fuse_alpha).astype(
+                self.dsttype
+            )
         output = output.astype(self.dtype)
 
         self.attrs['fuse_bias'] = self.fuse_bias
         self.attrs['fuse_activation'] = self.fuse_activation
         self.attrs['fuse_alpha'] = self.fuse_alpha
         self.attrs['fuse_beta'] = self.fuse_beta
-        self.attrs['fuse_brelu_threshold'] = self.fuse_brelu_threshold
         self.attrs['fuse_residual_connection'] = self.fuse_residual_connection
 
         self.outputs['Output'] = output
 
 
 @skip_check_grad_ci(
-    reason="Fusion is for inference only, check_grad is not required.")
+    reason="Fusion is for inference only, check_grad is not required."
+)
 class TestWithbreluFusion(TestConv2DMKLDNNOp):
     def init_test_case(self):
         TestConv2DMKLDNNOp.init_test_case(self)
@@ -115,7 +122,8 @@ class TestWithbreluFusion(TestConv2DMKLDNNOp):
 
 
 @skip_check_grad_ci(
-    reason="Fusion is for inference only, check_grad is not required.")
+    reason="Fusion is for inference only, check_grad is not required."
+)
 class TestWithFuse(TestConv2DMKLDNNOp):
     def init_test_case(self):
         TestConv2DMKLDNNOp.init_test_case(self)
@@ -234,5 +242,6 @@ class TestMKLDNNDilations(TestConv2DMKLDNNOp):
 
 if __name__ == '__main__':
     from paddle import enable_static
+
     enable_static()
     unittest.main()

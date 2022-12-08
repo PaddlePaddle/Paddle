@@ -18,12 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
-namespace framework {
-class LoDTensor;
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace operators {
 namespace math {
 
@@ -41,7 +35,8 @@ namespace math {
 
  *
  * \param context       Device context of this functor.
- * \param seq           LoDTensor which is stored in sequence format, the shape
+ * \param seq           phi::DenseTensor which is stored in sequence format, the
+ shape
  *                      is [total_sequence_length, sequence_width] where
  *                      total_sequence_length is the sum of all sequences'
  *                      length.
@@ -53,8 +48,9 @@ namespace math {
 template <typename DeviceContext, typename T>
 class ScaleLoDTensorFunctor {
  public:
-  void operator()(const DeviceContext& context, const T* scales,
-                  framework::LoDTensor* seq);
+  void operator()(const DeviceContext& context,
+                  const T* scales,
+                  phi::DenseTensor* seq);
 };
 
 }  // namespace math

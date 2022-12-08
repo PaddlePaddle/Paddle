@@ -13,83 +13,93 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/api/utils/hook_utils.h"
+
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/utils/tensor_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/utils.h"
-#include "paddle/pten/core/dense_tensor.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace egr {
 namespace egr_utils_api {
 
-void RegisterGradientHookForTensor(
-    const egr::EagerTensor& tensor,
-    std::function<egr::EagerTensor(const egr::EagerTensor&)>& hook) {
+int64_t RegisterGradientHookForTensor(
+    const paddle::experimental::Tensor& tensor,
+    const std::function<paddle::experimental::Tensor(
+        const paddle::experimental::Tensor&)>& hook) {
   // Find grad_node and out_rank from AutogradMeta
   std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(tensor);
   auto rank_info = EagerUtils::unsafe_autograd_meta(tensor)->OutRankInfo();
 
-  grad_node->RegisterGradientHook(rank_info.first, rank_info.second, hook);
+  return grad_node->RegisterGradientHook(
+      rank_info.first,
+      rank_info.second,
+      std::move(std::make_shared<CppTensorHook>(hook)));
 }
 
-void RegisterReduceHookForTensor(const egr::EagerTensor& tensor,
-                                 const std::function<void(void)>& hook) {
-  // Find grad_node and out_rank from AutogradMeta
-  std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(tensor);
-
-  grad_node->RegisterReduceHook(hook);
-}
-
-void RetainGradForTensor(const egr::EagerTensor& tensor) {
-  // TODO(jiabin): Support More Tensor type here
-  AutogradMeta* meta = EagerUtils::unsafe_autograd_meta(tensor);
-  egr::EagerTensor* grad_tensor = meta->MutableGrad();
-
-  // Define Hook
-  std::function<egr::EagerTensor(const egr::EagerTensor&)> hook =
-      [grad_tensor](const egr::EagerTensor& t) {
-        if (!grad_tensor) {
-          PADDLE_THROW(paddle::platform::errors::Fatal(
-              "Detected null grad_tensor."
-              "Grad tensor in AutogradMeta of should not be nullptr"));
-        }
-        if (t.defined()) {
-          // Simply Copy impl() to grad_tensor
-          grad_tensor->set_impl(t.impl());
-          return *grad_tensor;
-        } else {
-          PADDLE_ENFORCE_EQ(
-              t.Var().IsInitialized(), true,
-              paddle::platform::errors::Fatal(
-                  "Detected uninitialized variable, causing segmentation fault "
-                  "inside the hook."
-                  "Variable %s has to be initialized while we need to set it."
-                  "please check tensor initialization status.",
-                  t.name()));
-          grad_tensor->MutableVar()
-              ->GetMutable<paddle::framework::LoDTensor>()
-              ->ShareDataWith(t.Var().Get<paddle::framework::LoDTensor>());
-          return *grad_tensor;
-        }
-      };
-
+void RegisterReduceHookForTensor(const paddle::experimental::Tensor& tensor,
+                                 const std::function<void()>& hook) {
   if (IsLeafTensor(tensor)) {
-    // Add RetainGrad as PostHook to AccumulationNode
+    VLOG(6) << "Register ReduceHook for leaf tensor";
     std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(tensor);
     PADDLE_ENFORCE(
         grad_node.get() != nullptr,
-        paddle::platform::errors::Fatal("Detected NULL grad_node"
+        paddle::platform::errors::Fatal("Detected NULL grad_node,"
                                         "Leaf tensor should have had grad_node "
                                         "with type: GradNodeAccumulation"));
     auto accumulation_grad_node =
         std::dynamic_pointer_cast<GradNodeAccumulation>(grad_node);
-    accumulation_grad_node->RetainGrad(hook);
-
+    accumulation_grad_node->RegisterReduceHook(
+        std::move(std::make_shared<CppVoidHook>(hook)));
   } else {
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "Only can register reduce hook for leaf Tensor."));
+  }
+}
+
+void RetainGradForTensor(const paddle::experimental::Tensor& tensor) {
+  if (IsLeafTensor(tensor)) {
+    // Leaf tensor's grad will always be retained
+    // Refer to implementation of AccumulationNode for more details
+    return;
+  } else {
+    AutogradMeta* meta = EagerUtils::unsafe_autograd_meta(tensor);
+    if (meta->RetainGrads()) {
+      return;
+    } else {
+      meta->SetRetainGrads(true);
+    }
+
+    std::weak_ptr<paddle::experimental::Tensor> weak_grad_tensor =
+        meta->WeakGrad();
+
+    // Define Hook
+    auto hook = [weak_grad_tensor](const paddle::experimental::Tensor& t) {
+      if (!weak_grad_tensor.expired()) {
+        auto grad_tensor = weak_grad_tensor.lock();
+        if (t.defined()) {
+          VLOG(7) << "Set impl for RetainGrad Hook for tensor: " << t.name();
+          // Simply Copy impl() to grad_tensor
+          grad_tensor->set_impl(t.impl());
+          grad_tensor->set_autograd_meta(t.mutable_autograd_meta());
+          return *grad_tensor.get();
+        } else {
+          VLOG(7) << "Retain NULL paddle::experimental::Tensor in Grad Hook";
+          return paddle::experimental::Tensor();
+        }
+      } else {
+        VLOG(7) << "Retain NULL paddle::experimental::Tensor in Grad Hook";
+        return paddle::experimental::Tensor();
+      }
+    };
+
     // Append to GradientHooks
     RegisterGradientHookForTensor(tensor, hook);
   }
 }
 
+void RegisterBackwardFinalHook(const std::function<void()>& hook) {
+  Controller::Instance().RegisterBackwardFinalHook(hook);
+}
 }  // namespace egr_utils_api
 }  // namespace egr

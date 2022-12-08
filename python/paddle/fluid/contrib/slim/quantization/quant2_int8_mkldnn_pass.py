@@ -22,7 +22,7 @@ __all__ = ['Quant2Int8MkldnnPass']
 OpRole = core.op_proto_and_checker_maker.OpRole
 
 
-class Quant2Int8MkldnnPass(object):
+class Quant2Int8MkldnnPass:
     """
     Transform a quant model IrGraph into MKL-DNN supported INT8 IrGraph.
     The pass consists of the following transformations:
@@ -36,13 +36,15 @@ class Quant2Int8MkldnnPass(object):
             passes (`cpu_quantize_pass`, `cpu_quantize_squash_pass`).
     """
 
-    def __init__(self,
-                 _ops_to_quantize,
-                 _op_ids_to_skip=None,
-                 _scope=None,
-                 _place=None,
-                 _core=None,
-                 _debug=False):
+    def __init__(
+        self,
+        _ops_to_quantize,
+        _op_ids_to_skip=None,
+        _scope=None,
+        _place=None,
+        _core=None,
+        _debug=False,
+    ):
         self._scope = _scope
         self._place = _get_paddle_place(_place)
         self._core = _core
@@ -52,18 +54,27 @@ class Quant2Int8MkldnnPass(object):
             'fake_quantize_range_abs_max',
         ]
         self._fake_dequantize_types = [
-            'fake_dequantize_max_abs', 'fake_channel_wise_dequantize_max_abs'
+            'fake_dequantize_max_abs',
+            'fake_channel_wise_dequantize_max_abs',
         ]
         self._fake_quantize_dequantize_types = [
             'fake_quantize_dequantize_abs_max',
             'fake_quantize_dequantize_moving_average_abs_max',
-            'fake_channel_wise_quantize_dequantize_abs_max'
+            'fake_channel_wise_quantize_dequantize_abs_max',
         ]
         self._ops_to_quantize = _ops_to_quantize
-        self._op_ids_to_skip = _op_ids_to_skip if _op_ids_to_skip is not None else set(
-            [-1])
+        self._op_ids_to_skip = (
+            _op_ids_to_skip if _op_ids_to_skip is not None else set([-1])
+        )
         self._scale_immutable_ops = [
-            'transpose2', 'reshape2', 'pool2d', 'slice'
+            'transpose2',
+            'reshape2',
+            'pool2d',
+            'slice',
+            'shape',
+            'nearest_interp',
+            'nearest_interp_v2',
+            'split',
         ]
         self._scale_ops = ['scale']
         self._conv_ops = ['conv2d', 'depthwise_conv2d']
@@ -83,8 +94,9 @@ class Quant2Int8MkldnnPass(object):
         self._pass_group = 'int8'
 
     def apply(self, graph):
-        assert isinstance(graph,
-                          IrGraph), 'graph must be the instance of IrGraph.'
+        assert isinstance(
+            graph, IrGraph
+        ), 'graph must be the instance of IrGraph.'
 
         self._reset_pass_idx_and_group('int8')
         graph = self._label_skip_quantized_op(graph)
@@ -104,8 +116,9 @@ class Quant2Int8MkldnnPass(object):
         return graph
 
     def prepare_and_optimize_fp32(self, graph):
-        assert isinstance(graph,
-                          IrGraph), 'graph must be the instance of IrGraph.'
+        assert isinstance(
+            graph, IrGraph
+        ), 'graph must be the instance of IrGraph.'
 
         self._reset_pass_idx_and_group('fp32')
         graph = self._optimize_fp32_graph(graph)
@@ -129,10 +142,10 @@ class Quant2Int8MkldnnPass(object):
         return any(op.name() in op_types for op in graph.all_op_nodes())
 
     def _is_any_of_op_types_quantized(self, op_types, graph):
-        return self._is_any_of_op_types_in_graph(
-            op_types, graph) and (self._is_quantizing_all_ops() or
-                                  any(op_type in self._ops_to_quantize
-                                      for op_type in op_types))
+        return self._is_any_of_op_types_in_graph(op_types, graph) and (
+            self._is_quantizing_all_ops()
+            or any(op_type in self._ops_to_quantize for op_type in op_types)
+        )
 
     def _is_conv_quantized(self, graph):
         return self._is_any_of_op_types_quantized(self._conv_ops, graph)
@@ -152,12 +165,13 @@ class Quant2Int8MkldnnPass(object):
         """
         target_ops = self._conv_ops + self._mul_ops + self._matmul_ops
         for op_node in graph.all_op_nodes():
-            if op_node.name() in target_ops and \
-               not op_node.op().has_attr("quantization_type"):
+            if op_node.name() in target_ops and not op_node.op().has_attr(
+                "quantization_type"
+            ):
                 is_quantized_op = True
                 for var_node in op_node.inputs:
                     for front_op_node in var_node.inputs:
-                        if "quantize_dequantize" not in front_op_node.name():
+                        if "quantize" not in front_op_node.name():
                             is_quantized_op = False
                 if not is_quantized_op:
                     op_node.op()._set_attr("skip_quant", True)
@@ -180,20 +194,25 @@ class Quant2Int8MkldnnPass(object):
         for op in graph.all_op_nodes():
             if op.name() in fake_ops:
                 bit_length = op.op().attr("bit_length")
-                assert bit_length == 8, 'Unsupported number quantization bits ({}). Only 8 is supported now.'.format(
-                    bit_length)
+                assert (
+                    bit_length == 8
+                ), 'Unsupported number quantization bits ({}). Only 8 is supported now.'.format(
+                    bit_length
+                )
 
                 input_name = op.input("X")[0]
                 scale_name = op.input("InScale")[0]
                 output_name = op.output("Out")[0]
                 # Gather new weight scales after folding batchnorm in convolution
-                scale = np.array(1.0 / self._load_param(
-                    self._scope, scale_name)[0]).astype(np.float64)
+                scale = np.array(
+                    1.0 / self._load_param(self._scope, scale_name)[0]
+                ).astype(np.float64)
                 scale[scale == np.Inf] = 0.0
                 lod_tensor = self._convert_scale2tensor(scale)
                 use_unsigned_int = False
-                self._add_scale_for_vars([input_name, output_name],
-                                         use_unsigned_int, lod_tensor)
+                self._add_scale_for_vars(
+                    [input_name, output_name], use_unsigned_int, lod_tensor
+                )
 
         return graph
 
@@ -203,15 +222,16 @@ class Quant2Int8MkldnnPass(object):
                 input_name = op.input("X")[0]
                 if op.op().has_attr("max_range"):
                     _max_range = np.array(op.op().attr("max_range")).astype(
-                        np.float64)
+                        np.float64
+                    )
                     self._weight_thresholds[input_name] = np.array(
-                        self._s8_max * self._s8_max /
-                        _max_range).astype(np.float64)
+                        self._s8_max * self._s8_max / _max_range
+                    ).astype(np.float64)
                 else:
                     scale_name = op.input("Scales")[0]
                     self._weight_thresholds[input_name] = np.array(
-                        self._load_param(self._scope, scale_name)).astype(
-                            np.float64)
+                        self._load_param(self._scope, scale_name)
+                    ).astype(np.float64)
 
         return graph
 
@@ -228,7 +248,8 @@ class Quant2Int8MkldnnPass(object):
                 for output_name in op.op().outputs():
                     for out_var_name in op.op().output(output_name):
                         self._add_scale_for_vars(
-                            [out_var_name], use_unsigned_int, scale_lod_tensor)
+                            [out_var_name], use_unsigned_int, scale_lod_tensor
+                        )
 
         return graph
 
@@ -243,23 +264,36 @@ class Quant2Int8MkldnnPass(object):
             waiting_for_scale = set()
             for op in graph.all_op_nodes():
                 if op.name() in self._scale_immutable_ops:
-                    if op.name() == 'slice':
+                    if op.name() == 'slice' or op.name() == 'shape':
                         input_name = op.input("Input")[0]
                     else:
                         input_name = op.input("X")[0]
                     output_name = op.output("Out")[0]
                     tensor_names = [input_name, output_name]
 
-                    if all(name not in self._var_quant_scales
-                           for name in tensor_names):
+                    if all(
+                        name not in self._var_quant_scales
+                        for name in tensor_names
+                    ):
                         waiting_for_scale.update(tensor_names)
                         continue
                     elif input_name in self._var_quant_scales:
                         self._var_quant_scales[
-                            output_name] = self._var_quant_scales[input_name]
+                            output_name
+                        ] = self._var_quant_scales[input_name]
                     elif output_name in self._var_quant_scales:
                         self._var_quant_scales[
-                            input_name] = self._var_quant_scales[output_name]
+                            input_name
+                        ] = self._var_quant_scales[output_name]
+
+                elif op.name() == 'concat':
+                    output_name = op.output("Out")[0]
+                    if output_name in self._var_quant_scales:
+                        input_names = op.input("X")
+                        for input_name in input_names:
+                            self._var_quant_scales[
+                                input_name
+                            ] = self._var_quant_scales[output_name]
                 elif op.name() in self._scale_ops:
                     input_name = op.input("X")[0]
                     output_name = op.output("Out")[0]
@@ -270,8 +304,10 @@ class Quant2Int8MkldnnPass(object):
         waiting_for_scale = _update_scales(graph)
         waiting_for_scale_prev = set()
 
-        while len(waiting_for_scale
-                  ) != 0 and waiting_for_scale != waiting_for_scale_prev:
+        while (
+            len(waiting_for_scale) != 0
+            and waiting_for_scale != waiting_for_scale_prev
+        ):
             waiting_for_scale_prev = waiting_for_scale
             waiting_for_scale = _update_scales(graph)
 
@@ -293,26 +329,31 @@ class Quant2Int8MkldnnPass(object):
 
     def _remove_fake_quantize(self, graph, op):
         fake_quant_in = graph._find_node_by_name(op.inputs, op.input("X")[0])
-        fake_quant_in_scale = graph._find_node_by_name(op.inputs,
-                                                       op.input("InScale")[0])
-        fake_quant_out = graph._find_node_by_name(op.outputs,
-                                                  op.output("Out")[0])
+        fake_quant_in_scale = graph._find_node_by_name(
+            op.inputs, op.input("InScale")[0]
+        )
+        fake_quant_out = graph._find_node_by_name(
+            op.outputs, op.output("Out")[0]
+        )
         fake_quant_out_scale = graph._find_node_by_name(
-            op.outputs, op.output("OutScale")[0])
+            op.outputs, op.output("OutScale")[0]
+        )
 
         next_ops = fake_quant_out.outputs
         for next_op in next_ops:
             self._swap_inputs(next_op, fake_quant_out, fake_quant_in)
             graph.link_to(fake_quant_in, next_op)
         graph.safe_remove_nodes(
-            {op, fake_quant_in_scale, fake_quant_out, fake_quant_out_scale})
+            {op, fake_quant_in_scale, fake_quant_out, fake_quant_out_scale}
+        )
 
         return graph
 
     def _remove_fake_dequantize(self, graph, op):
         fake_dequant_in = graph._find_node_by_name(op.inputs, op.input("X")[0])
-        fake_dequant_out = graph._find_node_by_name(op.outputs,
-                                                    op.output("Out")[0])
+        fake_dequant_out = graph._find_node_by_name(
+            op.outputs, op.output("Out")[0]
+        )
 
         next_ops = fake_dequant_out.outputs
         for next_op in next_ops:
@@ -325,10 +366,13 @@ class Quant2Int8MkldnnPass(object):
     def _swap_inputs(self, op, old_input, new_input):
         for input_name in op.op().input_names():
             if old_input.name() in op.input(input_name):
-                op.op().set_input(input_name, [
-                    new_input.name() if x == old_input.name() else x
-                    for x in op.input(input_name)
-                ])
+                op.op().set_input(
+                    input_name,
+                    [
+                        new_input.name() if x == old_input.name() else x
+                        for x in op.input(input_name)
+                    ],
+                )
 
     def _dequantize_weights(self, graph):
         def _is_int8_weights(op_node, weight_name):
@@ -359,8 +403,10 @@ class Quant2Int8MkldnnPass(object):
             w_fp32 = np.multiply(np.divide(weight, self._s8_max), scales)
         else:
             raise ValueError(
-                "The size of weight scales vector ({}) does not match the dimensions ({}) of the weights tensor {}."
-                .format(scales.size, weight.shape, weight_var_name))
+                "The size of weight scales vector ({}) does not match the dimensions ({}) of the weights tensor {}.".format(
+                    scales.size, weight.shape, weight_var_name
+                )
+            )
         w_fp32 = w_fp32.reshape(weight.shape).astype(np.float32)
         self._restore_var(weight_var_name, w_fp32)
 
@@ -371,17 +417,11 @@ class Quant2Int8MkldnnPass(object):
     def _update_activations(self, graph):
         for op in graph.all_op_nodes():
             if op.name() in self._conv_ops and not op.op().has_attr(
-                    "fuse_activation"):
+                "fuse_activation"
+            ):
                 activation = ""
                 if op.op().has_attr("fuse_relu") and op.op().attr("fuse_relu"):
                     activation = "relu"
-                elif op.op().has_attr("fuse_brelu") and op.op().attr(
-                        "fuse_brelu"):
-                    activation = "relu6"
-                    alpha = 6.0
-                    if op.op().has_attr("fuse_brelu_threshold"):
-                        alpha = op.op().attr("fuse_brelu_threshold")
-                    op.set_attr("fuse_alpha", alpha)
                 op.set_attr("fuse_activation", activation)
         return graph
 
@@ -396,11 +436,14 @@ class Quant2Int8MkldnnPass(object):
     def _optimize_fp32_graph(self, graph):
         graph = self._update_activations(graph)
         graph = self._remove_ctrl_vars(graph)
+        graph = self._apply_pass(
+            graph, 'mkldnn_placement_pass', ['mkldnn_enabled_op_types'], [set()]
+        )
+        # remove dropout ops
+        graph = self._apply_pass(graph, 'simplify_with_basic_ops_pass')
+        graph = self._apply_pass(graph, 'layer_norm_fuse_pass')
         graph = self._apply_pass(graph, 'attention_lstm_fuse_pass')
         graph = self._apply_pass(graph, 'seqconv_eltadd_relu_fuse_pass')
-        #  graph = self._apply_pass(graph, 'seqpool_concat_fuse_pass')
-        graph = self._apply_pass(graph, 'seqpool_cvm_concat_fuse_pass')
-        #  graph = self._apply_pass(graph, 'embedding_fc_lstm_fuse_pass')
         graph = self._apply_pass(graph, 'fc_lstm_fuse_pass')
         graph = self._apply_pass(graph, 'mul_lstm_fuse_pass')
         graph = self._apply_pass(graph, 'fc_gru_fuse_pass')
@@ -408,27 +451,50 @@ class Quant2Int8MkldnnPass(object):
         graph = self._apply_pass(graph, 'multi_gru_fuse_pass')
         graph = self._apply_pass(graph, 'multi_gru_seq_fuse_pass')
         graph = self._apply_pass(graph, 'seq_concat_fc_fuse_pass')
+        graph = self._apply_pass(graph, 'gpu_cpu_squeeze2_matmul_fuse_pass')
+        graph = self._apply_pass(graph, 'gpu_cpu_reshape2_matmul_fuse_pass')
+        graph = self._apply_pass(graph, 'gpu_cpu_flatten2_matmul_fuse_pass')
+        graph = self._apply_pass(graph, 'matmul_v2_scale_fuse_pass')
         graph = self._apply_pass(graph, 'squared_mat_sub_fuse_pass')
         graph = self._apply_pass(graph, 'is_test_pass')
-        graph = self._apply_pass(graph, 'mkldnn_placement_pass',
-                                 ['mkldnn_enabled_op_types'], [set()])
+        graph = self._apply_pass(graph, 'gpu_cpu_map_matmul_v2_to_mul_pass')
+        graph = self._apply_pass(graph, 'gpu_cpu_map_matmul_v2_to_matmul_pass')
+        graph = self._apply_pass(graph, 'matmul_scale_fuse_pass')
+        graph = self._apply_pass(graph, 'gpu_cpu_map_matmul_to_mul_pass')
+        graph = self._apply_pass(graph, 'repeated_fc_relu_fuse_pass')
         graph = self._apply_pass(graph, 'depthwise_conv_mkldnn_pass')
         graph = self._apply_pass(graph, 'conv_bn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_eltwiseadd_bn_fuse_pass')
+        graph = self._apply_pass(graph, 'conv_affine_channel_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_transpose_bn_fuse_pass')
-        graph = self._apply_pass(graph,
-                                 'conv_transpose_eltwiseadd_bn_fuse_pass')
+        graph = self._apply_pass(
+            graph, 'conv_transpose_eltwiseadd_bn_fuse_pass'
+        )
         graph = self._apply_pass(graph, 'conv_bias_mkldnn_fuse_pass')
+        graph = self._apply_pass(graph, 'conv_transpose_bias_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'conv_elementwise_add_mkldnn_fuse_pass')
-        graph = self._apply_pass(graph, 'conv_relu_mkldnn_fuse_pass')
-        graph = self._apply_pass(graph, 'conv_relu6_mkldnn_fuse_pass')
-        graph = self._apply_pass(graph, 'fc_fuse_pass',
-                                 ['use_gpu', 'use_fc_padding'], [False, False])
+        graph = self._apply_pass(graph, 'conv_activation_mkldnn_fuse_pass')
+        graph = self._apply_pass(
+            graph, 'fc_fuse_pass', ['use_gpu', 'use_fc_padding'], [False, False]
+        )
         graph = self._apply_pass(graph, 'repeated_fc_relu_fuse_pass')
         if self._is_fc_quantized(graph):
+            # Disabled due to topology-dependent speed-up
             graph = self._apply_pass(graph, 'fc_mkldnn_pass')
-        graph = self._apply_pass(graph, 'matmul_transpose_reshape_fuse_pass')
-        graph = self._apply_pass(graph, 'matmul_v2_transpose_reshape_fuse_pass')
+            graph = self._apply_pass(graph, 'fc_act_mkldnn_fuse_pass')
+        graph = self._apply_pass(
+            graph, 'matmul_transpose_reshape_mkldnn_fuse_pass'
+        )
+        graph = self._apply_pass(
+            graph, 'matmul_elementwise_add_mkldnn_fuse_pass'
+        )
+        graph = self._apply_pass(graph, 'matmul_activation_mkldnn_fuse_pass')
+        graph = self._apply_pass(graph, 'batch_norm_act_fuse_pass')
+        graph = self._apply_pass(graph, 'softplus_activation_mkldnn_fuse_pass')
+        graph = self._apply_pass(graph, 'scale_matmul_fuse_pass')
+        graph = self._apply_pass(
+            graph, 'reshape_transpose_matmul_mkldnn_fuse_pass'
+        )
         # the following pass should be the last one since it will work on all fused ops.
         graph = self._apply_pass(graph, 'runtime_context_cache_pass')
         return graph
@@ -446,15 +512,16 @@ class Quant2Int8MkldnnPass(object):
                 ir_pass.set(attr, value)
         ir_pass.apply(cpp_graph)
         if self._debug:
-            graph.draw('.', '{}_{}_{}'.format(self._pass_group, self._pass_idx,
-                                              pass_name), graph.all_op_nodes())
+            graph.draw(
+                '.',
+                '{}_{}_{}'.format(self._pass_group, self._pass_idx, pass_name),
+                graph.all_op_nodes(),
+            )
         self._remove_unused_var_nodes(graph)
         self._pass_idx += 1
         return graph
 
     def _final_optimizations(self, graph):
-        # remove dropout ops
-        graph = self._apply_pass(graph, 'simplify_with_basic_ops_pass')
         # make some MKL-DNN ops working inplace
         graph = self._apply_pass(graph, 'mkldnn_inplace_pass')
         return graph
@@ -476,8 +543,10 @@ class Quant2Int8MkldnnPass(object):
         all_used_vars = {n.node for n in all_used_vars}
         all_unused_vars = {
             n
-            for n in filter(lambda node: node.node not in all_used_vars,
-                            graph.all_var_nodes())
+            for n in filter(
+                lambda node: node.node not in all_used_vars,
+                graph.all_var_nodes(),
+            )
         }
         graph.safe_remove_nodes(all_unused_vars)
         return graph
@@ -494,41 +563,55 @@ class Quant2Int8MkldnnPass(object):
                 if op.op().type() in ops:
                     weight_var_name = op.input(w_name)[0]
                     weights = np.array(
-                        self._load_param(self._scope, weight_var_name))
+                        self._load_param(self._scope, weight_var_name)
+                    )
                     scales = 1.0 / np.amax(
                         np.abs(weights.reshape(weights.shape[0], -1)).astype(
-                            np.float64),
-                        axis=axis)
+                            np.float64
+                        ),
+                        axis=axis,
+                    )
                     scales[scales == np.Inf] = 0.0
 
                     lod_tensor = self._convert_scale2tensor(scales)
                     use_unsigned_int = False
-                    self._var_quant_scales[weight_var_name] = (use_unsigned_int,
-                                                               lod_tensor)
+                    self._var_quant_scales[weight_var_name] = (
+                        use_unsigned_int,
+                        lod_tensor,
+                    )
 
         def _compute_single_gru_weight_scales(wx_var_name, wh_var_name):
             wx = np.array(self._load_param(self._scope, wx_var_name))
             wh = np.array(self._load_param(self._scope, wh_var_name))
             OC = wh.shape[0]
-            scale_ur = 1.0 / np.max(np.abs(
-                np.concatenate(
-                    [
-                        wx[:, :2 * OC], wh.flatten()[:2 * OC * OC].reshape(OC, 2
-                                                                           * OC)
-                    ],
-                    axis=0)),
-                                    axis=0)
-            scale_o = 1.0 / np.max(np.abs(
-                np.concatenate(
-                    [
-                        wx[:, 2 * OC:], wh.flatten()[2 * OC * OC:].reshape(OC,
-                                                                           OC)
-                    ],
-                    axis=0)),
-                                   axis=0)
+            scale_ur = 1.0 / np.max(
+                np.abs(
+                    np.concatenate(
+                        [
+                            wx[:, : 2 * OC],
+                            wh.flatten()[: 2 * OC * OC].reshape(OC, 2 * OC),
+                        ],
+                        axis=0,
+                    )
+                ),
+                axis=0,
+            )
+            scale_o = 1.0 / np.max(
+                np.abs(
+                    np.concatenate(
+                        [
+                            wx[:, 2 * OC :],
+                            wh.flatten()[2 * OC * OC :].reshape(OC, OC),
+                        ],
+                        axis=0,
+                    )
+                ),
+                axis=0,
+            )
 
-            gru_weights_scale = np.concatenate([scale_ur,
-                                                scale_o]).astype('float')
+            gru_weights_scale = np.concatenate([scale_ur, scale_o]).astype(
+                'float'
+            )
 
             return self._convert_scale2tensor(gru_weights_scale)
 
@@ -538,22 +621,26 @@ class Quant2Int8MkldnnPass(object):
                     assert len(op.input(wx_name)) == len(
                         op.input(wh_name)
                     ), 'Mismatch in number of weights inputs ({} for WeightX vs. {} for WeightH).'.format(
-                        len(op.input(wx_name)), len(op.input(wh_name)))
+                        len(op.input(wx_name)), len(op.input(wh_name))
+                    )
                     for i, wx_var_name in enumerate(op.input(wx_name)):
                         wh_var_name = op.input(wh_name)[i]
                         use_unsigned_int = False
                         lod_tensor = _compute_single_gru_weight_scales(
-                            wx_var_name, wh_var_name)
-                        self._var_quant_scales[wx_var_name] = (use_unsigned_int,
-                                                               lod_tensor)
+                            wx_var_name, wh_var_name
+                        )
+                        self._var_quant_scales[wx_var_name] = (
+                            use_unsigned_int,
+                            lod_tensor,
+                        )
 
         def _compute_single_lstm_weight_scales(wx_var_name, wh_var_name):
             wx = np.array(self._load_param(self._scope, wx_var_name))
             wh = np.array(self._load_param(self._scope, wh_var_name))
 
             lstm_weights_scale = 1.0 / np.max(
-                np.abs(np.concatenate(
-                    [wx[:, :], wh[:, :]], axis=0)), axis=0)
+                np.abs(np.concatenate([wx[:, :], wh[:, :]], axis=0)), axis=0
+            )
             lstm_weights_scale = lstm_weights_scale.astype('float')
 
             return self._convert_scale2tensor(lstm_weights_scale)
@@ -564,14 +651,18 @@ class Quant2Int8MkldnnPass(object):
                     assert len(op.input(wx_name)) == len(
                         op.input(wh_name)
                     ), 'Mismatch in number of weights inputs ({} for WeightX vs. {} for WeightH).'.format(
-                        len(op.input(wx_name)), len(op.input(wh_name)))
+                        len(op.input(wx_name)), len(op.input(wh_name))
+                    )
                     for i, wx_var_name in enumerate(op.input(wx_name)):
                         wh_var_name = op.input(wh_name)[i]
                         use_unsigned_int = False
                         lod_tensor = _compute_single_lstm_weight_scales(
-                            wx_var_name, wh_var_name)
-                        self._var_quant_scales[wx_var_name] = (use_unsigned_int,
-                                                               lod_tensor)
+                            wx_var_name, wh_var_name
+                        )
+                        self._var_quant_scales[wx_var_name] = (
+                            use_unsigned_int,
+                            lod_tensor,
+                        )
 
         _compute_var_scales(self._conv_ops, "Filter", axis=1)
         _compute_var_scales(self._fc_ops, "W", axis=0)
@@ -580,13 +671,6 @@ class Quant2Int8MkldnnPass(object):
         _compute_gru_weight_scales("WeightX", "WeightH")
         _compute_lstm_weight_scales("WeightX", "WeightH")
         return graph
-
-    def _find_avg_pooling_ids(self, graph):
-        for op in graph.all_op_nodes():
-            if op.name() in self._pool_ops:
-                if op.op().attr("pooling_type") == "avg":
-                    self._op_ids_to_skip.add(op.id())
-        return self._op_ids_to_skip
 
     def _update_relu_output_scales(self, graph):
         def _set_unsigned_scale(graph, ops, op_out_name, predicate):
@@ -598,8 +682,9 @@ class Quant2Int8MkldnnPass(object):
             for op in graph.all_op_nodes():
                 if op.name() in ops:
                     out_name = op.output(op_out_name)[0]
-                    if out_name in self._var_quant_scales and predicate(op.op(
-                    )):
+                    if out_name in self._var_quant_scales and predicate(
+                        op.op()
+                    ):
                         is_unsigned, tensor = self._var_quant_scales[out_name]
                         if is_unsigned is False:
                             # If the variable is signed, it means that the scales for this var
@@ -607,23 +692,26 @@ class Quant2Int8MkldnnPass(object):
                             # to fill the entire range of uint8
                             scale = np.array(tensor) * 2
                             tensor = self._convert_scale2tensor(
-                                scale.astype(np.float64))
+                                scale.astype(np.float64)
+                            )
                         self._var_quant_scales[out_name] = (True, tensor)
             return graph
 
         def conv_predicate(op):
             return op.attr("fuse_activation") in self._relu_ops
 
-        graph = _set_unsigned_scale(graph, self._conv_ops, "Output",
-                                    conv_predicate)
+        graph = _set_unsigned_scale(
+            graph, self._conv_ops, "Output", conv_predicate
+        )
 
         def fc_predicate(op):
             return op.attr("activation_type") in self._relu_ops
 
         graph = _set_unsigned_scale(graph, self._fc_ops, "Out", fc_predicate)
 
-        graph = _set_unsigned_scale(graph, self._relu_ops, 'Out',
-                                    lambda op: True)
+        graph = _set_unsigned_scale(
+            graph, self._relu_ops, 'Out', lambda op: True
+        )
 
         return graph
 
@@ -631,17 +719,23 @@ class Quant2Int8MkldnnPass(object):
         return 'NHWC' if self._is_conv_quantized(graph) else 'NCHW'
 
     def _quantize_fp32_graph(self, graph):
-        graph = self._apply_pass(
-            graph, 'cpu_quantize_placement_pass',
-            ['quantize_enabled_op_types', 'quantize_excluded_op_ids'],
-            [self._ops_to_quantize, self._find_avg_pooling_ids(graph)])
         graph = self._apply_pass(graph, 'scale_matmul_fuse_pass')
-        graph = self._apply_pass(graph,
-                                 'reshape_transpose_matmul_mkldnn_fuse_pass')
-        graph = self._apply_pass(graph,
-                                 'reshape_transpose_matmul_v2_mkldnn_fuse_pass')
         graph = self._apply_pass(
-            graph, 'cpu_quantize_pass', ['quant_var_scales', 'data_layout'],
-            [self._var_quant_scales, self._get_data_layout(graph)])
+            graph, 'reshape_transpose_matmul_mkldnn_fuse_pass'
+        )
+        graph = self._apply_pass(
+            graph,
+            'cpu_quantize_placement_pass',
+            ['quantize_enabled_op_types'],
+            [self._ops_to_quantize],
+        )
+        graph = self._apply_pass(
+            graph,
+            'cpu_quantize_pass',
+            ['quant_var_scales', 'data_layout'],
+            [self._var_quant_scales, self._get_data_layout(graph)],
+        )
         graph = self._apply_pass(graph, 'cpu_quantize_squash_pass')
+        graph = self._apply_pass(graph, 'int8_scale_calculation_mkldnn_pass')
+        graph = self._apply_pass(graph, 'params_quantization_mkldnn_pass')
         return graph

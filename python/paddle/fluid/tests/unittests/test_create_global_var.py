@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os, shutil
 import unittest
+
 import numpy as np
+
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
@@ -33,8 +34,8 @@ class TestCreateGlobalVarError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_shape_item)
 
-            # Since create_global_var support all dtype in convert_dtype(). 
-            # Hence, assertRaises ValueError not TypeError. 
+            # Since create_global_var support all dtype in convert_dtype().
+            # Hence, assertRaises ValueError not TypeError.
             def test_dtype():
                 fluid.layers.create_global_var([1, 2, 3], 2.0, np.complex128)
 

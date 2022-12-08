@@ -54,7 +54,7 @@ func TestNewConfig(t *testing.T) {
 	}
 	config.SetTRTDynamicShapeInfo(minInputShape, maxInputShape, optInputShape, false)
 
-	config.EnableTensorRtOSS()
+	config.EnableVarseqlen()
 	t.Logf("TensorrtOssEnabled:%+v", config.TensorrtOssEnabled())
 
 	config.EnableTensorRtDLA(0)
@@ -121,4 +121,21 @@ func TestMkldnn(t *testing.T) {
 	t.Logf("MkldnnBfloat16Enabled:%+v", config.MkldnnBfloat16Enabled())
 
 	config.SetBfloat16Op([]string{"fc", "mul"})
+}
+
+func TestONNXRuntime(t *testing.T) {
+	config := NewConfig()
+	config.SetModelDir("modelDir")
+	t.Log(config.ModelDir())
+
+	config.EnableONNXRuntime()
+	t.Logf("ONNXRuntimeEnabled:%+v", config.ONNXRuntimeEnabled())
+
+	config.DisableONNXRuntime()
+	t.Logf("ONNXRuntimeEnabled:%+v", config.ONNXRuntimeEnabled())
+
+	config.EnableORTOptimization()
+
+	config.SetCpuMathLibraryNumThreads(4)
+	t.Logf("CpuMathLibraryNumThreads:%+v", config.CpuMathLibraryNumThreads())
 }

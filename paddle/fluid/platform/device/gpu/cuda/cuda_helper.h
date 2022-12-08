@@ -14,9 +14,12 @@
 
 #pragma once
 
+#include <functional>
 #include <mutex>  // NOLINT
 
+#include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/platform/dynload/cublas.h"
+#include "paddle/fluid/platform/dynload/cublasLt.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
 
@@ -65,12 +68,14 @@ namespace platform {
  *      }
  *    }
  *
-*/
+ */
 
-#define CUDA_KERNEL_LOOP_TYPE(i, num, index_type)            \
-  int64_t __index__ = blockIdx.x * blockDim.x + threadIdx.x; \
-  for (index_type i = __index__; __index__ < (num);          \
-       __index__ += blockDim.x * gridDim.x, i = __index__)
+#define CUDA_KERNEL_LOOP_TYPE(i, num, index_type)                    \
+  int64_t __index__ =                                                \
+      static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;   \
+  int64_t __stride__ = static_cast<int64_t>(blockDim.x) * gridDim.x; \
+  for (index_type i = __index__; __index__ < (num);                  \
+       __index__ += __stride__, i = __index__)
 
 class CublasHandleHolder {
  public:
@@ -96,8 +101,7 @@ class CublasHandleHolder {
     PADDLE_RETRY_CUDA_SUCCESS(dynload::cublasDestroy(handle_));
   }
 
-  template <typename Callback>
-  inline void Call(Callback&& callback) const {
+  inline void Call(const std::function<void(blasHandle_t)>& callback) const {
     std::lock_guard<std::mutex> guard(mtx_);
     callback(handle_);
   }
@@ -106,6 +110,29 @@ class CublasHandleHolder {
   DISABLE_COPY_AND_ASSIGN(CublasHandleHolder);
 
   cublasHandle_t handle_;
+  mutable std::mutex mtx_;
+};
+
+class CublasLtHandleHolder {
+ public:
+  CublasLtHandleHolder() {
+    PADDLE_RETRY_CUDA_SUCCESS(dynload::cublasLtCreate(&handle_));
+  }
+  const cublasLtHandle_t& GetCublasLtHandle() const { return handle_; }
+
+  ~CublasLtHandleHolder() PADDLE_MAY_THROW {
+    PADDLE_RETRY_CUDA_SUCCESS(dynload::cublasLtDestroy(handle_));
+  }
+
+  inline void Call(const std::function<void(blasLtHandle_t)>& callback) const {
+    std::lock_guard<std::mutex> guard(mtx_);
+    callback(handle_);
+  }
+
+ private:
+  DISABLE_COPY_AND_ASSIGN(CublasLtHandleHolder);
+
+  cublasLtHandle_t handle_;
   mutable std::mutex mtx_;
 };
 

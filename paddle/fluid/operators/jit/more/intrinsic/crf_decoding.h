@@ -24,8 +24,12 @@ namespace jit {
 namespace more {
 namespace intrinsic {
 
-void CRFDecoding(const int seq_len, const float* x, const float* w,
-                 float* alpha, int* track, int tag_num);
+void CRFDecoding(const int seq_len,
+                 const float* x,
+                 const float* w,
+                 float* alpha,
+                 int* track,
+                 int tag_num);
 
 class CRFDecodingKernel : public KernelMore<CRFDecodingTuple<float>> {
  public:

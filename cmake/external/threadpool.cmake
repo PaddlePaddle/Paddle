@@ -12,32 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-INCLUDE(ExternalProject)
+include(ExternalProject)
 
-SET(THREADPOOL_PREFIX_DIR ${THIRD_PARTY_PATH}/threadpool)
+set(THREADPOOL_PREFIX_DIR ${THIRD_PARTY_PATH}/threadpool)
 if(WITH_ASCEND OR WITH_ASCEND_CL)
-    SET(THREADPOOL_REPOSITORY https://gitee.com/tianjianhe/ThreadPool.git)
+  set(THREADPOOL_REPOSITORY https://gitee.com/tianjianhe/ThreadPool.git)
 else()
-    SET(THREADPOOL_REPOSITORY ${GIT_URL}/progschj/ThreadPool.git)
+  set(THREADPOOL_REPOSITORY ${GIT_URL}/progschj/ThreadPool.git)
 endif()
-SET(THREADPOOL_TAG        9a42ec1329f259a5f4881a291db1dcb8f2ad9040)
+set(THREADPOOL_TAG 9a42ec1329f259a5f4881a291db1dcb8f2ad9040)
 
-SET(THREADPOOL_INCLUDE_DIR ${THIRD_PARTY_PATH}/threadpool/src/extern_threadpool)
-INCLUDE_DIRECTORIES(${THREADPOOL_INCLUDE_DIR})
+set(THREADPOOL_INCLUDE_DIR ${THIRD_PARTY_PATH}/threadpool/src/extern_threadpool)
+include_directories(${THREADPOOL_INCLUDE_DIR})
 
 ExternalProject_Add(
-    extern_threadpool
-    ${EXTERNAL_PROJECT_LOG_ARGS}
-    ${SHALLOW_CLONE}
-    GIT_REPOSITORY  ${THREADPOOL_REPOSITORY}
-    GIT_TAG         ${THREADPOOL_TAG}
-    PREFIX          ${THREADPOOL_PREFIX_DIR}
-    UPDATE_COMMAND  ""
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND     ""
-    INSTALL_COMMAND   ""
-    TEST_COMMAND      ""
-)
+  extern_threadpool
+  ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
+  GIT_REPOSITORY ${THREADPOOL_REPOSITORY}
+  GIT_TAG ${THREADPOOL_TAG}
+  PREFIX ${THREADPOOL_PREFIX_DIR}
+  UPDATE_COMMAND ""
+  CONFIGURE_COMMAND ""
+  BUILD_COMMAND ""
+  INSTALL_COMMAND ""
+  TEST_COMMAND "")
 
 add_library(simple_threadpool INTERFACE)
 

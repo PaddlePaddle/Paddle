@@ -17,7 +17,8 @@
 #include <mlir/IR/OpDefinition.h>
 #include <mlir/Interfaces/SideEffectInterfaces.h>
 
-namespace infrt::ts {
+namespace infrt {
+namespace ts {
 
 class ShapeType
     : public mlir::Type::TypeBase<ShapeType, mlir::Type, mlir::TypeStorage> {
@@ -31,10 +32,9 @@ class PartialShapeType : public mlir::Type::TypeBase<PartialShapeType,
  public:
   using Base::Base;
 };
+}  // namespace ts
+}  // namespace infrt
 
-using namespace mlir;  // NOLINT
 #define GET_OP_CLASSES
 #include "paddle/infrt/dialect/tensor_shape.hpp.inc"
 #include "paddle/infrt/dialect/tensor_shape_dialect.hpp.inc"
-
-}  // namespace infrt::ts

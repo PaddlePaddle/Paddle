@@ -29,11 +29,20 @@ TEST(Variable, GetMutable) {
   EXPECT_EQ("1234", tt);
 
   try {
-    v->GetMutable<Tensor>();
+    v->GetMutable<phi::DenseTensor>();
   } catch (std::exception& e) {
     return;
   }
   EXPECT_TRUE(false);
+
+  std::unique_ptr<Variable> v_ints(new Variable());
+  auto* v_t = v_ints->GetMutable<std::vector<int>>();
+  v_t->push_back(1);
+  v_t->push_back(2);
+
+  const auto& cv_t = v_ints->Get<std::vector<int>>();
+  EXPECT_EQ(cv_t[0], 1);
+  EXPECT_EQ(cv_t[1], 2);
 }
 
 }  // namespace framework

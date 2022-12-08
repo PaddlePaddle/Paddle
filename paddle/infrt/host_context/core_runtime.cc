@@ -14,16 +14,16 @@
 
 #include "paddle/infrt/host_context/core_runtime.h"
 
-#include <unordered_map>
-
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "paddle/infrt/host_context/kernel_registry.h"
 #include "paddle/infrt/host_context/op_executable.h"
 #include "paddle/infrt/host_context/symbol_table.h"
 
-namespace infrt::host_context {
+namespace infrt {
+namespace host_context {
 
 struct CoreRuntime::Impl {
   KernelRegistry* kernel_registry{};
@@ -90,4 +90,5 @@ llvm::SmallVector<ValueRef, 4> CoreRuntime::GetResults(
 
 CoreRuntime::~CoreRuntime() {}
 
-}  // namespace infrt::host_context
+}  // namespace host_context
+}  // namespace infrt

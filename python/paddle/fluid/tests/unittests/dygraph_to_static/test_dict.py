@@ -12,42 +12,46 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import six
-import numpy as np
 import unittest
+
+import numpy as np
 
 import paddle
 import paddle.fluid as fluid
 from paddle.jit import to_static
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
+from paddle.jit.dy2static.program_translator import ProgramTranslator
 
-PLACE = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace(
+PLACE = (
+    fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
 )
 
 
 class SubNetWithDict(fluid.dygraph.Layer):
     def __init__(self, hidden_size=16, output_size=16):
-        super(SubNetWithDict, self).__init__()
+        super().__init__()
 
-        init_weight = lambda x: fluid.ParamAttr(initializer=fluid.initializer.Constant(x))
+        init_weight = lambda x: paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Constant(x)
+        )
 
-        self.q_fc = fluid.dygraph.Linear(
-            input_dim=hidden_size,
-            output_dim=output_size,
+        self.q_fc = paddle.nn.Linear(
+            in_features=hidden_size,
+            out_features=output_size,
             bias_attr=False,
-            param_attr=init_weight(0.6))
-        self.k_fc = fluid.dygraph.Linear(
-            input_dim=hidden_size,
-            output_dim=output_size,
+            weight_attr=init_weight(0.6),
+        )
+        self.k_fc = paddle.nn.Linear(
+            in_features=hidden_size,
+            out_features=output_size,
             bias_attr=False,
-            param_attr=init_weight(0.5))
-        self.v_fc = fluid.dygraph.Linear(
-            input_dim=hidden_size,
-            output_dim=output_size,
+            weight_attr=init_weight(0.5),
+        )
+        self.v_fc = paddle.nn.Linear(
+            in_features=hidden_size,
+            out_features=output_size,
             bias_attr=False,
-            param_attr=init_weight(0.2))
+            weight_attr=init_weight(0.2),
+        )
 
     def forward(self, input, cache=None):
         input = fluid.dygraph.to_variable(input)
@@ -62,16 +66,16 @@ class SubNetWithDict(fluid.dygraph.Layer):
             v = 0.2 * cache_v + v
             cache["k"], cache["v"] = k, v
 
-        weight = fluid.layers.matmul(x=q, y=k, transpose_y=True)
-        weight = fluid.layers.softmax(weight)
-        out = fluid.layers.matmul(weight, v)
+        weight = paddle.matmul(x=q, y=k, transpose_y=True)
+        weight = paddle.nn.functional.softmax(weight)
+        out = paddle.matmul(weight, v)
 
         return out
 
 
 class MainNetWithDict(fluid.dygraph.Layer):
     def __init__(self, batch_size=64, hidden_size=16, output_size=16):
-        super(MainNetWithDict, self).__init__()
+        super().__init__()
         self.batch_size = batch_size
         self.hidden_size = hidden_size
         self.output_size = output_size
@@ -84,15 +88,17 @@ class MainNetWithDict(fluid.dygraph.Layer):
             "k": fluid.layers.fill_constant(
                 shape=[self.batch_size, self.output_size],
                 dtype='float32',
-                value=0),
+                value=0,
+            ),
             "v": fluid.layers.fill_constant(
                 shape=[self.batch_size, self.output_size],
                 dtype='float32',
-                value=0),
+                value=0,
+            ),
         }
         # TODO(Aurelius84): The following code will be converted into:
-        # max_len = layers.cond(layers.shape(input)[0] != max_len,
-        #                       lambda: layers.shape(input)[0], lambda: max_len)
+        # max_len = layers.cond(paddle.shape(input)[0] != max_len,
+        #                       lambda: paddle.shape(input)[0], lambda: max_len)
         # But max_len should be wrapped into tensor, which is not supported.
 
         # Comment out this line of code for now.
@@ -106,8 +112,8 @@ class MainNetWithDict(fluid.dygraph.Layer):
 
 # Test to call function defined outside of class.
 def update_cache(cache):
-    for k, val in six.iteritems(cache):
-        cache[k] = fluid.layers.softmax(val)
+    for k, val in cache.items():
+        cache[k] = paddle.nn.functional.softmax(val)
 
     return cache
 
@@ -168,8 +174,11 @@ def test_dic_pop_2(x):
 class TestDictPop(unittest.TestCase):
     def setUp(self):
         self.input = np.random.random((3)).astype('int32')
-        self.place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda(
-        ) else paddle.CPUPlace()
+        self.place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
         self._set_test_func()
 
     def _set_test_func(self):
@@ -192,10 +201,14 @@ class TestDictPop(unittest.TestCase):
     def test_transformed_result(self):
         dygraph_res = self._run_dygraph()
         static_res = self._run_static()
-        self.assertTrue(
-            np.allclose(dygraph_res, static_res),
-            msg='dygraph result is {}\nstatic result is {}'.format(dygraph_res,
-                                                                   static_res))
+        np.testing.assert_allclose(
+            dygraph_res,
+            static_res,
+            rtol=1e-05,
+            err_msg='dygraph result is {}\nstatic result is {}'.format(
+                dygraph_res, static_res
+            ),
+        )
 
 
 class TestDictPop2(TestDictPop):
@@ -205,7 +218,7 @@ class TestDictPop2(TestDictPop):
 
 class NetWithDictPop(paddle.nn.Layer):
     def __init__(self):
-        super(NetWithDictPop, self).__init__()
+        super().__init__()
 
     @to_static
     def forward(self, x, **kwargs):
@@ -237,8 +250,10 @@ class TestDictPop3(TestNetWithDict):
 
         self.assertTrue(
             (dygraph_result == static_result).all(),
-            msg="dygraph result: {}\nstatic result: {}".format(dygraph_result,
-                                                               static_result))
+            msg="dygraph result: {}\nstatic result: {}".format(
+                dygraph_result, static_result
+            ),
+        )
 
 
 class TestDictCmpInFor(unittest.TestCase):
@@ -251,8 +266,8 @@ class TestDictCmpInFor(unittest.TestCase):
             for (x, y) in zip(pos, neg):
                 val = x - y
                 dict_val.update(
-                    {k: val + dict_val[k]
-                     for k, v in dict_val.items()})
+                    {k: val + dict_val[k] for k, v in dict_val.items()}
+                )
 
             return dict_val
 
@@ -267,8 +282,8 @@ class TestDictCmpInFor(unittest.TestCase):
             for i, (x, y) in enumerate(zip(pos, neg)):
                 val = x - y
                 dict_val.update(
-                    {k: val + dict_val[k]
-                     for k, v in dict_val.items()})
+                    {k: val + dict_val[k] for k, v in dict_val.items()}
+                )
 
             return dict_val
 

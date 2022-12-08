@@ -24,8 +24,8 @@ limitations under the License. */
 #include <map>
 #include <string>
 #include <vector>
-#include "gflags/gflags.h"
 
+#include "gflags/gflags.h"
 #include "paddle/fluid/inference/tests/api/trt_test_helper.h"
 
 namespace paddle {
@@ -87,8 +87,8 @@ static void run(const AnalysisConfig& config, std::vector<float>* out_data) {
   auto output_names = predictor->GetOutputNames();
   auto output_t = predictor->GetOutputTensor(output_names[0]);
   std::vector<int> output_shape = output_t->shape();
-  int out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
-                                std::multiplies<int>());
+  int out_num = std::accumulate(
+      output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
   out_data->resize(out_num);
   output_t->copy_to_cpu(out_data->data());
 }
@@ -98,8 +98,9 @@ static void trt_ernie(bool with_fp16, std::vector<float> result) {
   std::string model_dir = FLAGS_infer_model;
   // Delete serialization cache to perform serialization first rather than
   // deserialization.
-  std::string opt_cache_dir = FLAGS_infer_model + "/_opt_cache";
+  std::string opt_cache_dir = FLAGS_infer_model + "/opt_cache";
   delete_cache_files(opt_cache_dir);
+  config.SetOptimCacheDir(opt_cache_dir);
 
   SetConfig(&config, model_dir, true /* use_gpu */);
 
@@ -134,9 +135,14 @@ static void trt_ernie(bool with_fp16, std::vector<float> result) {
   if (with_fp16) {
     precision = AnalysisConfig::Precision::kHalf;
   }
+
+#if defined _WIN32
+#else
   config.EnableTensorRtEngine(1 << 30, 1, 5, precision, true, false);
-  config.SetTRTDynamicShapeInfo(min_input_shape, max_input_shape,
-                                opt_input_shape);
+#endif
+
+  config.SetTRTDynamicShapeInfo(
+      min_input_shape, max_input_shape, opt_input_shape);
   AnalysisConfig* config_deser = new AnalysisConfig(config);
 
   std::vector<float> out_data;

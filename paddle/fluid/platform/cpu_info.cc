@@ -31,6 +31,7 @@ limitations under the License. */
 #endif  // _WIN32
 
 #include <algorithm>
+
 #include "paddle/fluid/platform/flags.h"
 
 DECLARE_double(fraction_of_cpu_memory_to_use);
@@ -42,7 +43,8 @@ DECLARE_double(fraction_of_cuda_pinned_memory_to_use);
 // between host and device.  Allocates too much would reduce the amount
 // of memory available to the system for paging.  So, by default, we
 // should set false to use_pinned_memory.
-PADDLE_DEFINE_EXPORTED_bool(use_pinned_memory, true,
+PADDLE_DEFINE_EXPORTED_bool(use_pinned_memory,
+                            true,
                             "If set, allocate cpu pinned memory.");
 
 namespace paddle {
@@ -75,11 +77,6 @@ size_t CpuMaxAllocSize() {
   // For distributed systems, it requires configuring and limiting
   // the fraction of memory to use.
   return FLAGS_fraction_of_cpu_memory_to_use * CpuTotalPhysicalMemory();
-}
-
-size_t CpuMinChunkSize() {
-  // Allow to allocate the minimum chunk size is 4 KB.
-  return 1 << 12;
 }
 
 size_t CpuMaxChunkSize() {

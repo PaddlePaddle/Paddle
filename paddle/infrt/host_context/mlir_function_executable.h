@@ -13,7 +13,8 @@
 // limitations under the License.
 
 #pragma once
-#include <mlir/IR/Function.h>
+#include <mlir/IR/BuiltinTypes.h>
+#include <mlir/IR/Region.h>
 
 #include <string>
 #include <unordered_map>
@@ -69,6 +70,7 @@ class MlirFunctionExecutable : public Function, public MlirToRuntimeTranslator {
 
  private:
   mlir::Region* region_{};
+  KernelRegistry* kernel_registry_{};
   CoreRuntimeBuilder core_runtime_builder_;
   MlirToRuntimeTranslator::function_defs_t& function_table_;
   std::function<void()> copy_res_fn_;

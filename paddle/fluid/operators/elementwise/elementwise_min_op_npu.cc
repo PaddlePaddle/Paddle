@@ -16,14 +16,11 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/elementwise/elementwise_min_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_npu.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
-
-using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
 class ElementwiseMinNPUKernel : public framework::OpKernel<T> {
@@ -31,10 +28,10 @@ class ElementwiseMinNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
 
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     auto place = ctx.GetPlace();
 
     out->mutable_data<T>(place);
@@ -45,19 +42,17 @@ class ElementwiseMinNPUKernel : public framework::OpKernel<T> {
     auto y_dims = y->dims();
     axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
     if (x_dims.size() >= y_dims.size()) {
-      direct_compute =
-          y_dims == framework::slice_ddim(x_dims, axis, x_dims.size());
+      direct_compute = y_dims == phi::slice_ddim(x_dims, axis, x_dims.size());
     } else {
-      direct_compute =
-          x_dims == framework::slice_ddim(y_dims, axis, y_dims.size());
+      direct_compute = x_dims == phi::slice_ddim(y_dims, axis, y_dims.size());
     }
-    Tensor transformed_x, transformed_y;
+    phi::DenseTensor transformed_x, transformed_y;
     if (direct_compute) {
       transformed_x.ShareDataWith(*x);
       transformed_y.ShareDataWith(*y);
     } else {
-      NpuElementWiseOpBroadcast<T>(dev_ctx, x, y, axis, &transformed_x,
-                                   &transformed_y);
+      NpuElementWiseOpBroadcast<T>(
+          dev_ctx, x, y, axis, &transformed_x, &transformed_y);
     }
     const auto& runner =
         NpuOpRunner("Minimum", {transformed_x, transformed_y}, {*out}, {});
@@ -74,18 +69,18 @@ class ElementwiseMinGradNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
     int axis = ctx.Attr<int>("axis");
     axis = (axis == -1 ? std::abs(x->dims().size() - y->dims().size()) : axis);
     auto stream = dev_ctx.stream();
     if (dx && dy) {
       // dx
       dx->mutable_data<T>(ctx.GetPlace());
-      Tensor tmp_x;
+      phi::DenseTensor tmp_x;
       tmp_x.ShareDataWith(*dx);
       if (dx->dims() != dout->dims()) {
         std::vector<int> dst_dims_vec_x;
@@ -103,12 +98,12 @@ class ElementwiseMinGradNPUKernel : public framework::OpKernel<T> {
           }
         }
         if (!reduce_axes_x.empty()) {
-          tmp_x.Resize(framework::make_ddim(dst_dims_vec_x));
+          tmp_x.Resize(phi::make_ddim(dst_dims_vec_x));
         }
       }
       // dy
       dy->mutable_data<T>(ctx.GetPlace());
-      Tensor tmp_y;
+      phi::DenseTensor tmp_y;
       tmp_y.ShareDataWith(*dy);
       if (dy->dims() != dout->dims()) {
         std::vector<int> dst_dims_vec_y;
@@ -126,22 +121,23 @@ class ElementwiseMinGradNPUKernel : public framework::OpKernel<T> {
           }
         }
         if (!reduce_axes_y.empty()) {
-          tmp_y.Resize(framework::make_ddim(dst_dims_vec_y));
+          tmp_y.Resize(phi::make_ddim(dst_dims_vec_y));
         }
       }
 
-      const auto& runner =
-          NpuOpRunner("MinimumGrad", {*dout, *x, *y}, {tmp_x, tmp_y},
-                      {{"grad_x", true}, {"grad_y", true}});
+      const auto& runner = NpuOpRunner("MinimumGrad",
+                                       {*dout, *x, *y},
+                                       {tmp_x, tmp_y},
+                                       {{"grad_x", true}, {"grad_y", true}});
       runner.Run(stream);
 
     } else if (dx) {
-      Tensor zero_tensor(dout->type());
+      phi::DenseTensor zero_tensor(dout->type());
       zero_tensor.mutable_data<T>(y->dims(), ctx.GetPlace());
       FillNpuTensorWithConstant<T>(&zero_tensor, static_cast<T>(0));
       // dx
       dx->mutable_data<T>(ctx.GetPlace());
-      Tensor tmp_x;
+      phi::DenseTensor tmp_x;
       tmp_x.ShareDataWith(*dx);
       if (dx->dims() != dout->dims()) {
         std::vector<int> dst_dims_vec_x;
@@ -159,23 +155,24 @@ class ElementwiseMinGradNPUKernel : public framework::OpKernel<T> {
           }
         }
         if (!reduce_axes_x.empty()) {
-          tmp_x.Resize(framework::make_ddim(dst_dims_vec_x));
+          tmp_x.Resize(phi::make_ddim(dst_dims_vec_x));
         }
       }
 
-      const auto& runner =
-          NpuOpRunner("MinimumGrad", {*dout, *x, *y}, {tmp_x, zero_tensor},
-                      {{"grad_x", true}, {"grad_y", true}});
+      const auto& runner = NpuOpRunner("MinimumGrad",
+                                       {*dout, *x, *y},
+                                       {tmp_x, zero_tensor},
+                                       {{"grad_x", true}, {"grad_y", true}});
       runner.Run(stream);
 
     } else if (dy) {
-      Tensor zero_tensor(dout->type());
+      phi::DenseTensor zero_tensor(dout->type());
       zero_tensor.mutable_data<T>(x->dims(), ctx.GetPlace());
       FillNpuTensorWithConstant<T>(&zero_tensor, static_cast<T>(0));
 
       // dy
       dy->mutable_data<T>(ctx.GetPlace());
-      Tensor tmp_y;
+      phi::DenseTensor tmp_y;
       tmp_y.ShareDataWith(*dy);
       if (dy->dims() != dout->dims()) {
         std::vector<int> dst_dims_vec_y;
@@ -193,13 +190,14 @@ class ElementwiseMinGradNPUKernel : public framework::OpKernel<T> {
           }
         }
         if (!reduce_axes_y.empty()) {
-          tmp_y.Resize(framework::make_ddim(dst_dims_vec_y));
+          tmp_y.Resize(phi::make_ddim(dst_dims_vec_y));
         }
       }
 
-      const auto& runner =
-          NpuOpRunner("MinimumGrad", {*dout, *x, *y}, {zero_tensor, tmp_y},
-                      {{"grad_x", true}, {"grad_y", true}});
+      const auto& runner = NpuOpRunner("MinimumGrad",
+                                       {*dout, *x, *y},
+                                       {zero_tensor, tmp_y},
+                                       {{"grad_x", true}, {"grad_y", true}});
       runner.Run(stream);
 
     } else {

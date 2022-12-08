@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/platform/bfloat16.h"
@@ -33,14 +33,14 @@ struct sgd_dense_param_kernel {
 
 // LodTensor
 template <typename T>
-struct sgd_dense_param_kernel<
-    T, framework::VarTypeTrait<framework::LoDTensor>::kId> {
+struct sgd_dense_param_kernel<T,
+                              framework::VarTypeTrait<phi::DenseTensor>::kId> {
   void operator()(const framework::ExecutionContext &ctx) const {
-    VLOG(4) << "[CPU]: sgd_dense_param_kernel<T, LoDTensor>";
-    const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
-    const auto *param = ctx.Input<framework::Tensor>("Param");
-    auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
-    const auto *grad = ctx.Input<framework::Tensor>("Grad");
+    VLOG(4) << "[CPU]: sgd_dense_param_kernel<T, phi::DenseTensor>";
+    const auto *learning_rate = ctx.Input<phi::DenseTensor>("LearningRate");
+    const auto *param = ctx.Input<phi::DenseTensor>("Param");
+    auto *param_out = ctx.Output<phi::DenseTensor>("ParamOut");
+    const auto *grad = ctx.Input<phi::DenseTensor>("Grad");
 
     const auto sz = param_out->numel();
     jit::sgd_attr_t attr(1, sz, 1, sz, 1);
@@ -59,14 +59,14 @@ struct sgd_dense_param_kernel<
 
 // SelectedRows
 template <typename T>
-struct sgd_dense_param_kernel<
-    T, framework::VarTypeTrait<framework::SelectedRows>::kId> {
+struct sgd_dense_param_kernel<T,
+                              framework::VarTypeTrait<phi::SelectedRows>::kId> {
   void operator()(const framework::ExecutionContext &ctx) const {
     VLOG(4) << "[CPU]: sgd_dense_param_kernel<T, SelectedRows>";
-    const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
-    const auto *param = ctx.Input<framework::Tensor>("Param");
-    auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
-    const auto *grad = ctx.Input<framework::SelectedRows>("Grad");
+    const auto *learning_rate = ctx.Input<phi::DenseTensor>("LearningRate");
+    const auto *param = ctx.Input<phi::DenseTensor>("Param");
+    auto *param_out = ctx.Output<phi::DenseTensor>("ParamOut");
+    const auto *grad = ctx.Input<phi::SelectedRows>("Grad");
 
     const auto &grad_value = grad->value();
     const auto &grad_rows = grad->rows();
@@ -92,14 +92,14 @@ struct sgd_dense_param_kernel<
 
 // LodTensor
 template <>
-struct sgd_dense_param_kernel<
-    platform::bfloat16, framework::VarTypeTrait<framework::LoDTensor>::kId> {
+struct sgd_dense_param_kernel<platform::bfloat16,
+                              framework::VarTypeTrait<phi::DenseTensor>::kId> {
   void operator()(const framework::ExecutionContext &ctx) const {
-    VLOG(4) << "[CPU]: sgd_dense_param_kernel<bfloat16, LoDTensor>";
-    const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
-    const auto *param = ctx.Input<framework::Tensor>("Param");
-    auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
-    const auto *grad = ctx.Input<framework::Tensor>("Grad");
+    VLOG(4) << "[CPU]: sgd_dense_param_kernel<bfloat16, phi::DenseTensor>";
+    const auto *learning_rate = ctx.Input<phi::DenseTensor>("LearningRate");
+    const auto *param = ctx.Input<phi::DenseTensor>("Param");
+    auto *param_out = ctx.Output<phi::DenseTensor>("ParamOut");
+    const auto *grad = ctx.Input<phi::DenseTensor>("Grad");
     param_out->mutable_data<platform::bfloat16>(ctx.GetPlace());
 
     auto p = framework::EigenVector<platform::bfloat16>::Flatten(*param);
@@ -113,13 +113,13 @@ struct sgd_dense_param_kernel<
 
 // SelectedRows
 template <>
-struct sgd_dense_param_kernel<
-    platform::bfloat16, framework::VarTypeTrait<framework::SelectedRows>::kId> {
+struct sgd_dense_param_kernel<platform::bfloat16,
+                              framework::VarTypeTrait<phi::SelectedRows>::kId> {
   void operator()(const framework::ExecutionContext &ctx) const {
     VLOG(4) << "[CPU]: sgd_dense_param_kernel<bfloat16, SelectedRows>";
-    const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
-    auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
-    const auto *grad = ctx.Input<framework::SelectedRows>("Grad");
+    const auto *learning_rate = ctx.Input<phi::DenseTensor>("LearningRate");
+    auto *param_out = ctx.Output<phi::DenseTensor>("ParamOut");
+    const auto *grad = ctx.Input<phi::SelectedRows>("Grad");
 
     const auto &grad_value = grad->value();
     const auto &grad_rows = grad->rows();
@@ -133,11 +133,13 @@ struct sgd_dense_param_kernel<
 
     for (size_t i = 0; i < grad_rows.size(); ++i) {
       PADDLE_ENFORCE_LT(
-          grad_rows[i], grad_height,
+          grad_rows[i],
+          grad_height,
           platform::errors::OutOfRange(
               "Grad rows index value should be less than grad height."
               "Got [%s], but expected less than [%s]",
-              grad_rows[i], grad_height));
+              grad_rows[i],
+              grad_height));
       const int64_t row = grad_rows[i];
       for (int64_t j = 0; j < grad_width; ++j) {
         out_data[row * grad_width + j] -= lr[0] * grad_data[i * grad_width + j];
@@ -155,19 +157,19 @@ class SGDOpKernel : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class SGDOpKernel<platform::CPUDeviceContext, T>
-    : public framework::OpKernel<T> {
+class SGDOpKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *param_var = ctx.InputVar("Param");
 
-    if (param_var->IsType<framework::LoDTensor>()) {
+    if (param_var->IsType<phi::DenseTensor>()) {
       invoke_dense_param_kernel(ctx);
-    } else if (param_var->IsType<framework::SelectedRows>()) {
+    } else if (param_var->IsType<phi::SelectedRows>()) {
       sparse_param_and_grad_kernel(ctx);
     } else {
       PADDLE_ENFORCE_EQ(
-          false, true,
+          false,
+          true,
           platform::errors::PermissionDenied(
               "Unsupported Variable Type of Parameter in SgdOp. Excepted "
               "LodTensor or SelectedRows, But received [%s]",
@@ -177,39 +179,44 @@ class SGDOpKernel<platform::CPUDeviceContext, T>
 
  protected:
   void invoke_dense_param_kernel(const framework::ExecutionContext &ctx) const {
-    const auto *param = ctx.Input<framework::Tensor>("Param");
-    auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
+    const auto *param = ctx.Input<phi::DenseTensor>("Param");
+    auto *param_out = ctx.Output<phi::DenseTensor>("ParamOut");
     const auto *grad_var = ctx.InputVar("Grad");
 
-    if (grad_var->IsType<framework::LoDTensor>()) {
-      const auto *grad = ctx.Input<framework::Tensor>("Grad");
+    if (grad_var->IsType<phi::DenseTensor>()) {
+      const auto *grad = ctx.Input<phi::DenseTensor>("Grad");
       const auto sz = param_out->numel();
-      PADDLE_ENFORCE_EQ(param->numel(), sz,
+      PADDLE_ENFORCE_EQ(param->numel(),
+                        sz,
                         platform::errors::InvalidArgument(
                             "The input tensor Param's numel of SgdOp "
                             "should be equal with ParamOut's numel. "
                             "But received Param's "
                             "numel = [%s], ParamOut's numel = [%s]",
-                            param->numel(), sz));
-      PADDLE_ENFORCE_EQ(grad->numel(), sz,
+                            param->numel(),
+                            sz));
+      PADDLE_ENFORCE_EQ(grad->numel(),
+                        sz,
                         platform::errors::InvalidArgument(
                             "The input tensor Grad's numel of SgdOp "
                             "should be equal with ParamOut's numel. "
                             "But received Grad's "
                             "numel = [%s], ParamOut's numel = [%s]",
-                            grad->numel(), sz));
+                            grad->numel(),
+                            sz));
 
       dense_param_and_grad_kernel(ctx);
-    } else if (grad_var->IsType<framework::SelectedRows>()) {
+    } else if (grad_var->IsType<phi::SelectedRows>()) {
       // TODO(qijun): In Sparse SGD operator, in-place update is enforced.
       // This manual optimization brings difficulty to track data dependency.
       // It's better to find a more elegant solution.
-      PADDLE_ENFORCE_EQ(param, param_out,
+      PADDLE_ENFORCE_EQ(param,
+                        param_out,
                         platform::errors::InvalidArgument(
                             "The input tensor Param of SgdOp "
                             "should be equal with ParamOut if variable's "
                             "type is SelectedRows. "));
-      const auto *grad = ctx.Input<framework::SelectedRows>("Grad");
+      const auto *grad = ctx.Input<phi::SelectedRows>("Grad");
 
       // for distributed training, a sparse var may be empty,
       // just skip updating.
@@ -219,12 +226,14 @@ class SGDOpKernel<platform::CPUDeviceContext, T>
 
       auto out_dims = param_out->dims();
       PADDLE_ENFORCE_EQ(
-          grad->height(), out_dims[0],
+          grad->height(),
+          out_dims[0],
           platform::errors::InvalidArgument(
               "The input tensor Grad's height of SgdOp "
               "should be equal with ParamOut's dims. But received  Grad's "
               "height [%s] and ParamOut's dims [%s]",
-              grad->height(), out_dims[0]));
+              grad->height(),
+              out_dims[0]));
 
       auto &grad_value = grad->value();
       auto &grad_rows = grad->rows();
@@ -235,17 +244,20 @@ class SGDOpKernel<platform::CPUDeviceContext, T>
       const auto grad_width = grad_value.numel() / grad_height;
 
       PADDLE_ENFORCE_EQ(
-          grad_width, param_width,
+          grad_width,
+          param_width,
           platform::errors::InvalidArgument(
               "The grad_value's numel of SgdOp "
               "should be equal with param_out's numel. But received "
               "grad_value's numel [%s] and param_out's numel [%s]",
-              grad_width, param_width));
+              grad_width,
+              param_width));
 
       dense_param_sparse_grad_kernel(ctx);
     } else {
       PADDLE_ENFORCE_EQ(
-          false, true,
+          false,
+          true,
           platform::errors::PermissionDenied(
               "Unsupported Variable Type of Grad in SgdOp. Excepted "
               "LodTensor or SelectedRows, But received [%s]",
@@ -255,17 +267,18 @@ class SGDOpKernel<platform::CPUDeviceContext, T>
 
   void sparse_param_and_grad_kernel(
       const framework::ExecutionContext &ctx) const {
-    const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
+    const auto *learning_rate = ctx.Input<phi::DenseTensor>("LearningRate");
     const auto *param_var = ctx.InputVar("Param");
     const auto *grad_var = ctx.InputVar("Grad");
 
-    PADDLE_ENFORCE_EQ(grad_var->IsType<framework::SelectedRows>(), true,
+    PADDLE_ENFORCE_EQ(grad_var->IsType<phi::SelectedRows>(),
+                      true,
                       platform::errors::InvalidArgument(
                           "When param is SelectedRows, gradient should also "
                           "be SelectedRows"));
-    const auto &param = param_var->Get<framework::SelectedRows>();
-    auto *param_out = ctx.Output<framework::SelectedRows>("ParamOut");
-    const auto &grad = grad_var->Get<framework::SelectedRows>();
+    const auto &param = param_var->Get<phi::SelectedRows>();
+    auto *param_out = ctx.Output<phi::SelectedRows>("ParamOut");
+    const auto &grad = grad_var->Get<phi::SelectedRows>();
 
     // for distributed training, a sparse var may be empty,
     // just skip updating.
@@ -276,12 +289,14 @@ class SGDOpKernel<platform::CPUDeviceContext, T>
     auto param_row_width = param.value().dims()[1];
     auto grad_row_width = grad.value().dims()[1];
     PADDLE_ENFORCE_EQ(
-        param_row_width, grad_row_width,
+        param_row_width,
+        grad_row_width,
         platform::errors::InvalidArgument(
             "The param_row in SgdOP should have the same size with grad_row. "
             "But received param_row's width is [%s], and grad_row's width is "
             "[%s]",
-            param_row_width, grad_row_width));
+            param_row_width,
+            grad_row_width));
 
     const auto *lr = learning_rate->data<T>();
     const auto *grad_data = grad.value().data<T>();
@@ -289,7 +304,8 @@ class SGDOpKernel<platform::CPUDeviceContext, T>
     for (size_t i = 0; i < grad.rows().size(); i++) {
       int64_t id_index = param_out->AutoGrownIndex(grad.rows()[i], false);
       PADDLE_ENFORCE_GE(
-          id_index, static_cast<int64_t>(0),
+          id_index,
+          static_cast<int64_t>(0),
           platform::errors::InvalidArgument(
               "The id in SgdOp should be >= 0. But recevied id_index is [%s]",
               id_index));
@@ -303,13 +319,15 @@ class SGDOpKernel<platform::CPUDeviceContext, T>
   virtual void dense_param_and_grad_kernel(
       const framework::ExecutionContext &ctx) const {
     detail::sgd_dense_param_kernel<
-        T, framework::VarTypeTrait<framework::LoDTensor>::kId>()(ctx);
+        T,
+        framework::VarTypeTrait<phi::DenseTensor>::kId>()(ctx);
   }
 
   virtual void dense_param_sparse_grad_kernel(
       const framework::ExecutionContext &ctx) const {
     detail::sgd_dense_param_kernel<
-        T, framework::VarTypeTrait<framework::SelectedRows>::kId>()(ctx);
+        T,
+        framework::VarTypeTrait<phi::SelectedRows>::kId>()(ctx);
   }
 };
 

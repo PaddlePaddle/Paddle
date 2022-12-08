@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 import paddle.fluid.layers as layers
@@ -30,11 +28,14 @@ paddle.enable_static()
 class TestWhileOp(unittest.TestCase):
     def simple_net(self):
         d0 = layers.data(
-            "d0", shape=[10], append_batch_size=False, dtype='float32')
+            "d0", shape=[10], append_batch_size=False, dtype='float32'
+        )
         d1 = layers.data(
-            "d1", shape=[10], append_batch_size=False, dtype='float32')
+            "d1", shape=[10], append_batch_size=False, dtype='float32'
+        )
         d2 = layers.data(
-            "d2", shape=[10], append_batch_size=False, dtype='float32')
+            "d2", shape=[10], append_batch_size=False, dtype='float32'
+        )
         # fill_constant npu op doesn't support int64
         i = layers.zeros(shape=[1], dtype='int32')
         i = layers.cast(i, 'int64')
@@ -52,7 +53,7 @@ class TestWhileOp(unittest.TestCase):
         array_len = layers.fill_constant(shape=[1], dtype='int32', value=5)
         array_len = layers.cast(array_len, 'int64')
         array_len.stop_gradient = True
-        cond = layers.ones(shape=[1], dtype='int32')
+        cond = paddle.ones(shape=[1], dtype='int32')
         cond = layers.cast(cond, 'bool')
         j = layers.fill_constant(shape=[1], dtype='int32', value=1)
         j = layers.cast(j, 'int64')
@@ -60,11 +61,11 @@ class TestWhileOp(unittest.TestCase):
         array_len2 = layers.fill_constant(shape=[1], dtype='int32', value=3)
         array_len2 = layers.cast(array_len2, 'int64')
         array_len2.stop_gradient = True
-        cond2 = layers.logical_or(x=j, y=array_len2)
-        cond2 = layers.ones(shape=[1], dtype='int32')
+        cond2 = paddle.logical_or(x=j, y=array_len2)
+        cond2 = paddle.ones(shape=[1], dtype='int32')
         cond2 = layers.cast(cond2, 'bool')
-        while_op = layers.While(cond=cond)
-        while_op2 = layers.While(cond=cond2)
+        while_op = paddle.static.nn.control_flow.While(cond=cond)
+        while_op2 = paddle.static.nn.control_flow.While(cond=cond2)
         with while_op.block():
             d = layers.array_read(array=data_array, i=i)
             prev = layers.array_read(array=mem_array, i=i)
@@ -72,7 +73,7 @@ class TestWhileOp(unittest.TestCase):
 
             i = layers.increment(x=i, in_place=True)
             layers.array_write(result, i=i, array=mem_array)
-            layers.less_than(x=i, y=array_len, cond=cond)
+            paddle.assign(paddle.less_than(x=i, y=array_len), cond)
 
             with while_op2.block():
                 d2 = layers.array_read(array=data_array, i=j)
@@ -81,9 +82,9 @@ class TestWhileOp(unittest.TestCase):
 
                 j = layers.increment(x=j, in_place=True)
                 layers.array_write(result2, i=j, array=mem_array)
-                layers.less_than(x=j, y=array_len2, cond=cond2)
+                paddle.assign(paddle.less_than(x=j, y=array_len2), cond2)
         sum_result = layers.array_read(array=mem_array, i=j)
-        loss = layers.mean(sum_result)
+        loss = paddle.mean(sum_result)
         return loss, sum_result
 
     def test_simple_net(self):
@@ -102,10 +103,10 @@ class TestWhileOp(unittest.TestCase):
             for i in range(3):
                 d.append(numpy.random.random(size=[10]).astype('float32'))
 
-            outs = exe.run(feed={'d0': d[0],
-                                 'd1': d[1],
-                                 'd2': d[2]},
-                           fetch_list=[sum_result])
+            outs = exe.run(
+                feed={'d0': d[0], 'd1': d[1], 'd2': d[2]},
+                fetch_list=[sum_result],
+            )
             self.assertAlmostEqual(numpy.sum(d), numpy.sum(outs[0]), delta=0.01)
 
     def test_simple_net_forward(self):

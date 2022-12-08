@@ -14,14 +14,18 @@
 
 #include "paddle/infrt/host_context/op_executable.h"
 
+#include <mlir/IR/BuiltinOps.h>
+
 #include <string>
+#include <unordered_set>
 
 #include "paddle/infrt/host_context/kernel_frame.h"
 #include "paddle/infrt/host_context/kernel_registry.h"
 #include "paddle/infrt/host_context/mlir_function_executable.h"
 #include "paddle/infrt/host_context/symbol_table.h"
 
-namespace infrt::host_context {
+namespace infrt {
+namespace host_context {
 
 struct OpExecutable::Impl {
   Impl(const std::string& op_name,
@@ -69,7 +73,15 @@ OpExecutableBuilder::OpExecutableBuilder(const std::string& op_name,
   // TODO(Superjomn) support other device other than CPU.
   CHECK(impl_->kernel_impl) << "No CPU kernel called " << op_name;
 
-  if (op_name == "dt.get_param") {
+  // TODO(wilber): Maybe we can use the MLIR trait or other facilities to remove
+  // the run_once set.
+  std::unordered_set<std::string> run_once_set{
+      "dt.get_param",
+      "trt.create_engine",
+      "phi_dt.create_host_inited_dense_tensor.f32",
+      "phi_dt.create_context.cpu",
+      "phi_dt.create_context.gpu"};
+  if (run_once_set.count(op_name)) {
     impl_->run_once = true;
   }
 }
@@ -131,7 +143,8 @@ void OpExecutable::Execute() {
   VLOG(3) << "execute " << name()
           << " --- frame args: " << impl_->frame.GetNumArgs() << " results "
           << impl_->frame.GetNumResults() << " attributes "
-          << impl_->frame.GetNumAttributes();
+          << impl_->frame.GetNumAttributes() << "\n"
+          << frame().DumpArgTypes();
   for (int i = 0; i < impl_->frame.GetNumArgs(); i++) {
     VLOG(3) << "function arg: " << impl_->frame.GetArgAt(i);
   }
@@ -148,4 +161,5 @@ void OpExecutable::Execute() {
 
 OpExecutable::~OpExecutable() {}
 
-}  // namespace infrt::host_context
+}  // namespace host_context
+}  // namespace infrt

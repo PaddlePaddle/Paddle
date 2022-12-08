@@ -11,18 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include <string>
-
-#include "paddle/fluid/framework/op_registry.h"
-
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
-#endif
-
-#if defined(PADDLE_WITH_ASCEND_CL)
-#include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device/npu/hccl_helper.h"
-#endif
+#include "paddle/fluid/operators/collective/c_sync_comm_stream_op.h"
 
 namespace paddle {
 namespace operators {
@@ -51,37 +40,8 @@ class CSyncCommStreamOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("ring_id", "(int default 0) ring id.").SetDefault(0);
     AddComment(R"DOC(
 CSyncCommStream Operator
-
 Call communication stream synchronization.
 )DOC");
-  }
-};
-
-template <typename T>
-class CSyncCommStreamKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto place = ctx.GetPlace();
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    int ring_id = ctx.Attr<int>("ring_id");
-    auto stream =
-        platform::NCCLCommContext::Instance().Get(ring_id, place)->stream();
-
-    platform::GpuStreamSync(stream);
-
-#elif defined(PADDLE_WITH_ASCEND_CL)
-    PADDLE_ENFORCE_EQ(is_npu_place(place), true,
-                      platform::errors::PreconditionNotMet(
-                          "Sync stream op can run on npu place only for now."));
-    int ring_id = ctx.Attr<int>("ring_id");
-    auto stream =
-        platform::HCCLCommContext::Instance().Get(ring_id, place)->stream();
-    platform::NPUStreamSync(stream);
-
-#else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "PaddlePaddle should compile with GPU."));
-#endif
   }
 };
 
@@ -90,9 +50,12 @@ class CSyncCommStreamKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_WITHOUT_GRADIENT(c_sync_comm_stream, ops::CSyncCommStreamOp,
+REGISTER_OP_WITHOUT_GRADIENT(c_sync_comm_stream,
+                             ops::CSyncCommStreamOp,
                              ops::CSyncCommStreamOpMaker);
 
 REGISTER_OP_CUDA_KERNEL(c_sync_comm_stream, ops::CSyncCommStreamKernel<float>);
 
 REGISTER_OP_NPU_KERNEL(c_sync_comm_stream, ops::CSyncCommStreamKernel<float>);
+
+REGISTER_OP_MLU_KERNEL(c_sync_comm_stream, ops::CSyncCommStreamKernel<float>);

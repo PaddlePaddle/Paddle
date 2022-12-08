@@ -33,7 +33,8 @@ using infrt::host_context::Attribute;
 using infrt::host_context::MlirFunctionExecutable;
 using infrt::host_context::RemainingArguments;
 
-namespace infrt::kernel {
+namespace infrt {
+namespace kernel {
 namespace {
 class BenchmarkStats {
  public:
@@ -91,11 +92,11 @@ class BenchmarkStats {
     std::sort(run_times_walltime_.begin(), run_times_walltime_.end());
     std::sort(run_times_cpu_.begin(), run_times_cpu_.end());
 
-    auto percentile = [](
-        double p, const std::vector<std::chrono::nanoseconds> &run_times) {
-      assert(p >= 0.0 && p <= 1.0);
-      return run_times[run_times.size() * p];
-    };
+    auto percentile =
+        [](double p, const std::vector<std::chrono::nanoseconds> &run_times) {
+          assert(p >= 0.0 && p <= 1.0);
+          return run_times[run_times.size() * p];
+        };
 
     // BM: prefix is added to make grepping results from lit output easier.
     std::string prefix;
@@ -193,8 +194,9 @@ tensor::DenseHostTensor ShadowCopyTensor(tensor::DenseHostTensor src) {
 
 void RegisterTestKernels(host_context::KernelRegistry *registry) {
   registry->AddKernel("infrt.benchmark", INFRT_KERNEL(benchmark));
-  registry->AddKernel("infrt.test.shadow_copy_tensor",
+  registry->AddKernel("Infrt.test.shadow_copy_tensor",
                       INFRT_KERNEL(ShadowCopyTensor));
 }
 
-}  // namespace infrt::kernel
+}  // namespace kernel
+}  // namespace infrt

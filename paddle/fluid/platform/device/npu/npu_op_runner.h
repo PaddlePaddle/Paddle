@@ -21,14 +21,14 @@ limitations under the License. */
 #include <vector>
 
 #include "acl/acl.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device/npu/enforce_npu.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 using NPUAttribute = framework::NPUAttribute;
 using NPUAttributeMap = framework::NPUAttributeMap;
 using DeviceContextPool = platform::DeviceContextPool;
@@ -38,8 +38,8 @@ class NpuOpRunner {
   NpuOpRunner();
   explicit NpuOpRunner(const std::string &op_type);
   NpuOpRunner(const std::string &op_type,
-              const std::vector<Tensor> &inputs = {},
-              const std::vector<Tensor> &outputs = {},
+              const std::vector<phi::DenseTensor> &inputs = {},
+              const std::vector<phi::DenseTensor> &outputs = {},
               const NPUAttributeMap &attrs = {});
 
   // NOTE(zhiqiu): why forbid copy and operator= ?
@@ -66,12 +66,12 @@ class NpuOpRunner {
 
   NpuOpRunner &AddAttrs(const NPUAttributeMap &attrs);
 
-  NpuOpRunner &AddInput(const Tensor &tensor);
+  NpuOpRunner &AddInput(const phi::DenseTensor &tensor);
 
   // NOTE(zhiqiu): CANN-5.0.2 support input tensors on host.
-  // Specifically, the tensor of shape, tensor of dims, etc, which are are small
+  // Specifically, the tensor of shape, tensor of dims, etc, which are small
   // vector/list.
-  NpuOpRunner &AddInput(const Tensor &tensor, aclMemType mem_type);
+  NpuOpRunner &AddInput(const phi::DenseTensor &tensor, aclMemType mem_type);
 
   NpuOpRunner &AddInput(std::vector<int32_t> &&dims);
 
@@ -81,13 +81,13 @@ class NpuOpRunner {
 
   NpuOpRunner &AddInput(std::vector<double> &&values);
 
-  NpuOpRunner &AddOutput(const Tensor &tensor);
+  NpuOpRunner &AddOutput(const phi::DenseTensor &tensor);
 
-  NpuOpRunner &AddInputs(const std::vector<Tensor> &tensors);
+  NpuOpRunner &AddInputs(const std::vector<phi::DenseTensor> &tensors);
 
   NpuOpRunner &AddInputNames(const std::vector<std::string> &names);
 
-  NpuOpRunner &AddOutputs(const std::vector<Tensor> &tensors);
+  NpuOpRunner &AddOutputs(const std::vector<phi::DenseTensor> &tensors);
 
   aclTensorDesc *GetInputDesc(size_t index);
 
@@ -104,19 +104,21 @@ class NpuOpRunner {
   void Run(aclrtStream stream = nullptr) const;
 
   static void TypeAdapter(
-      const std::vector<Tensor> &inputs, const std::vector<Tensor> &outputs,
-      const NPUAttributeMap &attrs, const platform::NPUDeviceContext &dev_ctx,
-      std::function<void(const std::vector<Tensor> &,
-                         const std::vector<Tensor> &, const NPUAttributeMap &,
-                         const platform::NPUDeviceContext &)>
-          op_runner,
+      const std::vector<phi::DenseTensor> &inputs,
+      const std::vector<phi::DenseTensor> &outputs,
+      const NPUAttributeMap &attrs,
+      const platform::NPUDeviceContext &dev_ctx,
+      std::function<void(const std::vector<phi::DenseTensor> &,
+                         const std::vector<phi::DenseTensor> &,
+                         const NPUAttributeMap &,
+                         const platform::NPUDeviceContext &)> op_runner,
       const std::vector<framework::proto::VarType::Type> &input_type,
       const std::vector<framework::proto::VarType::Type> &output_type);
 
  private:
-  aclTensorDesc *CreateTensorDesc(Tensor tensor,
+  aclTensorDesc *CreateTensorDesc(phi::DenseTensor tensor,
                                   aclMemType mem_type = ACL_MEMTYPE_DEVICE);
-  aclDataBuffer *CreateDataBuffer(Tensor tensor);
+  aclDataBuffer *CreateDataBuffer(phi::DenseTensor tensor);
 
  private:
   std::string op_type_;
@@ -124,7 +126,7 @@ class NpuOpRunner {
   std::vector<aclDataBuffer *> output_buffers_;
   std::vector<aclTensorDesc *> input_descs_;
   std::vector<aclTensorDesc *> output_descs_;
-  std::vector<Tensor> host_tensors_;
+  std::vector<phi::DenseTensor> host_tensors_;
   aclopAttr *attr_{nullptr};
 };
 
@@ -133,33 +135,37 @@ aclDataType ConvertToNpuDtype(framework::proto::VarType::Type dtype);
 aclrtStream GetCurrentNPUStream(int device_id = -1);
 
 template <typename T>
-void FillNpuTensorWithConstant(Tensor *tensor, T val) {
+void FillNpuTensorWithConstant(phi::DenseTensor *tensor, T val) {
   PADDLE_ENFORCE_EQ(
-      tensor->IsInitialized(), true,
+      tensor->IsInitialized(),
+      true,
       platform::errors::InvalidArgument("The tensor should be initialized."));
   PADDLE_ENFORCE_EQ(
-      platform::is_npu_place(tensor->place()), true,
+      platform::is_npu_place(tensor->place()),
+      true,
       platform::errors::InvalidArgument("The tensor should be on NPUPlace."));
 
   int numel = tensor->numel();
   if (numel == 1) {
-    Tensor npu_pinned_tensor(tensor->type());
+    phi::DenseTensor npu_pinned_tensor(tensor->dtype());
     platform::NPUPinnedPlace npu_pinned_place;
     auto npu_pinned_ptr =
         npu_pinned_tensor.mutable_data<T>({1}, npu_pinned_place);
     *npu_pinned_ptr = val;
 
-    memory::Copy(BOOST_GET_CONST(platform::NPUPlace, tensor->place()),
-                 tensor->data<void>(), npu_pinned_place, npu_pinned_ptr,
-                 sizeof(T), GetCurrentNPUStream());
+    memory::Copy(tensor->place(),
+                 tensor->data(),
+                 npu_pinned_place,
+                 npu_pinned_ptr,
+                 sizeof(T),
+                 GetCurrentNPUStream());
 
     auto npu_pinned_allocator =
         static_cast<paddle::memory::allocation::NPUPinnedAllocator *>(
             paddle::memory::allocation::AllocatorFacade::Instance()
                 .GetAllocator(npu_pinned_place)
                 .get());
-    paddle::memory::allocation::Allocation *allocation =
-        npu_pinned_tensor.Holder().get();
+    phi::Allocation *allocation = npu_pinned_tensor.Holder().get();
 
     npu_pinned_allocator->RecordEvent(allocation, GetCurrentNPUStream());
   } else {

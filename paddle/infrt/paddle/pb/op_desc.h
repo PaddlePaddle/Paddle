@@ -19,7 +19,9 @@
 #include "paddle/infrt/paddle/framework.pb.h"
 #include "paddle/infrt/support/variant.h"
 
-namespace infrt::paddle::pb {
+namespace infrt {
+namespace paddle {
+namespace pb {
 
 namespace framework_proto = ::paddle::framework::proto;
 
@@ -195,4 +197,6 @@ template <>
 void OpDesc::SetAttr<std::vector<int>>(const std::string &name,
                                        const std::vector<int> &v);
 
-}  // namespace infrt::paddle::pb
+}  // namespace pb
+}  // namespace paddle
+}  // namespace infrt

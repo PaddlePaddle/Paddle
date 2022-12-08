@@ -12,53 +12,58 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-INCLUDE(ExternalProject)
+include(ExternalProject)
 
-SET(PSLIB_PROJECT       "extern_pslib")
-IF((NOT DEFINED PSLIB_VER) OR (NOT DEFINED PSLIB_URL))
-  MESSAGE(STATUS "use pre defined download url")
-  SET(PSLIB_VER "0.1.1" CACHE STRING "" FORCE)
-  SET(PSLIB_NAME "pslib" CACHE STRING "" FORCE)
-  SET(PSLIB_URL "https://pslib.bj.bcebos.com/pslib.tar.gz" CACHE STRING "" FORCE)
-ENDIF()
-MESSAGE(STATUS "PSLIB_NAME: ${PSLIB_NAME}, PSLIB_URL: ${PSLIB_URL}")
-SET(PSLIB_PREFIX_DIR    "${THIRD_PARTY_PATH}/pslib")
-SET(PSLIB_DOWNLOAD_DIR  "${PSLIB_PREFIX_DIR}/src/${PSLIB_PROJECT}")
-SET(PSLIB_DST_DIR       "pslib")
-SET(PSLIB_INSTALL_ROOT  "${THIRD_PARTY_PATH}/install")
-SET(PSLIB_INSTALL_DIR   ${PSLIB_INSTALL_ROOT}/${PSLIB_DST_DIR})
-SET(PSLIB_ROOT          ${PSLIB_INSTALL_DIR})
-SET(PSLIB_INC_DIR       ${PSLIB_ROOT}/include)
-SET(PSLIB_LIB_DIR       ${PSLIB_ROOT}/lib)
-SET(PSLIB_LIB           ${PSLIB_LIB_DIR}/libps.so)
-SET(PSLIB_VERSION_PY    ${PSLIB_DOWNLOAD_DIR}/pslib/version.py)
-SET(PSLIB_IOMP_LIB      ${PSLIB_LIB_DIR}/libiomp5.so) #todo what is this
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${PSLIB_ROOT}/lib")
+set(PSLIB_PROJECT "extern_pslib")
+if((NOT DEFINED PSLIB_VER) OR (NOT DEFINED PSLIB_URL))
+  message(STATUS "use pre defined download url")
+  set(PSLIB_VER
+      "0.1.1"
+      CACHE STRING "" FORCE)
+  set(PSLIB_NAME
+      "pslib"
+      CACHE STRING "" FORCE)
+  set(PSLIB_URL
+      "https://pslib.bj.bcebos.com/pslib.tar.gz"
+      CACHE STRING "" FORCE)
+endif()
+message(STATUS "PSLIB_NAME: ${PSLIB_NAME}, PSLIB_URL: ${PSLIB_URL}")
+set(PSLIB_PREFIX_DIR "${THIRD_PARTY_PATH}/pslib")
+set(PSLIB_DOWNLOAD_DIR "${PSLIB_PREFIX_DIR}/src/${PSLIB_PROJECT}")
+set(PSLIB_DST_DIR "pslib")
+set(PSLIB_INSTALL_ROOT "${THIRD_PARTY_PATH}/install")
+set(PSLIB_INSTALL_DIR ${PSLIB_INSTALL_ROOT}/${PSLIB_DST_DIR})
+set(PSLIB_ROOT ${PSLIB_INSTALL_DIR})
+set(PSLIB_INC_DIR ${PSLIB_ROOT}/include)
+set(PSLIB_LIB_DIR ${PSLIB_ROOT}/lib)
+set(PSLIB_LIB ${PSLIB_LIB_DIR}/libps.so)
+set(PSLIB_VERSION_PY ${PSLIB_DOWNLOAD_DIR}/pslib/version.py)
+set(PSLIB_IOMP_LIB ${PSLIB_LIB_DIR}/libiomp5.so) #todo what is this
+set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${PSLIB_ROOT}/lib")
 
-INCLUDE_DIRECTORIES(${PSLIB_INC_DIR})
+include_directories(${PSLIB_INC_DIR})
 
-FILE(WRITE ${PSLIB_DOWNLOAD_DIR}/CMakeLists.txt
-  "PROJECT(PSLIB)\n"
-  "cmake_minimum_required(VERSION 3.0)\n"
+file(
+  WRITE ${PSLIB_DOWNLOAD_DIR}/CMakeLists.txt
+  "PROJECT(PSLIB)\n" "cmake_minimum_required(VERSION 3.0)\n"
   "install(DIRECTORY ${PSLIB_NAME}/include ${PSLIB_NAME}/lib \n"
   "        DESTINATION ${PSLIB_DST_DIR})\n")
 
 ExternalProject_Add(
-    ${PSLIB_PROJECT}
-    ${EXTERNAL_PROJECT_LOG_ARGS}
-    PREFIX                ${PSLIB_PREFIX_DIR}
-    DOWNLOAD_DIR          ${PSLIB_DOWNLOAD_DIR}
-    DOWNLOAD_COMMAND      wget --no-check-certificate ${PSLIB_URL} -c -q -O ${PSLIB_NAME}.tar.gz
-                          && tar zxvf ${PSLIB_NAME}.tar.gz
-    DOWNLOAD_NO_PROGRESS  1
-    UPDATE_COMMAND        ""
-    CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${PSLIB_INSTALL_ROOT}
-                          -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
-    CMAKE_CACHE_ARGS      -DCMAKE_INSTALL_PREFIX:PATH=${PSLIB_INSTALL_ROOT}
-                          -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
-    BUILD_BYPRODUCTS      ${PSLIB_LIB}
-)
+  ${PSLIB_PROJECT}
+  ${EXTERNAL_PROJECT_LOG_ARGS}
+  PREFIX ${PSLIB_PREFIX_DIR}
+  DOWNLOAD_DIR ${PSLIB_DOWNLOAD_DIR}
+  DOWNLOAD_COMMAND wget --no-check-certificate ${PSLIB_URL} -c -q -O
+                   ${PSLIB_NAME}.tar.gz && tar zxvf ${PSLIB_NAME}.tar.gz
+  DOWNLOAD_NO_PROGRESS 1
+  UPDATE_COMMAND ""
+  CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${PSLIB_INSTALL_ROOT}
+             -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
+  CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${PSLIB_INSTALL_ROOT}
+                   -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
+  BUILD_BYPRODUCTS ${PSLIB_LIB})
 
-ADD_LIBRARY(pslib SHARED IMPORTED GLOBAL)
-SET_PROPERTY(TARGET pslib PROPERTY IMPORTED_LOCATION ${PSLIB_LIB})
-ADD_DEPENDENCIES(pslib ${PSLIB_PROJECT})
+add_library(pslib SHARED IMPORTED GLOBAL)
+set_property(TARGET pslib PROPERTY IMPORTED_LOCATION ${PSLIB_LIB})
+add_dependencies(pslib ${PSLIB_PROJECT})

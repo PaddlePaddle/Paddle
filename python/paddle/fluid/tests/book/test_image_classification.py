@@ -12,29 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+import contextlib
+import math
+import os
+import sys
+import tempfile
+import unittest
+
+import numpy
 
 import paddle
 import paddle.fluid as fluid
-import contextlib
-import math
-import sys
-import numpy
-import unittest
-import os
-import numpy as np
 
 paddle.enable_static()
 
 
 def resnet_cifar10(input, depth=32):
-    def conv_bn_layer(input,
-                      ch_out,
-                      filter_size,
-                      stride,
-                      padding,
-                      act='relu',
-                      bias_attr=False):
+    def conv_bn_layer(
+        input, ch_out, filter_size, stride, padding, act='relu', bias_attr=False
+    ):
         tmp = fluid.layers.conv2d(
             input=input,
             filter_size=filter_size,
@@ -42,8 +38,9 @@ def resnet_cifar10(input, depth=32):
             stride=stride,
             padding=padding,
             act=None,
-            bias_attr=bias_attr)
-        return fluid.layers.batch_norm(input=tmp, act=act)
+            bias_attr=bias_attr,
+        )
+        return paddle.static.nn.batch_norm(input=tmp, act=act)
 
     def shortcut(input, ch_in, ch_out, stride):
         if ch_in != ch_out:
@@ -55,7 +52,7 @@ def resnet_cifar10(input, depth=32):
         tmp = conv_bn_layer(input, ch_out, 3, stride, 1)
         tmp = conv_bn_layer(tmp, ch_out, 3, 1, 1, act=None, bias_attr=True)
         short = shortcut(input, ch_in, ch_out, stride)
-        return fluid.layers.elementwise_add(x=tmp, y=short, act='relu')
+        return paddle.nn.functional.relu(paddle.add(x=tmp, y=short))
 
     def layer_warp(block_func, input, ch_in, ch_out, count, stride):
         tmp = block_func(input, ch_in, ch_out, stride)
@@ -66,12 +63,14 @@ def resnet_cifar10(input, depth=32):
     assert (depth - 2) % 6 == 0
     n = (depth - 2) // 6
     conv1 = conv_bn_layer(
-        input=input, ch_out=16, filter_size=3, stride=1, padding=1)
+        input=input, ch_out=16, filter_size=3, stride=1, padding=1
+    )
     res1 = layer_warp(basicblock, conv1, 16, 16, n, 1)
     res2 = layer_warp(basicblock, res1, 16, 32, n, 2)
     res3 = layer_warp(basicblock, res2, 32, 64, n, 2)
     pool = fluid.layers.pool2d(
-        input=res3, pool_size=8, pool_type='avg', pool_stride=1)
+        input=res3, pool_size=8, pool_type='avg', pool_stride=1
+    )
     return pool
 
 
@@ -86,7 +85,8 @@ def vgg16_bn_drop(input):
             conv_act='relu',
             conv_with_batchnorm=True,
             conv_batchnorm_drop_rate=dropouts,
-            pool_type='max')
+            pool_type='max',
+        )
 
     conv1 = conv_block(input, 64, 2, [0.3, 0])
     conv2 = conv_block(conv1, 128, 2, [0.4, 0])
@@ -96,7 +96,7 @@ def vgg16_bn_drop(input):
 
     drop = fluid.layers.dropout(x=conv5, dropout_prob=0.5)
     fc1 = fluid.layers.fc(input=drop, size=4096, act=None)
-    bn = fluid.layers.batch_norm(input=fc1, act='relu')
+    bn = paddle.static.nn.batch_norm(input=fc1, act='relu')
     drop2 = fluid.layers.dropout(x=bn, dropout_prob=0.5)
     fc2 = fluid.layers.fc(input=drop2, size=4096, act=None)
     return fc2
@@ -120,8 +120,8 @@ def train(net_type, use_cuda, save_dirname, is_local):
 
     predict = fluid.layers.fc(input=net, size=classdim, act='softmax')
     cost = fluid.layers.cross_entropy(input=predict, label=label)
-    avg_cost = fluid.layers.mean(cost)
-    acc = fluid.layers.accuracy(input=predict, label=label)
+    avg_cost = paddle.mean(cost)
+    acc = paddle.static.accuracy(input=predict, label=label)
 
     # Test program
     test_program = fluid.default_main_program().clone(for_test=True)
@@ -134,11 +134,14 @@ def train(net_type, use_cuda, save_dirname, is_local):
 
     train_reader = paddle.batch(
         paddle.reader.shuffle(
-            paddle.dataset.cifar.train10(), buf_size=128 * 10),
-        batch_size=BATCH_SIZE)
+            paddle.dataset.cifar.train10(), buf_size=128 * 10
+        ),
+        batch_size=BATCH_SIZE,
+    )
 
     test_reader = paddle.batch(
-        paddle.dataset.cifar.test10(), batch_size=BATCH_SIZE)
+        paddle.dataset.cifar.test10(), batch_size=BATCH_SIZE
+    )
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     exe = fluid.Executor(place)
@@ -155,9 +158,11 @@ def train(net_type, use_cuda, save_dirname, is_local):
                     acc_list = []
                     avg_loss_list = []
                     for tid, test_data in enumerate(test_reader()):
-                        loss_t, acc_t = exe.run(program=test_program,
-                                                feed=feeder.feed(test_data),
-                                                fetch_list=[avg_cost, acc])
+                        loss_t, acc_t = exe.run(
+                            program=test_program,
+                            feed=feeder.feed(test_data),
+                            fetch_list=[avg_cost, acc],
+                        )
                         if math.isnan(float(loss_t)):
                             sys.exit("got NaN loss, training failed.")
                         acc_list.append(float(acc_t))
@@ -168,13 +173,18 @@ def train(net_type, use_cuda, save_dirname, is_local):
                     avg_loss_value = numpy.array(avg_loss_list).mean()
 
                     print(
-                        'PassID {0:1}, BatchID {1:04}, Test Loss {2:2.2}, Acc {3:2.2}'.
-                        format(pass_id, batch_id + 1,
-                               float(avg_loss_value), float(acc_value)))
+                        'PassID {0:1}, BatchID {1:04}, Test Loss {2:2.2}, Acc {3:2.2}'.format(
+                            pass_id,
+                            batch_id + 1,
+                            float(avg_loss_value),
+                            float(acc_value),
+                        )
+                    )
 
                     if acc_value > 0.01:  # Low threshold for speeding up CI
-                        fluid.io.save_inference_model(save_dirname, ["pixel"],
-                                                      [predict], exe)
+                        fluid.io.save_inference_model(
+                            save_dirname, ["pixel"], [predict], exe
+                        )
                         return
 
     if is_local:
@@ -194,8 +204,9 @@ def train(net_type, use_cuda, save_dirname, is_local):
         t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
         if training_role == "PSERVER":
             pserver_prog = t.get_pserver_program(current_endpoint)
-            pserver_startup = t.get_startup_program(current_endpoint,
-                                                    pserver_prog)
+            pserver_startup = t.get_startup_program(
+                current_endpoint, pserver_prog
+            )
             exe.run(pserver_startup)
             exe.run(pserver_prog)
         elif training_role == "TRAINER":
@@ -215,8 +226,11 @@ def infer(use_cuda, save_dirname=None):
         # the feed_target_names (the names of variables that will be fed
         # data using feed operators), and the fetch_targets (variables that
         # we want to obtain data from using fetch operators).
-        [inference_program, feed_target_names,
-         fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
+        [
+            inference_program,
+            feed_target_names,
+            fetch_targets,
+        ] = fluid.io.load_inference_model(save_dirname, exe)
 
         # The input's dimension of conv should be 4-D or 5-D.
         # Use normilized image pixels as input data, which should be in the range [0, 1.0].
@@ -225,14 +239,21 @@ def infer(use_cuda, save_dirname=None):
 
         # Construct feed as a dictionary of {feed_target_name: feed_target_data}
         # and results will contain a list of data corresponding to fetch_targets.
-        results = exe.run(inference_program,
-                          feed={feed_target_names[0]: tensor_img},
-                          fetch_list=fetch_targets)
+        results = exe.run(
+            inference_program,
+            feed={feed_target_names[0]: tensor_img},
+            fetch_list=fetch_targets,
+        )
 
         print("infer results: ", results[0])
 
-        fluid.io.save_inference_model(save_dirname, feed_target_names,
-                                      fetch_targets, exe, inference_program)
+        fluid.io.save_inference_model(
+            save_dirname,
+            feed_target_names,
+            fetch_targets,
+            exe,
+            inference_program,
+        )
 
 
 def main(net_type, use_cuda, is_local=True):
@@ -240,10 +261,14 @@ def main(net_type, use_cuda, is_local=True):
         return
 
     # Directory for saving the trained model
-    save_dirname = "image_classification_" + net_type + ".inference.model"
+    temp_dir = tempfile.TemporaryDirectory()
+    save_dirname = os.path.join(
+        temp_dir.name, "image_classification_" + net_type + ".inference.model"
+    )
 
     train(net_type, use_cuda, save_dirname, is_local)
     infer(use_cuda, save_dirname)
+    temp_dir.cleanup()
 
 
 class TestImageClassification(unittest.TestCase):

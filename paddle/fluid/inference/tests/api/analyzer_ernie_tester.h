@@ -132,7 +132,8 @@ bool LoadInputData(std::vector<std::vector<paddle::PaddleTensor>> *inputs) {
   return true;
 }
 
-void SetConfig(AnalysisConfig *cfg, bool use_mkldnn = false,
+void SetConfig(AnalysisConfig *cfg,
+               bool use_mkldnn = false,
                bool use_gpu = false) {
   cfg->SetModel(FLAGS_infer_model);
   if (use_mkldnn) {
@@ -146,6 +147,11 @@ void SetConfig(AnalysisConfig *cfg, bool use_mkldnn = false,
   cfg->SwitchSpecifyInputNames();
   cfg->SwitchIrOptim();
   cfg->SetCpuMathLibraryNumThreads(FLAGS_cpu_num_threads);
+}
+
+void SetIpuConfig(AnalysisConfig *cfg, int batch_size = 1) {
+  cfg->SetModel(FLAGS_infer_model);
+  cfg->EnableIpu(4, batch_size, false, 1);
 }
 
 }  // namespace inference

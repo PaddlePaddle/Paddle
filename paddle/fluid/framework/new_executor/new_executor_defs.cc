@@ -12,25 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
+
 #include <map>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
-#include "paddle/fluid/framework/rw_lock.h"
-
-// When in inference scenario, the scopes will not be written by two threads in
-// a mean time, but a scope may be read by multiple threads concurrently, and
-// the mutex will cause serious performance issue.
-// So the mutex is disabled when `ON_INFER`.
-#ifdef PADDLE_ON_INFERENCE
-#define SCOPE_VARS_READER_LOCK
-#define SCOPE_VARS_WRITER_LOCK
-#else
-#define SCOPE_VARS_READER_LOCK AutoRDLock auto_lock(&vars_lock_);
-#define SCOPE_VARS_WRITER_LOCK AutoWRLock auto_lock(&vars_lock_);
-#endif
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace framework {
@@ -49,7 +38,8 @@ bool InterpretercoreInferShapeContext::HasInput(const std::string& name) const {
   const auto& in = it->second;
   if (in.size() == 0) return false;
   PADDLE_ENFORCE_EQ(
-      in.size(), 1UL,
+      in.size(),
+      1UL,
       platform::errors::InvalidArgument(
           "Input %s should not contain more than one inputs.", name));
   return in[0] != nullptr;
@@ -68,10 +58,15 @@ bool InterpretercoreInferShapeContext::HasOutput(
     return false;
   }
   PADDLE_ENFORCE_EQ(
-      out.size(), 1UL,
+      out.size(),
+      1UL,
       platform::errors::InvalidArgument(
           "Output %s should not contain more than one outputs.", name));
   return out[0] != nullptr;
+}
+
+bool InterpretercoreInferShapeContext::HasAttr(const std::string& name) const {
+  return op_.HasAttr(name);
 }
 
 bool InterpretercoreInferShapeContext::HasInputs(
@@ -89,23 +84,23 @@ bool InterpretercoreInferShapeContext::HasInputs(
   return true;
 }
 
-bool InterpretercoreInferShapeContext::HasOutputs(
-    const std::string& name) const {
+bool InterpretercoreInferShapeContext::HasOutputs(const std::string& name,
+                                                  bool allow_null) const {
   const auto& outs = ctx_.outputs;
   auto it = outs.find(name);
   if (it == outs.end() || it->second.empty()) {
     return false;
   }
-  for (auto& output : it->second) {
-    if (output == nullptr) {
-      return false;
+  if (!allow_null) {
+    for (auto& output : it->second) {
+      if (output == nullptr) return false;
     }
   }
   return true;
 }
 
 AttrReader InterpretercoreInferShapeContext::Attrs() const {
-  return AttrReader(op_.Attrs());
+  return AttrReader(op_.Attrs(), op_.RuntimeAttrs());
 }
 
 std::vector<std::string> InterpretercoreInferShapeContext::Inputs(
@@ -122,11 +117,14 @@ std::string InterpretercoreInferShapeContext::GetInputNameByIdx(
     size_t idx) const {
   auto& op_proto =
       paddle::framework::OpInfoMap::Instance().Get(op_.Type()).proto_;
-  PADDLE_ENFORCE_LT(idx, op_proto->inputs().size(),
+  PADDLE_ENFORCE_LT(idx,
+                    op_proto->inputs().size(),
                     platform::errors::OutOfRange(
                         "The index should be less than the size of inputs of "
                         "operator %s, but got index is %d and size is %d",
-                        op_.Type(), idx, op_proto->inputs().size()));
+                        op_.Type(),
+                        idx,
+                        op_proto->inputs().size()));
   return op_proto->inputs()[idx].name();
 }
 
@@ -134,56 +132,67 @@ std::string InterpretercoreInferShapeContext::GetOutputNameByIdx(
     size_t idx) const {
   auto& op_proto =
       paddle::framework::OpInfoMap::Instance().Get(op_.Type()).proto_;
-  PADDLE_ENFORCE_LT(idx, op_proto->outputs().size(),
+  PADDLE_ENFORCE_LT(idx,
+                    op_proto->outputs().size(),
                     platform::errors::OutOfRange(
                         "The index should be less than the size of outputs of "
                         "operator %s, but got index is %d and size is %d",
-                        op_.Type(), idx, op_proto->outputs().size()));
+                        op_.Type(),
+                        idx,
+                        op_proto->outputs().size()));
   return op_proto->outputs()[idx].name();
 }
 
 void InterpretercoreInferShapeContext::ShareDim(const std::string& in,
                                                 const std::string& out,
-                                                size_t i, size_t j) {
+                                                size_t i,
+                                                size_t j) {
   auto in_it = ctx_.inputs.find(in);
   auto out_it = ctx_.outputs.find(out);
-  PADDLE_ENFORCE_NE(in_it, ctx_.inputs.end(),
+  PADDLE_ENFORCE_NE(in_it,
+                    ctx_.inputs.end(),
                     platform::errors::NotFound("Input %s does not exist.", in));
   PADDLE_ENFORCE_NE(
-      out_it, ctx_.outputs.end(),
+      out_it,
+      ctx_.outputs.end(),
       platform::errors::NotFound("Output %s does not exist.", out));
-  PADDLE_ENFORCE_LT(i, in_it->second.size(),
+  PADDLE_ENFORCE_LT(i,
+                    in_it->second.size(),
                     platform::errors::InvalidArgument(
                         "The index of input dimension is out of range, "
                         "excepted index less than %zu, but received %zu.",
-                        in_it->second.size(), i));
-  PADDLE_ENFORCE_LT(j, out_it->second.size(),
+                        in_it->second.size(),
+                        i));
+  PADDLE_ENFORCE_LT(j,
+                    out_it->second.size(),
                     platform::errors::InvalidArgument(
                         "The index of output dimension is out of range, "
                         "excepted index less than %zu, but received %zu.",
-                        out_it->second.size(), j));
+                        out_it->second.size(),
+                        j));
 
   Variable* in_var = in_it->second[i];
   Variable* out_var = out_it->second[j];
 
   PADDLE_ENFORCE_EQ(
-      in_var->Type(), out_var->Type(),
+      in_var->Type(),
+      out_var->Type(),
       platform::errors::InvalidArgument(
           "The type of input (%s) and output (%s) are inconsistent.", in, out));
 
-  if (in_var->IsType<framework::SelectedRows>()) {
-    auto& in_sele_rows = in_var->Get<framework::SelectedRows>();
-    auto out_sele_rows = out_var->GetMutable<framework::SelectedRows>();
+  if (in_var->IsType<phi::SelectedRows>()) {
+    auto& in_sele_rows = in_var->Get<phi::SelectedRows>();
+    auto out_sele_rows = out_var->GetMutable<phi::SelectedRows>();
     out_sele_rows->mutable_value()->Resize(in_sele_rows.value().dims());
     out_sele_rows->set_rows(in_sele_rows.rows());
     out_sele_rows->set_height(in_sele_rows.height());
-  } else if (in_var->IsType<framework::LoDTensor>()) {
-    auto& in_lod_tensor = in_var->Get<framework::LoDTensor>();
-    auto* out_lod_tensor = out_var->GetMutable<framework::LoDTensor>();
+  } else if (in_var->IsType<phi::DenseTensor>()) {
+    auto& in_lod_tensor = in_var->Get<phi::DenseTensor>();
+    auto* out_lod_tensor = out_var->GetMutable<phi::DenseTensor>();
     out_lod_tensor->Resize(in_lod_tensor.dims());
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "Currently, the input type of ShareDim only can be LoDTensor "
+        "Currently, the input type of ShareDim only can be phi::DenseTensor "
         "or SelectedRows."));
   }
 }
@@ -192,10 +201,12 @@ void InterpretercoreInferShapeContext::ShareAllLoD(
     const std::string& in, const std::string& out) const {
   auto in_it = ctx_.inputs.find(in);
   auto out_it = ctx_.outputs.find(out);
-  PADDLE_ENFORCE_NE(in_it, ctx_.inputs.end(),
+  PADDLE_ENFORCE_NE(in_it,
+                    ctx_.inputs.end(),
                     platform::errors::NotFound(
                         "Input [%s] found error in Op [%s]", in, op_.Type()));
-  PADDLE_ENFORCE_NE(out_it, ctx_.outputs.end(),
+  PADDLE_ENFORCE_NE(out_it,
+                    ctx_.outputs.end(),
                     platform::errors::NotFound(
                         "Output [%s] found error in Op [%s]", out, op_.Type()));
 
@@ -203,7 +214,8 @@ void InterpretercoreInferShapeContext::ShareAllLoD(
   auto& out_var_list = out_it->second;
 
   PADDLE_ENFORCE_EQ(
-      in_var_list.size(), out_var_list.size(),
+      in_var_list.size(),
+      out_var_list.size(),
       platform::errors::PreconditionNotMet(
           "Op [%s]: Input var size should be equal with output var size",
           op_.Type()));
@@ -216,17 +228,20 @@ void InterpretercoreInferShapeContext::ShareAllLoD(
     }
 
     Variable* in_var = in_var_list[i];
-    if (!in_var->IsType<LoDTensor>()) return;
+    if (!in_var->IsType<phi::DenseTensor>()) return;
     Variable* out_var = out_var_list[i];
-    PADDLE_ENFORCE_EQ(out_var->IsType<LoDTensor>(), true,
-                      platform::errors::PreconditionNotMet(
-                          "The %d-th output of Output(%s) must be LoDTensor.",
-                          i, out_var_names[i]));
-    auto& in_tensor = in_var->Get<LoDTensor>();
-    auto* out_tensor = out_var->GetMutable<LoDTensor>();
+    PADDLE_ENFORCE_EQ(
+        out_var->IsType<phi::DenseTensor>(),
+        true,
+        platform::errors::PreconditionNotMet(
+            "The %d-th output of Output(%s) must be phi::DenseTensor.",
+            i,
+            out_var_names[i]));
+    auto& in_tensor = in_var->Get<phi::DenseTensor>();
+    auto* out_tensor = out_var->GetMutable<phi::DenseTensor>();
     out_tensor->set_lod(in_tensor.lod());
 #ifdef PADDLE_WITH_MKLDNN
-    if (in_tensor.layout() != DataLayout::kMKLDNN)
+    if (in_tensor.layout() != DataLayout::ONEDNN)
 #endif
       out_tensor->set_layout(in_tensor.layout());
   }
@@ -234,42 +249,50 @@ void InterpretercoreInferShapeContext::ShareAllLoD(
 
 void InterpretercoreInferShapeContext::ShareLoD(const std::string& in,
                                                 const std::string& out,
-                                                size_t i, size_t j) const {
+                                                size_t i,
+                                                size_t j) const {
   if (can_skip_lod_) {
     return;
   }
   auto in_it = ctx_.inputs.find(in);
   auto out_it = ctx_.outputs.find(out);
-  PADDLE_ENFORCE_NE(in_it, ctx_.inputs.end(),
+  PADDLE_ENFORCE_NE(in_it,
+                    ctx_.inputs.end(),
                     platform::errors::NotFound("Input %s does not exist.", in));
   PADDLE_ENFORCE_NE(
-      out_it, ctx_.outputs.end(),
+      out_it,
+      ctx_.outputs.end(),
       platform::errors::NotFound("Output %s does not exist.", out));
-  PADDLE_ENFORCE_LT(i, in_it->second.size(),
+  PADDLE_ENFORCE_LT(i,
+                    in_it->second.size(),
                     platform::errors::InvalidArgument(
                         "The index of input dimension is out of range, "
                         "excepted index less than %zu, but received %zu.",
-                        in_it->second.size(), i));
-  PADDLE_ENFORCE_LT(j, out_it->second.size(),
+                        in_it->second.size(),
+                        i));
+  PADDLE_ENFORCE_LT(j,
+                    out_it->second.size(),
                     platform::errors::InvalidArgument(
                         "The index of output dimension is out of range, "
                         "excepted index less than %zu, but received %zu.",
-                        out_it->second.size(), j));
+                        out_it->second.size(),
+                        j));
 
   Variable* in_var = in_it->second.at(i);
-  if (!in_var->IsType<LoDTensor>()) return;
+  if (!in_var->IsType<phi::DenseTensor>()) return;
   Variable* out_var = out_it->second.at(j);
   PADDLE_ENFORCE_EQ(
-      out_var->IsType<LoDTensor>(), true,
+      out_var->IsType<phi::DenseTensor>(),
+      true,
       platform::errors::InvalidArgument(
-          "The %zu-th output of Output(%s) must be LoDTensor.", j, out));
-  auto& in_tensor = in_var->Get<LoDTensor>();
-  auto* out_tensor = out_var->GetMutable<LoDTensor>();
+          "The %zu-th output of Output(%s) must be phi::DenseTensor.", j, out));
+  auto& in_tensor = in_var->Get<phi::DenseTensor>();
+  auto* out_tensor = out_var->GetMutable<phi::DenseTensor>();
   out_tensor->set_lod(in_tensor.lod());
 
 // TODO(dzhwinter) : reuse ShareLoD in most operators.
 // Need to call ShareLayout explicitly in sequence related ops.
-// Shall we have a better method to shared info between in/out Tensor?
+// Shall we have a better method to shared info between in/out phi::DenseTensor?
 #ifdef PADDLE_WITH_MKLDNN
   // Fix me: ugly workaround below
   // Correct solution:
@@ -283,7 +306,7 @@ void InterpretercoreInferShapeContext::ShareLoD(const std::string& in,
   //    This is to avoid kMKLDNN is populated wrongly into a non-MKLDNN
   //    OPKernel. In all MKLDNN OPkernel, set_layout(kMKLDNN) should be called
   //    in Compute()
-  if (in_tensor.layout() != DataLayout::kMKLDNN)
+  if (in_tensor.layout() != DataLayout::ONEDNN)
 #endif
     out_tensor->set_layout(in_tensor.layout());
 }
@@ -307,21 +330,33 @@ void InterpretercoreInferShapeContext::SetLoDLevel(const std::string& out,
 
 bool InterpretercoreInferShapeContext::IsRuntime() const { return true; }
 
+bool InterpretercoreInferShapeContext::IsRunMKLDNNKernel() const {
+  try {
+    auto& op_with_kernel = dynamic_cast<const OperatorWithKernel&>(op_);
+    return ((op_with_kernel.kernel_type()) &&
+            (op_with_kernel.kernel_type()->data_layout_ ==
+             phi::DataLayout::ONEDNN));
+  } catch (std::bad_cast& exp) {
+    return false;
+  }
+}
+
 // TODO(paddle-dev): Can this be template?
-std::vector<InferShapeVarPtr> InterpretercoreInferShapeContext::GetInputVarPtrs(
+paddle::small_vector<InferShapeVarPtr, phi::kInputSmallVectorSize>
+InterpretercoreInferShapeContext::GetInputVarPtrs(
     const std::string& name) const {
   const std::vector<Variable*>& vars = InputVars(name);
-  std::vector<InferShapeVarPtr> res;
+  paddle::small_vector<InferShapeVarPtr, phi::kInputSmallVectorSize> res;
   res.reserve(vars.size());
   res.insert(res.begin(), vars.begin(), vars.end());
   return res;
 }
 
-std::vector<InferShapeVarPtr>
+paddle::small_vector<InferShapeVarPtr, phi::kOutputSmallVectorSize>
 InterpretercoreInferShapeContext::GetOutputVarPtrs(
     const std::string& name) const {
   const std::vector<Variable*>& vars = OutputVars(name);
-  std::vector<InferShapeVarPtr> res;
+  paddle::small_vector<InferShapeVarPtr, phi::kOutputSmallVectorSize> res;
   res.reserve(vars.size());
   res.insert(res.begin(), vars.begin(), vars.end());
   return res;
@@ -331,10 +366,12 @@ DDim InterpretercoreInferShapeContext::GetInputDim(
     const std::string& name) const {
   const std::vector<Variable*>& vars = InputVars(name);
   PADDLE_ENFORCE_EQ(
-      vars.size(), 1UL,
+      vars.size(),
+      1UL,
       platform::errors::InvalidArgument(
           "Input(%s) should hold one element, but now it holds %zu elements.",
-          name, vars.size()));
+          name,
+          vars.size()));
   return this->GetDim(vars[0]);
 }
 
@@ -342,6 +379,11 @@ std::vector<DDim> InterpretercoreInferShapeContext::GetInputsDim(
     const std::string& name) const {
   const std::vector<Variable*>& vars = InputVars(name);
   return GetDims(vars);
+}
+
+proto::VarType::Type InterpretercoreInferShapeContext::GetInputVarType(
+    const std::string& name) const {
+  return GetVarType(InputVars(name).at(0));
 }
 
 std::vector<proto::VarType::Type>
@@ -359,10 +401,13 @@ InterpretercoreInferShapeContext::GetOutputsVarType(
 void InterpretercoreInferShapeContext::SetOutputDim(const std::string& name,
                                                     const DDim& dim) {
   auto& vars = OutputVars(name);
-  PADDLE_ENFORCE_EQ(vars.size(), 1UL, platform::errors::InvalidArgument(
-                                          "Output(%s) should hold one element, "
-                                          "but now it holds %zu elements.",
-                                          name, vars.size()));
+  PADDLE_ENFORCE_EQ(
+      vars.size(),
+      1UL,
+      platform::errors::InvalidArgument("Output(%s) should hold one element, "
+                                        "but now it holds %zu elements.",
+                                        name,
+                                        vars.size()));
   SetDim(vars[0], dim);
 }
 
@@ -372,6 +417,16 @@ void InterpretercoreInferShapeContext::SetOutputsDim(
   SetDims(vars, dims);
 }
 
+const phi::ArgumentMappingFn*
+InterpretercoreInferShapeContext::GetPhiArgumentMappingFn() const {
+  return phi::OpUtilsMap::Instance().GetArgumentMappingFn(op_.Type());
+}
+
+const phi::KernelSignature*
+InterpretercoreInferShapeContext::GetPhiDefaultKernelSignature() const {
+  return &phi::DefaultKernelSignatureMap::Instance().Get(op_.Type());
+}
+
 void InterpretercoreInferShapeContext::SetSkipLoD(bool skip) {
   can_skip_lod_ = skip;
 }
@@ -379,13 +434,13 @@ void InterpretercoreInferShapeContext::SetSkipLoD(bool skip) {
 DDim InterpretercoreInferShapeContext::GetDim(Variable* var) const {
   PADDLE_ENFORCE_NOT_NULL(
       var, platform::errors::InvalidArgument("Input variable is nullptr."));
-  if (var->IsType<LoDTensor>()) {
-    return var->Get<LoDTensor>().dims();
-  } else if (var->IsType<SelectedRows>()) {
-    return var->Get<SelectedRows>().GetCompleteDims();
+  if (var->IsType<phi::DenseTensor>()) {
+    return var->Get<phi::DenseTensor>().dims();
+  } else if (var->IsType<phi::SelectedRows>()) {
+    return var->Get<phi::SelectedRows>().GetCompleteDims();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Only LoDTensor or SelectedRows support 'GetDim', but input "
+        "Only phi::DenseTensor or SelectedRows support 'GetDim', but input "
         "Variable's type is %s.",
         ToTypeName(var->Type())));
   }
@@ -395,8 +450,10 @@ std::vector<DDim> InterpretercoreInferShapeContext::GetDims(
     const std::vector<Variable*>& vars) const {
   std::vector<DDim> ret;
   ret.reserve(vars.size());
-  std::transform(vars.begin(), vars.end(), std::back_inserter(ret),
-                 [this](Variable* var) { return this->GetDim(var); });
+  std::transform(
+      vars.begin(), vars.end(), std::back_inserter(ret), [this](Variable* var) {
+        return this->GetDim(var);
+      });
   return ret;
 }
 
@@ -407,13 +464,14 @@ std::vector<DDim> InterpretercoreInferShapeContext::GetRepeatedDims(
 }
 
 void InterpretercoreInferShapeContext::SetDim(Variable* var, const DDim& dim) {
-  if (var->IsType<LoDTensor>()) {
-    var->GetMutable<LoDTensor>()->Resize(dim);
-  } else if (var->IsType<SelectedRows>()) {
-    var->GetMutable<SelectedRows>()->set_height(dim[0]);
+  if (var->IsType<phi::DenseTensor>()) {
+    var->GetMutable<phi::DenseTensor>()->Resize(dim);
+  } else if (var->IsType<phi::SelectedRows>()) {
+    var->GetMutable<phi::SelectedRows>()->set_height(dim[0]);
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "Variable type error, expect LoDTensor or SelectedRows, but received "
+        "Variable type error, expect phi::DenseTensor or SelectedRows, but "
+        "received "
         "(%s).",
         ToTypeName(var->Type())));
   }
@@ -422,12 +480,14 @@ void InterpretercoreInferShapeContext::SetDim(Variable* var, const DDim& dim) {
 void InterpretercoreInferShapeContext::SetDims(
     const std::vector<Variable*>& vars, const std::vector<DDim>& dims) {
   size_t length = vars.size();
-  PADDLE_ENFORCE_EQ(length, dims.size(),
+  PADDLE_ENFORCE_EQ(length,
+                    dims.size(),
                     platform::errors::InvalidArgument(
                         "The number of input variables do not match the "
                         "number of input dimensions, the number of variables "
                         "is %zu, the number of dimensions is %zu.",
-                        length, dims.size()));
+                        length,
+                        dims.size()));
   for (size_t i = 0; i < length; ++i) {
     if (vars[i] == nullptr) {
       continue;
@@ -447,9 +507,12 @@ std::vector<proto::VarType::Type> InterpretercoreInferShapeContext::GetVarTypes(
   std::vector<proto::VarType::Type> retv;
   retv.resize(vars.size());
   std::transform(
-      vars.begin(), vars.end(), retv.begin(),
+      vars.begin(),
+      vars.end(),
+      retv.begin(),
       std::bind(std::mem_fn(&InterpretercoreInferShapeContext::GetVarType),
-                this, std::placeholders::_1));
+                this,
+                std::placeholders::_1));
   return retv;
 }
 
@@ -462,9 +525,10 @@ const std::vector<Variable*>& InterpretercoreInferShapeContext::InputVars(
     const std::string& name) const {
   auto it = ctx_.inputs.find(name);
   PADDLE_ENFORCE_NE(
-      it, ctx_.inputs.end(),
-      platform::errors::NotFound("Operator (%s) does not have the input (%s).",
-                                 op_.Type(), name));
+      it,
+      ctx_.inputs.end(),
+      platform::errors::NotFound(
+          "Operator (%s) does not have the input (%s).", op_.Type(), name));
   return it->second;
 }
 
@@ -472,7 +536,8 @@ const std::vector<Variable*>& InterpretercoreInferShapeContext::OutputVars(
     const std::string& name) const {
   auto it = ctx_.outputs.find(name);
   PADDLE_ENFORCE_NE(
-      it, ctx_.outputs.end(),
+      it,
+      ctx_.outputs.end(),
       platform::errors::NotFound(
           "Operator (%s) does not have the outputs (%s).", op_.Type(), name));
   return it->second;
@@ -480,44 +545,28 @@ const std::vector<Variable*>& InterpretercoreInferShapeContext::OutputVars(
 
 VariableScope::VariableScope(Scope* scope) {
   // for @EMPTY@ variable
-  var_list_.push_back(nullptr);
   name2id_[kEmptyVarName] = kEmptyVarIndex;
+  var_list_.push_back(nullptr);
   vec_meta_info_.emplace_back(0, nullptr);
   scope_ = scope;
   PADDLE_ENFORCE_NE(
-      scope, nullptr,
+      scope,
+      nullptr,
       platform::errors::PreconditionNotMet(
           "You have passed a nullptr to construct VariableScope."));
-  listener_ = std::make_shared<VariableScopeListener>(this);
-  scope->AddListener(listener_);
 }
 
-VariableScope::~VariableScope() {
-  if (scope_ && listener_) {
-    scope_->DelListener(listener_);
-  }
-}
+VariableScope::~VariableScope() {}
 
 Scope* VariableScope::GetMutableScope() const { return scope_; }
 
 Scope* VariableScope::GetMutableLocalScope() const { return local_scope_; }
 
+void VariableScope::SetScope(Scope* scope) { scope_ = scope; }
+
 void VariableScope::SetLocalScope(Scope* local_scope) {
   VLOG(4) << "Set local scope: " << local_scope;
   local_scope_ = local_scope;
-}
-
-Variable* VariableScope::FindVar(const std::string& name) const {
-  auto it = name2id_.find(name);
-  if (it != name2id_.end()) {
-    PADDLE_ENFORCE_LT(it->second, var_list_.size(),
-                      platform::errors::NotFound(
-                          "The id(%d) of variable(%s) should not be larger "
-                          "than the size of variable list(%d).",
-                          it->second, name, var_list_.size()));
-    return var_list_[it->second];
-  }
-  return nullptr;
 }
 
 // Get variable id by name, return -1 if not found
@@ -536,7 +585,8 @@ std::string VariableScope::GetNameById(int id) const {
   // typically when the target variable is not existed in the original program
   // desc, but created by interpretercore.
   // For example, created and used by d2h_copy or h2d_copy operator.
-  auto it = std::find_if(name2id_.begin(), name2id_.end(),
+  auto it = std::find_if(name2id_.begin(),
+                         name2id_.end(),
                          [id](const auto& pair) { return pair.second == id; });
   if (it != name2id_.end()) {
     return it->first;
@@ -553,34 +603,27 @@ int VariableScope::VarId(const std::string& name) const {
   return name2id_.at(name);
 }
 
-Variable* VariableScope::Var(int id) const { return var_list_.at(id); }
+Variable* VariableScope::VarRef(int id) const { return var_list_[id]; }
 
-Variable* VariableScope::Var(const std::string& name) const {
-  return var_list_.at(VarId(name));
-}
-
-size_t VariableScope::VarSize() const { return var_list_.size(); }
+size_t VariableScope::VarSize() const { return name2id_.size(); }
 
 void VariableScope::AddVar(const std::string& name,
-                           framework::VarDesc* var_desc,
-                           bool local_scope) {  // NOLINT
-  auto v = local_scope ? local_scope_->Var(name) : scope_->Var(name);
-  if (nullptr == var_desc) {
-    v->GetMutable<LoDTensor>();
-  } else {
-    InitializeVariable(
-        v,
-        var_desc
-            ->GetType());  // Scope don't initialize variable recently created
+                           framework::VarDesc* var_desc) {
+  if (!HasVar(name)) {
+    auto id = VarSize();
+    name2id_[name] = id;
+    vec_meta_info_.emplace_back(0, var_desc);
+    if (local_scope_ != nullptr) {
+      var_list_.push_back(local_scope_->FindVar(name));
+    } else {
+      var_list_.push_back(scope_->FindVar(name));
+    }
+    PADDLE_ENFORCE_EQ(
+        var_list_.size(),
+        name2id_.size(),
+        platform::errors::InvalidArgument(
+            "The size of var_list and name2id map should be equal"));
   }
-  SetVarDesc(name, var_desc);
-}
-
-void VariableScope::AddVar(const std::string& name,
-                           const Variable& var) {  // NOLINT
-  // Though name existed in outer_scope_, we need
-  // add again to create name2id map.
-  scope_->Var(name);
 }
 
 void VariableScope::SetVarDesc(const std::string& name,
@@ -610,52 +653,61 @@ bool VariableScope::GetVarSikpInplace(int id) const {
 }
 
 void VariableScope::CheckExist(int id) const {
-  PADDLE_ENFORCE_LT(id, var_list_.size(),
+  PADDLE_ENFORCE_LT(id,
+                    name2id_.size(),
                     platform::errors::PreconditionNotMet(
                         "Required var_id < %d, but received var_id = %d.",
-                        var_list_.size(), id));
+                        name2id_.size(),
+                        id));
 }
 
 void VariableScope::CheckExist(const std::string& name) const {
-  PADDLE_ENFORCE_EQ(HasVar(name), true, platform::errors::NotFound(
-                                            "%s not in VariableScope.", name));
+  PADDLE_ENFORCE_EQ(
+      HasVar(name),
+      true,
+      platform::errors::NotFound("%s not in VariableScope.", name));
 }
 
-VariableScopeListener::VariableScopeListener(VariableScope* var_scope) {
-  var_scope_ = var_scope;
+Instruction::Instruction(size_t id,
+                         OpFuncNode&& op_func_node,
+                         const platform::DeviceContext& dev_ctx,
+                         const Priority priority)
+    : is_artificial_(op_func_node.operator_base_->Type() == "depend"),
+      id_(id),
+      op_func_node_(op_func_node),
+      dev_ctx_(dev_ctx),
+      priority_(priority) {
+  PADDLE_ENFORCE_GE(id,
+                    0,
+                    platform::errors::PreconditionNotMet(
+                        "Required id >= 0, but received id = %d", id));
 }
 
-void VariableScopeListener::onCreateVariable(const std::string& name,
-                                             Variable* v) {
-  if (!var_scope_->HasVar(name)) {  // may exist in variable scope.
-    VLOG(4) << "Calling VariableScope::onCreateVariable with var_name: "
-            << name;
-    var_scope_->name2id_[name] = var_scope_->VarSize();
-    var_scope_->var_list_.emplace_back(v);
-    var_scope_->vec_meta_info_.emplace_back(0, nullptr);
+void Instruction::WaitEvent(const Place& place) const {
+  // If InterpreterCore in on CPUPlace, do nothing.
+  if (platform::is_cpu_place(place)) {
+    return;
+  }
+
+  VLOG(6) << "Deal StreamWaitEventOrSync for " << this->OpBase()->Type();
+
+  for (const EventInter& event_iter : events_to_wait_) {
+    platform::RecordEvent record(
+        "WaitStreamEvent", platform::TracerEventType::UserDefined, 10);
+    VLOG(6) << "Wait instruction: " << event_iter.instr_id_
+            << " 's event with waiter_type: " << event_iter.waiter_type_;
+    event_iter.event_->Wait(event_iter.waiter_type_, &dev_ctx_);
   }
 }
 
-void VariableScopeListener::onDeleteVariable(const std::string& name) {
-  if (var_scope_->HasVar(name)) {
-    VLOG(4) << "Calling VariableScope::onDeleteVariable with var_name: "
-            << name;
+void Instruction::RecordEvent(const Place& place) const {
+  platform::RecordEvent record(
+      "RecordStreamEvent", platform::TracerEventType::UserDefined, 10);
+  if (event_to_record_) {
+    VLOG(6) << "Record event at instruction: " << id_;
+    event_to_record_->event_->Record(&dev_ctx_);
   }
 }
-void VariableScopeListener::onRenameVariable(const std::string& old_name,
-                                             const std::string& new_name) {}
-void VariableScopeListener::onCreateScope(Scope* Scope) {}
-void VariableScopeListener::onDeleteScope(Scope* Scope) {}
-void VariableScopeListener::onClear() {}
-
-Instruction::Instruction(size_t id, OpFuncNode&& op_func_node,
-                         const platform::DeviceContext& dev_ctx)
-    : id_(id), op_func_node_(op_func_node), dev_ctx_(dev_ctx) {
-  PADDLE_ENFORCE_GE(id, 0, platform::errors::PreconditionNotMet(
-                               "Required id >= 0, but received id = %d", id));
-}
-
-size_t Instruction::Id() const { return id_; }
 
 const std::map<std::string, std::vector<int>>& Instruction::Inputs() const {
   return op_func_node_.input_index;
@@ -665,33 +717,32 @@ const std::map<std::string, std::vector<int>>& Instruction::Outputs() const {
   return op_func_node_.output_index;
 }
 
-const std::unordered_set<int>& Instruction::NoDataTransformVars() const {
-  return op_func_node_.no_data_transform_index;
-}
-
 OpKernelComputeFunc Instruction::KernelFunc() const {
   return op_func_node_.kernel_func_;
 }
 
+phi::Kernel* Instruction::PhiKernel() const {
+  return op_func_node_.phi_kernel_;
+}
+
 OpFuncType Instruction::KernelType() const { return op_func_node_.type_; }
+
+const std::map<int, int>& Instruction::InplaceBackMap() const {
+  return op_func_node_.inplace_back_map;
+}
 
 OperatorBase* Instruction::OpBase() const {
   auto op_base = op_func_node_.operator_base_;
-  PADDLE_ENFORCE_NOT_NULL(op_base, platform::errors::PreconditionNotMet(
-                                       "op_base shall not be nullptr."));
+  PADDLE_ENFORCE_NOT_NULL(
+      op_base,
+      platform::errors::PreconditionNotMet("op_base shall not be nullptr."));
   return op_base.get();
 }
 
-NextInstruction& Instruction::NextInstructions() { return next_instruction_; }
-
-const NextInstruction& Instruction::NextInstructions() const {
-  return next_instruction_;
-}
-
-void Instruction::AddGCCheckVar(size_t id) { gc_check_var_list_.push_back(id); }
+void Instruction::AddGCCheckVar(size_t id) { gc_check_vars_.push_back(id); }
 
 const std::vector<size_t>& Instruction::GCCheckVars() const {
-  return gc_check_var_list_;
+  return gc_check_vars_;
 }
 
 void Instruction::ResetContext(const VariableValueMap& in_vars,
@@ -704,6 +755,16 @@ void Instruction::ResetContext(const VariableValueMap& in_vars,
   static framework::Scope scope_;
   execution_ctx_.reset(
       new ExecutionContext(*OpBase(), scope_, dev_ctx_, *runtime_ctx_.get()));
+}
+
+void Instruction::ResetContextWithScope(const VariableValueMap& in_vars,
+                                        const VariableValueMap& out_vars,
+                                        const framework::Scope& scope) {
+  runtime_ctx_.reset(new RuntimeContext(in_vars, out_vars));
+  infershape_ctx_.reset(
+      new InterpretercoreInferShapeContext(*OpBase(), *runtime_ctx_.get()));
+  execution_ctx_.reset(
+      new ExecutionContext(*OpBase(), scope, dev_ctx_, *runtime_ctx_.get()));
 }
 
 std::shared_ptr<RuntimeContext> Instruction::InnerRuntimeContext() const {
@@ -732,25 +793,7 @@ void Instruction::AddInplace(Variable* in, Variable* out) {
   vec_inplace_in_to_out_.emplace_back(in, out);
 }
 
-const std::vector<EventInter>& Instruction::InputEvents() const {
-  return intput_events_;
-}
-
-const std::vector<EventInter>& Instruction::OutputEvents() const {
-  return output_events_;
-}
-
-void Instruction::AddInputEvent(size_t var_id,
-                                std::shared_ptr<platform::DeviceEvent> event,
-                                platform::DeviceType waiter_type) {
-  intput_events_.emplace_back(var_id, event, waiter_type);
-}
-
-void Instruction::AddOutputEvent(size_t var_id,
-                                 std::shared_ptr<platform::DeviceEvent> event,
-                                 platform::DeviceType waiter_type) {
-  output_events_.emplace_back(var_id, event, waiter_type);
-}
+void Instruction::ClearInplace() { vec_inplace_in_to_out_.clear(); }
 
 }  // namespace framework
 }  // namespace paddle

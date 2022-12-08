@@ -17,7 +17,9 @@
 #include <algorithm>
 #include <limits>
 
-namespace infrt::paddle::pb {
+namespace infrt {
+namespace paddle {
+namespace pb {
 
 template <>
 framework_proto::BlockDesc* ProgramDesc::GetBlock<framework_proto::BlockDesc>(
@@ -32,4 +34,6 @@ ProgramDesc::AddBlock<framework_proto::BlockDesc>() {
   return desc_->add_blocks();
 }
 
-}  // namespace infrt::paddle::pb
+}  // namespace pb
+}  // namespace paddle
+}  // namespace infrt

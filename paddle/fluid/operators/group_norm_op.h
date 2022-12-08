@@ -17,35 +17,33 @@ limitations under the License. */
 #include <array>
 #include <numeric>
 #include <string>
+
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 template <typename DeviceContext, typename T>
 class GroupNormKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout data_layout =
-        framework::StringToDataLayout(data_layout_str);
+    const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
     const float epsilon = ctx.Attr<float>("epsilon");
-    auto* scale = ctx.Input<Tensor>("Scale");
-    auto* bias = ctx.Input<Tensor>("Bias");
-    auto* x = ctx.Input<Tensor>("X");
+    auto* scale = ctx.Input<phi::DenseTensor>("Scale");
+    auto* bias = ctx.Input<phi::DenseTensor>("Bias");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
 
-    auto* y = ctx.Output<Tensor>("Y");
-    auto* mean = ctx.Output<Tensor>("Mean");
-    auto* var = ctx.Output<Tensor>("Variance");
+    auto* y = ctx.Output<phi::DenseTensor>("Y");
+    auto* mean = ctx.Output<phi::DenseTensor>("Mean");
+    auto* var = ctx.Output<phi::DenseTensor>("Variance");
     const auto groups = ctx.Attr<int>("groups");
 
     const auto x_dims = x->dims();
@@ -217,20 +215,20 @@ class GroupNormGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout data_layout =
-        framework::StringToDataLayout(data_layout_str);
+    const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
     const float epsilon = ctx.Attr<float>("epsilon");
-    auto* x = ctx.Input<Tensor>("Y");
-    auto* var = ctx.Input<Tensor>("Variance");
-    auto* scale = ctx.Input<Tensor>("Scale");
-    auto* bias = ctx.Input<Tensor>("Bias");
-    auto* d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
+    auto* x = ctx.Input<phi::DenseTensor>("Y");
+    auto* var = ctx.Input<phi::DenseTensor>("Variance");
+    auto* scale = ctx.Input<phi::DenseTensor>("Scale");
+    auto* bias = ctx.Input<phi::DenseTensor>("Bias");
+    auto* d_y = ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));
     const auto groups = ctx.Attr<int>("groups");
 
     // init output
-    auto* d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
-    auto* d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+    auto* d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* d_scale =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Scale"));
+    auto* d_bias = ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
 
     const auto& x_dims = x->dims();
     const int C =
@@ -239,7 +237,7 @@ class GroupNormGradKernel : public framework::OpKernel<T> {
     const int group_size = C / groups;
 
     d_x->mutable_data<T>(ctx.GetPlace());
-    math::SetConstant<DeviceContext, T> set_zero;
+    phi::funcs::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
     auto* x_data = x->data<T>();

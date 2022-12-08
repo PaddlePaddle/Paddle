@@ -21,29 +21,29 @@ namespace platform {
 namespace ipu {
 namespace {
 
-Node *topK_op_handler(Graph *graph, Node *node) {
-  VLOG(10) << "[topK_op_handler] entering to handler ...";
+Node *topk_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto attrs = AttributeMap{};
-  int axis_32INT = -1;
+
+  int axis_ = -1;
   if (op->HasAttr("axis")) {
-    axis_32INT = BOOST_GET_CONST(int, op->GetAttr("axis"));
+    axis_ = PADDLE_GET_CONST(int, op->GetAttr("axis"));
   }
-  if (axis_32INT == -1) {
+  if (axis_ == -1) {
     auto shape = GetInputVarNode("X", node)->Var()->GetShape();
     int rank = shape.size();
     if (rank < 1) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "The dimension of the shape of topK input should be large than 1"));
     }
-    axis_32INT = rank - 1;
+    axis_ = rank - 1;
   }
-  int64_t axis = int64_t{axis_32INT};
+  int64_t axis = int64_t{axis_};
   attrs.emplace("axis", axis);
 
   bool largest = true;
   if (op->HasAttr("largest")) {
-    largest = BOOST_GET_CONST(bool, op->GetAttr("largest"));
+    largest = PADDLE_GET_CONST(bool, op->GetAttr("largest"));
   }
   if (largest) {
     // defaults to 1, largest values
@@ -54,7 +54,7 @@ Node *topK_op_handler(Graph *graph, Node *node) {
 
   bool sorted = true;
   if (op->HasAttr("sorted")) {
-    sorted = BOOST_GET_CONST(bool, op->GetAttr("sorted"));
+    sorted = PADDLE_GET_CONST(bool, op->GetAttr("sorted"));
   }
   if (sorted) {
     // defaults to 1, sorted results
@@ -63,47 +63,71 @@ Node *topK_op_handler(Graph *graph, Node *node) {
     attrs.emplace("sorted", 0);
   }
 
-  std::vector<paddle::framework::ir::Node *> inputs = node->inputs;
-  if (node->inputs.size() == 2) {
-    // Input X tensor and K const tensor
-    VLOG(10) << "[topK_op_handler] get 2 input tensors.";
-    inputs[0] = node->inputs[1];  // K_t
-    VLOG(10) << "[topK_op_handler] input node(" << inputs[0]->Var()->Name()
-             << ")";
-    inputs[1] = node->inputs[0];  // X
-    VLOG(10) << "[topK_op_handler] input node(" << inputs[1]->Var()->Name()
-             << ")";
-  } else if (node->inputs.size() == 1) {
-    // Input X tensor with k integer
-    VLOG(10) << "[topK_op_handler] get 1 input tensor.";
-    int k_32INT = BOOST_GET_CONST(int, op->GetAttr("k"));
-    int64_t k = int64_t{k_32INT};
-    attrs.emplace("k", k);
+  Node *var_x = GetInputVarNode("X", node);
+  Node *var_k = nullptr;
+  if (!op->Input("K").empty()) {
+    var_k = GetInputVarNode("K", node);
+  } else {
+    auto k = PADDLE_GET_CONST(int, op->GetAttr("k"));
+    auto *op_k = CreateConst(graph,
+                             node,
+                             {},
+                             {},
+                             {{"value", std::vector<int64_t>{k}},
+                              {"dims", std::vector<int64_t>{1}},
+                              {"dtype", ONNXDataType::INT64}});
+    var_k = op_k->outputs[0];
   }
-  // show output node dtype
-  for (auto *o_node : node->outputs) {
-    auto *var = o_node->Var();
-    // see framework.pb.h
-    // VarType_Type_INT64 = 3,
-    // VarType_Type_FP32 = 5,
-    auto dtype = var->GetDataType();
-    if (dtype == 3) {
-      // poplar does not support int64_t
-      var->SetDataType(framework::proto::VarType::INT32);
-    }
-    std::string name = var->Name();
-    VLOG(10) << "[topK_op_handler] output node(" << name
-             << ") dtype : " << dtype;
-  }
-  VLOG(10) << "[topK_op_handler] leave the handler.";
-  return CreateBaseOp(graph, node, "popart_topk", inputs,
-                      {node->outputs[1], node->outputs[0]}, attrs);
+
+  auto *var_i = MakeVarNode(graph, node);
+  CreateBaseOp(graph,
+               node,
+               "popart_topk",
+               {var_x, var_k},
+               {GetOutputVarNode("Out", node), var_i},
+               {{"axis", int64_t{axis}},
+                {"largest", int64_t{largest}},
+                {"sorted", int64_t{sorted}}});
+  return CreateCast(graph,
+                    node,
+                    {var_i},
+                    {GetOutputVarNode("Indices", node)},
+                    VarType::INT32);
 }
 
-REGISTER_HANDLER(top_k, topK_op_handler);
-REGISTER_HANDLER(top_k_v2, topK_op_handler);
+Node *argsort_handler(Graph *graph, Node *node) {
+  auto *op = node->Op();
+  auto x_shape = GetInputVarNode("X", node)->Var()->GetShape();
+  auto axis_ = PADDLE_GET_CONST(int, op->GetAttr("axis"));
+  auto descending_ = PADDLE_GET_CONST(bool, op->GetAttr("descending"));
+  if (axis_ < 0) {
+    axis_ = axis_ + x_shape.size();
+  }
+  auto *dim_size = CreateConst(graph,
+                               node,
+                               std::vector<int64_t>{x_shape[axis_]},
+                               {1},
+                               ONNXDataType::INT64)
+                       ->outputs.front();
+  int64_t largest = descending_ ? 1 : 0;
+  return CreateBaseOp(
+      graph,
+      node,
+      "popart_topk",
+      {GetInputVarNode("X", node), dim_size},
+      {GetOutputVarNode("Out", node), GetOutputVarNode("Indices", node)},
+      {
+          {"axis", int64_t{axis_}},
+          {"largest", int64_t{largest}},
+          {"sorted", int64_t{0}},
+      });
+}
 
 }  // namespace
 }  // namespace ipu
 }  // namespace platform
 }  // namespace paddle
+
+REGISTER_HANDLER(top_k, topk_handler);
+REGISTER_HANDLER(top_k_v2, topk_handler);
+REGISTER_HANDLER(argsort, argsort_handler);

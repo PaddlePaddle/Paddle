@@ -21,7 +21,8 @@ namespace platform {
 namespace ipu {
 namespace {
 
-Node *elementwise_op_handler(Graph *graph, Node *node,
+Node *elementwise_op_handler(Graph *graph,
+                             Node *node,
                              const std::string &type) {
   auto *op = node->Op();
   auto x_shape = GetInputVarNode("X", node)->Var()->GetShape();
@@ -29,10 +30,12 @@ Node *elementwise_op_handler(Graph *graph, Node *node,
   auto y_shape = GetInputVarNode("Y", node)->Var()->GetShape();
   int64_t y_rank = y_shape.size();
 
-  auto axis = BOOST_GET_CONST(int, op->GetAttr("axis"));
+  auto axis = PADDLE_GET_CONST(int, op->GetAttr("axis"));
   if (axis == -1 || axis == x_rank - 1 || x_rank == y_rank) {
     auto new_node =
-        CreateBaseOp(graph, node, type,
+        CreateBaseOp(graph,
+                     node,
+                     type,
                      {GetInputVarNode("X", node), GetInputVarNode("Y", node)},
                      node->outputs);
     return new_node;
@@ -49,12 +52,17 @@ Node *elementwise_op_handler(Graph *graph, Node *node,
     // constant
     auto new_node_const = CreateConst(graph, node, {}, {}, attrs);
     // reshape
-    auto new_node_reshape = CreateBaseOp(
-        graph, node, "popart_reshape",
-        {GetInputVarNode("Y", node), new_node_const->outputs[0]}, {});
+    auto new_node_reshape =
+        CreateBaseOp(graph,
+                     node,
+                     "popart_reshape",
+                     {GetInputVarNode("Y", node), new_node_const->outputs[0]},
+                     {});
     // elementwise_op
     auto new_node =
-        CreateBaseOp(graph, node, type,
+        CreateBaseOp(graph,
+                     node,
+                     type,
                      {GetInputVarNode("X", node), new_node_reshape->outputs[0]},
                      node->outputs);
     return new_node;
@@ -93,6 +101,11 @@ Node *elementwise_mod_handler(Graph *graph, Node *node) {
   return elementwise_op_handler(graph, node, "popart_mod");
 }
 
+}  // namespace
+}  // namespace ipu
+}  // namespace platform
+}  // namespace paddle
+
 REGISTER_HANDLER(elementwise_add, elementwise_add_handler);
 REGISTER_HANDLER(elementwise_sub, elementwise_sub_handler);
 REGISTER_HANDLER(elementwise_div, elementwise_div_handler);
@@ -101,8 +114,3 @@ REGISTER_HANDLER(elementwise_min, elementwise_min_handler);
 REGISTER_HANDLER(elementwise_max, elementwise_max_handler);
 REGISTER_HANDLER(elementwise_pow, elementwise_pow_handler);
 REGISTER_HANDLER(elementwise_mod, elementwise_mod_handler);
-
-}  // namespace
-}  // namespace ipu
-}  // namespace platform
-}  // namespace paddle

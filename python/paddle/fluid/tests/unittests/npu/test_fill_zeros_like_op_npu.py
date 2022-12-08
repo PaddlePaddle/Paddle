@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -45,7 +44,7 @@ class TestFillZerosLikeOp(OpTest):
 
 class TestFillZerosLikeOpBool(TestFillZerosLikeOp):
     def init_dtype(self):
-        self.dtype = np.bool
+        self.dtype = np.bool_
 
 
 class TestFillZerosLikeOpFp16(TestFillZerosLikeOp):

@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.nn.functional as F
-from paddle import fluid
-import paddle.fluid.dygraph as dg
-import paddle.fluid.initializer as I
-import numpy as np
 import unittest
 from unittest import TestCase
+
+import numpy as np
+
+import paddle
+import paddle.fluid.dygraph as dg
+import paddle.nn.functional as F
 
 
 class TestFunctionalConv1DError(TestCase):
@@ -37,8 +37,11 @@ class TestFunctionalConv1DError(TestCase):
         with dg.guard():
             x = dg.to_variable(self.input, dtype=paddle.float32)
             w = dg.to_variable(self.filter, dtype=paddle.float32)
-            b = None if self.bias is None else dg.to_variable(
-                self.bias, dtype=paddle.float32)
+            b = (
+                None
+                if self.bias is None
+                else dg.to_variable(self.bias, dtype=paddle.float32)
+            )
             y = F.conv1d_transpose(
                 x,
                 w,
@@ -47,7 +50,8 @@ class TestFunctionalConv1DError(TestCase):
                 stride=self.stride,
                 dilation=self.dilation,
                 groups=self.groups,
-                data_format=self.data_format)
+                data_format=self.data_format,
+            )
 
     def test_exception(self):
         with self.assertRaises(ValueError):

@@ -14,13 +14,13 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/ir/ipu/ipu_pass_base.h"
+#include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-class InferenceProcessPass : public IPUPassBase {
+class InferenceProcessPass : public Pass {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 };

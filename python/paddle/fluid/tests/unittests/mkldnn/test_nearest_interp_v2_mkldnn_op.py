@@ -12,23 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid.tests.unittests.op_test import OpTest
-from paddle.fluid.tests.unittests.op_test import skip_check_grad_ci
+
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    OpTestTool,
+    convert_float_to_uint16,
+    skip_check_grad_ci,
+)
 
 
-def nearest_neighbor_interp_mkldnn_np(X,
-                                      out_h,
-                                      out_w,
-                                      out_size=None,
-                                      actual_shape=None,
-                                      data_layout='NCHW'):
+def nearest_neighbor_interp_mkldnn_np(
+    X, out_h, out_w, out_size=None, actual_shape=None, data_layout='NCHW'
+):
     """nearest neighbor interpolation implement in shape [N, C, H, W]"""
     if data_layout == "NHWC":
         X = np.transpose(X, (0, 3, 1, 2))  # NHWC => NCHW
@@ -42,9 +40,9 @@ def nearest_neighbor_interp_mkldnn_np(X,
     n, c, in_h, in_w = X.shape
 
     fh = fw = 0.0
-    if (out_h > 1):
+    if out_h > 1:
         fh = out_h * 1.0 / in_h
-    if (out_w > 1):
+    if out_w > 1:
         fw = out_w * 1.0 / in_w
 
     out = np.zeros((n, c, out_h, out_w))
@@ -62,9 +60,13 @@ def nearest_neighbor_interp_mkldnn_np(X,
 
 
 @skip_check_grad_ci(reason="Haven not implement interpolate grad kernel.")
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestNearestInterpV2MKLDNNOp(OpTest):
     def init_test_case(self):
         pass
+
+    def init_data_type(self):
+        self.dtype = np.float32
 
     def setUp(self):
         self.op_type = "nearest_interp_v2"
@@ -81,8 +83,16 @@ class TestNearestInterpV2MKLDNNOp(OpTest):
         self.actual_shape = None
 
         self.init_test_case()
+        self.init_data_type()
 
-        input_np = np.random.random(self.input_shape).astype("float32")
+        if self.dtype == np.float32 or self.dtype == np.uint16:
+            input_np = np.random.random(self.input_shape).astype(self.dtype)
+        else:
+            init_low, init_high = (-5, 5) if self.dtype == np.int8 else (0, 10)
+            input_np = np.random.randint(
+                init_low, init_high, self.input_shape
+            ).astype(self.dtype)
+
         if self.data_layout == "NCHW":
             in_h = self.input_shape[2]
             in_w = self.input_shape[3]
@@ -112,11 +122,19 @@ class TestNearestInterpV2MKLDNNOp(OpTest):
             out_w = self.out_w
 
         output_np = nearest_neighbor_interp_mkldnn_np(
-            input_np, out_h, out_w, self.out_size, self.actual_shape,
-            self.data_layout)
+            input_np,
+            out_h,
+            out_w,
+            self.out_size,
+            self.actual_shape,
+            self.data_layout,
+        )
 
         if isinstance(self.scale, float):
             self.scale = [self.scale]
+
+        if self.dtype == np.uint16:
+            input_np = convert_float_to_uint16(input_np)
 
         self.inputs = {'X': input_np}
         if self.out_size is not None:
@@ -129,7 +147,7 @@ class TestNearestInterpV2MKLDNNOp(OpTest):
             'out_w': self.out_w,
             'scale': self.scale,
             'data_layout': self.data_layout,
-            'use_mkldnn': self.use_mkldnn
+            'use_mkldnn': self.use_mkldnn,
         }
         self.outputs = {'Out': output_np}
 
@@ -178,7 +196,40 @@ class TestNearestNeighborInterpV2MKLDNNSame(TestNearestInterpV2MKLDNNOp):
         self.out_size = np.array([65, 129]).astype("int32")
 
 
+def create_test_class(parent):
+    '''
+    Create tests for bf16, int, uint8. By default parent class works on fp32.
+    '''
+
+    class TestBf16Case(parent):
+        def init_data_type(self):
+            self.dtype = np.uint16
+
+    class TestInt8Case(parent):
+        def init_data_type(self):
+            self.dtype = np.int8
+
+    class TestUint8Case(parent):
+        def init_data_type(self):
+            self.dtype = np.uint8
+
+    TestBf16Case.__name__ = "{0}_{1}".format(parent.__name__, "BF16")
+    TestInt8Case.__name__ = "{0}_{1}".format(parent.__name__, "INT8")
+    TestUint8Case.__name__ = "{0}_{1}".format(parent.__name__, "UINT8")
+    globals()[TestBf16Case.__name__] = TestBf16Case
+    globals()[TestInt8Case.__name__] = TestInt8Case
+    globals()[TestUint8Case.__name__] = TestUint8Case
+
+
+create_test_class(TestNearestInterpV2MKLDNNOp)
+create_test_class(TestNearestInterpOpV2MKLDNNNHWC)
+create_test_class(TestNearestNeighborInterpV2MKLDNNCase2)
+create_test_class(TestNearestNeighborInterpV2MKLDNNCase3)
+create_test_class(TestNearestNeighborInterpV2MKLDNNCase4)
+create_test_class(TestNearestNeighborInterpV2MKLDNNSame)
+
 if __name__ == "__main__":
     from paddle import enable_static
+
     enable_static()
     unittest.main()

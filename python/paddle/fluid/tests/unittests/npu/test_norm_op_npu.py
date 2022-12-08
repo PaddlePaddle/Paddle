@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
+
 sys.path.append("..")
 import unittest
 import numpy as np
@@ -54,11 +53,9 @@ class TestNPUNormOp(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-
         self.check_grad_with_place(
-            self.place, ['X'], 'Out', max_relative_error=0.006)
+            self.place, ['X'], 'Out', max_relative_error=0.006
+        )
 
 
 class TestNPUNormOp2(TestNPUNormOp):
@@ -75,8 +72,10 @@ class TestNPUNormOp3(TestNPUNormOp):
         self.epsilon = 1e-8
 
 
-@skip_check_grad_ci(reason="'check_grad' on large inputs is too slow, " +
-                    "however it is desirable to cover the forward pass")
+@skip_check_grad_ci(
+    reason="'check_grad' on large inputs is too slow, "
+    + "however it is desirable to cover the forward pass"
+)
 class TestNPUNormOp4(TestNPUNormOp):
     def init_test_case(self):
         self.shape = [128, 1024, 14, 14]
@@ -87,8 +86,10 @@ class TestNPUNormOp4(TestNPUNormOp):
         pass
 
 
-@skip_check_grad_ci(reason="'check_grad' on large inputs is too slow, " +
-                    "however it is desirable to cover the forward pass")
+@skip_check_grad_ci(
+    reason="'check_grad' on large inputs is too slow, "
+    + "however it is desirable to cover the forward pass"
+)
 class TestNPUNormOp5(TestNPUNormOp):
     def init_test_case(self):
         self.shape = [2048, 2048]

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/passes/ir_graph_to_program_pass.h"
+
 #include "paddle/fluid/framework/ir/graph_to_program_pass.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -30,7 +31,7 @@ void IrGraphToProgramPass::RunImpl(Argument *argument) {
               new int(argument->memory_optim_sort_kind()));
   }
 
-  std::unique_ptr<Graph> graph(argument->main_graph_ptr());
+  std::unique_ptr<framework::ir::Graph> graph(argument->main_graph_ptr());
 
   // Direct using ProgramDesc desc(argument->main_program()) may cause
   // incomplete copies of information.

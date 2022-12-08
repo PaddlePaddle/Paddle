@@ -37,5 +37,4 @@ NO_COLOUR="\[\033[0m\]"
 GREEN="\[\033[1;32m\]"
 WHITE="\[\033[1;37m\]"
 
-export PS1="\[\033[1;33m\]λ $WHITE\h $GREEN\w$YELLOW\$(__git_ps1 \" \[\033[35m\]{\[\033[36m\]%s\[\033[35m\]}\")$NO_COLOUR "
-
+export PS1="\[\033[1;33m\]λ $WHITE\h $GREEN\w $NO_COLOUR"

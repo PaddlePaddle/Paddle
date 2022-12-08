@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -36,7 +35,9 @@ class TestSqueezeOp(OpTest):
         self.init_test_case()
         self.inputs = {"X": np.random.random(self.ori_shape).astype("float32")}
         self.init_attrs()
-        self.outputs = {"Out": self.inputs["X"].reshape(self.new_shape), }
+        self.outputs = {
+            "Out": self.inputs["X"].reshape(self.new_shape),
+        }
 
     def set_npu(self):
         self.__class__.use_npu = True
@@ -76,7 +77,7 @@ class TestSqueezeOp2(TestSqueezeOp):
         self.new_shape = (20, 5)
 
 
-# Correct: Just part of axes be squeezed. 
+# Correct: Just part of axes be squeezed.
 
 
 class TestSqueezeOp3(TestSqueezeOp):
@@ -102,7 +103,8 @@ class TestSqueezeOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
             # The input type of softmax_op must be Variable.
             x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], paddle.NPUPlace(0))
+                np.array([[-1]]), [[1]], paddle.NPUPlace(0)
+            )
             self.assertRaises(TypeError, paddle.squeeze, x1)
             # The input axes of squeeze must be list.
             x2 = paddle.static.data(name='x2', shape=[4], dtype="int32")
@@ -121,18 +123,21 @@ class API_TestSqueeze(unittest.TestCase):
 
     def test_out(self):
         paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             data1 = paddle.static.data(
-                'data1', shape=[-1, 1, 10], dtype='float64')
+                'data1', shape=[-1, 1, 10], dtype='float64'
+            )
             result_squeeze = self.squeeze(data1, axis=[1])
             place = paddle.NPUPlace(0)
             exe = paddle.static.Executor(place)
             input1 = np.random.random([5, 1, 10]).astype('float64')
-            result, = exe.run(feed={"data1": input1},
-                              fetch_list=[result_squeeze])
+            (result,) = exe.run(
+                feed={"data1": input1}, fetch_list=[result_squeeze]
+            )
             expected_result = np.squeeze(input1, axis=1)
-            self.assertTrue(np.allclose(expected_result, result))
+            np.testing.assert_allclose(expected_result, result)
 
 
 class API_TestStaticSqueeze_(API_TestSqueeze):
@@ -155,7 +160,7 @@ class API_TestDygraphSqueeze(unittest.TestCase):
             output = self.squeeze(input, axis=[1])
             out_np = output.numpy()
             expected_out = np.squeeze(input_1, axis=1)
-            self.assertTrue(np.allclose(expected_out, out_np))
+            np.testing.assert_allclose(expected_out, out_np)
 
     def test_out_int8(self):
         paddle.disable_static()
@@ -165,7 +170,7 @@ class API_TestDygraphSqueeze(unittest.TestCase):
             output = self.squeeze(input, axis=[1])
             out_np = output.numpy()
             expected_out = np.squeeze(input_1, axis=1)
-            self.assertTrue(np.allclose(expected_out, out_np))
+            np.testing.assert_allclose(expected_out, out_np)
 
     def test_out_uint8(self):
         paddle.disable_static()
@@ -175,7 +180,7 @@ class API_TestDygraphSqueeze(unittest.TestCase):
             output = self.squeeze(input, axis=[1])
             out_np = output.numpy()
             expected_out = np.squeeze(input_1, axis=1)
-            self.assertTrue(np.allclose(expected_out, out_np))
+            np.testing.assert_allclose(expected_out, out_np)
 
     def test_axis_not_list(self):
         paddle.disable_static()
@@ -185,7 +190,7 @@ class API_TestDygraphSqueeze(unittest.TestCase):
             output = self.squeeze(input, axis=1)
             out_np = output.numpy()
             expected_out = np.squeeze(input_1, axis=1)
-            self.assertTrue(np.allclose(expected_out, out_np))
+            np.testing.assert_allclose(expected_out, out_np)
 
     def test_dimension_not_1(self):
         paddle.disable_static()
@@ -195,7 +200,7 @@ class API_TestDygraphSqueeze(unittest.TestCase):
             output = self.squeeze(input, axis=(1, 0))
             out_np = output.numpy()
             expected_out = np.squeeze(input_1, axis=1)
-            self.assertTrue(np.allclose(expected_out, out_np))
+            np.testing.assert_allclose(expected_out, out_np)
 
 
 class API_TestDygraphSqueezeInplace(API_TestDygraphSqueeze):
@@ -213,7 +218,7 @@ class TestSqueeze2Op(OpTest):
         self.init_attrs()
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.new_shape),
-            "XShape": np.random.random(self.ori_shape).astype("float32")
+            "XShape": np.random.random(self.ori_shape).astype("float32"),
         }
 
     def set_npu(self):
@@ -221,7 +226,8 @@ class TestSqueeze2Op(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(
-            paddle.NPUPlace(0), no_check_set=['XShape'])
+            paddle.NPUPlace(0), no_check_set=['XShape']
+        )
 
     def test_check_grad(self):
         self.check_grad_with_place(paddle.NPUPlace(0), ["X"], "Out")
@@ -251,7 +257,7 @@ class TestSqueeze2Op2(TestSqueeze2Op):
         self.new_shape = (20, 5)
 
 
-# Correct: Just part of axes be squeezed. 
+# Correct: Just part of axes be squeezed.
 class TestSqueeze2Op3(TestSqueeze2Op):
     def init_test_case(self):
         self.ori_shape = (6, 1, 5, 1, 4, 1)

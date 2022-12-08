@@ -20,47 +20,45 @@ limitations under the License. */
 #include <cstdlib>
 #include <memory>
 #include <random>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
-namespace m = paddle::operators::math;
 
-using Tensor = paddle::framework::Tensor;
-
-USE_OP(check_finite_and_unscale);
+USE_OP_ITSELF(check_finite_and_unscale);
 USE_OP_DEVICE_KERNEL(check_finite_and_unscale, NPU);
 
 struct InputVars {
   std::string name;
-  f::LoDTensor *tensor;
+  phi::DenseTensor *tensor;
 };
 
 template <typename T>
 void Compare(f::Scope *scope, const p::DeviceContext &ctx) {
-  const f::DDim dims = f::make_ddim({2, 2});
+  const f::DDim dims = phi::make_ddim({2, 2});
   auto place = ctx.GetPlace();
 
   // init input
   std::vector<InputVars> input_names = {
-      {"x", scope->Var("x")->GetMutable<f::LoDTensor>()},
-      {"x1", scope->Var("x1")->GetMutable<f::LoDTensor>()}};
+      {"x", scope->Var("x")->GetMutable<phi::DenseTensor>()},
+      {"x1", scope->Var("x1")->GetMutable<phi::DenseTensor>()}};
 
-  auto *scale = scope->Var("scale")->GetMutable<f::LoDTensor>();
+  auto *scale = scope->Var("scale")->GetMutable<phi::DenseTensor>();
 
   // init output
-  auto *out = scope->Var("out")->GetMutable<f::LoDTensor>();
-  auto *out1 = scope->Var("out1")->GetMutable<f::LoDTensor>();
-  auto *found_inf = scope->Var("found_inf")->GetMutable<f::LoDTensor>();
+  auto *out = scope->Var("out")->GetMutable<phi::DenseTensor>();
+  auto *out1 = scope->Var("out1")->GetMutable<phi::DenseTensor>();
+  auto *found_inf = scope->Var("found_inf")->GetMutable<phi::DenseTensor>();
 
   // Initialize input data
   const int num_inputs = input_names.size();
-  size_t numel = static_cast<size_t>(f::product(dims));
+  size_t numel = static_cast<size_t>(phi::product(dims));
 
   for (int i = 0; i < num_inputs; ++i) {
     std::vector<T> init_xs;
@@ -82,8 +80,10 @@ void Compare(f::Scope *scope, const p::DeviceContext &ctx) {
   // run
   f::AttributeMap attrs;
   auto op = f::OpRegistry::CreateOp(
-      "check_finite_and_unscale", {{"X", {"x", "x1"}}, {"Scale", {"scale"}}},
-      {{"Out", {"out", "out1"}}, {"FoundInfinite", {"found_inf"}}}, attrs);
+      "check_finite_and_unscale",
+      {{"X", {"x", "x1"}}, {"Scale", {"scale"}}},
+      {{"Out", {"out", "out1"}}, {"FoundInfinite", {"found_inf"}}},
+      attrs);
   op->Run(*scope, place);
   ctx.Wait();
 
@@ -108,7 +108,7 @@ void Compare(f::Scope *scope, const p::DeviceContext &ctx) {
   ctx.Wait();
 
   // out found_inf
-  Tensor found_inf_tensor;
+  phi::DenseTensor found_inf_tensor;
   found_inf_tensor.Resize({1});
   bool *found_inf_data =
       found_inf_tensor.mutable_data<bool>(paddle::platform::CPUPlace());

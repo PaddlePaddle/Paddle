@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fill_zeros_like_op.h"
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
@@ -20,28 +21,24 @@ limitations under the License. */
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     fill_zeros_like,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext,
-                             paddle::platform::float16>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, bool>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext,
-                             paddle::platform::complex<float>>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext,
+    ops::FillZerosLikeKernel<phi::GPUContext, int>,
+    ops::FillZerosLikeKernel<phi::GPUContext, int64_t>,
+    ops::FillZerosLikeKernel<phi::GPUContext, float>,
+    ops::FillZerosLikeKernel<phi::GPUContext, double>,
+    ops::FillZerosLikeKernel<phi::GPUContext, paddle::platform::float16>,
+    ops::FillZerosLikeKernel<phi::GPUContext, bool>,
+    ops::FillZerosLikeKernel<phi::GPUContext, paddle::platform::complex<float>>,
+    ops::FillZerosLikeKernel<phi::GPUContext,
                              paddle::platform::complex<double>>);
 
 REGISTER_OP_CUDA_KERNEL(
     fill_zeros_like2,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext,
-                             paddle::platform::float16>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext, bool>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext,
-                             paddle::platform::complex<float>>,
-    ops::FillZerosLikeKernel<paddle::platform::CUDADeviceContext,
+    ops::FillZerosLikeKernel<phi::GPUContext, int>,
+    ops::FillZerosLikeKernel<phi::GPUContext, int64_t>,
+    ops::FillZerosLikeKernel<phi::GPUContext, float>,
+    ops::FillZerosLikeKernel<phi::GPUContext, double>,
+    ops::FillZerosLikeKernel<phi::GPUContext, paddle::platform::float16>,
+    ops::FillZerosLikeKernel<phi::GPUContext, bool>,
+    ops::FillZerosLikeKernel<phi::GPUContext, paddle::platform::complex<float>>,
+    ops::FillZerosLikeKernel<phi::GPUContext,
                              paddle::platform::complex<double>>);

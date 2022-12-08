@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 
@@ -24,16 +26,18 @@ class TestFleetExecutor(unittest.TestCase):
     def fake_fleet_opt(self):
         # TODO: Fake for coverage will be removed in the future
         import paddle.distributed.fleet as fleet
+
         strategy = fleet.DistributedStrategy()
         strategy.sharding_configs = {
             "dp_degree": 1,
             "mp_degree": 1,
-            "pp_degree": 1
+            "pp_degree": 1,
         }
         strategy.pipeline_configs = {"accumulate_steps": 1}
         fleet_opt = {
             "dist_strategy": strategy.sharding_configs,
-            "num_micro_batches": strategy.pipeline_configs["accumulate_steps"]
+            "num_micro_batches": strategy.pipeline_configs["accumulate_steps"],
+            "scheduler": "1F1B",
         }
         return fleet_opt
 
@@ -42,9 +46,11 @@ class TestFleetExecutor(unittest.TestCase):
         empty_program = paddle.static.Program()
         with fluid.program_guard(empty_program, empty_program):
             x = fluid.layers.data(
-                name='x', shape=x_data.shape, dtype=x_data.dtype)
+                name='x', shape=x_data.shape, dtype=x_data.dtype
+            )
             y = fluid.layers.data(
-                name='y', shape=y_data.shape, dtype=y_data.dtype)
+                name='y', shape=y_data.shape, dtype=y_data.dtype
+            )
             z = x + y
             a = 2 * x + 3 * y
             loss = paddle.mean(a)
@@ -54,20 +60,23 @@ class TestFleetExecutor(unittest.TestCase):
             bd = [steps_per_pass * p for p in passes]
             lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
             lr_val = paddle.optimizer.lr.PiecewiseDecay(
-                boundaries=bd, values=lr)
+                boundaries=bd, values=lr
+            )
             opt = paddle.optimizer.AdamW(
                 learning_rate=lr_val,
-                grad_clip=fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0))
+                grad_clip=fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0),
+            )
             opt.minimize(loss)
         # TODO: section_program will be removed in the future
         empty_program._pipeline_opt = {
             "fleet_opt": self.fake_fleet_opt(),
-            "section_program": empty_program
+            "section_program": empty_program,
         }
-        res = exe.run(empty_program,
-                      feed={'x': x_data,
-                            'y': y_data},
-                      fetch_list=[z.name, a.name])
+        res = exe.run(
+            empty_program,
+            feed={'x': x_data, 'y': y_data},
+            fetch_list=[z.name, a.name],
+        )
         return res
 
     def test_executor_on_single_device(self):
@@ -78,8 +87,8 @@ class TestFleetExecutor(unittest.TestCase):
             z_data = x_data + y_data
             a_data = 2 * x_data + 3 * y_data
             res = self.run_fleet_executor(fluid.CUDAPlace(0), x_data, y_data)
-            self.assertTrue(np.allclose(res[0], z_data))
-            self.assertTrue(np.allclose(res[1], a_data))
+            np.testing.assert_allclose(res[0], z_data, rtol=1e-05)
+            np.testing.assert_allclose(res[1], a_data, rtol=1e-05)
 
 
 if __name__ == "__main__":

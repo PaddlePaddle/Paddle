@@ -13,6 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/program_desc.h"
+
+extern "C" {
+#include <xxhash.h>
+}
+
+#include <algorithm>
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/version.h"
 
@@ -58,9 +64,12 @@ ProgramDesc::ProgramDesc() {
 
 ProgramDesc::ProgramDesc(const ProgramDesc &o) {
   desc_ = o.desc_;
+  std::vector<framework::BlockDesc *> old_block_desc;
   for (int i = 0; i < desc_.blocks_size(); ++i) {
     auto *block = desc_.mutable_blocks(i);
     blocks_.emplace_back(new BlockDesc(*o.blocks_[i], block, this));
+    // record all block desc's ptr from origin program
+    old_block_desc.emplace_back(o.blocks_[i].get());
   }
   for (size_t block_id = 0; block_id < blocks_.size(); ++block_id) {
     auto all_ops = blocks_[block_id]->AllOps();
@@ -69,9 +78,22 @@ ProgramDesc::ProgramDesc(const ProgramDesc &o) {
 
       for (const std::string &attr_name : op->AttrNames()) {
         if (op->GetAttrType(attr_name) == proto::AttrType::BLOCK) {
-          int sub_block_id =
-              o.Block(block_id).Op(op_id)->GetBlockAttrId(attr_name);
-          op->SetBlockAttr(attr_name, MutableBlock(sub_block_id));
+          framework::BlockDesc *block_desc =
+              PADDLE_GET_CONST(framework::BlockDesc *, op->GetAttr(attr_name));
+          if (std::find(old_block_desc.begin(),
+                        old_block_desc.end(),
+                        block_desc) != old_block_desc.end()) {
+            // The block is owned by the origin program. Just use id to get
+            // the corresponding block.
+            int sub_block_id =
+                o.Block(block_id).Op(op_id)->GetBlockAttrId(attr_name);
+            op->SetBlockAttr(attr_name, MutableBlock(sub_block_id));
+          } else {
+            // The block is not owned by the origin program. Should copy
+            // the real block desc instead of logical block in the program.
+            VLOG(3) << "Set op's block attr with the original block";
+            op->SetBlockAttr(attr_name, block_desc);
+          }
         } else if (op->GetAttrType(attr_name) == proto::AttrType::BLOCKS) {
           std::vector<int> sub_block_ids =
               o.Block(block_id).Op(op_id)->GetBlocksAttrIds(attr_name);
@@ -80,6 +102,23 @@ ProgramDesc::ProgramDesc(const ProgramDesc &o) {
             block_descs.push_back(MutableBlock(block_id));
           }
           op->SetBlocksAttr(attr_name, block_descs);
+        } else if (op->GetAttrType(attr_name, true) == proto::AttrType::VAR) {
+          VarDesc *var_desc =
+              PADDLE_GET_CONST(VarDesc *, op->GetAttr(attr_name, true));
+          op->SetVarAttr(attr_name,
+                         o.Block(block_id).FindVarRecursive(var_desc->Name()));
+        } else if (op->GetAttrType(attr_name, true) == proto::AttrType::VARS) {
+          std::vector<VarDesc *> vars_desc = PADDLE_GET_CONST(
+              std::vector<VarDesc *>, op->GetAttr(attr_name, true));
+          std::vector<VarDesc *> new_vars_desc;
+          std::transform(
+              vars_desc.begin(),
+              vars_desc.end(),
+              std::back_inserter(new_vars_desc),
+              [&](VarDesc *var_desc) {
+                return o.Block(block_id).FindVarRecursive(var_desc->Name());
+              });
+          op->SetVarsAttr(attr_name, new_vars_desc);
         }
       }
     }
@@ -98,7 +137,8 @@ void ProgramDesc::CopyFrom(const proto::ProgramDesc &desc) {
 }
 
 ProgramDesc::ProgramDesc(const std::string &binary_str) {
-  PADDLE_ENFORCE_EQ(desc_.ParseFromString(binary_str), true,
+  PADDLE_ENFORCE_EQ(desc_.ParseFromString(binary_str),
+                    true,
                     platform::errors::InvalidArgument(
                         "Failed to parse program_desc from binary string."));
   InitFromProto();
@@ -111,7 +151,21 @@ void ProgramDesc::InitFromProto() {
   for (auto &block : blocks_) {
     for (auto *op : block->AllOps()) {
       for (const auto &attr : op->Proto()->attrs()) {
-        if (attr.type() == proto::AttrType::BLOCK) {
+        if (attr.type() == proto::AttrType::VAR) {
+          std::string var_name = attr.var_name();
+          VLOG(3) << "InitFromProto: SetVarAttr " << attr.name() << " from "
+                  << var_name;
+          op->SetVarAttr(attr.name(), op->FindVarRecursive(var_name));
+        } else if (attr.type() == proto::AttrType::VARS) {
+          auto vars_name = attr.vars_name();
+          std::vector<VarDesc *> vars_desc;
+          for (auto &var_name : vars_name) {
+            VLOG(3) << "InitFromProto: SetVarsAttr " << attr.name() << " from "
+                    << var_name;
+            vars_desc.emplace_back(op->FindVarRecursive(var_name));
+          }
+          op->SetVarsAttr(attr.name(), vars_desc);
+        } else if (attr.type() == proto::AttrType::BLOCK) {
           size_t blk_idx = attr.block_idx();
           op->SetBlockAttr(attr.name(), this->MutableBlock(blk_idx));
         } else if (attr.type() == proto::AttrType::BLOCKS) {
@@ -134,7 +188,7 @@ const std::vector<std::string> ProgramDesc::GetFeedTargetNames() {
   std::vector<std::string> feed_target_names;
   for (auto *op : global_block.AllOps()) {
     if (op->Type() == kFeedOpType) {
-      size_t col = BOOST_GET_CONST(int, op->GetAttr("col"));
+      size_t col = PADDLE_GET_CONST(int, op->GetAttr("col"));
       if (col >= feed_target_names.size()) {
         feed_target_names.resize(col + 1);
       }
@@ -151,7 +205,7 @@ const std::vector<std::string> ProgramDesc::GetFetchTargetNames() {
   std::vector<std::string> fetch_target_names;
   for (auto *op : global_block.AllOps()) {
     if (op->Type() == kFetchOpType) {
-      size_t col = BOOST_GET_CONST(int, op->GetAttr("col"));
+      size_t col = PADDLE_GET_CONST(int, op->GetAttr("col"));
       if (col >= fetch_target_names.size()) {
         fetch_target_names.resize(col + 1);
       }
@@ -197,6 +251,29 @@ void ProgramDesc::SetFetchHolderName(const std::string &fetch_holder_name) {
   auto *fetch_holder = global_block->Var(fetch_holder_name);
   fetch_holder->SetType(proto::VarType::FETCH_LIST);
   fetch_holder->SetPersistable(true);
+}
+
+std::string ProgramDesc::CachedHashString() {
+  std::string serialize_str;
+  if (cached_hash_str_.size() == 0 || NeedUpdate()) {
+    Flush();
+    desc_.SerializePartialToString(&serialize_str);
+    // non-cryptographic is enough
+    cached_hash_str_ =
+        std::to_string(XXH64(serialize_str.c_str(), serialize_str.size(), 1));
+  }
+  return cached_hash_str_;
+}
+
+bool ProgramDesc::NeedUpdate() const {
+  bool need = false;
+  for (auto &block : blocks_) {
+    if (block->NeedUpdate()) {
+      need = true;
+      break;
+    }
+  }
+  return need;
 }
 
 }  // namespace framework

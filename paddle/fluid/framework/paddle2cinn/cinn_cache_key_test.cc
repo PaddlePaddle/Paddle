@@ -12,15 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/paddle2cinn/cinn_cache_key.h"
+
 #include <map>
 #include <unordered_set>
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/paddle2cinn/cinn_cache_key.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace framework {
@@ -38,13 +39,13 @@ TEST(CinnCacheKeyTest, TestAsUnorderedKeyByStructure) {
   x->SetType(proto::VarType::LOD_TENSOR);
   ir::Graph graph(program);
 
-  LoDTensor tensor;
+  phi::DenseTensor tensor;
   tensor.Resize({1, 2, 3});
-  const LoDTensor *tensor_pointer = &tensor;
-  std::map<std::string, const LoDTensor *> feed_tensors = {
+  const phi::DenseTensor *tensor_pointer = &tensor;
+  std::map<std::string, const phi::DenseTensor *> feed_tensors = {
       {"X", tensor_pointer}};
 
-  DDim ddim = paddle::framework::make_ddim({1, 2, 3});
+  DDim ddim = phi::make_ddim({1, 2, 3});
   std::map<std::string, DDim> feed_shapes = {{"X", ddim}};
 
   CinnCacheKeyByStructure cache_key0(empty_graph, feed_tensors, "x86");
@@ -58,9 +59,9 @@ TEST(CinnCacheKeyTest, TestAsUnorderedKeyByStructure) {
   EXPECT_EQ(cache_key3, cache_key4);
 
   CinnCacheKeyByStructure cache_key5(
-      empty_graph, std::map<std::string, const LoDTensor *>(), "unk");
-  CinnCacheKeyByStructure cache_key6(empty_graph, std::map<std::string, DDim>(),
-                                     "unk");
+      empty_graph, std::map<std::string, const phi::DenseTensor *>(), "unk");
+  CinnCacheKeyByStructure cache_key6(
+      empty_graph, std::map<std::string, DDim>(), "unk");
   EXPECT_EQ(cache_key5, cache_key6);
 
   EXPECT_NE(cache_key1, cache_key3);
@@ -111,13 +112,13 @@ TEST(CinnCacheKeyTest, TestAsUnorderedKeyByAddress) {
   x->SetType(proto::VarType::LOD_TENSOR);
   ir::Graph graph(program);
 
-  LoDTensor tensor;
+  phi::DenseTensor tensor;
   tensor.Resize({1, 2, 3});
-  const LoDTensor *tensor_pointer = &tensor;
-  std::map<std::string, const LoDTensor *> feed_tensors = {
+  const phi::DenseTensor *tensor_pointer = &tensor;
+  std::map<std::string, const phi::DenseTensor *> feed_tensors = {
       {"X", tensor_pointer}};
 
-  DDim ddim = paddle::framework::make_ddim({1, 2, 3});
+  DDim ddim = phi::make_ddim({1, 2, 3});
   std::map<std::string, DDim> feed_shapes = {{"X", ddim}};
 
   CinnCacheKeyByAddress cache_key0(empty_graph, feed_tensors, "x86");
@@ -131,9 +132,9 @@ TEST(CinnCacheKeyTest, TestAsUnorderedKeyByAddress) {
   EXPECT_EQ(cache_key3, cache_key4);
 
   CinnCacheKeyByAddress cache_key5(
-      empty_graph, std::map<std::string, const LoDTensor *>(), "unk");
-  CinnCacheKeyByAddress cache_key6(empty_graph, std::map<std::string, DDim>(),
-                                   "unk");
+      empty_graph, std::map<std::string, const phi::DenseTensor *>(), "unk");
+  CinnCacheKeyByAddress cache_key6(
+      empty_graph, std::map<std::string, DDim>(), "unk");
   EXPECT_EQ(cache_key5, cache_key6);
 
   EXPECT_NE(cache_key1, cache_key3);
@@ -185,10 +186,10 @@ TEST(CinnCacheKeyTest, TestSameGraph) {
   x2->SetType(proto::VarType::LOD_TENSOR);
   ir::Graph graph2(program2);
 
-  LoDTensor tensor;
+  phi::DenseTensor tensor;
   tensor.Resize({1, 2, 3});
-  const LoDTensor *tensor_pointer = &tensor;
-  std::map<std::string, const LoDTensor *> feed_tensors = {
+  const phi::DenseTensor *tensor_pointer = &tensor;
+  std::map<std::string, const phi::DenseTensor *> feed_tensors = {
       {"X", tensor_pointer}};
 
   CinnCacheKeyByAddress cache_key_by_address1(graph1, feed_tensors, "x86");

@@ -12,14 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/group_norm_op.h"
 #include <vector>
+
+#include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
-
-using Tensor = framework::Tensor;
 
 template <typename T>
 struct GroupNormFunction {
@@ -30,65 +30,85 @@ struct GroupNormFunction {
     stream = ctx.template device_context<paddle::platform::NPUDeviceContext>()
                  .stream();
   }
-  void ReduceMean(const Tensor* x, Tensor* y, const std::vector<int>& dim,
+  void ReduceMean(const phi::DenseTensor* x,
+                  phi::DenseTensor* y,
+                  const std::vector<int>& dim,
                   bool keep_dims = true) {
     //  y should be init first
-    const auto& runner = NpuOpRunner("ReduceMeanD", {*x}, {*y},
-                                     {{"axes", dim}, {"keep_dims", keep_dims}});
+    const auto& runner = NpuOpRunner(
+        "ReduceMeanD", {*x}, {*y}, {{"axes", dim}, {"keep_dims", keep_dims}});
     runner.Run(stream);
   }
-  void ReduceSum(const Tensor* x, Tensor* y, const std::vector<int>& dim,
+  void ReduceSum(const phi::DenseTensor* x,
+                 phi::DenseTensor* y,
+                 const std::vector<int>& dim,
                  bool keep_dims = true) {
     //  y should be init first
-    const auto& runner = NpuOpRunner("ReduceSumD", {*x}, {*y},
-                                     {{"axes", dim}, {"keep_dims", keep_dims}});
+    const auto& runner = NpuOpRunner(
+        "ReduceSumD", {*x}, {*y}, {{"axes", dim}, {"keep_dims", keep_dims}});
     runner.Run(stream);
   }
-  void Add(const Tensor* x, const Tensor* y, Tensor* z) {
+  void Add(const phi::DenseTensor* x,
+           const phi::DenseTensor* y,
+           phi::DenseTensor* z) {
     //  y should be init first
     const auto& runner = NpuOpRunner("AddV2", {*x, *y}, {*z}, {});
     runner.Run(stream);
   }
-  void Sub(const Tensor* x, const Tensor* y, Tensor* z) {
+  void Sub(const phi::DenseTensor* x,
+           const phi::DenseTensor* y,
+           phi::DenseTensor* z) {
     //  y should be init first
     const auto& runner = NpuOpRunner("Sub", {*x, *y}, {*z}, {});
     runner.Run(stream);
   }
-  void Mul(const Tensor* x, const Tensor* y, Tensor* z) {
+  void Mul(const phi::DenseTensor* x,
+           const phi::DenseTensor* y,
+           phi::DenseTensor* z) {
     //  y should be init first
     const auto& runner = NpuOpRunner("Mul", {*x, *y}, {*z}, {});
     runner.Run(stream);
   }
-  void Div(const Tensor* x, const Tensor* y, Tensor* z) {
+  void Div(const phi::DenseTensor* x,
+           const phi::DenseTensor* y,
+           phi::DenseTensor* z) {
     //  y should be init first
     const auto& runner = NpuOpRunner("Div", {*x, *y}, {*z}, {});
     runner.Run(stream);
   }
-  void DivNoNan(const Tensor* x, const Tensor* y, Tensor* z) {
+  void DivNoNan(const phi::DenseTensor* x,
+                const phi::DenseTensor* y,
+                phi::DenseTensor* z) {
     //  y should be init first
     const auto& runner = NpuOpRunner("DivNoNan", {*x, *y}, {*z}, {});
     runner.Run(stream);
   }
-  void Transpose(const Tensor* x, Tensor* y, const std::vector<int>& axis) {
+  void Transpose(const phi::DenseTensor* x,
+                 phi::DenseTensor* y,
+                 const std::vector<int>& axis) {
     //  y should be init first
     const auto& runner =
         NpuOpRunner("TransposeD", {*x}, {*y}, {{"perm", axis}});
     runner.Run(stream);
   }
-  void Sqrt(const Tensor* x, Tensor* y) {
+  void Sqrt(const phi::DenseTensor* x, phi::DenseTensor* y) {
     //  y should be init first
     const auto& runner = NpuOpRunner("Sqrt", {*x}, {*y}, {});
     runner.Run(stream);
   }
-  void Adds(const Tensor* x, float scalar, Tensor* y) {
+  void Adds(const phi::DenseTensor* x, float scalar, phi::DenseTensor* y) {
     //  y should be init first
     const auto& runner = NpuOpRunner("Adds", {*x}, {*y}, {{"value", scalar}});
     runner.Run(stream);
   }
-  Tensor ReduceMeanToNG(const Tensor* x, const DataLayout& data_layout,
-                        const int64_t N, const int64_t C, const int64_t H,
-                        const int64_t W, const int G) {
-    Tensor y(x->type());
+  phi::DenseTensor ReduceMeanToNG(const phi::DenseTensor* x,
+                                  const DataLayout& data_layout,
+                                  const int64_t N,
+                                  const int64_t C,
+                                  const int64_t H,
+                                  const int64_t W,
+                                  const int G) {
+    phi::DenseTensor y(x->type());
     // y.mutable_data<T>( {N,G,1}, place );
     if (data_layout == DataLayout::kNCHW) {
       y.mutable_data<T>({N, G, 1}, place);
@@ -97,7 +117,7 @@ struct GroupNormFunction {
     } else {
       y.mutable_data<T>({N, 1, G}, place);
       //  shape of x is [N, C*H*W/G, G]
-      Tensor x_trans(x->type());
+      phi::DenseTensor x_trans(x->type());
       x_trans.mutable_data<T>({N, G, C * H * W / G}, place);
       this->Transpose(x, &x_trans, std::vector<int>{0, 2, 1});
       this->ReduceMean(&x_trans, &y, std::vector<int>{2});
@@ -116,27 +136,26 @@ class GroupNormNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout data_layout =
-        framework::StringToDataLayout(data_layout_str);
+    const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
     const float epsilon = ctx.Attr<float>("epsilon");
-    auto* scale = ctx.Input<Tensor>("Scale");
-    auto* bias = ctx.Input<Tensor>("Bias");
-    auto* x = ctx.Input<Tensor>("X");
+    auto* scale = ctx.Input<phi::DenseTensor>("Scale");
+    auto* bias = ctx.Input<phi::DenseTensor>("Bias");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
 
-    auto* y = ctx.Output<Tensor>("Y");
-    auto* mean = ctx.Output<Tensor>("Mean");
-    auto* var = ctx.Output<Tensor>("Variance");
+    auto* y = ctx.Output<phi::DenseTensor>("Y");
+    auto* mean = ctx.Output<phi::DenseTensor>("Mean");
+    auto* var = ctx.Output<phi::DenseTensor>("Variance");
     const auto groups = ctx.Attr<int>("groups");
 
     auto place = ctx.GetPlace();
-    Tensor xnorm(x->type());
+    phi::DenseTensor xnorm(x->type());
     xnorm.mutable_data<T>(x->dims(), place);
     GroupNormFunction<T> F(ctx);
     if (data_layout != DataLayout::kNCHW) {
       xnorm.Resize({x->dims()[0], x->dims()[3], x->dims()[1], x->dims()[2]});
       F.Transpose(x, &xnorm, std::vector<int>{0, 3, 1, 2});
     } else {
-      TensorCopy(*x, platform::NPUPlace(), &xnorm);
+      paddle::framework::TensorCopy(*x, platform::NPUPlace(), &xnorm);
     }
     auto N = xnorm.dims()[0];
     auto C = xnorm.dims()[1];
@@ -152,12 +171,12 @@ class GroupNormNPUKernel : public framework::OpKernel<T> {
     F.ReduceMean(&xnorm, mean, axis);
 
     F.Sub(&xnorm, mean, &xnorm);
-    Tensor sqr(x->type());
+    phi::DenseTensor sqr(x->type());
     sqr.mutable_data<T>(xnorm.dims(), place);
 
     F.Mul(&xnorm, &xnorm, &sqr);
     F.ReduceMean(&sqr, var, axis);
-    Tensor std(x->type());
+    phi::DenseTensor std(x->type());
     std.mutable_data<T>(var->dims(), place);
     F.Adds(var, epsilon, &std);
     F.Sqrt(&std, &std);
@@ -165,13 +184,13 @@ class GroupNormNPUKernel : public framework::OpKernel<T> {
     F.Div(&xnorm, &std, y);
     y->Resize({N, C, H, W});
     if (scale) {
-      Tensor scale_t(scale->type());
+      phi::DenseTensor scale_t(scale->type());
       scale_t.ShareDataWith(*scale);
       scale_t.Resize({C, 1, 1});
       F.Mul(y, &scale_t, y);
     }
     if (bias) {
-      Tensor bias_t(bias->type());
+      phi::DenseTensor bias_t(bias->type());
       bias_t.ShareDataWith(*bias);
       bias_t.Resize({C, 1, 1});
       F.Add(y, &bias_t, y);
@@ -190,31 +209,31 @@ class GroupNormGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout data_layout =
-        framework::StringToDataLayout(data_layout_str);
+    const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
     const float epsilon = ctx.Attr<float>("epsilon");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* var = ctx.Input<Tensor>("Variance");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* var = ctx.Input<phi::DenseTensor>("Variance");
 
-    auto* scale = ctx.Input<Tensor>("Scale");
-    auto* bias = ctx.Input<Tensor>("Bias");
-    auto* d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
+    auto* scale = ctx.Input<phi::DenseTensor>("Scale");
+    auto* bias = ctx.Input<phi::DenseTensor>("Bias");
+    auto* d_y = ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));
     const auto G = ctx.Attr<int>("groups");
 
     // init output
-    auto* d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
-    auto* d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+    auto* d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* d_scale =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Scale"));
+    auto* d_bias = ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
 
     GroupNormFunction<T> F(ctx);
     auto place = ctx.GetPlace();
     auto _type = y->type();
 
-    Tensor xnorm(_type);
+    phi::DenseTensor xnorm(_type);
     xnorm.mutable_data<T>(y->dims(), place);
-    Tensor scale_share(_type);
+    phi::DenseTensor scale_share(_type);
     scale_share.ShareDataWith(*scale);
-    Tensor bias_share(_type);
+    phi::DenseTensor bias_share(_type);
     bias_share.ShareDataWith(*bias);
 
     int64_t N = y->dims()[0];
@@ -224,12 +243,12 @@ class GroupNormGradNPUKernel : public framework::OpKernel<T> {
       C = y->dims()[1];
       H = y->dims()[2];
       W = y->dims()[3];
-      scale_bias_dim = framework::make_ddim({C, 1, 1});
+      scale_bias_dim = phi::make_ddim({C, 1, 1});
     } else {
       C = y->dims()[3];
       H = y->dims()[1];
       W = y->dims()[2];
-      scale_bias_dim = framework::make_ddim({1, 1, C});
+      scale_bias_dim = phi::make_ddim({1, 1, C});
     }
     scale_share.Resize(scale_bias_dim);
     bias_share.Resize(scale_bias_dim);
@@ -246,7 +265,7 @@ class GroupNormGradNPUKernel : public framework::OpKernel<T> {
     }
     if (d_scale) {
       d_scale->mutable_data<T>(place);
-      Tensor dy_xnorm(_type);
+      phi::DenseTensor dy_xnorm(_type);
       dy_xnorm.mutable_data<T>(d_y->dims(), place);
       F.Mul(d_y, &xnorm, &dy_xnorm);
       if (data_layout == DataLayout::kNCHW) {
@@ -257,12 +276,12 @@ class GroupNormGradNPUKernel : public framework::OpKernel<T> {
     }
 
     //  std = Sqrt(var+epsilon), init shape = [ N, G ]
-    Tensor std(_type);
+    phi::DenseTensor std(_type);
     std.mutable_data<T>(var->dims(), place);
     F.Adds(var, epsilon, &std);
     F.Sqrt(&std, &std);
     //  d_xnorm_std = dy_proc * scale / std
-    Tensor d_xnorm_std(_type);
+    phi::DenseTensor d_xnorm_std(_type);
     d_xnorm_std.mutable_data<T>(y->dims(), place);
     F.Mul(d_y, &scale_share, &d_xnorm_std);
     if (data_layout == DataLayout::kNCHW) {
@@ -282,10 +301,11 @@ class GroupNormGradNPUKernel : public framework::OpKernel<T> {
     d_x->mutable_data<T>(place);
     d_x->Resize(xnorm.dims());
     F.Mul(&d_xnorm_std, &xnorm, d_x);
-    Tensor dx1 = F.ReduceMeanToNG(d_x, data_layout, N, C, H, W, G);
+    phi::DenseTensor dx1 = F.ReduceMeanToNG(d_x, data_layout, N, C, H, W, G);
     F.Mul(&dx1, &xnorm, d_x);
 
-    Tensor dx2 = F.ReduceMeanToNG(&d_xnorm_std, data_layout, N, C, H, W, G);
+    phi::DenseTensor dx2 =
+        F.ReduceMeanToNG(&d_xnorm_std, data_layout, N, C, H, W, G);
 
     F.Sub(&d_xnorm_std, d_x, d_x);
     F.Sub(d_x, &dx2, d_x);
@@ -300,7 +320,9 @@ class GroupNormGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(group_norm, ops::GroupNormNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(group_norm,
+                       ops::GroupNormNPUKernel<float>,
                        ops::GroupNormNPUKernel<plat::float16>);
-REGISTER_OP_NPU_KERNEL(group_norm_grad, ops::GroupNormGradNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(group_norm_grad,
+                       ops::GroupNormGradNPUKernel<float>,
                        ops::GroupNormGradNPUKernel<plat::float16>);
