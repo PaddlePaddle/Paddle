@@ -162,7 +162,15 @@ class ParamStorage(InternalStorage):
 
         origin_state = param.stop_gradient
         param.stop_gradient = True
-        param.flatten_()
+
+        if paddle.is_compiled_with_xpu():
+            # now xpu doesn't support flatten kenel for fp16, but supports fp32
+            # TODO(liupeng51): support fp16
+            tmp = paddle.flatten(param.astype("float32")).astype(param.dtype)
+            paddle.assign(tmp, output=param)
+        else:
+            param.flatten_()
+
         param.stop_gradient = origin_state
 
         # Copy the current param value
