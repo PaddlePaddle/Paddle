@@ -447,6 +447,18 @@
     func : floor_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : fold_grad
+  forward: fold (Tensor x, int[] output_sizes, int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations) -> Tensor(out)
+  args: (Tensor x, Tensor out_grad, int[] output_sizes, int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations)
+  output: Tensor(x_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param : [x]
+  kernel:
+    func: fold_grad
+    data_type : out_grad
+  no_need_buffer : x
+
 - backward_op : gelu_grad
   forward : gelu(Tensor x,  bool approximate) -> Tensor(out)
   args : (Tensor x, Tensor out_grad,  bool approximate)
@@ -1035,15 +1047,3 @@
   kernel :
     func : warprnnt_grad
   no_need_buffer : acts
-
-- backward_op: fold_grad
-  forward: fold (Tensor x, int[] output_sizes, int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations) -> Tensor(out)
-  args: (Tensor x, Tensor out_grad, int[] output_sizes, int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations)
-  output: Tensor(x_grad)
-  infer_meta:
-    func: UnchangedInferMeta
-    param : [x]
-  kernel:
-    func: fold_grad
-    data_type : out_grad
-  no_need_buffer : x
