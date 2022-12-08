@@ -70,7 +70,7 @@ class BasicLSTMUnit(Layer):
 
     def forward(self, input, pre_hidden, pre_cell):
         concat_input_hidden = layers.concat([input, pre_hidden], 1)
-        gate_input = layers.matmul(x=concat_input_hidden, y=self._weight)
+        gate_input = paddle.matmul(x=concat_input_hidden, y=self._weight)
 
         gate_input = paddle.add(gate_input, self._bias)
         i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
@@ -297,8 +297,8 @@ class BaseModel(fluid.dygraph.Layer):
         loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=dec_output, label=label, soft_label=False
         )
-        loss = paddle.squeeze(loss, axis=[2])
-        max_tar_seq_len = fluid.layers.shape(tar)[1]
+        loss = paddle.squeeze(loss, axes=[2])
+        max_tar_seq_len = paddle.shape(tar)[1]
         tar_mask = fluid.layers.sequence_mask(
             tar_sequence_length, maxlen=max_tar_seq_len, dtype='float32'
         )
@@ -459,9 +459,7 @@ class BaseModel(fluid.dygraph.Layer):
             scores = paddle.reshape(
                 log_probs, [-1, self.beam_size * self.tar_vocab_size]
             )
-            topk_scores, topk_indices = fluid.layers.topk(
-                input=scores, k=self.beam_size
-            )
+            topk_scores, topk_indices = paddle.topk(x=scores, k=self.beam_size)
 
             beam_indices = paddle.floor_divide(topk_indices, vocab_size_tensor)
             token_indices = paddle.remainder(topk_indices, vocab_size_tensor)
@@ -699,14 +697,14 @@ class AttentionModel(fluid.dygraph.Layer):
     def attention(self, query, enc_output, mask=None):
         query = fluid.layers.unsqueeze(query, [1])
         memory = self.attn_fc(enc_output)
-        attn = fluid.layers.matmul(query, memory, transpose_y=True)
+        attn = paddle.matmul(query, memory, transpose_y=True)
 
         if mask is not None:
             attn = paddle.transpose(attn, [1, 0, 2])
             attn = paddle.add(attn, mask * 1000000000)
             attn = paddle.transpose(attn, [1, 0, 2])
         weight = paddle.nn.functional.softmax(attn)
-        weight_memory = fluid.layers.matmul(weight, memory)
+        weight_memory = paddle.matmul(weight, memory)
 
         return weight_memory
 
@@ -833,8 +831,8 @@ class AttentionModel(fluid.dygraph.Layer):
         loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=dec_output, label=label, soft_label=False
         )
-        loss = paddle.squeeze(loss, axis=[2])
-        max_tar_seq_len = fluid.layers.shape(tar)[1]
+        loss = paddle.squeeze(loss, axes=[2])
+        max_tar_seq_len = paddle.shape(tar)[1]
         tar_mask = fluid.layers.sequence_mask(
             tar_sequence_length, maxlen=max_tar_seq_len, dtype='float32'
         )

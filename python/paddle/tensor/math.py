@@ -14,7 +14,6 @@
 """
 math functions
 """
-
 # TODO: define math functions
 
 import numpy as np
@@ -23,14 +22,15 @@ import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.common_ops_import import VarDesc, dygraph_only, dygraph_utils
 
+# TODO: define math functions
+from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
+
 from ..fluid.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
     convert_dtype,
 )
-from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
-from ..fluid.framework import _in_legacy_dygraph
 from ..fluid.layers import elementwise_sub, utils
 from ..framework import (
     LayerHelper,
@@ -3450,9 +3450,13 @@ def cumprod(x, dim=None, dtype=None, name=None):
 
     Args:
         x (Tensor): the input tensor need to be cumproded.
-        dim (int): the dimension along which the input tensor will be accumulated. It need to be in the range of [-x.rank, x.rank), where x.rank means the dimensions of the input tensor x and -1 means the last dimension.
-        dtype (str, optional): The data type of the output tensor, can be float32, float64, int32, int64, complex64, complex128. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        dim (int, optional): the dimension along which the input tensor will be accumulated. It need to be in the range of [-x.rank, x.rank),
+                    where x.rank means the dimensions of the input tensor x and -1 means the last dimension.
+        dtype (str, optional): The data type of the output tensor, can be float32, float64, int32, int64, complex64,
+                    complex128. If specified, the input tensor is casted to dtype before the operation is performed.
+                    This is useful for preventing data type overflows. The default value is None.
+        name (str, optional): Name for the operation (optional, default is None). For more information,
+                    please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, the result of cumprod operator.

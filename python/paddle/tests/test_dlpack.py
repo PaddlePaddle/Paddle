@@ -19,11 +19,10 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestDLPack(unittest.TestCase):
-    def func_test_dlpack_dygraph(self):
+    def test_dlpack_dygraph(self):
         paddle.disable_static()
         tensor = paddle.to_tensor(np.array([1, 2, 3, 4]).astype('int'))
         dlpack = paddle.utils.dlpack.to_dlpack(tensor)
@@ -38,12 +37,7 @@ class TestDLPack(unittest.TestCase):
             np.array(out_from_dlpack), np.array([1, 2, 3, 4]).astype('int')
         )
 
-    def test_dlpack_dygraph(self):
-        with _test_eager_guard():
-            self.func_test_dlpack_dygraph()
-        self.func_test_dlpack_dygraph()
-
-    def func_test_dlpack_tensor_larger_than_2dim(self):
+    def test_dlpack_tensor_larger_than_2dim(self):
         paddle.disable_static()
         numpy_data = np.random.randn(4, 5, 6)
         t = paddle.to_tensor(numpy_data)
@@ -51,11 +45,6 @@ class TestDLPack(unittest.TestCase):
         dlpack = paddle.utils.dlpack.to_dlpack(t)
         out = paddle.utils.dlpack.from_dlpack(dlpack)
         np.testing.assert_allclose(numpy_data, out.numpy(), rtol=1e-05)
-
-    def test_dlpack_tensor_larger_than_2dim(self):
-        with _test_eager_guard():
-            self.func_test_dlpack_tensor_larger_than_2dim()
-        self.func_test_dlpack_tensor_larger_than_2dim()
 
     def test_dlpack_static(self):
         paddle.enable_static()
@@ -87,7 +76,7 @@ class TestDLPack(unittest.TestCase):
                 np.array([[1], [2], [3], [4]]).astype('int'),
             )
 
-    def func_test_dlpack_dtype_conversion(self):
+    def test_dlpack_dtype_conversion(self):
         paddle.disable_static()
         # DLpack does not explicitly support bool data type.
         dtypes = [
@@ -119,11 +108,6 @@ class TestDLPack(unittest.TestCase):
             self.assertEqual(x.dtype, o.dtype)
             np.testing.assert_allclose(x.numpy(), o.numpy(), rtol=1e-05)
 
-    def test_dlpack_dtype_conversion(self):
-        with _test_eager_guard():
-            self.func_test_dlpack_dtype_conversion()
-        self.func_test_dlpack_dtype_conversion()
-
     def test_dlpack_deletion(self):
         # See Paddle issue 47171
         if paddle.is_compiled_with_cuda():
@@ -134,23 +118,13 @@ class TestDLPack(unittest.TestCase):
 
 
 class TestRaiseError(unittest.TestCase):
-    def func_test_from_dlpack_raise_type_error(self):
+    def test_from_dlpack_raise_type_error(self):
         self.assertRaises(
             TypeError, paddle.utils.dlpack.from_dlpack, np.zeros(5)
         )
 
-    def test_from_dlpack_raise_type_error(self):
-        with _test_eager_guard():
-            self.func_test_from_dlpack_raise_type_error()
-        self.func_test_from_dlpack_raise_type_error()
-
-    def func_test_to_dlpack_raise_type_error(self):
-        self.assertRaises(TypeError, paddle.utils.dlpack.to_dlpack, np.zeros(5))
-
     def test_to_dlpack_raise_type_error(self):
-        with _test_eager_guard():
-            self.func_test_to_dlpack_raise_type_error()
-        self.func_test_to_dlpack_raise_type_error()
+        self.assertRaises(TypeError, paddle.utils.dlpack.to_dlpack, np.zeros(5))
 
 
 if __name__ == '__main__':

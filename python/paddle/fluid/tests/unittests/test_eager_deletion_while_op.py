@@ -103,8 +103,8 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
         array_len2.stop_gradient = True
         cond2 = paddle.less_than(x=j, y=array_len2)
 
-        while_op = layers.While(cond=cond)
-        while_op2 = layers.While(cond=cond2)
+        while_op = paddle.static.nn.control_flow.While(cond=cond)
+        while_op2 = paddle.static.nn.control_flow.While(cond=cond2)
         with while_op.block():
             d = layers.array_read(array=data_array, i=i)
             prev = layers.array_read(array=mem_array, i=i)

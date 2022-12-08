@@ -12,14 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.distributed.fleet as fleet
-import paddle.distributed.fleet.base.role_maker as role_maker
-import paddle.fluid as fluid
-from paddle.distributed.fleet.utils.ps_util import DistributedInfer
-
 """
-    high level unit test for distribute fleet.
+high level unit test for distribute fleet.
 """
 
 import argparse
@@ -34,6 +28,10 @@ import unittest
 from contextlib import closing
 
 import paddle
+import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.fluid as fluid
+from paddle.distributed.fleet.utils.ps_util import DistributedInfer
 
 paddle.enable_static()
 
