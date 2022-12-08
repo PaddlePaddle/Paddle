@@ -3463,25 +3463,18 @@ function check_coverage_build() {
 }
 function run_setup(){
     rm -rf ${PADDLE_ROOT}/build
+    # Build script will not fail if *.deb does not exist
+    rm *.deb 2>/dev/null || true
+    # Delete previous built egg packages
+    rm -rf ${PADDLE_ROOT}/dist 2>/dev/null || true
+    # Delete previous built paddle cache
+    rm -rf ${PADDLE_ROOT}/build/python/paddle 2>/dev/null || true
     startTime_s=`date +%s`
 
     SYSTEM=`uname -s`
     if [ "$SYSTEM" == "Darwin" ]; then
         echo "Using python abi: $1"
-        if [ "$1" == "cp36-cp36m" ] || [ "$1" == "" ]; then
-            if [ -d "/Library/Frameworks/Python.framework/Versions/3.6" ]; then
-                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.6/lib/
-                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.6/lib/
-                export PATH=/Library/Frameworks/Python.framework/Versions/3.6/bin/:${PATH}
-                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
-                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.6/bin/python3
-                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.6/include/python3.6m/
-                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.6/lib/libpython3.6m.dylib
-                pip3.6 install --user -r ${PADDLE_ROOT}/python/requirements.txt
-            else
-                exit 1
-            fi
-        elif [ "$1" == "cp37-cp37m" ]; then
+        if [ "$1" == "cp37-cp37m" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.7" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.7/lib/
@@ -3490,7 +3483,6 @@ function run_setup(){
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.7/bin/python3
                 export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.7/include/python3.7m/
                 export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.7/lib/libpython3.7m.dylib
-
                 pip3.7 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
@@ -3538,21 +3530,14 @@ function run_setup(){
     else
         if [ "$1" != "" ]; then
             echo "using python abi: $1"
-            if [ "$1" == "cp36-cp36m" ]; then
-                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.6.0/lib/:${LD_LIBRARY_PATH}
-                export PATH=/opt/_internal/cpython-3.6.0/bin/:${PATH}
-                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
-                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.6.0/bin/python3
-                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.6.0/include/python3.6m
-                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.6.0/lib/libpython3.so
-                pip3.6 install -r ${PADDLE_ROOT}/python/requirements.txt
-            elif [ "$1" == "cp37-cp37m" ]; then
+            if [ "$1" == "cp37-cp37m" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.7.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.7.0/bin/:${PATH}
                 #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
                 export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.7.0/bin/python3.7
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.7.0/include/python3.7m
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.7.0/lib/libpython3.so
+                export PADDLE_CUSTOM_PATH=/opt/_internal/cpython-3.7.0/lib/python3.7/site-packages/paddlepaddle-0.0.0-py3.7-linux-x86_64.egg/paddle
                 pip3.7 install -r ${PADDLE_ROOT}/python/requirements.txt
             elif [ "$1" == "cp38-cp38" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.8.0/lib/:${LD_LIBRARY_PATH}
@@ -3884,7 +3869,9 @@ function main() {
         build_mac
         ;;
       cicheck_py37)
-        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        # cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        # run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
+        run_setup ${PYTHON_ABI:-""}
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       test_cicheck_py37)
