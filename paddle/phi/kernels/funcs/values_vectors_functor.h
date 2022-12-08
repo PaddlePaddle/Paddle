@@ -368,9 +368,9 @@ struct MatrixEighFunctor<GPUContext, T> {
     // well in Paddle(cuda10.2)
     bool use_cusolver_syevj_batched =
         (use_cusolver_syevj_batched) && (batch_size > 1) &&
-        (input.dtype() != phi::DataType::COMPLEX128) bool use_cusolver_syevj =
-            (input.dtype() == phi::DataType::FLOAT32 && last_dim >= 32 &&
-             last_dim <= 512);
+        (input.dtype() != phi::DataType::COMPLEX128);
+    bool use_cusolver_syevj = (input.dtype() == phi::DataType::FLOAT32 &&
+                               last_dim >= 32 && last_dim <= 512);
     auto handle = dev_ctx.cusolver_dn_handle();
 
     syevjInfo_t syevj_params;
