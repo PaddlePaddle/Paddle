@@ -63,26 +63,6 @@ class RawTensor : public phi::ExtendedTensor,
     return created_data;
   }
 
-  // template <typename T>
-  // T* Get() {
-  //   if (!data_.empty()) {
-  //     try {
-  //       return paddle::any_cast<T*>(data_);
-  //     } catch (paddle::bad_any_cast&) {
-  //       PADDLE_THROW(phi::errors::InvalidArgument(
-  //           "Invalid data type error, expected %s, actual %s.",
-  //           typeid(T).name(),
-  //           data_type_.name()));
-  //     }
-  //   } else {
-  //     PADDLE_THROW(
-  //         phi::errors::Unavailable("RawTensor is not initialized, if you want
-  //         "
-  //                                  "to create data, you can use
-  //                                  GetMutable."));
-  //   }
-  // }
-
   template <typename T>
   bool IsType() const {
     return std::type_index(typeid(T)) == data_type_;

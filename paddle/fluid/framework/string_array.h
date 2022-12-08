@@ -94,57 +94,7 @@ class Vocab : public phi::ExtendedTensor,
   std::unordered_map<std::wstring, std::int32_t> data_;
 };
 
-class String : public phi::ExtendedTensor,
-               public phi::TypeInfoTraits<phi::TensorBase, String> {
- public:
-  String() = default;
-
-  String(String&& other) = default;
-
-  String(const String& other) = default;
-
-  String& operator=(const String& other) = default;
-
-  String& operator=(const std::string& other) {
-    this->data_ = other;
-    return *this;
-  }
-
-  String& operator=(std::string&& other) {
-    this->data_ = other;
-    return *this;
-  }
-
-  String& operator=(String&& other) = default;
-
-  /// \brief Destroy the String and release exclusive resources.
-  virtual ~String() = default;
-
- public:
-  /// \brief Returns the name of the class for type traits.
-  /// \return The name of the class.
-  static const char* name() { return "String"; }
-
-  size_t size() const { return data_.size(); }
-
-  void clear() { data_.clear(); }
-
-  std::string::iterator begin() { return data_.begin(); }
-
-  const std::string& Get() const { return data_; }
-
-  std::string* GetMutable() { return &data_; }
-
-  std::string::const_iterator begin() const { return data_.begin(); }
-
-  std::string::iterator end() { return data_.end(); }
-
-  std::string::const_iterator end() const { return data_.end(); }
-
- private:
-  std::string data_;
-};
-
+using String = std::string;
 using Strings = std::vector<std::string>;
 
 // Convert the std::string type to the std::string type.

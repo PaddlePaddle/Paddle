@@ -178,7 +178,7 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
     auto overwrite = ctx.Attr<bool>("overwrite");
     auto save_as_fp16 = ctx.Attr<bool>("save_as_fp16");
     auto save_to_memory = ctx.Attr<bool>("save_to_memory");
-    auto output = ctx.Output<framework::String>("Y");
+    auto output = ctx.Output<framework::RawTensor>("Y");
     auto inp_var_names = ctx.InputNames("X");
     auto& inp_vars = ctx.MultiInputVar("X");
 
