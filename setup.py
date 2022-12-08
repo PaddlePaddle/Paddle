@@ -30,7 +30,6 @@ from setuptools import Command, Extension, setup
 from setuptools.command.egg_info import egg_info
 from setuptools.command.install import install as InstallCommandBase
 from setuptools.command.install_lib import install_lib
-from setuptools.dist import Distribution
 
 if sys.version_info < (3, 7):
     raise RuntimeError(
