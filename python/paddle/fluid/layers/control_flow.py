@@ -90,26 +90,6 @@ def select_output(input, outputs, mask):
     return outputs
 
 
-def _select_input_infer_shape(first_shape, second_shape):
-    """
-    This function infer the output shape by following algorithm:
-    1. if the dims is different, raise a error.
-    2. compare axis one by one:
-        if a == b: we set axis to a
-        if a != b: we set axis to -1
-    for compatibility, non declarative mode, we just return second_shape.
-    """
-    if len(first_shape) != len(second_shape):
-        warnings.warn(
-            f"the input shapes of select_input should have the same rank, but get {first_shape}, {second_shape}"
-        )
-        return second_shape
-    out_shape = list(
-        map(lambda a, b: a if a == b else -1, first_shape, second_shape)
-    )
-    return out_shape
-
-
 def select_input(inputs, mask):
     """
     **select_input**
