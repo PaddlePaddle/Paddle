@@ -27,7 +27,6 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 
 #include "paddle/fluid/framework/data_device_transform.h"
@@ -597,11 +596,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
       if (type == framework::proto::VarType::FP32) {
         buffers[bind_index] = static_cast<void *>(t.data<float>());
       } else if (type == framework::proto::VarType::INT64) {
-        std::cout << "子图输入是int64" << x << std::endl;
-        auto int32_tensor = scope.FindVar(x + "_cast_to_INT32")
-                                ->GetMutable<framework::LoDTensor>();
-        // phi::CastKernel<int64_t>(reinterpret_cast<const phi::GPUContext
-        // &>(dev_ctx), t, phi::DataType::INT32, int32_tensor);
+        auto int32_tensor =
+            scope.FindVar(x + "_cast_to_INT32")->GetMutable<phi::DenseTensor>();
         *int32_tensor = phi::Cast<int64_t>(
             reinterpret_cast<const phi::GPUContext &>(dev_ctx),
             t,
@@ -625,8 +621,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
     // Bind output tensor to TRT.
     int output_index = 0;
-    std::vector<int> origin_output_dims =
-        Attr<std::vector<int>>("origin_output_dims");
+    std::vector<int> origin_output_rank =
+        Attr<std::vector<int>>("origin_output_rank");
     VLOG(4) << "TensorRT Engine Op Outputs:";
     for (const auto &y : Outputs("Ys")) {
       const int bind_index =
@@ -647,7 +643,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         for (; nb_dims > 0; nb_dims--) {
           // some 'x 1' of shape is normal, no need to remove it
           if (dims.d[nb_dims - 1] != 1 ||
-              nb_dims == origin_output_dims[output_index])
+              nb_dims == origin_output_rank[output_index])
             break;
         }
         for (int i = 0; i < nb_dims; i++) ddim.push_back(dims.d[i]);
@@ -709,25 +705,21 @@ class TensorRTEngineOp : public framework::OperatorBase {
     std::vector<int> origin_outputs_dtype =
         Attr<std::vector<int>>("origin_outputs_dtype");
     for (size_t i = 0; i < Outputs("Ys").size(); i++) {
-      auto y = Outputs("Ys")[i];
-      auto *fluid_v = scope.FindVar(y);
-      auto *fluid_t = fluid_v->GetMutable<framework::LoDTensor>();
       auto type =
           static_cast<framework::proto::VarType_Type>(origin_outputs_dtype[i]);
 
       if (type == framework::proto::VarType::INT64) {
-        framework::Tensor int32_tensor;
-        int32_tensor.Resize(fluid_t->dims());
-        int32_t *int32_data =
-            int32_tensor.mutable_data<int32_t>(platform::CUDAPlace());
-        cudaMemcpyAsync(int32_data,
-                        fluid_t->data<int32_t>(),
-                        sizeof(int32_t) * int32_tensor.numel(),
-                        cudaMemcpyDeviceToDevice,
-                        stream);
+        auto y = Outputs("Ys")[i];
+        auto *fluid_v = scope.FindVar(y);
+        auto *fluid_t = fluid_v->GetMutable<phi::DenseTensor>();
+        auto int32_tensor =
+            scope.FindVar(y + "_cast_to_INT64")->GetMutable<phi::DenseTensor>();
+        int32_tensor->Resize(fluid_t->dims());
+        dev_ctx.Alloc<int32_t>(int32_tensor);
+        framework::TensorCopy(*fluid_t, dev_place, dev_ctx, int32_tensor);
         *fluid_t = phi::Cast<int32_t>(
             reinterpret_cast<const phi::GPUContext &>(dev_ctx),
-            int32_tensor,
+            *int32_tensor,
             phi::DataType::INT64);
       }
     }
