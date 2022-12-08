@@ -300,6 +300,7 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::INT64,
                      phi::DataType::INT32,
                      phi::DataType::FLOAT32})},
+      {"load", XPUKernelSet({phi::DataType::FLOAT32})},
       {"load_combine",
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::FLOAT64,

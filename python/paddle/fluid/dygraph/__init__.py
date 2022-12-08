@@ -40,9 +40,6 @@ from .learning_rate_scheduler import *
 from . import io
 from .io import *
 
-from . import rnn
-from .rnn import *
-
 from . import amp
 from .amp import *
 
@@ -57,5 +54,4 @@ __all__ += parallel.__all__
 __all__ += checkpoint.__all__
 __all__ += learning_rate_scheduler.__all__
 __all__ += io.__all__
-__all__ += rnn.__all__
 __all__ += amp.__all__
