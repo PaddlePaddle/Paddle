@@ -39,6 +39,7 @@ def apply_pass(use_bf16=False):
             'c_softmax_with_cross_entropy',
             'elementwise_div',
             'reduce_sum',
+            'reshape2',
         ]
     else:
         print("don not use_bf16")
