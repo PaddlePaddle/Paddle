@@ -166,7 +166,7 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
       static_cast<phi::DataType>(Get<int>("model_precision")) ==
           phi::DataType::FLOAT16 ||
       Get<bool>("enable_gpu_half");
-  const int cutlass_aligment = 8;
+  constexpr int CUTLASS_NHWC_ALIGNMENT = 8;
   if (is_fp16_precision) {
 #ifdef PADDLE_WITH_CUTLASS
     // cutlass now support these activations
@@ -202,8 +202,8 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
     // supported by cuDNN, we should not apply this pass
     int oc = filter_tensor->dims()[0];
     int ic = filter_tensor->dims()[1];
-    bool cutlass_can_fuse = oc % cutlass_aligment == 0 &&
-                            ic % cutlass_aligment == 0 &&
+    bool cutlass_can_fuse = oc % CUTLASS_NHWC_ALIGNMENT == 0 &&
+                            ic % CUTLASS_NHWC_ALIGNMENT == 0 &&
                             cutlass_act_set.count(act_op_type);
     bool cudnn_can_fuse = cudnn_act_set.count(act_op_type);
     if (!cutlass_can_fuse && !cudnn_can_fuse) {
