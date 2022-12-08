@@ -17,7 +17,7 @@ if(NOT WITH_CINN)
 endif()
 
 if(NOT CINN_GIT_TAG)
-  set(CINN_GIT_TAG 357f5050e0ee3aed7278ccce08db90cf6826f987)
+  set(CINN_GIT_TAG release/v0.2)
 endif()
 
 message(STATUS "CINN version: " ${CINN_GIT_TAG})

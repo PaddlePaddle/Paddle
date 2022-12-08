@@ -58,9 +58,11 @@ namespace paddle::framework::paddle2cinn {
   SET_TYPE_CASE_ITEM(cinn_int64_t, INT64)
   SET_TYPE_CASE_ITEM(cinn_uint32_t, UINT32)
   SET_TYPE_CASE_ITEM(cinn_uint64_t, UINT64)
-  SET_TYPE_CASE_ITEM(cinn_float16_t, FLOAT16)
   SET_TYPE_CASE_ITEM(cinn_float32_t, FLOAT32)
   SET_TYPE_CASE_ITEM(cinn_float64_t, FLOAT64)
+#ifdef CINN_CUDA_FP16
+  SET_TYPE_CASE_ITEM(cinn_float16_t, FLOAT16)
+#endif  // CINN_CUDA_FP16
 
   PADDLE_THROW(platform::errors::Unimplemented("Input type not supported yet"));
   return ::phi::DataType::UNDEFINED;
