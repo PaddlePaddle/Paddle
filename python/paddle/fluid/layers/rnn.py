@@ -51,7 +51,6 @@ __all__ = [
     'dynamic_gru',
     'gru_unit',
     'lstm_unit',
-    'lstm',
     'beam_search',
     'beam_search_decode',
 ]
