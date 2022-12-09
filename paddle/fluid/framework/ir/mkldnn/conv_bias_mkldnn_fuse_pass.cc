@@ -19,8 +19,8 @@
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/string/pretty_log.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
