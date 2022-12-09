@@ -1268,10 +1268,10 @@ void AnalysisPredictor::PrepareArgument() {
 
   if (!config_.ir_optim()) {
     argument_.SetEnableIrOptim(false);
-    if (config_.enable_gpu_half_) {
+    if (config_.enable_gpu_mixed_) {
       argument_.SetEnableIrOptim(true);
       pass_builder->ClearPasses();
-      pass_builder->AppendPass("float_to_half_pass");
+      pass_builder->AppendPass("auto_mixed_precision_pass");
       LOG(INFO)
           << "This model run in Paddle-GPU mixed precision mode with no ir "
              "optimization.";
@@ -1282,7 +1282,7 @@ void AnalysisPredictor::PrepareArgument() {
     if (config_.ir_debug_) {
       pass_builder->TurnOnDebug();
     }
-    if (config_.enable_gpu_half_) {
+    if (config_.enable_gpu_mixed_) {
       LOG(INFO) << "This model run in Paddle-GPU mixed precision mode.";
     }
   }
@@ -1294,7 +1294,7 @@ void AnalysisPredictor::PrepareArgument() {
   // mixed precison.
   argument_.SetModelPrecision(static_cast<int>(model_precision_));
   argument_.SetMixedBlackList(config_.mixed_black_list_);
-  argument_.SetEnableGPUHalf(config_.enable_gpu_half_);
+  argument_.SetEnableGPUMixed(config_.enable_gpu_mixed_);
   argument_.SetMixedPrecisionMode(static_cast<int>(
       paddle::ConvertPrecision(config_.mixed_precision_mode_)));
 }

@@ -15,7 +15,7 @@
 #include "paddle/fluid/inference/analysis/passes/convert_to_mixed_precision.h"
 
 #include "paddle/fluid/framework/executor.h"
-#include "paddle/fluid/framework/ir/float_to_half_pass.h"
+#include "paddle/fluid/framework/ir/auto_mixed_precision_pass.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/inference/io.h"
 #include "paddle/phi/common/backend.h"
@@ -68,11 +68,11 @@ void ConvertToMixedPrecisionPass::LoadModel() {
 void ConvertToMixedPrecisionPass::Run() {
   LoadModel();
 
-  framework::ir::FloatToHalfPass pass;
+  framework::ir::AutoMixedPrecisionPass pass;
   pass.Set("mixed_precision_mode", new int{static_cast<int>(mixed_precision_)});
   pass.Set("mixed_black_list",
            new std::unordered_set<std::string>{black_list_});
-  pass.Set("enable_gpu_half", new bool{true});
+  pass.Set("enable_gpu_mixed", new bool{true});
   pass.Set("keep_io_types", new bool{keep_io_types_});
 
   pass.Apply(main_graph_.get());

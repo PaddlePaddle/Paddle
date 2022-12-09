@@ -245,7 +245,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
 #endif                                         //
         "transpose_flatten_concat_fuse_pass",  //
         "constant_folding_pass",               //
-        "float_to_half_pass",                  //
+        "auto_mixed_precision_pass",           //
   });
 
   use_gpu_ = true;

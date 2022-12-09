@@ -296,13 +296,16 @@ void IRPassManager::CreatePasses(Argument *argument,
       }
       bool use_fc_padding = !fc_mkldnn_pass && argument->use_fc_padding();
       pass->Set("use_fc_padding", new bool(use_fc_padding));
-    } else if (pass_name == "float_to_half_pass") {
+    } else if (pass_name == "auto_mixed_precision_pass") {
       pass->Set(
           "mixed_black_list",
           new std::unordered_set<std::string>(argument->mixed_black_list()));
-      pass->Set("enable_gpu_half", new bool(argument->enable_gpu_half()));
+      pass->Set("enable_gpu_mixed", new bool(argument->enable_gpu_mixed()));
       pass->Set("mixed_precision_mode",
                 new int(argument->mixed_precision_mode()));
+    } else if (pass_name == "conv_elementwise_add_act_fuse_pass" ||
+               pass_name == "conv2d_fusion_layout_transfer_pass") {
+      pass->Set("enable_gpu_mixed", new bool(argument->enable_gpu_mixed()));
     }
     pre_pass = pass_name;
 
