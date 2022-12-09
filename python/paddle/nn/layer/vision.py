@@ -157,7 +157,7 @@ class PixelUnshuffle(Layer):
 
 class ChannelShuffle(Layer):
     """
-    This operator divides channels in a tensor of shape [N, C, H, W] or [N, H, W, C] into g groups,
+    Can divide channels in a tensor of shape [N, C, H, W] or [N, H, W, C] into g groups,
     getting a tensor with the shape of [N, g, C/g, H, W] or [N, H, W, g, C/g], and transposes them
     as [N, C/g, g, H, W] or [N, H, W, g, C/g], then rearranges them to original tensor shape. This
     operation can improve the interaction between channels, using features efficiently. Please
