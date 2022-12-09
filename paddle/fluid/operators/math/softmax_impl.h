@@ -15,14 +15,13 @@ limitations under the License. */
 #pragma once
 #include <vector>
 
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/jit/kernels.h"
-#include "paddle/fluid/operators/math/cpu_vec.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/cpu_vec.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace paddle {
