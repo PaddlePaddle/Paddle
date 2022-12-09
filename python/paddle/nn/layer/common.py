@@ -1533,7 +1533,7 @@ class Embedding(Layer):
 
 class Unfold(Layer):
     """
-    This op returns a col buffer of sliding local blocks of input x, also known
+    Returns a col buffer of sliding local blocks of input x, also known
     as im2col for batched 2D image tensors. For each block under the convolution filter,
     all element will be rearranged as a column. While the convolution filter sliding over
     the input feature map, a series of such columns will be formed.
