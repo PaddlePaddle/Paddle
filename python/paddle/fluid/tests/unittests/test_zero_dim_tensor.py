@@ -682,6 +682,29 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x2.grad.shape, [])
         self.assertEqual(x3.grad.shape, [])
 
+    def test_scatter__1D(self):
+        x = paddle.to_tensor([1.0, 3.0, 5.0, 7.0, 9.0], stop_gradient=False)
+        index = paddle.full([], 2, 'int64')
+        updates = paddle.full([], 4.0)
+        out = paddle.scatter_(x, index, updates)
+        out.backward()
+
+        self.assertEqual(out.grad.shape, [5])
+        self.assertEqual(out.numpy()[2], 4)
+
+    def test_scatter__XD(self):
+        x = paddle.to_tensor(
+            [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], stop_gradient=False
+        )
+        index = paddle.full([], 1, 'int64')
+        updates = paddle.to_tensor([1.0, 2.0, 3.0])
+        out = paddle.scatter_(x, index, updates)
+        out.backward()
+
+        for i in range(3):
+            self.assertEqual(out.numpy()[1][i], updates.numpy()[i])
+        self.assertEqual(out.grad.shape, [2, 3])
+
 
 class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
@@ -844,6 +867,31 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res1.shape, (2, 2))
         self.assertEqual(res2.shape, (2, 2))
         self.assertEqual(res3.shape, (1, 1))
+
+    @prog_scope()
+    def test_scatter__1D(self):
+        x = paddle.full([10], 1.0, 'float32')
+        index = paddle.full([], 2, 'int64')
+        updates = paddle.full([], 4, 'float32')
+        out = paddle.scatter_(x, index, updates)
+        paddle.static.append_backward(out)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+        self.assertEqual(res[0][2], 4)
+
+    @prog_scope()
+    def test_scatter__XD(self):
+        x = paddle.full([2, 3], 1.0, 'float32')
+        index = paddle.full([], 1, 'int64')
+        updates = paddle.full([3], 4, 'float32')
+        out = paddle.scatter_(x, index, updates)
+        paddle.static.append_backward(out)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+        for i in range(3):
+            self.assertEqual(res[0][1][i], 4)
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
