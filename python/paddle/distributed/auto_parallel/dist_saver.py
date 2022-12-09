@@ -205,7 +205,6 @@ class DistributedSaver:
         dist_feed_vars = [global_block.vars[name] for name in feed_vars_names]
         dist_fetch_vars = [global_block.vars[name] for name in fetch_vars_names]
 
-        # NOTE: `paddle.static.save_inference_model` does not support subblock.
         dist_filename = filename + "_dist" + str(rank_id)
         dist_path = os.path.join(dirname, dist_filename)
         paddle.static.save_inference_model(
