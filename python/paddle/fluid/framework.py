@@ -1384,7 +1384,7 @@ class Variable(metaclass=VariableMetaClass):
                                                 shape=[-1, 23, 48],
                                                 dtype='float32')
 
-        In `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_  Mode:
+        In Dygraph  Mode:
 
         .. code-block:: python
 
@@ -1860,7 +1860,7 @@ class Variable(metaclass=VariableMetaClass):
         """
         Indicating if we stop gradient from current Variable
 
-        **Notes: This Property has default value as** ``True`` **in** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **mode, while Parameter's default value is False. However, in Static Graph Mode all Variable's default stop_gradient value is** ``False``
+        **Notes: This Property has default value as** ``True`` **in** Dygraph **mode, while Parameter's default value is False. However, in Static Graph Mode all Variable's default stop_gradient value is** ``False``
 
         Examples:
           .. code-block:: python
@@ -1902,7 +1902,7 @@ class Variable(metaclass=VariableMetaClass):
 
             **1. All Variable's persistable is** ``False`` **except Parameters.**
 
-            **2. In** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **mode, this property should not be changed**
+            **2. In** Dygraph **mode, this property should not be changed**
 
         Examples:
           .. code-block:: python
@@ -1951,7 +1951,7 @@ class Variable(metaclass=VariableMetaClass):
         """
         Indicating name of current Variable
 
-        **Notes: If it has two or more Varaible share the same name in the same** :ref:`api_guide_Block_en` **, it means these Variable will share content in no-** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **mode. This is how we achieve Parameter sharing**
+        **Notes: If it has two or more Varaible share the same name in the same** :ref:`api_guide_Block_en` **, it means these Variable will share content in no-** Dygraph **mode. This is how we achieve Parameter sharing**
 
         Examples:
           .. code-block:: python
@@ -1981,7 +1981,7 @@ class Variable(metaclass=VariableMetaClass):
           import paddle.fluid as fluid
 
           x = fluid.data(name="x", shape=[-1, 23, 48], dtype='float32')
-          print(x.grad_name) # output is "x@GRAD"
+          print(x.grad_name) # output is ``x@GRAD``
 
         """
         return self.name + "@GRAD"
@@ -2042,7 +2042,7 @@ class Variable(metaclass=VariableMetaClass):
 
             **1. This is a read-only property**
 
-            **2. Don't support this property in** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **mode, it's value should be** ``0(int)``
+            **2. Don't support this property in** Dygraph **mode, it's value should be** ``0(int)``
 
         Examples:
           .. code-block:: python
