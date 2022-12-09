@@ -514,7 +514,7 @@ def rnn(
 
             inputs = paddle.rand((4, 23, 16))
             prev_h = paddle.randn((4, 32))
-            outputs, final_states = paddle.fluid.layers.rnn(cell, inputs, prev_h)
+            outputs, final_states = paddle.nn.layer.rnn(cell, inputs, prev_h)
 
     """
     if _non_static_mode():
