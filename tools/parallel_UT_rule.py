@@ -1252,7 +1252,6 @@ FOURTH_HIGH_PARALLEL_JOB_NEW = [
     'test_input_spec',
     'test_adam_op',
     'test_elementwise_floordiv_op',
-    'test_eager_deletion_gru_net',
     'test_diagonal_op',
     'test_imperative_static_runner_mnist',
     'test_nearest_interp_op',
