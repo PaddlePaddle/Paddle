@@ -38,7 +38,7 @@ from paddle.fluid.contrib.mixed_precision.fp16_utils import (
     rewrite_program,
     cast_model_to_fp16,
 )
-from paddle.amp.auto_cast.auto_cast import (
+from paddle.amp.auto_cast import (
     _in_amp_guard,
     _in_pure_fp16_guard,
 )
