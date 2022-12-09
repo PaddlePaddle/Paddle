@@ -16,13 +16,13 @@
 
 #include <thrust/transform.h>
 
-#include "paddle/fluid/operators/math/inclusive_scan.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/cumprod.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/funcs/inclusive_scan.h"
 // NOTE(@xiongkun): use of IsComplex<>
 #include "paddle/phi/core/utils/data_type.h"
 
@@ -194,7 +194,7 @@ void CumprodGradKernel(const Context &dev_ctx,
   auto zero_mask = const_cast<Allocator &>(dev_ctx.GetAllocator())
                        .Allocate(numel * sizeof(uint8_t));
   auto *zero_mask_data = reinterpret_cast<uint8_t *>(zero_mask->ptr());
-  paddle::operators::math::InclusiveScan<uint8_t, cub::Max>(
+  phi::funcs::InclusiveScan<uint8_t, cub::Max>(
       zero_mask_without_cummax_data,
       zero_mask_data,
       outer_dim,
@@ -222,7 +222,7 @@ void CumprodGradKernel(const Context &dev_ctx,
           .Allocate(numel * sizeof(T));
   auto *dy_mul_y_reversed_cumsum_data =
       reinterpret_cast<T *>(dy_mul_y_reversed_cumsum->ptr());
-  paddle::operators::math::InclusiveScan<T, cub::Sum>(
+  phi::funcs::InclusiveScan<T, cub::Sum>(
       dy_mul_y_data,
       dy_mul_y_reversed_cumsum_data,
       outer_dim,
@@ -262,7 +262,7 @@ void CumprodGradKernel(const Context &dev_ctx,
   // Step 4: calculate cumprod of x_filled_one
   auto *x_filled_one_cumprod_data =
       dy_mul_y_reversed_cumsum_data;  // reuse former allocated memory
-  paddle::operators::math::InclusiveScan<T, funcs::MultiplyFunctor<T>>(
+  phi::funcs::InclusiveScan<T, funcs::MultiplyFunctor<T>>(
       x_filled_one_data,
       x_filled_one_cumprod_data,
       outer_dim,
@@ -284,7 +284,7 @@ void CumprodGradKernel(const Context &dev_ctx,
                     funcs::MultiplyFunctor<T>());
   auto *dy_mul_x_filled_one_cumprod_reversed_cumsum =
       dy_mul_y_reversed_cumsum_data;  // reuse former allocated memory
-  paddle::operators::math::InclusiveScan<T, cub::Sum>(
+  phi::funcs::InclusiveScan<T, cub::Sum>(
       dy_mul_x_filled_one_cumprod,
       dy_mul_x_filled_one_cumprod_reversed_cumsum,
       outer_dim,
