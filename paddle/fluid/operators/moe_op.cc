@@ -44,10 +44,12 @@ class MoeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Bmm1", "(Tensor), The bmm1 input tensor of Moe op.");
     AddInput("Bias1", "(Tensor), The eltwise1 input tensor of Moe op.");
     AddOutput("Out", "(Tensor), The output tensor of Moe op.");
-    AddAttr<std::string>("act_type",
-                 R"DOC(activation type, currently only support `gelu`, `relu`. Default value is: `gelu`. )DOC")
+    AddAttr<std::string>(
+        "act_type",
+        R"DOC(activation type, currently only support `gelu`, `relu`. Default value is: `gelu`. )DOC")
         .SetDefault("gelu");
-    AddComment(R"DOC(FusedEcMoe kernel. For more details you can refer to `FusedEcMoE` python documents. )DOC");
+    AddComment(
+        R"DOC(FusedEcMoe kernel. For more details you can refer to `FusedEcMoE` python documents. )DOC");
   }
 };
 
