@@ -15,9 +15,8 @@ limitations under the License. */
 #pragma once
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace phi {
+namespace funcs {
 
 template <typename DeviceContext, typename T, typename Enable = void>
 class SoftmaxFunctor {
@@ -58,6 +57,5 @@ class SoftmaxGradCUDNNFunctor {
 
 #endif
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi

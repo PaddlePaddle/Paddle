@@ -13,15 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <vector>
 
-#include "paddle/fluid/operators/math/softmax.h"
-#include "paddle/fluid/operators/math/softmax_impl.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/softmax.h"
+#include "paddle/phi/kernels/funcs/softmax_impl.h"
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace phi {
+namespace funcs {
 
 using ScopedTensorDescriptor = phi::backends::gpu::ScopedTensorDescriptor;
 using DataLayout = phi::backends::gpu::DataLayout;
@@ -164,6 +163,5 @@ template class SoftmaxGradFunctor<phi::GPUContext, double>;
 template class SoftmaxGradFunctor<phi::GPUContext, phi::dtype::float16>;
 template class SoftmaxGradFunctor<phi::GPUContext, phi::dtype::bfloat16>;
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi
