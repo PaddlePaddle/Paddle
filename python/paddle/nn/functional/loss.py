@@ -2672,12 +2672,13 @@ def cross_entropy(
             # 2. else
             #     numerator: loss's weighted sum
             #     denominator: cal the sum of weight where the sample's class_index!=ignore_index
-            if ignore_index >= 0:
+            is_ignore = label == ignore_index
+            mask = ~is_ignore
+            if paddle.count_nonzero(is_ignore) > 0:  # ignore label
                 out_sum = _C_ops.sum(out, [], None, False)
                 # for each label[i],set 1 or 0, according to ignore_index
                 # mask[i]=0, if label[i]==ignore_index
                 # mask[i]=1, otherwise
-                mask = label != ignore_index
                 if weight is None:
                     mask = paddle.cast(mask, dtype=out_sum.dtype)
                     count = _C_ops.sum(mask, [], None, False)
@@ -2690,7 +2691,7 @@ def cross_entropy(
                     weight_sum = _C_ops.sum(weight_ignored, [], None, False)
                     ret = out_sum / (weight_sum + (weight_sum == 0.0))
                 return ret
-            elif weight is not None:
+            elif weight is not None:  # non ignore label
                 out_sum = _C_ops.sum(out, [], None, False)
                 total_weight = _C_ops.sum(
                     weight_gather_reshape, [], None, False
@@ -2844,12 +2845,13 @@ def cross_entropy(
             # 2. else
             #     numerator: loss's weighted sum
             #     denominator: cal the sum of weight where the sample's class_index!=ignore_index
-            if ignore_index >= 0:
+            is_ignore = label == ignore_index
+            mask = ~is_ignore
+            if paddle.count_nonzero(is_ignore) > 0:  # ignore label
                 out_sum = _legacy_C_ops.reduce_sum(out, 'reduce_all', True)
                 # for each label[i],set 1 or 0, according to ignore_index
                 # mask[i]=0, if label[i]==ignore_index
                 # mask[i]=1, otherwise
-                mask = label != ignore_index
                 if weight is None:
                     mask = paddle.cast(mask, dtype=out_sum.dtype)
                     count = _legacy_C_ops.reduce_sum(mask, 'reduce_all', True)
