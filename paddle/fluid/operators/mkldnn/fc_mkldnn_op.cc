@@ -541,7 +541,7 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(fc,
                    MKLDNN,
-                   ::paddle::platform::CPUPlace,
+                   ::phi::CPUPlace,
                    ops::FCMKLDNNKernel<float>,
                    ops::FCMKLDNNKernel<paddle::platform::bfloat16>,
                    ops::FCMKLDNNKernel<uint8_t>,

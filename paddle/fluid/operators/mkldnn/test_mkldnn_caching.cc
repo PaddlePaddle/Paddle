@@ -23,7 +23,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -51,7 +51,7 @@ class CacheTester {
   CacheTester() {
     // Clear oneDNN cache
     auto &pool = platform::DeviceContextPool::Instance();
-    platform::CPUPlace place;
+    phi::CPUPlace place;
     onednn_dev_ctx_ = dynamic_cast<phi::OneDNNContext *>(pool.Get(place));
     onednn_dev_ctx_->ResetBlobMap(nullptr);
   }
@@ -140,7 +140,7 @@ void RunOperator(const platform::Place &place,
 
 TEST(test_conv2d_reuse_cache, cpu_place) {
   framework::DDim dims({1, 16, 32, 64});
-  platform::CPUPlace p;
+  phi::CPUPlace p;
   CacheTester ct;
   RunOperator<float>(p, "conv2d", dims, "input_signal");
   RunOperator<float>(p, "conv2d", dims, "input_signal");
@@ -152,7 +152,7 @@ TEST(test_conv2d_reuse_cache, cpu_place) {
 
 TEST(test_conv2d_noreuse_cache, cpu_place) {
   framework::DDim dims({1, 16, 32, 64});
-  platform::CPUPlace p;
+  phi::CPUPlace p;
   CacheTester ct;
   RunOperator<float>(p, "conv2d", dims, "input_signal");
   RunOperator<float>(p, "conv2d", dims, "input_signal2");

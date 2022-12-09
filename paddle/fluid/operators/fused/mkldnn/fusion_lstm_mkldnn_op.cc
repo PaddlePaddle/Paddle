@@ -474,7 +474,7 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(fusion_lstm,
                    MKLDNN,
-                   paddle::platform::CPUPlace,
+                   phi::CPUPlace,
                    ops::FusionLSTMMKLDNNKernel<float>,
                    ops::FusionLSTMMKLDNNKernel<paddle::platform::bfloat16>,
                    ops::FusionLSTMMKLDNNKernel<uint8_t>);

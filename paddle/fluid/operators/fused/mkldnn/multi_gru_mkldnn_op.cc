@@ -720,6 +720,6 @@ class MultiGRUMKLDNNKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(multi_gru,
                    MKLDNN,
-                   paddle::platform::CPUPlace,
+                   phi::CPUPlace,
                    ops::MultiGRUMKLDNNKernel<float>,
                    ops::MultiGRUMKLDNNKernel<uint8_t>);

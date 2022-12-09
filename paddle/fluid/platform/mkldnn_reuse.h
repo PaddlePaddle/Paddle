@@ -24,8 +24,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace platform {

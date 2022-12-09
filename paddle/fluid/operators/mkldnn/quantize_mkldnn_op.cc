@@ -106,5 +106,5 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(quantize,
                    MKLDNN,
-                   ::paddle::platform::CPUPlace,
+                   ::phi::CPUPlace,
                    ops::QuantOpKernel<float>);

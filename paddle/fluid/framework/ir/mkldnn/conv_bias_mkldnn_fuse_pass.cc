@@ -263,7 +263,7 @@ phi::DenseTensor tensor_apply_eltwise(const phi::DenseTensor& vec_a,
   vec_y.Resize(vec_a.dims());
   const float* a = vec_a.data<float>();
   const float* b = vec_b.data<float>();
-  float* y = vec_y.mutable_data<float>(platform::CPUPlace());
+  float* y = vec_y.mutable_data<float>(phi::CPUPlace());
   for (int i = 0; i < vec_a.numel(); i++) {
     y[i] = f(a[i], b[i]);
   }

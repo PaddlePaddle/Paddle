@@ -696,7 +696,7 @@ class MatMulGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
 
 REGISTER_OP_KERNEL(matmul,
                    MKLDNN,
-                   ::paddle::platform::CPUPlace,
+                   ::phi::CPUPlace,
                    MatMulMKLDNNKernel<float>,
                    MatMulMKLDNNKernel<paddle::platform::bfloat16>,
                    MatMulMKLDNNKernel<int8_t>,
@@ -704,6 +704,6 @@ REGISTER_OP_KERNEL(matmul,
 
 REGISTER_OP_KERNEL(matmul_grad,
                    MKLDNN,
-                   ::paddle::platform::CPUPlace,
+                   ::phi::CPUPlace,
                    MatMulGradMKLDNNKernel<float>,
                    MatMulGradMKLDNNKernel<paddle::platform::bfloat16>);

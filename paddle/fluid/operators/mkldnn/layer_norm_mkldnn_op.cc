@@ -159,6 +159,6 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(layer_norm,
                    MKLDNN,
-                   ::paddle::platform::CPUPlace,
+                   ::phi::CPUPlace,
                    ops::LayerNormMKLDNNOpKernel<float>,
                    ops::LayerNormMKLDNNOpKernel<paddle::platform::bfloat16>);

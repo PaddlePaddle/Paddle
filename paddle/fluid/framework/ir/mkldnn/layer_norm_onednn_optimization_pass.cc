@@ -77,7 +77,7 @@ void LayerNormOneDNNOptimizationPass::ApplyImpl(Graph *graph) const {
 
     scale_shift_tensor->Resize(phi::make_ddim({channels * 2}));
 
-    memcpy(scale_shift_tensor->mutable_data<float>(platform::CPUPlace()),
+    memcpy(scale_shift_tensor->mutable_data<float>(phi::CPUPlace()),
            ln_scale_tensor->data<float>(),
            channels * sizeof(float));
 

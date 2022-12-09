@@ -115,7 +115,7 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(requantize,
                    MKLDNN,
-                   ::paddle::platform::CPUPlace,
+                   ::phi::CPUPlace,
                    ops::ReQuantOpKernel<int8_t>,
                    ops::ReQuantOpKernel<uint8_t>,
                    ops::ReQuantOpKernel<paddle::platform::bfloat16>);

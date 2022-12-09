@@ -69,6 +69,6 @@ class ShuffleChannelMKLDNNKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(shuffle_channel,
                    MKLDNN,
-                   paddle::platform::CPUPlace,
+                   phi::CPUPlace,
                    ops::ShuffleChannelMKLDNNKernel<float>,
                    ops::ShuffleChannelMKLDNNKernel<paddle::platform::bfloat16>);

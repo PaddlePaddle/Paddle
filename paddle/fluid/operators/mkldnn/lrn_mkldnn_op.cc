@@ -207,11 +207,8 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL(lrn,
-                   MKLDNN,
-                   paddle::platform::CPUPlace,
-                   ops::LRNMKLDNNOpKernel<float>);
+REGISTER_OP_KERNEL(lrn, MKLDNN, phi::CPUPlace, ops::LRNMKLDNNOpKernel<float>);
 REGISTER_OP_KERNEL(lrn_grad,
                    MKLDNN,
-                   paddle::platform::CPUPlace,
+                   phi::CPUPlace,
                    ops::LRNMKLDNNGradOpKernel<float>);

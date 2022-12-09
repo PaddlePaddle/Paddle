@@ -167,10 +167,10 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(transpose,
                    MKLDNN,
-                   ::paddle::platform::CPUPlace,
+                   ::phi::CPUPlace,
                    ops::TransposeMKLDNNOpKernel<float>);
 
 REGISTER_OP_KERNEL(transpose_grad,
                    MKLDNN,
-                   ::paddle::platform::CPUPlace,
+                   ::phi::CPUPlace,
                    ops::TransposeMKLDNNGradOpKernel<float>);
