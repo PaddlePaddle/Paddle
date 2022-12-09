@@ -44,6 +44,8 @@ from paddle.amp.auto_cast.auto_cast import (
 )
 from paddle import _legacy_C_ops
 
+__all__ = []
+
 
 class NestSequence:
     """

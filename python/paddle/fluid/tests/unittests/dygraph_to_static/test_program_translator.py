@@ -42,7 +42,7 @@ np.random.seed(0)
 def simple_func(x, weight_numpy):
     x = fluid.dygraph.to_variable(x)
     w = fluid.dygraph.to_variable(weight_numpy)
-    y = fluid.layers.matmul(x, w)
+    y = paddle.matmul(x, w)
     z = paddle.mean(y)
     return z
 
@@ -51,7 +51,7 @@ def simple_func(x, weight_numpy):
 def decorated_simple_func(x, weight_numpy):
     x = fluid.dygraph.to_variable(x)
     w = fluid.dygraph.to_variable(weight_numpy)
-    y = fluid.layers.matmul(x, w)
+    y = paddle.matmul(x, w)
     z = paddle.mean(y)
     return z
 
@@ -439,5 +439,4 @@ class TestRemoveCommentInDy2St(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

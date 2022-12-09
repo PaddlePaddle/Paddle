@@ -21,7 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using NPUDeviceContext = platform::NPUDeviceContext;
 
 template <typename T>
@@ -67,7 +66,7 @@ void MatMulND<phi::dtype::float16>(const framework::ExecutionContext& ctx,
                                    const bool trans_x,
                                    const bool trans_y) {
   Out->mutable_data<phi::dtype::float16>(ctx.GetPlace());
-  Tensor x_fp32, y_fp32, out_fp32;
+  phi::DenseTensor x_fp32, y_fp32, out_fp32;
   x_fp32.Resize(X.dims());
   y_fp32.Resize(Y.dims());
   out_fp32.Resize(Out->dims());
@@ -173,7 +172,7 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
     }
 
     // Resize dim 1 to 2
-    Tensor x_temp, y_temp;
+    phi::DenseTensor x_temp, y_temp;
     x_temp.ShareDataWith(*X);
     y_temp.ShareDataWith(*Y);
     if (x_ndim == 1) {
@@ -239,7 +238,7 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
     std::copy(x_dims.end() - 2, x_dims.end(), x_broadcast_dims.end() - 2);
     std::copy(y_dims.end() - 2, y_dims.end(), y_broadcast_dims.end() - 2);
 
-    Tensor x_temp_brd(X->type());
+    phi::DenseTensor x_temp_brd(X->type());
     if (x_dims == x_broadcast_dims) {
       x_temp_brd.ShareDataWith(*X);
       x_temp_brd.Resize(phi::make_ddim(x_broadcast_dims));
@@ -254,7 +253,7 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
           .Run(stream);
     }
 
-    Tensor y_temp_brd(Y->type());
+    phi::DenseTensor y_temp_brd(Y->type());
     if (y_dims == y_broadcast_dims) {
       y_temp_brd.ShareDataWith(*Y);
       y_temp_brd.Resize(phi::make_ddim(y_broadcast_dims));
@@ -295,7 +294,7 @@ class MatMulV2GradNPUKernel : public framework::OpKernel<T> {
 
     // Case 1: [K] x [K] = [1]
     if (x_ndim == 1 && y_ndim == 1) {
-      Tensor dout_temp(dOut->type());
+      phi::DenseTensor dout_temp(dOut->type());
       dout_temp.Resize(X->dims());
       dout_temp.mutable_data<T>(ctx.GetPlace());
       NpuOpRunner runner;
@@ -319,7 +318,7 @@ class MatMulV2GradNPUKernel : public framework::OpKernel<T> {
     }
 
     // Resize dim 1 to 2
-    Tensor x_temp, y_temp, dout_temp;
+    phi::DenseTensor x_temp, y_temp, dout_temp;
     x_temp.ShareDataWith(*X);
     y_temp.ShareDataWith(*Y);
     dout_temp.ShareDataWith(*dOut);
@@ -396,7 +395,7 @@ class MatMulV2GradNPUKernel : public framework::OpKernel<T> {
     std::copy(x_dims.end() - 2, x_dims.end(), x_broadcast_dims.end() - 2);
     std::copy(y_dims.end() - 2, y_dims.end(), y_broadcast_dims.end() - 2);
 
-    Tensor x_temp_brd(X->type());
+    phi::DenseTensor x_temp_brd(X->type());
     if (x_dims == x_broadcast_dims) {
       x_temp_brd.ShareDataWith(*X);
       x_temp_brd.Resize(phi::make_ddim(x_broadcast_dims));
@@ -411,7 +410,7 @@ class MatMulV2GradNPUKernel : public framework::OpKernel<T> {
           .Run(stream);
     }
 
-    Tensor y_temp_brd(Y->type());
+    phi::DenseTensor y_temp_brd(Y->type());
     if (y_dims == y_broadcast_dims) {
       y_temp_brd.ShareDataWith(*Y);
       y_temp_brd.Resize(phi::make_ddim(y_broadcast_dims));
@@ -434,7 +433,7 @@ class MatMulV2GradNPUKernel : public framework::OpKernel<T> {
           MatMulND<T>(ctx, stream, dout_temp, y_temp_brd, dX, false, !trans_y);
         }
       } else {
-        Tensor dx_temp(X->type());
+        phi::DenseTensor dx_temp(X->type());
         dx_temp.Resize(phi::make_ddim(x_broadcast_dims));
         if (trans_x) {
           MatMulND<T>(
@@ -454,7 +453,7 @@ class MatMulV2GradNPUKernel : public framework::OpKernel<T> {
           MatMulND<T>(ctx, stream, x_temp_brd, dout_temp, dY, !trans_x, false);
         }
       } else {
-        Tensor dy_temp(Y->type());
+        phi::DenseTensor dy_temp(Y->type());
         dy_temp.Resize(phi::make_ddim(y_broadcast_dims));
         if (trans_y) {
           MatMulND<T>(

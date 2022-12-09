@@ -19,7 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using NPUDeviceContext = platform::NPUDeviceContext;
 
 template <typename T>
@@ -78,7 +77,7 @@ class ElementwiseMulNPUKernel : public framework::OpKernel<T> {
       const auto& runner = NpuOpRunner("Mul", {*x, *y}, {*out}, {});
       runner.Run(stream);
     } else {
-      Tensor trans_x, trans_y;
+      phi::DenseTensor trans_x, trans_y;
       NpuElementWiseOpBroadcast<T>(dev_ctx, x, y, axis, &trans_x, &trans_y);
       const auto& runner = NpuOpRunner("Mul", {trans_x, trans_y}, {*out}, {});
       runner.Run(stream);
@@ -101,7 +100,7 @@ class ElementwiseMulGradNPUKernel : public framework::OpKernel<T> {
     axis = (axis == -1 ? std::abs(x->dims().size() - y->dims().size()) : axis);
     auto stream = ctx.template device_context<NPUDeviceContext>().stream();
 
-    Tensor trans_x, trans_y;
+    phi::DenseTensor trans_x, trans_y;
     NpuElementWiseOpBroadcast<T>(dev_ctx, x, y, axis, &trans_x, &trans_y);
 
     if (dx) {
@@ -110,7 +109,7 @@ class ElementwiseMulGradNPUKernel : public framework::OpKernel<T> {
         const auto& runner_dx = NpuOpRunner("Mul", {*dout, trans_y}, {*dx}, {});
         runner_dx.Run(stream);
       } else {
-        Tensor dx_temp(x->type());
+        phi::DenseTensor dx_temp(x->type());
         dx_temp.Resize(trans_x.dims());
         dx_temp.mutable_data<T>(ctx.GetPlace());
         const auto& runner_dx =
@@ -126,7 +125,7 @@ class ElementwiseMulGradNPUKernel : public framework::OpKernel<T> {
         const auto& runner_dy = NpuOpRunner("Mul", {trans_x, *dout}, {*dy}, {});
         runner_dy.Run(stream);
       } else {
-        Tensor dy_temp(y->type());
+        phi::DenseTensor dy_temp(y->type());
         dy_temp.Resize(trans_y.dims());
         dy_temp.mutable_data<T>(ctx.GetPlace());
         const auto& runner_dy =

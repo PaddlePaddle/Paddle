@@ -39,7 +39,6 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using phi::PADDLE_CUDA_NUM_THREADS;
 
 static inline int GET_BLOCKS(const int N) {

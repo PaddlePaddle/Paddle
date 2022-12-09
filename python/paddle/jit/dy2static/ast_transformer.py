@@ -52,9 +52,6 @@ from .logical_transformer import (
 from .loop_transformer import (
     LoopTransformer,
 )
-from .print_transformer import (
-    PrintTransformer,
-)
 from .return_transformer import (
     ReturnTransformer,
 )
@@ -74,7 +71,7 @@ from .decorator_transformer import (
 from . import logging_utils
 from .utils import ast_to_source_code
 
-__all__ = ['DygraphToStaticAst']
+__all__ = []
 
 
 def apply_optimization(transformers):
@@ -135,7 +132,6 @@ class DygraphToStaticAst(BaseTransformer):
             LoopTransformer,  # for/while -> while_op
             IfElseTransformer,  # if/else -> cond_op
             AssertTransformer,  # assert statement
-            PrintTransformer,  # print statement
             CallTransformer,  # transform call recursively
             CastTransformer,  # type casting statement
             DecoratorTransformer,  # transform decorators to function call

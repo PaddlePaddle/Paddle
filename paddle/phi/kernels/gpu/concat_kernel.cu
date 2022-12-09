@@ -34,6 +34,35 @@ void ConcatKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   int64_t axis = axis_scalar.to<int64_t>();
 
+  if (UNLIKELY(x[0]->dims().size() == 0)) {
+    // for dims is 0 specially
+    phi::DDim tmp_1dim, out_dims;
+    out_dims[0] = x.size();
+    tmp_1dim[0] = 1;
+
+    out->Resize(out_dims);
+    dev_ctx.template Alloc<T>(out);
+
+    size_t output_offset = 0;
+    for (auto* in : x) {
+      if (in->numel() == 0UL) {
+        continue;
+      }
+      auto in_stride = phi::stride_numel(tmp_1dim);
+      auto out_stride = phi::stride_numel(out->dims());
+      paddle::operators::StridedNumelCopyWithAxis<T>(
+          dev_ctx,
+          axis,
+          out->data<T>() + output_offset,
+          out_stride,
+          in->data<T>(),
+          in_stride,
+          in_stride[axis]);
+      output_offset += in_stride[axis];
+    }
+    return;
+  }
+
   axis = phi::funcs::ComputeAxis(axis, x[0]->dims().size());
 
   std::vector<phi::DDim> x_dims;
@@ -43,7 +72,7 @@ void ConcatKernel(const Context& dev_ctx,
 
   phi::DDim out_dims = phi::funcs::ComputeAndCheckShape(true, x_dims, axis);
   out->Resize(out_dims);
-  out->mutable_data<T>(dev_ctx.GetPlace());
+  dev_ctx.template Alloc<T>(out);
 
   // If axis is 0, the lod of the output is not the same as inputs.
   if (axis == 0 && x[0]->lod().size() > 0) {

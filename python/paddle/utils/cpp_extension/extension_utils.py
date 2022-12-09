@@ -16,6 +16,7 @@ import atexit
 import collections
 import glob
 import hashlib
+import importlib.util
 import json
 import logging
 import os
@@ -1070,7 +1071,9 @@ def _load_module_from_file(api_file_path, module_name, verbose=False):
 
     # load module with RWLock
     loader = machinery.SourceFileLoader(ext_name, api_file_path)
-    module = loader.load_module()
+    spec = importlib.util.spec_from_loader(loader.name, loader)
+    module = importlib.util.module_from_spec(spec)
+    loader.exec_module(module)
 
     return module
 

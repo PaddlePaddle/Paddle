@@ -408,9 +408,7 @@ class TestDygraphGradientClip(unittest.TestCase):
     def test_gradient_clip(self):
         with fluid.dygraph.guard():
             linear = paddle.nn.Linear(5, 5)
-            inputs = fluid.layers.uniform_random(
-                [16, 5], min=-10, max=10
-            ).astype('float32')
+            inputs = paddle.uniform([16, 5], min=-10, max=10).astype('float32')
             out = linear(fluid.dygraph.to_variable(inputs))
             loss = paddle.mean(out)
             loss.backward()
@@ -552,9 +550,9 @@ class TestDygraphGradientClipFP16(unittest.TestCase):
                     models=model, optimizers=sgd_optimizer, level='O2'
                 )
                 scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
-                inputs = fluid.layers.uniform_random(
-                    [1, 5], min=-10, max=10
-                ).astype('float32')
+                inputs = paddle.uniform([1, 5], min=-10, max=10).astype(
+                    'float32'
+                )
                 with paddle.amp.auto_cast.auto_cast(level='O2'):
                     out = model(fluid.dygraph.to_variable(inputs))
                     loss = paddle.mean(out)
@@ -600,9 +598,7 @@ class TestDygraphGradientClipFP16(unittest.TestCase):
 class TestDygraphGradientClipFP64(unittest.TestCase):
     def test_gradient_clip(self):
         with fluid.dygraph.guard():
-            inputs = fluid.layers.uniform_random(
-                [16, 5], min=-10, max=10
-            ).astype('float32')
+            inputs = paddle.uniform([16, 5], min=-10, max=10).astype('float32')
             linear = paddle.nn.Linear(5, 5)
             out = linear(fluid.dygraph.to_variable(inputs))
             loss = paddle.mean(out)
