@@ -129,7 +129,9 @@ class TestImperativeQat(unittest.TestCase):
                     label = paddle.to_tensor(y_data)
                     out = lenet(img)
                     acc = paddle.metric.accuracy(out, label)
-                    loss = paddle.nn.functional.loss.cross_entropy(out, label)
+                    loss = paddle.nn.functional.cross_entropy(
+                        out, label, reduction='none', use_softmax=False
+                    )
                     avg_loss = paddle.mean(loss)
                     avg_loss.backward()
                     adam.minimize(avg_loss)

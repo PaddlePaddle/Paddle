@@ -32,7 +32,6 @@
 
 namespace paddle {
 namespace operators {
-using Tensor = phi::DenseTensor;
 
 template <typename T>
 using Vector = framework::Vector<T>;

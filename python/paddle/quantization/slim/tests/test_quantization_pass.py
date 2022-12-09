@@ -45,7 +45,9 @@ def linear_fc(num):
     hidden = data
     for _ in range(num):
         hidden = paddle.static.nn.fc(hidden, size=128, act='relu')
-    loss = paddle.nn.functional.cross_entropy(input=hidden, label=label)
+    loss = paddle.nn.functional.cross_entropy(
+        input=hidden, label=label, reduction='none', use_softmax=False
+    )
     loss = paddle.mean(loss)
     return loss
 
@@ -88,7 +90,9 @@ def residual_block(num, quant_skip_pattern=None):
     else:
         pool = paddle.nn.functional.avg_pool2d(hidden, kernel_size=2, stride=2)
     fc = paddle.static.nn.fc(pool, size=10)
-    loss = paddle.nn.functional.cross_entropy(input=fc, label=label)
+    loss = paddle.nn.functional.cross_entropy(
+        input=fc, label=label, reduction='none', use_softmax=False
+    )
     loss = paddle.mean(loss)
     return loss
 
@@ -117,7 +121,9 @@ def conv_net(img, label, quant_skip_pattern):
     hidden = paddle.static.nn.fc(conv_pool_2, size=100, activation='relu')
     with paddle.static.name_scope(quant_skip_pattern):
         prediction = paddle.static.nn.fc(hidden, size=10, activation='softmax')
-    loss = paddle.nn.functional.cross_entropy(input=prediction, label=label)
+    loss = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     avg_loss = paddle.mean(loss)
     return avg_loss
 
@@ -760,7 +766,9 @@ def quant_dequant_residual_block(num, quant_skip_pattern=None):
         pool_add = paddle.add(pool1, pool2)
         pool_add = paddle.nn.functional.relu(pool_add)
     fc = paddle.static.nn.fc(pool_add, size=10)
-    loss = paddle.nn.functional.cross_entropy(input=fc, label=label)
+    loss = paddle.nn.functional.cross_entropy(
+        input=fc, label=label, reduction='none', use_softmax=False
+    )
     loss = paddle.mean(loss)
     return loss
 

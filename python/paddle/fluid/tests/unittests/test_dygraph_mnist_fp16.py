@@ -57,13 +57,10 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
             bias_attr=bias_attr,
         )
 
-        self._pool2d = paddle.fluid.dygraph.nn.Pool2D(
-            pool_size=pool_size,
-            pool_type=pool_type,
-            pool_stride=pool_stride,
-            pool_padding=pool_padding,
-            global_pooling=global_pooling,
-            use_cudnn=use_cudnn,
+        self._pool2d = paddle.nn.MaxPool2D(
+            kernel_size=pool_size,
+            stride=pool_stride,
+            padding=pool_padding,
         )
 
     def forward(self, inputs):
@@ -115,7 +112,9 @@ class MNIST(fluid.dygraph.Layer):
         x = paddle.reshape(x, shape=[-1, self.pool_2_shape])
         cost = self._linear(x)
         cost = paddle.nn.functional.softmax(cost)
-        loss = fluid.layers.cross_entropy(cost, label)
+        loss = paddle.nn.functional.cross_entropy(
+            cost, label, reduction='none', use_softmax=False
+        )
         avg_loss = paddle.mean(loss)
         return avg_loss
 

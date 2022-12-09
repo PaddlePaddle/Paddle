@@ -37,7 +37,6 @@ namespace cub = hipcub;
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using DataLayout = phi::DataLayout;
 
 // math: dx = scale * ((x - mean) * inv_var / NxHxW * (np.mean(ddx,
@@ -433,21 +432,21 @@ __global__ void DoubleGradComputeDDYWithGlobal(const T *ddx,
 template <typename DeviceContext, typename T>
 void NormDoubleGradFunctor(const DeviceContext &ctx,
                            const DataLayout data_layout,
-                           const Tensor *X,
-                           const Tensor *Scale,
-                           const Tensor *dY,
-                           const Tensor *Saved_mean,
-                           const Tensor *Saved_variance,
-                           const Tensor *Mean,
-                           const Tensor *Variance,
+                           const phi::DenseTensor *X,
+                           const phi::DenseTensor *Scale,
+                           const phi::DenseTensor *dY,
+                           const phi::DenseTensor *Saved_mean,
+                           const phi::DenseTensor *Saved_variance,
+                           const phi::DenseTensor *Mean,
+                           const phi::DenseTensor *Variance,
                            const double epsilon,
                            const bool use_global_stats,
-                           const Tensor *ddX,
-                           const Tensor *ddScale,
-                           const Tensor *ddBias,
-                           Tensor *dX,
-                           Tensor *dScale,
-                           Tensor *ddY) {
+                           const phi::DenseTensor *ddX,
+                           const phi::DenseTensor *ddScale,
+                           const phi::DenseTensor *ddBias,
+                           phi::DenseTensor *dX,
+                           phi::DenseTensor *dScale,
+                           phi::DenseTensor *ddY) {
   const T *x_data = X->data<T>();
   const T *dy_data = dY->data<T>();
   const T *ddx_data = (ddX == nullptr ? nullptr : ddX->data<T>());
@@ -463,7 +462,7 @@ void NormDoubleGradFunctor(const DeviceContext &ctx,
   const int N = x_dims[0];
   const int num = X->numel();
   const int sample_size = num / N / C;
-  Tensor scale_tmp;
+  phi::DenseTensor scale_tmp;
   if (!Scale) {
     scale_tmp.mutable_data<T>({C}, ctx.GetPlace());
     set_constant(ctx, &scale_tmp, static_cast<T>(1));

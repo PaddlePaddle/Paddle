@@ -15,7 +15,7 @@
 import re
 import paddle
 from paddle.fluid.data_feeder import convert_dtype
-from paddle.jit.dy2static.variable_trans_func import (
+from .variable_trans_func import (
     to_static_variable,
 )
 from paddle.fluid.framework import core, Variable
@@ -43,9 +43,12 @@ from .return_transformer import (
 from paddle.jit.dy2static.utils import (
     UndefinedVar,
     Dygraph2StaticException,
+    GetterSetterHelper,
 )
-from paddle.jit.dy2static.utils import GetterSetterHelper
+
 from paddle.fluid.layers.utils import copy_mutable_vars
+
+__all__ = []
 
 
 def convert_attr(x, attr):
@@ -736,17 +739,15 @@ def convert_assert(cond, message=""):
         assert cond, message
 
 
-def convert_print(*args):
+def convert_print(*objects, sep=' ', end='\n', file=None, flush=False):
     """
-    A function representing Python ``print`` statement. Note: this is a basic
-    python function so we haven't handle sep, end, file and flush parameters of
-    python function.
+    A function representing Python ``print`` function. It will print all arguments
+    at compile time and only print the Tensor values at runtime.
     """
-    for var in args:
-        if isinstance(var, Variable):
-            var = Print(var)
-        else:
-            print(var)
+    for obj in objects:
+        if isinstance(obj, Variable):
+            Print(obj)
+    print(*objects, sep=sep, end=end, file=file, flush=flush)
 
 
 def convert_pop(target, *args):

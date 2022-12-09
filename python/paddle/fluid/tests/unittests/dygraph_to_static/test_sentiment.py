@@ -20,7 +20,7 @@ from test_lac import DynamicGRU
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph.nn import Embedding, Linear
+from paddle.fluid.dygraph.nn import Embedding
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
 from paddle.nn import Linear
@@ -388,5 +388,4 @@ class TestSentiment(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

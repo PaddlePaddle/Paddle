@@ -182,7 +182,9 @@ class TestSaveInferenceModel(unittest.TestCase):
             auc_var, batch_auc_var, auc_states = paddle.static.auc(
                 input=predict, label=y
             )
-            cost = fluid.layers.cross_entropy(input=predict, label=y)
+            cost = paddle.nn.functional.cross_entropy(
+                input=predict, label=y, reduction='none', use_softmax=False
+            )
             avg_cost = paddle.mean(x=cost)
 
         place = core.CPUPlace()

@@ -30,6 +30,7 @@ from .convert_operators import (
     convert_zip,
     convert_range,
     convert_enumerate,
+    convert_print,
 )
 
 from paddle.jit.dy2static.logging_utils import (
@@ -39,7 +40,7 @@ from paddle.jit.dy2static.logging_utils import (
 from paddle.jit.dy2static.utils import is_paddle_func, unwrap
 from paddle.fluid.dygraph.layers import Layer
 
-__all__ = ["convert_call"]
+__all__ = []
 
 
 # The api(s) should be considered as plain function and convert
@@ -214,6 +215,9 @@ def convert_call(func):
 
     if is_builtin(func, "enumerate"):
         return convert_enumerate
+
+    if is_builtin(func, "print"):
+        return convert_print
 
     if is_builtin(func) or is_unsupported(func):
         return func

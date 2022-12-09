@@ -28,6 +28,7 @@ from ....framework import _get_paddle_place, core
 from ....static import Program, data, program_guard, scope_guard
 from ....utils import unique_name
 from . import utils
+import paddle
 
 __all__ = [
     'QuantizationTransformPass',
@@ -2904,13 +2905,31 @@ class ReplaceFakeQuantDequantPass:
             graph, IrGraph
         ), 'graph must be the instance of IrGraph.'
         fake_quant_dequant_ops = []
+        remove_fake_quant_ops = []
+        observer_out_node_names = []
+        for op in graph.all_op_nodes():
+            # collect observer node
+            if op.name() == "moving_average_abs_max_scale":
+                observer_out_node_names.append(op.output("Out")[0])
 
         for op in graph.all_op_nodes():
             if (
                 op.name() in _fake_quant_dequant_op_list
                 or op.name() == "moving_average_abs_max_scale"
             ):
-                fake_quant_dequant_ops.append(op)
+                var_name = op.input("X")[0]
+                if var_name in observer_out_node_names:
+                    remove_fake_quant_ops.append(op)
+                else:
+                    fake_quant_dequant_ops.append(op)
+
+        for _op in remove_fake_quant_ops:
+            x_node = graph._find_node_by_name(_op.inputs, _op.input("X")[0])
+            out_node = graph._find_node_by_name(
+                _op.outputs, _op.output("Out")[0]
+            )
+            for next_op_node in out_node.outputs:
+                graph.update_input_link(out_node, x_node, next_op_node)
 
         for _op in fake_quant_dequant_ops:
             self._replace_op(graph, _op)

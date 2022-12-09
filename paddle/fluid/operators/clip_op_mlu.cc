@@ -29,7 +29,7 @@ class ClipMLUKernel : public framework::OpKernel<T> {
     auto max = static_cast<T>(ctx.Attr<float>("max"));
 
     if (ctx.HasInput("Min")) {
-      Tensor min_cpu;
+      phi::DenseTensor min_cpu;
       auto* min_tensor = ctx.Input<phi::DenseTensor>("Min");
       auto* min_data = min_tensor->data<T>();
       if (platform::is_mlu_place(min_tensor->place())) {
@@ -41,7 +41,7 @@ class ClipMLUKernel : public framework::OpKernel<T> {
     }
 
     if (ctx.HasInput("Max")) {
-      Tensor max_cpu;
+      phi::DenseTensor max_cpu;
       auto* max_tensor = ctx.Input<phi::DenseTensor>("Max");
       auto* max_data = max_tensor->data<T>();
       if (platform::is_mlu_place(max_tensor->place())) {
@@ -80,7 +80,7 @@ class ClipGradMLUKernel : public framework::OpKernel<T> {
 
     auto min_val = ctx.Attr<float>("min");
     if (min_tensor) {
-      Tensor min_data;
+      phi::DenseTensor min_data;
       framework::TensorCopy(
           *min_tensor,
           platform::CPUPlace(),
@@ -91,7 +91,7 @@ class ClipGradMLUKernel : public framework::OpKernel<T> {
     }
     auto max_val = ctx.Attr<float>("max");
     if (max_tensor) {
-      Tensor max_data;
+      phi::DenseTensor max_data;
       framework::TensorCopy(
           *max_tensor,
           platform::CPUPlace(),

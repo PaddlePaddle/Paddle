@@ -17,7 +17,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = phi::DenseTensor;
 
 template <typename IndexT>
 void IndexSampleGather(const paddle::platform::NPUDeviceContext& dev_ctx,
@@ -38,7 +37,7 @@ void IndexSampleGather(const paddle::platform::NPUDeviceContext& dev_ctx,
       gather_index_vec.push_back(index_vec[i * index_length + j]);
     }
   }
-  Tensor gather_index;
+  phi::DenseTensor gather_index;
   framework::TensorFromVector(gather_index_vec, dev_ctx, &gather_index);
   gather_index.Resize({batch_size, index_length, 2});
 
@@ -89,7 +88,7 @@ void IndexSampleGradScatter(const paddle::platform::NPUDeviceContext& dev_ctx,
       scatter_index_vec.push_back(index_vec[i * index_length + j]);
     }
   }
-  Tensor scatter_index;
+  phi::DenseTensor scatter_index;
   framework::TensorFromVector(scatter_index_vec, dev_ctx, &scatter_index);
   scatter_index.Resize({batch_size, index_length, 2});
 

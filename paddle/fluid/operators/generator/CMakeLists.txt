@@ -108,18 +108,23 @@ execute_process(
     --op_compat_yaml_path ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml
     --output_op_path "${generated_op_path}.tmp" --output_arg_map_path
     "${generated_argument_mapping_path}.tmp"
+  RESULT_VARIABLE _result)
+if(${_result})
+  message(FATAL_ERROR "operator codegen failed, exiting.")
+endif()
+
+execute_process(
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
   COMMAND
     ${PYTHON_EXECUTABLE} generate_sparse_op.py --ops_yaml_path
     ./parsed_ops/sparse_ops.parsed.yaml --backward_ops_yaml_path
     ./parsed_ops/sparse_backward.parsed.yaml --output_op_path
     "${generated_sparse_ops_path}.tmp" --output_arg_map_path
     "${generated_sparse_argument_mapping_path}.tmp"
-  RESULT_VARIABLE _results)
-foreach(_result in ${_results})
-  if(${_result})
-    message(FATAL_ERROR "operator codegen failed, exiting.")
-  endif()
-endforeach()
+  RESULT_VARIABLE _result)
+if(${_result})
+  message(FATAL_ERROR "sparse operator codegen failed, exiting.")
+endif()
 
 if(EXISTS "${generated_op_path}.tmp" AND EXISTS "${generated_op_path}")
   execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different

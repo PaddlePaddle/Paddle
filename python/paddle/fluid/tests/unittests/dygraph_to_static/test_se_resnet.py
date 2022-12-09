@@ -127,9 +127,7 @@ class SqueezeExcitation(fluid.dygraph.Layer):
 
         super().__init__()
         self._num_channels = num_channels
-        self._pool = paddle.fluid.dygraph.nn.Pool2D(
-            pool_size=0, pool_type='avg', global_pooling=True
-        )
+        self._pool = paddle.nn.AdaptiveAvgPool2D(1)
         stdv = 1.0 / math.sqrt(num_channels * 1.0)
         self._fc = Linear(
             num_channels,
@@ -309,9 +307,7 @@ class SeResNeXt(fluid.dygraph.Layer):
                 num_channels = bottleneck_block._num_channels_out
                 self.bottleneck_block_list.append(bottleneck_block)
                 shortcut = True
-        self.pool2d_avg = paddle.fluid.dygraph.nn.Pool2D(
-            pool_size=7, pool_type='avg', global_pooling=True
-        )
+        self.pool2d_avg = paddle.nn.AdaptiveAvgPool2D(1)
         stdv = 1.0 / math.sqrt(2048 * 1.0)
 
         self.pool2d_avg_output = num_filters[len(num_filters) - 1] * 2 * 1 * 1
@@ -604,6 +600,4 @@ class TestSeResnet(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    # switch into new eager mode
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

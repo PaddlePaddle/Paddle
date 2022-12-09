@@ -287,7 +287,7 @@
   backward : bilinear_tensor_product_grad
 
 - op : bincount
-  args: (Tensor x, Tensor weights, Scalar minlength)
+  args: (Tensor x, Tensor weights, Scalar(int) minlength = 0)
   output: Tensor(out)
   infer_meta:
     func: BincountInferMeta
@@ -463,16 +463,6 @@
   args : (Tensor x, Place place, bool blocking)
   output : Tensor(out)
   invoke : copy_to_impl(x, place, blocking)
-
-- op : crop
-  args : (Tensor x, IntArray shape, IntArray offsets)
-  output : Tensor(out)
-  infer_meta :
-    func : CropInferMeta
-  kernel :
-    func : crop
-    data_type : x
-  backward : crop_grad
 
 # Part of python API paddle.nn.functional.cross_entropy
 - op : cross_entropy_with_softmax
@@ -1164,16 +1154,6 @@
     func : lu
   backward : lu_grad
 
-- op : lu_unpack
-  args : (Tensor x, Tensor y, bool unpack_ludata, bool unpack_pivots)
-  output : Tensor(pmat), Tensor(l), Tensor(u)
-  infer_meta :
-    func : LUUnpackInferMeta
-  kernel :
-    func : lu_unpack
-    data_type : x
-  backward : lu_unpack_grad
-
 - op : margin_cross_entropy
   args : (Tensor logits, Tensor label, bool return_softmax, int ring_id, int rank, int nranks, float margin1, float margin2, float margin3, float scale)
   output : Tensor(softmax), Tensor(loss)
@@ -1339,15 +1319,6 @@
     func : mish
   backward : mish_grad
 
-- op : mode
-  args : (Tensor x,  int axis,  bool keepdim)
-  output : Tensor(out), Tensor(indices)
-  infer_meta :
-    func : ModeInferMeta
-  kernel :
-    func : mode
-  backward : mode_grad
-
 - op : momentum_
   args : (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor master_param, float mu, bool use_nesterov = false, str regularization_method = "", float regularization_coeff = 0.0, bool multi_precision = false, float rescale_grad = 1.0f)
   output : Tensor(param_out), Tensor(velocity_out), Tensor(master_param_out)
@@ -1376,14 +1347,6 @@
   kernel :
     func : multiclass_nms3
   optional : rois_num
-
-- op : multinomial
-  args : (Tensor x, Scalar num_samples, bool replacement)
-  output : Tensor(out)
-  infer_meta :
-    func : MultinomialInferMeta
-  kernel :
-    func : multinomial
 
 - op : multiplex
   args : (Tensor[] inputs, Tensor index)
@@ -1415,17 +1378,6 @@
     func : nearest_interp
     data_type : x
   backward : nearest_interp_grad
-
-- op : nll_loss
-  args : (Tensor input, Tensor label, Tensor weight, int64_t ignore_index, str reduction)
-  output : Tensor(out), Tensor(total_weight)
-  infer_meta :
-    func : NllLossRawInferMeta
-  kernel :
-    func : nll_loss
-    data_type : input
-  optional : weight
-  backward : nll_loss_grad
 
 - op : nms
   args : (Tensor x, float threshold)
@@ -1615,15 +1567,6 @@
   inplace : (arr -> out)
   backward : put_along_axis_grad
 
-- op : qr
-  args : (Tensor x, str mode)
-  output : Tensor(q), Tensor(r)
-  infer_meta :
-    func : QrInferMeta
-  kernel :
-    func : qr
-  backward : qr_grad
-
 - op : randint
   args : (int low, int high, IntArray shape, DataType dtype=DataType::INT64, Place place={})
   output : Tensor(out)
@@ -1675,16 +1618,6 @@
   kernel :
     func : remainder
   inplace : (x -> out)
-
-- op : renorm
-  args : (Tensor x, float p, int axis, float max_norm)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : renorm
-  backward : renorm_grad
 
 - op : repeat_interleave
   args : (Tensor x, int repeats, int axis)
@@ -2093,15 +2026,6 @@
   kernel :
     func : tile
   backward : tile_grad
-
-- op : topk
-  args : (Tensor x, Scalar k, int axis = -1, bool largest = true, bool sorted = true)
-  output : Tensor(out), Tensor(indices)
-  infer_meta :
-    func : TopKInferMeta
-  kernel :
-    func : topk
-  backward : topk_grad
 
 - op : transpose
   args : (Tensor x, int[] perm)

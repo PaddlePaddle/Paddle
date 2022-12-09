@@ -55,7 +55,9 @@ def conv_net(img, label):
     )
     hidden = paddle.static.nn.fc(conv_pool_2, size=100, act='relu')
     prediction = paddle.static.nn.fc(input=hidden, size=10, act='softmax')
-    loss = paddle.nn.functional.cross_entropy(input=prediction, label=label)
+    loss = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     avg_loss = paddle.mean(loss)
     return avg_loss
 
