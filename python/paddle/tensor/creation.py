@@ -47,8 +47,7 @@ from ..framework import (
     convert_np_dtype_to_dtype_,
     core,
     in_dygraph_mode,
-) 
-
+)
 
 __all__ = []
 

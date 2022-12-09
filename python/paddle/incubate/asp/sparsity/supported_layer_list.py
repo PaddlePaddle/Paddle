@@ -23,7 +23,7 @@ import paddle
 from paddle.fluid.log_helper import get_logger
 from paddle.incubate.asp import sparsity
 
-__all__ = ['add_supported_layer']
+__all__ = []
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'

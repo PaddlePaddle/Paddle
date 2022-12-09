@@ -22,7 +22,7 @@ import os
 import numpy as np
 
 import paddle
-from paddle.fluid import core, global_scope, layers, program_guard
+from paddle.fluid import core, global_scope, program_guard
 from paddle.fluid.framework import dygraph_only
 from paddle.fluid.initializer import ConstantInitializer
 from paddle.incubate.asp import sparsity
@@ -35,12 +35,7 @@ from .supported_layer_list import (
 OpRole = core.op_proto_and_checker_maker.OpRole
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
 
-__all__ = [
-    'decorate',
-    'prune_model',
-    'set_excluded_layers',
-    'reset_excluded_layers',
-]
+__all__ = []
 
 
 def set_excluded_layers(param_names, main_program=None):
@@ -883,7 +878,7 @@ class ASPHelper:
             for param in params:
                 if ASPHelper._is_supported_layer(main_program, param.name):
                     if param.name not in asp_info.mask_vars:
-                        mask_param = layers.create_parameter(
+                        mask_param = paddle.create_parameter(
                             name=ASPHelper._get_mask_name(param.name),
                             shape=param.shape,
                             dtype=param.dtype,

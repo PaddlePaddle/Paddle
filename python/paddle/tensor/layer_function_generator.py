@@ -29,7 +29,7 @@ from ..framework import (
     core,
     in_dygraph_mode,
 )
-from ..fluid.framework import Variable
+from ..static import Variable
 
 __all__ = []
 

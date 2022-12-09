@@ -30,8 +30,6 @@ from ..fluid.data_feeder import (
     convert_dtype,
 )
 from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
-
-from ..fluid.framework import _in_legacy_dygraph, Variable
 from ..fluid.layers import elementwise_sub, utils
 from ..framework import (
     LayerHelper,
@@ -42,6 +40,7 @@ from ..framework import (
     core,
     in_dygraph_mode,
 )
+from ..static import Variable
 from .creation import _complex_to_real_dtype
 from .layer_function_generator import generate_layer_fn, templatedoc
 from .manipulation import cast

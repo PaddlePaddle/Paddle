@@ -23,8 +23,9 @@ from ..fluid.data_feeder import (
     check_type,
     check_variable_and_dtype,
 )
-from ..fluid.framework import _in_legacy_dygraph, Variable
+from ..fluid.framework import _in_legacy_dygraph
 from ..framework import LayerHelper, _non_static_mode, in_dygraph_mode
+from ..static import Variable
 from .creation import full
 from .logic import logical_not
 from .manipulation import cast

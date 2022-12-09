@@ -16,7 +16,7 @@
 
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..framework import LayerHelper, _non_static_mode, core
-from ..fluid.framework import Variable
+from ..static import Variable
 
 __all__ = []
 
