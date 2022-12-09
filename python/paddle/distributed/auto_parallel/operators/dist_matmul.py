@@ -2651,7 +2651,7 @@ class DistributedMulImpl0(DistributedOperatorImpl):
             ['float16', 'float32', 'float64', 'uint16'],
             'linear',
         )
-        attrs = {'trans_x': False, 'trans_y': False}
+        # attrs = {'trans_x': False, 'trans_y': False}
         attrs = {
             "x_num_col_dims": src_op.desc.attr("x_num_col_dims"),
             "y_num_col_dims": src_op.desc.attr("y_num_col_dims"),
@@ -2988,7 +2988,7 @@ class DistributedMulImpl1(DistributedOperatorImpl):
             ['float16', 'float32', 'float64', 'uint16'],
             'linear',
         )
-        attrs = {'trans_x': False, 'trans_y': False}
+        # attrs = {'trans_x': False, 'trans_y': False}
         attrs = {
             "x_num_col_dims": src_op.desc.attr("x_num_col_dims"),
             "y_num_col_dims": src_op.desc.attr("y_num_col_dims"),
