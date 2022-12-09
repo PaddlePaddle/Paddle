@@ -21,8 +21,8 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/data_layout_transform.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/pool_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
