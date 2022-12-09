@@ -23,8 +23,6 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-enum { kTransposeMKLDNNFP32 = 1, kTransposeMKLDNNINT8 = 2 };
-
 enum PermuteType {
   kCopy = 1,
   kSwapTranspose = 2,
