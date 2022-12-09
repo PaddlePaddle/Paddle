@@ -97,7 +97,7 @@ class LBFGS(Optimizer):
             outputs = net(inputs)
             loss = paddle.nn.functional.mse_loss(outputs, targets)
             print('loss: ', loss.item())
-            opt.zero_grad()
+            opt.clear_grad()
             loss.backward()
             return loss
         opt.step(closure)

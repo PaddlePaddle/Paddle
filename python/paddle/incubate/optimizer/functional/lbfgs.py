@@ -212,8 +212,8 @@ def minimize_lbfgs(
         if line_search_fn == 'strong_wolfe':
             alpha, value, g2, ls_func_calls = strong_wolfe(
                 f=objective_func,
-                xk=xk,  # init_param
-                pk=pk,  # serach direction
+                xk=xk,
+                pk=pk,
                 max_iters=max_line_search_iters,
                 initial_step_length=initial_step_length,
                 dtype=dtype,
