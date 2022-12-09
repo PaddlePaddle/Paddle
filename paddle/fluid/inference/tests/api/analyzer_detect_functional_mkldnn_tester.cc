@@ -18,7 +18,6 @@ limitations under the License. */
 #include <iostream>
 
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/common/place.h"
 
 DEFINE_string(infer_shape, "", "data shape file");
