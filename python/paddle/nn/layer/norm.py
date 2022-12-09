@@ -62,7 +62,7 @@ class _InstanceNormBase(Layer):
         momentum=0.9,
         weight_attr=None,
         bias_attr=None,
-        data_format="NCL",
+        data_format="NCHW",
         name=None,
     ):
         super().__init__()
