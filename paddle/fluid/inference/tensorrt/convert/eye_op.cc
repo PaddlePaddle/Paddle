@@ -46,20 +46,20 @@ class EyeOpConverter : public OpConverter {
     // Declare inputs attr
     const int num_rows = PADDLE_GET_CONST(int, op_desc.GetAttr("num_rows"));
     int num_columns = PADDLE_GET_CONST(int, op_desc.GetAttr("num_columns"));
-    auto dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
+    const int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
 
     // Set data type
     nvinfer1::DataType nv_type = nvinfer1::DataType::kFLOAT;
     switch (dtype) {
-      case phi::DataType::FLOAT32:
+      case paddle::framework::proto::VarType::FP32:
         nv_type = nvinfer1::DataType::kFLOAT;
         std::vector<float> constant_arr(num_rows * num_columns, 0);
         break;
-      case phi::DataType::FLOAT16:
+      case paddle::framework::proto::VarType::FP16:
         nv_type = nvinfer1::DataType::kHALF;
         std::vector<uint16_t> constant_arr(num_rows * num_columns, 0);
         break;
-      case phi::DataType::INT32:
+      case paddle::framework::proto::VarType::INT32:
         nv_type = nvinfer1::DataType::kINT32;
         std::vector<int32_t> constant_arr(num_rows * num_columns, 0);
         break;
