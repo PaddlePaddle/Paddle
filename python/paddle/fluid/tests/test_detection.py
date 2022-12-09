@@ -24,7 +24,6 @@ import paddle.fluid.layers as layers
 from paddle.fluid import core
 from paddle.fluid.dygraph import base
 from paddle.fluid.framework import Program, program_guard
-from paddle.fluid.layers import detection
 
 paddle.enable_static()
 
@@ -77,49 +76,6 @@ class LayerTest(unittest.TestCase):
 
 
 class TestDetection(unittest.TestCase):
-    def test_detection_output(self):
-        program = Program()
-        with program_guard(program):
-            pb = layers.data(
-                name='prior_box',
-                shape=[10, 4],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            pbv = layers.data(
-                name='prior_box_var',
-                shape=[10, 4],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            loc = layers.data(
-                name='target_box',
-                shape=[2, 10, 4],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            scores = layers.data(
-                name='scores',
-                shape=[2, 10, 20],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            out = layers.detection_output(
-                scores=scores, loc=loc, prior_box=pb, prior_box_var=pbv
-            )
-            out2, index = layers.detection_output(
-                scores=scores,
-                loc=loc,
-                prior_box=pb,
-                prior_box_var=pbv,
-                return_index=True,
-            )
-            self.assertIsNotNone(out)
-            self.assertIsNotNone(out2)
-            self.assertIsNotNone(index)
-            self.assertEqual(out.shape[-1], 6)
-        print(str(program))
-
     def test_box_coder_api(self):
         program = Program()
         with program_guard(program):
@@ -162,74 +118,6 @@ class TestDetection(unittest.TestCase):
                 target_box=y2,
                 code_type='encode_center_size',
             )
-
-    def test_detection_api(self):
-        program = Program()
-        with program_guard(program):
-            x = layers.data(name='x', shape=[4], dtype='float32')
-            y = layers.data(name='y', shape=[4], dtype='float32')
-            z = layers.data(name='z', shape=[4], dtype='float32', lod_level=1)
-            iou = layers.iou_similarity(x=x, y=y)
-            bcoder = layers.box_coder(
-                prior_box=x,
-                prior_box_var=y,
-                target_box=z,
-                code_type='encode_center_size',
-            )
-            self.assertIsNotNone(iou)
-            self.assertIsNotNone(bcoder)
-
-            matched_indices, matched_dist = layers.bipartite_match(iou)
-            self.assertIsNotNone(matched_indices)
-            self.assertIsNotNone(matched_dist)
-
-            gt = layers.data(
-                name='gt', shape=[1, 1], dtype='int32', lod_level=1
-            )
-            trg, trg_weight = layers.target_assign(
-                gt, matched_indices, mismatch_value=0
-            )
-            self.assertIsNotNone(trg)
-            self.assertIsNotNone(trg_weight)
-
-            gt2 = layers.data(
-                name='gt2', shape=[10, 4], dtype='float32', lod_level=1
-            )
-            trg, trg_weight = layers.target_assign(
-                gt2, matched_indices, mismatch_value=0
-            )
-            self.assertIsNotNone(trg)
-            self.assertIsNotNone(trg_weight)
-
-        print(str(program))
-
-    def test_ssd_loss(self):
-        program = Program()
-        with program_guard(program):
-            pb = layers.data(
-                name='prior_box',
-                shape=[10, 4],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            pbv = layers.data(
-                name='prior_box_var',
-                shape=[10, 4],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            loc = layers.data(name='target_box', shape=[10, 4], dtype='float32')
-            scores = layers.data(name='scores', shape=[10, 21], dtype='float32')
-            gt_box = layers.data(
-                name='gt_box', shape=[4], lod_level=1, dtype='float32'
-            )
-            gt_label = layers.data(
-                name='gt_label', shape=[1], lod_level=1, dtype='int32'
-            )
-            loss = layers.ssd_loss(loc, scores, gt_box, gt_label, pb, pbv)
-            self.assertIsNotNone(loss)
-            self.assertEqual(loss.shape[-1], 1)
-        print(str(program))
 
 
 class TestPriorBox(unittest.TestCase):
@@ -498,110 +386,6 @@ class TestMultiBoxHead(unittest.TestCase):
         return mbox_locs, mbox_confs, box, var
 
 
-class TestDetectionMAP(unittest.TestCase):
-    def test_detection_map(self):
-        program = Program()
-        with program_guard(program):
-            detect_res = layers.data(
-                name='detect_res',
-                shape=[10, 6],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            label = layers.data(
-                name='label',
-                shape=[10, 6],
-                append_batch_size=False,
-                dtype='float32',
-            )
-
-            map_out = detection.detection_map(detect_res, label, 21)
-            self.assertIsNotNone(map_out)
-            self.assertEqual(map_out.shape, (1,))
-        print(str(program))
-
-
-class TestRpnTargetAssign(unittest.TestCase):
-    def test_rpn_target_assign(self):
-        program = Program()
-        with program_guard(program):
-            bbox_pred_shape = [10, 50, 4]
-            cls_logits_shape = [10, 50, 2]
-            anchor_shape = [50, 4]
-
-            bbox_pred = layers.data(
-                name='bbox_pred',
-                shape=bbox_pred_shape,
-                append_batch_size=False,
-                dtype='float32',
-            )
-            cls_logits = layers.data(
-                name='cls_logits',
-                shape=cls_logits_shape,
-                append_batch_size=False,
-                dtype='float32',
-            )
-            anchor_box = layers.data(
-                name='anchor_box',
-                shape=anchor_shape,
-                append_batch_size=False,
-                dtype='float32',
-            )
-            anchor_var = layers.data(
-                name='anchor_var',
-                shape=anchor_shape,
-                append_batch_size=False,
-                dtype='float32',
-            )
-            gt_boxes = layers.data(
-                name='gt_boxes', shape=[4], lod_level=1, dtype='float32'
-            )
-            is_crowd = layers.data(
-                name='is_crowd',
-                shape=[1, 10],
-                dtype='int32',
-                lod_level=1,
-                append_batch_size=False,
-            )
-            im_info = layers.data(
-                name='im_info',
-                shape=[1, 3],
-                dtype='float32',
-                lod_level=1,
-                append_batch_size=False,
-            )
-            outs = layers.rpn_target_assign(
-                bbox_pred=bbox_pred,
-                cls_logits=cls_logits,
-                anchor_box=anchor_box,
-                anchor_var=anchor_var,
-                gt_boxes=gt_boxes,
-                is_crowd=is_crowd,
-                im_info=im_info,
-                rpn_batch_size_per_im=256,
-                rpn_straddle_thresh=0.0,
-                rpn_fg_fraction=0.5,
-                rpn_positive_overlap=0.7,
-                rpn_negative_overlap=0.3,
-                use_random=False,
-            )
-            pred_scores = outs[0]
-            pred_loc = outs[1]
-            tgt_lbl = outs[2]
-            tgt_bbox = outs[3]
-            bbox_inside_weight = outs[4]
-
-            self.assertIsNotNone(pred_scores)
-            self.assertIsNotNone(pred_loc)
-            self.assertIsNotNone(tgt_lbl)
-            self.assertIsNotNone(tgt_bbox)
-            self.assertIsNotNone(bbox_inside_weight)
-            assert pred_scores.shape[1] == 1
-            assert pred_loc.shape[1] == 4
-            assert pred_loc.shape[1] == tgt_bbox.shape[1]
-            print(str(program))
-
-
 class TestGenerateProposals(LayerTest):
     def test_generate_proposals(self):
         scores_np = np.random.rand(2, 3, 4, 4).astype('float32')
@@ -675,75 +459,6 @@ class TestGenerateProposals(LayerTest):
         np.testing.assert_array_equal(np.array(rois_stat), rois_dy)
         np.testing.assert_array_equal(np.array(roi_probs_stat), roi_probs_dy)
         np.testing.assert_array_equal(np.array(rois_num_stat), rois_num_dy)
-
-
-class TestYoloDetection(unittest.TestCase):
-    def test_yolov3_loss(self):
-        program = Program()
-        with program_guard(program):
-            x = layers.data(name='x', shape=[30, 7, 7], dtype='float32')
-            gt_box = layers.data(name='gt_box', shape=[10, 4], dtype='float32')
-            gt_label = layers.data(name='gt_label', shape=[10], dtype='int32')
-            gt_score = layers.data(name='gt_score', shape=[10], dtype='float32')
-            loss = layers.yolov3_loss(
-                x,
-                gt_box,
-                gt_label,
-                [10, 13, 30, 13],
-                [0, 1],
-                10,
-                0.7,
-                32,
-                gt_score=gt_score,
-                use_label_smooth=False,
-            )
-
-            self.assertIsNotNone(loss)
-
-    def test_yolo_box(self):
-        program = Program()
-        with program_guard(program):
-            x = layers.data(name='x', shape=[30, 7, 7], dtype='float32')
-            img_size = layers.data(name='img_size', shape=[2], dtype='int32')
-            boxes, scores = layers.yolo_box(
-                x, img_size, [10, 13, 30, 13], 10, 0.01, 32
-            )
-            self.assertIsNotNone(boxes)
-            self.assertIsNotNone(scores)
-
-    def test_yolov3_loss_with_scale(self):
-        program = Program()
-        with program_guard(program):
-            x = layers.data(name='x', shape=[30, 7, 7], dtype='float32')
-            gt_box = layers.data(name='gt_box', shape=[10, 4], dtype='float32')
-            gt_label = layers.data(name='gt_label', shape=[10], dtype='int32')
-            gt_score = layers.data(name='gt_score', shape=[10], dtype='float32')
-            loss = layers.yolov3_loss(
-                x,
-                gt_box,
-                gt_label,
-                [10, 13, 30, 13],
-                [0, 1],
-                10,
-                0.7,
-                32,
-                gt_score=gt_score,
-                use_label_smooth=False,
-                scale_x_y=1.2,
-            )
-
-            self.assertIsNotNone(loss)
-
-    def test_yolo_box_with_scale(self):
-        program = Program()
-        with program_guard(program):
-            x = layers.data(name='x', shape=[30, 7, 7], dtype='float32')
-            img_size = layers.data(name='img_size', shape=[2], dtype='int32')
-            boxes, scores = layers.yolo_box(
-                x, img_size, [10, 13, 30, 13], 10, 0.01, 32, scale_x_y=1.2
-            )
-            self.assertIsNotNone(boxes)
-            self.assertIsNotNone(scores)
 
 
 class TestBoxClip(unittest.TestCase):

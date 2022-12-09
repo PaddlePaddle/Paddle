@@ -281,9 +281,8 @@ class TestFusedMultiTransformerOp(OpTest):
 
             # [B, n_head, seq_len, head_dim] * [B, n_head, out_seq_len, head_dim]
             # --> [B, n_head, seq_len, out_seq_len]
-            qk_out = layers.matmul(
-                x=q_out, y=k_out, transpose_y=True, alpha=self.head_dim**-0.5
-            )
+            qk_out = paddle.matmul(x=q_out, y=k_out, transpose_y=True)
+            qk_out = paddle.scale(qk_out, scale=self.head_dim**-0.5)
 
             if self.debug:
                 print('qk out is')

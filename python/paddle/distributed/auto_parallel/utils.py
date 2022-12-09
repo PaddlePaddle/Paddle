@@ -35,7 +35,6 @@ from paddle.fluid.framework import Variable
 from paddle.fluid.io import is_belong_to_optimizer, is_parameter
 
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
-OpRole = core.op_proto_and_checker_maker.OpRole
 
 __no_shape_var_type__ = [
     core.VarDesc.VarType.READER,

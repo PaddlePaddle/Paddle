@@ -30,7 +30,7 @@ class MyLayer(fluid.Layer):
 
     def paddle_imperative_ParameterList(self, num_stacked_param):
         return paddle.nn.ParameterList(
-            [fluid.layers.create_parameter(shape=[2, 2], dtype='float32')]
+            [paddle.create_parameter(shape=[2, 2], dtype='float32')]
             * num_stacked_param
         )
 
@@ -50,21 +50,21 @@ class TestImperativeContainerParameterList(unittest.TestCase):
             self.assertEqual(len(model.params), num_stacked_param)
             res = model(x)
             self.assertListEqual(res.shape, [5, 2])
-            loss = fluid.layers.reduce_mean(res)
+            loss = paddle.mean(res)
             loss.backward()
 
-            model.params[num_stacked_param - 1] = fluid.layers.create_parameter(
+            model.params[num_stacked_param - 1] = paddle.create_parameter(
                 shape=[2, 3], dtype='float32'
             )
             res = model(x)
             self.assertListEqual(res.shape, [5, 3])
             model.params.append(
-                fluid.layers.create_parameter(shape=[3, 4], dtype='float32')
+                paddle.create_parameter(shape=[3, 4], dtype='float32')
             )
             self.assertEqual(len(model.params), num_stacked_param + 1)
             res = model(x)
             self.assertListEqual(res.shape, [5, 4])
-            loss = fluid.layers.reduce_mean(res)
+            loss = paddle.mean(res)
             loss.backward()
 
     def test_paramter_list(self):

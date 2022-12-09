@@ -118,8 +118,10 @@ class TestImperativeQatAmp(unittest.TestCase):
             if use_amp:
                 with paddle.amp.auto_cast():
                     out = model(img)
-                    acc = fluid.layers.accuracy(out, label)
-                    loss = fluid.layers.cross_entropy(out, label)
+                    acc = paddle.static.accuracy(out, label)
+                    loss = paddle.nn.functional.cross_entropy(
+                        out, label, reduction='none', use_softmax=False
+                    )
                     avg_loss = paddle.mean(loss)
                 scaled_loss = scaler.scale(avg_loss)
                 scaled_loss.backward()
@@ -128,8 +130,10 @@ class TestImperativeQatAmp(unittest.TestCase):
                 adam.clear_gradients()
             else:
                 out = model(img)
-                acc = fluid.layers.accuracy(out, label)
-                loss = fluid.layers.cross_entropy(out, label)
+                acc = paddle.static.accuracy(out, label)
+                loss = paddle.nn.functional.cross_entropy(
+                    out, label, reduction='none', use_softmax=False
+                )
                 avg_loss = paddle.mean(loss)
                 avg_loss.backward()
 
@@ -167,8 +171,8 @@ class TestImperativeQatAmp(unittest.TestCase):
 
             with paddle.amp.auto_cast(use_amp):
                 out = model(img)
-                acc_top1 = fluid.layers.accuracy(input=out, label=label, k=1)
-                acc_top5 = fluid.layers.accuracy(input=out, label=label, k=5)
+                acc_top1 = paddle.static.accuracy(input=out, label=label, k=1)
+                acc_top5 = paddle.static.accuracy(input=out, label=label, k=5)
 
             acc_top1_list.append(float(acc_top1.numpy()))
             if batch_id % 100 == 0:

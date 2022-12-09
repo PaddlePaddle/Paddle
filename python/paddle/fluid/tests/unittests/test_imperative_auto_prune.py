@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.framework import _test_eager_guard
+from paddle.tensor import random
 
 
 class AutoPruneLayer0(fluid.Layer):
@@ -45,7 +46,7 @@ class AutoPruneLayer0(fluid.Layer):
         a = self.linear1(x)
         b = self.linear2(y)
         c = fluid.layers.mul(a, b)
-        d = fluid.layers.reduce_mean(c)
+        d = paddle.mean(c)
         return d
 
 
@@ -74,7 +75,7 @@ class AutoPruneLayer1(fluid.Layer):
         b = self.linear2(y)
         b.stop_gradient = True
         c = fluid.layers.mul(a, b)
-        d = fluid.layers.reduce_mean(c)
+        d = paddle.mean(c)
         return d
 
 
@@ -124,15 +125,15 @@ class MyLayer(fluid.Layer):
 
     def forward(self, x):
         # this method involves only the linear layers
-        loss = fluid.layers.reduce_mean(self.linear_0(x) + self.linear_1(x))
+        loss = paddle.mean(self.linear_0(x) + self.linear_1(x))
         return loss
 
     def linear0(self, x):
-        loss = fluid.layers.reduce_mean(self.linear_0(x))
+        loss = paddle.mean(self.linear_0(x))
         return loss
 
     def embed_linear0(self, x):
-        loss = fluid.layers.reduce_mean(self.linear_0(self.embed0(x)))
+        loss = paddle.mean(self.linear_0(self.embed0(x)))
         return loss
 
 
@@ -147,18 +148,18 @@ class MyLayer2(fluid.Layer):
     def forward(self, indices):
         # mind the difference with MyLayer
         # In this example, the forward method involes all params
-        loss = fluid.layers.reduce_mean(
+        loss = paddle.mean(
             self.linear_0(self.embed0(indices))
             + self.linear_1(self.embed1(indices))
         )
         return loss
 
     def linear0(self, x):
-        loss = fluid.layers.reduce_mean(self.linear_0(x))
+        loss = paddle.mean(self.linear_0(x))
         return loss
 
     def embed_linear0(self, x):
-        loss = fluid.layers.reduce_mean(self.linear_0(self.embed0(x)))
+        loss = paddle.mean(self.linear_0(self.embed0(x)))
         return loss
 
 
@@ -487,7 +488,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
 
     def func_case4_with_no_grad_op_maker(self):
         with fluid.dygraph.guard():
-            out = fluid.layers.gaussian_random(shape=[20, 30])
+            out = random.gaussian(shape=[20, 30])
             loss = paddle.mean(out)
             loss.backward()
             self.assertIsNone(out._grad_ivar())

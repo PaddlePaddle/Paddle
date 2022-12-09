@@ -19,8 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class LocalityAwareNMSOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -252,7 +250,7 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
     int num_det = 0;
 
     int64_t class_num = scores->dims()[0];
-    Tensor bbox_slice, score_slice;
+    phi::DenseTensor bbox_slice, score_slice;
     for (int64_t c = 0; c < class_num; ++c) {
       if (c == background_label) continue;
 
@@ -325,7 +323,7 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
     auto* bboxes_data = bboxes.data<T>();
     auto* odata = outs->data<T>();
     const T* sdata;
-    Tensor bbox;
+    phi::DenseTensor bbox;
     bbox.Resize({scores.dims()[0], box_size});
     int count = 0;
     for (const auto& it : selected_indices) {
@@ -370,7 +368,7 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
     int64_t box_dim = boxes.dims()[2];
     int64_t out_dim = box_dim + 2;
     int num_nmsed_out = 0;
-    Tensor boxes_slice, scores_slice;
+    phi::DenseTensor boxes_slice, scores_slice;
     int n = batch_size;
     for (int i = 0; i < n; ++i) {
       scores_slice = scores.Slice(i, i + 1);
@@ -407,7 +405,7 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
         int64_t s = batch_starts[i];
         int64_t e = batch_starts[i + 1];
         if (e > s) {
-          Tensor out = outs->Slice(s, e);
+          phi::DenseTensor out = outs->Slice(s, e);
           LocalityAwareNMSOutput(dev_ctx,
                                  scores_slice,
                                  boxes_slice,

@@ -1289,7 +1289,7 @@ class TestVarBase(unittest.TestCase):
     def func_test_tensor_str_shape_with_zero(self):
         paddle.disable_static(paddle.CPUPlace())
         x = paddle.ones((10, 10))
-        y = paddle.fluid.layers.where(x == 0)
+        y = paddle.nonzero(x == 0)
         a_str = str(y)
 
         expected = '''Tensor(shape=[0, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
@@ -1374,11 +1374,6 @@ class TestVarBase(unittest.TestCase):
         [0.    , 0.    ]])'''
 
         self.assertEqual(a_str, expected)
-
-    def test_tensor_str_bf16(self):
-        with _test_eager_guard():
-            self.func_tensor_str_bf16()
-        self.func_tensor_str_bf16()
 
     def test_tensor_str_bf16(self):
         with _test_eager_guard():
