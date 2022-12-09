@@ -19,8 +19,8 @@ import paddle
 from .line_search import strong_wolfe
 from .utils import (
     _value_and_gradient,
-    check_initial_inverse_hessian_estimate,
     check_input_type,
+    check_initial_inverse_hessian_estimate,
 )
 
 
@@ -212,8 +212,9 @@ def minimize_lbfgs(
         if line_search_fn == 'strong_wolfe':
             alpha, value, g2, ls_func_calls = strong_wolfe(
                 f=objective_func,
-                xk=xk,
-                pk=pk,
+                xk=xk,  # init_param
+                pk=pk,  # serach direction
+                max_iters=max_line_search_iters,
                 initial_step_length=initial_step_length,
                 dtype=dtype,
             )
