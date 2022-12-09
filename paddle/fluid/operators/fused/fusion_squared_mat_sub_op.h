@@ -18,8 +18,6 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 // ( (A.^2 * B.^2) - (A * B).^2 ) .* scalar
 class FusionSquaredMatSubOp : public framework::OperatorWithKernel {
  public:
