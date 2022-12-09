@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -110,10 +110,10 @@ class TestFusedEcMoEOp(OpTest):
         outputs = paddle.zeros_like(tensor_x)
         batch_prob = expert_prob_flatten.reshape(
             [self.batch_size, self.num_expert, -1, 1]
-        )  # [b, e, cap] 10 32 8
+        )  # [b, e, cap]
 
-        batch_idx = gather_idx[:, :2]  # [b*c*e]【2560 2】
-        selected_token = tensor_x.gather_nd(batch_idx)  # [b*c*e,m]
+        batch_idx = gather_idx[:, :2]  # [b*c*e]
+        selected_token = tensor_x.gather_nd(batch_idx)  # [b*c*e, m]
 
         batch_selected_token = selected_token.reshape(
             [self.batch_size, self.num_expert, -1, tensor_x.shape[-1]]
@@ -122,20 +122,20 @@ class TestFusedEcMoEOp(OpTest):
             [1, 0, 2, 3]
         ).reshape(
             [self.num_expert, -1, tensor_x.shape[-1]]
-        )  # [e,b*c,m]
+        )  # [e, b*c, m]
 
         output = (
             paddle.bmm(batch_selected_token, self.bmm_w0) + self.bmm_b0
         )  # [e, b*c,m]
         output = self.activation(output)
-        output = paddle.bmm(output, self.bmm_w1) + self.bmm_b1  # [e, b*c,m]
+        output = paddle.bmm(output, self.bmm_w1) + self.bmm_b1  # [e, b*c, m]
 
         output = output.transpose([1, 0, 2]).reshape(
             [self.batch_size, -1, self.num_expert, tensor_x.shape[-1]]
-        )  # [b, c, e, m] 10  32 8 768
+        )  # [b, c, e, m]
         output = output.transpose([0, 2, 1, 3])  # [b,e,c,m]
-        output = batch_prob * output  # [b,e,c,m]
-        output = output.reshape([-1, tensor_x.shape[-1]])  # 【2560 768】
+        output = batch_prob * output  # [b, e, c, m]
+        output = output.reshape([-1, tensor_x.shape[-1]])
 
         outputs = outputs.scatter_nd_add(batch_idx, output)
         return outputs
