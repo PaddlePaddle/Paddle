@@ -19,7 +19,7 @@ from paddle.distributed.auto_parallel.dist_attribute import (
 )
 from paddle.fluid import core, framework
 from paddle.fluid.dygraph.parallel import ParallelEnv
-from paddle.quantization.slim.quantization import (
+from paddle.static.quantization import (
     AddQuantDequantPassV2,
     OutScaleForTrainingPass,
     QuantizationTransformPassV2,

@@ -21,7 +21,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, Variable, core
-from paddle.fluid.contrib.slim.quantization import (
+from paddle.static.quantization import (
     AddQuantDequantPass,
     OutScaleForInferencePass,
     OutScaleForTrainingPass,

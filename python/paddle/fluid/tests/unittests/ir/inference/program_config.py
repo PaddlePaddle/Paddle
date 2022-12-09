@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.contrib.slim.quantization import (
+from paddle.static.quantization import (
     QuantizationFreezePass,
     QuantizationTransformPass,
 )

@@ -12,39 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .slim.quantization.imperative.ptq_config import (
+from ..static.quantization.imperative.ptq_config import (
     PTQConfig,
     default_ptq_config,
 )
-from .slim.quantization.imperative.ptq_quantizer import (
+from ..static.quantization.imperative.ptq_quantizer import (
     BaseQuantizer,
 )
-from .slim.quantization.imperative.ptq_quantizer import (
+from ..static.quantization.imperative.ptq_quantizer import (
     AbsmaxQuantizer,
 )
-from .slim.quantization.imperative.ptq_quantizer import (
+from ..static.quantization.imperative.ptq_quantizer import (
     PerChannelAbsmaxQuantizer,
 )
-from .slim.quantization.imperative.ptq_quantizer import (
+from ..static.quantization.imperative.ptq_quantizer import (
     KLQuantizer,
 )
-from .slim.quantization.imperative.ptq_quantizer import (
+from ..static.quantization.imperative.ptq_quantizer import (
     HistQuantizer,
 )
-from .slim.quantization.imperative.ptq_quantizer import (
+from ..static.quantization.imperative.ptq_quantizer import (
     SUPPORT_ACT_QUANTIZERS,
 )
-from .slim.quantization.imperative.ptq_quantizer import (
+from ..static.quantization.imperative.ptq_quantizer import (
     SUPPORT_WT_QUANTIZERS,
 )
-from .slim.quantization.imperative.ptq_registry import (
+from ..static.quantization.imperative.ptq_registry import (
     PTQRegistry,
 )
-from .slim.quantization.imperative.ptq import ImperativePTQ
-from .slim.quantization.imperative.qat import (
+from ..static.quantization.imperative.ptq import (
+    ImperativePTQ,
+)
+from ..static.quantization.imperative.qat import (
     ImperativeQuantAware,
 )
-from . import quantize_transpiler
-from .quantize_transpiler import *
-
-__all__ = quantize_transpiler.__all__

@@ -12,50 +12,90 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...quantization.slim.quantization.quantization_pass import (
+from .quantization_pass import (
     QuantizationTransformPass,
 )
-from ...quantization.slim.quantization.quantization_pass import (
+from .quantization_pass import (
     QuantizationFreezePass,
 )
-from ...quantization.slim.quantization.quantization_pass import (
+from .quantization_pass import (
     ConvertToInt8Pass,
 )
-from ...quantization.slim.quantization.quantization_pass import (
+from .quantization_pass import (
     TransformForMobilePass,
 )
-from ...quantization.slim.quantization.quantization_pass import (
+from .quantization_pass import (
     OutScaleForTrainingPass,
 )
-from ...quantization.slim.quantization.quantization_pass import (
+from .quantization_pass import (
     OutScaleForInferencePass,
 )
-from ...quantization.slim.quantization.quantization_pass import (
+from .quantization_pass import (
     AddQuantDequantPass,
 )
-from ...quantization.slim.quantization.quantization_pass import (
+from .quantization_pass import (
     ReplaceFakeQuantDequantPass,
 )
-from ...quantization.slim.quantization.quantization_pass import QuantWeightPass
-from ...quantization.slim.quantization.quantization_pass import (
+from .quantization_pass import (
+    QuantWeightPass,
+)
+from .quantization_pass import (
     QuantizationTransformPassV2,
 )
-from ...quantization.slim.quantization.quantization_pass import (
+from .quantization_pass import (
     AddQuantDequantPassV2,
 )
-from ...quantization.slim.quantization.quant_int8_mkldnn_pass import (
+from .quantization_pass import (
+    AddQuantDequantForInferencePass,
+)
+from .quant_int8_mkldnn_pass import (
     QuantInt8MkldnnPass,
 )
-from ...quantization.slim.quantization.quant2_int8_mkldnn_pass import (
+from .quant2_int8_mkldnn_pass import (
     Quant2Int8MkldnnPass,
 )
 
-from ...quantization.slim.quantization.post_training_quantization import (
+from .post_training_quantization import (
     PostTrainingQuantization,
 )
-from ...quantization.slim.quantization.post_training_quantization import (
+from .post_training_quantization import (
     PostTrainingQuantizationProgram,
 )
-from ...quantization.slim.quantization.post_training_quantization import (
+from .post_training_quantization import (
     WeightQuantization,
+)
+
+from .imperative.ptq_config import (
+    PTQConfig,
+    default_ptq_config,
+)
+from .imperative.ptq_quantizer import (
+    BaseQuantizer,
+)
+from .imperative.ptq_quantizer import (
+    AbsmaxQuantizer,
+)
+from .imperative.ptq_quantizer import (
+    PerChannelAbsmaxQuantizer,
+)
+from .imperative.ptq_quantizer import (
+    KLQuantizer,
+)
+from .imperative.ptq_quantizer import (
+    HistQuantizer,
+)
+from .imperative.ptq_quantizer import (
+    SUPPORT_ACT_QUANTIZERS,
+)
+from .imperative.ptq_quantizer import (
+    SUPPORT_WT_QUANTIZERS,
+)
+from .imperative.ptq_registry import (
+    PTQRegistry,
+)
+from .imperative.ptq import (
+    ImperativePTQ,
+)
+from .imperative.qat import (
+    ImperativeQuantAware,
 )

@@ -1,4 +1,4 @@
-#   copyright (c) 2022 paddlepaddle authors. all rights reserved.
+#   copyright (c) 2018 paddlepaddle authors. all rights reserved.
 #
 # licensed under the apache license, version 2.0 (the "license");
 # you may not use this file except in compliance with the license.
@@ -11,6 +11,7 @@
 # without warranties or conditions of any kind, either express or implied.
 # see the license for the specific language governing permissions and
 # limitations under the license.
+
 import functools
 import os
 import random
@@ -20,19 +21,20 @@ import unittest
 
 import numpy as np
 from PIL import Image
+from test_post_training_quantization_mobilenetv1 import (
+    TestPostTrainingQuantization,
+)
 
 import paddle
-import paddle.fluid as fluid
-from paddle.dataset.common import download
-from paddle.static.quantization import PostTrainingQuantization
+from paddle.static.quantization import PostTrainingQuantizationProgram
 
 paddle.enable_static()
 
 random.seed(0)
 np.random.seed(0)
 
-DATA_DIM = 224
 THREAD = 1
+DATA_DIM = 224
 BUF_SIZE = 102400
 DATA_DIR = 'data/ILSVRC2012'
 
@@ -51,7 +53,7 @@ def resize_short(img, target_size):
 def crop_image(img, target_size, center):
     width, height = img.size
     size = target_size
-    if center:
+    if center is True:
         w_start = (width - size) / 2
         h_start = (height - size) / 2
     else:
@@ -110,122 +112,18 @@ def val(data_dir=DATA_DIR):
     return _reader_creator(file_list, 'val', shuffle=False, data_dir=data_dir)
 
 
-class TestPostTrainingQuantization(unittest.TestCase):
-    def setUp(self):
-        self.int8_download = 'int8/download'
-        self.cache_folder = os.path.expanduser(
-            '~/.cache/paddle/dataset/' + self.int8_download
-        )
-        self.data_cache_folder = ''
-        data_urls = []
-        data_md5s = []
-        if os.environ.get('DATASET') == 'full':
-            data_urls.append(
-                'https://paddle-inference-dist.bj.bcebos.com/int8/ILSVRC2012_img_val.tar.gz.partaa'
-            )
-            data_md5s.append('60f6525b0e1d127f345641d75d41f0a8')
-            data_urls.append(
-                'https://paddle-inference-dist.bj.bcebos.com/int8/ILSVRC2012_img_val.tar.gz.partab'
-            )
-            data_md5s.append('1e9f15f64e015e58d6f9ec3210ed18b5')
-            self.data_cache_folder = self.download_data(
-                data_urls, data_md5s, "full_data", False
-            )
-        else:
-            data_urls.append(
-                'http://paddle-inference-dist.bj.bcebos.com/int8/calibration_test_data.tar.gz'
-            )
-            data_md5s.append('1b6c1c434172cca1bf9ba1e4d7a3157d')
-            self.data_cache_folder = self.download_data(
-                data_urls, data_md5s, "small_data", False
-            )
-
-        # reader/decorator.py requires the relative path to the data folder
-        if not os.path.exists("./data/ILSVRC2012"):
-            cmd = 'rm -rf {0} && ln -s {1} {0}'.format(
-                "data", self.data_cache_folder
-            )
-            os.system(cmd)
-
-        self.batch_size = 1 if os.environ.get('DATASET') == 'full' else 50
-        self.sample_iterations = (
-            50 if os.environ.get('DATASET') == 'full' else 2
-        )
-        self.infer_iterations = (
-            50000 if os.environ.get('DATASET') == 'full' else 2
-        )
-
-        self.int8_model = "post_training_quantization"
-        print("self.int8_model: ", self.int8_model)
-
-    def tearDown(self):
-        cmd = 'rm -rf post_training_quantization'
-        os.system(cmd)
-
-    def cache_unzipping(self, target_folder, zip_path):
-        if not os.path.exists(target_folder):
-            cmd = 'mkdir {0} && tar xf {1} -C {0}'.format(
-                target_folder, zip_path
-            )
-            os.system(cmd)
-
-    def download_data(self, data_urls, data_md5s, folder_name, is_model=True):
-        data_cache_folder = os.path.join(self.cache_folder, folder_name)
-        zip_path = ''
-        if os.environ.get('DATASET') == 'full':
-            file_names = []
-            for i in range(0, len(data_urls)):
-                download(data_urls[i], self.int8_download, data_md5s[i])
-                file_names.append(data_urls[i].split('/')[-1])
-
-            zip_path = os.path.join(
-                self.cache_folder, 'full_imagenet_val.tar.gz'
-            )
-            if not os.path.exists(zip_path):
-                cat_command = 'cat'
-                for file_name in file_names:
-                    cat_command += ' ' + os.path.join(
-                        self.cache_folder, file_name
-                    )
-                cat_command += ' > ' + zip_path
-                os.system(cat_command)
-
-        if os.environ.get('DATASET') != 'full' or is_model:
-            download(data_urls[0], self.int8_download, data_md5s[0])
-            file_name = data_urls[0].split('/')[-1]
-            zip_path = os.path.join(self.cache_folder, file_name)
-
-        print('Data is downloaded at {0}'.format(zip_path))
-        self.cache_unzipping(data_cache_folder, zip_path)
-        return data_cache_folder
-
-    def download_model(self):
-        pass
-
-    def run_program(
-        self, model_path, batch_size, infer_iterations, is_quantized_model=False
-    ):
+class TestPostTrainingQuantizationProgram(TestPostTrainingQuantization):
+    def run_program(self, model_path, batch_size, infer_iterations):
         image_shape = [3, 224, 224]
-        config = paddle.inference.Config(model_path)
-        config.disable_gpu()
-        config.enable_mkldnn()
-        config.switch_ir_optim()
-        config.set_cpu_math_library_num_threads(1)
-        config.disable_glog_info()
-        if is_quantized_model:
-            config.enable_mkldnn_int8()
-        predictor = paddle.inference.create_predictor(config)
-
-        input_names = predictor.get_input_names()
-        image_tensor = predictor.get_input_handle(input_names[0])
-        label_tensor = predictor.get_input_handle(input_names[1])
-
-        output_names = predictor.get_output_names()
-        acc_tensor = predictor.get_output_handle("accuracy_0.tmp_0")
-
+        place = paddle.CPUPlace()
+        exe = paddle.static.Executor(place)
+        [
+            infer_program,
+            feed_dict,
+            fetch_targets,
+        ] = paddle.static.load_inference_model(model_path, exe)
         val_reader = paddle.batch(val(), batch_size)
         iterations = infer_iterations
-
         test_info = []
         cnt = 0
         periods = []
@@ -237,11 +135,11 @@ class TestPostTrainingQuantization(unittest.TestCase):
             label = label.reshape([-1, 1])
 
             t1 = time.time()
-            image_tensor.copy_from_cpu(image)
-            label_tensor.copy_from_cpu(label)
-            predictor.run()
-            acc1 = acc_tensor.copy_to_cpu()
-
+            _, acc1, _ = exe.run(
+                infer_program,
+                feed={feed_dict[0]: image, feed_dict[1]: label},
+                fetch_list=fetch_targets,
+            )
             t2 = time.time()
             period = t2 - t1
             periods.append(period)
@@ -258,12 +156,26 @@ class TestPostTrainingQuantization(unittest.TestCase):
         throughput = cnt / np.sum(periods)
         latency = np.average(periods)
         acc1 = np.sum(test_info) / cnt
-        return (throughput, latency, acc1)
+        [
+            infer_program,
+            feed_dict,
+            fetch_targets,
+        ] = paddle.static.load_inference_model(model_path, exe)
+        return (
+            throughput,
+            latency,
+            acc1,
+            infer_program,
+            feed_dict,
+            fetch_targets,
+        )
 
     def generate_quantized_model(
         self,
-        model_path,
+        program,
         quantizable_op_type,
+        feed_list,
+        fetch_list,
         algo="KL",
         round_type="round",
         is_full_quantize=False,
@@ -271,14 +183,34 @@ class TestPostTrainingQuantization(unittest.TestCase):
         is_optimize_model=False,
         onnx_format=False,
     ):
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        val_reader = val()
+        try:
+            os.system("mkdir " + self.int8_model)
+        except Exception as e:
+            print(
+                "Failed to create {} due to {}".format(self.int8_model, str(e))
+            )
+            sys.exit(-1)
 
-        ptq = PostTrainingQuantization(
+        place = paddle.CPUPlace()
+        exe = paddle.static.Executor(place)
+        val_reader = val()
+        same_scale_tensor_list = [
+            ['batch_norm_3.tmp_2#/#1', 'batch_norm_4.tmp_2#*#1'],
+            ['batch_norm_27.tmp_2', 'batch_norm_26.tmp_2'],
+            [
+                'test_scale_name_not_in_scale_dict1',
+                'test_scale_name_not_in_scale_dict2',
+            ],
+            [
+                'test_scale_name_not_in_scale_dict1#/#1',
+                'test_scale_name_not_in_scale_dict2#/#1',
+            ],
+        ]
+        ptq = PostTrainingQuantizationProgram(
             executor=exe,
+            program=program,
             sample_generator=val_reader,
-            model_dir=model_path,
+            batch_nums=10,
             algo=algo,
             quantizable_op_type=quantizable_op_type,
             round_type=round_type,
@@ -286,6 +218,9 @@ class TestPostTrainingQuantization(unittest.TestCase):
             optimize_model=is_optimize_model,
             onnx_format=onnx_format,
             is_use_cache_file=is_use_cache_file,
+            feed_list=feed_list,
+            fetch_list=fetch_list,
+            same_scale_tensor_list=same_scale_tensor_list,
         )
         ptq.quantize()
         ptq.save_quantized_model(self.int8_model)
@@ -302,7 +237,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         is_use_cache_file,
         is_optimize_model,
         diff_threshold,
-        onnx_format=True,
+        onnx_format=False,
     ):
         infer_iterations = self.infer_iterations
         batch_size = self.batch_size
@@ -311,13 +246,32 @@ class TestPostTrainingQuantization(unittest.TestCase):
         model_cache_folder = self.download_data(data_urls, data_md5s, model)
 
         print(
+            "Start FP32 inference for {0} on {1} images ...".format(
+                model, infer_iterations * batch_size
+            )
+        )
+        (
+            fp32_throughput,
+            fp32_latency,
+            fp32_acc1,
+            infer_program,
+            feed_dict,
+            fetch_targets,
+        ) = self.run_program(
+            os.path.join(model_cache_folder, "model"),
+            batch_size,
+            infer_iterations,
+        )
+        print(
             "Start INT8 post training quantization for {0} on {1} images ...".format(
                 model, sample_iterations * batch_size
             )
         )
         self.generate_quantized_model(
-            os.path.join(model_cache_folder, "model"),
+            infer_program,
             quantizable_op_type,
+            feed_dict,
+            fetch_targets,
             algo,
             round_type,
             is_full_quantize,
@@ -327,26 +281,12 @@ class TestPostTrainingQuantization(unittest.TestCase):
         )
 
         print(
-            "Start FP32 inference for {0} on {1} images ...".format(
-                model, infer_iterations * batch_size
-            )
-        )
-        (fp32_throughput, fp32_latency, fp32_acc1) = self.run_program(
-            os.path.join(model_cache_folder, "model"),
-            batch_size,
-            infer_iterations,
-        )
-
-        print(
             "Start INT8 inference for {0} on {1} images ...".format(
                 model, infer_iterations * batch_size
             )
         )
-        (int8_throughput, int8_latency, int8_acc1) = self.run_program(
-            self.int8_model,
-            batch_size,
-            infer_iterations,
-            is_quantized_model=True,
+        (int8_throughput, int8_latency, int8_acc1, _, _, _) = self.run_program(
+            self.int8_model, batch_size, infer_iterations
         )
 
         print("---Post training quantization of {} method---".format(algo))
@@ -362,28 +302,26 @@ class TestPostTrainingQuantization(unittest.TestCase):
         )
         sys.stdout.flush()
 
-        delta_value = int8_latency - fp32_latency
+        delta_value = fp32_acc1 - int8_acc1
         self.assertLess(delta_value, diff_threshold)
 
 
-class TestMKLDNNInt8ForResnet50AvgONNXFormat(TestPostTrainingQuantization):
-    def test_onnx_format_avg_resnet50(self):
-        model = "resnet50"
-        algo = "avg"
+class TestPostTrainingProgramAbsMaxForResnet50(
+    TestPostTrainingQuantizationProgram
+):
+    def test_post_training_abs_max_resnet50(self):
+        model = "ResNet-50"
+        algo = "abs_max"
         round_type = "round"
         data_urls = [
-            'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
+            'http://paddle-inference-dist.bj.bcebos.com/int8/resnet50_int8_model.tar.gz'
         ]
-        data_md5s = ['13892b0716d26443a8cdea15b3c6438b']
-        quantizable_op_type = [
-            "conv2d",
-            "depthwise_conv2d",
-            "mul",
-        ]
+        data_md5s = ['4a5194524823d9b76da6e738e1367881']
+        quantizable_op_type = ["conv2d", "mul"]
         is_full_quantize = False
         is_use_cache_file = False
         is_optimize_model = False
-        diff_threshold = 0
+        diff_threshold = 0.025
         self.run_test(
             model,
             algo,
@@ -395,7 +333,6 @@ class TestMKLDNNInt8ForResnet50AvgONNXFormat(TestPostTrainingQuantization):
             is_use_cache_file,
             is_optimize_model,
             diff_threshold,
-            onnx_format=True,
         )
 
 
