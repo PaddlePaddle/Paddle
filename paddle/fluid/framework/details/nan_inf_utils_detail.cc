@@ -218,8 +218,7 @@ void CheckNanInfCpuImpl(const T* value_ptr,
                         const std::string& cpu_hint_str) {
   using RealType = typename T::value_type;
 
-  RealType real_sum = 0.0f;
-  RealType imag_sum = 0.0f;
+  RealType real_sum = 0.0f, imag_sum = 0.0f;
 
 #ifdef _OPENMP
 #pragma omp parallel for reduction(+ : real_sum) reduction(+ : imag_sum)
