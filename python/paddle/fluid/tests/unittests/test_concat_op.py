@@ -414,7 +414,7 @@ class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
             self.program = fluid.Program()
             with fluid.program_guard(self.program):
                 input = fluid.layers.assign(self.x)
-                tensor_array = fluid.layers.create_array(dtype='float32')
+                tensor_array = paddle.tensor.create_array(dtype='float32')
                 zero = fluid.layers.fill_constant(
                     shape=[1], value=0, dtype="int64"
                 )
@@ -427,7 +427,7 @@ class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
             self.program = paddle.static.Program()
             with paddle.static.program_guard(self.program):
                 input = paddle.assign(self.x)
-                tensor_array = fluid.layers.create_array(
+                tensor_array = paddle.tensor.create_array(
                     dtype='float32'
                 )  # Api create_array is not supported in paddle 2.0 yet.
                 zero = paddle.zeros(shape=[1], dtype="int64")

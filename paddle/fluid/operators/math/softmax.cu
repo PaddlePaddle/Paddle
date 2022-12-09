@@ -23,7 +23,6 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-using Tensor = phi::DenseTensor;
 using ScopedTensorDescriptor = platform::ScopedTensorDescriptor;
 using DataLayout = platform::DataLayout;
 template <typename T>
@@ -42,7 +41,7 @@ void SoftmaxCUDNNFunctor<T, DeviceContext>::operator()(
   if (cudnn_tensor_dims.size() == 5) {
     layout = DataLayout::kNCDHW;
   }
-  // NOTE(*) : cudnn softmax only support >= 4D Tensor,
+  // NOTE(*) : cudnn softmax only support >= 4D phi::DenseTensor,
   // fill 1 at unused dims
   if (cudnn_tensor_dims.size() <= 2) {
     cudnn_tensor_dims.resize(4, 1);
@@ -95,7 +94,7 @@ void SoftmaxGradCUDNNFunctor<T, DeviceContext>::operator()(
   if (cudnn_tensor_dims.size() == 5) {
     layout = DataLayout::kNCDHW;
   }
-  // NOTE(*) : cudnn softmax only support >= 4D Tensor,
+  // NOTE(*) : cudnn softmax only support >= 4D phi::DenseTensor,
   // fill 1 at unused dims
   if (cudnn_tensor_dims.size() <= 2) {
     cudnn_tensor_dims.resize(4, 1);

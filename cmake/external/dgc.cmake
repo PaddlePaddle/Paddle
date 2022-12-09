@@ -23,14 +23,14 @@ set(DGC_INCLUDE_DIR
 set(DGC_LIBRARIES
     "${DGC_INSTALL_DIR}/lib/libdgc.a"
     CACHE FILEPATH "dgc library." FORCE)
-set(DGC_URL "https://fleet.bj.bcebos.com/dgc/collective_f66ef73.tgz")
+set(DGC_URL "https://fleet.bj.bcebos.com/dgc/collective_7369ff.tgz")
 include_directories(${DGC_INCLUDE_DIR})
 
 ExternalProject_Add(
   extern_dgc
   ${EXTERNAL_PROJECT_LOG_ARGS}
   URL ${DGC_URL}
-  URL_MD5 "94e6fa1bc97169d0e1aad44570fe3251"
+  URL_MD5 "ede459281a0f979da8d84f81287369ff"
   PREFIX "${DGC_PREFIX_DIR}"
   CONFIGURE_COMMAND ""
   BUILD_COMMAND make -j${NPROC}

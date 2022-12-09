@@ -80,7 +80,7 @@ def conv_bn_layer(
     return (
         conv
         if remove_bn
-        else fluid.layers.batch_norm(input=conv, act=act, momentum=0.1)
+        else paddle.static.nn.batch_norm(input=conv, act=act, momentum=0.1)
     )
 
 
@@ -121,7 +121,7 @@ def bottleneck_block(input, num_filters, stride, cardinality, reduction_ratio):
 
     short = shortcut(input, num_filters * 2, stride)
 
-    return fluid.layers.elementwise_add(x=short, y=scale, act='relu')
+    return paddle.nn.functional.relu(paddle.add(x=short, y=scale))
 
 
 img_shape = [3, 224, 224]
@@ -141,8 +141,8 @@ def SE_ResNeXt50Small(use_feed):
     conv = conv_bn_layer(
         input=conv, num_filters=16, filter_size=3, stride=1, act='relu'
     )
-    conv = fluid.layers.pool2d(
-        input=conv, pool_size=3, pool_stride=2, pool_padding=1, pool_type='max'
+    conv = paddle.nn.functional.max_pool2d(
+        x=conv, kernel_size=3, stride=2, padding=1
     )
 
     cardinality = 32
