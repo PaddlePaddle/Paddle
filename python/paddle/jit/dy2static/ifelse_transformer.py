@@ -57,7 +57,7 @@ from paddle.jit.dy2static.utils import (
     create_name_str,
 )
 
-__all__ = ['IfElseTransformer']
+__all__ = []
 
 TRUE_FUNC_PREFIX = 'true_fn'
 FALSE_FUNC_PREFIX = 'false_fn'

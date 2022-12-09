@@ -39,10 +39,6 @@ from .dy2static.convert_call_func import (
     ConversionOptions,
     CONVERSION_OPTIONS,
 )
-from .dy2static.logging_utils import (
-    set_code_level,
-    set_verbosity,
-)
 from .dy2static.program_translator import (
     ProgramTranslator,
     StaticFunction,
