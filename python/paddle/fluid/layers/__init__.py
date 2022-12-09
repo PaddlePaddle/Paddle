@@ -24,7 +24,6 @@ from . import math_op_patch
 from .math_op_patch import *
 from . import loss
 from .loss import *
-from . import detection
 from .learning_rate_scheduler import *
 from .collective import *
 from .sequence_lod import *
