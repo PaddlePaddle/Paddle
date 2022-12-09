@@ -16,12 +16,13 @@
 Utilities of Auto SParsity (ASP).
 """
 
-import sys
 import collections
-import numpy as np
+import sys
+import threading
 from enum import Enum
 from itertools import permutations
-import threading
+
+import numpy as np
 
 __all__ = []
 
@@ -57,8 +58,7 @@ class CheckMethod(Enum):
             .. code-block:: python
 
             import numpy as np
-            from paddle.static.sparsity import MaskAlgo
-            from paddle.incubate.asp.sparsity import CheckMethod
+            from paddle.incubate.asp.sparsity import CheckMethod, MaskAlgo
 
             CheckMethod.get_checking_method(MaskAlgo.MASK_1D)
             # CheckMethod.CHECK_1D

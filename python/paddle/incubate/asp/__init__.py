@@ -13,12 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.asp.sparsity import calculate_density  # noqa: F401
-from paddle.asp.sparsity import decorate  # noqa: F401
-from paddle.asp.sparsity import prune_model  # noqa: F401
-from paddle.asp.sparsity import set_excluded_layers  # noqa: F401
-from paddle.asp.sparsity import reset_excluded_layers  # noqa: F401
-from paddle.asp import sparsity
+from .sparsity import calculate_density  # noqa: F401
+from .sparsity import decorate  # noqa: F401
+from .sparsity import prune_model  # noqa: F401
+from .sparsity import set_excluded_layers  # noqa: F401
+from .sparsity import reset_excluded_layers  # noqa: F401
+from .sparsity import add_supported_layer  # noqa: F401
+from . import sparsity  # noqa: F401
 
 __all__ = [  # noqa
     'calculate_density',
@@ -26,4 +27,5 @@ __all__ = [  # noqa
     'prune_model',
     'set_excluded_layers',
     'reset_excluded_layers',
+    'add_supported_layer',
 ]

@@ -13,13 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import paddle
 import copy
-from paddle.incubate.asp import sparsity
-import threading
 import logging
+import threading
+
+import numpy as np
+
+import paddle
 from paddle.fluid.log_helper import get_logger
+from paddle.incubate.asp import sparsity
 
 __all__ = ['add_supported_layer']
 

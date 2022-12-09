@@ -16,19 +16,21 @@
 Functions for Auto SParsity (ASP) training and inference.
 """
 
-import os
 import copy
+import os
+
 import numpy as np
+
 import paddle
+from paddle.fluid import core, global_scope, layers, program_guard
 from paddle.fluid.framework import dygraph_only
-from paddle.fluid import global_scope, program_guard, layers
 from paddle.fluid.initializer import ConstantInitializer
 from paddle.incubate.asp import sparsity
-from paddle.fluid import core
+
 from .supported_layer_list import (
+    _default_pruning,
     supported_layers_and_prune_func_map,
 )
-from .supported_layer_list import _default_pruning
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
@@ -730,7 +732,7 @@ class ASPHelper:
         Examples:
             .. code-block:: python
 
-              from paddle.static.sparsity.asp import ASPHelper
+              from paddle.incubate.asp.sparsity.asp import ASPHelper
 
               main_program = paddle.static.Program()
               startup_program = paddle.static.Program()
@@ -881,7 +883,7 @@ class ASPHelper:
             for param in params:
                 if ASPHelper._is_supported_layer(main_program, param.name):
                     if param.name not in asp_info.mask_vars:
-                        mask_param = paddle.create_parameter(
+                        mask_param = layers.create_parameter(
                             name=ASPHelper._get_mask_name(param.name),
                             shape=param.shape,
                             dtype=param.dtype,
