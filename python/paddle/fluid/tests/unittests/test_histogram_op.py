@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-from op_test import OpTest
 from paddle.fluid.framework import _test_eager_guard
 
 
@@ -88,7 +90,7 @@ class TestHistogramOpError(unittest.TestCase):
             )
             paddle.histogram(input=input_value, bins=-1, min=1, max=5)
 
-        with self.assertRaises(IndexError):
+        with self.assertRaises(ValueError):
             self.run_network(net_func)
 
     def test_min_max_error(self):

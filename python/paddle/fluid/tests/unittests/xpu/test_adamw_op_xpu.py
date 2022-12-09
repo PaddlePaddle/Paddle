@@ -17,17 +17,17 @@ import sys
 sys.path.append("..")
 
 import unittest
-import paddle
+
 import numpy as np
-import paddle.fluid as fluid
-
 from op_test_xpu import XPUOpTest
-
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+import paddle.fluid as fluid
 
 
 def adamw_step(inputs, attributes):
@@ -90,9 +90,9 @@ class XPUTestAdamwOp1(XPUOpTestWrapper):
             self.dtype = self.in_type_str
             param = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
             grad = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
-            moment1 = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+            moment1 = np.random.uniform(-1, 1, self.shape).astype("float32")
             # The second moment is positive
-            moment2 = np.random.random(self.shape).astype(self.dtype)
+            moment2 = np.random.random(self.shape).astype("float32")
 
             learning_rate = 0.004
             beta1 = 0.78
@@ -106,9 +106,9 @@ class XPUTestAdamwOp1(XPUOpTestWrapper):
                 'Grad': grad,
                 'Moment1': moment1,
                 'Moment2': moment2,
-                'LearningRate': np.array([learning_rate]).astype(self.dtype),
-                'Beta1Pow': np.array([beta1_pow]).astype(self.dtype),
-                'Beta2Pow': np.array([beta2_pow]).astype(self.dtype),
+                'LearningRate': np.array([learning_rate]).astype("float32"),
+                'Beta1Pow': np.array([beta1_pow]).astype("float32"),
+                'Beta2Pow': np.array([beta2_pow]).astype("float32"),
             }
 
             self.attrs = {
@@ -127,8 +127,8 @@ class XPUTestAdamwOp1(XPUOpTestWrapper):
                 'Moment1Out': moment1_out,
                 'Moment2Out': moment2_out,
                 'ParamOut': param_out,
-                'Beta1PowOut': np.array([beta1_pow]).astype(self.dtype) * beta1,
-                'Beta2PowOut': np.array([beta2_pow]).astype(self.dtype) * beta2,
+                'Beta1PowOut': np.array([beta1_pow]).astype("float32") * beta1,
+                'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2,
             }
 
         def init_shape(self):
@@ -305,7 +305,8 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
 support_types = get_xpu_op_support_types('adamw')
 for stype in support_types:
     create_test_class(globals(), XPUTestAdamwOp1, stype)
-    create_test_class(globals(), XPUTestAdamwOp2, stype)
+    if stype == "float32":
+        create_test_class(globals(), XPUTestAdamwOp2, stype)
 
 if __name__ == "__main__":
     paddle.enable_static()

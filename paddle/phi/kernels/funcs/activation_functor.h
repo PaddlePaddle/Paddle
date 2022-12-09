@@ -125,14 +125,23 @@ struct SinDoubleGradFunctor : public BaseActivationFunctor<T> {
     // calculate d2x first, so d2d1y can inplace d2d1x
     auto d2x = EigenVector<T>::Flatten(
         GET_DATA_SAFELY(dX, "Output", "d2x", "SinDoubleGrad"));
-    auto d1y = EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(dOut, "Output", "d1y", "SinDoubleGrad"));
-    d2x.device(*d) = -d2d1x * x.unaryExpr(Sine<T>()) * d1y;
+
+    if (dX) {
+      if (dOut) {
+        auto d1y = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(dOut, "Output", "d1y", "SinDoubleGrad"));
+        d2x.device(*d) = -d2d1x * x.unaryExpr(Sine<T>()) * d1y;
+      } else {
+        d2x.device(*d) = -d2d1x * x.unaryExpr(Sine<T>()) * static_cast<T>(0);
+      }
+    }
 
     // calculate d2d1y
-    auto d2d1y = EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(ddOut, "Output", "d2d1y", "SinDoubleGrad"));
-    d2d1y.device(*d) = d2d1x * x.unaryExpr(Cosine<T>());
+    if (ddOut) {
+      auto d2d1y = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(ddOut, "Output", "d2d1y", "SinDoubleGrad"));
+      d2d1y.device(*d) = d2d1x * x.unaryExpr(Cosine<T>());
+    }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
 };
@@ -167,28 +176,71 @@ struct SinTripleGradFunctor : public BaseActivationFunctor<T> {
     auto* d = dev.eigen_device();
     auto x = EigenVector<T>::Flatten(
         GET_DATA_SAFELY(X, "Input", "x", "SinTripleGrad"));
-    auto d2d1x = EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(ddX, "Input", "d2d1x", "SinTripleGrad"));
-    auto d1y = EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(dOut, "Input", "d1y", "SinTripleGrad"));
-    auto d3d2d1y = EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(d_DDOut, "Input", "d3d2d1y", "SinTripleGrad"));
     auto d3d2x = EigenVector<T>::Flatten(
         GET_DATA_SAFELY(d_dx_New, "Input", "d3d2x", "SinTripleGrad"));
+    if (d_x_New) {
+      auto d3x = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(d_x_New, "Output", "d3x", "SinTripleGrad"));
+      if (dOut && ddX && d_DDOut) {
+        auto d2d1x = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(ddX, "Input", "d2d1x", "SinTripleGrad"));
+        auto d1y = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(dOut, "Input", "d1y", "SinTripleGrad"));
+        auto d3d2d1y = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(d_DDOut, "Input", "d3d2d1y", "SinTripleGrad"));
+        d3x.device(*d) = -x.unaryExpr(Cosine<T>()) * d1y * d2d1x * d3d2x -
+                         x.unaryExpr(Sine<T>()) * d2d1x * d3d2d1y;
+      } else if (!dOut && ddX && d_DDOut) {
+        auto d2d1x = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(ddX, "Input", "d2d1x", "SinTripleGrad"));
+        auto d3d2d1y = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(d_DDOut, "Input", "d3d2d1y", "SinTripleGrad"));
+        d3x.device(*d) = -x.unaryExpr(Sine<T>()) * d2d1x * d3d2d1y;
+      } else if (dOut && ddX && !d_DDOut) {
+        auto d2d1x = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(ddX, "Input", "d2d1x", "SinTripleGrad"));
+        auto d1y = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(dOut, "Input", "d1y", "SinTripleGrad"));
+        d3x.device(*d) = -x.unaryExpr(Cosine<T>()) * d1y * d2d1x * d3d2x;
+      } else {
+        d3x.device(*d) = x * static_cast<T>(0);
+      }
+    }
 
-    auto d3x = EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(d_x_New, "Output", "d3x", "SinTripleGrad"));
-    d3x.device(*d) = -x.unaryExpr(Cosine<T>()) * d1y * d2d1x * d3d2x -
-                     x.unaryExpr(Sine<T>()) * d2d1x * d3d2d1y;
+    if (d_d_Out) {
+      auto d3d1y = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(d_d_Out, "Output", "d3d1y", "SinTripleGrad"));
+      if (ddX) {
+        auto d2d1x = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(ddX, "Input", "d2d1x", "SinTripleGrad"));
+        d3d1y.device(*d) = -x.unaryExpr(Sine<T>()) * d2d1x * d3d2x;
+      } else {
+        d3d1y.device(*d) = static_cast<T>(0) * x;
+      }
+    }
 
-    auto d3d1y = EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(d_d_Out, "Output", "d3d1y", "SinTripleGrad"));
-    d3d1y.device(*d) = -x.unaryExpr(Sine<T>()) * d2d1x * d3d2x;
-
-    auto d3d2d1x = EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(d_DDx, "Output", "d3d2d1x", "SinTripleGrad"));
-    d3d2d1x.device(*d) = -x.unaryExpr(Sine<T>()) * d1y * d3d2x +
-                         x.unaryExpr(Cosine<T>()) * d3d2d1y;
+    if (d_DDx) {
+      auto d3d2d1x = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(d_DDx, "Output", "d3d2d1x", "SinTripleGrad"));
+      if (dOut && d_DDOut) {
+        auto d1y = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(dOut, "Input", "d1y", "SinTripleGrad"));
+        auto d3d2d1y = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(d_DDOut, "Input", "d3d2d1y", "SinTripleGrad"));
+        d3d2d1x.device(*d) = -x.unaryExpr(Sine<T>()) * d1y * d3d2x +
+                             x.unaryExpr(Cosine<T>()) * d3d2d1y;
+      } else if (dOut && !d_DDOut) {
+        auto d1y = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(dOut, "Input", "d1y", "SinTripleGrad"));
+        d3d2d1x.device(*d) = -x.unaryExpr(Sine<T>()) * d1y * d3d2x;
+      } else if (!dOut && d_DDOut) {
+        auto d3d2d1y = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(d_DDOut, "Input", "d3d2d1y", "SinTripleGrad"));
+        d3d2d1x.device(*d) = x.unaryExpr(Cosine<T>()) * d3d2d1y;
+      } else {
+        d3d2d1x.device(*d) = x * static_cast<T>(0);
+      }
+    }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() {
     return ActBwdOpFwdDeps::kDepOut;
@@ -270,14 +322,22 @@ struct CosDoubleGradFunctor : public BaseActivationFunctor<T> {
     // calculate d2x first, so d2d1y can inplace d2d1x
     auto d2x = EigenVector<T>::Flatten(
         GET_DATA_SAFELY(dX, "Output", "d2x", "CosDoubleGrad"));
-    auto d1y = EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(dOut, "Output", "d1y", "CosDoubleGrad"));
-    d2x.device(*d) = -d2d1x * x.unaryExpr(Cosine<T>()) * d1y;
+    if (ddOut) {
+      if (dOut) {
+        auto d1y = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(dOut, "Output", "d1y", "CosDoubleGrad"));
+        d2x.device(*d) = -d2d1x * x.unaryExpr(Cosine<T>()) * d1y;
+      } else {
+        d2x.device(*d) = x * static_cast<T>(0);
+      }
+    }
 
-    // calculate d2d1y
-    auto d2d1y = EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(ddOut, "Output", "d2d1y", "CosDoubleGrad"));
-    d2d1y.device(*d) = -d2d1x * x.unaryExpr(Sine<T>());
+    if (dX) {
+      // calculate d2d1y
+      auto d2d1y = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(ddOut, "Output", "d2d1y", "CosDoubleGrad"));
+      d2d1y.device(*d) = -d2d1x * x.unaryExpr(Sine<T>());
+    }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
 };
@@ -297,28 +357,72 @@ struct CosTripleGradFunctor : public BaseActivationFunctor<T> {
     auto* d = dev.eigen_device();
     auto x = EigenVector<T>::Flatten(
         GET_DATA_SAFELY(X, "Input", "x", "CosTripleGrad"));
-    auto d2d1x = EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(ddX, "Input", "d2d1x", "CosTripleGrad"));
-    auto d1y = EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(dOut, "Input", "d1y", "CosTripleGrad"));
-    auto d3d2d1y = EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(d_DDOut, "Input", "d3d2d1y", "CosTripleGrad"));
     auto d3d2x = EigenVector<T>::Flatten(
         GET_DATA_SAFELY(d_dx_New, "Input", "d3d2x", "CosTripleGrad"));
 
-    auto d3x = EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(d_x_New, "Output", "d3x", "CosTripleGrad"));
-    d3x.device(*d) = x.unaryExpr(Sine<T>()) * d1y * d2d1x * d3d2x -
-                     x.unaryExpr(Cosine<T>()) * d2d1x * d3d2d1y;
+    if (d_x_New) {
+      auto d3x = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(d_x_New, "Output", "d3x", "CosTripleGrad"));
+      if (dOut && ddX && d_DDOut) {
+        auto d2d1x = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(ddX, "Input", "d2d1x", "CosTripleGrad"));
+        auto d1y = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(dOut, "Input", "d1y", "CosTripleGrad"));
+        auto d3d2d1y = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(d_DDOut, "Input", "d3d2d1y", "CosTripleGrad"));
+        d3x.device(*d) = x.unaryExpr(Sine<T>()) * d1y * d2d1x * d3d2x -
+                         x.unaryExpr(Cosine<T>()) * d2d1x * d3d2d1y;
+      } else if (dOut && ddX && !d_DDOut) {
+        auto d2d1x = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(ddX, "Input", "d2d1x", "CosTripleGrad"));
+        auto d1y = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(dOut, "Input", "d1y", "CosTripleGrad"));
+        d3x.device(*d) = x.unaryExpr(Sine<T>()) * d1y * d2d1x * d3d2x;
+      } else if (!dOut && ddX && d_DDOut) {
+        auto d2d1x = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(ddX, "Input", "d2d1x", "CosTripleGrad"));
+        auto d3d2d1y = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(d_DDOut, "Input", "d3d2d1y", "CosTripleGrad"));
+        d3x.device(*d) = -x.unaryExpr(Cosine<T>()) * d2d1x * d3d2d1y;
+      } else {
+        d3x.device(*d) = static_cast<T>(0) * x;
+      }
+    }
 
-    auto d3d1y = EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(d_d_Out, "Output", "d3d1y", "CosTripleGrad"));
-    d3d1y.device(*d) = -x.unaryExpr(Cosine<T>()) * d2d1x * d3d2x;
+    if (d_d_Out) {
+      auto d3d1y = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(d_d_Out, "Output", "d3d1y", "CosTripleGrad"));
+      if (ddX) {
+        auto d2d1x = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(ddX, "Input", "d2d1x", "CosTripleGrad"));
+        d3d1y.device(*d) = -x.unaryExpr(Cosine<T>()) * d2d1x * d3d2x;
+      } else {
+        d3d1y.device(*d) = static_cast<T>(0) * x;
+      }
+    }
 
-    auto d3d2d1x = EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(d_DDx, "Output", "d3d2d1x", "CosTripleGrad"));
-    d3d2d1x.device(*d) = -x.unaryExpr(Cosine<T>()) * d1y * d3d2x -
-                         x.unaryExpr(Sine<T>()) * d3d2d1y;
+    if (d_DDx) {
+      auto d3d2d1x = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(d_DDx, "Output", "d3d2d1x", "CosTripleGrad"));
+      if (dOut && d_DDOut) {
+        auto d1y = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(dOut, "Input", "d1y", "CosTripleGrad"));
+        auto d3d2d1y = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(d_DDOut, "Input", "d3d2d1y", "CosTripleGrad"));
+        d3d2d1x.device(*d) = -x.unaryExpr(Cosine<T>()) * d1y * d3d2x -
+                             x.unaryExpr(Sine<T>()) * d3d2d1y;
+      } else if (!dOut && d_DDOut) {
+        auto d3d2d1y = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(d_DDOut, "Input", "d3d2d1y", "CosTripleGrad"));
+        d3d2d1x.device(*d) = -x.unaryExpr(Sine<T>()) * d3d2d1y;
+      } else if (dOut && !d_DDOut) {
+        auto d1y = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(dOut, "Input", "d1y", "CosTripleGrad"));
+        d3d2d1x.device(*d) = -x.unaryExpr(Cosine<T>()) * d1y * d3d2x;
+      } else {
+        d3d2d1x.device(*d) = static_cast<T>(0) * x;
+      }
+    }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() {
     return ActBwdOpFwdDeps::kDepOut;
@@ -1106,27 +1210,70 @@ struct TanhTripleGradFunctor : public BaseActivationFunctor<T> {
         GET_DATA_SAFELY(Out, "Input", "Out", "TanhTripleGrad"));
     auto dout = EigenVector<T>::Flatten(
         GET_DATA_SAFELY(dOut, "Input", "DOut", "TanhTripleGrad"));
-    auto d_ddOut = EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(d_DDOut, "Input", "D_DDOut", "TanhTripleGrad"));
-    auto d_dOutNew = EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(d_dOut_New, "Input", "D_DOut_New", "TanhTripleGrad"));
 
     if (d_Out_New) {
       auto d_OutNew = EigenVector<T>::Flatten(
           GET_DATA_SAFELY(d_Out_New, "Output", "D_OutNew", "TanhTripleGrad"));
-      d_OutNew.device(*d) = (static_cast<T>(-2) * out * ddx * d_ddOut) -
-                            (static_cast<T>(2) * dout * ddx * d_dOutNew);
+
+      if (d_DDOut && d_dOut_New) {
+        auto d_ddOut = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(d_DDOut, "Input", "D_DDOut", "TanhTripleGrad"));
+        auto d_dOutNew = EigenVector<T>::Flatten(GET_DATA_SAFELY(
+            d_dOut_New, "Input", "D_DOut_New", "TanhTripleGrad"));
+
+        d_OutNew.device(*d) = (static_cast<T>(-2) * out * ddx * d_ddOut) -
+                              (static_cast<T>(2) * dout * ddx * d_dOutNew);
+
+      } else if (d_DDOut && !d_dOut_New) {
+        auto d_ddOut = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(d_DDOut, "Input", "D_DDOut", "TanhTripleGrad"));
+
+        d_OutNew.device(*d) = (static_cast<T>(-2) * out * ddx * d_ddOut);
+
+      } else if (!d_DDOut && d_dOut_New) {
+        auto d_dOutNew = EigenVector<T>::Flatten(GET_DATA_SAFELY(
+            d_dOut_New, "Input", "D_DOut_New", "TanhTripleGrad"));
+
+        d_OutNew.device(*d) = -(static_cast<T>(2) * dout * ddx * d_dOutNew);
+      } else {
+        d_OutNew.device(*d) = static_cast<T>(0) * out;
+      }
     }
     if (d_d_Out) {
       auto d_dOut = EigenVector<T>::Flatten(
           GET_DATA_SAFELY(d_d_Out, "Output", "D_DOut", "TanhTripleGrad"));
-      d_dOut.device(*d) = static_cast<T>(-2) * out * ddx * d_dOutNew;
+
+      if (d_dOut_New) {
+        auto d_dOutNew = EigenVector<T>::Flatten(GET_DATA_SAFELY(
+            d_dOut_New, "Input", "D_DOut_New", "TanhTripleGrad"));
+        d_dOut.device(*d) = static_cast<T>(-2) * out * ddx * d_dOutNew;
+      } else {
+        d_dOut.device(*d) = static_cast<T>(0) * out;
+      }
     }
     if (d_DDx) {
       auto d_ddx = EigenVector<T>::Flatten(
           GET_DATA_SAFELY(d_DDx, "Output", "D_DDx", "TanhTripleGrad"));
-      d_ddx.device(*d) = (static_cast<T>(1) - (out * out)) * d_ddOut -
-                         static_cast<T>(2) * out * dout * d_dOutNew;
+
+      if (d_DDOut && d_dOut_New) {
+        auto d_ddOut = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(d_DDOut, "Input", "D_DDOut", "TanhTripleGrad"));
+        auto d_dOutNew = EigenVector<T>::Flatten(GET_DATA_SAFELY(
+            d_dOut_New, "Input", "D_DOut_New", "TanhTripleGrad"));
+        d_ddx.device(*d) = (static_cast<T>(1) - (out * out)) * d_ddOut -
+                           static_cast<T>(2) * out * dout * d_dOutNew;
+
+      } else if (d_DDOut && !d_dOut_New) {
+        auto d_ddOut = EigenVector<T>::Flatten(
+            GET_DATA_SAFELY(d_DDOut, "Input", "D_DDOut", "TanhTripleGrad"));
+        d_ddx.device(*d) = (static_cast<T>(1) - (out * out)) * d_ddOut;
+      } else if (!d_DDOut && d_dOut_New) {
+        auto d_dOutNew = EigenVector<T>::Flatten(GET_DATA_SAFELY(
+            d_dOut_New, "Input", "D_DOut_New", "TanhTripleGrad"));
+        d_ddx.device(*d) = -static_cast<T>(2) * out * dout * d_dOutNew;
+      } else {
+        d_ddx.device(*d) = static_cast<T>(0) * ddx;
+      }
     }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() {

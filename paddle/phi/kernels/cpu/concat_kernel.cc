@@ -15,9 +15,9 @@
 #include "paddle/phi/kernels/concat_kernel.h"
 
 #include "paddle/fluid/operators/strided_memcpy.h"
-#include "paddle/fluid/platform/complex.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -44,7 +44,7 @@ void ConcatKernel(const Context& dev_ctx,
 
   phi::DDim out_dims = phi::funcs::ComputeAndCheckShape(true, x_dims, axis);
   out->Resize(out_dims);
-  out->mutable_data<T>(dev_ctx.GetPlace());
+  dev_ctx.template Alloc<T>(out);
 
   // If axis is 0, the lod of the output is not the same as inputs.
   if (axis == 0 && x[0]->lod().size() > 0) {

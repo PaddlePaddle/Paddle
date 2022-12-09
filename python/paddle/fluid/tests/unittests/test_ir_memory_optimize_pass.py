@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from parallel_executor_test_base import TestParallelExecutorBase, DeviceType
+import unittest
+
+import numpy as np
+from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import numpy as np
-import paddle
-import unittest
 
 
 def _feed_data_helper():
@@ -33,7 +35,9 @@ def simple_fc_net(use_feed):
     for _ in range(hidden_layer):
         x = fluid.layers.fc(input=x, size=20, act='relu')
     y_predict = fluid.layers.fc(input=x, size=10, act='softmax')
-    cost = fluid.layers.cross_entropy(input=y_predict, label=y)
+    cost = paddle.nn.functional.cross_entropy(
+        input=y_predict, label=y, reduction='none', use_softmax=False
+    )
     avg_cost = paddle.mean(cost)
     return avg_cost
 
@@ -43,10 +47,12 @@ def fc_with_inplace_net(use_feed):
     x, y = _feed_data_helper()
     fc = fluid.layers.fc(input=x, size=20, act='relu')
     fc = fluid.layers.fc(input=fc, size=10, act='relu')
-    reshape = fluid.layers.reshape(x=fc, shape=[-1, 2, 5])
-    reshape = fluid.layers.reshape(x=reshape, shape=[-1, 5, 2])
+    reshape = paddle.reshape(x=fc, shape=[-1, 2, 5])
+    reshape = paddle.reshape(x=reshape, shape=[-1, 5, 2])
     y_predict = fluid.layers.fc(input=reshape, size=10, act='softmax')
-    cost = fluid.layers.cross_entropy(input=y_predict, label=y)
+    cost = paddle.nn.functional.cross_entropy(
+        input=y_predict, label=y, reduction='none', use_softmax=False
+    )
     avg_cost = paddle.mean(cost)
     return avg_cost
 

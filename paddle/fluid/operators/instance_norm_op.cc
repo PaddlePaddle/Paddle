@@ -105,11 +105,11 @@ framework::OpKernelType InstanceNormGradOp::GetExpectedKernelType(
     PADDLE_THROW(
         platform::errors::NotFound("cannot find gradient variable of Y"));
   }
-  const Tensor *t = nullptr;
-  if (var->IsType<Tensor>()) {
-    t = &var->Get<Tensor>();
-  } else if (var->IsType<LoDTensor>()) {
-    t = &var->Get<LoDTensor>();
+  const phi::DenseTensor *t = nullptr;
+  if (var->IsType<phi::DenseTensor>()) {
+    t = &var->Get<phi::DenseTensor>();
+  } else if (var->IsType<phi::DenseTensor>()) {
+    t = &var->Get<phi::DenseTensor>();
   }
   if (t == nullptr) {
     PADDLE_THROW(
@@ -126,11 +126,11 @@ framework::OpKernelType InstanceNormDoubleGradOp::GetExpectedKernelType(
     PADDLE_THROW(
         platform::errors::NotFound("cannot find gradient variable of Y"));
   }
-  const Tensor *t = nullptr;
-  if (var->IsType<Tensor>()) {
-    t = &var->Get<Tensor>();
-  } else if (var->IsType<LoDTensor>()) {
-    t = &var->Get<LoDTensor>();
+  const phi::DenseTensor *t = nullptr;
+  if (var->IsType<phi::DenseTensor>()) {
+    t = &var->Get<phi::DenseTensor>();
+  } else if (var->IsType<phi::DenseTensor>()) {
+    t = &var->Get<phi::DenseTensor>();
   }
   if (t == nullptr) {
     PADDLE_THROW(

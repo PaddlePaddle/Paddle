@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
 import os
+import unittest
+
+import paddle
 import paddle.distributed.fleet.base.role_maker as role_maker
 
 paddle.enable_static()
@@ -51,8 +52,8 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
         fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
         prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
-        cost = paddle.fluid.layers.cross_entropy(
-            input=prediction, label=input_y
+        cost = paddle.nn.functional.cross_entropy(
+            input=prediction, label=input_y, reduction='none', use_softmax=False
         )
         avg_cost = paddle.mean(x=cost)
 

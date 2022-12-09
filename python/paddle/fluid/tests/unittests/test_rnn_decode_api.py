@@ -14,21 +14,20 @@
 
 import random
 import unittest
+
 import numpy as np
 
 import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
 import paddle.nn as nn
 from paddle import Model, set_device
-from paddle.static import InputSpec as Input
 from paddle.fluid.dygraph import Layer
-from paddle.nn import BeamSearchDecoder, dynamic_decode
-
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle.fluid.core as core
-
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import _test_eager_guard
+from paddle.nn import BeamSearchDecoder, dynamic_decode
+from paddle.static import InputSpec as Input
 
 paddle.enable_static()
 
@@ -72,16 +71,14 @@ class DecoderCell(layers.RNNCell):
         query = layers.fc(
             hidden, size=encoder_output.shape[-1], bias_attr=False
         )
-        attn_scores = layers.matmul(
+        attn_scores = paddle.matmul(
             layers.unsqueeze(query, [1]), encoder_output, transpose_y=True
         )
         if encoder_padding_mask is not None:
-            attn_scores = layers.elementwise_add(
-                attn_scores, encoder_padding_mask
-            )
-        attn_scores = layers.softmax(attn_scores)
-        attn_out = layers.squeeze(
-            layers.matmul(attn_scores, encoder_output), [1]
+            attn_scores = paddle.add(attn_scores, encoder_padding_mask)
+        attn_scores = paddle.nn.functional.softmax(attn_scores)
+        attn_out = paddle.squeeze(
+            paddle.matmul(attn_scores, encoder_output), [1]
         )
         attn_out = layers.concat([attn_out, hidden], 1)
         attn_out = layers.fc(attn_out, size=self.hidden_size, bias_attr=False)
@@ -154,22 +151,14 @@ class Decoder:
 
         if self.decoding_strategy == "beam_search":
             beam_size = kwargs.get("beam_size", 4)
-            encoder_output = (
-                layers.BeamSearchDecoder.tile_beam_merge_with_batch(
-                    encoder_output, beam_size
-                )
+            encoder_output = BeamSearchDecoder.tile_beam_merge_with_batch(
+                encoder_output, beam_size
             )
-            encoder_padding_mask = (
-                layers.BeamSearchDecoder.tile_beam_merge_with_batch(
-                    encoder_padding_mask, beam_size
-                )
+            encoder_padding_mask = BeamSearchDecoder.tile_beam_merge_with_batch(
+                encoder_padding_mask, beam_size
             )
-            decoder = layers.BeamSearchDecoder(
+            decoder = BeamSearchDecoder(
                 cell=self.decoder_cell, output_fn=output_layer, **kwargs
-            )
-        else:
-            decoder = layers.BasicDecoder(
-                self.decoder_cell, helper, output_fn=output_layer
             )
 
         (
@@ -251,7 +240,7 @@ class Seq2SeqModel:
             ),
         ]
         src_mask = layers.sequence_mask(
-            src_length, maxlen=layers.shape(src)[1], dtype="float32"
+            src_length, maxlen=paddle.shape(src)[1], dtype="float32"
         )
         encoder_padding_mask = (src_mask - 1.0) * 1e9
         encoder_padding_mask = layers.unsqueeze(encoder_padding_mask, [1])
@@ -298,7 +287,7 @@ class Seq2SeqModel:
             decoder_output.sample_ids,
             dec_seq_lengths,
         )
-        probs = layers.softmax(logits)
+        probs = paddle.nn.functional.softmax(logits)
         return probs, samples, sample_length
 
 
@@ -312,15 +301,15 @@ class PolicyGradient:
         """
         update policy model self.model with policy gradient algorithm
         """
-        self.reward = fluid.layers.py_func(
+        self.reward = paddle.static.py_func(
             func=reward_func, x=[action, length], out=reward
         )
         neg_log_prob = layers.cross_entropy(act_prob, action)
         cost = neg_log_prob * reward
         cost = (
-            (layers.reduce_sum(cost) / layers.reduce_sum(length))
+            (paddle.sum(cost) / paddle.sum(length))
             if length is not None
-            else layers.reduce_mean(cost)
+            else paddle.mean(cost)
         )
         optimizer = fluid.optimizer.Adam(self.lr)
         optimizer.minimize(cost)
@@ -403,11 +392,11 @@ class MLE:
 
     def learn(self, probs, label, weight=None, length=None):
         loss = layers.cross_entropy(input=probs, label=label, soft_label=False)
-        max_seq_len = layers.shape(probs)[1]
+        max_seq_len = paddle.shape(probs)[1]
         mask = layers.sequence_mask(length, maxlen=max_seq_len, dtype="float32")
         loss = loss * mask
-        loss = layers.reduce_mean(loss, dim=[0])
-        loss = layers.reduce_sum(loss)
+        loss = paddle.mean(loss, axis=[0])
+        loss = paddle.sum(loss)
         optimizer = fluid.optimizer.Adam(self.lr)
         optimizer.minimize(loss)
         return loss
@@ -538,130 +527,6 @@ class TestDynamicDecode(unittest.TestCase):
         )
         self.exe = Executor(place)
 
-    def test_mle_train(self):
-        paddle.enable_static()
-        self.model_hparams["decoding_strategy"] = "train_greedy"
-        agent = SeqPGAgent(
-            model_cls=Seq2SeqModel,
-            alg_cls=MLE,
-            model_hparams=self.model_hparams,
-            alg_hparams={"lr": 0.001},
-            executor=self.exe,
-            main_program=fluid.Program(),
-            startup_program=fluid.Program(),
-            seed=123,
-        )
-        self.exe.run(agent.startup_program)
-        for iter_idx in range(self.iter_num):
-            reward, cost = agent.learn(
-                {
-                    "src": self.data["src"][
-                        iter_idx
-                        * self.batch_size : (iter_idx + 1)
-                        * self.batch_size,
-                        :,
-                    ],
-                    "src_sequence_length": self.data["src_sequence_length"][
-                        iter_idx
-                        * self.batch_size : (iter_idx + 1)
-                        * self.batch_size
-                    ],
-                    "trg": self.data["trg"][
-                        iter_idx
-                        * self.batch_size : (iter_idx + 1)
-                        * self.batch_size,
-                        :,
-                    ],
-                    "trg_sequence_length": self.data["trg_sequence_length"][
-                        iter_idx
-                        * self.batch_size : (iter_idx + 1)
-                        * self.batch_size
-                    ],
-                    "label": self.data["label"][
-                        iter_idx
-                        * self.batch_size : (iter_idx + 1)
-                        * self.batch_size
-                    ],
-                },
-                fetch_list=[agent.cost, agent.cost],
-            )
-            print(
-                "iter_idx: %d, reward: %f, cost: %f"
-                % (iter_idx, reward.mean(), cost)
-            )
-
-    def test_greedy_train(self):
-        paddle.enable_static()
-        self.model_hparams["decoding_strategy"] = "infer_greedy"
-        agent = SeqPGAgent(
-            model_cls=Seq2SeqModel,
-            alg_cls=PolicyGradient,
-            model_hparams=self.model_hparams,
-            alg_hparams={"lr": 0.001},
-            executor=self.exe,
-            main_program=fluid.Program(),
-            startup_program=fluid.Program(),
-            seed=123,
-        )
-        self.exe.run(agent.startup_program)
-        for iter_idx in range(self.iter_num):
-            reward, cost = agent.learn(
-                {
-                    "src": self.data["src"][
-                        iter_idx
-                        * self.batch_size : (iter_idx + 1)
-                        * self.batch_size,
-                        :,
-                    ],
-                    "src_sequence_length": self.data["src_sequence_length"][
-                        iter_idx
-                        * self.batch_size : (iter_idx + 1)
-                        * self.batch_size
-                    ],
-                },
-                fetch_list=[agent.reward, agent.cost],
-            )
-            print(
-                "iter_idx: %d, reward: %f, cost: %f"
-                % (iter_idx, reward.mean(), cost)
-            )
-
-    def test_sample_train(self):
-        paddle.enable_static()
-        self.model_hparams["decoding_strategy"] = "infer_sample"
-        agent = SeqPGAgent(
-            model_cls=Seq2SeqModel,
-            alg_cls=PolicyGradient,
-            model_hparams=self.model_hparams,
-            alg_hparams={"lr": 0.001},
-            executor=self.exe,
-            main_program=fluid.Program(),
-            startup_program=fluid.Program(),
-            seed=123,
-        )
-        self.exe.run(agent.startup_program)
-        for iter_idx in range(self.iter_num):
-            reward, cost = agent.learn(
-                {
-                    "src": self.data["src"][
-                        iter_idx
-                        * self.batch_size : (iter_idx + 1)
-                        * self.batch_size,
-                        :,
-                    ],
-                    "src_sequence_length": self.data["src_sequence_length"][
-                        iter_idx
-                        * self.batch_size : (iter_idx + 1)
-                        * self.batch_size
-                    ],
-                },
-                fetch_list=[agent.reward, agent.cost],
-            )
-            print(
-                "iter_idx: %d, reward: %f, cost: %f"
-                % (iter_idx, reward.mean(), cost)
-            )
-
     def test_beam_search_infer(self):
         paddle.set_default_dtype("float32")
         paddle.enable_static()
@@ -695,19 +560,6 @@ class TestDynamicDecode(unittest.TestCase):
                 },
                 fetch_list=[output],
             )[0]
-
-    def func_dynamic_basic_decoder(self):
-        paddle.disable_static()
-        src = paddle.to_tensor(np.random.randint(8, size=(8, 4)))
-        src_length = paddle.to_tensor(np.random.randint(8, size=(8)))
-        model = Seq2SeqModel(**self.model_hparams)
-        probs, samples, sample_length = model(src, src_length)
-        paddle.enable_static()
-
-    def test_dynamic_basic_decoder(self):
-        with _test_eager_guard():
-            self.func_dynamic_basic_decoder()
-        self.func_dynamic_basic_decoder()
 
 
 class ModuleApiTest(unittest.TestCase):

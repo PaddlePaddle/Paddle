@@ -14,13 +14,15 @@
 
 import math
 import random
-import numpy as np
-import paddle.fluid as fluid
 import unittest
 
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Embedding
-from paddle.fluid.dygraph import ProgramTranslator
-from paddle.fluid.dygraph import declarative
+from paddle.jit import ProgramTranslator
+from paddle.jit.api import declarative
 
 
 def fake_text():
@@ -255,15 +257,15 @@ class SkipGram(fluid.dygraph.Layer):
 
         # center_words_emb = [batch_size, embedding_size]
         # target_words_emb = [batch_size, embedding_size]
-        word_sim = fluid.layers.elementwise_mul(
-            center_words_emb, target_words_emb
+        word_sim = paddle.multiply(center_words_emb, target_words_emb)
+        word_sim = paddle.sum(word_sim, axis=-1)
+
+        pred = paddle.nn.functional.sigmoid(word_sim)
+
+        loss = paddle.nn.functional.binary_cross_entropy_with_logits(
+            word_sim, label
         )
-        word_sim = fluid.layers.reduce_sum(word_sim, dim=-1)
-
-        pred = fluid.layers.sigmoid(word_sim)
-
-        loss = fluid.layers.sigmoid_cross_entropy_with_logits(word_sim, label)
-        loss = fluid.layers.reduce_mean(loss)
+        loss = paddle.mean(loss)
 
         return pred, loss
 
@@ -330,5 +332,4 @@ class TestWord2Vec(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

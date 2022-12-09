@@ -13,12 +13,15 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
+import paddle.static.nn as nn
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class TRTAnchorGeneratorBaseTest(InferencePassTest):
@@ -64,8 +67,8 @@ class TRTAnchorGeneratorBaseTest(InferencePassTest):
                 stride=self.stride,
             )
             if self.dynamic_shape_params is not None:
-                anchor = fluid.layers.transpose(anchor, [2, 3, 0, 1])
-            out = fluid.layers.batch_norm(anchor, is_test=True)
+                anchor = paddle.transpose(anchor, [2, 3, 0, 1])
+            out = nn.batch_norm(anchor, is_test=True)
 
         self.fetch_list = [out, var]
 

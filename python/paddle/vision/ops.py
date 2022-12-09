@@ -13,19 +13,21 @@
 # limitations under the License.
 
 import numpy as np
-from ..fluid.layer_helper import LayerHelper
+
+from paddle import _C_ops, _legacy_C_ops
+
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
-from ..fluid.layers import nn, utils
-from ..nn import Layer, Conv2D, Sequential, ReLU, BatchNorm2D
-from ..fluid.initializer import Normal
 from ..fluid.framework import (
     Variable,
+    _in_legacy_dygraph,
     _non_static_mode,
     in_dygraph_mode,
-    _in_legacy_dygraph,
 )
-from paddle import _C_ops, _legacy_C_ops
+from ..fluid.initializer import Normal
+from ..fluid.layer_helper import LayerHelper
+from ..fluid.layers import nn, utils
 from ..framework import _current_expected_place
+from ..nn import BatchNorm2D, Conv2D, Layer, ReLU, Sequential
 
 __all__ = [  # noqa
     'yolo_loss',
@@ -158,14 +160,14 @@ def yolo_loss(
         downsample_ratio (int): The downsample ratio from network input to YOLOv3
                                 loss input, so 32, 16, 8 should be set for the
                                 first, second, and thrid YOLOv3 loss operators.
-        name (string): The default value is None.  Normally there is no need
-                       for user to set this property.  For more information,
-                       please refer to :ref:`api_guide_Name`
-        gt_score (Tensor): mixup score of ground truth boxes, should be in shape
+        gt_score (Tensor, optional): mixup score of ground truth boxes, should be in shape
                             of [N, B]. Default None.
-        use_label_smooth (bool): Whether to use label smooth. Default True.
-        scale_x_y (float): Scale the center point of decoded bounding box.
-                           Default 1.0
+        use_label_smooth (bool, optional): Whether to use label smooth. Default True.
+        name (str, optional): The default value is None. Normally there is no need
+                       for user to set this property. For more information,
+                       please refer to :ref:`api_guide_Name`
+        scale_x_y (float, optional): Scale the center point of decoded bounding box.
+                           Default 1.0.
 
     Returns:
         Tensor: A 1-D tensor with shape [N], the value of yolov3 loss
@@ -338,14 +340,6 @@ def yolo_box(
     score_{pred} = score_{conf} * score_{class}
     $$
 
-    where the confidence scores follow the formula bellow
-
-    .. math::
-
-        score_{conf} = \begin{case}
-                         obj, \text{if } iou_aware == false \\
-                         obj^{1 - iou_aware_factor} * iou^{iou_aware_factor}, \text{otherwise}
-                       \end{case}
 
     Args:
         x (Tensor): The input tensor of YoloBox operator is a 4-D tensor with
@@ -367,15 +361,14 @@ def yolo_box(
                                 :attr:`yolo_box` operator input, so 32, 16, 8
                                 should be set for the first, second, and thrid
                                 :attr:`yolo_box` layer.
-        clip_bbox (bool): Whether clip output bonding box in :attr:`img_size`
+        clip_bbox (bool, optional): Whether clip output bonding box in :attr:`img_size`
                           boundary. Default true.
-        scale_x_y (float): Scale the center point of decoded bounding box.
-                           Default 1.0
-        name (string): The default value is None.  Normally there is no need
-                       for user to set this property.  For more information,
-                       please refer to :ref:`api_guide_Name`
-        iou_aware (bool): Whether use iou aware. Default false
-        iou_aware_factor (float): iou aware factor. Default 0.5
+        name (str, optional): The default value is None. Normally there is no need
+                       for user to set this property. For more information,
+                       please refer to :ref:`api_guide_Name`.
+        scale_x_y (float, optional): Scale the center point of decoded bounding box. Default 1.0
+        iou_aware (bool, optional): Whether use iou aware. Default false.
+        iou_aware_factor (float, optional): iou aware factor. Default 0.5.
 
     Returns:
         Tensor: A 3-D tensor with shape [N, M, 4], the coordinates of boxes,
@@ -900,8 +893,8 @@ def deform_conv2d(
 
         .. math::
 
-            H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
-            W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
+            H_{out}&= \frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\
+            W_{out}&= \frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
     Args:
         x (Tensor): The input image with [N, C, H, W] format. A Tensor with type
@@ -911,31 +904,31 @@ def deform_conv2d(
         weight (Tensor): The convolution kernel with shape [M, C/g, kH, kW], where M is
             the number of output channels, g is the number of groups, kH is the filter's
             height, kW is the filter's width.
-        bias (Tensor, optional): The bias with shape [M,].
+        bias (Tensor, optional): The bias with shape [M,]. Default: None.
         stride (int|list|tuple, optional): The stride size. If stride is a list/tuple, it must
             contain two integers, (stride_H, stride_W). Otherwise, the
-            stride_H = stride_W = stride. Default: stride = 1.
+            stride_H = stride_W = stride. Default: 1.
         padding (int|list|tuple, optional): The padding size. If padding is a list/tuple, it must
             contain two integers, (padding_H, padding_W). Otherwise, the
-            padding_H = padding_W = padding. Default: padding = 0.
+            padding_H = padding_W = padding. Default: 0.
         dilation (int|list|tuple, optional): The dilation size. If dilation is a list/tuple, it must
             contain two integers, (dilation_H, dilation_W). Otherwise, the
-            dilation_H = dilation_W = dilation. Default: dilation = 1.
+            dilation_H = dilation_W = dilation. Default: 1.
         deformable_groups (int): The number of deformable group partitions.
-            Default: deformable_groups = 1.
+            Default: 1.
         groups (int, optonal): The groups number of the deformable conv layer. According to
             grouped convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
-            connected to the second half of the input channels. Default: groups=1.
+            connected to the second half of the input channels. Default: 1.
         mask (Tensor, optional): The input mask of deformable convolution layer.
             A Tensor with type float32, float64. It should be None when you use
-            deformable convolution v1.
+            deformable convolution v1. Default: None.
         name(str, optional): For details, please refer to :ref:`api_guide_Name`.
                         Generally, no setting is required. Default: None.
     Returns:
-        Tensor: The tensor variable storing the deformable convolution \
-                  result. A Tensor with type float32, float64.
+        Tensor: 4-D Tensor storing the deformable convolution result.\
+            A Tensor with type float32, float64.
 
     Examples:
         .. code-block:: python
@@ -1143,7 +1136,7 @@ class DeformConv2D(Layer):
         dilation(int|list|tuple, optional): The dilation size. If dilation is a list/tuple, it must
             contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
             dilation_D = dilation_H = dilation_W = dilation. The default value is 1.
-        deformable_groups (int): The number of deformable group partitions.
+        deformable_groups (int, optional): The number of deformable group partitions.
             Default: deformable_groups = 1.
         groups(int, optional): The groups number of the Conv3D Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
@@ -1296,15 +1289,17 @@ def distribute_fpn_proposals(
     name=None,
 ):
     r"""
-        In Feature Pyramid Networks (FPN) models, it is needed to distribute
+
+    In Feature Pyramid Networks (FPN) models, it is needed to distribute
     all proposals into different FPN level, with respect to scale of the proposals,
     the referring scale and the referring level. Besides, to restore the order of
     proposals, we return an array which indicates the original index of rois
     in current proposals. To compute FPN level for each roi, the formula is given as follows:
 
     .. math::
-        roi\_scale &= \sqrt{BBoxArea(fpn\_roi)}
-        level = floor(&\log(\\frac{roi\_scale}{refer\_scale}) + refer\_level)
+        roi\_scale &= \sqrt{BBoxArea(fpn\_roi)} \\
+        level &= floor(\log(\frac{roi\_scale}{refer\_scale}) + refer\_level)
+
     where BBoxArea is a function to compute the area of each roi.
 
     Args:
@@ -1328,13 +1323,13 @@ def distribute_fpn_proposals(
             None by default.
 
     Returns:
-        multi_rois (List) : The proposals in each FPN level. It is a list of 2-D Tensor with shape [M, 4], where M is
-            and data type is same as `fpn_rois` . The length is max_level-min_level+1.
-        restore_ind (Tensor): The index used to restore the order of fpn_rois. It is a 2-D Tensor with shape [N, 1]
-            , where N is the number of total rois. The data type is int32.
-        rois_num_per_level (List): A list of 1-D Tensor and each Tensor is
-            the RoIs' number in each image on the corresponding level. The shape
-            is [B] and data type of int32, where B is the number of images.
+        - multi_rois (List), The proposals in each FPN level. It is a list of 2-D Tensor with shape [M, 4], where M is
+          and data type is same as `fpn_rois` . The length is max_level-min_level+1.
+        - restore_ind (Tensor), The index used to restore the order of fpn_rois. It is a 2-D Tensor with shape [N, 1]
+          , where N is the number of total rois. The data type is int32.
+        - rois_num_per_level (List), A list of 1-D Tensor and each Tensor is
+          the RoIs' number in each image on the corresponding level. The shape
+          is [B] and data type of int32, where B is the number of images.
 
     Examples:
         .. code-block:: python
@@ -1351,6 +1346,7 @@ def distribute_fpn_proposals(
                 refer_level=4,
                 refer_scale=224,
                 rois_num=rois_num)
+
     """
     num_lvl = max_level - min_level + 1
 
@@ -1499,7 +1495,7 @@ def decode_jpeg(x, mode='unchanged', name=None):
     Args:
         x (Tensor): A one dimensional uint8 tensor containing the raw bytes
             of the JPEG image.
-        mode (str): The read mode used for optionally converting the image.
+        mode (str, optional): The read mode used for optionally converting the image.
             Default: 'unchanged'.
         name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
@@ -1689,10 +1685,10 @@ def roi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
             2D-Tensor with the shape of [num_boxes,4].
             Given as [[x1, y1, x2, y2], ...], (x1, y1) is the top left coordinates,
             and (x2, y2) is the bottom right coordinates.
-        boxes_num (Tensor): the number of RoIs in each image, data type is int32. Default: None
+        boxes_num (Tensor): the number of RoIs in each image, data type is int32.
         output_size (int or tuple[int, int]): the pooled output size(h, w), data type is int32. If int, h and w are both equal to output_size.
-        spatial_scale (float, optional): multiplicative spatial scale factor to translate ROI coords from their input scale to the scale used when pooling. Default: 1.0
-        name(str, optional): for detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and None by default.
+        spatial_scale (float, optional): multiplicative spatial scale factor to translate ROI coords from their input scale to the scale used when pooling. Default: 1.0.
+        name(str, optional): for detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and None by default. Default: None.
 
     Returns:
         pool_out (Tensor): the pooled feature, 4D-Tensor with the shape of [num_boxes, C, output_size[0], output_size[1]].
@@ -1866,10 +1862,10 @@ def roi_align(
             Default: True.
         name(str, optional): For detailed information, please refer to :
             ref:`api_guide_Name`. Usually name is no need to set and None by
-            default.
+            default. Default: None.
 
     Returns:
-        The output of ROIAlignOp is a 4-D tensor with shape (num_boxes,
+        The output of ROIAlignOp is a 4-D tensor with shape (num_boxes,\
             channels, pooled_h, pooled_w). The data type is float32 or float64.
 
     Examples:
@@ -1966,10 +1962,10 @@ class RoIAlign(Layer):
             data type is int32. If int, h and w are both equal to output_size.
         spatial_scale (float32, optional): Multiplicative spatial scale factor
             to translate ROI coords from their input scale to the scale used
-            when pooling. Default: 1.0
+            when pooling. Default: 1.0.
 
     Returns:
-        The output of ROIAlign operator is a 4-D tensor with
+        The output of ROIAlign operator is a 4-D tensor with \
             shape (num_boxes, channels, pooled_h, pooled_w).
 
     Examples:
@@ -2438,6 +2434,7 @@ def matrix_nms(
     name=None,
 ):
     """
+
     This operator does matrix non maximum suppression (NMS).
     First selects a subset of candidate bounding boxes that have higher scores
     than score_threshold (if provided), then the top k candidate is selected if
@@ -2445,6 +2442,7 @@ def matrix_nms(
     decayed according to the Matrix NMS scheme.
     Aftern NMS step, at most keep_top_k number of total bboxes are to be kept
     per image if keep_top_k is larger than -1.
+
     Args:
         bboxes (Tensor): A 3-D Tensor with shape [N, M, 4] represents the
                            predicted locations of M bounding bboxes,
@@ -2468,29 +2466,32 @@ def matrix_nms(
                          on score_threshold.
         keep_top_k (int): Number of total bboxes to be kept per image after NMS
                           step. -1 means keeping all bboxes after NMS step.
-        use_gaussian (bool): Use Gaussian as the decay function. Default: False
-        gaussian_sigma (float): Sigma for Gaussian decay function. Default: 2.0
-        background_label (int): The index of background label, the background
+        use_gaussian (bool, optional): Use Gaussian as the decay function. Default: False
+        gaussian_sigma (float, optional): Sigma for Gaussian decay function. Default: 2.0
+        background_label (int, optional): The index of background label, the background
                                 label will be ignored. If set to -1, then all
                                 categories will be considered. Default: 0
-        normalized (bool): Whether detections are normalized. Default: True
-        return_index(bool): Whether return selected index. Default: False
-        return_rois_num(bool): whether return rois_num. Default: True
-        name(str): Name of the matrix nms op. Default: None.
+        normalized (bool, optional): Whether detections are normalized. Default: True
+        return_index(bool, optional): Whether return selected index. Default: False
+        return_rois_num(bool, optional): whether return rois_num. Default: True
+        name(str, optional): Name of the matrix nms op. Default: None.
     Returns:
-        A tuple with three Tensor: (Out, Index, RoisNum) if return_index is True,
-        otherwise, a tuple with two Tensor (Out, RoisNum) is returned.
-        Out (Tensor): A 2-D Tensor with shape [No, 6] containing the
-             detection results.
-             Each row has 6 values: [label, confidence, xmin, ymin, xmax, ymax]
-        Index (Tensor): A 2-D Tensor with shape [No, 1] containing the
-            selected indices, which are absolute values cross batches.
-        rois_num (Tensor): A 1-D Tensor with shape [N] containing
-            the number of detected boxes in each image.
+        - A tuple with three Tensor, (Out, Index, RoisNum) if return_index is True,
+          otherwise, a tuple with two Tensor (Out, RoisNum) is returned.
+        - Out (Tensor), A 2-D Tensor with shape [No, 6] containing the
+          detection results.
+          Each row has 6 values, [label, confidence, xmin, ymin, xmax, ymax]
+        - Index (Tensor), A 2-D Tensor with shape [No, 1] containing the
+          selected indices, which are absolute values cross batches.
+        - rois_num (Tensor), A 1-D Tensor with shape [N] containing
+          the number of detected boxes in each image.
+
     Examples:
         .. code-block:: python
+
             import paddle
             from paddle.vision.ops import matrix_nms
+
             boxes = paddle.rand([4, 1, 4])
             boxes[..., 2] = boxes[..., 0] + boxes[..., 2]
             boxes[..., 3] = boxes[..., 1] + boxes[..., 3]
@@ -2498,6 +2499,7 @@ def matrix_nms(
             out = matrix_nms(bboxes=boxes, scores=scores, background_label=0,
                                  score_threshold=0.5, post_threshold=0.1,
                                  nms_top_k=400, keep_top_k=200, normalized=False)
+
     """
     check_variable_and_dtype(
         bboxes, 'BBoxes', ['float32', 'float64'], 'matrix_nms'

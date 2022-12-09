@@ -18,7 +18,7 @@
 #include "paddle/phi/kernels/cpu/index_select_impl.h"
 #include "paddle/phi/kernels/repeat_interleave_grad_kernel.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 #ifdef __NVCC__
 #include "cub/cub.cuh"
@@ -33,7 +33,7 @@ namespace cub = hipcub;
 namespace phi {
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T, typename IndexT>
 __global__ void index_select_grad_cuda_kernel(const T* output_grad,
@@ -53,7 +53,7 @@ __global__ void index_select_grad_cuda_kernel(const T* output_grad,
   int64_t dim_idx = idx % (stride * size) / stride;
   IndexT src_dim_idx = index[dim_idx];
   int64_t input_idx = idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
-  paddle::platform::CudaAtomicAdd(&input_grad[input_idx], output_grad[idx]);
+  phi::CudaAtomicAdd(&input_grad[input_idx], output_grad[idx]);
 }
 
 template <typename T>
