@@ -54,7 +54,7 @@ def reset_prog():
     paddle.fluid.framework.switch_startup_program(paddle.static.Program())
 
 
-class TestAMPPass(unittest.TestCase):
+class TestBF16Pass(unittest.TestCase):
     def setUp(self):
         self.rtol = 1e-5
         self.atol = 1e-8
@@ -99,7 +99,7 @@ class TestAMPPass(unittest.TestCase):
         history = serial_engine.fit(self.dataset, 3, batch_size=self.batch_size)
         serial_losses = np.array(history.history["loss"])
 
-        # mp2 amp-o1 training
+        # mp2 bf16-o1 training
         bf16_o1_engine = self.get_engine(True)
         history = bf16_o1_engine.fit(
             self.dataset, 3, batch_size=self.batch_size

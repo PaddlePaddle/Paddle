@@ -51,7 +51,7 @@ def reset_prog():
     paddle.fluid.framework.switch_startup_program(paddle.static.Program())
 
 
-class TestAMPPass(unittest.TestCase):
+class TestBF16Pass(unittest.TestCase):
     def setUp(self):
         self.rtol = 1e-5
         self.atol = 1e-8
