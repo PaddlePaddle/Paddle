@@ -350,7 +350,9 @@ class TestSeResNeXt(TestParallelDyGraphRunnerBase):
 
         out = model(img)
         softmax_out = paddle.nn.functional.softmax(out, use_cudnn=False)
-        loss = fluid.layers.cross_entropy(input=softmax_out, label=label)
+        loss = paddle.nn.functional.cross_entropy(
+            input=softmax_out, label=label, reduction='none', use_softmax=False
+        )
         avg_loss = paddle.mean(x=loss)
         return avg_loss
 

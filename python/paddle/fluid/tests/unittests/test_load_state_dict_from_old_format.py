@@ -49,7 +49,9 @@ def convolutional_neural_network(img):
 def static_train_net(img, label):
     prediction = convolutional_neural_network(img)
 
-    loss = fluid.layers.cross_entropy(input=prediction, label=label)
+    loss = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     avg_loss = paddle.mean(loss)
 
     optimizer = fluid.optimizer.SGD(learning_rate=0.001)

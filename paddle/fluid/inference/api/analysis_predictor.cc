@@ -1422,8 +1422,7 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
       }
 
       // support set flags from enviorment.
-      const platform::ExportedFlagInfoMap &env_map =
-          platform::GetExportedFlagInfoMap();
+      const phi::ExportedFlagInfoMap &env_map = phi::GetExportedFlagInfoMap();
       std::ostringstream os;
       os << "--tryfromenv=";
       for (auto &pair : env_map) {
@@ -2338,11 +2337,8 @@ USE_TRT_CONVERTER(conv3d_transpose);
 USE_TRT_CONVERTER(mish);
 USE_TRT_CONVERTER(deformable_conv);
 USE_TRT_CONVERTER(pool3d)
-#ifdef _WIN32
-#else
 USE_TRT_CONVERTER(fused_preln_embedding_eltwise_layernorm)
 USE_TRT_CONVERTER(fused_embedding_eltwise_layernorm);
-#endif
 USE_TRT_CONVERTER(preln_skip_layernorm)
 USE_TRT_CONVERTER(preln_residual_bias)
 USE_TRT_CONVERTER(c_allreduce_sum)
