@@ -57,9 +57,9 @@ static void CheckEighResult(const int batch, const int info) {
 #ifdef PADDLE_WITH_CUDA
 
 #if CUDA_VERSION >= 11031
-constexpr bool use_cusolver_syevj_batched = true;
+static bool use_cusolver_syevj_batched = true;
 #else
-constexpr bool use_cusolver_syevj_batched = false;
+static bool use_cusolver_syevj_batched = false;
 #endif
 
 #define CUDASOLVER_SYEVJ_BATCHED_BUFFERSIZE_ARGTYPES(scalar_t, value_t)     \
@@ -366,9 +366,9 @@ struct MatrixEighFunctor<GPUContext, T> {
     // Precision loss will occur in some cases while using
     // cusolverDnZheevjBatched to calculate in Paddle(cuda11.7) but it works
     // well in Paddle(cuda10.2)
-    bool use_cusolver_syevj_batched =
-        (use_cusolver_syevj_batched) && (batch_size > 1) &&
-        (input.dtype() != phi::DataType::COMPLEX128);
+    use_cusolver_syevj_batched = (use_cusolver_syevj_batched) &&
+                                 (batch_size > 1) &&
+                                 (input.dtype() != phi::DataType::COMPLEX128);
     bool use_cusolver_syevj = (input.dtype() == phi::DataType::FLOAT32 &&
                                last_dim >= 32 && last_dim <= 512);
     auto handle = dev_ctx.cusolver_dn_handle();
