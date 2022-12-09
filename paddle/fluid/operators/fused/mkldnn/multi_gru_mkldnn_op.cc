@@ -20,7 +20,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/fused/multi_gru_op.h"
-#include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {

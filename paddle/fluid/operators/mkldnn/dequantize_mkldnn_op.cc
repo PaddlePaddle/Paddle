@@ -16,9 +16,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/phi/core/errors.h"
 
 namespace paddle {
 namespace operators {
@@ -39,11 +39,11 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<phi::DenseTensor>("Output");
 
     PADDLE_ENFORCE(quantization_scale != 0.0f,
-                   platform::errors::InvalidArgument(
+                   phi::errors::InvalidArgument(
                        "Dequantization scale must be different than 0.0f"));
 
     PADDLE_ENFORCE(quantization_shift <= 255 && quantization_shift >= 0,
-                   platform::errors::InvalidArgument(
+                   phi::errors::InvalidArgument(
                        "Dequantization shift must be lower or equal to ",
                        "255 and greater or equal to 0, but got %f",
                        quantization_shift));
