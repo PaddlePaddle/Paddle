@@ -202,7 +202,7 @@
              str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f, bool use_addto = false,
              bool fuse_residual_connection = false, float Scale_in = 1.0f, float Scale_out = 1.0f,
              float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool force_fp32_output = false,
-             int workspace_size_MB = platform::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
+             int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
 
 - op : conv2d_fusion
   extra :
@@ -211,7 +211,7 @@
              str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f, bool use_addto = false,
              bool fuse_residual_connection = false, float Scale_in = 1.0f, float Scale_out = 1.0f,
              float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool force_fp32_output = false,
-             int workspace_size_MB = platform::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
+             int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
 
 - op : conv2d_transpose
   backward : conv2d_transpose_grad
@@ -219,7 +219,7 @@
     attrs : [bool is_test = false, bool use_cudnn = true, bool use_mkldnn = false, bool force_fp32_output = false,
              str mkldnn_data_type = "float32", bool fuse_relu = false,
              str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f,
-             int workspace_size_MB = platform::GetDefaultConvWorkspaceSizeLimitMB()]
+             int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB()]
 
 - op : conv3d
   backward : conv3d_grad
@@ -227,12 +227,12 @@
     attrs : [bool is_test = false, bool use_cudnn = true, bool use_mkldnn = false, str mkldnn_data_type = "float32", bool fuse_relu = false,
              str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f,
              bool use_addto = false, bool fuse_residual_connection = false, bool force_fp32_output = false,
-             int workspace_size_MB = platform::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
+             int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
 
 - op : conv3d_transpose
   backward : conv3d_transpose_grad
   extra :
-    attrs : [bool use_cudnn = true, bool use_mkldnn = false, int workspace_size_MB = platform::GetDefaultConvWorkspaceSizeLimitMB()]
+    attrs : [bool use_cudnn = true, bool use_mkldnn = false, int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB()]
 
 - op : cos
   backward : cos_grad, cos_double_grad, cos_triple_grad
@@ -251,6 +251,22 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : crop (crop_tensor)
+  backward : crop_grad (crop_tensor_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  int_array:
+    shape :
+      data_type : int
+      tensor_name : Shape
+      tensors_name : ShapeTensor
+    offsets :
+      data_type : int
+      tensor_name : Offsets
+      tensors_name : OffsetsTensor
 
 - op : cross
   inputs :
@@ -273,7 +289,7 @@
              str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f, bool use_addto = false,
              bool fuse_residual_connection = false, float Scale_in = 1.0f, float Scale_out = 1.0f,
              float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool force_fp32_output = false,
-             int workspace_size_MB = platform::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
+             int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
 
 - op : depthwise_conv2d_transpose
   backward : depthwise_conv2d_transpose_grad
@@ -281,7 +297,7 @@
     attrs : [bool is_test = false, bool use_cudnn = false, bool use_mkldnn = false, bool force_fp32_output = false,
              str mkldnn_data_type = "float32", bool fuse_relu = false,
              str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f,
-             int workspace_size_MB = platform::GetDefaultConvWorkspaceSizeLimitMB()]
+             int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB()]
 
 - op : dequantize_linear
   extra :
@@ -823,6 +839,16 @@
   outputs :
     {out : Out, indices : Indices}
 
+- op : multinomial
+  inputs :
+    {x : X}
+  outputs :
+    out : Out
+  scalar :
+    num_samples :
+      data_type : int
+      support_tensor : true
+
 - op : multiply (elementwise_mul)
   backward : multiply_grad (elementwise_mul_grad)
   extra :
@@ -1019,6 +1045,13 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
+- op : share_buffer
+  inputs :
+    x : X
+  outputs :
+    out : Out
+    xout : XOut
+
 - op : shuffle_channel
   backward : shuffle_channel_grad
   extra :
@@ -1185,6 +1218,17 @@
     x : X
   outputs :
     out : Out
+
+- op : topk (top_k_v2)
+  backward : topk_grad (top_k_v2_grad)
+  inputs :
+    x : X
+  outputs :
+    {out : Out, indices : Indices}
+  scalar :
+    k :
+      data_type : int
+      tensor_name : K
 
 - op : trace
   inputs :

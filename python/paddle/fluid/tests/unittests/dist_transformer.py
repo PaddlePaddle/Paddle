@@ -289,7 +289,7 @@ class LearningRateScheduler:
         self.warmup_steps = warmup_steps
         self.d_model = d_model
         self.static_lr = learning_rate
-        self.learning_rate = layers.create_global_var(
+        self.learning_rate = paddle.static.create_global_var(
             name=name,
             shape=[1],
             value=float(learning_rate),
@@ -1763,7 +1763,7 @@ def fast_decode(
             shape=[1], dtype=start_tokens.dtype, value=0
         )
         cond = paddle.less_than(x=step_idx, y=max_len)
-        while_op = layers.While(cond)
+        while_op = paddle.static.nn.control_flow.While(cond)
         # array states will be stored for each step.
         ids = layers.array_write(
             paddle.reshape(start_tokens, (-1, 1)), step_idx

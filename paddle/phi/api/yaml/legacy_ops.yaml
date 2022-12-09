@@ -287,7 +287,7 @@
   backward : bilinear_tensor_product_grad
 
 - op : bincount
-  args: (Tensor x, Tensor weights, Scalar minlength)
+  args: (Tensor x, Tensor weights, Scalar(int) minlength = 0)
   output: Tensor(out)
   infer_meta:
     func: BincountInferMeta
@@ -463,16 +463,6 @@
   args : (Tensor x, Place place, bool blocking)
   output : Tensor(out)
   invoke : copy_to_impl(x, place, blocking)
-
-- op : crop
-  args : (Tensor x, IntArray shape, IntArray offsets)
-  output : Tensor(out)
-  infer_meta :
-    func : CropInferMeta
-  kernel :
-    func : crop
-    data_type : x
-  backward : crop_grad
 
 # Part of python API paddle.nn.functional.cross_entropy
 - op : cross_entropy_with_softmax
@@ -1358,14 +1348,6 @@
     func : multiclass_nms3
   optional : rois_num
 
-- op : multinomial
-  args : (Tensor x, Scalar num_samples, bool replacement)
-  output : Tensor(out)
-  infer_meta :
-    func : MultinomialInferMeta
-  kernel :
-    func : multinomial
-
 - op : multiplex
   args : (Tensor[] inputs, Tensor index)
   output : Tensor
@@ -2044,15 +2026,6 @@
   kernel :
     func : tile
   backward : tile_grad
-
-- op : topk
-  args : (Tensor x, Scalar k, int axis = -1, bool largest = true, bool sorted = true)
-  output : Tensor(out), Tensor(indices)
-  infer_meta :
-    func : TopKInferMeta
-  kernel :
-    func : topk
-  backward : topk_grad
 
 - op : transpose
   args : (Tensor x, int[] perm)

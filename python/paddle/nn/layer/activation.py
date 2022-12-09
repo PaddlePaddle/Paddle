@@ -1401,7 +1401,7 @@ class Maxout(Layer):
         \end{array}
 
     Parameters:
-        groups (int, optional): The groups number of maxout. `groups` specifies the
+        groups (int): The groups number of maxout. `groups` specifies the
             index of channel dimension where maxout will be performed. This must be
             a factor of number of features. Default is 1.
         axis (int, optional): The axis along which to perform maxout calculations.

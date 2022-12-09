@@ -15,18 +15,13 @@
 import paddle
 from paddle.utils import gast
 from paddle.fluid.framework import Variable
-from paddle.jit.dy2static.utils import (
+from .utils import (
     UndefinedVar,
     create_undefined_variable,
 )
 from paddle.fluid.layers.utils import map_structure, is_sequence
 
-__all__ = [
-    'create_bool_as_type',
-    'create_fill_constant_node',
-    'to_static_variable',
-    'create_undefined_var',
-]
+__all__ = []
 
 
 def create_undefined_var(name):

@@ -91,7 +91,7 @@ def group_sharded_parallel(
 
             # required: distributed
             import paddle
-            from paddle.fluid.dygraph.nn import Linear
+            from paddle.nn import Linear
             from paddle.distributed import fleet
             from paddle.distributed.sharding import group_sharded_parallel
 
@@ -239,7 +239,7 @@ def save_group_sharded_model(model, output, optimizer=None):
 
             # required: distributed
             import paddle
-            from paddle.fluid.dygraph.nn import Linear
+            from paddle.nn import Linear
             from paddle.distributed import fleet
             from paddle.distributed.sharding import group_sharded_parallel, save_group_sharded_model
 
