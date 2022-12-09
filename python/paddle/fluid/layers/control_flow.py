@@ -1867,9 +1867,10 @@ class Switch:
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
 
-            lr = fluid.layers.create_global_var(
+            lr = paddle.static.create_global_var(
                 shape=[1],
                 value=0.0,
                 dtype='float32',
