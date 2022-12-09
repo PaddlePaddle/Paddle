@@ -343,11 +343,11 @@ class RecomputePass(PassBase):
                         continue
                     if name not in var_name_dict:
                         ref_process_mesh = cur_op_dist_attr.process_mesh
-                        try:
+                        if name in op.input_arg_names:
                             ref_dims_mapping = (
                                 cur_op_dist_attr.get_input_dims_mapping(name)
                             )
-                        except:
+                        else:
                             ref_dims_mapping = (
                                 cur_op_dist_attr.get_output_dims_mapping(name)
                             )
