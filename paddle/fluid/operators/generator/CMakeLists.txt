@@ -207,7 +207,7 @@ endif()
 
 # op extra info file
 set(ops_extra_info_gen_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/ops_extra_info_gen.py)
+    ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator/ops_extra_info_gen.py)
 set(op_compat_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml)
 set(ops_extra_info_file
     ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/ops_extra_info.cc)
