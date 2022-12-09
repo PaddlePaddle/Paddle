@@ -68,9 +68,7 @@ def resnet_cifar10(input, depth=32):
     res1 = layer_warp(basicblock, conv1, 16, 16, n, 1)
     res2 = layer_warp(basicblock, res1, 16, 32, n, 2)
     res3 = layer_warp(basicblock, res2, 32, 64, n, 2)
-    pool = fluid.layers.pool2d(
-        input=res3, pool_size=8, pool_type='avg', pool_stride=1
-    )
+    pool = paddle.nn.functional.avg_pool2d(x=res3, kernel_size=8, stride=1)
     return pool
 
 
@@ -119,7 +117,9 @@ def train(net_type, use_cuda, save_dirname, is_local):
         raise ValueError("%s network is not supported" % net_type)
 
     predict = fluid.layers.fc(input=net, size=classdim, act='softmax')
-    cost = fluid.layers.cross_entropy(input=predict, label=label)
+    cost = paddle.nn.functional.cross_entropy(
+        input=predict, label=label, reduction='none', use_softmax=False
+    )
     avg_cost = paddle.mean(cost)
     acc = paddle.static.accuracy(input=predict, label=label)
 

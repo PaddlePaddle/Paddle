@@ -1298,7 +1298,9 @@ class TestResnet(unittest.TestCase):
                 ):
                     out = resnet(img)
 
-                loss = fluid.layers.cross_entropy(input=out, label=label)
+                loss = paddle.nn.functional.cross_entropy(
+                    input=out, label=label, reduction='none', use_softmax=False
+                )
                 avg_loss = paddle.mean(x=loss)
 
                 dy_out = avg_loss.numpy()

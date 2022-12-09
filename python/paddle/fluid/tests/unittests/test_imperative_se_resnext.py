@@ -373,8 +373,11 @@ class TestImperativeResneXt(unittest.TestCase):
 
                     out = se_resnext(img)
                     softmax_out = paddle.nn.functional.softmax(out)
-                    loss = fluid.layers.cross_entropy(
-                        input=softmax_out, label=label
+                    loss = paddle.nn.functional.cross_entropy(
+                        input=softmax_out,
+                        label=label,
+                        reduction='none',
+                        use_softmax=False,
                     )
                     avg_loss = paddle.mean(x=loss)
 
@@ -453,7 +456,12 @@ class TestImperativeResneXt(unittest.TestCase):
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             out = se_resnext(img)
             softmax_out = paddle.nn.function.softmax(out)
-            loss = fluid.layers.cross_entropy(input=softmax_out, label=label)
+            loss = paddle.nn.functional.cross_entropy(
+                input=softmax_out,
+                label=label,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_loss = paddle.mean(x=loss)
             optimizer.minimize(avg_loss)
 

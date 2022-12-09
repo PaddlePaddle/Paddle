@@ -289,7 +289,7 @@ class LearningRateScheduler:
         self.warmup_steps = warmup_steps
         self.d_model = d_model
         self.static_lr = learning_rate
-        self.learning_rate = layers.create_global_var(
+        self.learning_rate = paddle.static.create_global_var(
             name=name,
             shape=[1],
             value=float(learning_rate),
