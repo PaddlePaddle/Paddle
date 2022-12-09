@@ -99,7 +99,7 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const bool is_test = ctx.Attr<bool>("is_test");
 
     auto& dev_ctx = ctx.template device_context<phi::OneDNNContext>();
-    const auto& mkldnn_engine = dev_ctx.GetEngine();
+    const auto& onednn_engine = dev_ctx.GetEngine();
 
     auto src_tz = phi::vectorize(x->dims());
     PADDLE_ENFORCE_EQ(begin_norm_axis,
@@ -117,7 +117,7 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     }
 
     LayerNormOneDNNHandler<T> handler(
-        src_tz, epsilon, flags, is_test, x, mkldnn_engine, ctx.GetPlace());
+        src_tz, epsilon, flags, is_test, x, onednn_engine, ctx.GetPlace());
 
     auto src_memory = handler.AcquireSrcMemory(x);
     auto dst_memory = handler.AcquireDstMemory(out);

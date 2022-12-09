@@ -131,7 +131,7 @@ class InterpolateOneDNNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto& dev_ctx = ctx.template device_context<phi::OneDNNContext>();
-    const auto& mkldnn_engine = dev_ctx.GetEngine();
+    const auto& onednn_engine = dev_ctx.GetEngine();
 
     const auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
@@ -146,7 +146,7 @@ class InterpolateOneDNNKernel : public framework::OpKernel<T> {
     out->Resize(dim_out);
 
     InterpolateOneDNNHandler<T> handler(
-        algo, mkldnn_engine, ctx.GetPlace(), x, out);
+        algo, onednn_engine, ctx.GetPlace(), x, out);
 
     auto src_memory_p = handler.AcquireSrcMemory(x);
     auto dst_memory_p = handler.AcquireDstMemory(out);

@@ -51,10 +51,10 @@ class FCMKLDNNHandler
                   const phi::DenseTensor* bias,
                   phi::DenseTensor* out,
                   const int in_num_col_dims,
-                  dnnl::engine mkldnn_engine,
+                  dnnl::engine onednn_engine,
                   platform::Place cpu_place)
       : phi::funcs::OneDNNHandlerNoCachingT<T_in, dnnl::inner_product_forward>(
-            mkldnn_engine, cpu_place),
+            onednn_engine, cpu_place),
         dev_ctx_(dev_ctx) {
     this->memory_key_ = ctx.InputName("W");
 
@@ -399,7 +399,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
   template <typename T_out, typename T_w>
   void RunKernel(const framework::ExecutionContext& ctx) const {
     const auto& dev_ctx = ctx.template device_context<OneDNNContext>();
-    const auto& mkldnn_engine = dev_ctx.GetEngine();
+    const auto& onednn_engine = dev_ctx.GetEngine();
 
     const auto* x = ctx.Input<phi::DenseTensor>("Input");
     const auto* weights = ctx.Input<phi::DenseTensor>("W");
@@ -433,7 +433,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
           inner_product_cache->inner_product_p);
       src_memory_p =
           std::make_shared<dnnl::memory>(inner_product_cache->src_mem);
-      PrepareSrcMem(fc_p, src_memory_p, x, mkldnn_engine);
+      PrepareSrcMem(fc_p, src_memory_p, x, onednn_engine);
 
       weights_memory_p =
           std::make_shared<dnnl::memory>(inner_product_cache->weights_mem);
@@ -463,7 +463,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
                                                 bias,
                                                 out,
                                                 in_col_dims,
-                                                mkldnn_engine,
+                                                onednn_engine,
                                                 ctx.GetPlace());
 
       src_memory_p = handler.AcquireSrcMemoryWithReorder(x);

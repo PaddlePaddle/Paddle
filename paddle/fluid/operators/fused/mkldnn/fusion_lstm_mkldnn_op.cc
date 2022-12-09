@@ -31,7 +31,7 @@ class LSTMMKLDNNHandler
  public:
   LSTMMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
                     const OneDNNContext& dev_ctx,
-                    const dnnl::engine mkldnn_engine,
+                    const dnnl::engine onednn_engine,
                     platform::Place cpu_place,
                     const phi::DenseTensor* input,
                     const phi::DenseTensor* weight_h,
@@ -46,7 +46,7 @@ class LSTMMKLDNNHandler
       : RNNMKLDNNHandler<T, dnnl::lstm_forward, T_out>(
             ctx,
             dev_ctx,
-            mkldnn_engine,
+            onednn_engine,
             ctx.GetPlace(),
             input,
             weight_h,
@@ -338,7 +338,7 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
   template <typename Tout = T>
   void RunKernel(const framework::ExecutionContext& ctx) const {
     auto& dev_ctx = ctx.template device_context<OneDNNContext>();
-    const auto& mkldnn_engine = dev_ctx.GetEngine();
+    const auto& onednn_engine = dev_ctx.GetEngine();
 
     // Get Tensors
     const auto* input = ctx.Input<phi::DenseTensor>("X");
@@ -379,7 +379,7 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
     LSTMMKLDNNHandler<T, Tout> handler(
         ctx,
         dev_ctx,
-        mkldnn_engine,
+        onednn_engine,
         ctx.GetPlace(),
         input,
         weight_h,

@@ -28,7 +28,7 @@ class RNNMKLDNNHandler : public phi::funcs::OneDNNHandlerT<T, T_alg> {
  public:
   RNNMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
                    const phi::OneDNNContext& dev_ctx,
-                   const dnnl::engine mkldnn_engine,
+                   const dnnl::engine onednn_engine,
                    platform::Place cpu_place,
                    const phi::DenseTensor* input,
                    const phi::DenseTensor* weight_h,
