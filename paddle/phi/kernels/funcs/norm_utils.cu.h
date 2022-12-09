@@ -463,7 +463,8 @@ void NormDoubleGradFunctor(const DeviceContext &ctx,
   const int sample_size = num / N / C;
   phi::DenseTensor scale_tmp;
   if (!Scale) {
-    scale_tmp.mutable_data<T>({C}, ctx.GetPlace());
+    scale_tmp.Resize({C});
+    ctx.template Alloc<T>(&scale_tmp);
     set_constant(ctx, &scale_tmp, static_cast<T>(1));
   }
   const T *scale_data = Scale ? Scale->data<T>() : scale_tmp.data<T>();
