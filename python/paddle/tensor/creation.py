@@ -36,7 +36,7 @@ from ..fluid.framework import (
     _in_legacy_dygraph,
     device_guard,
 )
-from ..fluid.initializer import Initializer
+from ..fluid.initializer import Constant, Initializer
 from ..fluid.layers import utils
 from ..fluid.param_attr import ParamAttr
 from ..framework import (
@@ -68,6 +68,84 @@ def _real_to_complex_dtype(dtype):
         return core.VarDesc.VarType.COMPLEX128
     else:
         return dtype
+
+
+def create_global_var(
+    shape, value, dtype, persistable=False, force_cpu=False, name=None
+):
+    """
+    This function creates a new tensor variable with value in the global block(block 0).
+
+    Args:
+        shape (list[int]|tuple[int]): Shape of the variable
+        value (float): The value of the variable. The new created
+                      variable will be filled with it.
+        dtype (str): Data type of the variable
+        persistable (bool, optional): If this variable is persistable.
+                           Default: False
+        force_cpu (bool, optional): Force this variable to be on CPU.
+                         Default: False
+        name (str, optional): For detailed information, please refer to
+           :ref:`api_guide_Name` . Usually name is no need to set and None by default.
+
+    Returns:
+        Variable: The created Variable
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.enable_static()
+            var = paddle.static.create_global_var(shape=[2,3], value=1.0, dtype='float32',
+                                           persistable=True, force_cpu=True, name='new_var')
+    """
+    check_type(shape, 'shape', (list, tuple, np.ndarray), 'create_global_var')
+    for item in shape:
+        check_type(
+            item,
+            'item of shape',
+            (
+                int,
+                np.uint8,
+                np.int8,
+                np.int16,
+                np.int32,
+                np.int64,
+            ),
+            'create_global_var',
+        )
+
+    check_dtype(
+        dtype,
+        'dtype',
+        [
+            'bool',
+            'float16',
+            'float32',
+            'float64',
+            'int8',
+            'int16',
+            'int32',
+            'int64',
+            'uint8',
+            'uint16',
+        ],
+        'create_global_var',
+    )
+
+    helper = LayerHelper("global_var", **locals())
+    var = helper.create_global_variable(
+        dtype=dtype,
+        shape=shape,
+        persistable=persistable,
+        name=name,
+        stop_gradient=True,
+    )
+    helper.set_variable_initializer(
+        var, initializer=Constant(value=float(value), force_cpu=force_cpu)
+    )
+
+    return var
 
 
 def create_parameter(

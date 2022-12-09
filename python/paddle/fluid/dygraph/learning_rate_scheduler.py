@@ -68,7 +68,7 @@ class LearningRateDecay:
         """
         from .. import layers
 
-        lr = layers.create_global_var(
+        lr = paddle.static.create_global_var(
             name=unique_name.generate("learning_rate"),
             shape=[1],
             value=float(lr),
