@@ -13,10 +13,7 @@
 # limitations under the License.
 
 from .spectral_norm_hook import spectral_norm
-from .weight_norm_hook import (
-    weight_norm,
-    remove_weight_norm,
-)  # noqa: F401
+from .weight_norm_hook import weight_norm, remove_weight_norm  # noqa: F401
 from .transform_parameters import (
     parameters_to_vector,
     vector_to_parameters,
