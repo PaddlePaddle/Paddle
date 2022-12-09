@@ -1089,14 +1089,14 @@ class ShardingPass(PassBase):
                     )
 
                 # assign stream
-                # op.dist_attr.execution_stream = self.gradient_sync_stream
+                op.dist_attr.execution_stream = self.gradient_sync_stream
                 if self.sharding_hybrid_dp and grad_group.is_in_local_shard:
                     next_op = ops[idx + 1]
                     assert next_op.type == "c_allreduce"
                     assert next_op.output("Out") == reduce_varname
-                    # next_op.dist_attr.execution_stream = (
-                    #     self.gradient_sync_stream
-                    # )
+                    next_op.dist_attr.execution_stream = (
+                        self.gradient_sync_stream
+                    )
                     idx += 1
 
             idx += 1
@@ -1118,7 +1118,7 @@ class ShardingPass(PassBase):
                     is_recompute=False,
                     sync=False,
                 )
-                # depend_op.dist_attr.execution_stream = self.gradient_sync_stream
+                depend_op.dist_attr.execution_stream = self.gradient_sync_stream
                 print("grad comm insert dep: {}".format(str(depend_op)))
 
         block._sync_with_cpp()
