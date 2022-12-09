@@ -170,10 +170,10 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
   if (is_fp16_precision) {
 #ifdef PADDLE_WITH_CUTLASS
     // cutlass now support these activations
-    // cutlass_act_set.insert("swish");
-    // cutlass_act_set.insert("relu");
-    // cutlass_act_set.insert("identity");
-    // cutlass_act_set.insert("leaky_relu");
+    cutlass_act_set.insert("swish");
+    cutlass_act_set.insert("relu");
+    cutlass_act_set.insert("identity");
+    cutlass_act_set.insert("leaky_relu");
 
     all_act_set.insert(cutlass_act_set.begin(), cutlass_act_set.end());
 #endif

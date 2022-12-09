@@ -28,10 +28,8 @@ typedef enum {
   CONV2D_BIAS_LEAKY_RELU
 } OpType;
 
-// This two functions calculate diff of cutlass output and baseline output, you
-// can use them to debug. We recommend use conv2d_diff_gpu bacause gpu is more
-// fast than cpu return value is the max diff between cutlass and baseline
-float conv2d_diff_cpu(ConvAllParams params, OpType op_type);
+// conv2d_diff_gpu calculate diff of cutlass output and baseline output, you can
+// use them to debug. return value is the max diff between cutlass and baseline
 float conv2d_diff_gpu(ConvAllParams params, OpType op_type);
 
 }  // namespace fusion

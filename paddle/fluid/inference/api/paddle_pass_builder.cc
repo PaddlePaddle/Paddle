@@ -250,7 +250,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         // following pass should be located in the last, since it will
         // work on all fused ops.
         "float_to_half_pass",  //
-        "conv2d_fusion_layout_transfer_pass", "runtime_context_cache_pass"
+        "conv2d_fusion_layout_transfer_pass"
   });
 
   use_gpu_ = true;

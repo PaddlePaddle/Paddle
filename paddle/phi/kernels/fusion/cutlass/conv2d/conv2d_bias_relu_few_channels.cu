@@ -20,7 +20,7 @@
 namespace phi {
 namespace fusion {
 
-template <typename TShape, typename WShape, int Aligment = 1>
+template <typename TShape, typename WShape, int Alignment = 1>
 cutlass::Status cutlass_nhwc_conv2d_bias_relu_few_channels(
     ConvAllParams params) {
   using ElementAccumulator = float;
@@ -43,7 +43,7 @@ cutlass::Status cutlass_nhwc_conv2d_bias_relu_few_channels(
       cutlass::conv::IteratorAlgorithm::kFewChannels;
   using EpilogueOp =
       cutlass::epilogue::thread::LinearCombinationRelu<ElementOutput,
-                                                       Aligment,
+                                                       Alignment,
                                                        float,
                                                        ElementComputeEpilogue>;
 
@@ -66,8 +66,8 @@ cutlass::Status cutlass_nhwc_conv2d_bias_relu_few_channels(
       cutlass::arch::OpMultiplyAdd,
       IteratorAlgorithm,
       cutlass::conv::StrideSupport::kStrided,
-      Aligment,
-      Aligment>::Kernel;
+      Alignment,
+      Alignment>::Kernel;
   using ImplicitGemm =
       cutlass::conv::device::ImplicitGemmConvolution<Conv2dFpropKernel>;
 

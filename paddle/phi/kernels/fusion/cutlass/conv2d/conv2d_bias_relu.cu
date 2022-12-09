@@ -22,7 +22,7 @@
 namespace phi {
 namespace fusion {
 
-template <typename TShape, typename WShape, int Aligment = 8>
+template <typename TShape, typename WShape, int Alignment = 8>
 cutlass::Status cutlass_nhwc_conv2d_bias_relu(ConvAllParams params) {
   using ElementAccumulator = float;
   using ElementComputeEpilogue = float;
@@ -44,7 +44,7 @@ cutlass::Status cutlass_nhwc_conv2d_bias_relu(ConvAllParams params) {
       cutlass::conv::IteratorAlgorithm::kOptimized;
   using EpilogueOp =
       cutlass::epilogue::thread::LinearCombinationRelu<ElementOutput,
-                                                       Aligment,
+                                                       Alignment,
                                                        float,
                                                        ElementComputeEpilogue>;
 
@@ -67,8 +67,8 @@ cutlass::Status cutlass_nhwc_conv2d_bias_relu(ConvAllParams params) {
       cutlass::arch::OpMultiplyAdd,
       IteratorAlgorithm,
       cutlass::conv::StrideSupport::kStrided,
-      Aligment,
-      Aligment>::Kernel;
+      Alignment,
+      Alignment>::Kernel;
   using ImplicitGemm =
       cutlass::conv::device::ImplicitGemmConvolution<Conv2dFpropKernel>;
 
@@ -234,7 +234,6 @@ void cutlass_conv2d_bias_relu(ConvAllParams params) {
       map_problem_conv2d_bias_relu[problem_size] = i;
     }
     // debug code
-    // conv2d_diff_cpu(params, CONV2D_BIAS_RELU);
     std::cout << conv2d_diff_gpu(params, CONV2D_BIAS_RELU) << std::endl;
   }
 }
