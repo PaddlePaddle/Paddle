@@ -468,7 +468,6 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
 #else
     const T* data_x = tensor_x->data<T>();
     const T* data_y = tensor_y->data<T>();
-    ;
     const T* data_dout = tensor_dout->data<T>();
     const T* data_ddx = tensor_ddx ? tensor_ddx->data<T>() : nullptr;
     const T* data_ddy = tensor_ddy ? tensor_ddy->data<T>() : nullptr;
@@ -745,7 +744,6 @@ struct DotTripleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
 #else
     const T* data_x = in_tensor_x->data<T>();
     const T* data_y = in_tensor_y->data<T>();
-    ;
     const T* data_dout = in_tensor_dout->data<T>();
     const T* data_ddx = in_tensor_ddx ? in_tensor_ddx->data<T>() : nullptr;
     const T* data_ddy = in_tensor_ddy ? in_tensor_ddy->data<T>() : nullptr;
@@ -1100,7 +1098,6 @@ struct DotTripleGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
 #else
     const T* data_x = in_tensor_x->data<T>();
     const T* data_y = in_tensor_y->data<T>();
-    ;
     const T* data_dout = in_tensor_dout->data<T>();
     const T* data_ddx = in_tensor_ddx ? in_tensor_ddx->data<T>() : nullptr;
     const T* data_ddy = in_tensor_ddy ? in_tensor_ddy->data<T>() : nullptr;
