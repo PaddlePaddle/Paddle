@@ -232,7 +232,7 @@ class InstanceNorm2D(_InstanceNormBase):
             If it is set to None or one attribute of ParamAttr, instance_norm
             will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
             If the Initializer of the bias_attr is not set, the bias is initialized zero.
-    `       If it is set to False, will not create bias_attr. Default: None.
+            If it is set to False, will not create bias_attr. Default: None.
         data_format(str, optional): Specify the input data format, could be "NCHW". Default: NCHW.
         name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
