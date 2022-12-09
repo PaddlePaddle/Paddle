@@ -49,23 +49,12 @@ world_process_group = get_world_process_group()
 
 
 class BF16State(object):
-    def __init__(self, block, amp_lists=None, use_pure_bf16=False):
+    def __init__(self, block):
         self._block: Block = block
         self._op_bf16_dict = {}
         self._var_name_dict = {}
-        self.is_train = False
-        self.use_pure_bf16 = use_pure_bf16
-        amp_lists = (
-            AutoMixedPrecisionListsBF16() if amp_lists is None else amp_lists
-        )
-        self.bf16_list = amp_lists.bf16_list
-        self.fp32_list = amp_lists.fp32_list
-        self.gray_list = amp_lists.gray_list
-        self.fp32_varnames = amp_lists.fp32_varnames
-        self.unsupported_list = amp_lists.unsupported_list
-        self.bf16_initializer_list = amp_lists.bf16_initializer_list
 
-    def _build_state(self, dist_context):
+    def _build_state(self, amp_lists, dist_context):
         ops = self._block.ops
         dist_op_context = dist_context.dist_op_context
         training = False
@@ -74,7 +63,7 @@ class BF16State(object):
                 training = True
 
             if int(op.attr("op_role")) == int(OpRole.Forward):
-                self._mark_forward_program_op(op, ops)
+                self._mark_forward_program_op(amp_lists, op, ops)
             elif int(op.attr("op_role")) == int(OpRole.Backward):
                 if op.desc.original_id() in dist_op_context.grad_op_id_to_op_id:
                     fwd_op_original_id = dist_op_context.grad_op_id_to_op_id[
@@ -87,15 +76,17 @@ class BF16State(object):
                 break
         return training
 
-    def _mark_forward_program_op(self, op, ops):
+    def _mark_forward_program_op(self, amp_lists, op, ops):
         if op.type == "create_py_reader" or op.type == "read":
             return
-        if self.fp32_varnames is not None and _is_in_fp32_varnames(op, self):
+        if amp_lists.fp32_varnames is not None and _is_in_fp32_varnames(
+            op, amp_lists
+        ):
             self._op_bf16_dict[op.desc.original_id()] = False
             return
-        if op.type in self.bf16_list:
+        if op.type in amp_lists.bf16_list:
             self._op_bf16_dict[op.desc.original_id()] = True
-        elif op.type in self.gray_list:
+        elif op.type in amp_lists.gray_list:
             is_fp32_op = False
             is_bf16_op = False
             for in_name in op.input_names:
@@ -115,7 +106,7 @@ class BF16State(object):
                                 prev_op.desc.original_id(), False
                             )
                             is False
-                            or prev_op.type in self.fp32_list
+                            or prev_op.type in amp_lists.fp32_list
                         ):
                             is_fp32_op = True
                         elif (
@@ -123,7 +114,7 @@ class BF16State(object):
                                 prev_op.desc.original_id(), False
                             )
                             is True
-                            or prev_op.type in self.bf16_list
+                            or prev_op.type in amp_lists.bf16_list
                         ):
                             is_bf16_op = True
             if is_fp32_op:
@@ -135,7 +126,7 @@ class BF16State(object):
         else:
             self._op_bf16_dict[op.desc.original_id()] = False
 
-    def rewrite_forward_program(self, dist_context):
+    def cast_forward_program(self, dist_context):
         ops = self._block.ops
         idx = 0
         while idx < len(ops):
@@ -143,7 +134,7 @@ class BF16State(object):
             op = ops[idx]
             if int(op.attr('op_role')) == int(OpRole.Backward):
                 break
-            if self._op_bf16_dict.get(op.desc.original_id(), False) is False:
+            if self._op_bf16_dict.get(op.desc.original_id(), None) is False:
                 num_cast_ops = self._insert_cast_op_forward(
                     op,
                     idx,
@@ -151,7 +142,7 @@ class BF16State(object):
                     core.VarDesc.VarType.FP32,
                     dist_context,
                 )
-            else:
+            elif self._op_bf16_dict.get(op.desc.original_id(), None) is True:
                 if op.has_attr('use_mkldnn'):
                     op._set_attr('use_mkldnn', True)
                     op._set_attr('mkldnn_data_type', 'bfloat16')
@@ -168,6 +159,8 @@ class BF16State(object):
                     core.VarDesc.VarType.BF16,
                     dist_context,
                 )
+            else:
+                pass
 
             idx += num_cast_ops + 1
         self._block._sync_with_cpp()
@@ -270,7 +263,7 @@ class BF16State(object):
                             op._set_attr('out_dtype', core.VarDesc.VarType.BF16)
         return num_cast_ops
 
-    def rewrite_backward_program(
+    def cast_backward_program(
         self, params_grads, dist_context: DistributedContext
     ):
         self._block._sync_with_cpp()
@@ -289,10 +282,7 @@ class BF16State(object):
                 if not op_dist_attr.is_recompute:
                     appended_grad_times += 1
             if op.desc.original_id() in dist_op_context.grad_op_id_to_op_id:
-                if (
-                    self._op_bf16_dict.get(op.desc.original_id(), False)
-                    is False
-                ):
+                if self._op_bf16_dict.get(op.desc.original_id(), None) is False:
                     num_cast_ops = self._insert_cast_op_backward(
                         op,
                         idx,
@@ -301,7 +291,9 @@ class BF16State(object):
                         dist_context,
                         appended_grad_times,
                     )
-                else:
+                elif (
+                    self._op_bf16_dict.get(op.desc.original_id(), None) is True
+                ):
                     if op.has_attr('use_mkldnn'):
                         op._set_attr('use_mkldnn', True)
                         op._set_attr('mkldnn_data_type', 'bfloat16')
@@ -343,7 +335,7 @@ class BF16State(object):
 
     def _insert_cast_op_backward(
         self,
-        op,
+        grad_op,
         idx,
         src_dtype,
         dst_dtype,
@@ -353,29 +345,29 @@ class BF16State(object):
         num_cast_ops = 0
         dist_op_context = dist_context.dist_op_context
         fwd_op_original_id = dist_op_context.grad_op_id_to_op_id[
-            op.desc.original_id()
+            grad_op.desc.original_id()
         ]
-        for in_name in op.input_names:
+        for in_name in grad_op.input_names:
             if (
                 src_dtype == core.VarDesc.VarType.FP32
-                and op.type == "layer_norm_grad"
+                and grad_op.type == "layer_norm_grad"
             ):
                 if in_name not in {"X", "Y@GRAD"}:
-                    for in_var_name in op.input(in_name):
+                    for in_var_name in grad_op.input(in_name):
                         in_var = self._block._find_var_recursive(in_var_name)
                         assert in_var.dtype == core.VarDesc.VarType.FP32
                     continue
-            for in_var_name in op.input(in_name):
+            for in_var_name in grad_op.input(in_name):
                 in_var = self._block._find_var_recursive(in_var_name)
                 if in_var.dtype == src_dtype:
                     consume_op_attr = dist_context.get_op_dist_attr_for_program(
-                        op
+                        grad_op
                     )
                     if in_var_name in self._var_name_dict[fwd_op_original_id]:
                         cast_name = self._var_name_dict[fwd_op_original_id][
                             in_var_name
                         ]
-                        op.desc._rename_input(in_var_name, cast_name)
+                        grad_op.desc._rename_input(in_var_name, cast_name)
                         in_var_dist_attr = consume_op_attr.get_input_dist_attr(
                             in_var_name
                         )
@@ -383,19 +375,27 @@ class BF16State(object):
                             cast_name, in_var_dist_attr
                         )
                     else:
-                        assert in_var.dtype == dst_dtype
+                        assert (
+                            in_var.dtype == dst_dtype
+                        ), "op [{}] expect input [{}] to be dtype [{}] BUT got [{}]. {}".format(
+                            grad_op.type,
+                            in_name,
+                            dst_dtype,
+                            in_var.dtype,
+                            str(grad_op),
+                        )
 
-        for out_name in op.output_names:
-            if src_dtype == core.VarDesc.VarType.FP32 and op.type in [
+        for out_name in grad_op.output_names:
+            if src_dtype == core.VarDesc.VarType.FP32 and grad_op.type in [
                 'layer_norm_grad'
             ]:
                 if out_name != "X@GRAD":
-                    for out_var_name in op.output(out_name):
+                    for out_var_name in grad_op.output(out_name):
                         out_var = self._block._find_var_recursive(out_var_name)
                         assert out_var.dtype == core.VarDesc.VarType.FP32
                     continue
 
-            for out_var_name in op.output(out_name):
+            for out_var_name in grad_op.output(out_name):
                 out_var = self._block._find_var_recursive(out_var_name)
                 out_var_fwd_var_name = out_var_name[: out_var_name.find('@')]
                 fwd_var = self._block._find_var_recursive(out_var_fwd_var_name)
@@ -408,7 +408,7 @@ class BF16State(object):
                         in self._var_name_dict[fwd_op_original_id]
                     ):
                         consume_op_attr = (
-                            dist_context.get_op_dist_attr_for_program(op)
+                            dist_context.get_op_dist_attr_for_program(grad_op)
                         )
                         fwd_cast_name = self._var_name_dict[fwd_op_original_id][
                             out_var_fwd_var_name
@@ -421,7 +421,7 @@ class BF16State(object):
                         cast_name = fwd_cast_name + "@GRAD" + suffix
                         cast_var = self._block.vars.get(cast_name)
                         if cast_var is None or cast_var.dtype != dst_dtype:
-                            op.desc._rename_output(out_var_name, cast_name)
+                            grad_op.desc._rename_output(out_var_name, cast_name)
                             out_var_dist_attr = (
                                 consume_op_attr.get_output_dist_attr(
                                     out_var_name
@@ -577,17 +577,13 @@ class BF16Pass(PassBase):
         )
 
         with static.program_guard(main_program, startup_program):
-            amp_state = BF16State(
-                main_program.global_block(),
-                amp_lists,
-                use_pure_bf16=self.get_attr("use_pure_bf16"),
-            )
-            training = amp_state._build_state(dist_context)
-            amp_state.rewrite_forward_program(dist_context)
+            amp_state = BF16State(main_program.global_block())
+            training = amp_state._build_state(amp_lists, dist_context)
+            amp_state.cast_forward_program(dist_context)
 
         if training:
             with static.program_guard(main_program, startup_program):
-                amp_state.rewrite_backward_program(params_grads, dist_context)
+                amp_state.cast_backward_program(params_grads, dist_context)
                 loss = self.get_attr("loss")
                 loss_op = loss.op
                 loss_op_dist_attr = dist_context.get_op_dist_attr_for_program(
