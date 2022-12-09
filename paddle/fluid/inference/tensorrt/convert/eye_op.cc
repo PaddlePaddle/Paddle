@@ -45,8 +45,7 @@ class EyeOpConverter : public OpConverter {
 
     // Declare inputs attr
     const int num_rows = PADDLE_GET_CONST(int, op_desc.GetAttr("num_rows"));
-    const int num_columns =
-        PADDLE_GET_CONST(int, op_desc.GetAttr("num_columns"));
+    int num_columns = PADDLE_GET_CONST(int, op_desc.GetAttr("num_columns"));
     const phi::DataType dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
 
     // Set data type
