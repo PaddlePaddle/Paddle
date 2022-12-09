@@ -160,14 +160,14 @@ def yolo_loss(
         downsample_ratio (int): The downsample ratio from network input to YOLOv3
                                 loss input, so 32, 16, 8 should be set for the
                                 first, second, and thrid YOLOv3 loss operators.
-        gt_score (Tensor, optional): mixup score of ground truth boxes, should be in shape
+        name (string): The default value is None.  Normally there is no need
+                        for user to set this property.  For more information,
+                        please refer to :ref:`api_guide_Name`
+        gt_score (Tensor): mixup score of ground truth boxes, should be in shape
                             of [N, B]. Default None.
-        use_label_smooth (bool, optional): Whether to use label smooth. Default True.
-        name (str, optional): The default value is None. Normally there is no need
-                       for user to set this property. For more information,
-                       please refer to :ref:`api_guide_Name`
-        scale_x_y (float, optional): Scale the center point of decoded bounding box.
-                           Default 1.0.
+        use_label_smooth (bool): Whether to use label smooth. Default True.
+        scale_x_y (float): Scale the center point of decoded bounding box.
+                        Default 1.0
 
     Returns:
         Tensor: A 1-D tensor with shape [N], the value of yolov3 loss
