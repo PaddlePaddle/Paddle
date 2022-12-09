@@ -470,8 +470,9 @@ framework::InterpreterCore* CinnLaunchContext::InitializeInterpreterCore(
     UpdateCapturedEnv(*scope, place);
   }
   for (auto&& var_name : initialized_beforehand_vars_) {
-    auto* var = interpreter_core->GetVariableScope()->GetMutableScope()->GetVar(
-        var_name);
+    auto* var =
+        interpreter_core_->GetVariableScope()->GetMutableScope()->GetVar(
+            var_name);
     auto* buffer = GetCinnBufferOfVar(var_name);
     auto dim = framework::DDim(buffer->dims, buffer->dimensions);
     var->GetMutable<phi::DenseTensor>()->Resize(dim);
