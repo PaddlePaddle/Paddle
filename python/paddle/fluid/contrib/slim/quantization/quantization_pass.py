@@ -27,10 +27,10 @@ from .... import unique_name
 
 from ....framework import Program, program_guard, default_startup_program
 from ....data import data
-from ....layers import mean
 from ....executor import scope_guard
 from ....framework import _get_paddle_place
 from . import utils
+import paddle
 
 __all__ = [
     'QuantizationTransformPass',
@@ -927,7 +927,7 @@ class QuantizationTransformPass:
                 out_node = func(in_node)
                 graph.out_node_mapping_table[out_node.name] = var_node.name()
                 # loss shape must be 1 when minimize
-                loss = mean(out_node)
+                loss = paddle.mean(out_node)
                 if not graph._for_test:
                     assert (
                         self._optimizer
@@ -1939,6 +1939,15 @@ class AddQuantDequantPass:
                     op_node.op()._set_attr("activation_bits", self._quant_bits)
                     op_node.op()._set_attr("with_quant_attr", True)
                     arg_names = utils._get_op_input_var_names(op_node)
+                    # If already quanted, skip it.
+                    skip_quant = False
+                    for arg_name in arg_names:
+                        if "quantized.dequantized" in arg_name:
+                            skip_quant = True
+                            break
+                    if skip_quant:
+                        continue
+
                     for arg_name in arg_names:
                         in_node = graph._find_node_by_name(
                             op_node.inputs, arg_name
@@ -1956,7 +1965,7 @@ class AddQuantDequantPass:
                         graph.update_input_link(
                             in_node, quant_var_node, op_node
                         )
-            t.update()
+                t.update()
 
         # Backward stage, update input link
         for op_node in all_op_nodes:
@@ -2797,6 +2806,15 @@ class AddQuantDequantPassV2:
                         continue
 
                     arg_names = utils._get_op_input_var_names(op_node)
+                    # If already quanted, skip it.
+                    skip_quant = False
+                    for arg_name in arg_names:
+                        if "quantized.dequantized" in arg_name:
+                            skip_quant = True
+                            break
+                    if skip_quant:
+                        continue
+
                     for arg_name in arg_names:
                         in_node = graph._find_node_by_name(
                             op_node.inputs, arg_name
@@ -2889,13 +2907,31 @@ class ReplaceFakeQuantDequantPass:
             graph, IrGraph
         ), 'graph must be the instance of IrGraph.'
         fake_quant_dequant_ops = []
+        remove_fake_quant_ops = []
+        observer_out_node_names = []
+        for op in graph.all_op_nodes():
+            # collect observer node
+            if op.name() == "moving_average_abs_max_scale":
+                observer_out_node_names.append(op.output("Out")[0])
 
         for op in graph.all_op_nodes():
             if (
                 op.name() in _fake_quant_dequant_op_list
                 or op.name() == "moving_average_abs_max_scale"
             ):
-                fake_quant_dequant_ops.append(op)
+                var_name = op.input("X")[0]
+                if var_name in observer_out_node_names:
+                    remove_fake_quant_ops.append(op)
+                else:
+                    fake_quant_dequant_ops.append(op)
+
+        for _op in remove_fake_quant_ops:
+            x_node = graph._find_node_by_name(_op.inputs, _op.input("X")[0])
+            out_node = graph._find_node_by_name(
+                _op.outputs, _op.output("Out")[0]
+            )
+            for next_op_node in out_node.outputs:
+                graph.update_input_link(out_node, x_node, next_op_node)
 
         for _op in fake_quant_dequant_ops:
             self._replace_op(graph, _op)

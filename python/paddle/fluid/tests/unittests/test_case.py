@@ -24,6 +24,8 @@ import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
 from paddle.fluid.framework import Program, program_guard
 
+paddle.enable_static()
+
 
 class TestAPICase(unittest.TestCase):
     def test_return_single_var(self):
@@ -42,29 +44,33 @@ class TestAPICase(unittest.TestCase):
             x = layers.fill_constant(shape=[1], dtype='float32', value=0.3)
             y = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
             z = layers.fill_constant(shape=[1], dtype='float32', value=0.2)
-            pred_2 = layers.less_than(x, y)  # false: 0.3 < 0.1
-            pred_1 = layers.less_than(z, x)  # true: 0.2 < 0.3
+            pred_2 = paddle.less_than(x, y)  # false: 0.3 < 0.1
+            pred_1 = paddle.less_than(z, x)  # true: 0.2 < 0.3
 
             # call fn_1
-            out_0 = layers.case(
+            out_0 = paddle.static.nn.control_flow.case(
                 pred_fn_pairs=[(pred_1, fn_1), (pred_1, fn_2)], default=fn_3
             )
 
             # call fn_2
-            out_1 = layers.case(
+            out_1 = paddle.static.nn.control_flow.case(
                 pred_fn_pairs=[(pred_2, fn_1), (pred_1, fn_2)], default=fn_3
             )
 
             # call default fn_3
-            out_2 = layers.case(
+            out_2 = paddle.static.nn.control_flow.case(
                 pred_fn_pairs=((pred_2, fn_1), (pred_2, fn_2)), default=fn_3
             )
 
             # no default, call fn_2
-            out_3 = layers.case(pred_fn_pairs=[(pred_1, fn_2)])
+            out_3 = paddle.static.nn.control_flow.case(
+                pred_fn_pairs=[(pred_1, fn_2)]
+            )
 
             # no default, call fn_2. but pred_2 is false
-            out_4 = layers.case(pred_fn_pairs=[(pred_2, fn_2)])
+            out_4 = paddle.static.nn.control_flow.case(
+                pred_fn_pairs=[(pred_2, fn_2)]
+            )
 
             place = (
                 fluid.CUDAPlace(0)
@@ -109,7 +115,9 @@ class TestAPICase(unittest.TestCase):
             pred_1 = paddle.equal(x, y)  # true
             pred_2 = paddle.equal(x, z)  # false
 
-            out = layers.case(((pred_1, fn_1), (pred_2, fn_2)), fn_3)
+            out = paddle.static.nn.control_flow.case(
+                ((pred_1, fn_1), (pred_2, fn_2)), fn_3
+            )
 
             place = (
                 fluid.CUDAPlace(0)
@@ -132,7 +140,7 @@ class TestAPICase_Nested(unittest.TestCase):
         def fn_1(x=1):
             var_5 = layers.fill_constant(shape=[1], dtype='int32', value=5)
             var_6 = layers.fill_constant(shape=[1], dtype='int32', value=6)
-            out = layers.case(
+            out = paddle.static.nn.control_flow.case(
                 pred_fn_pairs=[
                     (
                         var_5 < var_6,
@@ -159,7 +167,7 @@ class TestAPICase_Nested(unittest.TestCase):
         def fn_2(x=2):
             var_5 = layers.fill_constant(shape=[1], dtype='int32', value=5)
             var_6 = layers.fill_constant(shape=[1], dtype='int32', value=6)
-            out = layers.case(
+            out = paddle.static.nn.control_flow.case(
                 pred_fn_pairs=[
                     (var_5 < var_6, partial(fn_1, x=x)),
                     (
@@ -178,7 +186,7 @@ class TestAPICase_Nested(unittest.TestCase):
         def fn_3():
             var_5 = layers.fill_constant(shape=[1], dtype='int32', value=5)
             var_6 = layers.fill_constant(shape=[1], dtype='int32', value=6)
-            out = layers.case(
+            out = paddle.static.nn.control_flow.case(
                 pred_fn_pairs=[
                     (var_5 < var_6, partial(fn_2, x=3)),
                     (
@@ -200,18 +208,18 @@ class TestAPICase_Nested(unittest.TestCase):
             x = layers.fill_constant(shape=[1], dtype='float32', value=0.3)
             y = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
             z = layers.fill_constant(shape=[1], dtype='float32', value=0.2)
-            pred_2 = layers.less_than(x, y)  # false: 0.3 < 0.1
-            pred_1 = layers.less_than(z, x)  # true: 0.2 < 0.3
+            pred_2 = paddle.less_than(x, y)  # false: 0.3 < 0.1
+            pred_1 = paddle.less_than(z, x)  # true: 0.2 < 0.3
 
-            out_1 = layers.case(
+            out_1 = paddle.static.nn.control_flow.case(
                 pred_fn_pairs=[(pred_1, fn_1), (pred_2, fn_2)], default=fn_3
             )
 
-            out_2 = layers.case(
+            out_2 = paddle.static.nn.control_flow.case(
                 pred_fn_pairs=[(pred_2, fn_1), (pred_1, fn_2)], default=fn_3
             )
 
-            out_3 = layers.case(
+            out_3 = paddle.static.nn.control_flow.case(
                 pred_fn_pairs=[(x == y, fn_1), (x == z, fn_2)], default=fn_3
             )
 
@@ -239,41 +247,53 @@ class TestAPICase_Error(unittest.TestCase):
         with program_guard(main_program, startup_program):
             x = layers.fill_constant(shape=[1], dtype='float32', value=0.23)
             z = layers.fill_constant(shape=[1], dtype='float32', value=0.2)
-            pred_1 = layers.less_than(z, x)  # true
+            pred_1 = paddle.less_than(z, x)  # true
 
             # The type of 'pred_fn_pairs' in case must be list or tuple
             def type_error_pred_fn_pairs():
-                layers.case(pred_fn_pairs=1, default=fn_1)
+                paddle.static.nn.control_flow.case(
+                    pred_fn_pairs=1, default=fn_1
+                )
 
             self.assertRaises(TypeError, type_error_pred_fn_pairs)
 
             # The elements' type of 'pred_fn_pairs' in Op(case) must be tuple
             def type_error_pred_fn_1():
-                layers.case(pred_fn_pairs=[1], default=fn_1)
+                paddle.static.nn.control_flow.case(
+                    pred_fn_pairs=[1], default=fn_1
+                )
 
             self.assertRaises(TypeError, type_error_pred_fn_1)
 
             # The tuple's size of 'pred_fn_pairs' in Op(case) must be 2
             def type_error_pred_fn_2():
-                layers.case(pred_fn_pairs=[(1, 2, 3)], default=fn_1)
+                paddle.static.nn.control_flow.case(
+                    pred_fn_pairs=[(1, 2, 3)], default=fn_1
+                )
 
             self.assertRaises(TypeError, type_error_pred_fn_2)
 
             # The pred's type of 'pred_fn_pairs' in Op(case) must be bool Variable
             def type_error_pred():
-                layers.case(pred_fn_pairs=[(1, fn_1)], default=fn_1)
+                paddle.static.nn.control_flow.case(
+                    pred_fn_pairs=[(1, fn_1)], default=fn_1
+                )
 
             self.assertRaises(TypeError, type_error_pred)
 
             # The function of pred_fn_pairs in case must be callable
             def type_error_fn():
-                layers.case(pred_fn_pairs=[(pred_1, 2)], default=fn_1)
+                paddle.static.nn.control_flow.case(
+                    pred_fn_pairs=[(pred_1, 2)], default=fn_1
+                )
 
             self.assertRaises(TypeError, type_error_fn)
 
             # The default in Op(case) must be callable
             def type_error_default():
-                layers.case(pred_fn_pairs=[(pred_1, fn_1)], default=fn_1())
+                paddle.static.nn.control_flow.case(
+                    pred_fn_pairs=[(pred_1, fn_1)], default=fn_1()
+                )
 
             self.assertRaises(TypeError, type_error_default)
 
@@ -299,16 +319,18 @@ class TestMutiTask(unittest.TestCase):
         adagrad = optimizer.Adagrad(learning_rate=0.001)
 
         def fn_1():
-            sum = layers.elementwise_mul(x, y)
+            sum = paddle.multiply(x, y)
             loss = paddle.mean(sum, name="f_1_loss")
             adam.minimize(loss)
 
         def fn_2():
-            sum = layers.elementwise_mul(x, y)
+            sum = paddle.multiply(x, y)
             loss = paddle.mean(sum, name="f_2_loss")
             adagrad.minimize(loss)
 
-        layers.case(pred_fn_pairs=[(switch_id == one, fn_1)], default=fn_2)
+        paddle.static.nn.control_flow.case(
+            pred_fn_pairs=[(switch_id == one, fn_1)], default=fn_2
+        )
 
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_startup_program())

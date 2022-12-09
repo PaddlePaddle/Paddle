@@ -23,11 +23,12 @@ from predictor_utils import PredictorTools
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-from paddle.fluid.dygraph.nn import BatchNorm, Linear, Pool2D
+from paddle.fluid.dygraph.nn import BatchNorm
 from paddle.fluid.initializer import MSRA
 from paddle.fluid.param_attr import ParamAttr
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
+from paddle.nn import Linear
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
@@ -255,12 +256,12 @@ class MobileNetV1(fluid.dygraph.Layer):
         )
         self.dwsl.append(dws6)
 
-        self.pool2d_avg = Pool2D(pool_type='avg', global_pooling=True)
+        self.pool2d_avg = paddle.nn.AdaptiveAvgPool2D(1)
 
         self.out = Linear(
             int(1024 * scale),
             class_dim,
-            param_attr=ParamAttr(
+            weight_attr=ParamAttr(
                 initializer=MSRA(), name=self.full_name() + "fc7_weights"
             ),
             bias_attr=ParamAttr(name="fc7_offset"),
@@ -421,14 +422,14 @@ class MobileNetV2(fluid.dygraph.Layer):
         )
 
         # 4. pool
-        self._pool2d_avg = Pool2D(pool_type='avg', global_pooling=True)
+        self._pool2d_avg = paddle.nn.AdaptiveAvgPool2D(1)
 
         # 5. fc
         tmp_param = ParamAttr(name=self.full_name() + "fc10_weights")
         self._fc = Linear(
             self._out_c,
             class_dim,
-            param_attr=tmp_param,
+            weight_attr=tmp_param,
             bias_attr=ParamAttr(name="fc10_offset"),
         )
 
@@ -530,13 +531,13 @@ def train_mobilenet(args, to_static):
                 out = net(img)
 
                 t_end = time.time()
-                softmax_out = fluid.layers.softmax(out, use_cudnn=False)
+                softmax_out = paddle.nn.functional.softmax(out)
                 loss = fluid.layers.cross_entropy(
                     input=softmax_out, label=label
                 )
                 avg_loss = paddle.mean(x=loss)
-                acc_top1 = fluid.layers.accuracy(input=out, label=label, k=1)
-                acc_top5 = fluid.layers.accuracy(input=out, label=label, k=5)
+                acc_top1 = paddle.static.accuracy(input=out, label=label, k=1)
+                acc_top5 = paddle.static.accuracy(input=out, label=label, k=5)
                 t_start_back = time.time()
 
                 loss_data.append(avg_loss.numpy())
@@ -725,5 +726,4 @@ class TestMobileNet(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

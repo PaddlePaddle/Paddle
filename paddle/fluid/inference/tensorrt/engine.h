@@ -295,8 +295,9 @@ class TensorRTEngine {
   void DeleteITensor(const std::string& name, nvinfer1::ITensor* tensor);
   void SetITensor(const std::string& name, nvinfer1::ITensor* tensor);
   // Get an ITensor called name.
-  nvinfer1::ITensor* GetITensor(const std::string& name);
-  nvinfer1::ITensor* ConvertWeight2ITensor(const std::string& name);
+  nvinfer1::ITensor* GetITensor(const std::string& name, bool scalar = false);
+  nvinfer1::ITensor* ConvertWeight2ITensor(const std::string& name,
+                                           bool scalar = false);
   std::unordered_map<std::string, nvinfer1::ITensor*>* GetITensorMap();
 
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }

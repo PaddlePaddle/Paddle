@@ -59,7 +59,7 @@ def resnet_cifar10(input, depth=32):
             act=None,
             bias_attr=bias_attr,
         )
-        return fluid.layers.batch_norm(input=tmp, act=act)
+        return paddle.static.nn.batch_norm(input=tmp, act=act)
 
     def shortcut(input, ch_in, ch_out, stride):
         if ch_in != ch_out:
@@ -71,7 +71,7 @@ def resnet_cifar10(input, depth=32):
         tmp = conv_bn_layer(input, ch_out, 3, stride, 1)
         tmp = conv_bn_layer(tmp, ch_out, 3, 1, 1, act=None, bias_attr=True)
         short = shortcut(input, ch_in, ch_out, stride)
-        return fluid.layers.elementwise_add(x=tmp, y=short, act='relu')
+        return paddle.nn.functional.relu(paddle.add(x=tmp, y=short))
 
     def layer_warp(block_func, input, ch_in, ch_out, count, stride):
         tmp = block_func(input, ch_in, ch_out, stride)
@@ -88,9 +88,7 @@ def resnet_cifar10(input, depth=32):
         res1 = layer_warp(basicblock, conv1, 16, 16, n, 1)
         res2 = layer_warp(basicblock, res1, 16, 32, n, 2)
         res3 = layer_warp(basicblock, res2, 32, 64, n, 2)
-    pool = fluid.layers.pool2d(
-        input=res3, pool_size=8, pool_type='avg', pool_stride=1
-    )
+    pool = paddle.nn.functional.avg_pool2d(x=res3, kernel_size=8, stride=1)
     return pool
 
 
@@ -110,7 +108,7 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
         net = resnet_cifar10(images)
         logits = fluid.layers.fc(input=net, size=classdim, act="softmax")
-        cost = fluid.layers.softmax_with_cross_entropy(
+        cost = paddle.nn.functional.softmax_with_cross_entropy(
             logits, label, return_softmax=False
         )
         sum_cost = paddle.sum(cost)

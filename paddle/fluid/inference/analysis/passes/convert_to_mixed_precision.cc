@@ -32,8 +32,6 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_desc.h"
-#include "paddle/fluid/inference/analysis/argument.h"
-#include "paddle/fluid/inference/analysis/passes/ir_graph_clean_pass.h"
 #include "paddle/fluid/inference/io.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/data_type.h"
@@ -357,12 +355,6 @@ void ConvertToMixedPrecisionPass::LoadAndPrepare() {
       }
     }
   }
-
-  // Remove all control var
-  IrInferCleanGraphPass pass;
-  Argument arg;
-  arg.SetMainGraphNotOwned(main_graph_.get());
-  pass.Run(&arg);
 
   ProcessCircleCases();
 }

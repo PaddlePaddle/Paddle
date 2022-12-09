@@ -17,7 +17,7 @@
 import paddle
 import paddle.fluid as fluid
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
-from paddle.framework import _non_static_mode, core
+from paddle.framework import core
 from paddle.utils import deprecated
 
 from ...fluid.data_feeder import check_variable_and_dtype
@@ -729,8 +729,6 @@ def binary_cross_entropy_with_logits(
 ):
     r"""
     This operator combines the sigmoid layer and the :ref:`api_nn_loss_BCELoss` layer.
-    Also, we can see it as the combine of ``sigmoid_cross_entropy_with_logits``
-    layer and some reduce operations.
 
     This measures the element-wise probability error in classification tasks
     in which each class is independent.
@@ -885,8 +883,15 @@ def binary_cross_entropy_with_logits(
     if reduction == 'none' and pos_weight is None and weight is None:
         sigmoid_name = name
 
-    out = paddle.fluid.layers.sigmoid_cross_entropy_with_logits(
-        logit, label, name=sigmoid_name
+    helper = LayerHelper("sigmoid_cross_entropy_with_logits", **locals())
+
+    out = helper.create_variable_for_type_inference(dtype=logit.dtype)
+
+    helper.append_op(
+        type="sigmoid_cross_entropy_with_logits",
+        inputs={"X": logit, "Label": label},
+        attrs={"ignore_index": kIgnoreIndex, 'normalize': False},
+        outputs={"Out": out},
     )
 
     one = paddle.full(shape=[1], fill_value=1.0, dtype=logit.dtype)
@@ -1348,17 +1353,20 @@ def l1_loss(input, label, reduction='mean', name=None):
             label = paddle.to_tensor([[1.7, 1], [0.4, 0.5]])
 
             l1_loss = paddle.nn.functional.l1_loss(input, label)
-            print(l1_loss.numpy())
-            # [0.35]
+            print(l1_loss)
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [0.34999999])
 
             l1_loss = paddle.nn.functional.l1_loss(input, label, reduction='none')
-            print(l1_loss.numpy())
-            # [[0.20000005 0.19999999]
-            # [0.2        0.79999995]]
+            print(l1_loss)
+            # Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[0.20000005, 0.19999999],
+            #         [0.20000000, 0.79999995]])
 
             l1_loss = paddle.nn.functional.l1_loss(input, label, reduction='sum')
-            print(l1_loss.numpy())
-            # [1.4]
+            print(l1_loss)
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [1.39999998])
 
     """
     if reduction not in ['sum', 'mean', 'none']:
@@ -2525,9 +2533,11 @@ def cross_entropy(
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
                 weight=weight, reduction=reduction)
             dy_ret = cross_entropy_loss(
-                                       input,
-                                       label)
-            print(dy_ret.numpy()) #[5.41993642]
+                                        input,
+                                        label)
+            print(dy_ret)
+            # Tensor(shape=[1], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+            #        [5.34043430])
 
         .. code-block:: python
 
@@ -2545,13 +2555,15 @@ def cross_entropy(
             labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
             labels /= paddle.sum(labels, axis=axis, keepdim=True)
             paddle_loss_mean = paddle.nn.functional.cross_entropy(
-                                                                  logits,
-                                                                  labels,
-                                                                  soft_label=True,
-                                                                  axis=axis,
-                                                                  weight=weight,
-                                                                  reduction=reduction)
-            print(paddle_loss_mean.numpy()) #[1.12908343]
+                                                                    logits,
+                                                                    labels,
+                                                                    soft_label=True,
+                                                                    axis=axis,
+                                                                    weight=weight,
+                                                                    reduction=reduction)
+            print(paddle_loss_mean)
+            # Tensor(shape=[1], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+            #        [1.11043464])
 
     """
 

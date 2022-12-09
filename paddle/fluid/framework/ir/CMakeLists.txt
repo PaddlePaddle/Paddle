@@ -95,6 +95,7 @@ pass_library(quant_conv2d_dequant_fuse_pass inference)
 pass_library(shuffle_channel_detect_pass inference)
 pass_library(delete_quant_dequant_op_pass inference)
 pass_library(delete_quant_dequant_filter_op_pass inference)
+pass_library(trt_delete_weight_dequant_linear_op_pass inference)
 pass_library(delete_weight_dequant_linear_op_pass inference)
 pass_library(delete_quant_dequant_linear_op_pass inference)
 pass_library(delete_dropout_op_pass inference)
@@ -102,6 +103,7 @@ pass_library(delete_c_identity_op_pass inference)
 pass_library(preln_residual_bias_fuse_pass inference)
 pass_library(delete_fill_constant_op_pass inference)
 pass_library(constant_folding_pass inference)
+pass_library(float_to_half_pass inference)
 pass_library(conv2d_fusion_layout_transfer_pass inference)
 pass_library(simplify_with_basic_ops_pass base)
 pass_library(fc_elementwise_layernorm_fuse_pass base)
@@ -133,10 +135,11 @@ if(WITH_TENSORRT)
   pass_library(remove_padding_recover_padding_pass inference)
   pass_library(delete_remove_padding_recover_padding_pass inference)
   pass_library(layernorm_shift_partition_fuse_pass inference)
+  pass_library(reverse_roll_fuse_pass inference)
   pass_library(preln_layernorm_x_fuse_pass inference)
 endif()
 
-if(WITH_TENSORRT AND NOT WIN32)
+if(WITH_TENSORRT)
   pass_library(trt_embedding_eltwise_layernorm_fuse_pass inference)
   pass_library(preln_embedding_eltwise_layernorm_fuse_pass inference)
 endif()
@@ -355,6 +358,10 @@ cc_test(
   test_delete_dropout_pass_cc
   SRCS delete_dropout_op_pass_test.cc
   DEPS delete_dropout_op_pass)
+cc_test(
+  test_delete_dequant_weight_linear_op_pass
+  SRCS delete_weight_dequant_linear_op_pass_tester.cc
+  DEPS delete_weight_dequant_linear_op_pass)
 if(WITH_GPU OR WITH_ROCM)
   cc_test(
     test_embedding_eltwise_layernorm_fuse_pass
