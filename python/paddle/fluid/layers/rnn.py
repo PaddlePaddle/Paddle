@@ -907,7 +907,7 @@ def _dynamic_decode_imperative(
             next_sequence_lengths,
         )
 
-        paddle.increment(x=step_idx_tensor, value=1.0, in_place=True)
+        paddle.increment(x=step_idx_tensor, value=1.0)
         step_idx += 1
 
         cond = paddle.logical_not(paddle.all(finished))
@@ -1067,7 +1067,7 @@ def _dynamic_decode_declarative(
             outputs_arrays,
         )
 
-        paddle.increment(x=step_idx, value=1.0, in_place=True)
+        paddle.increment(x=step_idx, value=1.0)
         # update the global_finished first, since it might be also in states of
         # decoder, which otherwise would write a stale finished status to array
         tensor.assign(next_finished, global_finished)

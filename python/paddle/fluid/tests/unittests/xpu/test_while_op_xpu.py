@@ -62,7 +62,7 @@ class TestWhileOp(unittest.TestCase):
             prev = paddle.tensor.array_read(array=mem_array, i=i)
             result = layers.sums(input=[d, prev])
 
-            i = paddle.increment(x=i, in_place=True)
+            i = paddle.increment(x=i)
             paddle.tensor.array_write(result, i=i, array=mem_array)
             paddle.assign(paddle.less_than(x=i, y=array_len), cond)
 
@@ -71,7 +71,7 @@ class TestWhileOp(unittest.TestCase):
                 prev2 = paddle.tensor.array_read(array=mem_array, i=j)
                 result2 = layers.sums(input=[d2, prev2])
 
-                j = paddle.increment(x=j, in_place=True)
+                j = paddle.increment(x=j)
                 paddle.tensor.array_write(result2, i=j, array=mem_array)
                 paddle.assign(paddle.less_than(x=j, y=array_len2), cond2)
         sum_result = paddle.tensor.array_read(array=mem_array, i=j)
