@@ -53,8 +53,6 @@ from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
     'Switch',
-    'array_write',
-    'array_read',
     'StaticRNN',
     'Print',
     'while_loop',

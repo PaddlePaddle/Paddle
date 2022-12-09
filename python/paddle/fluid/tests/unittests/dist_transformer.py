@@ -1765,10 +1765,10 @@ def fast_decode(
         cond = paddle.less_than(x=step_idx, y=max_len)
         while_op = paddle.static.nn.control_flow.While(cond)
         # array states will be stored for each step.
-        ids = layers.array_write(
+        ids = paddle.tensor.array_write(
             paddle.reshape(start_tokens, (-1, 1)), step_idx
         )
-        scores = layers.array_write(init_scores, step_idx)
+        scores = paddle.tensor.array_write(init_scores, step_idx)
         # cell states will be overwrited at each step.
         # caches contains states of history steps to reduce redundant
         # computation in decoder.
@@ -1790,9 +1790,9 @@ def fast_decode(
             for i in range(n_layer)
         ]
         with while_op.block():
-            pre_ids = layers.array_read(array=ids, i=step_idx)
+            pre_ids = paddle.tensor.array_read(array=ids, i=step_idx)
             pre_ids = paddle.reshape(pre_ids, (-1, 1, 1))
-            pre_scores = layers.array_read(array=scores, i=step_idx)
+            pre_scores = paddle.tensor.array_read(array=scores, i=step_idx)
             # sequence_expand can gather sequences according to lod thus can be
             # used in beam search to sift states corresponding to selected ids.
             pre_src_attn_bias = layers.sequence_expand(
@@ -1854,8 +1854,8 @@ def fast_decode(
 
             paddle.increment(x=step_idx, value=1.0, in_place=True)
             # update states
-            layers.array_write(selected_ids, i=step_idx, array=ids)
-            layers.array_write(selected_scores, i=step_idx, array=scores)
+            paddle.tensor.array_write(selected_ids, i=step_idx, array=ids)
+            paddle.tensor.array_write(selected_scores, i=step_idx, array=scores)
             layers.assign(pre_src_attn_bias, trg_src_attn_bias)
             layers.assign(pre_enc_output, enc_output)
             for i in range(n_layer):
