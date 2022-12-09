@@ -425,7 +425,7 @@ void run(paddle_infer::Predictor* predictor, std::vector<float>* out_data) {
 
 TEST(AnalysisPredictor, ernie_varlen) {
 #if IS_TRT_VERSION_GE(7234)
-  if (platform::GetGPUComputeCapability(0) >= 75) {
+  if (platform::GetGPUComputeCapability(platform::GetCurrentDeviceId()) >= 75) {
     auto predictor = InitPredictor();
     std::vector<float> out_data;
     run(predictor.get(), &out_data);

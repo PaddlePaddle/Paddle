@@ -90,7 +90,8 @@ class MultiheadMatMulOpConverter : public OpConverter {
     if (engine_->with_dynamic_shape()) {
       if (engine_->tensorrt_transformer_maskid() != "" &&
           engine_->precision() != AnalysisConfig::Precision::kFloat32 &&
-          platform::GetGPUComputeCapability(0) >= 75) {
+          platform::GetGPUComputeCapability(platform::GetCurrentDeviceId()) >=
+              75) {
         nvinfer1::Weights weight{nvinfer1::DataType::kFLOAT,
                                  static_cast<void*>(weight_data),
                                  static_cast<int32_t>(weight_t->numel())};
@@ -399,7 +400,8 @@ class MultiheadMatMulOpConverter : public OpConverter {
       } else {
         if (input_dims.d[1] <= 384 && !bias_qk_attr &&
             engine_->precision() != AnalysisConfig::Precision::kFloat32 &&
-            platform::GetGPUComputeCapability(0) >= 75) {
+            platform::GetGPUComputeCapability(platform::GetCurrentDeviceId()) >=
+                75) {
           /*
             * input_dims.d[0]: batch(-1)
             * input_dims.d[1]: length:256
