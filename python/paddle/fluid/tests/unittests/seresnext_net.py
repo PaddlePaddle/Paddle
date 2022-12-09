@@ -172,7 +172,9 @@ def SE_ResNeXt50Small(use_feed):
     )
     # Classifier layer:
     prediction = fluid.layers.fc(input=dropout, size=1000, act='softmax')
-    loss = fluid.layers.cross_entropy(input=prediction, label=label)
+    loss = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     loss = paddle.mean(loss)
     return loss
 

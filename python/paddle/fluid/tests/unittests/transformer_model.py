@@ -594,6 +594,8 @@ def transformer(
     )
     predict = paddle.nn.functional.softmax(predict)
 
-    cost = layers.cross_entropy(input=predict, label=gold)
+    cost = paddle.nn.functional.cross_entropy(
+        input=predict, label=gold, reduction='none', use_softmax=False
+    )
     weighted_cost = cost * weights
     return paddle.sum(weighted_cost)
