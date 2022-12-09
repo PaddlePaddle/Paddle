@@ -83,7 +83,7 @@ class TestDistFleetHeterProgram(unittest.TestCase):
 
     def build_net(self, inputs):
         def embedding_layer(input):
-            return paddle.static.nn.embedding(
+            emb = paddle.static.nn.embedding(
                 input=input,
                 is_sparse=True,
                 size=[100001, 10],
@@ -92,6 +92,7 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                     initializer=fluid.initializer.Uniform(),
                 ),
             )
+            return emb.squeeze(-2)
 
         sparse_embed_seq = list(map(embedding_layer, inputs[1:-1]))
 
