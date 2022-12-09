@@ -31,7 +31,6 @@ from . import learning_rate_scheduler
 import warnings
 from .. import core
 from .base import guard
-from paddle.jit.api import _SaveLoadConfig
 from paddle.fluid.dygraph.io import (
     _construct_program_holders,
     _construct_params_and_buffers,
@@ -55,6 +54,8 @@ def _parse_load_config(configs):
             )
 
     # construct inner config
+    from paddle.jit.api import _SaveLoadConfig
+
     inner_config = _SaveLoadConfig()
     inner_config.model_filename = configs.get('model_filename', None)
     inner_config.params_filename = configs.get('params_filename', None)

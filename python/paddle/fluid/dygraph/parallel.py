@@ -24,7 +24,7 @@ import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid import core
 from paddle.fluid import framework
-from paddle.nn.common import layers
+from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.dygraph import to_variable, no_grad
 from paddle.utils import deprecated

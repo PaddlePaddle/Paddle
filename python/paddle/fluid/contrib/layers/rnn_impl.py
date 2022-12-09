@@ -17,7 +17,7 @@ import copy
 import paddle
 from paddle.fluid import layers, unique_name
 from paddle.nn import Layer
-from paddle.nn.common.layer_object_helper import LayerObjectHelper
+from paddle.fluid.dygraph.layer_object_helper import LayerObjectHelper
 from paddle.fluid.layers.control_flow import StaticRNN
 import paddle
 

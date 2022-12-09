@@ -21,7 +21,7 @@ from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid import backward
 from paddle.fluid import unique_name
-from paddle.nn.common import layers
+from paddle.fluid.dygraph import layers
 from paddle.fluid.layers import nn
 from paddle.fluid.layers.utils import _hash_with_id
 from paddle.fluid.dygraph.base import switch_to_static_graph
@@ -30,10 +30,10 @@ from paddle.fluid.executor import (
     _is_enable_standalone_executor,
     _is_dy2st_enable_standalone_executor,
 )
-from paddle.jit.dy2static.partial_program import (
-    add_build_strategy_for,
-    LazyInitialized,
-)
+
+import paddle.jit.dy2static.partial_program.add_build_strategy_for as add_build_strategy_for
+import paddle.jit.dy2static.partial_program.LazyInitialized as LazyInitialized
+
 from paddle import _C_ops, _legacy_C_ops
 
 __all__ = ['TranslatedLayer']
