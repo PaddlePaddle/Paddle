@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/share_buffer_op.h"
+#pragma once
 
-namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(share_buffer, ops::ShareBufferOpKernel<float>);
+#include <vector>
+
+#include "paddle/phi/core/dense_tensor.h"
+
+namespace phi {
+
+template <typename Context>
+void ShareBufferKernel(const Context &dev_ctx,
+                       const std::vector<const DenseTensor *> &x,
+                       const std::vector<bool> &share_dims_and_dtype,
+                       std::vector<DenseTensor *> out,
+                       std::vector<DenseTensor *> xout);
+
+}  // namespace phi

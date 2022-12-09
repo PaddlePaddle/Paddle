@@ -112,7 +112,9 @@ class MNIST(fluid.dygraph.Layer):
         x = paddle.reshape(x, shape=[-1, self.pool_2_shape])
         cost = self._linear(x)
         cost = paddle.nn.functional.softmax(cost)
-        loss = fluid.layers.cross_entropy(cost, label)
+        loss = paddle.nn.functional.cross_entropy(
+            cost, label, reduction='none', use_softmax=False
+        )
         avg_loss = paddle.mean(loss)
         return avg_loss
 

@@ -106,7 +106,9 @@ class TestFusedBnAddActAPI(unittest.TestCase):
                 act='softmax',
                 param_attr=self.fc_param_attr,
             )
-            loss = fluid.layers.cross_entropy(input=prediction, label=y)
+            loss = paddle.nn.functional.cross_entropy(
+                input=prediction, label=y, reduction='none', use_softmax=False
+            )
             loss = paddle.mean(loss)
             sgd = fluid.optimizer.SGD(learning_rate=0.001)
             sgd = fluid.contrib.mixed_precision.decorate(
@@ -162,7 +164,9 @@ class TestFusedBnAddActAPI(unittest.TestCase):
             prediction = fluid.layers.fc(
                 input=out, size=10, act='softmax', param_attr=self.fc_param_attr
             )
-            loss = fluid.layers.cross_entropy(input=prediction, label=y)
+            loss = paddle.nn.functional.cross_entropy(
+                input=prediction, label=y, reduction='none', use_softmax=False
+            )
             loss = paddle.mean(loss)
             sgd = fluid.optimizer.SGD(learning_rate=0.001)
             sgd = fluid.contrib.mixed_precision.decorate(

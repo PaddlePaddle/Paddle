@@ -141,8 +141,8 @@ def SE_ResNeXt50Small(use_feed):
     conv = conv_bn_layer(
         input=conv, num_filters=16, filter_size=3, stride=1, act='relu'
     )
-    conv = fluid.layers.pool2d(
-        input=conv, pool_size=3, pool_stride=2, pool_padding=1, pool_type='max'
+    conv = paddle.nn.functional.max_pool2d(
+        x=conv, kernel_size=3, stride=2, padding=1
     )
 
     cardinality = 32
