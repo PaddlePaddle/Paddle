@@ -28,6 +28,7 @@ from paddle.fluid.contrib.slim.quantization import OutScaleForInferencePass
 from paddle.fluid.contrib.slim.quantization import AddQuantDequantPass
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
+import paddle.nn.functional as F
 
 paddle.enable_static()
 
@@ -75,8 +76,8 @@ def pact(x, name=None):
         learning_rate=1,
     )
     u_param = helper.create_parameter(attr=u_param_attr, shape=[1], dtype=dtype)
-    x = paddle.subtract(x, fluid.layers.relu(paddle.subtract(x, u_param)))
-    x = paddle.add(x, fluid.layers.relu(paddle.subtract(-u_param, x)))
+    x = paddle.subtract(x, F.relu(paddle.subtract(x, u_param)))
+    x = paddle.add(x, F.relu(paddle.subtract(-u_param, x)))
 
     return x
 

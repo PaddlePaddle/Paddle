@@ -19,6 +19,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
+import paddle.nn.functional as F
 from paddle.jit.api import declarative
 from paddle.jit.dy2static.loop_transformer import NameVisitor
 from paddle.utils import gast
@@ -51,7 +52,7 @@ def while_loop_dyfun_with_conflict_var(x):
 
     def relu(y):
         # 'y' is not visible outside the scope.
-        return fluid.layers.relu(y)
+        return F.relu(y)
 
     while x < 10:
         # If a tmp variable is created which has same name
