@@ -27,7 +27,9 @@ class Planner:
         # dependency of backward-forward ops in forward completion.
         default_ctx = get_default_distributed_context()
         self._dist_context._dist_op_context = default_ctx.dist_op_context
-        self._dist_context.data_parallel = default_ctx.data_parallel
+        self._dist_context.default_data_parallel_mode = (
+            default_ctx.default_data_parallel_mode
+        )
         if not is_naive_data_parallel(self._dist_context):
             # Use SSA graph for complex parallism
             self._dist_context.initialize(with_graph=True)

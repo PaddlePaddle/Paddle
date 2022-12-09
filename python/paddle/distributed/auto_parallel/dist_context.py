@@ -204,11 +204,11 @@ class DistributedContext:
 
     @property
     def default_data_parallel_mode(self):
-        return self._data_parallel
+        return self._default_data_parallel_mode
 
     @default_data_parallel_mode.setter
-    def default_data_parallel_mode(self, dp):
-        self._default_data_parallel_mode = dp
+    def default_data_parallel_mode(self, mode):
+        self._default_data_parallel_mode = mode
 
     def _backup_serial_info(self, mode):
         self._backup_serial_main_program_stack.append(
@@ -595,7 +595,7 @@ class DistributedContext:
         else:
             default_ctx = self
         # Copy the data parallel flag from the default context
-        self._data_parallel = default_ctx.data_parallel
+        self._data_parallel = default_ctx.default_data_parallel_mode
         for block in self._serial_main_program.blocks:
             for tensor in block.vars.values():
                 # Copy the distributed tensors in the default context

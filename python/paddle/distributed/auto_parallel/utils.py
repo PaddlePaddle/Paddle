@@ -2000,7 +2000,7 @@ def set_data_parallel(x):
 
 def is_naive_data_parallel(dist_context):
     # Navie data parallel only completes dist_attr once from the front to back.
-    if not dist_context.data_parallel:
+    if not dist_context.default_data_parallel_mode:
         return False
 
     ops_type = [
@@ -2009,7 +2009,7 @@ def is_naive_data_parallel(dist_context):
     ]
     if (
         not set(ops_type) & set(__not_naive_data_parallel_op__)
-    ) and dist_context.data_parallel:
+    ) and dist_context.default_data_parallel_mode:
         return True
     return False
 
