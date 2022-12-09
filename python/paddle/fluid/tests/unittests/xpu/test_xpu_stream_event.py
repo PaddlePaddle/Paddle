@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.device import xpu
-import paddle
-
 import unittest
+
+import paddle
+from paddle.device import xpu
 
 
 class TestSynchronize(unittest.TestCase):

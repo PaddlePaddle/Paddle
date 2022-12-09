@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 from paddle.vision.datasets import Cifar10, Cifar100

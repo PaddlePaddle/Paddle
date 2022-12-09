@@ -13,11 +13,10 @@
 # limitations under the License.
 
 import paddle
-
 import paddle.distributed as dist
+from paddle.fluid import core, layers
 from paddle.fluid.clip import ClipGradBase, _squared_l2_norm
 from paddle.fluid.dygraph import base as imperative_base
-from paddle.fluid import core, layers
 
 
 class ClipGradForMOEByGlobalNorm(ClipGradBase):
@@ -213,7 +212,7 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
         max_global_norm = layers.fill_constant(
             shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm
         )
-        clip_var = layers.elementwise_div(
+        clip_var = paddle.divide(
             x=max_global_norm,
             y=paddle.maximum(x=global_norm_var, y=max_global_norm),
         )
@@ -229,7 +228,7 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
                 if g.dtype == core.VarDesc.VarType.FP16
                 else clip_var
             )
-            new_grad = layers.elementwise_mul(x=g, y=clip_input)
+            new_grad = paddle.multiply(x=g, y=clip_input)
             params_and_grads.append((p, new_grad))
         return params_and_grads
 

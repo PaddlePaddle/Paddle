@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import unittest
+
+import numpy as np
 
 import paddle
 import paddle.fluid as fluid
 from paddle.jit import to_static
-from paddle.jit.dy2static.program_translator import (
-    ProgramTranslator,
-)
+from paddle.jit.dy2static.program_translator import ProgramTranslator
 
 PLACE = (
     fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
@@ -31,27 +30,27 @@ class SubNetWithDict(fluid.dygraph.Layer):
     def __init__(self, hidden_size=16, output_size=16):
         super().__init__()
 
-        init_weight = lambda x: fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(x)
+        init_weight = lambda x: paddle.ParamAttr(
+            initializer=paddle.nn.initializer.Constant(x)
         )
 
-        self.q_fc = fluid.dygraph.Linear(
-            input_dim=hidden_size,
-            output_dim=output_size,
+        self.q_fc = paddle.nn.Linear(
+            in_features=hidden_size,
+            out_features=output_size,
             bias_attr=False,
-            param_attr=init_weight(0.6),
+            weight_attr=init_weight(0.6),
         )
-        self.k_fc = fluid.dygraph.Linear(
-            input_dim=hidden_size,
-            output_dim=output_size,
+        self.k_fc = paddle.nn.Linear(
+            in_features=hidden_size,
+            out_features=output_size,
             bias_attr=False,
-            param_attr=init_weight(0.5),
+            weight_attr=init_weight(0.5),
         )
-        self.v_fc = fluid.dygraph.Linear(
-            input_dim=hidden_size,
-            output_dim=output_size,
+        self.v_fc = paddle.nn.Linear(
+            in_features=hidden_size,
+            out_features=output_size,
             bias_attr=False,
-            param_attr=init_weight(0.2),
+            weight_attr=init_weight(0.2),
         )
 
     def forward(self, input, cache=None):
