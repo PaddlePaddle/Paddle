@@ -13,7 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/mkldnn_reuse.h"
+
+#include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/common/data_type.h"
 
 namespace paddle {

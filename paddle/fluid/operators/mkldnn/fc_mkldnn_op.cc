@@ -14,9 +14,10 @@ limitations under the License. */
 
 #include <memory>
 
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/fc_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
-#include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/phi/backends/onednn/onednn_reuse.h"
 
 namespace paddle {
 namespace operators {

@@ -14,7 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/backends/onednn/onednn_reuse.h"
 
 namespace paddle {
 namespace operators {
@@ -22,6 +23,7 @@ namespace operators {
 using phi::funcs::CreateKey;
 using phi::funcs::OneDNNGetDataType;
 using phi::funcs::RNNReorderType;
+using OneDNNMemoryFormat = dnnl::memory::format_tag;
 
 template <typename T, typename T_alg, typename T_out = T>
 class RNNMKLDNNHandler : public phi::funcs::OneDNNHandlerT<T, T_alg> {
