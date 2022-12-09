@@ -41,8 +41,8 @@ class TestDistMnist2x2(TestDistRunnerBase):
         avg_cost = paddle.mean(x=cost)
 
         # Evaluator
-        batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
-        batch_acc = fluid.layers.accuracy(
+        batch_size_tensor = paddle.tensor.create_tensor(dtype='int64')
+        batch_acc = paddle.static.accuracy(
             input=predict, label=label, total=batch_size_tensor
         )
 

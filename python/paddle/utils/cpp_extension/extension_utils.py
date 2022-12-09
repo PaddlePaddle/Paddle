@@ -16,6 +16,7 @@ import atexit
 import collections
 import glob
 import hashlib
+import importlib.util
 import json
 import logging
 import os
@@ -197,7 +198,7 @@ def custom_write_stub(resource, pyfile):
         """
     ).lstrip()
 
-    # Parse registerring op information
+    # Parse registering op information
     _, op_info = CustomOpInfo.instance().last()
     so_path = op_info.so_path
 
@@ -250,7 +251,7 @@ class CustomOpInfo:
 
     def last(self):
         """
-        Return the lastest insert custom op info.
+        Return the last inserted custom op info.
         """
         assert len(self.op_info_map) > 0
         return next(reversed(self.op_info_map.items()))
@@ -1070,7 +1071,9 @@ def _load_module_from_file(api_file_path, module_name, verbose=False):
 
     # load module with RWLock
     loader = machinery.SourceFileLoader(ext_name, api_file_path)
-    module = loader.load_module()
+    spec = importlib.util.spec_from_loader(loader.name, loader)
+    module = importlib.util.module_from_spec(spec)
+    loader.exec_module(module)
 
     return module
 

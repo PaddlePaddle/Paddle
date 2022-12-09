@@ -64,8 +64,8 @@ class TestWhileOp(unittest.TestCase):
         cond2 = paddle.logical_or(x=j, y=array_len2)
         cond2 = paddle.ones(shape=[1], dtype='int32')
         cond2 = layers.cast(cond2, 'bool')
-        while_op = layers.While(cond=cond)
-        while_op2 = layers.While(cond=cond2)
+        while_op = paddle.static.nn.control_flow.While(cond=cond)
+        while_op2 = paddle.static.nn.control_flow.While(cond=cond2)
         with while_op.block():
             d = layers.array_read(array=data_array, i=i)
             prev = layers.array_read(array=mem_array, i=i)
@@ -73,7 +73,7 @@ class TestWhileOp(unittest.TestCase):
 
             i = layers.increment(x=i, in_place=True)
             layers.array_write(result, i=i, array=mem_array)
-            layers.less_than(x=i, y=array_len, cond=cond)
+            paddle.assign(paddle.less_than(x=i, y=array_len), cond)
 
             with while_op2.block():
                 d2 = layers.array_read(array=data_array, i=j)
@@ -82,7 +82,7 @@ class TestWhileOp(unittest.TestCase):
 
                 j = layers.increment(x=j, in_place=True)
                 layers.array_write(result2, i=j, array=mem_array)
-                layers.less_than(x=j, y=array_len2, cond=cond2)
+                paddle.assign(paddle.less_than(x=j, y=array_len2), cond2)
         sum_result = layers.array_read(array=mem_array, i=j)
         loss = paddle.mean(sum_result)
         return loss, sum_result

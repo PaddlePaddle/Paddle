@@ -17,7 +17,7 @@ include(ExternalProject)
 set(CUTLASS_PREFIX_DIR ${THIRD_PARTY_PATH}/cutlass)
 
 set(CUTLASS_REPOSITORY https://github.com/NVIDIA/cutlass.git)
-set(CUTLASS_TAG v2.9.1)
+set(CUTLASS_TAG v2.10.0)
 
 include_directories("${THIRD_PARTY_PATH}/cutlass/src/extern_cutlass/")
 include_directories("${THIRD_PARTY_PATH}/cutlass/src/extern_cutlass/include/")

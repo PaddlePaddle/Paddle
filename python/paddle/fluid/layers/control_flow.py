@@ -52,23 +52,14 @@ import paddle
 from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
-    'While',
     'Switch',
     'increment',
     'array_write',
-    'create_array',
-    'less_than',
     'array_read',
-    'array_length',
     'cond',
-    'IfElse',
     'StaticRNN',
-    'reorder_lod_tensor_by_rank',
     'Print',
     'Assert',
-    'is_empty',
-    'case',
-    'switch_case',
     'while_loop',
 ]
 
@@ -159,10 +150,10 @@ def select_input(inputs, mask):
 
 
 def select_input_with_buildin_type(inputs, mask, name):
-    from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import (
+    from paddle.jit.dy2static.variable_trans_func import (
         to_static_variable,
     )
-    from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar
+    from paddle.jit.dy2static.utils import UndefinedVar
 
     false_var, true_var = inputs
 
@@ -530,6 +521,7 @@ def Assert(cond, data=None, summarize=20, name=None):
     return op
 
 
+# (TODO: Mine) There exists dependency. It will be removed later.
 class BlockGuard:
     """
     BlockGuard class.
@@ -553,6 +545,7 @@ class BlockGuard:
         return True
 
 
+# (TODO: Mine) There exists dependency. It will be removed later.
 class BlockGuardWithCompletion(BlockGuard):
     """
     BlockGuardWithCompletion class.
@@ -1104,6 +1097,7 @@ class StaticRNN:
         )
 
 
+# (TODO: Mine) There exists dependency. It will be removed later.
 class WhileGuard(BlockGuard):
     def __init__(self, while_op):
         if not isinstance(while_op, While):
@@ -1123,6 +1117,7 @@ class WhileGuard(BlockGuard):
         return super().__exit__(exc_type, exc_val, exc_tb)
 
 
+# (TODO: Mine) There exists dependency. It will be removed later.
 def get_inputs_outputs_in_block(
     current_block, inner_inputs, inner_outputs, helper
 ):
@@ -1185,6 +1180,7 @@ def get_inputs_outputs_in_block(
     return inner_inputs, inner_outputs
 
 
+# (TODO: Mine) There exists dependency. It will be removed later.
 class While:
     """
     :api_attr: Static Graph
@@ -1216,11 +1212,11 @@ class While:
 
             loop_len = fluid.layers.fill_constant(shape=[1],dtype='int64', value=10)    # loop length
 
-            cond = fluid.layers.less_than(x=i, y=loop_len)
+            cond = paddle.less_than(x=i, y=loop_len)
             while_op = fluid.layers.While(cond=cond)
             with while_op.block():
                 i = fluid.layers.increment(x=i, value=1, in_place=True)
-                fluid.layers.less_than(x=i, y=loop_len, cond=cond)
+                paddle.assign(paddle.less_than(x=i, y=loop_len), cond)
 
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(fluid.default_startup_program())
@@ -1232,6 +1228,7 @@ class While:
     Examples 2:
           .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             import numpy as np
 
@@ -1241,14 +1238,14 @@ class While:
             data = fluid.data(name='data', shape=[1], dtype='float32')
             sums = fluid.layers.fill_constant(shape=[1], dtype='float32', value=0)  # Define the variable to be obtained ouside of While, which name should be different from the variable inside the While to be obtained
 
-            cond = fluid.layers.less_than(x=i, y=loop_len)
+            cond = paddle.less_than(x=i, y=loop_len)
             while_op = fluid.layers.While(cond=cond)
             with while_op.block():
                 sums_tensor = fluid.layers.elementwise_add(x=data, y=data)
                 fluid.layers.assign(sums_tensor, sums)  # Update the value of sums_tensor defined in While to the sums which defined outside of While through layers.assign
                 i = fluid.layers.increment(x=i, value=1, in_place=True)
                 data = fluid.layers.elementwise_add(x=data, y=one)
-                fluid.layers.less_than(x=i, y=loop_len, cond=cond)
+                paddle.assign(paddle.less_than(x=i, y=loop_len), cond)
 
             feed_data = np.ones(1).astype('float32')
             exe = fluid.Executor(fluid.CPUPlace())
@@ -1322,6 +1319,7 @@ class While:
 support_ret_buildin_type = (bool, float, int)
 
 
+# (TODO: Mine) There exists dependency. It will be removed later.
 def assign_skip_lod_tensor_array(input, output):
     """
     Assign input to output, but skip the process of copying LoDTensorArray unless it's created in while_block.
@@ -1365,6 +1363,7 @@ def assign_skip_lod_tensor_array(input, output):
         assign(input, output)
 
 
+# (TODO: Mine) There exists dependency (jit.dy2static.convert_operators). It will be removed later.
 def while_loop(cond, body, loop_vars, is_test=False, name=None):
     """
     :api_attr: Static Graph
@@ -1475,6 +1474,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
     return loop_vars
 
 
+# (TODO: Mine) There exists dependency. It will be removed later.
 def _deal_with_undefined_var(output_vars, loop_vars):
     """Deal with undefined var cases, We create undefined variable based on the results of body().
     In Dy2Static, we use undefined var to represent the var created in control flow. This function
@@ -1484,7 +1484,7 @@ def _deal_with_undefined_var(output_vars, loop_vars):
     3. UndefinedVar = List(int)     # create a list of variable
     4. UndefinedVar = value         # create a variable
     """
-    from paddle.fluid.dygraph.dygraph_to_static.utils import (
+    from paddle.jit.dy2static.utils import (
         UndefinedVar,
         create_undefined_variable,
     )
@@ -1511,102 +1511,6 @@ def _deal_with_undefined_var(output_vars, loop_vars):
         else:
             results.append(l_var)
     return results
-
-
-def lod_rank_table(x, level=0):
-    """
-    LoD Rank Table Operator. Given an input variable **x** and a level number
-    of LoD, this layer creates a LodRankTable object. A LoDRankTable object
-    contains a list of bi-element tuples. Each tuple consists of an index and
-    a length, both of which are int type. Refering to specified level of LoD,
-    the index is the sequence index number and the length represents the
-    sequence length. Please note that the list is ranked in descending order by
-    the length. The following is an example:
-
-        .. code-block:: text
-
-            x is a LoDTensor:
-                x.lod = [[2,                1],
-                         [5,             1, 1]]
-                x.data = [a, b, c, d, e, f, g]
-
-            1. set level to 0:
-                Create lod rank table:
-                    lod_rank_table_obj = lod_rank_table(x, level=0)
-
-                Get:
-                    lod_rank_table_obj.items() = [(0, 2), (1, 1)]
-
-            2. set level to 1:
-                Create lod rank table:
-                    lod_rank_table_obj = lod_rank_table(x, level=1)
-
-                Get:
-                    lod_rank_table_obj.items() = [(0, 5), (1, 1), (2, 1)]
-
-    Args:
-        x (Variable): Input variable, a LoDTensor based which to create the lod
-            rank table.
-        level (int): Specify the LoD level, on which to create the lod rank
-            table.
-
-    Returns:
-        Variable: The created LoDRankTable object.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[10],
-                                  dtype='float32', lod_level=1)
-            out = layers.lod_rank_table(x=x, level=0)
-    """
-    check_type(x, 'x', (Variable, list), 'lod_rank_table')
-    if isinstance(x, (list)):
-        for i, input_x in enumerate(x):
-            check_type(
-                input_x, 'input[' + str(i) + ']', Variable, 'lod_rank_table'
-            )
-
-    helper = LayerHelper("lod_rank_table", **locals())
-    table = helper.create_variable(
-        type=core.VarDesc.VarType.LOD_RANK_TABLE,
-        name=unique_name.generate("lod_rank_table"),
-    )
-    helper.append_op(
-        type='lod_rank_table',
-        inputs={'X': x},
-        outputs={'Out': table},
-        attrs={'level': level},
-    )
-    return table
-
-
-@templatedoc()
-def max_sequence_len(rank_table):
-    """
-    ${comment}
-
-    >>> import paddle.fluid as fluid
-    >>> x = fluid.layers.data(name='x', shape=[10], dtype='float32',
-    >>>                       lod_level=1)
-    >>> rank_table = layers.lod_rank_table(x=x, level=0)
-    >>> max_seq_len = layers.max_sequence_len(rank_table)
-
-    Args:
-        rank_table(${rank_table_type}): ${rank_table_comment}.
-
-    Returns:
-        ${out_comment}.
-    """
-    helper = LayerHelper("max_seqence_len", **locals())
-    res = helper.create_variable_for_type_inference(dtype="int64")
-    helper.append_op(
-        type="max_sequence_len",
-        inputs={"RankTable": rank_table},
-        outputs={"Out": res},
-    )
-    return res
 
 
 def increment(x, value=1.0, in_place=True):
@@ -1712,7 +1616,7 @@ def array_write(x, i, array=None):
         ], "The shape of index 'i' should be [1] in dygraph mode"
         i = i.numpy().item(0)
         if array is None:
-            array = create_array(x.dtype)
+            array = paddle.tensor.create_array(x.dtype)
         assert isinstance(
             array, list
         ), "The 'array' in array_write must be a list in dygraph mode"
@@ -1748,122 +1652,6 @@ def array_write(x, i, array=None):
         outputs={'Out': [array]},
     )
     return array
-
-
-def create_array(dtype, initialized_list=None):
-    """
-    This OP creates an LOD_TENSOR_ARRAY. It is used as
-    the input of :ref:`api_fluid_layers_array_read` and
-    :ref:`api_fluid_layers_array_write`. Also it can be used
-    with  :ref:`api_fluid_layers_While` to create RNN network.
-
-    Args:
-        dtype (str): The data type of the elements in the lod_tensor_array.
-                     Support data type: float32, float64, int32, int64.
-        initialized_list(list): Used to initialize as default value for created array.
-                    All values in initialized list should be a Tensor.
-
-    Returns:
-        Variable: The empty lod_tensor_array. The data type of elements in Tensor is ``dtype``.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          data = fluid.layers.create_array(dtype='float32') # Create a float32 LoDTensorArray.
-
-    """
-    array = []
-    if initialized_list is not None:
-        if not isinstance(initialized_list, (list, tuple)):
-            raise TypeError(
-                "Require type(initialized_list) should be list/tuple, but received {}".format(
-                    type(initialized_list)
-                )
-            )
-        array = list(initialized_list)
-
-    # NOTE: Only support plain list like [x, y,...], not support nested list in static mode.
-    for val in array:
-        if not isinstance(val, Variable):
-            raise TypeError(
-                "All values in `initialized_list` should be Variable, but recevied {}.".format(
-                    type(val)
-                )
-            )
-
-    if _non_static_mode():
-        return array
-
-    helper = LayerHelper("array", **locals())
-    tensor_array = helper.create_variable(
-        name="{0}.out".format(helper.name),
-        type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
-        dtype=dtype,
-    )
-
-    for val in array:
-        array_write(x=val, i=array_length(tensor_array), array=tensor_array)
-
-    return tensor_array
-
-
-@templatedoc()
-def less_than(x, y, force_cpu=None, cond=None, name=None):
-    """
-
-    ${comment}
-
-    Args:
-        x(Tensor): ${x_comment}.
-        y(Tensor): ${y_comment}.
-        force_cpu(${force_cpu_type}): ${force_cpu_comment}.
-        cond(Tensor, optional): Optional output which can be any created Tensor
-            that meets the requirements to store the result of *less_than*.
-            if cond is None, a new Tensor will be created to store the result.
-        name(str, optional): The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-    Returns:
-        ${out_comment}.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            x = paddle.to_tensor([1, 2, 3, 4], dtype='float32')
-            y = paddle.to_tensor([2, 2, 1, 3], dtype='float32')
-            result = paddle.less_than(x, y)
-            print(result) # [True, False, False, False]
-
-    """
-    check_variable_and_dtype(
-        x, "x", ["float32", "float64", "int32", "int64"], "less_than"
-    )
-    check_variable_and_dtype(
-        y, "y", ["float32", "float64", "int32", "int64"], "less_than"
-    )
-    if cond is not None:
-        check_type(cond, "cond", Variable, "less_than")
-    if force_cpu is not None:
-        check_type(force_cpu, "force_cpu", bool, "less_than")
-
-    helper = LayerHelper("less_than", **locals())
-    if cond is None:
-        cond = helper.create_variable_for_type_inference(dtype='bool')
-        cond.stop_gradient = True
-
-    attrs = dict()
-    if force_cpu is not None:
-        attrs['force_cpu'] = force_cpu
-
-    helper.append_op(
-        type='less_than',
-        inputs={'X': [x], 'Y': [y]},
-        outputs={'Out': [cond]},
-        attrs=attrs,
-    )
-    return cond
 
 
 def array_read(array, i):
@@ -1956,114 +1744,6 @@ def array_read(array, i):
     return out
 
 
-def shrink_memory(x, i, table):
-    """
-    This function creates an operator to shrink rnn memory using the RankTable
-    as mentioned in the input parameter.
-
-    NOTE: This API is very low-level API. It is used by DynamicRNN only.
-
-    Since the Dynamic RNN uses no-padding way to implement RNN. The sequence
-    will be sorted by order, and the length of valid memory will be shrink after
-    each time step.
-
-    Args:
-        x(Variable): The memory object in the previous time step.
-        i(Variable): The step count variable. A int scalar as LoDTensor.
-        table(Variable): The RNNRankTable object.
-
-    Returns:
-        the memory variable after shrink.
-
-    Examples:
-
-        Since this API is very low level API. The example is not provided.
-        Please reference the implementation of class DynamicRNN for detail
-        usage.
-    """
-    helper = LayerHelper('shrink_memory', **locals())
-    check_type(x, 'x', Variable, 'shrink_memory')
-    check_type(i, 'i', Variable, 'shrink_memory')
-    check_type(table, 'table', Variable, 'shrink_memory')
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='shrink_rnn_memory',
-        inputs={'X': [x], 'I': [i], 'RankTable': [table]},
-        outputs={'Out': [out]},
-        attrs={},
-    )
-    return out
-
-
-def array_length(array):
-    """
-    This OP is used to get the length of the input array :ref:`api_fluid_LoDTensorArray` .
-    It can be used together with :ref:`api_fluid_layers_array_read` , :ref:`api_fluid_layers_array_write` ,
-    :ref:`api_fluid_layers_While` OP to traverse, read and write LoDTensorArray.
-
-    Args:
-        array (LoDTensorArray): The input array that will be used to compute the length.
-
-    Returns:
-        Variable: 1-D Tensor with shape [1], which is the length of array. Datatype: int64.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            tmp = fluid.layers.zeros(shape=[10], dtype='int32')
-            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
-            # tmp is 1-D Tensor with shape [10]. We write tmp into arr on subscript 10,
-            # then the length of arr becomes 11.
-            arr = fluid.layers.array_write(tmp, i=i)
-            # return the length of arr
-            arr_len = fluid.layers.array_length(arr)
-
-            # You can use executor to print out the length of LoDTensorArray.
-            input = fluid.layers.Print(arr_len, message="The length of LoDTensorArray:")
-            main_program = fluid.default_main_program()
-            exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(main_program)
-
-            # The printed result is:
-
-            # 1569576542  The length of LoDTensorArray:   The place is:CPUPlace
-            # Tensor[array_length_0.tmp_0]
-            #    shape: [1,]
-            #    dtype: l
-            #    data: 11,
-
-            # 1-D Tensor with shape [1], whose value is 11. It means that the length of LoDTensorArray
-            # is 11.
-            # dtype is the corresponding C++ data type, which may vary in different environments.
-            # Eg: if the data type of tensor is int64, then the corresponding C++ data type is int64_t,
-            #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux,
-            #       and '__int64' on Windows. They both represent 64-bit integer variables.
-    """
-
-    if _non_static_mode():
-        assert isinstance(
-            array, list
-        ), "The 'array' in array_write must be a list in dygraph mode"
-        return len(array)
-
-    if (
-        not isinstance(array, Variable)
-        or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY
-    ):
-        raise TypeError(
-            "array should be tensor array vairable in array_length Op"
-        )
-
-    helper = LayerHelper('array_length', **locals())
-    tmp = helper.create_variable_for_type_inference(dtype='int64')
-    tmp.stop_gradient = True
-    helper.append_op(
-        type='lod_array_length', inputs={'X': [array]}, outputs={'Out': [tmp]}
-    )
-    return tmp
-
-
 class ConditionalBlockGuard(BlockGuard):
     """
     ConditionalBlockGuard is derived from BlockGuard. It is dedicated for
@@ -2100,8 +1780,9 @@ class ConditionalBlock:
     Examples:
         .. code-block:: python
 
+             import paddle
              import paddle.fluid as fluid
-             cond = layers.less_than(x=label, y=limit)
+             cond = paddle.less_than(x=label, y=limit)
              true_image, false_image = layers.split_lod_tensor(
                  input=image, mask=cond)
              true_cond = layers.ConditionalBlock([true_image])
@@ -2552,7 +2233,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
 
 
 def change_none_to_undefinedvar(nest1, nest2):
-    from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar
+    from paddle.jit.dy2static.utils import UndefinedVar
 
     def map_fn(x):
         if x is None:
@@ -2588,7 +2269,7 @@ def expand_undefined_var(nest1, nest2, names):
     nest2: Var2, ([1,2,3,4], UndefinedVar)
     In this case, we should not expand recursively.
     """
-    from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar
+    from paddle.jit.dy2static.utils import UndefinedVar
     from paddle.jit.dy2static.return_transformer import (
         RETURN_VALUE_PREFIX,
     )
@@ -2645,154 +2326,6 @@ def expand_undefined_var(nest1, nest2, names):
     if not _is_sequence_except_dict(nest2):
         nest2_out = nest2_out[0]
     return nest1_out, nest2_out
-
-
-def _error_message(what, arg_name, op_name, right_value, error_value):
-    error_message = (
-        "{what} of '{arg_name}' in {op_name} must be "
-        "{right_value}, but received: {error_value}.".format(
-            what=what,
-            arg_name=arg_name,
-            op_name=op_name,
-            right_value=right_value,
-            error_value=error_value,
-        )
-    )
-
-    return error_message
-
-
-def case(pred_fn_pairs, default=None, name=None):
-    '''
-    :api_attr: Static Graph
-
-    This operator works like an if-elif-elif-else chain.
-
-    Args:
-        pred_fn_pairs(list|tuple): A list or tuple of (pred, fn) pairs. ``pred`` is a boolean Tensor with shape [1], ``fn`` is a callable. All callables return the same structure of Tensors.
-        default(callable, optional): Callable that returns a structure of Tensors.
-        name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor|list(Tensor): Tensors returned by the callable from the first pair whose pred is True,
-        or Tensors returned by ``default`` if no pred in ``pred_fn_pairs`` is True and ``default`` is not None,
-        or Tensors returned by the last callable in ``pred_fn_pairs``  if no pred in ``pred_fn_pairs`` is True and ``default`` is None.
-
-    Raises:
-        TypeError: If the type of ``pred_fn_pairs`` is not list or tuple.
-        TypeError: If the type of elements in ``pred_fn_pairs`` is not tuple.
-        TypeError: If the size of tuples in ``pred_fn_pairs`` is not 2.
-        TypeError: If the first element of 2-tuple in ``pred_fn_pairs`` is not a Tensor.
-        TypeError: If the second element of 2-tuple in ``pred_fn_pairs`` is not callable.
-        TypeError: If ``default`` is not None but it is not callable.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            paddle.enable_static()
-
-            def fn_1():
-                return paddle.full(shape=[1, 2], dtype='float32', fill_value=1)
-
-            def fn_2():
-                return paddle.full(shape=[2, 2], dtype='int32', fill_value=2)
-
-            def fn_3():
-                return paddle.full(shape=[3], dtype='int32', fill_value=3)
-
-            main_program = paddle.static.default_startup_program()
-            startup_program = paddle.static.default_main_program()
-
-            with paddle.static.program_guard(main_program, startup_program):
-                x = paddle.full(shape=[1], dtype='float32', fill_value=0.3)
-                y = paddle.full(shape=[1], dtype='float32', fill_value=0.1)
-                z = paddle.full(shape=[1], dtype='float32', fill_value=0.2)
-
-                pred_1 = paddle.less_than(z, x)  # true: 0.2 < 0.3
-                pred_2 = paddle.less_than(x, y)  # false: 0.3 < 0.1
-                pred_3 = paddle.equal(x, y)      # false: 0.3 == 0.1
-
-                # Call fn_1 because pred_1 is True
-                out_1 = paddle.static.nn.case(
-                    pred_fn_pairs=[(pred_1, fn_1), (pred_2, fn_2)], default=fn_3)
-
-                # Argument default is None and no pred in pred_fn_pairs is True. fn_3 will be called.
-                # because fn_3 is the last callable in pred_fn_pairs.
-                out_2 = paddle.static.nn.case(pred_fn_pairs=[(pred_2, fn_2), (pred_3, fn_3)])
-
-                exe = paddle.static.Executor(paddle.CPUPlace())
-                res_1, res_2 = exe.run(main_program, fetch_list=[out_1, out_2])
-                print(res_1)  # [[1. 1.]]
-                print(res_2)  # [3 3 3]
-    '''
-    helper = LayerHelper('case', **locals())
-
-    def _case_check_args(pred_fn_pairs, default):
-        '''
-        Check arguments pred_fn_pairs and default. Return canonical pre_fn_pairs and default.
-        '''
-        check_type(pred_fn_pairs, 'pred_fn_pairs', (list, tuple), 'case')
-
-        for pred_fn in pred_fn_pairs:
-            if not isinstance(pred_fn, tuple):
-                raise TypeError(
-                    _error_message(
-                        "The elements' type",
-                        "pred_fn_pairs",
-                        "case",
-                        tuple,
-                        type(pred_fn),
-                    )
-                )
-            if len(pred_fn) != 2:
-                raise TypeError(
-                    _error_message(
-                        "The tuple's size",
-                        "pred_fn_pairs",
-                        "case",
-                        "2",
-                        str(len(pred_fn)) + "-tuple",
-                    )
-                )
-            pred, fn = pred_fn
-
-            if not isinstance(pred, Variable):
-                raise TypeError(
-                    _error_message(
-                        "The pred's type",
-                        "pred_fn_pairs",
-                        "case",
-                        "boolean Variable",
-                        type(pred),
-                    )
-                )
-
-            if not callable(fn):
-                raise TypeError(
-                    "The fn for {} of pred_fn_pairs in Op(case) must"
-                    " be callable.".format(pred.name)
-                )
-
-        if default is None:
-            default_index = len(pred_fn_pairs) - 1  # pick the last one
-            default = pred_fn_pairs[default_index][1]
-            pred_fn_pairs = pred_fn_pairs[:default_index]
-        elif not callable(default):
-            raise TypeError("The default in Op(case) must be callable.")
-
-        return pred_fn_pairs, default
-
-    pred_fn_pairs, default = _case_check_args(pred_fn_pairs, default)
-
-    false_fn = default
-    for pred, true_fn in reversed(pred_fn_pairs):
-        false_fn = partial(cond, pred=pred, true_fn=true_fn, false_fn=false_fn)
-
-    final_fn = false_fn
-
-    return final_fn()
 
 
 class Switch:
@@ -2923,498 +2456,3 @@ class Switch:
             return False  # re-raise exception
 
         return True
-
-
-class IfElseBlockGuard:
-    def __init__(self, is_true, ifelse):
-        if not isinstance(ifelse, IfElse):
-            raise TypeError("ifelse must be an instance of IfElse class")
-
-        if ifelse.status != IfElse.OUT_IF_ELSE_BLOCKS:
-            raise ValueError("You cannot invoke IfElse.block() inside a block")
-
-        self.is_true = is_true
-        self.ie = ifelse
-        if is_true:
-            self.cond_block = ifelse.conditional_true_block
-        else:
-            self.cond_block = ifelse.conditional_false_block
-
-        if not isinstance(self.cond_block, ConditionalBlock):
-            raise TypeError("Unexpected situation")
-
-        self.cond_block = self.cond_block.block()
-
-    def __enter__(self):
-        self.ie.status = (
-            IfElse.IN_IF_ELSE_TRUE_BLOCKS
-            if self.is_true
-            else IfElse.IN_IF_ELSE_FALSE_BLOCKS
-        )
-        self.cond_block.__enter__()
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if not self.cond_block.__exit__(exc_type, exc_val, exc_tb):
-            # re-raise inside exception
-            return False
-        if len(self.ie.output_table[1 if self.is_true else 0]) == 0:
-            raise ValueError("Must set output inside block")
-        self.ie.status = IfElse.OUT_IF_ELSE_BLOCKS
-
-
-class IfElse:
-    """
-    :api_attr: Static Graph
-
-    This class is used to implement IfElse branch control function. IfElse contains two blocks, true_block and false_block. IfElse will put data satisfying True or False conditions into different blocks to run.
-
-    Cond is a 2-D Tensor with shape [N, 1] and data type bool, representing the execution conditions of the corresponding part of the input data.
-
-    Note:
-        A new OP :ref:`api_fluid_layers_cond` is highly recommended instead of ``IfElse``. if the shape of parameter ``cond`` is [1].
-        OP :ref:`api_fluid_layers_cond` is easier to use and is called with less code but does the same thing as ``IfElse`` .
-
-    IfElse OP is different from other OPs in usage, which may cause some users confusion. Here is a simple example to illustrate this OP.
-
-    .. code-block:: python
-
-        # The following code completes the function: subtract 10 from the data greater than 0 in x, add 10 to the data less than 0 in x, and sum all the data.
-        import numpy as np
-        import paddle.fluid as fluid
-
-        x = fluid.layers.data(name='x', shape=[4, 1], dtype='float32', append_batch_size=False)
-        y = fluid.layers.data(name='y', shape=[4, 1], dtype='float32', append_batch_size=False)
-
-        x_d = np.array([[3], [1], [-2], [-3]]).astype(np.float32)
-        y_d = np.zeros((4, 1)).astype(np.float32)
-
-        # Compare the size of x, y pairs of elements, output cond, cond is shape [4, 1], data type bool 2-D tensor.
-        # Based on the input data x_d, y_d, it can be inferred that the data in cond are [[true], [true], [false], [false]].
-        cond = fluid.layers.greater_than(x, y)
-        # Unlike other common OPs, ie below returned by the OP is an IfElse OP object
-        ie = fluid.layers.IfElse(cond)
-
-        with ie.true_block():
-            # In this block, according to cond condition, the data corresponding to true dimension in X is obtained and subtracted by 10.
-            out_1 = ie.input(x)
-            out_1 = out_1 - 10
-            ie.output(out_1)
-        with ie.false_block():
-            # In this block, according to cond condition, get the data of the corresponding condition in X as false dimension, and add 10
-            out_1 = ie.input(x)
-            out_1 = out_1 + 10
-            ie.output(out_1)
-
-        # According to cond condition, the data processed in the two blocks are merged. The output here is output, the type is List, and the element type in List is Variable.
-        output = ie() #  [array([[-7.], [-9.], [ 8.], [ 7.]], dtype=float32)]
-
-        # Get the first Variable in the output List and add all elements.
-        out = paddle.sum(output[0])
-
-        exe = fluid.Executor(fluid.CPUPlace())
-        exe.run(fluid.default_startup_program())
-
-        res = exe.run(fluid.default_main_program(), feed={"x":x_d, "y":y_d}, fetch_list=[out])
-        print(res)
-        # [array([-1.], dtype=float32)]
-
-    Args:
-        cond (Variable): cond is a 2-D Tensor with shape [N, 1] and data type bool, representing the corresponding execution conditions of N input data. The data type is bool.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
-
-    Returns:
-        Unlike other common OPs, the OP call returns an IfElse OP object (e.g. ie in the example), which branches the input data by calling the internal functions of the object ``true_block ()``, ``false_block ()``, ``input ()``, ``output ()``, and integrates the data processed by different branches as the overall output by calling the internal ``call ()`` function. The output type is a list, and the type of each element in the list is Variable.
-
-    Internal Functions:
-        The block is constructed by calling the ``with ie. true_block()`` function in the object, and the computational logic under condition true is put into the block. If no corresponding block is constructed, the input data in the corresponding conditional dimension is unchanged.
-
-        The block is constructed by calling the ``with ie. false_block()`` function in the object, and the computational logic under condition false is put into the block. If no corresponding block is constructed, the input data in the corresponding conditional dimension is unchanged.
-
-        ``Out = ie. input (x)`` will take out the data of the corresponding conditional dimension in X and put it into out, supporting the internal processing of multiple inputs in block.
-
-        ``ie. output (out)`` writes the result to the output of the corresponding condition.
-
-        There is a ``call ()`` function inside the object, that is, by calling ``output = ie ()``, all the outputs inside the block of False are fused as the whole output, the output type is a list, and the type of each element in the list is Variable.
-
-    """
-
-    OUT_IF_ELSE_BLOCKS = 0
-    IN_IF_ELSE_TRUE_BLOCKS = 1
-    IN_IF_ELSE_FALSE_BLOCKS = 2
-
-    def __init__(self, cond, name=None):
-        check_type(cond, "cond", Variable, "fluid.layers.IfElse")
-        check_type(name, "name", (str, type(None)), "fluid.layers.IfElse")
-        self.helper = LayerHelper('ifelse', name=name)
-        self.cond = cond
-        self.input_table = {}
-        self.status = IfElse.OUT_IF_ELSE_BLOCKS
-        self.conditional_true_block = ConditionalBlock(inputs=[self.cond])
-        self.conditional_false_block = ConditionalBlock(inputs=[self.cond])
-        self.output_table = ([], [])  # (true_outs, false_outs)
-
-    def input(self, x):
-        if self.status == IfElse.OUT_IF_ELSE_BLOCKS:
-            raise ValueError("input must in true/false blocks")
-        if id(x) not in self.input_table:
-            parent_block = self._parent_block()
-            out_true = parent_block.create_var(
-                name=unique_name.generate_with_ignorable_key(
-                    'ifelse_input' + self.helper.name
-                ),
-                dtype=x.dtype,
-            )
-
-            out_false = parent_block.create_var(
-                name=unique_name.generate_with_ignorable_key(
-                    'ifelse_input' + self.helper.name
-                ),
-                dtype=x.dtype,
-            )
-            parent_block.append_op(
-                type='split_lod_tensor',
-                inputs={
-                    'X': x,
-                    'Mask': self.cond,
-                },
-                outputs={'OutTrue': out_true, 'OutFalse': out_false},
-                attrs={'level': 0},
-            )
-            self.input_table[id(x)] = (out_true, out_false)
-        else:
-            out_true, out_false = self.input_table[id(x)]
-
-        if self.status == IfElse.IN_IF_ELSE_TRUE_BLOCKS:
-            return out_true
-        else:
-            return out_false
-
-    def _parent_block(self):
-        current_block = self.helper.main_program.current_block()
-        return self.helper.main_program.block(current_block.parent_idx)
-
-    def true_block(self):
-        return IfElseBlockGuard(True, self)
-
-    def false_block(self):
-        return IfElseBlockGuard(False, self)
-
-    def output(self, *outs):
-        if self.status == self.OUT_IF_ELSE_BLOCKS:
-            raise ValueError("output can only be invoked in the sub-block")
-
-        out_table = self.output_table[
-            1 if self.status == self.IN_IF_ELSE_TRUE_BLOCKS else 0
-        ]
-        parent_block = self._parent_block()
-        for each_out in outs:
-            check_type(
-                each_out, "each output", Variable, "fluid.layers.IfElse.output"
-            )
-            # create outside tensor
-            outside_out = parent_block.create_var(
-                name=unique_name.generate_with_ignorable_key(
-                    "_".join([self.helper.name, 'output'])
-                ),
-                dtype=each_out.dtype,
-            )
-            out_table.append(outside_out)
-
-            # assign local var to outside
-            assign(input=each_out, output=outside_out)
-
-    def __call__(self):
-        if self.status != self.OUT_IF_ELSE_BLOCKS:
-            raise ValueError("IfElse::__call__ must be out of sub-block")
-        false_len, true_len = list(map(len, self.output_table))
-        if false_len == 0 and true_len == 0:
-            raise ValueError(
-                "Must invoke true_block/false_block before " "__call__"
-            )
-        elif false_len != true_len and false_len != 0 and true_len != 0:
-            raise ValueError("The output side must be same")
-        elif false_len == 0 or true_len == 0:
-            return self.output_table[0 if false_len != 0 else 1]
-
-        # else none of false_len/true_len is zero
-        # merge together
-        rlist = []
-        for false_var, true_var in zip(*self.output_table):
-            rlist.append(
-                merge_lod_tensor(
-                    in_true=true_var,
-                    in_false=false_var,
-                    mask=self.cond,
-                    x=self.cond,
-                    level=0,
-                )
-            )
-        return rlist
-
-
-def switch_case(branch_index, branch_fns, default=None, name=None):
-    '''
-    :api_attr: Static Graph
-
-    This operator is like a C++ switch/case statement.
-
-    Args:
-        branch_index(Tensor): A Tensor with shape [1] to specify which branch to execute. The data type is ``int32``, ``int64`` or ``uint8``.
-        branch_fns(dict|list|tuple): If it's a list or tuple, the elements in it could be pairs of (int, callable) or simple callables whose actual index will be used as the index of callable. If it's a dict, its key is a python integer and the value is a callable. All callables return the same structure of Tensors.
-        default(callable, optional): Callable that returns a structure of Tensors.
-        name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor|list(Tensor): Tensors returned by the callable specified by ``branch_index`` in ``branch_fns``,
-        or Tensors returned by ``default`` if ``default`` is not None and no index matches in ``branch_fns``,
-        or Tensors returned by the callable with the max index in ``branch_fns`` if ``default`` is None and no index matches in ``branch_fns``.
-
-    Raises:
-        TypeError: If the type of ``branch_index`` is not Tensor.
-        TypeError: If the data type of ``branch_index`` is not ``int32``, ``int64`` or ``uint8``.
-        TypeError: If the type of ``branch_fns`` is not dict, list or tuple.
-        TypeError: If the elements of ``branch_fns`` is not 2-tuple.
-        TypeError: If the first element of 2-tuple in ``branch_fns`` is not integer.
-        ValueError: If the first element of 2-tuple in ``branch_fns`` is not unique.
-        TypeError: If the second element of 2-tuple in ``branch_fns`` is not callable.
-        TypeError: If ``default`` is not None but it is not callable.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            paddle.enable_static()
-
-            def fn_1():
-                return paddle.full(shape=[1, 2], dtype='float32', fill_value=1)
-
-            def fn_2():
-                return paddle.full(shape=[2, 2], dtype='int32', fill_value=2)
-
-            def fn_3():
-                return paddle.full(shape=[3], dtype='int32', fill_value=3)
-
-            main_program = paddle.static.default_startup_program()
-            startup_program = paddle.static.default_main_program()
-            with paddle.static.program_guard(main_program, startup_program):
-                index_1 = paddle.full(shape=[1], dtype='int32', fill_value=1)
-                index_2 = paddle.full(shape=[1], dtype='int32', fill_value=2)
-
-                out_1 = paddle.static.nn.switch_case(
-                    branch_index=index_1,
-                    branch_fns={1: fn_1, 2: fn_2},
-                    default=fn_3)
-
-                out_2 = paddle.static.nn.switch_case(
-                    branch_index=index_2,
-                    branch_fns=[(1, fn_1), (2, fn_2)],
-                    default=fn_3)
-
-                # Argument default is None and no index matches. fn_3 will be called because of the max index 7.
-                out_3 = paddle.static.nn.switch_case(
-                    branch_index=index_2,
-                    branch_fns=[(0, fn_1), (4, fn_2), (7, fn_3)])
-
-                exe = paddle.static.Executor(paddle.CPUPlace())
-                res_1, res_2, res_3 = exe.run(main_program, fetch_list=[out_1, out_2, out_3])
-                print(res_1)  # [[1. 1.]]
-                print(res_2)  # [[2 2] [2 2]]
-                print(res_3)  # [3 3 3]
-    '''
-    helper = LayerHelper('switch_case', **locals())
-
-    def _check_args(branch_index, branch_fns, default):
-
-        check_variable_and_dtype(
-            branch_index,
-            'branch_index',
-            ['uint8', 'int32', 'int64'],
-            'switch_case',
-        )
-
-        if convert_dtype(branch_index.dtype) != "int64":
-            branch_index = cast(branch_index, "int64")
-
-        check_type(branch_fns, 'branch_fns', (list, tuple, dict), 'switch_case')
-
-        branch_fns = (
-            branch_fns.items() if isinstance(branch_fns, dict) else branch_fns
-        )
-
-        branch_fns = (
-            list(enumerate(branch_fns))
-            if all(callable(fn) for fn in branch_fns)
-            else branch_fns
-        )
-
-        keys_of_fns = []
-        for index_fn_pair in branch_fns:
-            if not isinstance(index_fn_pair, tuple):
-                raise TypeError(
-                    _error_message(
-                        "The elements' type",
-                        "branch_fns",
-                        "switch_case",
-                        tuple,
-                        type(branch_fns),
-                    )
-                )
-
-            if len(index_fn_pair) != 2:
-                raise TypeError(
-                    _error_message(
-                        "The tuple's size",
-                        "branch_fns",
-                        "switch_case",
-                        "2",
-                        str(len(index_fn_pair)) + "-tuple",
-                    )
-                )
-
-            key, fn = index_fn_pair
-
-            if not isinstance(key, int):
-                raise TypeError(
-                    _error_message(
-                        "The key's type",
-                        "branch_fns",
-                        "switch_case",
-                        int,
-                        type(key),
-                    )
-                )
-
-            if key in keys_of_fns:
-                raise ValueError(
-                    "The key in 'branch_fns' must be unique, but '{}' appears more than once.".format(
-                        key
-                    )
-                )
-            else:
-                keys_of_fns.append(key)
-
-            if not callable(fn):
-                raise TypeError(
-                    _error_message(
-                        "The type of function for key {}".format(key),
-                        "branch_fns",
-                        "switch_case",
-                        "callable",
-                        type(fn),
-                    )
-                )
-
-        if default is None:
-            default = sorted(branch_fns)[-1][1]
-            branch_fns = sorted(branch_fns)[:-1]
-        elif not callable(default):
-            raise TypeError("The default in Op(case) must be callable.")
-
-        pred_fn_pairs = []
-        for index, fn in branch_fns:
-            new_index = fill_constant(shape=[1], dtype="int64", value=index)
-            pred = paddle.equal(branch_index, new_index)
-            pred_fn_pairs.append((pred, fn))
-
-        return pred_fn_pairs, default
-
-    pred_fn_pairs, default = _check_args(branch_index, branch_fns, default)
-    false_fn = default
-    for pred, true_fn in pred_fn_pairs:
-        false_fn = partial(cond, pred=pred, true_fn=true_fn, false_fn=false_fn)
-
-    final_fn = false_fn
-    return final_fn()
-
-
-@templatedoc()
-def reorder_lod_tensor_by_rank(x, rank_table):
-    """
-    ${comment}
-
-    Args:
-        x(${x_type}): ${x_comment}.
-        rank_table(${rank_table_type}): ${rank_table_comment}.
-
-    Returns:
-        out(${out_type}): ${out_comment}.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          data_desc = (['input', [9], 0], ['ref', [5], 1])
-          data = fluid.layers.data(name=data_desc[0][0], shape=data_desc[0][1])
-          rank_data = fluid.layers.data(name=data_desc[1][0], shape=data_desc[1][1])
-          table = fluid.layers.control_flow.lod_rank_table(rank_data)
-          new_data = fluid.layers.reorder_lod_tensor_by_rank(
-                           x=data, rank_table=table)
-
-    """
-
-    check_type(x, 'x', (Variable), 'reorder_lod_tensor_by_rank')
-    check_type(
-        rank_table, 'rank_table', (Variable), 'reorder_lod_tensor_by_rank'
-    )
-    if rank_table.type != core.VarDesc.VarType.LOD_RANK_TABLE:
-        raise TypeError("The type of rank_table should be LOD_RANK_TABLE.")
-
-    helper = LayerHelper('reorder_lod_tensor_by_rank', **locals())
-
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='reorder_lod_tensor_by_rank',
-        inputs={'X': [x], 'RankTable': [rank_table]},
-        outputs={'Out': [out]},
-    )
-    return out
-
-
-def is_empty(x, name=None):
-    """
-
-    Test whether a Tensor is empty.
-
-    Args:
-        x (Tensor): The Tensor to be tested.
-        name (str, optional): The default value is ``None`` . Normally users
-                            don't have to set this parameter. For more information,
-                            please refer to :ref:`api_guide_Name` .
-
-    Returns:
-        Tensor: A bool scalar Tensor. True if 'x' is an empty Tensor.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            input = paddle.rand(shape=[4, 32, 32], dtype='float32')
-            res = paddle.is_empty(x=input)
-            print("res:", res)
-            # ('res:', Tensor: eager_tmp_1
-            #    - place: CPUPlace
-            #    - shape: [1]
-            #    - layout: NCHW
-            #    - dtype: bool
-            #    - data: [0])
-
-    """
-    if in_dygraph_mode():
-        return _C_ops.is_empty(x)
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.is_empty(x)
-
-    check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'is_empty'
-    )
-    check_type(name, "name", (str, type(None)), "is_empty")
-
-    helper = LayerHelper("is_empty", **locals())
-    cond = helper.create_variable_for_type_inference(dtype='bool')
-    cond.stop_gradient = True
-    helper.append_op(
-        type='is_empty', inputs={'X': [x]}, outputs={'Out': [cond]}
-    )
-    return cond

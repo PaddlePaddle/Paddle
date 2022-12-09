@@ -21,8 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class FusedMultiTransformerOp : public framework::OperatorWithKernel {
  private:
   static constexpr const char *OpName = "FusedMultiTransformerOp";
@@ -93,27 +91,6 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
             x_dim,
             y_dim));
 
-    if (ctx->Attrs().Get<int>("ring_id") == -1) {
-      if (trans_qkvw) {
-        PADDLE_ENFORCE_EQ(y_dim[1] * y_dim[2],
-                          y_dim[3],
-                          platform::errors::InvalidArgument(
-                              "The dimensions of qkv_weight must be 4"
-                              "(3, num_head, dim_head, dim_embed),"
-                              "and must satisfy the limitations: "
-                              "(num_head * dim_head == dim_embed)"));
-
-      } else {
-        PADDLE_ENFORCE_EQ(y_dim[2] * y_dim[3],
-                          y_dim[0],
-                          platform::errors::InvalidArgument(
-                              "The dimensions of qkv_weight must be 4"
-                              "(dim_embed, 3, num_head, dim_head),"
-                              "and must satisfy the limitations: "
-                              "(num_head * dim_head == dim_embed)"));
-      }
-    }
-
     if (ctx->HasInputs("CacheKV")) {
       // [2, batch_size, num_head, max_seq_len, head_size]
       const auto &c_dims = ctx->GetInputsDim("CacheKV");
@@ -164,7 +141,7 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "TimeStep") {
       VLOG(10) << "var_name:" << var_name << " need not to transform";

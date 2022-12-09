@@ -23,7 +23,7 @@ from paddle.fluid.framework import (
     _non_static_mode,
     in_dygraph_mode,
 )
-from paddle.fluid.layers import nn, tensor
+from paddle.fluid.layers import tensor
 from paddle.tensor import random
 
 
@@ -49,7 +49,12 @@ class Uniform(distribution.Distribution):
     * :math:`Z`: is the normalizing constant.
 
     The parameters `low` and `high` must be shaped in a way that supports
-    :ref:`user_guide_broadcasting` (e.g., `high - low` is a valid operation).
+    `Boardcasting` (e.g., `high - low` is a valid operation).
+
+    Note:
+        If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         low(int|float|list|tuple|numpy.ndarray|Tensor): The lower boundary of
@@ -182,7 +187,7 @@ class Uniform(distribution.Distribution):
             return output
         else:
             output_shape = shape + batch_shape
-            output = nn.uniform_random(
+            output = paddle.uniform(
                 output_shape, dtype=self.dtype, min=0.0, max=1.0, seed=seed
             ) * (
                 tensor.zeros(output_shape, dtype=self.dtype)

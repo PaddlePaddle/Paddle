@@ -151,7 +151,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
 
             for epoch in range(10):
                 out = linear(input)
-                loss = fluid.layers.reduce_mean(out)
+                loss = paddle.mean(out)
                 loss.backward()
                 adam1.minimize(loss)
                 adam2.minimize(loss)
