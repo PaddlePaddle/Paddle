@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
+
 import numpy as np
+from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Linear, Pool2D
 from paddle.fluid.dygraph.base import to_variable
-import math
-from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
+from paddle.nn import Linear
 
 batch_size = 64
 momentum_rate = 0.9
@@ -113,31 +114,31 @@ class SqueezeExcitation(fluid.dygraph.Layer):
 
         super().__init__()
         self._num_channels = num_channels
-        self._pool = Pool2D(pool_size=0, pool_type='avg', global_pooling=True)
+        self._pool = paddle.nn.AdaptiveAvgPool2D(1)
         stdv = 1.0 / math.sqrt(num_channels * 1.0)
         self._squeeze = Linear(
             num_channels,
             num_channels // reduction_ratio,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(-stdv, stdv)
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Uniform(-stdv, stdv)
             ),
-            act='relu',
         )
         stdv = 1.0 / math.sqrt(num_channels / 16.0 * 1.0)
         self._excitation = Linear(
             num_channels // reduction_ratio,
             num_channels,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(-stdv, stdv)
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Uniform(-stdv, stdv)
             ),
-            act='sigmoid',
         )
 
     def forward(self, input):
         y = self._pool(input)
         y = paddle.reshape(y, shape=[-1, self._num_channels])
         y = self._squeeze(y)
+        y = paddle.nn.functional.relu(y)
         y = self._excitation(y)
+        y = paddle.nn.functional.sigmoid(y)
         y = fluid.layers.elementwise_mul(x=input, y=y, axis=0)
         return y
 
@@ -202,7 +203,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
         else:
             short = self.short(inputs)
 
-        y = fluid.layers.elementwise_add(x=short, y=scale, act='relu')
+        y = paddle.nn.functional.relu(paddle.add(x=short, y=scale))
         return y
 
 
@@ -230,9 +231,7 @@ class SeResNeXt(fluid.dygraph.Layer):
                 stride=2,
                 act='relu',
             )
-            self.pool = Pool2D(
-                pool_size=3, pool_stride=2, pool_padding=1, pool_type='max'
-            )
+            self.pool = paddle.nn.MaxPool2D(kernel_size=3, stride=2, padding=1)
         elif layers == 101:
             cardinality = 32
             reduction_ratio = 16
@@ -245,9 +244,7 @@ class SeResNeXt(fluid.dygraph.Layer):
                 stride=2,
                 act='relu',
             )
-            self.pool = Pool2D(
-                pool_size=3, pool_stride=2, pool_padding=1, pool_type='max'
-            )
+            self.pool = paddle.nn.MaxPool2D(kernel_size=3, stride=2, padding=1)
         elif layers == 152:
             cardinality = 64
             reduction_ratio = 16
@@ -274,9 +271,7 @@ class SeResNeXt(fluid.dygraph.Layer):
                 stride=1,
                 act='relu',
             )
-            self.pool = Pool2D(
-                pool_size=3, pool_stride=2, pool_padding=1, pool_type='max'
-            )
+            self.pool = paddle.nn.MaxPool2D(kernel_size=3, stride=2, padding=1)
 
         self.bottleneck_block_list = []
         num_channels = 64
@@ -298,9 +293,7 @@ class SeResNeXt(fluid.dygraph.Layer):
                 self.bottleneck_block_list.append(bottleneck_block)
                 shortcut = True
 
-        self.pool2d_avg = Pool2D(
-            pool_size=7, pool_type='avg', global_pooling=True
-        )
+        self.pool2d_avg = paddle.nn.AdaptiveAvgPool2D(1)
         stdv = 1.0 / math.sqrt(2048 * 1.0)
 
         self.pool2d_avg_output = num_filters[len(num_filters) - 1] * 2 * 1 * 1
@@ -308,8 +301,8 @@ class SeResNeXt(fluid.dygraph.Layer):
         self.out = Linear(
             self.pool2d_avg_output,
             class_dim,
-            param_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.Uniform(-stdv, stdv)
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Uniform(-stdv, stdv)
             ),
         )
 
@@ -356,8 +349,10 @@ class TestSeResNeXt(TestParallelDyGraphRunnerBase):
         label.stop_gradient = True
 
         out = model(img)
-        softmax_out = fluid.layers.softmax(out, use_cudnn=False)
-        loss = fluid.layers.cross_entropy(input=softmax_out, label=label)
+        softmax_out = paddle.nn.functional.softmax(out, use_cudnn=False)
+        loss = paddle.nn.functional.cross_entropy(
+            input=softmax_out, label=label, reduction='none', use_softmax=False
+        )
         avg_loss = paddle.mean(x=loss)
         return avg_loss
 

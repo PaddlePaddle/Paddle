@@ -75,8 +75,9 @@ framework::OpKernelType FusionSeqPoolConcatOp::GetExpectedKernelType(
 }
 
 void FusionSeqPoolConcatOpMaker::Make() {
-  AddInput("X", "(LoDTensor) Input tensors of this operator.").AsDuplicable();
-  AddOutput("Out", "(LoDTensor) Output tensor of concat operator.");
+  AddInput("X", "(phi::DenseTensor) Input tensors of this operator.")
+      .AsDuplicable();
+  AddOutput("Out", "(phi::DenseTensor) Output tensor of concat operator.");
   AddAttr<std::string>("pooltype",
                        "(string, default 'SUM') some of the pooling "
                        "pooltype of SequencePoolOp.")
@@ -95,8 +96,8 @@ template <typename T>
 class FusionSeqPoolConcatKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto ins = ctx.MultiInput<LoDTensor>("X");
-    auto* out = ctx.Output<LoDTensor>("Out");
+    auto ins = ctx.MultiInput<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     std::string pooltype = ctx.Attr<std::string>("pooltype");
     auto x0_lod = ins[0]->lod();
     const auto& x0_dims = ins[0]->dims();

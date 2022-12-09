@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import inspect
 import numpy as np
 import warnings
@@ -40,6 +41,7 @@ import paddle.utils.deprecated as deprecated
 import paddle.profiler as profiler
 from paddle.profiler.utils import in_profiler_mode
 from paddle import _C_ops, _legacy_C_ops
+from paddle.device import get_all_custom_device_type
 
 _grad_scalar = None
 
@@ -163,12 +165,12 @@ def monkey_patch_varbase():
 
                 import paddle.fluid as fluid
                 from paddle.fluid.dygraph.base import to_variable
-                from paddle.fluid.dygraph import Linear
+                from paddle.nn import Linear
                 import numpy as np
 
                 data = np.ones([3, 1024], dtype='float32')
                 with fluid.dygraph.guard():
-                    linear = fluid.dygraph.Linear(1024, 4)
+                    linear = Linear(1024, 4)
                     t = to_variable(data)
                     linear(t)  # call with default weight
                     custom_weight = np.random.randn(1024, 4).astype("float32")
@@ -376,7 +378,15 @@ def monkey_patch_varbase():
             if self._grad_ivar() is None:
                 return None
 
-            new_ivar = self._grad_ivar()._copy_to(core.CPUPlace(), True)
+            new_ivar = self._grad_ivar()
+            # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
+            if (
+                os.environ.get('FLAGS_npu_storage_format', None)
+                in [1, '1', True, 'True', 'true']
+                and 'npu' in get_all_custom_device_type()
+            ):
+                new_ivar = paddle.incubate._npu_identity(x=new_ivar, format=-1)
+            new_ivar = new_ivar._copy_to(core.CPUPlace(), True)
             if self._grad_ivar().type == core.VarDesc.VarType.SELECTED_ROWS:
                 return (
                     np.array(new_ivar.value().get_selected_rows().get_tensor()),
@@ -881,6 +891,10 @@ def monkey_patch_varbase():
         self.get_tensor()._clear()
 
     @framework.dygraph_only
+    def _use_gpudnn(self, use_gpudnn=True):
+        return self._tensor_use_gpudnn(use_gpudnn)
+
+    @framework.dygraph_only
     def _uva(self, device_id=0):
         '''
         Returns self tensor with the UVA(unified virtual addressing).
@@ -1064,6 +1078,7 @@ def monkey_patch_varbase():
         setattr(core.eager.Tensor, "_uva", _uva)
         setattr(core.eager.Tensor, "_clear_data", _clear_data)
         setattr(core.eager.Tensor, "__hash__", __hash__)
+        setattr(core.eager.Tensor, "_use_gpudnn", _use_gpudnn)
     else:
         setattr(core.VarBase, "__name__", "Tensor")
         setattr(core.VarBase, "grad", grad)

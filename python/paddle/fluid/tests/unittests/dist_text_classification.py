@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import re
+import string
+import tarfile
+
+from test_dist_base import TestDistRunnerBase, runtime_main
+
 import paddle
 import paddle.fluid as fluid
-import os
-import tarfile
-import string
-import re
-from test_dist_base import TestDistRunnerBase, runtime_main
 
 DTYPE = "float32"
 VOCAB_URL = 'http://paddle-dist-ce-data.bj.bcebos.com/imdb.vocab'
@@ -130,9 +132,11 @@ class TestDistTextClassification2x2(TestDistRunnerBase):
 
         # Train program
         predict = conv_net(data, dict_dim)
-        cost = fluid.layers.cross_entropy(input=predict, label=label)
+        cost = paddle.nn.functional.cross_entropy(
+            input=predict, label=label, reduction='none', use_softmax=False
+        )
         avg_cost = paddle.mean(x=cost)
-        acc = fluid.layers.accuracy(input=predict, label=label)
+        acc = paddle.static.accuracy(input=predict, label=label)
         inference_program = fluid.default_main_program().clone()
 
         # Optimization

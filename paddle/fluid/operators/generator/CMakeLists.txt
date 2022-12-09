@@ -77,16 +77,21 @@ execute_process(
     ./parsed_ops/ops.parsed.yaml ./parsed_ops/legacy_ops.parsed.yaml
     --backward_yaml_paths ./parsed_ops/backward_ops.parsed.yaml
     ./parsed_ops/legacy_backward_ops.parsed.yaml
+  RESULT_VARIABLE _result)
+if(${_result})
+  message(FATAL_ERROR "ops validation failed, exiting.")
+endif()
+
+execute_process(
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
   COMMAND
     ${PYTHON_EXECUTABLE} cross_validate.py --forward_yaml_paths
     ./parsed_ops/sparse_ops.parsed.yaml --backward_yaml_paths
     ./parsed_ops/sparse_backward.parsed.yaml
-  RESULT_VARIABLE _results)
-foreach(_result in ${_results})
-  if(${_result})
-    message(FATAL_ERROR "ops validation failed, exiting.")
-  endif()
-endforeach()
+  RESULT_VARIABLE _result)
+if(${_result})
+  message(FATAL_ERROR "sparse ops validation failed, exiting.")
+endif()
 
 # code generation for op, op makers, and argument mapping functions
 message(
@@ -103,18 +108,23 @@ execute_process(
     --op_compat_yaml_path ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml
     --output_op_path "${generated_op_path}.tmp" --output_arg_map_path
     "${generated_argument_mapping_path}.tmp"
+  RESULT_VARIABLE _result)
+if(${_result})
+  message(FATAL_ERROR "operator codegen failed, exiting.")
+endif()
+
+execute_process(
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
   COMMAND
     ${PYTHON_EXECUTABLE} generate_sparse_op.py --ops_yaml_path
     ./parsed_ops/sparse_ops.parsed.yaml --backward_ops_yaml_path
     ./parsed_ops/sparse_backward.parsed.yaml --output_op_path
     "${generated_sparse_ops_path}.tmp" --output_arg_map_path
     "${generated_sparse_argument_mapping_path}.tmp"
-  RESULT_VARIABLE _results)
-foreach(_result in ${_results})
-  if(${_result})
-    message(FATAL_ERROR "operator codegen failed, exiting.")
-  endif()
-endforeach()
+  RESULT_VARIABLE _result)
+if(${_result})
+  message(FATAL_ERROR "sparse operator codegen failed, exiting.")
+endif()
 
 if(EXISTS "${generated_op_path}.tmp" AND EXISTS "${generated_op_path}")
   execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -197,7 +207,7 @@ endif()
 
 # op extra info file
 set(ops_extra_info_gen_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/ops_extra_info_gen.py)
+    ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator/ops_extra_info_gen.py)
 set(op_compat_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml)
 set(ops_extra_info_file
     ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/ops_extra_info.cc)

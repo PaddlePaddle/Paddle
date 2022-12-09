@@ -1,8 +1,5 @@
 proto_library(profiler_proto SRCS profiler.proto DEPS framework_proto
               simple_threadpool)
-if(WITH_GPU)
-  proto_library(external_error_proto SRCS external_error.proto)
-endif()
 if(WITH_PYTHON)
   py_proto_compile(profiler_py_proto SRCS profiler.proto)
   add_custom_target(profiler_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E
@@ -34,10 +31,6 @@ if(WITH_PYTHON)
   endif()
 endif()
 
-cc_library(
-  flags
-  SRCS flags.cc
-  DEPS gflags)
 cc_library(
   denormal
   SRCS denormal.cc
@@ -88,7 +81,7 @@ if(WITH_GPU)
   nv_library(
     cuda_graph_with_memory_pool
     SRCS cuda_graph_with_memory_pool.cc
-    DEPS device_context allocator cuda_graph)
+    DEPS device_context allocator phi_backends)
 else()
   cc_library(
     cuda_graph_with_memory_pool
@@ -180,11 +173,6 @@ if(WITH_GLOO)
     SRCS gloo_context.cc
     DEPS framework_proto gloo_wrapper enforce)
 endif()
-
-cc_library(
-  cudnn_workspace_helper
-  SRCS cudnn_workspace_helper.cc
-  DEPS)
 
 # separate init from device_context to avoid cycle dependencies
 cc_library(
@@ -381,10 +369,6 @@ if(WITH_GPU)
          stats
          op_proto_maker
          shape_inference)
-  nv_library(
-    device_memory_aligment
-    SRCS device_memory_aligment.cc
-    DEPS cpu_info gpu_info place)
 elseif(WITH_ROCM)
   hip_library(
     profiler
@@ -397,10 +381,6 @@ elseif(WITH_ROCM)
          stats
          op_proto_maker
          shape_inference)
-  hip_library(
-    device_memory_aligment
-    SRCS device_memory_aligment.cc
-    DEPS cpu_info gpu_info place)
 else()
   cc_library(
     profiler
@@ -412,10 +392,6 @@ else()
          stats
          op_proto_maker
          shape_inference)
-  cc_library(
-    device_memory_aligment
-    SRCS device_memory_aligment.cc
-    DEPS cpu_info place)
 endif()
 
 cc_test(

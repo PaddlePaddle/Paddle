@@ -12,20 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import os
-import sys
-from io import BytesIO
 import tempfile
+import unittest
+from io import BytesIO
+
+import numpy as np
+from test_imperative_base import new_program_scope
 
 import paddle
+import paddle.fluid as fluid
+import paddle.fluid.framework as framework
 import paddle.nn as nn
 import paddle.optimizer as opt
-import paddle.fluid as fluid
 from paddle.fluid.optimizer import Adam
-import paddle.fluid.framework as framework
-from test_imperative_base import new_program_scope
 from paddle.optimizer.lr import LRScheduler
 
 BATCH_SIZE = 16
@@ -149,11 +149,7 @@ class TestSaveLoadPickle(unittest.TestCase):
         with self.assertRaises(ValueError):
             paddle.save(save_dict, path, 5)
 
-        protocols = [
-            2,
-        ]
-        if sys.version_info.major >= 3 and sys.version_info.minor >= 4:
-            protocols += [3, 4]
+        protocols = [2, 3, 4]
         for protocol in protocols:
             paddle.save(save_dict, path, pickle_protocol=protocol)
             dict_load = paddle.load(path)
@@ -217,7 +213,7 @@ class TestSaveLoadAny(unittest.TestCase):
             )
             z = paddle.static.nn.fc(x, 10)
             z = paddle.static.nn.fc(z, 10, bias_attr=False)
-            loss = fluid.layers.reduce_mean(z)
+            loss = paddle.mean(z)
             opt = Adam(learning_rate=1e-3)
             opt.minimize(loss)
             place = paddle.CPUPlace()
@@ -386,7 +382,7 @@ class TestSaveLoadAny(unittest.TestCase):
                 name="x", shape=[None, IMAGE_SIZE], dtype='float32'
             )
             z = paddle.static.nn.fc(x, 128)
-            loss = fluid.layers.reduce_mean(z)
+            loss = paddle.mean(z)
             place = (
                 fluid.CPUPlace()
                 if not paddle.fluid.core.is_compiled_with_cuda()
@@ -644,7 +640,7 @@ class TestSaveLoadAny(unittest.TestCase):
             )
             z = paddle.static.nn.fc(x, 10, bias_attr=False)
             z = paddle.static.nn.fc(z, 128, bias_attr=False)
-            loss = fluid.layers.reduce_mean(z)
+            loss = paddle.mean(z)
             place = (
                 fluid.CPUPlace()
                 if not paddle.fluid.core.is_compiled_with_cuda()
@@ -919,7 +915,7 @@ class TestSaveLoadToMemory(unittest.TestCase):
             )
             z = paddle.static.nn.fc(x, 10, bias_attr=False)
             z = paddle.static.nn.fc(z, 128, bias_attr=False)
-            loss = fluid.layers.reduce_mean(z)
+            loss = paddle.mean(z)
             place = (
                 fluid.CPUPlace()
                 if not paddle.fluid.core.is_compiled_with_cuda()

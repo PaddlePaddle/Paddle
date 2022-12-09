@@ -12,25 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Tuple, Dict, Any
+from typing import Any, Dict, List, Tuple
 
 import paddle
-from paddle.framework import core
-from paddle.fluid import layers
-from paddle.fluid.framework import device_guard
-from .pass_base import PassBase, PassType, register_pass
-from paddle.distributed.auto_parallel.utils import (
-    set_var_dist_attr,
-    is_optimize_op,
-    OpRole,
-    OP_ROLE_KEY,
-)
-from paddle.distributed.auto_parallel.utils import (
-    naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
-)
 from paddle.distributed.auto_parallel.process_group import (
     get_world_process_group,
 )
+from paddle.distributed.auto_parallel.utils import (
+    OP_ROLE_KEY,
+    OpRole,
+    is_optimize_op,
+    naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
+    set_var_dist_attr,
+)
+from paddle.fluid import layers
+from paddle.fluid.framework import device_guard
+from paddle.framework import core
+
+from .pass_base import PassBase, PassType, register_pass
 
 world_process_group = get_world_process_group()
 
@@ -65,7 +64,7 @@ def _remove_and_get_optimizer_op(main_program, dist_context):
 def _get_gm_cond_var(main_program, k_steps, dist_context):
     main_block = main_program.global_block()
     # Add const var
-    k_step_var = layers.create_global_var(
+    k_step_var = paddle.static.create_global_var(
         name="gradient_merge_k",
         shape=[1],
         value=int(k_steps),
@@ -75,7 +74,7 @@ def _get_gm_cond_var(main_program, k_steps, dist_context):
     )
     set_var_dist_attr(dist_context, k_step_var, [-1], world_process_group.ranks)
 
-    zero_var = layers.create_global_var(
+    zero_var = paddle.static.create_global_var(
         name="gradient_merge_zero",
         shape=[1],
         value=int(0),
@@ -86,7 +85,7 @@ def _get_gm_cond_var(main_program, k_steps, dist_context):
     set_var_dist_attr(dist_context, zero_var, [-1], world_process_group.ranks)
 
     # Add step var & cond var
-    step_var = layers.create_global_var(
+    step_var = paddle.static.create_global_var(
         name="gradient_merge_step",
         shape=[1],
         value=int(0),

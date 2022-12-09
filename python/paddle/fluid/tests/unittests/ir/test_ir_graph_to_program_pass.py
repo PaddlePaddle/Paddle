@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 import paddle
-from paddle import fluid
-from paddle import static
+from paddle import fluid, static
 
 paddle.enable_static()
 

@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import paddle
-import paddle.fluid.framework as framework
 import paddle.distributed.communication.stream as stream
+import paddle.fluid.framework as framework
 
 
 def alltoall(in_tensor_list, out_tensor_list, group=None, sync_op=True):

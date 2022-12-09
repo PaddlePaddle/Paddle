@@ -14,15 +14,15 @@
 
 # TODO: define statistical functions of a tensor
 
-from ..static import Variable
-from ..framework import LayerHelper
-from ..framework import core
-from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
-from .search import where
-from ..fluid.data_feeder import check_type, check_variable_and_dtype
 import paddle
 from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+
+from ..fluid.data_feeder import check_type, check_variable_and_dtype
+from ..framework import LayerHelper, core
+from ..static import Variable
 from .math import _get_reduce_axis_with_tensor
+from .search import where
 
 __all__ = []
 
@@ -79,11 +79,10 @@ def mean(x, axis=None, keepdim=False, name=None):
             out4 = paddle.mean(x, axis=[0, 2])
             # [ 8.5 12.5 16.5]
     """
-
-    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
-
     if in_dygraph_mode():
         return _C_ops.mean(x, axis, keepdim)
+
+    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
     if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_mean(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
