@@ -14,6 +14,7 @@
 
 import warnings
 
+import paddle  # noqa: F401
 from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
 
