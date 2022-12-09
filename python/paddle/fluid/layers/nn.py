@@ -83,7 +83,6 @@ __all__ = [
     'elementwise_div',
     'elementwise_sub',
     'elementwise_mul',
-    'clip',
     'clip_by_norm',
     'mul',
     'merge_selected_rows',
@@ -3010,58 +3009,6 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
         )
     else:
         helper.append_op(type=op_name, inputs={"X": x}, outputs={"Out": out})
-
-    return out
-
-
-@templatedoc()
-def clip(x, min, max, name=None):
-    """
-        :old_api: paddle.fluid.layers.clip
-
-    ${comment}
-
-    Args:
-        x(${x_type}): ${x_comment}
-        min(float): ${min_comment}
-        max(float): ${max_comment}
-        name(str, optional): The default value is None.
-                             Normally there is no need for user to set this property.
-                             For more information, please refer to :ref:`api_guide_Name`
-
-    Returns:
-        ${out_comment}
-
-    Return Type:
-        ${out_type}
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            input = fluid.data(
-                name='data', shape=[1], dtype='float32')
-            reward = fluid.layers.clip(x=input, min=-1.0, max=1.0)
-    """
-
-    helper = LayerHelper("clip", **locals())
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'clip')
-
-    if name is None:
-        name = unique_name.generate_with_ignorable_key(
-            ".".join([helper.name, 'tmp'])
-        )
-
-    out = helper.create_variable(
-        type=x.type, name=name, dtype=x.dtype, persistable=False
-    )
-
-    helper.append_op(
-        type="clip",
-        inputs={"X": x},
-        attrs={"min": min, "max": max},
-        outputs={"Out": out},
-    )
 
     return out
 

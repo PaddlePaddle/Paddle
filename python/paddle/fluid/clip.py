@@ -292,7 +292,7 @@ class ClipGradByValue(ClipGradBase):
                     continue
 
                 with p.block.program._optimized_guard([p, g]):
-                    new_grad = layers.clip(x=g, min=self.min, max=self.max)
+                    new_grad = paddle.clip(x=g, min=self.min, max=self.max)
                 params_and_grads.append((p, new_grad))
                 param_new_grad_name_dict[p.name] = new_grad.name
         _correct_clip_op_role_var(params_and_grads, param_new_grad_name_dict)
@@ -302,7 +302,7 @@ class ClipGradByValue(ClipGradBase):
         pass
 
     def _create_operators(self, param, grad):
-        new_grad = layers.clip(x=grad, min=self.min, max=self.max)
+        new_grad = paddle.clip(x=grad, min=self.min, max=self.max)
         return param, new_grad
 
 
