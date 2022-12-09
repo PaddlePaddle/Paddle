@@ -62,7 +62,7 @@ class _InstanceNormBase(Layer):
         momentum=0.9,
         weight_attr=None,
         bias_attr=None,
-        data_format="NCHW",
+        data_format="NCL",
         name=None,
     ):
         super().__init__()
@@ -127,8 +127,7 @@ class InstanceNorm1D(_InstanceNormBase):
         \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
         y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-    - :math:`H`: means height of feature map.
-    - :math:`W`: means width of feature map.
+    Where `H` means height of feature map, `W` means width of feature map.
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
@@ -169,7 +168,10 @@ class InstanceNorm1D(_InstanceNormBase):
           print(instance_norm_out)
 
     """
-
+    def __init__(self, num_features, epsilon=0.00001, momentum=0.9,
+        weight_attr=None, bias_attr=None, data_format="NCL", name=None):
+        super().__init__(num_features, epsilon, momentum, weight_attr, bias_attr,
+         data_format, name)
     def _check_input_dim(self, input):
         if len(input.shape) != 2 and len(input.shape) != 3:
             raise ValueError(
@@ -198,8 +200,7 @@ class InstanceNorm2D(_InstanceNormBase):
         \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
         y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-    - :math:`H`: means height of feature map.
-    - :math:`W`: means width of feature map.
+    Where `H` means height of feature map, `W` means width of feature map.
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
@@ -238,7 +239,10 @@ class InstanceNorm2D(_InstanceNormBase):
 
             print(instance_norm_out)
     """
-
+    def __init__(self, num_features, epsilon=0.00001, momentum=0.9, 
+        weight_attr=None, bias_attr=None, data_format="NCHW", name=None):
+        super().__init__(num_features, epsilon, momentum, weight_attr, bias_attr,
+         data_format, name)
     def _check_input_dim(self, input):
         if len(input.shape) != 4:
             raise ValueError(
@@ -250,7 +254,7 @@ class InstanceNorm3D(_InstanceNormBase):
     r"""
     Create a callable object of `InstanceNorm3D`. Applies Instance Normalization over a 5D input (a mini-batch of 3D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
-    DataLayout: NCHW `[batch, in_channels, D, in_height, in_width]`
+    DataLayout: NCDHW `[batch, in_channels, D, in_height, in_width]`
 
 
     :math:`input` is the input features over a mini-batch.
@@ -265,8 +269,7 @@ class InstanceNorm3D(_InstanceNormBase):
         \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
         y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-    - :math:`H`: means height of feature map.
-    - :math:`W`: means width of feature map.
+    Where `H` means height of feature map, `W` means width of feature map.
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
@@ -305,7 +308,10 @@ class InstanceNorm3D(_InstanceNormBase):
 
             print(instance_norm_out.numpy)
     """
-
+    def __init__(self, num_features, epsilon=0.00001, momentum=0.9, 
+    weight_attr=None, bias_attr=None, data_format="NCDHW", name=None):
+        super().__init__(num_features, epsilon, momentum, weight_attr, 
+        bias_attr, data_format, name)
     def _check_input_dim(self, input):
         if len(input.shape) != 5:
             raise ValueError(
