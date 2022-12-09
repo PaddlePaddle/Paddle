@@ -28,7 +28,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using SelectedRows = phi::SelectedRows;
 using DDim = framework::DDim;
 
@@ -175,7 +174,7 @@ class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
       auto len = ids_t->numel();
       int idx_width = len / offset.back();
 
-      Tensor csr_vals_t, csr_colmuns_t, csr_row_idx_t;
+      phi::DenseTensor csr_vals_t, csr_colmuns_t, csr_row_idx_t;
       csr_vals_t.Resize({len});
       csr_colmuns_t.Resize({len});
       csr_row_idx_t.Resize({(batch_size + 1) * idx_width});
@@ -300,7 +299,7 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
       auto len = ids->numel();
       int idx_width = len / offset.back();
 
-      Tensor csr_vals_t, csr_colmuns_t, csr_row_idx_t;
+      phi::DenseTensor csr_vals_t, csr_colmuns_t, csr_row_idx_t;
       csr_vals_t.Resize({len});
       csr_colmuns_t.Resize({len});
       int64_t batch_size = ids_lod[0].size() - 1;

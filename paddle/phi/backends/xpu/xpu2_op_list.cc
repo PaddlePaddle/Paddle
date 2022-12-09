@@ -2,10 +2,11 @@
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-http://www.apache.org/licenses/LICENSE-2.0 Unless required by applicable law or
-agreed to in writing, software distributed under the License is distributed on
-an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
-or implied. See the License for the specific language governing permissions and
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
@@ -94,7 +95,8 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"clip", XPUKernelSet({phi::DataType::FLOAT32})},
       {"clip_by_norm", XPUKernelSet({phi::DataType::FLOAT32})},
-      {"coalesce_tensor", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"coalesce_tensor",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"concat_grad",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"concat",
@@ -298,6 +300,7 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::INT64,
                      phi::DataType::INT32,
                      phi::DataType::FLOAT32})},
+      {"load", XPUKernelSet({phi::DataType::FLOAT32})},
       {"load_combine",
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::FLOAT64,
@@ -414,6 +417,13 @@ XPUOpMap& get_kl2_ops() {
                      phi::DataType::FLOAT32})},
       {"sampling_id",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT64})},
+      {"set_value",
+       XPUKernelSet({phi::DataType::INT32,
+                     phi::DataType::INT64,
+                     phi::DataType::FLOAT16,
+                     phi::DataType::FLOAT32})},
+      {"set_value_grad",
+       XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::FLOAT32})},
       {"sgd", XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"sgd_dense_param_sparse_grad",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
@@ -525,6 +535,7 @@ XPUOpMap& get_kl2_ops() {
                      phi::DataType::INT64,
                      phi::DataType::BOOL,
                      phi::DataType::FLOAT32})},
+      {"tile_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"transpose2_grad",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"transpose2",
@@ -549,15 +560,6 @@ XPUOpMap& get_kl2_ops() {
                      phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16})},
       {"unsqueeze2",
-       XPUKernelSet({phi::DataType::FLOAT64,
-                     phi::DataType::INT64,
-                     phi::DataType::INT32,
-                     phi::DataType::BOOL,
-                     phi::DataType::INT8,
-                     phi::DataType::UINT8,
-                     phi::DataType::FLOAT32,
-                     phi::DataType::FLOAT16})},
-      {"unsqueeze_with_xshape",
        XPUKernelSet({phi::DataType::FLOAT64,
                      phi::DataType::INT64,
                      phi::DataType::INT32,

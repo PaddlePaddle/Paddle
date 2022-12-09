@@ -11,7 +11,6 @@ list(
   group_norm_op_plugin.cu
   layer_norm_op_plugin.cu
   instance_norm_op_plugin.cu
-  emb_eltwise_layernorm_plugin.cu
   qkv_to_context_plugin.cu
   skip_layernorm_op_plugin.cu
   hard_swish_op_plugin.cu
@@ -38,12 +37,14 @@ list(
   merge_layernorm_op_plugin.cu
   skip_merge_layernorm_op_plugin.cu
   generic_plugin.cu
-  lookup_table.cu)
+  lookup_table.cu
+  many_emb_layernorm_plugin.cu
+  many_emb_Layernorm_kernel.cu)
 
-if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7 AND NOT WIN32)
+if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
   list(APPEND TRT_FILES many_emb_layernorm_varseqlen_plugin.cu
-       many_emb_Layernorm_varseqlen_kernelMTron.cu
-       many_emb_Layernorm_varseqlen_kernelHFace.cu)
+       many_emb_Layernorm_varseqlen_kernel_mtron.cu
+       many_emb_Layernorm_varseqlen_kernel_hface.cu)
 endif()
 
 if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)

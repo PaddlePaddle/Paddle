@@ -15,7 +15,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class ROIAlignNPUKernel : public framework::OpKernel<T> {
@@ -54,7 +53,7 @@ class ROIAlignNPUKernel : public framework::OpKernel<T> {
     int dtype =
         static_cast<int>(ConvertToNpuDtype(framework::proto::VarType::FP32));
     framework::NPUAttributeMap attr_cast = {{"dst_type", dtype}};
-    Tensor ROIsNum_fp(ROIs->dtype());
+    phi::DenseTensor ROIsNum_fp(ROIs->dtype());
     ROIsNum_fp.Resize(phi::make_ddim({ROIs->dims()[0], 1}));
     ROIsNum_fp.mutable_data<T>(ctx.GetPlace());
 
@@ -68,7 +67,7 @@ class ROIAlignNPUKernel : public framework::OpKernel<T> {
     x_list.push_back(*ROIs);
     auto axis = 1;
     // output of concate
-    Tensor ROIs_N5(ROIs->dtype());
+    phi::DenseTensor ROIs_N5(ROIs->dtype());
     ROIs_N5.Resize(phi::make_ddim({ROIs->dims()[0], 5}));
     ROIs_N5.mutable_data<T>(ctx.GetPlace());
 
@@ -137,9 +136,9 @@ class ROIAlignNPUGradKernel : public framework::OpKernel<T> {
 
     // Cast RoisNum to fp32 tensor
     auto* RoisNum = ctx.Input<phi::DenseTensor>("RoisNum");
-    Tensor ROIs_N5;
+    phi::DenseTensor ROIs_N5;
     ROIs_N5.mutable_data<float>({rois_num, 5}, place);
-    Tensor ROIsNum_fp;
+    phi::DenseTensor ROIsNum_fp;
     ROIsNum_fp.mutable_data<T>(RoisNum->dims(), place);  // shape = [rois_num]
     int nputype_fp32 =
         static_cast<int>(ConvertToNpuDtype(framework::proto::VarType::FP32));
@@ -161,7 +160,7 @@ class ROIAlignNPUGradKernel : public framework::OpKernel<T> {
     //  function
 #if (CANN_VERSION_CODE < 504000)
     std::vector<float> vec_dlt = {0, 0, 0, -1.0f, -1.0f};
-    Tensor tsr_dlt;
+    phi::DenseTensor tsr_dlt;
     tsr_dlt.mutable_data<float>({5}, place);
     framework::TensorFromVector<float>(vec_dlt, ctx.device_context(), &tsr_dlt);
     ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();

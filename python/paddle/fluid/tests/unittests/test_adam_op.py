@@ -806,7 +806,12 @@ class TestAdamOptimizer(unittest.TestCase):
                     input=fc_1, size=2, param_attr=weight_attr2, act='softmax'
                 )
 
-                cost = fluid.layers.cross_entropy(input=prediction, label=label)
+                cost = paddle.nn.functional.cross_entropy(
+                    input=prediction,
+                    label=label,
+                    reduction='none',
+                    use_softmax=False,
+                )
                 loss = paddle.mean(cost)
                 beta1_init = 0.9
                 beta2_init = 0.999
@@ -966,7 +971,9 @@ class TestAdamOptimizer(unittest.TestCase):
         fc_1 = fluid.layers.fc(input=z, size=128)
         prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
 
-        cost = fluid.layers.cross_entropy(input=prediction, label=label)
+        cost = paddle.nn.functional.cross_entropy(
+            input=prediction, label=label, reduction='none', use_softmax=False
+        )
         loss = paddle.mean(cost)
         adam = fluid.optimizer.Adam(use_global_beta_pow=True)
         adam.minimize(loss)

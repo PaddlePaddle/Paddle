@@ -369,6 +369,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(enable_gpu_half, EnableGPUHalf, bool);
   DECL_ARGUMENT_FIELD(mixed_precision_mode, MixedPrecisionMode, int);
 
+  // cinn compiler related
+  DECL_ARGUMENT_FIELD(use_cinn_compiler, UseCinnCompiler, bool);
+
  private:
   std::unordered_set<std::string> valid_fields_;
 };

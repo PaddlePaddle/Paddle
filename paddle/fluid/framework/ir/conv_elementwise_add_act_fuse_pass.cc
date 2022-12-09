@@ -162,22 +162,20 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
   std::unordered_set<std::string> cutlass_act_set;
   std::unordered_set<std::string> all_act_set = cudnn_act_set;
 
-  auto model_precision =
-      static_cast<phi::DataType>(Get<int>("model_precision"));
-  const int aligment_cutlass = 4;
-  if (model_precision == phi::DataType::FLOAT16) {
+  bool is_fp16_precision =
+      static_cast<phi::DataType>(Get<int>("model_precision")) ==
+          phi::DataType::FLOAT16 ||
+      Get<bool>("enable_gpu_half");
+  constexpr int CUTLASS_NHWC_ALIGNMENT = 8;
+  if (is_fp16_precision) {
 #ifdef PADDLE_WITH_CUTLASS
     // cutlass now support these activations
-    cutlass_act_set.insert("swish");
-    cutlass_act_set.insert("relu");
-    cutlass_act_set.insert("identity");
-    cutlass_act_set.insert("leaky_relu");
+    // cutlass_act_set.insert("swish");
+    // cutlass_act_set.insert("relu");
+    // cutlass_act_set.insert("identity");
+    // cutlass_act_set.insert("leaky_relu");
 
     all_act_set.insert(cutlass_act_set.begin(), cutlass_act_set.end());
-    // all_act_set.insert("swish");
-    // all_act_set.insert("relu");
-    // all_act_set.insert("identity");
-    // all_act_set.insert("leaky_relu");
 #endif
   }
 
@@ -199,15 +197,16 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
     auto* scope = param_scope();
     auto* filter_var = scope->FindLocalVar(conv_filter->Name());
     auto* filter_tensor = filter_var->GetMutable<phi::DenseTensor>();
+    CHECK_EQ(filter_tensor->dims().size() == 4UL, true);
     // when this conv2d_fusion problem size is not supported by cutlass and not
     // supported by cuDNN, we should not apply this pass
     int oc = filter_tensor->dims()[0];
     int ic = filter_tensor->dims()[1];
-    bool cutlass_fuse = oc % aligment_cutlass == 0 &&
-                        ic % aligment_cutlass == 0 &&
-                        cutlass_act_set.count(act_op_type);
-    bool cudnn_fuse = cudnn_act_set.count(act_op_type);
-    if (!cutlass_fuse && !cudnn_fuse) {
+    bool cutlass_can_fuse = oc % CUTLASS_NHWC_ALIGNMENT == 0 &&
+                            ic % CUTLASS_NHWC_ALIGNMENT == 0 &&
+                            cutlass_act_set.count(act_op_type);
+    bool cudnn_can_fuse = cudnn_act_set.count(act_op_type);
+    if (!cutlass_can_fuse && !cudnn_can_fuse) {
       return;
     }
 
@@ -257,5 +256,5 @@ REGISTER_PASS_CAPABILITY(conv_elementwise_add_act_fuse_pass)
             .EQ("sigmoid", 0)
             .EQ("tanh", 0)
             .EQ("identity", 0)
-            .EQ("leaky_relu", 0)
+            .LE("leaky_relu", 1)
             .EQ("swish", 0));
