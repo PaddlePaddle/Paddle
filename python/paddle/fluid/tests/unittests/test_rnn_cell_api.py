@@ -159,7 +159,7 @@ class TestRnn(unittest.TestCase):
         state = numpy_cell.parameters
         for k, v in dynamic_cell.named_parameters():
             param = np.random.uniform(-0.1, 0.1, size=state[k].shape).astype(
-                'float32'
+                'float64'
             )
             setattr(numpy_cell, k, param)
             fluid.global_scope().find_var(v.name).get_tensor().set(param, place)
@@ -170,13 +170,13 @@ class TestRnn(unittest.TestCase):
         inputs_rnn = fluid.data(
             name='inputs_rnn',
             shape=[None, None, self.input_size],
-            dtype='float32',
+            dtype='float64',
         )
         pre_hidden = fluid.data(
-            name='pre_hidden', shape=[None, self.hidden_size], dtype='float32'
+            name='pre_hidden', shape=[None, self.hidden_size], dtype='float64'
         )
         pre_cell = fluid.data(
-            name='pre_cell', shape=[None, self.hidden_size], dtype='float32'
+            name='pre_cell', shape=[None, self.hidden_size], dtype='float64'
         )
 
         dynamic_output, dynamic_final_state = dynamic_rnn(
@@ -189,16 +189,16 @@ class TestRnn(unittest.TestCase):
 
         inputs_rnn_np = np.random.uniform(
             -0.1, 0.1, (self.batch_size, self.seq_len, self.input_size)
-        ).astype('float32')
+        ).astype('float64')
         sequence_length_np = (
             np.ones(self.batch_size, dtype='int64') * self.seq_len
         )
         pre_hidden_np = np.random.uniform(
             -0.1, 0.1, (self.batch_size, self.hidden_size)
-        ).astype('float32')
+        ).astype('float64')
         pre_cell_np = np.random.uniform(
             -0.1, 0.1, (self.batch_size, self.hidden_size)
-        ).astype('float32')
+        ).astype('float64')
 
         o1, _ = numpy_rnn(
             cell=numpy_cell,
