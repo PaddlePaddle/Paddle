@@ -1029,9 +1029,30 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : scatter
+  backward : scatter_grad
+  inputs :
+    {x : X, index : Ids, updates : Updates}
+  outputs :
+    out : Out
+
+- op : scatter_nd_add
+  backward : scatter_nd_add_grad
+  inputs :
+    {x : X, index : Index, updates : Updates}
+  outputs :
+    out : Out
+
 - op : seed
   extra :
     attrs : [bool deterministic = false, str rng_name = "", bool force_cpu = false]
+
+- op : selu
+  backward : selu_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : send_uv (graph_send_uv)
   backward : send_uv_grad (graph_send_uv_grad)
@@ -1051,6 +1072,12 @@
   outputs :
     out : Out
     xout : XOut
+
+- op : shard_index
+  inputs :
+    input : X
+  outputs :
+    out : Out
 
 - op : shuffle_channel
   backward : shuffle_channel_grad
@@ -1242,6 +1269,13 @@
     attrs : [bool use_mkldnn = false, str data_format = "AnyLayout", bool use_quantizer = false,
               str mkldnn_data_type = "float32"]
 
+- op : triangular_solve
+  backward : triangular_solve_grad
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
 - op : trilinear_interp (trilinear_interp_v2)
   backward : trilinear_interp_grad (trilinear_interp_v2_grad)
   extra :
@@ -1258,6 +1292,19 @@
     x : X
   outputs :
     out : Y
+
+- op : viterbi_decode
+  inputs :
+    {potentials : Input, transition_params : Transition, lengths : Length}
+  outputs :
+    {scores : Scores, path : Path}
+
+- op : where
+  backward : where_grad
+  inputs :
+    {condition : Condition, x : X, y : Y}
+  outputs :
+    out : Out
 
 - op : while
   backward : while_grad
