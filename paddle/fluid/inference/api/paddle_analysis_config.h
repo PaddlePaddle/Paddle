@@ -971,7 +971,7 @@ struct PD_INFER_DECL AnalysisConfig {
   /// interface is in the experimental stage and may change in the future. Note
   /// that the blacklist must be the same as the model conversion blacklist.
   ///
-  void Exp_DisableMixedInferOps(
+  void Exp_DisableMixedPrecisionOps(
       const std::unordered_set<std::string>& black_list);
 
   void SetApplyOptim(bool value) { apply_optim_ = value; }
