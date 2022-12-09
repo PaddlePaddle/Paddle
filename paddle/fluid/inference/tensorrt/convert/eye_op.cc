@@ -50,7 +50,6 @@ class EyeOpConverter : public OpConverter {
 
     // Set data type
     nvinfer1::DataType nv_type = nvinfer1::DataType::kFLOAT;
-    typedef float T;
     switch (dtype) {
       case paddle::framework::proto::VarType::FP32:
         nv_type = nvinfer1::DataType::kFLOAT;
