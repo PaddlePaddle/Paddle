@@ -182,6 +182,8 @@ struct FusedMultiTransformerDecoderFuseQKVPattern : public PatternBase {
   // Q, K matmul
   PATTERN_DECL_NODE(matmul_qk);
   PATTERN_DECL_NODE(matmul_qk_out);
+  PATTERN_DECL_NODE(scale_q);
+  PATTERN_DECL_NODE(scale_q_out);
   PATTERN_DECL_NODE(eltadd_qk);
   PATTERN_DECL_NODE(eltadd_qk_b);
   PATTERN_DECL_NODE(eltadd_qk_out);
