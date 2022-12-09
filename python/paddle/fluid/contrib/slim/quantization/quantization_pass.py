@@ -2624,7 +2624,13 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
         return has_weight
 
     def _quant_conv1d(self, graph, op):
+        # conv1d in inference is a combination of unsqueeze2 + conv2d
+        if ("conv2d" not in op.name()) or (
+            "unsqueeze2" not in op.input("Filter")[0]
+        ):
+            return
         conv_weight_var_name = op.input("Filter")[0]
+        # unsqueeze2 and conv2d will share weight scale
         weight_scale_node = None
         # quant unsqueeze2
         for _op in graph.all_op_nodes():
@@ -2645,7 +2651,7 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
             )
             quant_axis = -1
             channel_wise = False
-            if quant_type == 'channel_wise_abs_max':  # Weight quantization
+            if quant_type == 'channel_wise_abs_max':
                 channel_wise = True
                 quant_axis = (
                     1 if op.name() in utils._channelwise_quant_axis1_ops else 0
@@ -2727,11 +2733,8 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
                         op
                     ):
                         self._transform_forward(graph, op)
-                    # support conv1d quantization
-                    if (
-                        op.name() == "conv2d"
-                        and "unsqueeze2" in op.input("Filter")[0]
-                    ):
+                    else:  # op is not persistable
+                        # support conv1d quantization
                         self._quant_conv1d(graph, op)
                 t.update()
         # The loop for renaming the inputs of backward op.

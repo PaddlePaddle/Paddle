@@ -398,7 +398,8 @@ class PostTrainingQuantization:
         self._best_calibration_loss = {}
         # The threshold for algo = abs_max, mse or avg
         self._quantized_threshold = {}
-        # If the tensor is zero-size during calibration, it will skip quantization
+        # If the tensor is zero-size during any calibration step,
+        # it will be stored in self._zero_size_var_names
         self._zero_size_var_names = set()
         self._same_scale_tensor_list = same_scale_tensor_list
         self._freeze_model = freeze_model
@@ -467,10 +468,7 @@ class PostTrainingQuantization:
 
         if self._algo == 'avg':
             for var_name in self._quantized_act_var_name:
-                if (
-                    var_name in self._zero_size_var_names
-                    and var_name not in self._quantized_var_avg
-                ):
+                if var_name not in self._quantized_var_avg:
                     continue
                 self._quantized_threshold[var_name] = np.array(
                     self._quantized_var_avg[var_name]
