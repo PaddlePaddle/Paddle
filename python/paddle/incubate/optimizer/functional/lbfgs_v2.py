@@ -187,8 +187,6 @@ class LBFGS(Optimizer):
         for p in self._params:
             if p.grad is None:
                 view = paddle.zeros_like(p).reshape([-1])
-            elif p.grad.is_sparse():
-                view = p.grad.to_dense().reshape([-1])
             else:
                 view = p.grad.reshape([-1])
             views.append(view)
