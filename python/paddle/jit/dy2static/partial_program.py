@@ -22,7 +22,7 @@ from paddle.fluid.executor import (
 )
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.dygraph.dygraph_to_static import logging_utils
+from . import logging_utils
 from .return_transformer import (
     RETURN_NO_VALUE_MAGIC_NUM,
 )
@@ -43,6 +43,8 @@ from paddle.fluid.dygraph.amp.auto_cast import (
     _in_pure_fp16_guard,
 )
 from paddle import _legacy_C_ops
+
+__all__ = []
 
 
 class NestSequence:

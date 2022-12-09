@@ -59,7 +59,9 @@ class TestBook(unittest.TestCase):
 
             y_predict = layers.fc(input=x, size=1, act=None)
 
-            cost = layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
             sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
@@ -153,7 +155,9 @@ class TestSaveInferenceModel(unittest.TestCase):
 
             y_predict = layers.fc(input=x, size=1, act=None)
 
-            cost = layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
         place = core.CPUPlace()
@@ -174,11 +178,13 @@ class TestSaveInferenceModel(unittest.TestCase):
             x = layers.data(name='x', shape=[2], dtype='float32')
             y = layers.data(name='y', shape=[1], dtype='int32')
             predict = fluid.layers.fc(input=x, size=2, act='softmax')
-            acc = fluid.layers.accuracy(input=predict, label=y)
-            auc_var, batch_auc_var, auc_states = fluid.layers.auc(
+            acc = paddle.static.accuracy(input=predict, label=y)
+            auc_var, batch_auc_var, auc_states = paddle.static.auc(
                 input=predict, label=y
             )
-            cost = fluid.layers.cross_entropy(input=predict, label=y)
+            cost = paddle.nn.functional.cross_entropy(
+                input=predict, label=y, reduction='none', use_softmax=False
+            )
             avg_cost = paddle.mean(x=cost)
 
         place = core.CPUPlace()
@@ -209,7 +215,9 @@ class TestInstance(unittest.TestCase):
 
             y_predict = layers.fc(input=x, size=1, act=None)
 
-            cost = layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
         place = core.CPUPlace()
@@ -245,7 +253,9 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
             y_predict = layers.fc(input=x, size=1, act=None)
 
-            cost = layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
             sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
@@ -422,7 +432,9 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
             y_predict = layers.fc(input=x, size=1, act=None)
 
-            cost = layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
             sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
@@ -469,7 +481,9 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
             y_predict = layers.fc(input=x, size=1, act=None)
 
-            cost = layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
             sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)

@@ -99,8 +99,10 @@ class TestDygraphDataLoader(unittest.TestCase):
                 step = 0
                 for image, label in dataloader():
                     out = fc_net(image)
-                    loss = fluid.layers.cross_entropy(out, label)
-                    avg_loss = fluid.layers.reduce_mean(loss)
+                    loss = paddle.nn.functional.cross_entropy(
+                        out, label, reduction='none', use_softmax=False
+                    )
+                    avg_loss = paddle.mean(loss)
                     avg_loss.backward()
                     optimizer.minimize(avg_loss)
                     fc_net.clear_gradients()
@@ -169,8 +171,10 @@ class TestDygraphDataLoaderWithBatchedDataset(TestDygraphDataLoader):
                 step = 0
                 for image, label in dataloader():
                     out = fc_net(image)
-                    loss = fluid.layers.cross_entropy(out, label)
-                    avg_loss = fluid.layers.reduce_mean(loss)
+                    loss = paddle.nn.functional.cross_entropy(
+                        out, label, reduction='none', use_softmax=False
+                    )
+                    avg_loss = paddle.mean(loss)
                     avg_loss.backward()
                     optimizer.minimize(avg_loss)
                     fc_net.clear_gradients()

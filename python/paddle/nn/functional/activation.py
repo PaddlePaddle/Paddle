@@ -14,11 +14,10 @@
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
-from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 from paddle.framework import core
+from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ...fluid.data_feeder import check_dtype, check_variable_and_dtype
-from ...fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 from ...fluid.framework import (
     _in_legacy_dygraph,
     convert_np_dtype_to_dtype_,
@@ -814,9 +813,9 @@ def maxout(x, groups, axis=1, name=None):
     Parameters:
         x (Tensor): The input is 4-D Tensor with shape [N, C, H, W] or [N, H, W, C], the data type
             of input is float32 or float64.
-        groups (int, optional): The groups number of maxout. `groups` specifies the
+        groups (int): The groups number of maxout. `groups` specifies the
             index of channel dimension where maxout will be performed. This must be
-            a factor of number of features. Default is 1.
+            a factor of number of features.
         axis (int, optional): The axis along which to perform maxout calculations.
             It should be 1 when data format is NCHW, be -1 or 3 when data format
             is NHWC. If ``axis`` < 0, it works the same way as :math:`axis + D` ,
@@ -1678,11 +1677,12 @@ def glu(x, axis=-1, name=None):
 
             x = paddle.to_tensor(
                 [[-0.22014759, -1.76358426,  0.80566144,  0.04241343],
-                 [-1.94900405, -1.89956081,  0.17134808, -1.11280477]]
+                    [-1.94900405, -1.89956081,  0.17134808, -1.11280477]]
             )
-            print(F.glu(x).numpy())
-            # array([[-0.15216254, -0.9004892 ],
-            #        [-1.0577879 , -0.46985325]], dtype=float32)
+            print(F.glu(x))
+            # Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[-0.15216254, -0.90048921],
+            #         [-1.05778778, -0.46985325]])
 
     """
     check_variable_and_dtype(

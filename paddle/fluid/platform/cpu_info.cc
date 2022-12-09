@@ -32,7 +32,7 @@ limitations under the License. */
 
 #include <algorithm>
 
-#include "paddle/fluid/platform/flags.h"
+#include "paddle/phi/core/flags.h"
 
 DECLARE_double(fraction_of_cpu_memory_to_use);
 DECLARE_uint64(initial_cpu_memory_in_mb);
@@ -77,11 +77,6 @@ size_t CpuMaxAllocSize() {
   // For distributed systems, it requires configuring and limiting
   // the fraction of memory to use.
   return FLAGS_fraction_of_cpu_memory_to_use * CpuTotalPhysicalMemory();
-}
-
-size_t CpuMinChunkSize() {
-  // Allow to allocate the minimum chunk size is 4 KB.
-  return 1 << 12;
 }
 
 size_t CpuMaxChunkSize() {

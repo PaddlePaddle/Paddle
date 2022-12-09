@@ -184,9 +184,7 @@ class ResNet(fluid.dygraph.Layer):
                 )
                 self.bottleneck_block_list.append(bottleneck_block)
                 shortcut = True
-        self.pool2d_avg = paddle.fluid.dygraph.nn.Pool2D(
-            pool_size=7, pool_type='avg', global_pooling=True
-        )
+        self.pool2d_avg = paddle.nn.AdaptiveAvgPool2D(1)
 
         self.pool2d_avg_output = num_filters[len(num_filters) - 1] * 4 * 1 * 1
 
@@ -276,10 +274,10 @@ class ResNetHelper:
                     pred = resnet(img)
                     loss = fluid.layers.cross_entropy(input=pred, label=label)
                     avg_loss = paddle.mean(x=loss)
-                    acc_top1 = fluid.layers.accuracy(
+                    acc_top1 = paddle.static.accuracy(
                         input=pred, label=label, k=1
                     )
-                    acc_top5 = fluid.layers.accuracy(
+                    acc_top5 = paddle.static.accuracy(
                         input=pred, label=label, k=5
                     )
 
@@ -436,6 +434,4 @@ class TestResnet(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    # switch into new eager mode
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

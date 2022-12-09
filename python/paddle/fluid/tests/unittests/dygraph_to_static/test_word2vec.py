@@ -265,7 +265,7 @@ class SkipGram(fluid.dygraph.Layer):
         loss = paddle.nn.functional.binary_cross_entropy_with_logits(
             word_sim, label
         )
-        loss = fluid.layers.reduce_mean(loss)
+        loss = paddle.mean(loss)
 
         return pred, loss
 
@@ -332,5 +332,4 @@ class TestWord2Vec(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

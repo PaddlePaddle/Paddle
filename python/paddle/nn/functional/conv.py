@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode
 from paddle.device import (
     get_all_custom_device_type,
@@ -149,7 +151,11 @@ def _conv_nd(
             new_shape[channel_dim] = -1
             bias = bias.reshape(new_shape)
             # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
-            if 'npu' in get_all_custom_device_type():
+            if (
+                os.environ.get('FLAGS_npu_storage_format', None)
+                in [1, '1', True, 'True', 'true']
+                and 'npu' in get_all_custom_device_type()
+            ):
                 with no_grad():
                     bias_storage = _C_ops.npu_identity(
                         bias, 3
@@ -608,10 +614,10 @@ def conv2d(
             the number of output channels, g is the number of groups, kH is the filter's
             height, kW is the filter's width.
         bias (Tensor, optional): The bias with shape [M,].
-        stride (int|list|tuple): The stride size. It means the stride in convolution.
+        stride (int|list|tuple, optional): The stride size. It means the stride in convolution.
             If stride is a list/tuple, it must contain two integers, (stride_height, stride_width).
             Otherwise, stride_height = stride_width = stride. Default: stride = 1.
-        padding (string|int|list|tuple): The padding size. It means the number of zero-paddings
+        padding (string|int|list|tuple, optional): The padding size. It means the number of zero-paddings
             on both sides for each dimension.If `padding` is a string, either 'VALID' or
             'SAME' which is the padding algorithm. If padding size is a tuple or list,
             it could be in three forms: `[pad_height, pad_width]` or
@@ -621,11 +627,11 @@ def conv2d(
             when `data_format` is `"NHWC"`, `padding` can be in the form
             `[[0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
             Default: padding = 0.
-        dilation (int|list|tuple): The dilation size. It means the spacing between the kernel
+        dilation (int|list|tuple, optional): The dilation size. It means the spacing between the kernel
             points. If dilation is a list/tuple, it must contain two integers, (dilation_height,
             dilation_width). Otherwise, dilation_height = dilation_width = dilation.
             Default: dilation = 1.
-        groups (int): The groups number of the Conv2D Layer. According to grouped
+        groups (int, optional): The groups number of the Conv2D Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
@@ -651,10 +657,9 @@ def conv2d(
           w_var = paddle.randn((6, 3, 3, 3), dtype='float32')
 
           y_var = F.conv2d(x_var, w_var)
-          y_np = y_var.numpy()
 
-          print(y_np.shape)
-          # (2, 6, 6, 6)
+          print(y_var.shape)
+          # [2, 6, 6, 6]
     """
     # entry checks
     if data_format not in ["NCHW", "NHWC"]:
@@ -747,7 +752,11 @@ def conv2d(
                         + [1 for i in range(len(x.shape) - channel_dim - 1)],
                     )
                 # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
-                if 'npu' in get_all_custom_device_type():
+                if (
+                    os.environ.get('FLAGS_npu_storage_format', None)
+                    in [1, '1', True, 'True', 'true']
+                    and 'npu' in get_all_custom_device_type()
+                ):
                     with no_grad():
                         bias_storage = _C_ops.npu_identity(
                             bias, 3
@@ -1224,10 +1233,9 @@ def conv2d_transpose(
           w_var = paddle.randn((3, 6, 3, 3), dtype='float32')
 
           y_var = F.conv2d_transpose(x_var, w_var)
-          y_np = y_var.numpy()
 
-          print(y_np.shape)
-          # (2, 6, 10, 10)
+          print(y_var.shape)
+          # [2, 6, 10, 10]
     """
 
     if data_format not in ['NCHW', 'NHWC']:
@@ -1513,10 +1521,9 @@ def conv3d(
             w_var = paddle.randn((6, 3, 3, 3, 3), dtype='float32')
 
             y_var = F.conv3d(x_var, w_var)
-            y_np = y_var.numpy()
 
-            print(y_np.shape)
-            # (2, 6, 6, 6, 6)
+            print(y_var.shape)
+            # [2, 6, 6, 6, 6]
     """
     # entry check
     if data_format not in ["NCDHW", "NDHWC"]:
@@ -1728,10 +1735,9 @@ def conv3d_transpose(
           w_var = paddle.randn((3, 6, 3, 3, 3), dtype='float32')
 
           y_var = F.conv3d_transpose(x_var, w_var)
-          y_np = y_var.numpy()
 
-          print(y_np.shape)
-          # (2, 6, 10, 10, 10)
+          print(y_var.shape)
+          # [2, 6, 10, 10, 10]
     """
     # entry checks
     if data_format not in ["NCDHW", "NDHWC"]:

@@ -264,7 +264,7 @@ class TestNet(unittest.TestCase):
             prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
 
             cost = fluid.layers.cross_entropy(input=prediction, label=label)
-            loss = fluid.layers.reduce_mean(cost)
+            loss = paddle.mean(cost)
             adam = fluid.optimizer.Adam(learning_rate=0.01)
             adam.minimize(loss)
 
@@ -349,26 +349,26 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
                 )
 
                 cost = fluid.layers.cross_entropy(input=prediction, label=label)
-                loss = fluid.layers.reduce_mean(cost)
+                loss = paddle.mean(cost)
                 beta1_init = 0.9
                 beta2_init = 0.999
                 epsilon_init = 1e-8
                 if use_tensor:
-                    beta1 = fluid.layers.create_global_var(
+                    beta1 = paddle.static.create_global_var(
                         shape=[1],
                         value=float(beta1_init),
                         dtype='float32',
                         persistable=True,
                         name="beta1",
                     )
-                    beta2 = fluid.layers.create_global_var(
+                    beta2 = paddle.static.create_global_var(
                         shape=[1],
                         value=float(beta2_init),
                         dtype='float32',
                         persistable=True,
                         name="beta2",
                     )
-                    epsilon = fluid.layers.create_global_var(
+                    epsilon = paddle.static.create_global_var(
                         shape=[1],
                         value=float(epsilon_init),
                         dtype='float32',

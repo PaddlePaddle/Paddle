@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import inspect
 import numpy as np
 import warnings
@@ -164,12 +165,12 @@ def monkey_patch_varbase():
 
                 import paddle.fluid as fluid
                 from paddle.fluid.dygraph.base import to_variable
-                from paddle.fluid.dygraph import Linear
+                from paddle.nn import Linear
                 import numpy as np
 
                 data = np.ones([3, 1024], dtype='float32')
                 with fluid.dygraph.guard():
-                    linear = fluid.dygraph.Linear(1024, 4)
+                    linear = Linear(1024, 4)
                     t = to_variable(data)
                     linear(t)  # call with default weight
                     custom_weight = np.random.randn(1024, 4).astype("float32")
@@ -379,7 +380,11 @@ def monkey_patch_varbase():
 
             new_ivar = self._grad_ivar()
             # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
-            if 'npu' in get_all_custom_device_type():
+            if (
+                os.environ.get('FLAGS_npu_storage_format', None)
+                in [1, '1', True, 'True', 'true']
+                and 'npu' in get_all_custom_device_type()
+            ):
                 new_ivar = paddle.incubate._npu_identity(x=new_ivar, format=-1)
             new_ivar = new_ivar._copy_to(core.CPUPlace(), True)
             if self._grad_ivar().type == core.VarDesc.VarType.SELECTED_ROWS:

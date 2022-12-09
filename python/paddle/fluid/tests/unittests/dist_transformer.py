@@ -289,7 +289,7 @@ class LearningRateScheduler:
         self.warmup_steps = warmup_steps
         self.d_model = d_model
         self.static_lr = learning_rate
-        self.learning_rate = layers.create_global_var(
+        self.learning_rate = paddle.static.create_global_var(
             name=name,
             shape=[1],
             value=float(learning_rate),
@@ -1174,10 +1174,10 @@ def multi_head_attention(
         Scaled Dot-Product Attention
         """
         scaled_q = paddle.scale(x=q, scale=d_model**-0.5)
-        product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
+        product = paddle.matmul(x=scaled_q, y=k, transpose_y=True)
         if attn_bias:
             product += attn_bias
-        weights = layers.softmax(product)
+        weights = paddle.nn.functional.softmax(product)
         if dropout_rate:
             weights = layers.dropout(
                 weights,
@@ -1185,7 +1185,7 @@ def multi_head_attention(
                 seed=ModelHyperParams.dropout_seed,
                 is_test=False,
             )
-        out = layers.matmul(weights, v)
+        out = paddle.matmul(weights, v)
         return out
 
     q, k, v = __compute_qkv(queries, keys, values, n_head, d_key, d_value)
@@ -1585,7 +1585,7 @@ def transformer(
             epsilon=label_smooth_eps,
         )
 
-    cost = layers.softmax_with_cross_entropy(
+    cost = paddle.nn.functional.softmax_with_cross_entropy(
         logits=paddle.reshape(predict, shape=[-1, trg_vocab_size]),
         label=label,
         soft_label=True if label_smooth_eps else False,
@@ -1701,7 +1701,7 @@ def wrap_decoder(
     )
     # Return logits for training and probs for inference.
     if weight_sharing:
-        predict = layers.matmul(
+        predict = paddle.matmul(
             x=dec_output,
             y=fluid.framework._get_var(word_emb_param_names[0]),
             transpose_y=True,
@@ -1715,7 +1715,7 @@ def wrap_decoder(
             bias_attr=const_bias_attr,
         )
     if dec_inputs is None:
-        predict = layers.softmax(predict)
+        predict = paddle.nn.functional.softmax(predict)
     return predict
 
 
@@ -1762,8 +1762,8 @@ def fast_decode(
         step_idx = layers.fill_constant(
             shape=[1], dtype=start_tokens.dtype, value=0
         )
-        cond = layers.less_than(x=step_idx, y=max_len)
-        while_op = layers.While(cond)
+        cond = paddle.less_than(x=step_idx, y=max_len)
+        while_op = paddle.static.nn.control_flow.While(cond)
         # array states will be stored for each step.
         ids = layers.array_write(
             paddle.reshape(start_tokens, (-1, 1)), step_idx
@@ -1833,8 +1833,8 @@ def fast_decode(
             )
             logits = paddle.reshape(logits, (-1, trg_vocab_size))
 
-            topk_scores, topk_indices = layers.topk(
-                input=layers.softmax(logits), k=beam_size
+            topk_scores, topk_indices = paddle.topk(
+                x=paddle.nn.functional.softmax(logits), k=beam_size
             )
             accu_scores = layers.elementwise_add(
                 x=paddle.log(topk_scores),
@@ -1861,7 +1861,7 @@ def fast_decode(
             for i in range(n_layer):
                 layers.assign(pre_caches[i]["k"], caches[i]["k"])
                 layers.assign(pre_caches[i]["v"], caches[i]["v"])
-            length_cond = layers.less_than(x=step_idx, y=max_len)
+            length_cond = paddle.less_than(x=step_idx, y=max_len)
             finish_cond = paddle.logical_not(layers.is_empty(x=selected_ids))
             paddle.logical_and(x=length_cond, y=finish_cond, out=cond)
 
