@@ -47,7 +47,7 @@ class TestPrune(unittest.TestCase):
                 "mul",
                 "elementwise_add",
                 "softmax",
-                "cross_entropy2",
+                "softmax_with_cross_entropy",
                 "reduce_mean",
             ],
         )
@@ -57,7 +57,7 @@ class TestPrune(unittest.TestCase):
         self.assertEqual(len(pruned_program.global_block().ops), 2)
         self.assertEqual(
             [op.type for op in pruned_program.global_block().ops],
-            ["cross_entropy2", "reduce_mean"],
+            ["softmax_with_cross_entropy", "reduce_mean"],
         )
 
     def test_prune(self):
@@ -73,7 +73,7 @@ class TestPrune(unittest.TestCase):
                 "mul",
                 "elementwise_add",
                 "softmax",
-                "cross_entropy2",
+                "softmax_with_cross_entropy",
                 "reduce_mean",
             ],
         )
@@ -85,7 +85,7 @@ class TestPrune(unittest.TestCase):
                 "mul",
                 "elementwise_add",
                 "softmax",
-                "cross_entropy2",
+                "softmax_with_cross_entropy",
                 "reduce_mean",
             ],
         )
@@ -103,7 +103,7 @@ class TestPrune(unittest.TestCase):
                 "mul",
                 "elementwise_add",
                 "softmax",
-                "cross_entropy2",
+                "softmax_with_cross_entropy",
                 "reduce_mean",
             ],
         )
@@ -115,7 +115,7 @@ class TestPrune(unittest.TestCase):
                 "mul",
                 "elementwise_add",
                 "softmax",
-                "cross_entropy2",
+                "softmax_with_cross_entropy",
                 "reduce_mean",
             ],
         )
@@ -133,7 +133,7 @@ class TestPrune(unittest.TestCase):
                 "mul",
                 "elementwise_add",
                 "softmax",
-                "cross_entropy2",
+                "softmax_with_cross_entropy",
                 "reduce_mean",
             ],
         )
