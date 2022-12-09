@@ -272,7 +272,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
       std::string tmp_name = x->Name() + "_cast_to_INT32";
       LOG(WARNING)
           << "tensorrt_subgraph's input named " << tmp_name
-          << "having int64 dtype in pdmodel description, we will cast them to "
+          << " having int64 dtype in pdmodel description, we will cast them to "
              "int32 dtype to feed them into paddle-trt.";
       PADDLE_ENFORCE_EQ(scope->FindVar(tmp_name),
                         nullptr,
@@ -392,7 +392,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
         framework::proto::VarType::INT64) {
       std::string tmp_name = name + "_cast_to_INT64";
       LOG(WARNING) << "tensorrt_subgraph's output named " << tmp_name
-                   << "having int64 dtype in pdmodel description, but in fact "
+                   << " having int64 dtype in pdmodel description, but in fact "
                       "it is int32 "
                       "dtype after executing this tensorrt_subgraph, so we "
                       "need cast them into int64.";
