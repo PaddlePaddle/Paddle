@@ -50,18 +50,19 @@ class EyeOpConverter : public OpConverter {
 
     // Set data type
     nvinfer1::DataType nv_type = nvinfer1::DataType::kFLOAT;
+    typedef float T;
     switch (dtype) {
       case paddle::framework::proto::VarType::FP32:
         nv_type = nvinfer1::DataType::kFLOAT;
-        std::vector<float> constant_arr(num_rows * num_columns, 0);
+        typedef float T;
         break;
       case paddle::framework::proto::VarType::FP16:
         nv_type = nvinfer1::DataType::kHALF;
-        std::vector<uint16_t> constant_arr(num_rows * num_columns, 0);
+        typedef uint16_t T;
         break;
       case paddle::framework::proto::VarType::INT32:
         nv_type = nvinfer1::DataType::kINT32;
-        std::vector<int32_t> constant_arr(num_rows * num_columns, 0);
+        typedef int32_t T;
         break;
       default:
         paddle::platform::errors::InvalidArgument(
@@ -81,6 +82,7 @@ class EyeOpConverter : public OpConverter {
       num_columns = num_rows;
     }
 
+    std::vector<T> constant_arr(num_rows * num_columns, 0);
     for (int i = 0; i < std::min(num_rows, num_columns); i++) {
       constant_arr[i * num_columns + i] = 1;
     }
