@@ -159,6 +159,10 @@ def run_model(
         segments=segments,
         recompute_kwargs=recompute_kwargs,
     )
+
+    if pure_fp16:
+        model = paddle.amp.decorate(models=model, level='O2')
+
     loss_fn = paddle.nn.MSELoss(reduction='mean')
     optimizer = paddle.optimizer.SGD(
         learning_rate=0.01, parameters=model.parameters()

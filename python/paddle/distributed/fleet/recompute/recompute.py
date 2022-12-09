@@ -399,15 +399,11 @@ def _recompute_without_reentrant(
         amp_level = 'O2'
     elif tracer._amp_level in (core.AmpLevel.O1, core.AmpLevel.O0):
         amp_level = 'O1'
-    else:
-        raise ValueError("unsupported amp level: {}".format(tracer._amp_level))
 
     if tracer._amp_dtype == 'float16':
         amp_dtype = 'float16'
     elif tracer._amp_dtype in ('bfloat16', 'float32'):
         amp_dtype = 'bfloat16'
-    else:
-        raise ValueError("unsupported amp dtype: {}".format(tracer._amp_dtype))
 
     amp_white_list, amp_black_list = tracer._get_amp_op_list()
 
