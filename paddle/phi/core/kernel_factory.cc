@@ -160,7 +160,7 @@ BackendResult SelectBackendOrFallback(const std::string& kernel_name,
 }
 
 KernelResult KernelFactory::SelectKernelOrThrowError(
-    const std::string& kernel_name, const KernelKey& kernel_key) const {
+    const std::string& kernel_name, const KernelKey& const_kernel_key) const {
   auto iter = kernels_.find(kernel_name);
   PADDLE_ENFORCE_NE(
       iter,
@@ -168,12 +168,14 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
       phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
 
   BackendResult backend_result =
-      SelectBackendOrFallback(kernel_name, kernel_key.backend());
-  auto kernel_iter = iter->second.find(
-      {backend_result.backend, kernel_key.layout(), kernel_key.dtype()});
+      SelectBackendOrFallback(kernel_name, const_kernel_key.backend());
+  KernelKey kernel_key = {backend_result.backend,
+                          const_kernel_key.layout(),
+                          const_kernel_key.dtype()};
+  auto kernel_iter = iter->second.find(kernel_key);
   if (kernel_iter == iter->second.end() &&
       kernel_key.layout() != phi::DataLayout::ALL_LAYOUT) {
-    kernel_iter = iter->second.find({backend_result.backend,
+    kernel_iter = iter->second.find({kernel_key.backend(),
                                      phi::DataLayout::ALL_LAYOUT,
                                      kernel_key.dtype()});
   }
