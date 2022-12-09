@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.executor import global_scope
 
-from ..fluid import core, framework, layers, unique_name
+from ..fluid import core, framework, unique_name
 from ..fluid.framework import Variable
 from ..fluid.layer_helper import LayerHelper
 from .optimizer import Optimizer
@@ -162,7 +163,7 @@ class Lamb(Optimizer):
 
             var_name = param.name + "_fp32_master"
             var_name = unique_name.generate(var_name)
-            var = layers.create_global_var(
+            var = paddle.static.create_global_var(
                 name=var_name,
                 shape=param.shape,
                 value=0,

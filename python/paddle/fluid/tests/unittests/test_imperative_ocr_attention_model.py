@@ -477,8 +477,11 @@ class TestDygraphOCRAttention(unittest.TestCase):
                     dy_prediction = paddle.reshape(
                         dy_prediction, [label_out.shape[0], -1]
                     )
-                    loss = fluid.layers.cross_entropy(
-                        input=dy_prediction, label=label_out
+                    loss = paddle.nn.functional.cross_entropy(
+                        input=dy_prediction,
+                        label=label_out,
+                        reduction='none',
+                        use_softmax=False,
                     )
                     avg_loss = paddle.sum(loss)
 
@@ -555,8 +558,11 @@ class TestDygraphOCRAttention(unittest.TestCase):
                 static_prediction, shape=[-1, Config.num_classes + 2]
             )
 
-            cost = fluid.layers.cross_entropy(
-                input=static_prediction, label=static_label_out
+            cost = paddle.nn.functional.cross_entropy(
+                input=static_prediction,
+                label=static_label_out,
+                reduction='none',
+                use_softmax=False,
             )
             static_avg_loss = paddle.sum(cost)
             # param_grad_list = fluid.backward.append_backward(static_avg_loss)
