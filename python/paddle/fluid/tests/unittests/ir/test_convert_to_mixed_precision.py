@@ -59,7 +59,7 @@ class TestConvertToMixedPrecision(unittest.TestCase):
             mixed_precision_options, keep_io_types_options, black_list_options
         )
         for mixed_precision, keep_io_types, black_list in test_configs:
-            config = f'{mixed_precision=}-{keep_io_types=}-{black_list=}'
+            config = f'mixed_precision={mixed_precision}-keep_io_types={keep_io_types}-black_list={black_list}'
             with self.subTest(
                 mixed_precision=mixed_precision,
                 keep_io_types=keep_io_types,
