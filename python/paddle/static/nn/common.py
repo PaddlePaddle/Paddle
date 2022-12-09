@@ -750,7 +750,7 @@ def conv3d(
             `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
-        A Variable holding Tensor representing the conv3d, whose data type is
+        A Tensor representing the conv3d, whose data type is
         the same with input. If act is None, the tensor variable storing the
         convolution result, and if act is not None, the tensor variable storing
         convolution and non-linearity activation result.
@@ -1141,7 +1141,7 @@ def conv2d_transpose(
 
     helper = LayerHelper(op_type, **locals())
     if not isinstance(input, Variable):
-        raise TypeError("Input of conv2d_transpose must be Variable")
+        raise TypeError("Input of conv2d_transpose must be Tensor")
 
     stride = utils.convert_to_list(stride, 2, 'stride')
     dilation = utils.convert_to_list(dilation, 2, 'dilation')
@@ -1231,7 +1231,7 @@ def conv2d_transpose(
                 output_size
             ):
                 raise ValueError(
-                    "filter_size should not be None when output_size is Variable or contain Variable in static mode."
+                    "filter_size should not be None when output_size is Tensor or contain Tensor in static mode."
                 )
         else:
             output_size = utils.convert_shape_to_list(output_size)
@@ -1448,7 +1448,7 @@ def conv3d_transpose(
             `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
-        A Variable holding Tensor representing the conv3d_transpose, whose data
+        A Tensor representing the conv3d_transpose, whose data
         type is the same with input and shape is (num_batches, channels, out_d, out_h,
         out_w) or (num_batches, out_d, out_h, out_w, channels). If act is None, the tensor
         variable storing the transposed convolution result, and if act is not None, the tensor
@@ -1497,7 +1497,7 @@ def conv3d_transpose(
     l_type = "conv3d_transpose"
     helper = LayerHelper(l_type, **locals())
     if not isinstance(input, Variable):
-        raise TypeError("Input of conv3d_transpose must be Variable")
+        raise TypeError("Input of conv3d_transpose must be Tensor")
     if len(input.shape) != 5:
         raise ValueError(
             "Input should be 5D tensor, but received input with the shape of {}".format(
@@ -1736,7 +1736,7 @@ def deformable_conv(
             float32, float64.
         offset (Tensor): The input coordinate offset of deformable convolution layer.
             A Tensor with type float32, float64.
-        Mask (Variable, Optional): The input mask of deformable convolution layer.
+        Mask (Tensor, Optional): The input mask of deformable convolution layer.
             A Tensor with type float32, float64. It should be None when you use
             deformable convolution v1.
         num_filters(int): The number of filter. It is as same as the output
@@ -1827,9 +1827,9 @@ def deformable_conv(
     dtype = helper.input_dtype()
 
     if not isinstance(input, paddle.static.Variable):
-        raise TypeError("Input of deformable_conv must be Variable")
+        raise TypeError("Input of deformable_conv must be Tensor")
     if not isinstance(offset, paddle.static.Variable):
-        raise TypeError("Input Offset of deformable_conv must be Variable")
+        raise TypeError("Input Offset of deformable_conv must be Tensor")
 
     if groups is None:
         num_filter_channels = num_channels
@@ -2106,9 +2106,9 @@ def bilinear_tensor_product(
       - :math:`y^\mathrm{T}`: the transpose of :math:`y_{2}`.
 
     Args:
-        x (Variable): 2-D input tensor with shape [batch_size, M]. Data type
+        x (Tensor): 2-D input tensor with shape [batch_size, M]. Data type
             is float32 or float64.
-        y (Variable): 2-D input tensor with shape [batch_size, N]. Data type
+        y (Tensor): 2-D input tensor with shape [batch_size, N]. Data type
             should be same as **x**.
         size (int): The dimension of this layer.
         act (str|None): Activation to be applied to the output of this layer. Default None.
@@ -2675,42 +2675,42 @@ def prior_box(
     min_max_aspect_ratios_order=False,
 ):
     """
-    This op generates prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
+    This API generates prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
     Each position of the input produce N prior boxes, N is determined by
     the count of min_sizes, max_sizes and aspect_ratios, The size of the
     box is in range(min_size, max_size) interval, which is generated in
     sequence according to the aspect_ratios.
     Parameters:
-       input(Variable): 4-D tensor(NCHW), the data type should be float32 or float64.
-       image(Variable): 4-D tensor(NCHW), the input image data of PriorBoxOp,
+       input(Tensor): 4-D tensor(NCHW), the data type should be float32 or float64.
+       image(Tensor): 4-D tensor(NCHW), the input image data of PriorBoxOp,
             the data type should be float32 or float64.
        min_sizes(list|tuple|float): the min sizes of generated prior boxes.
-       max_sizes(list|tuple|None): the max sizes of generated prior boxes.
+       max_sizes(list|tuple|None, optional): the max sizes of generated prior boxes.
             Default: None.
-       aspect_ratios(list|tuple|float): the aspect ratios of generated
+       aspect_ratios(list|tuple|float, optional): the aspect ratios of generated
             prior boxes. Default: [1.].
-       variance(list|tuple): the variances to be encoded in prior boxes.
+       variance(list|tuple, optional): the variances to be encoded in prior boxes.
             Default:[0.1, 0.1, 0.2, 0.2].
-       flip(bool): Whether to flip aspect ratios. Default:False.
-       clip(bool): Whether to clip out-of-boundary boxes. Default: False.
-       step(list|tuple): Prior boxes step across width and height, If
+       flip(bool, optional): Whether to flip aspect ratios. Default:False.
+       clip(bool, optional): Whether to clip out-of-boundary boxes. Default: False.
+       step(list|tuple, optional): Prior boxes step across width and height, If
             step[0] equals to 0.0 or step[1] equals to 0.0, the prior boxes step across
             height or weight of the input will be automatically calculated.
             Default: [0., 0.]
-       offset(float): Prior boxes center offset. Default: 0.5
-       min_max_aspect_ratios_order(bool): If set True, the output prior box is
+       offset(float, optional): Prior boxes center offset. Default: 0.5
+       name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+       min_max_aspect_ratios_order(bool, optional): If set True, the output prior box is
             in order of [min, max, aspect_ratios], which is consistent with
             Caffe. Please note, this order affects the weights order of
             convolution layer followed by and does not affect the final
             detection results. Default: False.
-       name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`
     Returns:
-        Tuple: A tuple with two Variable (boxes, variances)
-        boxes(Variable): the output prior boxes of PriorBox.
+        Tuple: A tuple with two Tensor (boxes, variances)
+        boxes(Tensor): the output prior boxes of PriorBox.
         4-D tensor, the layout is [H, W, num_priors, 4].
         H is the height of input, W is the width of input,
         num_priors is the total box count of each position of input.
-        variances(Variable): the expanded variances of PriorBox.
+        variances(Tensor): the expanded variances of PriorBox.
         4-D tensor, the layput is [H, W, num_priors, 4].
         H is the height of input, W is the width of input
         num_priors is the total box count of each position of input
@@ -2898,7 +2898,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
                 y = paddle.static.data(name='y', shape=[2,3], dtype='int32')
                 # Output of the forward function, name/dtype/shape must be specified
                 output = create_tmp_var('output','int32', [3,1])
-                # Multiple Variable should be passed in the form of tuple(Variale) or list[Variale]
+                # Multiple Tensor should be passed in the form of tuple(Tensor) or list[Tensor]
                 paddle.static.py_func(func=element_wise_add, x=[x,y], out=output)
                 exe=paddle.static.Executor(paddle.CPUPlace())
                 exe.run(start_program)
@@ -2923,7 +2923,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     elif isinstance(x, tuple):
         x = list(x)
     elif not isinstance(x, (list, tuple, Variable)):
-        raise TypeError('Input must be Variable/list(Variable)/tuple(Variable)')
+        raise TypeError('Input must be Tensor/list(Tensor)/tuple(Tensor)')
     check_type(out, 'Out', (list, tuple, Variable, type(None)), 'py_func')
     if out is None:
         out_list = []
@@ -2934,9 +2934,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     elif isinstance(out, list):
         out_list = out
     else:
-        raise TypeError(
-            'Output must be Variable/list(Variable)/tuple(Variable)'
-        )
+        raise TypeError('Output must be Tensor/list(Tensor)/tuple(Tensor)')
 
     fwd_func_id = PyFuncRegistry(func).id
     bwd_func_id = (
@@ -2961,7 +2959,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
         for v in skip_vars_in_backward_input:
             if v.name not in fwd_in_out:
                 raise ValueError(
-                    'Variable {} is not found in forward inputs and outputs'.format(
+                    'Tensor {} is not found in forward inputs and outputs'.format(
                         v.name
                     )
                 )
