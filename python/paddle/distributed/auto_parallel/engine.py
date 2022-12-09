@@ -586,11 +586,10 @@ class Engine:
                 self._losses = auto_utils.to_list(self._loss)
 
         default_ctx = get_default_distributed_context()
-        if not default_ctx.has_annotation:
+        if default_ctx.default_data_parallel_model is True:
             # We build the world process group because the data parallel
             # needs all ranks by default.
             new_process_group(list(range(self._nranks)))
-            default_ctx.data_parallel = True
             self._inputs = [
                 auto_utils.set_data_parallel(var) for var in self._inputs
             ]

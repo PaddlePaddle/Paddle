@@ -375,5 +375,6 @@ class DistributedOperatorHelper:
             if self._process_mesh is not None:
                 dist_op.dist_attr.mark_annotated("process_mesh")
             default_dist_ctx.add_dist_op_for_program(dist_op)
+            default_dist_ctx.default_data_parallel_mode = False
 
         return output

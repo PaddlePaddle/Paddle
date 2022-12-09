@@ -100,6 +100,7 @@ def shard_tensor(x, process_mesh=None, shard_spec=None):
     if shard_spec is not None:
         dist_tensor.dist_attr.mark_annotated("dims_mapping")
     default_dist_ctx = get_default_distributed_context()
+    default_dist_ctx.default_data_parallel_mode = False
     default_dist_ctx.add_dist_tensor_for_program(dist_tensor)
     dist_tensor = default_dist_ctx.get_dist_tensor_for_program(x)
     return x

@@ -127,8 +127,8 @@ class DistributedContext:
         # flag whether scale gradient with dp size
         self._gradient_scale = True
 
-        # A flag indicates whether the used parallelism is data parallel
-        self._data_parallel = False
+        # A flag indicates whether default data parallel
+        self._default_data_parallel_mode = True
 
     @property
     def serial_main_program(self):
@@ -195,12 +195,6 @@ class DistributedContext:
         return self._block_state
 
     @property
-    def has_annotation(self):
-        return len(self._dist_tensors_for_program) or len(
-            self._dist_ops_for_program
-        )
-
-    @property
     def gradient_scale(self):
         return self._gradient_scale
 
@@ -209,12 +203,12 @@ class DistributedContext:
         self._gradient_scale = gs
 
     @property
-    def data_parallel(self):
+    def default_data_parallel_mode(self):
         return self._data_parallel
 
-    @data_parallel.setter
-    def data_parallel(self, dp):
-        self._data_parallel = dp
+    @default_data_parallel_mode.setter
+    def default_data_parallel_mode(self, dp):
+        self._default_data_parallel_mode = dp
 
     def _backup_serial_info(self, mode):
         self._backup_serial_main_program_stack.append(
@@ -324,7 +318,7 @@ class DistributedContext:
         self._restore_serial_loss()
         self._restore_serial_feed_vars()
         self._restore_serial_fetch_vars()
-        self._serial_optimizer = self._original_serial_optimizer
+        self._serial_optimizer = copy.deepcopy(self._original_serial_optimizer)
         self._pass_context = self._backup_pass_context_stack.pop()
         self._block_state = self._backup_block_state_stack.pop()
 
@@ -413,7 +407,9 @@ class DistributedContext:
             if not self._serial_loss:
                 self._restore_serial_loss()
             if not self._serial_optimizer:
-                self._serial_optimizer = self._original_serial_optimizer
+                self._serial_optimizer = copy.deepcopy(
+                    self._original_serial_optimizer
+                )
             if not self._serial_feed_vars:
                 self._restore_serial_feed_vars()
             if not self._serial_fetch_vars:
