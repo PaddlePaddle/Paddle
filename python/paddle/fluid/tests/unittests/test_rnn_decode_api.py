@@ -296,7 +296,9 @@ class PolicyGradient:
         self.reward = paddle.static.py_func(
             func=reward_func, x=[action, length], out=reward
         )
-        neg_log_prob = layers.cross_entropy(act_prob, action)
+        neg_log_prob = paddle.nn.functional.cross_entropy(
+            act_prob, action, reduction='none', use_softmax=False
+        )
         cost = neg_log_prob * reward
         cost = (
             (paddle.sum(cost) / paddle.sum(length))
@@ -383,7 +385,13 @@ class MLE:
         self.lr = lr
 
     def learn(self, probs, label, weight=None, length=None):
-        loss = layers.cross_entropy(input=probs, label=label, soft_label=False)
+        loss = paddle.nn.functional.cross_entropy(
+            input=probs,
+            label=label,
+            soft_label=False,
+            reduction='none',
+            use_softmax=False,
+        )
         max_seq_len = paddle.shape(probs)[1]
         mask = layers.sequence_mask(length, maxlen=max_seq_len, dtype="float32")
         loss = loss * mask
