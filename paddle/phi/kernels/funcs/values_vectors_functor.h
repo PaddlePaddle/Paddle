@@ -461,7 +461,7 @@ struct MatrixEighFunctor<GPUContext, T> {
     }
     CheckEighResult(dev_ctx, batch_size, info_ptr);
 
-    if (use_syevj) {
+    if (use_cusolver_syevj_batched || use_cusolver_syevj) {
       PADDLE_ENFORCE_GPU_SUCCESS(
           dynload::cusolverDnDestroySyevjInfo(syevj_params));
     }
