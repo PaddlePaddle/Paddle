@@ -837,14 +837,14 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \param op_list The operator type list.
   ///
-  void SetMKLDNNExcludedOp(std::unordered_set<std::string> op_list) {
-    mkldnn_excluded_op_types_ = op_list;
+  void SetMKLDNNExcludedOps(std::unordered_set<std::string> op_list) {
+    mkldnn_excluded_ops_ = op_list;
   }
 
   /// \brief Return list of operators excluded from MKLDNN acceleration.
   ///
-  std::unordered_set<std::string> mkldnn_excluded_op_types() const {
-    return mkldnn_excluded_op_types_;
+  std::unordered_set<std::string> mkldnn_excluded_ops() const {
+    return mkldnn_excluded_ops_;
   }
 
   ///
@@ -1151,7 +1151,7 @@ struct PD_INFER_DECL AnalysisConfig {
 
   bool use_mkldnn_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
-  std::unordered_set<std::string> mkldnn_excluded_op_types_;
+  std::unordered_set<std::string> mkldnn_excluded_ops_;
 
   bool model_from_memory_{false};
 

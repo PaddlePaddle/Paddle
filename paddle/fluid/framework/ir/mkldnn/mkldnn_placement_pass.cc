@@ -64,5 +64,5 @@ bool MKLDNNPlacementPass::IsSupport(const Node* op) const {
 
 REGISTER_PASS(mkldnn_placement_pass, paddle::framework::ir::MKLDNNPlacementPass)
     .RequirePassAttr("mkldnn_enabled_op_types")
-    .DefaultPassAttr("mkldnn_excluded_op_types",
+    .DefaultPassAttr("mkldnn_excluded_ops",
                      new std::unordered_set<std::string>());

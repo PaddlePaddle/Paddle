@@ -40,7 +40,7 @@ class MKLDNNPlacementPass : public PlacementPassBase {
   }
 
   const std::unordered_set<std::string> GetExcludedOpTypesList() const {
-    return Get<std::unordered_set<std::string>>("mkldnn_excluded_op_types");
+    return Get<std::unordered_set<std::string>>("mkldnn_excluded_ops");
   }
 };
 

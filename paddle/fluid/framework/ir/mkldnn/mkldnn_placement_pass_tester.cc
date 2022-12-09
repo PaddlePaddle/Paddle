@@ -149,10 +149,9 @@ class PlacementPassTest {
   }
 
  public:
-  void MainTest(
-      std::initializer_list<std::string> mkldnn_enabled_op_types,
-      unsigned expected_use_mkldnn_true_count,
-      std::initializer_list<std::string> mkldnn_excluded_op_types = {}) {
+  void MainTest(std::initializer_list<std::string> mkldnn_enabled_op_types,
+                unsigned expected_use_mkldnn_true_count,
+                std::initializer_list<std::string> mkldnn_excluded_ops = {}) {
     auto prog = BuildProgramDesc();
     RegisterOpKernel();
     std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
@@ -161,8 +160,8 @@ class PlacementPassTest {
 
     pass->Set("mkldnn_enabled_op_types",
               new std::unordered_set<std::string>(mkldnn_enabled_op_types));
-    pass->Set("mkldnn_excluded_op_types",
-              new std::unordered_set<std::string>(mkldnn_excluded_op_types));
+    pass->Set("mkldnn_excluded_ops",
+              new std::unordered_set<std::string>(mkldnn_excluded_ops));
 
     graph.reset(pass->Apply(graph.release()));
 

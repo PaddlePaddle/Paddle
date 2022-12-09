@@ -868,7 +868,7 @@ void BindAnalysisConfig(py::module *m) {
            )DOC")
 #endif
       .def("set_mkldnn_op", &AnalysisConfig::SetMKLDNNOp)
-      .def("set_mkldnn_excluded_op", &AnalysisConfig::SetMKLDNNExcludedOp)
+      .def("set_mkldnn_excluded_ops", &AnalysisConfig::SetMKLDNNExcludedOps)
       .def("set_model_buffer", &AnalysisConfig::SetModelBuffer)
       .def("model_from_memory", &AnalysisConfig::model_from_memory)
       .def("delete_pass",

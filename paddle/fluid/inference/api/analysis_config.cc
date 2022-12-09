@@ -448,7 +448,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   // MKLDNN related.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
-  CP_MEMBER(mkldnn_excluded_op_types_);
+  CP_MEMBER(mkldnn_excluded_ops_);
   CP_MEMBER(mkldnn_cache_capacity_);
   // Bfloat16 related.
   CP_MEMBER(use_mkldnn_bfloat16_);

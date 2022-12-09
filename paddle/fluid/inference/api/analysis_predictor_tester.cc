@@ -383,11 +383,11 @@ TEST(AnalysisPredictor, mkldnn_fc_passes_gpu_pass_strategy) {
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
-TEST(AnalysisPredictor, mkldnn_excluded_op_types) {
+TEST(AnalysisPredictor, mkldnn_excluded_ops) {
   AnalysisConfig config;
   config.EnableMKLDNN();
-  config.SetMKLDNNExcludedOp({"conv2d", "pool2d"});
-  ASSERT_EQ(config.mkldnn_excluded_op_types().size(), (size_t)2);
+  config.SetMKLDNNExcludedOps({"conv2d", "pool2d"});
+  ASSERT_EQ(config.mkldnn_excluded_ops().size(), (size_t)2);
 }
 #endif
 
