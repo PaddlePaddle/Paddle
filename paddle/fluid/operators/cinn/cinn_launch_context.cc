@@ -450,7 +450,7 @@ ParallelExecutor* CinnLaunchContext::InitializePE(const platform::Place& place,
 }
 
 framework::InterpreterCore* CinnLaunchContext::InitializeInterpreterCore(
-    const platform::Place& place, framework::Scope* scope) {
+    const platform::Place& place, const framework::Scope* scope) {
   if (!interpreter_core_ || scope != cached_scope_) {
     framework::Scope& exec_scope = scope->NewScope();
     for (auto&& var_name : internal_var_names_) {

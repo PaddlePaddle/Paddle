@@ -31,6 +31,7 @@
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(enable_pe_launch_cinn);
+DECLARE_bool(enable_interpretercore_launch_cinn);
 namespace paddle {
 namespace operators {
 
