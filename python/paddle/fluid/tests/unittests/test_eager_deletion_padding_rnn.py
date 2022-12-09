@@ -406,6 +406,7 @@ def lm_model(
         )
     elif rnn_model == "cudnn":
         x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
+        # TODO(wj-Mcat): should be replaced with `paddle.nn.LSTM` ?
         rnn_out, last_hidden, last_cell = layers.lstm(
             x_emb,
             init_hidden_reshape,
