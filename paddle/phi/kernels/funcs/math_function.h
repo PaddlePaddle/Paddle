@@ -29,6 +29,10 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
+using DATATYPE = phi::dtype::float16;
+void my_row_col1(
+    DATATYPE* output, const DATATYPE* input, int batch, int M, int N);
+
 template <typename T>
 void BatchTranspose(T* output, const T* input, int batch, int m, int n);
 

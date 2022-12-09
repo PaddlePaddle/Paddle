@@ -21,7 +21,7 @@
 namespace phi {
 namespace fusion {
 
-template <typename TShape, typename WShape, int Aligment = 8>
+template <typename TShape, typename WShape, int Aligment = 4>
 cutlass::Status cutlass_nhwc_conv2d_bias(ConvAllParams params) {
   using ElementAccumulator = float;
   using ElementComputeEpilogue = float;
@@ -205,29 +205,30 @@ void cutlass_conv2d_bias(ConvAllParams params) {
 
   float min_time = 100000.f;
   for (int i = 0; i < cutlass_conv2d_bias_all_func.size(); i++) {
+    cutlass::Status status;
     auto func = cutlass_conv2d_bias_all_func[i];
     for (int ii = 0; ii < WARMUP; ii++) {
-      func(params);
+      status = func(params);
     }
 
     cudaEvent_t beg, end;
-    cudaEventCreate(&beg);
-    cudaEventCreate(&end);
-    cudaEventRecord(beg);
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&beg));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&end));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(beg));
     for (int ii = 0; ii < REPEAT; ii++) {
-      func(params);
+      status = func(params);
     }
 
-    cudaEventRecord(end);
-    cudaEventSynchronize(end);
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(end));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventSynchronize(end));
     float elapsed_time;
-    cudaEventElapsedTime(&elapsed_time, beg, end);
-    if (elapsed_time < min_time) {
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventElapsedTime(&elapsed_time, beg, end));
+    if (elapsed_time < min_time && status == cutlass::Status::kSuccess) {
       min_time = elapsed_time;
       map_problem_conv2d_bias[problem_size] = i;
     }
     // debug code
-    // std::cout << conv2d_diff_gpu(params, CONV2D_BIAS) << std::endl;
+    std::cout << conv2d_diff_gpu(params, CONV2D_BIAS) << std::endl;
   }
 }
 

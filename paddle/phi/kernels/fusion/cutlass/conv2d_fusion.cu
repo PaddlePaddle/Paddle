@@ -71,7 +71,8 @@ void Conv2dFusionKernel(const Context& ctx,
                           pad_h,
                           pad_w,
                           stride_h,
-                          stride_w};
+                          stride_w,
+                          ctx.stream()};
 
   if (residual) {
     if (activation == "relu") {

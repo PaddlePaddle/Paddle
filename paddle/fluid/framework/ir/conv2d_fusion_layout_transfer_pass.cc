@@ -203,7 +203,7 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
         return false;
       }
     }
-    return false;
+    return true;
   };
 
   // # ifdef 0

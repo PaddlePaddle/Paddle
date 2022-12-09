@@ -90,6 +90,15 @@ void TransferLayoutGeneral(const Context& dev_ctx,
       col_len = src_dim[3];
     }
     if (x.dtype() == phi::DataType::FLOAT16) {
+      if (col_len % 8 == 0 && 1) {
+        funcs::my_row_col1(out->data<phi::dtype::float16>(),
+                           x.data<phi::dtype::float16>(),
+                           batch,
+                           row_len,
+                           col_len);
+        return;
+      }
+
       funcs::BatchTranspose(out->data<phi::dtype::float16>(),
                             x.data<phi::dtype::float16>(),
                             batch,

@@ -247,7 +247,10 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
 #endif                                         //
         "transpose_flatten_concat_fuse_pass",  //
         "constant_folding_pass",               //
-        "float_to_half_pass",                  //
+        // following pass should be located in the last, since it will
+        // work on all fused ops.
+        "float_to_half_pass",  //
+        "conv2d_fusion_layout_transfer_pass", "runtime_context_cache_pass"
   });
 
   use_gpu_ = true;

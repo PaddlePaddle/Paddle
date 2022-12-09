@@ -19,6 +19,7 @@
 
 #include "cutlass/cutlass.h"
 #include "cutlass/gemm/device/gemm.h"
+#include "paddle/fluid/platform/enforce.h"
 
 #include "cutlass/conv/device/implicit_gemm_convolution.h"
 
@@ -52,6 +53,7 @@ typedef struct {
   int pad_w;
   int stride_h;
   int stride_w;
+  cudaStream_t stream;
   float alpha;  // for leaky_relu use
 } ConvAllParams;
 
