@@ -32,6 +32,8 @@ def auto_cast(
     Commonly, it is used together with `GradScaler` to achieve Auto-Mixed-Precision in
     imperative mode. It is used together with `decorator` to achieve Pure fp16 in imperative mode.
 
+    Test for System Marning...
+
     Args:
         enable(bool, optional): Enable auto-mixed-precision or not. Default is True.
         custom_white_list(set|list|tuple, optional): The custom white_list. It's the set of ops that support
