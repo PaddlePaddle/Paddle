@@ -133,7 +133,7 @@ class InstanceNorm1D(_InstanceNormBase):
         num_features(int): Indicate the number of channels of the input ``Tensor``.
         epsilon(float, optional): A value added to the denominator for numerical stability. Default is 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
-        weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale` of instance_norm. 
+        weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale` of instance_norm.
             If it is set to None or one attribute of ParamAttr, instance_norm
             will create ParamAttr as weight_attr, the name of scale can be set in ParamAttr.
             If the Initializer of the weight_attr is not set, the parameter is initialized
@@ -168,25 +168,27 @@ class InstanceNorm1D(_InstanceNormBase):
           print(instance_norm_out)
 
     """
+
     def __init__(
         self,
-        num_features, 
+        num_features,
         epsilon=0.00001,
         momentum=0.9,
-        weight_attr=None, 
-        bias_attr=None, 
-        data_format="NCL", 
+        weight_attr=None,
+        bias_attr=None,
+        data_format="NCL",
         name=None,
     ):
         super().__init__(
-            num_features, 
-            epsilon, 
-            momentum, 
-            weight_attr, 
+            num_features,
+            epsilon,
+            momentum,
+            weight_attr,
             bias_attr,
-            data_format, 
+            data_format,
             name,
         )
+
     def _check_input_dim(self, input):
         if len(input.shape) != 2 and len(input.shape) != 3:
             raise ValueError(
@@ -254,25 +256,27 @@ class InstanceNorm2D(_InstanceNormBase):
 
             print(instance_norm_out)
     """
+
     def __init__(
-        self, 
-        num_features, 
-        epsilon=0.00001, 
-        momentum=0.9, 
-        weight_attr=None, 
-        bias_attr=None, 
-        data_format="NCHW", 
+        self,
+        num_features,
+        epsilon=0.00001,
+        momentum=0.9,
+        weight_attr=None,
+        bias_attr=None,
+        data_format="NCHW",
         name=None,
     ):
         super().__init__(
-            num_features, 
-            epsilon, 
-            momentum, 
-            weight_attr, 
+            num_features,
+            epsilon,
+            momentum,
+            weight_attr,
             bias_attr,
-            data_format, 
+            data_format,
             name,
         )
+
     def _check_input_dim(self, input):
         if len(input.shape) != 4:
             raise ValueError(
@@ -338,25 +342,27 @@ class InstanceNorm3D(_InstanceNormBase):
 
             print(instance_norm_out.numpy)
     """
+
     def __init__(
-        self, 
-        num_features, 
-        epsilon=0.00001, 
-        momentum=0.9, 
-        weight_attr=None, 
-        bias_attr=None, 
-        data_format="NCDHW", 
+        self,
+        num_features,
+        epsilon=0.00001,
+        momentum=0.9,
+        weight_attr=None,
+        bias_attr=None,
+        data_format="NCDHW",
         name=None,
     ):
         super().__init__(
-            num_features, 
-            epsilon, 
-            momentum, 
-            weight_attr, 
-            bias_attr, 
-            data_format, 
+            num_features,
+            epsilon,
+            momentum,
+            weight_attr,
+            bias_attr,
+            data_format,
             name,
         )
+
     def _check_input_dim(self, input):
         if len(input.shape) != 5:
             raise ValueError(
