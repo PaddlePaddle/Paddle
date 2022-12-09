@@ -1063,7 +1063,7 @@ class While:
             cond = paddle.less_than(x=i, y=loop_len)
             while_op = fluid.layers.While(cond=cond)
             with while_op.block():
-                i = paddle.increment(x=i, value=1, in_place=True)
+                i = paddle.increment(x=i, value=1)
                 paddle.assign(paddle.less_than(x=i, y=loop_len), cond)
 
             exe = fluid.Executor(fluid.CPUPlace())
@@ -1092,7 +1092,7 @@ class While:
             with while_op.block():
                 sums_tensor = fluid.layers.elementwise_add(x=data, y=data)
                 fluid.layers.assign(sums_tensor, sums)  # Update the value of sums_tensor defined in While to the sums which defined outside of While through layers.assign
-                i = paddle.increment(x=i, value=1, in_place=True)
+                i = paddle.increment(x=i, value=1)
                 data = fluid.layers.elementwise_add(x=data, y=one)
                 paddle.assign(paddle.less_than(x=i, y=loop_len), cond)
 

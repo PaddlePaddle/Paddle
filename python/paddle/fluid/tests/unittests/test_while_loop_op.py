@@ -324,7 +324,7 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
                 inner_prev = layers.array_read(array=mem_array, i=j)
                 inner_sum_0 = paddle.add(x=inner_data, y=inner_prev)
                 inner_sum_1 = paddle.add(x=x, y=inner_sum_0)
-                j = paddle.increment(x=j, in_place=True)
+                j = paddle.increment(x=j)
                 layers.array_write(inner_sum_1, i=j, array=mem_array)
                 return [j, x, mem_array]
 
@@ -332,7 +332,7 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
             outer_prev = layers.array_read(array=mem_array, i=i)
             outer_sum_0 = paddle.add(x=outer_data, y=outer_prev)
             outer_sum_1 = paddle.add(x=x, y=outer_sum_0)
-            i = paddle.increment(x=i, in_place=True)
+            i = paddle.increment(x=i)
             layers.array_write(outer_sum_1, i=i, array=mem_array)
             j, x, mem_array = paddle.static.nn.while_loop(
                 internal_cond, internal_body, [j, x, mem_array]

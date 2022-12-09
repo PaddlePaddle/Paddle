@@ -17,7 +17,7 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-from paddle.static.nn import Assert
+from paddle.static.nn.control_flow import Assert
 
 
 class TestAssertOp(unittest.TestCase):

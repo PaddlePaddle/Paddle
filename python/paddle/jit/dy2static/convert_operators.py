@@ -732,7 +732,7 @@ def convert_assert(cond, message=""):
     if isinstance(cond, Variable):
         cond = cast(cond, "bool")
         # NOTE: message is not used because Paddle Assert has no corresponding parameter to use.
-        from paddle.static.nn import Assert
+        from paddle.static.nn.control_flow import Assert
 
         return Assert(cond)
     else:

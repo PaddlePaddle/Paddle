@@ -66,7 +66,7 @@ def Assert(cond, data=None, summarize=20, name=None):
         .. code-block:: python
 
             import paddle
-            from paddle.static.nn import Assert
+            from paddle.static.nn.control_flow import Assert
 
             paddle.enable_static()
             x = paddle.full([2, 3], 2.0, 'float32')
