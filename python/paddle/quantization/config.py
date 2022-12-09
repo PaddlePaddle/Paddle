@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import copy
+from typing import Dict, Union
+
 import paddle
 import paddle.nn as nn
 from paddle.nn import Layer
-from typing import Dict, Union
-from .factory import QuanterFactory
 
+from .factory import QuanterFactory
 
 __all__ = ["QuantConfig"]
 

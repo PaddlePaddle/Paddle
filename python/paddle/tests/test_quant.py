@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
+
+import paddle
 import paddle.nn.functional as F
+from paddle.nn import Conv2D, Linear, ReLU, Sequential
 from paddle.quantization import QuantConfig
 from paddle.quantization.quanter import BaseQuanter
-from paddle.nn import Conv2D, Linear, ReLU, Sequential
 from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
 
 

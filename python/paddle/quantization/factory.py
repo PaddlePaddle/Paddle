@@ -15,8 +15,10 @@
 
 import abc
 import inspect
-from paddle.nn import Layer
 from functools import partial
+
+from paddle.nn import Layer
+
 from .quanter import BaseQuanter
 
 __all__ = ["QuanterFactory", "quanter"]

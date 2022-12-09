@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import paddle
-from paddle.framework import ParamAttr
-from paddle.utils import unique_name
-from paddle.fluid.framework import _varbase_creator
 from paddle import _legacy_C_ops
+from paddle.fluid.framework import _varbase_creator
+from paddle.framework import ParamAttr
 from paddle.nn.initializer import Constant
-from ..quanter import BaseQuanter
+from paddle.utils import unique_name
+
 from ..factory import quanter
+from ..quanter import BaseQuanter
 
 __all__ = []
 
