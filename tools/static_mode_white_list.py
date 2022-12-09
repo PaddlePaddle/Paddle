@@ -587,7 +587,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_conv_elementwise_add_act_fuse_pass',
     'test_conv_elementwise_add_fuse_pass',
     'test_fc_fuse_pass',
-    'test_fc_gru_fuse_pass',
     'test_fc_lstm_fuse_pass',
     'test_repeated_fc_relu_fuse_pass',
     'test_seqconv_eltadd_relu_fuse_pass',
