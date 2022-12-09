@@ -354,21 +354,21 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
                 beta2_init = 0.999
                 epsilon_init = 1e-8
                 if use_tensor:
-                    beta1 = fluid.layers.create_global_var(
+                    beta1 = paddle.static.create_global_var(
                         shape=[1],
                         value=float(beta1_init),
                         dtype='float32',
                         persistable=True,
                         name="beta1",
                     )
-                    beta2 = fluid.layers.create_global_var(
+                    beta2 = paddle.static.create_global_var(
                         shape=[1],
                         value=float(beta2_init),
                         dtype='float32',
                         persistable=True,
                         name="beta2",
                     )
-                    epsilon = fluid.layers.create_global_var(
+                    epsilon = paddle.static.create_global_var(
                         shape=[1],
                         value=float(epsilon_init),
                         dtype='float32',
