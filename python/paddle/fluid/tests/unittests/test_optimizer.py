@@ -1448,7 +1448,7 @@ class TestMasterWeightSaveForFP16(unittest.TestCase):
             multi_precision=True,
         )  # 定义优化器
         scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
-        model = paddle.amp.decorate(models=model, level='O2')
+        model = paddle.amp.auto_cast.decorate(models=model, level='O2')
 
         for i, (data, label) in enumerate(loader):
             with paddle.amp.auto_cast.auto_cast(level='O2'):

@@ -233,7 +233,7 @@ def check_models(models):
             )
         if isinstance(model, paddle.DataParallel):
             raise RuntimeError(
-                "For distributed AMP training, you should first use paddle.amp.decorate() to decotate origin model, and then call paddle.DataParallel get distributed model."
+                "For distributed AMP training, you should first use paddle.amp.auto_cast.decorate() to decotate origin model, and then call paddle.DataParallel get distributed model."
             )
 
 
@@ -714,7 +714,7 @@ def decorate(
         model = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
         optimizer = paddle.optimizer.SGD(parameters=model.parameters())
 
-        model, optimizer = paddle.amp.decorate(models=model, optimizers=optimizer, level='O2')
+        model, optimizer = paddle.amp.auto_cast.decorate(models=model, optimizers=optimizer, level='O2')
 
         data = paddle.rand([10, 3, 32, 32])
 
@@ -727,7 +727,7 @@ def decorate(
         model2 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
         optimizer2 = paddle.optimizer.Adam(parameters=model2.parameters())
 
-        models, optimizers = paddle.amp.decorate(models=[model, model2], optimizers=[optimizer, optimizer2], level='O2')
+        models, optimizers = paddle.amp.auto_cast.decorate(models=[model, model2], optimizers=[optimizer, optimizer2], level='O2')
 
         data = paddle.rand([10, 3, 32, 32])
 
@@ -742,7 +742,7 @@ def decorate(
         model3 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
         optimizer3 = paddle.optimizer.Adam(parameters=model3.parameters())
 
-        model = paddle.amp.decorate(models=model3, level='O2')
+        model = paddle.amp.auto_cast.decorate(models=model3, level='O2')
 
         data = paddle.rand([10, 3, 32, 32])
 

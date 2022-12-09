@@ -50,7 +50,9 @@ paddle.seed(seed)
 def train_mlp(model, offload=False):
     optimizer = optimizer_setting(model=model, use_pure_fp16=True)
 
-    model = paddle.amp.decorate(models=model, level='O2', save_dtype='float32')
+    model = paddle.amp.auto_cast.decorate(
+        models=model, level='O2', save_dtype='float32'
+    )
     scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
     scaler = ShardingScaler(scaler)
 

@@ -67,7 +67,7 @@ class TestPureFP16(TestMNIST):
 
         scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
 
-        mnist, optimizer = paddle.amp.decorate(
+        mnist, optimizer = paddle.amp.auto_cast.decorate(
             models=mnist, optimizers=optimizer, level='O2', save_dtype='float32'
         )
 

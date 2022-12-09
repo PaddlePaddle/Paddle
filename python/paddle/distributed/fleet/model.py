@@ -94,7 +94,7 @@ def distributed_model(model):
         amp_enable = True
         amp_level = "O2" if strategy.amp_configs['use_pure_fp16'] else "O1"
         if amp_level.upper() == "O2":
-            model = paddle.amp.decorate(
+            model = paddle.amp.auto_cast.decorate(
                 models=model,
                 optimizers=None,
                 level="O2",

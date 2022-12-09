@@ -992,7 +992,10 @@ class DynamicGraphAdapter:
             and self.model.mode == 'train'
             and core.is_compiled_with_cuda()
         ):
-            self.model.network, self.model._optimizer = paddle.amp.decorate(
+            (
+                self.model.network,
+                self.model._optimizer,
+            ) = paddle.amp.auto_cast.decorate(
                 models=self.model.network,
                 optimizers=self.model._optimizer,
                 level='O2',

@@ -86,7 +86,7 @@ def train_mlp(
     optimizer = optimizer_setting(
         model=model, use_multi_precision=use_multi_precision
     )
-    model = paddle.amp.decorate(
+    model = paddle.amp.auto_cast.decorate(
         models=model, level=amp_level, save_dtype='float32'
     )
     scaler = paddle.amp.GradScaler(init_loss_scaling=32768)

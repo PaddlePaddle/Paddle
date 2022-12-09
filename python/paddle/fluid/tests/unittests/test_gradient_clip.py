@@ -546,7 +546,7 @@ class TestDygraphGradientClipFP16(unittest.TestCase):
                 sgd_optimizer = paddle.optimizer.SGD(
                     learning_rate=0.0, parameters=model.parameters()
                 )
-                model, sgd_optimizer = paddle.amp.decorate(
+                model, sgd_optimizer = paddle.amp.auto_cast.decorate(
                     models=model, optimizers=sgd_optimizer, level='O2'
                 )
                 scaler = paddle.amp.GradScaler(init_loss_scaling=1024)

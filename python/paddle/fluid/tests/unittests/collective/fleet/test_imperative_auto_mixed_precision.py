@@ -606,7 +606,7 @@ class TestAmpDecorator(unittest.TestCase):
             with fluid.dygraph.guard():
                 model = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
                 opt = paddle.optimizer.SGD(parameters=model.parameters())
-                model, opt = paddle.amp.decorate(
+                model, opt = paddle.amp.auto_cast.decorate(
                     models=model, optimizers=opt, level='O'
                 )
 
@@ -620,7 +620,9 @@ class TestAmpDecorator(unittest.TestCase):
 
             model = MyModel()
             with fluid.dygraph.guard():
-                paddle.amp.decorate(models=model, optimizers=None, level='O2')
+                paddle.amp.auto_cast.decorate(
+                    models=model, optimizers=None, level='O2'
+                )
 
         self.assertRaises(TypeError, test_error_model)
 
@@ -628,7 +630,7 @@ class TestAmpDecorator(unittest.TestCase):
             model = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
             model = paddle.DataParallel(model)
             with fluid.dygraph.guard():
-                model = paddle.amp.decorate(models=model, level='O2')
+                model = paddle.amp.auto_cast.decorate(models=model, level='O2')
 
         self.assertRaises(RuntimeError, test_error_distributed_model)
 
@@ -640,7 +642,9 @@ class TestAmpDecorator(unittest.TestCase):
             model = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
             opt = MyOptimizer()
             with fluid.dygraph.guard():
-                paddle.amp.decorate(models=model, optimizers=opt, level='O2')
+                paddle.amp.auto_cast.decorate(
+                    models=model, optimizers=opt, level='O2'
+                )
 
         self.assertRaises(TypeError, test_error_optimizer)
 
@@ -659,12 +663,12 @@ class TestAmpDecorator(unittest.TestCase):
             multi_precision=False,
         )
 
-        model1, opt1 = paddle.amp.decorate(
+        model1, opt1 = paddle.amp.auto_cast.decorate(
             models=model1, optimizers=opt1, level='O2', master_weight=None
         )
         self.assertEqual(opt1._multi_precision, True)
 
-        models, opt2 = paddle.amp.decorate(
+        models, opt2 = paddle.amp.auto_cast.decorate(
             models=[model1, model2],
             optimizers=opt2,
             level='O2',
@@ -682,7 +686,7 @@ class TestAmpDecorator(unittest.TestCase):
             learning_rate=0.0001, parameters=model4.parameters()
         )
 
-        model3, opts = paddle.amp.decorate(
+        model3, opts = paddle.amp.auto_cast.decorate(
             models=model3,
             optimizers=[opt3, opt4],
             level='O2',
@@ -693,7 +697,7 @@ class TestAmpDecorator(unittest.TestCase):
 
         models = [model3, model4]
         optimizers = [opt3, opt4]
-        models, optimizers = paddle.amp.decorate(
+        models, optimizers = paddle.amp.auto_cast.decorate(
             models=models,
             optimizers=optimizers,
             level='O2',
@@ -704,27 +708,27 @@ class TestAmpDecorator(unittest.TestCase):
 
     def test_skip_BatchNorm_Layer_norm(self):
         model = paddle.nn.LayerNorm(1)
-        model = paddle.amp.decorate(models=model, level='O2')
+        model = paddle.amp.auto_cast.decorate(models=model, level='O2')
         for param in model.parameters():
             self.assertEqual((param.dtype == paddle.float32), True)
 
         model = paddle.nn.BatchNorm(1)
-        model = paddle.amp.decorate(models=model, level='O2')
+        model = paddle.amp.auto_cast.decorate(models=model, level='O2')
         for param in model.parameters():
             self.assertEqual((param.dtype == paddle.float32), True)
 
         model = paddle.nn.BatchNorm1D(1)
-        model = paddle.amp.decorate(models=model, level='O2')
+        model = paddle.amp.auto_cast.decorate(models=model, level='O2')
         for param in model.parameters():
             self.assertEqual((param.dtype == paddle.float32), True)
 
         model = paddle.nn.BatchNorm2D(1)
-        model = paddle.amp.decorate(models=model, level='O2')
+        model = paddle.amp.auto_cast.decorate(models=model, level='O2')
         for param in model.parameters():
             self.assertEqual((param.dtype == paddle.float32), True)
 
         model = paddle.nn.BatchNorm3D(1)
-        model = paddle.amp.decorate(models=model, level='O2')
+        model = paddle.amp.auto_cast.decorate(models=model, level='O2')
         for param in model.parameters():
             self.assertEqual((param.dtype == paddle.float32), True)
 
@@ -732,7 +736,7 @@ class TestAmpDecorator(unittest.TestCase):
         model = paddle.nn.Linear(2, 4)
         buffer = paddle.to_tensor(np.array([5]).astype("int32"))
         model.register_buffer("buffer_name", buffer, persistable=True)
-        model = paddle.amp.decorate(models=model, level='O2')
+        model = paddle.amp.auto_cast.decorate(models=model, level='O2')
         self.assertEqual(
             (model._buffers["buffer_name"].dtype == paddle.int32), True
         )
@@ -743,7 +747,7 @@ class TestStateDictHookForAMP(unittest.TestCase):
         def func_isinstance():
             paddle.seed(100)
             model = paddle.nn.Linear(2, 4)
-            model = paddle.amp.decorate(
+            model = paddle.amp.auto_cast.decorate(
                 models=model, level='O2', save_dtype='float32'
             )
             param_value_ori = {}
@@ -777,7 +781,7 @@ class TestPureFp16SaveLoad(unittest.TestCase):
             paddle.disable_static()
             model = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
             opt = paddle.optimizer.SGD(parameters=model.parameters())
-            paddle.amp.decorate(
+            paddle.amp.auto_cast.decorate(
                 models=model, optimizers=opt, level='O2', save_dtype='int'
             )
 
@@ -828,7 +832,7 @@ class TestPureFp16SaveLoad(unittest.TestCase):
             train_reader = train_loader
 
         if enable_amp:
-            resnet, optimizer = paddle.amp.decorate(
+            resnet, optimizer = paddle.amp.auto_cast.decorate(
                 models=resnet,
                 optimizers=optimizer,
                 level='O2',
@@ -905,7 +909,7 @@ class TestPureFp16SaveLoad(unittest.TestCase):
                 resnet.set_state_dict(obj_load['model'])
                 optimizer.set_state_dict(obj_load['opt'])
                 scaler.load_state_dict(obj_load['scaler'])
-                resnet, optimizer = paddle.amp.decorate(
+                resnet, optimizer = paddle.amp.auto_cast.decorate(
                     models=resnet,
                     optimizers=optimizer,
                     level='O2',
@@ -993,7 +997,7 @@ class TestPureFp16InferenceSaveLoad(unittest.TestCase):
             multi_precision=True,
         )
         loss_fn = nn.CrossEntropyLoss()
-        layer, adam = paddle.amp.decorate(
+        layer, adam = paddle.amp.auto_cast.decorate(
             models=layer, optimizers=adam, save_dtype='float32'
         )
         dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
@@ -1120,7 +1124,7 @@ class TestResnet2(unittest.TestCase):
             train_reader = train_loader
 
         if enable_amp and (level == 'O2'):
-            resnet = paddle.amp.decorate(models=resnet, level='O2')
+            resnet = paddle.amp.auto_cast.decorate(models=resnet, level='O2')
 
         for batch_id, data in enumerate(train_reader()):
             if batch_id >= batch_num:
@@ -1390,7 +1394,7 @@ class TestBf16(unittest.TestCase):
         input = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1.0, max=1.0)
         conv = paddle.nn.Conv2D(4, 6, (3, 3))
         if amp_level == 'O2':
-            conv = paddle.amp.decorate(
+            conv = paddle.amp.auto_cast.decorate(
                 models=conv, level=amp_level, dtype='bfloat16'
             )
         with paddle.amp.auto_cast.auto_cast(

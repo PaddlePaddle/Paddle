@@ -233,7 +233,7 @@ class TestCustomCPUPlugin(unittest.TestCase):
 
         # convert to static model
         scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
-        model, optimizer = paddle.amp.decorate(
+        model, optimizer = paddle.amp.auto_cast.decorate(
             models=model, optimizers=optimizer, level='O1'
         )
 

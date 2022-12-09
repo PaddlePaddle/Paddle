@@ -63,10 +63,10 @@ class TestFusedTransformerWithAmpDecorator(unittest.TestCase):
 
     def test_run(self):
         self.get_model()
-        pre_model = paddle.amp.decorate(
+        pre_model = paddle.amp.auto_cast.decorate(
             models=self.pre_model, level='O2', save_dtype='float32'
         )
-        post_model = paddle.amp.decorate(
+        post_model = paddle.amp.auto_cast.decorate(
             models=self.post_model, level='O2', save_dtype='float32'
         )
 

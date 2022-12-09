@@ -917,7 +917,7 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
             )
         for idx in range(5):
             if place == 'gpu' and use_amp:
-                model = paddle.amp.decorate(models=model, level='O2')
+                model = paddle.amp.auto_cast.decorate(models=model, level='O2')
                 scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
             if place == 'gpu' and use_amp:
                 with paddle.amp.auto_cast.auto_cast(level='O2'):

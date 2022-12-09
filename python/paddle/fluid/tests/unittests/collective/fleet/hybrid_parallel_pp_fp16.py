@@ -93,13 +93,13 @@ class TestDistPPTraning(unittest.TestCase):
         for idx, param in enumerate(model_b.parameters()):
             param.set_value(parameters[idx + pp_id * (param_len // 2)])
 
-        model_a, optimizer_a = paddle.amp.decorate(
+        model_a, optimizer_a = paddle.amp.auto_cast.decorate(
             models=model_a,
             optimizers=optimizer_a,
             level='O2',
             save_dtype='float32',
         )
-        model_b, optimizer_b = paddle.amp.decorate(
+        model_b, optimizer_b = paddle.amp.auto_cast.decorate(
             models=model_b,
             optimizers=optimizer_b,
             level='O2',

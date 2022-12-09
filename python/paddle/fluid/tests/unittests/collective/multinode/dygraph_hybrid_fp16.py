@@ -175,7 +175,7 @@ class TestDygraphHybridFp16(TestCollectiveAPIRunnerBase):
 
         scaler = paddle.amp.GradScaler(init_loss_scaling=4096)
         scaler = fleet.distributed_scaler(scaler)
-        model = paddle.amp.decorate(
+        model = paddle.amp.auto_cast.decorate(
             models=model, level='O2', save_dtype='float32'
         )
 

@@ -111,7 +111,7 @@ def train_mlp(
         optimizer = optimizer_setting(model=model, use_pure_fp16=use_pure_fp16)
 
     if use_pure_fp16:
-        model = paddle.amp.decorate(
+        model = paddle.amp.auto_cast.decorate(
             models=model, level='O2', save_dtype='float32'
         )
         scaler = paddle.amp.GradScaler(init_loss_scaling=32768)

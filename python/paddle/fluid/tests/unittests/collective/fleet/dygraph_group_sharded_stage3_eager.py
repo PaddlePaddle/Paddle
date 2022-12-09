@@ -63,7 +63,7 @@ def train_mlp(
         model=model, use_multi_precision=use_multi_precision
     )
     if use_multi_precision:
-        model = paddle.amp.decorate(models=model, level=amp_level)
+        model = paddle.amp.auto_cast.decorate(models=model, level=amp_level)
 
     scaler = paddle.amp.GradScaler(init_loss_scaling=32768)
 
@@ -104,7 +104,7 @@ def test_sharding_api():
 
     # just test warning
     model = Model()
-    model = paddle.amp.decorate(models=model, level="O2")
+    model = paddle.amp.auto_cast.decorate(models=model, level="O2")
     optimizer = optimizer_setting(model=model, use_multi_precision=True)
     model, optimizer, scaler = group_sharded_parallel(
         model=model,

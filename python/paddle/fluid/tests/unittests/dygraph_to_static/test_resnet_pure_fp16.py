@@ -46,7 +46,7 @@ def train(to_static, build_strategy=None):
     optimizer = optimizer_setting(parameter_list=resnet.parameters())
     scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
 
-    resnet, optimizer = paddle.amp.decorate(
+    resnet, optimizer = paddle.amp.auto_cast.decorate(
         models=resnet, optimizers=optimizer, level='O2', save_dtype='float32'
     )
 

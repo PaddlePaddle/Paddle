@@ -30,7 +30,7 @@ class TestMPFP16(TestDistMPTraning):
             scheduler, grad_clip=grad_clip, parameters=model.parameters()
         )
 
-        model, optimizer = paddle.amp.decorate(
+        model, optimizer = paddle.amp.auto_cast.decorate(
             models=model, optimizers=optimizer, level='O2', save_dtype='float32'
         )
 
