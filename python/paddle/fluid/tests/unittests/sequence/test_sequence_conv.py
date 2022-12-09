@@ -12,17 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-<<<<<<< HEAD
-import paddle
-import unittest
-import numpy as np
-=======
->>>>>>> b5c6c36c78654ca78f9646d17baa5425cecab530
 import random
 import sys
 import unittest
 
 import numpy as np
+
+import paddle
 
 sys.path.append("../")
 from op_test import OpTest

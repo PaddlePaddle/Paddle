@@ -43,7 +43,7 @@ from ...fluid.contrib.layers import sparse_embedding  # noqa: F401
 from ...fluid.layers import continuous_value_model  # noqa: F401
 from ...fluid.layers import StaticRNN  # noqa: F401
 
-from ...paddle.static.nn.sequence_lod import sequence_conv  # noqa: F401
+from ...static.nn.sequence_lod import sequence_conv  # noqa: F401
 from ...fluid.layers.sequence_lod import sequence_softmax  # noqa: F401
 from ...fluid.layers.sequence_lod import sequence_pool  # noqa: F401
 from ...fluid.layers.sequence_lod import sequence_concat  # noqa: F401
