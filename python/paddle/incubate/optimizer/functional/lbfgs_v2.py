@@ -14,14 +14,10 @@
 
 import paddle
 
-# from paddle import no_grad
 from functools import reduce
 from collections import defaultdict
 from paddle.optimizer import Optimizer
 from .line_search_dygraph import _strong_wolfe
-
-
-LOG = False
 
 
 class LBFGS(Optimizer):
@@ -219,11 +215,6 @@ class LBFGS(Optimizer):
 
     def _directional_evaluate(self, closure, x, alpha, d):
         self._add_grad(alpha, d)
-        params = []
-        for p in self._params:
-            params.append(p.reshape([-1]))
-        paddle.concat(params, 0)
-        print("xk + alpha*pk = ", params) if LOG else None
         loss = float(closure())
         flat_grad = self._gather_flat_grad()
         self._set_param(x)
@@ -248,16 +239,14 @@ class LBFGS(Optimizer):
             tolerance_change = self.tolerance_change
             line_search_fn = self.line_search_fn
             history_size = self.history_size
-
             state = self.state
             state.setdefault('func_evals', 0)
             state.setdefault('n_iter', 0)
-            print("[[[[[[[[[[[[[new lbfgs step]]]]]]]]]]]") if LOG else None
 
             # evaluate initial f(x) and df/dx
             orig_loss = closure()
             loss = float(orig_loss)
-            print("First func value : ", loss) if LOG else None
+
             current_evals = 1
             state['func_evals'] += 1
 
@@ -266,9 +255,6 @@ class LBFGS(Optimizer):
 
             # optimal condition
             if opt_cond:
-                print(
-                    "grad is smaller than tolerance_grad, no need to use line search fn"
-                ) if LOG else None
                 return orig_loss
 
             # tensors cached in state (for tracing)
@@ -285,9 +271,6 @@ class LBFGS(Optimizer):
             # optimize for a max of max_iter iterations
             while n_iter < max_iter:
                 # keep track of nb of iterations
-                print(
-                    "&&&&&&&&&&& n_iter &&&&&&&&&& = ", n_iter
-                ) if LOG else None
                 n_iter += 1
                 state['n_iter'] += 1
 
@@ -299,7 +282,6 @@ class LBFGS(Optimizer):
                     old_yk = []
                     old_sk = []
                     ro = []
-                    # H_diag = 1
                     H_diag = paddle.to_tensor(1.0, dtype=orig_loss.dtype)
                 else:
                     # do lbfgs update (update memory)
@@ -321,7 +303,6 @@ class LBFGS(Optimizer):
 
                         # update scale of initial Hessian approximation
                         H_diag = ys / y.dot(y)  # (y*y)
-                        print("H_diag : ", H_diag) if LOG else None
 
                     # compute the approximate (L-BFGS) inverse Hessian
                     # multiplied by the gradient
@@ -344,8 +325,6 @@ class LBFGS(Optimizer):
                         be_i = old_yk[i].dot(r) * ro[i]
                         paddle.assign(r.add(old_sk[i] * (al[i] - be_i)), r)
 
-                print("d = ", d) if LOG else None
-
                 if prev_flat_grad is None:
                     prev_flat_grad = flat_grad.clone()
                 else:
@@ -363,10 +342,9 @@ class LBFGS(Optimizer):
 
                 # directional derivative
                 gtd = flat_grad.dot(d)
-                print("gtd = ", gtd) if LOG else None
+
                 # directional derivative is below tolerance
                 if gtd > -tolerance_change:
-                    print("@@@@@ gtd > -tolerance_change") if LOG else None
                     break
 
                 # optional line search: user function
@@ -386,7 +364,6 @@ class LBFGS(Optimizer):
                         loss, flat_grad, alpha, ls_func_evals = _strong_wolfe(
                             obj_func, x_init, alpha, d, loss, flat_grad, gtd
                         )
-                    print("strongwolfe update alpha = ", alpha) if LOG else None
                     self._add_grad(alpha, d)
                     opt_cond = flat_grad.abs().max() <= tolerance_grad
                 else:

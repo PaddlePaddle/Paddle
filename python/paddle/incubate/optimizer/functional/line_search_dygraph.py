@@ -51,9 +51,6 @@ def _cubic_interpolate(x1, f1, g1, x2, f2, g2, bounds=None):
         return (xmin_bound + xmax_bound) / 2.0
 
 
-STRONG_LOG = False
-
-
 def _strong_wolfe(
     obj_func,
     xk,
@@ -141,20 +138,12 @@ def _strong_wolfe(
     """
 
     d_norm = d.abs().max()
-    print("d_norm = ", d_norm) if STRONG_LOG else None
     grad = grad.clone()
     # evaluate objective and gradient using initial step
-    print("xk = ", xk) if STRONG_LOG else None
-    print("alpha = ", alpha) if STRONG_LOG else None
-    print("d = ", d) if STRONG_LOG else None
     loss_new, grad_new = obj_func(xk, alpha, d)
-    print("strong wholf First func value : ", loss_new) if STRONG_LOG else None
-    print("strong wholf First func grad : ", grad_new) if STRONG_LOG else None
-    print("strong wholf First func d : ", d) if STRONG_LOG else None
     ls_func_evals = 1
     gtd_new = paddle.dot(grad_new, d)
 
-    print("strong wholf First func gtd : ", gtd_new) if STRONG_LOG else None
     # bracket an interval containing a point satisfying the Wolfe criteria
     t_prev, f_prev, g_prev, gtd_prev = (
         paddle.to_tensor(0, dtype=grad.dtype),
@@ -165,30 +154,10 @@ def _strong_wolfe(
     done = False
     ls_iter = 0
     while ls_iter < max_ls:
-        print(
-            "[[[[strong_wholf first while]]]] : ls_iter :", ls_iter
-        ) if STRONG_LOG else None
         # check conditions
-        print("loss_new = ", loss_new) if STRONG_LOG else None
-        print(
-            "(loss + c1 * alpha * gtd) = ", (loss + c1 * alpha * gtd).numpy()
-        ) if STRONG_LOG else None
-        print(" gtd_new = ", gtd_new.numpy()) if STRONG_LOG else None
-        print(" (-c2*gtd) = ", (-c2 * gtd)) if STRONG_LOG else None
         if loss_new > (loss + c1 * alpha * gtd) or (
             ls_iter > 1 and loss_new >= f_prev
         ):
-            if loss_new > (loss + c1 * alpha * gtd):
-                print(
-                    "@@ 1 @@ loss+c1*alpha*gtd = ",
-                    loss + c1 * alpha * gtd,
-                    "loss_new = ",
-                    loss_new,
-                ) if STRONG_LOG else None
-            if ls_iter > 1 and loss_new >= f_prev:
-                print(
-                    "@@ 1 @@ loss_new =", loss_new, "f_prev = ", f_prev
-                ) if STRONG_LOG else None
             bracket = [t_prev, alpha]
             bracket_f = [f_prev, loss_new]
             bracket_g = [g_prev, grad_new.clone()]
@@ -196,12 +165,6 @@ def _strong_wolfe(
             break
 
         if paddle.abs(gtd_new) <= -c2 * gtd:
-            print(
-                "@@ 2 @@ paddle.abs(gtd_new) <= -c2 * gtd: gtd_new = ",
-                gtd_new,
-                "-c2*gtd = ",
-                -c2 * gtd,
-            ) if STRONG_LOG else None
             bracket = [alpha]
             bracket_f = [loss_new]
             bracket_g = [grad_new]
@@ -209,7 +172,6 @@ def _strong_wolfe(
             break
 
         if gtd_new >= 0:
-            print("@@ 3@@@ gtd_new >= 0") if STRONG_LOG else None
             bracket = [t_prev, alpha]
             bracket_f = [f_prev, loss_new]
             bracket_g = [g_prev, grad_new.clone()]
@@ -217,7 +179,6 @@ def _strong_wolfe(
             break
 
         # interpolate
-        print("@@@@@strong_wholf first while interpolate")
         min_step = alpha + 0.01 * (alpha - t_prev)
         max_step = alpha * 10
         tmp = alpha
@@ -230,17 +191,14 @@ def _strong_wolfe(
             gtd_new,
             bounds=(min_step, max_step),
         )
-        print("first while cubic alpha : ", alpha) if STRONG_LOG else None
 
         # next step
         t_prev = tmp
         f_prev = loss_new
         g_prev = grad_new.clone()
         gtd_prev = gtd_new
+
         loss_new, grad_new = obj_func(xk, alpha, d)
-        print(
-            "strong wholf First while funcloss : ", loss_new
-        ) if STRONG_LOG else None
         ls_func_evals += 1
         gtd_new = grad_new.dot(d)
         ls_iter += 1
@@ -258,28 +216,10 @@ def _strong_wolfe(
     # find high and low points in bracket
     low_pos, high_pos = (0, 1) if bracket_f[0] <= bracket_f[-1] else (1, 0)
     while not done and ls_iter < max_ls:
-        print(
-            "[[[[strong_wholf second while]]]] : ls_iter :", ls_iter
-        ) if STRONG_LOG else None
         # line-search bracket is so small
         if paddle.abs(bracket[1] - bracket[0]) * d_norm < tolerance_change:
-            print(
-                "@@@@@ param update small than tol_change break"
-            ) if STRONG_LOG else None
             break
 
-        print(
-            "bracket [0] number:",
-            bracket[0],
-            bracket_f[0],
-            bracket_gtd[0].numpy(),
-        ) if STRONG_LOG else None
-        print(
-            "bracket [1] number:",
-            bracket[1],
-            bracket_f[1],
-            bracket_gtd[1].numpy(),
-        ) if STRONG_LOG else None
         # compute new trial value
         alpha = _cubic_interpolate(
             bracket[0],
@@ -289,7 +229,7 @@ def _strong_wolfe(
             bracket_f[1],
             bracket_gtd[1],
         )
-        print("second while cubic alpha : ", alpha) if STRONG_LOG else None
+
         # test that we are making sufficient progress:
         # in case `alpha` is so close to boundary, we mark that we are making
         # insufficient progress, and if
@@ -297,8 +237,8 @@ def _strong_wolfe(
         #   + `alpha` is at one of the boundary,
         # we will move `alpha` to a position which is `0.1 * len(bracket)`
         # away from the nearest boundary point.
+
         eps = 0.1 * (max(bracket) - min(bracket))
-        print("second while eps : ", eps) if STRONG_LOG else None
         if min(max(bracket) - alpha, alpha - min(bracket)) < eps:
             # interpolation close to boundary
             if insuf_progress or alpha >= max(bracket) or alpha <= min(bracket):
@@ -307,53 +247,24 @@ def _strong_wolfe(
                     alpha - min(bracket)
                 ):
                     alpha = max(bracket) - eps
-                    print(
-                        "alpha = max_alpha - eps : ", alpha
-                    ) if STRONG_LOG else None
                 else:
                     alpha = min(bracket) + eps
-                    print(
-                        "alpha = min_alpha + eps : ", alpha
-                    ) if STRONG_LOG else None
                 insuf_progress = False
             else:
                 insuf_progress = True
         else:
             insuf_progress = False
-        print("second while final alpha : ", alpha) if STRONG_LOG else None
         # Evaluate new point
         loss_new, grad_new = obj_func(xk, alpha, d)
         ls_func_evals += 1
         gtd_new = grad_new.dot(d)
         ls_iter += 1
 
-        print("loss_new = ", loss_new) if STRONG_LOG else None
-        print(
-            "(loss + c1 * alpha * gtd) = ",
-            (loss + c1 * alpha * gtd).cpu().numpy(),
-        ) if STRONG_LOG else None
-        print(" gtd_new = ", gtd_new.cpu().numpy()) if STRONG_LOG else None
-        print(" (-c2*gtd) = ", (-c2 * gtd)) if STRONG_LOG else None
-
         if (
             loss_new > (loss + c1 * alpha * gtd)
             or loss_new >= bracket_f[low_pos]
         ):
             # Armijo condition not satisfied or not lower than lowest point
-            if loss_new > (loss + c1 * alpha * gtd):
-                print(
-                    "second while @@ 1 @@ loss_new > (loss + c1 * alpha * gtd) loss_new: ",
-                    loss_new,
-                    "loss + c1 * alpha * gtd",
-                    loss + c1 * alpha * gtd,
-                ) if STRONG_LOG else None
-            if loss_new >= bracket_f[low_pos]:
-                print(
-                    "second while @@ 1 @@ loss_new >= bracket_loss[low_pos]loss_new:  ",
-                    loss_new,
-                    "bracket_loss[low_pos]",
-                    bracket_f[low_pos],
-                ) if STRONG_LOG else None
             bracket[high_pos] = alpha
             bracket_f[high_pos] = loss_new
             # bracket_g[high_pos] = grad_new.clone(memory_format=torch.contiguous_format)
@@ -364,19 +275,10 @@ def _strong_wolfe(
             )
         else:
             if paddle.abs(gtd_new) <= -c2 * gtd:
-                print(
-                    "second while @@ 2 @@ paddle.abs(gtd_new) <= -c2 * gtd"
-                ) if STRONG_LOG else None
                 # Wolfe conditions satisfied
                 done = True
             elif gtd_new * (bracket[high_pos] - bracket[low_pos]) >= 0:
                 # old high becomes new low
-                print(
-                    "second while @@ 3 @@ gtd_new * (bracket[high_pos] - bracket[low_pos]) >= 0  gtd_new: ",
-                    gtd_new,
-                    "detla alpha = ",
-                    (bracket[high_pos] - bracket[low_pos]),
-                ) if STRONG_LOG else None
                 bracket[high_pos] = bracket[low_pos]
                 bracket_f[high_pos] = bracket_f[low_pos]
                 bracket_g[high_pos] = bracket_g[low_pos]
