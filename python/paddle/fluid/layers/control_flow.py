@@ -97,7 +97,7 @@ def _select_input_infer_shape(first_shape, second_shape):
     2. compare axis one by one:
         if a == b: we set axis to a
         if a != b: we set axis to -1
-    for compatibility，non declarative mode, we just return second_shape.
+    for compatibility, non declarative mode, we just return second_shape.
     """
     if len(first_shape) != len(second_shape):
         warnings.warn(
@@ -1063,7 +1063,7 @@ class While:
             cond = paddle.less_than(x=i, y=loop_len)
             while_op = fluid.layers.While(cond=cond)
             with while_op.block():
-                i = paddle.static.nn.increment(x=i, value=1, in_place=True)
+                i = paddle.increment(x=i, value=1, in_place=True)
                 paddle.assign(paddle.less_than(x=i, y=loop_len), cond)
 
             exe = fluid.Executor(fluid.CPUPlace())
@@ -1092,7 +1092,7 @@ class While:
             with while_op.block():
                 sums_tensor = fluid.layers.elementwise_add(x=data, y=data)
                 fluid.layers.assign(sums_tensor, sums)  # Update the value of sums_tensor defined in While to the sums which defined outside of While through layers.assign
-                i = paddle.static.nn.increment(x=i, value=1, in_place=True)
+                i = paddle.increment(x=i, value=1, in_place=True)
                 data = fluid.layers.elementwise_add(x=data, y=one)
                 paddle.assign(paddle.less_than(x=i, y=loop_len), cond)
 
@@ -1360,47 +1360,6 @@ def _deal_with_undefined_var(output_vars, loop_vars):
         else:
             results.append(l_var)
     return results
-
-
-def increment(x, value=1.0, in_place=True):
-    """
-    The OP is usually used for control flow to increment the data of :attr:`x` by an amount :attr:`value`.
-    Notice that the number of elements in :attr:`x` must be equal to 1.
-
-    Parameters:
-        x (Variable): A tensor that must always contain only one element, its data type supports
-            float32, float64, int32 and int64.
-        value (float, optional): The amount to increment the data of :attr:`x`. Default: 1.0.
-        in_place (bool, optional): Whether the OP should be performed in-place. Default: True.
-
-    Returns:
-        Variable: The elementwise-incremented tensor with the same shape and data type as :attr:`x`.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          counter = fluid.layers.zeros(shape=[1], dtype='float32') # [0.]
-          fluid.layers.increment(counter) # [1.]
-    """
-    if in_dygraph_mode():
-        return _C_ops.increment_(x, value)
-
-    check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'increment'
-    )
-    helper = LayerHelper("increment", **locals())
-    if not in_place:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        out = x
-    helper.append_op(
-        type='increment',
-        inputs={'X': [x]},
-        outputs={'Out': [out]},
-        attrs={'step': float(value)},
-    )
-    return out
 
 
 def array_write(x, i, array=None):

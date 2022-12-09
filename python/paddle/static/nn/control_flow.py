@@ -17,14 +17,12 @@ from functools import partial, reduce
 
 import paddle
 import paddle.fluid.core as core
-from paddle import _C_ops
 from paddle.common_ops_import import (
     LayerHelper,
     _non_static_mode,
     check_type,
     check_variable_and_dtype,
     convert_dtype,
-    in_dygraph_mode,
 )
 from paddle.fluid.framework import Operator, Program, Variable
 
@@ -41,12 +39,6 @@ from paddle.fluid.layers.utils import (
     pack_sequence_as,
     to_sequence,
 )
-
-__all__ = [
-    'Assert',
-    'increment',
-    'cond',
-]
 
 
 def Assert(cond, data=None, summarize=20, name=None):
@@ -117,49 +109,6 @@ def Assert(cond, data=None, summarize=20, name=None):
     )
 
     return op
-
-
-def increment(x, value=1.0, in_place=True):
-    """
-    This API is usually used for control flow to increment the data of :attr:`x` by an amount :attr:`value`.
-    Notice that the number of elements in :attr:`x` must be equal to 1.
-
-    Parameters:
-        x (Variable): A tensor that must always contain only one element, its data type supports
-            float32, float64, int32 and int64.
-        value (float, optional): The amount to increment the data of :attr:`x`. Default: 1.0.
-        in_place (bool, optional): Whether the OP should be performed in-place. Default: True.
-
-    Returns:
-        Variable: The elementwise-incremented tensor with the same shape and data type as :attr:`x`.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle
-          from paddle.static.nn.control_flow import increment
-
-          counter = paddle.zeros(shape=[1], dtype='float32') # [0.]
-          increment(counter) # [1.]
-    """
-    if in_dygraph_mode():
-        return _C_ops.increment_(x, value)
-
-    check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'increment'
-    )
-    helper = LayerHelper("increment", **locals())
-    if not in_place:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        out = x
-    helper.append_op(
-        type='increment',
-        inputs={'X': [x]},
-        outputs={'Out': [out]},
-        attrs={'step': float(value)},
-    )
-    return out
 
 
 class BlockGuard:

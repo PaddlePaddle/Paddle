@@ -58,7 +58,7 @@ from ...fluid.layers.sequence_lod import sequence_scatter  # noqa: F401
 from ...fluid.layers.sequence_lod import sequence_enumerate  # noqa: F401
 from ...fluid.layers.sequence_lod import sequence_reverse  # noqa: F401
 
-from .control_flow import Assert, increment, cond
+from .control_flow import cond
 
 __all__ = [  # noqa
     'fc',
@@ -102,6 +102,4 @@ __all__ = [  # noqa
     'sequence_reverse',
     'StaticRNN',
     'prelu',
-    'Assert',
-    'increment',
 ]

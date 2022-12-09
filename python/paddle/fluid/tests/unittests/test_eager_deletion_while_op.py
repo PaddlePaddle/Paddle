@@ -27,7 +27,6 @@ import paddle.fluid.compiler as compiler
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
 from paddle.fluid.executor import Executor
-from paddle.static.nn import increment
 
 paddle.enable_static()
 fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
@@ -84,10 +83,10 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
         mem_array = layers.array_write(x=init, i=i)
         data_array = layers.array_write(x=d0, i=i)
 
-        i = increment(i)
+        i = paddle.increment(i)
         layers.array_write(d1, i, array=data_array)
 
-        i = increment(i)
+        i = paddle.increment(i)
         layers.array_write(d2, i, array=data_array)
 
         i = layers.zeros(shape=[1], dtype='int64')
@@ -113,7 +112,7 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
             prev = paddle.reshape(prev, shape=[10])
             result = layers.sums(input=[d, prev])
 
-            i = increment(x=i, in_place=True)
+            i = paddle.increment(x=i, in_place=True)
             layers.array_write(result, i=i, array=mem_array)
             paddle.assign(paddle.less_than(x=i, y=array_len), cond)
             with while_op2.block():
@@ -123,7 +122,7 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
                 prev2 = paddle.reshape(prev2, shape=[10])
                 result2 = layers.sums(input=[d2, prev2])
 
-                j = increment(x=j, in_place=True)
+                j = paddle.increment(x=j, in_place=True)
                 layers.array_write(result2, i=j, array=mem_array)
                 paddle.assign(paddle.less_than(x=j, y=array_len2), cond2)
 

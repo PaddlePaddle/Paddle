@@ -787,9 +787,7 @@ def _run_paddle_pop(array, *args):
         item = array_read(array=array, i=i)
         array_write(item, paddle.tensor.array_length(new_array), new_array)
 
-        from paddle.static.nn import increment
-
-        i = increment(i)
+        i = paddle.increment(i)
         return i, new_array
 
     arr_len = paddle.tensor.array_length(array)

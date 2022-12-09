@@ -21,7 +21,6 @@ import paddle
 import paddle.fluid as fluid
 from paddle.jit.api import declarative
 from paddle.jit.dy2static.loop_transformer import NameVisitor
-from paddle.static.nn import increment
 from paddle.utils import gast
 
 SEED = 2020
@@ -84,7 +83,7 @@ def while_loop_dyfunc_with_none(x):
 def for_loop_dyfunc(max_len):
     for i in range(max_len):
         ret = fluid.layers.zeros(shape=[1], dtype='float32')
-        increment(ret, value=2.0, in_place=True)
+        paddle.increment(ret, value=2.0, in_place=True)
     return ret
 
 
@@ -105,14 +104,14 @@ def for_loop_dyfunc2(max_len):
 def for_loop_dyfunc3(max_len):
     ret = fluid.layers.zeros(shape=[1], dtype='float32')
     for i in range(1, 10, 2):
-        increment(ret, value=2.0, in_place=True)
+        paddle.increment(ret, value=2.0, in_place=True)
     return ret
 
 
 def for_loop_dyfunc4(max_len):
     ret = fluid.layers.zeros(shape=[1], dtype='float32')
     for i in range(10, 1, -2):
-        increment(ret, value=2.0, in_place=True)
+        paddle.increment(ret, value=2.0, in_place=True)
     return ret
 
 
@@ -120,7 +119,7 @@ def for_loop_dyfunc_not_support(max_len):
     ret = fluid.layers.zeros(shape=[1], dtype='float32')
     a = -2
     for i in range(10, 1, a):
-        increment(ret, value=2.0, in_place=True)
+        paddle.increment(ret, value=2.0, in_place=True)
     return ret
 
 
