@@ -1066,18 +1066,18 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
+- op : shard_index
+  inputs :
+    input : X
+  outputs :
+    out : Out
+
 - op : share_buffer
   inputs :
     x : X
   outputs :
     out : Out
     xout : XOut
-
-- op : shard_index
-  inputs :
-    input : X
-  outputs :
-    out : Out
 
 - op : shuffle_channel
   backward : shuffle_channel_grad

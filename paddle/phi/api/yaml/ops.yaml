@@ -1031,14 +1031,6 @@
     func : unfold
   backward : unfold_grad
 
-- op: share_buffer
-  args : (Tensor[] x, bool[] share_dims_and_dtype={})
-  output : Tensor[](out){x.size()}, Tensor[](xout){x.size()}
-  infer_meta :
-    func : ShareBufferInferMeta
-  kernel :
-    func : share_buffer
-
 - op : viterbi_decode
   args : (Tensor potentials, Tensor transition_params, Tensor lengths, bool include_bos_eos_tag = true)
   output : Tensor(scores), Tensor(path)
@@ -1056,3 +1048,11 @@
   kernel :
     func : where
   backward : where_grad
+
+- op: share_buffer
+  args : (Tensor[] x, bool[] share_dims_and_dtype={})
+  output : Tensor[](out){x.size()}, Tensor[](xout){x.size()}
+  infer_meta :
+    func : ShareBufferInferMeta
+  kernel :
+    func : share_buffer
