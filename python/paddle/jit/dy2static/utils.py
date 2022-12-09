@@ -18,6 +18,7 @@ import atexit
 import copy
 from paddle.utils import gast
 import inspect
+import importlib.util
 import os
 import sys
 import shutil
@@ -32,6 +33,7 @@ from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import assign
 from functools import reduce
+from importlib.machinery import SourceFileLoader
 import warnings
 
 
@@ -70,9 +72,6 @@ class BaseNodeVisitor(gast.NodeVisitor):
         self.ancestor_nodes.pop()
         return ret
 
-
-# imp is deprecated in python3
-from importlib.machinery import SourceFileLoader
 
 dygraph_class_to_static_api = {
     "CosineDecay": "cosine_decay",
@@ -586,7 +585,10 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
         DEL_TEMP_DIR = False
 
     func_name = dyfunc.__name__
-    module = SourceFileLoader(module_name, f.name).load_module()
+    loader = SourceFileLoader(module_name, f.name)
+    spec = importlib.util.spec_from_loader(loader.name, loader)
+    module = importlib.util.module_from_spec(spec)
+    loader.exec_module(module)
     # The 'forward' or 'another_forward' of 'TranslatedLayer' cannot be obtained
     # through 'func_name'. So set the special function name '__i_m_p_l__'.
     if hasattr(module, '__i_m_p_l__'):
