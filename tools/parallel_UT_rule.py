@@ -1203,7 +1203,6 @@ FOURTH_HIGH_PARALLEL_JOB_NEW = [
     'test_elementwise_sub_op',
     'test_compare_op',
     'test_simnet',
-    'test_label_semantic_roles',
     'test_normal',
     'test_tensor_scalar_type_promotion_static',
     'test_trt_group_norm_op',
