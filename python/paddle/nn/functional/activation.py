@@ -15,9 +15,9 @@
 import paddle
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
 from paddle.framework import core
+from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ...fluid.data_feeder import check_dtype, check_variable_and_dtype
-from ...fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 from ...fluid.framework import (
     _in_legacy_dygraph,
     convert_np_dtype_to_dtype_,
