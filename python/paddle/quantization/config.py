@@ -20,7 +20,7 @@ from typing import Dict, Union
 from .factory import QuanterFactory
 
 
-__all__ = ["QuantConfig", "TRTQuantConfig"]
+__all__ = ["QuantConfig"]
 
 # TODO: Implement quanted layer and fill the mapping dict
 DEFAULT_QAT_LAYER_MAPPINGS: Dict[Layer, Layer] = {}
@@ -438,14 +438,3 @@ class QuantConfig(object):
         if len(self._prefix2config) > 0:
             result += f"Layer prefix config: \n{self._prefix2config}\n"
         return result
-
-
-class TRTQuantConfig(QuantConfig):
-    r"""
-    Configure how to quantize a model or a part of the model which will be deployed
-    with NVIDIA TensorRT. It will map each layer to an instance of SingleLayerConfig
-    by the settings.
-    """
-
-    def __init__(self, activation: QuanterFactory, weight: QuanterFactory):
-        super(TRTQuantConfig, self).__init__(activation, weight)

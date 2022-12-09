@@ -15,7 +15,7 @@
 import paddle
 import unittest
 import paddle.nn.functional as F
-from paddle.quantization import TRTQuantConfig
+from paddle.quantization import QuantConfig
 from paddle.quantization.quanter import BaseQuanter
 from paddle.nn import Conv2D, Linear, ReLU, Sequential
 from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
@@ -55,7 +55,7 @@ class TestQuantConfig(unittest.TestCase):
         self.quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
 
     def test_global_config(self):
-        self.q_config = TRTQuantConfig(
+        self.q_config = QuantConfig(
             activation=self.quanter, weight=self.quanter
         )
         self.q_config._specify(self.model)
@@ -78,7 +78,7 @@ class TestQuantConfig(unittest.TestCase):
                 self.assertFalse(config._is_quantifiable(layer))
 
     def test_add_layer_config(self):
-        self.q_config = TRTQuantConfig(activation=None, weight=None)
+        self.q_config = QuantConfig(activation=None, weight=None)
         self.q_config.add_layer_config(
             [self.model.fc], activation=None, weight=self.quanter
         )
@@ -86,7 +86,7 @@ class TestQuantConfig(unittest.TestCase):
         self.assert_just_linear_weight_configure(self.model, self.q_config)
 
     def test_add_prefix_config(self):
-        self.q_config = TRTQuantConfig(activation=None, weight=None)
+        self.q_config = QuantConfig(activation=None, weight=None)
         self.q_config.add_prefix_config(
             [self.model.fc.full_name()], activation=None, weight=self.quanter
         )
@@ -94,7 +94,7 @@ class TestQuantConfig(unittest.TestCase):
         self.assert_just_linear_weight_configure(self.model, self.q_config)
 
     def test_add_type_config(self):
-        self.q_config = TRTQuantConfig(activation=None, weight=None)
+        self.q_config = QuantConfig(activation=None, weight=None)
         self.q_config.add_type_config(
             [Linear], activation=None, weight=self.quanter
         )
@@ -102,7 +102,7 @@ class TestQuantConfig(unittest.TestCase):
         self.assert_just_linear_weight_configure(self.model, self.q_config)
 
     def test_add_qat_layer_mapping(self):
-        self.q_config = TRTQuantConfig(activation=None, weight=None)
+        self.q_config = QuantConfig(activation=None, weight=None)
         self.q_config.add_qat_layer_mapping(Sequential, Conv2D)
         self.assertTrue(Sequential in self.q_config.qat_layer_mappings)
         self.assertTrue(
@@ -110,7 +110,7 @@ class TestQuantConfig(unittest.TestCase):
         )
 
     def test_add_custom_leaf(self):
-        self.q_config = TRTQuantConfig(activation=None, weight=None)
+        self.q_config = QuantConfig(activation=None, weight=None)
         self.q_config.add_custom_leaf(Sequential)
         self.assertTrue(Sequential in self.q_config.custom_leaves)
         self.assertTrue(self.q_config._is_custom_leaf(self.model.fc))
@@ -119,7 +119,7 @@ class TestQuantConfig(unittest.TestCase):
         self.assertFalse(self.q_config._is_real_leaf(self.model.fc))
 
     def test_need_observe(self):
-        self.q_config = TRTQuantConfig(activation=None, weight=None)
+        self.q_config = QuantConfig(activation=None, weight=None)
         self.q_config.add_layer_config(
             [self.model.fc], activation=self.quanter, weight=self.quanter
         )
@@ -129,7 +129,7 @@ class TestQuantConfig(unittest.TestCase):
         self.assertTrue(self.q_config._need_observe(self.model.fc))
 
     def test__get_observer(self):
-        self.q_config = TRTQuantConfig(activation=None, weight=None)
+        self.q_config = QuantConfig(activation=None, weight=None)
         self.q_config.add_layer_config(
             [self.model.fc], activation=self.quanter, weight=self.quanter
         )
@@ -138,7 +138,7 @@ class TestQuantConfig(unittest.TestCase):
         self.assertIsInstance(observer, BaseQuanter)
 
     def test_details(self):
-        self.q_config = TRTQuantConfig(
+        self.q_config = QuantConfig(
             activation=self.quanter, weight=self.quanter
         )
         self.q_config._specify(self.model)

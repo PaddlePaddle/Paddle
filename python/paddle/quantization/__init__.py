@@ -46,9 +46,9 @@ from ..fluid.contrib.slim.quantization.imperative.qat import (
 )
 
 
-from .config import QuantConfig, TRTQuantConfig
+from .config import QuantConfig
 from .quanters import FakeQuanterWithAbsMaxObserver
 
 __all__ = []
-__all__ += ["QuantConfig", "TRTQuantConfig"]
+__all__ += ["QuantConfig"]
 __all__ += ["FakeQuanterWithAbsMaxObserver"]

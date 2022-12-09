@@ -13,6 +13,10 @@
 # limitations under the License.
 
 import abc
+import numpy as np
+from typing import Union
+from collections.abc import Iterable
+import paddle
 from paddle.nn import Layer
 
 __all__ = ["BaseQuanter"]
@@ -32,17 +36,31 @@ class BaseQuanter(Layer, metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def scales(self):
+    def scales(self) -> Union[paddle.Tensor, np.ndarray]:
+        r"""
+        Get the scales used for quantization.
+        It can be none which meams the quanter didn't hold scales for quantization.
+        """
         pass
 
     @abc.abstractmethod
-    def zero_points(self):
+    def zero_points(self) -> Union[paddle.Tensor, np.ndarray]:
+        r"""
+        Get the zero points used for quantization.
+        It can be none which meams the quanter didn't hold zero points for quantization.
+        """
         pass
 
     @abc.abstractmethod
-    def quant_axis(self):
+    def quant_axis(self) -> Union[int, Iterable]:
+        r"""
+        Get the axis of quantization. None means tensor-wise quantization.
+        """
         pass
 
     @abc.abstractmethod
     def bit_length(self):
+        r"""
+        Get the bit length of quantization.
+        """
         pass
