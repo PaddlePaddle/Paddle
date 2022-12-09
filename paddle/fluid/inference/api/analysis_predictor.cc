@@ -2359,8 +2359,6 @@ USE_TRT_CONVERTER(round);
 USE_TRT_CONVERTER(sign);
 #endif
 USE_TRT_CONVERTER(rsqrt);
-#ifdef _WIN32
-#else
 USE_TRT_CONVERTER(fused_preln_embedding_eltwise_layernorm)
 USE_TRT_CONVERTER(fused_embedding_eltwise_layernorm);
 USE_TRT_CONVERTER(preln_skip_layernorm)
