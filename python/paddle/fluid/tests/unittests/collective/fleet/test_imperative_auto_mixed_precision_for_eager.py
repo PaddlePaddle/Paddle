@@ -1270,7 +1270,7 @@ class TestResnet(unittest.TestCase):
             )
 
             if enable_amp and (level == 'O2'):
-                resnet, optimizer = paddle.amp.amp_decorate(
+                resnet, optimizer = paddle.amp.auto_cast.amp_decorate(
                     models=resnet, optimizers=optimizer, level='O2'
                 )
 
