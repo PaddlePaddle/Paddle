@@ -1746,9 +1746,7 @@ class Completer:
                             op.type == "cast"
                             and ops[idx + 1].type == "elementwise_mul"
                         ):
-                            ref_var = vars[
-                                ops[idx + 1].input("X")[0]
-                            ]  # elementwise_mul 的输入
+                            ref_var = vars[ops[idx + 1].input("X")[0]]
                             ref_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
                                 ref_var
                             )
