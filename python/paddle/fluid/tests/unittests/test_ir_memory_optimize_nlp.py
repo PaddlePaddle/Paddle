@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,17 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# nlp model stack of op operate on lod. It's a classical test case in optimize pass.
+
 import unittest
 
-from test_eager_deletion_dynamic_rnn_base import TestBase
+from ir_memory_optimize_net_base import TestIrMemOptBase
 
 import paddle
 import paddle.fluid as fluid
 
-fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
 
-
-def gru_net(
+def lstm_net(
     data,
     label,
     dict_dim,
@@ -30,18 +30,21 @@ def gru_net(
     hid_dim=128,
     hid_dim2=96,
     class_dim=2,
-    emb_lr=400.0,
+    emb_lr=30.0,
 ):
     emb = fluid.layers.embedding(
         input=data,
         size=[dict_dim, emb_dim],
         param_attr=fluid.ParamAttr(learning_rate=emb_lr),
     )
-    fc0 = fluid.layers.fc(input=emb, size=hid_dim * 3)
-    gru_h = fluid.layers.dynamic_gru(input=fc0, size=hid_dim, is_reverse=False)
-    gru_max = fluid.layers.sequence_pool(input=gru_h, pool_type='max')
-    gru_max_tanh = paddle.tanh(gru_max)
-    fc1 = fluid.layers.fc(input=gru_max_tanh, size=hid_dim2, act='tanh')
+    fc0 = fluid.layers.fc(input=emb, size=hid_dim * 4)
+
+    lstm_h, c = fluid.layers.dynamic_lstm(
+        input=fc0, size=hid_dim * 4, is_reverse=False
+    )
+    lstm_max = fluid.layers.sequence_pool(input=lstm_h, pool_type='max')
+    lstm_max_tanh = paddle.tanh(lstm_max)
+    fc1 = fluid.layers.fc(input=lstm_max_tanh, size=hid_dim2, act='tanh')
     prediction = fluid.layers.fc(input=fc1, size=class_dim, act='softmax')
     cost = paddle.nn.functional.cross_entropy(
         input=prediction, label=label, reduction='none', use_softmax=False
@@ -50,9 +53,9 @@ def gru_net(
     return avg_cost
 
 
-class GRUTest(TestBase):
+class TestIrMemOptRNN(TestIrMemOptBase):
     def setUp(self):
-        self.net = gru_net
+        self.network = lstm_net
 
 
 if __name__ == "__main__":
