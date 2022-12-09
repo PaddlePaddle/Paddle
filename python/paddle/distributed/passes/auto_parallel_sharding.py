@@ -880,7 +880,6 @@ class ShardingPass(PassBase):
                 param_name = _get_base_name_from_grad_name(grad_name)
                 rank = sharding_info.get_var_rank(param_name)
                 grad_var = block.var(grad_name)
-                grad_numel = get_var_numel(grad_var)
 
                 if cur_group.acceptable(grad_var, rank):
                     assert grad_name not in grouped_grad_names
