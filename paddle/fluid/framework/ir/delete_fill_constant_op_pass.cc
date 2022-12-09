@@ -29,6 +29,11 @@ void FillConstData(phi::DenseTensor* out_t, T value) {
 }
 
 void DeleteFillConstantOpPass::ApplyImpl(ir::Graph* graph) const {
+  bool with_dynamic_shape = Get<bool>("with_dynamic_shape");
+  // Not support
+  if (with_dynamic_shape) {
+    return;
+  }
   FusePassBase::Init("delete_fill_constant_op_pass", graph);
   GraphPatternDetector detector;
   auto fill_constant_op =
