@@ -76,7 +76,7 @@ class ConvBNLayer(paddle.nn.Layer):
             bias_attr=False,
         )
 
-        self._batch_norm = paddle.nn.layer.norm.BatchNorm(num_filters, act=act)
+        self._batch_norm = paddle.nn.BatchNorm(num_filters, act=act)
 
     def forward(self, inputs):
         y = self._conv(inputs)

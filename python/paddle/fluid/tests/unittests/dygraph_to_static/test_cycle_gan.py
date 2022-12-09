@@ -40,7 +40,7 @@ import paddle
 from paddle.fluid.dygraph import to_variable
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
-from paddle.nn.layer.norm import BatchNorm
+from paddle.nn import BatchNorm
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,

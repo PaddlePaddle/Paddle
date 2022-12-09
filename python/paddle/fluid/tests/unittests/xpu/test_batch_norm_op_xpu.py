@@ -27,7 +27,6 @@ from xpu.get_test_cover_info import (
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.nn as nn
 import paddle.nn.functional as F
 
 paddle.enable_static()
@@ -367,7 +366,7 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
             for p in self.places:
                 with fluid.dygraph.guard(p):
                     x = paddle.randn([2, 6, 6, 4])
-                    net1 = nn.layer.norm.BatchNorm(
+                    net1 = paddle.nn.BatchNorm(
                         6,
                         param_attr=fluid.ParamAttr(
                             initializer=fluid.initializer.Constant(1.0)

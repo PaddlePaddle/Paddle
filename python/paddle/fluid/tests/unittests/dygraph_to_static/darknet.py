@@ -16,7 +16,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
-from paddle.nn.layer.norm import BatchNorm
+from paddle.nn import BatchNorm
 
 
 class ConvBNLayer(fluid.dygraph.Layer):

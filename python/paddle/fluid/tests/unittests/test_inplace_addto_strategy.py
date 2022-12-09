@@ -43,7 +43,7 @@ class ConvBNLayer(fluid.Layer):
             data_format=data_format,
         )
 
-        self._batch_norm = paddle.nn.layer.norm.BatchNorm(
+        self._batch_norm = paddle.nn.BatchNorm(
             num_filters, data_layout=data_format
         )
 

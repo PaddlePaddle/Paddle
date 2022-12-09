@@ -27,8 +27,7 @@ from paddle.fluid.initializer import MSRA
 from paddle.fluid.param_attr import ParamAttr
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
-from paddle.nn import Linear
-from paddle.nn.layer.norm import BatchNorm
+from paddle.nn import BatchNorm, Linear
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,

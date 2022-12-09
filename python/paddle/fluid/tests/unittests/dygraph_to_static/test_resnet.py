@@ -25,7 +25,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.jit import ProgramTranslator
-from paddle.nn.layer.norm import BatchNorm
+from paddle.nn import BatchNorm
 
 SEED = 2020
 IMAGENET1000 = 1281167

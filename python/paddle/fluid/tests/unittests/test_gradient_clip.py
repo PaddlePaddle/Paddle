@@ -529,7 +529,7 @@ class SimpleNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self.linear = paddle.nn.Linear(5, 5)
-        self.batch_norm = paddle.nn.layer.norm.BatchNorm(5)
+        self.batch_norm = paddle.nn.BatchNorm(5)
 
     def forward(self, x):
         x = self.linear(x)

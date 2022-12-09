@@ -708,7 +708,7 @@ class TestAmpDecorator(unittest.TestCase):
         for param in model.parameters():
             self.assertEqual((param.dtype == paddle.float32), True)
 
-        model = paddle.nn.layer.norm.BatchNorm(1)
+        model = paddle.nn.BatchNorm(1)
         model = paddle.amp.decorate(models=model, level='O2')
         for param in model.parameters():
             self.assertEqual((param.dtype == paddle.float32), True)

@@ -22,7 +22,7 @@ import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.nn.layer.norm import BatchNorm
+from paddle.nn import BatchNorm
 
 batch_size = 8
 train_parameters = {

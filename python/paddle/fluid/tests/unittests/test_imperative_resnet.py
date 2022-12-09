@@ -24,7 +24,7 @@ from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.nn.layer.norm import BatchNorm
+from paddle.nn import BatchNorm
 
 # NOTE(zhiqiu): run with FLAGS_cudnn_deterministic=1
 

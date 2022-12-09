@@ -26,8 +26,7 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
-from paddle.nn import Linear
-from paddle.nn.layer.norm import BatchNorm
+from paddle.nn import BatchNorm, Linear
 
 random.seed(0)
 np.random.seed(0)
