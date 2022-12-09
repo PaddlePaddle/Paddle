@@ -154,7 +154,7 @@ def _rnn_dynamic_graph(
     **kwargs
 ):
     time_step_index = 0 if time_major else 1
-    flat_inputs = paddle.flatten(inputs)
+    flat_inputs = flatten(inputs)
     time_steps = flat_inputs[0].shape[time_step_index]
 
     if initial_states is None:
@@ -250,11 +250,11 @@ def _rnn_static_graph(
         inputs = map_structure(_transpose_batch_time, inputs)
 
     if sequence_length:
-        max_seq_len = paddle.shape(paddle.flatten(inputs)[0])[0]
+        max_seq_len = paddle.shape(flatten(inputs)[0])[0]
         mask = sequence_lod.sequence_mask(
             sequence_length,
             maxlen=max_seq_len,
-            dtype=paddle.flatten(initial_states)[0].dtype,
+            dtype=flatten(initial_states)[0].dtype,
         )
         mask = paddle.transpose(mask, [1, 0])
     if is_reverse:
@@ -276,7 +276,7 @@ def _rnn_static_graph(
             )
 
         map_structure(rnn.update_memory, states, new_states)
-        flat_outputs = paddle.flatten(outputs)
+        flat_outputs = flatten(outputs)
         map_structure(rnn.step_output, outputs)
         map_structure(rnn.step_output, new_states)
 
