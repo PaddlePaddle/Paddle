@@ -100,6 +100,10 @@ def train_mlp(
         dp_group=dp_group,
     )
 
+    # just for test_coverage.
+    if shard_level == "os_g":
+        optimizer.set_lr(optimizer.get_lr())
+
     train_reader = paddle.batch(
         reader_decorator(), batch_size=batch_size, drop_last=True
     )
