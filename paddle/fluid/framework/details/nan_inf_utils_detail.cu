@@ -138,17 +138,47 @@ __global__ void CheckNanInfKernel(const T* value,
   PrintNanInfKernel(value, numel, print_num, debug_info);
 }
 
+template <typename T, int ReduceType>
+__device__ T BlockReduce(T value) {
+  __shared__ T shared_mem[1024];
+
+  shared_mem[threadIdx.x] = value;
+  __syncthreads();
+
+  for (int stride = blockDim.x >> 1; stride > 0; stride = stride >> 1) {
+    if (threadIdx.x < stride) {
+      T value0 = shared_mem[threadIdx.x];
+      T value1 = shared_mem[threadIdx.x + stride];
+      T reduce_value;
+      if (ReduceType == 0) {
+        // max
+        reduce_value = value0 > value1 ? value0 : value1;
+      } else if (ReduceType == 1) {
+        // min
+        reduce_value = value0 < value1 ? value0 : value1;
+      } else if (ReduceType == 2) {
+        // sum
+        reduce_value = value0 + value1;
+      }
+      shared_mem[threadIdx.x] = reduce_value;
+    }
+
+    if (stride > 16) {
+      __syncthreads();
+    }
+  }
+
+  __syncthreads();
+  return shared_mem[0];
+}
+
 __device__ void BlockReduceNumNanInfAndWrite(const int64_t num_nan,
                                              const int64_t num_inf,
                                              int64_t offset,
                                              int64_t* num_nan_ptr,
                                              int64_t* num_inf_ptr) {
-  __syncthreads();
-
-  int64_t block_num_nan =
-      phi::funcs::blockReduceSum<int64_t>(num_nan, FINAL_MASK);
-  int64_t block_num_inf =
-      phi::funcs::blockReduceMin<int64_t>(num_inf, FINAL_MASK);
+  int64_t block_num_nan = BlockReduce<int64_t, 2>(num_nan);
+  int64_t block_num_inf = BlockReduce<int64_t, 2>(num_inf);
 
   if (threadIdx.x == 0) {
     num_nan_ptr[offset] = block_num_nan;

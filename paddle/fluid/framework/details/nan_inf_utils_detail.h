@@ -70,10 +70,17 @@ HOSTDEVICE void PrintForDifferentLevel(const char* debug_info,
         static_cast<float>(mean_value));
     if (check_nan_inf_level == 0) {
 #if defined(__NVCC__) || defined(__HIPCC__)
-      PADDLE_ENFORCE(false, "There are NAN or INF in %s.", debug_info);
+      PADDLE_ENFORCE(false,
+                     "There are NAN or INF (num_nan=%ld, num_inf=%lld) in %s.",
+                     static_cast<long long>(num_nan),  // NOLINT
+                     static_cast<long long>(num_inf),  // NOLINT
+                     debug_info);
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "There are NAN or INF in %s.", debug_info));
+          "There are NAN or INF (num_nan=%lld, num_inf=%lld) in %s.",
+          static_cast<long long>(num_nan),  // NOLINT
+          static_cast<long long>(num_inf),  // NOLINT
+          debug_info));
 #endif
     }
   } else if (NeedPrint<T, MT>(max_value, min_value, check_nan_inf_level)) {
