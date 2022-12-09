@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 
-from functools import reduce
 from collections import defaultdict
+from functools import reduce
+
+import paddle
 from paddle.optimizer import Optimizer
+
 from .line_search_dygraph import _strong_wolfe
 
 
