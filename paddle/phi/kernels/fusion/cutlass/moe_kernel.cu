@@ -17,7 +17,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
-#include "paddle/phi/kernels/gpu/moe_kernel_imp.h"
+#include "paddle/phi/kernels/fusion/cutlass/moe_kernel_impl.h"
 
 // Ignore CUTLASS warnings about type punning
 #pragma GCC diagnostic push
@@ -32,12 +32,13 @@
 #include "cutlass/gemm/kernel/default_gemm_grouped.h"
 #include "cutlass/numeric_conversion.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/kernels/fusion/cutlass/linear_combination_ft_gelu.h"
+#include "paddle/phi/kernels/fusion/cutlass/moe_cutlass_kernel.h"
 #include "paddle/phi/kernels/gpu/default_moe_fc_traits.h"
-#include "paddle/phi/kernels/gpu/linear_combination_ft_gelu.h"
-#include "paddle/phi/kernels/gpu/moe_cutlass_kernel.h"
 #pragma GCC diagnostic pop
 namespace phi {
 
+namespace {
 inline int getSMVersion() {
   const int device = phi::backends::gpu::GetCurrentDeviceId();
   const phi::gpuDeviceProp prop =
@@ -118,6 +119,10 @@ struct Epilogue<ElementType,
       ElementAccumulator,
       cutlass::epilogue::thread::ScaleType::Nothing>;
 };
+
+}  // namespace
+
+namespace fusion {
 
 template <typename T>
 void initialize_expert_choice_route_kernelLauncher(
@@ -207,11 +212,10 @@ void invokeMaskedSoftMax(T* buffer,
   } else if (block.x > 0) {
     SOFTMAX_KERNEL(1)
   } else {
-    PADDLE_ENFORCE_EQ(
-              true,
-              false, 
-              phi::errors::InvalidArgument(
-                  "Softmax kernel only support columns in 0 - 4096. "));
+    PADDLE_ENFORCE_EQ(true,
+                      false,
+                      phi::errors::InvalidArgument(
+                          "Softmax kernel only support columns in 0 - 4096. "));
   }
 }
 
@@ -453,18 +457,18 @@ void generic_moe_gemm_kernelLauncher(const T* A,
 
 template <typename T>
 void gemm_bias_act(const T* A,
-                    const T* B,
-                    const T* weight_scales,
-                    const T* biases,
-                    T* C,
-                    int64_t* total_rows_before_expert,
-                    int64_t gemm_n,
-                    int64_t gemm_k,
-                    int num_experts,
-                    int sm_,
-                    int multi_processor_count_,
-                    const std::string& act_type,
-                    cudaStream_t stream) {
+                   const T* B,
+                   const T* weight_scales,
+                   const T* biases,
+                   T* C,
+                   int64_t* total_rows_before_expert,
+                   int64_t gemm_n,
+                   int64_t gemm_k,
+                   int num_experts,
+                   int sm_,
+                   int multi_processor_count_,
+                   const std::string& act_type,
+                   cudaStream_t stream) {
   if (act_type == "gelu") {
     if (sm_ == 75) {
       generic_moe_gemm_kernelLauncher<T,
@@ -500,13 +504,13 @@ void gemm_bias_act(const T* A,
           stream);
     } else {
       PADDLE_ENFORCE_EQ(
-        true,
-        false, 
-        phi::errors::InvalidArgument(
-            "EcMoe gemm_bias_act Kernel only support SM75/SM80/SM86. "));
+          true,
+          false,
+          phi::errors::InvalidArgument(
+              "EcMoe gemm_bias_act Kernel only support SM75/SM80/SM86. "));
     }
   } else {
-    // act type is relu. 
+    // act type is relu.
     if (sm_ == 75) {
       generic_moe_gemm_kernelLauncher<T,
                                       T,
@@ -541,10 +545,10 @@ void gemm_bias_act(const T* A,
           stream);
     } else {
       PADDLE_ENFORCE_EQ(
-        true,
-        false, 
-        phi::errors::InvalidArgument(
-            "EcMoe gemm_bias_act Kernel only support SM75/SM80/SM86. "));
+          true,
+          false,
+          phi::errors::InvalidArgument(
+              "EcMoe gemm_bias_act Kernel only support SM75/SM80/SM86. "));
     }
   }
 }
@@ -592,11 +596,10 @@ void gemm(const T* A,
                                                       multi_processor_count_,
                                                       stream);
   } else {
-    PADDLE_ENFORCE_EQ(
-        true,
-        false, 
-        phi::errors::InvalidArgument(
-            "EcMoe gemm Kernel only support SM75/SM80/SM86. "));
+    PADDLE_ENFORCE_EQ(true,
+                      false,
+                      phi::errors::InvalidArgument(
+                          "EcMoe gemm Kernel only support SM75/SM80/SM86. "));
   }
 }
 
@@ -815,18 +818,18 @@ void MoeKernel(const Context& ctx,
   const T* fc2_scales = nullptr;
   if (IS_FP16) {
     gemm_bias_act(reinterpret_cast<const __half*>(permuted_data_),
-                   reinterpret_cast<const __half*>(fc1_expert_weights),
-                   reinterpret_cast<const __half*>(fc1_scales),
-                   reinterpret_cast<const __half*>(fc1_expert_biases),
-                   reinterpret_cast<__half*>(fc1_result_),
-                   total_rows_before_expert_,
-                   inter_size,
-                   hidden_size,
-                   num_experts,
-                   sm_,
-                   multi_processor_count_,
-                   act_type,
-                   ctx.stream());
+                  reinterpret_cast<const __half*>(fc1_expert_weights),
+                  reinterpret_cast<const __half*>(fc1_scales),
+                  reinterpret_cast<const __half*>(fc1_expert_biases),
+                  reinterpret_cast<__half*>(fc1_result_),
+                  total_rows_before_expert_,
+                  inter_size,
+                  hidden_size,
+                  num_experts,
+                  sm_,
+                  multi_processor_count_,
+                  act_type,
+                  ctx.stream());
     gemm(reinterpret_cast<const __half*>(fc1_result_),
          reinterpret_cast<const __half*>(fc2_expert_weights),
          reinterpret_cast<const __half*>(fc2_scales),
@@ -840,18 +843,18 @@ void MoeKernel(const Context& ctx,
          ctx.stream());
   } else {
     gemm_bias_act<float>(reinterpret_cast<const float*>(permuted_data_),
-                          reinterpret_cast<const float*>(fc1_expert_weights),
-                          reinterpret_cast<const float*>(fc1_scales),
-                          reinterpret_cast<const float*>(fc1_expert_biases),
-                          reinterpret_cast<float*>(fc1_result_),
-                          total_rows_before_expert_,
-                          inter_size,
-                          hidden_size,
-                          num_experts,
-                          sm_,
-                          multi_processor_count_,
-                          act_type,
-                          ctx.stream());
+                         reinterpret_cast<const float*>(fc1_expert_weights),
+                         reinterpret_cast<const float*>(fc1_scales),
+                         reinterpret_cast<const float*>(fc1_expert_biases),
+                         reinterpret_cast<float*>(fc1_result_),
+                         total_rows_before_expert_,
+                         inter_size,
+                         hidden_size,
+                         num_experts,
+                         sm_,
+                         multi_processor_count_,
+                         act_type,
+                         ctx.stream());
     gemm<float>(reinterpret_cast<const float*>(fc1_result_),
                 reinterpret_cast<const float*>(fc2_expert_weights),
                 reinterpret_cast<const float*>(fc2_scales),
@@ -879,7 +882,9 @@ void MoeKernel(const Context& ctx,
                                       true,
                                       ctx.stream());
 }
+
+}  // namespace fusion
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    moe, GPU, ALL_LAYOUT, phi::MoeKernel, float, phi::dtype::float16) {}
+    moe, GPU, ALL_LAYOUT, phi::fusion::MoeKernel, float, phi::dtype::float16) {}

@@ -27,11 +27,11 @@ static inline size_t pad_to_multiple_of_16(const size_t& input) {
 }
 
 /*
-WarpReduce multi values. 
-TODO(zhengzekang): Add blocksize templates to reduce shared memory usage. 
+WarpReduce multi values.
+TODO(zhengzekang): Add blocksize templates to reduce shared memory usage.
 */
 template <typename T, int NUM>
-__inline__ __device__ T warpReduceSumV2(T *val) {
+__inline__ __device__ T warpReduceSumV2(T* val) {
 #pragma unroll
   for (int i = 0; i < NUM; i++) {
 #pragma unroll
@@ -42,7 +42,7 @@ __inline__ __device__ T warpReduceSumV2(T *val) {
 }
 
 template <typename T, int NUM>
-__inline__ __device__ T blockReduceSumV2(T *val) {
+__inline__ __device__ T blockReduceSumV2(T* val) {
   static __shared__ T shared[NUM][33];
   int lane = threadIdx.x & 0x1f;
   int wid = threadIdx.x >> 5;
@@ -68,7 +68,7 @@ __inline__ __device__ T blockReduceSumV2(T *val) {
 }
 
 template <typename T, int NUM>
-__inline__ __device__ T warpReduceMaxV2(T *val) {
+__inline__ __device__ T warpReduceMaxV2(T* val) {
 #pragma unroll
   for (int i = 0; i < NUM; i++) {
 #pragma unroll
@@ -79,7 +79,7 @@ __inline__ __device__ T warpReduceMaxV2(T *val) {
 }
 
 template <typename T, int NUM>
-__inline__ __device__ T blockReduceMaxV2(T *val) {
+__inline__ __device__ T blockReduceMaxV2(T* val) {
   static __shared__ T shared[32][NUM];
   int lane = threadIdx.x & 0x1f;  // in-warp idx
   int wid = threadIdx.x >> 5;     // warp idx
@@ -135,7 +135,7 @@ class CubKeyValueSorter {
   int num_bits_;
 };
 
-// ===== CUB Sorting things ===== 
+// ===== CUB Sorting things =====
 CubKeyValueSorter::CubKeyValueSorter()
     : num_experts_(0), num_bits_(sizeof(int) * 8) {}
 
@@ -237,7 +237,7 @@ void CubKeyValueSorter::run(void* workspace,
 
 CubKeyValueSorter sorter_;
 
-// --------      getWorkspaceSize      -------- // 
+// --------      getWorkspaceSize      -------- //
 template <typename T>
 size_t getWorkspaceSize(const int num_rows,
                         const int hidden_size,
@@ -284,7 +284,7 @@ size_t getWorkspaceSize(const int num_rows,
   return total_ws_bytes;
 }
 
-// --------      initialize_expert_choice_route_kernel      -------- // 
+// --------      initialize_expert_choice_route_kernel      -------- //
 template <typename T>
 __global__ void initialize_expert_choice_route_kernel(
     int* expert_for_source_row,
@@ -308,7 +308,7 @@ __global__ void initialize_expert_choice_route_kernel(
   }
 }
 
-// --------      softmax_kernel      -------- // 
+// --------      softmax_kernel      -------- //
 template <int ITEMS_PER_THREAD, typename T>
 __global__ void softmax_kernel_v4(
     T* qk_buf_,
@@ -582,7 +582,7 @@ __global__ void softmax_kernel_v5_half2(T* qk_buf_,
   }
 }
 
-// --------      transpose_kernel      -------- // 
+// --------      transpose_kernel      -------- //
 template <typename T>
 __global__ void transposeAxis01(
     T* out, T* in, const int dim0, const int dim1, const int dim2) {
@@ -600,7 +600,7 @@ __global__ void transposeAxis01(
   }
 }
 
-// --------      padding_kernel      -------- // 
+// --------      padding_kernel      -------- //
 template <typename T>
 __global__ void paddingKernel(T* output1,
                               int* output2,
@@ -637,7 +637,7 @@ __global__ void paddingKernel(T* output1,
   }
 }
 
-// --------      general_topk_pair_sort_kernel      -------- // 
+// --------      general_topk_pair_sort_kernel      -------- //
 template <typename T, int BLOCK_THREADS, int ITEMS_PER_THREAD>
 __global__ void general_topk_pair_sort(T* out_keys,
                                        int* out_values,
@@ -686,7 +686,7 @@ __global__ void general_topk_pair_sort(T* out_keys,
       .Store(out_values + block_offset, thread_values);
 }
 
-// --------      finalize_moe_routing_kernel      -------- // 
+// --------      finalize_moe_routing_kernel      -------- //
 template <typename T>
 __global__ void finalize_moe_routing_kernel(
     const T* expanded_permuted_rows,
@@ -729,7 +729,7 @@ __global__ void finalize_moe_routing_kernel(
   }
 }
 
-// --------      initialize_moe_routing_kernel      -------- // 
+// --------      initialize_moe_routing_kernel      -------- //
 template <typename T, int VecSize>
 __global__ void initialize_moe_routing_kernel(
     const T* unpermuted_input,
