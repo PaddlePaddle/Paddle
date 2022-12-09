@@ -127,7 +127,7 @@ class DistributedContext:
         # flag whether scale gradient with dp size
         self._gradient_scale = True
 
-        # A flag indicates whether default data parallel
+        # A flag indicates whether use default data parallel
         self._default_data_parallel_mode = True
 
     @property
