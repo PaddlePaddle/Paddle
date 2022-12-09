@@ -2294,14 +2294,6 @@ class TestBook(LayerTest):
             return values
             return indices
 
-    def make_polygon_box_transform(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name='x', shape=[8, 4, 4], dtype="float32")
-            output = layers.polygon_box_transform(input=x)
-            return output
-
     def make_l2_normalize(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
