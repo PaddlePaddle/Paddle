@@ -15,15 +15,15 @@ limitations under the License. */
 #pragma once
 #include <vector>
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/operators/math/cpu_vec.h"
-#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/cpu_info.h"
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace paddle {
 namespace operators {
@@ -32,7 +32,7 @@ namespace math {
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+using EigenMatrix = phi::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename T>
 struct ValueClip {
@@ -104,7 +104,7 @@ class SoftmaxEigen {
 };
 
 template <typename DeviceContext>
-class SoftmaxEigen<DeviceContext, platform::float16> {
+class SoftmaxEigen<DeviceContext, phi::dtype::float16> {
  public:
   void operator()(const DeviceContext& context,
                   const int axis_dim,
@@ -114,8 +114,8 @@ class SoftmaxEigen<DeviceContext, platform::float16> {
     constexpr int kClassDim = 1;
     constexpr int kAxisDim = 1;
 
-    auto logits = EigenMatrix<platform::float16>::From(*X);
-    auto softmax = EigenMatrix<platform::float16>::From(*Y);
+    auto logits = EigenMatrix<phi::dtype::float16>::From(*X);
+    auto softmax = EigenMatrix<phi::dtype::float16>::From(*Y);
 
     const int batch_size = logits.dimension(kBatchDim);
     const int num_classes = logits.dimension(kClassDim);
@@ -139,7 +139,7 @@ class SoftmaxEigen<DeviceContext, platform::float16> {
           (logits - logits.maximum(along_axis)
                         .reshape(batch_by_one)
                         .broadcast(one_by_class))
-              .unaryExpr(ValueClip<platform::float16>());
+              .unaryExpr(ValueClip<phi::dtype::float16>());
     } else {
       // axis != -1, class dimension split into (axis, remain), max and sum
       // should be calculated along axis dimension
@@ -149,7 +149,7 @@ class SoftmaxEigen<DeviceContext, platform::float16> {
                                                    .reshape(batch_one_remain)
                                                    .broadcast(one_axis_one)
                                                    .reshape(batch_classes))
-              .unaryExpr(ValueClip<platform::float16>());
+              .unaryExpr(ValueClip<phi::dtype::float16>());
     }
 
     softmax.device(*context.eigen_device()) = softmax.exp();
@@ -162,7 +162,7 @@ class SoftmaxEigen<DeviceContext, platform::float16> {
 };
 
 template <typename DeviceContext>
-class SoftmaxEigen<DeviceContext, platform::bfloat16> {
+class SoftmaxEigen<DeviceContext, phi::dtype::bfloat16> {
  public:
   void operator()(const DeviceContext& context,
                   const int axis_dim,
@@ -172,8 +172,8 @@ class SoftmaxEigen<DeviceContext, platform::bfloat16> {
     constexpr int kClassDim = 1;
     constexpr int kAxisDim = 1;
 
-    auto logits = EigenMatrix<platform::bfloat16>::From(*X);
-    auto softmax = EigenMatrix<platform::bfloat16>::From(*Y);
+    auto logits = EigenMatrix<phi::dtype::bfloat16>::From(*X);
+    auto softmax = EigenMatrix<phi::dtype::bfloat16>::From(*Y);
 
     const int batch_size = logits.dimension(kBatchDim);
     const int num_classes = logits.dimension(kClassDim);
@@ -197,7 +197,7 @@ class SoftmaxEigen<DeviceContext, platform::bfloat16> {
           (logits - logits.maximum(along_axis)
                         .reshape(batch_by_one)
                         .broadcast(one_by_class))
-              .unaryExpr(ValueClip<platform::bfloat16>());
+              .unaryExpr(ValueClip<phi::dtype::bfloat16>());
     } else {
       // axis != -1, class dimension split into (axis, remain), max and sum
       // should be calculated along axis dimension
@@ -207,7 +207,7 @@ class SoftmaxEigen<DeviceContext, platform::bfloat16> {
                                                    .reshape(batch_one_remain)
                                                    .broadcast(one_axis_one)
                                                    .reshape(batch_classes))
-              .unaryExpr(ValueClip<platform::bfloat16>());
+              .unaryExpr(ValueClip<phi::dtype::bfloat16>());
     }
 
     softmax.device(*context.eigen_device()) = softmax.exp();
@@ -247,21 +247,24 @@ class SoftmaxFunctor<DeviceContext, T, enable_if_CPU<DeviceContext>> {
     const int batch_size = in_dims[kBatchDim];
     const int num_remain = num_classes / axis_dim;
 
-    if (num_remain == 1 && platform::MayIUse(platform::avx)) {
+    if (num_remain == 1 &&
+        phi::backends::cpu::MayIUse(phi::backends::cpu::avx)) {
       const T* in_data = X->data<T>();
       T* out_data = Y->data<T>();
       for (int bs = 0; bs < batch_size; ++bs) {
         T max_val = *std::max_element(in_data, in_data + num_classes);
         max_val *= static_cast<T>(-1);
-        vec_add_bias<T, platform::avx>(num_classes, max_val, in_data, out_data);
-        vec_clip<T, platform::avx>(
+        vec_add_bias<T, phi::backends::cpu::avx>(
+            num_classes, max_val, in_data, out_data);
+        vec_clip<T, phi::backends::cpu::avx>(
             num_classes, static_cast<T>(-64), out_data, out_data);
         vec_exp<T>(num_classes, out_data, out_data);
 
         T sum = 0;
-        vec_sum<T, platform::avx>(num_classes, out_data, &sum);
+        vec_sum<T, phi::backends::cpu::avx>(num_classes, out_data, &sum);
         sum = static_cast<T>(1) / sum;
-        vec_scal<T, platform::avx>(num_classes, sum, out_data, out_data);
+        vec_scal<T, phi::backends::cpu::avx>(
+            num_classes, sum, out_data, out_data);
 
         in_data += num_classes;
         out_data += num_classes;
@@ -308,16 +311,16 @@ class SoftmaxGradEigen {
 };
 
 template <typename DeviceContext>
-class SoftmaxGradEigen<DeviceContext, platform::float16> {
+class SoftmaxGradEigen<DeviceContext, phi::dtype::float16> {
  public:
   void operator()(const DeviceContext& context,
                   const int axis_dim,
                   const phi::DenseTensor* y,
                   const phi::DenseTensor* y_grad,
                   phi::DenseTensor* x_grad) {
-    auto softmax = EigenMatrix<platform::float16>::From(*y);
-    auto softmax_grad = EigenMatrix<platform::float16>::From(*y_grad);
-    auto logits_grad = EigenMatrix<platform::float16>::From(*x_grad);
+    auto softmax = EigenMatrix<phi::dtype::float16>::From(*y);
+    auto softmax_grad = EigenMatrix<phi::dtype::float16>::From(*y_grad);
+    auto logits_grad = EigenMatrix<phi::dtype::float16>::From(*x_grad);
 
     constexpr int kBatchDim = 0;
     constexpr int kClassDim = 1;
@@ -342,16 +345,16 @@ class SoftmaxGradEigen<DeviceContext, platform::float16> {
 };
 
 template <typename DeviceContext>
-class SoftmaxGradEigen<DeviceContext, platform::bfloat16> {
+class SoftmaxGradEigen<DeviceContext, phi::dtype::bfloat16> {
  public:
   void operator()(const DeviceContext& context,
                   const int axis_dim,
                   const phi::DenseTensor* y,
                   const phi::DenseTensor* y_grad,
                   phi::DenseTensor* x_grad) {
-    auto softmax = EigenMatrix<platform::bfloat16>::From(*y);
-    auto softmax_grad = EigenMatrix<platform::bfloat16>::From(*y_grad);
-    auto logits_grad = EigenMatrix<platform::bfloat16>::From(*x_grad);
+    auto softmax = EigenMatrix<phi::dtype::bfloat16>::From(*y);
+    auto softmax_grad = EigenMatrix<phi::dtype::bfloat16>::From(*y_grad);
+    auto logits_grad = EigenMatrix<phi::dtype::bfloat16>::From(*x_grad);
 
     constexpr int kBatchDim = 0;
     constexpr int kClassDim = 1;
@@ -400,17 +403,20 @@ class SoftmaxGradFunctor<DeviceContext, T, enable_if_CPU<DeviceContext>> {
     const int batch_size = out_dims[kBatchDim];
     const int num_remain = num_classes / axis_dim;
 
-    if (num_remain == 1 && platform::MayIUse(platform::avx)) {
+    if (num_remain == 1 &&
+        phi::backends::cpu::MayIUse(phi::backends::cpu::avx)) {
       const T* out_data = y->data<T>();
       const T* out_grad = y_grad->data<T>();
       T* in_grad = x_grad->data<T>();
       for (int bs = 0; bs < batch_size; ++bs) {
         T scalar;
-        vec_mul_reduce<T, platform::avx>(
+        vec_mul_reduce<T, phi::backends::cpu::avx>(
             num_classes, out_grad, out_data, &scalar);
         scalar *= static_cast<T>(-1);
-        vec_add_bias<T, platform::avx>(num_classes, scalar, out_grad, in_grad);
-        vec_mul<T, platform::avx>(num_classes, out_data, in_grad, in_grad);
+        vec_add_bias<T, phi::backends::cpu::avx>(
+            num_classes, scalar, out_grad, in_grad);
+        vec_mul<T, phi::backends::cpu::avx>(
+            num_classes, out_data, in_grad, in_grad);
         out_data += num_classes;
         out_grad += num_classes;
         in_grad += num_classes;

@@ -36,15 +36,26 @@
 #define ALIGN32_END __attribute__((aligned(32)))
 #endif  // _WIN32
 
+#ifndef PADDLE_WITH_XBYAK
+#ifdef _WIN32
+#define cpuid(reg, x) __cpuidex(reg, x, 0)
+#else
+#if !defined(WITH_NV_JETSON) && !defined(PADDLE_WITH_ARM) && \
+    !defined(PADDLE_WITH_SW) && !defined(PADDLE_WITH_MIPS)
+#include <cpuid.h>
+inline void cpuid(int reg[4], int x) {
+  __cpuid_count(x, 0, reg[0], reg[1], reg[2], reg[3]);
+}
+#endif
+#endif
+#endif
+
 namespace phi {
 namespace backends {
 namespace cpu {
 
 //! Get the minimum chunk size for buddy allocator.
-inline size_t CpuMinChunkSize() {
-  // Allow to allocate the minimum chunk size is 4 KB.
-  return 1 << 12;
-}
+size_t CpuMinChunkSize();
 
 typedef enum {
   isa_any,
@@ -59,6 +70,8 @@ typedef enum {
   avx512_bf16,
 } cpu_isa_t;  // Instruction set architecture
 
+// May I use some instruction
+bool MayIUse(const cpu_isa_t cpu_isa);
 }  // namespace cpu
 }  // namespace backends
 }  // namespace phi

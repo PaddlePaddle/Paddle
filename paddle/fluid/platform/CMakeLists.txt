@@ -60,10 +60,7 @@ cc_test(
   SRCS enforce_test.cc
   DEPS enforce)
 
-set(CPU_INFO_DEPS gflags glog enforce)
-if(WITH_XBYAK)
-  list(APPEND CPU_INFO_DEPS xbyak)
-endif()
+set(CPU_INFO_DEPS gflags glog enforce phi_backends)
 cc_library(
   cpu_info
   SRCS cpu_info.cc
