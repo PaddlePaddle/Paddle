@@ -384,6 +384,8 @@ class PRChecker:
                 "ipipe_log_param_PRECISION_TEST_Cases_ratio: %s"
                 % PRECISION_TEST_Cases_ratio
             )
+            print("The unittests in prec delta is shown as following:")
+            print(ut_list)
             return '\n'.join(ut_list)
         else:
             for f in file_list:
