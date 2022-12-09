@@ -846,7 +846,7 @@ class Transformer(Layer):
             step_log_probs = mask_probs(
                 step_log_probs, finished, noend_mask_tensor
             )
-            log_probs = layers.elementwise_add(
+            log_probs = paddle.tensor.math._add_with_axis(
                 x=step_log_probs, y=log_probs, axis=0
             )
             log_probs = paddle.reshape(

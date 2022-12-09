@@ -123,7 +123,7 @@ class TestElementwiseAddBroadcastDoubleGradCheck(unittest.TestCase):
         y = layers.data('y', shape[:-1], False, dtype)
         x.persistable = True
         y.persistable = True
-        out = layers.elementwise_add(x, y, axis=0)
+        out = paddle.tensor.math._add_with_axis(x, y, axis=0)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape[:-1]).astype(dtype)
 
@@ -191,7 +191,7 @@ class TestElementwiseSubBroadcastDoubleGradCheck(unittest.TestCase):
         y = layers.data('y', shape[:-1], False, dtype)
         x.persistable = True
         y.persistable = True
-        out = layers.elementwise_sub(x, y, axis=0)
+        out = paddle.tensor.math._subtract_with_axis(x, y, axis=0)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape[:-1]).astype(dtype)
 
@@ -320,7 +320,7 @@ class TestElementwiseAddBroadcastTripleGradCheck(unittest.TestCase):
         y = layers.data('y', shape[:-1], False, dtype)
         x.persistable = True
         y.persistable = True
-        out = layers.elementwise_add(x, y, axis=0)
+        out = paddle.tensor.math._add_with_axis(x, y, axis=0)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape[:-1]).astype(dtype)
 
@@ -390,7 +390,7 @@ class TestElementwiseMulBroadcastTripleGradCheck(unittest.TestCase):
         y = layers.data('y', shape[:-1], False, dtype)
         x.persistable = True
         y.persistable = True
-        out = layers.elementwise_add(x, y, axis=0)
+        out = paddle.tensor.math._add_with_axis(x, y, axis=0)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape[:-1]).astype(dtype)
 

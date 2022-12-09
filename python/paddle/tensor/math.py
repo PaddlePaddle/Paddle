@@ -31,7 +31,7 @@ from ..fluid.data_feeder import (
     check_variable_and_dtype,
     convert_dtype,
 )
-from ..fluid.layers import elementwise_sub, utils
+from ..fluid.layers import utils
 from ..framework import (
     LayerHelper,
     _in_legacy_dygraph,
@@ -1053,104 +1053,6 @@ def _subtract_with_axis(x, y, axis=-1, name=None):
 
 
 def _multiply_with_axis(x, y, axis=-1, name=None):
-    """
-    multiply two tensors element-wise. The equation is:
-
-    .. math::
-        out = x * y
-
-    Note:
-        ``paddle.tensor.math._multiply_with_axis`` supports broadcasting. If you would like to know more about broadcasting, please refer to `Introduction to Tensor`_ .
-
-        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-
-    Args:
-        x (Tensor): the input tensor, its data type should be one of float32, float64, int32, int64, bool.
-        y (Tensor): the input tensor, its data type should be one of float32, float64, int32, int64, bool.
-        axis (int32, optional): If X.dimension != Y.dimension, Y.dimension must be a subsequence of x.dimension. And axis is the start dimension index for broadcasting Y onto X.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-            import paddle
-
-            def gen_data():
-                return {
-                    "x": np.array([2, 3, 4]).astype('float32'),
-                    "y": np.array([1, 5, 2]).astype('float32')
-                }
-            paddle.enable_static()
-            x = fluid.data(name="x", shape=[3], dtype='float32')
-            y = fluid.data(name="y", shape=[3], dtype='float32')
-            z = paddle.tensor.math._multiply_with_axis(x, y)
-            # z = x * y
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            z_value = exe.run(feed=gen_data(),
-                                fetch_list=[z.name])
-
-            print(z_value) # [2., 15., 8.]
-
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-            import paddle
-
-            def gen_data():
-                return {
-                    "x": np.ones((2, 3, 4, 5)).astype('float32'),
-                    "y": np.zeros((3, 4)).astype('float32')
-                }
-            paddle.enable_static()
-            x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
-            y = fluid.data(name="y", shape=[3,4], dtype='float32')
-            z = paddle.tensor.math._multiply_with_axis(x, y, axis=1)
-            # z = x * y
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-
-            z_value = exe.run(feed=gen_data(),
-                                fetch_list=[z.name])
-
-            print(z_value) # z.shape=[2,3,4,5]
-
-
-        ..  code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-            import paddle
-
-            def gen_data():
-                return {
-                    "x": np.random.randint(1, 5, size=[2, 3, 4, 5]).astype('float32'),
-                    "y": np.random.randint(1, 5, size=[5]).astype('float32')
-                }
-            paddle.enable_static()
-            x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
-            y = fluid.data(name="y", shape=[5], dtype='float32')
-            z = paddle.tensor.math._multiply_with_axis(x, y, axis=3)
-            # z = x * y
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-
-            z_value = exe.run(feed=gen_data(),
-                                fetch_list=[z.name])
-            print(z_value) # z.shape=[2,3,4,5]
-
-    """
     # opt performance, only dynamic mode needs reshape
     if in_dygraph_mode():
         return _elementwise_op_with_axis_in_dygraph(
@@ -1173,103 +1075,6 @@ def _multiply_with_axis(x, y, axis=-1, name=None):
 
 
 def _divide_with_axis(x, y, axis=-1, name=None):
-    """
-    Divide two tensors element-wise. The equation is:
-
-    .. math::
-        out = x / y
-
-    Note:
-        ``paddle.tensor.math._divide_with_axis`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
-
-        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-
-    Args:
-        x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
-        y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
-        axis (int32, optional): If X.dimension != Y.dimension, Y.dimension must be a subsequence of x.dimension. And axis is the start dimension index for broadcasting Y onto X.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-            import paddle
-
-            def gen_data():
-                return {
-                    "x": np.array([2, 3, 4]).astype('float32'),
-                    "y": np.array([1, 5, 2]).astype('float32')
-                }
-            paddle.enable_static()
-            x = fluid.data(name="x", shape=[3], dtype='float32')
-            y = fluid.data(name="y", shape=[3], dtype='float32')
-            z = paddle.tensor.math._divide_with_axis(x, y)
-            # z = x / y
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            z_value = exe.run(feed=gen_data(),
-                                fetch_list=[z.name])
-
-            print(z_value) # [2., 0.6, 2.]
-
-
-        .. code-block:: python
-
-            import numpy as np
-            import paddle
-
-            def gen_data():
-                return {
-                    "x": np.ones((2, 3, 4, 5)).astype('float32'),
-                    "y": np.zeros((3, 4)).astype('float32')
-                }
-            paddle.enable_static()
-            x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
-            y = fluid.data(name="y", shape=[3,4], dtype='float32')
-            z = paddle.tensor.math._divide_with_axis(x, y, axis=1)
-            # z = x / y
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-
-            z_value = exe.run(feed=gen_data(),
-                                fetch_list=[z.name])
-
-            print(z_value) # z.shape=[2,3,4,5]
-
-
-        ..  code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-            import paddle
-
-            def gen_data():
-                return {
-                    "x": np.random.randint(1, 5, size=[2, 3, 4, 5]).astype('float32'),
-                    "y": np.random.randint(1, 5, size=[5]).astype('float32')
-                }
-            paddle.enable_static()
-            x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
-            y = fluid.data(name="y", shape=[5], dtype='float32')
-            z = paddle.tensor.math._divide_with_axis(x, y, axis=3)
-            # z = x / y
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-
-            z_value = exe.run(feed=gen_data(),
-                                fetch_list=[z.name])
-            print(z_value) # z.shape=[2,3,4,5]
-
-    """
     # opt performance, only dynamic mode needs reshape
     if in_dygraph_mode():
         return _elementwise_op_with_axis_in_dygraph(x, y, axis, name, "divide")
@@ -5181,7 +4986,9 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
         if x.dtype == paddle.bool:
             return _legacy_C_ops.logical_xor(input_back, input_front)
         else:
-            return elementwise_sub(input_back, input_front, axis=axis)
+            return paddle.tensor.math._subtract_with_axis(
+                input_back, input_front, axis=axis
+            )
     else:
         check_variable_and_dtype(
             x, 'x', ['float32', 'float64', 'bool', 'int32', 'int64'], 'diff'
@@ -5245,7 +5052,9 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
                 outputs={"Out": out},
             )
         else:
-            out = elementwise_sub(input_back, input_front, axis=axis)
+            out = paddle.tensor.math._subtract_with_axis(
+                input_back, input_front, axis=axis
+            )
 
         return out
 

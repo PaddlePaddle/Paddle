@@ -1836,7 +1836,7 @@ def fast_decode(
             topk_scores, topk_indices = paddle.topk(
                 x=paddle.nn.functional.softmax(logits), k=beam_size
             )
-            accu_scores = layers.elementwise_add(
+            accu_scores = paddle.tensor.math._add_with_axis(
                 x=paddle.log(topk_scores),
                 y=paddle.reshape(pre_scores, shape=[-1]),
                 axis=0,

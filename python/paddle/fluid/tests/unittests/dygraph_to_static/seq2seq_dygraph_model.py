@@ -455,7 +455,7 @@ class BaseModel(fluid.dygraph.Layer):
             ) - paddle.tensor.math._multiply_with_axis(
                 step_log_probs, (beam_finished - 1), axis=0
             )
-            log_probs = fluid.layers.elementwise_add(
+            log_probs = paddle.tensor.math._add_with_axis(
                 x=step_log_probs, y=beam_state_log_probs, axis=0
             )
             scores = paddle.reshape(
