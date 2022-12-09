@@ -184,12 +184,15 @@ def get_nvidia_gpu_driver():
     if platform.system() != "Windows" and platform.system() != "Linux":
         envs['nvidia_gpu_driver'] = 'N/A'
         return
-    nvidia_smi = 'nvidia-smi'
-    gpu_list = run_shell_command(nvidia_smi + " -L")
-    result = "\n"
-    for gpu_info in gpu_list.split("\n"):
-        result += gpu_info.split(" (UUID:")[0] + "\n"
-    envs['nvidia_gpu_driver'] = result
+    try:
+        nvidia_smi = 'nvidia-smi'
+        gpu_list = run_shell_command(nvidia_smi + " -L")
+        result = "\n"
+        for gpu_info in gpu_list.split("\n"):
+            result += gpu_info.split(" (UUID:")[0] + "\n"
+        envs['nvidia_gpu_driver'] = result
+    except:
+        envs['nvidia_gpu_driver'] = 'N/A'
 
 
 def main():
