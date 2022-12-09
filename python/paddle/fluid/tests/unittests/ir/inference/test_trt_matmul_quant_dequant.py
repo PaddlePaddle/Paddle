@@ -47,7 +47,12 @@ class TensorRTMatMulQuantDequantDims3Test(QuantDequantTest):
                 act=None,
             )
             result = fluid.layers.relu(fc_out)
-            loss = fluid.layers.cross_entropy(input=result, label=self.label)
+            loss = paddle.nn.functional.cross_entropy(
+                input=result,
+                label=self.label,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_loss = paddle.mean(loss)
             return avg_loss, result
 
@@ -144,7 +149,12 @@ class TensorRTMatMulQuantDequantDims4Test(QuantDequantTest):
                 act=None,
             )
             result = fluid.layers.relu(fc_out)
-            loss = fluid.layers.cross_entropy(input=result, label=self.label)
+            loss = paddle.nn.functional.cross_entropy(
+                input=result,
+                label=self.label,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_loss = paddle.mean(loss)
             return avg_loss, result
 
@@ -240,7 +250,12 @@ class TensorRTMatMulQuantDequantDims3DynamicTest(QuantDequantTest):
                 act=None,
             )
             result = fluid.layers.relu(fc_out)
-            loss = fluid.layers.cross_entropy(input=result, label=self.label)
+            loss = paddle.nn.functional.cross_entropy(
+                input=result,
+                label=self.label,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_loss = paddle.mean(loss)
             return avg_loss, result
 
