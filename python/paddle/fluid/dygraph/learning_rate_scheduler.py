@@ -68,7 +68,7 @@ class LearningRateDecay:
         """
         from .. import layers
 
-        lr = layers.create_global_var(
+        lr = paddle.static.create_global_var(
             name=unique_name.generate("learning_rate"),
             shape=[1],
             value=float(lr),
@@ -821,11 +821,12 @@ class ReduceLROnPlateau(LearningRateDecay):
     .. code-block:: python
 
         import paddle.fluid as fluid
+        import paddle
         import numpy as np
 
         with fluid.dygraph.guard():
             x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
-            linear = fluid.dygraph.Linear(10, 10)
+            linear = paddle.nn.Linear(10, 10)
             input = fluid.dygraph.to_variable(x)
 
             reduce_lr = fluid.dygraph.ReduceLROnPlateau(
@@ -842,7 +843,7 @@ class ReduceLROnPlateau(LearningRateDecay):
                 total_loss = 0
                 for bath_id in range(5):
                     out = linear(input)
-                    loss = fluid.layers.reduce_mean(out)
+                    loss = paddle.mean(out)
                     total_loss += loss
                     adam.minimize(loss)
 
@@ -1090,9 +1091,10 @@ class StepDecay(_LearningRateEpochDecay):
 
             import paddle.fluid as fluid
             import numpy as np
+            import paddle
             with fluid.dygraph.guard():
                 x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
-                linear = fluid.dygraph.Linear(10, 10)
+                linear = paddle.nn.Linear(10, 10)
                 input = fluid.dygraph.to_variable(x)
                 scheduler = fluid.dygraph.StepDecay(0.5, step_size=3)
                 adam = fluid.optimizer.Adam(learning_rate = scheduler, parameter_list = linear.parameters())
@@ -1100,7 +1102,7 @@ class StepDecay(_LearningRateEpochDecay):
                 for epoch in range(9):
                     for batch_id in range(5):
                         out = linear(input)
-                        loss = fluid.layers.reduce_mean(out)
+                        loss = paddle.mean(out)
                         adam.minimize(loss)
                     scheduler.epoch()
 
@@ -1170,9 +1172,10 @@ class MultiStepDecay(_LearningRateEpochDecay):
 
             import paddle.fluid as fluid
             import numpy as np
+            import paddle
             with fluid.dygraph.guard():
                 x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
-                linear = fluid.dygraph.Linear(10, 10)
+                linear = paddle.nn.Linear(10, 10)
                 input = fluid.dygraph.to_variable(x)
                 scheduler = fluid.dygraph.MultiStepDecay(0.5, milestones=[3, 5])
                 adam = fluid.optimizer.Adam(learning_rate = scheduler, parameter_list = linear.parameters())
@@ -1180,7 +1183,7 @@ class MultiStepDecay(_LearningRateEpochDecay):
                 for epoch in range(6):
                     for batch_id in range(5):
                         out = linear(input)
-                        loss = fluid.layers.reduce_mean(out)
+                        loss = paddle.mean(out)
                         adam.minimize(loss)
                     scheduler.epoch()
 
@@ -1255,9 +1258,10 @@ class LambdaDecay(_LearningRateEpochDecay):
 
             import paddle.fluid as fluid
             import numpy as np
+            import paddle
             with fluid.dygraph.guard():
                 x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
-                linear = fluid.dygraph.Linear(10, 10)
+                linear = paddle.nn.Linear(10, 10)
                 input = fluid.dygraph.to_variable(x)
                 scheduler = fluid.dygraph.LambdaDecay(0.5, lr_lambda=lambda x: 0.95**x)
                 adam = fluid.optimizer.Adam(learning_rate = scheduler, parameter_list = linear.parameters())
@@ -1265,7 +1269,7 @@ class LambdaDecay(_LearningRateEpochDecay):
                 for epoch in range(6):
                     for batch_id in range(5):
                         out = linear(input)
-                        loss = fluid.layers.reduce_mean(out)
+                        loss = paddle.mean(out)
                         adam.minimize(loss)
                     scheduler.epoch()
 

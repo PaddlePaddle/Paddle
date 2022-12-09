@@ -31,17 +31,14 @@ from paddle.fluid.core import (
     enable_memory_recorder,
     enable_op_info_recorder,
 )
-
-from .utils import RecordEvent, wrap_optimizers
-from .profiler_statistic import (
-    StatisticData,
-    _build_table,
-    SortedKeys,
-    gen_layer_flops,
-)
 from paddle.profiler import utils
 
-from .profiler_statistic import SortedKeys, StatisticData, _build_table
+from .profiler_statistic import (
+    SortedKeys,
+    StatisticData,
+    _build_table,
+    gen_layer_flops,
+)
 from .timer import benchmark
 from .utils import RecordEvent, wrap_optimizers
 
@@ -359,6 +356,7 @@ class Profiler:
             be timed and profiled. Default: False.
         record_shapes (bool, optional): If it is True, collect op's input shape information. Default: False.
         profile_memory (bool, optional): If it is True, collect tensor memory allocation and release information. Default: False.
+        custom_device_types (list, optional): If targets contain profiler.ProfilerTarget.CUSTOM_DEVICE, custom_device_types select the custom device type for profiling. The default value represents all custom devices will be selected.
         with_flops (bool, optional): If it is True, the flops of the op will be calculated. Default: False.
 
     Examples:

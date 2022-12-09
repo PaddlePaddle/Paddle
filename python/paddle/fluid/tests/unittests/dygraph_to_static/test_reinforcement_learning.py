@@ -48,7 +48,7 @@ class Policy(Layer):
         x = fluid.layers.relu(x)
         action_scores = self.affine2(x)
 
-        log_prob = fluid.layers.softmax(action_scores, axis=1)
+        log_prob = paddle.nn.functional.softmax(action_scores, axis=1)
 
         return log_prob
 
@@ -217,5 +217,4 @@ class TestDeclarative(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()
