@@ -19,6 +19,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
+import paddle.nn.functional as F
 from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 from paddle.fluid.wrapped_decorator import wrap_decorator
 
@@ -235,7 +236,7 @@ class TestDygraphDoubleGrad(TestCase):
         numel = x_np.size
         x.stop_gradient = False
 
-        y = fluid.layers.relu(x)
+        y = F.relu(x)
         z = y + 1
         w = z * z
 
@@ -281,8 +282,8 @@ class TestDygraphDoubleGrad(TestCase):
         numel = x_np.size
         x.stop_gradient = False
 
-        y1 = fluid.layers.relu(x)
-        y2 = fluid.layers.relu(x)
+        y1 = F.relu(x)
+        y2 = F.relu(x)
         z = y1 + y2
         w = z * z
 
@@ -333,7 +334,7 @@ class TestDygraphDoubleGrad(TestCase):
         numel = x_np.size
         x.stop_gradient = False
 
-        y = fluid.layers.relu(x)
+        y = F.relu(x)
         z = y + 1
         w = z * z
 

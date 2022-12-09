@@ -266,7 +266,7 @@ class TestLayer(LayerTest):
     def test_relu(self):
         with self.static_graph():
             t = layers.data(name='t', shape=[3, 3], dtype='float32')
-            ret = layers.relu(t)
+            ret = F.relu(t)
             static_ret = self.get_static_graph_result(
                 feed={'t': np.ones([3, 3], dtype='float32')}, fetch_list=[ret]
             )[0]
@@ -274,11 +274,11 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             with _test_eager_guard():
                 t = np.ones([3, 3], dtype='float32')
-                dy_eager_ret = layers.relu(base.to_variable(t))
+                dy_eager_ret = F.relu(base.to_variable(t))
                 dy_eager_ret_value = dy_eager_ret.numpy()
 
             t = np.ones([3, 3], dtype='float32')
-            dy_ret = layers.relu(base.to_variable(t))
+            dy_ret = F.relu(base.to_variable(t))
             dy_ret_value = dy_ret.numpy()
 
         np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)

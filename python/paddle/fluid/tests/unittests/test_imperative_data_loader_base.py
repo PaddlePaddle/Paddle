@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle.fluid as fluid
+import paddle.nn.functional as F
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.reader import use_pinned_memory
 
@@ -46,7 +47,7 @@ class TestDygraphDataLoader(unittest.TestCase):
     def iter_loader_data(self, loader):
         for _ in range(self.epoch_num):
             for image, label in loader():
-                relu = fluid.layers.relu(image)
+                relu = F.relu(image)
                 self.assertEqual(image.shape, [self.batch_size, 784])
                 self.assertEqual(label.shape, [self.batch_size, 1])
                 self.assertEqual(relu.shape, [self.batch_size, 784])
