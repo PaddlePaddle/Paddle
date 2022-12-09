@@ -12,23 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/backends/gpu/cuda/cudnn_workspace_helper.h"
 
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include <cstdlib>
+#include <string>
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace phi {
+namespace backends {
+namespace gpu {
 
-class DeleteWeightDequantLinearOpDecoderPass : public FusePassBase {
- public:
-  DeleteWeightDequantLinearOpDecoderPass();
-  virtual ~DeleteWeightDequantLinearOpDecoderPass() {}
+static int GetDefaultConvWorkspaceSizeLimitMBImpl() {
+  const char *env_str = std::getenv("FLAGS_conv_workspace_size_limit");
+  return env_str ? std::stoi(std::string(env_str))
+                 : kDefaultConvWorkspaceSizeLimitMB;
+}
 
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
-};
-
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+int GetDefaultConvWorkspaceSizeLimitMB() {
+  static auto workspace_size = GetDefaultConvWorkspaceSizeLimitMBImpl();
+  return workspace_size;
+}
+}  // namespace gpu
+}  // namespace backends
+}  // namespace phi

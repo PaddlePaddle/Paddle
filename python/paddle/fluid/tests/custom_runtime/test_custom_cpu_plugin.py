@@ -59,6 +59,7 @@ class TestCustomCPUPlugin(unittest.TestCase):
             self._test_eager_copy_to()
             self._test_fallback_kernel()
             self._test_scalar()
+            self._test_custom_device_gradient_accumulation()
         self._test_custom_device_dataloader()
         self._test_custom_device_mnist()
 
@@ -207,6 +208,60 @@ class TestCustomCPUPlugin(unittest.TestCase):
         )
         k_t = paddle.to_tensor([3], dtype="int32")
         value_1, indices_1 = paddle.topk(data_1, k=k_t)
+
+    def _test_custom_device_gradient_accumulation(self):
+        import paddle
+
+        class MNIST(paddle.nn.Layer):
+            def __init__(self):
+                super().__init__()
+                self.shape = 1 * 28 * 28
+                self.size = 10
+                self.output_weight = self.create_parameter(
+                    [self.shape, self.size]
+                )
+                self.accuracy = paddle.metric.Accuracy()
+
+            def forward(self, inputs, label=None):
+                x = paddle.reshape(inputs, shape=[-1, self.shape])
+                x = paddle.matmul(x, self.output_weight)
+                x = paddle.nn.functional.softmax(x)
+                if label is not None:
+                    self.accuracy.reset()
+                    correct = self.accuracy.compute(x, label)
+                    self.accuracy.update(correct)
+                    acc = self.accuracy.accumulate()
+                    return x, acc
+                else:
+                    return x
+
+        paddle.set_device('custom_cpu')
+        dataset = paddle.vision.datasets.MNIST(
+            mode='train',
+            transform=paddle.vision.transforms.Compose(
+                [paddle.vision.transforms.ToTensor()]
+            ),
+        )
+        loader = paddle.io.DataLoader(
+            dataset, batch_size=64, num_workers=1, shuffle=True
+        )
+
+        mnist = MNIST()
+        sgd = paddle.optimizer.SGD(
+            learning_rate=0.01, parameters=mnist.parameters()
+        )
+
+        data = next(loader())
+        img = data[0]
+        label = data[1]
+        label_int32 = paddle.cast(label, 'int32')
+
+        pred, acc = mnist(img, label_int32)
+        avg_loss = paddle.nn.functional.cross_entropy(pred, label_int32)
+        avg_loss.backward(retain_graph=True)
+        avg_loss = paddle.nn.functional.cross_entropy(pred, label_int32)
+        avg_loss.backward()
+        sgd.step()
 
 
 if __name__ == '__main__':
