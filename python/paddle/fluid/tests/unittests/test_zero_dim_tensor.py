@@ -683,27 +683,30 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x3.grad.shape, [])
 
     def test_scatter__1D(self):
-        x = paddle.to_tensor([1.0, 3.0, 5.0, 7.0, 9.0], stop_gradient=False)
+        x = paddle.to_tensor([1.0, 3.0, 5.0, 7.0, 9.0])
         index = paddle.full([], 2, 'int64')
         updates = paddle.full([], 4.0)
         out = paddle.scatter_(x, index, updates)
-        out.backward()
 
-        self.assertEqual(out.grad.shape, [5])
         self.assertEqual(out.numpy()[2], 4)
 
     def test_scatter__XD(self):
-        x = paddle.to_tensor(
-            [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], stop_gradient=False
-        )
+        x = paddle.to_tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
         index = paddle.full([], 1, 'int64')
         updates = paddle.to_tensor([1.0, 2.0, 3.0])
         out = paddle.scatter_(x, index, updates)
-        out.backward()
 
         for i in range(3):
             self.assertEqual(out.numpy()[1][i], updates.numpy()[i])
-        self.assertEqual(out.grad.shape, [2, 3])
+
+    def test_scatter_nd(self):
+        index = paddle.to_tensor(
+            [[1, 1], [0, 1], [1, 3]], dtype="int64", stop_gradient=False
+        )
+        updates = paddle.ones(shape=[3, 2, 2], dtype='float32')
+        shape = [3, 5, 2, 2]
+
+        output = paddle.scatter_nd(index, updates, shape)
 
 
 class TestSundryAPIStatic(unittest.TestCase):
