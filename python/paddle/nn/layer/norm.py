@@ -168,10 +168,25 @@ class InstanceNorm1D(_InstanceNormBase):
           print(instance_norm_out)
 
     """
-    def __init__(self, num_features, epsilon=0.00001, momentum=0.9,
-        weight_attr=None, bias_attr=None, data_format="NCL", name=None):
-        super().__init__(num_features, epsilon, momentum, weight_attr, bias_attr,
-         data_format, name)
+    def __init__(
+        self,
+        num_features, 
+        epsilon=0.00001,
+        momentum=0.9,
+        weight_attr=None, 
+        bias_attr=None, 
+        data_format="NCL", 
+        name=None,
+    ):
+        super().__init__(
+            num_features, 
+            epsilon, 
+            momentum, 
+            weight_attr, 
+            bias_attr,
+            data_format, 
+            name,
+        )
     def _check_input_dim(self, input):
         if len(input.shape) != 2 and len(input.shape) != 3:
             raise ValueError(
@@ -239,10 +254,25 @@ class InstanceNorm2D(_InstanceNormBase):
 
             print(instance_norm_out)
     """
-    def __init__(self, num_features, epsilon=0.00001, momentum=0.9, 
-        weight_attr=None, bias_attr=None, data_format="NCHW", name=None):
-        super().__init__(num_features, epsilon, momentum, weight_attr, bias_attr,
-         data_format, name)
+    def __init__(
+        self, 
+        num_features, 
+        epsilon=0.00001, 
+        momentum=0.9, 
+        weight_attr=None, 
+        bias_attr=None, 
+        data_format="NCHW", 
+        name=None,
+    ):
+        super().__init__(
+            num_features, 
+            epsilon, 
+            momentum, 
+            weight_attr, 
+            bias_attr,
+            data_format, 
+            name,
+        )
     def _check_input_dim(self, input):
         if len(input.shape) != 4:
             raise ValueError(
@@ -308,10 +338,25 @@ class InstanceNorm3D(_InstanceNormBase):
 
             print(instance_norm_out.numpy)
     """
-    def __init__(self, num_features, epsilon=0.00001, momentum=0.9, 
-    weight_attr=None, bias_attr=None, data_format="NCDHW", name=None):
-        super().__init__(num_features, epsilon, momentum, weight_attr, 
-        bias_attr, data_format, name)
+    def __init__(
+        self, 
+        num_features, 
+        epsilon=0.00001, 
+        momentum=0.9, 
+        weight_attr=None, 
+        bias_attr=None, 
+        data_format="NCDHW", 
+        name=None,
+    ):
+        super().__init__(
+            num_features, 
+            epsilon, 
+            momentum, 
+            weight_attr, 
+            bias_attr, 
+            data_format, 
+            name,
+        )
     def _check_input_dim(self, input):
         if len(input.shape) != 5:
             raise ValueError(
