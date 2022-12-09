@@ -110,7 +110,7 @@ class _InstanceNormBase(Layer):
 
 
 class InstanceNorm1D(_InstanceNormBase):
-    """
+    r"""
     Create a callable object of `InstanceNorm1D`. Applies Instance Normalization over a 3D input (a mini-batch of 1D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
     DataLayout: NCL `[batch, in_channels, length]`
@@ -127,15 +127,14 @@ class InstanceNorm1D(_InstanceNormBase):
         \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
         y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-Where `H` means height of feature map, `W` means width of feature map.
+    Where `H` means height of feature map, `W` means width of feature map.
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
-        epsilon(float, optional): A value added to the denominator for
-            numerical stability. Default is 1e-5.
+        epsilon(float, optional): A value added to the denominator for numerical stability. Default is 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
-        weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
-            of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
+        weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale` of instance_norm. 
+            If it is set to None or one attribute of ParamAttr, instance_norm
             will create ParamAttr as weight_attr, the name of scale can be set in ParamAttr.
             If the Initializer of the weight_attr is not set, the parameter is initialized
             one. If it is set to False, will not create weight_attr. Default: None.
@@ -180,7 +179,7 @@ Where `H` means height of feature map, `W` means width of feature map.
 
 
 class InstanceNorm2D(_InstanceNormBase):
-    """
+    r"""
     Create a callable object of `InstanceNorm2D`. Applies Instance Normalization over a 4D input (a mini-batch of 2D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
     DataLayout: NCHW `[batch, in_channels, in_height, in_width]`
@@ -198,12 +197,11 @@ class InstanceNorm2D(_InstanceNormBase):
         \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
         y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-Where `H` means height of feature map, `W` means width of feature map.
+    Where `H` means height of feature map, `W` means width of feature map.
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
-        epsilon(float, optional): A value added to the denominator for
-            numerical stability. Default is 1e-5.
+        epsilon(float, optional): A value added to the denominator for numerical stability. Default is 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
             of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
@@ -247,7 +245,7 @@ Where `H` means height of feature map, `W` means width of feature map.
 
 
 class InstanceNorm3D(_InstanceNormBase):
-    """
+    r"""
     Create a callable object of `InstanceNorm3D`. Applies Instance Normalization over a 5D input (a mini-batch of 3D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
     DataLayout: NCHW `[batch, in_channels, D, in_height, in_width]`
@@ -265,12 +263,11 @@ class InstanceNorm3D(_InstanceNormBase):
         \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
         y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-Where `H` means height of feature map, `W` means width of feature map.
+    Where `H` means height of feature map, `W` means width of feature map.
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
-        epsilon(float, optional): A value added to the denominator for
-            numerical stability. Default is 1e-5.
+        epsilon(float, optional): A value added to the denominator for numerical stability. Default is 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
             of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
