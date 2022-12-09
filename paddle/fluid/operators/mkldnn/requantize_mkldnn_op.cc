@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include <iterator>  // NOLINT
 #include "dnnl.hpp"  // NOLINT
-#include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/requantize_op.h"
 #include "paddle/phi/backends/onednn/onednn_helper.h"

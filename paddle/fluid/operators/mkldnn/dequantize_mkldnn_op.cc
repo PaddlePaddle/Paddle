@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/dequantize_op.h"
 
-#include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
