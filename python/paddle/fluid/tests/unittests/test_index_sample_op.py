@@ -148,33 +148,6 @@ class TestIndexSampleShape(unittest.TestCase):
         res = exe.run(feed=feed, fetch_list=[output])
 
 
-# class TestIndexSampleShapeFp16(unittest.TestCase):
-#     def test_shape(self):
-#         paddle.enable_static()
-#         # create x value
-#         x_shape = (2, 5)
-#         x_type = "float16"
-#         x_np = np.random.random(x_shape).astype(x_type)
-
-#         # create index value
-#         index_shape = (2, 3)
-#         index_type = "int32"
-#         index_np = np.random.randint(
-#             low=0, high=x_shape[1], size=index_shape
-#         ).astype(index_type)
-
-#         x_2 = fluid.data(name='x_fp16', shape=[-1, 5], dtype='float16')
-#         index_2 = fluid.data(name='index_fp16', shape=[-1, 3], dtype='int32')
-#         output = paddle.index_sample(x=x_2, index=index_2)
-
-#         place = fluid.CUDAPlace(0)
-#         exe = fluid.Executor(place=place)
-#         exe.run(fluid.default_startup_program())
-
-#         feed = {'x_fp16': x_np, 'index_fp16': index_np}
-#         res = exe.run(feed=feed, fetch_list=[output])
-
-
 class TestIndexSampleDynamic(unittest.TestCase):
     def test_result(self):
         with fluid.dygraph.guard():
