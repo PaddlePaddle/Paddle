@@ -275,8 +275,8 @@ class CrossEntropyLoss(Layer):
 
 
     Shape:
-        - **input** (Tensor), the data type is float32, float64. Shape is
-          :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes ,  ``k >= 1`` .
+        - **input** (Tensor), the data type is float32, float64. Shape is :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes, ``k >= 1`` .
+          
             Note:
 
                 1. when use_softmax=True, it expects unscaled logits. This operator should not be used with the
