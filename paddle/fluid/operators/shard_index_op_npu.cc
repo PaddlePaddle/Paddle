@@ -18,7 +18,6 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 template <typename T>
 class ShardIndexNPUKernel : public framework::OpKernel<T> {
  public:
@@ -67,17 +66,17 @@ class ShardIndexNPUKernel : public framework::OpKernel<T> {
     out->set_lod(in->lod());
     out->mutable_data<T>(place);
 
-    Tensor tmp(in->type());
+    phi::DenseTensor tmp(in->type());
     tmp.mutable_data<T>(framework::DDim({1}), place);
     FillNpuTensorWithConstant(&tmp, shard_size);
 
-    Tensor condition(experimental::DataType::BOOL);
+    phi::DenseTensor condition(experimental::DataType::BOOL);
     condition.mutable_data<bool>(in->dims(), place);
 
-    Tensor tmp2(in->type());
+    phi::DenseTensor tmp2(in->type());
     tmp2.mutable_data<T>(in->dims(), place);
 
-    Tensor tmp3(in->type());
+    phi::DenseTensor tmp3(in->type());
     tmp3.mutable_data<T>(in->dims(), place);
 
     auto stream =
@@ -103,7 +102,7 @@ class ShardIndexNPUKernel : public framework::OpKernel<T> {
     runner2.SetType("Equal");
     runner2.Run(stream);
 
-    Tensor tmp4(in->type());
+    phi::DenseTensor tmp4(in->type());
     tmp4.mutable_data<T>(in->dims(), place);
     FillNpuTensorWithConstant(&tmp4, ignore_value);
     tmp4.Resize(in->dims());

@@ -27,6 +27,8 @@ from paddle.jit.dy2static.utils import (
     get_attribute_full_name,
 )
 
+__all__ = []
+
 
 class BaseTransformer(gast.NodeTransformer):
     def visit(self, node):
