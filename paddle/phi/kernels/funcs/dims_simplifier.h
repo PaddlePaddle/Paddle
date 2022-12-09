@@ -97,50 +97,9 @@ struct BroadcastDimsSimplifier {
       MergeDimensions<MergeFunctor>(merge_ptr, N);
       std::swap(in_dims[swap_idx], in_dims[0]);
     }
-
-    if (VLOG_IS_ON(6)) {
-      LogOutMergedDims(ins, dims);
-    }
   }
 
  private:
-  void LogOutMergedDims(const std::vector<const DenseTensor *> &ins,
-                        const phi::DDim &origin_out_dims) {
-    for (int i = 0; i < N; ++i) {
-      VLOG(6) << "input i=" << i << ": origin_dims={" << ins[i]->dims()
-              << "}, simplied_dims={" << ReversedVectorToString(in_dims[i])
-              << "}";
-    }
-    VLOG(6) << "output: origin_dims={" << origin_out_dims
-            << "}, simplied_dims={" << ReversedVectorToString(out_dims) << "}";
-  }
-
-  std::string ReversedVectorToString(const std::vector<int64_t> &reversed_v) {
-    std::stringstream ss;
-    bool is_last = true;
-    for (int i = reversed_v.size() - 1; i >= 0; --i) {
-      if (is_last) {
-        ss << reversed_v[i];
-        is_last = false;
-      } else {
-        ss << ", " << reversed_v[i];
-      }
-    }
-    return ss.str();
-  }
-
-  bool NeedBroadcast(const std::vector<const DenseTensor *> &ins,
-                     const phi::DDim &dims) {
-    bool no_broadcast_flag = true;
-    for (auto *in : ins) {
-      no_broadcast_flag &= ins[0]->dims() == in->dims();
-    }
-    if (ins.size() > 0) {
-      no_broadcast_flag &= dims == ins[0]->dims();
-    }
-    return !no_broadcast_flag;
-  }
-
   // To compensate the lackage of input_tensors' dimension with axis.
   void ExtendInputDimensions(int N, int axis) {
     for (auto &in_dim : in_dims) {
@@ -272,7 +231,7 @@ struct PermuteDimsSimplifier {
     perm_.resize(rank_);
     src_dims_.resize(rank_);
     dst_dims_.resize(rank_);
-    if (!is_sequence_perm_) {
+    if (!is_sequential_perm_) {
       for (auto i = 0; i < rank_; ++i) {
         dst_dims_[i] = src_dims_[perm_[i]];
       }
@@ -294,7 +253,7 @@ struct PermuteDimsSimplifier {
   int rank_{1};
   int64_t count_{0};
   std::vector<int> perm_;
-  bool is_sequence_perm_{true};
+  bool is_sequential_perm_{true};
   std::vector<int64_t> src_dims_;
   std::vector<int64_t> dst_dims_;
 
@@ -353,11 +312,44 @@ struct PermuteDimsSimplifier {
       const int mapped = valid_map[perm[i]];
       if (mapped >= 0) {
         perm_[perm_idx] = mapped;
-        is_sequence_perm_ &= (mapped == perm_idx);
+        is_sequential_perm_ &= (mapped == perm_idx);
         perm_idx += 1;
       }
     }
-    rank_ = is_sequence_perm_ ? 1 : valid_dim_idx;
+    rank_ = is_sequential_perm_ ? 1 : valid_dim_idx;
+  }
+};
+
+template <typename T>
+struct DimsSimplifiedLogger {
+ public:
+  static void Log(const std::vector<const DenseTensor *> &ins,
+                  std::vector<DenseTensor *> *outs,
+                  const BroadcastDimsSimplifier &dims_simplifier,
+                  const std::string &op_name) {
+    VLOG(6) << op_name << "`s dims after simplification is below :";
+    for (size_t i = 0; i < ins.size(); ++i) {
+      VLOG(6) << "input i=" << i << ": origin_dims={" << ins[i]->dims()
+              << "}, simplied_dims={"
+              << ReversedVectorToString(dims_simplifier.in_dims[i]) << "}";
+    }
+    VLOG(6) << "output: origin_dims={" << (*outs)[0]->dims()
+            << "}, simplied_dims={"
+            << ReversedVectorToString(dims_simplifier.out_dims) << "}";
+  }
+
+  static std::string ReversedVectorToString(const std::vector<T> &reversed_v) {
+    std::stringstream ss;
+    bool is_last = true;
+    for (int i = reversed_v.size() - 1; i >= 0; --i) {
+      if (is_last) {
+        ss << reversed_v[i];
+        is_last = false;
+      } else {
+        ss << ", " << reversed_v[i];
+      }
+    }
+    return ss.str();
   }
 };
 

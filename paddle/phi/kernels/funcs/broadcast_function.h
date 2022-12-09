@@ -29,12 +29,12 @@ namespace funcs {
 
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 
-enum DataLoaderType { kMixed = 1, kBroadcast = 2, kElementwise = 3 };
+enum BroadcastLoadType { kMixed = 1, kBroadcast = 2, kElementwise = 3 };
 
 template <typename InT, typename OutT, int Arity>
 struct LoaderTypeClassifier {
  public:
-  int numel{0};
+  int64_t numel{0};
   int vec_size{1};
   int broadcast_num{0};
   bool all_elementwise{true};
@@ -42,9 +42,9 @@ struct LoaderTypeClassifier {
   phi::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
 
   LoaderTypeClassifier() {}
-  explicit LoaderTypeClassifier(const std::vector<const DenseTensor *> &ins,
-                                std::vector<DenseTensor *> *outs) {
-    out_vec_size =
+  LoaderTypeClassifier(const std::vector<const DenseTensor *> &ins,
+                       std::vector<DenseTensor *> *outs) {
+    int out_vec_size =
         std::min(4, phi::GetVectorizedSize<OutT>((*outs)[0]->data<OutT>()));
     for (auto i = 1; i < outs->size(); ++i) {
       PADDLE_ENFORCE_EQ(
@@ -79,7 +79,6 @@ struct LoaderTypeClassifier {
 
  private:
   int in_vec_size{4};
-  int out_vec_size{4};
 };
 
 #ifndef PADDLE_WITH_XPU_KP
@@ -427,7 +426,7 @@ void LaunchBroadcastKernel(
                                          VecSize,
                                          func);
   } else if (loader_classifier.broadcast_num > (Arity >> 1)) {
-    constexpr DataLoaderType type_ = (Arity > 1) ? kBroadcast : kMixed;
+    constexpr BroadcastLoadType type_ = (Arity > 1) ? kBroadcast : kMixed;
     VectorizedBroadcastKernel<Func, InT, OutT, Arity, NumOuts, VecSize, type_>
         <<<blocks, threads, 0, stream>>>(loader_classifier.ins_data,
                                          outs_data,
@@ -944,14 +943,19 @@ void BroadcastKernelForDifferentVecSize(
 
   phi::Array<kps::details::BroadcastConfig, kArity> configs;
 #ifdef PADDLE_WITH_XPU_KP
-  auto loader_classifier = LoaderTypeClassifier<InT, OutT, kArity>();
-  const auto dims_simplifier =
-      BroadcastDimsSimplifier(ins, (*outs)[0]->dims(), axis);
   PADDLE_ENFORCE_EQ(
       ins.size(),
       2,
       phi::errors::InvalidArgument(
           "XPU only support inputs is 2, but received %d", ins.size()));
+
+  auto loader_classifier = LoaderTypeClassifier<InT, OutT, kArity>();
+  const auto dims_simplifier =
+      BroadcastDimsSimplifier(ins, (*outs)[0]->dims(), axis);
+  if (VLOG_IS_ON(6)) {
+    DimsSimplifiedLogger<int64_t>::Log(
+        ins, outs, dims_simplifier, "XPU Broadcast");
+  }
   configs[0] = kps::details::BroadcastConfig(dims_simplifier.out_dims,
                                              dims_simplifier.in_dims[0],
                                              dims_simplifier.in_dims[1],
@@ -969,6 +973,10 @@ void BroadcastKernelForDifferentVecSize(
     const auto dims_simplifier =
         BroadcastDimsSimplifier(ins, (*outs)[0]->dims(), axis);
 
+    if (VLOG_IS_ON(6)) {
+      DimsSimplifiedLogger<int64_t>::Log(
+          ins, outs, dims_simplifier, "GPU Broadcast");
+    }
     for (int i = 0; i < kArity; ++i) {
       // if data shape is[m, n], then you should set data_dim = {n, m}
       // eg: out's shape [3, 45, 1]. then out_dims = {1, 45, 3}
