@@ -21,8 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class FusedMultiTransformerINT8Op : public framework::OperatorWithKernel {
  private:
   static constexpr const char *OpName = "FusedMultiTransformerINT8Op";
@@ -176,7 +174,7 @@ class FusedMultiTransformerINT8Op : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "TimeStep") {
       VLOG(10) << "var_name:" << var_name << " need not to transform";

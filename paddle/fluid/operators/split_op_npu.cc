@@ -21,8 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 class SplitNPUKernel : public framework::OpKernel<T> {
  public:
@@ -44,7 +42,7 @@ class SplitNPUKernel : public framework::OpKernel<T> {
           "The SectionsTensorList is not supported on NPU now."));
     }
 
-    std::vector<Tensor> outputs;
+    std::vector<phi::DenseTensor> outputs;
     for (size_t j = 0; j < outs.size(); ++j) {
       outs[j]->mutable_data<T>(ctx.GetPlace());
       outputs.push_back(*outs[j]);

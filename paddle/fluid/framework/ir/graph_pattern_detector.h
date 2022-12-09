@@ -1057,7 +1057,7 @@ struct ConvResidual : public PatternBase {
   ConvResidual(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "conv_residual") {}
 
-  PDNode* operator()(bool with_residual_data);
+  PDNode* operator()(const std::string& conv_type, bool with_residual_data);
 
   PATTERN_DECL_NODE(conv_op);
   PATTERN_DECL_NODE(conv_input);

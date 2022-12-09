@@ -46,7 +46,7 @@ class TestProfiler(unittest.TestCase):
             until = layers.fill_constant([1], dtype='int64', value=10)
             data_arr = layers.array_write(hidden1, i)
             cond = paddle.less_than(x=counter, y=until)
-            while_op = fluid.layers.While(cond=cond)
+            while_op = paddle.static.nn.control_flow.While(cond=cond)
             with while_op.block():
                 hidden_n = fluid.layers.fc(input=hidden1, size=64, act='relu')
                 layers.array_write(hidden_n, i, data_arr)
@@ -57,7 +57,9 @@ class TestProfiler(unittest.TestCase):
             hidden2 = fluid.layers.fc(input=hidden_n, size=64, act='relu')
             predict = fluid.layers.fc(input=hidden2, size=10, act='softmax')
             label = fluid.layers.data(name='y', shape=[1], dtype='int64')
-            cost = fluid.layers.cross_entropy(input=predict, label=label)
+            cost = paddle.nn.functional.cross_entropy(
+                input=predict, label=label, reduction='none', use_softmax=False
+            )
             avg_cost = paddle.mean(cost)
             batch_size = paddle.tensor.create_tensor(dtype='int64')
             batch_acc = paddle.static.accuracy(

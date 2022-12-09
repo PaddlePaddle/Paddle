@@ -1016,6 +1016,19 @@ struct PD_INFER_DECL AnalysisConfig {
 
   void SetSkipLoadParams(bool value) { skip_load_params_ = value; }
 
+  ///
+  /// \brief Enable use cinn compiler optimization.
+  ///
+  void Exp_EnableCINNCompiler();
+
+  ///
+  /// \brief A boolean state telling whether the CINN compiler optimization is
+  /// turned on.
+  ///
+  /// \return bool Whether the CINN compiler optimization is turned on.
+  ///
+  bool cinn_compiler_enabled() const;
+
  protected:
   // Update the config.
   void Update();
@@ -1143,6 +1156,9 @@ struct PD_INFER_DECL AnalysisConfig {
   Precision lite_precision_mode_;
   bool lite_zero_copy_;
 
+  // CINN compiler related.
+  bool use_cinn_compiler_{false};
+
   // XPU related.
   bool use_xpu_{false};
   int xpu_device_id_{0};
@@ -1172,6 +1188,7 @@ struct PD_INFER_DECL AnalysisConfig {
       "concat",
       "conv2d",
       "depthwise_conv2d",
+      "fused_conv2d",
       "elementwise_add",
       "elementwise_mul",
       "fc",

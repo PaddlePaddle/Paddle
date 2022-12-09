@@ -27,7 +27,7 @@ from .base_transformer import (
     ForNodeVisitor,
 )
 
-__all__ = ['BreakContinueTransformer']
+__all__ = []
 
 BREAK_NAME_PREFIX = '__break'
 CONTINUE_NAME_PREFIX = '__continue'

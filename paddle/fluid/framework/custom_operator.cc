@@ -284,7 +284,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
       auto* true_out = true_out_ptrs.at(i);
       auto calc_out =
           std::dynamic_pointer_cast<phi::DenseTensor>(calc_outs->at(i).impl());
-      // assgin meta info
+      // assign meta info
       auto* true_out_meta = phi::DenseTensorUtils::GetMutableMeta(true_out);
       true_out_meta->dims = calc_out->dims();
       true_out_meta->dtype = calc_out->dtype();
@@ -707,6 +707,10 @@ static void RegisterOperatorKernel(const std::string& name,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   RegisterOperatorKernelWithPlace(
       name, op_kernel_func, proto::VarType::RAW, platform::CUDAPlace());
+#endif
+#if defined(PADDLE_WITH_XPU)
+  RegisterOperatorKernelWithPlace(
+      name, op_kernel_func, proto::VarType::RAW, platform::XPUPlace());
 #endif
 }
 
