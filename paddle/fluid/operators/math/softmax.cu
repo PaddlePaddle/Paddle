@@ -15,18 +15,18 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/fluid/operators/math/softmax_impl.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
 
-using ScopedTensorDescriptor = platform::ScopedTensorDescriptor;
-using DataLayout = platform::DataLayout;
+using ScopedTensorDescriptor = phi::backends::gpu::ScopedTensorDescriptor;
+using DataLayout = phi::backends::gpu::DataLayout;
 template <typename T>
-using CudnnDataType = platform::CudnnDataType<T>;
+using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
 
 template <typename T, typename DeviceContext>
 void SoftmaxCUDNNFunctor<T, DeviceContext>::operator()(
@@ -51,7 +51,7 @@ void SoftmaxCUDNNFunctor<T, DeviceContext>::operator()(
       xDesc.descriptor<T>(layout, cudnn_tensor_dims);
   miopenTensorDescriptor_t cudnn_y_desc =
       xDesc.descriptor<T>(layout, cudnn_tensor_dims);
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSoftmaxForward_V2(
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSoftmaxForward_V2(
       context.cudnn_handle(),
       CudnnDataType<T>::kOne(),
       cudnn_x_desc,
@@ -66,7 +66,7 @@ void SoftmaxCUDNNFunctor<T, DeviceContext>::operator()(
       xDesc.descriptor<T>(layout, cudnn_tensor_dims);
   cudnnTensorDescriptor_t cudnn_y_desc =
       xDesc.descriptor<T>(layout, cudnn_tensor_dims);
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSoftmaxForward(
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSoftmaxForward(
       context.cudnn_handle(),
       CUDNN_SOFTMAX_ACCURATE,
       CUDNN_SOFTMAX_MODE_INSTANCE,
@@ -106,7 +106,7 @@ void SoftmaxGradCUDNNFunctor<T, DeviceContext>::operator()(
       dxDesc.descriptor<T>(layout, cudnn_tensor_dims);
   miopenTensorDescriptor_t cudnn_ygrad_desc =
       dyDesc.descriptor<T>(layout, cudnn_tensor_dims);
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSoftmaxBackward_V2(
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSoftmaxBackward_V2(
       context.cudnn_handle(),
       CudnnDataType<T>::kOne(),
       cudnn_y_desc,
@@ -125,7 +125,7 @@ void SoftmaxGradCUDNNFunctor<T, DeviceContext>::operator()(
       dxDesc.descriptor<T>(layout, cudnn_tensor_dims);
   cudnnTensorDescriptor_t cudnn_ygrad_desc =
       dyDesc.descriptor<T>(layout, cudnn_tensor_dims);
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSoftmaxBackward(
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSoftmaxBackward(
       context.cudnn_handle(),
       CUDNN_SOFTMAX_ACCURATE,
       CUDNN_SOFTMAX_MODE_INSTANCE,
@@ -141,12 +141,12 @@ void SoftmaxGradCUDNNFunctor<T, DeviceContext>::operator()(
 }
 
 template class SoftmaxCUDNNFunctor<float, phi::GPUContext>;
-template class SoftmaxCUDNNFunctor<platform::float16, phi::GPUContext>;
+template class SoftmaxCUDNNFunctor<phi::dtype::float16, phi::GPUContext>;
 template class SoftmaxGradCUDNNFunctor<float, phi::GPUContext>;
-template class SoftmaxGradCUDNNFunctor<platform::float16, phi::GPUContext>;
+template class SoftmaxGradCUDNNFunctor<phi::dtype::float16, phi::GPUContext>;
 #if CUDNN_VERSION_MIN(8, 1, 0)
-template class SoftmaxCUDNNFunctor<platform::bfloat16, phi::GPUContext>;
-template class SoftmaxGradCUDNNFunctor<platform::bfloat16, phi::GPUContext>;
+template class SoftmaxCUDNNFunctor<phi::dtype::bfloat16, phi::GPUContext>;
+template class SoftmaxGradCUDNNFunctor<phi::dtype::bfloat16, phi::GPUContext>;
 #endif
 
 // MIOPEN do not support double
@@ -155,14 +155,14 @@ template class SoftmaxCUDNNFunctor<double, phi::GPUContext>;
 template class SoftmaxGradCUDNNFunctor<double, phi::GPUContext>;
 #endif
 
-template class SoftmaxFunctor<phi::GPUContext, platform::float16>;
-template class SoftmaxFunctor<phi::GPUContext, platform::bfloat16>;
+template class SoftmaxFunctor<phi::GPUContext, phi::dtype::float16>;
+template class SoftmaxFunctor<phi::GPUContext, phi::dtype::bfloat16>;
 template class SoftmaxFunctor<phi::GPUContext, float>;
 template class SoftmaxFunctor<phi::GPUContext, double>;
 template class SoftmaxGradFunctor<phi::GPUContext, float>;
 template class SoftmaxGradFunctor<phi::GPUContext, double>;
-template class SoftmaxGradFunctor<phi::GPUContext, platform::float16>;
-template class SoftmaxGradFunctor<phi::GPUContext, platform::bfloat16>;
+template class SoftmaxGradFunctor<phi::GPUContext, phi::dtype::float16>;
+template class SoftmaxGradFunctor<phi::GPUContext, phi::dtype::bfloat16>;
 
 }  // namespace math
 }  // namespace operators
