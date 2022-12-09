@@ -671,8 +671,22 @@ void Executor::EnableMKLDNN(const ProgramDesc& program) {
   for (size_t bid = 0; bid < program.Size(); ++bid) {
     auto* block = const_cast<ProgramDesc&>(program).MutableBlock(bid);
     for (auto* op : block->AllOps()) {
-      if (op->HasAttr("use_mkldnn")) {
-        op->SetAttr("use_mkldnn", true);
+      auto op_type = op->Type();
+
+      auto& all_kernels = OperatorWithKernel::AllOpKernels();
+      auto it = all_kernels.find(op_type);
+      if (it != all_kernels.end())
+        for (auto& kernel_pair : it->second)
+          if (platform::is_cpu_place(kernel_pair.first.place_) &&
+              (kernel_pair.first.library_type_ == LibraryType::kMKLDNN))
+            op->SetAttr("use_mkldnn", true);
+
+      auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
+          phi::TransToPhiKernelName(op_type));
+
+      for (auto& kernel_pair : phi_kernels) {
+        if (kernel_pair.first.backend() == phi::Backend::ONEDNN)
+          op->SetAttr("use_mkldnn", true);
       }
     }
   }
