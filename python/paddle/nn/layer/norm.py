@@ -127,7 +127,7 @@ class InstanceNorm1D(_InstanceNormBase):
         \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
         y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-Where `H` means height of feature map, `W` means width of feature map.
+    Where `H` means height of feature map, `W` means width of feature map.
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
@@ -170,6 +170,26 @@ Where `H` means height of feature map, `W` means width of feature map.
 
     """
 
+    def __init__(
+        self,
+        num_features,
+        epsilon=0.00001,
+        momentum=0.9,
+        weight_attr=None,
+        bias_attr=None,
+        data_format="NCL",
+        name=None,
+    ):
+        super().__init__(
+            num_features,
+            epsilon,
+            momentum,
+            weight_attr,
+            bias_attr,
+            data_format,
+            name,
+        )
+
     def _check_input_dim(self, input):
         if len(input.shape) != 2 and len(input.shape) != 3:
             raise ValueError(
@@ -198,7 +218,7 @@ class InstanceNorm2D(_InstanceNormBase):
         \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
         y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-Where `H` means height of feature map, `W` means width of feature map.
+    Where `H` means height of feature map, `W` means width of feature map.
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
@@ -214,7 +234,7 @@ Where `H` means height of feature map, `W` means width of feature map.
             If it is set to None or one attribute of ParamAttr, instance_norm
             will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
             If the Initializer of the bias_attr is not set, the bias is initialized zero.
-    `       If it is set to False, will not create bias_attr. Default: None.
+            If it is set to False, will not create bias_attr. Default: None.
         data_format(str, optional): Specify the input data format, could be "NCHW". Default: NCHW.
         name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
@@ -239,6 +259,26 @@ Where `H` means height of feature map, `W` means width of feature map.
             print(instance_norm_out)
     """
 
+    def __init__(
+        self,
+        num_features,
+        epsilon=0.00001,
+        momentum=0.9,
+        weight_attr=None,
+        bias_attr=None,
+        data_format="NCHW",
+        name=None,
+    ):
+        super().__init__(
+            num_features,
+            epsilon,
+            momentum,
+            weight_attr,
+            bias_attr,
+            data_format,
+            name,
+        )
+
     def _check_input_dim(self, input):
         if len(input.shape) != 4:
             raise ValueError(
@@ -250,7 +290,7 @@ class InstanceNorm3D(_InstanceNormBase):
     r"""
     Create a callable object of `InstanceNorm3D`. Applies Instance Normalization over a 5D input (a mini-batch of 3D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
-    DataLayout: NCHW `[batch, in_channels, D, in_height, in_width]`
+    DataLayout: NCDHW `[batch, in_channels, D, in_height, in_width]`
 
 
     :math:`input` is the input features over a mini-batch.
@@ -265,7 +305,7 @@ class InstanceNorm3D(_InstanceNormBase):
         \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
         y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-Where `H` means height of feature map, `W` means width of feature map.
+    Where `H` means height of feature map, `W` means width of feature map.
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
@@ -305,6 +345,26 @@ Where `H` means height of feature map, `W` means width of feature map.
 
             print(instance_norm_out.numpy)
     """
+
+    def __init__(
+        self,
+        num_features,
+        epsilon=0.00001,
+        momentum=0.9,
+        weight_attr=None,
+        bias_attr=None,
+        data_format="NCDHW",
+        name=None,
+    ):
+        super().__init__(
+            num_features,
+            epsilon,
+            momentum,
+            weight_attr,
+            bias_attr,
+            data_format,
+            name,
+        )
 
     def _check_input_dim(self, input):
         if len(input.shape) != 5:
