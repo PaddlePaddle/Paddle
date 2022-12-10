@@ -28,26 +28,20 @@ class TrtConvertLeakyEyeTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input_attr1():
-            return np.random.randint(1, 320, size=1).item()
-
-        def generate_input_attr2():
+        def generate_input_attr():
             if np.random.random() > 0.5:
                 return np.random.randint(1, 320, size=2)
-            return generate_input_attr1(), -1
+            return np.random.randint(1, 320), -1
 
         for dtype in [2, 4, 5]:
             for _ in range(6):
-                if np.random.random() > 0.3:
-                    num_rows = generate_input_attr1()
-                    attr_dic = {"num_rows": num_rows, "dtype": dtype}
-                else:
-                    num_rows, num_columns = generate_input_attr2()
-                    attr_dic = {
-                        "num_rows": num_rows,
-                        "num_columns": num_columns,
-                        "dtype": dtype,
-                    }
+
+                num_rows, num_columns = generate_input_attr()
+                attr_dic = {
+                    "num_rows": num_rows,
+                    "num_columns": num_columns,
+                    "dtype": dtype,
+                }
 
                 ops_config = [
                     {
