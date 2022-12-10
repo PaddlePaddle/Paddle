@@ -30,6 +30,10 @@ class Multinomial(distribution.Distribution):
     binomial distribution, when k is grater than 2 and n is 1, it is the
     categorical distribution.
 
+    Test for System Message Check
+
+    Test for Docs Preveiw...
+
     The probability mass function (PMF) for multinomial is
 
     .. math::

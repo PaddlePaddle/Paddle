@@ -28,6 +28,8 @@ class Beta(exponential_family.ExponentialFamily):
     the distribution. The generalization to multiple variables is called a
     Dirichlet distribution.
 
+    Test for System Message Check...
+
     The probability density function (pdf) is
 
     .. math::
