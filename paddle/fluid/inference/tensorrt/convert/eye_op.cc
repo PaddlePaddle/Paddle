@@ -46,22 +46,47 @@ class EyeOpConverter : public OpConverter {
     // Declare inputs attr
     const int num_rows = PADDLE_GET_CONST(int, op_desc.GetAttr("num_rows"));
     int num_columns = PADDLE_GET_CONST(int, op_desc.GetAttr("num_columns"));
-    const int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
+    auto dtype = static_cast<framework::proto::VarType::Type>(
+        PADDLE_GET_CONST(int, op_desc.GetAttr("dtype")));
+
+    // Set data dim
+    nvinfer1::Dims input_shape;
+    input_shape.nbDims = 2;
+    if (-1 == num_columns) {
+      num_columns = num_rows;
+    }
+    input_shape.d[0] = num_rows;
+    input_shape.d[1] = num_columns;
+    const size_t data_len = num_rows * num_columns;
+    const size_t num_min = std::min(num_rows, num_columns);
 
     // Set data type
+    void* trt_data = nullptr;
     nvinfer1::DataType nv_type = nvinfer1::DataType::kFLOAT;
     switch (dtype) {
-      case paddle::framework::proto::VarType::FP32:
+      case framework::proto::VarType::FP32:
         nv_type = nvinfer1::DataType::kFLOAT;
-        typedef float T;
+        std::unique_ptr<float> data(new float[data_len]());
+        for (size_t i = 0; i < num_min; i++) {
+          data[i * num_columns + i] = 1;
+        }
+        trt_data = static_cast<void*>(data.get());
         break;
-      case paddle::framework::proto::VarType::FP16:
+      case framework::proto::VarType::FP16:
         nv_type = nvinfer1::DataType::kHALF;
-        typedef uint16_t T;
+        std::unique_ptr<float16_t> data(new float16_t[data_len]());
+        for (size_t i = 0; i < num_min; i++) {
+          data[i * num_columns + i] = 1;
+        }
+        trt_data = static_cast<void*>(data.get());
         break;
-      case paddle::framework::proto::VarType::INT32:
+      case framework::proto::VarType::INT32:
         nv_type = nvinfer1::DataType::kINT32;
-        typedef int32_t T;
+        std::unique_ptr<int32_t> data(new int32_t[data_len]());
+        for (size_t i = 0; i < num_min; i++) {
+          data[i * num_columns + i] = 1;
+        }
+        trt_data = static_cast<void*>(data.get());
         break;
       default:
         paddle::platform::errors::InvalidArgument(
@@ -71,27 +96,11 @@ class EyeOpConverter : public OpConverter {
         break;
     }
 
-    // Set data dim
-    nvinfer1::Dims input_shape;
-    input_shape.nbDims = 2;
-    input_shape.d[0] = num_rows;
-    input_shape.d[1] = num_columns;
-    if (-1 == num_columns) {
-      input_shape.d[1] = num_rows;
-      num_columns = num_rows;
-    }
-
-    std::vector<T> constant_arr(num_rows * num_columns, 0);
-    for (int i = 0; i < std::min(num_rows, num_columns); i++) {
-      constant_arr[i * num_columns + i] = 1;
-    }
-    auto* layer = TRT_ENGINE_ADD_LAYER(
-        engine_,
-        Constant,
-        input_shape,
-        nvinfer1::Weights{nv_type,
-                          static_cast<void*>(constant_arr.data()),
-                          num_rows * num_columns});
+    auto* layer =
+        TRT_ENGINE_ADD_LAYER(engine_,
+                             Constant,
+                             input_shape,
+                             nvinfer1::Weights{nv_type, trt_data, data_len});
 
     std::string output_name = op_desc.Output("Out").front();
 
