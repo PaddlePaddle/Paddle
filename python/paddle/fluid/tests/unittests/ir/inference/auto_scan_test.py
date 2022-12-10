@@ -185,20 +185,20 @@ class AutoScanTest(unittest.TestCase):
             if 'outputs_dtype' in op_config:
                 ops.append(
                     OpConfig(
-                        type=op_config.get('op_type'),
-                        inputs=op_config.get('op_inputs'),
-                        outputs=op_config.get('op_outputs'),
-                        attrs=op_config.get('op_attrs'),
-                        outputs_dtype=op_config.get('outputs_dtype'),
+                        type=op_config.get('op_type', {}),
+                        inputs=op_config.get('op_inputs', {}),
+                        outputs=op_config.get('op_outputs', {}),
+                        attrs=op_config.get('op_attrs', {}),
+                        outputs_dtype=op_config.get('outputs_dtype', {}),
                     )
                 )
             else:
                 ops.append(
                     OpConfig(
-                        type=op_config.get('op_type'),
-                        inputs=op_config.get('op_inputs'),
-                        outputs=op_config.get('op_outputs'),
-                        attrs=op_config.get('op_attrs'),
+                        type=op_config.get('op_type', {}),
+                        inputs=op_config.get('op_inputs', {}),
+                        outputs=op_config.get('op_outputs', {}),
+                        attrs=op_config.get('op_attrs', {}),
                     )
                 )
         return ops
