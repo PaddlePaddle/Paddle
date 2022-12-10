@@ -131,7 +131,8 @@ class InstanceNorm1D(_InstanceNormBase):
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
-        epsilon(float, optional): A value added to the denominator for numerical stability. Default is 1e-5.
+        epsilon(float, optional): A value added to the denominator for
+            numerical stability. Default is 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale` of instance_norm.
             If it is set to None or one attribute of ParamAttr, instance_norm
@@ -221,7 +222,8 @@ class InstanceNorm2D(_InstanceNormBase):
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
-        epsilon(float, optional): A value added to the denominator for numerical stability. Default is 1e-5.
+        epsilon(float, optional): A value added to the denominator for
+            numerical stability. Default is 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
             of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
@@ -307,7 +309,8 @@ class InstanceNorm3D(_InstanceNormBase):
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
-        epsilon(float, optional): A value added to the denominator for numerical stability. Default is 1e-5.
+        epsilon(float, optional): A value added to the denominator for
+            numerical stability. Default is 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
             of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
