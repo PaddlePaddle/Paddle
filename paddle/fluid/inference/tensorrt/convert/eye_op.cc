@@ -62,37 +62,32 @@ class EyeOpConverter : public OpConverter {
     // Set data type
     void* trt_data = nullptr;
     nvinfer1::DataType nv_type = nvinfer1::DataType::kFLOAT;
-    switch (dtype) {
-      case 2:
-        nv_type = nvinfer1::DataType::kINT32;
-        std::unique_ptr<int32_t[]> data(new int32_t[data_len]());
-        for (int i = 0; i < num_min; i++) {
-          data[i * num_columns + i] = 1;
-        }
-        trt_data = static_cast<void*>(data.get());
-        break;
-      case 4:
-        nv_type = nvinfer1::DataType::kHALF;
-        std::unique_ptr<float16[]> data(new float16[data_len]());
-        for (int i = 0; i < num_min; i++) {
-          data[i * num_columns + i] = 1;
-        }
-        trt_data = static_cast<void*>(data.get());
-        break;
-      case 5:
-        nv_type = nvinfer1::DataType::kFLOAT;
-        std::unique_ptr<float[]> data(new float[data_len]());
-        for (int i = 0; i < num_min; i++) {
-          data[i * num_columns + i] = 1;
-        }
-        trt_data = static_cast<void*>(data.get());
-        break;
-      default:
-        paddle::platform::errors::InvalidArgument(
-            "Paddle-TRT loads weighths failed, found not supported data type "
-            "%s.",
-            dtype);
-        break;
+    if (2 == dtype) {
+      nv_type = nvinfer1::DataType::kINT32;
+      std::unique_ptr<int32_t[]> data(new int32_t[data_len]());
+      for (int i = 0; i < num_min; i++) {
+        data[i * num_columns + i] = 1;
+      }
+      trt_data = static_cast<void*>(data.get());
+    } else if (4 == dtype) {
+      nv_type = nvinfer1::DataType::kHALF;
+      std::unique_ptr<float16[]> data(new float16[data_len]());
+      for (int i = 0; i < num_min; i++) {
+        data[i * num_columns + i] = 1;
+      }
+      trt_data = static_cast<void*>(data.get());
+    } else if (5 == dtype) {
+      nv_type = nvinfer1::DataType::kFLOAT;
+      std::unique_ptr<float[]> data(new float[data_len]());
+      for (int i = 0; i < num_min; i++) {
+        data[i * num_columns + i] = 1;
+      }
+      trt_data = static_cast<void*>(data.get());
+    } else {
+      paddle::platform::errors::InvalidArgument(
+          "Paddle-TRT loads weighths failed, found not supported data type "
+          "%s.",
+          dtype);
     }
 
     auto* layer =
