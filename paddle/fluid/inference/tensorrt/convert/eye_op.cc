@@ -57,8 +57,8 @@ class EyeOpConverter : public OpConverter {
     }
     input_shape.d[0] = num_rows;
     input_shape.d[1] = num_columns;
-    const size_t data_len = num_rows * num_columns;
-    const size_t num_min = std::min(num_rows, num_columns);
+    const int data_len = num_rows * num_columns;
+    const int num_min = std::min(num_rows, num_columns);
 
     // Set data type
     void* trt_data = nullptr;
@@ -67,7 +67,7 @@ class EyeOpConverter : public OpConverter {
       case framework::proto::VarType::FP32:
         nv_type = nvinfer1::DataType::kFLOAT;
         std::unique_ptr<float> data(new float[data_len]());
-        for (size_t i = 0; i < num_min; i++) {
+        for (int i = 0; i < num_min; i++) {
           data[i * num_columns + i] = 1;
         }
         trt_data = static_cast<void*>(data.get());
@@ -75,7 +75,7 @@ class EyeOpConverter : public OpConverter {
       case framework::proto::VarType::FP16:
         nv_type = nvinfer1::DataType::kHALF;
         std::unique_ptr<float16_t> data(new float16_t[data_len]());
-        for (size_t i = 0; i < num_min; i++) {
+        for (int i = 0; i < num_min; i++) {
           data[i * num_columns + i] = 1;
         }
         trt_data = static_cast<void*>(data.get());
@@ -83,7 +83,7 @@ class EyeOpConverter : public OpConverter {
       case framework::proto::VarType::INT32:
         nv_type = nvinfer1::DataType::kINT32;
         std::unique_ptr<int32_t> data(new int32_t[data_len]());
-        for (size_t i = 0; i < num_min; i++) {
+        for (int i = 0; i < num_min; i++) {
           data[i * num_columns + i] = 1;
         }
         trt_data = static_cast<void*>(data.get());
