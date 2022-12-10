@@ -266,9 +266,8 @@ def stft(
     windows of the input using this formula:
 
     .. math::
-        X_t[f] = \sum_{n = 0}^{N-1}%
-                      \text{window}[n]\ x[t \times H + n]\ %
-                      e^{-{2 \pi j f n}/{N}}
+        X_t[f] = \sum_{n = 0}^{N-1} \text{window}[n]\ x[t \times H + n]\ %
+                 e^{-{2 \pi j f n}/{N}}
 
     Where:
     - :math:`t`: The :math:`t`-th input window.
