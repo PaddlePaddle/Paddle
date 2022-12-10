@@ -914,7 +914,9 @@ class GraphDataGenerator {
   int FillFeatureBuf(std::shared_ptr<phi::Allocation> d_walk,
                      std::shared_ptr<phi::Allocation> d_feature);
   void FillOneStep(uint64_t* start_ids,
+                   int etype_id,
                    uint64_t* walk,
+                   uint8_t *walk_ntype,
                    int len,
                    NeighborSampleResult& sample_res,  // NOLINT
                    int cur_degree,
@@ -999,6 +1001,8 @@ class GraphDataGenerator {
   std::shared_ptr<phi::Allocation> d_train_metapath_keys_;
 
   std::shared_ptr<phi::Allocation> d_walk_;
+  std::shared_ptr<phi::Allocation> d_walk_ntype_;
+  std::shared_ptr<phi::Allocation> d_excluded_train_pair_;
   std::shared_ptr<phi::Allocation> d_feature_list_;
   std::shared_ptr<phi::Allocation> d_feature_;
   std::shared_ptr<phi::Allocation> d_len_per_row_;
@@ -1038,6 +1042,7 @@ class GraphDataGenerator {
   std::vector<std::vector<std::shared_ptr<phi::Allocation>>> graph_edges_vec_;
   std::vector<std::vector<std::vector<int>>> edges_split_num_vec_;
 
+  int excluded_train_pair_len_;
   int64_t reindex_table_size_;
   int sage_batch_count_;
   int sage_batch_num_;
@@ -1067,6 +1072,8 @@ class GraphDataGenerator {
   int total_row_;
   size_t infer_node_start_;
   size_t infer_node_end_;
+  std::set<int> infer_node_type_index_set_;
+  std::string infer_node_type_;
 };
 
 class DataFeed {

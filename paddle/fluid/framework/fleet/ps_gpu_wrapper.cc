@@ -1444,7 +1444,7 @@ void PSGPUWrapper::SparseTableToHbm() {
   gpu_task->init(thread_keys_shard_num_, device_num, multi_mf_dim_);
   gpu_task->pass_id_ = (uint16_t)(dataset_->GetPassID());
   auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
-  auto node_to_id = gpu_graph_ptr->feature_to_id;
+  auto node_to_id = gpu_graph_ptr->node_to_id;
   auto edge_to_id = gpu_graph_ptr->edge_to_id;
   std::vector<uint64_t> vec_data = gpu_graph_ptr->get_graph_total_keys();
 

@@ -1340,6 +1340,7 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
   return result;
 }
 
+// only for graphsage
 NeighborSampleResultV2 GpuPsGraphTable::graph_neighbor_sample_all_edge_type(
     int gpu_id,
     int edge_type_len,
