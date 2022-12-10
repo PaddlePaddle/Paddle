@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.utils import gast
 import inspect
-import numpy as np
-import paddle
-import paddle.fluid as fluid
 import unittest
 
-from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import NameVisitor
-from paddle.fluid.dygraph.jit import declarative
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+from paddle.jit.api import declarative
+from paddle.jit.dy2static.loop_transformer import NameVisitor
+from paddle.utils import gast
 
 SEED = 2020
 np.random.seed(SEED)
@@ -441,5 +442,4 @@ class TestErrorInForLoop(TestTransformForLoop):
 
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

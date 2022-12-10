@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import unittest
+
+import gradient_checker
 import numpy as np
+from decorator_helper import prog_scope
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import paddle.fluid.core as core
-import gradient_checker
-from decorator_helper import prog_scope
+import paddle.fluid.layers as layers
 
 paddle.enable_static()
 
@@ -30,8 +31,8 @@ class TestMulGradCheck(unittest.TestCase):
     def func(self, place):
         prog = fluid.Program()
         with fluid.program_guard(prog):
-            x = layers.create_parameter(dtype="float64", shape=[2, 8], name='x')
-            y = layers.create_parameter(dtype="float64", shape=[8, 4], name='y')
+            x = paddle.create_parameter(dtype="float64", shape=[2, 8], name='x')
+            y = paddle.create_parameter(dtype="float64", shape=[8, 4], name='y')
             z = layers.mul(x=x, y=y)
             gradient_checker.grad_check([x, y], z, place=place)
 
@@ -87,13 +88,13 @@ class TestMatmulDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
         typename = "float64"
-        x = layers.create_parameter(
+        x = paddle.create_parameter(
             dtype=typename, shape=self.x_shape, name='x'
         )
-        y = layers.create_parameter(
+        y = paddle.create_parameter(
             dtype=typename, shape=self.y_shape, name='y'
         )
-        out = layers.matmul(
+        out = paddle.matmul(
             x, y, self.transpose_x, self.transpose_y, name='out'
         )
 

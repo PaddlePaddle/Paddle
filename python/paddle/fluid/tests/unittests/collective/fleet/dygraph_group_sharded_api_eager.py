@@ -13,16 +13,17 @@
 # limitations under the License.
 
 import tempfile
+
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Linear
-from paddle.fluid.framework import _test_eager_guard
 from paddle.distributed.sharding import (
     group_sharded_parallel,
     save_group_sharded_model,
 )
+from paddle.fluid.framework import _test_eager_guard
+from paddle.nn import Linear
 
 epoch = 10
 paddle.seed(2022)
@@ -98,6 +99,10 @@ def train_mlp(
         sync_buffers=sync_buffers,
         dp_group=dp_group,
     )
+
+    # just for test_coverage.
+    if shard_level == "os_g":
+        optimizer.set_lr(optimizer.get_lr())
 
     train_reader = paddle.batch(
         reader_decorator(), batch_size=batch_size, drop_last=True

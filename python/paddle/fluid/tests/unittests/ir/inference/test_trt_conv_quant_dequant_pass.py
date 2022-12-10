@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from quant_dequant_test import QuantDequantTest
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class QuantDequantTensorRTSubgraphPassConvTest(QuantDequantTest):
@@ -52,7 +53,12 @@ class QuantDequantTensorRTSubgraphPassConvTest(QuantDequantTest):
             elif self.conv_groups == 4:
                 cout = paddle.reshape(conv_out, shape=[1, 1, 10816])
             result = fluid.layers.relu(cout)
-            loss = fluid.layers.cross_entropy(input=result, label=label_shape)
+            loss = paddle.nn.functional.cross_entropy(
+                input=result,
+                label=label_shape,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_loss = paddle.mean(loss)
             return avg_loss, result
 
@@ -155,7 +161,12 @@ class DynamicShapeQuantDequantTensorRTSubgraphPassConvTest(QuantDequantTest):
             )
             cout = paddle.reshape(conv_out, shape=[1, 1, 10816])
             result = fluid.layers.relu(cout)
-            loss = fluid.layers.cross_entropy(input=result, label=label_shape)
+            loss = paddle.nn.functional.cross_entropy(
+                input=result,
+                label=label_shape,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_loss = paddle.mean(loss)
             return avg_loss, result
 
@@ -237,7 +248,7 @@ class QuantDequantTensorRTSubgraphPassConvTransposeTest(QuantDequantTest):
             data_reshape = paddle.reshape(self.data, shape=[1, 4, 14, 14])
             self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
             label_shape = paddle.reshape(self.label, shape=[1, 1, 1])
-            conv_out = fluid.layers.conv2d_transpose(
+            conv_out = paddle.static.nn.conv2d_transpose(
                 input=data_reshape,
                 num_filters=self.conv_num_filters,
                 filter_size=self.conv_filter_size,
@@ -256,7 +267,12 @@ class QuantDequantTensorRTSubgraphPassConvTransposeTest(QuantDequantTest):
             elif self.conv_groups == 4:
                 cout = paddle.reshape(conv_out, shape=[1, 1, 10816])
             result = fluid.layers.relu(cout)
-            loss = fluid.layers.cross_entropy(input=result, label=label_shape)
+            loss = paddle.nn.functional.cross_entropy(
+                input=result,
+                label=label_shape,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_loss = paddle.mean(loss)
             return avg_loss, result
 

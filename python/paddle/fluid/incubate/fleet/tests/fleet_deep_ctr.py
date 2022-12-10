@@ -146,11 +146,13 @@ def model():
     merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
 
     predict = fluid.layers.fc(input=merge_layer, size=2, act='softmax')
-    acc = fluid.layers.accuracy(input=predict, label=label)
-    auc_var, batch_auc_var, auc_states = fluid.layers.auc(
+    acc = paddle.static.accuracy(input=predict, label=label)
+    auc_var, batch_auc_var, auc_states = paddle.static.auc(
         input=predict, label=label
     )
-    cost = fluid.layers.cross_entropy(input=predict, label=label)
+    cost = paddle.nn.functional.cross_entropy(
+        input=predict, label=label, reduction='none', use_softmax=False
+    )
     avg_cost = paddle.mean(x=cost)
 
     return datas, avg_cost, predict, train_file_path

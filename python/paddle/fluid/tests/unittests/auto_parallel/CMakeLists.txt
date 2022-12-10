@@ -119,5 +119,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_engine_api_error MODULES test_engine_api_error)
   py_test_modules(test_fp16_assign MODULES test_fp16_assign)
   py_test_modules(test_group_operators MODULES test_group_operators)
-
+  py_test_modules(test_pattern MODULES test_pattern)
+  py_test_modules(test_pattern_match MODULES test_pattern_match)
+  py_test_modules(test_cluster_partition MODULES test_cluster_partition)
+  py_test_modules(test_convert_to_process_meshes MODULES
+                  test_convert_to_process_meshes)
 endif()

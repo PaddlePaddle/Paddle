@@ -132,16 +132,20 @@ def simple_img_conv_pool(
         act=act,
         use_cudnn=use_cudnn,
     )
-
-    pool_out = layers.pool2d(
-        input=conv_out,
-        pool_size=pool_size,
-        pool_type=pool_type,
-        pool_stride=pool_stride,
-        pool_padding=pool_padding,
-        global_pooling=global_pooling,
-        use_cudnn=use_cudnn,
-    )
+    if pool_type == 'max':
+        pool_out = paddle.nn.functional.max_pool2d(
+            x=conv_out,
+            kernel_size=pool_size,
+            stride=pool_stride,
+            padding=pool_padding,
+        )
+    else:
+        pool_out = paddle.nn.functional.avg_pool2d(
+            x=conv_out,
+            kernel_size=pool_size,
+            stride=pool_stride,
+            padding=pool_padding,
+        )
     return pool_out
 
 
@@ -253,18 +257,23 @@ def img_conv_group(
         )
 
         if conv_with_batchnorm[i]:
-            tmp = layers.batch_norm(input=tmp, act=conv_act)
+            tmp = paddle.static.nn.batch_norm(input=tmp, act=conv_act)
             drop_rate = conv_batchnorm_drop_rate[i]
             if abs(drop_rate) > 1e-5:
                 tmp = layers.dropout(x=tmp, dropout_prob=drop_rate)
 
-    pool_out = layers.pool2d(
-        input=tmp,
-        pool_size=pool_size,
-        pool_type=pool_type,
-        pool_stride=pool_stride,
-        use_cudnn=use_cudnn,
-    )
+    if pool_type == 'max':
+        pool_out = paddle.nn.functional.max_pool2d(
+            x=tmp,
+            kernel_size=pool_size,
+            stride=pool_stride,
+        )
+    else:
+        pool_out = paddle.nn.functional.avg_pool2d(
+            x=tmp,
+            kernel_size=pool_size,
+            stride=pool_stride,
+        )
     return pool_out
 
 
@@ -390,7 +399,7 @@ def glu(input, dim=-1):
     )
     a, b = layers.split(input, num_or_sections=2, dim=dim)
     act_b = paddle.nn.functional.sigmoid(x=b)
-    out = layers.elementwise_mul(x=a, y=act_b)
+    out = paddle.multiply(x=a, y=act_b)
     return out
 
 
@@ -577,7 +586,7 @@ def scaled_dot_product_attention(
 
         # permute the dimensions into:
         # [batch_size, num_heads, max_sequence_len, hidden_size_per_head]
-        return layers.transpose(x=reshaped, perm=[0, 2, 1, 3])
+        return paddle.transpose(x=reshaped, perm=[0, 2, 1, 3])
 
     def __combine_heads(x):
         """
@@ -598,7 +607,7 @@ def scaled_dot_product_attention(
         if len(x.shape) != 4:
             raise ValueError("Input(x) should be a 4-D Tensor.")
 
-        trans_x = layers.transpose(x, perm=[0, 2, 1, 3])
+        trans_x = paddle.transpose(x, perm=[0, 2, 1, 3])
         return paddle.reshape(
             x=trans_x,
             shape=list(
@@ -620,8 +629,8 @@ def scaled_dot_product_attention(
     v = __split_heads(v, num_heads)
 
     key_dim_per_head = keys.shape[-1] // num_heads
-    scaled_q = layers.scale(x=q, scale=key_dim_per_head**-0.5)
-    product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
+    scaled_q = paddle.scale(x=q, scale=key_dim_per_head**-0.5)
+    product = paddle.matmul(x=scaled_q, y=k, transpose_y=True)
 
     x = paddle.reshape(x=product, shape=[-1, product.shape[-1]])
     x = paddle.nn.functional.softmax(x)
@@ -631,5 +640,5 @@ def scaled_dot_product_attention(
         weights = layers.dropout(
             weights, dropout_prob=dropout_rate, is_test=False
         )
-    ctx_multiheads = layers.matmul(weights, v)
+    ctx_multiheads = paddle.matmul(weights, v)
     return __combine_heads(ctx_multiheads)

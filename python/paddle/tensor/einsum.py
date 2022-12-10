@@ -12,22 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import itertools
-import numpy as np
 import re
+import string
 
+import numpy as np
+import opt_einsum
+
+from paddle import _C_ops, _legacy_C_ops
+
+from ..fluid.data_feeder import check_type, check_variable_and_dtype
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from ..fluid.layer_helper import LayerHelper
 from .linalg import matmul, transpose
-from .manipulation import squeeze, unsqueeze, reshape
+from .manipulation import reshape, squeeze, unsqueeze
 from .math import multiply
 from .math import sum as paddle_sum
-from ..fluid.framework import _in_legacy_dygraph
-from paddle import _C_ops, _legacy_C_ops
-from ..fluid.data_feeder import check_type, check_variable_and_dtype
-from ..fluid.layer_helper import LayerHelper
-from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
-import collections
-import string
-import opt_einsum
 
 __all__ = []
 
@@ -867,7 +868,7 @@ def einsum(equation, *operands):
 
     einsum(equation, *operands)
 
-    The current version of this API should be used in dygraph only mode.
+    The current version of this API should be used in dynamic graph only mode.
 
     Einsum offers a tensor operation API which allows using the Einstein summation
     convention or Einstain notation. It takes as input one or multiple tensors and
@@ -900,20 +901,21 @@ def einsum(equation, *operands):
           dimensions into broadcasting dimensions.
         - Singular labels are called free labels, duplicate are dummy labels. Dummy labeled
           dimensions will be reduced and removed in the output.
-        - Output labels can be explicitly specified on the right hand side of `->` or omitted. In the latter case, the output labels will be inferred from the input labels.
-            - Inference of output labels
-                - Broadcasting label `...`, if present, is put on the leftmost position.
-                - Free labels are reordered alphabetically and put after `...`.
-            - On explicit output labels
-                - If broadcasting is enabled, then `...` must be present.
-                - The output labels can be an empty, an indication to output as a scalar
-                  the sum over the original output.
-                - Non-input labels are invalid.
-                - Duplicate labels are invalid.
-                - For any dummy label which is present for the output, it's promoted to
-                  a free label.
-                - For any free label which is not present for the output, it's lowered to
-                  a dummy label.
+        - Output labels can be explicitly specified on the right hand side of `->` or omitted.
+            In the latter case, the output labels will be inferred from the input labels.
+                - Inference of output labels
+                    - Broadcasting label `...`, if present, is put on the leftmost position.
+                    - Free labels are reordered alphabetically and put after `...`.
+                - On explicit output labels
+                    - If broadcasting is enabled, then `...` must be present.
+                    - The output labels can be an empty, an indication to output as a scalar
+                        the sum over the original output.
+                    - Non-input labels are invalid.
+                    - Duplicate labels are invalid.
+                    - For any dummy label which is present for the output, it's promoted to
+                        a free label.
+                    - For any free label which is not present for the output, it's lowered to
+                        a dummy label.
 
         - Examples
             - '...ij, ...jk', where i and k are free labels, j is dummy. The output label

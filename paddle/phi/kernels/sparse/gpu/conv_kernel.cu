@@ -123,25 +123,6 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
         dev_ctx, x, key, tmp_rulebook, h_counter, out, rulebook, counter);
   }
 
-  if (subm) {
-    auto config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
-    unique_value.ResizeAndAllocate(
-        {static_cast<int>(out->nnz() * kernel_size)});
-    out_index.ResizeAndAllocate({static_cast<int>(rulebook_len)});
-    int* out_index_ptr = out_index.data<int>();
-    int* unique_value_ptr = unique_value.data<int>();
-    phi::backends::gpu::GpuMemsetAsync(
-        out_index_ptr, 0, sizeof(int) * rulebook_len, dev_ctx.stream());
-    GroupIndexs<<<config.block_per_grid,
-                  config.thread_per_block,
-                  0,
-                  dev_ctx.stream()>>>(rulebook_len,
-                                      kernel_size,
-                                      rulebook_ptr + rulebook_len,
-                                      out_index_ptr,
-                                      unique_value_ptr);
-  }
 #ifdef PADDLE_WITH_CUTLASS
   bool cutlass = true;
   if (dev_ctx.GetComputeCapability() < 80) cutlass = false;
@@ -229,6 +210,25 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
     }
   } else {
 #endif
+    if (subm) {
+      auto config =
+          phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
+      unique_value.ResizeAndAllocate(
+          {static_cast<int>(out->nnz() * kernel_size)});
+      out_index.ResizeAndAllocate({static_cast<int>(rulebook_len)});
+      int* out_index_ptr = out_index.data<int>();
+      int* unique_value_ptr = unique_value.data<int>();
+      phi::backends::gpu::GpuMemsetAsync(
+          out_index_ptr, 0, sizeof(int) * rulebook_len, dev_ctx.stream());
+      GroupIndexs<<<config.block_per_grid,
+                    config.thread_per_block,
+                    0,
+                    dev_ctx.stream()>>>(rulebook_len,
+                                        kernel_size,
+                                        rulebook_ptr + rulebook_len,
+                                        out_index_ptr,
+                                        unique_value_ptr);
+    }
     // 2. gather
     phi::DenseTensor in_features =
         phi::Empty<T>(dev_ctx, {rulebook_len, in_channels});

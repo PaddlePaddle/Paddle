@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
@@ -57,7 +58,7 @@ class TestBase(IPUOpTest):
         target = paddle.static.data(
             name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32'
         )
-        out = paddle.fluid.layers.kldiv_loss(x, target, **self.attrs)
+        out = paddle.nn.functional.kl_div(x, target, **self.attrs)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):

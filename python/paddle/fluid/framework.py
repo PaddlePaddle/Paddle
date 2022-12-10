@@ -786,7 +786,8 @@ def disable_signal_handler():
 
     Make sure you called paddle.disable_signal_handler() before using above mentioned frameworks.
 
-    Returns: None
+    Returns:
+        None
 
     Examples:
         .. code-block:: python
@@ -1640,6 +1641,7 @@ class Variable(metaclass=VariableMetaClass):
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import numpy as np
 
@@ -1652,16 +1654,17 @@ class Variable(metaclass=VariableMetaClass):
                         tmp.stop_gradient=False
                         inputs2.append(tmp)
                     ret2 = fluid.layers.sums(inputs2)
-                    loss2 = fluid.layers.reduce_sum(ret2)
+                    loss2 = paddle.sum(ret2)
                     loss2.backward()
                     print(loss2.gradient())
 
                 # example2: return tuple of ndarray
                 with fluid.dygraph.guard():
-                    embedding = fluid.dygraph.Embedding(
-                        size=[20, 32],
-                        param_attr='emb.w',
-                        is_sparse=True)
+                    embedding = paddle.nn.Embedding(
+                        20,
+                        32,
+                        weight_attr='emb.w',
+                        sparse=True)
                     x_data = np.arange(12).reshape(4, 3).astype('int64')
                     x_data = x_data.reshape((-1, 3, 1))
                     x = fluid.dygraph.base.to_variable(x_data)
@@ -1687,6 +1690,7 @@ class Variable(metaclass=VariableMetaClass):
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import numpy as np
 
@@ -1698,7 +1702,7 @@ class Variable(metaclass=VariableMetaClass):
                         tmp.stop_gradient=False
                         inputs2.append(tmp)
                     ret2 = fluid.layers.sums(inputs2)
-                    loss2 = fluid.layers.reduce_sum(ret2)
+                    loss2 = paddle.sum(ret2)
                     loss2.backward()
                     print(loss2.gradient())
                     loss2.clear_gradient()
