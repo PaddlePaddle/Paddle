@@ -66,7 +66,7 @@ class EyeOpConverter : public OpConverter {
     switch (dtype) {
       case framework::proto::VarType::FP32:
         nv_type = nvinfer1::DataType::kFLOAT;
-        std::unique_ptr<float> data(new float[data_len]());
+        std::unique_ptr<float[]> data(new float[data_len]());
         for (int i = 0; i < num_min; i++) {
           data[i * num_columns + i] = 1;
         }
@@ -74,7 +74,7 @@ class EyeOpConverter : public OpConverter {
         break;
       case framework::proto::VarType::FP16:
         nv_type = nvinfer1::DataType::kHALF;
-        std::unique_ptr<float16_t> data(new float16_t[data_len]());
+        std::unique_ptr<float16_t[]> data(new float16_t[data_len]());
         for (int i = 0; i < num_min; i++) {
           data[i * num_columns + i] = 1;
         }
@@ -82,7 +82,7 @@ class EyeOpConverter : public OpConverter {
         break;
       case framework::proto::VarType::INT32:
         nv_type = nvinfer1::DataType::kINT32;
-        std::unique_ptr<int32_t> data(new int32_t[data_len]());
+        std::unique_ptr<int32_t[]> data(new int32_t[data_len]());
         for (int i = 0; i < num_min; i++) {
           data[i * num_columns + i] = 1;
         }
