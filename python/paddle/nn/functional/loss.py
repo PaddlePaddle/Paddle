@@ -148,6 +148,19 @@ def log_loss(input, label, epsilon=1e-4, name=None):
           label = paddle.randn((10,1))
           prob = paddle.randn((10,1))
           cost = F.log_loss(input=prob, label=label)
+          print(cost)
+          # Tensor(shape=[10, 1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+          #  [[2.39360619],
+          #  [nan       ],
+          #  [1.71178246],
+          #  [nan       ],
+          #  [-6.16788101],
+          #  [nan       ],
+          #  [nan       ],
+          #  [nan       ],
+          #  [0.62156641],
+          #  [0.05315349]])
+
     """
     if in_dygraph_mode():
         return _C_ops.log_loss(input, label, epsilon)
