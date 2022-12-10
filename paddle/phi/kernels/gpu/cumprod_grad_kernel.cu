@@ -194,16 +194,15 @@ void CumprodGradKernel(const Context &dev_ctx,
   auto zero_mask = const_cast<Allocator &>(dev_ctx.GetAllocator())
                        .Allocate(numel * sizeof(uint8_t));
   auto *zero_mask_data = reinterpret_cast<uint8_t *>(zero_mask->ptr());
-  phi::funcs::InclusiveScan<uint8_t, cub::Max>(
-      zero_mask_without_cummax_data,
-      zero_mask_data,
-      outer_dim,
-      mid_dim,
-      inner_dim,
-      static_cast<uint8_t>(0),
-      cub::Max(),
-      /*reverse=*/false,
-      dev_ctx);
+  phi::funcs::InclusiveScan<uint8_t, cub::Max>(zero_mask_without_cummax_data,
+                                               zero_mask_data,
+                                               outer_dim,
+                                               mid_dim,
+                                               inner_dim,
+                                               static_cast<uint8_t>(0),
+                                               cub::Max(),
+                                               /*reverse=*/false,
+                                               dev_ctx);
   zero_mask_without_cummax = nullptr;
 
   // Step 2: calculate reversed cumsum(dy * y)
@@ -222,16 +221,15 @@ void CumprodGradKernel(const Context &dev_ctx,
           .Allocate(numel * sizeof(T));
   auto *dy_mul_y_reversed_cumsum_data =
       reinterpret_cast<T *>(dy_mul_y_reversed_cumsum->ptr());
-  phi::funcs::InclusiveScan<T, cub::Sum>(
-      dy_mul_y_data,
-      dy_mul_y_reversed_cumsum_data,
-      outer_dim,
-      mid_dim,
-      inner_dim,
-      static_cast<T>(0),
-      cub::Sum(),
-      /*reverse=*/true,
-      dev_ctx);
+  phi::funcs::InclusiveScan<T, cub::Sum>(dy_mul_y_data,
+                                         dy_mul_y_reversed_cumsum_data,
+                                         outer_dim,
+                                         mid_dim,
+                                         inner_dim,
+                                         static_cast<T>(0),
+                                         cub::Sum(),
+                                         /*reverse=*/true,
+                                         dev_ctx);
 
   // Step 3: calculate the gradient value except the first zero position.
   // The gradient value of the first zero position is filled with out[idx-1],
