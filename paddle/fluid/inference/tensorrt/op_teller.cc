@@ -687,7 +687,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                      : -1;
       bool flatten = PADDLE_GET_CONST(bool, desc.GetAttr("flatten"));
       int dtype = PADDLE_GET_CONST(int, desc.GetAttr("dtype"));
-      if (axis == 0 || flatten || dtype != 2) return false;
+      if (axis == 0 || flatten || (dtype != 2 and dtype != 3)) return false;
     }
 
     if (op_type == "affine_channel") {
@@ -820,6 +820,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto interp_method =
           PADDLE_GET_CONST(std::string, desc.GetAttr("interp_method"));
       if (interp_method != "nearest") return false;
+
+      auto resize_inputs = desc.Inputs();
+      if (with_dynamic_shape && resize_inputs.find("SizeTensor") != resize_inputs.end() && desc.Input("SizeTensor").size() == 2) {
+        return true;
+      }
+
       auto scale = PADDLE_GET_CONST(std::vector<float>, desc.GetAttr("scale"));
       auto out_h = PADDLE_GET_CONST(int, desc.GetAttr("out_h"));
       auto out_w = PADDLE_GET_CONST(int, desc.GetAttr("out_w"));
@@ -1783,45 +1789,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
-    if (op_type == "one_hot" || op_type == "one_hot_v2") {
-#if IS_TRT_VERSION_LT(8510)
-      VLOG(3) << "one_hot/one_hot_v2 is not supported when TensorRT < 8.5.1";
-      return false;
-#endif
-      if (!with_dynamic_shape) {
-        VLOG(3)
-            << "the one_hot/one_hot_v2 op does not support static shape yet";
-        return false;
-      }
-      if (desc.HasAttr("allow_out_of_range")) {
-        VLOG(3)
-            << "allow_out_of_range one_hot/one_hot_v2 op is not supported now.";
-        if (PADDLE_GET_CONST(bool, desc.GetAttr("allow_out_of_range")))
-          return false;
-      }
-      if (desc.HasAttr("dtype")) {
-        const int dtype = PADDLE_GET_CONST(int, desc.GetAttr("dtype"));
-        if (dtype != 2 && dtype != 3 && dtype != 5) {
-          VLOG(3) << "one_hot/one_hot_v2 op only support int32, int64, float.";
-          return false;
-        }
-      }
-      auto one_hot_inputs = desc.Inputs();
-      if (one_hot_inputs.find("depth_tensor") != one_hot_inputs.end()) {
-        if (desc.Input("depth_tensor").size() != 0) {
-          return true;
-        }
-      }
-
-      if (desc.HasAttr("depth")) {
-        const int depth = PADDLE_GET_CONST(int, desc.GetAttr("depth"));
-        if (depth <= 0) {
-          VLOG(3) << "depth only support positive in one_hot/one_hot_v2 op.";
-          return false;
-        }
-      }
-    }
-
     if (op_type == "skip_layernorm") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the skip_layernorm does not support static shape yet";
@@ -2275,7 +2242,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         }
       }
 #endif
-      if (!((in_dtype == 5 || in_dtype == 4 || in_dtype == 2) &&
+      if (!((in_dtype == 5 || in_dtype == 4 || in_dtype == 3 || in_dtype == 2) &&
             (out_dtype == 5 || out_dtype == 4 || out_dtype == 2))) {
         VLOG(3) << "only valid conversions are: "
                    "(kFLOAT | kHALF | kINT32) -> (kFLOAT | kHALF | kINT32)";
@@ -2400,12 +2367,6 @@ struct SimpleOpTypeSetTeller : public Teller {
           return false;
         }
       }
-      if (expand_v2_inputs.find("expand_shapes_tensor") !=
-          expand_v2_inputs.end()) {
-        if (desc.Input("expand_shapes_tensor").size() >= 1) {
-          return false;
-        }
-      }
     }
 
     if (use_no_calib_int8) {
@@ -2486,8 +2447,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fc",
       "shuffle_channel",
       "where",
-      "one_hot",
-      "one_hot_v2",
       "swish",
       "silu",
       "celu",
@@ -2629,8 +2588,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fc",
       "shuffle_channel",
       "where",
-      "one_hot",
-      "one_hot_v2",
       "swish",
       "silu",
       "celu",

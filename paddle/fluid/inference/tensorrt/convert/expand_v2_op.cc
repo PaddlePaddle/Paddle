@@ -33,17 +33,25 @@ class ExpandV2OpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
+    VLOG(3) << "convert a paddle expand_v2 op to trt expand layer.";
     framework::OpDesc op_desc(op, nullptr);
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
+    auto inputs = op_desc.Inputs();
     auto input_dims = input->getDimensions();
     auto output_name = op_desc.Output("Out")[0];
     auto rank = input_dims.nbDims;
-    std::vector<int32_t> shape =
-        PADDLE_GET_CONST(std::vector<int32_t>, op_desc.GetAttr("shape"));
-    int32_t nbDims_num = shape.size();
 
-    auto* shape_tensor =
-        Add1DConstantLayer(shape, output_name + "_shape_tensor_");
+    nvinfer1::ITensor* shape_tensor = nullptr;
+    if (inputs.find("expand_shapes_tensor") != inputs.end() && op_desc.Input("expand_shapes_tensor").size() >= 1) {
+        shape_tensor = engine_->GetITensor(op_desc.Input("expand_shapes_tensor")[0]);
+    } else {
+      std::vector<int32_t> shape =
+          PADDLE_GET_CONST(std::vector<int32_t>, op_desc.GetAttr("shape"));
+      shape_tensor =
+          Add1DConstantLayer(shape, output_name + "_shape_tensor_");
+    }
+    int32_t nbDims_num = shape_tensor->getDimensions().nbDims;
+
     nvinfer1::ITensor* input_shape_tensor;
     if (rank < nbDims_num) {
       auto* one_rank_tensor =
