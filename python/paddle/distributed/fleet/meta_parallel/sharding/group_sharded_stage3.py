@@ -208,7 +208,7 @@ class GroupShardedStage3(nn.Layer):
         # 1.Handle param's slice
         trainable_params = list(
             filter(
-                lambda p: p.trainable and p not in self._unslice_params,
+                lambda p: p not in self._unslice_params,
                 current_layer_params,
             )
         )
@@ -218,8 +218,9 @@ class GroupShardedStage3(nn.Layer):
             ), "Find {} don't have fw_storage attribute.".format(param.name)
 
             param.fw_storage.clear_gradient(False)
-            param.bw_storage._clear()
-            param.bw_storage = None
+            if param.trainable:
+                param.bw_storage._clear()
+                param.bw_storage = None
         # 2.Handle unslice param
         if not self._offload:
             for grad_storage in self._grad_storages.values():
@@ -419,10 +420,11 @@ class GroupShardedStage3(nn.Layer):
                 place=core.CPUPlace(),
                 name="slice@" + param.name,
             )
-            with device_guard():
-                param.master_weight = paddle.cast(
-                    param.fw_storage, Type.fp32.value
-                )
+            if param.trainable:
+                with device_guard():
+                    param.master_weight = paddle.cast(
+                        param.fw_storage, Type.fp32.value
+                    )
         else:
             param.fw_storage = core.eager.Tensor(
                 value=buffer._slice(start, end), name="slice@" + param.name
