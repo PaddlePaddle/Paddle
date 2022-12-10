@@ -32,34 +32,41 @@ class TrtConvertLeakyEyeTest(TrtLayerAutoScanTest):
             return np.random.randint(1, 320, size=1).item()
 
         def generate_input_attr2():
-            return np.random.randint(1, 320, size=2)
-
-        for _ in range(6):
             if np.random.random() > 0.5:
-                num_rows = generate_input_attr1()
-                attr_dic = {"num_rows": num_rows}
-            else:
-                num_rows, num_columns = generate_input_attr2()
-                attr_dic = {"num_rows": num_rows, "num_columns": num_columns}
+                return np.random.randint(1, 320, size=2)
+            return generate_input_attr1(), -1
 
-            ops_config = [
-                {
-                    "op_type": "eye",
-                    "op_outputs": {
-                        "Out": ["out_data"],
-                    },
-                    "op_attrs": attr_dic,
-                }
-            ]
-            ops = self.generate_op_config(ops_config)
-            program_config = ProgramConfig(
-                ops=ops,
-                weights={},
-                inputs={},
-                outputs=["out_data"],
-            )
+        for dtype in [2, 4, 5]:
+            for _ in range(6):
+                if np.random.random() > 0.3:
+                    num_rows = generate_input_attr1()
+                    attr_dic = {"num_rows": num_rows, "dtype": dtype}
+                else:
+                    num_rows, num_columns = generate_input_attr2()
+                    attr_dic = {
+                        "num_rows": num_rows,
+                        "num_columns": num_columns,
+                        "dtype": dtype,
+                    }
 
-            yield program_config
+                ops_config = [
+                    {
+                        "op_type": "eye",
+                        "op_outputs": {
+                            "Out": ["out_data"],
+                        },
+                        "op_attrs": attr_dic,
+                    }
+                ]
+                ops = self.generate_op_config(ops_config)
+                program_config = ProgramConfig(
+                    ops=ops,
+                    weights={},
+                    inputs={},
+                    outputs=["out_data"],
+                )
+
+                yield program_config
 
     def sample_predictor_configs(
         self, program_config

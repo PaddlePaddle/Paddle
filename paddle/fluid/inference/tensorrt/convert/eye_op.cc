@@ -46,8 +46,7 @@ class EyeOpConverter : public OpConverter {
     // Declare inputs attr
     const int num_rows = PADDLE_GET_CONST(int, op_desc.GetAttr("num_rows"));
     int num_columns = PADDLE_GET_CONST(int, op_desc.GetAttr("num_columns"));
-    auto dtype = static_cast<framework::proto::VarType::Type>(
-        PADDLE_GET_CONST(int, op_desc.GetAttr("dtype")));
+    const int dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
 
     // Set data dim
     nvinfer1::Dims input_shape;
@@ -64,25 +63,25 @@ class EyeOpConverter : public OpConverter {
     void* trt_data = nullptr;
     nvinfer1::DataType nv_type = nvinfer1::DataType::kFLOAT;
     switch (dtype) {
-      case framework::proto::VarType::FP32:
-        nv_type = nvinfer1::DataType::kFLOAT;
-        std::unique_ptr<float[]> data(new float[data_len]());
-        for (int i = 0; i < num_min; i++) {
-          data[i * num_columns + i] = 1;
-        }
-        trt_data = static_cast<void*>(data.get());
-        break;
-      case framework::proto::VarType::FP16:
-        nv_type = nvinfer1::DataType::kHALF;
-        std::unique_ptr<float16_t[]> data(new float16_t[data_len]());
-        for (int i = 0; i < num_min; i++) {
-          data[i * num_columns + i] = 1;
-        }
-        trt_data = static_cast<void*>(data.get());
-        break;
-      case framework::proto::VarType::INT32:
+      case 2:
         nv_type = nvinfer1::DataType::kINT32;
         std::unique_ptr<int32_t[]> data(new int32_t[data_len]());
+        for (int i = 0; i < num_min; i++) {
+          data[i * num_columns + i] = 1;
+        }
+        trt_data = static_cast<void*>(data.get());
+        break;
+      case 4:
+        nv_type = nvinfer1::DataType::kHALF;
+        std::unique_ptr<float16[]> data(new float16[data_len]());
+        for (int i = 0; i < num_min; i++) {
+          data[i * num_columns + i] = 1;
+        }
+        trt_data = static_cast<void*>(data.get());
+        break;
+      case 5:
+        nv_type = nvinfer1::DataType::kFLOAT;
+        std::unique_ptr<float[]> data(new float[data_len]());
         for (int i = 0; i < num_min; i++) {
           data[i * num_columns + i] = 1;
         }
