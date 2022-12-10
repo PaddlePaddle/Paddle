@@ -87,7 +87,8 @@ class NearestInterpolateV2OpConverter : public OpConverter {
       if (op_desc.Input("SizeTensor").size() >= 2) {
         auto* outsize_h = engine_->GetITensor(op_desc.Input("SizeTensor")[0]);
         auto* outsize_w = engine_->GetITensor(op_desc.Input("SizeTensor")[1]);
-        outsize_tensor = Concat(std::vector<nvinfer1::ITensor*>{outsize_h, outsize_w});
+        outsize_tensor =
+            Concat(std::vector<nvinfer1::ITensor*>{outsize_h, outsize_w});
       }
     }
 

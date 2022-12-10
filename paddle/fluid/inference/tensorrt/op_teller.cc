@@ -687,7 +687,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                      : -1;
       bool flatten = PADDLE_GET_CONST(bool, desc.GetAttr("flatten"));
       int dtype = PADDLE_GET_CONST(int, desc.GetAttr("dtype"));
-      if (axis == 0 || flatten || (dtype != 2 and dtype != 3)) return false;
+      if (axis == 0 || flatten || (dtype != 2 && dtype != 3)) return false;
     }
 
     if (op_type == "affine_channel") {
@@ -822,7 +822,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (interp_method != "nearest") return false;
 
       auto resize_inputs = desc.Inputs();
-      if (with_dynamic_shape && resize_inputs.find("SizeTensor") != resize_inputs.end() && desc.Input("SizeTensor").size() == 2) {
+      if (with_dynamic_shape &&
+          resize_inputs.find("SizeTensor") != resize_inputs.end() &&
+          desc.Input("SizeTensor").size() == 2) {
         return true;
       }
 
@@ -2242,7 +2244,8 @@ struct SimpleOpTypeSetTeller : public Teller {
         }
       }
 #endif
-      if (!((in_dtype == 5 || in_dtype == 4 || in_dtype == 3 || in_dtype == 2) &&
+      if (!((in_dtype == 5 || in_dtype == 4 || in_dtype == 3 ||
+             in_dtype == 2) &&
             (out_dtype == 5 || out_dtype == 4 || out_dtype == 2))) {
         VLOG(3) << "only valid conversions are: "
                    "(kFLOAT | kHALF | kINT32) -> (kFLOAT | kHALF | kINT32)";
