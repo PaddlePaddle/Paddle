@@ -183,9 +183,9 @@ class TestLayer(LayerTest):
             self.assertRaises(TypeError, test_type)
 
     def test_cvm(self):
-        inp = np.ones([10, 10], dtype='int64')
-        cvm1 = np.ones([10, 10], dtype='int64')
-        cvm2 = np.ones([10, 8], dtype='int64')
+        inp = np.ones([10, 10], dtype='float64')
+        cvm1 = np.ones([10, 10], dtype='float64')
+        cvm2 = np.ones([10, 8], dtype='float64')
         ones = paddle.ones(shape=[10, 1], dtype="int64")
         label = paddle.ones(shape=[10, 1], dtype="int64")
         show_clk = paddle.cast(
@@ -195,7 +195,7 @@ class TestLayer(LayerTest):
             t = paddle.static.data(
                 name='data',
                 shape=[10, 10],
-                dtype='int64',
+                dtype='float64',
             )
             no_cvm = paddle.static.nn.continuous_value_model(t, show_clk, False)
             static_ret1 = self.get_static_graph_result(
@@ -205,7 +205,7 @@ class TestLayer(LayerTest):
             t = paddle.static.data(
                 name='data',
                 shape=[10, 10],
-                dtype='int64',
+                dtype='float64',
             )
             cvm = paddle.static.nn.continuous_value_model(t, show_clk, True)
             static_ret2 = self.get_static_graph_result(
