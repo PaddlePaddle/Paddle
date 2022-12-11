@@ -52,9 +52,7 @@ void StackKernel(const Context& dev_ctx,
                  int axis,
                  DenseTensor* out) {
   if (axis < 0) axis += (x[0]->dims().size() + 1);
-
   int n = static_cast<int>(x.size());
-  T* y_data = dev_ctx.template Alloc<T>(out);
   std::vector<const T*> x_datas(n);
   for (int i = 0; i < n; i++) {
     x_datas[i] = x[i]->data<T>();
@@ -82,6 +80,7 @@ void StackKernel(const Context& dev_ctx,
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig2D(dev_ctx, out_col, x_row);
 
+  T* y_data = dev_ctx.template Alloc<T>(out);
   if (out->numel() < std::numeric_limits<int32_t>::max()) {
     StackCUDAKernel<T, int32_t>
         <<<config.block_per_grid,

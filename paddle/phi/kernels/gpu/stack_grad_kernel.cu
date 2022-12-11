@@ -58,7 +58,7 @@ void StackGradKernel(const Context& dev_ctx,
                      int axis,
                      std::vector<DenseTensor*> x_grad) {
   if (axis < 0) axis += out.dims().size();
-
+  std::cout << "Axis in stack_grad_kernel : " << axis << std::endl;
   int n = out.dims()[axis];
   PADDLE_ENFORCE_EQ(n,
                     x_grad.size(),
