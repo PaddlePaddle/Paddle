@@ -420,7 +420,7 @@ def piecewise_decay(boundaries, values):
         else:
             global_step = _decay_step_counter()
 
-            lr = tensor.create_global_var(
+            lr = paddle.static.create_global_var(
                 shape=[1],
                 value=0.0,
                 dtype='float32',
@@ -575,7 +575,7 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
             )
             return lr
         else:
-            lr = tensor.create_global_var(
+            lr = paddle.static.create_global_var(
                 shape=[1],
                 value=0.0,
                 dtype=dtype,

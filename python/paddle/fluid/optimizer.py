@@ -214,9 +214,10 @@ class Optimizer:
             .. code-block:: python
 
                 import paddle.fluid as fluid
+                import paddle
 
                 with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding([10, 10])
+                    emb = paddle.nn.Embedding(10, 10)
 
                     adam = fluid.optimizer.Adam(0.001, parameter_list=emb.parameters())
                     state_dict = adam.state_dict()
@@ -418,7 +419,7 @@ class Optimizer:
                 else:
                     self._learning_rate_map[
                         framework.default_main_program()
-                    ] = layers.create_global_var(
+                    ] = paddle.static.create_global_var(
                         name=unique_name.generate("learning_rate"),
                         shape=[1],
                         value=float(self._learning_rate),
@@ -449,7 +450,7 @@ class Optimizer:
             # create learning rate in the current main program
             self._learning_rate_map[
                 framework.default_main_program()
-            ] = layers.create_global_var(
+            ] = paddle.static.create_global_var(
                 name=unique_name.generate("learning_rate"),
                 shape=[1],
                 value=float(self._learning_rate),
@@ -474,10 +475,12 @@ class Optimizer:
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
+                import paddle
 
                 with fluid.dygraph.guard():
-                    linear = fluid.dygraph.nn.Linear(10, 10)
+                    linear = paddle.nn.Linear(10, 10)
 
                     adam = fluid.optimizer.Adam(0.1, parameter_list=linear.parameters())
 
@@ -496,7 +499,7 @@ class Optimizer:
 
 
                     # set learning rate manually by framework Variable
-                    lr_var = fluid.layers.create_global_var(
+                    lr_var = paddle.static.create_global_var(
                         shape=[1], value=0.7, dtype='float32')
                     adam.set_lr(lr_var)
                     lr = adam.current_step_lr()
@@ -576,10 +579,11 @@ class Optimizer:
 
                 import paddle.fluid as fluid
                 import numpy as np
+                import paddle
 
                 # example1: LearningRateDecay is not used, return value is all the same
                 with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding([10, 10])
+                    emb = paddle.nn.Embedding(10, 10)
                     adam = fluid.optimizer.Adam(0.001, parameter_list = emb.parameters())
                     lr = adam.current_step_lr()
                     print(lr) # 0.001
@@ -587,10 +591,10 @@ class Optimizer:
                 # example2: PiecewiseDecay is used, return the step learning rate
                 with fluid.dygraph.guard():
                     inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
-                    linear = fluid.dygraph.nn.Linear(10, 10)
+                    linear = paddle.nn.Linear(10, 10)
                     inp = fluid.dygraph.to_variable(inp)
                     out = linear(inp)
-                    loss = fluid.layers.reduce_mean(out)
+                    loss = paddle.mean(out)
 
                     bd = [2, 4, 6, 8]
                     value = [0.2, 0.4, 0.6, 0.8, 1.0]
@@ -1340,12 +1344,13 @@ class Optimizer:
             .. code-block:: python
 
                 import paddle.fluid as fluid
+                import paddle
                 import numpy as np
 
                 with fluid.dygraph.guard():
                     value = np.arange(26).reshape(2, 13).astype("float32")
                     a = fluid.dygraph.to_variable(value)
-                    linear = fluid.Linear(13, 5, dtype="float32")
+                    linear = paddle.nn.Linear(13, 5)
                     # This can be any optimizer supported by dygraph.
                     adam = fluid.optimizer.Adam(learning_rate = 0.01,
                                                 parameter_list = linear.parameters())
@@ -1449,7 +1454,7 @@ class SGDOptimizer(Optimizer):
                 y = fluid.layers.data(name='y', shape=[1], dtype='float32')
                 y_predict = fluid.layers.fc(input=x, size=1, act=None)
                 cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
-                avg_cost = fluid.layers.mean(cost)
+                avg_cost = paddle.mean(cost)
 
                 sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
                 sgd_optimizer.minimize(avg_cost)
@@ -1495,7 +1500,7 @@ class SGDOptimizer(Optimizer):
 
             var_name = param.name + "_fp32_master"
             var_name = unique_name.generate(var_name)
-            var = layers.create_global_var(
+            var = paddle.static.create_global_var(
                 name=var_name,
                 shape=param.shape,
                 value=0,
@@ -1651,7 +1656,7 @@ class MomentumOptimizer(Optimizer):
                 y = fluid.layers.data(name='y', shape=[1], dtype='float32')
                 y_predict = fluid.layers.fc(input=x, size=1, act=None)
                 cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
-                avg_cost = fluid.layers.mean(cost)
+                avg_cost = paddle.mean(cost)
 
                 moment_optimizer = fluid.optimizer.MomentumOptimizer(learning_rate=0.001, momentum=0.9)
                 moment_optimizer.minimize(avg_cost)
@@ -1856,7 +1861,7 @@ class LarsMomentumOptimizer(Optimizer):
 
             var_name = param.name + '_fp32_master'
             var_name = unique_name.generate(var_name)
-            var = layers.create_global_var(
+            var = paddle.static.create_global_var(
                 name=var_name,
                 shape=param.shape,
                 value=0,
@@ -2229,7 +2234,7 @@ class AdamOptimizer(Optimizer):
                 y = fluid.data(name='y', shape=[None, 1], dtype='float32')
                 y_predict = fluid.layers.fc(input=x, size=1, act=None)
                 cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
-                avg_cost = fluid.layers.mean(cost)
+                avg_cost = paddle.mean(cost)
 
                 adam_optimizer = fluid.optimizer.AdamOptimizer(0.01)
                 adam_optimizer.minimize(avg_cost)
@@ -2258,27 +2263,27 @@ class AdamOptimizer(Optimizer):
                 y = fluid.data(name='y', shape=[None, 1], dtype='float32')
                 y_predict = fluid.layers.fc(input=x, size=1, act=None)
                 cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
-                avg_cost = fluid.layers.mean(cost)
+                avg_cost = paddle.mean(cost)
 
                 # define beta decay variable
                 def get_decayed_betas(beta1_init, beta2_init, decay_steps, decay_rate, epsilon_init):
                     global_step = lr_scheduler._decay_step_counter()
 
-                    beta1 = fluid.layers.create_global_var(
+                    beta1 = paddle.static.create_global_var(
                         shape=[1],
                         value=float(beta1_init),
                         dtype='float32',
                         # set persistable for save checkpoints and resume
                         persistable=True,
                         name="beta1")
-                    beta2 = fluid.layers.create_global_var(
+                    beta2 = paddle.static.create_global_var(
                         shape=[1],
                         value=float(beta2_init),
                         dtype='float32',
                         # set persistable for save checkpoints and resume
                         persistable=True,
                         name="beta2")
-                    epsilon = fluid.layers.create_global_var(
+                    epsilon = paddle.static.create_global_var(
                         shape=[1],
                         value=float(epsilon_init),
                         dtype='float32',
@@ -2638,6 +2643,8 @@ class AdamaxOptimizer(Optimizer):
 
           import paddle.fluid as fluid
           import numpy
+          import paddle
+          paddle.enable_static()
 
           # First create the Executor.
           place = fluid.CPUPlace() # fluid.CUDAPlace(0)
@@ -2648,7 +2655,7 @@ class AdamaxOptimizer(Optimizer):
           with fluid.program_guard(train_program, startup_program):
               data = fluid.data(name='X', shape=[None, 1], dtype='float32')
               hidden = fluid.layers.fc(input=data, size=10)
-              loss = fluid.layers.mean(hidden)
+              loss = paddle.mean(hidden)
               adam = fluid.optimizer.AdamaxOptimizer(learning_rate=0.2)
               adam.minimize(loss)
 
@@ -2813,6 +2820,8 @@ class DpsgdOptimizer(Optimizer):
 
           import paddle.fluid as fluid
           import numpy
+          import paddle
+          paddle.enable_static()
 
           # First create the Executor.
           place = fluid.CPUPlace() # fluid.CUDAPlace(0)
@@ -2823,7 +2832,7 @@ class DpsgdOptimizer(Optimizer):
           with fluid.program_guard(train_program, startup_program):
               data = fluid.layers.data(name='X', shape=[1], dtype='float32')
               hidden = fluid.layers.fc(input=data, size=10)
-              loss = fluid.layers.mean(hidden)
+              loss = paddle.mean(hidden)
               optimizer = fluid.optimizer.Dpsgd(learning_rate=0.01, clip=10.0, batch_size=16.0, sigma=1.0)
               optimizer.minimize(loss)
 
@@ -3288,7 +3297,7 @@ class RMSPropOptimizer(Optimizer):
                 y = fluid.layers.data(name='y', shape=[1], dtype='float32')
                 y_predict = fluid.layers.fc(input=x, size=1, act=None)
                 cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
-                avg_cost = fluid.layers.mean(cost)
+                avg_cost = paddle.mean(cost)
 
                 rms_optimizer = fluid.optimizer.RMSProp(learning_rate=0.1)
                 rms_optimizer.minimize(avg_cost)
@@ -3507,7 +3516,7 @@ class FtrlOptimizer(Optimizer):
                 y = fluid.layers.data(name='y', shape=[1], dtype='float32')
                 y_predict = fluid.layers.fc(input=x, size=1, act=None)
                 cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
-                avg_cost = fluid.layers.mean(cost)
+                avg_cost = paddle.mean(cost)
 
                 ftrl_optimizer = fluid.optimizer.Ftrl(learning_rate=0.1)
                 ftrl_optimizer.minimize(avg_cost)
@@ -3676,11 +3685,13 @@ class LambOptimizer(AdamOptimizer):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
 
             data = fluid.data(name='x', shape=[-1, 5], dtype='float32')
             hidden = fluid.layers.fc(input=data, size=10)
-            cost = fluid.layers.mean(hidden)
+            cost = paddle.mean(hidden)
 
             def exclude_fn(param):
                 return param.name.endswith('.b_0')
@@ -3882,8 +3893,10 @@ class ModelAverage(Optimizer):
 
       .. code-block:: python
 
+        import paddle
         import paddle.fluid as fluid
         import numpy
+        paddle.enable_static()
 
         # First create the Executor.
         place = fluid.CPUPlace()  # fluid.CUDAPlace(0)
@@ -3895,7 +3908,7 @@ class ModelAverage(Optimizer):
             # build net
             data = fluid.data(name='X', shape=[None, 1], dtype='float32')
             hidden = fluid.layers.fc(input=data, size=10)
-            loss = fluid.layers.mean(hidden)
+            loss = paddle.mean(hidden)
             optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
             optimizer.minimize(loss)
 
@@ -4061,6 +4074,8 @@ class ModelAverage(Optimizer):
 
             import paddle.fluid as fluid
             import numpy
+            import paddle
+            paddle.enable_static()
 
             # First create the Executor.
             place = fluid.CPUPlace()  # fluid.CUDAPlace(0)
@@ -4072,7 +4087,7 @@ class ModelAverage(Optimizer):
                 # build net
                 data = fluid.data(name='X', shape=[None, 1], dtype='float32')
                 hidden = fluid.layers.fc(input=data, size=10)
-                loss = fluid.layers.mean(hidden)
+                loss = paddle.mean(hidden)
                 optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
                 optimizer.minimize(loss)
 
@@ -4115,6 +4130,8 @@ class ModelAverage(Optimizer):
 
             import paddle.fluid as fluid
             import numpy
+            import paddle
+            paddle.enable_static()
 
             # First create the Executor.
             place = fluid.CPUPlace()  # fluid.CUDAPlace(0)
@@ -4126,7 +4143,7 @@ class ModelAverage(Optimizer):
                 # build net
                 data = fluid.data(name='X', shape=[None, 1], dtype='float32')
                 hidden = fluid.layers.fc(input=data, size=10)
-                loss = fluid.layers.mean(hidden)
+                loss = paddle.mean(hidden)
                 optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
                 optimizer.minimize(loss)
 
@@ -4311,7 +4328,7 @@ class ExponentialMovingAverage:
 
     def _get_ema_decay(self):
         with default_main_program()._lr_schedule_guard():
-            decay_var = layers.tensor.create_global_var(
+            decay_var = paddle.static.create_global_var(
                 shape=[1],
                 value=self._decay,
                 dtype='float32',
@@ -4331,7 +4348,7 @@ class ExponentialMovingAverage:
         return decay_var
 
     def _get_decay_pow(self, block):
-        global_step = layers.create_global_var(
+        global_step = paddle.static.create_global_var(
             name=self._step_counter_name,
             shape=[1],
             value=0,
@@ -4344,7 +4361,7 @@ class ExponentialMovingAverage:
         return decay_pow_acc, global_step
 
     def _create_ema_vars(self, param):
-        param_ema = layers.create_global_var(
+        param_ema = paddle.static.create_global_var(
             name=unique_name.generate(self._name + param.name + '_ema'),
             shape=param.shape,
             value=0.0,
@@ -7258,7 +7275,7 @@ class LookaheadOptimizer:
 
         with framework.program_guard(main_block.program, startup_program):
             # Add Var k to main prog and startup prog
-            k = layers.create_global_var(
+            k = paddle.static.create_global_var(
                 name="lookahead_k",
                 shape=[1],
                 value=int(self.k),
@@ -7267,7 +7284,7 @@ class LookaheadOptimizer:
             )
 
             # Add Var alpha to main prog and startup prog
-            alpha = layers.create_global_var(
+            alpha = paddle.static.create_global_var(
                 name="lookahead_alpha",
                 shape=[1],
                 value=float(self.alpha),
@@ -7276,7 +7293,7 @@ class LookaheadOptimizer:
             )
 
             # Add Var step
-            step = layers.create_global_var(
+            step = paddle.static.create_global_var(
                 name="lookahead_step",
                 shape=[1],
                 value=int(0),
@@ -7483,7 +7500,7 @@ class GradientMergeOptimizer:
 
     def _get_gm_cond_var(self, main_block):
         # Add const var
-        k_step_var = layers.create_global_var(
+        k_step_var = paddle.static.create_global_var(
             name="gradient_merge_k",
             shape=[1],
             value=int(self.k_steps),
@@ -7492,7 +7509,7 @@ class GradientMergeOptimizer:
             force_cpu=True,
         )
 
-        zero_var = layers.create_global_var(
+        zero_var = paddle.static.create_global_var(
             name="gradient_merge_zero",
             shape=[1],
             value=int(0),
@@ -7502,7 +7519,7 @@ class GradientMergeOptimizer:
         )
 
         # Add step var & cond var
-        step_var = layers.create_global_var(
+        step_var = paddle.static.create_global_var(
             name="gradient_merge_step",
             shape=[1],
             value=int(0),
