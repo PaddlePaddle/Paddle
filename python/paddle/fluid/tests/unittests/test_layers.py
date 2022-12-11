@@ -26,7 +26,7 @@ import paddle.fluid.layers as layers
 import paddle.fluid.nets as nets
 import paddle.nn.functional as F
 from paddle.fluid import core
-from paddle.fluid.dygraph import base, nn, to_variable
+from paddle.fluid.dygraph import base, to_variable
 from paddle.fluid.framework import (
     Program,
     _test_eager_guard,
@@ -732,8 +732,8 @@ class TestLayer(LayerTest):
             )[0]
         with self.static_graph():
             data_t = layers.data(name='word', shape=[1], dtype='int64')
-            emb2 = nn.Embedding(
-                size=[dict_size, 32], param_attr='emb.w', is_sparse=False
+            emb2 = paddle.nn.Embedding(
+                dict_size, 32, weight_attr='emb.w', sparse=False
             )
             emb_rlt = emb2(data_t)
             static_rlt2 = self.get_static_graph_result(
@@ -741,16 +741,17 @@ class TestLayer(LayerTest):
             )[0]
         with self.dynamic_graph():
             with _test_eager_guard():
-                emb2 = nn.Embedding(
-                    size=[dict_size, 32],
-                    param_attr='eager_emb.w',
-                    is_sparse=False,
+                emb2 = paddle.nn.Embedding(
+                    dict_size,
+                    32,
+                    weight_attr='eager_emb.w',
+                    sparse=False,
                 )
                 dy_eager_rlt = emb2(base.to_variable(inp_word))
                 dy_eager_rlt_value = dy_eager_rlt.numpy()
 
-            emb2 = nn.Embedding(
-                size=[dict_size, 32], param_attr='emb.w', is_sparse=False
+            emb2 = paddle.nn.Embedding(
+                dict_size, 32, weight_attr='emb.w', sparse=False
             )
             dy_rlt = emb2(base.to_variable(inp_word))
             dy_rlt_value = dy_rlt.numpy()
@@ -767,11 +768,12 @@ class TestLayer(LayerTest):
                         custom_weight
                     )
                 )
-                emb1 = nn.Embedding(size=[dict_size, 32], is_sparse=False)
-                emb2 = nn.Embedding(
-                    size=[dict_size, 32],
-                    param_attr=weight_attr,
-                    is_sparse=False,
+                emb1 = paddle.nn.Embedding(dict_size, 32, sparse=False)
+                emb2 = paddle.nn.Embedding(
+                    dict_size,
+                    32,
+                    weight_attr=weight_attr,
+                    sparse=False,
                 )
                 rep1 = emb1(base.to_variable(inp_word))
                 rep2 = emb2(base.to_variable(inp_word))
@@ -797,9 +799,9 @@ class TestLayer(LayerTest):
                     custom_weight
                 )
             )
-            emb1 = nn.Embedding(size=[dict_size, 32], is_sparse=False)
-            emb2 = nn.Embedding(
-                size=[dict_size, 32], param_attr=weight_attr, is_sparse=False
+            emb1 = paddle.nn.Embedding(dict_size, 32, sparse=False)
+            emb2 = paddle.nn.Embedding(
+                dict_size, 32, weight_attr=weight_attr, sparse=False
             )
             rep1 = emb1(base.to_variable(inp_word))
             rep2 = emb2(base.to_variable(inp_word))
@@ -2121,8 +2123,8 @@ class TestBook(LayerTest):
             fluid.default_main_program(), fluid.default_startup_program()
         ):
             x = self._get_data(name='x', shape=[3, 224, 224], dtype='float32')
-            return layers.pool2d(
-                x, pool_size=[5, 3], pool_stride=[1, 2], pool_padding=(2, 1)
+            return paddle.nn.functional.max_pool2d(
+                x, kernel_size=[5, 3], stride=[1, 2], padding=(2, 1)
             )
 
     def make_pool2d_infershape(self):
@@ -2133,8 +2135,8 @@ class TestBook(LayerTest):
             x = paddle.nn.functional.affine_grid(
                 theta, out_shape=[2, 3, 244, 244]
             )
-            return layers.pool2d(
-                x, pool_size=[5, 3], pool_stride=[1, 2], pool_padding=(2, 1)
+            return paddle.nn.functional.max_pool2d(
+                x, kernel_size=[5, 3], stride=[1, 2], padding=(2, 1)
             )
 
     def make_lstm_unit(self):
@@ -2293,14 +2295,6 @@ class TestBook(LayerTest):
             values, indices = paddle.topk(data, k=5)
             return values
             return indices
-
-    def make_polygon_box_transform(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name='x', shape=[8, 4, 4], dtype="float32")
-            output = layers.polygon_box_transform(input=x)
-            return output
 
     def make_l2_normalize(self):
         with program_guard(
@@ -2920,37 +2914,6 @@ class TestBook(LayerTest):
                         bidirectional=bidirectional,
                         batch_first=batch_first,
                     )
-
-
-class TestMetricsDetectionMap(unittest.TestCase):
-    def test_detection_map(self):
-        program = fluid.Program()
-        with program_guard(program):
-            detect_res = fluid.layers.data(
-                name='detect_res',
-                shape=[10, 6],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            label = fluid.layers.data(
-                name='label',
-                shape=[10, 1],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            box = fluid.layers.data(
-                name='bbox',
-                shape=[10, 4],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            map_eval = fluid.metrics.DetectionMAP(
-                detect_res, label, box, class_num=21
-            )
-            cur_map, accm_map = map_eval.get_map_var()
-            self.assertIsNotNone(cur_map)
-            self.assertIsNotNone(accm_map)
-        print(str(program))
 
 
 class ExampleNet(paddle.nn.Layer):
