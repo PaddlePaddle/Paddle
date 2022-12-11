@@ -18,7 +18,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.nn.functional as F
-from paddle.fluid.dygraph import Embedding, Layer, to_variable
+from paddle.fluid.dygraph import Layer, to_variable
 from paddle.fluid.layers.utils import map_structure
 from paddle.jit.api import dygraph_to_static_func
 from paddle.nn import Linear
@@ -276,10 +276,10 @@ class Encoder(Layer):
 class Embedder(Layer):
     def __init__(self, vocab_size, emb_dim, bos_idx=0):
         super().__init__()
-        self.word_embedder = Embedding(
-            size=[vocab_size, emb_dim],
-            padding_idx=bos_idx,
-            param_attr=fluid.ParamAttr(
+        self.word_embedder = paddle.nn.Embedding(
+            vocab_size,
+            emb_dim,
+            weight_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Normal(0.0, emb_dim**-0.5)
             ),
         )
@@ -311,9 +311,10 @@ class WrapEncoder(Layer):
         self.emb_dropout = prepostprocess_dropout
         self.emb_dim = d_model
         self.word_embedder = word_embedder
-        self.pos_encoder = Embedding(
-            size=[max_length, self.emb_dim],
-            param_attr=fluid.ParamAttr(
+        self.pos_encoder = paddle.nn.Embedding(
+            max_length,
+            self.emb_dim,
+            weight_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.NumpyArrayInitializer(
                     position_encoding_init(max_length, self.emb_dim)
                 ),
@@ -499,9 +500,10 @@ class WrapDecoder(Layer):
         self.emb_dropout = prepostprocess_dropout
         self.emb_dim = d_model
         self.word_embedder = word_embedder
-        self.pos_encoder = Embedding(
-            size=[max_length, self.emb_dim],
-            param_attr=fluid.ParamAttr(
+        self.pos_encoder = paddle.nn.Embedding(
+            max_length,
+            self.emb_dim,
+            weight_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.NumpyArrayInitializer(
                     position_encoding_init(max_length, self.emb_dim)
                 ),

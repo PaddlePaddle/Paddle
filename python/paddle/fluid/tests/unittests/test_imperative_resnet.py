@@ -312,7 +312,9 @@ class TestDygraphResnet(unittest.TestCase):
                     helper.assertEachVar(out_dygraph, out_static)
                     resnet.train()
 
-                loss = fluid.layers.cross_entropy(input=out, label=label)
+                loss = paddle.nn.functional.cross_entropy(
+                    input=out, label=label, reduction='none', use_softmax=False
+                )
                 avg_loss = paddle.mean(x=loss)
 
                 dy_out = avg_loss.numpy()
@@ -365,7 +367,9 @@ class TestDygraphResnet(unittest.TestCase):
             )
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             out = resnet(img)
-            loss = fluid.layers.cross_entropy(input=out, label=label)
+            loss = paddle.nn.functional.cross_entropy(
+                input=out, label=label, reduction='none', use_softmax=False
+            )
             avg_loss = paddle.mean(x=loss)
             optimizer.minimize(avg_loss)
 

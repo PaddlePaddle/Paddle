@@ -1,4 +1,4 @@
-// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/cudnn_workspace_helper.h"
+#include "paddle/phi/backends/gpu/cuda/cudnn_workspace_helper.h"
 
 #include <cstdlib>
 #include <string>
 
-namespace paddle {
-namespace platform {
+namespace phi {
+namespace backends {
+namespace gpu {
 
 static int GetDefaultConvWorkspaceSizeLimitMBImpl() {
   const char *env_str = std::getenv("FLAGS_conv_workspace_size_limit");
@@ -30,6 +31,6 @@ int GetDefaultConvWorkspaceSizeLimitMB() {
   static auto workspace_size = GetDefaultConvWorkspaceSizeLimitMBImpl();
   return workspace_size;
 }
-
-}  // namespace platform
-}  // namespace paddle
+}  // namespace gpu
+}  // namespace backends
+}  // namespace phi
