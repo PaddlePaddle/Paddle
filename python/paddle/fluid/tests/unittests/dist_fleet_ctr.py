@@ -115,7 +115,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             is_sparse=True,
             padding_idx=0,
         )
-        dnn_pool = fluid.layers.sequence_pool(
+        dnn_pool = paddle.static.nn.sequence_lod.sequence_pool(
             input=dnn_embedding, pool_type="sum"
         )
         dnn_out = dnn_pool
@@ -143,7 +143,9 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             is_sparse=True,
             padding_idx=0,
         )
-        lr_pool = fluid.layers.sequence_pool(input=lr_embbding, pool_type="sum")
+        lr_pool = paddle.static.nn.sequence_lod.sequence_pool(
+            input=lr_embbding, pool_type="sum"
+        )
 
         merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
 

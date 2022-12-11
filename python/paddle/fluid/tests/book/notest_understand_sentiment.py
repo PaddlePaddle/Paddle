@@ -78,8 +78,12 @@ def stacked_lstm_net(
         )
         inputs = [fc, lstm]
 
-    fc_last = fluid.layers.sequence_pool(input=inputs[0], pool_type='max')
-    lstm_last = fluid.layers.sequence_pool(input=inputs[1], pool_type='max')
+    fc_last = paddle.static.nn.sequence_lod.sequence_pool(
+        input=inputs[0], pool_type='max'
+    )
+    lstm_last = paddle.static.nn.sequence_lod.sequence_pool(
+        input=inputs[1], pool_type='max'
+    )
 
     prediction = fluid.layers.fc(
         input=[fc_last, lstm_last], size=class_dim, act='softmax'

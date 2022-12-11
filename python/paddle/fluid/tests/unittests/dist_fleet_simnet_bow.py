@@ -130,7 +130,9 @@ def train_network(
     )
     q_emb = paddle.reshape(q_emb, [-1, emb_dim])
     # vsum
-    q_sum = fluid.layers.sequence_pool(input=q_emb, pool_type='sum')
+    q_sum = paddle.static.nn.sequence_lod.sequence_pool(
+        input=q_emb, pool_type='sum'
+    )
     q_ss = paddle.nn.functional.softsign(q_sum)
     # fc layer after conv
     q_fc = fluid.layers.fc(
@@ -157,7 +159,9 @@ def train_network(
     )
     pt_emb = paddle.reshape(pt_emb, [-1, emb_dim])
     # vsum
-    pt_sum = fluid.layers.sequence_pool(input=pt_emb, pool_type='sum')
+    pt_sum = paddle.static.nn.sequence_lod.sequence_pool(
+        input=pt_emb, pool_type='sum'
+    )
     pt_ss = paddle.nn.functional.softsign(pt_sum)
     # fc layer
     pt_fc = fluid.layers.fc(
@@ -181,7 +185,9 @@ def train_network(
     )
     nt_emb = paddle.reshape(nt_emb, [-1, emb_dim])
     # vsum
-    nt_sum = fluid.layers.sequence_pool(input=nt_emb, pool_type='sum')
+    nt_sum = paddle.static.nn.sequence_lod.sequence_pool(
+        input=nt_emb, pool_type='sum'
+    )
     nt_ss = paddle.nn.functional.softsign(nt_sum)
     # fc layer
     nt_fc = fluid.layers.fc(

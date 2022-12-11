@@ -350,7 +350,9 @@ def sequence_conv_pool(
         act=act,
     )
 
-    pool_out = layers.sequence_pool(input=conv_out, pool_type=pool_type)
+    pool_out = paddle.static.nn.sequence_lod.sequence_pool(
+        input=conv_out, pool_type=pool_type
+    )
     return pool_out
 
 

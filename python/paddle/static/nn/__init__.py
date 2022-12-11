@@ -45,7 +45,7 @@ from ...fluid.layers import StaticRNN  # noqa: F401
 
 from ...static.nn.sequence_lod import sequence_conv  # noqa: F401
 from ...fluid.layers.sequence_lod import sequence_softmax  # noqa: F401
-from ...fluid.layers.sequence_lod import sequence_pool  # noqa: F401
+from ...static.nn.sequence_lod import sequence_pool  # noqa: F401
 from ...fluid.layers.sequence_lod import sequence_concat  # noqa: F401
 from ...fluid.layers.sequence_lod import sequence_first_step  # noqa: F401
 from ...fluid.layers.sequence_lod import sequence_last_step  # noqa: F401

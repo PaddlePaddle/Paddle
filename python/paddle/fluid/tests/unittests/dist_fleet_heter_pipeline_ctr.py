@@ -85,7 +85,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
                 ),
                 is_sparse=True,
             )
-            dnn_pool = fluid.layers.sequence_pool(
+            dnn_pool = paddle.static.nn.sequence_lod.sequence_pool(
                 input=dnn_embedding, pool_type="sum"
             )
             dnn_out = dnn_pool
@@ -101,7 +101,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
                 ),
                 is_sparse=True,
             )
-            lr_pool = fluid.layers.sequence_pool(
+            lr_pool = paddle.static.nn.sequence_lod.sequence_pool(
                 input=lr_embbding, pool_type="sum"
             )
 

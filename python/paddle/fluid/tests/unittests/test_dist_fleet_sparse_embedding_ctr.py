@@ -225,7 +225,7 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
                     name="deep_embedding", initializer=init
                 ),
             )
-            dnn_pool = fluid.layers.sequence_pool(
+            dnn_pool = paddle.static.nn.sequence_lod.sequence_pool(
                 input=dnn_embedding, pool_type="sum"
             )
             dnn_out = dnn_pool
@@ -252,7 +252,7 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
                 ),
             )
 
-            lr_pool = fluid.layers.sequence_pool(
+            lr_pool = paddle.static.nn.sequence_lod.sequence_pool(
                 input=lr_embbding, pool_type="sum"
             )
             merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
