@@ -41,6 +41,7 @@ void MapDepthwiseConv2ConvPass::ApplyImpl(ir::Graph* graph) const {
     std::string op_type = op_desc->Type();
     if (!replaced_map.count(op_type)) continue;
     op_desc->SetType(replaced_map[op_type]);
+    op_desc->SetAttr("use_cudnn", true);
     op_desc->Flush();
     ++found_count;
   }

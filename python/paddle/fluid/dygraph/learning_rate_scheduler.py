@@ -170,10 +170,11 @@ class PiecewiseDecay(LearningRateDecay):
         .. code-block:: python
 
           import paddle.fluid as fluid
+          import paddle
           boundaries = [10000, 20000]
           values = [1.0, 0.5, 0.1]
           with fluid.dygraph.guard():
-              emb = fluid.dygraph.Embedding( [10, 10] )
+              emb = paddle.nn.Embedding(10, 10)
               optimizer = fluid.optimizer.SGD(
                  learning_rate=fluid.dygraph.PiecewiseDecay(boundaries, values, 0),
                  parameter_list = emb.parameters() )
@@ -240,9 +241,10 @@ class NaturalExpDecay(LearningRateDecay):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
             base_lr = 0.1
             with fluid.dygraph.guard():
-                emb = fluid.dygraph.Embedding([10, 10])
+                emb = paddle.nn.Embedding(10, 10)
                 sgd_optimizer = fluid.optimizer.SGD(
                         learning_rate=fluid.dygraph.NaturalExpDecay(
                             learning_rate=base_lr,
@@ -403,9 +405,10 @@ class InverseTimeDecay(LearningRateDecay):
         .. code-block:: python
 
           import paddle.fluid as fluid
+          import paddle
           base_lr = 0.1
           with fluid.dygraph.guard():
-              emb = fluid.dygraph.Embedding([10, 10])
+              emb = paddle.nn.Embedding(10, 10)
               sgd_optimizer = fluid.optimizer.SGD(
                   learning_rate=fluid.dygraph.InverseTimeDecay(
                         learning_rate=base_lr,
@@ -487,11 +490,12 @@ class PolynomialDecay(LearningRateDecay):
         .. code-block:: python
 
           import paddle.fluid as fluid
+          import paddle
           start_lr = 0.01
           total_step = 5000
           end_lr = 0
           with fluid.dygraph.guard():
-              emb = fluid.dygraph.Embedding( [10, 10])
+              emb = paddle.nn.Embedding(10, 10)
               optimizer  = fluid.optimizer.SGD(
                   learning_rate = fluid.dygraph.PolynomialDecay(
                   start_lr, total_step, end_lr, power=1.0),
@@ -639,10 +643,11 @@ class NoamDecay(LearningRateDecay):
         .. code-block:: python
 
           import paddle.fluid as fluid
+          import paddle
           warmup_steps = 100
           learning_rate = 0.01
           with fluid.dygraph.guard():
-              emb = fluid.dygraph.Embedding([10, 10])
+              emb = paddle.nn.Embedding(10, 10)
               optimizer  = fluid.optimizer.SGD(
                   learning_rate = fluid.dygraph.NoamDecay(
                          1/(warmup_steps *(learning_rate ** 2)),
