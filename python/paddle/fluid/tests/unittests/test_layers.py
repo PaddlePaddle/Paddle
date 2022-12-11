@@ -198,7 +198,7 @@ class TestLayer(LayerTest):
                 shape=[10, 2],
                 dtype='float32',
             )
-            no_cvm = paddle.static.nn.continuous_value_model(t, u, False)
+            no_cvm = paddle.static.nn.continuous_value_model(t, u, True)
             static_ret1 = self.get_static_graph_result(
                 feed={'data': inp, 'show_click': show_clk},
                 fetch_list=[no_cvm],
@@ -214,7 +214,7 @@ class TestLayer(LayerTest):
                 shape=[10, 2],
                 dtype='float32',
             )
-            cvm = paddle.static.nn.continuous_value_model(t, u, True)
+            cvm = paddle.static.nn.continuous_value_model(t, u, False)
             static_ret2 = self.get_static_graph_result(
                 feed={'data': inp, 'show_click': show_clk}, fetch_list=[cvm]
             )[0]
