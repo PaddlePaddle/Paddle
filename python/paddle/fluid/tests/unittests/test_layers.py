@@ -186,18 +186,22 @@ class TestLayer(LayerTest):
         inp = np.ones([10, 10], dtype='float32')
         cvm1 = np.ones([10, 10], dtype='float32')
         cvm2 = np.ones([10, 8], dtype='float32')
-        ones = paddle.ones(shape=[10, 1], dtype="int64")
-        label = paddle.ones(shape=[10, 1], dtype="int64")
-        show_clk = paddle.ones(shape=[2, 1], dtype="float32")
+        show_clk = np.ones([10, 2], dtype='float32')
         with self.static_graph():
             t = paddle.static.data(
                 name='data',
                 shape=[10, 10],
                 dtype='float32',
             )
-            no_cvm = paddle.static.nn.continuous_value_model(t, show_clk, False)
+            u = paddle.static.data(
+                name='show_click',
+                shape=[10, 2],
+                dtype='float32',
+            )
+            no_cvm = paddle.static.nn.continuous_value_model(t, u, False)
             static_ret1 = self.get_static_graph_result(
-                feed={'data': inp}, fetch_list=[no_cvm]
+                feed={'data': inp, 'show_click': show_clk},
+                fetch_list=[no_cvm],
             )[0]
         with self.static_graph():
             t = paddle.static.data(
@@ -205,9 +209,14 @@ class TestLayer(LayerTest):
                 shape=[10, 10],
                 dtype='float32',
             )
-            cvm = paddle.static.nn.continuous_value_model(t, show_clk, True)
+            u = paddle.static.data(
+                name='show_click',
+                shape=[10, 2],
+                dtype='float32',
+            )
+            cvm = paddle.static.nn.continuous_value_model(t, u, True)
             static_ret2 = self.get_static_graph_result(
-                feed={'data': inp}, fetch_list=[cvm]
+                feed={'data': inp, 'show_click': show_clk}, fetch_list=[cvm]
             )[0]
         np.testing.assert_array_equal(static_ret1, cvm1)
         np.testing.assert_array_equal(static_ret2, cvm2)
