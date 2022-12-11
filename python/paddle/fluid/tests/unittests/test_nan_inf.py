@@ -134,33 +134,32 @@ class TestNanInfCheckResult(unittest.TestCase):
         if paddle.fluid.core.is_compiled_with_cuda():
             _check_num_nan_inf(use_cuda=True)
 
-    def check_nan_inf_level(self, dtype):
-        def _run(x_np, y_np, use_cuda):
-            if use_cuda:
-                paddle.device.set_device("gpu:0")
-            else:
-                paddle.device.set_device("cpu")
-            x = paddle.to_tensor(x_np)
-            y = paddle.to_tensor(y_np)
-            out = paddle.log(x * 1e6) / y
-
+    def check_nan_inf_level(self, use_cuda, dtype):
         shape = [8, 8]
         x_np, y_np = self.generate_inputs(shape, dtype)
-        _run(x_np, y_np, use_cuda=False)
-        if paddle.fluid.core.is_compiled_with_cuda():
-            _run(x_np, y_np, use_cuda=True)
+
+        if use_cuda:
+            paddle.device.set_device("gpu:0")
+        else:
+            paddle.device.set_device("cpu")
+        x = paddle.to_tensor(x_np)
+        y = paddle.to_tensor(y_np)
+        out = paddle.log(x * 1e6) / y
 
     def test_check_nan_inf_level_float32(self):
         paddle.set_flags(
             {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 2}
         )
-        self.check_nan_inf_level(dtype="float32")
+        self.check_nan_inf_level(use_cuda=False, dtype="float32")
+        if paddle.fluid.core.is_compiled_with_cuda():
+            self.check_nan_inf_level(use_cuda=True, dtype="float32")
 
     def test_check_nan_inf_level_float16(self):
         paddle.set_flags(
             {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3}
         )
-        self.check_nan_inf_level(dtype="float16")
+        if paddle.fluid.core.is_compiled_with_cuda():
+            self.check_nan_inf_level(use_cuda=True, dtype="float16")
 
 
 if __name__ == '__main__':
