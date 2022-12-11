@@ -71,12 +71,13 @@ class TestNanInfEnv(TestNanInf):
 
 
 class TestNanInfCheckResult(unittest.TestCase):
-    def generate_inputs(self, shape):
-        data = np.random.random(size=shape).astype("float32")
+    def generate_inputs(self, shape, dtype="float32"):
+        data = np.random.random(size=shape).astype(dtype)
+        # [-10, 10)
         x = (data * 20 - 10) * np.random.randint(
             low=0, high=2, size=shape
-        ).astype("float32")
-        y = np.random.randint(low=0, high=2, size=shape).astype("float32")
+        ).astype(dtype)
+        y = np.random.randint(low=0, high=2, size=shape).astype(dtype)
         return x, y
 
     def get_reference_num_nan_inf(self, x):
@@ -133,7 +134,7 @@ class TestNanInfCheckResult(unittest.TestCase):
         if paddle.fluid.core.is_compiled_with_cuda():
             _check_num_nan_inf(use_cuda=True)
 
-    def test_check_nan_inf_level(self):
+    def check_nan_inf_level(self, dtype):
         def _run(x_np, y_np, use_cuda):
             if use_cuda:
                 paddle.device.set_device("gpu:0")
@@ -141,16 +142,25 @@ class TestNanInfCheckResult(unittest.TestCase):
                 paddle.device.set_device("cpu")
             x = paddle.to_tensor(x_np)
             y = paddle.to_tensor(y_np)
-            out = paddle.log(x) / y
+            out = paddle.log(x * 1e6) / y
 
-        paddle.set_flags(
-            {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 2}
-        )
-        shape = [64, 64]
-        x_np, y_np = self.generate_inputs(shape)
+        shape = [8, 8]
+        x_np, y_np = self.generate_inputs(shape, dtype)
         _run(x_np, y_np, use_cuda=False)
         if paddle.fluid.core.is_compiled_with_cuda():
             _run(x_np, y_np, use_cuda=True)
+
+    def test_check_nan_inf_level_float32(self):
+        paddle.set_flags(
+            {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 2}
+        )
+        self.check_nan_inf_level(dtype="float32")
+
+    def test_check_nan_inf_level_float16(self):
+        paddle.set_flags(
+            {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3}
+        )
+        self.check_nan_inf_level(dtype="float16")
 
 
 if __name__ == '__main__':

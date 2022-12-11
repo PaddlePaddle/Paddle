@@ -145,7 +145,9 @@ static void CheckNanInfCpuImpl(const T* value_ptr,
   using MT = typename phi::dtype::template MPTypeTrait<T>::Type;
 
 #ifdef _OPENMP
-  int num_threads = std::max(std::min(omp_get_num_threads(), 4), 1);
+  // Use maximum 4 threads to collect the nan and inf information.
+  int num_threads = std::max(omp_get_num_threads(), 1);
+  num_threads = std::min(num_threads, 4);
 #else
   int num_threads = 1;
 #endif
