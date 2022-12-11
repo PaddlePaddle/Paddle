@@ -188,7 +188,7 @@ class TestLayer(LayerTest):
         cvm2 = np.ones([10, 8], dtype='float32')
         show_clk = np.ones([10, 2], dtype='float32')
         with self.static_graph():
-            t = paddle.static.data(
+            x = paddle.static.data(
                 name='data',
                 shape=[10, 10],
                 dtype='float32',
@@ -198,13 +198,13 @@ class TestLayer(LayerTest):
                 shape=[10, 2],
                 dtype='float32',
             )
-            no_cvm = paddle.static.nn.continuous_value_model(t, u, True)
+            no_cvm = paddle.static.nn.continuous_value_model(x, u, True)
             static_ret1 = self.get_static_graph_result(
                 feed={'data': inp, 'show_click': show_clk},
                 fetch_list=[no_cvm],
             )[0]
         with self.static_graph():
-            t = paddle.static.data(
+            x = paddle.static.data(
                 name='data',
                 shape=[10, 10],
                 dtype='float32',
@@ -214,7 +214,7 @@ class TestLayer(LayerTest):
                 shape=[10, 2],
                 dtype='float32',
             )
-            cvm = paddle.static.nn.continuous_value_model(t, u, False)
+            cvm = paddle.static.nn.continuous_value_model(x, u, False)
             static_ret2 = self.get_static_graph_result(
                 feed={'data': inp, 'show_click': show_clk}, fetch_list=[cvm]
             )[0]
