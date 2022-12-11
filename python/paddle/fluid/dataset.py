@@ -1127,6 +1127,8 @@ class InMemoryDataset(DatasetBase):
             "excluded_train_pair", "")
         self.proto_desc.graph_config.infer_node_type = config.get(
             "infer_node_type", "")
+        self.proto_desc.graph_config.get_degree = config.get(
+            "get_degree", False)
         self.dataset.set_gpu_graph_mode(True)
 
     def set_pass_id(self, pass_id):

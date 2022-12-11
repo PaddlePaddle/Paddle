@@ -968,6 +968,7 @@ class GraphDataGenerator {
       int len,
       int* uniq_len,
       std::shared_ptr<phi::Allocation>& inverse);  // NOLINT
+  std::shared_ptr<phi::Allocation> GetNodeDegree(uint64_t* node_ids, int len);
   int InsertTable(const uint64_t* d_keys,
                   uint64_t len,
                   std::shared_ptr<phi::Allocation> d_uniq_node_num);
@@ -990,6 +991,7 @@ class GraphDataGenerator {
   int* index_tensor_ptr_;
   int64_t* show_tensor_ptr_;
   int64_t* clk_tensor_ptr_;
+  int* degree_tensor_ptr_;
 
   cudaStream_t train_stream_;
   cudaStream_t sample_stream_;
@@ -1037,6 +1039,7 @@ class GraphDataGenerator {
   // sage mode batch data
   std::vector<std::shared_ptr<phi::Allocation>> inverse_vec_;
   std::vector<std::shared_ptr<phi::Allocation>> final_sage_nodes_vec_;
+  std::vector<std::shared_ptr<phi::Allocation>> node_degree_vec_;
   std::vector<int> uniq_instance_vec_;
   std::vector<int> total_instance_vec_;
   std::vector<std::vector<std::shared_ptr<phi::Allocation>>> graph_edges_vec_;
@@ -1074,6 +1077,7 @@ class GraphDataGenerator {
   size_t infer_node_end_;
   std::set<int> infer_node_type_index_set_;
   std::string infer_node_type_;
+  bool get_degree_;
 };
 
 class DataFeed {

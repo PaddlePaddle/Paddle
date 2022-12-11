@@ -630,6 +630,13 @@ GraphGpuWrapper::get_edge_type_graph(int gpu_id, int edge_type_len) {
       ->get_edge_type_graph(gpu_id, edge_type_len);
 }
 
+void GraphGpuWrapper::get_node_degree(
+    int gpu_id, int edge_idx, uint64_t* key, int len,
+    std::shared_ptr<phi::Allocation> node_degree) {
+  return ((GpuPsGraphTable *)graph_table)
+      ->get_node_degree(gpu_id, edge_idx, key, len, node_degree);
+}
+
 int GraphGpuWrapper::get_feature_info_of_nodes(
     int gpu_id,
     uint64_t *d_nodes,

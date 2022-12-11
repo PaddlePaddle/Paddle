@@ -616,6 +616,10 @@ int GraphDataGenerator::FillGraphIdShowClkTensor(int uniq_instance,
   int index_offset = 3 + slot_num_ * 2 + 5 * samples_.size();
   index_tensor_ptr_ = feed_vec_[index_offset]->mutable_data<int>(
       {total_instance}, this->place_);
+  if (get_degree_) {
+    degree_tensor_ptr_ = feed_vec_[index_offset + 1]->mutable_data<int>(
+        {uniq_instance * edge_to_id_len_}, this->place_);
+  }
 
   int len_samples = samples_.size();
   int *num_nodes_tensor_ptr_[len_samples];
@@ -682,6 +686,13 @@ int GraphDataGenerator::FillGraphIdShowClkTensor(int uniq_instance,
                   sizeof(int) * total_instance,
                   cudaMemcpyDeviceToDevice,
                   train_stream_);
+  if (get_degree_) {
+    cudaMemcpyAsync(degree_tensor_ptr_,
+                    node_degree_vec_[index]->ptr(),
+                    sizeof(int) * uniq_instance * edge_to_id_len_,
+                    cudaMemcpyDeviceToDevice,
+                    train_stream_);
+  }
   GraphFillCVMKernel<<<GET_BLOCKS(uniq_instance),
                        CUDA_NUM_THREADS,
                        0,
@@ -1843,6 +1854,21 @@ std::shared_ptr<phi::Allocation> GraphDataGenerator::GenerateSampleGraph(
   return final_nodes_vec[len_samples - 1];
 }
 
+std::shared_ptr<phi::Allocation> GraphDataGenerator::GetNodeDegree(
+    uint64_t* node_ids, int len) {
+  auto node_degree = memory::AllocShared(
+      place_,
+      len * edge_to_id_len_ * sizeof(int),
+      phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+  auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
+  auto edge_to_id = gpu_graph_ptr->edge_to_id;
+  for (auto& iter : edge_to_id) {
+    int edge_idx = iter.second;
+    gpu_graph_ptr->get_node_degree(gpuid_, edge_idx, node_ids, len, node_degree);
+  }
+  return node_degree;
+}
+
 uint64_t GraphDataGenerator::CopyUniqueNodes() {
   if (FLAGS_gpugraph_storage_mode != GpuGraphStorageMode::WHOLE_HBM) {
     uint64_t h_uniq_node_num = 0;
@@ -1933,6 +1959,13 @@ void GraphDataGenerator::DoWalkandSage() {
               phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
           auto final_sage_nodes = GenerateSampleGraph(
               ins_cursor, total_instance, &uniq_instance, inverse);
+          uint64_t* final_sage_nodes_ptr =
+              reinterpret_cast<uint64_t *>(final_sage_nodes->ptr());
+          if (get_degree_) {
+            auto node_degrees = GetNodeDegree(final_sage_nodes_ptr, uniq_instance);
+            node_degree_vec_.emplace_back(node_degrees);
+          }
+          cudaStreamSynchronize(sample_stream_);
           if (FLAGS_gpugraph_storage_mode != GpuGraphStorageMode::WHOLE_HBM) {
             uint64_t *final_sage_nodes_ptr =
                 reinterpret_cast<uint64_t *>(final_sage_nodes->ptr());
@@ -1983,6 +2016,12 @@ void GraphDataGenerator::DoWalkandSage() {
               phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
           auto final_sage_nodes = GenerateSampleGraph(
               node_buf_ptr_, total_instance, &uniq_instance, inverse);
+          uint64_t* final_sage_nodes_ptr =
+              reinterpret_cast<uint64_t *>(final_sage_nodes->ptr());
+          if (get_degree_) {
+            auto node_degrees = GetNodeDegree(final_sage_nodes_ptr, uniq_instance);
+            node_degree_vec_.emplace_back(node_degrees);
+          }
           cudaStreamSynchronize(sample_stream_);
           if (FLAGS_gpugraph_storage_mode != GpuGraphStorageMode::WHOLE_HBM) {
             uint64_t *final_sage_nodes_ptr =
@@ -2857,6 +2896,7 @@ void GraphDataGenerator::SetConfig(
       once_sample_startid_len_ * walk_len_ * walk_degree_ * repeat_time_;
   train_table_cap_ = graph_config.train_table_cap();
   infer_table_cap_ = graph_config.infer_table_cap();
+  get_degree_ = graph_config.get_degree();
   epoch_finish_ = false;
   VLOG(1) << "Confirm GraphConfig, walk_degree : " << walk_degree_
           << ", walk_len : " << walk_len_ << ", window : " << window_
