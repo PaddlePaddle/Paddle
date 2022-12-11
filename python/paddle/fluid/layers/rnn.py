@@ -663,7 +663,7 @@ def _rnn_static_graph(
     if not time_major:
         inputs = map_structure(_transpose_batch_time, inputs)
 
-    max_seq_len = nn.shape(flatten(inputs)[0])[0]
+    max_seq_len = paddle.shape(flatten(inputs)[0])[0]
     if sequence_length:
         mask = sequence_lod.sequence_mask(
             sequence_length,
