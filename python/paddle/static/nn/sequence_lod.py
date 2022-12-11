@@ -13,14 +13,11 @@
 # limitations under the License.
 
 import paddle
-from .layer_function_generator import templatedoc
-from ..framework import (
-    Variable,
-    _non_static_mode,
-)
-from ..layer_helper import LayerHelper
-from ..data_feeder import check_type, check_variable_and_dtype
-from ..core import VarDesc
+from paddle.fluid.core import VarDesc
+from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.layers.layer_function_generator import templatedoc
+from paddle.framework import Variable, _non_static_mode
 
 __all__ = [
     'sequence_conv',
