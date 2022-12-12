@@ -557,13 +557,13 @@ def options_process(args, build_options):
             args.append("-D{}={}".format(key, value))
 
 
-def get_cmake_generators():
+def get_cmake_generator():
     if os.getenv("CMAKE_GENERATOR"):
-        cmake_generators = os.getenv("CMAKE_GENERATOR")
+        cmake_generator = os.getenv("CMAKE_GENERATOR")
     else:
-        cmake_generators = " Unix Makefiles"
+        cmake_generator = "Unix Makefiles"
 
-    return cmake_generators
+    return cmake_generator
 
 
 def cmake_run(args, build_path):
@@ -623,7 +623,7 @@ def build_steps():
     if os.path.isfile(cmake_cache_file_path) and rerun_cmake is True:
         os.remove(cmake_cache_file_path)
 
-    CMAKE_GENERATOR = get_cmake_generators()
+    CMAKE_GENERATOR = get_cmake_generator()
 
     if CMAKE_GENERATOR == "Ninja":
         build_ninja_file_path = os.path.join(build_path, "build.ninja")
