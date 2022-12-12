@@ -2022,7 +2022,9 @@ class TestBook(LayerTest):
                 act='softmax',
                 param_attr=["sftmax.w1", "sftmax.w2"],
             )
-            cost = layers.cross_entropy(input=predict, label=label)
+            cost = paddle.nn.functional.cross_entropy(
+                input=predict, label=label, reduction='none', use_softmax=False
+            )
             avg_cost = paddle.mean(cost)
             return avg_cost
 
@@ -2061,7 +2063,9 @@ class TestBook(LayerTest):
             )
 
             predict = layers.fc(input=conv_pool_2, size=10, act="softmax")
-            cost = layers.cross_entropy(input=predict, label=label)
+            cost = paddle.nn.functional.cross_entropy(
+                input=predict, label=label, reduction='none', use_softmax=False
+            )
             avg_cost = paddle.mean(cost)
             return avg_cost
 
@@ -2114,7 +2118,12 @@ class TestBook(LayerTest):
             predict_word = layers.fc(
                 input=hidden1, size=dict_size, act='softmax'
             )
-            cost = layers.cross_entropy(input=predict_word, label=next_word)
+            cost = paddle.nn.functional.cross_entropy(
+                input=predict_word,
+                label=next_word,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_cost = paddle.mean(cost)
             return avg_cost
 
@@ -2346,7 +2355,14 @@ class TestBook(LayerTest):
             x = self._get_data(name="x", shape=[30, 10], dtype="float32")
             label = self._get_data(name="label", shape=[30, 1], dtype="int64")
             mode = 'channel'
-            out = layers.cross_entropy(x, label, False, 4)
+            out = paddle.nn.functional.cross_entropy(
+                x,
+                label,
+                soft_label=False,
+                ignore_index=4,
+                reduction='none',
+                use_softmax=False,
+            )
             return out
 
     def make_uniform_random_batch_size_like(self):
