@@ -31,15 +31,16 @@ import unittest
 import numpy as np
 from PIL import Image, ImageOps
 
+import paddle.fluid as fluid
+
 # Use GPU:0 to elimate the influence of other tasks.
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 import paddle
-import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph.nn import BatchNorm
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
+from paddle.nn import BatchNorm
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
