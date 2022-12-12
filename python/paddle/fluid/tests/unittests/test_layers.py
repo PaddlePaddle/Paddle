@@ -184,7 +184,7 @@ class TestLayer(LayerTest):
 
     def test_cvm(self):
         inp = np.ones([10, 10], dtype='float32')
-        arr = [[0.693147, 0, 1, 1, 1, 1, 1, 1, 1, 1]] * 10
+        arr = [[0.6931472, -1.904654e-09, 1, 1, 1, 1, 1, 1, 1, 1]] * 10
         cvm1 = np.array(arr, dtype='float32')
         cvm2 = np.ones([10, 8], dtype='float32')
         show_clk = np.ones([10, 2], dtype='float32')
@@ -219,8 +219,8 @@ class TestLayer(LayerTest):
             static_ret2 = self.get_static_graph_result(
                 feed={'data': inp, 'show_click': show_clk}, fetch_list=[cvm]
             )[0]
-        np.testing.assert_allclose(static_ret1, cvm1, rtol=1e-5)
-        np.testing.assert_allclose(static_ret2, cvm2, rtol=1e-5)
+        np.testing.assert_allclose(static_ret1, cvm1, rtol=1e-5, atol=1e-06)
+        np.testing.assert_allclose(static_ret2, cvm2, rtol=1e-5, atol=1e-06)
 
     def test_Flatten(self):
         inp = np.ones([3, 4, 4, 5], dtype='float32')
