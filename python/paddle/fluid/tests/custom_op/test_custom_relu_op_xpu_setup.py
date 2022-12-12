@@ -186,7 +186,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         # usage: import the package directly
         import custom_relu_xpu_module_setup
 
-        self.self.custom_op = custom_relu_xpu_module_setup.custom_relu
+        self.custom_op = custom_relu_xpu_module_setup.custom_relu
 
         self.dtypes = ['float32', 'float64']
         self.devices = ['xpu']
@@ -200,9 +200,9 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         for device in self.devices:
             for dtype in self.dtypes:
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
-                out = custom_relu_static(self.self.custom_op, device, dtype, x)
+                out = custom_relu_static(self.custom_op, device, dtype, x)
                 pd_out = custom_relu_static(
-                    self.self.custom_op, device, dtype, x, False
+                    self.custom_op, device, dtype, x, False
                 )
                 np.testing.assert_array_equal(
                     out,
