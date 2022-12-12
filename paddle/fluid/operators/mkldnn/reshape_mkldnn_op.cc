@@ -99,9 +99,6 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
       case ReshapeKernelOpName::reshape:
         InferShapeReshapeOp(ctx, x_dims, out_dims);
         break;
-      case ReshapeKernelOpName::reshape2:
-        InferShapeReshape2Op(ctx, x_dims, out_dims);
-        break;
       case ReshapeKernelOpName::squeeze:
         InferShapeSqueezeOp(ctx, x_dims, out_dims);
         break;
@@ -123,17 +120,6 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
     x_dims = x->dims();
-    out_dims = out->dims();
-    ChangeReshapeOutDimsIfNeeded(ctx, x_dims, out_dims);
-  }
-
-  void InferShapeReshape2Op(const framework::ExecutionContext& ctx,
-                            framework::DDim& x_dims,            // NOLINT
-                            framework::DDim& out_dims) const {  // NOLINT
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
-    auto* xshape = ctx.Output<phi::DenseTensor>("XShape");
-    auto xshape_dims = xshape->dims();
-    x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
     out_dims = out->dims();
     ChangeReshapeOutDimsIfNeeded(ctx, x_dims, out_dims);
   }
@@ -399,14 +385,6 @@ REGISTER_OP_KERNEL(
     ops::ReshapeGradMKLDNNKernel<float, ReshapeKernelOpName::reshape>,
     ops::ReshapeGradMKLDNNKernel<paddle::platform::bfloat16,
                                  ReshapeKernelOpName::reshape>);
-
-REGISTER_OP_KERNEL(
-    reshape2,
-    MKLDNN,
-    paddle::platform::CPUPlace,
-    ops::ReshapeMKLDNNKernel<float, ReshapeKernelOpName::reshape2>,
-    ops::ReshapeMKLDNNKernel<paddle::platform::bfloat16,
-                             ReshapeKernelOpName::reshape2>);
 
 REGISTER_OP_KERNEL(
     reshape2_grad,
