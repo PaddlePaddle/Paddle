@@ -35,7 +35,9 @@ class TestQuantizationSubGraph(unittest.TestCase):
             hidden = data
             for _ in range(num):
                 hidden = fluid.layers.fc(hidden, size=128, act='relu')
-            loss = fluid.layers.cross_entropy(input=hidden, label=label)
+            loss = paddle.nn.functional.cross_entropy(
+                input=hidden, label=label, reduction='none', use_softmax=False
+            )
             loss = paddle.mean(loss)
             return loss
 
