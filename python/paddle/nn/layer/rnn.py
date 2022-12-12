@@ -44,12 +44,12 @@ def rnn(
     is_reverse=False,
     **kwargs
 ):
-    """
+    r"""
     rnn creates a recurrent neural network specified by RNNCell `cell`,
     which performs :code:`cell.call()` (for dygraph mode :code:`cell.forward`)
     repeatedly until reaches to the maximum length of `inputs`.
 
-    Arguments:
+    Parameters:
         cell(RNNCellBase): An instance of `RNNCellBase`.
         inputs(Tensor): the input sequences.
             If time_major is True, the shape is
@@ -64,14 +64,13 @@ def rnn(
             If `sequence_length` is not None, the inputs are treated as
             padded sequences. In each input sequence, elements whose time step
             index are not less than the valid length are treated as paddings.
-        time_major (bool): Whether the first dimension of the input means the
+        time_major (bool, optional): Whether the first dimension of the input means the
             time steps. Defaults to False.
         is_reverse (bool, optional): Indicate whether to calculate in the reverse
             order of input sequences. Defaults to False.
         **kwargs: Additional keyword arguments to pass to `forward` of the cell.
 
     Returns:
-        (outputs, final_states)
         outputs (Tensor|list|tuple): the output sequence. Tensor or nested
             structure of Tensors.
             If `time_major` is True, the shape of each tensor in outpus is
@@ -81,7 +80,6 @@ def rnn(
             tensor[s], representing the final state for RNN. It has the same
             structure of intial state. Each tensor in final states has the same
             shape and dtype as the corresponding tensor in initial states.
-
 
     Examples:
 
@@ -97,6 +95,7 @@ def rnn(
             outputs, final_states = paddle.nn.layer.rnn(cell, inputs, prev_h)
 
     """
+
     if _non_static_mode():
         return _rnn_dynamic_graph(
             cell,
@@ -306,14 +305,14 @@ def birnn(
     time_major=False,
     **kwargs
 ):
-    """
+    r"""
     birnn creates a bidirectional recurrent neural network specified by
     RNNCell `cell_fw` and `cell_bw`, which performs :code:`cell.call()`
     (for dygraph mode :code:`cell.forward`) repeatedly until reaches to
     the maximum length of `inputs` and then concat the outputs for both RNNs
     along the last axis.
 
-    Arguments:
+    Parameters:
         cell_fw(RNNCellBase): An instance of `RNNCellBase`.
         cell_bw(RNNCellBase): An instance of `RNNCellBase`.
         inputs(Tensor): the input sequences.
@@ -334,7 +333,6 @@ def birnn(
         **kwargs: Additional keyword arguments to pass to `forward` of each cell.
 
     Returns:
-        (outputs, final_states)
         outputs (Tensor): the outputs of the bidirectional RNN. It is the
             concatenation of the outputs from the forward RNN and backward
             RNN along the last axis.
@@ -362,6 +360,7 @@ def birnn(
                 cell_fw, cell_bw, inputs, initial_states)
 
     """
+
     if initial_states is None:
         states_fw = cell_fw.get_initial_states(
             batch_ref=inputs, batch_dim_idx=1 if time_major else 0
