@@ -137,8 +137,7 @@ class LBFGS(Optimizer):
         if isinstance(parameters, paddle.Tensor):
             raise TypeError(
                 "parameters argument given to the optimizer should be "
-                "an iterable of Tensors or dicts, but got "
-                + paddle.typename(parameters)
+                "an iterable of Tensors or dicts, but got " + type(parameters)
             )
 
         self.state = defaultdict(dict)
@@ -380,13 +379,6 @@ class LBFGS(Optimizer):
                 current_evals += ls_func_evals
                 state['func_evals'] += ls_func_evals
 
-                # check conditions
-                if n_iter == max_iter:
-                    break
-
-                if current_evals >= max_eval:
-                    break
-
                 # optimal condition
                 if opt_cond:
                     break
@@ -396,6 +388,13 @@ class LBFGS(Optimizer):
                     break
 
                 if abs(loss - prev_loss) < tolerance_change:
+                    break
+
+                # check conditions
+                if current_evals >= max_eval:
+                    break
+
+                if n_iter == max_iter:
                     break
 
             state['d'] = d
