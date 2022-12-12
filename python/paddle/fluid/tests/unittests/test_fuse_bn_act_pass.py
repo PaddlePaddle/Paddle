@@ -53,7 +53,9 @@ class TestFuseBatchNormActPass(unittest.TestCase):
                 input=hidden3, act='relu', data_layout='NHWC'
             )
             prediction = fluid.layers.fc(input=hidden4, size=10, act='softmax')
-            loss = fluid.layers.cross_entropy(input=prediction, label=y)
+            loss = paddle.nn.functional.cross_entropy(
+                input=prediction, label=y, reduction='none', use_softmax=False
+            )
             loss = paddle.mean(loss)
             sgd = fluid.optimizer.SGD(learning_rate=0.001)
             if use_cuda:

@@ -64,7 +64,7 @@ class HybridParallelInferenceHelper:
                 element_in_arr = layers.array_read(array=arr, i=step_idx)
                 # write placehold data to global lod_tensor_array,
                 # it need for send_v2 of lod_tensor_array
-                layers.increment(x=step_idx, value=1.0, in_place=True)
+                paddle.increment(x=step_idx, value=1.0)
                 layers.array_write(element_in_arr, i=step_idx, array=arr)
 
             with paddle.fluid.device_guard(f'{device}:0'):
@@ -137,7 +137,7 @@ class HybridParallelInferenceHelper:
             with while_op.block():
                 with paddle.fluid.device_guard(f'{device}:all'):
                     input = layers.array_read(array=data, i=step_idx)
-                    layers.increment(x=step_idx, value=1.0, in_place=True)
+                    paddle.increment(x=step_idx, value=1.0)
                     layers.array_write(input, i=step_idx, array=data)
 
                 with paddle.fluid.device_guard(f'{device}:0'):

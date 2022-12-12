@@ -418,7 +418,7 @@ if(WITH_GPU)
                               analyzer_ernie_tester.cc)
   inference_analysis_api_test(gpu_ernie_half_test ${ERNIE_INSTALL_DIR}
                               gpu_ernie_half_test.cc)
-  set_tests_properties(gpu_ernie_half_test PROPERTIES TIMEOUT 40)
+  set_tests_properties(gpu_ernie_half_test PROPERTIES TIMEOUT 60)
 endif()
 inference_analysis_api_int8_test(test_analyzer_ernie_int8 ${ERNIE_INSTALL_DIR}
                                  analyzer_ernie_int8_tester.cc)
