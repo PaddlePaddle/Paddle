@@ -498,6 +498,7 @@ class RecomputePass(PassBase):
                                 self._dist_context,
                                 is_recompute=True,
                                 sync=False,
+                                op_namescope="recompute_segment_dep",
                             )
         main_program._sync_with_cpp()
 

@@ -814,6 +814,7 @@ class ShardingPass(PassBase):
                     ],  # hack to avoid initialize the dist attr for coalesc var
                     is_recompute=False,
                     sync=False,
+                    op_namescope="sharding_stage2_broadcast_dep",
                 )
 
         main_block._sync_with_cpp()
@@ -1033,6 +1034,7 @@ class ShardingPass(PassBase):
                     ],  # hack to avoid initialize the dist attr for coalesc var
                     is_recompute=False,
                     sync=False,
+                    op_namescope="sharding_grad_coalesce_dep",
                 )
         block._sync_with_cpp()
 
@@ -1116,6 +1118,7 @@ class ShardingPass(PassBase):
                     ],  # hack to avoid initialize the dist attr for coalesc var
                     is_recompute=False,
                     sync=False,
+                    op_namescope="sharding_grad_comm_dep",
                 )
                 depend_op.dist_attr.execution_stream = self.gradient_sync_stream
                 print("grad comm insert dep: {}".format(str(depend_op)))

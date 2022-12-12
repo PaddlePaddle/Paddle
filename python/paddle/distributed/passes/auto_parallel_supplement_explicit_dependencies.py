@@ -63,7 +63,6 @@ class AutoParalSupplementDepPass(PassBase):
 
         if not use_standalone_executor:
             return
-        print("here 1111111111111111")
 
         self._dist_context = self.get_attr("dist_context", None)
         main_block = main_program.global_block()
@@ -85,15 +84,20 @@ class AutoParalSupplementDepPass(PassBase):
         prior_varname = last_dp_reduce_varname
         for idx, op in enumerate(main_block.ops):
             if is_amp_flag_sync_op(op) or is_global_norm_sync_op(op):
-                deps_map[idx] = (prior_varname, op.input("X")[0])
+                op_namescope = None
+                if is_amp_flag_sync_op(op):
+                    op_namescope = "amp_flag_sync_dep"
+                elif is_global_norm_sync_op(op):
+                    op_namescope = "global_norm_sync_dep"
+                deps_map[idx] = (prior_varname, op.input("X")[0], op_namescope)
                 prior_varname = op.output("Out")[0]
-                print("deps_maps: ", deps_map[idx])
 
         # insert deps
         indice = sorted(list(deps_map.keys()), reverse=True)
         for idx in indice:
             prior_var = main_block.var(deps_map[idx][0])
             post_var = main_block.var(deps_map[idx][1])
+            op_namescope = main_block.var(deps_map[idx][2])
             depend_op = insert_dependencies_for_vars(
                 main_block,
                 idx,
@@ -106,6 +110,7 @@ class AutoParalSupplementDepPass(PassBase):
                 ],  # hack to avoid initialize the dist attr for coalesc var
                 is_recompute=False,
                 sync=False,
+                op_namescope=op_namescope,
             )
 
         main_block._sync_with_cpp()
