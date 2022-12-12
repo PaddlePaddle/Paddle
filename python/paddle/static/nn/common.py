@@ -2675,12 +2675,14 @@ def prior_box(
     min_max_aspect_ratios_order=False,
 ):
     """
+
     This API generates prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
     Each position of the input produce N prior boxes, N is determined by
     the count of min_sizes, max_sizes and aspect_ratios, The size of the
     box is in range(min_size, max_size) interval, which is generated in
     sequence according to the aspect_ratios.
-    Parameters:
+
+    Args:
        input(Tensor): 4-D tensor(NCHW), the data type should be float32 or float64.
        image(Tensor): 4-D tensor(NCHW), the input image data of PriorBoxOp,
             the data type should be float32 or float64.
@@ -2690,20 +2692,21 @@ def prior_box(
        aspect_ratios(list|tuple|float, optional): the aspect ratios of generated
             prior boxes. Default: [1.].
        variance(list|tuple, optional): the variances to be encoded in prior boxes.
-            Default:[0.1, 0.1, 0.2, 0.2].
-       flip(bool, optional): Whether to flip aspect ratios. Default:False.
+            Default: [0.1, 0.1, 0.2, 0.2].
+       flip(bool, optional): Whether to flip aspect ratios. Default: False.
        clip(bool, optional): Whether to clip out-of-boundary boxes. Default: False.
        step(list|tuple, optional): Prior boxes step across width and height, If
             step[0] equals to 0.0 or step[1] equals to 0.0, the prior boxes step across
             height or weight of the input will be automatically calculated.
             Default: [0., 0.]
        offset(float, optional): Prior boxes center offset. Default: 0.5
-       name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+       name(str, optional): Normally there is no need for user to set this property, For more information, please refer to :ref:`api_guide_Name`. Default: None.
        min_max_aspect_ratios_order(bool, optional): If set True, the output prior box is
             in order of [min, max, aspect_ratios], which is consistent with
             Caffe. Please note, this order affects the weights order of
             convolution layer followed by and does not affect the final
             detection results. Default: False.
+
     Returns:
         Tuple: A tuple with two Tensor (boxes, variances)
         boxes(Tensor): the output prior boxes of PriorBox.
@@ -2714,6 +2717,7 @@ def prior_box(
         4-D tensor, the layput is [H, W, num_priors, 4].
         H is the height of input, W is the width of input
         num_priors is the total box count of each position of input
+
     Examples:
         .. code-block:: python
             #declarative mode
