@@ -89,6 +89,14 @@ class TestExecutor(unittest.TestCase):
                     with fluid.unique_name.guard():
                         self.pe_main()
 
+    def test_executor_mkldnn(self):
+        self.place = fluid.CPUPlace()
+        fluid.set_flags({'FLAGS_use_mkldnn': True})
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            with fluid.scope_guard(fluid.Scope()):
+                with fluid.unique_name.guard():
+                    self.executor_main()
+
     def prepare_feed(self, image, label, dev_cnt=1):
         batch_size = 32 * dev_cnt
         image_shape = (batch_size,) + tuple(image.shape[1:])
