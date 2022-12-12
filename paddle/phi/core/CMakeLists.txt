@@ -83,6 +83,11 @@ cc_library(
   DEPS dense_tensor tensor_base)
 
 cc_library(
+  extended_tensor
+  SRCS extended_tensor.cc
+  DEPS tensor_base)
+
+cc_library(
   meta_tensor
   SRCS meta_tensor.cc
   DEPS tensor_base tensor_meta dense_tensor)
