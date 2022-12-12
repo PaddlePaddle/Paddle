@@ -1685,7 +1685,7 @@
   kernel :
     func : rmsprop {dense, dense, dense, dense, dense, dense -> dense, dense, dense, dense}
            rmsprop_dense_param_sparse_grad {dense, dense, selected_rows, dense, dense, dense -> dense, dense, dense, dense}
-    optional : mean_grad
+  optional : mean_grad
   inplace : (param -> param_out), (moment -> moment_out), (mean_square -> mean_square_out), (mean_grad -> mean_grad_out)
 
 - op : rnn
