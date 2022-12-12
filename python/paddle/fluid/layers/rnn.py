@@ -547,9 +547,9 @@ class ArrayWrapper:
 
 def _maybe_copy(state, new_state, step_mask):
     """update rnn state or just pass the old state through"""
-    new_state = nn.elementwise_mul(
+    new_state = paddle.tensor.math._multiply_with_axis(
         new_state, step_mask, axis=0
-    ) + nn.elementwise_mul(state, (1 - step_mask), axis=0)
+    ) + paddle.tensor.math._multiply_with_axis(state, (1 - step_mask), axis=0)
     return new_state
 
 
@@ -833,9 +833,11 @@ def _dynamic_decode_imperative(
             # otherwise, renamed bool gradients of would be summed up leading
             # to sum(bool) error.
             step_mask.stop_gradient = True
-        new_state = nn.elementwise_mul(
+        new_state = paddle.tensor.math._multiply_with_axis(
             state, step_mask, axis=0
-        ) - nn.elementwise_mul(new_state, (step_mask - 1), axis=0)
+        ) - paddle.tensor.math._multiply_with_axis(
+            new_state, (step_mask - 1), axis=0
+        )
         if convert_dtype(state_dtype) in ["bool"]:
             new_state = tensor.cast(new_state, dtype=state_dtype)
         return new_state
@@ -901,7 +903,7 @@ def _dynamic_decode_imperative(
             next_sequence_lengths,
         )
 
-        control_flow.increment(x=step_idx_tensor, value=1.0, in_place=True)
+        paddle.increment(x=step_idx_tensor, value=1.0)
         step_idx += 1
 
         cond = paddle.logical_not(paddle.all(finished))
@@ -988,9 +990,11 @@ def _dynamic_decode_declarative(
             # otherwise, renamed bool gradients of would be summed up leading
             # to sum(bool) error.
             step_mask.stop_gradient = True
-        new_state = nn.elementwise_mul(
+        new_state = paddle.tensor.math._multiply_with_axis(
             state, step_mask, axis=0
-        ) - nn.elementwise_mul(new_state, (step_mask - 1), axis=0)
+        ) - paddle.tensor.math._multiply_with_axis(
+            new_state, (step_mask - 1), axis=0
+        )
         if convert_dtype(state_dtype) in ["bool"]:
             new_state = tensor.cast(new_state, dtype=state_dtype)
         return new_state
@@ -1060,7 +1064,8 @@ def _dynamic_decode_declarative(
             outputs,
             outputs_arrays,
         )
-        control_flow.increment(x=step_idx, value=1.0, in_place=True)
+
+        paddle.increment(x=step_idx, value=1.0)
         # update the global_finished first, since it might be also in states of
         # decoder, which otherwise would write a stale finished status to array
         tensor.assign(next_finished, global_finished)
