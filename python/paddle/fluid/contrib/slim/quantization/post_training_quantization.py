@@ -1367,6 +1367,7 @@ class PostTrainingQuantization:
                     out_var_name,
                     self._quantized_var_min,
                     "out_min",
+                    argname_index,
                     "post_min_max",
                 )
                 save_info(
@@ -1374,6 +1375,7 @@ class PostTrainingQuantization:
                     out_var_name,
                     self._quantized_var_max,
                     "out_max",
+                    argname_index,
                     "post_min_max",
                 )
 
