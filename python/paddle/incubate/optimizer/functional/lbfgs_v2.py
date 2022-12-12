@@ -73,6 +73,7 @@ class LBFGS(Optimizer):
     import numpy as np
     from paddle.incubate.optimizer.functional import LBFGS
 
+    paddle.disable_static()
     np.random.seed(0)
     np_w = np.random.rand(1).astype(np.float32)
     np_x = np.random.rand(1).astype(np.float32)
