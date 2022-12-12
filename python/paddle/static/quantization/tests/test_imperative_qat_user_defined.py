@@ -144,7 +144,6 @@ class ImperativeLenet(paddle.nn.Layer):
             nn.Linear(in_features=400, out_features=120),
             nn.Linear(in_features=120, out_features=84),
             nn.Linear(in_features=84, out_features=num_classes),
-            nn.functional.softmax(),
         )
 
     def forward(self, inputs):
