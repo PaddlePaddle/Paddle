@@ -14,7 +14,6 @@
 
 import unittest
 
-
 import numpy as np
 
 import paddle
@@ -22,9 +21,8 @@ from paddle.vision.transforms import transforms
 
 SEED = 2022
 
-# copy from https://github.com/PaddlePaddle/Paddle/pull/49008
 
-class TestTransformUnitTestBase(object):
+class TestTransformUnitTestBase(unittest.TestCase):
     def setUp(self):
         self.img = (np.random.rand(*self.get_shape()) * 255.0).astype(
             np.float32
@@ -62,43 +60,43 @@ class TestTransformUnitTestBase(object):
 
     def test_transform(self):
         dy_res = self.dynamic_transform()
-        if isinstance(dy_res, paddle.Tensor):
-            dy_res = dy_res.numpy()
         st_res = self.static_transform()
 
         np.testing.assert_almost_equal(dy_res, st_res)
 
 
-# class TestResize(TestTransformUnitTestBase):
-#     def set_trans_api(self):
-#         self.api = transforms.Resize(size=(16, 16))
+class TestResize(TestTransformUnitTestBase):
+    def set_trans_api(self):
+        self.api = transforms.Resize(size=(16, 16))
 
 
-# class TestResizeError(TestTransformUnitTestBase):
-#     def test_transform(self):
-#         pass
+class TestResizeError(TestTransformUnitTestBase):
+    def test_transform(self):
+        pass
 
-#     def test_error(self):
-#         paddle.enable_static()
-#         # Not support while w<=0 or h<=0, but received w=-1, h=-1
-#         with self.assertRaises(NotImplementedError):
-#             main_program = paddle.static.Program()
-#             with paddle.static.program_guard(main_program):
-#                 x = paddle.static.data(
-#                     shape=[-1, -1, -1], dtype=paddle.float32, name='img'
-#                 )
-#                 self.api(x)
+    def test_error(self):
+        paddle.enable_static()
+        # Not support while w<=0 or h<=0, but received w=-1, h=-1
+        with self.assertRaises(NotImplementedError):
+            main_program = paddle.static.Program()
+            with paddle.static.program_guard(main_program):
+                x = paddle.static.data(
+                    shape=[-1, -1, -1], dtype=paddle.float32, name='img'
+                )
+                self.api(x)
 
-#         paddle.disable_static()
+        paddle.disable_static()
 
 
-# class TestRandomVerticalFlip0(TestTransformUnitTestBase, unittest.TestCase):
-#     def set_trans_api(self):
-#         self.api = transforms.RandomVerticalFlip(prob=0)
+class TestRandomVerticalFlip0(TestTransformUnitTestBase):
+    def set_trans_api(self):
+        self.api = transforms.RandomVerticalFlip(prob=0)
 
-class TestRandomVerticalFlip1(TestTransformUnitTestBase, unittest.TestCase):
+
+class TestRandomVerticalFlip1(TestTransformUnitTestBase):
     def set_trans_api(self):
         self.api = transforms.RandomVerticalFlip(prob=1)
+
 
 if __name__ == "__main__":
     unittest.main()
