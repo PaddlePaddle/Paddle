@@ -214,9 +214,10 @@ class Optimizer:
             .. code-block:: python
 
                 import paddle.fluid as fluid
+                import paddle
 
                 with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding([10, 10])
+                    emb = paddle.nn.Embedding(10, 10)
 
                     adam = fluid.optimizer.Adam(0.001, parameter_list=emb.parameters())
                     state_dict = adam.state_dict()
@@ -418,7 +419,7 @@ class Optimizer:
                 else:
                     self._learning_rate_map[
                         framework.default_main_program()
-                    ] = layers.create_global_var(
+                    ] = paddle.static.create_global_var(
                         name=unique_name.generate("learning_rate"),
                         shape=[1],
                         value=float(self._learning_rate),
@@ -449,7 +450,7 @@ class Optimizer:
             # create learning rate in the current main program
             self._learning_rate_map[
                 framework.default_main_program()
-            ] = layers.create_global_var(
+            ] = paddle.static.create_global_var(
                 name=unique_name.generate("learning_rate"),
                 shape=[1],
                 value=float(self._learning_rate),
@@ -474,6 +475,7 @@ class Optimizer:
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import paddle
 
@@ -497,7 +499,7 @@ class Optimizer:
 
 
                     # set learning rate manually by framework Variable
-                    lr_var = fluid.layers.create_global_var(
+                    lr_var = paddle.static.create_global_var(
                         shape=[1], value=0.7, dtype='float32')
                     adam.set_lr(lr_var)
                     lr = adam.current_step_lr()
@@ -581,7 +583,7 @@ class Optimizer:
 
                 # example1: LearningRateDecay is not used, return value is all the same
                 with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding([10, 10])
+                    emb = paddle.nn.Embedding(10, 10)
                     adam = fluid.optimizer.Adam(0.001, parameter_list = emb.parameters())
                     lr = adam.current_step_lr()
                     print(lr) # 0.001
@@ -1498,7 +1500,7 @@ class SGDOptimizer(Optimizer):
 
             var_name = param.name + "_fp32_master"
             var_name = unique_name.generate(var_name)
-            var = layers.create_global_var(
+            var = paddle.static.create_global_var(
                 name=var_name,
                 shape=param.shape,
                 value=0,
@@ -1859,7 +1861,7 @@ class LarsMomentumOptimizer(Optimizer):
 
             var_name = param.name + '_fp32_master'
             var_name = unique_name.generate(var_name)
-            var = layers.create_global_var(
+            var = paddle.static.create_global_var(
                 name=var_name,
                 shape=param.shape,
                 value=0,
@@ -2267,21 +2269,21 @@ class AdamOptimizer(Optimizer):
                 def get_decayed_betas(beta1_init, beta2_init, decay_steps, decay_rate, epsilon_init):
                     global_step = lr_scheduler._decay_step_counter()
 
-                    beta1 = fluid.layers.create_global_var(
+                    beta1 = paddle.static.create_global_var(
                         shape=[1],
                         value=float(beta1_init),
                         dtype='float32',
                         # set persistable for save checkpoints and resume
                         persistable=True,
                         name="beta1")
-                    beta2 = fluid.layers.create_global_var(
+                    beta2 = paddle.static.create_global_var(
                         shape=[1],
                         value=float(beta2_init),
                         dtype='float32',
                         # set persistable for save checkpoints and resume
                         persistable=True,
                         name="beta2")
-                    epsilon = fluid.layers.create_global_var(
+                    epsilon = paddle.static.create_global_var(
                         shape=[1],
                         value=float(epsilon_init),
                         dtype='float32',
@@ -4326,7 +4328,7 @@ class ExponentialMovingAverage:
 
     def _get_ema_decay(self):
         with default_main_program()._lr_schedule_guard():
-            decay_var = layers.tensor.create_global_var(
+            decay_var = paddle.static.create_global_var(
                 shape=[1],
                 value=self._decay,
                 dtype='float32',
@@ -4346,7 +4348,7 @@ class ExponentialMovingAverage:
         return decay_var
 
     def _get_decay_pow(self, block):
-        global_step = layers.create_global_var(
+        global_step = paddle.static.create_global_var(
             name=self._step_counter_name,
             shape=[1],
             value=0,
@@ -4359,7 +4361,7 @@ class ExponentialMovingAverage:
         return decay_pow_acc, global_step
 
     def _create_ema_vars(self, param):
-        param_ema = layers.create_global_var(
+        param_ema = paddle.static.create_global_var(
             name=unique_name.generate(self._name + param.name + '_ema'),
             shape=param.shape,
             value=0.0,
@@ -7273,7 +7275,7 @@ class LookaheadOptimizer:
 
         with framework.program_guard(main_block.program, startup_program):
             # Add Var k to main prog and startup prog
-            k = layers.create_global_var(
+            k = paddle.static.create_global_var(
                 name="lookahead_k",
                 shape=[1],
                 value=int(self.k),
@@ -7282,7 +7284,7 @@ class LookaheadOptimizer:
             )
 
             # Add Var alpha to main prog and startup prog
-            alpha = layers.create_global_var(
+            alpha = paddle.static.create_global_var(
                 name="lookahead_alpha",
                 shape=[1],
                 value=float(self.alpha),
@@ -7291,14 +7293,14 @@ class LookaheadOptimizer:
             )
 
             # Add Var step
-            step = layers.create_global_var(
+            step = paddle.static.create_global_var(
                 name="lookahead_step",
                 shape=[1],
                 value=int(0),
                 dtype='int32',
                 persistable=True,
             )
-            layers.increment(x=step, value=1.0, in_place=True)
+            paddle.increment(x=step, value=1.0)
 
             # lookahead
             zero_var = layers.fill_constant(
@@ -7498,7 +7500,7 @@ class GradientMergeOptimizer:
 
     def _get_gm_cond_var(self, main_block):
         # Add const var
-        k_step_var = layers.create_global_var(
+        k_step_var = paddle.static.create_global_var(
             name="gradient_merge_k",
             shape=[1],
             value=int(self.k_steps),
@@ -7507,7 +7509,7 @@ class GradientMergeOptimizer:
             force_cpu=True,
         )
 
-        zero_var = layers.create_global_var(
+        zero_var = paddle.static.create_global_var(
             name="gradient_merge_zero",
             shape=[1],
             value=int(0),
@@ -7517,7 +7519,7 @@ class GradientMergeOptimizer:
         )
 
         # Add step var & cond var
-        step_var = layers.create_global_var(
+        step_var = paddle.static.create_global_var(
             name="gradient_merge_step",
             shape=[1],
             value=int(0),
@@ -7532,7 +7534,7 @@ class GradientMergeOptimizer:
 
         with device_guard("cpu"):
             # step_var = (step_var + 1) % k_step
-            layers.increment(x=step_var, value=1.0, in_place=True)
+            paddle.increment(x=step_var, value=1.0)
             main_block.append_op(
                 type='elementwise_mod',
                 inputs={'X': step_var, 'Y': k_step_var},
@@ -7662,7 +7664,7 @@ class GradientMergeOptimizer:
                 )
 
         # step3. apply gradient
-        layers.cond(cond, true_fn=true_apply_gradient, false_fn=None)
+        paddle.static.nn.cond(cond, true_fn=true_apply_gradient, false_fn=None)
 
         return self._optimize_ops
 

@@ -27,6 +27,7 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/analysis/argument.h"
 #include "paddle/fluid/string/pretty_log.h"
+#include "paddle/phi/core/errors.h"
 
 namespace paddle {
 namespace inference {
@@ -306,40 +307,16 @@ void IRPassManager::CreatePasses(Argument *argument,
 }
 
 std::unique_ptr<Graph> IRPassManager::Apply(std::unique_ptr<Graph> graph) {
-  if (passes_.empty()) {
-    return graph;
-  }
   PADDLE_ENFORCE_NOT_NULL(
-      graph.get(),
-      platform::errors::PreconditionNotMet("Graph cannot be NULL."));
+      graph.get(), platform::errors::InvalidArgument("Graph cannot be null."));
   // Apply all the passes
   for (const auto &pass : passes_) {
     if (pass->Type() != "graph_viz_pass" && !disable_logs_) {
       PrettyLogEndl(Style::H2(), "--- Running IR pass [%s]", pass->Type());
     }
-    // delete_fill_constant_op_pass is not apply under trt dynamic shape
-    if (pass->Type() == "delete_fill_constant_op_pass") {
-      bool use_dynamic = pass->Get<bool>("with_dynamic_shape");
-      if (use_dynamic) continue;
-    }
     graph.reset(pass->Apply(graph.release()));
   }
   return graph;
-}
-
-framework::proto::ProgramDesc IRPassManager::AcquireProgram(
-    std::unique_ptr<Graph> *graph, ProgramDesc *program) const {
-  auto pass =
-      framework::ir::PassRegistry::Instance().Get("graph_to_program_pass");
-
-  // Direct using ProgramDesc desc(argument->main_program()) may cause
-  // incomplete copies of information.
-  ProgramDesc desc;
-  desc.CopyFrom(*program->Proto());
-  pass->SetNotOwned("program", &desc);
-  auto *the_graph = graph->release();
-  graph->reset(pass->Apply(the_graph));
-  return *desc.Proto();
 }
 
 }  // namespace analysis
