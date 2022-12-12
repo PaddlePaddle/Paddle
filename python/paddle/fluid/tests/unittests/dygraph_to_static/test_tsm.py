@@ -24,10 +24,9 @@ from tsm_config_utils import merge_configs, parse_config, print_configs
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph.nn import BatchNorm
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
-from paddle.nn import Linear
+from paddle.nn import BatchNorm, Linear
 
 random.seed(0)
 np.random.seed(0)

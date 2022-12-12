@@ -64,7 +64,7 @@ def convolutional_neural_network(use_py_reader):
         acc = paddle.static.accuracy(input=prediction, label=label)
         i = fluid.layers.zeros(shape=[1], dtype='int64')
         array = fluid.layers.array_write(x=prediction, i=i)
-        fluid.layers.increment(i)
+        paddle.increment(i)
         fluid.layers.array_write(x=acc, i=i, array=array)
         return array, img, label, prediction, avg_loss, acc, py_reader
 

@@ -21,10 +21,10 @@
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/fused/fused_bn_activation_op.h"
-#include "paddle/fluid/operators/norm_utils.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/norm_utils.h"
 
 DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 
@@ -91,7 +91,7 @@ class FusedBatchNormActKernel<phi::GPUContext, T>
 
     int N, C, H, W, D;
     const DataLayout data_layout = DataLayout::kNHWC;
-    ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
+    phi::funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
     if ((N * H * W * D) == 1) {
       // Only 1 element in normalization dimension,
@@ -257,7 +257,7 @@ class FusedBatchNormActGradKernel<phi::GPUContext, T>
                           "The Input dim size should be between 2 and 5"));
     int N, C, H, W, D;
     const DataLayout data_layout = DataLayout::kNHWC;
-    ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
+    phi::funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
     // init output
     auto *d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
