@@ -52,6 +52,9 @@ class RecomputeState(ProgramStats):
     def reserved_vars(self):
         return self._reserved_vars
 
+    def is_recompute(self):
+        return any([is_recompute_op(op) for op in self.ops])
+
     def build_states(self):
         for i, op in enumerate(self.ops):
             if is_backward_op(op):
@@ -273,8 +276,12 @@ class RecomputePass(PassBase):
         # 0. get op_path which is related to loss
         main_block = main_program.global_block()
         op_path = _find_op_path(main_program, loss, no_grad_set)
+
         # 1. build recompute state
         rc_state = RecomputeState(main_block, op_path)
+        if not rc_state.is_recompute():
+            return
+
         # 2. get the segments to be recomputed
         rc_state.modify_forward_desc_for_recompute(self._dist_context)
         rc_state.build_states()
@@ -300,6 +307,7 @@ class RecomputePass(PassBase):
                     rc_state.ops[idx2 - 1].output_arg_names,
                 )
             )
+
         # 3. get vars that should be hold in memory
         vars_should_be_hold = []
         for segment in segments:
