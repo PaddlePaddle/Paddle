@@ -49,9 +49,7 @@ import os
 import paddle.utils.deprecated as deprecated
 from paddle import _C_ops, _legacy_C_ops
 
-__all__ = [
-    'BatchNorm',
-]
+__all__ = []
 
 
 class BatchNorm(layers.Layer):

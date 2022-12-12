@@ -472,11 +472,11 @@ PDNode* FusedMultiTransformerEncoderFuseQKVPattern::operator()() {
   auto* split0_q_out_var = pattern->NewNode(split0_q_out_repr())
                                ->assert_is_op_output("split")
                                ->AsIntermediate()
-                               ->assert_is_op_input("matmul", "X");
+                               ->assert_is_op_input("matmul_v2", "X");
   auto* split0_k_out_var = pattern->NewNode(split0_k_out_repr())
                                ->assert_is_op_output("split")
                                ->AsOutput()
-                               ->assert_is_op_input("matmul", "Y")
+                               ->assert_is_op_input("matmul_v2", "Y")
                                ->assert_is_op_input("while");
   auto* split0_v_out_var = pattern->NewNode(split0_v_out_repr())
                                ->assert_is_op_output("split")
@@ -499,10 +499,17 @@ PDNode* FusedMultiTransformerEncoderFuseQKVPattern::operator()() {
   while0->LinksFrom({split0_k_out_var, split0_v_out_var});
 
   // QK path Nodes
-  auto* matmul_qk = pattern->NewNode(matmul_qk_repr())->assert_is_op("matmul");
+  auto* matmul_qk =
+      pattern->NewNode(matmul_qk_repr())->assert_is_op("matmul_v2");
   auto* matmul_qk_out_var =
-      pattern->NewNode(matmul_qk_out_repr())->assert_is_op_output("matmul");
-  matmul_qk_out_var->AsIntermediate()->assert_is_op_input("elementwise_add");
+      pattern->NewNode(matmul_qk_out_repr())->assert_is_op_output("matmul_v2");
+  matmul_qk_out_var->AsIntermediate()->assert_is_op_input("scale");
+
+  auto* scale_qk = pattern->NewNode(scale_qk_repr())->assert_is_op("scale");
+  auto* scale_qk_out_var = pattern->NewNode(scale_qk_out_repr())
+                               ->assert_is_op_output("scale")
+                               ->AsIntermediate()
+                               ->assert_is_op_input("elementwise_add", "X");
 
   auto* eltadd_qk =
       pattern->NewNode(eltadd_qk_repr())->assert_is_op("elementwise_add");
@@ -524,7 +531,8 @@ PDNode* FusedMultiTransformerEncoderFuseQKVPattern::operator()() {
   // QK path Linsk
   matmul_qk->LinksFrom({split0_q_out_var, split0_k_out_var})
       .LinksTo({matmul_qk_out_var});
-  eltadd_qk->LinksFrom({matmul_qk_out_var, eltadd_qk_b_var})
+  scale_qk->LinksFrom({matmul_qk_out_var}).LinksTo({scale_qk_out_var});
+  eltadd_qk->LinksFrom({scale_qk_out_var, eltadd_qk_b_var})
       .LinksTo({eltadd_qk_out_var});
   softmax_qk->LinksFrom({eltadd_qk_out_var}).LinksTo({softmax_qk_out_var});
 
@@ -769,11 +777,11 @@ PDNode* MultiDevicesFusedMultiTransformerEncoderFuseQKVPattern::operator()() {
   auto* split0_q_out_var = pattern->NewNode(split0_q_out_repr())
                                ->assert_is_op_output("split")
                                ->AsIntermediate()
-                               ->assert_is_op_input("matmul", "X");
+                               ->assert_is_op_input("matmul_v2", "X");
   auto* split0_k_out_var = pattern->NewNode(split0_k_out_repr())
                                ->assert_is_op_output("split")
                                ->AsOutput()
-                               ->assert_is_op_input("matmul", "Y")
+                               ->assert_is_op_input("matmul_v2", "Y")
                                ->assert_is_op_input("while");
   auto* split0_v_out_var = pattern->NewNode(split0_v_out_repr())
                                ->assert_is_op_output("split")
@@ -796,10 +804,17 @@ PDNode* MultiDevicesFusedMultiTransformerEncoderFuseQKVPattern::operator()() {
   while0->LinksFrom({split0_k_out_var, split0_v_out_var});
 
   // QK path Nodes
-  auto* matmul_qk = pattern->NewNode(matmul_qk_repr())->assert_is_op("matmul");
+  auto* matmul_qk =
+      pattern->NewNode(matmul_qk_repr())->assert_is_op("matmul_v2");
   auto* matmul_qk_out_var =
-      pattern->NewNode(matmul_qk_out_repr())->assert_is_op_output("matmul");
-  matmul_qk_out_var->AsIntermediate()->assert_is_op_input("elementwise_add");
+      pattern->NewNode(matmul_qk_out_repr())->assert_is_op_output("matmul_v2");
+  matmul_qk_out_var->AsIntermediate()->assert_is_op_input("scale");
+
+  auto* scale_qk = pattern->NewNode(scale_qk_repr())->assert_is_op("scale");
+  auto* scale_qk_out_var = pattern->NewNode(scale_qk_out_repr())
+                               ->assert_is_op_output("scale")
+                               ->AsIntermediate()
+                               ->assert_is_op_input("elementwise_add", "X");
 
   auto* eltadd_qk =
       pattern->NewNode(eltadd_qk_repr())->assert_is_op("elementwise_add");
@@ -821,7 +836,8 @@ PDNode* MultiDevicesFusedMultiTransformerEncoderFuseQKVPattern::operator()() {
   // QK path Linsk
   matmul_qk->LinksFrom({split0_q_out_var, split0_k_out_var})
       .LinksTo({matmul_qk_out_var});
-  eltadd_qk->LinksFrom({matmul_qk_out_var, eltadd_qk_b_var})
+  scale_qk->LinksFrom({matmul_qk_out_var}).LinksTo({scale_qk_out_var});
+  eltadd_qk->LinksFrom({scale_qk_out_var, eltadd_qk_b_var})
       .LinksTo({eltadd_qk_out_var});
   softmax_qk->LinksFrom({eltadd_qk_out_var}).LinksTo({softmax_qk_out_var});
 
@@ -2638,6 +2654,11 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
         matmul_qk_out, matmul_qk_out, fused_multi_transformer_fuse_qkv_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(
+        scale_qk, scale_qk, fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        scale_qk_out, scale_qk_out, fused_multi_transformer_fuse_qkv_pattern);
+
+    GET_IR_NODE_FROM_SUBGRAPH(
         eltadd_qk, eltadd_qk, fused_multi_transformer_fuse_qkv_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
         eltadd_qk_b, eltadd_qk_b, fused_multi_transformer_fuse_qkv_pattern);
@@ -2739,6 +2760,8 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
                                                   split0_v_out,
                                                   matmul_qk,
                                                   matmul_qk_out,
+                                                  scale_qk,
+                                                  scale_qk_out,
                                                   eltadd_qk,
                                                   eltadd_qk_out,
                                                   softmax_qk,
@@ -2824,6 +2847,23 @@ FusedMultiTransformerEncoderFuseQKVPass::
       .End()
       .AddAttr("begin_norm_axis")
       .IsNumGT(0)
+      .End();
+
+  AddOpCompat(OpCompat("scale"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("scale")
+      .IsType<float>()  // copy to new op. so unconstrained.
+      .End()
+      .AddAttr("bias")
+      .IsNumEQ(0.f)
+      .End()
+      .AddAttr("bias_after_scale")  // bias is 0, so unconstrained.
+      .IsType<bool>()
       .End();
 
   AddOpCompat(OpCompat("matmul_v2"))
@@ -3469,6 +3509,11 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
         matmul_qk_out, matmul_qk_out, fused_multi_transformer_fuse_qkv_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(
+        scale_qk, scale_qk, fused_multi_transformer_fuse_qkv_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        scale_qk_out, scale_qk_out, fused_multi_transformer_fuse_qkv_pattern);
+
+    GET_IR_NODE_FROM_SUBGRAPH(
         eltadd_qk, eltadd_qk, fused_multi_transformer_fuse_qkv_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
         eltadd_qk_b, eltadd_qk_b, fused_multi_transformer_fuse_qkv_pattern);
@@ -3580,6 +3625,8 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
                                                   split0_v_out,
                                                   matmul_qk,
                                                   matmul_qk_out,
+                                                  scale_qk,
+                                                  scale_qk_out,
                                                   eltadd_qk,
                                                   eltadd_qk_out,
                                                   softmax_qk,
@@ -3673,6 +3720,23 @@ MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::
       .End()
       .AddAttr("begin_norm_axis")
       .IsNumGT(0)
+      .End();
+
+  AddOpCompat(OpCompat("scale"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("scale")
+      .IsType<float>()  // copy to new op. so unconstrained.
+      .End()
+      .AddAttr("bias")
+      .IsNumEQ(0.f)
+      .End()
+      .AddAttr("bias_after_scale")  // bias is 0, so unconstrained.
+      .IsType<bool>()
       .End();
 
   AddOpCompat(OpCompat("matmul_v2"))
