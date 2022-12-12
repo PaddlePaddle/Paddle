@@ -34,7 +34,7 @@ def get_logger(name, level, fmt=None):
     Examples:
         .. code-block:: python
 
-            logger = log_helper.get_logger(__name__, logging.INFO,
+            logger = paddle.static.log_helper.get_logger(__name__, logging.INFO,
                             fmt='%(asctime)s-%(levelname)s: %(message)s')
     """
 

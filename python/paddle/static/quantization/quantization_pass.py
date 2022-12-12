@@ -200,8 +200,8 @@ class QuantizationTransformPass:
             from paddle.fluid.framework import IrGraph
             from paddle.framework import core
 
-            graph = IrGraph(core.Graph(program.desc), for_test=False)
-            place = static.CPUPlace()
+            graph = IrGraph(core.Graph(static.Program().desc), for_test=False)
+            place = paddle.CPUPlace()
             transform_pass = QuantizationTransformPass(static.global_scope(),
             place)
             transform_pass.apply(graph)
@@ -2429,7 +2429,7 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
             from paddle.fluid.framework import IrGraph
             from paddle.framework import core
 
-            graph = IrGraph(core.Graph(program.desc), for_test=False)
+            graph = IrGraph(core.Graph(static.Program().desc), for_test=False)
             place = paddle.CPUPlace()
             scope = paddle.static.global_scope()
             transform_pass = QuantizationTransformPassV2(scope, place)
@@ -2720,7 +2720,7 @@ class AddQuantDequantPassV2:
             from paddle.fluid.framework import IrGraph
             from paddle.framework import core
 
-            graph = IrGraph(core.Graph(program.desc), for_test=False)
+            graph = IrGraph(core.Graph(static.Program().desc), for_test=False)
             place = paddle.CPUPlace()
             scope = paddle.static.global_scope()
             add_quant_dequant_pass = AddQuantDequantPassV2(scope, place)
@@ -2887,7 +2887,7 @@ class ReplaceFakeQuantDequantPass:
             from paddle.fluid.framework import IrGraph
             from paddle.framework import core
 
-            graph = IrGraph(core.Graph(program.desc), for_test=False)
+            graph = IrGraph(core.Graph(static.Program().desc), for_test=False)
             place = paddle.CPUPlace()
             scope = paddle.static.global_scope()
             replace_pass = ReplaceFakeQuantDequantPass(scope, place)
@@ -3043,7 +3043,7 @@ class QuantWeightPass:
             from paddle.fluid.framework import IrGraph
             from paddle.framework import core
 
-            graph = IrGraph(core.Graph(program.desc), for_test=False)
+            graph = IrGraph(core.Graph(static.Program().desc), for_test=False)
             place = paddle.CPUPlace()
             scope = paddle.static.global_scope()
             quant_weight_pass = QuantWeightPass(scope, place)
