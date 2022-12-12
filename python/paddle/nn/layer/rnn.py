@@ -22,7 +22,7 @@ import paddle
 from paddle import _C_ops, _legacy_C_ops, framework, in_dynamic_mode
 from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
 from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
-from paddle.fluid.layers import control_flow, nn, sequence_lod, utils
+from paddle.fluid.layers import control_flow, sequence_lod, utils
 from paddle.fluid.layers.utils import flatten, map_structure
 from paddle.framework import core
 from paddle.nn import Layer
@@ -133,9 +133,9 @@ class ArrayWrapper:
 
 def _maybe_copy(state, new_state, step_mask):
     """update rnn state or just pass the old state through"""
-    new_state = nn.elementwise_mul(
+    new_state = paddle.tensor.math._multiply_with_axis(
         new_state, step_mask, axis=0
-    ) + nn.elementwise_mul(state, (1 - step_mask), axis=0)
+    ) + paddle.tensor.math._multiply_with_axis(state, (1 - step_mask), axis=0)
     return new_state
 
 

@@ -34,7 +34,9 @@ class SimpleLayer(paddle.nn.Layer):
         x = paddle.flatten(x, 1, -1)
         if target is not None:
             x = paddle.nn.functional.softmax(x)
-            loss = paddle.fluid.layers.cross_entropy(x, target)
+            loss = paddle.paddle.nn.functional.cross_entropy(
+                x, target, reduction='none', use_softmax=False
+            )
             if self.use_ipu:
                 loss = paddle.incubate.identity_loss(loss, 1)
             else:

@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/distributed/collective/NCCLTools.h"
 
-#include "paddle/fluid/distributed/collective/Types.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace distributed {

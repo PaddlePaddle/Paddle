@@ -43,7 +43,9 @@ class PolicyGradient:
         self.reward = paddle.static.py_func(
             func=reward_func, x=[action, length], out=reward
         )
-        neg_log_prob = layers.cross_entropy(act_prob, action)
+        neg_log_prob = paddle.nn.functional.cross_entropy(
+            act_prob, action, reduction='none', use_softmax=False
+        )
         cost = neg_log_prob * reward
         cost = (
             (paddle.sum(cost) / paddle.sum(length))
@@ -130,7 +132,13 @@ class MLE:
         self.lr = lr
 
     def learn(self, probs, label, weight=None, length=None):
-        loss = layers.cross_entropy(input=probs, label=label, soft_label=False)
+        loss = paddle.nn.functional.cross_entropy(
+            input=probs,
+            label=label,
+            soft_label=False,
+            reduction='none',
+            use_softmax=False,
+        )
         max_seq_len = paddle.shape(probs)[1]
         mask = layers.sequence_mask(length, maxlen=max_seq_len, dtype="float32")
         loss = loss * mask
@@ -343,9 +351,7 @@ class TestBeamSearch(ModuleApiTest):
         beam_size=4,
         max_step_num=20,
     ):
-        embedder = paddle.fluid.dygraph.Embedding(
-            size=[vocab_size, embed_dim], dtype="float64"
-        )
+        embedder = paddle.nn.Embedding(vocab_size, embed_dim)
         output_layer = nn.Linear(hidden_size, vocab_size)
         cell = nn.LSTMCell(embed_dim, hidden_size)
         self.max_step_num = max_step_num
