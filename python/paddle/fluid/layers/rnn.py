@@ -547,9 +547,9 @@ class ArrayWrapper:
 
 def _maybe_copy(state, new_state, step_mask):
     """update rnn state or just pass the old state through"""
-    new_state = nn.elementwise_mul(
+    new_state = paddle.tensor.math._multiply_with_axis(
         new_state, step_mask, axis=0
-    ) + nn.elementwise_mul(state, (1 - step_mask), axis=0)
+    ) + paddle.tensor.math._multiply_with_axis(state, (1 - step_mask), axis=0)
     return new_state
 
 
@@ -833,9 +833,11 @@ def _dynamic_decode_imperative(
             # otherwise, renamed bool gradients of would be summed up leading
             # to sum(bool) error.
             step_mask.stop_gradient = True
-        new_state = nn.elementwise_mul(
+        new_state = paddle.tensor.math._multiply_with_axis(
             state, step_mask, axis=0
-        ) - nn.elementwise_mul(new_state, (step_mask - 1), axis=0)
+        ) - paddle.tensor.math._multiply_with_axis(
+            new_state, (step_mask - 1), axis=0
+        )
         if convert_dtype(state_dtype) in ["bool"]:
             new_state = tensor.cast(new_state, dtype=state_dtype)
         return new_state
@@ -988,9 +990,11 @@ def _dynamic_decode_declarative(
             # otherwise, renamed bool gradients of would be summed up leading
             # to sum(bool) error.
             step_mask.stop_gradient = True
-        new_state = nn.elementwise_mul(
+        new_state = paddle.tensor.math._multiply_with_axis(
             state, step_mask, axis=0
-        ) - nn.elementwise_mul(new_state, (step_mask - 1), axis=0)
+        ) - paddle.tensor.math._multiply_with_axis(
+            new_state, (step_mask - 1), axis=0
+        )
         if convert_dtype(state_dtype) in ["bool"]:
             new_state = tensor.cast(new_state, dtype=state_dtype)
         return new_state

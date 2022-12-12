@@ -130,7 +130,7 @@ class SqueezeExcitation(fluid.dygraph.Layer):
         y = self.act_1(y)
         y = self._excitation(y)
         y = self.act_2(y)
-        y = fluid.layers.elementwise_mul(x=input, y=y, axis=0)
+        y = paddle.tensor.math._multiply_with_axis(x=input, y=y, axis=0)
         return y
 
 
