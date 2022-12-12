@@ -23,9 +23,9 @@ from paddle import framework
 from paddle.common_ops_import import LayerHelper
 from paddle.fluid.clip import GradientClipByNorm, append_gradient_clip_ops
 from paddle.fluid.dygraph import base as imperative_base
-from paddle.fluid.layers import tensor
 from paddle.fluid.optimizer import Momentum, Optimizer
 from paddle.framework import core
+from paddle.static import create_global_var
 
 
 class DGCMomentumOptimizer(Optimizer):
@@ -217,7 +217,7 @@ class DGCMomentumOptimizer(Optimizer):
         )
 
         # rampup begin step var for all_reduce_op_handle
-        self._rampup_begin_step_var = tensor.create_global_var(
+        self._rampup_begin_step_var = create_global_var(
             shape=[1],
             dtype=core.VarDesc.VarType.FP32,
             persistable=True,
@@ -237,7 +237,7 @@ class DGCMomentumOptimizer(Optimizer):
 
             v_var = self._add_accumulator(self._v_velocity_acc_str, param_var)
 
-            k_var = tensor.create_global_var(
+            k_var = create_global_var(
                 shape=[1],
                 dtype=param_var.dtype,
                 persistable=True,
@@ -246,7 +246,7 @@ class DGCMomentumOptimizer(Optimizer):
                 force_cpu=True,
             )
 
-            encoded_var = tensor.create_global_var(
+            encoded_var = create_global_var(
                 shape=[1],
                 dtype=param_var.dtype,
                 persistable=True,
@@ -255,7 +255,7 @@ class DGCMomentumOptimizer(Optimizer):
                 force_cpu=False,
             )
 
-            gather_var = tensor.create_global_var(
+            gather_var = create_global_var(
                 shape=[1],
                 dtype=param_var.dtype,
                 persistable=True,

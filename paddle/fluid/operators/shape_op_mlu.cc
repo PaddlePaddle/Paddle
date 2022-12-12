@@ -20,7 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using SelectedRows = phi::SelectedRows;
 
 template <typename T>
@@ -39,7 +38,7 @@ class ShapeMLUKernel : public framework::OpKernel<T> {
     out_t->mutable_data<int32_t>(ctx.GetPlace());
 
     // shape op cpu
-    Tensor shape_on_cpu(
+    phi::DenseTensor shape_on_cpu(
         framework::TransToPhiDataType(framework::proto::VarType::INT32));
     shape_on_cpu.Resize({in_dims.size()});
     auto cpu_data = shape_on_cpu.mutable_data<int32_t>(platform::CPUPlace());

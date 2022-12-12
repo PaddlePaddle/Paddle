@@ -59,7 +59,9 @@ def squeeze_excitation(input, num_channels, reduction_ratio):
     excitation = fluid.layers.fc(
         input=squeeze, size=num_channels, act='sigmoid'
     )
-    scale = fluid.layers.elementwise_mul(x=input, y=excitation, axis=0)
+    scale = paddle.tensor.math._multiply_with_axis(
+        x=input, y=excitation, axis=0
+    )
     return scale
 
 
@@ -80,7 +82,7 @@ def conv_bn_layer(
     return (
         conv
         if remove_bn
-        else fluid.layers.batch_norm(input=conv, act=act, momentum=0.1)
+        else paddle.static.nn.batch_norm(input=conv, act=act, momentum=0.1)
     )
 
 
@@ -141,8 +143,8 @@ def SE_ResNeXt50Small(use_feed):
     conv = conv_bn_layer(
         input=conv, num_filters=16, filter_size=3, stride=1, act='relu'
     )
-    conv = fluid.layers.pool2d(
-        input=conv, pool_size=3, pool_stride=2, pool_padding=1, pool_type='max'
+    conv = paddle.nn.functional.max_pool2d(
+        x=conv, kernel_size=3, stride=2, padding=1
     )
 
     cardinality = 32
@@ -170,7 +172,9 @@ def SE_ResNeXt50Small(use_feed):
     )
     # Classifier layer:
     prediction = fluid.layers.fc(input=dropout, size=1000, act='softmax')
-    loss = fluid.layers.cross_entropy(input=prediction, label=label)
+    loss = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     loss = paddle.mean(loss)
     return loss
 

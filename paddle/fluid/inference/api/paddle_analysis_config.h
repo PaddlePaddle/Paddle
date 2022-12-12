@@ -1009,12 +1009,25 @@ struct PD_INFER_DECL AnalysisConfig {
   /// interface is in the experimental stage and may change in the future. Note
   /// that the blacklist must be the same as the model conversion blacklist.
   ///
-  void Exp_DisableMixedInferOps(
+  void Exp_DisableMixedPrecisionOps(
       const std::unordered_set<std::string>& black_list);
 
   void SetApplyOptim(bool value) { apply_optim_ = value; }
 
   void SetSkipLoadParams(bool value) { skip_load_params_ = value; }
+
+  ///
+  /// \brief Enable use cinn compiler optimization.
+  ///
+  void Exp_EnableCINNCompiler();
+
+  ///
+  /// \brief A boolean state telling whether the CINN compiler optimization is
+  /// turned on.
+  ///
+  /// \return bool Whether the CINN compiler optimization is turned on.
+  ///
+  bool cinn_compiler_enabled() const;
 
  protected:
   // Update the config.
@@ -1142,6 +1155,9 @@ struct PD_INFER_DECL AnalysisConfig {
   std::vector<std::string> lite_ops_filter_;
   Precision lite_precision_mode_;
   bool lite_zero_copy_;
+
+  // CINN compiler related.
+  bool use_cinn_compiler_{false};
 
   // XPU related.
   bool use_xpu_{false};

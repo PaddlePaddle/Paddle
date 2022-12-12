@@ -41,7 +41,9 @@ class FleetTest(unittest.TestCase):
             feed_list=[image, label], place=fluid.CPUPlace()
         )
         predict = fluid.layers.fc(input=image, size=10, act='softmax')
-        loss = fluid.layers.cross_entropy(input=predict, label=label)
+        loss = paddle.nn.functional.cross_entropy(
+            input=predict, label=label, reduction='none', use_softmax=False
+        )
         avg_loss = paddle.mean(loss)
         optimizer = fluid.optimizer.AdamOptimizer(learning_rate=0.001)
 
