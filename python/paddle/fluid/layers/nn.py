@@ -2761,3 +2761,6 @@ def get_tensor_from_selected_rows(x, name=None):
         attrs={},
     )
     return out
+
+
+# define ATEST 1
