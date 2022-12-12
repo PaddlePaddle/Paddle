@@ -839,6 +839,16 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (!(out_h > 0 && out_w > 0)) {
         if (scale.size() < 2) return false;
         if (scale[0] <= 0.f || scale[1] <= 0.f) {
+          auto resize_inputs = desc.Inputs();
+          if (resize_inputs.find("SizeTensor") != resize_inputs.end()) {
+            if (desc.Input("SizeTensor").size() < 1) {
+              VLOG(3) << "If out_h, out_w and scale factor is not set, the "
+                         "SizeTensor should be vaild for op_type "
+                      << op_type;
+              return false;
+            }
+          }
+
           VLOG(3) << "scale factor must be greater than 0 if out_h or out_w is "
                      "not set.";
           return false;
