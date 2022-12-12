@@ -416,6 +416,9 @@ class FP16State:
                             dist_context, cast_var, ref_mapping, ref_mesh
                         )
 
+                        op_namescope = "/"
+                        if op.has_attr('op_namescope'):
+                            op_namescope = op.attr('op_namescope')
                         cast_op = block._insert_op_without_sync(
                             idx,
                             type="cast",
@@ -427,6 +430,9 @@ class FP16State:
                                 OP_ROLE_KEY: OpRole.Forward,
                             },
                         )
+                        cast_op._set_attr(
+                            'op_namescope', op_namescope
+                        )  # for recompute
                         naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
                             cast_op, ref_mesh, ref_mapping, dist_context
                         )

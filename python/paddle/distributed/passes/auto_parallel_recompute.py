@@ -282,17 +282,18 @@ class RecomputePass(PassBase):
         if segments == []:
             return
 
-        print("segments:", segments)
         for i, (idx1, idx2) in enumerate(segments):
-            print("recompute segment[{}]".format(i))
-            print(
+            logging.info(
+                "recompute segment[{}/{}]".format(i + 1, len(segments))
+            )
+            logging.info(
                 "segment start op: [{}]: [{}] [{}]".format(
                     rc_state.ops[idx1].type,
                     rc_state.ops[idx1].input_arg_names,
                     rc_state.ops[idx1].output_arg_names,
                 )
             )
-            print(
+            logging.info(
                 "segment end op: [{}]: [{}] [{}]".format(
                     rc_state.ops[idx2 - 1].type,
                     rc_state.ops[idx2 - 1].input_arg_names,
