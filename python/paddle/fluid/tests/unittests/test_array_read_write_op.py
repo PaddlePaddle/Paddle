@@ -30,17 +30,17 @@ def _test_read_write(x):
     i = layers.zeros(shape=[1], dtype='int64')
     i.stop_gradient = False
     arr = layers.array_write(x=x[0], i=i)
-    i = layers.increment(x=i)
+    i = paddle.increment(x=i)
     arr = layers.array_write(x=x[1], i=i, array=arr)
-    i = layers.increment(x=i)
+    i = paddle.increment(x=i)
     arr = layers.array_write(x=x[2], i=i, array=arr)
 
     i = layers.zeros(shape=[1], dtype='int64')
     i.stop_gradient = False
     a0 = layers.array_read(array=arr, i=i)
-    i = layers.increment(x=i)
+    i = paddle.increment(x=i)
     a1 = layers.array_read(array=arr, i=i)
-    i = layers.increment(x=i)
+    i = paddle.increment(x=i)
     a2 = layers.array_read(array=arr, i=i)
 
     mean_a0 = paddle.mean(a0)

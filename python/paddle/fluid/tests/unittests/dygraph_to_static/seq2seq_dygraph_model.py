@@ -21,8 +21,8 @@ import paddle.fluid as fluid
 from paddle.fluid import ParamAttr, layers
 from paddle.fluid.dygraph import Layer
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import Embedding
 from paddle.jit.api import declarative
+from paddle.nn import Embedding
 
 INF = 1.0 * 1e5
 alpha = 0.6
@@ -122,16 +122,18 @@ class BaseModel(fluid.dygraph.Layer):
         forget_bias = 1.0
 
         self.src_embeder = Embedding(
-            size=[self.src_vocab_size, self.hidden_size],
-            param_attr=fluid.ParamAttr(
+            self.src_vocab_size,
+            self.hidden_size,
+            weight_attr=fluid.ParamAttr(
                 initializer=uniform_initializer(init_scale)
             ),
         )
 
         self.tar_embeder = Embedding(
-            size=[self.tar_vocab_size, self.hidden_size],
-            is_sparse=False,
-            param_attr=fluid.ParamAttr(
+            self.tar_vocab_size,
+            self.hidden_size,
+            sparse=False,
+            weight_attr=fluid.ParamAttr(
                 initializer=uniform_initializer(init_scale)
             ),
         )
@@ -194,9 +196,11 @@ class BaseModel(fluid.dygraph.Layer):
         return x
 
     def _real_state(self, state, new_state, step_mask):
-        new_state = fluid.layers.elementwise_mul(
+        new_state = paddle.tensor.math._multiply_with_axis(
             new_state, step_mask, axis=0
-        ) - fluid.layers.elementwise_mul(state, (step_mask - 1), axis=0)
+        ) - paddle.tensor.math._multiply_with_axis(
+            state, (step_mask - 1), axis=0
+        )
         return new_state
 
     def _gather(self, x, indices, batch_pos):
@@ -450,10 +454,10 @@ class BaseModel(fluid.dygraph.Layer):
                     [-1, -1, self.tar_vocab_size],
                 ),
                 noend_mask_tensor,
-            ) - fluid.layers.elementwise_mul(
+            ) - paddle.tensor.math._multiply_with_axis(
                 step_log_probs, (beam_finished - 1), axis=0
             )
-            log_probs = fluid.layers.elementwise_add(
+            log_probs = paddle.tensor.math._add_with_axis(
                 x=step_log_probs, y=beam_state_log_probs, axis=0
             )
             scores = paddle.reshape(
@@ -545,17 +549,19 @@ class AttentionModel(fluid.dygraph.Layer):
         forget_bias = 1.0
 
         self.src_embeder = Embedding(
-            size=[self.src_vocab_size, self.hidden_size],
-            param_attr=fluid.ParamAttr(
+            self.src_vocab_size,
+            self.hidden_size,
+            weight_attr=fluid.ParamAttr(
                 name='source_embedding',
                 initializer=uniform_initializer(init_scale),
             ),
         )
 
         self.tar_embeder = Embedding(
-            size=[self.tar_vocab_size, self.hidden_size],
-            is_sparse=False,
-            param_attr=fluid.ParamAttr(
+            self.tar_vocab_size,
+            self.hidden_size,
+            sparse=False,
+            weight_attr=fluid.ParamAttr(
                 name='target_embedding',
                 initializer=uniform_initializer(init_scale),
             ),
@@ -685,9 +691,11 @@ class AttentionModel(fluid.dygraph.Layer):
         return x
 
     def _real_state(self, state, new_state, step_mask):
-        new_state = fluid.layers.elementwise_mul(
+        new_state = paddle.tensor.math._multiply_with_axis(
             new_state, step_mask, axis=0
-        ) - fluid.layers.elementwise_mul(state, (step_mask - 1), axis=0)
+        ) - paddle.tensor.math._multiply_with_axis(
+            state, (step_mask - 1), axis=0
+        )
         return new_state
 
     def _gather(self, x, indices, batch_pos):

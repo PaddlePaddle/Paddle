@@ -74,7 +74,12 @@ def train(to_static, build_strategy=None):
                     # FIXME(Aurelius84): The followding cross_entropy seems to bring out a
                     # precision problem, need to figure out the underlying reason.
                     # If we remove it, the loss between dygraph and dy2stat is exactly same.
-                    loss = fluid.layers.cross_entropy(input=pred, label=label)
+                    loss = paddle.nn.functional.cross_entropy(
+                        input=pred,
+                        label=label,
+                        reduction='none',
+                        use_softmax=False,
+                    )
                 avg_loss = paddle.mean(x=pred)
                 acc_top1 = paddle.static.accuracy(input=pred, label=label, k=1)
                 acc_top5 = paddle.static.accuracy(input=pred, label=label, k=5)
