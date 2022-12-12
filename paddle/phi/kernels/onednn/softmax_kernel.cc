@@ -19,23 +19,21 @@
 
 namespace phi {
 
-template <typename T, typename Context>
-void SoftmaxKernel(const Context& dev_ctx,
-                   const DenseTensor& x,
-                   int axis,
-                   DenseTensor* out) {
-  funcs::SoftmaxOneDNNHandler<T> handler(
-      dev_ctx.GetEngine(), dev_ctx.GetPlace(), axis, &x, out);
-
-  auto src_memory_p = handler.AcquireSrcMemory(&x);
+template <template <typename> class H, typename T, typename Context>
+void SoftmaxExecute(bool is_inplace,
+                    H<T>* handler,
+                    const DenseTensor& x,
+                    DenseTensor* out,
+                    const Context& dev_ctx) {
+  auto src_memory_p = handler->AcquireSrcMemory(&x);
   std::shared_ptr<dnnl::memory> dst_memory_p = nullptr;
-  if (x.IsSharedBufferWith(*out)) {
+  if (is_inplace) {
     dst_memory_p = src_memory_p;
     dev_ctx.template Alloc<T>(out);
   } else {
-    dst_memory_p = handler.AcquireDstMemory(out);
+    dst_memory_p = handler->AcquireDstMemory(out);
   }
-  auto softmax_p = handler.AcquireForwardPrimitive();
+  auto softmax_p = handler->AcquireForwardPrimitive();
 
   auto& astream = OneDNNContext::tls().get_stream();
   softmax_p->execute(
@@ -55,7 +53,41 @@ void SoftmaxKernel(const Context& dev_ctx,
   out->set_mem_desc(dst_memory_p->get_desc());
 }
 
+template <typename T, typename Context>
+void SoftmaxKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   int axis,
+                   DenseTensor* out) {
+  bool is_inplace = x.IsSharedBufferWith(*out);
+  PADDLE_ENFORCE(!(phi::funcs::is_int8<T>() && is_inplace),
+                 phi::errors::Unimplemented(
+                     "Inplace not implemeneted for int8 onednn softmax."));
+
+  const float scale_out =
+      dev_ctx.HasDnnAttr("Scale_out")
+          ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("Scale_out"))
+          : 1.0f;
+
+  bool v2 = phi::funcs::is_int8<T>() && scale_out != 1.0f;
+
+  if (v2) {
+    funcs::SoftmaxV2OneDNNHandler<T> handler(
+        dev_ctx.GetEngine(), dev_ctx.GetPlace(), axis, &x, scale_out);
+    SoftmaxExecute(is_inplace, &handler, x, out, dev_ctx);
+  } else {
+    funcs::SoftmaxOneDNNHandler<T> handler(
+        dev_ctx.GetEngine(), dev_ctx.GetPlace(), axis, &x, out);
+    SoftmaxExecute(is_inplace, &handler, x, out, dev_ctx);
+  }
+}
+
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    softmax, OneDNN, ONEDNN, phi::SoftmaxKernel, float, phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(softmax,
+                   OneDNN,
+                   ONEDNN,
+                   phi::SoftmaxKernel,
+                   float,
+                   phi::dtype::bfloat16,
+                   int8_t,
+                   uint8_t) {}

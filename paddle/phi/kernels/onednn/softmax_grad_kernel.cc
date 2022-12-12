@@ -28,8 +28,8 @@ void SoftmaxGradKernel(const Context& dev_ctx,
                        const DenseTensor& out_grad,
                        int axis,
                        DenseTensor* x_grad) {
-  funcs::SoftmaxOneDNNHandler<T> handler(
-      dev_ctx.GetEngine(), dev_ctx.GetPlace(), axis, &out, &out_grad);
+  funcs::SoftmaxV2OneDNNHandler<T> handler(
+      dev_ctx.GetEngine(), dev_ctx.GetPlace(), axis, &out, &out_grad, x_grad);
 
   auto dst_memory_p = handler.AcquireDstMemory(&out);
   auto diff_dst_memory_p = handler.AcquireDiffDstMemory(&out_grad);

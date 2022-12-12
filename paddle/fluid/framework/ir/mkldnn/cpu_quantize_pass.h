@@ -65,6 +65,7 @@ class CPUQuantizePass : public FusePassBase {
   void QuantizeImmutable(Graph* graph,
                          const std::string& immutable_type,
                          const std::string& input_name) const;
+  void QuantizeSoftmax(Graph* graph) const;
 
   void QuantizeInput(Graph* g,
                      Node* op,

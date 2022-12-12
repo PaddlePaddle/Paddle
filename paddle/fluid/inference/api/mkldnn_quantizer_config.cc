@@ -135,6 +135,9 @@ MkldnnQuantizerConfig::MkldnnQuantizerConfig() {
   rules_["nearest_interp_v2"]["SizeTensor"] = ScaleAlgo::NONE;
   rules_["nearest_interp_v2"]["Scale"] = ScaleAlgo::NONE;
   rules_["nearest_interp_v2"]["Out"] = ScaleAlgo::NONE;
+
+  rules_["softmax"]["X"] = ScaleAlgo::KL;
+  rules_["softmax"]["Out"] = ScaleAlgo::KL;
 }
 
 ScaleAlgo MkldnnQuantizerConfig::scale_algo(

@@ -623,8 +623,7 @@ class OneDNNHandlerNoCachingT {
     // fwd_pd_ is set during grad by calling
     // AcquireForwardPrimitiveDescriptor
     PADDLE_ENFORCE_NOT_NULL(
-        fwd_pd_,
-        errors::Unavailable("Get oneDNN Forward primitive %s failed."));
+        fwd_pd_, errors::Unavailable("Get oneDNN Forward primitive failed."));
     auto bwd_desc = typename TBackward::desc(std::forward<Args>(args)...);
     bwd_pd_ = std::make_shared<typename TBackward::primitive_desc>(
         bwd_desc, engine_, *fwd_pd_);
@@ -803,6 +802,70 @@ class SoftmaxOneDNNHandler
         dnnl::prop_kind::forward_scoring, out->mem_desc(), canonical_axis);
     this->AcquireBackwardPrimitiveDescriptor(
         out_grad->mem_desc(), out->mem_desc(), canonical_axis);
+  }
+};
+
+template <typename T>
+class SoftmaxV2OneDNNHandler
+    : public OneDNNHandlerNoCachingT<T,
+                                     dnnl::softmax_v2_forward,
+                                     dnnl::softmax_v2_backward> {
+ public:
+  SoftmaxV2OneDNNHandler(const dnnl::engine onednn_engine,
+                         Place cpu_place,
+                         int axis,
+                         const DenseTensor* x,
+                         const float scale_out)
+      : OneDNNHandlerNoCachingT<T,
+                                dnnl::softmax_v2_forward,
+                                dnnl::softmax_v2_backward>(onednn_engine,
+                                                           cpu_place) {
+    dnnl::primitive_attr attrs = CreateAttributes(scale_out);
+    dnnl_memory_desc_t out_mem_desc_data = x->mem_desc().data;
+    if (std::is_same<T, int8_t>::value) {
+      out_mem_desc_data.data_type = dnnl_data_type_t::dnnl_u8;
+    }
+    dnnl::memory::desc out_mem_desc(out_mem_desc_data);
+    const int canonical_axis = funcs::CanonicalAxis(axis, x->dims().size());
+    this->AcquireForwardPrimitiveDescriptor(attrs,
+                                            dnnl::prop_kind::forward_scoring,
+                                            dnnl::algorithm::softmax_accurate,
+                                            x->mem_desc(),
+                                            out_mem_desc,
+                                            canonical_axis);
+  }
+
+  SoftmaxV2OneDNNHandler(const dnnl::engine onednn_engine,
+                         Place cpu_place,
+                         int axis,
+                         const DenseTensor* out,
+                         const DenseTensor* out_grad,
+                         const DenseTensor* x_grad)
+      : OneDNNHandlerNoCachingT<T,
+                                dnnl::softmax_v2_forward,
+                                dnnl::softmax_v2_backward>(onednn_engine,
+                                                           cpu_place) {
+    const int canonical_axis =
+        funcs::CanonicalAxis(axis, out_grad->dims().size());
+    this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_scoring,
+                                            dnnl::algorithm::softmax_accurate,
+                                            out->mem_desc(),
+                                            out->mem_desc(),
+                                            canonical_axis);
+    this->AcquireBackwardPrimitiveDescriptor(dnnl::algorithm::softmax_accurate,
+                                             out_grad->mem_desc(),
+                                             out_grad->mem_desc(),
+                                             out->mem_desc(),
+                                             canonical_axis);
+  }
+
+ private:
+  static inline dnnl::primitive_attr CreateAttributes(const float scale_out) {
+    dnnl::primitive_attr attributes;
+    if (scale_out != 1.0f) {
+      attributes.set_output_scales(0, {scale_out});
+    }
+    return attributes;
   }
 };
 

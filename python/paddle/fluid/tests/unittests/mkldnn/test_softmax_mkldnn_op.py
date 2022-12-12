@@ -18,6 +18,7 @@ import numpy as np
 from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
 
 import paddle.fluid.core as core
+from paddle import enable_static
 from paddle.fluid.tests.unittests.op_test import OpTest
 from paddle.fluid.tests.unittests.test_softmax_op import (
     TestSoftmaxOp,
@@ -27,6 +28,8 @@ from paddle.fluid.tests.unittests.test_softmax_op import (
     TestSoftmaxOp5,
     TestSoftmaxOp6,
 )
+
+enable_static()
 
 
 def stable_softmax(x):
@@ -140,7 +143,5 @@ class TestSoftmaxMKLDNNPrimitivesAlreadyExist(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    from paddle import enable_static
 
-    enable_static()
     unittest.main()

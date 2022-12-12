@@ -1210,7 +1210,8 @@ struct PD_INFER_DECL AnalysisConfig {
       "fusion_lstm",
       "multi_gru",
       "slice",
-      "split"};
+      "split",
+      "softmax"};
 
   bool disable_mkldnn_fc_passes_{false};
 
