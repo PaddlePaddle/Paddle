@@ -15,6 +15,7 @@ limitations under the License. */
 
 #include <sstream>
 #include <string>
+#include <unordered_set>
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/convert_utils.h"
@@ -36,6 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/ops/compat/signatures.h"
@@ -561,6 +563,14 @@ phi::DenseTensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var) {
         ToTypeName(var->Type())));
   }
 }
+
+OperatorWithKernel::OperatorWithKernel(const std::string& type,
+                                       const VariableNameMap& inputs,
+                                       const VariableNameMap& outputs,
+                                       const AttributeMap& attrs)
+    : OperatorBase(type, inputs, outputs, attrs) {}
+
+OperatorWithKernel::~OperatorWithKernel() = default;
 
 bool ExecutionContext::HasInput(const std::string& name) const {
   auto* var = InputVar(name);
@@ -1204,19 +1214,54 @@ class RuntimeInferShapeContext : public InferShapeContext {
 };
 
 struct OperatorWithKernel::CacheImpl {
+  static const char kNotAllowInferShapeCahce[];
   explicit CacheImpl(phi::KernelContext* kernel_ctx,
-                     RuntimeInferShapeContext* infer_shape_ctx)
-      : kernel_ctx_(kernel_ctx), infer_shape_ctx_(infer_shape_ctx) {}
+                     RuntimeInferShapeContext* infer_shape_ctx,
+                     const std::vector<phi::DenseTensor*>& tensors,
+                     bool not_allow_infer_shape_cache)
+      : kernel_ctx_(kernel_ctx),
+        infer_shape_ctx_(infer_shape_ctx),
+        tensors_(tensors),
+        not_allow_infer_shape_cache_(not_allow_infer_shape_cache) {}
 
   phi::KernelContext* getKernelContext() { return kernel_ctx_.get(); }
   RuntimeInferShapeContext* getRuntimeInferShapeContext() {
     return infer_shape_ctx_.get();
   }
 
+  bool NeedInferShape() {
+    if (not_allow_infer_shape_cache_) return true;
+
+    bool ret{false};
+    if (last_ddims_.empty() || tensors_.empty()) ret = true;
+    if (!ret) {
+      CHECK_EQ(last_ddims_.size(), tensors_.size());
+      for (size_t i = 0; i < last_ddims_.size(); ++i) {
+        if (tensors_[i]->dims() != last_ddims_[i]) {
+          ret = true;
+          break;
+        }
+      }
+    }
+    if (ret) {
+      last_ddims_.resize(tensors_.size());
+      for (size_t i = 0; i < last_ddims_.size(); ++i) {
+        last_ddims_[i] = tensors_[i]->dims();
+      }
+    }
+    VLOG(3) << "need infer shape is " << ret;
+    return ret;
+  }
+
  private:
   std::unique_ptr<phi::KernelContext> kernel_ctx_;
   std::unique_ptr<RuntimeInferShapeContext> infer_shape_ctx_;
+  std::vector<phi::DenseTensor*> tensors_;
+  bool not_allow_infer_shape_cache_;
+  std::vector<phi::DDim> last_ddims_;
 };
+const char OperatorWithKernel::CacheImpl::kNotAllowInferShapeCahce[] =
+    "@NOT_ALLOW_INFERSHAPE_CACHE@";
 
 static void CheckTensorNANOrInf(const std::string& op_type,
                                 const std::string& name,
@@ -1524,8 +1569,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     pre_scope_ = cur_scope;
   } else if (run_phi_kernel_ && impl_ != nullptr && !need_prepare_data_ &&
              !need_prepare_phi_data_) {
-    if (!all_kernels_must_compute_runtime_shape_)
+    if (!all_kernels_must_compute_runtime_shape_ && impl_->NeedInferShape()) {
       this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
+    }
     (*phi_kernel_)(impl_->getKernelContext());
   } else {
     if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
@@ -1828,9 +1874,31 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       phi::KernelContext phi_kernel_context;
       if (enable_cache_runtime_context_ && !need_prepare_phi_data_ &&
           !need_prepare_data_) {
-        impl_ =
+        // TODO(inference): Now we only suppor dense_tensor cache, we may be
+        // support ScalarTensor, SparseTensor in future.
+        bool all_dense_tensor_input_{true};
+        for (auto& iter : Inputs()) {
+          for (auto& name : iter.second) {
+            all_dense_tensor_input_ &=
+                scope.FindVar(name)->IsType<phi::DenseTensor>();
+          }
+        }
+
+        std::vector<phi::DenseTensor*> tensors;
+        if (all_dense_tensor_input_) {
+          for (auto& iter : Inputs()) {
+            for (auto& name : iter.second) {
+              auto* t = scope.FindVar(name)->GetMutable<phi::DenseTensor>();
+              tensors.push_back(t);
+            }
+          }
+        }
+
+        impl_.reset(
             new CacheImpl(new phi::KernelContext(),
-                          new RuntimeInferShapeContext(*this, *runtime_ctx));
+                          new RuntimeInferShapeContext(*this, *runtime_ctx),
+                          tensors,
+                          HasAttr(CacheImpl::kNotAllowInferShapeCahce)));
         BuildPhiKernelContext(*runtime_ctx, dev_ctx, impl_->getKernelContext());
         (*phi_kernel_)(impl_->getKernelContext());
       } else {
@@ -3190,6 +3258,10 @@ void OperatorWithKernel::BuildPhiKernelContext(
             phi_kernel_context->EmplaceBackAttr(
                 PADDLE_GET_CONST(std::vector<int>, attr_iter->second));
             break;
+          case phi::AttributeType::BOOLS:
+            phi_kernel_context->EmplaceBackAttr(
+                PADDLE_GET_CONST(std::vector<bool>, attr_iter->second));
+            break;
           case phi::AttributeType::DATA_TYPE: {
             auto data_type = framework::TransToPhiDataType(
                 static_cast<framework::proto::VarType::Type>(
@@ -3246,6 +3318,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
   if (phi::OneDNNContext::classof(dev_ctx)) {
     phi::OneDNNContext* one_dnn_ctx = static_cast<phi::OneDNNContext*>(dev_ctx);
     one_dnn_ctx->ClearDnnAttr();
+    if (!RuntimeAttrs().empty()) need_prepare_phi_data_ = true;
   }
 #endif
 
@@ -3267,7 +3340,6 @@ void OperatorWithKernel::BuildPhiKernelContext(
 #if defined(PADDLE_WITH_MKLDNN) || defined(PADDLE_WITH_CUDA)
   auto& runtime_attrs = RuntimeAttrs();
   for (const auto& attr_iter : runtime_attrs) {
-    need_prepare_phi_data_ = true;
     auto& attr_name = attr_iter.first;
     auto& attr = attr_iter.second;
     auto attr_propertys = paddle::operators::GetExtraAttrProperties(attr_name);

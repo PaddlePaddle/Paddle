@@ -26,11 +26,11 @@ from paddle.fluid.framework import (
     _in_legacy_dygraph,
     in_dygraph_mode,
 )
+from paddle.tensor.math import _add_with_axis
 
 from ...device import get_cudnn_version
 from ...fluid.data_feeder import check_dtype, check_variable_and_dtype
 from ...fluid.layer_helper import LayerHelper
-from ...fluid.layers import nn
 from ...fluid.layers.utils import (
     _contain_var,
     _convert_to_tensor_list,
@@ -226,7 +226,7 @@ def _conv_nd(
         )
         pre_bias = getattr(_legacy_C_ops, op_type)(x, weight, *attrs)
         if bias is not None:
-            out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
+            out = _add_with_axis(pre_bias, bias, axis=channel_dim)
         else:
             out = pre_bias
     else:
@@ -491,7 +491,7 @@ def conv1d(
                 False,
             )
         if bias is not None:
-            out = nn.elementwise_add(out, bias, axis=channel_dim)
+            out = _add_with_axis(out, bias, axis=channel_dim)
     elif _in_legacy_dygraph():
         attrs = (
             'strides',
@@ -515,7 +515,7 @@ def conv1d(
         )
         out = getattr(_legacy_C_ops, l_type)(x, weight, *attrs)
         if bias is not None:
-            out = nn.elementwise_add(out, bias, axis=channel_dim)
+            out = _add_with_axis(out, bias, axis=channel_dim)
     else:
         inputs = {'Input': [x], 'Filter': [weight]}
         attrs = {
@@ -540,7 +540,7 @@ def conv1d(
             type=l_type, inputs=inputs, outputs=outputs, attrs=attrs
         )
         if bias is not None:
-            out = nn.elementwise_add(out, bias, axis=channel_dim)
+            out = _add_with_axis(out, bias, axis=channel_dim)
     out = squeeze(out, axis=[squeeze_aixs])
     return out
 
@@ -614,10 +614,10 @@ def conv2d(
             the number of output channels, g is the number of groups, kH is the filter's
             height, kW is the filter's width.
         bias (Tensor, optional): The bias with shape [M,].
-        stride (int|list|tuple): The stride size. It means the stride in convolution.
+        stride (int|list|tuple, optional): The stride size. It means the stride in convolution.
             If stride is a list/tuple, it must contain two integers, (stride_height, stride_width).
             Otherwise, stride_height = stride_width = stride. Default: stride = 1.
-        padding (string|int|list|tuple): The padding size. It means the number of zero-paddings
+        padding (string|int|list|tuple, optional): The padding size. It means the number of zero-paddings
             on both sides for each dimension.If `padding` is a string, either 'VALID' or
             'SAME' which is the padding algorithm. If padding size is a tuple or list,
             it could be in three forms: `[pad_height, pad_width]` or
@@ -627,11 +627,11 @@ def conv2d(
             when `data_format` is `"NHWC"`, `padding` can be in the form
             `[[0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
             Default: padding = 0.
-        dilation (int|list|tuple): The dilation size. It means the spacing between the kernel
+        dilation (int|list|tuple, optional): The dilation size. It means the spacing between the kernel
             points. If dilation is a list/tuple, it must contain two integers, (dilation_height,
             dilation_width). Otherwise, dilation_height = dilation_width = dilation.
             Default: dilation = 1.
-        groups (int): The groups number of the Conv2D Layer. According to grouped
+        groups (int, optional): The groups number of the Conv2D Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
@@ -657,10 +657,9 @@ def conv2d(
           w_var = paddle.randn((6, 3, 3, 3), dtype='float32')
 
           y_var = F.conv2d(x_var, w_var)
-          y_np = y_var.numpy()
 
-          print(y_np.shape)
-          # (2, 6, 6, 6)
+          print(y_var.shape)
+          # [2, 6, 6, 6]
     """
     # entry checks
     if data_format not in ["NCHW", "NHWC"]:
@@ -1048,7 +1047,7 @@ def conv1d_transpose(
             conv2d_data_format,
         )
         if bias is not None:
-            out = nn.elementwise_add(out, bias, axis=channel_dim)
+            out = _add_with_axis(out, bias, axis=channel_dim)
     elif _in_legacy_dygraph():
         attrs = (
             'output_padding',
@@ -1072,7 +1071,7 @@ def conv1d_transpose(
         )
         out = getattr(_legacy_C_ops, op_type)(x, weight, *attrs)
         if bias is not None:
-            out = nn.elementwise_add(out, bias, axis=channel_dim)
+            out = _add_with_axis(out, bias, axis=channel_dim)
     else:
         inputs = {'Input': [x], 'Filter': [weight]}
         attrs = {
@@ -1097,7 +1096,7 @@ def conv1d_transpose(
             type=op_type, inputs=inputs, outputs=outputs, attrs=attrs
         )
         if bias is not None:
-            out = nn.elementwise_add(out, bias, axis=channel_dim)
+            out = _add_with_axis(out, bias, axis=channel_dim)
 
     out = squeeze(out, axis=[squeeze_axis])
     return out
@@ -1234,10 +1233,9 @@ def conv2d_transpose(
           w_var = paddle.randn((3, 6, 3, 3), dtype='float32')
 
           y_var = F.conv2d_transpose(x_var, w_var)
-          y_np = y_var.numpy()
 
-          print(y_np.shape)
-          # (2, 6, 10, 10)
+          print(y_var.shape)
+          # [2, 6, 10, 10]
     """
 
     if data_format not in ['NCHW', 'NHWC']:
@@ -1353,7 +1351,7 @@ def conv2d_transpose(
             data_format,
         )
         if bias is not None:
-            return nn.elementwise_add(pre_bias, bias, axis=channel_dim)
+            return _add_with_axis(pre_bias, bias, axis=channel_dim)
         else:
             return pre_bias
 
@@ -1380,7 +1378,7 @@ def conv2d_transpose(
         )
         pre_bias = getattr(_legacy_C_ops, op_type)(x, weight, *attrs)
         if bias is not None:
-            out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
+            out = _add_with_axis(pre_bias, bias, axis=channel_dim)
         else:
             out = pre_bias
     else:
@@ -1407,7 +1405,7 @@ def conv2d_transpose(
         )
 
         if bias is not None:
-            out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
+            out = _add_with_axis(pre_bias, bias, axis=channel_dim)
         else:
             out = pre_bias
 
@@ -1523,10 +1521,9 @@ def conv3d(
             w_var = paddle.randn((6, 3, 3, 3, 3), dtype='float32')
 
             y_var = F.conv3d(x_var, w_var)
-            y_np = y_var.numpy()
 
-            print(y_np.shape)
-            # (2, 6, 6, 6, 6)
+            print(y_var.shape)
+            # [2, 6, 6, 6, 6]
     """
     # entry check
     if data_format not in ["NCDHW", "NDHWC"]:
@@ -1738,10 +1735,9 @@ def conv3d_transpose(
           w_var = paddle.randn((3, 6, 3, 3, 3), dtype='float32')
 
           y_var = F.conv3d_transpose(x_var, w_var)
-          y_np = y_var.numpy()
 
-          print(y_np.shape)
-          # (2, 6, 10, 10, 10)
+          print(y_var.shape)
+          # [2, 6, 10, 10, 10]
     """
     # entry checks
     if data_format not in ["NCDHW", "NDHWC"]:
@@ -1828,7 +1824,7 @@ def conv3d_transpose(
             data_format_,
         )
         if bias is not None:
-            return nn.elementwise_add(pre_bias, bias, axis=channel_dim)
+            return _add_with_axis(pre_bias, bias, axis=channel_dim)
         else:
             return pre_bias
 
@@ -1855,7 +1851,7 @@ def conv3d_transpose(
         )
         pre_bias = getattr(_legacy_C_ops, op_type)(x, weight, *attrs)
         if bias is not None:
-            out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
+            out = _add_with_axis(pre_bias, bias, axis=channel_dim)
         else:
             out = pre_bias
     else:
@@ -1883,7 +1879,7 @@ def conv3d_transpose(
             type=op_type, inputs=inputs, outputs=outputs, attrs=attrs
         )
         if bias is not None:
-            out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
+            out = _add_with_axis(pre_bias, bias, axis=channel_dim)
         else:
             out = pre_bias
 

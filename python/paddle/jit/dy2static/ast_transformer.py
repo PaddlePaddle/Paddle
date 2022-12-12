@@ -71,7 +71,7 @@ from .decorator_transformer import (
 from . import logging_utils
 from .utils import ast_to_source_code
 
-__all__ = ['DygraphToStaticAst']
+__all__ = []
 
 
 def apply_optimization(transformers):
