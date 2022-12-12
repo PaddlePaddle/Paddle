@@ -4152,6 +4152,21 @@ class Block:
             )
         else:
             from paddle.fluid.dygraph.base import param_guard
+            from .layers.utils import flatten
+
+            def pass_stop_gradient(ins, outs):
+                """
+                Set out.stop_gradient = True if all inputs stop_gradient is True.
+                """
+                need_reset = True
+                for var in flatten(ins):
+                    if isinstance(var, Variable) and var.stop_gradient is False:
+                        need_reset = False
+                        break
+                if need_reset:
+                    for var in flatten(outs):
+                        if isinstance(var, Variable):
+                            var.stop_gradient = True
 
             op_desc = self.desc.append_op()
             # NOTE(Aurelius84): In case of @to_static, all VarBase(s) should
@@ -4159,6 +4174,8 @@ class Block:
             # This is ONE and ONLY logic of type transformation of dy2static.
             inputs = kwargs.get("inputs", None)
             outputs = kwargs.get("outputs", None)
+
+            pass_stop_gradient(inputs, outputs)
             with param_guard(inputs), param_guard(outputs):
                 op = Operator(
                     block=self,
