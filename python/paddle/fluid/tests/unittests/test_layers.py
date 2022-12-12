@@ -26,7 +26,7 @@ import paddle.fluid.layers as layers
 import paddle.fluid.nets as nets
 import paddle.nn.functional as F
 from paddle.fluid import core
-from paddle.fluid.dygraph import base, nn, to_variable
+from paddle.fluid.dygraph import base, to_variable
 from paddle.fluid.framework import (
     Program,
     _test_eager_guard,
@@ -732,8 +732,8 @@ class TestLayer(LayerTest):
             )[0]
         with self.static_graph():
             data_t = layers.data(name='word', shape=[1], dtype='int64')
-            emb2 = nn.Embedding(
-                size=[dict_size, 32], param_attr='emb.w', is_sparse=False
+            emb2 = paddle.nn.Embedding(
+                dict_size, 32, weight_attr='emb.w', sparse=False
             )
             emb_rlt = emb2(data_t)
             static_rlt2 = self.get_static_graph_result(
@@ -741,16 +741,17 @@ class TestLayer(LayerTest):
             )[0]
         with self.dynamic_graph():
             with _test_eager_guard():
-                emb2 = nn.Embedding(
-                    size=[dict_size, 32],
-                    param_attr='eager_emb.w',
-                    is_sparse=False,
+                emb2 = paddle.nn.Embedding(
+                    dict_size,
+                    32,
+                    weight_attr='eager_emb.w',
+                    sparse=False,
                 )
                 dy_eager_rlt = emb2(base.to_variable(inp_word))
                 dy_eager_rlt_value = dy_eager_rlt.numpy()
 
-            emb2 = nn.Embedding(
-                size=[dict_size, 32], param_attr='emb.w', is_sparse=False
+            emb2 = paddle.nn.Embedding(
+                dict_size, 32, weight_attr='emb.w', sparse=False
             )
             dy_rlt = emb2(base.to_variable(inp_word))
             dy_rlt_value = dy_rlt.numpy()
@@ -767,11 +768,12 @@ class TestLayer(LayerTest):
                         custom_weight
                     )
                 )
-                emb1 = nn.Embedding(size=[dict_size, 32], is_sparse=False)
-                emb2 = nn.Embedding(
-                    size=[dict_size, 32],
-                    param_attr=weight_attr,
-                    is_sparse=False,
+                emb1 = paddle.nn.Embedding(dict_size, 32, sparse=False)
+                emb2 = paddle.nn.Embedding(
+                    dict_size,
+                    32,
+                    weight_attr=weight_attr,
+                    sparse=False,
                 )
                 rep1 = emb1(base.to_variable(inp_word))
                 rep2 = emb2(base.to_variable(inp_word))
@@ -797,9 +799,9 @@ class TestLayer(LayerTest):
                     custom_weight
                 )
             )
-            emb1 = nn.Embedding(size=[dict_size, 32], is_sparse=False)
-            emb2 = nn.Embedding(
-                size=[dict_size, 32], param_attr=weight_attr, is_sparse=False
+            emb1 = paddle.nn.Embedding(dict_size, 32, sparse=False)
+            emb2 = paddle.nn.Embedding(
+                dict_size, 32, weight_attr=weight_attr, sparse=False
             )
             rep1 = emb1(base.to_variable(inp_word))
             rep2 = emb2(base.to_variable(inp_word))
@@ -1577,7 +1579,7 @@ class TestLayer(LayerTest):
             b = fluid.layers.fill_constant(
                 shape=[1], dtype='float32', value=0.23
             )
-            out = fluid.layers.cond(
+            out = paddle.static.nn.cond(
                 a >= b,
                 lambda: greater_equal_branch(a, b),
                 lambda: less_than_branch(a, b),
@@ -1597,12 +1599,12 @@ class TestLayer(LayerTest):
                 b = fluid.dygraph.to_variable(
                     np.array([0.23]).astype('float32')
                 )
-                out = layers.cond(
+                out = paddle.static.nn.cond(
                     a < b,
                     lambda: less_than_branch(a, b),
                     lambda: greater_equal_branch(a, b),
                 )
-                out2 = layers.cond(
+                out2 = paddle.static.nn.cond(
                     a >= b,
                     lambda: greater_equal_branch(a, b),
                     lambda: less_than_branch(a, b),
@@ -1613,18 +1615,18 @@ class TestLayer(LayerTest):
                     eager_dynamic_res, eager_dynamic_res2
                 )
                 with self.assertRaises(TypeError):
-                    layers.cond(a < b, 'str', 'str')
+                    paddle.static.nn.cond(a < b, 'str', 'str')
                 with self.assertRaises(TypeError):
-                    layers.cond(a >= b, 'str', 'str')
+                    paddle.static.nn.cond(a >= b, 'str', 'str')
 
             a = fluid.dygraph.to_variable(np.array([0.1]).astype('float32'))
             b = fluid.dygraph.to_variable(np.array([0.23]).astype('float32'))
-            out = layers.cond(
+            out = paddle.static.nn.cond(
                 a < b,
                 lambda: less_than_branch(a, b),
                 lambda: greater_equal_branch(a, b),
             )
-            out2 = layers.cond(
+            out2 = paddle.static.nn.cond(
                 a >= b,
                 lambda: greater_equal_branch(a, b),
                 lambda: less_than_branch(a, b),
@@ -1633,9 +1635,9 @@ class TestLayer(LayerTest):
             dynamic_res2 = out2.numpy()
             np.testing.assert_array_equal(dynamic_res, dynamic_res2)
             with self.assertRaises(TypeError):
-                layers.cond(a < b, 'str', 'str')
+                paddle.static.nn.cond(a < b, 'str', 'str')
             with self.assertRaises(TypeError):
-                layers.cond(a >= b, 'str', 'str')
+                paddle.static.nn.cond(a >= b, 'str', 'str')
 
         np.testing.assert_array_equal(static_res, dynamic_res)
         np.testing.assert_array_equal(static_res, eager_dynamic_res)
@@ -2293,14 +2295,6 @@ class TestBook(LayerTest):
             values, indices = paddle.topk(data, k=5)
             return values
             return indices
-
-    def make_polygon_box_transform(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name='x', shape=[8, 4, 4], dtype="float32")
-            output = layers.polygon_box_transform(input=x)
-            return output
 
     def make_l2_normalize(self):
         with program_guard(
