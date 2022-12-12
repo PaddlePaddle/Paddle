@@ -81,7 +81,7 @@ class TestBatchNorm(unittest.TestCase):
     def test_large_batch(self):
         def compute_baseline(x):
             with fluid.dygraph.guard(p):
-                bn = fluid.dygraph.BatchNorm(shape[1])
+                bn = paddle.nn.BatchNorm(shape[1])
                 x1 = paddle.to_tensor(x)
                 x1.stop_gradient = False
                 y = bn(x1)
@@ -126,7 +126,7 @@ class TestBatchNorm(unittest.TestCase):
 
             def compute_v1(x):
                 with fluid.dygraph.guard(p):
-                    bn = fluid.dygraph.BatchNorm(shape[1])
+                    bn = paddle.nn.BatchNorm(shape[1])
                     # bn = paddle.nn.BatchNorm2D(shape[1])
                     x1 = paddle.to_tensor(x)
                     x1.stop_gradient = False
@@ -159,7 +159,7 @@ class TestBatchNorm(unittest.TestCase):
 
             def compute_v1(x, is_test, trainable_statistics):
                 with fluid.dygraph.guard(p):
-                    bn = fluid.dygraph.BatchNorm(
+                    bn = paddle.nn.BatchNorm(
                         shape[1],
                         is_test=is_test,
                         trainable_statistics=trainable_statistics,
@@ -179,7 +179,7 @@ class TestBatchNorm(unittest.TestCase):
 
             def compute_v3(x, is_test, trainable_statistics):
                 with fluid.dygraph.guard(p):
-                    bn = fluid.dygraph.BatchNorm(
+                    bn = paddle.nn.BatchNorm(
                         shape[1],
                         is_test=is_test,
                         param_attr=fluid.ParamAttr(
@@ -221,7 +221,7 @@ class TestBatchNorm(unittest.TestCase):
 
             def compute_v1(x_np, is_test, trainable_statistics):
                 with program_guard(Program(), Program()):
-                    bn = fluid.dygraph.BatchNorm(
+                    bn = paddle.nn.BatchNorm(
                         shape[1],
                         is_test=is_test,
                         trainable_statistics=trainable_statistics,
@@ -375,7 +375,7 @@ class TestBatchNormUseGlobalStats(unittest.TestCase):
         for p in self.places:
             with fluid.dygraph.guard(p):
                 x = paddle.randn([2, 6, 6, 4])
-                net1 = paddle.fluid.dygraph.BatchNorm(
+                net1 = paddle.nn.BatchNorm(
                     6,
                     param_attr=fluid.ParamAttr(
                         initializer=fluid.initializer.Constant(1.0)
