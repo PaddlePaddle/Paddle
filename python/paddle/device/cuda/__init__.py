@@ -239,7 +239,7 @@ def max_memory_reserved(device=None):
     Return the peak size of GPU memory that is held by the allocator of the given device.
 
     Args:
-        device(paddle.CUDAPlace or int or str): The device, the id of the device or
+        device(paddle.CUDAPlace or int or str, optional): The device, the id of the device or
             the string name of device like 'gpu:x'. If device is None, the device is the current device.
             Default: None.
 
