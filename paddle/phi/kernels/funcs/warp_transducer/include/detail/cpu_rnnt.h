@@ -366,7 +366,9 @@ rnntStatus_t CpuRNNT<ProbT>::cost_and_grad(const ProbT* const log_probs,
   // blank & label log probability cache
   per_minibatch_bytes += sizeof(ProbT) * maxT_ * maxU_ * 2;
 
+#if !defined(RNNT_DISABLE_OMP) && !defined(APPLE)
 #pragma omp parallel for
+#endif
   for (int mb = 0; mb < minibatch_; ++mb) {
     const int T = input_lengths[mb];      // Length of utterance (time)
     const int U = label_lengths[mb] + 1;  // Number of labels in transcription
@@ -400,7 +402,9 @@ rnntStatus_t CpuRNNT<ProbT>::score_forward(const ProbT* const log_probs,
   // blank & label log probability cache
   per_minibatch_bytes += sizeof(ProbT) * maxT_ * maxU_ * 2;
 
+#if !defined(RNNT_DISABLE_OMP) && !defined(APPLE)
 #pragma omp parallel for
+#endif
   for (int mb = 0; mb < minibatch_; ++mb) {
     const int T = input_lengths[mb];      // Length of utterance (time)
     const int U = label_lengths[mb] + 1;  // Number of labels in transcription

@@ -17,15 +17,8 @@ if(DEBUG_KERNEL)
   add_definitions(-DDEBUG_KERNEL)
 endif()
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
-   OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"
-   OR WIN32)
-  set(WITH_OMP OFF)
-else()
-  set(WITH_OMP ON)
-endif()
-
-if(NOT WITH_OMP)
+if(NOT WITH_MKL)
+  message(STATUS "RNNT-Loss w/o OMP")
   add_definitions(-DRNNT_DISABLE_OMP)
 endif()
 
@@ -66,13 +59,18 @@ elseif(WITH_ROCM)
     test_rnnt_gpu
     SRCS "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_gpu.cu"
     DEPS warprnnt)
+elseif(WITH_XPU)
+  message(STATUS "warprnnt test not support xpu.")
 else()
+  message(STATUS "warprnnt default branch")
+  message(STATUS "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_cpu.cpp")
+  message(STATUS "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_time.cpp")
   cc_test(
     test_rnnt_cpu
-    SRCS "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_cpu.cpp"
+    SRCS "tests/test_cpu.cpp"
     DEPS warprnnt)
   cc_test(
-    test_rnnt_time
-    SRCS "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_time.cpp"
+    test_rnnt_time_cpu
+    SRCS "tests/test_time.cpp"
     DEPS warprnnt)
 endif()
