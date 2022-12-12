@@ -53,7 +53,6 @@ __all__ = [
 
 class RNNCell:
     """
-        :api_attr: Static Graph
 
     RNNCell is the base class for abstraction representing the calculations
     mapping the input and state to the output and new state. It is suitable to
@@ -217,7 +216,6 @@ class RNNCell:
 
 class GRUCell(RNNCell):
     r"""
-        :api_attr: Static Graph
 
     Gated Recurrent Unit cell. It is a wrapper for
     `fluid.contrib.layers.rnn_impl.BasicGRUUnit` to make it adapt to RNNCell.
@@ -326,7 +324,6 @@ class GRUCell(RNNCell):
 
 class LSTMCell(RNNCell):
     r"""
-        :api_attr: Static Graph
 
     Long-Short Term Memory cell. It is a wrapper for
     `fluid.contrib.layers.rnn_impl.BasicLSTMUnit` to make it adapt to RNNCell.
@@ -1249,7 +1246,6 @@ def dynamic_lstm(
     name=None,
 ):
     r"""
-        :api_attr: Static Graph
 
     **Note**:
         1. This OP only supports LoDTensor as inputs. If you need to deal with Tensor, please use :ref:`api_fluid_layers_lstm` .
@@ -1439,7 +1435,6 @@ def lstm(
     seed=-1,
 ):
     r"""
-        :api_attr: Static Graph
 
     **Note**:
         This OP only supports running on GPU devices.
@@ -1630,7 +1625,6 @@ def dynamic_lstmp(
     proj_clip=None,
 ):
     r"""
-        :api_attr: Static Graph
 
     **Note**:
         1. In order to improve efficiency, users must first map the input of dimension [T, hidden_size] to input of [T, 4 * hidden_size], and then pass it to this OP.
@@ -1855,7 +1849,6 @@ def dynamic_gru(
     origin_mode=False,
 ):
     r"""
-        :api_attr: Static Graph
 
     **Note: The input type of this must be LoDTensor. If the input type to be
     processed is Tensor, use** :ref:`api_fluid_layers_StaticRNN` .
@@ -2025,7 +2018,6 @@ def gru_unit(
     origin_mode=False,
 ):
     r"""
-        :api_attr: Static Graph
 
     Gated Recurrent Unit (GRU) RNN cell. This operator performs GRU calculations for
     one time step and it supports these two modes:
@@ -2187,7 +2179,6 @@ def lstm_unit(
     name=None,
 ):
     r"""
-        :api_attr: Static Graph
 
     Long-Short Term Memory (LSTM) RNN cell. This operator performs LSTM calculations for
     one time step, whose implementation is based on calculations described in `RECURRENT
