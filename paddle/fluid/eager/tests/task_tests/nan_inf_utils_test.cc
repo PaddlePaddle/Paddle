@@ -30,32 +30,30 @@ PD_DECLARE_KERNEL(strings_empty, CPU, ALL_LAYOUT);
 
 namespace egr {
 
-#define CHECK_NAN_INF(tensors)                                         \
-  {                                                                    \
-    bool caught_exception = false;                                     \
-    try {                                                              \
-      CheckTensorHasNanOrInf("nan_inf_test", tensors);                 \
-    } catch (paddle::platform::EnforceNotMet & error) {                \
-      caught_exception = true;                                         \
-      std::string ex_msg = error.what();                               \
-      EXPECT_TRUE(ex_msg.find("There are `nan` or `inf` in tensor") != \
-                  std::string::npos);                                  \
-    }                                                                  \
-    EXPECT_TRUE(caught_exception);                                     \
+#define CHECK_NAN_INF(tensors)                                               \
+  {                                                                          \
+    bool caught_exception = false;                                           \
+    try {                                                                    \
+      CheckTensorHasNanOrInf("nan_inf_test", tensors);                       \
+    } catch (paddle::platform::EnforceNotMet & error) {                      \
+      caught_exception = true;                                               \
+      std::string ex_msg = error.what();                                     \
+      EXPECT_TRUE(ex_msg.find("There are NAN or INF") != std::string::npos); \
+    }                                                                        \
+    EXPECT_TRUE(caught_exception);                                           \
   }
 
-#define CHECK_NO_NAN_INF(tensors)                                      \
-  {                                                                    \
-    bool caught_exception = false;                                     \
-    try {                                                              \
-      CheckTensorHasNanOrInf("nan_inf_test", tensors);                 \
-    } catch (paddle::platform::EnforceNotMet & error) {                \
-      caught_exception = true;                                         \
-      std::string ex_msg = error.what();                               \
-      EXPECT_TRUE(ex_msg.find("There are `nan` or `inf` in tensor") != \
-                  std::string::npos);                                  \
-    }                                                                  \
-    EXPECT_FALSE(caught_exception);                                    \
+#define CHECK_NO_NAN_INF(tensors)                                            \
+  {                                                                          \
+    bool caught_exception = false;                                           \
+    try {                                                                    \
+      CheckTensorHasNanOrInf("nan_inf_test", tensors);                       \
+    } catch (paddle::platform::EnforceNotMet & error) {                      \
+      caught_exception = true;                                               \
+      std::string ex_msg = error.what();                                     \
+      EXPECT_TRUE(ex_msg.find("There are NAN or INF") != std::string::npos); \
+    }                                                                        \
+    EXPECT_FALSE(caught_exception);                                          \
   }
 
 TEST(NanInfUtils, Functions) {
