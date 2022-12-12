@@ -286,7 +286,7 @@ def _create_cond_block_and_update_optimizer(
             )
             new_grad.op._set_attr(OP_ROLE_KEY, op_maker.OpRole.Optimize)
 
-    layers.cond(cond_var, true_fn=true_apply_gradient, false_fn=None)
+    paddle.static.nn.cond(cond_var, true_fn=true_apply_gradient, false_fn=None)
     cond_op = main_program.global_block().ops[-1]
     cond_op._set_attr(OP_ROLE_KEY, OpRole.Optimize)
 
