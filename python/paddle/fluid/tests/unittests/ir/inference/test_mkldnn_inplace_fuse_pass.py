@@ -29,7 +29,7 @@ class MkldnnInplacePassTest(InferencePassTest):
             data = fluid.data(
                 name="data", shape=[-1, 3, 100, 100], dtype="float32"
             )
-            conv_out_1 = fluid.layers.conv2d(
+            conv_out_1 = paddle.static.nn.conv2d(
                 data, num_filters=3, filter_size=3, bias_attr=False
             )
             softmax_out = paddle.nn.functional.softmax(conv_out_1)

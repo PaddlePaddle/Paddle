@@ -28,7 +28,7 @@ class TRTDynamicShapeTest(InferencePassTest):
             data = fluid.data(
                 name="data", shape=[-1, 3, 16, 16], dtype="float32"
             )
-            out = fluid.layers.conv2d(
+            out = paddle.static.nn.conv2d(
                 input=data,
                 num_filters=3,
                 filter_size=3,

@@ -83,7 +83,7 @@ class TestPriorBox(unittest.TestCase):
             images = fluid.layers.data(
                 name='pixel', shape=data_shape, dtype='float32'
             )
-            conv1 = fluid.layers.conv2d(images, 3, 3, 2)
+            conv1 = paddle.static.nn.conv2d(images, 3, 3, 2)
             box, var = layers.prior_box(
                 input=conv1,
                 image=images,
@@ -103,7 +103,7 @@ class TestPriorBox2(unittest.TestCase):
         with program_guard(program):
             data_shape = [None, 3, None, None]
             images = fluid.data(name='pixel', shape=data_shape, dtype='float32')
-            conv1 = fluid.layers.conv2d(images, 3, 3, 2)
+            conv1 = paddle.static.nn.conv2d(images, 3, 3, 2)
             box, var = layers.prior_box(
                 input=conv1,
                 image=images,
@@ -125,7 +125,7 @@ class TestDensityPriorBox(unittest.TestCase):
             images = fluid.layers.data(
                 name='pixel', shape=data_shape, dtype='float32'
             )
-            conv1 = fluid.layers.conv2d(images, 3, 3, 2)
+            conv1 = paddle.static.nn.conv2d(images, 3, 3, 2)
             box, var = layers.density_prior_box(
                 input=conv1,
                 image=images,
@@ -145,7 +145,7 @@ class TestAnchorGenerator(unittest.TestCase):
         images = fluid.layers.data(
             name='pixel', shape=data_shape, dtype='float32'
         )
-        conv1 = fluid.layers.conv2d(images, 3, 3, 2)
+        conv1 = paddle.static.nn.conv2d(images, 3, 3, 2)
         anchor, var = fluid.layers.anchor_generator(
             input=conv1,
             anchor_sizes=[64, 128, 256, 512],
@@ -312,11 +312,11 @@ class TestMultiBoxHead(unittest.TestCase):
         images = fluid.layers.data(
             name='pixel', shape=data_shape, dtype='float32'
         )
-        conv1 = fluid.layers.conv2d(images, 3, 3, 2)
-        conv2 = fluid.layers.conv2d(conv1, 3, 3, 2)
-        conv3 = fluid.layers.conv2d(conv2, 3, 3, 2)
-        conv4 = fluid.layers.conv2d(conv3, 3, 3, 2)
-        conv5 = fluid.layers.conv2d(conv4, 3, 3, 2)
+        conv1 = paddle.static.nn.conv2d(images, 3, 3, 2)
+        conv2 = paddle.static.nn.conv2d(conv1, 3, 3, 2)
+        conv3 = paddle.static.nn.conv2d(conv2, 3, 3, 2)
+        conv4 = paddle.static.nn.conv2d(conv3, 3, 3, 2)
+        conv5 = paddle.static.nn.conv2d(conv4, 3, 3, 2)
 
         mbox_locs, mbox_confs, box, var = layers.multi_box_head(
             inputs=[conv1, conv2, conv3, conv4, conv5, conv5],

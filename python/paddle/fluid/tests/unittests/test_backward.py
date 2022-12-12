@@ -284,7 +284,7 @@ class TestGradientsError(unittest.TestCase):
     def test_error(self):
         x = fluid.data(name='x', shape=[None, 2, 8, 8], dtype='float32')
         x.stop_gradient = False
-        conv = fluid.layers.conv2d(x, 4, 1, bias_attr=False)
+        conv = paddle.static.nn.conv2d(x, 4, 1, bias_attr=False)
         y = fluid.layers.relu(conv)
 
         with self.assertRaises(TypeError):

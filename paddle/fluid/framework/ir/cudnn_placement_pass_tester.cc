@@ -70,7 +70,7 @@ class PlacementPassTest {
     VarDesc* c = layers.concat(std::vector<VarDesc*>({a, b}));
     VarDesc* weights_0 = layers.data("weights_0");
     VarDesc* bias_0 = layers.data("bias_0");
-    VarDesc* f = layers.conv2d(c, weights_0, bias_0, false);
+    VarDesc* f = static.nn.conv2d(c, weights_0, bias_0, false);
     VarDesc* g = layers.relu(f);
     VarDesc* h = layers.pool2d(g, false);
     VarDesc* weights_1 = layers.data("weights_1");
