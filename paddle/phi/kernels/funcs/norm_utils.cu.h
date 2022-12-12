@@ -24,8 +24,7 @@ limitations under the License. */
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
 #endif
-#include "paddle/fluid/framework/data_layout.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/common/layout.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 #ifdef __HIPCC__
@@ -34,8 +33,8 @@ namespace cub = hipcub;
 #define LAUNCH_BOUNDS(BlockDim)
 #endif
 
-namespace paddle {
-namespace operators {
+namespace phi {
+namespace funcs {
 
 using DataLayout = phi::DataLayout;
 
@@ -464,7 +463,8 @@ void NormDoubleGradFunctor(const DeviceContext &ctx,
   const int sample_size = num / N / C;
   phi::DenseTensor scale_tmp;
   if (!Scale) {
-    scale_tmp.mutable_data<T>({C}, ctx.GetPlace());
+    scale_tmp.Resize({C});
+    ctx.template Alloc<T>(&scale_tmp);
     set_constant(ctx, &scale_tmp, static_cast<T>(1));
   }
   const T *scale_data = Scale ? Scale->data<T>() : scale_tmp.data<T>();
@@ -495,7 +495,7 @@ void NormDoubleGradFunctor(const DeviceContext &ctx,
   }
 
   if (dX) {
-    T *dx_data = dX->mutable_data<T>(ctx.GetPlace());
+    T *dx_data = ctx.template Alloc<T>(dX);
     set_constant(ctx, dX, static_cast<T>(0));
     if (use_global_stats) {
       if (data_layout == DataLayout::kNHWC) {
@@ -552,7 +552,7 @@ void NormDoubleGradFunctor(const DeviceContext &ctx,
     }
   }
   if (dScale) {
-    T *dscale_data = dScale->mutable_data<T>(ctx.GetPlace());
+    T *dscale_data = ctx.template Alloc<T>(dScale);
     set_constant(ctx, dScale, static_cast<T>(0));
     if (use_global_stats) {
       if (data_layout == DataLayout::kNHWC) {
@@ -605,7 +605,7 @@ void NormDoubleGradFunctor(const DeviceContext &ctx,
     }
   }
   if (ddY) {
-    T *ddy_data = ddY->mutable_data<T>(ctx.GetPlace());
+    T *ddy_data = ctx.template Alloc<T>(ddY);
     set_constant(ctx, ddY, static_cast<T>(0));
     if (use_global_stats) {
       if (data_layout == DataLayout::kNHWC) {
@@ -670,5 +670,5 @@ void NormDoubleGradFunctor(const DeviceContext &ctx,
     }
   }
 }
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi
