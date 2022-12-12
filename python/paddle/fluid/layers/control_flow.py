@@ -377,10 +377,10 @@ def Print(
 
     Args:
         input (Variable): A Tensor to print.
-        summarize (int): Number of elements in the tensor to be print. If it's
-                value is -1, then all elements in the tensor will be print.
-        message (str): A string message to print as a prefix.
-        first_n (int): Only log `first_n` number of times.
+        first_n (int, optional): Only log `first_n` number of times. Default: -1.
+        message (str, optional): A string message to print as a prefix. Default: None.
+        summarize (int, optional): Number of elements in the tensor to be print. If
+                it's value is -1, then all elements in the tensor will be print.
         print_tensor_name (bool, optional): Print the tensor name. Default: True.
         print_tensor_type (bool, optional): Print the tensor type. Defaultt: True.
         print_tensor_shape (bool, optional): Print the tensor shape. Default: True.

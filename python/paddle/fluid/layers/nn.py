@@ -900,7 +900,7 @@ def crf_decoding(input, param_attr, label=None, length=None):
     Args:
         input(Tensor): ${emission_comment}
 
-        param_attr (ParamAttr|None): To specify the weight parameter attribute.
+        param_attr (ParamAttr|None, optional): To specify the weight parameter attribute.
             Default: None, which means the default weight parameter property is
             used. See usage for details in :ref:`api_paddle_fluid_param_attr_ParamAttr` .
 
