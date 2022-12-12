@@ -320,8 +320,7 @@ def CUDAExtension(sources, *args, **kwargs):
 
     Args:
         sources(list[str]): Specify the C++/CUDA source files of customized operators.
-        *args(list[options], optional): Specify other arguments same as ``setuptools.Extension`` .
-        **kwargs(dict[option], optional): Specify other arguments same as ``setuptools.Extension`` .
+        *args, **kwargs(list[options], optional): Specify other arguments same as ``setuptools.Extension`` .
 
     Returns:
         setuptools.Extension: An instance of setuptools.Extension.
