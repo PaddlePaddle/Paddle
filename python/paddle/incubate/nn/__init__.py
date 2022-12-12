@@ -20,6 +20,16 @@ from .layer.fused_linear import FusedLinear  # noqa: F401
 from .layer.fused_transformer import (
     FusedBiasDropoutResidualLayerNorm,
 )  # noqa: F401
+from .layer.fused_ec_moe import FusedEcMoe  # noqa: F401
+
+from .functional.fused_transformer import fused_feedforward  # noqa: F401
+from .functional.fused_transformer import fused_bias_dropout_residual_layer_norm  # noqa: F401
+from .functional.fused_transformer import fused_multi_head_attention  # noqa: F401
+from .functional.fused_transformer import fused_multi_transformer  # noqa: F401
+from .functional.fused_matmul_bias import fused_linear  # noqa: F401
+from .functional.fused_matmul_bias import fused_matmul_bias  # noqa: F401
+from .functional.fused_ec_moe import fused_ec_moe  # noqa: F401
+
 
 __all__ = [  # noqa
     'FusedMultiHeadAttention',
@@ -28,4 +38,13 @@ __all__ = [  # noqa
     'FusedMultiTransformer',
     'FusedLinear',
     'FusedBiasDropoutResidualLayerNorm',
+    'FusedEcMoe', 
+    # functional
+    'fused_feedforward', 
+    'fused_bias_dropout_residual_layer_norm', 
+    'fused_multi_head_attention', 
+    'fused_multi_transformer', 
+    'fused_linear', 
+    'fused_matmul_bias', 
+    'fused_ec_moe', 
 ]
