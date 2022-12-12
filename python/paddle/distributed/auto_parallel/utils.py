@@ -2142,6 +2142,7 @@ def insert_dependencies_for_two_ops(
     dist_context,
     is_recompute=False,
     sync=False,
+    op_namescope=None,
 ):
     """
     dependency: prior_op should be run before posterior_op
@@ -2193,6 +2194,7 @@ def insert_dependencies_for_two_ops(
         prior_op_mesh,
         is_recompute,
         sync,
+        op_namescope,
     )
 
 
@@ -2206,6 +2208,7 @@ def insert_dependencies_for_vars(
     process_mesh=None,
     is_recompute=False,
     sync=False,
+    op_namescope=None,
 ):
     """
     dependency: op that generates prior_vars should be run before op that generates post_vars
@@ -2242,6 +2245,8 @@ def insert_dependencies_for_vars(
     naive_set_dist_op_attr_for_program_by_mesh(
         depend_op, process_mesh, dist_context, is_recompute
     )
+    if op_namescope is not None:
+        depend_op._set_attr('op_namescope', "/{}".format(op_namescope))
 
     if sync:
         block._sync_with_cpp()

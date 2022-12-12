@@ -416,6 +416,7 @@ class ClipGradByGloblNormPass(PassBase):
                             ],  # hack to avoid initialize the dist attr for coalesc var
                             is_recompute=False,
                             sync=False,
+                            op_namescope="grad_clip_fill_constant_dep",
                         )
 
         for varname in removed_tmp_var:
