@@ -308,7 +308,7 @@ def bmn_loss_func(
             ]
             bm_mask.append(mask_vector)
         bm_mask = np.array(bm_mask, dtype=np.float32)
-        self_bm_mask = fluid.layers.create_global_var(
+        self_bm_mask = paddle.static.create_global_var(
             shape=[dscale, tscale], value=0, dtype=DATATYPE, persistable=True
         )
         fluid.layers.assign(bm_mask, self_bm_mask)
@@ -880,5 +880,4 @@ class TestTrain(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

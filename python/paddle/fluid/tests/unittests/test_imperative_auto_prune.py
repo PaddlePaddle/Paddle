@@ -18,6 +18,8 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
+from paddle.nn import Embedding
+from paddle.tensor import random
 
 
 class AutoPruneLayer0(fluid.Layer):
@@ -88,8 +90,10 @@ class AutoPruneLayer2(fluid.Layer):
         label = self.linear2(label)
         label = fluid.layers.cast(label, dtype="float32")
         label = fluid.layers.cast(label, dtype='int64')
-        # Note that the label is not persistable in fluid.layers.cross_entropy.
-        loss = fluid.layers.cross_entropy(input=feature, label=label)
+        # Note that the label is not persistable in paddle.nn.functional.cross_entropy.
+        loss = paddle.nn.functional.cross_entropy(
+            input=feature, label=label, reduction='none', use_softmax=False
+        )
         loss = paddle.mean(loss)
         return loss
 
@@ -105,7 +109,9 @@ class AutoPruneLayer3(fluid.Layer):
             feature, num_or_sections=[10, 10], dim=1
         )
         # Note that: part2 is not used.
-        loss = fluid.layers.cross_entropy(input=part1, label=label)
+        loss = paddle.nn.functional.cross_entropy(
+            input=part1, label=label, reduction='none', use_softmax=False
+        )
         loss = paddle.mean(loss)
         if test_num == 1:
             return loss, part2
@@ -116,8 +122,8 @@ class AutoPruneLayer3(fluid.Layer):
 class MyLayer(fluid.Layer):
     def __init__(self, input_size, vocab_size, size, dtype="float32"):
         super().__init__(dtype=dtype)
-        self.embed0 = fluid.Embedding(size=(vocab_size, size))
-        self.embed1 = fluid.Embedding(size=(vocab_size, size))
+        self.embed0 = Embedding(vocab_size, size)
+        self.embed1 = Embedding(vocab_size, size)
         self.linear_0 = paddle.nn.Linear(input_size, size)
         self.linear_1 = paddle.nn.Linear(input_size, size)
 
@@ -138,8 +144,8 @@ class MyLayer(fluid.Layer):
 class MyLayer2(fluid.Layer):
     def __init__(self, input_size, vocab_size, size, dtype="float32"):
         super().__init__(dtype=dtype)
-        self.embed0 = fluid.Embedding(size=(vocab_size, size))
-        self.embed1 = fluid.Embedding(size=(vocab_size, size))
+        self.embed0 = Embedding(vocab_size, size)
+        self.embed1 = Embedding(vocab_size, size)
         self.linear_0 = paddle.nn.Linear(input_size, size)
         self.linear_1 = paddle.nn.Linear(input_size, size)
 
@@ -421,7 +427,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
 
     def test_case4_with_no_grad_op_maker(self):
         with fluid.dygraph.guard():
-            out = fluid.layers.gaussian_random(shape=[20, 30])
+            out = random.gaussian(shape=[20, 30])
             loss = paddle.mean(out)
             loss.backward()
             self.assertIsNone(out._grad_ivar())
