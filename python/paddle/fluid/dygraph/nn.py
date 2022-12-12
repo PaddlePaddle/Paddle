@@ -49,13 +49,12 @@ import os
 import paddle.utils.deprecated as deprecated
 from paddle import _C_ops, _legacy_C_ops
 
-__all__ = [
-    'BatchNorm',
-]
+__all__ = []
 
 
 class BatchNorm(layers.Layer):
     r"""
+
     This interface is used to construct a callable object of the ``BatchNorm`` class.
     For more details, refer to code examples.
     It implements the function of the Batch Normalization Layer and can be used
@@ -64,31 +63,43 @@ class BatchNorm(layers.Layer):
     Refer to `Batch Normalization: Accelerating Deep Network Training by Reducing
     Internal Covariate Shift <https://arxiv.org/pdf/1502.03167.pdf>`_
     for more details.
+
     When use_global_stats = False, the :math:`\mu_{\beta}`
     and :math:`\sigma_{\beta}^{2}` are the statistics of one mini-batch.
     Calculated as follows:
+
     ..  math::
+
         \mu_{\beta} &\gets \frac{1}{m} \sum_{i=1}^{m} x_i \qquad &
         //\ mini-batch\ mean \\
         \sigma_{\beta}^{2} &\gets \frac{1}{m} \sum_{i=1}^{m}(x_i - \mu_{\beta})^2 \qquad &
         //\ mini-batch\ variance \\
+
     - :math:`x` : mini-batch data
     - :math:`m` : the size of the mini-batch data
+
     When use_global_stats = True, the :math:`\\mu_{\\beta}`
     and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
     They are global or running statistics (moving_mean and moving_variance). It usually got from the
     pre-trained model. Calculated as follows:
+
     .. math::
         moving\_mean = moving\_mean * momentum + \mu_{\beta} * (1. - momentum) \quad &// global mean \\
         moving\_variance = moving\_variance * momentum + \sigma_{\beta}^{2} * (1. - momentum) \quad &// global variance \\
+
     The normalization function formula is as follows:
+
     ..  math::
+
         \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{\
         \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
         y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
+
+
     - :math:`\epsilon` : add a smaller value to the variance to prevent division by zero
     - :math:`\gamma` : trainable proportional parameter
     - :math:`\beta` : trainable deviation parameter
+
     Parameters:
         num_channels(int): Indicate the number of channels of the input ``Tensor``.
         act(str, optional): Activation to be applied to the output of batch normalization. Default: None.
@@ -121,13 +132,17 @@ class BatchNorm(layers.Layer):
         trainable_statistics(bool, optional): Whether to calculate mean and var in eval mode. In eval mode, when
             setting trainable_statistics True, mean and variance will be calculated by current batch statistics.
             Default: False.
+
     Returns:
         None
+
     Examples:
         .. code-block:: python
+
           import paddle.fluid as fluid
           from paddle.fluid.dygraph.base import to_variable
           import numpy as np
+
           x = np.random.random(size=(3, 10, 3, 7)).astype('float32')
           with fluid.dygraph.guard():
               x = to_variable(x)
@@ -345,8 +360,10 @@ class BatchNorm(layers.Layer):
 class RowConv(layers.Layer):
     """
     ***Row-convolution operator***
+
     The row convolution is called lookahead convolution.  This operator was introduced in the following paper for DeepSpeech2:
     http://www.cs.cmu.edu/~dyogatam/papers/wang+etal.iclrworkshop2016.pdf
+
     The main motivation is that a bidirectional RNN, useful in DeepSpeech like speech models, learns representation for a sequence by performing a
     forward and a backward pass through the entire sequence. However, unlike
     unidirectional RNNs, bidirectional RNNs are challenging to deploy in an online
@@ -354,8 +371,11 @@ class RowConv(layers.Layer):
     from future subsequences in a computationally efficient manner to improve
     unidirectional recurrent neural networks. The row convolution operator is
     different from the 1D sequence convolution, and is computed as follows:
+
     Given an input sequence X of length t and input dimension D, and a filter (W) of size context * D.
+
     More details about row_conv please refer to the design document https://github.com/PaddlePaddle/Paddle/issues/2228#issuecomment-303903645 .
+
     Parameters:
         name_scope(str): The name of this class.
         future_context_size (int): Future context size. Please note, the shape
@@ -363,20 +383,26 @@ class RowConv(layers.Layer):
         param_attr (ParamAttr): Attributes of parameters, including
             name, initializer etc. Default: None.
         act (str): Non-linear activation to be applied to output variable. Default: None.
+
     Attributes:
         weight (Parameter): the learnable weights of this layer.
+
     Returns:
         the output(Out) is a LodTensor, which supports variable time-length input sequences.
         The underlying tensor in this LodTensor is a matrix with shape T x N, i.e., the same shape as X.
+
     Examples:
         .. code-block:: python
+
           import paddle.fluid as fluid
           import numpy
+
           with fluid.dygraph.guard():
               x = numpy.random.random((16)).astype('float32')
               rowConv = fluid.dygraph.nn.RowConv(
                     'RowConv', future_context_size=2)
               ret = rowConv(fluid.dygraph.base.to_variable(x))
+
     """
 
     def __init__(

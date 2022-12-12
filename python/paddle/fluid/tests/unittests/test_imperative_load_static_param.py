@@ -21,8 +21,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-from paddle.fluid.dygraph.nn import BatchNorm, Embedding
-from paddle.nn import Linear
+from paddle.nn import BatchNorm, Linear
 
 
 class TestDygraphLoadStatic(unittest.TestCase):
@@ -206,8 +205,8 @@ class TestDygraphLoadStatic(unittest.TestCase):
                     self.batch_norm_1 = BatchNorm(10)
                     self.batch_norm_2 = BatchNorm(10)
 
-                    self.emb1 = Embedding([1000, 100])
-                    self.emb2 = Embedding([2000, 200])
+                    self.emb1 = paddle.nn.Embedding(1000, 100)
+                    self.emb2 = paddle.nn.Embedding(2000, 200)
 
                     self.layer_norm_1 = paddle.nn.LayerNorm([10])
                     self.layer_norm_2 = paddle.nn.LayerNorm(10)
