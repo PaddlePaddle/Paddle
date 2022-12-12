@@ -22,7 +22,7 @@ from paddle.fluid.initializer import Constant
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import tensor
 
-__all__ = ['accuracy', 'auc']
+__all__ = []
 
 
 def accuracy(input, label, k=1, correct=None, total=None):

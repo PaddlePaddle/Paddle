@@ -539,7 +539,7 @@ class MSELoss(Layer):
         Out = \operatorname{sum}((input - label)^2)
     where `input` and `label` are `float32` tensors of same shape.
     Parameters:
-        reduction (string, optional): The reduction method for the output,
+        reduction (str, optional): The reduction method for the output,
             could be 'none' | 'mean' | 'sum'.
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned.
             If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned.

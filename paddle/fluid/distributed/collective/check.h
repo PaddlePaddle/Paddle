@@ -14,7 +14,18 @@
 
 #pragma once
 
-// forward declaration to reduce deps
+#include <cstdint>
+#include <vector>
+
+#include "paddle/phi/backends/gpu/forwards.h"
+
+#ifdef PADDLE_WITH_HIP
+using gpuStream_t = hipStream_t;
+#else
+using gpuStream_t = cudaStream_t;
+#endif
+
+// forward declarations
 namespace phi {
 class DenseTensor;
 }
@@ -49,9 +60,9 @@ struct CommStaticCheck {
                          int in_size_factor);
 
   // for p2p
-  static void SingleTensor(const phi::DenseTensor& tensor,
-                           int rank,
-                           int world_size);
+  static void CheckShape(const phi::DenseTensor& tensor,
+                         int rank,
+                         int world_size);
 
   // for collective
   static void SameShape(const phi::DenseTensor& out_tensor,
@@ -71,6 +82,33 @@ struct CommStaticCheck {
                               int dst_rank,
                               int cur_rank,
                               int world_size);
+};
+
+struct CommDynamicCheck {
+  static void CheckDataType(const phi::DenseTensor& tensor, int64_t dtype);
+
+  static void CheckDataType(const phi::DenseTensor& tensor,
+                            int root_rank,
+                            int cur_rank,
+                            ncclComm_t comm);
+
+  static void CheckShape(const phi::DenseTensor& tensor, int64_t shape);
+
+  static void CheckShape(const phi::DenseTensor& tensor,
+                         int root_rank,
+                         int cur_rank,
+                         ncclComm_t comm);
+
+  static void CheckShape(const phi::DenseTensor& out_tensor,
+                         const phi::DenseTensor& in_tensor,
+                         const std::vector<int64_t>& in_size_each_rank,
+                         int cur_rank,
+                         int world_size,
+                         ncclComm_t comm);
+
+ private:
+  // `0` represents default stream for both cuda & hip
+  static constexpr gpuStream_t kDefaultStream = 0;
 };
 
 }  // namespace distributed
