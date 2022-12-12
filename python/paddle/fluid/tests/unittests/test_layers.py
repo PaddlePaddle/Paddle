@@ -219,8 +219,8 @@ class TestLayer(LayerTest):
             static_ret2 = self.get_static_graph_result(
                 feed={'data': inp, 'show_click': show_clk}, fetch_list=[cvm]
             )[0]
-        np.testing.assert_array_equal(static_ret1, cvm1)
-        np.testing.assert_array_equal(static_ret2, cvm2)
+        np.testing.assert_allclose(static_ret1, cvm1, rtol=1e-5)
+        np.testing.assert_allclose(static_ret2, cvm2, rtol=1e-5)
 
     def test_Flatten(self):
         inp = np.ones([3, 4, 4, 5], dtype='float32')
