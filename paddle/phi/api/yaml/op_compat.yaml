@@ -1056,6 +1056,8 @@
   backward : scatter_nd_add_grad
   inputs :
     {x : X, index : Index, updates : Updates}
+  outputs :
+    out : Out
 
 - op : searchsorted
   inputs :
