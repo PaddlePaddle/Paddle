@@ -504,8 +504,8 @@ def multi_box_head(
             clip,
             step,
             offset,
-            None,
             min_max_aspect_ratios_order,
+            None,
         )
 
         box_results.append(box)
