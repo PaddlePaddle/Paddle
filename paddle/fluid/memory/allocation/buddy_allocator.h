@@ -59,8 +59,6 @@ class BuddyAllocator {
   BuddyAllocator(const BuddyAllocator&) = delete;
   BuddyAllocator& operator=(const BuddyAllocator&) = delete;
 
-  BuddyAllocator() { realloc_size_ = 0; }
-
  private:
   // Tuple (allocator index, memory size, memory address)
   using IndexSizeAddress = std::tuple<size_t, size_t, void*>;

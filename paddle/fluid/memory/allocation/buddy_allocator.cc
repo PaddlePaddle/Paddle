@@ -40,6 +40,7 @@ BuddyAllocator::BuddyAllocator(
     const std::string dev_type)
     : min_chunk_size_(min_chunk_size),
       max_chunk_size_(max_chunk_size),
+      realloc_size_(0),
       extra_padding_size_(extra_padding_size),
       cache_(system_allocator->UseGpu()),
       system_allocator_(std::move(system_allocator)) {
