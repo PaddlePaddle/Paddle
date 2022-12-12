@@ -184,7 +184,8 @@ class TestLayer(LayerTest):
 
     def test_cvm(self):
         inp = np.ones([10, 10], dtype='float32')
-        cvm1 = np.ones([10, 10], dtype='float32')
+        arr = [[0.693147, 0, 1, 1, 1, 1, 1, 1, 1, 1]] * 10
+        cvm1 = np.array(arr, dtype='float32')
         cvm2 = np.ones([10, 8], dtype='float32')
         show_clk = np.ones([10, 2], dtype='float32')
         with self.static_graph():
