@@ -67,10 +67,10 @@ class DependOpShapeInference : public framework::InferShapeBase {
 class DependOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "Tensor, the dependence is added for.");
+    AddInput("X", "Tensor, the dependence is added for.").AsDuplicable();
     AddInput("Dep", "The tensors that should be generated before X.")
         .AsDuplicable();
-    AddOutput("Out", "Tensor, the same as input X");
+    AddOutput("Out", "Tensor, the same as input X").AsDuplicable();
     AddComment(R"DOC(
 Depend Operator, allows to add explicit dependency between tensors.
 For example, given two ops:

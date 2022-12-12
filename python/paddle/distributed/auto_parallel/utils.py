@@ -2191,10 +2191,11 @@ def insert_dependencies_for_two_ops(
         second_var,
         dist_context,
         OpRole.Backward,
-        prior_op_mesh,
-        is_recompute,
-        sync,
-        op_namescope,
+        process_mesh=prior_op_mesh,
+        is_recompute=is_recompute,
+        sync=sync,
+        op_namescope=op_namescope,
+        use_nop=False,
     )
 
 
@@ -2209,6 +2210,7 @@ def insert_dependencies_for_vars(
     is_recompute=False,
     sync=False,
     op_namescope=None,
+    use_nop=False,
 ):
     """
     dependency: op that generates prior_vars should be run before op that generates post_vars
@@ -2229,14 +2231,26 @@ def insert_dependencies_for_vars(
         ).process_mesh
     assert process_mesh is not None
 
-    depend_op = block._insert_op_without_sync(
-        idx,
-        type='nop',
-        inputs={
-            "X": prior_vars,
-        },
-        outputs={"Out": post_vars},
-    )
+    if use_nop:
+        depend_op = block._insert_op_without_sync(
+            idx,
+            type='nop',
+            inputs={
+                "X": prior_vars,
+            },
+            outputs={"Out": post_vars},
+        )
+    else:
+        depend_op = block._insert_op_without_sync(
+            idx,
+            type='depend',
+            inputs={
+                "X": post_vars,
+                "Dep": prior_vars,
+            },
+            outputs={"Out": post_vars},
+        )
+
     # depend_op.desc.set_type("depend")
     depend_op._set_attr(OP_ROLE_KEY, oprole)
     # depend_op.desc.set_input("Dep", [first_var.name])
