@@ -404,22 +404,6 @@ def lm_model(
             init_hidden=init_hidden_reshape,
             init_cell=init_cell_reshape,
         )
-    elif rnn_model == "cudnn":
-        x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
-        # TODO(wj-Mcat): should be replaced with `paddle.nn.LSTM` ?
-        rnn_out, last_hidden, last_cell = layers.lstm(
-            x_emb,
-            init_hidden_reshape,
-            init_cell_reshape,
-            num_steps,
-            hidden_size,
-            num_layers,
-            is_bidirec=False,
-            default_initializer=fluid.initializer.UniformInitializer(
-                low=-init_scale, high=init_scale
-            ),
-        )
-        rnn_out = paddle.transpose(rnn_out, perm=[1, 0, 2])
     elif rnn_model == "basic_lstm":
         rnn_out, last_hidden, last_cell = basic_lstm(
             x_emb,
