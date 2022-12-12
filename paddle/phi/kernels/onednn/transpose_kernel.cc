@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/transpose_kernel.h"
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -80,7 +79,7 @@ void TransposeKernel(const Context& dev_ctx,
       dev_ctx, const_cast<DenseTensor*>(&x), x.mem_desc());
 
   if (axis.size() == 1) {
-    paddle::framework::TensorCopy(x, x.place(), out);
+    Copy<Context>(dev_ctx, x, x.place(), false, out);
     out->set_mem_desc(x.mem_desc());
     return;
   }
