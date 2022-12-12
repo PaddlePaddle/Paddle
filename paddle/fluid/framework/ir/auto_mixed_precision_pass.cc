@@ -199,7 +199,7 @@ void AutoMixedPrecisionPass::Init(Graph* graph) const {
 
   skip_pass_ = !enable_gpu_mixed;
 
-  low_precision_ = static_cast<phi::DataType>(Get<int>("low_precision_mode"));
+  low_precision_ = static_cast<phi::DataType>(Get<int>("mixed_precision_mode"));
 
   black_list_ = Get<std::unordered_set<std::string>>("mixed_black_list");
   SetDefaultBlacklist();
@@ -238,12 +238,12 @@ void AutoMixedPrecisionPass::Init(Graph* graph) const {
 void AutoMixedPrecisionPass::ApplyImpl(Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
                           platform::errors::PreconditionNotMet(
-                              "During the auto_low_precision_pass, the graph "
+                              "During the auto_mixed_precision_pass, the graph "
                               "should not be nullptr."));
   PADDLE_ENFORCE_EQ(graph->IsMainGraph(),
                     true,
                     platform::errors::PreconditionNotMet(
-                        "During the auto_low_precision_pass, the graph "
+                        "During the auto_mixed_precision_pass, the graph "
                         "should be main graph."));
 
   FusePassBase::Init("auto_mixed_precision", graph);
@@ -252,7 +252,7 @@ void AutoMixedPrecisionPass::ApplyImpl(Graph* graph) const {
   VLOG(4) << "Init done";
 
   if (skip_pass_) {
-    VLOG(3) << "Skip apply auto_low_precision_pass.";
+    VLOG(3) << "Skip auto_mixed_precision_pass.";
     return;
   }
 
@@ -617,7 +617,7 @@ void AutoMixedPrecisionPass::ConvertWeightsData() const {
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(scope,
                           platform::errors::PreconditionNotMet(
-                              "During the auto_low_precision_pass, the scope "
+                              "During the auto_mixed_precision_pass, the scope "
                               "should not be null."));
 
   auto var_names = scope->LocalVarNames();
@@ -741,5 +741,5 @@ void AutoMixedPrecisionPass::InsertCastOp() const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(auto_low_precision_pass,
+REGISTER_PASS(auto_mixed_precision_pass,
               paddle::framework::ir::AutoMixedPrecisionPass);
