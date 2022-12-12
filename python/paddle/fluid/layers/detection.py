@@ -39,7 +39,6 @@ from paddle import _C_ops, _legacy_C_ops
 from ..framework import in_dygraph_mode
 
 __all__ = [
-    'prior_box',
     'density_prior_box',
     'multi_box_head',
     'anchor_generator',
@@ -56,135 +55,6 @@ __all__ = [
     'box_decoder_and_assign',
     'collect_fpn_proposals',
 ]
-
-
-def prior_box(
-    input,
-    image,
-    min_sizes,
-    max_sizes=None,
-    aspect_ratios=[1.0],
-    variance=[0.1, 0.1, 0.2, 0.2],
-    flip=False,
-    clip=False,
-    steps=[0.0, 0.0],
-    offset=0.5,
-    name=None,
-    min_max_aspect_ratios_order=False,
-):
-    """
-
-    This op generates prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
-    Each position of the input produce N prior boxes, N is determined by
-    the count of min_sizes, max_sizes and aspect_ratios, The size of the
-    box is in range(min_size, max_size) interval, which is generated in
-    sequence according to the aspect_ratios.
-
-    Parameters:
-       input(Variable): 4-D tensor(NCHW), the data type should be float32 or float64.
-       image(Variable): 4-D tensor(NCHW), the input image data of PriorBoxOp,
-            the data type should be float32 or float64.
-       min_sizes(list|tuple|float): the min sizes of generated prior boxes.
-       max_sizes(list|tuple|None): the max sizes of generated prior boxes.
-            Default: None.
-       aspect_ratios(list|tuple|float): the aspect ratios of generated
-            prior boxes. Default: [1.].
-       variance(list|tuple): the variances to be encoded in prior boxes.
-            Default:[0.1, 0.1, 0.2, 0.2].
-       flip(bool): Whether to flip aspect ratios. Default:False.
-       clip(bool): Whether to clip out-of-boundary boxes. Default: False.
-       step(list|tuple): Prior boxes step across width and height, If
-            step[0] equals to 0.0 or step[1] equals to 0.0, the prior boxes step across
-            height or weight of the input will be automatically calculated.
-            Default: [0., 0.]
-       offset(float): Prior boxes center offset. Default: 0.5
-       min_max_aspect_ratios_order(bool): If set True, the output prior box is
-            in order of [min, max, aspect_ratios], which is consistent with
-            Caffe. Please note, this order affects the weights order of
-            convolution layer followed by and does not affect the final
-            detection results. Default: False.
-       name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`
-
-    Returns:
-        Tuple: A tuple with two Variable (boxes, variances)
-
-        boxes(Variable): the output prior boxes of PriorBox.
-        4-D tensor, the layout is [H, W, num_priors, 4].
-        H is the height of input, W is the width of input,
-        num_priors is the total box count of each position of input.
-
-        variances(Variable): the expanded variances of PriorBox.
-        4-D tensor, the layput is [H, W, num_priors, 4].
-        H is the height of input, W is the width of input
-        num_priors is the total box count of each position of input
-
-    Examples:
-        .. code-block:: python
-
-            #declarative mode
-            import paddle.fluid as fluid
-            import numpy as np
-            import paddle
-            paddle.enable_static()
-            input = fluid.data(name="input", shape=[None,3,6,9])
-            image = fluid.data(name="image", shape=[None,3,9,12])
-            box, var = fluid.layers.prior_box(
-                 input=input,
-                 image=image,
-                 min_sizes=[100.],
-                 clip=True,
-                 flip=True)
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
-
-            # prepare a batch of data
-            input_data = np.random.rand(1,3,6,9).astype("float32")
-            image_data = np.random.rand(1,3,9,12).astype("float32")
-
-            box_out, var_out = exe.run(fluid.default_main_program(),
-                feed={"input":input_data,"image":image_data},
-                fetch_list=[box,var],
-                return_numpy=True)
-
-            # print(box_out.shape)
-            # (6, 9, 1, 4)
-            # print(var_out.shape)
-            # (6, 9, 1, 4)
-
-            # imperative mode
-            import paddle.fluid.dygraph as dg
-
-            with dg.guard(place) as g:
-                input = dg.to_variable(input_data)
-                image = dg.to_variable(image_data)
-                box, var = fluid.layers.prior_box(
-                    input=input,
-                    image=image,
-                    min_sizes=[100.],
-                    clip=True,
-                    flip=True)
-                # print(box.shape)
-                # [6L, 9L, 1L, 4L]
-                # print(var.shape)
-                # [6L, 9L, 1L, 4L]
-
-    """
-    return paddle.vision.ops.prior_box(
-        input=input,
-        image=image,
-        min_sizes=min_sizes,
-        max_sizes=max_sizes,
-        aspect_ratios=aspect_ratios,
-        variance=variance,
-        flip=flip,
-        clip=clip,
-        steps=steps,
-        offset=offset,
-        min_max_aspect_ratios_order=min_max_aspect_ratios_order,
-        name=name,
-    )
 
 
 def density_prior_box(
@@ -623,7 +493,7 @@ def multi_box_head(
                 aspect_ratio = [aspect_ratio]
         step = [step_w[i] if step_w else 0.0, step_h[i] if step_w else 0.0]
 
-        box, var = prior_box(
+        box, var = paddle.vision.ops.prior_box(
             input,
             image,
             min_size,
