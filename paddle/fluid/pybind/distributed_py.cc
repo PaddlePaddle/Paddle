@@ -1113,8 +1113,8 @@ void BindDistributed(py::module *m) {
                                  dst,
                                  /*offset*/ 0,
                                  /*numel*/ -1,
-                                 /*sync_op*/ true,
-                                 /*use_calc_stream*/ true);
+                                 /*sync_op*/ true);
+                //  /*use_calc_stream*/ true);
               },
               py::arg("tensor"),
               py::arg("dst"),
@@ -1140,8 +1140,8 @@ void BindDistributed(py::module *m) {
                                  dst_rank,
                                  offset,
                                  send_numel,
-                                 /*sync_op*/ true,
-                                 /*use_calc_stream*/ true);
+                                 /*sync_op*/ true);
+                //  /*use_calc_stream*/ true);
               },
               py::arg("tensor"),
               py::arg("dst"),
