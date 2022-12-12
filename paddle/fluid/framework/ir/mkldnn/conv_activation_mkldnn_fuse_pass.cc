@@ -138,11 +138,11 @@ void ConvActivationMkldnnFusePass::FuseConvConcatAct(
 
       bool is_not_conv_mkldnn =
           !(prev_op_nodes[0]->Op()->GetAttrIfExists<bool>("use_mkldnn"));
-      if (prev_op_nodes[0]->Op()->Type() != "conv2d" ||
-          prev_op_nodes[0]->Op()->Type() != "fused_conv2d" ||
+      if ((prev_op_nodes[0]->Op()->Type() != "conv2d" &&
+           prev_op_nodes[0]->Op()->Type() != "fused_conv2d") ||
           is_not_conv_mkldnn) {
-        LOG(WARNING)
-            << "This fuse pass supports only conv2d (mkldnn) + activation.";
+        LOG(WARNING) << "This fuse pass supports only conv2d(mkldnn) | "
+                        "fused_conv2d(mkldnn) + activation.";
         return;
       }
     }
