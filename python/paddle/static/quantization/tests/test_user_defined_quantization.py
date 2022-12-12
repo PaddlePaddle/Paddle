@@ -57,10 +57,8 @@ def conv_net(img, label):
     conv_pool_2 = paddle.nn.functional.avg_pool2d(
         conv_out_2, kernel_size=2, stride=2
     )
-    hidden = paddle.static.nn.fc(input=conv_pool_2, size=100, activation='relu')
-    prediction = paddle.static.nn.fc(
-        input=hidden, size=10, activation='softmax'
-    )
+    hidden = paddle.static.nn.fc(conv_pool_2, size=100, activation='relu')
+    prediction = paddle.static.nn.fc(hidden, size=10, activation='softmax')
     loss = paddle.nn.functional.cross_entropy(
         input=prediction, label=label, reduction='none', use_softmax=False
     )
@@ -202,7 +200,7 @@ class TestUserDefinedQuantization(unittest.TestCase):
             paddle.reader.shuffle(paddle.dataset.mnist.train(), buf_size=500),
             batch_size=batch_size,
         )
-        feeder = paddle.static.DataFeeder(feed_list=feeds, place=place)
+        feeder = paddle.fluid.DataFeeder(feed_list=feeds, place=place)
         with paddle.static.scope_guard(scope):
             for _ in range(iters):
                 data = next(train_reader())

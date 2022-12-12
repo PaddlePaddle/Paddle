@@ -31,8 +31,7 @@ from paddle.nn import (
     Sigmoid,
     Softmax,
 )
-
-from ..log_helper import get_logger
+from paddle.static.log_helper import get_logger
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'

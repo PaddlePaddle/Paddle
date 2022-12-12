@@ -26,9 +26,8 @@ import paddle.fluid as fluid
 from paddle.dataset.common import download
 from paddle.fluid.framework import _test_eager_guard
 from paddle.framework import set_flags
+from paddle.static.log_helper import get_logger
 from paddle.static.quantization import ImperativeQuantAware
-
-from ...log_helper import get_logger
 
 os.environ["CPU_NUM"] = "1"
 if paddle.is_compiled_with_cuda():

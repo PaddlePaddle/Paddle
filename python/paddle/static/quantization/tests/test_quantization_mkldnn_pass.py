@@ -156,7 +156,7 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
         test_reader = paddle.batch(
             paddle.dataset.mnist.test(), batch_size=batch_size
         )
-        feeder = paddle.static.DataFeeder(feed_list=feeds, place=place)
+        feeder = paddle.fluid.DataFeeder(feed_list=feeds, place=place)
 
         # Training the model to get the weights value
         with paddle.static.scope_guard(scope):

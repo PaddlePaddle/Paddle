@@ -35,9 +35,8 @@ from paddle.nn import (
 )
 from paddle.nn.quant.quant_layers import QuantizedMatmul
 from paddle.optimizer import Momentum
+from paddle.static.log_helper import get_logger
 from paddle.static.quantization import ImperativeQuantAware
-
-from ...log_helper import get_logger
 
 paddle.enable_static()
 

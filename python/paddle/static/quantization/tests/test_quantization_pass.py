@@ -44,7 +44,7 @@ def linear_fc(num):
     label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
     hidden = data
     for _ in range(num):
-        hidden = paddle.static.nn.fc(hidden, size=128, act='relu')
+        hidden = paddle.static.nn.fc(hidden, size=128, activation='relu')
     loss = paddle.nn.functional.cross_entropy(
         input=hidden, label=label, reduction='none', use_softmax=False
     )
@@ -56,12 +56,13 @@ def residual_block(num, quant_skip_pattern=None):
     def conv_bn_layer(
         input, ch_out, filter_size, stride, padding, act='relu', bias_attr=False
     ):
-        tmp = paddle.nn.Conv2D(
-            in_channels=input,
-            kernel_size=filter_size,
-            out_channels=ch_out,
+        tmp = paddle.static.nn.conv2d(
+            input=input,
+            filter_size=filter_size,
+            num_filters=ch_out,
             stride=stride,
             padding=padding,
+            act=None,
             bias_attr=bias_attr,
         )
         return paddle.static.nn.batch_norm(input=tmp, act=act)
@@ -219,8 +220,8 @@ class TestQuantizationTransformPass(unittest.TestCase):
         quantizable_op_type,
         for_ci=True,
     ):
-        main = paddle.Program()
-        startup = paddle.Program()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
             loss = residual_block(2)
             opt = paddle.optimizer.Adam(learning_rate=0.001)
@@ -310,7 +311,7 @@ class TestQuantizationFreezePass(unittest.TestCase):
 
         main = paddle.static.Program()
         startup = paddle.static.Program()
-        test_program = paddle.statci.Program()
+        test_program = paddle.static.Program()
         feeds, loss = build_program(main, startup, False)
         build_program(test_program, startup, True)
         test_program = test_program.clone(for_test=True)
@@ -385,7 +386,7 @@ class TestQuantizationFreezePass(unittest.TestCase):
         test_reader = paddle.batch(
             paddle.dataset.mnist.test(), batch_size=batch_size
         )
-        feeder = paddle.static.DataFeeder(feed_list=feeds, place=place)
+        feeder = paddle.fluid.DataFeeder(feed_list=feeds, place=place)
         with paddle.static.scope_guard(scope):
             for _ in range(iters):
                 data = next(train_reader())
@@ -524,6 +525,8 @@ class TestQuantizationFreezePass(unittest.TestCase):
                 [loss],
                 exe,
                 server_program_int8,
+                model_filename='model.pdmodel',
+                params_filename='model.iparams',
             )
             # Test whether the 8-bit parameter and model file can be loaded successfully.
             [infer, feed, fetch] = paddle.static.load_inference_model(
@@ -531,7 +534,8 @@ class TestQuantizationFreezePass(unittest.TestCase):
                 + dev_name
                 + activation_quant_type
                 + '_'
-                + weight_quant_type,
+                + weight_quant_type
+                + '/model',
                 exe,
             )
         # Check the loaded 8-bit weight.

@@ -66,7 +66,7 @@ class TestMovingAverageAbsMaxScaleOp(unittest.TestCase):
             len(moving_average_abs_max_scale_ops) == 1
         ), "The number of moving_average_abs_max_scale_ops should be 1."
 
-        place = paddle.CUDAPlace(0) if use_cuda else paddle.CUDAPlace()
+        place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
         exe = paddle.static.Executor(place)
         exe.run(startup_program)
 

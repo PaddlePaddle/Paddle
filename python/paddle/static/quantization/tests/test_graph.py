@@ -64,7 +64,7 @@ class TestGraph(unittest.TestCase):
     def graph_apis(self, use_cuda=False, for_ci=True):
         main = paddle.static.Program()
         startup = paddle.static.Program()
-        with paddle.utils.unique_name.guar():
+        with paddle.utils.unique_name.guard():
             with paddle.static.program_guard(main, startup):
                 feeds, loss = conv_block()
                 opt = paddle.optimizer.Adam(learning_rate=0.001)
@@ -89,7 +89,7 @@ class TestGraph(unittest.TestCase):
         train_reader = paddle.batch(
             paddle.dataset.mnist.train(), batch_size=batch_size
         )
-        feeder = paddle.static.DataFeeder(feed_list=feeds, place=place)
+        feeder = paddle.fluid.DataFeeder(feed_list=feeds, place=place)
 
         def _train(binary):
             for _ in range(iters):

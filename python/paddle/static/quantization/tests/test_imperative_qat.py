@@ -30,9 +30,8 @@ from paddle.nn.quant.quant_layers import (
     QuantizedConv2DTranspose,
 )
 from paddle.optimizer import Adam
+from paddle.static.log_helper import get_logger
 from paddle.static.quantization import ImperativeQuantAware
-
-from ...log_helper import get_logger
 
 INFER_MODEL_SUFFIX = ".pdmodel"
 INFER_PARAMS_SUFFIX = ".pdiparams"
