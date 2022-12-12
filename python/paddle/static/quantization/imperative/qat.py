@@ -21,7 +21,12 @@ from paddle.fluid.io import save_inference_model
 from paddle.framework import core
 
 from ..quantization_pass import QuantWeightPass, ReplaceFakeQuantDequantPass
-from ..utils import move_persistable_var_to_global_block
+from ..utils import (
+    _get_input_name_index,
+    _get_op_input_var_names,
+    _get_output_name_index,
+    move_persistable_var_to_global_block,
+)
 from . import fuse_utils, utils
 
 __all__ = ['ImperativeQuantAware']
@@ -646,7 +651,7 @@ class ImperativeQuantizeOutputs:
                         target_ops.append(op)
 
             for op in target_ops:
-                for in_var_name in utils._get_op_input_var_names(op):
+                for in_var_name in _get_op_input_var_names(op):
                     previous_op = utils.find_previous_op(op.block, in_var_name)
 
                     if previous_op is not None and (
@@ -656,9 +661,7 @@ class ImperativeQuantizeOutputs:
                         scale_name = previous_op.output('OutScale')[0]
                         in_scale = utils.load_variable_data(scope, scale_name)
                         in_scale = utils.fp_numpy_to_naive(in_scale)
-                        argname, index = utils._get_input_name_index(
-                            op, in_var_name
-                        )
+                        argname, index = _get_input_name_index(op, in_var_name)
                         op._set_attr(
                             argname + str(index) + "_threshold", in_scale
                         )
@@ -683,7 +686,7 @@ class ImperativeQuantizeOutputs:
                 out_scale = utils.fp_numpy_to_naive(out_scale)
 
                 if previous_op.type != "feed":
-                    res = utils._get_output_name_index(previous_op, in_var_name)
+                    res = _get_output_name_index(previous_op, in_var_name)
                     if res is not None:
                         argname, index = res
                         previous_op._set_attr(

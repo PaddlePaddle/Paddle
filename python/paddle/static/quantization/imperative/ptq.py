@@ -22,6 +22,12 @@ import paddle
 import paddle.nn.quant.quant_layers as quant_layers
 
 from ...log_helper import get_logger
+from ..utils import (
+    _get_input_name_index,
+    _get_op_input_var_names,
+    _get_op_output_var_names,
+    _get_output_name_index,
+)
 from . import fuse_utils, ptq_config, ptq_hooks, ptq_quantizer, utils
 from .ptq_registry import PTQRegistry
 
@@ -374,7 +380,7 @@ class ImperativePTQ:
             None
         """
         for op in utils.program_all_ops(program):
-            for in_var_name in utils._get_op_input_var_names(op):
+            for in_var_name in _get_op_input_var_names(op):
                 previous_op = utils.find_previous_op(op.block, in_var_name)
                 if previous_op is None:
                     continue
@@ -386,20 +392,16 @@ class ImperativePTQ:
                     attr_name = previous_op.output('OutScale')[0]
                     in_threshold = utils.load_variable_data(scope, attr_name)
                     in_threshold = utils.fp_numpy_to_naive(in_threshold)
-                    argname, index = utils._get_input_name_index(
-                        op, in_var_name
-                    )
+                    argname, index = _get_input_name_index(op, in_var_name)
                     op._set_attr(
                         argname + str(index) + "_threshold", in_threshold
                     )
                     op._set_attr("with_quant_attr", True)
                 else:
-                    for out_var_name in utils._get_op_output_var_names(
-                        previous_op
-                    ):
+                    for out_var_name in _get_op_output_var_names(previous_op):
                         if out_var_name != in_var_name:
                             continue
-                        argname, index = utils._get_output_name_index(
+                        argname, index = _get_output_name_index(
                             previous_op, out_var_name
                         )
                         attr_name = argname + str(index) + "_threshold"
@@ -407,9 +409,7 @@ class ImperativePTQ:
                             continue
                         threshold = previous_op.attr(attr_name)
 
-                        argname, index = utils._get_input_name_index(
-                            op, in_var_name
-                        )
+                        argname, index = _get_input_name_index(op, in_var_name)
                         attr_name = argname + str(index) + "_threshold"
                         op._set_attr(attr_name, threshold)
                         op._set_attr("with_quant_attr", True)
@@ -451,10 +451,10 @@ class ImperativePTQ:
                     continue
                 next_op = next_ops[0]
 
-                argname, index = utils._get_output_name_index(op, out_var_name)
+                argname, index = _get_output_name_index(op, out_var_name)
                 old_attr_name = argname + str(index) + "_threshold"
 
-                argname, index = utils._get_output_name_index(
+                argname, index = _get_output_name_index(
                     next_op, next_op.output("Out")[0]
                 )
                 new_attr_name = argname + str(index) + "_threshold"
