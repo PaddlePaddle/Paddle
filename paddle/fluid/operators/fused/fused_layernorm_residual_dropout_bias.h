@@ -203,6 +203,86 @@ __global__ void FusedLayernormResidualDropoutBias(
                                                         invvar);
 }
 
+template <typename T,
+          typename MaskType,
+          int VecSize,
+          typename U,
+          bool ScaleBiasWithSameTypeX = false>
+void LaunchFusedLayernormResidualDropoutBiasCUDAKernel(
+    int grid_dim,
+    int block_dim,
+    gpuStream_t stream,
+    const size_t rows,
+    const size_t cols,
+    uint64_t seed,
+    const float dropout_prob,
+    const bool is_upscale_in_train,
+    const bool is_test,
+    const uint64_t increment,
+    const float epsilon,
+    const T *src,
+    const T *residual,
+    const T *bias,
+    const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *scale,
+    const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *layernorm_bias,
+    MaskType *mask,
+    T *dst,
+    T *layernorm_dst,
+    LayerNormParamType<T> *mean,
+    LayerNormParamType<T> *var) {
+  if (dropout_prob != 0.0f) {
+    FusedLayernormResidualDropoutBias<T,
+                                      MaskType,
+                                      VecSize,
+                                      U,
+                                      ScaleBiasWithSameTypeX,
+                                      true>
+        <<<grid_dim, block_dim, 0, stream>>>(rows,
+                                             cols,
+                                             seed,
+                                             dropout_prob,
+                                             is_upscale_in_train,
+                                             is_test,
+                                             increment,
+                                             epsilon,
+                                             src,
+                                             residual,
+                                             bias,
+                                             scale,
+                                             layernorm_bias,
+                                             mask,
+                                             dst,
+                                             layernorm_dst,
+                                             mean,
+                                             var);
+  } else {
+    FusedLayernormResidualDropoutBias<T,
+                                      MaskType,
+                                      VecSize,
+                                      U,
+                                      ScaleBiasWithSameTypeX,
+                                      false>
+        <<<grid_dim, block_dim, 0, stream>>>(rows,
+                                             cols,
+                                             seed,
+                                             dropout_prob,
+                                             is_upscale_in_train,
+                                             is_test,
+                                             increment,
+                                             epsilon,
+                                             src,
+                                             residual,
+                                             bias,
+                                             scale,
+                                             layernorm_bias,
+                                             mask,
+                                             dst,
+                                             layernorm_dst,
+                                             mean,
+                                             var);
+  }
+}
+
 /**
  * @brief layernorm(residual + dropout(src + bias));
  * @param
@@ -334,29 +414,32 @@ struct FusedLayernormResidualDropoutBiasFunctor {
       cudaStream_t stream) {
     int blockDim = GetDesiredBlockDim(cols / VecSize);
     if (mean != nullptr && var != nullptr) {
-      FusedLayernormResidualDropoutBias<T,
-                                        MaskType,
-                                        VecSize,
-                                        U,
-                                        ScaleBiasWithSameTypeX>
-          <<<rows, blockDim, 0, stream>>>(rows,
-                                          cols,
-                                          seed,
-                                          dropout_prob,
-                                          is_upscale_in_train,
-                                          is_test,
-                                          increment,
-                                          epsilon,
-                                          src,
-                                          residual,
-                                          bias,
-                                          scale,
-                                          layernorm_bias,
-                                          mask,
-                                          dst,
-                                          layernorm_dst,
-                                          mean,
-                                          var);
+      LaunchFusedLayernormResidualDropoutBiasCUDAKernel<T,
+                                                        MaskType,
+                                                        VecSize,
+                                                        U,
+                                                        ScaleBiasWithSameTypeX>(
+          rows,
+          blockDim,
+          stream,
+          rows,
+          cols,
+          seed,
+          dropout_prob,
+          is_upscale_in_train,
+          is_test,
+          increment,
+          epsilon,
+          src,
+          residual,
+          bias,
+          scale,
+          layernorm_bias,
+          mask,
+          dst,
+          layernorm_dst,
+          mean,
+          var);
     } else {
       FusedLayernormResidualDropoutBiasInfer<T,
                                              MaskType,
@@ -872,26 +955,32 @@ void LaunchLayernormResidualDropoutBias(
   const int VecSize = MAX_CACHE_BYTES / sizeof(T);
   if (cols % VecSize != 0) {
     int blockDim = GetDesiredBlockDim(cols);
-    FusedLayernormResidualDropoutBias<T, uint8_t, 1, U, ScaleBiasWithSameTypeX>
-        <<<rows, blockDim, 0, ctx.stream()>>>(
-            rows,
-            cols,
-            seed,
-            dropout_prob,
-            is_upscale_in_train,
-            is_test,
-            increment,
-            epsilon,
-            reinterpret_cast<const T *>(src),
-            residual,
-            bias,
-            scale,
-            layernorm_bias,
-            mask_data,
-            dst,
-            reinterpret_cast<T *>(layernorm_dst),
-            mean,
-            var);
+    LaunchFusedLayernormResidualDropoutBiasCUDAKernel<T,
+                                                      uint8_t,
+                                                      1,
+                                                      U,
+                                                      ScaleBiasWithSameTypeX>(
+        rows,
+        blockDim,
+        ctx.stream(),
+        rows,
+        cols,
+        seed,
+        dropout_prob,
+        is_upscale_in_train,
+        is_test,
+        increment,
+        epsilon,
+        reinterpret_cast<const T *>(src),
+        residual,
+        bias,
+        scale,
+        layernorm_bias,
+        mask_data,
+        dst,
+        reinterpret_cast<T *>(layernorm_dst),
+        mean,
+        var);
   } else {
     if (can_call_fast_ln_kernel) {
       switch (cols) {
@@ -904,30 +993,32 @@ void LaunchLayernormResidualDropoutBias(
       }
     } else {
       int blockDim = GetDesiredBlockDim(cols / VecSize);
-      FusedLayernormResidualDropoutBias<T,
-                                        uint8_t,
-                                        VecSize,
-                                        U,
-                                        ScaleBiasWithSameTypeX>
-          <<<rows, blockDim, 0, ctx.stream()>>>(
-              rows,
-              cols,
-              seed,
-              dropout_prob,
-              is_upscale_in_train,
-              is_test,
-              increment,
-              epsilon,
-              reinterpret_cast<const T *>(src),
-              residual,
-              bias,
-              scale,
-              layernorm_bias,
-              mask_data,
-              dst,
-              reinterpret_cast<T *>(layernorm_dst),
-              mean,
-              var);
+      LaunchFusedLayernormResidualDropoutBiasCUDAKernel<T,
+                                                        uint8_t,
+                                                        VecSize,
+                                                        U,
+                                                        ScaleBiasWithSameTypeX>(
+          rows,
+          blockDim,
+          ctx.stream(),
+          rows,
+          cols,
+          seed,
+          dropout_prob,
+          is_upscale_in_train,
+          is_test,
+          increment,
+          epsilon,
+          reinterpret_cast<const T *>(src),
+          residual,
+          bias,
+          scale,
+          layernorm_bias,
+          mask_data,
+          dst,
+          reinterpret_cast<T *>(layernorm_dst),
+          mean,
+          var);
     }
   }
 }
