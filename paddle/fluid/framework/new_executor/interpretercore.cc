@@ -33,15 +33,6 @@
 #endif
 #include "paddle/phi/backends/device_manager.h"
 
-// The difference between "sequential_run" and "serial_run":
-// "sequential_run" dispatches OPs one by one according to the sequence in the
-// Program, while "serial_run" ensures that all Ops are scheduled in a singal
-// thread. In standalone executor, "sequential_run" is also "serial_run", while
-// "serial_run" is not necessarily "sequential_run".
-PADDLE_DEFINE_EXPORTED_bool(new_executor_sequential_run,
-                            false,
-                            "Enable sequential execution for standalone "
-                            "executor, only applied to GPU OPs.");
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace,
                             false,
                             "Use inplace in new executor");
@@ -519,9 +510,7 @@ void InterpreterCore::BuildOperatorDependences() {
   // and set the dependecy_count_
   size_t instr_num = vec_instruction_.size();
   dependecy_count_.resize(instr_num);
-  auto downstream_map = dependency_builder_.Build(
-      vec_instruction_,
-      /*is_sequential_run=*/FLAGS_new_executor_sequential_run);
+  auto downstream_map = dependency_builder_.Build(vec_instruction_);
 
   for (size_t instr_id = 0; instr_id < instr_num; ++instr_id) {
     Instruction& cur_instr = vec_instruction_[instr_id];
@@ -588,7 +577,13 @@ void InterpreterCore::Convert(
 
   BuildOperatorDependences();
 
-  stream_analyzer_.ConstructEvents(dependency_builder_, &vec_instruction_);
+  // NOTE(Ruibiao): For cross-step stream synchronization, an event may be
+  // recorded in the first step and waited in the second step. So, in the first
+  // step, the WaitEvent may be called without RecordEvent. Considering that
+  // before the first call to RecordEvent, an Event represents an empty set of
+  // work and WaitEvent always return succeed immediately, we omit the
+  // prelude-record for the first step here.
+  stream_analyzer_.ConstructEvents(&vec_instruction_);
 
   // add event for the input var of jit program, since there are async copied
   // from gpu_pinned place to gpu place on compute stream.

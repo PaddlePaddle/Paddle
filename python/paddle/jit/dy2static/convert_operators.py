@@ -15,11 +15,11 @@
 import re
 import paddle
 from paddle.fluid.data_feeder import convert_dtype
-from paddle.jit.dy2static.variable_trans_func import (
+from .variable_trans_func import (
     to_static_variable,
 )
 from paddle.fluid.framework import core, Variable
-from paddle.fluid.layers import Assert, Print
+from paddle.fluid.layers import Print
 from paddle.fluid.layers import (
     array_read,
     array_write,
@@ -33,9 +33,7 @@ from paddle.fluid.layers import (
     control_flow,
 )
 from paddle.fluid.layers.control_flow import (
-    cond,
     while_loop,
-    increment,
 )
 from .return_transformer import (
     RETURN_NO_VALUE_VAR_NAME,
@@ -43,9 +41,12 @@ from .return_transformer import (
 from paddle.jit.dy2static.utils import (
     UndefinedVar,
     Dygraph2StaticException,
+    GetterSetterHelper,
 )
-from paddle.jit.dy2static.utils import GetterSetterHelper
+
 from paddle.fluid.layers.utils import copy_mutable_vars
+
+__all__ = []
 
 
 def convert_attr(x, attr):
@@ -392,7 +393,7 @@ def _run_paddle_cond(
             return ret
 
     try:
-        cond_outs = control_flow.cond(
+        cond_outs = paddle.static.nn.cond(
             pred, new_true_fn, new_false_fn, None, return_name_ids
         )
     except Exception as e:
@@ -731,22 +732,22 @@ def convert_assert(cond, message=""):
     if isinstance(cond, Variable):
         cond = cast(cond, "bool")
         # NOTE: message is not used because Paddle Assert has no corresponding parameter to use.
+        from paddle.static.nn.control_flow import Assert
+
         return Assert(cond)
     else:
         assert cond, message
 
 
-def convert_print(*args):
+def convert_print(*objects, sep=' ', end='\n', file=None, flush=False):
     """
-    A function representing Python ``print`` statement. Note: this is a basic
-    python function so we haven't handle sep, end, file and flush parameters of
-    python function.
+    A function representing Python ``print`` function. It will print all arguments
+    at compile time and only print the Tensor values at runtime.
     """
-    for var in args:
-        if isinstance(var, Variable):
-            var = Print(var)
-        else:
-            print(var)
+    for obj in objects:
+        if isinstance(obj, Variable):
+            Print(obj)
+    print(*objects, sep=sep, end=end, file=file, flush=flush)
 
 
 def convert_pop(target, *args):
@@ -785,7 +786,8 @@ def _run_paddle_pop(array, *args):
     def body(i, new_array):
         item = array_read(array=array, i=i)
         array_write(item, paddle.tensor.array_length(new_array), new_array)
-        i = increment(i)
+
+        i = paddle.increment(i)
         return i, new_array
 
     arr_len = paddle.tensor.array_length(array)
@@ -815,7 +817,9 @@ def _slice_tensor_array(array, start, end):
         new_array = paddle.slice(array, starts=[start], ends=[end], axes=[0])
         return new_array
 
-    new_array = cond(start == end, true_fn, lambda: false_fn(array, start, end))
+    new_array = paddle.static.nn.cond(
+        start == end, true_fn, lambda: false_fn(array, start, end)
+    )
     return new_array
 
 

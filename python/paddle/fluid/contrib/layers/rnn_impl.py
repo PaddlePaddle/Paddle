@@ -151,7 +151,7 @@ class BasicGRUUnit(Layer):
     def forward(self, input, pre_hidden):
         concat_input_hidden = layers.concat([input, pre_hidden], 1)
 
-        gate_input = layers.matmul(x=concat_input_hidden, y=self._gate_weight)
+        gate_input = paddle.matmul(x=concat_input_hidden, y=self._gate_weight)
 
         gate_input = paddle.add(gate_input, self._gate_bias)
 
@@ -160,7 +160,7 @@ class BasicGRUUnit(Layer):
 
         r_hidden = r * pre_hidden
 
-        candidate = layers.matmul(
+        candidate = paddle.matmul(
             layers.concat([input, r_hidden], 1), self._candidate_weight
         )
         candidate = paddle.add(candidate, self._candidate_bias)
@@ -367,9 +367,9 @@ def basic_gru(
                 new_hidden = unit_list[i](step_input, pre_hidden)
 
                 if mask:
-                    new_hidden = layers.elementwise_mul(
+                    new_hidden = paddle.tensor.math._multiply_with_axis(
                         new_hidden, step_mask, axis=0
-                    ) - layers.elementwise_mul(
+                    ) - paddle.tensor.math._multiply_with_axis(
                         pre_hidden, (step_mask - 1), axis=0
                     )
                 rnn.update_memory(pre_hidden, new_hidden)
@@ -661,14 +661,14 @@ def basic_lstm(
                 )
 
                 if mask:
-                    new_hidden = layers.elementwise_mul(
+                    new_hidden = paddle.tensor.math._multiply_with_axis(
                         new_hidden, step_mask, axis=0
-                    ) - layers.elementwise_mul(
+                    ) - paddle.tensor.math._multiply_with_axis(
                         pre_hidden, (step_mask - 1), axis=0
                     )
-                    new_cell = layers.elementwise_mul(
+                    new_cell = paddle.tensor.math._multiply_with_axis(
                         new_cell, step_mask, axis=0
-                    ) - layers.elementwise_mul(
+                    ) - paddle.tensor.math._multiply_with_axis(
                         pre_cell, (step_mask - 1), axis=0
                     )
 
@@ -874,7 +874,7 @@ class BasicLSTMUnit(Layer):
 
     def forward(self, input, pre_hidden, pre_cell):
         concat_input_hidden = layers.concat([input, pre_hidden], 1)
-        gate_input = layers.matmul(x=concat_input_hidden, y=self._weight)
+        gate_input = paddle.matmul(x=concat_input_hidden, y=self._weight)
 
         gate_input = paddle.add(gate_input, self._bias)
         i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)

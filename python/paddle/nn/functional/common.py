@@ -14,7 +14,6 @@
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid.framework import _in_legacy_dygraph
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.tensor import fill_constant
 from paddle.framework import core, in_dynamic_mode
@@ -71,17 +70,17 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
                                   data type can be float32 or float64
         kernel_sizes(int|list):   The size of convolution kernel, should be [k_h, k_w]
                                   or an integer k treated as [k, k].
-        strides(int|list):        The strides, should be [stride_h, stride_w]
+        strides(int|list, optional):        The strides, should be [stride_h, stride_w]
                                   or an integer stride treated as [sride, stride].
                                   For default, strides will be [1, 1].
-        paddings(int|list):       The paddings of each dimension, should be
+        paddings(int|list, optional):       The paddings of each dimension, should be
                                   [padding_top, padding_left, padding_bottom, padding_right]
                                   or [padding_h, padding_w] or an integer padding.
                                   If [padding_h, padding_w] was given, it will expanded to
                                   [padding_h, padding_w, padding_h, padding_w]. If an integer
                                   padding was given, [padding, padding, padding, padding] will
                                   be used. For default, paddings will be [0, 0, 0, 0]
-        dilations(int|list):      the dilations of convolution kernel, should be
+        dilations(int|list, optional):      the dilations of convolution kernel, should be
                                   [dilation_h, dilation_w], or an integer dilation treated as
                                   [dilation, dilation]. For default, it will be [1, 1].
         name(str, optional): The default value is None.

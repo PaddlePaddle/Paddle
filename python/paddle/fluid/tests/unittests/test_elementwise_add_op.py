@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
@@ -488,25 +487,6 @@ class TestElementwiseAddOp_same_shape_ysize_large(TestElementwiseAddOp):
 
     def init_axis(self):
         self.axis = 0
-
-
-class TestElementwiseAddOpError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-            # the input of elementwise_add must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
-            )
-            y1 = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
-            )
-            self.assertRaises(TypeError, fluid.layers.elementwise_add, x1, y1)
-
-            # the input dtype of elementwise_add must be float16 or float32 or float64 or int32 or int64
-            # float16 only can be set on GPU place
-            x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="uint8")
-            y2 = fluid.layers.data(name='y2', shape=[3, 4, 5, 6], dtype="uint8")
-            self.assertRaises(TypeError, fluid.layers.elementwise_add, x2, y2)
 
 
 class TestAddApi(unittest.TestCase):
