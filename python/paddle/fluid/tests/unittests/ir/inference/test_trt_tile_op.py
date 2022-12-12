@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class TRTTileTest(InferencePassTest):
@@ -29,7 +30,7 @@ class TRTTileTest(InferencePassTest):
                 name="data", shape=[4, 3, 224, 256], dtype="float32"
             )
             tile_out = paddle.tile(x=data, repeat_times=[1, 1, 1, 1])
-            out = fluid.layers.batch_norm(tile_out, is_test=True)
+            out = paddle.static.nn.batch_norm(tile_out, is_test=True)
 
         self.feeds = {
             "data": np.random.random([4, 3, 224, 256]).astype("float32"),
@@ -54,7 +55,7 @@ class TRTTileExpandTest(InferencePassTest):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(name="data", shape=[1, 1, 1, 1], dtype="float32")
             tile_out = paddle.tile(x=data, repeat_times=[1, 4, 1080, 1920])
-            out = fluid.layers.batch_norm(tile_out, is_test=True)
+            out = paddle.static.nn.batch_norm(tile_out, is_test=True)
 
         self.feeds = {
             "data": np.random.random([1, 1, 1, 1]).astype("float32"),
@@ -79,7 +80,7 @@ class TRTTileExpandStaticTest(InferencePassTest):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(name="data", shape=[1, 1, 1, 1], dtype="float32")
             tile_out = paddle.tile(x=data, repeat_times=[1, 4, 1080, 1920])
-            out = fluid.layers.batch_norm(tile_out, is_test=True)
+            out = paddle.static.nn.batch_norm(tile_out, is_test=True)
 
         self.feeds = {
             "data": np.random.random([1, 1, 1, 1]).astype("float32"),
@@ -104,7 +105,7 @@ class TRTTileExpandHalfTest(InferencePassTest):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(name="data", shape=[1, 1, 1, 1], dtype="float32")
             tile_out = paddle.tile(x=data, repeat_times=[1, 4, 1080, 1920])
-            out = fluid.layers.batch_norm(tile_out, is_test=True)
+            out = paddle.static.nn.batch_norm(tile_out, is_test=True)
 
         self.feeds = {
             "data": np.random.random([1, 1, 1, 1]).astype("float32"),

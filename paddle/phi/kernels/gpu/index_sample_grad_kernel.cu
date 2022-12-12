@@ -17,11 +17,11 @@
 #include <algorithm>
 #include <vector>
 
-#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -70,18 +70,14 @@ void IndexSampleGradKernel(const Context& ctx,
   auto index_type = index.dtype();
   bool index_type_match =
       index_type == DataType::INT32 || index_type == DataType::INT64;
-  PADDLE_ENFORCE_EQ(
-      index_type_match,
-      true,
-      errors::InvalidArgument(
-          "Input(Index) holds the wrong type, it holds %s, but "
-          "desires to be %s or %s",
-          paddle::framework::DataTypeToString(
-              paddle::framework::TransToProtoVarType(index_type)),
-          paddle::framework::DataTypeToString(
-              paddle::framework::TransToProtoVarType(DataType::INT32)),
-          paddle::framework::DataTypeToString(
-              paddle::framework::TransToProtoVarType((DataType::INT64)))));
+  PADDLE_ENFORCE_EQ(index_type_match,
+                    true,
+                    errors::InvalidArgument(
+                        "Input(Index) holds the wrong type, it holds %s, but "
+                        "desires to be %s or %s",
+                        phi::DataTypeToString(index_type),
+                        phi::DataTypeToString(DataType::INT32),
+                        phi::DataTypeToString(DataType::INT64)));
 
   auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
   auto input_num = x.numel();
@@ -134,6 +130,8 @@ PD_REGISTER_KERNEL(index_sample_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::IndexSampleGradKernel,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    float,
                    double,
                    int,

@@ -19,9 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
-
 template <typename DeviceContext, typename T>
 class PositiveNegativePairKernel : public framework::OpKernel<T> {
  public:

@@ -86,7 +86,7 @@ class API_TestGather(unittest.TestCase):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data1 = fluid.layers.data('data1', shape=[-1, 2], dtype='float32')
             index = fluid.layers.data('index', shape=[-1, 1], dtype='int32')
-            out = paddle.fluid.layers.gather(data1, index)
+            out = paddle.gather(data1, index)
             place = paddle.NPUPlace(0)
             exe = fluid.Executor(place)
             input = np.array([[1, 2], [3, 4], [5, 6]])
@@ -134,7 +134,7 @@ class TestGatherGrad(unittest.TestCase):
             a.stop_gradient = False
             b = paddle.gather(a, index)
 
-            loss = fluid.layers.reduce_mean(b)
+            loss = paddle.mean(b)
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
 

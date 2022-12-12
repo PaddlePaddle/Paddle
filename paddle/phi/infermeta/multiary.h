@@ -288,17 +288,13 @@ void GraphSampleNeighborsInferMeta(const MetaTensor& row,
                                    MetaTensor* out_eids);
 
 void HSigmoidLossInferMeta(const MetaTensor& x,
-                           const MetaTensor& w,
                            const MetaTensor& label,
+                           const MetaTensor& w,
+                           const MetaTensor& bias,
                            const MetaTensor& path,
                            const MetaTensor& code,
-                           const MetaTensor& bias,
                            int num_classes,
                            bool remote_prefetch,
-                           int trainer_id,
-                           const std::vector<int64_t>& height_sections,
-                           const std::vector<std::string>& epmap,
-                           const std::vector<std::string>& table_names,
                            bool is_sparse,
                            MetaTensor* out,
                            MetaTensor* pre_out,
@@ -482,6 +478,11 @@ void StackInferMeta(const std::vector<const MetaTensor*>& x,
 
 void UnchangedMultiInferMeta(const std::vector<const MetaTensor*>& x,
                              std::vector<MetaTensor*> out);
+
+void ShareBufferInferMeta(const std::vector<const MetaTensor*>& x,
+                          const std::vector<bool>& share_dims_and_dtype,
+                          std::vector<MetaTensor*> out,
+                          std::vector<MetaTensor*> xout);
 
 void UpdateLossScalingInferMeta(const std::vector<const MetaTensor*>& xs,
                                 const MetaTensor& found_infinite,

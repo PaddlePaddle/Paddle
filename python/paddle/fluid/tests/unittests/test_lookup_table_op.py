@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci, check_out_dtype
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
+from op_test import OpTest, check_out_dtype, skip_check_grad_ci
+
 import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
+import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle.fluid import Program, program_guard
+from paddle.fluid.op import Operator
 
 
 class TestLookupTableOp(OpTest):

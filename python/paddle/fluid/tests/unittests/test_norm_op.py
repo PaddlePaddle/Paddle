@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from op_test import OpTest, skip_check_grad_ci
+
 import paddle
 import paddle.fluid as fluid
-from op_test import OpTest, skip_check_grad_ci
 
 
 def l2_norm(x, axis, epsilon):
@@ -159,7 +161,5 @@ class API_NormTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    import paddle
-
     paddle.enable_static()
     unittest.main()

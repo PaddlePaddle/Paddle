@@ -692,11 +692,10 @@ class PostTrainingQuantization:
         '''
         Reset activations to be not persistable.
         '''
-        to_erase = []
         for var in self._program.list_vars():
             if var.name in self._quantized_act_var_name:
                 var.persistable = False
-                to_erase.append(var.name)
+                self._scope.find_var(var.name).get_tensor()._clear()
 
     def _sampling(self):
         '''

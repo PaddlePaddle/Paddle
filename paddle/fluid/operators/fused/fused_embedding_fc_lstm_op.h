@@ -18,9 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = phi::DenseTensor;
-using Tensor = phi::DenseTensor;
-
 class FusedEmbeddingFCLSTMOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;

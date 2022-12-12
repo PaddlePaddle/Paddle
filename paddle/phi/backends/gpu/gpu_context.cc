@@ -21,6 +21,7 @@ limitations under the License. */
 #include <future>
 #include <memory>
 #include <mutex>
+#include <unordered_map>
 
 #include "glog/logging.h"
 #include "paddle/phi/api/ext/exception.h"
@@ -54,8 +55,7 @@ limitations under the License. */
 // without eigen.
 #include "unsupported/Eigen/CXX11/Tensor"
 
-// TODO(phi): remove fluid header.
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace phi {
 
@@ -252,7 +252,13 @@ struct GPUContext::Impl {
       phi::DestroyDnnHandle(dnn_handle_);
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       if (nccl_comm_) {
-        dynload::ncclCommDestroy(nccl_comm_);
+        // NOTE(liyurui): It is not recommend calling CUDA runtime API
+        // in destructor. Since we can not ensure the release order of
+        // static object, calling ncclCommDestroy in static object destructor
+        // is a undefined behavior, CUDA driver may be already unloaded
+        // from process.
+        // If you really need to release the resource of nccl_comm,
+        // try to get the nccl_comm out and use ncclCommDestroy outside.
       }
 #endif
       phi::DestroyBlasHandle(blas_handle_);
@@ -734,6 +740,8 @@ struct GPUContext::Impl {
     dnn_attrs_[attr_name] = attr;
   }
 
+  void ClearDnnAttr() { dnn_attrs_.clear(); }
+
   // use one flag for all handles?
   // they should be accessed consistently
   bool owned_{false};
@@ -1035,5 +1043,7 @@ const Attribute& GPUContext::GetDnnAttr(const std::string& attr_name) const {
 void GPUContext::SetDnnAttr(const std::string& attr_name, Attribute attr) {
   return impl_->SetDnnAttr(attr_name, std::move(attr));
 }
+
+void GPUContext::ClearDnnAttr() { return impl_->ClearDnnAttr(); }
 
 }  // namespace phi

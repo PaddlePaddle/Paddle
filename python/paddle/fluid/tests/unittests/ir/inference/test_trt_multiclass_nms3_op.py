@@ -12,16 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import itertools
+import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.static.nn as nn
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
 
 
 def multiclass_nms(
@@ -235,12 +238,12 @@ class TensorRTMultiClassNMS3Test(InferencePassTest):
                 nms_eta=self.nms_eta,
             )
             mutliclass_nms_out = multiclass_nms_out + 1.0
-            multiclass_nms_out = fluid.layers.reshape(
+            multiclass_nms_out = paddle.reshape(
                 multiclass_nms_out,
                 [self.bs, 1, self.keep_top_k, 6],
                 name='reshape',
             )
-            out = fluid.layers.batch_norm(multiclass_nms_out, is_test=True)
+            out = nn.batch_norm(multiclass_nms_out, is_test=True)
 
         boxes_data = (
             np.arange(self.num_boxes * 4)

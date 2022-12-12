@@ -30,87 +30,85 @@ namespace operators {
                   Instantiate_Template_Function_index_t(func, unsigned char)
 
 #define Instantiate_Template_Function_index_t(func, tensor_t)            \
-  template void func<tensor_t, int>(Tensor input,                        \
+  template void func<tensor_t, int>(phi::DenseTensor input,              \
                                     int dim,                             \
                                     const phi::DenseTensor& index,       \
-                                    Tensor result,                       \
+                                    phi::DenseTensor result,             \
                                     const platform::DeviceContext& ctx); \
-  template void func<tensor_t, int64_t>(Tensor input,                    \
+  template void func<tensor_t, int64_t>(phi::DenseTensor input,          \
                                         int dim,                         \
                                         const phi::DenseTensor& index,   \
-                                        Tensor result,                   \
+                                        phi::DenseTensor result,         \
                                         const platform::DeviceContext& ctx);
 
-using Tensor = phi::DenseTensor;
-
 template <typename tensor_t, typename index_t>
-void cpu_gather_kernel(Tensor self,
+void cpu_gather_kernel(phi::DenseTensor self,
                        int dim,
                        const phi::DenseTensor& index,
-                       Tensor result,
+                       phi::DenseTensor result,
                        const platform::DeviceContext& ctx);
 
 template <typename tensor_t, typename index_t>
-void cpu_scatter_assign_kernel(Tensor self,
+void cpu_scatter_assign_kernel(phi::DenseTensor self,
                                int dim,
                                const phi::DenseTensor& index,
-                               Tensor src,
+                               phi::DenseTensor src,
                                const platform::DeviceContext& ctx);
 
 template <typename tensor_t, typename index_t>
-void cpu_scatter_add_kernel(Tensor self,
+void cpu_scatter_add_kernel(phi::DenseTensor self,
                             int dim,
                             const phi::DenseTensor& index,
-                            Tensor src,
+                            phi::DenseTensor src,
                             const platform::DeviceContext& ctx);
 
 template <typename tensor_t, typename index_t>
-void cpu_scatter_mul_kernel(Tensor self,
+void cpu_scatter_mul_kernel(phi::DenseTensor self,
                             int dim,
                             const phi::DenseTensor& index,
-                            Tensor src,
+                            phi::DenseTensor src,
                             const platform::DeviceContext& ctx);
 
 template <typename tensor_t, typename index_t>
-void cpu_scatter_input_grad_kernel(Tensor self,
+void cpu_scatter_input_grad_kernel(phi::DenseTensor self,
                                    int dim,
                                    const phi::DenseTensor& index,
-                                   Tensor result,
+                                   phi::DenseTensor result,
                                    const platform::DeviceContext& ctx);
 
 template <typename tensor_t, typename index_t>
-void gpu_gather_kernel(Tensor self,
+void gpu_gather_kernel(phi::DenseTensor self,
                        int dim,
                        const phi::DenseTensor& index,
-                       Tensor result,
+                       phi::DenseTensor result,
                        const platform::DeviceContext& ctx);
 
 template <typename tensor_t, typename index_t>
-void gpu_scatter_assign_kernel(Tensor self,
+void gpu_scatter_assign_kernel(phi::DenseTensor self,
                                int dim,
                                const phi::DenseTensor& index,
-                               Tensor src,
+                               phi::DenseTensor src,
                                const platform::DeviceContext& ctx);
 
 template <typename tensor_t, typename index_t>
-void gpu_scatter_add_kernel(Tensor self,
+void gpu_scatter_add_kernel(phi::DenseTensor self,
                             int dim,
                             const phi::DenseTensor& index,
-                            Tensor src,
+                            phi::DenseTensor src,
                             const platform::DeviceContext& ctx);
 
 template <typename tensor_t, typename index_t>
-void gpu_scatter_mul_kernel(Tensor self,
+void gpu_scatter_mul_kernel(phi::DenseTensor self,
                             int dim,
                             const phi::DenseTensor& index,
-                            Tensor src,
+                            phi::DenseTensor src,
                             const platform::DeviceContext& ctx);
 
 template <typename tensor_t, typename index_t>
-void gpu_scatter_input_grad_kernel(Tensor self,
+void gpu_scatter_input_grad_kernel(phi::DenseTensor self,
                                    int dim,
                                    const phi::DenseTensor& index,
-                                   Tensor result,
+                                   phi::DenseTensor result,
                                    const platform::DeviceContext& ctx);
 }  // namespace operators
 }  // namespace paddle

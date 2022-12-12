@@ -69,6 +69,13 @@ class ProcessGroupCustom : public ProcessGroup {
                      int size,
                      int gid);
 
+  static std::shared_ptr<ProcessGroupCustom> CreateProcessGroupCustom(
+      const std::shared_ptr<Store>& store,
+      const std::string& device_type,
+      int rank,
+      int size,
+      int gid);
+
   std::string GetBackendName() const override { return "XCCL_" + device_type_; }
 
   std::shared_ptr<ProcessGroup::Task> AllGather(
@@ -93,8 +100,7 @@ class ProcessGroupCustom : public ProcessGroup {
   std::shared_ptr<ProcessGroup::Task> Barrier(
       const BarrierOptions& = BarrierOptions()) override;
 
-  const phi::DeviceContext& GetDeviceContext(
-      const Place& place, bool use_calc_stream) const override;
+  phi::DeviceContext* GetDeviceContext(const Place& place) const override;
 
   phi::ccl::CCLComm CustomCCLComm(const Place& place) const;
 

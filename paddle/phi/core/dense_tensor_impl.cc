@@ -172,10 +172,12 @@ inline T* DenseTensor::mutable_data(const Place& place, size_t requested_size) {
                    requested_size));
 }
 
-void DenseTensor::ShareBufferWith(const DenseTensor& tensor) {
+void DenseTensor::ShareBufferWith(const DenseTensor& tensor, bool only_buffer) {
   holder_ = tensor.holder_;
-  meta_.offset = tensor.meta().offset;
-  meta_.dtype = tensor.dtype();
+  if (!only_buffer) {
+    meta_.offset = tensor.meta().offset;
+    meta_.dtype = tensor.dtype();
+  }
 }
 
 #define LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(dtype)                \
@@ -357,7 +359,9 @@ DenseTensor& DenseTensor::ShareDataWith(const DenseTensor& src) {
   meta_.dtype = src.meta_.dtype;
   meta_.layout = src.meta_.layout;
   meta_.offset = src.meta_.offset;
+  meta_.use_gpudnn = src.meta_.use_gpudnn;
   storage_properties_ = CopyStorageProperties(src.storage_properties_);
+
 #ifdef PADDLE_WITH_MKLDNN
   mem_desc_ = src.mem_desc_;
 #endif

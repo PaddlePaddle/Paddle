@@ -299,8 +299,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Barrier(
   return task;
 }
 
-const phi::DeviceContext& ProcessGroupCustom::GetDeviceContext(
-    const Place& place, bool use_calc_stream) const {
+phi::DeviceContext* ProcessGroupCustom::GetDeviceContext(
+    const Place& place) const {
   const std::string key = GetKeyFromPlace(place);
   const auto& iter = places_to_ctx_.find(key);
   PADDLE_ENFORCE_NE(
@@ -308,7 +308,7 @@ const phi::DeviceContext& ProcessGroupCustom::GetDeviceContext(
       places_to_ctx_.end(),
       platform::errors::NotFound(
           "Cannot find the device context in this process group."));
-  return *iter->second[0];
+  return iter->second[0].get();
 }
 
 phi::ccl::CCLComm ProcessGroupCustom::CustomCCLComm(const Place& place) const {
@@ -431,6 +431,19 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
         }
       },
       CommType::BROADCAST);
+}
+
+std::shared_ptr<ProcessGroupCustom>
+ProcessGroupCustom::CreateProcessGroupCustom(
+    const std::shared_ptr<Store>& store,
+    const std::string& device_type,
+    int rank,
+    int size,
+    int gid) {
+  auto process_group =
+      std::make_shared<ProcessGroupCustom>(store, device_type, rank, size, gid);
+  ProcessGroupIdMap::GetInstance().emplace(gid, process_group);
+  return process_group;
 }
 
 }  //  namespace distributed

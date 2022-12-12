@@ -16,16 +16,18 @@ import os
 
 os.environ['FLAGS_enable_eager_mode'] = '0'
 
+import tempfile
 import unittest
+
+import numpy as np
+from test_imperative_resnet import ResNet, optimizer_setting, train_parameters
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import numpy as np
-import tempfile
-from test_imperative_resnet import ResNet, optimizer_setting, train_parameters
 import paddle.nn as nn
-from paddle.static import InputSpec
 from paddle.autograd import PyLayer
+from paddle.static import InputSpec
 
 if fluid.core.is_compiled_with_cuda():
     fluid.set_flags({"FLAGS_cudnn_deterministic": True})
@@ -342,7 +344,7 @@ class TestAmpScaler(unittest.TestCase):
             scaled_loss = scaler.scale(loss)
             scaled_loss.backward()
             optimize_ops, params_grads = scaler.minimize(optimizer, scaled_loss)
-            self.assertEqual(scaler._found_inf.numpy() == 1, True)
+            self.assertEqual(scaler._found_inf.numpy() >= 1, True)
 
             for param in model.parameters():
                 # param not update when tensor contains nan or inf
@@ -1306,7 +1308,9 @@ class TestResnet(unittest.TestCase):
                 ):
                     out = resnet(img)
 
-                loss = fluid.layers.cross_entropy(input=out, label=label)
+                loss = paddle.nn.functional.cross_entropy(
+                    input=out, label=label, reduction='none', use_softmax=False
+                )
                 avg_loss = paddle.mean(x=loss)
 
                 dy_out = avg_loss.numpy()

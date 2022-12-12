@@ -19,10 +19,11 @@ http://www.fit.vutbr.cz/~imikolov/rnnlm/ and parse training set and test set
 into paddle reader creators.
 """
 
-import paddle.dataset.common
-import paddle.utils.deprecated as deprecated
 import collections
 import tarfile
+
+import paddle.dataset.common
+import paddle.utils.deprecated as deprecated
 
 __all__ = []
 

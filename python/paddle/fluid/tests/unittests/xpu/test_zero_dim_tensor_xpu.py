@@ -12,20 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.nn.functional as F
-import numpy as np
-import unittest
 
 paddle.set_device('xpu')
 
+fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
 
 unary_api_list = [
     paddle.nn.functional.elu,
     paddle.nn.functional.gelu,
     paddle.nn.functional.hardsigmoid,
     paddle.nn.functional.hardswish,
+    paddle.nn.functional.hardshrink,
+    paddle.nn.functional.hardtanh,
     paddle.nn.functional.leaky_relu,
     paddle.nn.functional.log_sigmoid,
     paddle.nn.functional.relu,
@@ -39,9 +44,11 @@ unary_api_list = [
     paddle.nn.functional.thresholded_relu,
     paddle.stanh,
     paddle.nn.functional.celu,
+    paddle.nn.functional.selu,
     paddle.nn.functional.mish,
     paddle.nn.functional.silu,
     paddle.nn.functional.tanh,
+    paddle.nn.functional.dropout,
     paddle.cosh,
     paddle.sinh,
     paddle.abs,
@@ -67,14 +74,31 @@ unary_api_list = [
     paddle.log10,
     paddle.log2,
     paddle.tan,
+    paddle.erf,
+    paddle.erfinv,
+    paddle.rsqrt,
+    paddle.sign,
+    paddle.deg2rad,
+    paddle.rad2deg,
+    paddle.neg,
+    paddle.logit,
+    paddle.trunc,
+    paddle.digamma,
+    paddle.lgamma,
+    paddle.poisson,
+    paddle.bernoulli,
+]
+
+inplace_api_list = [
+    paddle.nn.functional.relu_,
+    paddle.nn.functional.tanh_,
 ]
 
 
 # Use to test zero-dim in unary API.
 class TestUnaryAPI(unittest.TestCase):
-    def test(self):
+    def test_dygraph_unary(self):
         paddle.disable_static()
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         for api in unary_api_list:
             x = paddle.rand([])
             x.stop_gradient = False
@@ -83,8 +107,15 @@ class TestUnaryAPI(unittest.TestCase):
 
             self.assertEqual(x.shape, [])
             self.assertEqual(out.shape, [])
-            self.assertEqual(x.grad.shape, [])
-            self.assertEqual(out.grad.shape, [])
+            if x.grad is not None:
+                self.assertEqual(x.grad.shape, [])
+                self.assertEqual(out.grad.shape, [])
+
+        for api in inplace_api_list:
+            x = paddle.rand([])
+            out = api(x)
+            self.assertEqual(x.shape, [])
+            self.assertEqual(out.shape, [])
 
         paddle.enable_static()
 
@@ -107,9 +138,8 @@ reduce_api_list = [
 
 # Use to test zero-dim of reduce API
 class TestReduceAPI(unittest.TestCase):
-    def test(self):
+    def test_dygraph(self):
         paddle.disable_static()
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         for api in reduce_api_list:
             if api in [paddle.all, paddle.any]:
                 x = paddle.randint(0, 2, []).astype('bool')
@@ -136,9 +166,6 @@ binary_api_list = [
     {'func': paddle.multiply, 'cls_method': '__mul__'},
     {'func': paddle.divide, 'cls_method': '__div__'},
     {'func': paddle.pow, 'cls_method': '__pow__'},
-]
-
-binary_api_list_without_grad = [
     {'func': paddle.equal, 'cls_method': '__eq__'},
     {'func': paddle.not_equal, 'cls_method': '__ne__'},
     {'func': paddle.greater_equal, 'cls_method': '__ge__'},
@@ -153,7 +180,7 @@ binary_api_list_without_grad = [
     paddle.logical_xor,
 ]
 
-binary_int_api_list_without_grad = [
+binary_int_api_list = [
     paddle.bitwise_and,
     paddle.bitwise_or,
     paddle.bitwise_xor,
@@ -162,10 +189,9 @@ binary_int_api_list_without_grad = [
 
 # Use to test zero-dim of binary API
 class TestBinaryAPI(unittest.TestCase):
-    def test(self):
+    def test_dygraph_binary(self):
         paddle.disable_static()
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        for api in binary_api_list + binary_api_list_without_grad:
+        for api in binary_api_list:
             # 1) x/y is 0D
             x = paddle.rand([])
             y = paddle.rand([])
@@ -177,10 +203,10 @@ class TestBinaryAPI(unittest.TestCase):
                 np.testing.assert_array_equal(out_cls.numpy(), out.numpy())
             else:
                 out = api(x, y)
-
             self.assertEqual(out.shape, [])
-            if api not in binary_api_list_without_grad:
-                out.backward()
+
+            out.backward()
+            if x.grad is not None:
                 self.assertEqual(x.grad.shape, [])
                 self.assertEqual(y.grad.shape, [])
                 self.assertEqual(out.grad.shape, [])
@@ -196,10 +222,10 @@ class TestBinaryAPI(unittest.TestCase):
                 np.testing.assert_array_equal(out_cls.numpy(), out.numpy())
             else:
                 out = api(x, y)
-
             self.assertEqual(out.shape, [2, 3, 4])
-            if api not in binary_api_list_without_grad:
-                out.backward()
+
+            out.backward()
+            if x.grad is not None:
                 self.assertEqual(x.grad.shape, [2, 3, 4])
                 self.assertEqual(y.grad.shape, [])
                 self.assertEqual(out.grad.shape, [2, 3, 4])
@@ -215,10 +241,10 @@ class TestBinaryAPI(unittest.TestCase):
                 np.testing.assert_array_equal(out_cls.numpy(), out.numpy())
             else:
                 out = api(x, y)
-
             self.assertEqual(out.shape, [2, 3, 4])
-            if api not in binary_api_list_without_grad:
-                out.backward()
+
+            out.backward()
+            if x.grad is not None:
                 self.assertEqual(x.grad.shape, [])
                 self.assertEqual(y.grad.shape, [2, 3, 4])
                 self.assertEqual(out.grad.shape, [2, 3, 4])
@@ -231,7 +257,7 @@ class TestBinaryAPI(unittest.TestCase):
                 out = getattr(paddle.Tensor, api['cls_method'])(x, y)
                 self.assertEqual(out.shape, [])
 
-        for api in binary_int_api_list_without_grad:
+        for api in binary_int_api_list:
             # 1) x/y is 0D
             x = paddle.randint(-10, 10, [])
             y = paddle.randint(-10, 10, [])
@@ -253,8 +279,8 @@ class TestBinaryAPI(unittest.TestCase):
         paddle.enable_static()
 
 
-# Use to test zero-dim of Sundry API, which is simple and do
-# not have backward, or is not need to test backward in OpTest.
+# Use to test zero-dim of Sundry API, which is unique and can not be classified
+# with others. It can be implemented here flexibly.
 class TestSundryAPI(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
@@ -335,6 +361,278 @@ class TestSundryAPI(unittest.TestCase):
         out = paddle.shape(self.x)
         self.assertEqual(out.shape, [0])
         np.testing.assert_array_equal(out.numpy(), np.array([]))
+
+    def test_pow_factor(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+        out = paddle.pow(x, 2.0)
+        out.backward()
+
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.grad.shape, [])
+        self.assertEqual(x.grad.shape, [])
+
+    def test_cast(self):
+        x = paddle.full([], 1.0, 'float32')
+        x.stop_gradient = False
+        out = paddle.cast(x, 'int32')
+        out.backward()
+
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.grad.shape, [])
+        self.assertEqual(x.grad.shape, [])
+
+    def test_clip(self):
+        x = paddle.uniform([], None, -10, 10)
+        x.stop_gradient = False
+        out = paddle.clip(x, -5, 5)
+        out.backward()
+
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.grad.shape, [])
+        self.assertEqual(x.grad.shape, [])
+
+    def test_increment(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+        out = paddle.increment(x, 1.0)
+        out.backward()
+
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.grad.shape, [])
+        self.assertEqual(x.grad.shape, [])
+
+    def test_bitwise_not(self):
+        x = paddle.randint(-1, 1, [])
+        out1 = ~x
+        out2 = paddle.bitwise_not(x)
+
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(out2.shape, [])
+
+    def test_logical_not(self):
+        x = paddle.randint(0, 1, [])
+        out = paddle.logical_not(x)
+
+        self.assertEqual(out.shape, [])
+
+    def test_searchsorted(self):
+        x = paddle.to_tensor([1, 3, 5, 7, 9])
+        y = paddle.rand([])
+
+        # only has forward kernel
+        out = paddle.searchsorted(x, y)
+
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.numpy(), 0)
+
+    def test_gather_1D(self):
+        x = paddle.to_tensor([1.0, 3.0, 5.0, 7.0, 9.0], stop_gradient=False)
+        index = paddle.full([], 2, 'int64')
+        out = paddle.gather(x, index)
+        out.backward()
+
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.numpy(), 5)
+        self.assertEqual(out.grad.shape, [])
+
+    def test_gather_xD_axis_0(self):
+        x = paddle.to_tensor(
+            [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], stop_gradient=False
+        )
+        index = paddle.full([], 1, 'int64')
+        out = paddle.gather(x, index)
+        out.backward()
+
+        self.assertEqual(out.shape, [3])
+        for i in range(3):
+            self.assertEqual(out.numpy()[i], x.numpy()[1][i])
+        self.assertEqual(out.grad.shape, [3])
+
+    def test_gather_xD_axis_1(self):
+        x = paddle.to_tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+        index = paddle.full([], 1, 'int64')
+        out = paddle.gather(x, index, axis=1)
+
+        self.assertEqual(out.shape, [2])
+        for i in range(2):
+            self.assertEqual(out.numpy()[i], x.numpy()[i][1])
+
+    def test_scatter_1D(self):
+        x = paddle.to_tensor([1.0, 3.0, 5.0, 7.0, 9.0])
+        index = paddle.full([], 2, 'int64')
+        updates = paddle.full([], 4.0)
+        out = paddle.scatter(x, index, updates)
+
+        self.assertEqual(out.numpy()[2], 4)
+
+    def test_scatter_XD(self):
+        x = paddle.to_tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+        index = paddle.full([], 1, 'int64')
+        updates = paddle.to_tensor([1.0, 2.0, 3.0])
+        out = paddle.scatter(x, index, updates)
+
+        for i in range(3):
+            self.assertEqual(out.numpy()[1][i], updates.numpy()[i])
+
+    def test_diagflat(self):
+        x1 = paddle.rand([])
+        x2 = paddle.rand([])
+        x3 = paddle.rand([])
+
+        x1.stop_gradient = False
+        x2.stop_gradient = False
+        x3.stop_gradient = False
+
+        out1 = paddle.diagflat(x1, 1)
+        out2 = paddle.diagflat(x2, -1)
+        out3 = paddle.diagflat(x3, 0)
+
+        out1.backward()
+        out2.backward()
+        out3.backward()
+
+        self.assertEqual(out1.shape, [2, 2])
+        self.assertEqual(out2.shape, [2, 2])
+        self.assertEqual(out3.shape, [1, 1])
+
+        self.assertEqual(out1.grad.shape, [2, 2])
+        self.assertEqual(out2.grad.shape, [2, 2])
+        self.assertEqual(out3.grad.shape, [1, 1])
+
+        self.assertEqual(x1.grad.shape, [])
+        self.assertEqual(x2.grad.shape, [])
+        self.assertEqual(x3.grad.shape, [])
+
+
+# Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
+class TestNoBackwardAPI(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.shape = [
+            paddle.full([], 2, 'int32'),
+            paddle.full([], 3, 'int32'),
+            paddle.full([], 4, 'int32'),
+        ]
+
+    def test_slice(self):
+        starts = [paddle.full([], 1, 'int32'), paddle.full([], 1, 'int32')]
+        ends = [paddle.full([], 3, 'int32'), paddle.full([], 3, 'int32')]
+        x = paddle.rand([5, 3, 3])
+        out = paddle.slice(x, [1, 2], starts, ends)
+        self.assertEqual(out.shape, [5, 2, 2])
+
+    def test_strided_slice(self):
+        starts = [paddle.full([], 0, 'int32'), paddle.full([], 0, 'int32')]
+        ends = [paddle.full([], 4, 'int32'), paddle.full([], 4, 'int32')]
+        strides = [paddle.full([], 2, 'int32'), paddle.full([], 2, 'int32')]
+        x = paddle.rand([5, 5, 5])
+        out = paddle.strided_slice(x, [1, 2], starts, ends, strides)
+        self.assertEqual(out.shape, [5, 2, 2])
+
+    def test_linspace(self):
+        start = paddle.full([], 1.0)
+        stop = paddle.full([], 5.0)
+        num = paddle.full([], 5, 'int32')
+        out = paddle.linspace(start, stop, num)
+        np.testing.assert_array_equal(out.numpy(), [1.0, 2.0, 3.0, 4.0, 5.0])
+
+    def test_arange(self):
+        start = paddle.full([], 1.0)
+        stop = paddle.full([], 6.0)
+        step = paddle.full([], 1.0)
+        out = paddle.arange(start, stop, step)
+        np.testing.assert_array_equal(out.numpy(), [1.0, 2.0, 3.0, 4.0, 5.0])
+
+    def test_normal(self):
+        mean = paddle.full([], 0.0)
+        std = paddle.full([], 0.0)
+        out = paddle.normal(mean, std)
+        self.assertEqual(out.shape, [])
+
+        out = paddle.normal(0.0, 1.0, [])
+        self.assertEqual(out.shape, [])
+
+        out = paddle.normal(0.0, 1.0, self.shape)
+        self.assertEqual(out.shape, [2, 3, 4])
+
+    def test_rand(self):
+        out = paddle.rand([])
+        self.assertEqual(out.shape, [])
+
+        out = paddle.rand(self.shape)
+        self.assertEqual(out.shape, [2, 3, 4])
+
+    def test_randn(self):
+        out = paddle.randn([])
+        self.assertEqual(out.shape, [])
+
+        out = paddle.randn(self.shape)
+        self.assertEqual(out.shape, [2, 3, 4])
+
+    def test_randint_and_randint_like(self):
+        out = paddle.randint(-10, 10, [])
+        self.assertEqual(out.shape, [])
+
+        out = paddle.randint_like(out, -10, 10)
+        self.assertEqual(out.shape, [])
+
+        out = paddle.randint(-10, 10, self.shape)
+        self.assertEqual(out.shape, [2, 3, 4])
+
+    def test_standard_normal(self):
+        out = paddle.standard_normal([])
+        self.assertEqual(out.shape, [])
+
+        out = paddle.standard_normal(self.shape)
+        self.assertEqual(out.shape, [2, 3, 4])
+
+    def test_uniform(self):
+        out = paddle.uniform([])
+        self.assertEqual(out.shape, [])
+
+        out = paddle.uniform(self.shape)
+        self.assertEqual(out.shape, [2, 3, 4])
+
+    def test_empty_and_empty_like(self):
+        out = paddle.empty([])
+        self.assertEqual(out.shape, [])
+
+        out = paddle.empty_like(out)
+        self.assertEqual(out.shape, [])
+
+        out = paddle.empty(self.shape)
+        self.assertEqual(out.shape, [2, 3, 4])
+
+    def test_full_and_full_like(self):
+        out = paddle.full([], 0.5)
+        self.assertEqual(out.shape, [])
+
+        out = paddle.full_like(out, 0.5)
+        self.assertEqual(out.shape, [])
+
+        out = paddle.full(self.shape, 0.5)
+        self.assertEqual(out.shape, [2, 3, 4])
+
+    def test_ones_and_ones_like(self):
+        out = paddle.ones([])
+        self.assertEqual(out.shape, [])
+
+        out = paddle.ones_like(out)
+        self.assertEqual(out.shape, [])
+
+        out = paddle.ones(self.shape)
+        self.assertEqual(out.shape, [2, 3, 4])
+
+    def test_zeros_and_zeros_like(self):
+        out = paddle.zeros([])
+        self.assertEqual(out.shape, [])
+
+        out = paddle.zeros_like(out)
+        self.assertEqual(out.shape, [])
+
+        out = paddle.zeros(self.shape)
+        self.assertEqual(out.shape, [2, 3, 4])
 
 
 if __name__ == "__main__":

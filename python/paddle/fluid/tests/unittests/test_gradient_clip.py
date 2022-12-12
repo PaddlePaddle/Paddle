@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
 from fake_reader import fake_imdb_reader
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid.clip import _allow_pure_fp16_global_norm_clip
 
 paddle.enable_static()
@@ -35,11 +37,13 @@ def bow_net(
         input=data, is_sparse=True, size=[dict_dim, emb_dim]
     )
     bow = fluid.layers.sequence_pool(input=emb, pool_type='sum')
-    bow_tanh = fluid.layers.tanh(bow)
+    bow_tanh = paddle.tanh(bow)
     fc_1 = fluid.layers.fc(input=bow_tanh, size=hid_dim, act="tanh")
     fc_2 = fluid.layers.fc(input=fc_1, size=hid_dim2, act="tanh")
     prediction = fluid.layers.fc(input=[fc_2], size=class_dim, act="softmax")
-    cost = fluid.layers.cross_entropy(input=prediction, label=label)
+    cost = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     avg_cost = paddle.mean(x=cost)
 
     return avg_cost
@@ -81,7 +85,9 @@ class TestGradientClip(unittest.TestCase):
                 hidden = fluid.layers.fc(input=image, size=32, act='relu')
             predict = fluid.layers.fc(input=hidden, size=10, act='softmax')
 
-            cost = fluid.layers.cross_entropy(input=predict, label=label)
+            cost = paddle.nn.functional.cross_entropy(
+                input=predict, label=label, reduction='none', use_softmax=False
+            )
             avg_cost = paddle.mean(cost)
 
         prog_clip = prog.clone()
@@ -405,12 +411,10 @@ class TestGradientClipByValue(TestGradientClip):
 class TestDygraphGradientClip(unittest.TestCase):
     def test_gradient_clip(self):
         with fluid.dygraph.guard():
-            linear = fluid.dygraph.Linear(5, 5)
-            inputs = fluid.layers.uniform_random(
-                [16, 5], min=-10, max=10
-            ).astype('float32')
+            linear = paddle.nn.Linear(5, 5)
+            inputs = paddle.uniform([16, 5], min=-10, max=10).astype('float32')
             out = linear(fluid.dygraph.to_variable(inputs))
-            loss = fluid.layers.reduce_mean(out)
+            loss = paddle.mean(out)
             loss.backward()
             sgd_optimizer = fluid.optimizer.SGD(
                 learning_rate=0.0,
@@ -550,12 +554,12 @@ class TestDygraphGradientClipFP16(unittest.TestCase):
                     models=model, optimizers=sgd_optimizer, level='O2'
                 )
                 scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
-                inputs = fluid.layers.uniform_random(
-                    [1, 5], min=-10, max=10
-                ).astype('float32')
+                inputs = paddle.uniform([1, 5], min=-10, max=10).astype(
+                    'float32'
+                )
                 with paddle.amp.auto_cast(level='O2'):
                     out = model(fluid.dygraph.to_variable(inputs))
-                    loss = fluid.layers.reduce_mean(out)
+                    loss = paddle.mean(out)
                 scaled = scaler.scale(loss)
                 scaled.backward()
                 scaler.unscale_(sgd_optimizer)
@@ -598,12 +602,10 @@ class TestDygraphGradientClipFP16(unittest.TestCase):
 class TestDygraphGradientClipFP64(unittest.TestCase):
     def test_gradient_clip(self):
         with fluid.dygraph.guard():
-            inputs = fluid.layers.uniform_random(
-                [16, 5], min=-10, max=10
-            ).astype('float64')
-            linear = fluid.dygraph.Linear(5, 5, dtype="float64")
+            inputs = paddle.uniform([16, 5], min=-10, max=10).astype('float32')
+            linear = paddle.nn.Linear(5, 5)
             out = linear(fluid.dygraph.to_variable(inputs))
-            loss = fluid.layers.reduce_mean(out)
+            loss = paddle.mean(out)
             loss.backward()
             # before clip
             params_grads = []

@@ -12,21 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.transpiler.distribute_transpiler import (
-    DistributeTranspilerConfig,
-    ServerRuntimeConfig,
+import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import (
+    fleet,
 )
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
     StrategyFactory,
 )
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import (
-    fleet,
+from paddle.fluid.transpiler.distribute_transpiler import (
+    DistributeTranspilerConfig,
+    ServerRuntimeConfig,
 )
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-import os
 
 
 class TestStrategyFactor(unittest.TestCase):
@@ -272,7 +273,7 @@ class TestDebugInfo(unittest.TestCase):
         x = fluid.layers.data(name='x', shape=[1], dtype='float32')
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
         y_predict = fluid.layers.fc(input=x, size=1, act=None)
-        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
 
         role = role_maker.UserDefinedRoleMaker(

@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from test_imperative_base import new_program_scope
+from test_imperative_resnet import ResNet
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
-from test_imperative_base import new_program_scope
-from test_imperative_resnet import ResNet
 from paddle.fluid.framework import _test_eager_guard
 
 batch_size = 8
@@ -117,7 +118,9 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
                 label.stop_gradient = True
 
                 out = resnet(img)
-                loss = fluid.layers.cross_entropy(input=out, label=label)
+                loss = paddle.nn.functional.cross_entropy(
+                    input=out, label=label, reduction='none', use_softmax=False
+                )
                 avg_loss = paddle.mean(x=loss)
 
                 dy_out = avg_loss.numpy()
@@ -173,7 +176,9 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
             )
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             out = resnet(img)
-            loss = fluid.layers.cross_entropy(input=out, label=label)
+            loss = paddle.nn.functional.cross_entropy(
+                input=out, label=label, reduction='none', use_softmax=False
+            )
             avg_loss = paddle.mean(x=loss)
             optimizer.minimize(avg_loss)
 

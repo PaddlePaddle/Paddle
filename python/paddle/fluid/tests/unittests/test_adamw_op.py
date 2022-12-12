@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
 import random
-import numpy as np
-import paddle.fluid as fluid
-from op_test import OpTest
+import unittest
 from functools import partial
-from paddle.framework import core
+
+import numpy as np
+from op_test import OpTest
+
+import paddle
+import paddle.fluid as fluid
 from paddle.fluid.framework import _test_eager_guard
+from paddle.framework import core
 
 
 def adamw_step(inputs, attributes):
@@ -210,10 +212,10 @@ class TestAdamWOp(unittest.TestCase):
                 conv = fluid.layers.conv2d(data, 8, 3)
                 loss = paddle.mean(conv)
 
-                beta1 = fluid.layers.create_global_var(
+                beta1 = paddle.static.create_global_var(
                     shape=[1], value=0.85, dtype='float32', persistable=True
                 )
-                beta2 = fluid.layers.create_global_var(
+                beta2 = paddle.static.create_global_var(
                     shape=[1], value=0.95, dtype='float32', persistable=True
                 )
                 betas = [beta1, beta2]
@@ -619,7 +621,9 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                 fc2_b_mon1 = np.zeros((linear2.bias.shape)).astype("float32")
                 fc2_b_mon2 = np.zeros((linear2.bias.shape)).astype("float32")
 
-                cost = fluid.layers.square_error_cost(input=out, label=y)
+                cost = paddle.nn.functional.square_error_cost(
+                    input=out, label=y
+                )
                 avg_cost = paddle.mean(cost)
 
                 simple_lr_fun = partial(
