@@ -97,7 +97,7 @@ class AutoParalSupplementDepPass(PassBase):
         for idx in indice:
             prior_var = main_block.var(deps_map[idx][0])
             post_var = main_block.var(deps_map[idx][1])
-            op_namescope = main_block.var(deps_map[idx][2])
+            op_namescope = deps_map[idx][2]
             depend_op = insert_dependencies_for_vars(
                 main_block,
                 idx,
