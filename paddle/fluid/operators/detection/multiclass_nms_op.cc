@@ -21,8 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 inline std::vector<size_t> GetNmsLodFromRoisNum(
     const phi::DenseTensor* rois_num) {
   std::vector<size_t> rois_lod;
@@ -228,7 +226,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     int num_det = 0;
 
     int64_t class_num = scores_size == 3 ? scores.dims()[0] : scores.dims()[1];
-    Tensor bbox_slice, score_slice;
+    phi::DenseTensor bbox_slice, score_slice;
     for (int64_t c = 0; c < class_num; ++c) {
       if (c == background_label) continue;
       if (scores_size == 3) {
@@ -319,7 +317,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     auto* bboxes_data = bboxes.data<T>();
     auto* odata = outs->data<T>();
     const T* sdata;
-    Tensor bbox;
+    phi::DenseTensor bbox;
     bbox.Resize({scores.dims()[0], box_size});
     int count = 0;
     for (const auto& it : selected_indices) {
@@ -373,7 +371,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     int64_t box_dim = boxes->dims()[2];
     int64_t out_dim = box_dim + 2;
     int num_nmsed_out = 0;
-    Tensor boxes_slice, scores_slice;
+    phi::DenseTensor boxes_slice, scores_slice;
     int n = 0;
     if (has_roisnum) {
       n = score_size == 3 ? batch_size : rois_num->numel();
@@ -449,7 +447,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
         int64_t s = batch_starts[i];
         int64_t e = batch_starts[i + 1];
         if (e > s) {
-          Tensor out = outs->Slice(s, e);
+          phi::DenseTensor out = outs->Slice(s, e);
           if (return_index) {
             int* output_idx =
                 index->mutable_data<int>({num_kept, 1}, ctx.GetPlace());

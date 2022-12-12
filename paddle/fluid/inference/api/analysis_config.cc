@@ -108,6 +108,7 @@ void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
   }
 #else
   LOG(ERROR) << "Please use PaddlePaddle with GPU version.";
+  use_gpu_ = false;
 #endif
 
   Update();
@@ -299,7 +300,7 @@ void AnalysisConfig::LoadIpuConfig(const std::string &config_path) {
 
     if (ipu_config_mapper_.find(key) == ipu_config_mapper_.end()) {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "invalid key {} in IPU config: ", key));
+          "invalid key %s in IPU config: ", key));
     }
     switch (ipu_config_mapper_.at(key)) {
       case ipu_config_code::ipu_device_num:
@@ -335,10 +336,9 @@ void AnalysisConfig::LoadIpuConfig(const std::string &config_path) {
       case ipu_config_code::ipu_enable_model_runtime_executor:
         ipu_enable_model_runtime_executor_ = string2bool(value);
         break;
-
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "invalid key {} in IPU config", key));
+            "invalid key %s in IPU config", key));
         break;
     }
   }
@@ -477,6 +477,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   // profile related.
   CP_MEMBER(with_profile_);
 
+  // cinn compiler related.
+  CP_MEMBER(use_cinn_compiler_);
+
   // glog related.
   CP_MEMBER(with_glog_info_);
 
@@ -542,7 +545,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 #undef CP_MEMBER
 
   Update();
-  if (use_tensorrt_) {
+  if (use_tensorrt_ || use_cinn_compiler_) {
     // Update() will reset all the passes, when some tensorRT pass is deleted in
     // other.pass_builder(), it will set again, so we just remove the
     // deleted_pass.
@@ -872,6 +875,14 @@ void AnalysisConfig::Update() {
     }
   }
 
+  // TODO(wilber): An ugly method to update pass, need to be fixed.
+  if (use_cinn_compiler_) {
+    pass_builder()->ClearPasses();
+    for (const auto &pass : kCINNCompilerPasses) {
+      pass_builder()->AppendPass(pass);
+    }
+  }
+
   if (use_dlnne_) {
     pass_builder()->ClearPasses();
     for (const auto &pass : kDlnneSubgraphPasses) {
@@ -937,12 +948,7 @@ void AnalysisConfig::Update() {
 #endif
   }
 
-#ifdef PADDLE_WITH_MKLDNN
-  // Do not optimize when mkldnn is on
-  if (enable_memory_optim_ && !use_mkldnn_) {
-#else
   if (enable_memory_optim_) {
-#endif
     pass_builder()->AppendAnalysisPass("memory_optimize_pass");
   }
 
@@ -1316,6 +1322,9 @@ std::string AnalysisConfig::Summary() {
     os.InsertRow({"use_lite", use_lite_ ? "true" : "false"});
   }
 
+  // cinn compiler
+  os.InsertRow({"use_cinn_compiler", use_cinn_compiler_ ? "true" : "false"});
+
   // ir info
   os.InsertRow({"ir_optim", enable_ir_optim_ ? "true" : "false"});
   os.InsertRow({"ir_debug", ir_debug_ ? "true" : "false"});
@@ -1424,9 +1433,24 @@ bool AnalysisConfig::trt_allow_build_at_runtime() const {
   return trt_allow_build_at_runtime_;
 }
 
-void AnalysisConfig::Exp_DisableMixedInferOps(
+void AnalysisConfig::Exp_DisableMixedPrecisionOps(
     const std::unordered_set<std::string> &black_list) {
   mixed_black_list_ = black_list;
+}
+
+void AnalysisConfig::Exp_EnableCINNCompiler() {
+#ifdef PADDLE_WITH_CINN
+  use_cinn_compiler_ = true;
+  Update();
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "You tried to use CINN compiler, but Paddle was not compiled "
+      "with CINN."));
+#endif
+}
+
+bool AnalysisConfig::cinn_compiler_enabled() const {
+  return use_cinn_compiler_;
 }
 
 }  // namespace paddle

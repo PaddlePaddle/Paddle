@@ -38,7 +38,8 @@ set(PHI_DEPS
     sparse_coo_tensor
     string_tensor
     api_scalar
-    api_int_array)
+    api_int_array
+    extended_tensor)
 
 get_property(phi_kernels GLOBAL PROPERTY PHI_KERNELS)
 set(PHI_DEPS ${PHI_DEPS} ${phi_kernels})

@@ -134,7 +134,8 @@ class MLUMergedMomentumOpKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx = ctx.template device_context<platform::MLUDeviceContext>();
 
-    Tensor mu_tensor = ctx.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
+    phi::DenseTensor mu_tensor =
+        ctx.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
     MLUCnnlTensorDesc mu_tensor_desc(mu_tensor);
     MLUCnnl::Fill(ctx,
                   CNNL_POINTER_MODE_HOST,
@@ -158,7 +159,7 @@ class MLUMergedMomentumOpKernel : public framework::OpKernel<T> {
       auto velocity_out = velocitys_out[idx];
 
       auto grad = grads[idx];
-      Tensor regularized_grad;
+      phi::DenseTensor regularized_grad;
       MLUCnnlTensorDesc param_desc(*param_out);
       if (regularization_flag == phi::RegularizationType::kL2DECAY) {
         regularized_grad = ctx.AllocateTmpTensor<T, MLUDeviceContext>(

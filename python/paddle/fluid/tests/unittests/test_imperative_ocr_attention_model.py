@@ -21,7 +21,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import BatchNorm, Embedding
+from paddle.fluid.dygraph.nn import BatchNorm
 from paddle.nn import Linear
 
 
@@ -306,7 +306,7 @@ class SimpleAttention(fluid.dygraph.Layer):
         )
 
         weights_reshape = paddle.nn.functional.softmax(weights_reshape)
-        scaled = fluid.layers.elementwise_mul(
+        scaled = paddle.tensor.math._multiply_with_axis(
             x=encoder_vec, y=weights_reshape, axis=0
         )
         context = paddle.sum(scaled, axis=1)
@@ -370,8 +370,8 @@ class OCRAttention(fluid.dygraph.Layer):
             Config.decoder_size,
             bias_attr=False,
         )
-        self.embedding = Embedding(
-            [Config.num_classes + 2, Config.word_vector_dim], dtype='float32'
+        self.embedding = paddle.nn.Embedding(
+            Config.num_classes + 2, Config.word_vector_dim
         )
         self.gru_decoder_with_attention = GRUDecoderWithAttention(
             Config.decoder_size, Config.num_classes
@@ -476,8 +476,11 @@ class TestDygraphOCRAttention(unittest.TestCase):
                     dy_prediction = paddle.reshape(
                         dy_prediction, [label_out.shape[0], -1]
                     )
-                    loss = fluid.layers.cross_entropy(
-                        input=dy_prediction, label=label_out
+                    loss = paddle.nn.functional.cross_entropy(
+                        input=dy_prediction,
+                        label=label_out,
+                        reduction='none',
+                        use_softmax=False,
                     )
                     avg_loss = paddle.sum(loss)
 
@@ -553,8 +556,11 @@ class TestDygraphOCRAttention(unittest.TestCase):
                 static_prediction, shape=[-1, Config.num_classes + 2]
             )
 
-            cost = fluid.layers.cross_entropy(
-                input=static_prediction, label=static_label_out
+            cost = paddle.nn.functional.cross_entropy(
+                input=static_prediction,
+                label=static_label_out,
+                reduction='none',
+                use_softmax=False,
             )
             static_avg_loss = paddle.sum(cost)
             # param_grad_list = fluid.backward.append_backward(static_avg_loss)

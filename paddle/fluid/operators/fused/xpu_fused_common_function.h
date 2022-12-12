@@ -19,14 +19,13 @@
 
 namespace paddle {
 namespace operators {
-using Tensor = phi::DenseTensor;
 
 struct XPUDropoutParam {
   float dropout_prob;
   bool is_upscale_in_train;
   bool is_test;
   bool fix_seed;
-  const Tensor *tensor_seed;
+  const phi::DenseTensor *tensor_seed;
   int seed_val;
 
   XPUDropoutParam() {
@@ -61,8 +60,9 @@ struct XPUDropoutParam {
       str_seed = str_seed + "Seed";
     }
 
-    tensor_seed =
-        context.HasInput(str_seed) ? context.Input<Tensor>(str_seed) : nullptr;
+    tensor_seed = context.HasInput(str_seed)
+                      ? context.Input<phi::DenseTensor>(str_seed)
+                      : nullptr;
     if (tensor_seed) {
       seed_val = *(tensor_seed->data<int>());
     } else {
@@ -74,7 +74,7 @@ struct XPUDropoutParam {
                            bool is_upscale_in_train_,
                            bool is_test_,
                            bool fix_seed_,
-                           const Tensor *tensor_seed,
+                           const phi::DenseTensor *tensor_seed,
                            int seed_val_) {
     dropout_prob = dropout_prob_;
     is_upscale_in_train = is_upscale_in_train_;
@@ -108,8 +108,9 @@ struct XPUDropoutParam {
     } else {
       str_seed = str_seed + "Seed";
     }
-    tensor_seed =
-        context.HasInput(str_seed) ? context.Input<Tensor>(str_seed) : nullptr;
+    tensor_seed = context.HasInput(str_seed)
+                      ? context.Input<phi::DenseTensor>(str_seed)
+                      : nullptr;
 
     if (tensor_seed) {
       seed_val = *(tensor_seed->data<int>());
