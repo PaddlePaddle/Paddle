@@ -18,7 +18,7 @@ import threading
 from paddle.fluid import log_helper
 from .utils import ast_to_source_code
 
-__all__ = ["TranslatorLogger", "set_verbosity", "set_code_level"]
+__all__ = []
 
 VERBOSITY_ENV_NAME = 'TRANSLATOR_VERBOSITY'
 CODE_LEVEL_ENV_NAME = 'TRANSLATOR_CODE_LEVEL'

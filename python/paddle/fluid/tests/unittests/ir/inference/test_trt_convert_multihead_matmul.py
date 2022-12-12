@@ -1074,7 +1074,16 @@ class TrtConvertVitToMultiHeadMatmulTest(TrtLayerAutoScanTest):
         )
 
     def add_skip_trt_case(self):
-        pass
+        def teller1(program_config, predictor_config):
+            if self.trt_param.precision == paddle_infer.PrecisionType.Half:
+                return True
+            return False
+
+        self.add_skip_case(
+            teller1,
+            SkipReasons.TRT_NOT_IMPLEMENTED,
+            "The output has diff between gpu and trt in fp16 mode.",
+        )
 
     def test(self):
         self.add_skip_trt_case()

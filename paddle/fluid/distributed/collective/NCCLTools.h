@@ -21,42 +21,29 @@
 #include <hip/hip_runtime.h>
 #endif
 
-#include <error.h>
-
 #include <string>
 
 #include "paddle/fluid/distributed/collective/Types.h"
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/variable.h"
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/cuda_device_guard.h"
-#endif
-
-#include "paddle/fluid/platform/device_context.h"
 
 #ifdef PADDLE_WITH_RCCL
-#include "paddle/fluid/platform/dynload/rccl.h"
+#include "paddle/phi/backends/dynload/rccl.h"
 #else
-#include "paddle/fluid/platform/dynload/nccl.h"
+#include "paddle/phi/backends/dynload/nccl.h"
 #endif
-
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/utils/variant.h"
 
 namespace paddle {
 namespace distributed {
 
-#define NCCL_CHECK(cmd)                                 \
-  do {                                                  \
-    ncclResult_t r = cmd;                               \
-    if (r != ncclSuccess) {                             \
-      printf("Failed, NCCL error %s:%d '%s'\n",         \
-             __FILE__,                                  \
-             __LINE__,                                  \
-             platform::dynload::ncclGetErrorString(r)); \
-      exit(EXIT_FAILURE);                               \
-    }                                                   \
+#define NCCL_CHECK(cmd)                            \
+  do {                                             \
+    ncclResult_t r = cmd;                          \
+    if (r != ncclSuccess) {                        \
+      printf("Failed, NCCL error %s:%d '%s'\n",    \
+             __FILE__,                             \
+             __LINE__,                             \
+             phi::dynload::ncclGetErrorString(r)); \
+      exit(EXIT_FAILURE);                          \
+    }                                              \
   } while (0)
 
 ncclRedOp_t ToNCCLRedType(ReduceOp reduction);

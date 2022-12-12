@@ -21,8 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename DeviceContext, typename T>
 class ElementwiseDivNPUKernel : public framework::OpKernel<T> {
  public:
@@ -66,38 +64,38 @@ class ElementwiseDivGradNPUKernel : public framework::OpKernel<T> {
     if (dx) {
       dx->mutable_data<T>(place);
 
-      Tensor tensor_one(y->type());
+      phi::DenseTensor tensor_one(y->type());
       tensor_one.mutable_data<float>({1}, place);
       FillNpuTensorWithConstant<float>(&tensor_one, static_cast<float>(1.0));
 
       // Use `Div` CANN OP to achieve `1/y` instead of `Power` CANN OP.
       // Because `Power` will cause precision overflow, that is, `float_status`
       // will be set to 1.
-      Tensor y_div(y->type());
+      phi::DenseTensor y_div(y->type());
       y_div.mutable_data<T>(y->dims(), place);
       const auto& runner_one_div_y =
           NpuOpRunner("Div", {tensor_one, *y}, {y_div}, {});
       runner_one_div_y.Run(stream);
 
-      Tensor tensor_zeros(x->type());
+      phi::DenseTensor tensor_zeros(x->type());
       tensor_zeros.mutable_data<T>(x->dims(), place);
       const auto& runner_tensor_zeros =
           NpuOpRunner("ZerosLike", {*x}, {tensor_zeros}, {});
       runner_tensor_zeros.Run(stream);
 
-      Tensor x_zero(experimental::DataType::BOOL);
+      phi::DenseTensor x_zero(experimental::DataType::BOOL);
       x_zero.mutable_data<bool>(x->dims(), place);
       const auto& runner_x_zero =
           NpuOpRunner("Equal", {*x, tensor_zeros}, {x_zero}, {});
       runner_x_zero.Run(stream);
 
-      Tensor x_nozero(experimental::DataType::BOOL);
+      phi::DenseTensor x_nozero(experimental::DataType::BOOL);
       x_nozero.mutable_data<bool>(x->dims(), place);
       const auto& runner_x_nonzero =
           NpuOpRunner("LogicalNot", {x_zero}, {x_nozero}, {});
       runner_x_nonzero.Run(stream);
 
-      Tensor x_nozero_f(x->type());
+      phi::DenseTensor x_nozero_f(x->type());
       x_nozero_f.mutable_data<T>(x->dims(), place);
       const auto& runner_x_nonzero_f =
           NpuOpRunner("Cast",
@@ -106,7 +104,7 @@ class ElementwiseDivGradNPUKernel : public framework::OpKernel<T> {
                       {{"dst_type", static_cast<int32_t>(0)}});
       runner_x_nonzero_f.Run(stream);
 
-      Tensor x_grad_w(x->type());
+      phi::DenseTensor x_grad_w(x->type());
       x_grad_w.mutable_data<T>(x->dims(), place);
       const auto& runner_x_grad_w =
           NpuOpRunner("Mul", {x_nozero_f, y_div}, {x_grad_w}, {});
@@ -120,19 +118,19 @@ class ElementwiseDivGradNPUKernel : public framework::OpKernel<T> {
     if (dy) {
       dy->mutable_data<T>(place);
 
-      Tensor neg_out(out->type());
+      phi::DenseTensor neg_out(out->type());
       neg_out.mutable_data<T>(out->dims(), place);
       const auto& runner_neg_out = NpuOpRunner("Neg", {*out}, {neg_out}, {});
       runner_neg_out.Run(stream);
 
-      Tensor tmp_mul(out->type());
+      phi::DenseTensor tmp_mul(out->type());
       tmp_mul.mutable_data<T>(out->dims(), place);
       const auto& runner_mul =
           NpuOpRunner("Mul", {neg_out, *dout}, {tmp_mul}, {});
       runner_mul.Run(stream);
 
       if (dy->dims() != dout->dims()) {
-        Tensor reduced_tmp_mul(y->type());
+        phi::DenseTensor reduced_tmp_mul(y->type());
         reduced_tmp_mul.mutable_data<T>(y->dims(), place);
 
         std::vector<int64_t> axes;
