@@ -1471,7 +1471,6 @@ FOURTH_HIGH_PARALLEL_JOB_NEW = [
     'test_nearest_interp_v2_op',
     'test_sequence_slice_op',
     'test_program_translator',
-    'test_eager_deletion_lstm_net',
     'malloc_test',
     'test_size_op',
     'test_analysis_predictor',

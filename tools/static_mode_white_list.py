@@ -163,7 +163,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_eager_deletion_conditional_block',
     'test_eager_deletion_delete_vars',
     'test_eager_deletion_gru_net',
-    'test_eager_deletion_lstm_net',
     'test_eager_deletion_padding_rnn',
     'test_eager_deletion_recurrent_op',
     'test_eager_deletion_while_op',
