@@ -23,8 +23,8 @@ limitations under the License. */
 #define __forceinline__ __inline__
 #endif
 
-namespace paddle {
-namespace platform {
+namespace phi {
+namespace funcs {
 
 struct FastDivMod {
   // 1st value represents the result of input number divides by recorded divisor
@@ -64,5 +64,5 @@ struct FastDivMod {
   uint32_t multiplier;
 };
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi

@@ -123,9 +123,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
   #set_tests_properties(test_trt_multiclass_nms_op PROPERTIES TIMEOUT 200)
   set_tests_properties(test_trt_dynamic_shape PROPERTIES TIMEOUT 120)
   set_tests_properties(test_trt_inspector PROPERTIES TIMEOUT 60)
-  set_tests_properties(test_merge_layernorm_fuse_pass PROPERTIES TIMEOUT 180)
-  set_tests_properties(test_skip_merge_layernorm_fuse_pass PROPERTIES TIMEOUT
-                                                                      180)
+
   if(WITH_NV_JETSON)
     set_tests_properties(
       test_trt_pool_op
@@ -159,6 +157,9 @@ if(WITH_GPU AND TENSORRT_FOUND)
   if(WITH_MKLDNN
      AND TENSORRT_FOUND
      AND WITH_GPU)
+    set_tests_properties(test_merge_layernorm_fuse_pass PROPERTIES TIMEOUT 180)
+    set_tests_properties(test_skip_merge_layernorm_fuse_pass PROPERTIES TIMEOUT
+                                                                        180)
     set_tests_properties(test_emb_eltwise_layernorm_fuse_pass PROPERTIES TIMEOUT
                                                                          120)
 
