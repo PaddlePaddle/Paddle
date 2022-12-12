@@ -21,7 +21,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import BatchNorm, Embedding
+from paddle.fluid.dygraph.nn import BatchNorm
 from paddle.fluid.framework import _test_eager_guard
 from paddle.nn import Linear
 
@@ -307,7 +307,7 @@ class SimpleAttention(fluid.dygraph.Layer):
         )
 
         weights_reshape = paddle.nn.functional.softmax(weights_reshape)
-        scaled = fluid.layers.elementwise_mul(
+        scaled = paddle.tensor.math._multiply_with_axis(
             x=encoder_vec, y=weights_reshape, axis=0
         )
         context = paddle.sum(scaled, axis=1)
@@ -371,8 +371,8 @@ class OCRAttention(fluid.dygraph.Layer):
             Config.decoder_size,
             bias_attr=False,
         )
-        self.embedding = Embedding(
-            [Config.num_classes + 2, Config.word_vector_dim], dtype='float32'
+        self.embedding = paddle.nn.Embedding(
+            Config.num_classes + 2, Config.word_vector_dim
         )
         self.gru_decoder_with_attention = GRUDecoderWithAttention(
             Config.decoder_size, Config.num_classes

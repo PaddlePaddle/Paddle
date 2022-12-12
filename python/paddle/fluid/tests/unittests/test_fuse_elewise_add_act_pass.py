@@ -99,7 +99,7 @@ class TestFuseActElewiseAddInplaceGradPass(unittest.TestCase):
             Y = fluid.data(name="Y", shape=[3, 3], dtype='float32')
             Out1 = X * 5
             Out2 = F.relu(Out1)
-            prediction = fluid.layers.elementwise_add(Y, Out2, axis=1)
+            prediction = paddle.tensor.math._add_with_axis(Y, Out2, axis=1)
             loss = paddle.mean(prediction)
             sgd = fluid.optimizer.SGD(learning_rate=0.001)
             sgd.minimize(loss)

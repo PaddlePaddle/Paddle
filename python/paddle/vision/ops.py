@@ -15,6 +15,7 @@
 import numpy as np
 
 from paddle import _C_ops, _legacy_C_ops
+from paddle.tensor.math import _add_with_axis
 
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..fluid.framework import (
@@ -25,7 +26,7 @@ from ..fluid.framework import (
 )
 from ..fluid.initializer import Normal
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.layers import nn, utils
+from ..fluid.layers import utils
 from ..framework import _current_expected_place
 from ..nn import BatchNorm2D, Conv2D, Layer, ReLU, Sequential
 
@@ -985,7 +986,7 @@ def deform_conv2d(
             1,
         )
         if bias is not None:
-            out = nn.elementwise_add(pre_bias, bias, axis=1)
+            out = _add_with_axis(pre_bias, bias, axis=1)
         else:
             out = pre_bias
     elif _in_legacy_dygraph():
@@ -1014,7 +1015,7 @@ def deform_conv2d(
                 x, offset, mask, weight, *attrs
             )
         if bias is not None:
-            out = nn.elementwise_add(pre_bias, bias, axis=1)
+            out = _add_with_axis(pre_bias, bias, axis=1)
         else:
             out = pre_bias
     else:

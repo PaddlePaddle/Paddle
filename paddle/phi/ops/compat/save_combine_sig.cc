@@ -16,23 +16,23 @@
 
 namespace phi {
 
-KernelSignature PutAlongAxisArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("put_along_axis",
-                         {"Input", "Index", "Value"},
-                         {"Axis", "Reduce"},
-                         {"Result"});
-}
-
-KernelSignature PutAlongAxisGradArgumentMapping(
+KernelSignature SaveCombineOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("put_along_axis_grad",
-                         {"Input", "Index", "Result@GRAD"},
-                         {"Axis", "Reduce"},
-                         {"Input@GRAD", "Value@GRAD"});
+  if (ctx.IsDenseTensorInputs("X")) {
+    return KernelSignature(
+        "save_combine_tensor",
+        {"X"},
+        {"file_path", "overwrite", "save_as_fp16", "save_to_memory"},
+        {"Y"});
+  } else {
+    return KernelSignature(
+        "save_combine_vocab",
+        {"X"},
+        {"file_path", "overwrite", "save_as_fp16", "save_to_memory"},
+        {"Y"});
+  }
 }
 
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(put_along_axis, phi::PutAlongAxisArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(put_along_axis_grad,
-                           phi::PutAlongAxisGradArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(save_combine, phi::SaveCombineOpArgumentMapping);

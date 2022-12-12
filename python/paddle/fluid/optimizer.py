@@ -214,9 +214,10 @@ class Optimizer:
             .. code-block:: python
 
                 import paddle.fluid as fluid
+                import paddle
 
                 with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding([10, 10])
+                    emb = paddle.nn.Embedding(10, 10)
 
                     adam = fluid.optimizer.Adam(0.001, parameter_list=emb.parameters())
                     state_dict = adam.state_dict()
@@ -582,7 +583,7 @@ class Optimizer:
 
                 # example1: LearningRateDecay is not used, return value is all the same
                 with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding([10, 10])
+                    emb = paddle.nn.Embedding(10, 10)
                     adam = fluid.optimizer.Adam(0.001, parameter_list = emb.parameters())
                     lr = adam.current_step_lr()
                     print(lr) # 0.001
@@ -7299,7 +7300,7 @@ class LookaheadOptimizer:
                 dtype='int32',
                 persistable=True,
             )
-            layers.increment(x=step, value=1.0, in_place=True)
+            paddle.increment(x=step, value=1.0)
 
             # lookahead
             zero_var = layers.fill_constant(
@@ -7533,7 +7534,7 @@ class GradientMergeOptimizer:
 
         with device_guard("cpu"):
             # step_var = (step_var + 1) % k_step
-            layers.increment(x=step_var, value=1.0, in_place=True)
+            paddle.increment(x=step_var, value=1.0)
             main_block.append_op(
                 type='elementwise_mod',
                 inputs={'X': step_var, 'Y': k_step_var},
@@ -7663,7 +7664,7 @@ class GradientMergeOptimizer:
                 )
 
         # step3. apply gradient
-        layers.cond(cond, true_fn=true_apply_gradient, false_fn=None)
+        paddle.static.nn.cond(cond, true_fn=true_apply_gradient, false_fn=None)
 
         return self._optimize_ops
 

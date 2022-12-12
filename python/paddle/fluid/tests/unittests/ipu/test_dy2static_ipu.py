@@ -52,7 +52,9 @@ class SimpleLayer(paddle.nn.Layer):
             if self.loss_op:
                 loss = self.loss_op(x, target)
             else:
-                loss = paddle.fluid.layers.cross_entropy(x, target)
+                loss = paddle.paddle.nn.functional.cross_entropy(
+                    x, target, reduction='none', use_softmax=False
+                )
             if self.use_reduction:
                 loss = paddle.mean(loss)
             if self.use_identity_loss:
