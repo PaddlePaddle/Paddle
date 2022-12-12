@@ -582,7 +582,6 @@ def build_run(args, build_path, envrion_var):
         build_args = []
         build_args.append(CMAKE)
         build_args += args
-        # cmake_args.append(TOP_DIR)
         print(" ".join(build_args))
         try:
             subprocess.check_call(build_args, cwd=build_path, env=envrion_var)
@@ -634,6 +633,7 @@ def build_steps():
             print("Do not need rerun camke,everything is ready,run build now")
             run_cmake_build(build_path)
             return
+
     args = []
     env_var = os.environ.copy()  # get env variables
     paddle_build_options = {}
