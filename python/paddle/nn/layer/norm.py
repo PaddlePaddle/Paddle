@@ -138,14 +138,14 @@ class InstanceNorm1D(_InstanceNormBase):
             If it is set to None or one attribute of ParamAttr, instance_norm
             will create ParamAttr as weight_attr, the name of scale can be set in ParamAttr.
             If the Initializer of the weight_attr is not set, the parameter is initialized
-            one. If it is set to False, will not create weight_attr. Default: None.
+            one. If it is set to False, will not create weight_attr. Default: None. For more information, please refer to :ref:`cn_api_fluid_ParamAttr` .
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of instance_norm.
             If it is set to None or one attribute of ParamAttr, instance_norm
             will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
             If the Initializer of the bias_attr is not set, the bias is initialized zero.
-            If it is set to False, will not create bias_attr. Default: None.
+            If it is set to False, will not create bias_attr. Default: None. For more information, please refer to :ref:`cn_api_fluid_ParamAttr` .
         data_format(str, optional): Specify the input data format, may be "NC", "NCL". Default "NCL".
-        name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
+        name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name` .
 
 
     Shape:
@@ -229,14 +229,14 @@ class InstanceNorm2D(_InstanceNormBase):
             of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
             will create ParamAttr as weight_attr, the name of scale can be set in ParamAttr.
             If the Initializer of the weight_attr is not set, the parameter is initialized
-            one. If it is set to False, will not create weight_attr. Default: None.
+            one. If it is set to False, will not create weight_attr. Default: None. For more information, please refer to :ref:`cn_api_fluid_ParamAttr` .
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of instance_norm.
             If it is set to None or one attribute of ParamAttr, instance_norm
             will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
             If the Initializer of the bias_attr is not set, the bias is initialized zero.
-            If it is set to False, will not create bias_attr. Default: None.
+            If it is set to False, will not create bias_attr. Default: None. For more information, please refer to :ref:`cn_api_fluid_ParamAttr` .
         data_format(str, optional): Specify the input data format, could be "NCHW". Default: NCHW.
-        name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
+        name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name` .
 
     Shape:
         - x: 4-D tensor with shape: (batch, num_features, height, weight).
@@ -316,14 +316,14 @@ class InstanceNorm3D(_InstanceNormBase):
             of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
             will create ParamAttr as weight_attr, the name of scale can be set in ParamAttr.
             If the Initializer of the weight_attr is not set, the parameter is initialized
-            one. If it is set to False, will not create weight_attr. Default: None.
+            one. If it is set to False, will not create weight_attr. Default: None. For more information, please refer to :ref:`cn_api_fluid_ParamAttr` .
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of instance_norm.
             If it is set to None or one attribute of ParamAttr, instance_norm
             will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
             If the Initializer of the bias_attr is not set, the bias is initialized zero.
-            If it is set to False, will not create bias_attr. Default: None.
+            If it is set to False, will not create bias_attr. Default: None. For more information, please refer to :ref:`cn_api_fluid_ParamAttr` .
         data_format(str, optional): Specify the input data format, could be "NCDHW". Default: NCDHW.
-        name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
+        name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name` .
 
     Shape:
         - x: 5-D tensor with shape: (batch, num_features, dims, height, weight).
@@ -563,11 +563,11 @@ class LayerNorm(Layer):
             division by zero. Default: 1e-05.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for the learnable
             gain :math:`g`. If False, weight is None. If is None, a default :code:`ParamAttr` would be added as scale. The
-            :attr:`param_attr` is initialized as 1 if it is added. Default: None.
+            :attr:`param_attr` is initialized as 1 if it is added. Default: None. For more information, please refer to :ref:`cn_api_fluid_ParamAttr` .
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the learnable
             bias :math:`b`. If is False, bias is None. If is None, a default :code:`ParamAttr` would be added as bias. The
-            :attr:`bias_attr` is initialized as 0 if it is added. Default: None.
-        name(str, optional): Name for the LayerNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
+            :attr:`bias_attr` is initialized as 0 if it is added. Default: None. For more information, please refer to :ref:`cn_api_fluid_ParamAttr` .
+        name(str, optional): Name for the LayerNorm, default is None. For more information, please refer to :ref:`api_guide_Name` .
 
     Shape:
         - x: 2-D, 3-D, 4-D or 5-D tensor.
