@@ -75,7 +75,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_selective_recompute MODULES test_selective_recompute)
   set_tests_properties(test_selective_recompute PROPERTIES TIMEOUT 50)
   py_test_modules(test_tuning_recompute MODULES test_tuning_recompute)
-  set_tests_properties(test_tuning_recompute PROPERTIES TIMEOUT 50)
+  set_tests_properties(test_tuning_recompute PROPERTIES TIMEOUT 160)
 
   py_test_modules(test_while_op_completion MODULES test_while_op_completion
                   ENVS ${dist_ENVS})

@@ -179,7 +179,7 @@ class ReccomputeCheckpointAlgorithm(AlgorithmBase):
         self._tuning_segments = list(range(len(segments)))
         self._trail_left = 0
         self._trail_right = len(segments) - 1
-        self._trial_idx = int(0 + (len(segments)) / 2)
+        self._trial_idx = int(0 + (len(segments) - 1) / 2)
 
     def _init_spaces(self):
         self._recompute_mode = "all"
