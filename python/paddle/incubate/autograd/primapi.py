@@ -102,15 +102,18 @@ def forward_grad(outputs, inputs, grad_inputs=None):
 
 
 @framework.static_only
-def grad(outputs, inputs, grad_outputs=None):
+def grad(outputs, inputs=None, grad_outputs=None):
     """Reverse mode of automatic differentiation.
+    This function supports 2 usage types. First type: gradients = grad(outputs, inputs, grad_outputs).
+    Second type: gradients = grad(outputs)(inputs, grad_outputs). The results in these cases are equivalent.
 
     Note:
         **ONLY available in the static mode and primitive operators**
 
     Args:
         outputs(Tensor|Sequence[Tensor]): The output Tensor or Tensors.
-        inputs(Tensor|Sequence[Tensor]): The input Tensor or Tensors.
+        inputs(Tensor|Sequence[Tensor]): Optional, the input Tensor or Tensors.
+            If not None, first type is specified, otherwise second type. Default: None.
         grad_outputs(Tensor|Sequence[Tensor]): Optional, the gradient Tensor or
             Tensors of outputs which has the same shape with outputs, Defaults
             to None, in this case is equivalent to all ones.
@@ -146,68 +149,71 @@ def grad(outputs, inputs, grad_outputs=None):
             paddle.incubate.autograd.disable_prim()
             paddle.disable_static()
     """
-    if not utils.prim_enabled():
-        grad_inputs = backward.gradients(outputs, inputs, grad_outputs)
-        # backward.gradients returns a list though the inputs is a signle Tensor.
-        # The follow code snippet fixes the problem by return the first element
-        # of grad_inputs when the inputs is a signle Tensor.
-        if (
-            isinstance(inputs, framework.Variable)
-            and isinstance(grad_inputs, typing.Sequence)
-            and len(grad_inputs) > 0
-        ):
-            return grad_inputs[0]
-        else:
-            return grad_inputs
 
-    if not isinstance(outputs, (framework.Variable, typing.Sequence)):
-        raise TypeError(
-            f'Expected outputs is Tensor|Sequence[Tesnor], '
-            f'but got {type(outputs)}.'
+    def wrap(inputs, grad_outputs=None):
+        if not utils.prim_enabled():
+            grad_inputs = backward.gradients(outputs, inputs, grad_outputs)
+            # Note: backward.gradients returns a list even if the inputs is a single Tensor.
+            # The follow code snippet fixes the problem by return the first element
+            # of grad_inputs when the inputs is a single Tensor.
+            if (
+                isinstance(inputs, framework.Variable)
+                and isinstance(grad_inputs, typing.Sequence)
+                and len(grad_inputs) > 0
+            ):
+                return grad_inputs[0]
+            else:
+                return grad_inputs
+
+        if not isinstance(outputs, (framework.Variable, typing.Sequence)):
+            raise TypeError(
+                f'Expected outputs is Tensor|Sequence[Tensor], '
+                f'but got {type(outputs)}.'
+            )
+
+        if not isinstance(inputs, (framework.Variable, typing.Sequence)):
+            raise TypeError(
+                f'Expected inputs is Tensor|Sequence[Tensor], '
+                f'but got {type(inputs)}.'
+            )
+
+        ys, xs, ys_bar = (
+            utils.as_tensors(outputs),
+            utils.as_tensors(inputs),
+            utils.as_tensors(grad_outputs),
         )
+        block = framework.default_main_program().current_block()
+        if any((x is not None and x.block != block) for x in xs + ys):
+            raise RuntimeError(
+                'Variable in inputs and outputs should be None or in current block of main program'
+            )
 
-    if not isinstance(inputs, (framework.Variable, typing.Sequence)):
-        raise TypeError(
-            f'Expected inputs is Tensor|Sequence[Tesnor], '
-            f'but got {type(inputs)}.'
-        )
+        # TODO(Tongxin) without any prior knowledge about whether the program
+        # is completely lowered to primitive ops, it's mandatory to run the lowering
+        # pass once and again. This is obviously inefficient and needs to be
+        # optimized.
+        primx.orig2prim(block)
+        ad = primx.Transform(block)
+        xs_dot, ys_dot = ad.linearize(xs, ys)
+        if any(var is None for var in ys_dot):
+            raise RuntimeError(
+                'Grads cannot be computed. The given outputs does not depend on inputs'
+            )
+        ys_bar, xs_bar = ad.transpose(ys_dot, xs_dot, ys_bar)
 
-    ys, xs, ys_bar = (
-        utils.as_tensors(outputs),
-        utils.as_tensors(inputs),
-        utils.as_tensors(grad_outputs),
-    )
-    block = framework.default_main_program().current_block()
-    if any((x is not None and x.block != block) for x in xs + ys):
-        raise RuntimeError(
-            'Variable in inputs and outputs should be None or in current block of main program'
-        )
+        # remove xs_dot and their constructor ops
+        op_indexes = []
+        for var in xs_dot:
+            if var is not None:
+                op_index = block.ops.index(var.op)
+                op_indexes.append(op_index)
 
-    # TODO(Tongxin) without any prior knowledge about whether the program
-    # is completely lowered to primitive ops, it's mandatory to run the lowering
-    # pass once and again. This is obviously inefficient and needs to be
-    # optimized.
-    primx.orig2prim(block)
-    ad = primx.Transform(block)
-    xs_dot, ys_dot = ad.linearize(xs, ys)
-    if any(var is None for var in ys_dot):
-        raise RuntimeError(
-            'Grads cannot be computed. The given outputs does not depend on inputs'
-        )
-    ys_bar, xs_bar = ad.transpose(ys_dot, xs_dot, ys_bar)
+        ad.erase_ops(sorted(op_indexes))
+        ad.erase_dots(xs_dot)
 
-    # remove xs_dot and their constructor ops
-    op_indexes = []
-    for var in xs_dot:
-        if var is not None:
-            op_index = block.ops.index(var.op)
-            if op_index < 0:
-                raise ValueError(
-                    f'op_index should be greater than or equal to 0, but op_index={op_index}.'
-                )
-            op_indexes.append(op_index)
+        return xs_bar[0] if isinstance(inputs, framework.Variable) else xs_bar
 
-    ad.erase_ops(sorted(op_indexes))
-    ad.erase_dots(xs_dot)
-
-    return xs_bar[0] if isinstance(inputs, framework.Variable) else xs_bar
+    if inputs is None:
+        return wrap
+    else:
+        return wrap(inputs, grad_outputs)
