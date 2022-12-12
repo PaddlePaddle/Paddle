@@ -72,7 +72,7 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilder::Build(
   }
 
   AddDependencyForCoalesceTensorOp();
-  if (is_sequential_run) {
+  if (FLAGS_new_executor_sequential_run) {
     AddDependencyForCommunicationOp();
     VLOG(0) << "NEWEXE: Add Dependency AddDependencyForCommunicationOp";
   }
