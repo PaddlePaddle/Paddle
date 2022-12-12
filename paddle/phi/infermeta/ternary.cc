@@ -1275,4 +1275,37 @@ void ViterbiDecodeInferMeta(const MetaTensor& input,
   scores->set_dtype(length.dtype());
 }
 
+void EmbeddingBagInferMeta(const MetaTensor& input,
+                            const MetaTensor& params,
+                            const MetaTensor& weight,
+                            MetaTensor* out){
+     const auto& input_dims = input.dims();
+     auto input_dims_size = input_dims.size();
+     const auto& params_dims = params.dims();
+     const auto& weight_dims = weight.dims();
+
+
+     PADDLE_ENFORCE_EQ(
+         input_dims, weight_dims,
+         phi::errors::InvalidArgument(
+             "ShapeError: The shapes of the 'input' and 'weight' must be the same."
+             "But received input's shape = [%s],"
+             "weight's shape = [%s].", input_dims, weight_dims
+         )
+     );
+     PADDLE_ENFORCE_EQ(
+         input_dims_size, 2,
+         phi::errors::InvalidArgument(
+             "ShapeError: The dimensions of the 'input' tensor must be 2."
+             "But received input's dimensions = %d, input's shape = [%s].",
+             input_dims, input_dims_size
+         )
+     );
+
+     auto output_dims = phi::vectorize(phi::slice_ddim(input_dims, 0 ,input_dims_size - 1));
+     output_dims.push_back(params_dims[1]);
+     out -> set_dims(phi::make_ddim(output_dims));
+     out -> set_dtype(params.dtype());
+ }
+
 }  // namespace phi

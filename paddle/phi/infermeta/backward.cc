@@ -1033,4 +1033,17 @@ void IndexAddGradInferMeta(const MetaTensor& index,
   }
 }
 
+void EmbeddingBagGradInferMeta(const MetaTensor& input,
+                                const MetaTensor& params,
+                                const MetaTensor& weight,
+                                MetaTensor* params_grad,
+                                MetaTensor* weight_grad){
+     if (params_grad) {
+       params_grad -> share_meta(params);
+     }
+     if (weight_grad) {
+       weight_grad -> share_meta(weight);
+     }
+ }
+
 }  // namespace phi

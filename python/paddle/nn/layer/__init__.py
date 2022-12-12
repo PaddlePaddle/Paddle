@@ -35,6 +35,7 @@ from .common import ZeroPad2D  # noqa: F401
 from .common import Pad3D  # noqa: F401
 from .common import CosineSimilarity  # noqa: F401
 from .common import Embedding  # noqa: F401
+from .common import EmbeddingBag  # noqa: F401
 from .common import Linear  # noqa: F401
 from .common import Identity  # noqa: F401
 from .common import Flatten  # noqa: F401

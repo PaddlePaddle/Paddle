@@ -411,4 +411,10 @@ void IndexAddGradInferMeta(const MetaTensor& index,
                            MetaTensor* x_grad,
                            MetaTensor* add_tensor_grad);
 
+void EmbeddingBagGradInferMeta(const MetaTensor& input,
+                                const MetaTensor& params,
+                                const MetaTensor& weight,
+                                MetaTensor* params_grad,
+                                MetaTensor* weight_grad);
+
 }  // namespace phi

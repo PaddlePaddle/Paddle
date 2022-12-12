@@ -2223,3 +2223,15 @@
   args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place = {})
   output : Tensor(out)
   invoke : full_like(x, 0, dtype, place)
+
+- op : embedding_bag
+   args : (Tensor input, Tensor params, Tensor weight, str mode)
+   output : Tensor
+   infer_meta :
+     func : EmbeddingBagInferMeta
+     param : [input, params, weight]
+   kernel : 
+     func : embedding_bag 
+     params : [input, params, weight, mode]
+     data_type : params
+   backward : embedding_bag_grad
