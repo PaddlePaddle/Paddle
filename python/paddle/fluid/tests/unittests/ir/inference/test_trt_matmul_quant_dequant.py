@@ -47,7 +47,12 @@ class TensorRTMatMulQuantDequantDims3Test(QuantDequantTest):
                 act=None,
             )
             result = fluid.layers.relu(fc_out)
-            loss = fluid.layers.cross_entropy(input=result, label=self.label)
+            loss = paddle.nn.functional.cross_entropy(
+                input=result,
+                label=self.label,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_loss = paddle.mean(loss)
             return avg_loss, result
 
@@ -135,7 +140,7 @@ class TensorRTMatMulQuantDequantDims4Test(QuantDequantTest):
                 transpose_y=self.transpose_y,
             )
             matmul_out = paddle.scale(matmul_out, scale=self.alpha)
-            out = fluid.layers.batch_norm(matmul_out, is_test=True)
+            out = paddle.static.nn.batch_norm(matmul_out, is_test=True)
             fc_out = fluid.layers.fc(
                 input=matmul_out,
                 size=10,
@@ -144,7 +149,12 @@ class TensorRTMatMulQuantDequantDims4Test(QuantDequantTest):
                 act=None,
             )
             result = fluid.layers.relu(fc_out)
-            loss = fluid.layers.cross_entropy(input=result, label=self.label)
+            loss = paddle.nn.functional.cross_entropy(
+                input=result,
+                label=self.label,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_loss = paddle.mean(loss)
             return avg_loss, result
 
@@ -231,7 +241,7 @@ class TensorRTMatMulQuantDequantDims3DynamicTest(QuantDequantTest):
                 transpose_y=self.transpose_y,
             )
             matmul_out = paddle.scale(matmul_out, scale=self.alpha)
-            out = fluid.layers.batch_norm(matmul_out, is_test=True)
+            out = paddle.static.nn.batch_norm(matmul_out, is_test=True)
             fc_out = fluid.layers.fc(
                 input=matmul_out,
                 size=10,
@@ -240,7 +250,12 @@ class TensorRTMatMulQuantDequantDims3DynamicTest(QuantDequantTest):
                 act=None,
             )
             result = fluid.layers.relu(fc_out)
-            loss = fluid.layers.cross_entropy(input=result, label=self.label)
+            loss = paddle.nn.functional.cross_entropy(
+                input=result,
+                label=self.label,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_loss = paddle.mean(loss)
             return avg_loss, result
 

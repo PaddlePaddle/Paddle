@@ -48,7 +48,6 @@ class TestDirectory(unittest.TestCase):
             'paddle.distributed.ParallelEnv',
             'paddle.DataParallel',
             'paddle.jit',
-            'paddle.jit.TracedLayer',
             'paddle.jit.to_static',
             'paddle.jit.ProgramTranslator',
             'paddle.jit.TranslatedLayer',

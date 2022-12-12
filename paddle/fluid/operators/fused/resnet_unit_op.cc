@@ -18,8 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 // Shape of bitmask
 static framework::DDim GetBitmaskDims(std::vector<int> out_shape) {
   int c = out_shape.back();

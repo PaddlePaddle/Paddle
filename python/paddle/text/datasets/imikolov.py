@@ -67,7 +67,7 @@ class Imikolov(Dataset):
 
                 model = SimpleNet()
                 src, trg = model(src, trg)
-                print(src.numpy().shape, trg.numpy().shape)
+                print(src.shape, trg.shape)
 
     """
 
