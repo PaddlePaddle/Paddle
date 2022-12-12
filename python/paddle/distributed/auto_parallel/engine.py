@@ -752,15 +752,17 @@ class Engine:
             all_process_groups = get_all_process_groups()
             cur_rank = self._cur_rank
             # NOTE: After the implementation of the unified dynamic and static communication group initialization mode in the future, the initialization logic of full mode will be removed because port occupation error may occur.
-            if self._strategy.auto_mode == "full":
-                auto_utils.initialize_pg_in_full_mode(
-                    all_process_groups, cur_rank
-                )
-            else:
-                for process_group in all_process_groups:
-                    if cur_rank not in process_group.ranks:
-                        continue
-                    process_group.instantiate()
+            auto_utils.initialize_pg_in_full_mode(all_process_groups, cur_rank)
+            # if self._strategy.auto_mode == "full":
+            #     auto_utils.initialize_pg_in_full_mode(
+            #         all_process_groups, cur_rank
+            #     )
+            # else:
+            #     for process_group in all_process_groups:
+            #         if cur_rank not in process_group.ranks:
+            #             continue
+            #         print("process_group:", process_group)
+            #         process_group.instantiate()
 
         place = _get_device()
         if isinstance(place, fluid.CUDAPlace):
