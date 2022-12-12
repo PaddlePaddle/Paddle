@@ -125,7 +125,7 @@ def get_mov_combined_features():
     )
 
     mov_categories_hidden = layers.sequence_pool(
-        input=mov_categories_emb, pool_type="sum"
+        input=mov_categories_emb.squeeze(-2), pool_type="sum"
     )
 
     MOV_TITLE_DICT_SIZE = len(paddle.dataset.movielens.get_movie_title_dict())
@@ -139,7 +139,7 @@ def get_mov_combined_features():
     )
 
     mov_title_conv = nets.sequence_conv_pool(
-        input=mov_title_emb,
+        input=mov_title_emb.squeeze(-2),
         num_filters=32,
         filter_size=3,
         act="tanh",

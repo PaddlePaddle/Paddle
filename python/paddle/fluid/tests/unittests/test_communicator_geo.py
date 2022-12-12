@@ -43,13 +43,10 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
             ),
             is_sparse=True,
         )
-        print(emb.shape)
 
         pool = fluid.layers.sequence_pool(
             input=emb.squeeze(-2), pool_type="sum"
         )
-        print(pool.shape)
-        print(x.shape)
         z = fluid.layers.concat(input=[x, pool], axis=1)
         y_predict = fluid.layers.fc(input=z, size=1, act=None)
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')

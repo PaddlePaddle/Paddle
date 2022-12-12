@@ -115,9 +115,11 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             is_sparse=True,
             padding_idx=0,
         )
+        print(dnn_embedding.shape)
         dnn_pool = fluid.layers.sequence_pool(
-            input=dnn_embedding, pool_type="sum"
+            input=dnn_embedding.squeeze(-2), pool_type="sum"
         )
+        print(dnn_pool.shape)
         dnn_out = dnn_pool
         for i, dim in enumerate(dnn_layer_dims[1:]):
             fc = fluid.layers.fc(
@@ -143,7 +145,9 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             is_sparse=True,
             padding_idx=0,
         )
-        lr_pool = fluid.layers.sequence_pool(input=lr_embbding, pool_type="sum")
+        lr_pool = fluid.layers.sequence_pool(
+            input=lr_embbding.squeeze(-2), pool_type="sum"
+        )
 
         merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
 
