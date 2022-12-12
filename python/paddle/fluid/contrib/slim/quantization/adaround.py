@@ -83,7 +83,7 @@ class AdaRoundLoss:
 
             return round_loss
 
-        round_loss = fluid.layers.cond(
+        round_loss = paddle.static.nn.cond(
             warm_start,
             lambda: fluid.layers.fill_constant(
                 shape=[1], dtype='float32', value=0.0

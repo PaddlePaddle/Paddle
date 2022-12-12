@@ -57,7 +57,7 @@ from .function_spec import (
 
 from .ast_transformer import DygraphToStaticAst
 
-__all__ = ['ProgramTranslator', 'convert_to_static']
+__all__ = []
 
 # For each traced function, we set `max_traced_program_count` = 10 to consider caching performance.
 # Once exceeding the threshold, we will raise warning to users to make sure the conversion is as expected.
