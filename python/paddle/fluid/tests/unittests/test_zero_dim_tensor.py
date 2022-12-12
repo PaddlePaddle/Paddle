@@ -653,6 +653,35 @@ class TestSundryAPI(unittest.TestCase):
             self.assertEqual(out.numpy()[1][i], updates.numpy()[i])
         self.assertEqual(out.grad.shape, [2, 3])
 
+    def test_diagflat(self):
+        x1 = paddle.rand([])
+        x2 = paddle.rand([])
+        x3 = paddle.rand([])
+
+        x1.stop_gradient = False
+        x2.stop_gradient = False
+        x3.stop_gradient = False
+
+        out1 = paddle.diagflat(x1, 1)
+        out2 = paddle.diagflat(x2, -1)
+        out3 = paddle.diagflat(x3, 0)
+
+        out1.backward()
+        out2.backward()
+        out3.backward()
+
+        self.assertEqual(out1.shape, [2, 2])
+        self.assertEqual(out2.shape, [2, 2])
+        self.assertEqual(out3.shape, [1, 1])
+
+        self.assertEqual(out1.grad.shape, [2, 2])
+        self.assertEqual(out2.grad.shape, [2, 2])
+        self.assertEqual(out3.grad.shape, [1, 1])
+
+        self.assertEqual(x1.grad.shape, [])
+        self.assertEqual(x2.grad.shape, [])
+        self.assertEqual(x3.grad.shape, [])
+
 
 class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
@@ -795,6 +824,26 @@ class TestSundryAPIStatic(unittest.TestCase):
         res = self.exe.run(prog, fetch_list=[out])
         for i in range(3):
             self.assertEqual(res[0][1][i], 4)
+
+    @prog_scope()
+    def test_diagflat(self):
+        x1 = paddle.rand([])
+        out1 = paddle.diagflat(x1, 1)
+        paddle.static.append_backward(out1)
+
+        x2 = paddle.rand([])
+        out2 = paddle.diagflat(x2, -1)
+        paddle.static.append_backward(out2)
+
+        x3 = paddle.rand([])
+        out3 = paddle.diagflat(x3)
+        paddle.static.append_backward(out3)
+
+        prog = paddle.static.default_main_program()
+        res1, res2, res3 = self.exe.run(prog, fetch_list=[out1, out2, out3])
+        self.assertEqual(res1.shape, (2, 2))
+        self.assertEqual(res2.shape, (2, 2))
+        self.assertEqual(res3.shape, (1, 1))
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.

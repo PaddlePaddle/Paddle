@@ -31,8 +31,6 @@ limitations under the License. */
 namespace f = paddle::framework;
 namespace p = paddle::platform;
 
-using Tensor = phi::DenseTensor;
-
 USE_OP_ITSELF(check_finite_and_unscale);
 USE_OP_DEVICE_KERNEL(check_finite_and_unscale, NPU);
 
@@ -110,7 +108,7 @@ void Compare(f::Scope *scope, const p::DeviceContext &ctx) {
   ctx.Wait();
 
   // out found_inf
-  Tensor found_inf_tensor;
+  phi::DenseTensor found_inf_tensor;
   found_inf_tensor.Resize({1});
   bool *found_inf_data =
       found_inf_tensor.mutable_data<bool>(paddle::platform::CPUPlace());
