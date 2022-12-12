@@ -27,7 +27,6 @@ from .control_flow import (
     switch_case,
 )
 from .common import bilinear_tensor_product  # noqa: F401
-from .common import prior_box  # noqa: F401
 from .common import py_func  # noqa: F401
 from ...tensor.creation import create_parameter  # noqa: F401
 from ...fluid.layers import cond  # noqa: F401
@@ -78,7 +77,6 @@ __all__ = [  # noqa
     'layer_norm',
     'nce',
     'prelu',
-    'prior_box',
     'py_func',
     'row_conv',
     'spectral_norm',
