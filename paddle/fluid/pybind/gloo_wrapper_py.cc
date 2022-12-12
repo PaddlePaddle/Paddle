@@ -31,8 +31,9 @@ namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 void BindGlooWrapper(py::module* m) {
-  py::class_<framework::GlooWrapper>(*m, "Gloo")
-      .def(py::init())
+  py::class_<framework::GlooWrapper, std::shared_ptr<framework::GlooWrapper>>(
+      *m, "Gloo")
+      .def(py::init([]() { return framework::GlooWrapper::GetInstance(); }))
       .def("init", &framework::GlooWrapper::Init)
       .def("rank", &framework::GlooWrapper::Rank)
       .def("size", &framework::GlooWrapper::Size)

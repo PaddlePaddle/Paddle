@@ -1090,8 +1090,9 @@ class TheOnePSRuntime(RuntimeBase):
         self.string_hosts = []
         for idx, ep in enumerate(self.endpoints):
             host, port = ep.split(":")
-            pshost = core.PSHost(host, int(port), idx)
-            self.string_hosts.append(pshost.serialize_to_string())
+            #pshost = core.PSHost(host, int(port), idx)
+            #self.string_hosts.append(pshost.serialize_to_string())
+            self.string_hosts.append(":".join([host, port, str(idx)]))
 
         self.with_coordinator = self.role_maker._with_coordinator
         self.coordinator_hosts = []
@@ -1631,10 +1632,11 @@ class TheOnePSRuntime(RuntimeBase):
         fleet.util.barrier()
         return feasign_num
 
-    def _check_save_pre_patch_done(self):
-        fleet.util.barrier()
+    def _save_cache_table(self, table_id, pass_id, mem_cache_key_threshold):
         if self.role_maker._is_first_worker():
-            self._worker.check_save_pre_patch_done()
+            self._worker.save_cache_table(
+                table_id, pass_id, mem_cache_key_threshold
+            )
         fleet.util.barrier()
 
     def _load_sparse_params(self, dirname, context, main_program, mode):

@@ -30,6 +30,7 @@ from .learning_rate_scheduler import *
 from .collective import *
 from .sequence_lod import *
 from . import rnn
+from .nn import reduce_sum
 
 __all__ = []
 __all__ += nn.__all__
