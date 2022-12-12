@@ -109,7 +109,7 @@ struct Gather {
 };
 
 template <typename Context,
-          template <typename InT, typename OutT>
+          template <class InT, class OutT>
           typename CompareFunctor,
           typename T>
 struct GetMask {
@@ -123,7 +123,7 @@ struct GetMask {
 };
 
 template <typename Context,
-          template <typename T>
+          template <class T>
           typename BinaryFunctor,
           typename T>
 struct BinaryOperation {
