@@ -700,7 +700,8 @@ if(TENSORRT_FOUND)
          feed_fetch_method
          graph_to_program_pass
          variable_helper
-         tensorrt_engine_op)
+         tensorrt_engine_op
+         gpu_memo_trace_tool)
 else()
   cc_library(
     naive_executor
@@ -714,7 +715,8 @@ else()
          lod_rank_table
          feed_fetch_method
          graph_to_program_pass
-         variable_helper)
+         variable_helper
+         gpu_memo_trace_tool)
 endif()
 
 cc_library(
@@ -1219,6 +1221,13 @@ cc_library(
        phi_tensor
        op_meta_info
        phi_api)
+
+cc_library(
+  gpu_memo_trace_tool
+  SRCS trace_tool.cc
+  DEPS tensor
+       device_context
+       )
 
 set(FLUID_FRAMEWORK_MODULES
     proto_desc

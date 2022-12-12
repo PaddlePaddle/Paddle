@@ -57,7 +57,8 @@ void NaiveExecutor::Run() {
 #ifdef PADDLE_WITH_INFERENCE_NVTX
   platform::CudaNvtxRangePush("model", platform::NvtxRangeColor::Yellow);
 #endif
-  for (auto &op : ops_) {
+  for (size_t idx = 0; idx < ops_.size(); idx++) {
+    auto& op = ops_[idx];
     VLOG(4) << std::this_thread::get_id() << " run "
             << op->DebugStringEx(scope_) << " on scope " << scope_;
     op->SetIsCalledByExecutor(false);
@@ -71,8 +72,9 @@ void NaiveExecutor::Run() {
         it.first->ShareBufferWith(*cluster_buffer_[it.second], true);
       }
     }
-
+    gpu_memory_trace_tool_->Record(idx, op->Type());
     op->Run(*scope_, place_);
+    gpu_memory_trace_tool_->Pause();
 
     // Update the shared_holder so that only records the max one.
     if (reuse_cache_.count(op.get())) {
@@ -216,6 +218,7 @@ NaiveExecutor::~NaiveExecutor() {
   // this is needed to have mkl-dnn unit tests working
   platform::ClearMKLDNNCache(place_, this);
 #endif
+  gpu_memory_trace_tool_->Stop();
 }
 
 void NaiveExecutor::ResetTrtOps(int num) {

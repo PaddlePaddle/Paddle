@@ -61,7 +61,7 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
   T* output_data = transformed_output->data<T>();
 
   auto handle = ctx.cudnn_handle();
-  auto workspace_handle = ctx.cudnn_workspace_handle();
+  auto& workspace_handle = ctx.cudnn_workspace_handle();
 
   auto layout_format = phi::backends::gpu::GetCudnnTensorFormat(layout);
   auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
@@ -245,7 +245,7 @@ void ConvCudnnKernelImplV8(const DenseTensor* input_tensor,
   T* filter_data = const_cast<T*>(filter_channel_tensor->data<T>());
   T* output_data = output_tensor->data<T>();
   cudnnHandle_t handle = const_cast<cudnnHandle_t>(ctx.cudnn_handle());
-  auto workspace_handle = ctx.cudnn_workspace_handle();
+  auto& workspace_handle = ctx.cudnn_workspace_handle();
 
   auto layout_format = phi::backends::gpu::GetCudnnTensorFormat(layout);
   auto dtype = phi::backends::gpu::CudnnDataType<T>::type;

@@ -188,7 +188,7 @@ void DnnWorkspaceHandle::RunFuncSync(
   RunFunc(cudnn_func, required_workspace_bytes);
   if (need_realloc) {
     // Release the workspace allocated in this running.
-    ResetWorkspace();
+    // ResetWorkspace();
   }
 }
 
@@ -290,15 +290,15 @@ struct GPUContext::Impl {
     }
   }
 
-  // TODO(wilber): The return type is a pointer, to be modified later.
-  // DnnWorkspaceHandle* GetDnnWorkspace() {
-  //   PD_CHECK(workspace_ != nullptr, "the gpu cudnn workspace is nullptr.");
-  //   return workspace_;
+  // DnnWorkspaceHandle GetDnnWorkspace() {
+  //   PD_CHECK(allocator_ != nullptr,
+  //            "the device allocator for gpu context is nullptr.");
+  //   return DnnWorkspaceHandle(allocator_, stream());
   // }
-  DnnWorkspaceHandle GetDnnWorkspace() {
-    PD_CHECK(allocator_ != nullptr,
-             "the device allocator for gpu context is nullptr.");
-    return DnnWorkspaceHandle(allocator_, stream());
+
+  DnnWorkspaceHandle& GetDnnWorkspace() {
+    PD_CHECK(workspace_ != nullptr, "the gpu cudnn workspace is nullptr.");
+    return *workspace_;
   }
 
   void SetStream(gpuStream_t stream) {
@@ -881,7 +881,7 @@ Eigen::GpuDevice* GPUContext::eigen_device() const {
   return impl_->eigen_device();
 }
 
-DnnWorkspaceHandle GPUContext::cudnn_workspace_handle() const {
+DnnWorkspaceHandle& GPUContext::cudnn_workspace_handle() const {
   return impl_->GetDnnWorkspace();
 }
 

@@ -291,7 +291,7 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
                 out_desc[i],
                 out_datas[i]));
       };
-      auto workspace_handle = dev_ctx.cudnn_workspace_handle();
+      auto& workspace_handle = dev_ctx.cudnn_workspace_handle();
       workspace_handle.RunFunc(func, workspace_size_in_bytes);
     }
 

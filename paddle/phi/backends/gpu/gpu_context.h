@@ -146,7 +146,7 @@ class PADDLE_API GPUContext : public DeviceContext,
    *  workspace. Once the handle is destructed, the lock would be released.
    */
   // TODO(wilber): The return type is a pointer, to be modified later.
-  DnnWorkspaceHandle cudnn_workspace_handle() const;
+  DnnWorkspaceHandle& cudnn_workspace_handle() const;
 
  public:
   /*! \brief  Call cublas function safely. */

@@ -25,6 +25,7 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/framework/trace_tool.h"
 
 namespace paddle {
 namespace framework {
@@ -40,7 +41,9 @@ class NaiveExecutor {
  public:
   using HookFunc = std::function<void(OperatorBase*)>;
 
-  explicit NaiveExecutor(const platform::Place& place) : place_(place) {}
+  explicit NaiveExecutor(const platform::Place& place) : place_(place) {
+    gpu_memory_trace_tool_ = new framework::TraceGPUMemoTool(platform::GetCurrentDeviceId());
+  }
 
   ~NaiveExecutor();
 
@@ -92,6 +95,7 @@ class NaiveExecutor {
   std::unordered_map<OperatorBase*, std::unordered_map<phi::DenseTensor*, int>>
       reuse_cache_;
   std::vector<phi::DenseTensor*> cluster_buffer_;
+  framework::TraceGPUMemoTool* gpu_memory_trace_tool_;
 };
 
 }  // namespace framework
