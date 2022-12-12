@@ -27,26 +27,23 @@
 
 # TODO: define normalization api
 
-from ...fluid.dygraph import BatchNorm  # noqa: F401
-from ...fluid.dygraph import SpectralNorm  # noqa: F401
-
-from ...framework import get_default_dtype
-
-from ..initializer import Constant
-from ...framework import ParamAttr
-from ...fluid.data_feeder import check_variable_and_dtype
-
-from ..functional import batch_norm, layer_norm, instance_norm
+import numbers
+import os
+import warnings
 
 import numpy as np
-import numbers
-import warnings
-from ...framework import no_grad
-from .. import functional as F
-from paddle import _C_ops, _legacy_C_ops
+
+from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
+from paddle.device import get_all_custom_device_type
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+
+from ...fluid.data_feeder import check_variable_and_dtype
+from ...fluid.dygraph import BatchNorm  # noqa: F401
+from ...framework import ParamAttr, get_default_dtype, no_grad
 from .. import Layer
-from paddle import in_dynamic_mode
-from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
+from .. import functional as F
+from ..functional import batch_norm, instance_norm, layer_norm
+from ..initializer import Constant, Normal
 
 __all__ = []
 
@@ -318,6 +315,7 @@ Where `H` means height of feature map, `W` means width of feature map.
 
 class GroupNorm(Layer):
     """
+
     This interface is used to construct a callable object of the ``GroupNorm`` class.
     For more details, refer to code examples.
     It implements the function of the Group Normalization Layer.
@@ -338,7 +336,7 @@ class GroupNorm(Layer):
         name(str, optional): Name for the GroupNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
-        - x: Tensor with shape: (batch, num_features, *).
+        - x: Tensor with shape: attr:`(batch, num_features, *)`.
         - output: The same shape as input x.
 
     Returns:
@@ -389,8 +387,8 @@ class GroupNorm(Layer):
                 shape=param_shape,
                 default_initializer=Constant(1.0),
             )
-            self.weight.stop_gradient = (
-                self._weight_attr is not None
+            self.weight.stop_gradient = self._weight_attr is not None and (
+                hasattr(self._weight_attr, "learning_rate")
                 and self._weight_attr.learning_rate == 0.0
             )
 
@@ -406,8 +404,8 @@ class GroupNorm(Layer):
             self.bias = self.create_parameter(
                 attr=self._bias_attr, shape=param_shape, is_bias=True
             )
-            self.bias.stop_gradient = (
-                self._bias_attr is not None
+            self.bias.stop_gradient = self._bias_attr is not None and (
+                hasattr(self._bias_attr, "learning_rate")
                 and self._bias_attr.learning_rate == 0.0
             )
 
@@ -681,6 +679,30 @@ class _BatchNormBase(Layer):
             shape=param_shape,
         )
         self._variance.stop_gradient = True
+
+        # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
+        if (
+            os.environ.get('FLAGS_npu_storage_format', None)
+            in [1, '1', True, 'True', 'true']
+            and 'npu' in get_all_custom_device_type()
+        ):
+            with no_grad():
+                weight_trans = _C_ops.npu_identity(
+                    self.weight, 3
+                )  # ACL_FORMAT_NC1HWC0 = 3
+                bias_trans = _C_ops.npu_identity(
+                    self.bias, 3
+                )  # ACL_FORMAT_NC1HWC0 = 3
+                mean_trans = _C_ops.npu_identity(
+                    self._mean, 3
+                )  # ACL_FORMAT_NC1HWC0 = 3
+                var_trans = _C_ops.npu_identity(
+                    self._variance, 3
+                )  # ACL_FORMAT_NC1HWC0 = 3
+                weight_trans._share_underline_tensor_to(self.weight)
+                bias_trans._share_underline_tensor_to(self.bias)
+                mean_trans._share_underline_tensor_to(self._mean)
+                var_trans._share_underline_tensor_to(self._variance)
 
         self._data_format = data_format
         self._in_place = False
@@ -1041,6 +1063,7 @@ class BatchNorm3D(_BatchNormBase):
 
 class SyncBatchNorm(_BatchNormBase):
     r"""
+
     This interface is used to construct a callable object of the ``SyncBatchNorm`` class.
     It implements the function of the Cross-GPU Synchronized Batch Normalization Layer, and can
     be used as a normalizer function for other operations, such as conv2d and fully connected
@@ -1086,9 +1109,9 @@ class SyncBatchNorm(_BatchNormBase):
     - :math:`\beta` : trainable shift parameter vector
 
     Note:
-        If you want to use container to pack your model and has ``SyncBatchNorm`` in the
-        evaluation phase, please use ``nn.LayerList`` or ``nn.Sequential`` instead of
-        ``list`` to pack the model.
+        If you want to use container to pack your model and has :ref:`api_paddle_nn_SyncBatchNorm` in the
+        evaluation phase, please use :ref:`api_paddle_nn_LayerList` or :ref:`api_paddle_nn_Sequential` instead of
+        :ref:`api_paddle_hub_list` to pack the model.
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
@@ -1106,29 +1129,30 @@ class SyncBatchNorm(_BatchNormBase):
              have trainable bias parameter. Default: None.
 
     Shapes:
-        input: Tensor that the dimension from 2 to 5.
-        output: Tensor with the same shape as input.
+        - input: Tensor that the dimension from 2 to 5.
+        - output: Tensor with the same shape as input.
 
     Examples:
         .. code-block:: python
 
-          # required: gpu
+            # required: gpu
 
-          import paddle
-          import paddle.nn as nn
+            import paddle
+            import paddle.nn as nn
 
-          x = paddle.to_tensor([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
+            x = paddle.to_tensor([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
 
-          if paddle.is_compiled_with_cuda():
-              sync_batch_norm = nn.SyncBatchNorm(2)
-              hidden1 = sync_batch_norm(x)
-              print(hidden1)
-              # Tensor(shape=[1, 2, 2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-              #        [[[[ 0.26824948,  1.09363246],
-              #           [ 0.26824948, -1.63013160]],
+            if paddle.is_compiled_with_cuda():
+                sync_batch_norm = nn.SyncBatchNorm(2)
+                hidden1 = sync_batch_norm(x)
+                print(hidden1)
+                # Tensor(shape=[1, 2, 2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
+                #        [[[[ 0.26824948,  1.09363246],
+                #           [ 0.26824948, -1.63013160]],
 
-              #          [[ 0.80956620, -0.66528702],
-              #           [-1.27446556,  1.13018656]]]])
+                #          [[ 0.80956620, -0.66528702],
+                #           [-1.27446556,  1.13018656]]]])
+
     """
 
     def __init__(
@@ -1277,8 +1301,8 @@ class SyncBatchNorm(_BatchNormBase):
             The original model with converted SyncBatchNorm layers. If BatchNorm*d layer in the model, use SyncBatchNorm layer instead.
 
         Examples:
-
             .. code-block:: python
+
                 import paddle
                 import paddle.nn as nn
 
@@ -1406,3 +1430,137 @@ class LocalResponseNorm(Layer):
         if self.name is not None:
             main_str += ', name={}'.format(self.name)
         return main_str
+
+
+class SpectralNorm(Layer):
+    r"""
+    This interface is used to construct a callable object of the ``SpectralNorm`` class.
+    For more details, refer to code examples. It implements the function of the Spectral Normalization Layer.
+    This layer calculates the spectral normalization value of weight parameters of
+    fc, conv1d, conv2d, conv3d layers which should be 2-D, 3-D, 4-D, 5-D
+    Parameters. Calculations are showed as follows.
+
+    Step 1:
+    Generate vector U in shape of [H], and V in shape of [W].
+    While H is the :attr:`axis` th dimension of the input weights,
+    and W is the product result of remaining dimensions.
+
+    Step 2:
+    :attr:`power_iters` should be a positive integer, do following
+    calculations with U and V for :attr:`power_iters` rounds.
+
+    .. math::
+
+        \mathbf{v} := \frac{\mathbf{W}^{T} \mathbf{u}}{\|\mathbf{W}^{T} \mathbf{u}\|_2}
+
+        \mathbf{u} := \frac{\mathbf{W}^{T} \mathbf{v}}{\|\mathbf{W}^{T} \mathbf{v}\|_2}
+
+    Step 3:
+    Calculate :math:`\sigma(\mathbf{W})` and normalize weight values.
+
+    .. math::
+
+        \sigma(\mathbf{W}) = \mathbf{u}^{T} \mathbf{W} \mathbf{v}
+
+        \mathbf{W} = \frac{\mathbf{W}}{\sigma(\mathbf{W})}
+
+
+    Refer to `Spectral Normalization <https://arxiv.org/abs/1802.05957>`_ .
+
+    Parameters:
+        weight_shape(list or tuple): The shape of weight parameter.
+        axis(int, optional): The index of dimension which should be permuted to the first before reshaping Input(Weight) to matrix, it should be set as 0 if Input(Weight) is the weight of fc layer, and should be set as 1 if Input(Weight) is the weight of conv layer. Default: 0.
+        power_iters(int, optional): The number of power iterations to calculate spectral norm. Default: 1.
+        epsilon(float, optional): The epsilon for numerical stability in calculating norms. Default: 1e-12.
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
+        dtype (str, optional): Data type, it can be "float32" or "float64". Default: "float32".
+
+    Returns:
+        None
+
+    Examples:
+       .. code-block:: python
+
+            import paddle
+            x = paddle.rand((2,8,32,32))
+
+            spectral_norm = paddle.nn.SpectralNorm(x.shape, axis=1, power_iters=2)
+            spectral_norm_out = spectral_norm(x)
+
+            print(spectral_norm_out.shape) # [2, 8, 32, 32]
+
+    """
+
+    def __init__(
+        self,
+        weight_shape,
+        axis=0,
+        power_iters=1,
+        epsilon=1e-12,
+        dtype='float32',
+    ):
+        super().__init__()
+        self._power_iters = power_iters
+        self._epsilon = epsilon
+        self._dim = axis
+        self._dtype = dtype
+
+        self._weight_shape = list(weight_shape)
+        assert (
+            np.prod(self._weight_shape) > 0
+        ), "Any dimension of `weight_shape` cannot be equal to 0."
+        assert axis < len(self._weight_shape), (
+            "The input `axis` should be less than the "
+            "length of `weight_shape`, but received axis="
+            "{}".format(axis)
+        )
+        h = self._weight_shape[self._dim]
+        w = np.prod(self._weight_shape) // h
+
+        self.weight_u = self.create_parameter(
+            attr=ParamAttr(),
+            shape=[h],
+            dtype=self._dtype,
+            default_initializer=Normal(0.0, 1.0),
+        )
+        self.weight_u.stop_gradient = True
+
+        self.weight_v = self.create_parameter(
+            attr=ParamAttr(),
+            shape=[w],
+            dtype=self._dtype,
+            default_initializer=Normal(0.0, 1.0),
+        )
+        self.weight_v.stop_gradient = True
+
+    def forward(self, x):
+        weight = x
+        if in_dygraph_mode():
+            return _C_ops.spectral_norm(
+                weight,
+                self.weight_u,
+                self.weight_v,
+                self._dim,
+                self._power_iters,
+                self._epsilon,
+            )
+
+        check_variable_and_dtype(
+            weight, "weight", ['float32', 'float64'], 'SpectralNorm'
+        )
+        inputs = {'Weight': weight, 'U': self.weight_u, 'V': self.weight_v}
+        out = self._helper.create_variable_for_type_inference(self._dtype)
+        self._helper.append_op(
+            type="spectral_norm",
+            inputs=inputs,
+            outputs={
+                "Out": out,
+            },
+            attrs={
+                "dim": self._dim,
+                "power_iters": self._power_iters,
+                "eps": self._epsilon,
+            },
+        )
+
+        return out

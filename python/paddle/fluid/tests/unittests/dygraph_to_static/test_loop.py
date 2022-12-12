@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.utils import gast
 import inspect
-import numpy as np
-import paddle
-import paddle.fluid as fluid
 import unittest
 
-from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import NameVisitor
-from paddle.fluid.dygraph.jit import declarative
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+from paddle.jit.api import declarative
+from paddle.jit.dy2static.loop_transformer import NameVisitor
+from paddle.utils import gast
 
 SEED = 2020
 np.random.seed(SEED)
@@ -82,7 +83,7 @@ def while_loop_dyfunc_with_none(x):
 def for_loop_dyfunc(max_len):
     for i in range(max_len):
         ret = fluid.layers.zeros(shape=[1], dtype='float32')
-        fluid.layers.increment(ret, value=2.0, in_place=True)
+        paddle.increment(ret, value=2.0)
     return ret
 
 
@@ -103,14 +104,14 @@ def for_loop_dyfunc2(max_len):
 def for_loop_dyfunc3(max_len):
     ret = fluid.layers.zeros(shape=[1], dtype='float32')
     for i in range(1, 10, 2):
-        fluid.layers.increment(ret, value=2.0, in_place=True)
+        paddle.increment(ret, value=2.0)
     return ret
 
 
 def for_loop_dyfunc4(max_len):
     ret = fluid.layers.zeros(shape=[1], dtype='float32')
     for i in range(10, 1, -2):
-        fluid.layers.increment(ret, value=2.0, in_place=True)
+        paddle.increment(ret, value=2.0)
     return ret
 
 
@@ -118,7 +119,7 @@ def for_loop_dyfunc_not_support(max_len):
     ret = fluid.layers.zeros(shape=[1], dtype='float32')
     a = -2
     for i in range(10, 1, a):
-        fluid.layers.increment(ret, value=2.0, in_place=True)
+        paddle.increment(ret, value=2.0)
     return ret
 
 
@@ -441,5 +442,4 @@ class TestErrorInForLoop(TestTransformForLoop):
 
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

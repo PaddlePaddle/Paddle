@@ -17,7 +17,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 class DecayedAdagradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -32,20 +31,20 @@ class DecayedAdagradOp : public framework::OperatorWithKernel {
                    "Input",
                    "LearningRate",
                    "DecayedAdagradOp");
-    PADDLE_ENFORCE_EQ(
-        ctx->GetInputsVarType("Param").front(),
-        framework::proto::VarType::LOD_TENSOR,
-        platform::errors::InvalidArgument(
-            "The input var's type should be LoDTensor, but the received is %s",
-            ctx->Inputs("Param").front(),
-            ctx->GetInputsVarType("Param").front()));
-    PADDLE_ENFORCE_EQ(
-        ctx->GetInputsVarType("Grad").front(),
-        framework::proto::VarType::LOD_TENSOR,
-        platform::errors::InvalidArgument(
-            "The input var's type should be LoDTensor, but the received is %s",
-            ctx->Inputs("Grad").front(),
-            ctx->GetInputsVarType("Grad").front()));
+    PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("Param").front(),
+                      framework::proto::VarType::LOD_TENSOR,
+                      platform::errors::InvalidArgument(
+                          "The input var's type should be phi::DenseTensor, "
+                          "but the received is %s",
+                          ctx->Inputs("Param").front(),
+                          ctx->GetInputsVarType("Param").front()));
+    PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("Grad").front(),
+                      framework::proto::VarType::LOD_TENSOR,
+                      platform::errors::InvalidArgument(
+                          "The input var's type should be phi::DenseTensor, "
+                          "but the received is %s",
+                          ctx->Inputs("Grad").front(),
+                          ctx->GetInputsVarType("Grad").front()));
 
     OP_INOUT_CHECK(
         ctx->HasOutput("ParamOut"), "Output", "ParamOut", "DecayedAdagradOp");

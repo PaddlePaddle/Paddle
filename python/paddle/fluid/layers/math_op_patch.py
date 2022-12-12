@@ -18,7 +18,7 @@ import inspect
 from .. import core
 from ..framework import Variable, unique_name, static_only
 from .layer_function_generator import OpProtoHolder
-from .control_flow import array_write, array_length
+from .control_flow import array_write
 from paddle.fluid.dygraph.base import in_declarative_mode
 
 _supported_int_dtype_ = [
@@ -99,7 +99,8 @@ def monkey_patch_variable():
         return var
 
     def create_scalar(block, value, dtype):
-        return create_tensor(block, value, dtype, shape=[])
+        # TODO(zhouwei): will change to [] which is 0-D Tensor
+        return create_tensor(block, value, dtype, shape=[1])
 
     def create_tensor_with_batchsize(ref_var, value, dtype):
         assert isinstance(ref_var, Variable)
@@ -245,6 +246,8 @@ def monkey_patch_variable():
                     self.type
                 )
             )
+        from paddle.tensor.array import array_length
+
         array_write(x=var, i=array_length(self), array=self)
 
     @static_only
@@ -274,7 +277,7 @@ def monkey_patch_variable():
         Returns:
             Variable: self[index]
         """
-        from paddle.fluid.dygraph.dygraph_to_static.convert_operators import (
+        from paddle.jit.dy2static.convert_operators import (
             _run_paddle_pop,
         )
 

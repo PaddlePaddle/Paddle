@@ -14,20 +14,20 @@
 
 import logging
 import os
-import time
 import tempfile
+import time
 import unittest
 
 import numpy as np
-import paddle
-import paddle.fluid as fluid
-
 import transformer_util as util
 from transformer_dygraph_model import (
     CrossEntropyCriterion,
     Transformer,
     position_encoding_init,
 )
+
+import paddle
+import paddle.fluid as fluid
 
 trainer_count = 1
 place = (
@@ -556,6 +556,4 @@ class TestTransformer(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    # switch into new eager mode
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

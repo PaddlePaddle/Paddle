@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
+from test_fetch_feed import Linear
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.layers.utils import flatten
-from paddle.fluid.dygraph import declarative, ProgramTranslator
-
-from test_fetch_feed import Linear
-
-import unittest
+from paddle.jit import ProgramTranslator
+from paddle.jit.api import declarative
 
 SEED = 2020
 
@@ -186,7 +187,7 @@ class GPT2LMHeadModel(fluid.dygraph.Layer):
 
     @declarative
     def forward(self, x):
-        x = fluid.layers.reshape(x, shape=[-1, 6])
+        x = paddle.reshape(x, shape=[-1, 6])
         x1, x2, x3 = fluid.layers.split(input=x, dim=1, num_or_sections=3)
         return x1
 

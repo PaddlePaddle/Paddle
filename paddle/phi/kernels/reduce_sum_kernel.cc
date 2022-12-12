@@ -26,10 +26,7 @@ void SumKernel(const Context& dev_ctx,
                DataType out_dtype,
                bool keep_dim,
                DenseTensor* out) {
-  bool reduce_all = false;
-  if (dims.size() == 0) {
-    reduce_all = true;
-  }
+  bool reduce_all = recompute_reduce_all(x, dims);
   SumRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out_dtype, out);
 }
 

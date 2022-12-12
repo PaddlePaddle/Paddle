@@ -24,7 +24,7 @@ framework::OpKernelType ReQuantOp::GetExpectedKernelType(
   return framework::OpKernelType(
       OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
       ctx.GetPlace(),
-      phi::DataLayout::kMKLDNN,
+      phi::DataLayout::ONEDNN,
       framework::LibraryType::kMKLDNN);
 }
 

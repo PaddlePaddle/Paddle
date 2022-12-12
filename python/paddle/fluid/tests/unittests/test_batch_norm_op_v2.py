@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid.framework import _test_eager_guard
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
+
 import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestBatchNorm(unittest.TestCase):
@@ -421,7 +422,5 @@ class TestBatchNormUseGlobalStatsCase3(TestBatchNormUseGlobalStats):
 
 
 if __name__ == '__main__':
-    import paddle
-
     paddle.enable_static()
     unittest.main()

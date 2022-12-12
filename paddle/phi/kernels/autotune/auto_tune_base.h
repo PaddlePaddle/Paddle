@@ -70,7 +70,7 @@ class AutoTuneBase {
     PADDLE_ENFORCE_GT(
         kernels_.size(),
         0,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "kernel num must be greater than 0, now is %d", kernels_.size()));
     is_init_ = true;
 
@@ -102,7 +102,7 @@ class AutoTuneBase {
     PADDLE_ENFORCE_GT(
         kernels_.size(),
         0,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "kernel num must be greater than 0, now is %d", kernels_.size()));
     size_t best_idx = 0;
     float min_time = std::numeric_limits<float>::max();

@@ -23,8 +23,7 @@ from paddle.optimizer import Adam
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
 from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
 from paddle.nn import Sequential
-from paddle.fluid.dygraph import Pool2D
-from paddle.fluid.dygraph import Linear
+from paddle.nn import Linear
 from paddle.nn.quant.quant_layers import QuantizedConv2DTranspose
 from paddle.fluid.log_helper import get_logger
 from paddle.fluid.framework import _test_eager_guard
@@ -112,7 +111,7 @@ class ModelForConv2dT(nn.Layer):
     def __init__(self, num_classes=10):
         super().__init__()
         self.features = nn.Conv2DTranspose(4, 6, (3, 3))
-        self.fc = Linear(input_dim=600, output_dim=num_classes)
+        self.fc = Linear(600, num_classes)
 
     def forward(self, inputs):
         x = self.features(inputs)
@@ -132,7 +131,7 @@ class ImperativeLenet(paddle.nn.Layer):
                 stride=1,
                 padding=1,
             ),
-            Pool2D(pool_size=2, pool_type='max', pool_stride=2),
+            paddle.nn.MaxPool2D(kernel_size=2, stride=2),
             paddle.nn.Conv2D(
                 in_channels=6,
                 out_channels=16,
@@ -140,15 +139,13 @@ class ImperativeLenet(paddle.nn.Layer):
                 stride=1,
                 padding=0,
             ),
-            Pool2D(pool_size=2, pool_type='max', pool_stride=2),
+            paddle.nn.MaxPool2D(kernel_size=2, stride=2),
         )
 
         self.fc = Sequential(
-            Linear(input_dim=400, output_dim=120),
-            Linear(input_dim=120, output_dim=84),
-            Linear(
-                input_dim=84, output_dim=num_classes, act=classifier_activation
-            ),
+            Linear(400, 120),
+            Linear(120, 84),
+            Linear(84, num_classes),
         )
 
     def forward(self, inputs):

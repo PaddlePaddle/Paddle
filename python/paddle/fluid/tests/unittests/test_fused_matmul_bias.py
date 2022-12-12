@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid.core as core
-import unittest
-import numpy as np
-from paddle.incubate.nn.functional import fused_matmul_bias, fused_linear
 from paddle.incubate.nn import FusedLinear
+from paddle.incubate.nn.functional import fused_linear, fused_matmul_bias
 
 
 def is_fused_matmul_bias_supported():

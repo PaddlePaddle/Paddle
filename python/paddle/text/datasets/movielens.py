@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import zipfile
 import re
+import zipfile
 
-from paddle.io import Dataset
+import numpy as np
+
 from paddle.dataset.common import _check_exists_and_download
+from paddle.io import Dataset
 
 __all__ = []
 
@@ -133,7 +134,7 @@ class Movielens(Dataset):
 
                 model = SimpleNet()
                 category, title, rating = model(category, title, rating)
-                print(category.numpy().shape, title.numpy().shape, rating.numpy().shape)
+                print(category.shape, title.shape, rating.shape)
 
     """
 

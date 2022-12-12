@@ -264,8 +264,8 @@ void LUInferMeta(const MetaTensor& x,
 void MatrixPowerInferMeta(const MetaTensor& x, int n, MetaTensor* out);
 
 void MatrixRankInferMeta(const MetaTensor& x,
-                         bool use_default_tol,
                          bool hermitian,
+                         bool use_default_tol,
                          MetaTensor* out);
 
 void MaxOutInferMeta(const MetaTensor& x,
@@ -478,7 +478,7 @@ void ShardIndexInferMeta(const MetaTensor& in,
                          MetaTensor* out,
                          MetaConfig config = MetaConfig());
 
-void SizeInferMeta(const MetaTensor& input, MetaTensor* out);
+void NumelInferMeta(const MetaTensor& input, MetaTensor* out);
 
 void SliceRawInferMeta(const MetaTensor& input,
                        const std::vector<int64_t>& axes,
@@ -601,10 +601,14 @@ void TransposeGradInferMeta(const MetaTensor& x,
                             const std::vector<int>& axis,
                             MetaTensor* out);
 
-void TrilInferMeta(const MetaTensor& x,
-                   int diagonal,
-                   bool lower,
-                   MetaTensor* out);
+void TrilInferMeta(const MetaTensor& x, int diagonal, MetaTensor* out);
+
+void TriuInferMeta(const MetaTensor& x, int diagonal, MetaTensor* out);
+
+void TrilTriuInferMeta(const MetaTensor& x,
+                       int diagonal,
+                       bool lower,
+                       MetaTensor* out);
 
 void UnbindInferMeta(const MetaTensor& x,
                      int axis,

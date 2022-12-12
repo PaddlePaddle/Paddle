@@ -68,6 +68,7 @@ phi::DenseTensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos);
 std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
                                                            ssize_t arg_pos);
 std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos);
+std::vector<int64_t> CastPyArg2VectorOfInt64(PyObject* obj, size_t arg_pos);
 std::vector<size_t> CastPyArg2VectorOfSize_t(PyObject* obj, size_t arg_pos);
 std::vector<std::vector<size_t>> CastPyArg2VectorOfVectorOfSize_t(
     PyObject* obj, size_t arg_pos);
@@ -75,7 +76,8 @@ framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
                                                     ssize_t arg_pos);
 std::unordered_map<std::wstring, int> CastPyArg2Vocab(PyObject* obj,
                                                       ssize_t arg_pos);
-std::vector<std::string> CastPyArg2Strings(PyObject* obj, ssize_t arg_pos);
+std::vector<std::string> CastPyArg2VectorOfString(PyObject* obj,
+                                                  ssize_t arg_pos);
 std::shared_ptr<jit::Function> CastPyArg2JitFunction(PyObject* obj,
                                                      ssize_t arg_pos);
 
@@ -104,7 +106,8 @@ PyObject* ToPyObject(const std::vector<std::vector<size_t>>& value);
 PyObject* ToPyObject(const std::vector<paddle::experimental::Tensor>& value,
                      bool return_py_none_if_not_initialize = false);
 PyObject* ToPyObject(
-    const std::vector<std::vector<paddle::experimental::Tensor>>& value);
+    const std::vector<std::vector<paddle::experimental::Tensor>>& value,
+    bool return_py_none_if_not_initialize = false);
 PyObject* ToPyObject(const platform::Place& value);
 PyObject* ToPyObject(const phi::DenseTensor* value);
 PyObject* ToPyObject(const phi::SelectedRows* value);
@@ -148,6 +151,49 @@ class PyVoidHook : public egr::VoidHook {
   PyObject* py_func_;
 };
 
+class PyObjectHolder : public egr::PyObjectHolderBase {
+ public:
+  PyObjectHolder() { ptr_ = nullptr; }
+  explicit PyObjectHolder(PyObject* ptr);
+  ~PyObjectHolder() override;
+  void* get() override;
+  void reset(void* ptr) override;
+  void inc_ref() override;
+  void dec_ref() override;
+
+ private:
+  PyObject* ptr_{nullptr};
+};
+
+class PackHook : public egr::PackHookBase {
+ public:
+  explicit PackHook(PyObject* hook);
+
+  ~PackHook();
+
+  std::shared_ptr<egr::PyObjectHolderBase> operator()(
+      const paddle::experimental::Tensor& tensor) override;
+
+  void* operator()(void* py_tensor) override;
+
+ private:
+  PyObject* hook_;
+};
+
+class UnPackHook : public egr::UnPackHookBase {
+ public:
+  explicit UnPackHook(PyObject* hook);
+
+  ~UnPackHook();
+
+  paddle::experimental::Tensor operator()(
+      std::shared_ptr<egr::PyObjectHolderBase> packed_value) override;
+
+  void* operator()(void* packed_value, void* other) override;
+
+ private:
+  PyObject* hook_;
+};
 template <typename Tuple, size_t N>
 struct TupleTensorResult {
   static void Run(const Tuple& out, PyObject* result) {

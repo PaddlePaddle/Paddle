@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from functools import partial
-import numpy
-import unittest
-import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from simple_nets import init_data, simple_fc_net
 import os
+import unittest
+from functools import partial
+
+import numpy
+from simple_nets import init_data, simple_fc_net
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
 class TestFeedPersistableVar(unittest.TestCase):
@@ -37,7 +39,7 @@ class TestFeedPersistableVar(unittest.TestCase):
         }
 
     def optimizer(self):
-        learning_rate = fluid.layers.create_global_var(
+        learning_rate = paddle.static.create_global_var(
             name="learning_rate",
             shape=[1],
             value=1.0,

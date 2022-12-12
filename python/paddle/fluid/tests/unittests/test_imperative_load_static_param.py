@@ -12,23 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import tempfile
 import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-from paddle.fluid.dygraph.nn import (
-    BatchNorm,
-    Conv3D,
-    Embedding,
-    GroupNorm,
-    LayerNorm,
-    Linear,
-    NCE,
-    PRelu,
-)
-import numpy as np
-import os
-import tempfile
+from paddle.fluid.dygraph.nn import BatchNorm
+from paddle.nn import Linear
 
 
 class TestDygraphLoadStatic(unittest.TestCase):
@@ -51,18 +45,18 @@ class TestDygraphLoadStatic(unittest.TestCase):
         conv3d_in = fluid.data(
             name='conv3d_in', shape=[None, 3, 12, 32, 32], dtype='float32'
         )
-        conv3d_out_1 = fluid.layers.conv3d(
+        conv3d_out_1 = paddle.static.nn.conv3d(
             input=conv3d_in, num_filters=2, filter_size=3, act="relu"
         )
-        conv3d_out_2 = fluid.layers.conv3d(
+        conv3d_out_2 = paddle.static.nn.conv3d(
             input=conv3d_in, num_filters=2, filter_size=3, act="relu"
         )
 
         batchnorm_in = fluid.data(
             name="batchnorm_in", shape=[None, 10], dtype='float32'
         )
-        batchnorm_out_1 = fluid.layers.batch_norm(batchnorm_in)
-        batchnorm_out_2 = fluid.layers.batch_norm(batchnorm_in)
+        batchnorm_out_1 = paddle.static.nn.batch_norm(batchnorm_in)
+        batchnorm_out_2 = paddle.static.nn.batch_norm(batchnorm_in)
 
         emb_in = fluid.data(name='emb_in', shape=[None, 10], dtype='int64')
         emb_out_1 = fluid.embedding(emb_in, [1000, 100])
@@ -76,14 +70,14 @@ class TestDygraphLoadStatic(unittest.TestCase):
         nce_label = fluid.data(
             name="nce_label", shape=[None, 10], dtype='int64'
         )
-        nce_out_1 = fluid.layers.nce(nce_in, nce_label, 10000)
-        nce_out_2 = fluid.layers.nce(nce_in, nce_label, 10000)
+        nce_out_1 = paddle.static.nn.nce(nce_in, nce_label, 10000)
+        nce_out_2 = paddle.static.nn.nce(nce_in, nce_label, 10000)
 
         prelu_in = fluid.data(
             name="prelu_in", shape=[None, 5, 10, 10], dtype='float32'
         )
-        prelu_out_1 = fluid.layers.prelu(prelu_in, "channel")
-        prelu_out_2 = fluid.layers.prelu(prelu_in, "channel")
+        prelu_out_1 = paddle.static.nn.prelu(prelu_in, "channel")
+        prelu_out_2 = paddle.static.nn.prelu(prelu_in, "channel")
 
         bilinear_tensor_pro_x = fluid.data(
             "t1", shape=[None, 5], dtype="float32"
@@ -92,39 +86,47 @@ class TestDygraphLoadStatic(unittest.TestCase):
             "t2", shape=[None, 4], dtype="float32"
         )
 
-        bilinear_tensor_pro_out_1 = fluid.layers.bilinear_tensor_product(
-            x=bilinear_tensor_pro_x, y=bilinear_tensor_pro_y, size=1000
+        bilinear_tensor_pro_out_1 = (
+            paddle.static.nn.common.bilinear_tensor_product(
+                x=bilinear_tensor_pro_x, y=bilinear_tensor_pro_y, size=1000
+            )
         )
-        bilinear_tensor_pro_out_2 = fluid.layers.bilinear_tensor_product(
-            x=bilinear_tensor_pro_x, y=bilinear_tensor_pro_y, size=1000
+        bilinear_tensor_pro_out_2 = (
+            paddle.static.nn.common.bilinear_tensor_product(
+                x=bilinear_tensor_pro_x, y=bilinear_tensor_pro_y, size=1000
+            )
         )
 
         conv2d_trans_in = fluid.data(
             name="conv2d_trans_in", shape=[None, 10, 10, 10]
         )
 
-        conv2d_trans_out_1 = fluid.layers.conv2d_transpose(
+        conv2d_trans_out_1 = paddle.static.nn.conv2d_transpose(
             conv2d_trans_in, num_filters=10, filter_size=5, act="relu"
         )
-        conv2d_trans_out_2 = fluid.layers.conv2d_transpose(
+        conv2d_trans_out_2 = paddle.static.nn.conv2d_transpose(
             conv2d_trans_in, num_filters=10, filter_size=5, act="relu"
         )
 
         conv3d_trans_in = fluid.data(
             name='conv3d_trans_in', shape=[None, 3, 12, 32, 32], dtype='float32'
         )
-        conv3d_trans_out_1 = fluid.layers.conv3d_transpose(
+        conv3d_trans_out_1 = paddle.static.nn.conv3d_transpose(
             input=conv3d_trans_in, num_filters=2, filter_size=3, act="relu"
         )
-        conv3d_trans_out_2 = fluid.layers.conv3d_transpose(
+        conv3d_trans_out_2 = paddle.static.nn.conv3d_transpose(
             input=conv3d_trans_in, num_filters=2, filter_size=3, act="relu"
         )
 
         groupnorm_in = fluid.data(
             name='groupnorm_in', shape=[None, 8, 32, 32], dtype='float32'
         )
-        groupnorm_out1 = fluid.layers.group_norm(input=groupnorm_in, groups=4)
-        groupnorm_out2 = fluid.layers.group_norm(input=groupnorm_in, groups=4)
+        groupnorm_out1 = paddle.static.nn.group_norm(
+            input=groupnorm_in, groups=4, param_attr=True, bias_attr=True
+        )
+        groupnorm_out2 = paddle.static.nn.group_norm(
+            input=groupnorm_in, groups=4, param_attr=True, bias_attr=True
+        )
         '''
         spec_norm = fluid.data(name='spec_norm', shape=[2, 8, 32, 32], dtype='float32')
         spe_norm_out_1 = fluid.layers.spectral_norm(weight=spec_norm, dim=1, power_iters=2)
@@ -144,10 +146,10 @@ class TestDygraphLoadStatic(unittest.TestCase):
             nodes_vector, edge_set, 6, 1, 2
         )
 
-        para1 = fluid.layers.create_parameter(
+        para1 = paddle.create_parameter(
             [100, 100], 'float32', name="weight_test_1"
         )
-        para2 = fluid.layers.create_parameter(
+        para2 = paddle.create_parameter(
             [20, 200], 'float32', name="weight_test_2"
         )
 
@@ -194,30 +196,24 @@ class TestDygraphLoadStatic(unittest.TestCase):
                         in_channels=10, out_channels=10, kernel_size=5
                     )
 
-                    self.conv3d_1 = Conv3D(
-                        num_channels=3, num_filters=2, filter_size=3, act="relu"
+                    self.conv3d_1 = paddle.nn.Conv3D(
+                        in_channels=3, out_channels=2, kernel_size=3
                     )
-                    self.conv3d_2 = Conv3D(
-                        num_channels=3, num_filters=2, filter_size=3, act="relu"
+                    self.conv3d_2 = paddle.nn.Conv3D(
+                        in_channels=3, out_channels=2, kernel_size=3
                     )
 
                     self.batch_norm_1 = BatchNorm(10)
                     self.batch_norm_2 = BatchNorm(10)
 
-                    self.emb1 = Embedding([1000, 100])
-                    self.emb2 = Embedding([2000, 200])
+                    self.emb1 = paddle.nn.Embedding(1000, 100)
+                    self.emb2 = paddle.nn.Embedding(2000, 200)
 
-                    self.layer_norm_1 = LayerNorm([10])
-                    self.layer_norm_2 = LayerNorm(10)
+                    self.layer_norm_1 = paddle.nn.LayerNorm([10])
+                    self.layer_norm_2 = paddle.nn.LayerNorm(10)
 
-                    self.nce1 = NCE(10000, 100)
-                    self.nce2 = NCE(10000, 100)
-
-                    self.prelu1 = PRelu("channel", channel=5)
-                    self.prelu2 = PRelu("channel", channel=5)
-
-                    self.group_norm1 = GroupNorm(8, 4)
-                    self.gourp_norm2 = GroupNorm(8, 4)
+                    self.group_norm1 = paddle.nn.GroupNorm(4, 8)
+                    self.gourp_norm2 = paddle.nn.GroupNorm(4, 8)
 
                     self.w_1 = self.create_parameter(
                         [100, 100], dtype='float32', attr="weight_test_1"

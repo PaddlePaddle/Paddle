@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import unittest
-from itertools import product
 from functools import partial
+from itertools import product
 from typing import Any, Dict, List
+
 import numpy as np
-import paddle.inference as paddle_infer
-from program_config import TensorConfig, ProgramConfig
+from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest
+
+import paddle.inference as paddle_infer
 
 
 class TrtConvertConv2dFusionTest(TrtLayerAutoScanTest):

@@ -21,7 +21,6 @@ enum class ReshapeKernelOpName {
   reshape,
   reshape2,
   squeeze,
-  squeeze2,
   flatten,
   flatten2,
 };
@@ -29,8 +28,6 @@ enum class ReshapeKernelOpName {
 
 namespace paddle {
 namespace operators {
-
-using platform::to_void_cast;
 
 static std::vector<int> extract_shape(
     const std::vector<const phi::DenseTensor*>& list_new_shape_tensor) {
@@ -42,7 +39,7 @@ static std::vector<int> extract_shape(
         tensor->dims(),
         phi::make_ddim({1}),
         platform::errors::InvalidArgument(
-            "If the element type of 'shape' in ReshapeOp is Tensor, "
+            "If the element type of 'shape' in ReshapeOp is phi::DenseTensor, "
             "the element's shape must be [1]. But received the element's shape "
             "is [%s]",
             tensor->dims()));
@@ -61,8 +58,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
 
  private:
   void RunKernel(const framework::ExecutionContext& ctx) const {
-    const auto& dev_ctx =
-        ctx.template device_context<platform::MKLDNNDeviceContext>();
+    const auto& dev_ctx = ctx.template device_context<phi::OneDNNContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
 
     auto* x = ctx.Input<phi::DenseTensor>("X");
@@ -73,24 +69,20 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
 
     auto x_vec_dims = phi::vectorize(x_dims);
 
-    dnnl::memory::data_type x_type =
-        framework::ToMKLDNNDataType(framework::TransToProtoVarType(x->dtype()));
-    platform::ReorderMKLDNNHandler reorder_handler(
-        x_vec_dims,
-        framework::TransToProtoVarType(x->dtype()),
-        x_type,
-        onednn_engine);
+    auto x_type = phi::funcs ::ToOneDNNDataType(x->dtype());
+    phi::funcs::ReorderOneDNNHandler reorder_handler(
+        x_vec_dims, x->dtype(), x_type, onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-        x->mem_desc(), platform::to_void_cast(x->data<T>()));
+        x->mem_desc(), phi::funcs::to_void_cast(x->data<T>()));
     out->Resize(x_dims);  // to match x numel, format is changed later
     // reorder is done into a plain tag to allow usage with blocked formats
     auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-        out, getPlainFormatTag(x), ctx.GetPlace());
+        out, phi::funcs::GetPlainOneDNNFormat(x_dims.size()), ctx.GetPlace());
     auto reorder_p = reorder_handler.AcquireReorder(reorder_dst_memory_p,
                                                     reorder_src_memory_p);
 
-    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    auto& astream = phi::OneDNNContext::tls().get_stream();
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
 
     astream.wait();
@@ -107,14 +99,8 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
       case ReshapeKernelOpName::reshape:
         InferShapeReshapeOp(ctx, x_dims, out_dims);
         break;
-      case ReshapeKernelOpName::reshape2:
-        InferShapeReshape2Op(ctx, x_dims, out_dims);
-        break;
       case ReshapeKernelOpName::squeeze:
         InferShapeSqueezeOp(ctx, x_dims, out_dims);
-        break;
-      case ReshapeKernelOpName::squeeze2:
-        InferShapeSqueeze2Op(ctx, x_dims, out_dims);
         break;
       case ReshapeKernelOpName::flatten:
         InferShapeFlattenOp(ctx, x_dims, out_dims);
@@ -134,17 +120,6 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
     x_dims = x->dims();
-    out_dims = out->dims();
-    ChangeReshapeOutDimsIfNeeded(ctx, x_dims, out_dims);
-  }
-
-  void InferShapeReshape2Op(const framework::ExecutionContext& ctx,
-                            framework::DDim& x_dims,            // NOLINT
-                            framework::DDim& out_dims) const {  // NOLINT
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
-    auto* xshape = ctx.Output<phi::DenseTensor>("XShape");
-    auto xshape_dims = xshape->dims();
-    x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
     out_dims = out->dims();
     ChangeReshapeOutDimsIfNeeded(ctx, x_dims, out_dims);
   }
@@ -179,16 +154,6 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
     out_dims = GetOutputShape(axes, x_dims, true);
   }
 
-  void InferShapeSqueeze2Op(const framework::ExecutionContext& ctx,
-                            framework::DDim& x_dims,            // NOLINT
-                            framework::DDim& out_dims) const {  // NOLINT
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
-    auto* xshape = ctx.Output<phi::DenseTensor>("XShape");
-    auto xshape_dims = xshape->dims();
-    x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
-    out_dims = out->dims();
-  }
-
   void InferShapeFlattenOp(const framework::ExecutionContext& ctx,
                            framework::DDim& x_dims,            // NOLINT
                            framework::DDim& out_dims) const {  // NOLINT
@@ -200,31 +165,6 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
   }
 
  protected:
-  static dnnl::memory::format_tag getPlainFormatTag(
-      const phi::DenseTensor* tensor) {
-    auto tensor_dims_size = tensor->dims().size();
-    PADDLE_ENFORCE_EQ(
-        tensor_dims_size <= 6 && tensor_dims_size >= 1,
-        true,
-        platform::errors::InvalidArgument(
-            "Dims for squeeze_grad oneDNN op must be in range <1, 6>"));
-
-    switch (tensor_dims_size) {
-      case 1:
-        return dnnl::memory::format_tag::a;
-      case 2:
-        return dnnl::memory::format_tag::ab;
-      case 3:
-        return dnnl::memory::format_tag::abc;
-      case 4:
-        return dnnl::memory::format_tag::abcd;
-      case 5:
-        return dnnl::memory::format_tag::abcde;
-      default:
-        return dnnl::memory::format_tag::abcdef;
-    }
-  }
-
   static framework::DDim ValidateShape(const std::vector<int>& shape,
                                        const framework::DDim& in_dims) {
     const int64_t in_size = phi::product(in_dims);
@@ -335,8 +275,7 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
 
  private:
   void RunKernel(const framework::ExecutionContext& ctx) const {
-    const auto& dev_ctx =
-        ctx.template device_context<platform::MKLDNNDeviceContext>();
+    const auto& dev_ctx = ctx.template device_context<phi::OneDNNContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
 
     auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
@@ -347,22 +286,20 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
 
     auto dout_vec_dims = phi::vectorize(dout->dims());
 
-    dnnl::memory::data_type dout_type = framework::ToMKLDNNDataType(
-        framework::TransToProtoVarType(dout->dtype()));
-    platform::ReorderMKLDNNHandler reorder_handler(
-        dout_vec_dims,
-        framework::TransToProtoVarType(dout->dtype()),
-        dout_type,
-        onednn_engine);
+    auto dout_type = phi::funcs::ToOneDNNDataType(dout->dtype());
+    phi::funcs::ReorderOneDNNHandler reorder_handler(
+        dout_vec_dims, dout->dtype(), dout_type, onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-        dout->mem_desc(), platform::to_void_cast(dout->data<T>()));
+        dout->mem_desc(), phi::funcs::to_void_cast(dout->data<T>()));
     auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-        dx, this->getPlainFormatTag(dout), ctx.GetPlace());
+        dx,
+        phi::funcs::GetPlainOneDNNFormat(dout_vec_dims.size()),
+        ctx.GetPlace());
     auto reorder_p = reorder_handler.AcquireReorder(reorder_dst_memory_p,
                                                     reorder_src_memory_p);
 
-    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    auto& astream = phi::OneDNNContext::tls().get_stream();
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
     astream.wait();
 
@@ -377,19 +314,16 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
         InferShapeReshapeSqueezeGradOp(ctx, x_dims);
         break;
       case ReshapeKernelOpName::reshape2:
-        InferShapeReshape2Squeeze2Flatten2GradOp(ctx, x_dims);
+        InferShapeReshape2Flatten2GradOp(ctx, x_dims);
         break;
       case ReshapeKernelOpName::squeeze:
         InferShapeReshapeSqueezeGradOp(ctx, x_dims);
-        break;
-      case ReshapeKernelOpName::squeeze2:
-        InferShapeReshape2Squeeze2Flatten2GradOp(ctx, x_dims);
         break;
       case ReshapeKernelOpName::flatten:
         InferShapeFlattenGradOp(ctx, x_dims);
         break;
       case ReshapeKernelOpName::flatten2:
-        InferShapeReshape2Squeeze2Flatten2GradOp(ctx, x_dims);
+        InferShapeReshape2Flatten2GradOp(ctx, x_dims);
         break;
       default:
         PADDLE_THROW(paddle::platform::errors::OutOfRange(
@@ -404,7 +338,7 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
     dx_dims = dx->dims();
   }
 
-  void InferShapeReshape2Squeeze2Flatten2GradOp(
+  void InferShapeReshape2Flatten2GradOp(
       const framework::ExecutionContext& ctx,
       framework::DDim& dx_dims) const {  // NOLINT
     auto xshape_dims = ctx.Input<phi::DenseTensor>("XShape")->dims();
@@ -437,22 +371,6 @@ REGISTER_OP_KERNEL(
                                  ReshapeKernelOpName::squeeze>);
 
 REGISTER_OP_KERNEL(
-    squeeze2,
-    MKLDNN,
-    paddle::platform::CPUPlace,
-    ops::ReshapeMKLDNNKernel<float, ReshapeKernelOpName::squeeze2>,
-    ops::ReshapeMKLDNNKernel<paddle::platform::bfloat16,
-                             ReshapeKernelOpName::squeeze2>);
-
-REGISTER_OP_KERNEL(
-    squeeze2_grad,
-    MKLDNN,
-    paddle::platform::CPUPlace,
-    ops::ReshapeGradMKLDNNKernel<float, ReshapeKernelOpName::squeeze2>,
-    ops::ReshapeGradMKLDNNKernel<paddle::platform::bfloat16,
-                                 ReshapeKernelOpName::squeeze2>);
-
-REGISTER_OP_KERNEL(
     reshape,
     MKLDNN,
     paddle::platform::CPUPlace,
@@ -467,14 +385,6 @@ REGISTER_OP_KERNEL(
     ops::ReshapeGradMKLDNNKernel<float, ReshapeKernelOpName::reshape>,
     ops::ReshapeGradMKLDNNKernel<paddle::platform::bfloat16,
                                  ReshapeKernelOpName::reshape>);
-
-REGISTER_OP_KERNEL(
-    reshape2,
-    MKLDNN,
-    paddle::platform::CPUPlace,
-    ops::ReshapeMKLDNNKernel<float, ReshapeKernelOpName::reshape2>,
-    ops::ReshapeMKLDNNKernel<paddle::platform::bfloat16,
-                             ReshapeKernelOpName::reshape2>);
 
 REGISTER_OP_KERNEL(
     reshape2_grad,

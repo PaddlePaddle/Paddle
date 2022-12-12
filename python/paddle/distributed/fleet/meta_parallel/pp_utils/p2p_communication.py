@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from ...utils.log_util import logger
 import numpy as np
-from paddle import _legacy_C_ops
+
+import paddle
 import paddle.fluid.core as core
+from paddle import _legacy_C_ops
 from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
-from .utils import paddle_2_number, paddle_2_number, number_2_dtype
+
+from ...utils.log_util import logger
+from .utils import number_2_dtype, paddle_2_number
 
 _hcg = None
 _use_cache = False
@@ -164,7 +166,11 @@ class SendRecvMeta:
                 [d.shape for d in tensor if not d.stop_gradient]
             )
             self.send_dtype_message = tuple(
-                [paddle_2_number(d.dtype) for d in tensor]
+                [
+                    paddle_2_number(d.dtype)
+                    for d in tensor
+                    if not d.stop_gradient
+                ]
             )
 
 

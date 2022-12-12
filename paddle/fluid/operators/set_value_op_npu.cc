@@ -132,7 +132,7 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument(
             "OP(set_value) error index indices and value update not match "));
 
-    Tensor value_t(in->type());
+    phi::DenseTensor value_t(in->type());
     if (value_tensor != nullptr) {
       value_t.ShareDataWith(*value_tensor);
     } else {
@@ -148,7 +148,7 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
 
     auto stream = ctx.template device_context<NPUDeviceContext>().stream();
 
-    Tensor value_temp(in->type());
+    phi::DenseTensor value_temp(in->type());
     if (slice_dims_for_assign == value_t.dims()) {
       value_temp.ShareDataWith(value_t);
     } else {
@@ -165,7 +165,7 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
     int64_t input_numel = phi::product(in_dims);
     int64_t index_numel = index_indices.size();
 
-    Tensor in_temp, out_temp, val_temp;
+    phi::DenseTensor in_temp, out_temp, val_temp;
     in_temp.ShareDataWith(*in);
     out_temp.ShareDataWith(*out);
     val_temp.ShareDataWith(value_temp);

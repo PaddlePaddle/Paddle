@@ -13,17 +13,18 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
-    convert_float_to_uint16,
     OpTestTool,
+    convert_float_to_uint16,
 )
 from paddle.fluid.tests.unittests.test_conv2d_op import (
-    conv2d_forward_naive,
     TestConv2DOp,
+    conv2d_forward_naive,
 )
 
 

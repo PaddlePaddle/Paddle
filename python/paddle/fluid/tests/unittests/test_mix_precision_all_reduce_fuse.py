@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid.core as core
 import unittest
 
 import numpy as np
+from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
+from simple_nets import init_data
+
 import paddle
 import paddle.fluid as fluid
-from simple_nets import init_data
-from parallel_executor_test_base import TestParallelExecutorBase, DeviceType
+import paddle.fluid.core as core
 
 batch_size = 12
 img_shape = [1, 28, 28]
@@ -27,7 +28,9 @@ img_shape = [1, 28, 28]
 
 def loss_net(hidden, label):
     prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
-    loss = fluid.layers.cross_entropy(input=prediction, label=label)
+    loss = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     avg_loss = paddle.mean(loss)
     return avg_loss
 
@@ -44,7 +47,7 @@ def conv_net(use_feed):
         pool_stride=2,
         act="relu",
     )
-    conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
+    conv_pool_1 = paddle.static.nn.batch_norm(conv_pool_1)
 
     conv_pool_1 = fluid.layers.cast(conv_pool_1, np.float32)
     conv_pool_2 = fluid.nets.simple_img_conv_pool(

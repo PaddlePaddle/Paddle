@@ -15,12 +15,11 @@
 import tempfile
 import unittest
 
+import paddle
 import paddle.vision.transforms as T
+from paddle.fluid.framework import _test_eager_guard
 from paddle.static import InputSpec
 from paddle.vision.datasets import MNIST
-
-import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 
 class MnistDataset(MNIST):
