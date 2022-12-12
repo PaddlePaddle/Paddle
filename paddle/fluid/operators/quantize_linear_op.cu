@@ -57,7 +57,7 @@ struct DequantizeFunctor<phi::GPUContext, T> {
                   phi::DenseTensor* out) {
     const T* in_data = in->data<T>();
     const T* scale_factor = scale->data<T>();
-    T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
+    T* out_data = dev_ctx.Alloc<T>(out, out->numel() * sizeof(T));
 
     int64_t num = in->numel();
     int64_t block_size = std::min(
@@ -83,7 +83,7 @@ struct ChannelDequantizeFunctorV2<phi::GPUContext, T> {
                   phi::DenseTensor* out) {
     auto in_dims = in->dims();
     const T* in_data = in->data<T>();
-    T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
+    T* out_data = dev_ctx.Alloc<T>(out, out->numel() * sizeof(T));
     int64_t num = in->numel();
     const T* scale_factor = scale->data<T>();
     int64_t block_size = std::min(

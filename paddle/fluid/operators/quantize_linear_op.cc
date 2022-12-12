@@ -71,7 +71,7 @@ struct ChannelDequantizeFunctorV2<phi::CPUContext, T> {
       int64_t step_i = in->numel() / out_iter;
       int64_t step_j = in->numel() / (out_iter * channel);
       auto *in_data = in->data<T>();
-      auto *out_data = out->mutable_data<T>(dev_ctx.GetPlace());
+      auto *out_data = dev_ctx.Alloc<T>(out, out->numel() * sizeof(T));
       for (int64_t i = 0; i < out_iter; i++) {
         for (int64_t j = 0; j < channel; j++) {
           auto *cur_in = in_data + i * step_i + j * step_j;
