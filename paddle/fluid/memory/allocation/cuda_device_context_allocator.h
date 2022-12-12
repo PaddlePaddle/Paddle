@@ -44,17 +44,15 @@ class GPUContextAllocation : public Allocation {
         underlying_allocation_(std::move(allocation)) {}
 
   ~GPUContextAllocation() {
-    // PADDLE_ENFORCE_NOT_NULL(
-    //     dev_ctx_,
-    //     platform::errors::PreconditionNotMet(
-    //         "Device context is not set for GPUContextAllocation"));
-    auto *p_allocation = underlying_allocation_.release();
-    VLOG(4) << "Adding callback to delete GPUContextAllocation at "
-            << p_allocation;
-    dev_ctx_->AddStreamCallback([p_allocation] {
-      VLOG(4) << "Delete GPUContextAllocation at " << p_allocation;
-      Allocator::AllocationDeleter(p_allocation);
-    });
+    if (dev_ctx_ != nullptr) {
+      auto *p_allocation = underlying_allocation_.release();
+      VLOG(4) << "Adding callback to delete GPUContextAllocation at "
+              << p_allocation;
+      dev_ctx_->AddStreamCallback([p_allocation] {
+        VLOG(4) << "Delete GPUContextAllocation at " << p_allocation;
+        Allocator::AllocationDeleter(p_allocation);
+      });
+    }
   }
 
   void SetGPUContext(const phi::GPUContext *dev_ctx) { dev_ctx_ = dev_ctx; }

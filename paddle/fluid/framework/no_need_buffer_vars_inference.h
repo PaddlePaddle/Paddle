@@ -51,7 +51,6 @@ class StaticGraphInferNoNeedBufferVarsContext final
   bool HasOutput(const std::string &slot) const final;
 
  private:
-  // const VariableNameMap &inputs_;
   const VariableNameMap &outputs_;
 };
 
@@ -66,7 +65,6 @@ class DyGraphInferNoNeedBufferVarsContext final
   bool HasOutput(const std::string &slot) const final;
 
  private:
-  // const imperative::NameVarMap<imperative::VariableWrapper> &inputs_;
   const imperative::NameVarMap<imperative::VariableWrapper> &outputs_;
 };
 

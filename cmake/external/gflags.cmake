@@ -103,5 +103,3 @@ if(WIN32)
     set_property(GLOBAL PROPERTY OS_DEPENDENCY_MODULES shlwapi.lib)
   endif()
 endif()
-
-list(APPEND external_project_dependencies gflags)

@@ -176,6 +176,7 @@ class AllocatorFacadePrivate {
   explicit AllocatorFacadePrivate(bool allow_free_idle_chunk = true) {
     strategy_ = GetAllocatorStrategy();
     is_stream_safe_cuda_allocator_used_ = false;
+    allow_free_idle_chunk_ = allow_free_idle_chunk;
 
     switch (strategy_) {
       case AllocatorStrategy::kNaiveBestFit: {
@@ -986,7 +987,7 @@ class AllocatorFacadePrivate {
   AllocatorMap allocators_;
   static AllocatorMap zero_size_allocators_;
   static AllocatorMap system_allocators_;
-  // bool allow_free_idle_chunk_;
+  bool allow_free_idle_chunk_;
   bool is_stream_safe_cuda_allocator_used_;
 };
 AllocatorFacadePrivate::AllocatorMap

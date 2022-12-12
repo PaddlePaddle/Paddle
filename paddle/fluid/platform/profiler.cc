@@ -85,6 +85,7 @@ RecordEvent::RecordEvent(const char *name,
                          const TracerEventType type,
                          uint32_t level,
                          const EventRole role) {
+  is_pushed_ = false;
 #ifndef _WIN32
 #ifdef PADDLE_WITH_CUDA
   if (g_enable_nvprof_hook) {
