@@ -164,8 +164,11 @@ def weight_norm(layer, name='weight', dim=0):
     r"""
     Applies weight normalization to a parameter according to the
     following formula:
+
     .. math::
+
         \mathbf{w} = g \dfrac{v}{\|v\|}
+
     Weight normalization is a reparameterization of the weight vectors in a neural network that
     decouples the magnitude of those weight vectors from their direction. Weight normalization
     replaces the parameter specified by `name`(eg: 'weight') with two parameters: one parameter
@@ -173,6 +176,7 @@ def weight_norm(layer, name='weight', dim=0):
     (eg: 'weight_v'). Weight normalization has been implemented as discussed in this paper:
     `Weight Normalization: A Simple Reparameterization to Accelerate Training of Deep Neural Networks
     <https://arxiv.org/pdf/1602.07868.pdf>`_.
+
     Parameters:
         layer(Layer): Layer of paddle, which has weight.
         name(str, optional): Name of the weight parameter. Default: 'weight'.
@@ -180,12 +184,16 @@ def weight_norm(layer, name='weight', dim=0):
               which is less than the rank of weight Tensor. For Example, dim can be chosen from 0,
               1, 2, 3 for convolution whose weight shape is [cout, cin, kh, kw] and rank is 4.
               If dim is set to None, meaning that all elements will be normalized. Default: 0.
+
     Returns:
         Origin layer with weight norm hook.
+
     Examples:
         .. code-block:: python
+
           from paddle.nn import Conv2D
           from paddle.nn.utils import weight_norm
+
           conv = Conv2D(3, 5, 3)
           wn = weight_norm(conv)
           print(conv.weight_g.shape)
@@ -200,16 +208,21 @@ def weight_norm(layer, name='weight', dim=0):
 def remove_weight_norm(layer, name='weight'):
     """
     remove weight normalization from layer.
+
     Parameters:
         layer(Layer): Layer of paddle, which has weight.
         name(str, optional): Name of the weight parameter. Default: 'weight'.
+
     Returns:
         Layer, the origin layer without weight norm
+
     Examples:
         .. code-block:: python
+
             import paddle
             from paddle.nn import Conv2D
             from paddle.nn.utils import weight_norm, remove_weight_norm
+
             conv = Conv2D(3, 5, 3)
             wn = weight_norm(conv)
             print(conv.weight_g)
@@ -217,6 +230,7 @@ def remove_weight_norm(layer, name='weight'):
             # Tensor(shape=[5], dtype=float32, place=Place(gpu:0), stop_gradient=False,
             #        [0., 0., 0., 0., 0.])
             # Conv2D(3, 5, kernel_size=[3, 3], data_format=NCHW)
+
             remove_weight_norm(conv)
             # print(conv.weight_g)
             # AttributeError: 'Conv2D' object has no attribute 'weight_g'
