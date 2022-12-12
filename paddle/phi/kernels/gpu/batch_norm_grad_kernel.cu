@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/layout_utils.h"
-#include "paddle/fluid/operators/norm_utils.cu.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/common/layout.h"
@@ -24,6 +23,7 @@
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/norm_utils.cu.h"
 #include "paddle/phi/kernels/funcs/norm_utils.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 
@@ -1352,24 +1352,23 @@ void BatchNormDoubleGradKernel(
     running_mean = mean.get_ptr();
     running_variance = variance.get_ptr();
   }
-  paddle::operators::NormDoubleGradFunctor<Context, T>(
-      ctx,
-      data_layout,
-      &x,
-      &scale,
-      &y_grad,
-      &saved_mean,
-      &saved_variance,
-      running_mean,
-      running_variance,
-      epsilon,
-      use_global_stats,
-      x_grad_grad.get_ptr(),
-      scale_grad_grad.get_ptr(),
-      bias_grad_grad.get_ptr(),
-      x_grad,
-      scale_grad,
-      y_grad_grad);
+  phi::funcs::NormDoubleGradFunctor<Context, T>(ctx,
+                                                data_layout,
+                                                &x,
+                                                &scale,
+                                                &y_grad,
+                                                &saved_mean,
+                                                &saved_variance,
+                                                running_mean,
+                                                running_variance,
+                                                epsilon,
+                                                use_global_stats,
+                                                x_grad_grad.get_ptr(),
+                                                scale_grad_grad.get_ptr(),
+                                                bias_grad_grad.get_ptr(),
+                                                x_grad,
+                                                scale_grad,
+                                                y_grad_grad);
 }
 
 }  // namespace phi
