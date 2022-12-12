@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from op_test import OpTest, randomize_probability
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
@@ -419,7 +420,9 @@ class TestCrossEntropyOpError(unittest.TestCase):
                 lab1 = fluid.create_lod_tensor(
                     np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
                 )
-                fluid.layers.cross_entropy(x1, lab1)
+                paddle.nn.functional.cross_entropy(
+                    x1, lab1, reduction='none', use_softmax=False
+                )
 
             self.assertRaises(TypeError, test_Variable)
 
@@ -432,7 +435,9 @@ class TestCrossEntropyOpError(unittest.TestCase):
                 lab2 = fluid.layers.data(
                     name='lab2', shape=[3, 4, 5, 6], dtype="int32"
                 )
-                fluid.layers.cross_entropy(x2, lab2)
+                paddle.nn.functional.cross_entropy(
+                    x2, lab2, reduction='none', use_softmax=False
+                )
 
             self.assertRaises(TypeError, test_dtype)
 
