@@ -200,13 +200,13 @@ __global__ void UniqueKernel(const IntT* in_indexs,
 }
 
 inline __device__ uint32_t BitCount(const uint32_t data) {
-  uint32_t n = data;
-  n = (n & 0x55555555) + ((n >> 1) & 0x55555555);
-  n = (n & 0x33333333) + ((n >> 2) & 0x33333333);
-  n = (n & 0x0f0f0f0f) + ((n >> 4) & 0x0f0f0f0f);
-  n = (n & 0x00ff00ff) + ((n >> 8) & 0x00ff00ff);
-  n = (n & 0x0000ffff) + ((n >> 16) & 0x0000ffff);
-  return n;
+  uint32_t count = data;
+  count = (count & 0x55555555) + ((count >> 1) & 0x55555555);
+  count = (count & 0x33333333) + ((count >> 2) & 0x33333333);
+  count = (count & 0x0f0f0f0f) + ((count >> 4) & 0x0f0f0f0f);
+  count = (count & 0x00ff00ff) + ((count >> 8) & 0x00ff00ff);
+  count = (count & 0x0000ffff) + ((count >> 16) & 0x0000ffff);
+  return count;
 }
 
 static __global__ void GetOutIndexsCounter(const int* flags,
