@@ -948,12 +948,7 @@ void AnalysisConfig::Update() {
 #endif
   }
 
-#ifdef PADDLE_WITH_MKLDNN
-  // Do not optimize when mkldnn is on
-  if (enable_memory_optim_ && !use_mkldnn_) {
-#else
   if (enable_memory_optim_) {
-#endif
     pass_builder()->AppendAnalysisPass("memory_optimize_pass");
   }
 
