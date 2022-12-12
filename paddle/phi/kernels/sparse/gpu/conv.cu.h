@@ -222,6 +222,7 @@ static __global__ void GetOutIndexsCounter(
         // get the count of 1 in flags[tid]
         uint32_t count = BitCount(static_cast<uint32_t>(flags[tid]));
         // add to block_count
+        // TODO(zhangkaihuo): replace with block reduce_sum
         atomicAdd(&block_count, static_cast<int>(count));
     }
     __syncthreads();
@@ -241,14 +242,12 @@ __global__ void GetOutIndexs(const int* flags,
     __shared__ int block_counts[BS];
     __shared__ int block_outs[BS * 32];
 
-    // block_counts[threadIdx.x] = 0;
     int count = 0;
 
     if(tid < n) {
         // get the count of 1 in flags[tid]
         int flag = flags[tid];
         count = BitCount(static_cast<uint32_t>(flag));
-        // block_counts[threadIdx.x] = count;
     }
 
     // call block prefix_sum
@@ -258,9 +257,7 @@ __global__ void GetOutIndexs(const int* flags,
     BlockScan(temp_storage).ExclusiveSum(count, count);
     __syncthreads();
 
-    // block_counts[threadIdx.x] = count;
     // write index to out
-
     if(tid < n) {
         // get the count of 1 in flags[tid]
         int flag = flags[tid];
@@ -809,31 +806,22 @@ int ProductRuleBook(const Context& dev_ctx,
                                        gpuMemcpyDeviceToHost,
                                        dev_ctx.stream());
     dev_ctx.Wait();
-// #ifdef PADDLE_WITH_HIP
-//     thrust::sort(thrust::hip::par.on(dev_ctx.stream()),
-// #else
-//     thrust::sort(thrust::cuda::par.on(dev_ctx.stream()),
-// #endif
-//                 out_index_ptr,
-//                 out_index_ptr + out_nnz);
 
-    if(true) {
-        const int threads = 256;
-        const int blocks = (index_flags.numel() + threads - 1) / threads;
-        GetOutIndexsCounter<<<blocks, threads, 0, dev_ctx.stream()>>>(
-                index_flags_ptr, index_flags.numel(), out_index_table_ptr);
+    const int threads = 256;
+    const int blocks = (index_flags.numel() + threads - 1) / threads;
+    GetOutIndexsCounter<<<blocks, threads, 0, dev_ctx.stream()>>>(
+            index_flags_ptr, index_flags.numel(), out_index_table_ptr);
 #ifdef PADDLE_WITH_HIP
-        thrust::exclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
+    thrust::exclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
 #else
-        thrust::exclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
+            thrust::exclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
 #endif
-                         out_index_table_ptr,
-                         out_index_table_ptr + blocks,
-                         out_index_table_ptr);
-        GetOutIndexs<threads><<<blocks, threads, 0, dev_ctx.stream()>>>(
+                out_index_table_ptr,
+                out_index_table_ptr + blocks,
+                out_index_table_ptr);
+    GetOutIndexs<threads><<<blocks, threads, 0, dev_ctx.stream()>>>(
         index_flags_ptr, index_flags.numel(), out_index_table_ptr,
         out_nnz, out_index_ptr);
-    }
 
     const int64_t sparse_dim = 4;
     phi::DenseTensor out_indices =
