@@ -94,7 +94,7 @@ class L2DecayRegularizer(WeightDecayRegularizer):
 
             l1 = fluid.regularizer.L1Decay(regularization_coeff=0.1)
             l2 = fluid.regularizer.L2Decay(regularization_coeff=0.1)
-            x = fluid.layers.uniform_random([3,4])
+            x = paddle.uniform([3,4])
 
             # set L1 regularization in fluid.ParamAttr
             w_param = fluid.ParamAttr(regularizer=l1)
@@ -209,7 +209,7 @@ class L1DecayRegularizer(WeightDecayRegularizer):
             paddle.enable_static()
             l1 = fluid.regularizer.L1Decay(regularization_coeff=0.1)
             l2 = fluid.regularizer.L2Decay(regularization_coeff=0.1)
-            x = fluid.layers.uniform_random([3,4])
+            x = paddle.uniform([3,4])
 
             # set L1 regularization in fluid.ParamAttr
             w_param = fluid.ParamAttr(regularizer=l1)

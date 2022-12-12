@@ -6503,7 +6503,7 @@ class RecomputeOptimizer(Optimizer):
                         input=prediction, label=input_y,
                         reduction='none', use_softmax=False
                     )
-                    sum_cost = fluid.layers.reduce_mean(cost)
+                    sum_cost = paddle.mean(cost)
                     return sum_cost, fc_1, prediction
 
                 input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
