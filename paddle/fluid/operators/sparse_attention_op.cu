@@ -203,7 +203,6 @@ __global__ void BlockSparseSoftmaxBackward(T* dst,
   }
 }
 
-using Tensor = phi::DenseTensor;
 /*
 input: sparse C in CSR format (num_rows,num_rows)
 output: sparse C after softmax operation
@@ -641,7 +640,7 @@ void DotDsd(const phi::GPUContext& ctx,
   platform::dynload::cusparseDestroy(handle);
 }
 
-std::vector<Tensor> GetSplitTensor(phi::DenseTensor* input) {
+std::vector<phi::DenseTensor> GetSplitTensor(phi::DenseTensor* input) {
   auto dims = input->dims();
   int batch_size = dims[0];
   int num_heads = dims[1];
@@ -687,14 +686,16 @@ class SparseAttentionCUDAKernel : public framework::OpKernel<T> {
     int M = query_dims[2];
     int N = query_dims[3];
 
-    std::vector<Tensor> query_lists = GetSplitTensor(&query);
-    std::vector<Tensor> key_lists = GetSplitTensor(&key);
-    std::vector<Tensor> value_lists = GetSplitTensor(&value);
-    std::vector<Tensor> offset_lists = GetSplitTensor(&offset);
-    std::vector<Tensor> columns_lists = GetSplitTensor(&columns);
-    std::vector<Tensor> result_sdd_lists = GetSplitTensor(&result_sdd);
-    std::vector<Tensor> result_softmax_lists = GetSplitTensor(&result_softmax);
-    std::vector<Tensor> output_lists = GetSplitTensor(&output);
+    std::vector<phi::DenseTensor> query_lists = GetSplitTensor(&query);
+    std::vector<phi::DenseTensor> key_lists = GetSplitTensor(&key);
+    std::vector<phi::DenseTensor> value_lists = GetSplitTensor(&value);
+    std::vector<phi::DenseTensor> offset_lists = GetSplitTensor(&offset);
+    std::vector<phi::DenseTensor> columns_lists = GetSplitTensor(&columns);
+    std::vector<phi::DenseTensor> result_sdd_lists =
+        GetSplitTensor(&result_sdd);
+    std::vector<phi::DenseTensor> result_softmax_lists =
+        GetSplitTensor(&result_softmax);
+    std::vector<phi::DenseTensor> output_lists = GetSplitTensor(&output);
 
     const auto& dev_ctx = ctx.cuda_device_context();
     const int iter_num = batch_size * num_heads;
@@ -802,17 +803,18 @@ class SparseAttentionGradCUDAKernel : public framework::OpKernel<T> {
     int M = query_dims[2];
     int N = query_dims[3];
 
-    std::vector<Tensor> query_lists = GetSplitTensor(&query);
-    std::vector<Tensor> key_lists = GetSplitTensor(&key);
-    std::vector<Tensor> value_lists = GetSplitTensor(&value);
-    std::vector<Tensor> offset_lists = GetSplitTensor(&offset);
-    std::vector<Tensor> columns_lists = GetSplitTensor(&columns);
-    std::vector<Tensor> sparse_dot_sdd_lists = GetSplitTensor(&sparse_dot_sdd);
-    std::vector<Tensor> softmax_lists = GetSplitTensor(&softmax);
-    std::vector<Tensor> dout_lists = GetSplitTensor(&dout);
-    std::vector<Tensor> dquery_lists = GetSplitTensor(&dquery);
-    std::vector<Tensor> dkey_lists = GetSplitTensor(&dkey);
-    std::vector<Tensor> dvalue_lists = GetSplitTensor(&dvalue);
+    std::vector<phi::DenseTensor> query_lists = GetSplitTensor(&query);
+    std::vector<phi::DenseTensor> key_lists = GetSplitTensor(&key);
+    std::vector<phi::DenseTensor> value_lists = GetSplitTensor(&value);
+    std::vector<phi::DenseTensor> offset_lists = GetSplitTensor(&offset);
+    std::vector<phi::DenseTensor> columns_lists = GetSplitTensor(&columns);
+    std::vector<phi::DenseTensor> sparse_dot_sdd_lists =
+        GetSplitTensor(&sparse_dot_sdd);
+    std::vector<phi::DenseTensor> softmax_lists = GetSplitTensor(&softmax);
+    std::vector<phi::DenseTensor> dout_lists = GetSplitTensor(&dout);
+    std::vector<phi::DenseTensor> dquery_lists = GetSplitTensor(&dquery);
+    std::vector<phi::DenseTensor> dkey_lists = GetSplitTensor(&dkey);
+    std::vector<phi::DenseTensor> dvalue_lists = GetSplitTensor(&dvalue);
 
     const int iter_num = batch_size * num_heads;
     const auto& dev_ctx = ctx.cuda_device_context();
@@ -831,7 +833,7 @@ class SparseAttentionGradCUDAKernel : public framework::OpKernel<T> {
 
       // dSoftmax = dOut * transpose(Value)
       int nnz_num = columns_lists[i].numel();
-      Tensor dsoftmax;
+      phi::DenseTensor dsoftmax;
       dsoftmax.Resize({nnz_num});
       dsoftmax.mutable_data<T>(ctx.GetPlace());
       DotSdd<DeviceContext, T>(dev_ctx,
@@ -846,7 +848,7 @@ class SparseAttentionGradCUDAKernel : public framework::OpKernel<T> {
                                true);
 
       // dSparseDotSdd = dSoftmax * softmax'(SparseDotSdd)
-      Tensor dsparse_dot_sdd;
+      phi::DenseTensor dsparse_dot_sdd;
       dsparse_dot_sdd.Resize({nnz_num});
       dsparse_dot_sdd.mutable_data<T>(ctx.GetPlace());
       SparseSoftmaxBackward<DeviceContext, T>(dev_ctx,
