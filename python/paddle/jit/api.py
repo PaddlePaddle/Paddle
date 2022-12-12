@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# isort: skip_file
+# Temporary disable isort to avoid circular import
 import os
 import pickle
 import warnings
