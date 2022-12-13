@@ -79,6 +79,9 @@ void IRPassManager::CreatePasses(Argument *argument,
     pass->Set("optim_shape_tensor",
               new std::map<std::string, std::vector<int>>());
 
+    // this is used by some fp16 precision passes, so move it here.
+    pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
+
     // tuned trt dynamic_shape
     pass->Set("trt_tuned_dynamic_shape",
               new bool(argument->tensorrt_tuned_dynamic_shape()));
@@ -196,7 +199,6 @@ void IRPassManager::CreatePasses(Argument *argument,
             "model_opt_cache_dir",
             new std::string(GetOrCreateModelOptCacheDir(model_opt_cache_dir)));
       }
-      pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
       pass->Set("use_static_engine", new bool(use_static_engine));
       pass->Set("model_from_memory", new bool(argument->model_from_memory()));
       pass->Set("use_inspector", new bool(argument->tensorrt_use_inspector()));
