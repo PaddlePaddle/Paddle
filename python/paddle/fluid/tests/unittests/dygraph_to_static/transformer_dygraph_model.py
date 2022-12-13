@@ -758,7 +758,9 @@ class Transformer(Layer):
                     [-1, -1, self.trg_vocab_size],
                 ),
                 noend_mask_tensor,
-            ) - layers.elementwise_mul(probs, (finished - 1), axis=0)
+            ) - paddle.tensor.math._multiply_with_axis(
+                probs, (finished - 1), axis=0
+            )
             return probs
 
         def gather(input, indices, batch_pos):
@@ -846,7 +848,7 @@ class Transformer(Layer):
             step_log_probs = mask_probs(
                 step_log_probs, finished, noend_mask_tensor
             )
-            log_probs = layers.elementwise_add(
+            log_probs = paddle.tensor.math._add_with_axis(
                 x=step_log_probs, y=log_probs, axis=0
             )
             log_probs = paddle.reshape(

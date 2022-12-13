@@ -1572,7 +1572,6 @@ FOURTH_HIGH_PARALLEL_JOB_NEW = [
 FIFTH_PARALLEL_JOB_NEW = [
     'test_buffer_shared_memory_reuse_pass',
     'test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass',
-    'test_parallel_executor_crf',
     'test_multiprocess_reader_exception',
     'buddy_allocator_test',
     'test_multiprocess_dataloader_dataset',
