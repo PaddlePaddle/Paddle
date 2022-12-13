@@ -19,109 +19,159 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
+template <typename T, int Size>
+struct PointerWarpper {
+ public:
+  const T* data[Size];
+  __device__ inline const T* operator[](int i) const { return data[i]; }
+
+  PointerWarpper() {}
+  PointerWarpper(const phi::GPUContext& ctx,
+                 const std::vector<phi::DenseTensor>& ins,
+                 const int& in_num) {
+    for (auto i = 0; i < in_num; ++i) {
+      data[i] = ins[i].data<T>();
+    }
+  }
+};
+
 template <typename T>
-__global__ void ConcatKernel_(const T** inputs,
-                              const int64_t* input_cols,
+struct PointerWarpper<T, 0> {
+ public:
+  T** data{nullptr};
+  __device__ inline const T* operator[](int i) const { return data[i]; }
+
+  PointerWarpper() {}
+  PointerWarpper(const phi::GPUContext& ctx,
+                 const std::vector<phi::DenseTensor>& ins,
+                 const int& in_num) {
+    std::vector<const T*> inputs_data_vec(in_num);
+    const T** inputs_data = inputs_data_vec.data();
+    for (auto i = 0; i < in_num; ++i) {
+      inputs_data[i] = ins[i].data<T>();
+    }
+    paddle::memory::allocation::AllocationPtr tmp_dev_ins_data;
+    tmp_dev_ins_data = paddle::memory::Alloc(
+        ctx.GetPlace(),
+        in_num * sizeof(T*),
+        phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+    auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
+        inputs_data, in_num);
+    paddle::memory::Copy(ctx.GetPlace(),
+                         tmp_dev_ins_data->ptr(),
+                         paddle::platform::CPUPlace(),
+                         restored,
+                         in_num * sizeof(T*),
+                         ctx.stream());
+    data = reinterpret_cast<T**>(tmp_dev_ins_data->ptr());
+  }
+};
+
+template <typename T, typename IndexT, int Size>
+struct DataAndColWarpper {
+ public:
+  IndexT col_data[Size];
+  DataAndColWarpper(const phi::GPUContext& ctx,
+                    const std::vector<phi::DenseTensor>& ins,
+                    const int& in_num,
+                    const int& ins_col_num,
+                    int64_t* ins_col) {
+    for (auto i = 0; i < ins_col_num; ++i) {
+      col_data[i] = static_cast<IndexT>(ins_col[i]);
+    }
+    data_warpper = PointerWarpper<T, Size>(ctx, ins, in_num);
+  }
+
+  __device__ inline const T* operator[](int i) const { return data_warpper[i]; }
+
+ private:
+  PointerWarpper<T, Size> data_warpper;
+};
+
+template <typename T, typename IndexT>
+struct DataAndColWarpper<T, IndexT, 0> {
+ public:
+  IndexT* col_data;
+  DataAndColWarpper(const phi::GPUContext& ctx,
+                    const std::vector<phi::DenseTensor>& ins,
+                    const int& in_num,
+                    const int& ins_col_num,
+                    int64_t* ins_col) {
+    auto tmp_dev_ins_col_data = paddle::memory::Alloc(
+        ctx.GetPlace(),
+        ins_col_num * sizeof(IndexT),
+        phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+    std::vector<IndexT> inputs_col_vec(ins_col_num);
+    IndexT* in_col = inputs_col_vec.data();
+    if (!std::is_same<IndexT, int64_t>::value) {
+      for (auto i = 0; i < ins_col_num; ++i) {
+        in_col[i] = ins_col[i];
+      }
+    } else {
+      in_col = reinterpret_cast<IndexT*>(ins_col);
+    }
+    auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
+        in_col, ins_col_num);
+    paddle::memory::Copy(ctx.GetPlace(),
+                         tmp_dev_ins_col_data->ptr(),
+                         paddle::platform::CPUPlace(),
+                         restored,
+                         ins_col_num * sizeof(IndexT),
+                         ctx.stream());
+    col_data = static_cast<IndexT*>(tmp_dev_ins_col_data->ptr());
+
+    data_warpper = PointerWarpper<T, 0>(ctx, ins, in_num);
+  }
+
+  __device__ inline const T* operator[](int i) const { return data_warpper[i]; }
+
+ private:
+  PointerWarpper<T, 0> data_warpper;
+};
+
+template <typename T, typename IndexT, typename WarpperT>
+__global__ void ConcatKernel_(WarpperT ins_datas,
                               int col_size,
-                              const int64_t output_rows,
-                              const int64_t output_cols,
+                              const IndexT output_rows,
+                              const IndexT output_cols,
                               T* output) {
-  int64_t curr_segment = 0;
-  int64_t curr_offset = input_cols[0];
-  CUDA_KERNEL_LOOP_TYPE(tid_x, output_cols, int64_t) {
-    int64_t curr_col_offset = input_cols[curr_segment + 1];
+  IndexT curr_segment = 0;
+  IndexT curr_offset = ins_datas.col_data[0];
+  CUDA_KERNEL_LOOP_TYPE(tid_x, output_cols, IndexT) {
+    IndexT curr_col_offset = ins_datas.col_data[curr_segment + 1];
     while (curr_col_offset <= tid_x) {
       curr_offset = curr_col_offset;
       ++curr_segment;
-      curr_col_offset = input_cols[curr_segment + 1];
+      curr_col_offset = ins_datas.col_data[curr_segment + 1];
     }
 
-    int64_t local_col = tid_x - curr_offset;
-    int64_t segment_width = curr_col_offset - curr_offset;
+    IndexT local_col = tid_x - curr_offset;
+    IndexT segment_width = curr_col_offset - curr_offset;
 
-    const T* input_ptr = inputs[curr_segment];
-    int64_t tid_y = blockIdx.y * blockDim.y + threadIdx.y;
+    const T* input_ptr = ins_datas[curr_segment];
+    IndexT tid_y = blockIdx.y * blockDim.y + threadIdx.y;
     for (; tid_y < output_rows; tid_y += blockDim.y * gridDim.y)
       output[tid_y * output_cols + tid_x] =
           input_ptr[tid_y * segment_width + local_col];
   }
 }
 
-template <typename T>
-__device__ void ConcatKernelDetail(const T** inputs_data,
-                                   const int64_t fixed_in_col,
-                                   const int64_t out_rows,
-                                   const int64_t out_cols,
-                                   T* output_data) {
-  CUDA_KERNEL_LOOP_TYPE(tid_x, out_cols, int64_t) {
-    int64_t split = tid_x * 1.0 / fixed_in_col;
-    int64_t in_offset = tid_x - split * fixed_in_col;
-    const T* input_ptr = inputs_data[split];
-    int64_t tid_y = blockIdx.y * blockDim.y + threadIdx.y;
+template <typename T, typename IndexT, typename WarpperT>
+__global__ void ConcatKernel(WarpperT ins_data,
+                             const IndexT fixed_in_col,
+                             const IndexT out_rows,
+                             const IndexT out_cols,
+                             T* output_data) {
+  CUDA_KERNEL_LOOP_TYPE(tid_x, out_cols, IndexT) {
+    IndexT split = tid_x * 1.0 / fixed_in_col;
+    IndexT in_offset = tid_x - split * fixed_in_col;
+    const T* input_ptr = ins_data[split];
+    IndexT tid_y = blockIdx.y * blockDim.y + threadIdx.y;
     for (; tid_y < out_rows; tid_y += blockDim.y * gridDim.y) {
       output_data[tid_y * out_cols + tid_x] =
           input_ptr[tid_y * fixed_in_col + in_offset];
     }
   }
-}
-
-template <typename T>
-__global__ void ConcatKernel_(const T* input_addr0,
-                              const T* input_addr1,
-                              const int64_t fixed_in_col,
-                              const int64_t out_rows,
-                              const int64_t out_cols,
-                              T* output_data) {
-  const T* inputs_data[2];
-  inputs_data[0] = input_addr0;
-  inputs_data[1] = input_addr1;
-  ConcatKernelDetail<T>(
-      inputs_data, fixed_in_col, out_rows, out_cols, output_data);
-}
-
-template <typename T>
-__global__ void ConcatKernel_(const T* input_addr0,
-                              const T* input_addr1,
-                              const T* input_addr2,
-                              const int64_t fixed_in_col,
-                              const int64_t out_rows,
-                              const int64_t out_cols,
-                              T* output_data) {
-  const T* inputs_data[3];
-  inputs_data[0] = input_addr0;
-  inputs_data[1] = input_addr1;
-  inputs_data[2] = input_addr2;
-  ConcatKernelDetail<T>(
-      inputs_data, fixed_in_col, out_rows, out_cols, output_data);
-}
-
-template <typename T>
-__global__ void ConcatKernel_(const T* input_addr0,
-                              const T* input_addr1,
-                              const T* input_addr2,
-                              const T* input_addr3,
-                              const int64_t fixed_in_col,
-                              const int64_t out_rows,
-                              const int64_t out_cols,
-                              T* output_data) {
-  const T* inputs_data[4];
-  inputs_data[0] = input_addr0;
-  inputs_data[1] = input_addr1;
-  inputs_data[2] = input_addr2;
-  inputs_data[3] = input_addr3;
-  ConcatKernelDetail<T>(
-      inputs_data, fixed_in_col, out_rows, out_cols, output_data);
-}
-
-template <typename T>
-__global__ void ConcatKernel_(const T** inputs_data,
-                              const int in_num,
-                              const int64_t fixed_in_col,
-                              const int64_t out_rows,
-                              const int64_t out_cols,
-                              T* output_data) {
-  ConcatKernelDetail<T>(
-      inputs_data, fixed_in_col, out_rows, out_cols, output_data);
 }
 
 template <typename T>
@@ -262,21 +312,16 @@ struct ConcatFunctor<phi::GPUContext, T> {
                   int axis,
                   phi::DenseTensor* output) {
     // TODO(zcd): Add input data validity checking
-    int64_t in_num = input.size();
+    int in_num = input.size();
     int64_t in_row = 1;
     auto dim_0 = input[0].dims();
     for (int i = 0; i < axis; ++i) {
       in_row *= dim_0[i];
     }
-    int64_t in_col = input[0].numel() / in_row;
     int64_t out_row = in_row, out_col = 0;
-
-    int64_t inputs_col_num = in_num + 1;
-    std::vector<const T*> inputs_data_vec(in_num);
-    std::vector<int64_t> inputs_col_vec(inputs_col_num);
-    const T** inputs_data = inputs_data_vec.data();
-    int64_t* inputs_col = inputs_col_vec.data();
-
+    int ins_col_num = in_num + 1;
+    std::vector<int64_t> inputs_col_vec(ins_col_num);
+    int64_t* ins_col = inputs_col_vec.data();
 // There are some differences between hip runtime and NV runtime.
 // In NV, when the pageable memory data less than 64K is transferred from
 // hosttodevice, it will be automatically asynchronous.
@@ -285,6 +330,8 @@ struct ConcatFunctor<phi::GPUContext, T> {
 // 3.2.6.1. Concurrent Execution between Host and Device
 // Memory copies from host to device of a memory block of 64 KB or less
 #ifdef PADDLE_WITH_HIP
+    std::vector<const T*> inputs_data_vec(in_num);
+    const T** inputs_data = inputs_data_vec.data();
     paddle::memory::AllocationPtr data_alloc, col_alloc;
     // TODO(chentianyu03): try to find a method to remove the Alloc function
     data_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
@@ -292,104 +339,89 @@ struct ConcatFunctor<phi::GPUContext, T> {
     inputs_data = reinterpret_cast<const T**>(data_alloc->ptr());
     // TODO(chentianyu03): try to find a method to remove the Alloc function
     col_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
-                                      inputs_col_num * sizeof(int));
-    inputs_col = reinterpret_cast<int64_t*>(col_alloc->ptr());
+                                      ins_col_num * sizeof(int));
+    ins_col = reinterpret_cast<int64_t*>(col_alloc->ptr());
 #endif
 
-    inputs_col[0] = 0;
+    ins_col[0] = 0;
     bool has_same_shape = true;
+    int64_t in_col = input[0].numel() / in_row;
     for (int i = 0; i < in_num; ++i) {
       int64_t t_cols = input[i].numel() / in_row;
       if (has_same_shape) {
-        if (t_cols != in_col) has_same_shape = false;
+        has_same_shape &= (t_cols == in_col);
       }
       out_col += t_cols;
-      inputs_col[i + 1] = out_col;
-      inputs_data[i] = input[i].data<T>();
+      ins_col[i + 1] = out_col;
     }
 
     dim3 block_dims;
     dim3 grid_dims;
     GetBlockDims(context, out_row, out_col, &block_dims, &grid_dims);
 
-    std::cout << "[Concate] in_num : " << in_num
-              << ", has_same_shape : " << has_same_shape
-              << std::endl
-
-                     paddle::memory::allocation::AllocationPtr tmp_dev_ins_data;
-    const T** dev_ins_data = nullptr;
-    if (!has_same_shape || in_num < 2 || in_num > 4) {
-      tmp_dev_ins_data = paddle::memory::Alloc(
-          context.GetPlace(),
-          in_num * sizeof(T*),
-          phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
-      auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
-          inputs_data, in_num);
-      paddle::memory::Copy(context.GetPlace(),
-                           tmp_dev_ins_data->ptr(),
-                           paddle::platform::CPUPlace(),
-                           restored,
-                           in_num * sizeof(T*),
-                           context.stream());
-      dev_ins_data = reinterpret_cast<const T**>(tmp_dev_ins_data->ptr());
-    }
-
+    bool use_int32 = output->numel() < std::numeric_limits<int32_t>::max();
     if (has_same_shape) {
-      if (in_num == 2) {
-        ConcatKernel_<<<grid_dims, block_dims, 0, context.stream()>>>(
-            inputs_data[0],
-            inputs_data[1],
-            in_col,
-            out_row,
-            out_col,
-            output->data<T>());
-      } else if (in_num == 3) {
-        ConcatKernel_<<<grid_dims, block_dims, 0, context.stream()>>>(
-            inputs_data[0],
-            inputs_data[1],
-            inputs_data[2],
-            in_col,
-            out_row,
-            out_col,
-            output->data<T>());
-      } else if (in_num == 4) {
-        ConcatKernel_<<<grid_dims, block_dims, 0, context.stream()>>>(
-            inputs_data[0],
-            inputs_data[1],
-            inputs_data[2],
-            inputs_data[3],
-            in_col,
-            out_row,
-            out_col,
-            output->data<T>());
+#define IMPL_CONCAT_WITH_WARPPER(size, index_t)              \
+  PointerWarpper<T, size> ptr_array(context, input, in_num); \
+  ConcatKernel<T, index_t, decltype(ptr_array)>              \
+      <<<grid_dims, block_dims, 0, context.stream()>>>(      \
+          ptr_array, in_col, out_row, out_col, output->data<T>());
+      if (use_int32) {
+        if (in_num < 32) {
+          IMPL_CONCAT_WITH_WARPPER(32, int32_t);
+        } else if (in_num < 64) {
+          IMPL_CONCAT_WITH_WARPPER(64, int32_t);
+        } else if (in_num < 128) {
+          IMPL_CONCAT_WITH_WARPPER(128, int32_t);
+        } else {
+          IMPL_CONCAT_WITH_WARPPER(0, int32_t);
+        }
       } else {
-        ConcatKernel_<<<grid_dims, block_dims, 0, context.stream()>>>(
-            dev_ins_data, in_num, in_col, out_row, out_col, output->data<T>());
+        if (in_num < 32) {
+          IMPL_CONCAT_WITH_WARPPER(32, int64_t);
+        } else if (in_num < 64) {
+          IMPL_CONCAT_WITH_WARPPER(64, int64_t);
+        } else if (in_num < 128) {
+          IMPL_CONCAT_WITH_WARPPER(128, int64_t);
+        } else {
+          IMPL_CONCAT_WITH_WARPPER(0, int64_t);
+        }
       }
+#undef IMPL_CONCAT_WITH_WARPPER
     } else {
-      auto tmp_dev_ins_col_data = paddle::memory::Alloc(
-          context.GetPlace(),
-          inputs_col_num * sizeof(int64_t),
-          phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
-
-      auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
-          inputs_col, inputs_col_num);
-      paddle::memory::Copy(context.GetPlace(),
-                           tmp_dev_ins_col_data->ptr(),
-                           paddle::platform::CPUPlace(),
-                           restored,
-                           inputs_col_num * sizeof(int64_t),
-                           context.stream());
-      int64_t* dev_ins_col_data =
-          static_cast<int64_t*>(tmp_dev_ins_col_data->ptr());
-
-      ConcatKernel_<<<grid_dims, block_dims, 0, context.stream()>>>(
-          dev_ins_data,
-          dev_ins_col_data,
-          static_cast<int>(inputs_col_num),
-          out_row,
-          out_col,
+#define IMPL_CONCAT_WITH_COMPLEX_WARPPER(size, index_t) \
+  DataAndColWarpper<T, index_t, size> ptr_col_array(    \
+      context, input, in_num, ins_col_num, ins_col);    \
+  ConcatKernel_<T, index_t, decltype(ptr_col_array)>    \
+      <<<grid_dims, block_dims, 0, context.stream()>>>( \
+          ptr_col_array,                                \
+          ins_col_num,                                  \
+          static_cast<index_t>(out_row),                \
+          static_cast<index_t>(out_col),                \
           output->data<T>());
+
+      if (use_int32) {
+        if (in_num < 32) {
+          IMPL_CONCAT_WITH_COMPLEX_WARPPER(32, int32_t);
+        } else if (in_num < 64) {
+          IMPL_CONCAT_WITH_COMPLEX_WARPPER(64, int32_t);
+        } else if (in_num < 128) {
+          IMPL_CONCAT_WITH_COMPLEX_WARPPER(64, int32_t);
+        } else {
+          IMPL_CONCAT_WITH_COMPLEX_WARPPER(0, int32_t);
+        }
+      } else {
+        if (in_num < 32) {
+          IMPL_CONCAT_WITH_COMPLEX_WARPPER(32, int64_t);
+        } else if (in_num < 64) {
+          IMPL_CONCAT_WITH_COMPLEX_WARPPER(64, int64_t);
+        } else if (in_num < 128) {
+          IMPL_CONCAT_WITH_COMPLEX_WARPPER(64, int64_t);
+        } else {
+          IMPL_CONCAT_WITH_COMPLEX_WARPPER(0, int64_t);
+        }
+      }
+#undef IMPL_CONCAT_WITH_COMPLEX_WARPPER
     }
 
 #ifdef PADDLE_WITH_HIP
