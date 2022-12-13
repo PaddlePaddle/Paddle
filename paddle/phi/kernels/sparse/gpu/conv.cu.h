@@ -16,7 +16,13 @@ limitations under the License. */
 
 #include <thrust/remove.h>
 #include <thrust/unique.h>
+#ifdef __NVCC__
 #include <cub/block/block_scan.cuh>
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
 #include "paddle/phi/kernels/sparse/conv_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
