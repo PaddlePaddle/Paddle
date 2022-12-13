@@ -308,9 +308,7 @@ def _rnn_static_graph(
 
         with paddle.fluid.framework.device_guard("cpu"):
 
-            start_i = paddle.fluid.layers.increment(
-                x=start_i, value=1, in_place=True
-            )
+            start_i = paddle.tensor.increment(x=start_i, value=1)
         map_structure(
             lambda x, y: paddle.tensor.array_write(x, start_i, y),
             new_states,
