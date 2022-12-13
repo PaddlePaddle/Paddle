@@ -16,8 +16,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class TensorAssign {
  public:
   template <typename tensor_t>
@@ -50,7 +48,7 @@ template <typename tensor_t,
           bool is_scatter_like = true>
 struct cpu_gather_scatter_functor {
   template <typename func_t>
-  void operator()(Tensor self,
+  void operator()(phi::DenseTensor self,
                   int dim,
                   const phi::DenseTensor& index,
                   const phi::DenseTensor& src,
@@ -130,10 +128,10 @@ struct cpu_gather_scatter_functor {
 };
 
 template <typename tensor_t, typename index_t>
-void cpu_gather_kernel(Tensor self,
+void cpu_gather_kernel(phi::DenseTensor self,
                        int dim,
                        const phi::DenseTensor& index,
-                       Tensor result,
+                       phi::DenseTensor result,
                        const platform::DeviceContext& ctx) {
   cpu_gather_scatter_functor<tensor_t,
                              index_t,
@@ -142,10 +140,10 @@ void cpu_gather_kernel(Tensor self,
 }
 
 template <typename tensor_t, typename index_t>
-void cpu_scatter_assign_kernel(Tensor self,
+void cpu_scatter_assign_kernel(phi::DenseTensor self,
                                int dim,
                                const phi::DenseTensor& index,
-                               Tensor src,
+                               phi::DenseTensor src,
                                const platform::DeviceContext& ctx) {
   cpu_gather_scatter_functor<tensor_t,
                              index_t,
@@ -154,10 +152,10 @@ void cpu_scatter_assign_kernel(Tensor self,
 }
 
 template <typename tensor_t, typename index_t>
-void cpu_scatter_add_kernel(Tensor self,
+void cpu_scatter_add_kernel(phi::DenseTensor self,
                             int dim,
                             const phi::DenseTensor& index,
-                            Tensor src,
+                            phi::DenseTensor src,
                             const platform::DeviceContext& ctx) {
   cpu_gather_scatter_functor<tensor_t,
                              index_t,
@@ -166,10 +164,10 @@ void cpu_scatter_add_kernel(Tensor self,
 }
 
 template <typename tensor_t, typename index_t>
-void cpu_scatter_mul_kernel(Tensor self,
+void cpu_scatter_mul_kernel(phi::DenseTensor self,
                             int dim,
                             const phi::DenseTensor& index,
-                            Tensor src,
+                            phi::DenseTensor src,
                             const platform::DeviceContext& ctx) {
   cpu_gather_scatter_functor<tensor_t,
                              index_t,
@@ -178,10 +176,10 @@ void cpu_scatter_mul_kernel(Tensor self,
 }
 
 template <typename tensor_t, typename index_t>
-void cpu_scatter_input_grad_kernel(Tensor self,
+void cpu_scatter_input_grad_kernel(phi::DenseTensor self,
                                    int dim,
                                    const phi::DenseTensor& index,
-                                   Tensor output,
+                                   phi::DenseTensor output,
                                    const platform::DeviceContext& ctx) {
   auto* index_data = index.data<index_t>();
   auto* output_data = output.data<tensor_t>();

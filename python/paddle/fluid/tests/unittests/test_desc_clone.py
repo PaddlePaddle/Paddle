@@ -73,11 +73,13 @@ def get_model(batch_size):
 
     # Train program
     predict = cnn_model(images)
-    cost = fluid.layers.cross_entropy(input=predict, label=label)
+    cost = paddle.nn.functional.cross_entropy(
+        input=predict, label=label, reduction='none', use_softmax=False
+    )
     avg_cost = paddle.mean(x=cost)
 
     # Evaluator
-    batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
+    batch_size_tensor = paddle.tensor.create_tensor(dtype='int64')
     batch_acc = paddle.static.accuracy(
         input=predict, label=label, total=batch_size_tensor
     )
@@ -188,9 +190,11 @@ class TestCloneWithStopGradient(unittest.TestCase):
             hidden1 = fluid.layers.fc(input=img, size=200, act='relu')
             hidden1.stop_gradient = True
             hidden2 = paddle.nn.functional.dropout(hidden1, p=0.5)
-            loss = fluid.layers.cross_entropy(
+            loss = paddle.nn.functional.cross_entropy(
                 input=fluid.layers.fc(hidden2, size=10, act='softmax'),
                 label=fluid.layers.data(name='label', shape=[1], dtype='int64'),
+                reduction='none',
+                use_softmax=False,
             )
             avg_loss = paddle.mean(loss)
             test_program = train_program.clone(for_test=False)
@@ -224,11 +228,13 @@ class TestCloneWithStopGradientInSubBlock(unittest.TestCase):
                 hidden2 = paddle.nn.functional.dropout(hidden1, p=0.6)
                 return hidden2
 
-            hidden2 = fluid.layers.cond(cond, true_fn, false_fn)
+            hidden2 = paddle.static.nn.cond(cond, true_fn, false_fn)
 
-            loss = fluid.layers.cross_entropy(
+            loss = paddle.nn.functional.cross_entropy(
                 input=fluid.layers.fc(hidden2, size=10, act='softmax'),
                 label=fluid.layers.data(name='label', shape=[1], dtype='int64'),
+                reduction='none',
+                use_softmax=False,
             )
             avg_loss = paddle.mean(loss)
             test_program = train_program.clone(for_test=False)
@@ -265,10 +271,12 @@ class TestCloneWithRaise(unittest.TestCase):
                 hidden2 = paddle.nn.functional.dropout(hidden1, p=0.6)
                 return hidden2
 
-            hidden2 = fluid.layers.cond(cond, true_fn, false_fn)
-            loss = fluid.layers.cross_entropy(
+            hidden2 = paddle.static.nn.cond(cond, true_fn, false_fn)
+            loss = paddle.nn.functional.cross_entropy(
                 input=fluid.layers.fc(hidden2, size=10, act='softmax'),
                 label=fluid.layers.data(name='label', shape=[1], dtype='int64'),
+                reduction='none',
+                use_softmax=False,
             )
             avg_loss = paddle.mean(loss)
             test_program = train_program.clone(for_test=False)

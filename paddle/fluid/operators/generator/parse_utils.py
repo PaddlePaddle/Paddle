@@ -17,6 +17,7 @@ from copy import copy
 from typing import Any, Dict, List, Tuple
 
 from tests import is_attr, is_input, is_output, is_vec
+from type_mapping import opmaker_attr_types_map
 
 
 def to_named_dict(items: List[Dict]) -> Dict[str, Dict]:
@@ -97,6 +98,8 @@ def parse_input_and_attr(
                 ), f"{op_name}: Arguments with default value should not precede those without default value"
             elif "default_value" in item:
                 met_attr_with_default_value = True
+            if typename.startswith('Scalar') or typename == 'IntArray':
+                item['data_type'] = opmaker_attr_types_map[typename]
             attrs.append(item)
         else:
             raise KeyError(f"{op_name}: Invalid argument type {typename}.")

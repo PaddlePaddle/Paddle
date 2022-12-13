@@ -20,6 +20,7 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
+from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..common_ops_import import _varbase_creator, fill_constant
 from ..fluid.data_feeder import (
@@ -28,7 +29,6 @@ from ..fluid.data_feeder import (
     check_variable_and_dtype,
     convert_dtype,
 )
-from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 from ..fluid.framework import _in_legacy_dygraph, _non_static_mode
 from ..fluid.layers import utils
 from ..framework import (
@@ -2278,12 +2278,12 @@ def unique_consecutive(
     dtype="int64",
     name=None,
 ):
-    r"""
+    """
     Eliminates all but the first element from every consecutive group of equivalent elements.
 
     Note:
-        This function is different from :func:`paddle.unique` in the sense that this function
-        only eliminates consecutive duplicate values. This semantics is similar to `std::unique` in C++.
+        This function is different from :ref:`api_paddle_unique` in the sense that this function
+        only eliminates consecutive duplicate values. This semantics is similar to :ref:`api_paddle_unique` in C++.
 
     Args:
         x(Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -2299,7 +2299,12 @@ def unique_consecutive(
             :ref:`api_guide_Name`. Default is None.
 
     Returns:
-        tuple (out, inverse, counts). `out` is the unique consecutive tensor for `x`. `inverse` is provided only if `return_inverse` is True. `counts` is provided only if `return_counts` is True.
+        - out (Tensor), the unique consecutive tensor for x.
+        - inverse (Tensor), the element of the input tensor corresponds to
+            the index of the elements in the unique consecutive tensor for x.
+            inverse is provided only if return_inverse is True.
+        - counts (Tensor), the counts of the every unique consecutive element in the input tensor.
+            counts is provided only if return_counts is True.
 
     Example:
         .. code-block:: python
@@ -2453,7 +2458,10 @@ def unique(
 
             x = paddle.to_tensor([2, 3, 3, 1, 5, 3])
             unique = paddle.unique(x)
-            np_unique = unique.numpy() # [1 2 3 5]
+            print(unique)
+            # Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            #        [1, 2, 3, 5])
+
             _, indices, inverse, counts = paddle.unique(x, return_index=True, return_inverse=True, return_counts=True)
             print(indices)
             # Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,

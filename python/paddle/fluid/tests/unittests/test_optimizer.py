@@ -1168,7 +1168,12 @@ class TestRecomputeOptimizer(unittest.TestCase):
             prediction = fluid.layers.fc(
                 input=[drop_res], size=2, act='softmax'
             )
-            cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+            cost = paddle.nn.functional.cross_entropy(
+                input=prediction,
+                label=input_y,
+                reduction='none',
+                use_softmax=False,
+            )
             sum_cost = paddle.mean(cost)
             return drop_res, prediction, sum_cost
 
@@ -1225,7 +1230,12 @@ class TestRecomputeOptimizerCUDA(unittest.TestCase):
             prediction = fluid.layers.fc(
                 input=[drop_res], size=2, act='softmax'
             )
-            cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+            cost = paddle.nn.functional.cross_entropy(
+                input=prediction,
+                label=input_y,
+                reduction='none',
+                use_softmax=False,
+            )
             sum_cost = paddle.mean(cost)
             return drop_res, prediction, sum_cost
 

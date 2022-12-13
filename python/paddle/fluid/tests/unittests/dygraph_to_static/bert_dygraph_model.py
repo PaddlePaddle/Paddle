@@ -16,7 +16,7 @@ from transformer_dygraph_model import MultiHeadAttention, PrePostProcessLayer
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import Embedding, Layer
+from paddle.fluid.dygraph import Layer
 from paddle.jit.api import declarative
 from paddle.nn import Linear
 
@@ -206,29 +206,29 @@ class BertModelLayer(Layer):
         self._param_initializer = fluid.initializer.TruncatedNormal(
             scale=config['initializer_range']
         )
-
-        self._src_emb = Embedding(
-            size=[self._voc_size, self._emb_size],
-            param_attr=fluid.ParamAttr(
+        paddle.set_default_dtype(self._dtype)
+        self._src_emb = paddle.nn.Embedding(
+            self._voc_size,
+            self._emb_size,
+            weight_attr=fluid.ParamAttr(
                 name=self._word_emb_name, initializer=self._param_initializer
             ),
-            dtype=self._dtype,
         )
 
-        self._pos_emb = Embedding(
-            size=[self._max_position_seq_len, self._emb_size],
-            param_attr=fluid.ParamAttr(
+        self._pos_emb = paddle.nn.Embedding(
+            self._max_position_seq_len,
+            self._emb_size,
+            weight_attr=fluid.ParamAttr(
                 name=self._pos_emb_name, initializer=self._param_initializer
             ),
-            dtype=self._dtype,
         )
 
-        self._sent_emb = Embedding(
-            size=[self._sent_types, self._emb_size],
-            param_attr=fluid.ParamAttr(
+        self._sent_emb = paddle.nn.Embedding(
+            self._sent_types,
+            self._emb_size,
+            weight_attr=fluid.ParamAttr(
                 name=self._sent_emb_name, initializer=self._param_initializer
             ),
-            dtype=self._dtype,
         )
 
         self.pooled_fc = Linear(
@@ -270,7 +270,7 @@ class BertModelLayer(Layer):
 
         emb_out = self.pre_process_layer(emb_out)
 
-        self_attn_mask = fluid.layers.matmul(
+        self_attn_mask = paddle.matmul(
             x=input_mask, y=input_mask, transpose_y=True
         )
         self_attn_mask = paddle.scale(
@@ -399,7 +399,7 @@ class PretrainModelLayer(Layer):
         mask_trans_feat = self.pre_process_layer(mask_trans_feat)
 
         if self._weight_sharing:
-            fc_out = fluid.layers.matmul(
+            fc_out = paddle.matmul(
                 x=mask_trans_feat,
                 y=self.bert_layer._src_emb._w,
                 transpose_y=True,

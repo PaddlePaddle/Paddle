@@ -42,9 +42,9 @@ class TestLayer(unittest.TestCase):
             images = fluid.layers.data(
                 name='pixel', shape=[3, 48, 48], dtype='float32'
             )
-            hidden1 = fluid.layers.batch_norm(input=images)
+            hidden1 = paddle.static.nn.batch_norm(input=images)
             hidden2 = fluid.layers.fc(input=hidden1, size=128, act='relu')
-            fluid.layers.batch_norm(input=hidden2)
+            paddle.static.nn.batch_norm(input=hidden2)
 
         print(str(main_program))
 

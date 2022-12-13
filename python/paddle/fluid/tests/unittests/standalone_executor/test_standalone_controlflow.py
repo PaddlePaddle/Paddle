@@ -57,7 +57,7 @@ class TestCompatibility(unittest.TestCase):
             x = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
             y = layers.fill_constant(shape=[1], dtype='float32', value=0.23)
             pred = paddle.less_than(x, y)
-            out = layers.cond(pred, true_func, false_func)
+            out = paddle.static.nn.cond(pred, true_func, false_func)
             # out is a tuple containing 2 tensors
             return main_program, startup_program, out
 

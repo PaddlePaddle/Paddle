@@ -109,7 +109,7 @@ class TestReduceOnPlateauDecay:
         main_prog = paddle.static.Program()
         start_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, start_prog):
-            x = fluid.layers.create_global_var(
+            x = paddle.static.create_global_var(
                 [1], 1, 'float32', persistable=True
             )
             paddle.increment(x)

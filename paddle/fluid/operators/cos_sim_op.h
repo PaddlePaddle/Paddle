@@ -21,13 +21,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename DeviceContext, typename T>
 class CosSimKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    // get Tensor
+    // get phi::DenseTensor
     auto* in_x = context.Input<phi::DenseTensor>("X");
     auto* in_y = context.Input<phi::DenseTensor>("Y");
     auto* out_z = context.Output<phi::DenseTensor>("Out");
@@ -74,7 +72,7 @@ template <typename DeviceContext, typename T>
 class CosSimGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    // get Tensor
+    // get phi::DenseTensor
     auto* in_x = context.Input<phi::DenseTensor>("X");
     auto* in_y = context.Input<phi::DenseTensor>("Y");
     auto* in_z = context.Input<phi::DenseTensor>("Out");
