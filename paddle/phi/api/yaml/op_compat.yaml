@@ -1045,6 +1045,20 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : scatter
+  backward : scatter_grad
+  inputs :
+    {x : X, index : Ids, updates : Updates}
+  outputs :
+    out : Out
+
+- op : scatter_nd_add
+  backward : scatter_nd_add_grad
+  inputs :
+    {x : X, index : Index, updates : Updates}
+  outputs :
+    out : Out
+
 - op : searchsorted
   inputs :
     {sorted_sequence : SortedSequence, values : Values}
@@ -1054,6 +1068,13 @@
 - op : seed
   extra :
     attrs : [bool deterministic = false, str rng_name = "", bool force_cpu = false]
+
+- op : selu
+  backward : selu_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : send_uv (graph_send_uv)
   backward : send_uv_grad (graph_send_uv_grad)
@@ -1066,6 +1087,12 @@
 - op : shape
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+
+- op : shard_index
+  inputs :
+    input : X
+  outputs :
+    out : Out
 
 - op : share_buffer
   inputs :
@@ -1296,6 +1323,19 @@
     x : X
   outputs :
     out : Y
+
+- op : viterbi_decode
+  inputs :
+    {potentials : Input, transition_params : Transition, lengths : Length}
+  outputs :
+    {scores : Scores, path : Path}
+
+- op : where
+  backward : where_grad
+  inputs :
+    {condition : Condition, x : X, y : Y}
+  outputs :
+    out : Out
 
 - op : while
   backward : while_grad
