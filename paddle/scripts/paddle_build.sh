@@ -761,6 +761,7 @@ EOF
         export http_proxy=$my_proxy
         export https_proxy=$my_proxy
         set -x
+
         if [ "$mactest_error" != 0 ];then
             show_ut_retry_result
         fi
