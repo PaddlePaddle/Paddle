@@ -312,7 +312,11 @@ struct ConcatFunctor<phi::GPUContext, T> {
     dim3 grid_dims;
     GetBlockDims(context, out_row, out_col, &block_dims, &grid_dims);
 
-    paddle::memory::allocation::AllocationPtr tmp_dev_ins_data;
+    std::cout << "[Concate] in_num : " << in_num
+              << ", has_same_shape : " << has_same_shape
+              << std::endl
+
+                     paddle::memory::allocation::AllocationPtr tmp_dev_ins_data;
     const T** dev_ins_data = nullptr;
     if (!has_same_shape || in_num < 2 || in_num > 4) {
       tmp_dev_ins_data = paddle::memory::Alloc(
