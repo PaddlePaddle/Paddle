@@ -1,4 +1,5 @@
 // Copyright 2018-2019, Mingkun Huang
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,8 +25,13 @@
 extern "C" {
 #endif
 
+#ifdef PADDLE_WITH_HIP
+// forward declare of HIP typedef to avoid needing to pull in HIP headers
+typedef struct ihipStream_t* GPUstream;
+#else
 // forward declare of CUDA typedef to avoid needing to pull in CUDA headers
-typedef struct CUstream_st* CUstream;
+typedef struct CUstream_st* GPUstream;
+#endif
 
 typedef enum {
   RNNT_STATUS_SUCCESS = 0,
@@ -61,7 +67,7 @@ struct rnntOptions {
   unsigned int num_threads;
 
   /// used when loc == RNNT_GPU, which stream the kernels should be launched in
-  CUstream stream;
+  GPUstream stream;
 
   /// the label value/index that the RNNT calculation should use as the blank
   /// label

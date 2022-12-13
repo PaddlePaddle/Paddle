@@ -1,4 +1,5 @@
 // Copyright 2018-2019, Mingkun Huang
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +16,7 @@
 #pragma once
 #include "rnnt.h"
 #include "rnnt_helper.h"
+#include "type_def.h"
 
 const int warp_size = 32;
 
@@ -125,7 +127,7 @@ struct ReduceHelper {
                    int num_rows,
                    int num_cols,
                    bool minus,
-                   cudaStream_t stream) {
+                   gpuStream_t stream) {
     int grid_size;
 
     if (minus) {
@@ -149,11 +151,18 @@ rnntStatus_t reduce(Iof f,
                     int rows,
                     int cols,
                     bool minus,
-                    cudaStream_t stream) {
+                    gpuStream_t stream) {
   ReduceHelper::impl(f, g, acts, output, rows, cols, minus, stream);
+
+#ifdef __HIPCC__
+  hipStreamSynchronize(stream);
+  gpuError_t err = hipGetLastError();
+#else
   cudaStreamSynchronize(stream);
-  cudaError_t err = cudaGetLastError();
-  if (err != cudaSuccess) return RNNT_STATUS_EXECUTION_FAILED;
+  gpuError_t err = cudaGetLastError();
+#endif
+
+  if (err != gpuSuccess) return RNNT_STATUS_EXECUTION_FAILED;
 
   return RNNT_STATUS_SUCCESS;
 }
@@ -164,7 +173,7 @@ rnntStatus_t reduce_exp(const T* const acts,
                         int rows,
                         int cols,
                         bool minus,
-                        cudaStream_t stream) {
+                        gpuStream_t stream) {
   return reduce(rnnt_helper::exponential<T>(),
                 rnnt_helper::add<T>(),
                 acts,
@@ -181,7 +190,7 @@ rnntStatus_t reduce_max(const T* const acts,
                         int rows,
                         int cols,
                         bool minus,
-                        cudaStream_t stream) {
+                        gpuStream_t stream) {
   return reduce(rnnt_helper::identity<T>(),
                 rnnt_helper::maximum<T>(),
                 acts,

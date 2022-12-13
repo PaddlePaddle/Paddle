@@ -1,4 +1,5 @@
 // Copyright 2018-2019, Mingkun Huang
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +20,7 @@
 #include <stdexcept>
 #include <vector>
 
+#include "paddle/phi/kernels/funcs/warp_transducer/include/detail/type_def.h"
 #include "paddle/phi/kernels/funcs/warp_transducer/include/rnnt.h"
 #include "random.hpp"
 

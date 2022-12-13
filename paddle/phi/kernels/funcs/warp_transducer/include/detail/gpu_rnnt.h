@@ -1,4 +1,5 @@
 // Copyright 2018-2019, Mingkun Huang
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -41,7 +42,7 @@ class GpuRNNT {
           int blank,
           float fastemit_lambda,
           int num_threads,
-          CUstream stream)
+          GPUstream stream)
       : minibatch_(minibatch),
         maxT_(maxT),
         maxU_(maxU),
@@ -95,7 +96,7 @@ class GpuRNNT {
   int blank_;
   float fastemit_lambda_;
   int num_threads_;
-  CUstream stream_;
+  GPUstream stream_;
 };
 
 template <typename ProbT>
@@ -138,10 +139,17 @@ rnntStatus_t GpuRNNT<ProbT>::compute_cost_and_score(
 
   if (training) {
     // zero grads
+#ifdef __HIPCC__
+    hipMemsetAsync(grads,
+                   0,
+                   sizeof(ProbT) * minibatch_ * maxT_ * maxU_ * alphabet_size_,
+                   stream_);
+#else
     cudaMemsetAsync(grads,
                     0,
                     sizeof(ProbT) * minibatch_ * maxT_ * maxU_ * alphabet_size_,
                     stream_);
+#endif
   }
   // denom
 #if defined(DEBUG_TIME)
@@ -185,7 +193,11 @@ rnntStatus_t GpuRNNT<ProbT>::compute_cost_and_score(
                                           blank_);
 #endif
 #if defined(DEBUG_TIME)
+#ifdef __HIPCC__
+  hipStreamSynchronize(stream_);
+#else
   cudaStreamSynchronize(stream_);
+#endif
   end = std::chrono::high_resolution_clock::now();
   elapsed = end - start;
   std::cout << "DEBUG: compute_alphas_kernel " << elapsed.count() * 1000
@@ -195,6 +207,16 @@ rnntStatus_t GpuRNNT<ProbT>::compute_cost_and_score(
   ProbT* cpu_alphas = new ProbT[minibatch_ * maxT_ * maxU_];
   int* cpu_xlen = new int[minibatch_];
   int* cpu_ylen = new int[minibatch_];
+#ifdef __HIPCC__
+  hipMemcpy(cpu_alphas,
+            alphas,
+            sizeof(ProbT) * minibatch_ * maxT_ * maxU_,
+            hipMemcpyDeviceToHost);
+  hipMemcpy(
+      cpu_xlen, input_lengths, sizeof(int) * minibatch_, hipMemcpyDeviceToHost);
+  hipMemcpy(
+      cpu_ylen, label_lengths, sizeof(int) * minibatch_, hipMemcpyDeviceToHost);
+#else
   cudaMemcpy(cpu_alphas,
              alphas,
              sizeof(ProbT) * minibatch_ * maxT_ * maxU_,
@@ -207,6 +229,7 @@ rnntStatus_t GpuRNNT<ProbT>::compute_cost_and_score(
              label_lengths,
              sizeof(int) * minibatch_,
              cudaMemcpyDeviceToHost);
+#endif
   printf("gpu alphas\n");
   for (int b = 0; b < minibatch_; b++) {
     int T = cpu_xlen[b];
@@ -256,7 +279,11 @@ rnntStatus_t GpuRNNT<ProbT>::compute_cost_and_score(
                                             blank_);
 #endif
 #if defined(DEBUG_TIME)
+#ifdef __HIPCC__
+    hipStreamSynchronize(stream_);
+#else
     cudaStreamSynchronize(stream_);
+#endif
     end = std::chrono::high_resolution_clock::now();
     elapsed = end - start;
     std::cout << "DEBUG: compute_betas_kernel " << elapsed.count() * 1000
@@ -264,10 +291,17 @@ rnntStatus_t GpuRNNT<ProbT>::compute_cost_and_score(
 #endif
 #if defined(DEBUG_KERNEL)
     ProbT* cpu_betas = new ProbT[minibatch_ * maxT_ * maxU_];
+#ifdef __HIPCC__
+    hipMemcpy(cpu_betas,
+              betas,
+              sizeof(ProbT) * minibatch_ * maxT_ * maxU_,
+              hipMemcpyDeviceToHost);
+#else
     cudaMemcpy(cpu_betas,
                betas,
                sizeof(ProbT) * minibatch_ * maxT_ * maxU_,
                cudaMemcpyDeviceToHost);
+#endif
     printf("gpu betas\n");
     for (int b = 0; b < minibatch_; b++) {
       int T = cpu_xlen[b];
@@ -324,7 +358,11 @@ rnntStatus_t GpuRNNT<ProbT>::compute_cost_and_score(
                                                             blank_);
     }
 #if defined(DEBUG_TIME)
+#ifdef __HIPCC__
+    hipStreamSynchronize(stream_);
+#else
     cudaStreamSynchronize(stream_);
+#endif
     end = std::chrono::high_resolution_clock::now();
     elapsed = end - start;
     std::cout << "DEBUG: compute_grad_kernel " << elapsed.count() * 1000
@@ -332,12 +370,21 @@ rnntStatus_t GpuRNNT<ProbT>::compute_cost_and_score(
 #endif
   }
   // cost
+#ifdef __HIPCC__
+  hipMemcpyAsync(costs,
+                 llForward,
+                 sizeof(ProbT) * minibatch_,
+                 hipMemcpyDeviceToHost,
+                 stream_);
+  hipStreamSynchronize(stream_);
+#else
   cudaMemcpyAsync(costs,
                   llForward,
                   sizeof(ProbT) * minibatch_,
                   cudaMemcpyDeviceToHost,
                   stream_);
   cudaStreamSynchronize(stream_);
+#endif
   for (int mb = 0; mb < minibatch_; ++mb) {
     costs[mb] = -costs[mb];
   }

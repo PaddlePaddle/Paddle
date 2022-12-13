@@ -1,4 +1,5 @@
 // Copyright 2018-2019, Mingkun Huang
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,23 +26,38 @@
 #include "test.h"
 
 template <typename T>
-void vector_to_gpu(T*& gpu_space, std::vector<T>& vec, cudaStream_t& stream) {
+void vector_to_gpu(T*& gpu_space, std::vector<T>& vec, gpuStream_t& stream) {
+#ifdef __HIPCC__
+  hipMalloc(&gpu_space, vec.size() * sizeof(T));
+  hipMemcpyAsync(gpu_space,
+                 vec.data(),
+                 vec.size() * sizeof(T),
+                 hipMemcpyHostToDevice,
+                 stream);
+#else
   cudaMalloc(&gpu_space, vec.size() * sizeof(T));
   cudaMemcpyAsync(gpu_space,
                   vec.data(),
                   vec.size() * sizeof(T),
                   cudaMemcpyHostToDevice,
                   stream);
+#endif
 }
 
 template <typename T>
 void vector_to_gpu(T*& gpu_space,
                    const T* cpu_space,
                    int len,
-                   cudaStream_t& stream) {
+                   gpuStream_t& stream) {
+#ifdef __HIPCC__
+  hipMalloc(&gpu_space, len * sizeof(T));
+  hipMemcpyAsync(
+      gpu_space, cpu_space, len * sizeof(T), hipMemcpyHostToDevice, stream);
+#else
   cudaMalloc(&gpu_space, len * sizeof(T));
   cudaMemcpyAsync(
       gpu_space, cpu_space, len * sizeof(T), cudaMemcpyHostToDevice, stream);
+#endif
 }
 
 bool run_test(int B, int T, int L, int A, int num_threads) {
@@ -76,8 +92,12 @@ bool run_test(int B, int T, int L, int A, int num_threads) {
   options.maxU = L + 1;
   options.blank_label = 0;
   options.loc = RNNT_GPU;
-  cudaStream_t stream;
+  gpuStream_t stream;
+#ifdef __HIPCC__
+  hipStreamCreate(&stream);
+#else
   cudaStreamCreate(&stream);
+#endif
   options.stream = stream;
   options.num_threads = num_threads;
 
@@ -87,7 +107,11 @@ bool run_test(int B, int T, int L, int A, int num_threads) {
   // cudaMemcpyAsync(acts_gpu, acts, len * sizeof(float),
   // cudaMemcpyHostToDevice, stream);
   float* grads_gpu;
+#ifdef __HIPCC__
+  hipMalloc(&grads_gpu, len * sizeof(float));
+#else
   cudaMalloc(&grads_gpu, len * sizeof(float));
+#endif
   int* label_gpu;
   vector_to_gpu(label_gpu, flat_labels, stream);
   // cudaMalloc(&label_gpu, flat_labels.size() * sizeof(int))
@@ -111,7 +135,11 @@ bool run_test(int B, int T, int L, int A, int num_threads) {
   std::vector<float> time;
   for (int i = 0; i < 10; ++i) {
     void* rnnt_gpu_workspace;
+#ifdef __HIPCC__
+    hipMalloc(&rnnt_gpu_workspace, gpu_alloc_bytes);
+#else
     cudaMalloc(&rnnt_gpu_workspace, gpu_alloc_bytes);
+#endif
 
     start = std::chrono::high_resolution_clock::now();
     throw_on_error(compute_rnnt_loss(acts_gpu,
@@ -127,17 +155,28 @@ bool run_test(int B, int T, int L, int A, int num_threads) {
                    "Error: compute_rnnt_loss (0) in run_test");
     end = std::chrono::high_resolution_clock::now();
 
+#ifdef __HIPCC__
+    hipFree(rnnt_gpu_workspace);
+#else
     cudaFree(rnnt_gpu_workspace);
+#endif
     elapsed = end - start;
     time.push_back(elapsed.count() * 1000);
     std::cout << "compute_rnnt_loss elapsed time: " << elapsed.count() * 1000
               << " ms\n";
   }
 
+#ifdef __HIPCC__
+  hipFree(grads_gpu);
+  hipFree(label_gpu);
+  hipFree(label_length_gpu);
+  hipFree(input_length_gpu);
+#else
   cudaFree(grads_gpu);
   cudaFree(label_gpu);
   cudaFree(label_length_gpu);
   cudaFree(input_length_gpu);
+#endif
 
   float sum = 0;
   for (int i = 0; i < 10; ++i) {

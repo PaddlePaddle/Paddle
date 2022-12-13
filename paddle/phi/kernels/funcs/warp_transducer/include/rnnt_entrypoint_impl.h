@@ -1,4 +1,5 @@
 // Copyright 2018-2019, Mingkun Huang
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,7 +20,7 @@
 #include "rnnt.h"
 
 #include "detail/cpu_rnnt.h"
-#ifdef __CUDACC__
+#if (defined(__HIPCC__) || defined(__CUDACC__))
 #include "detail/gpu_rnnt.h"
 #endif
 
@@ -84,7 +85,7 @@ rnntStatus_t compute_rnnt_loss(const float* const activations,  // BTUV
           activations, costs, flat_labels, label_lengths, input_lengths);
     }
   } else if (options.loc == RNNT_GPU) {
-#ifdef __CUDACC__
+#if (defined(__HIPCC__) || defined(__CUDACC__))
     GpuRNNT<float> rnnt(minibatch,
                         options.maxT,
                         options.maxU,
@@ -186,7 +187,7 @@ rnntStatus_t compute_rnnt_loss_fp64(const double* const activations,  // BTUV
       return rnnt.score_forward(
           activations, costs, flat_labels, label_lengths, input_lengths);
   } else if (options.loc == RNNT_GPU) {
-#ifdef __CUDACC__
+#if (defined(__HIPCC__) || defined(__CUDACC__))
     GpuRNNT<double> rnnt(minibatch,
                          options.maxT,
                          options.maxU,
