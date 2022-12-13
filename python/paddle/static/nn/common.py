@@ -966,8 +966,8 @@ def conv2d(
         pre_act = helper.append_bias_op(pre_bias, dim_start=3, dim_end=4)
 
     return helper.append_activation(pre_act)
-    
-        
+
+
 def conv3d(
     input,
     num_filters,

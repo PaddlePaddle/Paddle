@@ -38,7 +38,7 @@ void TestMain(int num_fc) {
   VarDesc* x = layers.data("x");
   VarDesc* filters = layers.data("filters", {}, true);
   VarDesc* bias_0 = layers.data("bias_0", {}, true);
-  VarDesc* conv2d_out = static.nn.conv2d(x, filters, bias_0);
+  VarDesc* conv2d_out = paddle.static.nn.conv2d(x, filters, bias_0);
   VarDesc* fc_in = conv2d_out;
   for (int i = 0; i < num_fc; ++i) {
     VarDesc* weights_i =

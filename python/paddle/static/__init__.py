@@ -82,7 +82,7 @@ from .nn.metric import accuracy  # noqa: F401
 __all__ = [  # noqa
     'append_backward',
     'batch_norm',
-    'conv2d'
+    'conv2d',
     'gradients',
     'Executor',
     'global_scope',
