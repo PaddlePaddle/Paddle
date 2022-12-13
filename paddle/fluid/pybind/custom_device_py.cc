@@ -29,46 +29,15 @@ namespace pybind {
 void BindCustomDevicePy(py::module *m_ptr) {
   auto &m = *m_ptr;
   // Bind Methods
-  m.def("_custom_device_count", [](const std::string &device_type) {
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-    return phi::DeviceManager::GetDeviceCount(device_type);
-#else
-        PADDLE_THROW(platform::errors::Unavailable(
-            "Paddle is not compiled with CustomDevice. "
-            "Cannot visit _custom_device_count."));
-#endif
-  });
-  m.def("_get_current_custom_device", [](const std::string &device_type) {
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-    return phi::DeviceManager::GetDevice(device_type);
-#else
-        PADDLE_THROW(platform::errors::Unavailable(
-            "Paddle is not compiled with CustomDevice. "
-            "Cannot visit _get_current_custom_device."));
-#endif
-  });
-  m.def("_set_current_custom_device", [](const phi::CustomPlace &place) {
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-    phi::DeviceManager::SetDevice(place);
-#else
-        PADDLE_THROW(platform::errors::Unavailable(
-            "Paddle is not compiled with CustomDevice. "
-            "Cannot visit _set_current_custom_device."));
-#endif
-  });
-  m.def("_synchronize_custom_device", [](const phi::CustomPlace &place) {
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-    phi::DeviceManager::SynchronizeDevice(place);
-#else
-        PADDLE_THROW(platform::errors::Unavailable(
-            "Paddle is not compiled with CustomDevice. "
-            "Cannot visit _synchronize_custom_device."));
-#endif
-  });
   m.def(
       "_get_current_custom_device_stream",
-      [](const phi::CustomPlace &place) {
+      [](const std::string &device_type, int device_id) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
+        auto place = paddle::platform::CustomPlace(
+            device_type,
+            device_id == -1 ? phi::DeviceManager::GetDevice(device_type)
+                            : device_id);
+
         return static_cast<const phi::CustomContext *>(
                    paddle::platform::DeviceContextPool::Instance().Get(place))
             ->GetStream();
@@ -78,19 +47,44 @@ void BindCustomDevicePy(py::module *m_ptr) {
             "Cannot visit _get_current_custom_device_stream."));
 #endif
       },
-      py::return_value_policy::reference);
-  m.def("_set_current_custom_device_stream",
-        [](const phi::CustomPlace &place,
-           std::shared_ptr<phi::stream::Stream> stream) {
+      py::return_value_policy::reference,
+      py::arg("device_type"),
+      py::arg("device_id") = -1);
+  m.def(
+      "_set_current_custom_device_stream",
+      [](const std::string &device_type,
+         int device_id,
+         std::shared_ptr<phi::stream::Stream> stream) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-          static_cast<phi::CustomContext *>(
-              paddle::platform::DeviceContextPool::Instance().Get(place))
-              ->SetStream(stream);
-          return stream;
+        auto place = paddle::platform::CustomPlace(
+            device_type,
+            device_id == -1 ? phi::DeviceManager::GetDevice(device_type)
+                            : device_id);
+        static_cast<phi::CustomContext *>(
+            paddle::platform::DeviceContextPool::Instance().Get(place))
+            ->SetStream(stream);
+        return stream;
 #else
         PADDLE_THROW(platform::errors::Unavailable(
             "Paddle is not compiled with CustomDevice. "
             "Cannot visit _set_current_custom_device_stream."));
+#endif
+      },
+      py::arg("device_type"),
+      py::arg("device_id") = -1,
+      py::arg("stream") = nullptr);
+  m.def("_synchronize_custom_device",
+        [](const std::string &device_type, int device_id) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+          auto place = paddle::platform::CustomPlace(
+              device_type,
+              device_id == -1 ? phi::DeviceManager::GetDevice(device_type)
+                              : device_id);
+          phi::DeviceManager::SynchronizeDevice(place);
+#else
+        PADDLE_THROW(platform::errors::Unavailable(
+            "Paddle is not compiled with CustomDevice. "
+            "Cannot visit _synchronize_custom_device."));
 #endif
         });
 

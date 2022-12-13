@@ -263,37 +263,23 @@ class TestCustomCPUPlugin(unittest.TestCase):
 
         p = paddle.set_device('custom_cpu')
 
-        paddle.device.custom.set_current_device(p)
-        paddle.device.custom.set_current_device(
-            p.get_device_type(), p.get_device_id()
-        )
+        s1 = paddle.device.Stream()
+        s2 = paddle.device.Stream(p)
+        s3 = paddle.device.Stream('custom_cpu')
+        s4 = paddle.device.Stream('custom_cpu', 0)
 
-        paddle.device.custom.synchronize_device(p)
-        paddle.device.custom.synchronize_device(
-            p.get_device_type(), p.get_device_id()
-        )
+        s1 = paddle.device.current_stream()
+        s2 = paddle.device.current_stream(p)
+        s3 = paddle.device.current_stream('custom_cpu')
+        s4 = paddle.device.current_stream('custom_cpu', 0)
 
-        assert paddle.device.custom.device_count(p.get_device_type()) > 0
+        e1 = paddle.device.Event()
+        e2 = paddle.device.Event(p)
+        e3 = paddle.device.Event('custom_cpu')
+        e4 = paddle.device.Event('custom_cpu', 0)
 
-        assert (
-            paddle.device.custom.current_device(p.get_device_type())
-            == p.get_device_id()
-        )
-
-        s1 = paddle.device.custom.current_stream(p)
-        s2 = paddle.device.custom.current_stream(
-            p.get_device_type(), p.get_device_id()
-        )
-        assert s1 is s2
-
-        s = paddle.device.custom.Stream(p)
-        s = paddle.device.custom.Stream(p.get_device_type(), p.get_device_id())
-        with paddle.device.custom.stream_guard(s):
-            assert paddle.device.custom.current_stream(p) is s
-
-        e = paddle.device.custom.Event(p)
-        e = paddle.device.custom.Event(p.get_device_type(), p.get_device_id())
-
+        s = paddle.device.Stream()
+        e = paddle.device.Event()
         s.query()
         s.synchronize()
         s.wait_event(e)
@@ -304,10 +290,10 @@ class TestCustomCPUPlugin(unittest.TestCase):
         e.synchronize()
         e.record(s)
 
-        print(s.place)
-        print(e.place)
         print(s.raw_stream)
-        print(e.raw_event)
+
+        with paddle.device.stream_guard(s):
+            print(paddle.device.current_stream().raw_stream)
 
 
 if __name__ == '__main__':

@@ -15,15 +15,16 @@
 # TODO: define the functions to manipulate devices
 import re
 import os
+import paddle
 from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.fluid.framework import is_compiled_with_cinn  # noqa: F401
 from paddle.fluid.framework import is_compiled_with_cuda  # noqa: F401
 from paddle.fluid.framework import is_compiled_with_rocm  # noqa: F401
+from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 from . import cuda
 from . import xpu
-from . import custom
 
 __all__ = [  # noqa
     'get_cudnn_version',
@@ -44,6 +45,11 @@ __all__ = [  # noqa
     'get_all_custom_device_type',
     'get_available_device',
     'get_available_custom_device',
+    'Stream',
+    'Event',
+    'current_stream',
+    'stream_guard',
+    'synchronize',
 ]
 
 _cudnn_version = None
@@ -515,3 +521,455 @@ def get_available_custom_device():
             # Output: ['CustomCPU', 'CustomGPU:0', 'CustomGPU:1']
     """
     return core.get_available_custom_device()
+
+
+def _convert_place_to_device_type(place):
+    if isinstance(place, str):
+        return place
+    elif isinstance(place, paddle.CUDAPlace):
+        return 'gpu'
+    elif isinstance(place, paddle.CustomPlace):
+        return place.get_device_type()
+    raise TypeError(
+        "place should be paddle.CUDAPlace or paddle.CustomPlace or str"
+    )
+
+
+def _set_current_stream(stream):
+    device = _convert_place_to_device_type(stream.stream.place)
+
+    if device == "gpu":
+        core._set_current_stream(stream.stream)
+    elif device in paddle.device.get_all_custom_device_type():
+        core._set_current_custom_device_stream(
+            device, stream.stream.place.get_device_id(), stream.stream
+        )
+    else:
+        raise TypeError(
+            "device should be gpu, xpu, {}".format(
+                ",".join(paddle.device.get_all_custom_device_type())
+            )
+        )
+
+
+class Stream(object):
+    def __init__(
+        self,
+        device=None,
+        device_id=None,
+        priority=2,
+        blocking=False,
+        stream=None,
+    ):
+        if stream is not None:
+            if isinstance(stream, (core.CUDAStream, core.CustomDeviceStream)):
+                self.stream = stream
+            else:
+                raise TypeError(
+                    "device should be CUDAStream or CustomDeviceStream"
+                )
+        else:
+            if device is None:
+                device = framework._current_expected_place()
+
+            if isinstance(device, (paddle.CUDAPlace, paddle.CustomPlace, str)):
+                device = _convert_place_to_device_type(device)
+                if not isinstance(device, str):
+                    device_id = device.get_device_id()
+            else:
+                raise TypeError(
+                    "device should be paddle.CUDAPlace or paddle.CustomPlace or str"
+                )
+
+            if device_id is None:
+                device_id = -1
+
+            if device == "gpu":
+                self.stream = core.CUDAStream(device_id, priority)
+            elif device in paddle.device.get_all_custom_device_type():
+                self.stream = core.CustomDeviceStream(
+                    device, device_id, priority, blocking
+                )
+            else:
+                raise TypeError(
+                    "device should be gpu, {}".format(
+                        ",".join(paddle.device.get_all_custom_device_type())
+                    )
+                )
+
+    def wait_event(self, event):
+        """
+        Synchronize with the given event.
+
+        Examples:
+            .. code-block:: python
+                # required: custom_device
+
+                import paddle
+
+                paddle.set_device('custom_cpu')
+
+                s = paddle.device.Stream()
+
+                e = paddle.device.Event()
+
+                s.wait_event(e)
+        """
+        self.stream.wait_event(event.event)
+
+    def record_event(self, event):
+        """
+        Record an event on the stream.
+
+        Examples:
+            .. code-block:: python
+                # required: custom_device
+
+                import paddle
+
+                paddle.set_device('custom_cpu')
+
+                s = paddle.device.Stream()
+
+                e = paddle.device.Event()
+
+                s.record_event(e)
+        """
+        self.stream.record_event(event.event)
+
+    def wait_stream(self, stream):
+        """
+        Synchronize with the given stream.
+
+        Examples:
+            .. code-block:: python
+                # required: custom_device
+
+                import paddle
+
+                paddle.set_device('custom_cpu')
+
+                s1 = paddle.device.Stream()
+
+                s2 = paddle.device.Stream()
+
+                s1.wait_stream(s2)
+        """
+        self.stream.wait_stream(stream.stream)
+
+    def synchronize(self):
+        """
+        Wait for the stream to finish.
+
+        Examples:
+            .. code-block:: python
+                # required: custom_device
+
+                import paddle
+
+                paddle.set_device('custom_cpu')
+
+                s = paddle.device.Stream()
+
+                s.synchronize()
+        """
+        self.stream.synchronize()
+
+    def query(self):
+        """
+        Query the status of stream.
+
+        Returns:
+            bool: the status of stream.
+
+        Examples:
+            .. code-block:: python
+                # required: custom_device
+
+                import paddle
+
+                paddle.set_device('custom_cpu')
+
+                s = paddle.device.Stream()
+
+                s.query()
+        """
+        return self.stream.query()
+
+    @property
+    def raw_stream(self):
+        """
+        Get the raw stream of paddle.device.Stream object.
+
+        Returns:
+            int: the raw stream.
+
+        Examples:
+            .. code-block:: python
+                # required: custom_device
+
+                import paddle
+
+                paddle.set_device('custom_cpu')
+
+                s = paddle.device.Stream()
+
+                print(s.raw_stream)
+        """
+        if isinstance(self.stream, core.CUDAStream):
+            return self.stream.cuda_stream
+        else:
+            return self.stream.raw_stream
+
+
+class Event(object):
+    def __init__(
+        self,
+        device=None,
+        device_id=None,
+        enable_timing=False,
+        blocking=False,
+        interprocess=False,
+    ):
+        if device is None:
+            device = framework._current_expected_place()
+
+        if isinstance(device, (paddle.CUDAPlace, paddle.CustomPlace, str)):
+            device = _convert_place_to_device_type(device)
+            if not isinstance(device, str):
+                device_id = device.get_device_id()
+        else:
+            raise TypeError(
+                "device should be paddle.CUDAPlace or paddle.CustomPlace or str"
+            )
+
+        if device_id is None:
+            device_id = -1
+
+        if device == "gpu":
+            self.event = core.CUDAEvent(enable_timing, blocking, interprocess)
+        elif device in paddle.device.get_all_custom_device_type():
+            self.event = core.CustomDeviceEvent(
+                device, device_id, enable_timing, blocking, interprocess
+            )
+        else:
+            raise TypeError(
+                "device should be gpu, {}".format(
+                    ",".join(paddle.device.get_all_custom_device_type())
+                )
+            )
+
+    def record(self, stream):
+        """
+        Record the event on the given stream.
+
+        Examples:
+            .. code-block:: python
+                # required: custom_device
+
+                import paddle
+
+                paddle.set_device('custom_cpu')
+
+                s = paddle.device.Stream()
+
+                e = paddle.device.Event()
+
+                e.record(s)
+        """
+        self.event.record(stream.stream)
+
+    def synchronize(self):
+        """
+        Wait for the event to finish.
+
+        Examples:
+            .. code-block:: python
+                # required: custom_device
+
+                import paddle
+
+                paddle.set_device('custom_cpu')
+
+                e = paddle.device.Event()
+
+                e.synchronize()
+        """
+        self.event.synchronize()
+
+    def query(self):
+        """
+        Query the status of event.
+
+        Returns:
+            bool: the status of event.
+
+        Examples:
+            .. code-block:: python
+                # required: custom_device
+
+                import paddle
+
+                paddle.set_device('custom_cpu')
+
+                e = paddle.device.Event()
+
+                e.query()
+        """
+        return self.event.query()
+
+
+def current_stream(device=None, device_id=None):
+    '''
+    Return the current stream by the device.
+
+    Parameters:
+        device(paddle.CUDAPlace|paddle.CustomPlace|str): The device or the type of the device which want to get stream from, If device is None, the device is the current expected place. Default: None.
+        device_id(int, Optional): The id of the device which want to get stream from, If device_id is None, the device_id is the id of the current device. Default: None.
+
+    Returns:
+        paddle.device.Stream: the stream to the device.
+
+    Examples:
+        .. code-block:: python
+            # required: custom_device
+
+            import paddle
+
+            s1 = paddle.device.current_stream()
+
+            s2 = paddle.device.current_stream('custom_cpu')
+
+            s2 = paddle.device.current_stream('custom_cpu', 0)
+
+            s3 = paddle.device.current_stream(paddle.CustomPlace('custom_cpu', 0))
+
+    '''
+
+    if device is None:
+        device = framework._current_expected_place()
+
+    if isinstance(device, (paddle.CUDAPlace, paddle.CustomPlace, str)):
+        device = _convert_place_to_device_type(device)
+        if not isinstance(device, str):
+            device_id = device.get_device_id()
+    else:
+        raise TypeError(
+            "device should be paddle.CUDAPlace or paddle.CustomPlace or str"
+        )
+
+    if device_id is None:
+        device_id = -1
+
+    if device == "gpu":
+        return Stream(stream=core._get_current_stream(device_id))
+    elif device in paddle.device.get_all_custom_device_type():
+        return Stream(
+            stream=core._get_current_custom_device_stream(device, device_id)
+        )
+    else:
+        raise TypeError(
+            "device should be gpu, {}".format(
+                ",".join(paddle.device.get_all_custom_device_type())
+            )
+        )
+
+
+@signature_safe_contextmanager
+def stream_guard(stream):
+    '''
+    Note:
+        This API only supports dygraph mode currently.
+
+    A context manager that specifies the current stream context by the given stream.
+
+    Parameters:
+        stream(paddle.device.Stream): the selected stream. If stream is None, just yield.
+
+    Examples:
+        .. code-block:: python
+            # required: custom_device
+
+            import paddle
+
+            s = paddle.device.Stream('custom_cpu')
+
+            data1 = paddle.ones(shape=[20])
+
+            data2 = paddle.ones(shape=[20])
+
+            with paddle.device.stream_guard(s):
+                data3 = data1 + data2
+
+    '''
+
+    if stream is not None and not isinstance(stream, paddle.device.Stream):
+        raise TypeError("stream type should be paddle.device.Stream")
+
+    if stream is None:
+        yield
+
+    place = stream.stream.place
+    device = _convert_place_to_device_type(place)
+    device_id = place.get_device_id()
+    cur_stream = current_stream(device, device_id)
+
+    if cur_stream.raw_stream == stream.raw_stream:
+        yield
+    else:
+        _set_current_stream(stream)
+        pre_stream = cur_stream
+        try:
+            yield
+        finally:
+            _set_current_stream(pre_stream)
+
+
+def synchronize(device=None, device_id=None):
+    '''
+    Wait for the compute on the given device to finish.
+
+    Parameters:
+        device(paddle.CUDAPlace|paddle.CustomPlace|str): The device or the type of the device, If device is None, the device is the current expected place. Default: None.
+        device_id(int, Optional): The id of the device, If device_id is None, the device_id is the id of the current device. Default: None.
+
+    Examples:
+        .. code-block:: python
+            # required: custom_device
+
+            import paddle
+
+            paddle.device.synchronize()
+
+            paddle.device.synchronize('custom_cpu')
+
+            paddle.device.synchronize('custom_cpu', 0)
+
+            paddle.device.synchronize(paddle.CustomPlace('custom_cpu', 0))
+
+    '''
+    if device is None:
+        device = framework._current_expected_place()
+
+    if isinstance(device, (paddle.CUDAPlace, paddle.CustomPlace, str)):
+        device = _convert_place_to_device_type(device)
+        if not isinstance(device, str):
+            device_id = device.get_device_id()
+    else:
+        raise TypeError(
+            "device should be paddle.CUDAPlace or paddle.CustomPlace or str"
+        )
+
+    if device_id is None:
+        device_id = -1
+
+    if device == "gpu":
+        core._device_synchronize(device_id)
+    elif device in paddle.device.get_all_custom_device_type():
+        core._synchronize_custom_device(device, device_id)
+    else:
+        raise TypeError(
+            "device should be gpu, {}".format(
+                ",".join(paddle.device.get_all_custom_device_type())
+            )
+        )

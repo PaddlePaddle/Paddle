@@ -315,12 +315,11 @@ try:
     from .libpaddle import __set_all_prim_enabled
 
     # custom devivce
-    from .libpaddle import _custom_device_count
-    from .libpaddle import _get_current_custom_device
-    from .libpaddle import _set_current_custom_device
-    from .libpaddle import _synchronize_custom_device
     from .libpaddle import _get_current_custom_device_stream
     from .libpaddle import _set_current_custom_device_stream
+    from .libpaddle import _synchronize_custom_device
+    from .libpaddle import CustomDeviceStream
+    from .libpaddle import CustomDeviceEvent
 
     if sys.platform != 'win32':
         from .libpaddle import _set_process_pids
