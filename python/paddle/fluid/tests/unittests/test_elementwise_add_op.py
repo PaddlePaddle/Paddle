@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     convert_float_to_uint16,
@@ -684,7 +683,7 @@ class TestBoolAddFloatElementwiseAddop(unittest.TestCase):
         self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
         paddle.enable_static()
 
-    def func_dygraph_add(self):
+    def test_dygraph_add(self):
         paddle.disable_static()
         a = 1.5
         b = paddle.full([2], True, dtype='bool')
@@ -715,14 +714,9 @@ class TestBoolAddFloatElementwiseAddop(unittest.TestCase):
 
         paddle.enable_static()
 
-    def test_dygraph_add(self):
-        with _test_eager_guard():
-            self.func_dygraph_add()
-        self.func_dygraph_add()
-
 
 class TestElementwiseAddop1(unittest.TestCase):
-    def func_dygraph_add(self):
+    def test_dygraph_add(self):
         paddle.disable_static()
 
         np_a = np.random.random((2, 3, 4)).astype(np.float32)
@@ -741,10 +735,6 @@ class TestElementwiseAddop1(unittest.TestCase):
         np.testing.assert_allclose(actual_out, expect_out)
 
         paddle.enable_static()
-
-    def test_dygraph_add(self):
-        with _test_eager_guard():
-            self.func_dygraph_add()
 
 
 if __name__ == '__main__':
