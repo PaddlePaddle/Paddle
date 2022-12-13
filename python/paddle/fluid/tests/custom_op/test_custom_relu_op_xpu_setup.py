@@ -265,7 +265,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         path_prefix = "self.custom_op_inference/custom_relu"
         for device in self.devices:
             predict = custom_relu_static_inference(
-                self.custom_ops, device, np_data, np_label, path_prefix
+                self.custom_op, device, np_data, np_label, path_prefix
             )
             # load inference model
             with static.scope_guard(static.Scope()):
@@ -298,7 +298,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
 
         for device in self.devices:
             predict = custom_relu_static_inference(
-                self.custom_ops, device, np_data, np_label, path_prefix
+                self.custom_op, device, np_data, np_label, path_prefix
             )
             # load inference model
             config = Config(
@@ -328,10 +328,10 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             for dtype in self.dtypes:
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
                 out, dx_grad = custom_relu_double_grad_dynamic(
-                    self.custom_ops, device, dtype, x
+                    self.custom_op, device, dtype, x
                 )
                 pd_out, pd_dx_grad = custom_relu_double_grad_dynamic(
-                    self.custom_ops, device, dtype, x, False
+                    self.custom_op, device, dtype, x, False
                 )
                 np.testing.assert_array_equal(
                     out,
@@ -367,7 +367,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             )
 
             for batch_id, (image, _) in enumerate(train_loader()):
-                out = self.custom_ops(image)
+                out = self.custom_op(image)
                 pd_out = paddle.nn.functional.relu(image)
                 np.testing.assert_array_equal(
                     out,
