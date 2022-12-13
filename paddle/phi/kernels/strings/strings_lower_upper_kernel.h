@@ -93,8 +93,8 @@ struct AsciiCaseConverter {
 };
 
 template <typename DeviceContext,
-          template <class DeviceContextT>
-          typename CharConverter>
+          template <typename DeviceContextT>
+          class CharConverter>
 struct UTF8CaseConverter {
   void operator()(const DeviceContext& dev_ctx,
                   const pstring* in,
