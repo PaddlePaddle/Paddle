@@ -33,6 +33,7 @@ class TestSoftplusActivationOneDNNFusePass(PassAutoScanTest):
                     'swish',
                     'mish',
                     'sqrt',
+                    'hard_sigmoid',
                     'hard_swish',
                     'abs',
                     'relu6',
