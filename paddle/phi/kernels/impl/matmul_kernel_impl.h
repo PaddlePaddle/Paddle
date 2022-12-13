@@ -86,152 +86,7 @@ static void IndexIncreaseFromDims(const int ndim,
   }
 }
 
-template <typename T, class Context>
-struct CublasLt {
-  void operator()(const Context& dev_ctx,
-                  const DenseTensor& X,
-                  const DenseTensor& Y,
-                  const std::vector<std::int64_t>& x_dims,
-                  const std::vector<std::int64_t>& y_dims,
-                  DenseTensor* Out,
-                  bool trans_x,
-                  bool trans_y,
-                  bool* isCublasLt,
-                  bool flag = false) {}
-};
-
-template <typename T>
-struct CublasLt<T, phi::GPUContext> {
-  void operator()(const phi::GPUContext& dev_ctx,
-                  const DenseTensor& X,
-                  const DenseTensor& Y,
-                  const std::vector<std::int64_t>& x_dims,
-                  const std::vector<std::int64_t>& y_dims,
-                  DenseTensor* Out,
-                  bool trans_x,
-                  bool trans_y,
-                  bool* isCublasLt,
-                  bool flag = false) {
-    const int x_ndim = x_dims.size();
-    const int y_ndim = y_dims.size();
-
-    // Get data ptr
-    const T* x_data = X.data<T>();
-    const T* y_data = Y.data<T>();
-
-    const int M = trans_x ? x_dims[x_ndim - 1] : x_dims[x_ndim - 2];
-    const int K = trans_x ? x_dims[x_ndim - 2] : x_dims[x_ndim - 1];
-    const int N = trans_y ? y_dims[y_ndim - 2] : y_dims[y_ndim - 1];
-
-    // init data structure
-    cublasLtHandle_t lt_handle = dev_ctx.cublaslt_handle();
-
-    cudaDataType_t mat_type = CUDA_R_32F;
-    cudaDataType_t scale_type = CUDA_R_32F;
-    cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
-
-    if (std::is_same<T, phi::dtype::float16>::value) {
-      mat_type = CUDA_R_16F;
-    }
-    if (std::is_same<T, phi::dtype::bfloat16>::value) {
-      mat_type = CUDA_R_16BF;
-    }
-    if (std::is_same<T, double>::value) {
-      mat_type = CUDA_R_64F;
-      scale_type = CUDA_R_64F;
-      compute_type = CUBLAS_COMPUTE_64F;
-    }
-
-    cublasLtMatmulDesc_t operation_desc = NULL;
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmulDescCreate(
-        &operation_desc, compute_type, scale_type));
-    cublasOperation_t transx = trans_x ? CUBLAS_OP_T : CUBLAS_OP_N;
-    cublasOperation_t transy = trans_y ? CUBLAS_OP_T : CUBLAS_OP_N;
-
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmulDescSetAttribute(
-        operation_desc, CUBLASLT_MATMUL_DESC_TRANSB, &transx, sizeof(transx)));
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmulDescSetAttribute(
-        operation_desc, CUBLASLT_MATMUL_DESC_TRANSA, &transy, sizeof(transy)));
-
-    cublasLtMatrixLayout_t x_desc = NULL, y_desc = NULL, out_desc = NULL;
-    if (trans_x)
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::cublasLtMatrixLayoutCreate(&x_desc, mat_type, M, K, M));
-    else
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::cublasLtMatrixLayoutCreate(&x_desc, mat_type, K, M, K));
-    if (trans_y)
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::cublasLtMatrixLayoutCreate(&y_desc, mat_type, K, N, K));
-    else
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::cublasLtMatrixLayoutCreate(&y_desc, mat_type, N, K, N));
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cublasLtMatrixLayoutCreate(&out_desc, mat_type, N, M, N));
-
-    double alpha64 = 1.0, beta64 = 0.0;
-    float alpha32 = 1.0f, beta32 = 0.0f;
-    void *alpha = nullptr, *beta = nullptr;
-    if (std::is_same<T, double>::value) {
-      alpha = &alpha64;
-      alpha = &beta64;
-    } else {
-      alpha = &alpha32;
-      beta = &beta32;
-    }
-
-    size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
-    cudaStream_t stream = dev_ctx.stream();
-    phi::Allocator::AllocationPtr workspace = paddle::memory::Alloc(
-        dev_ctx.GetPlace(),
-        workspace_size,
-        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-
-    dev_ctx.Alloc<T>(Out, Out->numel() * sizeof(T));
-    auto* out_data = Out->data<T>();
-
-    auto algo = MatmulAlgoCache::Instance().GetGemmAlgo(lt_handle,  // OK
-                                                        operation_desc,
-                                                        y_desc,
-                                                        x_desc,
-                                                        out_desc,
-                                                        alpha,
-                                                        beta,
-                                                        y_data,
-                                                        x_data,
-                                                        out_data,
-                                                        stream,
-                                                        workspace->ptr(),
-                                                        workspace_size);
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasLtMatmul(lt_handle,
-                                                            operation_desc,
-                                                            alpha,
-                                                            y_data,
-                                                            y_desc,
-                                                            x_data,
-                                                            x_desc,
-                                                            beta,
-                                                            out_data,
-                                                            out_desc,
-                                                            out_data,
-                                                            out_desc,
-                                                            algo,
-                                                            workspace->ptr(),
-                                                            workspace_size,
-                                                            stream));
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cublasLtMatmulDescDestroy(operation_desc));
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cublasLtMatrixLayoutDestroy(y_desc));
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cublasLtMatrixLayoutDestroy(x_desc));
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::cublasLtMatrixLayoutDestroy(out_desc));
-    *isCublasLt = true;
-    return;
-  }
-};
-
+// Core implement
 template <typename Context, typename T>
 void MatMulFunction(const Context& dev_ctx,
                     const DenseTensor& X,
@@ -248,10 +103,8 @@ void MatMulFunction(const Context& dev_ctx,
   // Get data ptr
   const T* x_data = X.data<T>();
   const T* y_data = Y.data<T>();
+
   bool isCublasLt = false;
-  CublasLt<T, Context>()(
-      dev_ctx, X, Y, x_dims, y_dims, Out, trans_x, trans_y, &isCublasLt, flag);
-  if (isCublasLt) return;
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
 
   if (x_ndim == 1 && y_ndim == 1) {
@@ -266,9 +119,23 @@ void MatMulFunction(const Context& dev_ctx,
             "received Y has [%d] elements",
             M,
             N));
-    VLOG(3) << "MatMul's case 1";
+    // To count MatMul's case from 0 rather than 1 can be consisant with
+    // op-benchmark's config.
+    VLOG(3) << "MatMul's case 0";
+    // MatMul's case 0  =>  vector * vector
     Out->Resize({1});
     dev_ctx.template Alloc<T>(Out);
+    CublasLtGEMM<T, Context>()(dev_ctx,
+                               y_data,
+                               x_data,
+                               1,
+                               1,
+                               M,
+                               dev_ctx.template Alloc<T>(Out),
+                               false,
+                               true,  //
+                               &isCublasLt);
+    if (isCublasLt) return;
     blas.GEMM(CblasNoTrans,
               CblasTrans,
               1,
@@ -318,7 +185,19 @@ void MatMulFunction(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(Out);
     if (trans_y) {
       const int M = Y.numel() / N;
-      VLOG(3) << "MatMul's case 2";
+      VLOG(3) << "MatMul's case 1";
+      CublasLtGEMM<T, Context>()(dev_ctx,
+                                 y_data,
+                                 x_data,
+                                 M,
+                                 1,
+                                 N,
+                                 dev_ctx.template Alloc<T>(Out),
+                                 false,
+                                 false,
+                                 &isCublasLt);
+
+      if (isCublasLt) return;
       blas.GEMV(false,
                 M,
                 N,
@@ -331,7 +210,18 @@ void MatMulFunction(const Context& dev_ctx,
       const int M = y_dims[y_ndim - 1];
       const int batch_size = Y.numel() / (M * N);
       if (batch_size == 1) {
-        VLOG(3) << "MatMul's case 3";
+        VLOG(3) << "MatMul's case 2";
+        CublasLtGEMM<T, Context>()(dev_ctx,
+                                   y_data,
+                                   x_data,
+                                   M,
+                                   1,
+                                   N,
+                                   dev_ctx.template Alloc<T>(Out),
+                                   true,
+                                   false,
+                                   &isCublasLt);
+        if (isCublasLt) return;
         blas.GEMV(true,
                   N,
                   M,
@@ -341,7 +231,23 @@ void MatMulFunction(const Context& dev_ctx,
                   static_cast<T>(flag),
                   dev_ctx.template Alloc<T>(Out));
       } else {
-        VLOG(3) << "MatMul's case 4";
+        VLOG(3) << "MatMul's case 3";
+        CublasLtBatchedGEMM<T, Context>()(dev_ctx,
+                                          y_data,
+                                          x_data,
+                                          M,
+                                          1,
+                                          N,
+                                          dev_ctx.template Alloc<T>(Out),
+                                          true,
+                                          false,
+                                          batch_size,
+                                          M * N,
+                                          0,
+                                          M,
+                                          &isCublasLt);
+
+        if (isCublasLt) return;
         blas.BatchedGEMM(CblasTrans,
                          CblasNoTrans,
                          M,
@@ -399,7 +305,18 @@ void MatMulFunction(const Context& dev_ctx,
       const int M = x_dims[x_ndim - 1];
       const int batch_size = X.numel() / (M * N);
       if (batch_size == 1) {
-        VLOG(3) << "MatMul's case 5";
+        VLOG(3) << "MatMul's case 4";
+        CublasLtGEMM<T, Context>()(dev_ctx,
+                                   x_data,
+                                   y_data,
+                                   M,
+                                   1,
+                                   N,
+                                   dev_ctx.template Alloc<T>(Out),
+                                   true,
+                                   false,
+                                   &isCublasLt);
+        if (isCublasLt) return;
         blas.GEMV(true,
                   N,
                   M,
@@ -409,7 +326,22 @@ void MatMulFunction(const Context& dev_ctx,
                   static_cast<T>(flag),
                   dev_ctx.template Alloc<T>(Out));
       } else {
-        VLOG(3) << "MatMul's case 6";
+        VLOG(3) << "MatMul's case 5";
+        CublasLtBatchedGEMM<T, Context>()(dev_ctx,
+                                          x_data,
+                                          y_data,
+                                          M,
+                                          1,
+                                          N,
+                                          dev_ctx.template Alloc<T>(Out),
+                                          true,
+                                          false,
+                                          batch_size,
+                                          M * N,
+                                          0,
+                                          M,
+                                          &isCublasLt);
+        if (isCublasLt) return;
         blas.BatchedGEMM(CblasTrans,
                          CblasNoTrans,
                          M,
@@ -426,7 +358,18 @@ void MatMulFunction(const Context& dev_ctx,
       }
     } else {
       const int M = X.numel() / N;
-      VLOG(3) << "MatMul's case 7";
+      VLOG(3) << "MatMul's case 6";
+      CublasLtGEMM<T, Context>()(dev_ctx,
+                                 x_data,
+                                 y_data,
+                                 M,
+                                 1,
+                                 N,
+                                 dev_ctx.template Alloc<T>(Out),
+                                 false,
+                                 false,
+                                 &isCublasLt);
+      if (isCublasLt) return;
       blas.GEMV(false,
                 M,
                 N,
@@ -507,7 +450,18 @@ void MatMulFunction(const Context& dev_ctx,
                       std::multiplies<std::int64_t>());
   if (out_batch_size == 0) return;
   if (x_batch_size == 1 && y_batch_size == 1) {
-    VLOG(3) << "MatMul's case 8";
+    VLOG(3) << "MatMul's case 7";
+    CublasLtGEMM<T, Context>()(dev_ctx,
+                               x_data,
+                               y_data,
+                               M,
+                               N,
+                               K,
+                               dev_ctx.template Alloc<T>(Out),
+                               trans_x,
+                               trans_y,
+                               &isCublasLt);
+    if (isCublasLt) return;
     blas.GEMM(trans_x ? CblasTrans : CblasNoTrans,
               trans_y ? CblasTrans : CblasNoTrans,
               M,
@@ -520,7 +474,18 @@ void MatMulFunction(const Context& dev_ctx,
               dev_ctx.template Alloc<T>(Out));
   } else if (x_batch_size == 1) {
     if (M == 1 && trans_y) {
-      VLOG(3) << "MatMul's case 9";
+      VLOG(3) << "MatMul's case 8";
+      CublasLtGEMM<T, Context>()(dev_ctx,
+                                 y_data,
+                                 x_data,
+                                 y_batch_size * N,
+                                 1,
+                                 K,
+                                 dev_ctx.template Alloc<T>(Out),
+                                 false,
+                                 false,
+                                 &isCublasLt);
+      if (isCublasLt) return;
       blas.GEMV(false,
                 y_batch_size * N,
                 K,
@@ -530,7 +495,22 @@ void MatMulFunction(const Context& dev_ctx,
                 static_cast<T>(flag),
                 dev_ctx.template Alloc<T>(Out));
     } else {
-      VLOG(3) << "MatMul's case 10";
+      VLOG(3) << "MatMul's case 9";
+      CublasLtBatchedGEMM<T, Context>()(dev_ctx,
+                                        x_data,
+                                        y_data,
+                                        M,
+                                        N,
+                                        K,
+                                        dev_ctx.template Alloc<T>(Out),
+                                        trans_x,
+                                        trans_y,
+                                        out_batch_size,
+                                        0,
+                                        K * N,
+                                        M * N,
+                                        &isCublasLt);
+      if (isCublasLt) return;
       blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
                        trans_y ? CblasTrans : CblasNoTrans,
                        M,
@@ -547,7 +527,18 @@ void MatMulFunction(const Context& dev_ctx,
     }
   } else if (y_batch_size == 1) {
     if (!trans_x) {
-      VLOG(3) << "MatMul's case 11";
+      VLOG(3) << "MatMul's case 10";
+      CublasLtGEMM<T, Context>()(dev_ctx,
+                                 x_data,
+                                 y_data,
+                                 x_batch_size * M,
+                                 N,
+                                 K,
+                                 dev_ctx.template Alloc<T>(Out),
+                                 false,
+                                 trans_y,
+                                 &isCublasLt);
+      if (isCublasLt) return;
       blas.GEMM(CblasNoTrans,
                 trans_y ? CblasTrans : CblasNoTrans,
                 x_batch_size * M,
@@ -559,7 +550,22 @@ void MatMulFunction(const Context& dev_ctx,
                 static_cast<T>(flag),
                 dev_ctx.template Alloc<T>(Out));
     } else {
-      VLOG(3) << "MatMul's case 12";
+      VLOG(3) << "MatMul's case 11";
+      CublasLtBatchedGEMM<T, Context>()(dev_ctx,
+                                        x_data,
+                                        y_data,
+                                        M,
+                                        N,
+                                        K,
+                                        dev_ctx.template Alloc<T>(Out),
+                                        true,
+                                        trans_y,
+                                        out_batch_size,
+                                        M * K,
+                                        0,
+                                        M * N,
+                                        &isCublasLt);
+      if (isCublasLt) return;
       blas.BatchedGEMM(CblasTrans,
                        trans_y ? CblasTrans : CblasNoTrans,
                        M,
@@ -575,7 +581,22 @@ void MatMulFunction(const Context& dev_ctx,
                        0);
     }
   } else if (!is_broadcast_dims) {
-    VLOG(3) << "MatMul's case 13";
+    VLOG(3) << "MatMul's case 12";
+    CublasLtBatchedGEMM<T, Context>()(dev_ctx,
+                                      x_data,
+                                      y_data,
+                                      M,
+                                      N,
+                                      K,
+                                      dev_ctx.template Alloc<T>(Out),
+                                      trans_x,
+                                      trans_y,
+                                      out_batch_size,
+                                      M * K,
+                                      K * N,
+                                      M * N,
+                                      &isCublasLt);
+    if (isCublasLt) return;
     blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
                      trans_y ? CblasTrans : CblasNoTrans,
                      M,
@@ -607,7 +628,19 @@ void MatMulFunction(const Context& dev_ctx,
       out_ptr[i] = dev_ctx.template Alloc<T>(Out) + i * M * N;
       IndexIncreaseFromDims(batch_dim, out_broadcast_dims.data(), index.data());
     }
-    VLOG(3) << "MatMul's case 14";
+    VLOG(3) << "MatMul's case 13";
+    CublasLtBatchedGEMM<T, Context>()(dev_ctx,
+                                      x_ptr.data(),
+                                      y_ptr.data(),
+                                      M,
+                                      N,
+                                      K,
+                                      out_ptr.data(),
+                                      trans_x,
+                                      trans_y,
+                                      out_batch_size,
+                                      &isCublasLt);
+    if (isCublasLt) return;
     blas.BatchedGEMM(trans_x ? CblasTrans : CblasNoTrans,
                      trans_y ? CblasTrans : CblasNoTrans,
                      M,
