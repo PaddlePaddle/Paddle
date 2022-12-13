@@ -21,6 +21,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
+import paddle.nn.functional as F
 from paddle.fluid.dygraph import Layer, to_variable
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
@@ -45,7 +46,7 @@ class Policy(Layer):
         x = paddle.reshape(x, shape=[1, 4])
         x = self.affine1(x)
         x = paddle.nn.functional.dropout(x, self.dropout_ratio)
-        x = fluid.layers.relu(x)
+        x = F.relu(x)
         action_scores = self.affine2(x)
 
         log_prob = paddle.nn.functional.softmax(action_scores, axis=1)

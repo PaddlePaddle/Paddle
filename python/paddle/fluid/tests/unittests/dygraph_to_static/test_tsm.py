@@ -329,8 +329,12 @@ def train(args, fake_data_reader, to_static):
                 labels = to_variable(y_data)
                 labels.stop_gradient = True
                 outputs = video_model(imgs)
-                loss = fluid.layers.cross_entropy(
-                    input=outputs, label=labels, ignore_index=-1
+                loss = paddle.nn.functional.cross_entropy(
+                    input=outputs,
+                    label=labels,
+                    ignore_index=-1,
+                    reduction='none',
+                    use_softmax=False,
                 )
                 avg_loss = paddle.mean(loss)
                 acc_top1 = paddle.static.accuracy(
