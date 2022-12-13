@@ -332,6 +332,9 @@ void InitMoeRoutingKernelLauncher(
           max_seq_len,
           ec_route);
     }
+  } else {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "Currently only support `ec_route = True`. "));
   }
 }
 
