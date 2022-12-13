@@ -19,8 +19,6 @@ from op_test import OpTest
 
 from paddle import fluid
 from paddle.fluid.framework import Program, program_guard
-from paddle.fluid.layers import fill_constant
-from paddle.fluid.layers import lstm as LSTM
 
 SIGMOID_THRESHOLD_MIN = -40.0
 SIGMOID_THRESHOLD_MAX = 13.0
@@ -130,130 +128,6 @@ def lstm(
     assert hidden.shape == (input.shape[0], input.shape[1] / 4)
     assert cell.shape == (input.shape[0], input.shape[1] / 4)
     return hidden, cell
-
-
-class LstmUnitTestError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-            batch_size = 20
-            seq_len = 100
-            dropout_prob = 0.2
-            hidden_size = 150
-            num_layers = 1
-            input = fluid.data(
-                name='input',
-                shape=[batch_size, seq_len, hidden_size],
-                dtype='float32',
-            )
-            pre_hidden = fill_constant(
-                [num_layers, batch_size, hidden_size], 'float32', 0.0
-            )
-            pre_cell = fill_constant(
-                [num_layers, batch_size, hidden_size], 'float32', 0.0
-            )
-
-            np_input = np.random.uniform(
-                -0.1, 0.1, (batch_size, seq_len, hidden_size)
-            ).astype('float64')
-            np_pre_hidden = np.random.uniform(
-                -0.1, 0.1, (num_layers, batch_size, hidden_size)
-            ).astype('float64')
-            np_pre_cell = np.random.uniform(
-                -0.1, 0.1, (num_layers, batch_size, hidden_size)
-            ).astype('float64')
-
-            def test_input_Variable():
-                LSTM(
-                    np_input,
-                    pre_hidden,
-                    pre_cell,
-                    seq_len,
-                    hidden_size,
-                    num_layers,
-                    dropout_prob=dropout_prob,
-                )
-
-            self.assertRaises(TypeError, test_input_Variable)
-
-            def test_pre_hidden_Variable():
-                LSTM(
-                    np_input,
-                    np_pre_hidden,
-                    pre_cell,
-                    seq_len,
-                    hidden_size,
-                    num_layers,
-                    dropout_prob=dropout_prob,
-                )
-
-            self.assertRaises(TypeError, test_pre_hidden_Variable)
-
-            def test_pre_cell_Variable():
-                LSTM(
-                    np_input,
-                    pre_hidden,
-                    np_pre_cell,
-                    seq_len,
-                    hidden_size,
-                    num_layers,
-                    dropout_prob=dropout_prob,
-                )
-
-            self.assertRaises(TypeError, test_pre_cell_Variable)
-
-            def test_input_type():
-                error_input = fluid.data(
-                    name='error_input',
-                    shape=[None, hidden_size * 3],
-                    dtype='int32',
-                )
-                LSTM(
-                    error_input,
-                    pre_hidden,
-                    pre_cell,
-                    seq_len,
-                    hidden_size,
-                    num_layers,
-                    dropout_prob=dropout_prob,
-                )
-
-            self.assertRaises(TypeError, test_input_type)
-
-            def test_pre_hidden_type():
-                error_pre_hidden = fluid.data(
-                    name='error_pre_hidden',
-                    shape=[None, hidden_size],
-                    dtype='int32',
-                )
-                LSTM(
-                    input,
-                    error_pre_hidden,
-                    pre_cell,
-                    seq_len,
-                    hidden_size,
-                    num_layers,
-                    dropout_prob=dropout_prob,
-                )
-
-            self.assertRaises(TypeError, test_pre_hidden_type)
-
-            def test_pre_cell_type():
-                error_pre_cell = fluid.data(
-                    name='error_pre_cell',
-                    shape=[None, hidden_size],
-                    dtype='int32',
-                )
-                LSTM(
-                    input,
-                    pre_hidden,
-                    error_pre_cell,
-                    seq_len,
-                    hidden_size,
-                    num_layers,
-                    dropout_prob=dropout_prob,
-                )
-
-            self.assertRaises(TypeError, test_pre_cell_type)
 
 
 class TestLstmOp(OpTest):
