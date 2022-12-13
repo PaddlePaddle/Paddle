@@ -189,12 +189,6 @@ class TestFunctionalConv2D(TestCase):
         self.place = fluid.CUDAPlace(0)
         self._test_identity()
 
-    @unittest.skipIf(
-        not fluid.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-    )
-    def test_identity_gpu_check_eager(self):
-        self.test_identity_gpu()
-
 
 class TestFunctionalConv2DError(TestCase):
     batch_size = 4
