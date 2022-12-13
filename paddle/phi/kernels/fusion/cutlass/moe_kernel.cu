@@ -470,7 +470,23 @@ void gemm_bias_act(const T* A,
                    const std::string& act_type,
                    cudaStream_t stream) {
   if (act_type == "gelu") {
-    if (sm_ == 75) {
+    if (sm_ == 70) {
+      generic_moe_gemm_kernelLauncher<T,
+                                      T,
+                                      cutlass::arch::Sm70,
+                                      EpilogueOpBiasFtGelu>(
+          A,
+          B,
+          weight_scales,
+          biases,
+          C,
+          total_rows_before_expert,
+          gemm_n,
+          gemm_k,
+          num_experts,
+          multi_processor_count_,
+          stream);
+    } else if (sm_ == 75) {
       generic_moe_gemm_kernelLauncher<T,
                                       T,
                                       cutlass::arch::Sm75,
@@ -507,11 +523,27 @@ void gemm_bias_act(const T* A,
           true,
           false,
           phi::errors::InvalidArgument(
-              "EcMoe gemm_bias_act Kernel only support SM75/SM80/SM86. "));
+              "EcMoe gemm_bias_act Kernel only support SM70/SM75/SM80/SM86. "));
     }
   } else {
     // act type is relu.
-    if (sm_ == 75) {
+    if (sm_ == 70) {
+      generic_moe_gemm_kernelLauncher<T,
+                                      T,
+                                      cutlass::arch::Sm70,
+                                      EpilogueOpBiasReLU>(
+          A,
+          B,
+          weight_scales,
+          biases,
+          C,
+          total_rows_before_expert,
+          gemm_n,
+          gemm_k,
+          num_experts,
+          multi_processor_count_,
+          stream);
+    } else if (sm_ == 75) {
       generic_moe_gemm_kernelLauncher<T,
                                       T,
                                       cutlass::arch::Sm75,
@@ -548,7 +580,7 @@ void gemm_bias_act(const T* A,
           true,
           false,
           phi::errors::InvalidArgument(
-              "EcMoe gemm_bias_act Kernel only support SM75/SM80/SM86. "));
+              "EcMoe gemm_bias_act Kernel only support SM70/SM75/SM80/SM86. "));
     }
   }
 }
@@ -565,7 +597,22 @@ void gemm(const T* A,
           int sm_,
           int multi_processor_count_,
           cudaStream_t stream) {
-  if (sm_ == 75) {
+  if (sm_ == 70) {
+    generic_moe_gemm_kernelLauncher<T,
+                                    T,
+                                    cutlass::arch::Sm70,
+                                    EpilogueOpNoBias>(A,
+                                                      B,
+                                                      weight_scales,
+                                                      nullptr,
+                                                      C,
+                                                      total_rows_before_expert,
+                                                      gemm_n,
+                                                      gemm_k,
+                                                      num_experts,
+                                                      multi_processor_count_,
+                                                      stream);
+  } else if (sm_ == 75) {
     generic_moe_gemm_kernelLauncher<T,
                                     T,
                                     cutlass::arch::Sm75,
@@ -596,10 +643,11 @@ void gemm(const T* A,
                                                       multi_processor_count_,
                                                       stream);
   } else {
-    PADDLE_ENFORCE_EQ(true,
-                      false,
-                      phi::errors::InvalidArgument(
-                          "EcMoe gemm Kernel only support SM75/SM80/SM86. "));
+    PADDLE_ENFORCE_EQ(
+        true,
+        false,
+        phi::errors::InvalidArgument(
+            "EcMoe gemm Kernel only support SM70/SM75/SM80/SM86. "));
   }
 }
 

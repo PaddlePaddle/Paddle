@@ -45,6 +45,56 @@ struct MoeArchTraits<float, float, arch> {
   using Operator = cutlass::arch::OpMultiplyAdd;
 };
 
+// ========================= Volta Traits ===========================
+// Volta will always dequantize after the global memory load.
+template <typename TypeB>
+struct MoeArchTraits<cutlass::half_t, TypeB, cutlass::arch::Sm70> {
+ private:
+  static constexpr int ThreadblockK = 32;
+
+ public:
+  static constexpr int Stages = 2;
+  using OperatorClass = cutlass::arch::OpClassTensorOp;
+  using AccType = float;
+  using LayoutB = cutlass::layout::RowMajor;
+
+  static constexpr int ElementsPerAccessA =
+      128 / cutlass::sizeof_bits<cutlass::half_t>::value;
+  static constexpr int ElementsPerAccessB =
+      128 / cutlass::sizeof_bits<cutlass::half_t>::value;
+  static constexpr int ElementsPerAccessC =
+      128 / cutlass::sizeof_bits<cutlass::half_t>::value;
+  using ThreadBlockShape = cutlass::gemm::GemmShape<32, 128, ThreadblockK>;
+  using WarpShape = cutlass::gemm::GemmShape<32, 32, ThreadblockK>;
+  using InstructionShape = cutlass::gemm::GemmShape<8, 8, 4>;
+
+  using Operator = cutlass::arch::OpMultiplyAdd;
+};
+
+template <typename TypeB>
+struct MoeArchTraits<cutlass::bfloat16_t, TypeB, cutlass::arch::Sm70> {
+ private:
+  static constexpr int ThreadblockK = 32;
+
+ public:
+  static constexpr int Stages = 2;
+  using OperatorClass = cutlass::arch::OpClassTensorOp;
+  using AccType = float;
+  using LayoutB = cutlass::layout::RowMajor;
+
+  static constexpr int ElementsPerAccessA =
+      128 / cutlass::sizeof_bits<cutlass::bfloat16_t>::value;
+  static constexpr int ElementsPerAccessB =
+      128 / cutlass::sizeof_bits<cutlass::bfloat16_t>::value;
+  static constexpr int ElementsPerAccessC =
+      128 / cutlass::sizeof_bits<cutlass::bfloat16_t>::value;
+  using ThreadBlockShape = cutlass::gemm::GemmShape<32, 128, ThreadblockK>;
+  using WarpShape = cutlass::gemm::GemmShape<32, 32, ThreadblockK>;
+  using InstructionShape = cutlass::gemm::GemmShape<8, 8, 4>;
+
+  using Operator = cutlass::arch::OpMultiplyAdd;
+};
+
 // ======================= Turing Traits ==============================
 // Turing will dequantize after LDSM
 
