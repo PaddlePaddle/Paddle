@@ -16,6 +16,7 @@
 #pragma once
 
 #include "rnnt_helper.h"
+#include "type_def.h"
 
 template <typename T>
 inline __device__ T logp(const T* const denom,
