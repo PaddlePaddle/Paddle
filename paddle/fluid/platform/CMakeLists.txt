@@ -32,10 +32,6 @@ if(WITH_PYTHON)
 endif()
 
 cc_library(
-  flags
-  SRCS flags.cc
-  DEPS gflags)
-cc_library(
   denormal
   SRCS denormal.cc
   DEPS)
@@ -169,11 +165,6 @@ if(WITH_GLOO)
     SRCS gloo_context.cc
     DEPS framework_proto gloo_wrapper enforce)
 endif()
-
-cc_library(
-  cudnn_workspace_helper
-  SRCS cudnn_workspace_helper.cc
-  DEPS)
 
 # separate init from device_context to avoid cycle dependencies
 cc_library(

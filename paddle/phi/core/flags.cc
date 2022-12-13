@@ -13,13 +13,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/flags.h"
+#include "paddle/phi/core/flags.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/cudnn_workspace_helper.h"
+#include "paddle/phi/backends/gpu/cuda/cudnn_workspace_helper.h"
 #endif
 
-namespace paddle {
-namespace platform {
+namespace phi {
 
 const ExportedFlagInfoMap &GetExportedFlagInfoMap() {
   return *GetMutableExportedFlagInfoMap();
@@ -30,8 +29,7 @@ ExportedFlagInfoMap *GetMutableExportedFlagInfoMap() {
   return &g_exported_flag_info_map;
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace phi
 
 PADDLE_DEFINE_EXPORTED_int32(inner_op_parallelism,
                              0,
@@ -261,9 +259,10 @@ PADDLE_DEFINE_EXPORTED_bool(
  * increased.
  *       Users need to balance memory and speed.
  */
-PADDLE_DEFINE_EXPORTED_int64(conv_workspace_size_limit,
-                             paddle::platform::kDefaultConvWorkspaceSizeLimitMB,
-                             "cuDNN convolution workspace limit in MB unit.");
+PADDLE_DEFINE_EXPORTED_int64(
+    conv_workspace_size_limit,
+    phi::backends::gpu::kDefaultConvWorkspaceSizeLimitMB,
+    "cuDNN convolution workspace limit in MB unit.");
 
 /**
  * CUDNN related FLAG
@@ -1041,7 +1040,6 @@ PADDLE_DEFINE_EXPORTED_string(jit_engine_type,
                               "Predictor",
                               "Choose default funciton type in JitLayer.");
 
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
 /**
  * Custom Device NPU related FLAG
  * Name: FLAGS_npu_storage_format
@@ -1051,7 +1049,6 @@ PADDLE_DEFINE_EXPORTED_string(jit_engine_type,
  * Note: Enable NPU Storage Format for Ascend910 performance improvement.
  */
 PADDLE_DEFINE_EXPORTED_bool(npu_storage_format, false, "");
-#endif
 
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
 /**

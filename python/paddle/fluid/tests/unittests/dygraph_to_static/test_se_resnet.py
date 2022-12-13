@@ -26,10 +26,9 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-from paddle.fluid.dygraph.nn import BatchNorm
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
-from paddle.nn import Linear
+from paddle.nn import BatchNorm, Linear
 
 SEED = 2020
 np.random.seed(SEED)
@@ -152,7 +151,7 @@ class SqueezeExcitation(fluid.dygraph.Layer):
         y = paddle.nn.functional.relu(y)
         y = self._excitation(y)
         y = paddle.nn.functional.sigmoid(y)
-        y = fluid.layers.elementwise_mul(x=input, y=y, axis=0)
+        y = paddle.tensor.math._multiply_with_axis(x=input, y=y, axis=0)
         return y
 
 
@@ -340,7 +339,9 @@ class SeResNeXt(fluid.dygraph.Layer):
         out = self.out(y)
 
         softmax_out = paddle.nn.functional.softmax(out)
-        loss = fluid.layers.cross_entropy(input=softmax_out, label=label)
+        loss = paddle.nn.functional.cross_entropy(
+            input=softmax_out, label=label, reduction='none', use_softmax=False
+        )
         avg_loss = paddle.mean(x=loss)
 
         acc_top1 = paddle.static.accuracy(input=softmax_out, label=label, k=1)
@@ -600,6 +601,4 @@ class TestSeResnet(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    # switch into new eager mode
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

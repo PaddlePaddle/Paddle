@@ -16,27 +16,23 @@
 
 namespace phi {
 
-KernelSignature TopkOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  if (ctx.HasInput("K")) {
+KernelSignature SaveCombineOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  if (ctx.IsDenseTensorInputs("X")) {
     return KernelSignature(
-        "topk", {"X"}, {"K", "axis", "largest", "sorted"}, {"Out", "Indices"});
-
+        "save_combine_tensor",
+        {"X"},
+        {"file_path", "overwrite", "save_as_fp16", "save_to_memory"},
+        {"Y"});
   } else {
     return KernelSignature(
-        "topk", {"X"}, {"k", "axis", "largest", "sorted"}, {"Out", "Indices"});
+        "save_combine_vocab",
+        {"X"},
+        {"file_path", "overwrite", "save_as_fp16", "save_to_memory"},
+        {"Y"});
   }
-}
-
-KernelSignature TopkGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("topk_grad",
-                         {"X", "Indices", "Out@GRAD"},
-                         {"k", "axis", "largest", "sorted"},
-                         {"X@GRAD"});
 }
 
 }  // namespace phi
 
-PD_REGISTER_BASE_KERNEL_NAME(top_k_v2, topk);
-PD_REGISTER_BASE_KERNEL_NAME(top_k_v2_grad, topk_grad);
-PD_REGISTER_ARG_MAPPING_FN(top_k_v2, phi::TopkOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(top_k_v2_grad, phi::TopkGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(save_combine, phi::SaveCombineOpArgumentMapping);
