@@ -20,15 +20,14 @@ from test_imperative_base import new_program_scope
 import paddle
 import paddle.fluid as fluid
 import paddle.nn.functional as F
-from paddle.fluid import Embedding, Layer, core
+from paddle.fluid import Layer, core
 from paddle.fluid.dygraph import guard, to_variable
 from paddle.fluid.framework import _in_legacy_dygraph
-from paddle.jit import TracedLayer
 from paddle.nn import Linear
 
 np.set_printoptions(suppress=True)
 
-from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
+from utils import DyGraphProgramDescTracerTestHelper
 
 
 # Copy from models
@@ -665,11 +664,11 @@ class PrepareEncoderDecoderLayer(Layer):
         self._src_emb_dim = src_emb_dim
         self._src_vocab_size = src_vocab_size
         self._dropout_rate = dropout_rate
-        self._input_emb = Embedding(
-            size=[src_vocab_size, src_emb_dim],
-            is_sparse=is_sparse,
-            padding_idx=0,
-            param_attr=fluid.ParamAttr(
+        self._input_emb = paddle.nn.Embedding(
+            src_vocab_size,
+            src_emb_dim,
+            sparse=is_sparse,
+            weight_attr=fluid.ParamAttr(
                 name=word_emb_param_name,
                 initializer=fluid.initializer.Normal(0.0, src_emb_dim**-0.5),
             ),
@@ -679,10 +678,11 @@ class PrepareEncoderDecoderLayer(Layer):
             pos_inp = pos_inp1
         else:
             pos_inp = pos_inp2
-        self._pos_emb = Embedding(
-            size=[self._src_max_len, src_emb_dim],
-            is_sparse=is_sparse,
-            param_attr=fluid.ParamAttr(
+        self._pos_emb = paddle.nn.Embedding(
+            self._src_max_len,
+            src_emb_dim,
+            sparse=is_sparse,
+            weight_attr=fluid.ParamAttr(
                 name=pos_enc_param_name,
                 initializer=fluid.initializer.NumpyArrayInitializer(pos_inp),
                 trainable=False,
@@ -1171,27 +1171,7 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
 
             for i in range(batch_num):
                 enc_inputs, dec_inputs, label, weights = create_data()
-                if False:
-                    outs, traced_layer = TracedLayer.trace(
-                        transformer, [enc_inputs, dec_inputs, label, weights]
-                    )
-
-                    ins_static = enc_inputs + dec_inputs + [label, weights]
-                    outs_static = traced_layer(ins_static)
-                    helper.assertEachVar(outs, outs_static)
-                    if program is not None:
-                        self.assertTrue(
-                            is_equal_program(program, traced_layer.program)
-                        )
-
-                    program = traced_layer.program
-                    traced_layer.save_inference_model(
-                        './infer_imperative_transformer',
-                        feed=list(range(len(ins_static))),
-                        fetch=list(range(len(outs_static))),
-                    )
-                else:
-                    outs = transformer(enc_inputs, dec_inputs, label, weights)
+                outs = transformer(enc_inputs, dec_inputs, label, weights)
 
                 dy_sum_cost, dy_avg_cost, dy_predict, dy_token_num = outs
 

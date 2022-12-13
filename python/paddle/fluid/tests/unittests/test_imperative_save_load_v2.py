@@ -167,10 +167,10 @@ class PtbModel(fluid.Layer):
             dropout=dropout,
         )
         self.embedding = Embedding(
-            size=[vocab_size, hidden_size],
-            dtype='float32',
-            is_sparse=False,
-            param_attr=fluid.ParamAttr(
+            vocab_size,
+            hidden_size,
+            sparse=False,
+            weight_attr=fluid.ParamAttr(
                 name='embedding_para',
                 initializer=fluid.initializer.UniformInitializer(
                     low=-init_scale, high=init_scale
@@ -1014,7 +1014,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
     def func_testOnlyLoadParams(self):
         with fluid.dygraph.guard():
-            emb = fluid.dygraph.Embedding([10, 10])
+            emb = paddle.nn.Embedding(10, 10)
             state_dict = emb.state_dict()
             paddle.save(
                 state_dict,
@@ -1027,7 +1027,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
     def func_test_no_state_in_input_dict(self):
         with fluid.dygraph.guard():
-            emb = fluid.dygraph.Embedding([10, 10])
+            emb = paddle.nn.Embedding(10, 10)
             state_dict = emb.state_dict()
             paddle.save(
                 state_dict,
@@ -1043,7 +1043,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
     def func_test_state_shape_mismatch(self):
         with fluid.dygraph.guard():
-            emb = fluid.dygraph.Embedding([10, 10])
+            emb = paddle.nn.Embedding(10, 10)
             state_dict = emb.state_dict()
             paddle.save(
                 state_dict,

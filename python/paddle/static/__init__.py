@@ -33,6 +33,7 @@ from .input import data  # noqa: F401
 from .input import InputSpec  # noqa: F401
 
 from ..tensor.creation import create_parameter  # noqa: F401
+from ..tensor.creation import create_global_var  # noqa: F401
 
 from ..fluid.executor import Executor  # noqa: F401
 from ..fluid.executor import global_scope  # noqa: F401
@@ -70,15 +71,16 @@ from ..fluid.io import load_vars  # noqa: F401
 from ..fluid.io import save_vars  # noqa: F401
 from ..fluid.io import batch  # noqa: F401
 
-from ..fluid.layers import create_global_var  # noqa: F401
 from ..fluid.contrib.layers import ctr_metric_bundle  # noqa: F401
 from ..fluid.layers import exponential_decay  # noqa: F401
 
-from paddle.static.nn.metric import auc  # noqa: F401
-from paddle.static.nn.metric import accuracy  # noqa: F401
+from .nn.common import batch_norm  # noqa: F401
+from .nn.metric import auc  # noqa: F401
+from .nn.metric import accuracy  # noqa: F401
 
 __all__ = [  # noqa
     'append_backward',
+    'batch_norm',
     'gradients',
     'Executor',
     'global_scope',

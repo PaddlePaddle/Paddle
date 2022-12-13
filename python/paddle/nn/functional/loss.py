@@ -1353,17 +1353,20 @@ def l1_loss(input, label, reduction='mean', name=None):
             label = paddle.to_tensor([[1.7, 1], [0.4, 0.5]])
 
             l1_loss = paddle.nn.functional.l1_loss(input, label)
-            print(l1_loss.numpy())
-            # [0.35]
+            print(l1_loss)
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [0.34999999])
 
             l1_loss = paddle.nn.functional.l1_loss(input, label, reduction='none')
-            print(l1_loss.numpy())
-            # [[0.20000005 0.19999999]
-            # [0.2        0.79999995]]
+            print(l1_loss)
+            # Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[0.20000005, 0.19999999],
+            #         [0.20000000, 0.79999995]])
 
             l1_loss = paddle.nn.functional.l1_loss(input, label, reduction='sum')
-            print(l1_loss.numpy())
-            # [1.4]
+            print(l1_loss)
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [1.39999998])
 
     """
     if reduction not in ['sum', 'mean', 'none']:
@@ -1402,15 +1405,13 @@ def l1_loss(input, label, reduction='mean', name=None):
     )
 
     if reduction == 'sum':
-        unreduced = paddle.fluid.layers.elementwise_sub(input, label, act='abs')
+        unreduced = paddle.abs(paddle.subtract(x=input, y=label))
         return paddle.sum(unreduced, name=name)
     elif reduction == 'mean':
-        unreduced = paddle.fluid.layers.elementwise_sub(input, label, act='abs')
+        unreduced = paddle.abs(paddle.subtract(x=input, y=label))
         return paddle.mean(unreduced, name=name)
     else:
-        return paddle.fluid.layers.elementwise_sub(
-            input, label, act='abs', name=name
-        )
+        return paddle.abs(paddle.subtract(x=input, y=label, name=name))
 
 
 def nll_loss(
@@ -2530,9 +2531,11 @@ def cross_entropy(
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
                 weight=weight, reduction=reduction)
             dy_ret = cross_entropy_loss(
-                                       input,
-                                       label)
-            print(dy_ret.numpy()) #[5.41993642]
+                                        input,
+                                        label)
+            print(dy_ret)
+            # Tensor(shape=[1], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+            #        [5.34043430])
 
         .. code-block:: python
 
@@ -2550,13 +2553,15 @@ def cross_entropy(
             labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
             labels /= paddle.sum(labels, axis=axis, keepdim=True)
             paddle_loss_mean = paddle.nn.functional.cross_entropy(
-                                                                  logits,
-                                                                  labels,
-                                                                  soft_label=True,
-                                                                  axis=axis,
-                                                                  weight=weight,
-                                                                  reduction=reduction)
-            print(paddle_loss_mean.numpy()) #[1.12908343]
+                                                                    logits,
+                                                                    labels,
+                                                                    soft_label=True,
+                                                                    axis=axis,
+                                                                    weight=weight,
+                                                                    reduction=reduction)
+            print(paddle_loss_mean)
+            # Tensor(shape=[1], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+            #        [1.11043464])
 
     """
 

@@ -22,8 +22,8 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import Embedding
 from paddle.fluid.optimizer import SGDOptimizer
+from paddle.nn import Embedding
 
 
 class SimpleNet(fluid.Layer):
@@ -41,11 +41,12 @@ class SimpleNet(fluid.Layer):
         self.vocab_size = vocab_size
         self.init_scale = init_scale
         self.num_steps = num_steps
+        paddle.set_default_dtype(dtype)
         self.embedding = Embedding(
-            size=[vocab_size, hidden_size],
-            dtype=dtype,
-            is_sparse=is_sparse,
-            param_attr=fluid.ParamAttr(
+            vocab_size,
+            hidden_size,
+            sparse=is_sparse,
+            weight_attr=fluid.ParamAttr(
                 name='embedding_para',
                 initializer=fluid.initializer.UniformInitializer(
                     low=-init_scale, high=init_scale

@@ -343,7 +343,7 @@ class TestAmpScaler(unittest.TestCase):
             scaled_loss = scaler.scale(loss)
             scaled_loss.backward()
             optimize_ops, params_grads = scaler.minimize(optimizer, scaled_loss)
-            self.assertEqual(scaler._found_inf.numpy() == 1, True)
+            self.assertEqual(scaler._found_inf.numpy() >= 1, True)
 
             for param in model.parameters():
                 # param not update when tensor contains nan or inf
@@ -1298,7 +1298,9 @@ class TestResnet(unittest.TestCase):
                 ):
                     out = resnet(img)
 
-                loss = fluid.layers.cross_entropy(input=out, label=label)
+                loss = paddle.nn.functional.cross_entropy(
+                    input=out, label=label, reduction='none', use_softmax=False
+                )
                 avg_loss = paddle.mean(x=loss)
 
                 dy_out = avg_loss.numpy()

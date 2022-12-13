@@ -13,10 +13,12 @@
 # limitations under the License.
 
 from paddle.utils import gast
-from paddle.jit.dy2static.utils import ast_to_source_code
+from .utils import ast_to_source_code
 from .base_transformer import (
     BaseTransformer,
 )
+
+__all__ = []
 
 cmpop_type_to_str = {
     gast.Eq: "==",

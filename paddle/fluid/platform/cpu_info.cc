@@ -32,7 +32,7 @@ limitations under the License. */
 
 #include <algorithm>
 
-#include "paddle/fluid/platform/flags.h"
+#include "paddle/phi/core/flags.h"
 
 DECLARE_double(fraction_of_cpu_memory_to_use);
 DECLARE_uint64(initial_cpu_memory_in_mb);
