@@ -53,7 +53,15 @@ class QuantizeLinearKernel : public framework::OpKernel<T> {
     int bin_cnt = std::pow(2, bit_length - 1) - 1;
     int quant_axis = context.Attr<int>("quant_axis");
     bool is_test = context.Attr<bool>("is_test");
+    bool is_observer = context.Attr<bool>("observer");
     auto& dev_ctx = context.template device_context<DeviceContext>();
+
+    // only observer
+    if (is_observer) {
+      VLOG(1) << "-q---TensorCopy------";
+      framework::TensorCopy(*in, context.GetPlace(), dev_ctx, out);
+      return;
+    }
 
     if (quant_axis < 0) {
       if (!is_test) {
@@ -123,6 +131,14 @@ class DeQuantizeLinearKernel : public framework::OpKernel<T> {
     int bit_length = context.Attr<int>("bit_length");
     auto quant_axis = context.Attr<int>("quant_axis");
     out->mutable_data<D>(dev_ctx.GetPlace());
+    bool is_observer = context.Attr<bool>("observer");
+
+    // only observer
+    if (is_observer) {
+      VLOG(1) << "-dq---TensorCopy------";
+      framework::TensorCopy(*in, context.GetPlace(), dev_ctx, out);
+      return;
+    }
 
     if (quant_axis < 0) {
       float max_range = (std::pow(2, bit_length - 1) - 1);

@@ -44,6 +44,7 @@ from .quantization_pass import (
 from .cal_kl_threshold import cal_kl_threshold
 from .adaround import run_adaround
 from . import utils
+from . import quant_config
 
 __all__ = [
     'PostTrainingQuantization',
@@ -152,6 +153,7 @@ class PostTrainingQuantization:
         cache_dir=None,
         scale_dict=None,
         return_graph=False,
+        backend=None,
     ):
         '''
         Constructor.
@@ -406,6 +408,21 @@ class PostTrainingQuantization:
         self.FLAG = False
         if self._program is not None:
             self.FLAG = True
+        if onnx_format and not backend:
+            self.quant_config = quant_config.BaseQuantizer(
+                quantizable_op_type, weight_bits
+            )
+        elif onnx_format and backend.lower() == "tensorrt":
+            self.quant_config = quant_config.TensorRTQuantizer()
+        elif onnx_format and backend.lower() == "mkldnn":
+            self.quant_config = quant_config.MKLDNNQuantizer()
+        else:
+            assert "Backend {} not support, please choose None, tensorrt or mkldnn.".format(
+                backend
+            )
+
+        # if onnx_format:
+        #     self._quantizable_op_type = self.quant_config.quant_operation_types
 
     def quantize(self):
         '''
@@ -1253,6 +1270,7 @@ class PostTrainingQuantization:
                 sub_graph._for_test = True
                 quant_weight_pass.apply(sub_graph)
 
+            print(self._quantizable_op_type)
             out_scale_infer_pass = AddQuantDequantForInferencePass(
                 scope=self._scope,
                 place=self._place,

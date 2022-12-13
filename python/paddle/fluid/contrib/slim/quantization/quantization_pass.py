@@ -2481,11 +2481,6 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
         self.create_var_map = {}
         self.create_op_map = {}
 
-        # marked the variable which has been dequantized.
-        self.dequantized_vars = collections.OrderedDict()
-        self.persistable_vars = []
-        self.processed_vars = []
-
     def _quant_preprocess(self, op_node):
         user_skipped = False
         if isinstance(self._skip_pattern, list):
@@ -2627,6 +2622,10 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
         ), 'graph must be the instance of IrGraph.'
         if self._is_test is None:
             self._is_test = graph.is_test()
+        # marked the variable which has been dequantized.
+        self.dequantized_vars = collections.OrderedDict()
+        self.persistable_vars = []
+        self.processed_vars = []
 
         self.persistable_vars = [
             p.name() for p in graph.all_persistable_nodes()
@@ -3141,6 +3140,7 @@ class AddQuantDequantForInferencePass:
         quant_bits=8,
         quantizable_op_type=[],
         calibration_range_dict=None,
+        observer=True,
     ):
         """
         Args:
@@ -3152,6 +3152,7 @@ class AddQuantDequantForInferencePass:
         self._scope = scope
         self._place = place
         self._quant_bits = quant_bits
+        self.is_observer = observer
         self._teller_set = (
             quantizable_op_type
             if quantizable_op_type
@@ -3271,7 +3272,11 @@ class AddQuantDequantForInferencePass:
         if zero_point_node is not None:
             inputs["ZeroPoint"] = zero_point_node
 
-        attrs = {"quant_axis": quant_axis, "bit_length": self._quant_bits}
+        attrs = {
+            "quant_axis": quant_axis,
+            "bit_length": self._quant_bits,
+            "observer": self.is_observer,
+        }
         attrs["op_role"] = core.op_proto_and_checker_maker.OpRole.Forward
         outputs = {"Y": quant_var_node}
 
@@ -3300,7 +3305,11 @@ class AddQuantDequantForInferencePass:
         if zero_point_node is not None:
             inputs["ZeroPoint"] = zero_point_node
 
-        attrs = {"quant_axis": -1, "bit_length": self._quant_bits}
+        attrs = {
+            "quant_axis": -1,
+            "bit_length": self._quant_bits,
+            "observer": self.is_observer,
+        }
         attrs["op_role"] = core.op_proto_and_checker_maker.OpRole.Forward
 
         dequant_op_node = graph.create_op_node(
