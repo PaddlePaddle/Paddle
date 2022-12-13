@@ -19,7 +19,9 @@
 #include <unordered_set>
 #include <vector>
 
+#ifdef PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/helper.h"
+#endif
 #include "paddle_infer_declare.h"  // NOLINT
 
 ///
