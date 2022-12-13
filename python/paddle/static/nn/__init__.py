@@ -31,7 +31,6 @@ from .common import bilinear_tensor_product  # noqa: F401
 from .common import py_func  # noqa: F401
 from ...tensor.creation import create_parameter  # noqa: F401
 from ...fluid.layers import conv2d  # noqa: F401
-from ...fluid.layers import crf_decoding  # noqa: F401
 from ...fluid.layers import layer_norm  # noqa: F401
 from ...fluid.layers import multi_box_head  # noqa: F401
 from .loss import nce  # noqa: F401
@@ -72,7 +71,6 @@ __all__ = [  # noqa
     'conv2d_transpose',
     'conv3d',
     'conv3d_transpose',
-    'crf_decoding',
     'data_norm',
     'deform_conv2d',
     'group_norm',

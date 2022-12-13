@@ -2062,7 +2062,9 @@ class TestBook(LayerTest):
                 act='softmax',
                 param_attr=["sftmax.w1", "sftmax.w2"],
             )
-            cost = layers.cross_entropy(input=predict, label=label)
+            cost = paddle.nn.functional.cross_entropy(
+                input=predict, label=label, reduction='none', use_softmax=False
+            )
             avg_cost = paddle.mean(cost)
             return avg_cost
 
@@ -2101,7 +2103,9 @@ class TestBook(LayerTest):
             )
 
             predict = layers.fc(input=conv_pool_2, size=10, act="softmax")
-            cost = layers.cross_entropy(input=predict, label=label)
+            cost = paddle.nn.functional.cross_entropy(
+                input=predict, label=label, reduction='none', use_softmax=False
+            )
             avg_cost = paddle.mean(cost)
             return avg_cost
 
@@ -2154,7 +2158,12 @@ class TestBook(LayerTest):
             predict_word = layers.fc(
                 input=hidden1, size=dict_size, act='softmax'
             )
-            cost = layers.cross_entropy(input=predict_word, label=next_word)
+            cost = paddle.nn.functional.cross_entropy(
+                input=predict_word,
+                label=next_word,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_cost = paddle.mean(cost)
             return avg_cost
 
@@ -2177,26 +2186,6 @@ class TestBook(LayerTest):
             )
             return paddle.nn.functional.max_pool2d(
                 x, kernel_size=[5, 3], stride=[1, 2], padding=(2, 1)
-            )
-
-    def make_lstm_unit(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x_t_data = self._get_data(
-                name='x_t_data', shape=[10, 10], dtype='float32'
-            )
-            x_t = layers.fc(input=x_t_data, size=10)
-            prev_hidden_data = self._get_data(
-                name='prev_hidden_data', shape=[10, 30], dtype='float32'
-            )
-            prev_hidden = layers.fc(input=prev_hidden_data, size=30)
-            prev_cell_data = self._get_data(
-                name='prev_cell', shape=[10, 30], dtype='float32'
-            )
-            prev_cell = layers.fc(input=prev_cell_data, size=30)
-            return layers.lstm_unit(
-                x_t=x_t, hidden_t_prev=prev_hidden, cell_t_prev=prev_cell
             )
 
     def make_softmax(self):
@@ -2386,7 +2375,14 @@ class TestBook(LayerTest):
             x = self._get_data(name="x", shape=[30, 10], dtype="float32")
             label = self._get_data(name="label", shape=[30, 1], dtype="int64")
             mode = 'channel'
-            out = layers.cross_entropy(x, label, False, 4)
+            out = paddle.nn.functional.cross_entropy(
+                x,
+                label,
+                soft_label=False,
+                ignore_index=4,
+                reduction='none',
+                use_softmax=False,
+            )
             return out
 
     def make_uniform_random_batch_size_like(self):
