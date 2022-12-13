@@ -281,7 +281,7 @@ PADDLE_DEFINE_EXPORTED_int64(
 // haha
 PADDLE_DEFINE_EXPORTED_bool(
     cudnn_exhaustive_search,
-    true,
+    false,
     "Whether enable exhaustive search for cuDNN convolution or "
     "not, default is False.");
 
