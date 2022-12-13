@@ -171,8 +171,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Collective(
   fn(out_tensor, in_tensor, comm_ctx->bkcl_context(), bkcl_stream);
 
   if (!use_calc_stream) {
-    PADDLE_ENFORCE_NOT_NULL(comm_ctx.get(),
-                            platform::errors::Fatal("comm ctx is nullptr."));
+    PADDLE_ENFORCE_NOT_NULL(
+        comm_ctx.get(), platform::errors::Fatal("comm context is nullptr."));
     task->comm_event_->Record(*comm_ctx.get());
   }
 
