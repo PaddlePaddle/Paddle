@@ -1090,9 +1090,8 @@ class TheOnePSRuntime(RuntimeBase):
         self.string_hosts = []
         for idx, ep in enumerate(self.endpoints):
             host, port = ep.split(":")
-            #pshost = core.PSHost(host, int(port), idx)
-            #self.string_hosts.append(pshost.serialize_to_string())
-            self.string_hosts.append(":".join([host, port, str(idx)]))
+            pshost = core.PSHost(host, int(port), idx)
+            self.string_hosts.append(pshost.serialize_to_string())
 
         self.with_coordinator = self.role_maker._with_coordinator
         self.coordinator_hosts = []
