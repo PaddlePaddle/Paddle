@@ -126,6 +126,18 @@ def crop_string(text: str, start: Location, end: Location) -> str:
 def _func_spec_to_tensor_method(func_code: str) -> str:
     method_code = ""
 
+    # Replace first argument with self
+    regex_func_spec = re.compile(
+        r"^def (?P<method_name>[_a-zA-Z0-9]+)\((?P<arg0>[^,)]+(:.+)?)(?P<rest_args>.+)\)",
+        re.DOTALL,
+    )
+    matched = regex_func_spec.search(func_code)
+    if matched is None:
+        raise ValueError(f"Cannot parse function spec: {func_code}")
+    func_code = regex_func_spec.sub(
+        r"def \g<method_name>(self\g<rest_args>)", func_code
+    )
+
     # Iterate every line, insert the indent and remove document of the first argument
     is_first_arg = False
     first_arg_offset = 0
@@ -144,17 +156,6 @@ def _func_spec_to_tensor_method(func_code: str) -> str:
         if line.lstrip().startswith("Args:"):
             is_first_arg = True
 
-    # Replace first argument with self
-    regex_func_spec = re.compile(
-        r"def (?P<method_name>[_a-zA-Z0-9]+)\((?P<arg0>[^,)]+(:.+)?)(?P<rest_args>.+)\)",
-        re.DOTALL,
-    )
-    matched = regex_func_spec.search(method_code)
-    if matched is None:
-        raise ValueError(f"Cannot parse function spec: {func_code}")
-    method_code = regex_func_spec.sub(
-        r"def \g<method_name>(self\g<rest_args>)", method_code
-    )
     return method_code
 
 
