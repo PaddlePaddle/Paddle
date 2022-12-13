@@ -44,8 +44,6 @@ DECLARE_bool(gemm_use_half_precision_compute_type);
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 // for debug
 // #define _DEBUG_FUSED_MULTI_TRANSFORMER
 
@@ -1119,11 +1117,11 @@ void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
 
 template <typename T>
 void fmha(const phi::GPUContext &dev_ctx,
-          const Tensor &qkv_tensor,
-          const Tensor &qkv_bias_tensor,
-          const Tensor &src_mask_tensor,
-          Tensor *cache_kv_tensor,
-          Tensor *out_tensor,
+          const phi::DenseTensor &qkv_tensor,
+          const phi::DenseTensor &qkv_bias_tensor,
+          const phi::DenseTensor &src_mask_tensor,
+          phi::DenseTensor *cache_kv_tensor,
+          phi::DenseTensor *out_tensor,
           int batch_size,
           int max_seq_length,
           int num_head,
@@ -1532,21 +1530,16 @@ class CublasFusedMLP {
          beta16 =
              add_residual ? static_cast<half>(1.0) : static_cast<half>(0.0);
 
-    void *alpha = nullptr, *beta = nullptr;
+    void *alpha = &alpha32, *beta = &beta32;
     if (std::is_same<T, double>::value) {
       alpha = &alpha64;
       beta = &beta64;
-    } else if (std::is_same<T, float>::value) {
-      alpha = &alpha64;
-      beta = &beta64;
-    } else if (std::is_same<T, phi::dtype::float16>::value) {
+    }
+
+    if (std::is_same<T, phi::dtype::float16>::value &&
+        FLAGS_gemm_use_half_precision_compute_type) {
       alpha = &alpha16;
       beta = &beta16;
-    } else {
-      PADDLE_ENFORCE_EQ(true,
-                        false,
-                        platform::errors::InvalidArgument(
-                            "Only support double, float, half data type. "));
     }
 
     const auto *x_data = x->data<T>();

@@ -539,7 +539,7 @@ class TestOptimizerLearningRate(unittest.TestCase):
                 lr = adam.current_step_lr()
                 np.testing.assert_allclose(lr, lr_list[i], rtol=1e-06, atol=0.0)
 
-            lr_var = fluid.layers.create_global_var(
+            lr_var = paddle.static.create_global_var(
                 shape=[1], value=0.7, dtype='float32'
             )
             adam.set_lr(lr_var)

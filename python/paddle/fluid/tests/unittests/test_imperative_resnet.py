@@ -16,15 +16,14 @@ import unittest
 
 import numpy as np
 from test_imperative_base import new_program_scope
-from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
+from utils import DyGraphProgramDescTracerTestHelper
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import BatchNorm, core
+from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.framework import _in_legacy_dygraph
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.jit import TracedLayer
+from paddle.nn import BatchNorm
 
 # NOTE(zhiqiu): run with FLAGS_cudnn_deterministic=1
 
@@ -301,20 +300,7 @@ class TestDygraphResnet(unittest.TestCase):
                 label.stop_gradient = True
 
                 out = None
-                if batch_id % 5 == 0 and _in_legacy_dygraph():
-                    out, traced_layer = TracedLayer.trace(resnet, img)
-                    if program is not None:
-                        self.assertTrue(
-                            is_equal_program(program, traced_layer.program)
-                        )
-
-                    traced_layer.save_inference_model(
-                        './infer_imperative_resnet'
-                    )
-
-                    program = traced_layer.program
-                else:
-                    out = resnet(img)
+                out = resnet(img)
 
                 if traced_layer is not None:
                     resnet.eval()
@@ -325,7 +311,9 @@ class TestDygraphResnet(unittest.TestCase):
                     helper.assertEachVar(out_dygraph, out_static)
                     resnet.train()
 
-                loss = fluid.layers.cross_entropy(input=out, label=label)
+                loss = paddle.nn.functional.cross_entropy(
+                    input=out, label=label, reduction='none', use_softmax=False
+                )
                 avg_loss = paddle.mean(x=loss)
 
                 dy_out = avg_loss.numpy()
@@ -378,7 +366,9 @@ class TestDygraphResnet(unittest.TestCase):
             )
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             out = resnet(img)
-            loss = fluid.layers.cross_entropy(input=out, label=label)
+            loss = paddle.nn.functional.cross_entropy(
+                input=out, label=label, reduction='none', use_softmax=False
+            )
             avg_loss = paddle.mean(x=loss)
             optimizer.minimize(avg_loss)
 

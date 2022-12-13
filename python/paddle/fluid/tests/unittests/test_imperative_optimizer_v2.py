@@ -640,7 +640,7 @@ class TestOptimizerLearningRate(unittest.TestCase):
                 np.testing.assert_allclose(lr, lr_list[i], rtol=1e-06, atol=0.0)
 
             with self.assertRaises(TypeError):
-                lr_var = fluid.layers.create_global_var(
+                lr_var = paddle.static.create_global_var(
                     shape=[1], value=0.7, dtype='float32'
                 )
                 adam.set_lr(lr_var)
