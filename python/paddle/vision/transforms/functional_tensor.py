@@ -18,12 +18,14 @@ import numbers
 import paddle
 import paddle.nn.functional as F
 
+from ...fluid.framework import Variable
+
 __all__ = []
 
 
 def _assert_image_tensor(img, data_format):
     if (
-        not isinstance(img, paddle.Tensor)
+        not isinstance(img, (paddle.Tensor, Variable))
         or img.ndim < 3
         or img.ndim > 4
         or not data_format.lower() in ('chw', 'hwc')
@@ -725,6 +727,14 @@ def resize(img, size, interpolation='bilinear', data_format='CHW'):
 
     if isinstance(size, int):
         w, h = _get_image_size(img, data_format)
+        # TODO(Aurelius84): In static mode, w and h will be -1 for dynamic shape.
+        # We should consider to support this case in future.
+        if w <= 0 or h <= 0:
+            raise NotImplementedError(
+                "Not support while w<=0 or h<=0, but received w={}, h={}".format(
+                    w, h
+                )
+            )
         if (w <= h and w == size) or (h <= w and h == size):
             return img
         if w < h:

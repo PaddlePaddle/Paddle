@@ -367,9 +367,9 @@ def basic_gru(
                 new_hidden = unit_list[i](step_input, pre_hidden)
 
                 if mask:
-                    new_hidden = layers.elementwise_mul(
+                    new_hidden = paddle.tensor.math._multiply_with_axis(
                         new_hidden, step_mask, axis=0
-                    ) - layers.elementwise_mul(
+                    ) - paddle.tensor.math._multiply_with_axis(
                         pre_hidden, (step_mask - 1), axis=0
                     )
                 rnn.update_memory(pre_hidden, new_hidden)
@@ -661,14 +661,14 @@ def basic_lstm(
                 )
 
                 if mask:
-                    new_hidden = layers.elementwise_mul(
+                    new_hidden = paddle.tensor.math._multiply_with_axis(
                         new_hidden, step_mask, axis=0
-                    ) - layers.elementwise_mul(
+                    ) - paddle.tensor.math._multiply_with_axis(
                         pre_hidden, (step_mask - 1), axis=0
                     )
-                    new_cell = layers.elementwise_mul(
+                    new_cell = paddle.tensor.math._multiply_with_axis(
                         new_cell, step_mask, axis=0
-                    ) - layers.elementwise_mul(
+                    ) - paddle.tensor.math._multiply_with_axis(
                         pre_cell, (step_mask - 1), axis=0
                     )
 

@@ -13,6 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Temporary disable isort to avoid circular import
+# This can be removed after the circular import is resolved
+# isort: skip_file
 import os
 import pickle
 import warnings

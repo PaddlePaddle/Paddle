@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/operators/assign_op.h"
 #include "paddle/fluid/operators/controlflow/control_flow_op_helper.h"
-#include "paddle/fluid/platform/flags.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 #ifdef PADDLE_WITH_MKLDNN
