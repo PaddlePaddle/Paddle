@@ -125,7 +125,7 @@ def _func_spec_to_tensor_method(func_code: str) -> str:
 
     # Replace first argument with self
     regex_func_spec = re.compile(
-        r"^def (?P<method_name>[_a-zA-Z0-9]+)\((?P<arg0>[^,)]+(:.+)?)(?P<rest_args>.+)\)",
+        r"^def (?P<method_name>[_a-zA-Z0-9]+)\((?P<arg0>[^,)]+(:.+)?)(?P<rest_args>.*)\)",
         re.DOTALL,
     )
     matched = regex_func_spec.search(func_code)
@@ -156,8 +156,8 @@ def _func_spec_to_tensor_method(func_code: str) -> str:
     return method_code
 
 
-def get_tensor_method_func(tensor_funcs_dir: Path) -> list[str]:
-    tensor_init_path = tensor_funcs_dir / "__init__.py"
+def get_tensor_method_func(tensor_dir: Path) -> list[str]:
+    tensor_init_path = tensor_dir / "__init__.py"
     with open(tensor_init_path, "r") as f:
         tensor_init_ast = ast.parse(f.read())
     for node in ast.walk(tensor_init_ast):
@@ -177,10 +177,10 @@ def get_tensor_method_func(tensor_funcs_dir: Path) -> list[str]:
 
 
 def get_tensor_monkey_patched_methods(
-    tensor_funcs_dir: Path, tensor_method_func: list[str]
+    tensor_dir: Path, tensor_method_func: list[str]
 ) -> list[str]:
     methods: list[str] = []
-    for tensor_funcs_path in tensor_funcs_dir.iterdir():
+    for tensor_funcs_path in tensor_dir.iterdir():
         if (
             tensor_funcs_path.is_dir()
             or tensor_funcs_path.name == "__init__.py"
@@ -253,7 +253,7 @@ def get_other_methods() -> list[str]:
     return methods_code
 
 
-def get_alias() -> dict[str, str]:
+def get_aliases() -> dict[str, str]:
     # TODO: Add the reference from the source code
     return {
         "reverse": "flip",
@@ -265,7 +265,7 @@ def get_alias() -> dict[str, str]:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--tensor-funcs-dir", type=str, default="python/paddle/tensor/"
+        "--tensor-dir", type=str, default="python/paddle/tensor/"
     )
     parser.add_argument(
         "-o",
@@ -276,14 +276,14 @@ def main():
 
     args = parser.parse_args()
 
-    # Get methods of Tensor
-    tensor_funcs_dir = Path(args.tensor_funcs_dir)
-    tensor_method_func = get_tensor_method_func(tensor_funcs_dir)
+    # Get members of Tensor
+    tensor_dir = Path(args.tensor_dir)
+    tensor_method_func = get_tensor_method_func(tensor_dir)
     tensor_monkey_patched_methods = get_tensor_monkey_patched_methods(
-        tensor_funcs_dir, tensor_method_func
+        tensor_dir, tensor_method_func
     )
     tensor_other_methods = get_other_methods()
-    tensor_aliases = get_alias()
+    tensor_aliases = get_aliases()
     tensor_attributes = get_attributes()
 
     # Generate the proxy Tensor class
