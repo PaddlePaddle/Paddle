@@ -61,18 +61,29 @@ AddOutput({{name | to_opmaker_name}}, "({{typename}}), output {{i}} of {{op_name
   {% set name = attr["name"] %}
   {% set typename = attr["typename"] %}
   {% if typename is scalar %}
-AddInput("{{name | to_pascal_case}}Tensor", "attribute {{i}} for {{op_name}} op from 0D Tensor.")
+AddInput("{{attr | to_scalar_tensor_name}}", "attribute {{i}} for {{op_name}} op from 0D Tensor.")
     .AsDispensable();
+AddAttr<{{attr["data_type"]}}>("{{name}}", "({{attr["data_type"]}}), attribute {{i}} for {{op_name}} op.")
   {% elif typename == "IntArray" %}{# the type has been renamed #}
-AddInput("{{name | to_pascal_case}}Tensor", "attribute {{i}} for {{op_name}} op from 1D integer Tensor.")
+    {% if 'tensor_name' in attr or 'manual_flag' not in attr %}
+AddInput("{{attr | to_int_array_tensor_name}}", "attribute {{i}} for {{op_name}} op from 1D integer Tensor.")
     .AsDispensable();
-AddInput("{{name | to_pascal_case}}TensorList", "attribute {{i}} for {{op_name}} op from list fo 0D integer Tensors.")
+    {% endif %}
+    {% if 'tensors_name' in attr or 'manual_flag' not in attr %}
+AddInput("{{attr | to_int_array_tensors_name}}", "attribute {{i}} for {{op_name}} op from list fo 0D integer Tensors.")
     .AsDuplicable()
     .AsDispensable();
-  {% endif %}
+    {% endif %}
+AddAttr<{{attr["data_type"]}}>("{{name}}", "({{attr["data_type"]}}), attribute {{i}} for {{op_name}} op.")
+  {% else %}
 AddAttr<{{typename | to_op_attr_type}}>("{{name}}", "({{typename | to_op_attr_type}}), attribute {{i}} for {{op_name}} op.")
+  {% endif %}
   {% if "default_value" in attr %}
     .SetDefault({{process_default_value(attr)}})
+  {%- endif %}
+  {% if "is_support_tensor" in attr and attr["is_support_tensor"] %}
+
+    .SupportTensor()
   {%- endif %}
 {%- endmacro %}
 
@@ -104,7 +115,7 @@ KernelSignature {{op["op_name"] | to_pascal_case }}OpArgumentMapping(const Argum
   paddle::small_vector<const char*> attrs;
   {% for attr in op["attrs"]%}
   {% filter indent(2)%}
-  {{get_an_attr(attr)}};
+  {{get_an_attr(attr)}}
   {% endfilter %}
   {% endfor %}
   {{get_output_list(op["outputs"], kernel_args)}};
@@ -159,7 +170,7 @@ KernelSignature {{op["op_name"] | to_pascal_case }}OpArgumentMapping(const Argum
   paddle::small_vector<const char*> attrs;
   {% for attr in op["attrs"]%}
   {% filter indent(2)%}
-  {{get_an_attr(attr)}};
+  {{get_an_attr(attr)}}
   {% endfilter %}
   {% endfor %}
   {{get_output_list(op["outputs"], kernel_args)}};
@@ -202,21 +213,28 @@ paddle::small_vector<const char*> inputs {
 {% set typename = attr["typename"] %}
 {% set name = attr["name"] %}
 {% if typename is scalar %}{# scalar correspond to a dispensable input and an attr in opmaker #}
-attrs.emplace_back(
-  ctx.HasInput("{{name | to_pascal_case}}")
-  ? "{{name | to_pascal_case}}Tensor"
-  : "{{name}}"
-)
+attrs.emplace_back(ctx.HasInput("{{attr | to_scalar_tensor_name}}") ? "{{attr | to_scalar_tensor_name}}" : "{{name}}");
 {%- elif typename == "IntArray" %}
+  {% if 'tensor_name' in attr and  'tensors_name' not in attr %}
 attrs.emplace_back(
-  ctx.HasInput("{{name | to_pascal_case}}Tensor")
-  ? "{{name | to_pascal_case}}Tensor"
-  : ctx.InputSize("{{name | to_pascal_case}}TensorList") > 0
-    ? "{{name | to_pascal_case}}TensorList"
-    : "{{name}}"
-)
+  ctx.HasInput("{{attr | to_int_array_tensor_name}}")
+  ? "{{attr | to_int_array_tensor_name}}"
+  : "{{name}}");
+  {% elif 'tensor_name' not in attr and  'tensors_name' in attr %}
+attrs.emplace_back(
+  ctx.InputSize("{{attr | to_int_array_tensors_name}}") > 0
+    ? "{{attr | to_int_array_tensors_name}}"
+    : "{{name}}");
+  {% else %}
+attrs.emplace_back(
+  ctx.HasInput("{{attr | to_int_array_tensor_name}}")
+  ? "{{attr | to_int_array_tensor_name}}"
+  : ctx.InputSize("{{attr | to_int_array_tensors_name}}") > 0
+    ? "{{attr | to_int_array_tensors_name}}"
+    : "{{name}}");
+  {%- endif %}
 {%- else %}
-attrs.emplace_back("{{name}}")
+attrs.emplace_back("{{name}}");
 {%- endif %}
 {%- endmacro %}
 
@@ -394,10 +412,20 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
     {% set attr_name = attr["name"] %}
     {% if attr_name in forward_attr_names %}
       {% if attr["typename"] == "IntArray" %}
-    grad_op->SetInput("{{attr_name | to_pascal_case}}Tensor", this->Input("{{attr_name | to_pascal_case}}Tensor"));
-    grad_op->SetInput("{{attr_name | to_pascal_case}}TensorList", this->Input("{{attr_name | to_pascal_case}}TensorList"));
+        {% if 'tensor_name' in attr or 'manual_flag' not in attr %}
+    if (this->HasInput("{{attr | to_int_array_tensor_name}}")) {
+      grad_op->SetInput("{{attr | to_int_array_tensor_name}}", this->Input("{{attr | to_int_array_tensor_name}}"));
+    }
+        {% endif %}
+        {% if 'tensors_name' in attr or 'manual_flag' not in attr %}
+    if (this->HasInput("{{attr | to_int_array_tensors_name}}")) {
+      grad_op->SetInput("{{attr | to_int_array_tensors_name}}", this->Input("{{attr | to_int_array_tensors_name}}"));
+    }
+        {% endif %}
       {% elif attr["typename"] == "Scalar" %}
-    grad_op->SetInput("{{attr_name | to_pascal_case}}Tensor", this->Input("{{attr_name | to_pascal_case}}Tensor"));
+    if (this->HasInput("{{attr | to_scalar_tensor_name}}")) {
+      grad_op->SetInput("{{attr | to_scalar_tensor_name}}", this->Input("{{attr | to_scalar_tensor_name}}"));
+    }
       {% endif %}
     {% else %}{# maybe something wrong: backward op has more attrs than the forward one#}
     grad_op->SetAttr("{{attr_name}}", {{process_default_value(attr)}});

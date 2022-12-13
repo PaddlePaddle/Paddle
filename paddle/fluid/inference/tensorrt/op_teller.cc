@@ -284,6 +284,15 @@ struct SimpleOpTypeSetTeller : public Teller {
         }
       }
 #endif
+      auto* block = desc.Block();
+      if (block) {
+        auto* filter_var_desc = block->FindVar(desc.Input("Filter")[0]);
+        if (!filter_var_desc->Persistable()) {
+          VLOG(3) << "Trt not support filter is  a intermediate tensor in "
+                     "conv2d op.";
+          return false;
+        }
+      }
     }
 
     if (op_type == "deformable_conv") {
@@ -1890,8 +1899,9 @@ struct SimpleOpTypeSetTeller : public Teller {
           return false;
         }
       } else {
-#if !IS_TRT_VERSION_GE(8100)
-        VLOG(3) << "The version of TRT must be greater than 8100";
+#if (IS_TRT_VERSION_GE(8000) && IS_TRT_VERSION_LT(8100)) || \
+    (IS_TRT_VERSION_LT(7200))
+        VLOG(3) << "There are some bugs with trt 8.0";
         return false;
 #endif
       }

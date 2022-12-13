@@ -12,18 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/phi/backends/gpu/cuda/cudnn_workspace_helper.h"
+
+#include <cstdlib>
+#include <string>
 
 namespace phi {
+namespace backends {
+namespace gpu {
 
-KernelSignature LogLossGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature("log_loss_grad",
-                         {"Predicted", "Labels", "Loss@GRAD"},
-                         {"epsilon"},
-                         {"Predicted@GRAD"});
+static int GetDefaultConvWorkspaceSizeLimitMBImpl() {
+  const char *env_str = std::getenv("FLAGS_conv_workspace_size_limit");
+  return env_str ? std::stoi(std::string(env_str))
+                 : kDefaultConvWorkspaceSizeLimitMB;
 }
 
+int GetDefaultConvWorkspaceSizeLimitMB() {
+  static auto workspace_size = GetDefaultConvWorkspaceSizeLimitMBImpl();
+  return workspace_size;
+}
+}  // namespace gpu
+}  // namespace backends
 }  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(log_loss_grad, phi::LogLossGradOpArgumentMapping);

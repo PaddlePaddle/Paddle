@@ -409,9 +409,9 @@ def gradient_penalty(f, real, fake, no_grad_set, cfg):
             input=a, shape=shape, min=0.1, max=1.0, seed=cfg.seed
         )
 
-        inner = fluid.layers.elementwise_mul(
+        inner = paddle.tensor.math._multiply_with_axis(
             b, 1.0 - alpha, axis=0
-        ) + fluid.layers.elementwise_mul(a, alpha, axis=0)
+        ) + paddle.tensor.math._multiply_with_axis(a, alpha, axis=0)
         return inner
 
     x = _interpolate(real, fake)

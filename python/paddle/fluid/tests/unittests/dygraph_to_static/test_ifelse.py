@@ -154,7 +154,7 @@ def dyfunc_ifExp_with_while(x):
 
     def body(i, ten, y):
         # It will be converted into `layers.cond` as followed.
-        # map_func(lambda x: fluid.layers.cond(i==0, lambda: x, lambda: add_fn(x), y)
+        # map_func(lambda x: paddle.static.nn.cond(i==0, lambda: x, lambda: add_fn(x), y)
         y = map_func(lambda x: x if (i == 0) is not None else add_fn(x), y)
         i += 1
         return [i, ten, y]
@@ -183,7 +183,7 @@ def dyfunc_ifExp(x):
 
     i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
     # It will be converted into `layers.cond` as followed.
-    # map_func(lambda x: fluid.layers.cond(i==1, lambda: x, lambda: add_fn(x), y)
+    # map_func(lambda x: paddle.static.nn.cond(i==1, lambda: x, lambda: add_fn(x), y)
     # `if (Tensor) == 1` is supported in dygraph.
     y = map_func(lambda x: x if i == 1 else add_fn(x), y)
     return y[0]
@@ -509,5 +509,4 @@ class TestDy2StIfElseBackward(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with paddle.fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()
