@@ -1638,6 +1638,11 @@ class TheOnePSRuntime(RuntimeBase):
             )
         fleet.util.barrier()
 
+    def _check_save_pre_patch_done(self):
+        fleet.util.barrier()
+        if self.role_maker._is_first_worker():
+            self._worker.check_save_pre_patch_done()
+
     def _load_sparse_params(self, dirname, context, main_program, mode):
         distributed_varnames = get_sparse_tablenames(
             self.origin_main_programs, True
