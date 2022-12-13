@@ -11,23 +11,23 @@ class Tensor:
 
     def cast(self, dtype: np.dtype | str):
         """
-    
+
         This OP takes in the Tensor :attr:`x` with :attr:`x.dtype` and casts it
         to the output with :attr:`dtype`. It's meaningless if the output dtype
         equals the input dtype, but it's fine if you do so.
-    
+
         Args:
             dtype (np.dtype|str): Data type of the output:
                 bool, float16, float32, float64, int8, int32, int64, uint8.
-    
+
         Returns:
             Tensor, A Tensor with the same shape as input's.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([2, 3, 4], 'float64')
                 y = paddle.cast(x, 'uint8')
         """
@@ -47,9 +47,9 @@ class Tensor:
         For slicing to the end of a dimension with unknown size, it is recommended
         to pass in INT_MAX. The size of ``axes`` must be equal to ``starts`` and ``ends``.
         Following examples will explain how slice works:
-    
+
         .. code-block:: text
-    
+
             Case1:
                 Given:
                     data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
@@ -58,7 +58,7 @@ class Tensor:
                     ends = [2, 3]
                 Then:
                     result = [ [5, 6, 7], ]
-    
+
             Case2:
                 Given:
                     data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
@@ -67,7 +67,7 @@ class Tensor:
                     ends = [-1, 1000]       # -1 denotes the reverse 0th position of dimension 0.
                 Then:
                     result = [ [2, 3, 4], ] # result = data[0:1, 1:4]
-    
+
         Args:
             axes (list|tuple): The data type is ``int32`` . Axes that `starts` and `ends` apply to .
             starts (list|tuple|Tensor): The data type is ``int32`` . If ``starts`` is a list or tuple, the elements of
@@ -76,15 +76,15 @@ class Tensor:
             ends (list|tuple|Tensor): The data type is ``int32`` . If ``ends`` is a list or tuple, the elements of
                     it should be integers or Tensors with shape [1]. If ``ends`` is an Tensor, it should be an 1-D Tensor .
                     It represents ending indices of corresponding axis in ``axes``.
-    
+
         Returns:
             Tensor, A ``Tensor``. The data type is same as ``input``.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 input = paddle.rand(shape=[4, 5, 6], dtype='float32')
                 # example 1:
                 # attr starts is a list which doesn't contain tensor.
@@ -93,7 +93,7 @@ class Tensor:
                 ends = [3, 2, 4]
                 sliced_1 = paddle.slice(input, axes=axes, starts=starts, ends=ends)
                 # sliced_1 is input[1:3, 0:2, 2:4].
-    
+
                 # example 2:
                 # attr starts is a list which contain tensor.
                 minus_3 = paddle.full([1], -3, "int32")
@@ -105,32 +105,32 @@ class Tensor:
     def transpose(self, perm, name=None):
         """
         Permute the data dimensions of `input` according to `perm`.
-    
+
         The `i`-th dimension  of the returned tensor will correspond to the
         perm[i]-th dimension of `input`.
-    
+
         Args:
             perm (list|tuple): Permute the input according to the data of perm.
             name (str): The name of this layer. It is optional.
-    
+
         Returns:
             Tensor, A transposed n-D Tensor, with data type being bool, float32, float64, int32, int64.
-    
+
         For Example:
-    
+
             .. code-block:: text
-    
+
              x = [[[ 1  2  3  4] [ 5  6  7  8] [ 9 10 11 12]]
                  [[13 14 15 16] [17 18 19 20] [21 22 23 24]]]
              shape(x) =  [2,3,4]
-    
+
              # Example 1
              perm0 = [1,0,2]
              y_perm0 = [[[ 1  2  3  4] [13 14 15 16]]
                        [[ 5  6  7  8]  [17 18 19 20]]
                        [[ 9 10 11 12]  [21 22 23 24]]]
              shape(y_perm0) = [3,2,4]
-    
+
              # Example 2
              perm1 = [2,1,0]
              y_perm1 = [[[ 1 13] [ 5 17] [ 9 21]]
@@ -138,44 +138,44 @@ class Tensor:
                        [[ 3 15]  [ 7 19]  [11 23]]
                        [[ 4 16]  [ 8 20]  [12 24]]]
              shape(y_perm1) = [4,3,2]
-    
+
         Examples:
-    
+
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.randn([2, 3, 4])
                 x_transposed = paddle.transpose(x, perm=[1, 0, 2])
                 print(x_transposed.shape)
                 # [3L, 2L, 4L]
-    
+
         """
         ...
 
     def unstack(self, axis=0, num=None):
         """
         This layer unstacks input Tensor :code:`x` into several Tensors along :code:`axis`.
-    
+
         If :code:`axis` < 0, it would be replaced with :code:`axis+rank(x)`.
         If :code:`num` is None, it would be inferred from :code:`x.shape[axis]`,
         and if :code:`x.shape[axis]` <= 0 or is unknown, :code:`ValueError` is
         raised.
-    
+
         Args:
             axis (int): The axis along which the input is unstacked.
             num (int|None): The number of output variables.
-    
+
         Returns:
             list(Tensor), The unstacked Tensors list. The list elements are N-D Tensors of data types float32, float64, int32, int64.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
                 x = paddle.ones(name='x', shape=[2, 3, 5], dtype='float32')  # create a tensor with shape=[2, 3, 5]
                 y = paddle.unstack(x, axis=1)  # unstack with second axis, which results 3 tensors with shape=[2, 5]
-    
+
         """
         ...
 
@@ -191,30 +191,30 @@ class Tensor:
         which represents the number of integers each shard can hold. So for the
         i'th shard, it can hold values in the range [i*shard_size, (i+1)*shard_size).
         ::
-    
+
             shard_size = (index_num + nshards - 1) // nshards
-    
+
         For each value `v` in `input`, we reset it to a new value according to the
         following formula:
         ::
-    
+
             v = v - shard_id * shard_size if shard_id * shard_size <= v < (shard_id+1) * shard_size else ignore_value
-    
+
         That is, the value `v` is set to the new offset within the range represented by the shard `shard_id`
         if it in the range. Otherwise, we reset it to be `ignore_value`.
-    
+
         Args:
             index_num (int): An integer represents the integer above the maximum value of `input`.
             nshards (int): The number of shards.
             shard_id (int): The index of the current shard.
             ignore_value (int): An integer value out of sharded index range.
-    
+
         Returns:
             Tensor.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
                 label = paddle.to_tensor([[16], [1]], "int64")
                 shard_label = paddle.shard_index(input=label,
@@ -228,24 +228,24 @@ class Tensor:
 
     def concat(self, axis=0, name=None):
         """
-    
+
         Concatenates the input along the axis.
-    
+
         Args:
             axis (int|Tensor, optional): Specify the axis to operate on the input Tensors.
                 It's a scalar with data type int or a Tensor with shape [1] and data type int32
                 or int64. The effective range is [-R, R), where R is Rank(x). When ``axis < 0``,
                 it works the same way as ``axis+R``. Default is 0.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, A Tensor with the same data type as ``x``.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x1 = paddle.to_tensor([[1, 2, 3],
                                        [4, 5, 6]])
                 x2 = paddle.to_tensor([[11, 12, 13],
@@ -272,21 +272,21 @@ class Tensor:
     def broadcast_tensors(self, name=None):
         """
         Broadcast a list of tensors following broadcast semantics
-    
+
         Note:
             If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
-    
+
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             list(Tensor), The list of broadcasted tensors following the same order as ``input``.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
                 x1 = paddle.rand([1, 2, 3, 4]).astype('float32')
                 x2 = paddle.rand([1, 2, 1, 4]).astype('float32')
@@ -299,24 +299,24 @@ class Tensor:
     def flip(self, axis, name=None):
         """
         Reverse the order of a n-D tensor along given axis in axis.
-    
+
         Args:
             axis (list|tuple|int): The axis(axes) to flip on. Negative indices for indexing from the end are accepted.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, Tensor or LoDTensor calculated by flip layer. The data type is same with input x.
-    
+
         Examples:
             .. code-block:: python
-    
+
               import paddle
-    
+
               image_shape=(3, 2, 2)
               img = paddle.arange(image_shape[0] * image_shape[1] * image_shape[2]).reshape(image_shape)
               tmp = paddle.flip(img, [0,1])
               print(tmp) # [[[10,11],[8, 9]], [[6, 7],[4, 5]], [[2, 3],[0, 1]]]
-    
+
               out = paddle.flip(tmp,-1)
               print(out) # [[[11,10],[9, 8]], [[7, 6],[5, 4]], [[3, 2],[1, 0]]]
         """
@@ -325,37 +325,37 @@ class Tensor:
     def rot90(self, k=1, axes=[0, 1], name=None):
         """
         Rotate a n-D tensor by 90 degrees. The rotation direction and times are specified by axes and the absolute value of k. Rotation direction is from axes[0] towards axes[1] if k > 0, and from axes[1] towards axes[0] for k < 0.
-    
+
         Args:
             k (int, optional): Direction and number of times to rotate, default value: 1.
             axes (list|tuple, optional): Axes to rotate, dimension must be 2. default value: [0, 1].
             name (str, optional): The default value is None.  Normally there is no need for user to set this property.
                 For more information, please refer to :ref:`api_guide_Name` .
-    
+
         Returns:
             Tensor, Tensor or LoDTensor calculated by rot90 layer. The data type is same with input x.
-    
+
         Examples:
             .. code-block:: python
-    
+
               import paddle
-    
+
               data = paddle.arange(4)
               data = paddle.reshape(data, (2, 2))
               print(data)
               #[[0, 1],
               # [2, 3]]
-    
+
               y = paddle.rot90(data, 1, [0, 1])
               print(y)
               #[[1, 3],
               # [0, 2]]
-    
+
               y= paddle.rot90(data, -1, [0, 1])
               print(y)
               #[[2, 0],
               # [3, 1]]
-    
+
               data2 = paddle.arange(8)
               data2 = paddle.reshape(data2, (2,2,2))
               print(data2)
@@ -363,7 +363,7 @@ class Tensor:
               #  [2, 3]],
               # [[4, 5],
               #  [6, 7]]]
-    
+
               y = paddle.rot90(data2, 1, [1, 2])
               print(y)
               #[[[1, 3],
@@ -376,63 +376,63 @@ class Tensor:
     def flatten(self, start_axis=0, stop_axis=-1, name=None):
         r"""
         Flattens a contiguous range of axes in a tensor according to start_axis and stop_axis.
-    
+
         Note:
             The output Tensor will share data with origin Tensor and doesn't have a Tensor copy in ``dygraph`` mode.
             If you want to use the Tensor copy version, please use `Tensor.clone` like ``flatten_clone_x = x.flatten().clone()``.
-    
+
         For Example:
-    
+
         .. code-block:: text
-    
+
             Case 1:
-    
+
               Given
                 X.shape = (3, 100, 100, 4)
-    
+
               and
                 start_axis = 1
                 end_axis = 2
-    
+
               We get:
                 Out.shape = (3, 1000 * 100, 2)
-    
+
             Case 2:
-    
+
               Given
                 X.shape = (3, 100, 100, 4)
-    
+
               and
                 start_axis = 0
                 stop_axis = -1
-    
+
               We get:
                 Out.shape = (3 * 100 * 100 * 4)
-    
+
         Args:
             start_axis (int): the start axis to flatten
             stop_axis (int): the stop axis to flatten
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, A tensor with the contents of the input tensor, with input \
                       axes flattened by indicated start axis and end axis. \
                       A Tensor with data type same as input x.
-    
+
         Examples:
-    
+
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 image_shape=(2, 3, 4, 4)
-    
+
                 x = paddle.arange(end=image_shape[0] * image_shape[1] * image_shape[2] * image_shape[3])
                 img = paddle.reshape(x, image_shape)
-    
+
                 out = paddle.flatten(img, start_axis=1, stop_axis=2)
                 # out shape is [2, 12, 4]
-    
+
                 # out shares data with img in dygraph mode
                 img[0, 0, 0, 0] = -1
                 print(out[0, 0, 0]) # [-1]
@@ -452,23 +452,23 @@ class Tensor:
         roll beyond the last position are re-introduced at the first according to 'shifts'.
         If a axis is not specified,
         the tensor will be flattened before rolling and then restored to the original shape.
-    
+
         Args:
             shifts (int|list|tuple): The number of places by which the elements
                                of the `x` tensor are shifted.
             axis (int|list|tuple, optional): axis(axes) along which to roll. Default: None
             name(str, optional): The default value is None.  Normally there is no need for user to set this property.
                     For more information, please refer to :ref:`api_guide_Name` .
-    
-    
+
+
         Returns:
             Tensor, A Tensor with same data type as `x`.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[1.0, 2.0, 3.0],
                                       [4.0, 5.0, 6.0],
                                       [7.0, 8.0, 9.0]])
@@ -494,16 +494,16 @@ class Tensor:
         """
         Stacks all the input tensors ``x`` along ``axis`` dimemsion.
         All tensors must be of the same shape and same dtype.
-    
+
         For example, given N tensors of shape [A, B], if ``axis == 0``, the shape of stacked
         tensor is [N, A, B]; if ``axis == 1``, the shape of stacked
         tensor is [A, N, B], etc.
-    
-    
+
+
         .. code-block:: text
-    
+
             Case 1:
-    
+
               Input:
                 x[0].shape = [1, 2]
                 x[0].data = [ [1.0 , 2.0 ] ]
@@ -511,19 +511,19 @@ class Tensor:
                 x[1].data = [ [3.0 , 4.0 ] ]
                 x[2].shape = [1, 2]
                 x[2].data = [ [5.0 , 6.0 ] ]
-    
+
               Attrs:
                 axis = 0
-    
+
               Output:
                 Out.dims = [3, 1, 2]
                 Out.data =[ [ [1.0, 2.0] ],
                             [ [3.0, 4.0] ],
                             [ [5.0, 6.0] ] ]
-    
-    
+
+
             Case 2:
-    
+
               Input:
                 x[0].shape = [1, 2]
                 x[0].data = [ [1.0 , 2.0 ] ]
@@ -531,42 +531,42 @@ class Tensor:
                 x[1].data = [ [3.0 , 4.0 ] ]
                 x[2].shape = [1, 2]
                 x[2].data = [ [5.0 , 6.0 ] ]
-    
-    
+
+
               Attrs:
                 axis = 1 or axis = -2  # If axis = -2, axis = axis+ndim(x[0])+1 = -2+2+1 = 1.
-    
+
               Output:
                 Out.shape = [1, 3, 2]
                 Out.data =[ [ [1.0, 2.0]
                               [3.0, 4.0]
                               [5.0, 6.0] ] ]
-    
+
         Args:
             axis (int, optional): The axis along which all inputs are stacked. ``axis`` range is ``[-(R+1), R+1)``,
                                   where ``R`` is the number of dimensions of the first input tensor ``x[0]``.
                                   If ``axis < 0``, ``axis = axis+R+1``. The default value of axis is 0.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, The stacked tensor with same data type as input.
-    
+
         Example:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x1 = paddle.to_tensor([[1.0, 2.0]])
                 x2 = paddle.to_tensor([[3.0, 4.0]])
                 x3 = paddle.to_tensor([[5.0, 6.0]])
-    
+
                 out = paddle.stack([x1, x2, x3], axis=0)
                 print(out.shape)  # [3, 1, 2]
                 print(out)
                 # [[[1., 2.]],
                 #  [[3., 4.]],
                 #  [[5., 6.]]]
-    
+
             out = paddle.stack([x1, x2, x3], axis=-2)
             print(out.shape)  # [1, 3, 2]
             print(out)
@@ -579,7 +579,7 @@ class Tensor:
     def split(self, num_or_sections, axis=0, name=None):
         """
         Split the input tensor into multiple sub-Tensors.
-    
+
         Args:
             num_or_sections (int|list|tuple): If ``num_or_sections`` is an int, then ``num_or_sections``
                 indicates the number of equal sized sub-Tensors that the ``x`` will be divided into.
@@ -593,30 +593,30 @@ class Tensor:
                 For more information, please refer to :ref:`api_guide_Name` .
         Returns:
             list(Tensor), The list of segmented Tensors.
-    
+
         Example:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 # x is a Tensor of shape [3, 9, 5]
                 x = paddle.rand([3, 9, 5])
-    
+
                 out0, out1, out2 = paddle.split(x, num_or_sections=3, axis=1)
                 print(out0.shape)  # [3, 3, 5]
                 print(out1.shape)  # [3, 3, 5]
                 print(out2.shape)  # [3, 3, 5]
-    
+
                 out0, out1, out2 = paddle.split(x, num_or_sections=[2, 3, 4], axis=1)
                 print(out0.shape)  # [3, 2, 5]
                 print(out1.shape)  # [3, 3, 5]
                 print(out2.shape)  # [3, 4, 5]
-    
+
                 out0, out1, out2 = paddle.split(x, num_or_sections=[2, 3, -1], axis=1)
                 print(out0.shape)  # [3, 2, 5]
                 print(out1.shape)  # [3, 3, 5]
                 print(out2.shape)  # [3, 4, 5]
-    
+
                 # axis is negative, the real axis is (rank(x) + axis)=1
                 out0, out1, out2 = paddle.split(x, num_or_sections=3, axis=-2)
                 print(out0.shape)  # [3, 3, 5]
@@ -628,7 +628,7 @@ class Tensor:
     def vsplit(self, num_or_sections, name=None):
         """
         Split the input tensor into multiple sub-Tensors along the vertical axis, which is equivalent to ``paddle.split`` with ``axis=0``.
-    
+
         Args:
             num_or_sections (int|list|tuple): If ``num_or_sections`` is an int, then ``num_or_sections``
                 indicates the number of equal sized sub-Tensors that the ``x`` will be divided into.
@@ -639,12 +639,12 @@ class Tensor:
                 For more information, please refer to :ref:`api_guide_Name` .
         Returns:
             list[Tensor], The list of segmented Tensors.
-    
+
         Example:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 # x is a Tensor of shape [8, 6, 7]
                 x = paddle.rand([8, 6, 7])
                 out0, out1, out2 = paddle.vsplit(x, num_or_sections=2)
@@ -664,74 +664,74 @@ class Tensor:
     def squeeze(self, axis=None, name=None):
         """
         Squeeze the dimension(s) of size 1 of input tensor x's shape.
-    
+
         Note that the output Tensor will share data with origin Tensor and doesn't have a
         Tensor copy in ``dygraph`` mode. If you want to use the Tensor copy version,
         please use `Tensor.clone` like ``squeeze_clone_x = x.squeeze().clone()``.
-    
+
         If axis is provided, it will remove the dimension(s) by given axis that of size 1.
         If the dimension of given axis is not of size 1, the dimension remain unchanged.
         If axis is not provided, all dims equal of size 1 will be removed.
-    
+
         .. code-block:: text
-    
+
             Case1:
-    
+
               Input:
                 x.shape = [1, 3, 1, 5]  # If axis is not provided, all dims equal of size 1 will be removed.
                 axis = None
               Output:
                 out.shape = [3, 5]
-    
+
             Case2:
-    
+
               Input:
                 x.shape = [1, 3, 1, 5]  # If axis is provided, it will remove the dimension(s) by given axis that of size 1.
                 axis = 0
               Output:
                 out.shape = [3, 1, 5]
-    
+
             Case4:
-    
+
               Input:
                 x.shape = [1, 3, 1, 5]  # If the dimension of one given axis (3) is not of size 1, the dimension remain unchanged.
                 axis = [0, 2, 3]
               Output:
                 out.shape = [3, 5]
-    
+
             Case4:
-    
+
               Input:
                 x.shape = [1, 3, 1, 5]  # If axis is negative, axis = axis + ndim (number of dimensions in x).
                 axis = [-2]
               Output:
                 out.shape = [1, 3, 5]
-    
+
         Args:
             axis (int|list|tuple, optional): An integer or list/tuple of integers, indicating the dimensions to be squeezed. Default is None.
                               The range of axis is :math:`[-ndim(x), ndim(x))`.
                               If axis is negative, :math:`axis = axis + ndim(x)`.
                               If axis is None, all the dimensions of x of size 1 will be removed.
             name (str, optional): Please refer to :ref:`api_guide_Name`, Default None.
-    
+
         Returns:
             Tensor, Squeezed Tensor with the same data type as input Tensor.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.rand([5, 1, 10])
                 output = paddle.squeeze(x, axis=1)
-    
+
                 print(x.shape)  # [5, 1, 10]
                 print(output.shape)  # [5, 10]
-    
+
                 # output shares data with x in dygraph mode
                 x[0, 0, 0] = 10.
                 print(output[0, 0]) # [10.]
-    
+
         """
         ...
 
@@ -751,11 +751,11 @@ class Tensor:
     ):
         """
         Eliminates all but the first element from every consecutive group of equivalent elements.
-    
+
         Note:
             This function is different from :ref:`api_paddle_unique` in the sense that this function
             only eliminates consecutive duplicate values. This semantics is similar to :ref:`api_paddle_unique` in C++.
-    
+
         Args:
             return_inverse(bool, optional): If True, also return the indices for where elements in
                 the original input ended up in the returned unique consecutive tensor. Default is False.
@@ -767,7 +767,7 @@ class Tensor:
                 Default: int64.
             name(str, optional): Name for the operation. For more information, please refer to
                 :ref:`api_guide_Name`. Default is None.
-    
+
         Returns:
             - out (Tensor), the unique consecutive tensor for x.
             - inverse (Tensor), the element of the input tensor corresponds to
@@ -775,18 +775,18 @@ class Tensor:
                 inverse is provided only if return_inverse is True.
             - counts (Tensor), the counts of the every unique consecutive element in the input tensor.
                 counts is provided only if return_counts is True.
-    
+
         Example:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([1, 1, 2, 2, 3, 1, 1, 2])
                 output = paddle.unique_consecutive(x) #
                 print(output)
                 # Tensor(shape=[5], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                 #        [1, 2, 3, 1, 2])
-    
+
                 _, inverse, counts = paddle.unique_consecutive(x, return_inverse=True, return_counts=True)
                 print(inverse)
                 # Tensor(shape=[8], dtype=int64, place=Place(gpu:0), stop_gradient=True,
@@ -794,7 +794,7 @@ class Tensor:
                 print(counts)
                 # Tensor(shape=[5], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                 #        [2, 2, 1, 2, 1])
-    
+
                 x = paddle.to_tensor([[2, 1, 3], [3, 0, 1], [2, 1, 3], [2, 1, 3]])
                 output = paddle.unique_consecutive(x, axis=0) #
                 print(output)
@@ -802,7 +802,7 @@ class Tensor:
                 #        [[2, 1, 3],
                 #         [3, 0, 1],
                 #         [2, 1, 3]])
-    
+
                 x = paddle.to_tensor([[2, 1, 3], [3, 0, 1], [2, 1, 3], [2, 1, 3]])
                 output = paddle.unique_consecutive(x, axis=0) #
                 print(output)
@@ -823,7 +823,7 @@ class Tensor:
     ):
         r"""
         Returns the unique elements of `x` in ascending order.
-    
+
         Args:
             return_index(bool, optional): If True, also return the indices of the input tensor that
                 result in the unique Tensor.
@@ -836,23 +836,23 @@ class Tensor:
                 Default: int64.
             name(str, optional): Name for the operation. For more information, please refer to
                 :ref:`api_guide_Name`. Default: None.
-    
+
         Returns:
             tuple (out, indices, inverse, counts). `out` is the unique tensor for `x`. `indices` is \
                 provided only if `return_index` is True. `inverse` is provided only if `return_inverse` \
                 is True. `counts` is provided only if `return_counts` is True.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([2, 3, 3, 1, 5, 3])
                 unique = paddle.unique(x)
                 print(unique)
                 # Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                 #        [1, 2, 3, 5])
-    
+
                 _, indices, inverse, counts = paddle.unique(x, return_index=True, return_inverse=True, return_counts=True)
                 print(indices)
                 # Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
@@ -863,13 +863,13 @@ class Tensor:
                 print(counts)
                 # Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                 #        [1, 1, 3, 1])
-    
+
                 x = paddle.to_tensor([[2, 1, 3], [3, 0, 1], [2, 1, 3]])
                 unique = paddle.unique(x)
                 print(unique)
                 # Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                 #        [0, 1, 2, 3])
-    
+
                 unique = paddle.unique(x, axis=0)
                 print(unique)
                 # Tensor(shape=[2, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
@@ -883,45 +883,45 @@ class Tensor:
         Insert single-dimensional entries to the shape of input Tensor ``x``. Takes one
         required argument axis, a dimension or list of dimensions that will be inserted.
         Dimension indices in axis are as seen in the output tensor.
-    
+
         Note that the output Tensor will share data with origin Tensor and doesn't have a
         Tensor copy in ``dygraph`` mode. If you want to use the Tensor copy version,
         please use `Tensor.clone` like ``unsqueeze_clone_x = x.unsqueeze(-1).clone()``.
-    
+
         Args:
             axis (int|list|tuple|Tensor): Indicates the dimensions to be inserted. The data type is ``int32`` .
                                         If ``axis`` is a list or tuple, the elements of it should be integers or Tensors with shape [1].
                                         If ``axis`` is a Tensor, it should be an 1-D Tensor .
                                         If ``axis`` is negative, ``axis = axis + ndim(x) + 1``.
             name (str|None): Name for this layer. Please refer to :ref:`api_guide_Name`, Default None.
-    
+
         Returns:
             Tensor, Unsqueezed Tensor with the same data type as input Tensor.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.rand([5, 10])
                 print(x.shape)  # [5, 10]
-    
+
                 out1 = paddle.unsqueeze(x, axis=0)
                 print(out1.shape)  # [1, 5, 10]
-    
+
                 out2 = paddle.unsqueeze(x, axis=[0, 2])
                 print(out2.shape)  # [1, 5, 1, 10]
-    
+
                 axis = paddle.to_tensor([0, 1, 2])
                 out3 = paddle.unsqueeze(x, axis=axis)
                 print(out3.shape)  # [1, 1, 1, 5, 10]
-    
+
                 # out1, out2, out3 share data with x in dygraph mode
                 x[0, 0] = 10.
                 print(out1[0, 0, 0]) # [10.]
                 print(out2[0, 0, 0, 0]) # [10.]
                 print(out3[0, 0, 0, 0, 0]) # [10.]
-    
+
         """
         ...
 
@@ -936,39 +936,39 @@ class Tensor:
         """
         Output is obtained by gathering entries of ``axis``
         of ``x`` indexed by ``index`` and concatenate them together.
-    
+
         .. code-block:: text
-    
-    
+
+
                     Given:
-    
+
                     x = [[1, 2],
                          [3, 4],
                          [5, 6]]
-    
+
                     index = [1, 2]
                     axis=[0]
-    
+
                     Then:
-    
+
                     out = [[3, 4],
                            [5, 6]]
-    
+
         Args:
             index (Tensor): The index input tensor with rank=0 or rank=1. Data type is int32 or int64.
             axis (Tensor|int, optional): The axis of input to be gathered, it's can be int or a Tensor with data type is int32 or int64. The default value is None, if None, the ``axis`` is 0.
             name (str, optional): The default value is None.  Normally there is no need for user to set this property.
                 For more information, please refer to :ref:`api_guide_Name` .
-    
+
         Returns:
             output (Tensor), If the index is a 1-D tensor, the output is a tensor with the same shape as ``x``. If the index is a 0-D tensor, the output will reduce the dimension where the axis pointing.
-    
+
         Examples:
-    
+
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 input = paddle.to_tensor([[1,2],[3,4],[5,6]])
                 index = paddle.to_tensor([0,1])
                 output = paddle.gather(input, index, axis=0)
@@ -978,28 +978,28 @@ class Tensor:
 
     def unbind(self, axis=0):
         """
-    
+
         Removes a tensor dimension, then split the input tensor into multiple sub-Tensors.
-    
+
         Args:
             axis (int32|int64, optional): A scalar with type ``int32|int64`` shape [1]. The dimension along which to unbind.
                 If :math:`axis < 0`, the dimension to unbind along is :math:`rank(input) + axis`. Default is 0.
         Returns:
             list(Tensor), The list of segmented Tensor variables.
-    
+
         Example:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 # input is a Tensor which shape is [3, 4, 5]
                 input = paddle.rand([3, 4, 5])
-    
+
                 [x0, x1, x2] = paddle.unbind(input, axis=0)
                 # x0.shape [4, 5]
                 # x1.shape [4, 5]
                 # x2.shape [4, 5]
-    
+
                 [x0, x1, x2, x3] = paddle.unbind(input, axis=1)
                 # x0.shape [3, 5]
                 # x1.shape [3, 5]
@@ -1012,9 +1012,9 @@ class Tensor:
         """
         **Scatter Layer**
         Output is obtained by updating the input on selected indices based on updates.
-    
+
         .. code-block:: python
-    
+
             import numpy as np
             #input:
             x = np.array([[1, 1], [2, 2], [3, 3]])
@@ -1035,37 +1035,37 @@ class Tensor:
             # output:
             out = np.array([[3, 3], [6, 6], [1, 1]])
             out.shape # [3, 2]
-    
+
         **NOTICE**: The order in which updates are applied is nondeterministic,
         so the output will be nondeterministic if index contains duplicates.
-    
+
         Args:
             index (Tensor): The index is a 1-D or 0-D Tensor. Data type can be int32, int64. The length of index cannot exceed updates's length, and the value in index cannot exceed input's length.
             updates (Tensor): Update input with updates parameter based on index. When the index is a 1-D tensor, the updates shape should be the same as input, and dim value with dim > 1 should be the same as input. When the index is a 0-D tensor, the updates should be a (N-1)-D tensor, the ith dim of the updates should be queal with the (i+1)th dim of the input.
             overwrite (bool): The mode that updating the output when there are same indices.
-    
+
                 If True, use the overwrite mode to update the output of the same index,
                 if False, use the accumulate mode to update the output of the same index.Default value is True.
-    
+
             name(str, optional): The default value is None. Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
-    
+
         Returns:
             Tensor, The output is a Tensor with the same shape as x.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[1, 1], [2, 2], [3, 3]], dtype='float32')
                 index = paddle.to_tensor([2, 1, 0, 1], dtype='int64')
                 updates = paddle.to_tensor([[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32')
-    
+
                 output1 = paddle.scatter(x, index, updates, overwrite=False)
                 # [[3., 3.],
                 #  [6., 6.],
                 #  [1., 1.]]
-    
+
                 output2 = paddle.scatter(x, index, updates, overwrite=True)
                 # CPU device:
                 # [[3., 3.],
@@ -1092,33 +1092,33 @@ class Tensor:
 
     def scatter_nd_add(self, index, updates, name=None):
         r"""
-    
+
         Output is obtained by applying sparse addition to a single value
         or slice in a Tensor.
-    
+
         :attr:`x` is a Tensor with ndim :math:`R`
         and :attr:`index` is a Tensor with ndim :math:`K` . Thus, :attr:`index`
         has shape :math:`[i_0, i_1, ..., i_{K-2}, Q]` where :math:`Q \leq R` . :attr:`updates`
         is a Tensor with ndim :math:`K - 1 + R - Q` and its
         shape is :math:`index.shape[:-1] + x.shape[index.shape[-1]:]` .
-    
+
         According to the :math:`[i_0, i_1, ..., i_{K-2}]` of :attr:`index` ,
         add the corresponding :attr:`updates` slice to the :attr:`x` slice
         which is obtained by the last one dimension of :attr:`index` .
-    
+
         .. code-block:: text
-    
+
             Given:
-    
+
             * Case 1:
                 x = [0, 1, 2, 3, 4, 5]
                 index = [[1], [2], [3], [1]]
                 updates = [9, 10, 11, 12]
-    
+
               we get:
-    
+
                 output = [0, 22, 12, 14, 4, 5]
-    
+
             * Case 2:
                 x = [[65, 17], [-14, -25]]
                 index = [[], []]
@@ -1127,33 +1127,33 @@ class Tensor:
                 x.shape = (2, 2)
                 index.shape = (2, 0)
                 updates.shape = (2, 2, 2)
-    
+
               we get:
-    
+
                 output = [[67, 19], [-16, -27]]
-    
+
         Args:
             index (Tensor): The index input with ndim > 1 and index.shape[-1] <= x.ndim.
                               Its dtype should be int32 or int64 as it is used as indexes.
             updates (Tensor): The updated value of scatter_nd_add op, and it must have the same dtype
                                 as x. It must have the shape index.shape[:-1] + x.shape[index.shape[-1]:].
             name (str|None): The output tensor name. If set None, the layer will be named automatically.
-    
+
         Returns:
             output (Tensor), The output is a tensor with the same shape and dtype as x.
-    
+
         Examples:
-    
+
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.rand(shape=[3, 5, 9, 10], dtype='float32')
                 updates = paddle.rand(shape=[3, 9, 10], dtype='float32')
                 index = paddle.to_tensor([[1, 1],
                                         [0, 1],
                                         [1, 3]], dtype='int64')
-    
+
                 output = paddle.scatter_nd_add(x, index, updates)
                 print(output.shape)
                 # [3, 5, 9, 10]
@@ -1163,7 +1163,7 @@ class Tensor:
     def scatter_nd(self, updates, shape, name=None):
         """
         **Scatter_nd Layer**
-    
+
         Output is obtained by scattering the :attr:`updates` in a new tensor according
         to :attr:`index` . This op is similar to :code:`scatter_nd_add`, except the
         tensor of :attr:`shape` is zero-initialized. Correspondingly, :code:`scatter_nd(index, updates, shape)`
@@ -1172,28 +1172,28 @@ class Tensor:
         Because of the numerical approximation issues, the different order of repeated elements
         in :attr:`index` may cause different results. The specific calculation method can be
         seen :code:`scatter_nd_add` . This op is the inverse of the :code:`gather_nd` op.
-    
+
         Args:
             updates (Tensor): The updated value of scatter_nd op. Its dtype should be float32, float64.
                                 It must have the shape index.shape[:-1] + shape[index.shape[-1]:]
             shape(tuple|list): Shape of output tensor.
             name (str|None): The output Tensor name. If set None, the layer will be named automatically.
-    
+
         Returns:
             output (Tensor), The output is a tensor with the same type as :attr:`updates` .
-    
+
         Examples:
-    
+
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 index = paddle.to_tensor([[1, 1],
                                         [0, 1],
                                         [1, 3]], dtype="int64")
                 updates = paddle.rand(shape=[3, 9, 10], dtype='float32')
                 shape = [3, 5, 9, 10]
-    
+
                 output = paddle.scatter_nd(index, updates, shape)
         """
         ...
@@ -1201,7 +1201,7 @@ class Tensor:
     def chunk(self, chunks, axis=0, name=None):
         """
         Split the input tensor into multiple sub-Tensors.
-    
+
         Args:
             chunks(int): The number of tensor to be split along the certain axis.
             axis (int|Tensor, optional): The axis along which to split, it can be a scalar with type
@@ -1211,20 +1211,20 @@ class Tensor:
                 For more information, please refer to :ref:`api_guide_Name` .
         Returns:
             list(Tensor), The list of segmented Tensors.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.rand([3, 9, 5])
-    
+
                 out0, out1, out2 = paddle.chunk(x, chunks=3, axis=1)
                 # out0.shape [3, 3, 5]
                 # out1.shape [3, 3, 5]
                 # out2.shape [3, 3, 5]
-    
-    
+
+
                 # axis is negative, the real axis is (rank(x) + axis) which real
                 # value is 1.
                 out0, out1, out2 = paddle.chunk(x, chunks=3, axis=-2)
@@ -1236,38 +1236,38 @@ class Tensor:
 
     def tile(self, repeat_times, name=None):
         """
-    
+
         Construct a new Tensor by repeating ``x`` the number of times given by ``repeat_times``.
         After tiling, the value of the i'th dimension of the output is equal to ``x.shape[i]*repeat_times[i]``.
-    
+
         Both the number of dimensions of ``x`` and the number of elements in ``repeat_times`` should be less than or equal to 6.
-    
+
         Args:
             repeat_times (list|tuple|Tensor): The number of repeating times. If repeat_times is a list or tuple, all its elements
                 should be integers or 1-D Tensors with the data type int32. If repeat_times is a Tensor, it should be an 1-D Tensor with the data type int32.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             N-D Tensor. The data type is the same as ``x``. The size of the i-th dimension is equal to ``x[i] * repeat_times[i]``.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 data = paddle.to_tensor([1, 2, 3], dtype='int32')
                 out = paddle.tile(data, repeat_times=[2, 1])
                 print(out)
                 # Tensor(shape=[2, 3], dtype=int32, place=Place(gpu:0), stop_gradient=True,
                 #        [[1, 2, 3],
                 #         [1, 2, 3]])
-    
+
                 out = paddle.tile(data, repeat_times=(2, 2))
                 print(out)
                 # Tensor(shape=[2, 6], dtype=int32, place=Place(gpu:0), stop_gradient=True,
                 #        [[1, 2, 3, 1, 2, 3],
                 #         [1, 2, 3, 1, 2, 3]])
-    
+
                 repeat_times = paddle.to_tensor([1, 2], dtype='int32')
                 out = paddle.tile(data, repeat_times=repeat_times)
                 print(out)
@@ -1278,23 +1278,23 @@ class Tensor:
 
     def expand_as(self, y, name=None):
         """
-    
+
         Expand the input tensor ``x`` to the same shape as the input tensor ``y``.
-    
+
         Both the number of dimensions of ``x`` and ``y`` must be less than or equal to 6, and the number of dimensions of ``y`` must be greather than or equal to that of ``x``. The dimension to expand must have a value of 1.
-    
+
         Args:
             y (Tensor): The input tensor that gives the shape to expand to.
             name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             N-D Tensor, A Tensor with the same shape as ``y``. The data type is the same as ``x``.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 data_x = paddle.to_tensor([1, 2, 3], 'int32')
                 data_y = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], 'int32')
                 out = paddle.expand_as(data_x, data_y)
@@ -1307,12 +1307,12 @@ class Tensor:
 
     def broadcast_to(self, shape, name=None):
         """
-    
+
         Broadcast the input tensor to a given shape.
-    
+
         Both the number of dimensions of ``x`` and the number of elements in ``shape`` should be less than or equal to 6. The dimension to broadcast to must have a value 1.
-    
-    
+
+
         Args:
             shape (list|tuple|Tensor): The result shape after broadcasting. The data type is int32. If shape is a list or tuple, all its elements
                 should be integers or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32.
@@ -1320,12 +1320,12 @@ class Tensor:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
         Returns:
             N-D Tensor, A Tensor with the given shape. The data type is the same as ``x``.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 data = paddle.to_tensor([1, 2, 3], dtype='int32')
                 out = paddle.broadcast_to(data, shape=[2, 3])
                 print(out)
@@ -1335,26 +1335,26 @@ class Tensor:
 
     def expand(self, shape, name=None):
         """
-    
+
         Expand the input tensor to a given shape.
-    
+
         Both the number of dimensions of ``x`` and the number of elements in ``shape`` should be less than or equal to 6. And the number of dimensions of ``x`` should be less than the number of elements in ``shape``. The dimension to expand must have a value 1.
-    
-    
+
+
         Args:
             shape (list|tuple|Tensor): The result shape after expanding. The data type is int32. If shape is a list or tuple, all its elements
                 should be integers or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32.
                 The value -1 in shape means keeping the corresponding dimension unchanged.
             name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
-    
+
         Returns:
             N-D Tensor, A Tensor with the given shape. The data type is the same as ``x``.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 data = paddle.to_tensor([1, 2, 3], dtype='int32')
                 out = paddle.expand(data, shape=[2, 3])
                 print(out)
@@ -1365,51 +1365,51 @@ class Tensor:
     def reshape(self, shape, name=None):
         """
         Changes the shape of ``x`` without changing its data.
-    
+
         Note that the output Tensor will share data with origin Tensor and doesn't
         have a Tensor copy in ``dygraph`` mode.
         If you want to use the Tensor copy version, please use `Tensor.clone` like
         ``reshape_clone_x = x.reshape([-1]).clone()``.
-    
+
         Some tricks exist when specifying the target shape.
-    
+
             - 1. -1 means the value of this dimension is inferred from the total element number of x and remaining dimensions. Thus one and only one dimension can be set -1.
-    
+
             - 2. 0 means the actual dimension value is going to be copied from the corresponding dimension of x. The index of 0s in shape can not exceed the dimension of x.
-    
+
         Here are some examples to explain it.
-    
+
             - 1. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape is [6, 8], the reshape operator will transform x into a 2-D tensor with shape [6, 8] and leaving x's data unchanged.
-    
+
             - 2. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape specified is [2, 3, -1, 2], the reshape operator will transform x into a 4-D tensor with shape [2, 3, 4, 2] and leaving x's data unchanged. In this case, one dimension of the target shape is set to -1, the value of this dimension is inferred from the total element number of x and remaining dimensions.
-    
+
             - 3. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape is [-1, 0, 3, 2], the reshape operator will transform x into a 4-D tensor with shape [2, 4, 3, 2] and leaving x's data unchanged. In this case, besides -1, 0 means the actual dimension value is going to be copied from the corresponding dimension of x.
-    
+
         Args:
             shape (list|tuple|Tensor): Define the target shape. At most one dimension of the target shape can be -1.
                             The data type is ``int32`` . If ``shape`` is a list or tuple, the elements of it should be integers or Tensors with shape [1].
                             If ``shape`` is an Tensor, it should be an 1-D Tensor .
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, A reshaped Tensor with the same data type as ``x``.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.rand([2, 4, 6], dtype="float32")
                 positive_four = paddle.full([1], 4, "int32")
-    
+
                 out = paddle.reshape(x, [-1, 0, 3, 2])
                 print(out)
                 # the shape is [2,4,3,2].
-    
+
                 out = paddle.reshape(x, shape=[positive_four, 12])
                 print(out)
                 # the shape of out_2 is [4, 12].
-    
+
                 shape_tensor = paddle.to_tensor([8, 6], dtype=paddle.int32)
                 out = paddle.reshape(x, shape=shape_tensor)
                 print(out.shape)
@@ -1418,7 +1418,7 @@ class Tensor:
                 x[0, 0, 0] = 10.
                 print(out[0, 0])
                 # the value is [10.]
-    
+
         """
         ...
 
@@ -1431,22 +1431,22 @@ class Tensor:
 
     def gather_nd(self, index, name=None):
         """
-    
+
         This function is actually a high-dimensional extension of :code:`gather`
         and supports for simultaneous indexing by multiple axes. :attr:`index` is a
         K-dimensional integer tensor, which is regarded as a (K-1)-dimensional
         tensor of :attr:`index` into :attr:`input`, where each element defines
         a slice of params:
-    
+
         .. math::
-    
+
             output[(i_0, ..., i_{K-2})] = input[index[(i_0, ..., i_{K-2})]]
-    
+
         Obviously, :code:`index.shape[-1] <= input.rank` . And, the output tensor has
         shape :code:`index.shape[:-1] + input.shape[index.shape[-1]:]` .
-    
+
         .. code-block:: text
-    
+
                 Given:
                     x =  [[[ 0,  1,  2,  3],
                            [ 4,  5,  6,  7],
@@ -1455,50 +1455,50 @@ class Tensor:
                            [16, 17, 18, 19],
                            [20, 21, 22, 23]]]
                     x.shape = (2, 3, 4)
-    
+
                 * Case 1:
                     index = [[1]]
-    
+
                     gather_nd(x, index)
                              = [x[1, :, :]]
                              = [[12, 13, 14, 15],
                                 [16, 17, 18, 19],
                                 [20, 21, 22, 23]]
-    
+
                 * Case 2:
                     index = [[0,2]]
-    
+
                     gather_nd(x, index)
                              = [x[0, 2, :]]
                              = [8, 9, 10, 11]
-    
+
                 * Case 3:
                     index = [[1, 2, 3]]
-    
+
                     gather_nd(x, index)
                              = [x[1, 2, 3]]
                              = [23]
-    
+
         Args:
             index (Tensor): The index input with rank > 1, index.shape[-1] <= input.rank.
                             Its dtype should be int32, int64.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             output (Tensor), A tensor with the shape index.shape[:-1] + input.shape[index.shape[-1]:]
-    
+
         Examples:
-    
+
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[[1, 2], [3, 4], [5, 6]],
                                       [[7, 8], [9, 10], [11, 12]]])
                 index = paddle.to_tensor([[0, 1]])
-    
+
                 output = paddle.gather_nd(x, index) #[[3, 4]]
-    
+
         """
         ...
 
@@ -1517,9 +1517,9 @@ class Tensor:
         For slicing to the end of a dimension with unknown size, it is recommended
         to pass in INT_MAX. The size of ``axes`` must be equal to ``starts`` , ``ends`` and ``strides``.
         Following examples will explain how strided_slice works:
-    
+
         .. code-block:: text
-    
+
             Case1:
                 Given:
                     data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
@@ -1529,7 +1529,7 @@ class Tensor:
                     strides = [1, 1]
                 Then:
                     result = [ [5, 6, 7], ]
-    
+
             Case2:
                 Given:
                     data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
@@ -1548,7 +1548,7 @@ class Tensor:
                     strides = [1, 3]
                 Then:
                     result = [ [2], ]
-    
+
         Args:
             axes (list|tuple): The data type is ``int32`` . Axes that `starts` and `ends` apply to.
                                 It's optional. If it is not provides, it will be treated as :math:`[0,1,...,len(starts)-1]`.
@@ -1559,13 +1559,13 @@ class Tensor:
                     it should be integers or Tensors with shape [1]. If ``strides`` is an Tensor, it should be an 1-D Tensor .                                                                                  It represents slice step of corresponding axis in ``axes``.
             name(str, optional): The default value is None.  Normally there is no need for user to set this property.
                             For more information, please refer to :ref:`api_guide_Name` .
-    
+
         Returns:
             Tensor, A ``Tensor`` with the same dimension as ``x``. The data type is same as ``x``.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
                 x = paddle.zeros(shape=[3,4,5,6], dtype="float32")
                 # example 1:
@@ -1588,32 +1588,32 @@ class Tensor:
     def tensordot(self, y, axes=2, name=None):
         r"""
         This function computes a contraction, which sum the product of elements from two tensors along the given axes.
-    
+
         Args:
             y (Tensor): The right tensor for contraction with the same data type as ``x``.
             axes (int|tuple|list|Tensor, optional):  The axes to contract for ``x`` and ``y``, defaulted to integer ``2``.
-    
+
                 1. It could be a non-negative integer ``n``,
                    in which the function will sum over the last ``n`` axes of ``x`` and the first ``n`` axes of ``y`` in order.
-    
+
                 2. It could be a 1-d tuple or list with data type ``int``, in which ``x`` and ``y`` will be contracted along the same given axes.
                    For example, ``axes`` =[0, 1] applies contraction along the first two axes for ``x`` and the first two axes for ``y``.
-    
+
                 3. It could be a tuple or list containing one or two 1-d tuple|list|Tensor with data type ``int``.
                    When containing one tuple|list|Tensor, the data in tuple|list|Tensor specified the same axes for ``x`` and ``y`` to contract.
                    When containing two tuple|list|Tensor, the first will be applied to ``x`` and the second to ``y``.
                    When containing more than two tuple|list|Tensor, only the first two axis sequences will be used while the others will be ignored.
-    
+
                 4. It could be a tensor, in which the ``axes`` tensor will be translated to a python list
                    and applied the same rules described above to determine the contraction axes.
                    Note that the ``axes`` with Tensor type is ONLY available in Dygraph mode.
             name(str, optional): The default value is None.  Normally there is no need for user to set this property.
                                  For more information, please refer to :ref:`api_guide_Name` .
-    
+
         Return:
             Output (Tensor), The contraction result with the same data type as ``x`` and ``y``.
             In general, :math:`output.ndim = x.ndim + y.ndim - 2 \times n_{axes}`, where :math:`n_{axes}` denotes the number of axes to be contracted.
-    
+
         NOTES:
             1. This function supports tensor broadcast,
                the size in the corresponding dimensions of ``x`` and ``y`` should be equal, or applies to the broadcast rules.
@@ -1623,14 +1623,14 @@ class Tensor:
                For example, if ``axes`` =[[0, 1, 2, 3], [1, 0]],
                the axis sequence for ``x`` is [0, 1, 2, 3],
                while the corresponding axis sequences for ``y`` will be expanded from [1, 0] to [1, 0, 2, 3].
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 data_type = 'float64'
-    
+
                 # For two 2-d tensor x and y, the case axes=0 is equivalent to outer product.
                 # Note that tensordot supports empty axis sequence, so all the axes=0, axes=[], axes=[[]], and axes=[[],[]] are equivalent cases.
                 x = paddle.arange(4, dtype=data_type).reshape([2, 2])
@@ -1648,16 +1648,16 @@ class Tensor:
                 #
                 #       [[0., 3.],
                 #        [6., 9.]]]]
-    
-    
+
+
                 # For two 1-d tensor x and y, the case axes=1 is equivalent to inner product.
                 x = paddle.arange(10, dtype=data_type)
                 y = paddle.arange(10, dtype=data_type)
                 z1 = paddle.tensordot(x, y, axes=1)
                 z2 = paddle.dot(x, y)
                 # z1 = z2 = [285.]
-    
-    
+
+
                 # For two 2-d tensor x and y, the case axes=1 is equivalent to matrix multiplication.
                 x = paddle.arange(6, dtype=data_type).reshape([2, 3])
                 y = paddle.arange(12, dtype=data_type).reshape([3, 4])
@@ -1665,8 +1665,8 @@ class Tensor:
                 z2 = paddle.matmul(x, y)
                 # z1 = z2 =  [[20., 23., 26., 29.],
                 #             [56., 68., 80., 92.]]
-    
-    
+
+
                 # When axes is a 1-d int list, x and y will be contracted along the same given axes.
                 # Note that axes=[1, 2] is equivalent to axes=[[1, 2]], axes=[[1, 2], []], axes=[[1, 2], [1]], and axes=[[1, 2], [1, 2]].
                 x = paddle.arange(24, dtype=data_type).reshape([2, 3, 4])
@@ -1674,8 +1674,8 @@ class Tensor:
                 z = paddle.tensordot(x, y, axes=[1, 2])
                 # z =  [[506. , 1298., 2090.],
                 #       [1298., 3818., 6338.]]
-    
-    
+
+
                 # When axes is a list containing two 1-d int list, the first will be applied to x and the second to y.
                 x = paddle.arange(60, dtype=data_type).reshape([3, 4, 5])
                 y = paddle.arange(24, dtype=data_type).reshape([4, 3, 2])
@@ -1685,8 +1685,8 @@ class Tensor:
                 #       [4664., 5018.],
                 #       [4796., 5162.],
                 #       [4928., 5306.]]
-    
-    
+
+
                 # Thanks to the support of axes expansion, axes=[[0, 1, 3, 4], [1, 0, 3, 4]] can be abbreviated as axes= [[0, 1, 3, 4], [1, 0]].
                 x = paddle.arange(720, dtype=data_type).reshape([2, 3, 4, 5, 6])
                 y = paddle.arange(720, dtype=data_type).reshape([3, 2, 4, 5, 6])
@@ -1700,28 +1700,28 @@ class Tensor:
 
     def as_complex(self, name=None):
         """Transform a real tensor to a complex tensor.
-    
+
         The data type of the input tensor is 'float32' or 'float64', and the data
         type of the returned tensor is 'complex64' or 'complex128', respectively.
-    
+
         The shape of the input tensor is ``(* ,2)``, (``*`` means arbitary shape), i.e.
         the size of the last axis shoule be 2, which represent the real and imag part
         of a complex number. The shape of the returned tensor is ``(*,)``.
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, The output. Data type is 'complex64' or 'complex128', with the same precision as the input.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
                 x = paddle.arange(12, dtype=paddle.float32).reshape([2, 3, 2])
                 y = paddle.as_complex(x)
                 print(y)
-    
+
                 # Tensor(shape=[2, 3], dtype=complex64, place=Place(gpu:0), stop_gradient=True,
                 #        [[1j      , (2+3j)  , (4+5j)  ],
                 #         [(6+7j)  , (8+9j)  , (10+11j)]])
@@ -1730,34 +1730,34 @@ class Tensor:
 
     def as_real(self, name=None):
         """Transform a complex tensor to a real tensor.
-    
+
         The data type of the input tensor is 'complex64' or 'complex128', and the data
         type of the returned tensor is 'float32' or 'float64', respectively.
-    
+
         When the shape of the input tensor is ``(*, )``, (``*`` means arbitary shape),
         the shape of the output tensor is ``(*, 2)``, i.e. the shape of the output is
         the shape of the input appended by an extra ``2``.
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, The output. Data type is 'float32' or 'float64', with the same precision as the input.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
                 x = paddle.arange(12, dtype=paddle.float32).reshape([2, 3, 2])
                 y = paddle.as_complex(x)
                 z = paddle.as_real(y)
                 print(z)
-    
+
                 # Tensor(shape=[2, 3, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
                 #        [[[0. , 1. ],
                 #          [2. , 3. ],
                 #          [4. , 5. ]],
-    
+
                 #         [[6. , 7. ],
                 #          [8. , 9. ],
                 #          [10., 11.]]])
@@ -1766,35 +1766,35 @@ class Tensor:
 
     def repeat_interleave(self, repeats, axis=None, name=None):
         """
-    
+
         Returns a new tensor which repeats the ``x`` tensor along dimension ``axis`` using
         the entries in ``repeats`` which is a int or a Tensor.
-    
+
         Args:
             repeats (Tensor or int): The number of repetitions for each element. repeats is broadcasted to fit the shape of the given axis.
             axis (int, optional): The dimension in which we manipulate. Default: None, the output tensor is flatten.
             name(str, optional): The default value is None. Normally there is no
                 need for user to set this property. For more information, please
                 refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, A Tensor with same data type as ``x``.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
                 repeats  = paddle.to_tensor([3, 2, 1], dtype='int32')
-    
+
                 paddle.repeat_interleave(x, repeats, 1)
                 # [[1, 1, 1, 2, 2, 3],
                 #  [4, 4, 4, 5, 5, 6]]
-    
+
                 paddle.repeat_interleave(x, 2, 0)
                 # [[1, 2, 3], [1, 2, 3], [4, 5, 6], [4, 5, 6]]
-    
+
                 paddle.repeat_interleave(x, 2, None)
                 # [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6]
         """
@@ -1803,27 +1803,27 @@ class Tensor:
     def moveaxis(self, source, destination, name=None):
         """
         Move the axis of tensor from ``source`` position to ``destination`` position.
-    
+
         Other axis that have not been moved remain their original order.
-    
+
         Args:
             source(int|tuple|list): ``source`` position of axis that will be moved. Each element must be unique and integer.
             destination(int|tuple|list(int)): ``destination`` position of axis that has been moved. Each element must be unique and integer.
             name(str, optional): The default value is None.  Normally there is no need for user to set this
                 property. For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, A new tensor whose axis have been moved.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.ones([3, 2, 4])
                 paddle.moveaxis(x, [0, 1], [1, 2]).shape
                 # [4, 3, 2]
-    
+
                 x = paddle.ones([2, 3])
                 paddle.moveaxis(x, 0, 1).shape # equivalent to paddle.t(x)
                 # [3, 2]
@@ -1833,20 +1833,20 @@ class Tensor:
     def take_along_axis(self, indices, axis):
         """
         Take values from the input array by given indices matrix along the designated axis.
-    
+
         Args:
             indices (Tensor) : Indices to take along each 1d slice of arr. This must match the dimension of arr,
                 and need to broadcast against arr. Supported data type are int and int64.
             axis (int) : The axis to take 1d slices along.
-    
+
         Returns:
             Tensor, The indexed element, same dtype with arr
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7,8,9]])
                 index = paddle.to_tensor([[0]])
                 axis = 0
@@ -1859,21 +1859,21 @@ class Tensor:
     def put_along_axis(self, indices, values, axis, reduce='assign'):
         """
         Put values into the destination array by given indices matrix along the designated axis.
-    
+
         Args:
             indices (Tensor) : Indices to put along each 1d slice of arr. This must match the dimension of arr,
                 and need to broadcast against arr. Supported data type are int and int64.
             axis (int) : The axis to put 1d slices along.
             reduce (str, optional): The reduce operation, default is 'assign', support 'add', 'assign', 'mul' and 'multiply'.
-    
+
         Returns:
             Tensor, The indexed element, same dtype with arr
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[10, 30, 20], [60, 40, 50]])
                 index = paddle.to_tensor([[0]])
                 value = 99
@@ -1882,7 +1882,7 @@ class Tensor:
                 print(result)
                 # [[99, 99, 99],
                 # [60, 40, 50]]
-    
+
         """
         ...
 
@@ -1896,23 +1896,23 @@ class Tensor:
     def index_add(self, index, axis, value, name=None):
         """
         Adds the elements of the input tensor with value tensor by selecting the indices in the order given in index.
-    
+
         Args:
             index (Tensor): The 1-D Tensor containing the indices to index.
                 The data type of ``index`` must be int32 or int64.
             axis (int): The dimension in which we index.
             value (Tensor): The tensor used to add the elements along the target axis.
             name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-    
+
         Returns:
             Tensor, same dimention and dtype with x.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 # required: gpu
                 import paddle
-    
+
                 input_tensor = paddle.to_tensor(paddle.ones((3, 3)), dtype="float32")
                 index = paddle.to_tensor([0, 2], dtype="int32")
                 value = paddle.to_tensor([[1, 1, 1], [1, 1, 1]], dtype="float32")
@@ -1929,13 +1929,13 @@ class Tensor:
         """
         Inplace version of ``index_add`` API, the output Tensor will be inplaced with input ``x``.
         Please refer to :ref:`api_paddle_index_add`.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 # required: gpu
                 import paddle
-    
+
                 input_tensor = paddle.to_tensor(paddle.ones((3, 3)), dtype="float32")
                 index = paddle.to_tensor([0, 2], dtype="int32")
                 value = paddle.to_tensor([[1, 1], [1, 1], [1, 1]], dtype="float32")
@@ -1950,19 +1950,19 @@ class Tensor:
 
     def rank(self):
         """
-    
+
         Returns the number of dimensions for a tensor, which is a 0-D int32 Tensor.
-    
+
         Args:
-    
+
         Returns:
             Tensor, the output data type is int32.: The 0-D tensor with the dimensions of the input Tensor.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 input = paddle.rand((3, 100, 100))
                 rank = paddle.rank(input)
                 print(rank)
@@ -1973,16 +1973,16 @@ class Tensor:
     def shape(self):
         """
         Get the shape of the input.
-    
+
         .. code-block:: text
-    
+
             Case1:
                 Given N-D Tensor:
                     input = [ [1, 2, 3, 4], [5, 6, 7, 8] ]
-    
+
                 Then:
                     input.shape = [2, 4]
-    
+
             Case2:
                 Given SelectedRows:
                     input.rows = [0, 4, 19]
@@ -1990,28 +1990,28 @@ class Tensor:
                     input.value = [ [1, 2], [3, 4], [5, 6] ]  # inner tensor
                 Then:
                     input.shape = [3, 2]
-    
+
         Args:
-    
+
         Returns:
             Variable (Tensor): The shape of the input variable.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle.fluid as fluid
                 import numpy as np
                 import paddle
                 paddle.enable_static()
-    
+
                 inputs = fluid.data(name="x", shape=[3, 100, 100], dtype="float32")
                 output = paddle.shape(inputs)
-    
+
                 exe = fluid.Executor(fluid.CPUPlace())
                 exe.run(fluid.default_startup_program())
-    
+
                 img = np.ones((3, 100, 100)).astype(np.float32)
-    
+
                 res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
                 print(res) # [array([  3, 100, 100], dtype=int32)]
         """
@@ -2019,25 +2019,25 @@ class Tensor:
 
     def is_complex(self):
         """Return whether x is a tensor of complex data type(complex64 or complex128).
-    
+
         Args:
-    
+
         Returns:
             bool: True if the data type of the input is complex data type, otherwise false.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([1 + 2j, 3 + 4j])
                 print(paddle.is_complex(x))
                 # True
-    
+
                 x = paddle.to_tensor([1.1, 1.2])
                 print(paddle.is_complex(x))
                 # False
-    
+
                 x = paddle.to_tensor([1, 2, 3])
                 print(paddle.is_complex(x))
                 # False
@@ -2047,17 +2047,17 @@ class Tensor:
     def is_floating_point(self):
         """
         Returns whether the dtype of `x` is one of paddle.float64, paddle.float32, paddle.float16, and paddle.bfloat16.
-    
+
         Args:
-    
+
         Returns:
             bool: True if the dtype of `x` is floating type, otherwise false.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.arange(1., 5., dtype='float32')
                 y = paddle.arange(1, 5, dtype='int32')
                 print(paddle.is_floating_point(x))
@@ -2069,25 +2069,25 @@ class Tensor:
 
     def is_integer(self):
         """Return whether x is a tensor of integeral data type.
-    
+
         Args:
-    
+
         Returns:
             bool: True if the data type of the input is integer data type, otherwise false.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([1 + 2j, 3 + 4j])
                 print(paddle.is_integer(x))
                 # False
-    
+
                 x = paddle.to_tensor([1.1, 1.2])
                 print(paddle.is_integer(x))
                 # False
-    
+
                 x = paddle.to_tensor([1, 2, 3])
                 print(paddle.is_integer(x))
                 # True
@@ -2097,30 +2097,30 @@ class Tensor:
     def real(self, name=None):
         """
         Returns a new Tensor containing real values of the input Tensor.
-    
+
         Args:
             name (str, optional): The default value is None. Normally there is no need for
                 user to set this property. For more information, please refer to :ref:`api_guide_Name` .
-    
+
         Returns:
             Tensor: a Tensor containing real values of the input Tensor.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor(
                     [[1 + 6j, 2 + 5j, 3 + 4j], [4 + 3j, 5 + 2j, 6 + 1j]])
                 # Tensor(shape=[2, 3], dtype=complex64, place=CUDAPlace(0), stop_gradient=True,
                 #        [[(1+6j), (2+5j), (3+4j)],
                 #         [(4+3j), (5+2j), (6+1j)]])
-    
+
                 real_res = paddle.real(x)
                 # Tensor(shape=[2, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
                 #        [[1., 2., 3.],
                 #         [4., 5., 6.]])
-    
+
                 real_t = x.real()
                 # Tensor(shape=[2, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
                 #        [[1., 2., 3.],
@@ -2131,30 +2131,30 @@ class Tensor:
     def imag(self, name=None):
         """
         Returns a new tensor containing imaginary values of input tensor.
-    
+
         Args:
             name (str, optional): The default value is None. Normally there is no need for
                 user to set this property. For more information, please refer to :ref:`api_guide_Name` .
-    
+
         Returns:
             Tensor: a tensor containing imaginary values of the input tensor.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor(
                     [[1 + 6j, 2 + 5j, 3 + 4j], [4 + 3j, 5 + 2j, 6 + 1j]])
                 # Tensor(shape=[2, 3], dtype=complex64, place=CUDAPlace(0), stop_gradient=True,
                 #        [[(1+6j), (2+5j), (3+4j)],
                 #         [(4+3j), (5+2j), (6+1j)]])
-    
+
                 imag_res = paddle.imag(x)
                 # Tensor(shape=[2, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
                 #        [[6., 5., 4.],
                 #         [3., 2., 1.]])
-    
+
                 imag_t = x.imag()
                 # Tensor(shape=[2, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
                 #        [[6., 5., 4.],
@@ -2167,10 +2167,10 @@ class Tensor:
         """
         This function creates a parameter. The parameter is a learnable variable, which can have
         gradient, and can be optimized.
-    
+
         Note:
             This is a very low-level API. This API is useful when you create operator by your self, instead of using layers.
-    
+
         Args:
             dtype (str): Data type of the parameter
             name (str, optional): For detailed information, please refer to
@@ -2181,13 +2181,13 @@ class Tensor:
                            initializer.Constant(0.0) will be used. Otherwise,
                            Xavier() will be used.
             default_initializer (Initializer, optional): Initializer for the parameter
-    
+
         Returns:
             The created parameter.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
                 paddle.enable_static()
                 W = paddle.create_parameter(shape=[784, 200], dtype='float32')
@@ -2197,19 +2197,19 @@ class Tensor:
     def create_tensor(self, name=None, persistable=False):
         """
         Create a variable, which will hold a Tensor with data type dtype.
-    
+
         Args:
             name(string, optional): The default value is None.  Normally there is no need for
                 user to set this property.  For more information, please refer to :ref:`api_guide_Name`
             persistable(bool): Set the persistable flag of the create tensor.
                 default value is False.
-    
+
         Returns:
             Variable: The tensor to be created according to dtype.
-    
+
         Examples:
             .. code-block:: python
-    
+
               import paddle
               tensor = paddle.tensor.create_tensor(dtype='float32')
         """
@@ -2220,7 +2220,7 @@ class Tensor:
         This is the inplace version of OP ``uniform``, which returns a Tensor filled
         with random values sampled from a uniform distribution. The output Tensor will
         be inplaced with input ``x``. Please refer to :ref:`api_tensor_uniform`.
-    
+
         Args:
             min(float|int, optional): The lower bound on the range of random values
                 to generate, ``min`` is included in the range. Default is -1.0.
@@ -2238,7 +2238,7 @@ class Tensor:
             distribution in the range [``min``, ``max``).
         Examples:
             .. code-block:: python
-    
+
                 import paddle
                 # example:
                 x = paddle.ones(shape=[3, 4])
@@ -2253,13 +2253,13 @@ class Tensor:
     def exponential_(self, lam=1.0, name=None):
         r"""
         This inplace OP fill input Tensor ``x`` with random number from a Exponential Distribution.
-    
+
         ``lam`` is :math:`\lambda` parameter of Exponential Distribution.
-    
+
         .. math::
-    
+
             f(x) = \lambda e^{-\lambda x}
-    
+
         Args:
             lam(float, optional): :math:`\lambda` parameter of Exponential Distribution. Default, 1.0.
             name(str, optional): The default value is None. Normally there is no
@@ -2267,50 +2267,50 @@ class Tensor:
                 refer to :ref:`api_guide_Name`.
         Returns:
             Tensor: Input Tensor ``x``.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
                 paddle.set_device('cpu')
                 paddle.seed(100)
-    
+
                 x = paddle.empty([2,3])
                 x.exponential_()
                 # [[0.80643415, 0.23211166, 0.01169797],
                 #  [0.72520673, 0.45208144, 0.30234432]]
-    
+
         """
         ...
 
     def logical_and(self, y, out=None, name=None):
         r"""
-    
+
         ``logical_and`` operator computes element-wise logical AND on ``x`` and ``y``, and returns ``out``. ``out`` is N-dim boolean ``Tensor``.
         Each element of ``out`` is calculated by
-    
+
         .. math::
-    
+
             out = x \&\& y
-    
+
         Note:
             ``paddle.logical_and`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
-    
+
             .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-    
+
         Args:
             y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
             out(Tensor): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([True])
                 y = paddle.to_tensor([True, False, True, False])
                 res = paddle.logical_and(x, y)
@@ -2320,32 +2320,32 @@ class Tensor:
 
     def logical_or(self, y, out=None, name=None):
         """
-    
+
         ``logical_or`` operator computes element-wise logical OR on ``x`` and ``y``, and returns ``out``. ``out`` is N-dim boolean ``Tensor``.
         Each element of ``out`` is calculated by
-    
+
         .. math::
-    
+
             out = x || y
-    
+
         Note:
             ``paddle.logical_or`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
-    
+
             .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-    
+
         Args:
             y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
             out(Tensor): The ``Variable`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([True, False], dtype="bool").reshape([2, 1])
                 y = paddle.to_tensor([True, False, True, False], dtype="bool").reshape([2, 2])
                 res = paddle.logical_or(x, y)
@@ -2358,32 +2358,32 @@ class Tensor:
 
     def logical_xor(self, y, out=None, name=None):
         r"""
-    
+
         ``logical_xor`` operator computes element-wise logical XOR on ``x`` and ``y``, and returns ``out``. ``out`` is N-dim boolean ``Tensor``.
         Each element of ``out`` is calculated by
-    
+
         .. math::
-    
+
             out = (x || y) \&\& !(x \&\& y)
-    
+
         Note:
             ``paddle.logical_xor`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
-    
+
             .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-    
+
         Args:
             y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
             out(Tensor): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([True, False], dtype="bool").reshape([2, 1])
                 y = paddle.to_tensor([True, False, True, False], dtype="bool").reshape([2, 2])
                 res = paddle.logical_xor(x, y)
@@ -2396,31 +2396,31 @@ class Tensor:
 
     def logical_not(self, out=None, name=None):
         """
-    
+
         ``logical_not`` operator computes element-wise logical NOT on ``x``, and returns ``out``. ``out`` is N-dim boolean ``Variable``.
         Each element of ``out`` is calculated by
-    
+
         .. math::
-    
+
             out = !x
-    
+
         Note:
             ``paddle.logical_not`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
-    
+
             .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-    
+
         Args:
             out(Tensor): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor` will be created to save the output.
             name(str|None): The default value is None. Normally there is no need for users to set this property. For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: ${out_comment}
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([True, False, True, False])
                 res = paddle.logical_not(x)
                 print(res) # [False  True False  True]
@@ -2429,22 +2429,22 @@ class Tensor:
 
     def is_empty(self, name=None):
         """
-    
+
         Test whether a Tensor is empty.
-    
+
         Args:
             name (str, optional): The default value is ``None`` . Normally users
                                 don't have to set this parameter. For more information,
                                 please refer to :ref:`api_guide_Name` .
-    
+
         Returns:
             Tensor: A bool scalar Tensor. True if 'x' is an empty Tensor.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 input = paddle.rand(shape=[4, 32, 32], dtype='float32')
                 res = paddle.is_empty(x=input)
                 print("res:", res)
@@ -2454,30 +2454,30 @@ class Tensor:
                 #    - layout: NCHW
                 #    - dtype: bool
                 #    - data: [0])
-    
+
         """
         ...
 
     def equal_all(self, y, name=None):
         """
         Returns the truth value of :math:`x == y`. True if two inputs have the same elements, False otherwise.
-    
+
         Note:
             The output has no gradient.
-    
+
         Args:
             y(Tensor): Tensor, data type is bool, float32, float64, int32, int64.
             name(str, optional): The default value is None.  Normally there is no need for
                 user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: output Tensor, data type is bool, value is [False] or [True].
-    
+
         Examples:
             .. code-block:: python
-    
+
               import paddle
-    
+
               x = paddle.to_tensor([1, 2, 3])
               y = paddle.to_tensor([1, 2, 3])
               z = paddle.to_tensor([1, 4, 3])
@@ -2491,7 +2491,7 @@ class Tensor:
     def allclose(self, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
         """
         ${comment}
-    
+
         Args:
             y(Tensor): ${other_comment}.
             rtol(rtoltype, optional): The relative tolerance. Default: :math:`1e-5` .
@@ -2499,31 +2499,31 @@ class Tensor:
             equal_nan(equalnantype, optional): ${equal_nan_comment}.
             name (str, optional): Name for the operation. For more information, please
                 refer to :ref:`api_guide_Name`. Default: None.
-    
+
         Returns:
             Tensor: ${out_comment}.
-    
+
         Examples:
             .. code-block:: python
-    
+
               import paddle
-    
+
               x = paddle.to_tensor([10000., 1e-07])
               y = paddle.to_tensor([10000.1, 1e-08])
               result1 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08,
                                       equal_nan=False, name="ignore_nan")
               # [False]
-    
+
               result2 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08,
                                           equal_nan=True, name="equal_nan")
               # [False]
-    
+
               x = paddle.to_tensor([1.0, float('nan')])
               y = paddle.to_tensor([1.0, float('nan')])
               result1 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08,
                                       equal_nan=False, name="ignore_nan")
               # [False]
-    
+
               result2 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08,
                                           equal_nan=True, name="equal_nan")
               # [True]
@@ -2532,26 +2532,26 @@ class Tensor:
 
     def equal(self, y, name=None):
         """
-    
+
         This layer returns the truth value of :math:`x == y` elementwise.
-    
+
         Note:
             The output has no gradient.
-    
+
         Args:
             y(Tensor): Tensor, data type is bool, float32, float64, int32, int64.
             name(str, optional): The default value is None.  Normally there is no need for
                 user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: output Tensor, it's shape is the same as the input's Tensor,
             and the data type is bool. The result of this op is stop_gradient.
-    
+
         Examples:
             .. code-block:: python
-    
+
               import paddle
-    
+
               x = paddle.to_tensor([1, 2, 3])
               y = paddle.to_tensor([1, 3, 2])
               result1 = paddle.equal(x, y)
@@ -2562,22 +2562,22 @@ class Tensor:
     def greater_equal(self, y, name=None):
         """
         Returns the truth value of :math:`x >= y` elementwise, which is equivalent function to the overloaded operator `>=`.
-    
+
         Note:
             The output has no gradient.
-    
+
         Args:
             y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
             name(str, optional): The default value is None.  Normally there is no need for
                 user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
         Returns:
             Tensor: The output shape is same as input :attr:`x`. The output data type is bool.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([1, 2, 3])
                 y = paddle.to_tensor([1, 3, 2])
                 result1 = paddle.greater_equal(x, y)
@@ -2588,22 +2588,22 @@ class Tensor:
     def greater_than(self, y, name=None):
         """
         Returns the truth value of :math:`x > y` elementwise, which is equivalent function to the overloaded operator `>`.
-    
+
         Note:
             The output has no gradient.
-    
+
         Args:
             y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
             name(str, optional): The default value is None.  Normally there is no need for
                 user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
         Returns:
             Tensor: The output shape is same as input :attr:`x`. The output data type is bool.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([1, 2, 3])
                 y = paddle.to_tensor([1, 3, 2])
                 result1 = paddle.greater_than(x, y)
@@ -2614,23 +2614,23 @@ class Tensor:
     def less_equal(self, y, name=None):
         """
         Returns the truth value of :math:`x <= y` elementwise, which is equivalent function to the overloaded operator `<=`.
-    
+
         Note:
             The output has no gradient.
-    
+
         Args:
             y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
             name(str, optional): The default value is None.  Normally there is no need for
                 user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: The output shape is same as input :attr:`x`. The output data type is bool.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([1, 2, 3])
                 y = paddle.to_tensor([1, 3, 2])
                 result1 = paddle.less_equal(x, y)
@@ -2641,23 +2641,23 @@ class Tensor:
     def less_than(self, y, name=None):
         """
         Returns the truth value of :math:`x < y` elementwise, which is equivalent function to the overloaded operator `<`.
-    
+
         Note:
             The output has no gradient.
-    
+
         Args:
             y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
             name(str, optional): The default value is None.  Normally there is no need for
                 user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: The output shape is same as input :attr:`x`. The output data type is bool.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([1, 2, 3])
                 y = paddle.to_tensor([1, 3, 2])
                 result1 = paddle.less_than(x, y)
@@ -2668,23 +2668,23 @@ class Tensor:
     def not_equal(self, y, name=None):
         """
         Returns the truth value of :math:`x != y` elementwise, which is equivalent function to the overloaded operator `!=`.
-    
+
         Note:
             The output has no gradient.
-    
+
         Args:
             y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
             name(str, optional): The default value is None.  Normally there is no need for
                 user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: The output shape is same as input :attr:`x`. The output data type is bool.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([1, 2, 3])
                 y = paddle.to_tensor([1, 3, 2])
                 result1 = paddle.not_equal(x, y)
@@ -2694,44 +2694,44 @@ class Tensor:
 
     def is_tensor(self):
         """
-    
+
         Tests whether input object is a paddle.Tensor.
-    
+
         Args:
-    
+
         Returns:
             A boolean value. True if ``x`` is a paddle.Tensor, otherwise False.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 input1 = paddle.rand(shape=[2, 3, 5], dtype='float32')
                 check = paddle.is_tensor(input1)
                 print(check)  #True
-    
+
                 input3 = [1, 4]
                 check = paddle.is_tensor(input3)
                 print(check)  #False
-    
+
         """
         ...
 
     def bitwise_and(self, y, out=None, name=None):
         """
         ${comment}
-    
+
         Args:
             y (Tensor): ${y_comment}
             out(Tensor): ${out_comment}
-    
+
         Returns:
             Tensor: ${out_comment}
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
                 x = paddle.to_tensor([-5, -1, 1])
                 y = paddle.to_tensor([4,  2, -3])
@@ -2743,17 +2743,17 @@ class Tensor:
     def bitwise_or(self, y, out=None, name=None):
         """
         ${comment}
-    
+
         Args:
             y (Tensor): ${y_comment}
             out(Tensor): ${out_comment}
-    
+
         Returns:
             Tensor: ${out_comment}
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
                 x = paddle.to_tensor([-5, -1, 1])
                 y = paddle.to_tensor([4,  2, -3])
@@ -2765,17 +2765,17 @@ class Tensor:
     def bitwise_xor(self, y, out=None, name=None):
         """
         ${comment}
-    
+
         Args:
             y (Tensor): ${y_comment}
             out(Tensor): ${out_comment}
-    
+
         Returns:
             Tensor: ${out_comment}
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
                 x = paddle.to_tensor([-5, -1, 1])
                 y = paddle.to_tensor([4,  2, -3])
@@ -2787,16 +2787,16 @@ class Tensor:
     def bitwise_not(self, out=None, name=None):
         """
         ${comment}
-    
+
         Args:
             out(Tensor): ${out_comment}
-    
+
         Returns:
             Tensor: ${out_comment}
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
                 x = paddle.to_tensor([-5, -1, 1])
                 res = paddle.bitwise_not(x)
@@ -2807,7 +2807,7 @@ class Tensor:
     def isclose(self, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
         """
         ${comment}
-    
+
         Args:
             y(Tensor): ${other_comment}.
             rtol(rtoltype, optional): The relative tolerance. Default: :math:`1e-5` .
@@ -2815,15 +2815,15 @@ class Tensor:
             equal_nan(equalnantype, optional): ${equal_nan_comment}.
             name (str, optional): Name for the operation. For more information, please
                 refer to :ref:`api_guide_Name`. Default: None.
-    
+
         Returns:
             Tensor: ${out_comment}.
-    
+
         Examples:
             .. code-block:: python
-    
+
               import paddle
-    
+
               x = paddle.to_tensor([10000., 1e-07])
               y = paddle.to_tensor([10000.1, 1e-08])
               result1 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
@@ -2832,7 +2832,7 @@ class Tensor:
               result2 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
                                           equal_nan=True, name="equal_nan")
               # [True, False]
-    
+
               x = paddle.to_tensor([1.0, float('nan')])
               y = paddle.to_tensor([1.0, float('nan')])
               result1 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
@@ -2847,455 +2847,455 @@ class Tensor:
     def acos(self, name=None):
         """
         Acos Activation Operator.
-    
+
         .. math::
             out = cos^{-1}(x)
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor. Output of Acos operator, a Tensor with shape same as input.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
                 out = paddle.acos(x)
                 print(out)
                 # [1.98231317 1.77215425 1.47062891 1.26610367]
-    
+
         """
         ...
 
     def acosh(self, name=None):
         """
         Acosh Activation Operator.
-    
+
         .. math::
            out = acosh(x)
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor. Output of Acosh operator, a Tensor with shape same as input.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([1., 3., 4., 5.])
                 out = paddle.acosh(x)
                 print(out)
                 # [0.        , 1.76274729, 2.06343699, 2.29243159]
-    
+
         """
         ...
 
     def asin(self, name=None):
         """
         Arcsine Operator.
-    
+
         .. math::
            out = sin^{-1}(x)
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor. Same shape and dtype as input.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
                 out = paddle.asin(x)
                 print(out)
                 # [-0.41151685 -0.20135792  0.10016742  0.30469265]
-    
+
         """
         ...
 
     def asinh(self, name=None):
         """
         Asinh Activation Operator.
-    
+
         .. math::
            out = asinh(x)
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor. Output of Asinh operator, a Tensor with shape same as input.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
                 out = paddle.asinh(x)
                 print(out)
                 # [-0.39003533, -0.19869010,  0.09983408,  0.29567307]
-    
+
         """
         ...
 
     def atan(self, name=None):
         """
         Arctangent Operator.
-    
+
         .. math::
            out = tan^{-1}(x)
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor. Same shape and dtype as input x.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
                 out = paddle.atan(x)
                 print(out)
                 # [-0.38050638 -0.19739556  0.09966865  0.29145679]
-    
+
         """
         ...
 
     def atanh(self, name=None):
         """
         Atanh Activation Operator.
-    
+
         .. math::
            out = atanh(x)
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor. Output of Atanh operator, a Tensor with shape same as input.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
                 out = paddle.atanh(x)
                 print(out)
                 # [-0.42364895, -0.20273256,  0.10033535,  0.30951962]
-    
+
         """
         ...
 
     def ceil(self, name=None):
         """
-    
+
         Ceil Operator. Computes ceil of x element-wise.
-    
+
         .. math::
             out = \\left \\lceil x \\right \\rceil
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor. Output of Ceil operator, a Tensor with shape same as input.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
                 out = paddle.ceil(x)
                 print(out)
                 # [-0. -0.  1.  1.]
-    
+
         """
         ...
 
     def cos(self, name=None):
         """
         Cosine Operator. Computes cosine of x element-wise.
-    
+
         Input range is `(-inf, inf)` and output range is `[-1,1]`.
-    
+
         .. math::
            out = cos(x)
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor. Output of Cos operator, a Tensor with shape same as input.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
                 out = paddle.cos(x)
                 print(out)
                 # [0.92106099 0.98006658 0.99500417 0.95533649]
-    
+
         """
         ...
 
     def cosh(self, name=None):
         """
         Cosh Activation Operator.
-    
+
         Input range `(-inf, inf)`, output range `(1, inf)`.
-    
+
         .. math::
            out = \\frac{exp(x)+exp(-x)}{2}
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor. Output of Cosh operator, a Tensor with shape same as input.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
                 out = paddle.cosh(x)
                 print(out)
                 # [1.08107237 1.02006676 1.00500417 1.04533851]
-    
+
         """
         ...
 
     def exp(self, name=None):
         """
-    
+
         Computes exp of x element-wise with a natural number `e` as the base.
-    
+
         .. math::
             out = e^x
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor. Output of Exp operator, a Tensor with shape same as input.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
                 out = paddle.exp(x)
                 print(out)
                 # [0.67032005 0.81873075 1.10517092 1.34985881]
-    
+
         """
         ...
 
     def floor(self, name=None):
         """
-    
+
         Floor Activation Operator. Computes floor of x element-wise.
-    
+
         .. math::
             out = \\lfloor x \\rfloor
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor. Output of Floor operator, a Tensor with shape same as input.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
                 out = paddle.floor(x)
                 print(out)
                 # [-1. -1.  0.  0.]
-    
+
         """
         ...
 
     def reciprocal(self, name=None):
         """
-    
+
         Reciprocal Activation Operator.
-    
+
         .. math::
             out = \\frac{1}{x}
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor. Output of Reciprocal operator, a Tensor with shape same as input.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
                 out = paddle.reciprocal(x)
                 print(out)
                 # [-2.5        -5.         10.          3.33333333]
-    
+
         """
         ...
 
     def round(self, name=None):
         """
-    
+
         Round the values in the input to the nearest integer value.
-    
+
         .. code-block:: text
-    
+
             input:
               x.shape = [4]
               x.data = [1.2, -0.9, 3.4, 0.9]
-    
+
             output:
               out.shape = [4]
               out.data = [1., -1., 3., 1.]
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor. Output of Round operator, a Tensor with shape same as input.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([-0.5, -0.2, 0.6, 1.5])
                 out = paddle.round(x)
                 print(out)
                 # [-1. -0.  1.  2.]
-    
+
         """
         ...
 
     def rsqrt(self, name=None):
         """
         Rsqrt Activation Operator.
-    
+
         Please make sure input is legal in case of numeric errors.
-    
+
         .. math::
            out = \\frac{1}{\\sqrt{x}}
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor. Output of Rsqrt operator, a Tensor with shape same as input.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([0.1, 0.2, 0.3, 0.4])
                 out = paddle.rsqrt(x)
                 print(out)
                 # [3.16227766 2.23606798 1.82574186 1.58113883]
-    
+
         """
         ...
 
     def sin(self, name=None):
         """
         Sine Activation Operator.
-    
+
         .. math::
            out = sin(x)
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor. Output of Sin operator, a Tensor with shape same as input.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
                 out = paddle.sin(x)
                 print(out)
                 # [-0.38941834 -0.19866933  0.09983342  0.29552021]
-    
+
         """
         ...
 
     def sinh(self, name=None):
         """
         Sinh Activation Operator.
-    
+
         .. math::
            out = sinh(x)
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor. Output of Sinh operator, a Tensor with shape same as input.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
                 out = paddle.sinh(x)
                 print(out)
                 # [-0.41075233 -0.201336    0.10016675  0.30452029]
-    
+
         """
         ...
 
     def sqrt(self, name=None):
         """
         Sqrt Activation Operator.
-    
+
         .. math::
            out=\\sqrt{x}=x^{1/2}
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor. Output of Sqrt operator, a Tensor with shape same as input.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([0.1, 0.2, 0.3, 0.4])
                 out = paddle.sqrt(x)
                 print(out)
@@ -3306,21 +3306,21 @@ class Tensor:
     def square(self, name=None):
         """
         Square each elements of the inputs.
-    
+
         .. math::
            out = x^2
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor. Output of Square operator, a Tensor with shape same as input.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
                 out = paddle.square(x)
                 print(out)
@@ -3335,32 +3335,32 @@ class Tensor:
     def transpose(self, perm, name=None):
         """
         Permute the data dimensions of `input` according to `perm`.
-    
+
         The `i`-th dimension  of the returned tensor will correspond to the
         perm[i]-th dimension of `input`.
-    
+
         Args:
             perm (list|tuple): Permute the input according to the data of perm.
             name (str): The name of this layer. It is optional.
-    
+
         Returns:
             Tensor: A transposed n-D Tensor, with data type being bool, float32, float64, int32, int64.
-    
+
         For Example:
-    
+
             .. code-block:: text
-    
+
              x = [[[ 1  2  3  4] [ 5  6  7  8] [ 9 10 11 12]]
                  [[13 14 15 16] [17 18 19 20] [21 22 23 24]]]
              shape(x) =  [2,3,4]
-    
+
              # Example 1
              perm0 = [1,0,2]
              y_perm0 = [[[ 1  2  3  4] [13 14 15 16]]
                        [[ 5  6  7  8]  [17 18 19 20]]
                        [[ 9 10 11 12]  [21 22 23 24]]]
              shape(y_perm0) = [3,2,4]
-    
+
              # Example 2
              perm1 = [2,1,0]
              y_perm1 = [[[ 1 13] [ 5 17] [ 9 21]]
@@ -3368,18 +3368,18 @@ class Tensor:
                        [[ 3 15]  [ 7 19]  [11 23]]
                        [[ 4 16]  [ 8 20]  [12 24]]]
              shape(y_perm1) = [4,3,2]
-    
+
         Examples:
-    
+
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.randn([2, 3, 4])
                 x_transposed = paddle.transpose(x, perm=[1, 0, 2])
                 print(x_transposed.shape)
                 # [3L, 2L, 4L]
-    
+
         """
         ...
 
@@ -3388,31 +3388,31 @@ class Tensor:
         Applies matrix multiplication to two tensors. `matmul` follows
         the complete broadcast rules,
         and its behavior is consistent with `np.matmul`.
-    
+
         Currently, the input tensors' number of dimensions can be any, `matmul` can be used to
         achieve the `dot`, `matmul` and `batchmatmul`.
-    
+
         The actual behavior depends on the shapes of :math:`x`, :math:`y` and the
         flag values of :attr:`transpose_x`, :attr:`transpose_y`. Specifically:
-    
+
         - If a transpose flag is specified, the last two dimensions of the tensor
           are transposed. If the tensor is ndim-1 of shape, the transpose is invalid. If the tensor
           is ndim-1 of shape :math:`[D]`, then for :math:`x` it is treated as :math:`[1, D]`, whereas
           for :math:`y` it is the opposite: It is treated as :math:`[D, 1]`.
-    
+
         The multiplication behavior depends on the dimensions of `x` and `y`. Specifically:
-    
+
         - If both tensors are 1-dimensional, the dot product result is obtained.
-    
+
         - If both tensors are 2-dimensional, the matrix-matrix product is obtained.
-    
+
         - If the `x` is 1-dimensional and the `y` is 2-dimensional,
           a `1` is prepended to its dimension in order to conduct the matrix multiply.
           After the matrix multiply, the prepended dimension is removed.
-    
+
         - If the `x` is 2-dimensional and `y` is 1-dimensional,
           the matrix-vector product is obtained.
-    
+
         - If both arguments are at least 1-dimensional and at least one argument
           is N-dimensional (where N > 2), then a batched matrix multiply is obtained.
           If the first argument is 1-dimensional, a 1 is prepended to its dimension
@@ -3423,73 +3423,73 @@ class Tensor:
           broadcasted according the broadcast rule.
           For example, if input is a (j, 1, n, m) tensor and the other is a (k, m, p) tensor,
           out will be a (j, k, n, p) tensor.
-    
+
         Args:
             y (Tensor): The input tensor which is a Tensor.
             transpose_x (bool, optional): Whether to transpose :math:`x` before multiplication.
             transpose_y (bool, optional): Whether to transpose :math:`y` before multiplication.
             name(str, optional): A name for this layer(optional). If set None, the layer
                 will be named automatically.
-    
+
         Returns:
             Tensor: The output Tensor.
-    
+
         Examples:
-    
+
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 # vector * vector
                 x = paddle.rand([10])
                 y = paddle.rand([10])
                 z = paddle.matmul(x, y)
                 print(z.shape)
                 # (1,)
-    
+
                 # matrix * vector
                 x = paddle.rand([10, 5])
                 y = paddle.rand([5])
                 z = paddle.matmul(x, y)
                 print(z.shape)
                 # (10,)
-    
+
                 # batched matrix * broadcasted vector
                 x = paddle.rand([10, 5, 2])
                 y = paddle.rand([2])
                 z = paddle.matmul(x, y)
                 print(z.shape)
                 # (10, 5)
-    
+
                 # batched matrix * batched matrix
                 x = paddle.rand([10, 5, 2])
                 y = paddle.rand([10, 2, 5])
                 z = paddle.matmul(x, y)
                 print(z.shape)
                 # (10, 5, 5)
-    
+
                 # batched matrix * broadcasted matrix
                 x = paddle.rand([10, 1, 5, 2])
                 y = paddle.rand([1, 3, 2, 5])
                 z = paddle.matmul(x, y)
                 print(z.shape)
                 # (10, 3, 5, 5)
-    
+
         """
         ...
 
     def norm(self, p='fro', axis=None, keepdim=False, name=None):
         """
-    
+
         Returns the matrix norm (Frobenius) or vector norm (the 1-norm, the Euclidean
         or 2-norm, and in general the p-norm for p > 0) of a given tensor.
-    
+
         Note:
             This norm API is different from `numpy.linalg.norm`.
             This api supports high-order input tensors (rank >= 3), and certain axis need to be pointed out to calculate the norm.
             But `numpy.linalg.norm` only supports 1-D vector or 2-D matrix as input tensor.
             For p-order matrix norm, this api actually treats matrix as a flattened vector to calculate the vector norm, NOT REAL MATRIX NORM.
-    
+
         Args:
             p (float|string, optional): Order of the norm. Supported values are `fro`, `0`, `1`, `2`,
                 `inf`, `-inf` and any positive real number yielding the corresponding p-norm. Not supported: ord < 0 and nuclear norm.
@@ -3505,57 +3505,57 @@ class Tensor:
                 value is False.
             name (str, optional): The default value is None. Normally there is no need for
                 user to set this property. For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: results of norm operation on the specified axis of input tensor,
             it's data type is the same as input's Tensor.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
                 x = paddle.arange(24, dtype="float32").reshape([2, 3, 4]) - 12
                 # x: Tensor(shape=[2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
                 #          [[[-12., -11., -10., -9. ],
                 #            [-8. , -7. , -6. , -5. ],
                 #            [-4. , -3. , -2. , -1. ]],
-    
+
                 #           [[ 0. ,  1. ,  2. ,  3. ],
                 #            [ 4. ,  5. ,  6. ,  7. ],
                 #            [ 8. ,  9. ,  10.,  11.]]])
-    
+
                 # compute frobenius norm along last two dimensions.
                 out_fro = paddle.linalg.norm(x, p='fro', axis=[0,1])
                 # out_fro: Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
                 #                 [17.43559647, 16.91153526, 16.73320007, 16.91153526])
-    
+
                 # compute 2-order vector norm along last dimension.
                 out_pnorm = paddle.linalg.norm(x, p=2, axis=-1)
                 # out_pnorm: Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
                 #                [[21.11871147, 13.19090557, 5.47722578 ],
                 #                 [3.74165750 , 11.22497177, 19.13112640]])
-    
+
                 # compute 2-order  norm along [0,1] dimension.
                 out_pnorm = paddle.linalg.norm(x, p=2, axis=[0,1])
                 # out_pnorm: Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
                 #                  [17.43559647, 16.91153526, 16.73320007, 16.91153526])
-    
+
                 # compute inf-order  norm
                 out_pnorm = paddle.linalg.norm(x, p=float("inf"))
                 # out_pnorm  = Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
                 #                    [12.])
-    
+
                 out_pnorm = paddle.linalg.norm(x, p=float("inf"), axis=0)
                 # out_pnorm: Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
                 #                 [[12., 11., 10., 9. ],
                 #                  [8. , 7. , 6. , 7. ],
                 #                  [8. , 9. , 10., 11.]])
-    
+
                 # compute -inf-order  norm
                 out_pnorm = paddle.linalg.norm(x, p=-float("inf"))
                 # out_pnorm: Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
                 #                  [0.])
-    
+
                 out_pnorm = paddle.linalg.norm(x, p=-float("inf"), axis=0)
                 # out_pnorm: Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
                 #                  [[0., 1., 2., 3.],
@@ -3566,84 +3566,84 @@ class Tensor:
 
     def dist(self, y, p=2, name=None):
         r"""
-    
+
         Returns the p-norm of (x - y). It is not a norm in a strict sense, only as a measure
         of distance. The shapes of x and y must be broadcastable. The definition is as follows, for
         details, please refer to the `Introduction to Tensor <../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor>`_:
-    
+
         - Each input has at least one dimension.
         - Match the two input dimensions from back to front, the dimension sizes must either be equal, one of them is 1, or one of them does not exist.
-    
+
         Where, z = x - y, the shapes of x and y are broadcastable, then the shape of z can be
         obtained as follows:
-    
+
         1. If the number of dimensions of x and y are not equal, prepend 1 to the dimensions of the
         tensor with fewer dimensions.
-    
+
         For example, The shape of x is [8, 1, 6, 1], the shape of y is [7, 1, 5], prepend 1 to the
         dimension of y.
-    
+
         x (4-D Tensor):  8 x 1 x 6 x 1
-    
+
         y (4-D Tensor):  1 x 7 x 1 x 5
-    
+
         2. Determine the size of each dimension of the output z: choose the maximum value from the
         two input dimensions.
-    
+
         z (4-D Tensor):  8 x 7 x 6 x 5
-    
+
         If the number of dimensions of the two inputs are the same, the size of the output can be
         directly determined in step 2. When p takes different values, the norm formula is as follows:
-    
+
         When p = 0, defining $0^0=0$, the zero-norm of z is simply the number of non-zero elements of z.
-    
+
         .. math::
-    
+
             ||z||_{0}=\lim_{p \\rightarrow 0}\sum_{i=1}^{m}|z_i|^{p}
-    
+
         When p = inf, the inf-norm of z is the maximum element of the absolute value of z.
-    
+
         .. math::
-    
+
             ||z||_\infty=\max_i |z_i|
-    
+
         When p = -inf, the negative-inf-norm of z is the minimum element of the absolute value of z.
-    
+
         .. math::
-    
+
             ||z||_{-\infty}=\min_i |z_i|
-    
+
         Otherwise, the p-norm of z follows the formula,
-    
+
         .. math::
-    
+
             ||z||_{p}=(\sum_{i=1}^{m}|z_i|^p)^{\\frac{1}{p}}
-    
+
         Args:
             y (Tensor): 1-D to 6-D Tensor, its data type is float32 or float64.
             p (float, optional): The norm to be computed, its data type is float32 or float64. Default: 2.
             name (str, optional): The default value is `None`. Normally there is no need for
                 user to set this property. For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: Tensor that is the p-norm of (x - y).
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[3, 3],[3, 3]], dtype="float32")
                 y = paddle.to_tensor([[3, 3],[3, 1]], dtype="float32")
                 out = paddle.dist(x, y, 0)
                 print(out) # out = [1.]
-    
+
                 out = paddle.dist(x, y, 2)
                 print(out) # out = [2.]
-    
+
                 out = paddle.dist(x, y, float("inf"))
                 print(out) # out = [2.]
-    
+
                 out = paddle.dist(x, y, float("-inf"))
                 print(out) # out = [0.]
         """
@@ -3651,147 +3651,147 @@ class Tensor:
 
     def cond(self, p=None, name=None):
         """
-    
+
         Computes the condition number of a matrix or batches of matrices with respect to a matrix norm ``p``.
-    
+
         Args:
             p (float|string, optional): Order of the norm. Supported values are `fro`, `nuc`, `1`, `-1`, `2`, `-2`,
                 `inf`, `-inf`. Default value is `None`, meaning that the order of the norm is `2`.
             name (str, optional): The default value is `None`. Normally there is no need for
                 user to set this property. For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: computing results of condition number, its data type is the same as input Tensor ``x``.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[1., 0, -1], [0, 1, 0], [1, 0, 1]])
-    
+
                 # compute conditional number when p is None
                 out = paddle.linalg.cond(x)
                 # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
                 #        [1.41421342])
-    
+
                 # compute conditional number when order of the norm is 'fro'
                 out_fro = paddle.linalg.cond(x, p='fro')
                 # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
                 #        [3.16227770])
-    
+
                 # compute conditional number when order of the norm is 'nuc'
                 out_nuc = paddle.linalg.cond(x, p='nuc')
                 # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
                 #        [9.24263859])
-    
+
                 # compute conditional number when order of the norm is 1
                 out_1 = paddle.linalg.cond(x, p=1)
                 # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
                 #        [2.])
-    
+
                 # compute conditional number when order of the norm is -1
                 out_minus_1 = paddle.linalg.cond(x, p=-1)
                 # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
                 #        [1.])
-    
+
                 # compute conditional number when order of the norm is 2
                 out_2 = paddle.linalg.cond(x, p=2)
                 # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
                 #        [1.41421342])
-    
+
                 # compute conditional number when order of the norm is -1
                 out_minus_2 = paddle.linalg.cond(x, p=-2)
                 # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
                 #        [0.70710683])
-    
+
                 # compute conditional number when order of the norm is inf
                 out_inf = paddle.linalg.cond(x, p=float("inf"))
                 # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
                 #        [2.])
-    
+
                 # compute conditional number when order of the norm is -inf
                 out_minus_inf = paddle.linalg.cond(x, p=-float("inf"))
                 # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
                 #        [1.])
-    
+
                 a = paddle.randn([2, 4, 4])
                 # Tensor(shape=[2, 4, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
                 #        [[[-0.06784091, -0.07095790,  1.31792855, -0.58959651],
                 #          [ 0.20818676, -0.85640615, -0.89998871, -1.47439921],
                 #          [-0.49132481,  0.42250812, -0.77383220, -2.19794774],
                 #          [-0.33551720, -1.70003879, -1.09795380, -0.63737559]],
-    
+
                 #         [[ 1.12026262, -0.16119350, -1.21157813,  2.74383283],
                 #          [-0.15999718,  0.18798758, -0.69392562,  1.35720372],
                 #          [-0.53013402, -2.26304483,  1.40843511, -1.02288902],
                 #          [ 0.69533503,  2.05261683, -0.02251151, -1.43127477]]])
-    
+
                 a_cond_fro = paddle.linalg.cond(a, p='fro')
                 # Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
                 #        [8.86691189 , 75.23817444])
-    
+
                 b = paddle.randn([2, 3, 4])
                 # Tensor(shape=[2, 3, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
                 #        [[[-0.43754861,  1.80796063, -0.78729683, -1.82264030],
                 #          [-0.27670753,  0.06620564,  0.29072434, -0.31155765],
                 #          [ 0.34123746, -0.05444612,  0.05001324, -1.46877074]],
-    
+
                 #         [[-0.64331555, -1.51103854, -1.26277697, -0.68024760],
                 #          [ 2.59375715, -1.06665540,  0.96575671, -0.73330832],
                 #          [-0.47064447, -0.23945692, -0.95150250, -1.07125998]]])
                 b_cond_2 = paddle.linalg.cond(b, p=2)
                 # Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
                 #        [6.64228773, 3.89068866])
-    
+
         """
         ...
 
     def dot(self, y, name=None):
         """
         This operator calculates inner product for vectors.
-    
+
         Note:
            Support 1-d and 2-d Tensor. When it is 2d, the first dimension of this matrix
            is the batch dimension, which means that the vectors of multiple batches are dotted.
-    
+
         Parameters:
             x(Tensor): 1-D or 2-D ``Tensor``. Its dtype should be ``float32``, ``float64``, ``int32``, ``int64``
             y(Tensor): 1-D or 2-D ``Tensor``. Its dtype soulde be ``float32``, ``float64``, ``int32``, ``int64``
             name(str, optional): Name of the output. Default is None. It's used to print debug info for developers. Details: :ref:`api_guide_Name`
-    
+
         Returns:
             Tensor: the calculated result Tensor.
-    
+
         Examples:
-    
+
         .. code-block:: python
-    
+
             import paddle
-    
+
             # 1-D Tensor * 1-D Tensor
             x = paddle.to_tensor([1, 2, 3])
             y = paddle.to_tensor([4, 5, 6])
             z = paddle.dot(x, y)
             print(z)  # [32]
-    
+
             # 2-D Tensor * 2-D Tensor
             x = paddle.to_tensor([[1, 2, 3], [2, 4, 6]])
             y = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
             z = paddle.dot(x, y)
             print(z)  # [[32], [64]]
-    
+
         """
         ...
 
     def cov(self, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
         """
         Estimate the covariance matrix of the input variables, given data and weights.
-    
+
         A covariance matrix is a square matrix, indicate the covariance of each pair variables in the input matrix.
         For example, for an N-dimensional samples X=[x1,x2,…xN]T, then the covariance matrix
         element Cij is the covariance of xi and xj. The element Cii is the variance of xi itself.
-    
+
         Parameters:
             x(Tensor): A N-D(N<=2) Tensor containing multiple variables and observations. By default, each row of x represents a variable. Also see rowvar below.
             rowvar(Bool, optional): If rowvar is True (default), then each row represents a variable, with observations in the columns. Default: True
@@ -3799,19 +3799,19 @@ class Tensor:
             fweights(Tensor, optional): 1-D Tensor of integer frequency weights; The number of times each observation vector should be repeated. Default: None
             aweights(Tensor, optional): 1-D Tensor of observation vector weights. How important of the observation vector, larger data means this element is more important. Default: None
             name(str, optional): Name of the output. Default is None. It's used to print debug info for developers. Details: :ref:`api_guide_Name`
-    
+
         Returns:
             Tensor: The covariance matrix Tensor of the variables.
-    
+
         Examples:
-    
+
         .. code-block:: python
-    
+
             import paddle
-    
+
             xt = paddle.rand((3,4))
             paddle.linalg.cov(xt)
-    
+
             '''
             Tensor(shape=[3, 3], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
                 [[0.07918842, 0.06127326, 0.01493049],
@@ -3826,28 +3826,28 @@ class Tensor:
         Transpose <=2-D tensor.
         0-D and 1-D tensors are returned as it is and 2-D tensor is equal to
         the paddle.transpose function which perm dimensions set 0 and 1.
-    
+
         Args:
             name(str, optional): The default value is None.  Normally there is no need for
                 user to set this property.  For more information, please refer to :ref:`api_guide_Name`
         Returns:
             Tensor: A transposed n-D Tensor, with data type being float16, float32, float64, int32, int64.
-    
+
         Examples:
-    
+
             .. code-block:: python
                :name: code-example
                  import paddle
-    
+
                  # Example 1 (0-D tensor)
                  x = paddle.to_tensor([0.79])
                  paddle.t(x) # [0.79]
-    
+
                  # Example 2 (1-D tensor)
                  x = paddle.to_tensor([0.79, 0.84, 0.32])
                  paddle.t(x) # [0.79000002, 0.83999997, 0.31999999]
                  paddle.t(x).shape # [3]
-    
+
                  # Example 3 (2-D tensor)
                  x = paddle.to_tensor([[0.79, 0.84, 0.32],
                                       [0.64, 0.14, 0.57]])
@@ -3857,42 +3857,42 @@ class Tensor:
                  #  [0.83999997, 0.14000000],
                  #  [0.31999999, 0.56999999]]
                  paddle.t(x).shape # [3, 2]
-    
+
         """
         ...
 
     def cross(self, y, axis=9, name=None):
         """
         Computes the cross product between two tensors along an axis.
-    
+
         Inputs must have the same shape, and the length of their axes should be equal to 3.
         If `axis` is not given, it defaults to the first axis found with the length 3.
-    
+
         Args:
             y (Tensor): The second input tensor.
             axis (int, optional): The axis along which to compute the cross product. It defaults to be 9 which indicates using the first axis found with the length 3.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor. A Tensor with same data type as `x`.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[1.0, 1.0, 1.0],
                                       [2.0, 2.0, 2.0],
                                       [3.0, 3.0, 3.0]])
                 y = paddle.to_tensor([[1.0, 1.0, 1.0],
                                       [1.0, 1.0, 1.0],
                                       [1.0, 1.0, 1.0]])
-    
+
                 z1 = paddle.cross(x, y)
                 # [[-1. -1. -1.]
                 #  [ 2.  2.  2.]
                 #  [-1. -1. -1.]]
-    
+
                 z2 = paddle.cross(x, y, axis=1)
                 # [[0. 0. 0.]
                 #  [0. 0. 0.]
@@ -3904,31 +3904,31 @@ class Tensor:
         r"""
         Computes the Cholesky decomposition of one symmetric positive-definite
         matrix or batches of symmetric positive-definite matrice.
-    
+
         If `upper` is `True`, the decomposition has the form :math:`A = U^{T}U` ,
         and the returned matrix :math:`U` is upper-triangular. Otherwise, the
         decomposition has the form  :math:`A = LL^{T}` , and the returned matrix
         :math:`L` is lower-triangular.
-    
+
         Args:
             upper (bool): The flag indicating whether to return upper or lower
                 triangular matrices. Default: False.
             name (str, optional): Name for the operation (optional, default is None).
                 For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, A Tensor with same shape and data type as `x`. It represents
             triangular matrices generated by Cholesky decomposition.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 a = paddle.rand([3, 3], dtype="float32")
                 a_t = paddle.transpose(a, [1, 0])
                 x = paddle.matmul(a, a_t) + 1e-03
-    
+
                 out = paddle.linalg.cholesky(x, upper=False)
                 print(out)
         """
@@ -3937,24 +3937,24 @@ class Tensor:
     def bmm(self, y, name=None):
         """
         Applies batched matrix multiplication to two tensors.
-    
+
         Both of the two input tensors must be three-dementional and share the same batch size.
-    
+
         if x is a (b, m, k) tensor, y is a (b, k, n) tensor, the output will be a (b, m, n) tensor.
-    
+
         Args:
             y (Tensor): The input Tensor.
             name(str|None): A name for this layer(optional). If set None, the layer
                 will be named automatically.
-    
+
         Returns:
             Tensor: The product Tensor.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 # In imperative mode:
                 # size x: (2, 2, 3) and y: (2, 3, 2)
                 x = paddle.to_tensor([[[1.0, 1.0, 1.0],
@@ -3967,10 +3967,10 @@ class Tensor:
                 # Tensor(shape=[2, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
                 #        [[[6. , 6. ],
                 #          [12., 12.]],
-    
+
                 #         [[45., 45.],
                 #          [60., 60.]]])
-    
+
         """
         ...
 
@@ -3978,21 +3978,21 @@ class Tensor:
         """
         Computes the histogram of a tensor. The elements are sorted into equal width bins between min and max.
         If min and max are both zero, the minimum and maximum values of the data are used.
-    
+
         Args:
             bins (int, optional): number of histogram bins.
             min (int, optional): lower end of the range (inclusive).
             max (int, optional): upper end of the range (inclusive).
             name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-    
+
         Returns:
             Tensor: data type is int64, shape is (nbins,).
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 inputs = paddle.to_tensor([1, 2, 1])
                 result = paddle.histogram(inputs, bins=4, min=0, max=3)
                 print(result) # [0, 2, 1, 0]
@@ -4002,25 +4002,25 @@ class Tensor:
     def bincount(self, weights=None, minlength=0, name=None):
         """
         Computes frequency of each value in the input tensor.
-    
+
         Args:
             weights (Tensor, optional): Weight for each value in the input tensor. Should have the same shape as input. Default is None.
             minlength (int, optional): Minimum number of bins. Should be non-negative integer. Default is 0.
             name(str, optional): The default value is None.  Normally there is no need for user to set this
                 property.  For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: The tensor of frequency.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([1, 2, 1, 4, 5])
                 result1 = paddle.bincount(x)
                 print(result1) # [0, 2, 1, 0, 1, 1]
-    
+
                 w = paddle.to_tensor([2.1, 0.4, 0.1, 0.5, 0.5])
                 result2 = paddle.bincount(x, weights=w)
                 print(result2) # [0., 2.19999981, 0.40000001, 0., 0.50000000, 0.50000000]
@@ -4030,24 +4030,24 @@ class Tensor:
     def mv(self, vec, name=None):
         """
         Performs a matrix-vector product of the matrix x and the vector vec.
-    
+
         Args:
             vec (Tensor): A tensor with shape :math:`[N]` , The data type of the input Tensor x
                 should be one of float32, float64.
             name(str, optional): The default value is None.  Normally there is no need for user to set this
                 property.  For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: The tensor which is producted by x and vec.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 # x: [M, N], vec: [N]
                 # paddle.mv(x, vec)  # out: [M]
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[2, 1, 3], [3, 0, 1]]).astype("float64")
                 vec = paddle.to_tensor([3, 5, 1]).astype("float64")
                 out = paddle.mv(x, vec)
@@ -4059,37 +4059,37 @@ class Tensor:
 
     def matrix_power(self, n, name=None):
         r"""
-    
+
         Computes the n-th power of a square matrix or a batch of square matrices.
-    
+
         Let :math:`X` be a sqaure matrix or a batch of square matrices, :math:`n` be
         an exponent, the equation should be:
-    
+
         .. math::
             Out = X ^ {n}
-    
+
         Specifically,
-    
+
         - If `n > 0`, it returns the matrix or a batch of matrices raised to the power of `n`.
-    
+
         - If `n = 0`, it returns the identity matrix or a batch of identity matrices.
-    
+
         - If `n < 0`, it returns the inverse of each matrix (if invertible) raised to the power of `abs(n)`.
-    
+
         Args:
             n (int): The exponent. It can be any positive, negative integer or zero.
             name (str, optional): Name for the operation (optional, default is None).
                 For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             - Tensor, The n-th power of the matrix (or the batch of matrices) `x`. Its
               data type should be the same as that of `x`.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[1, 2, 3],
                                       [1, 4, 9],
                                       [1, 8, 27]], dtype='float64')
@@ -4097,12 +4097,12 @@ class Tensor:
                 # [[6.  , 34. , 102.],
                 #  [14. , 90. , 282.],
                 #  [36. , 250., 804.]]
-    
+
                 print(paddle.linalg.matrix_power(x, 0))
                 # [[1., 0., 0.],
                 #  [0., 1., 0.],
                 #  [0., 0., 1.]]
-    
+
                 print(paddle.linalg.matrix_power(x, -2))
                 # [[ 12.91666667, -12.75000000,  2.83333333 ],
                 #  [-7.66666667 ,  8.         , -1.83333333 ],
@@ -4113,7 +4113,7 @@ class Tensor:
     def qr(self, mode="reduced", name=None):
         r"""
         Computes the QR decomposition of one matrix or batches of matrice (backward is unsupported now).
-    
+
         Args:
             mode (str, optional): A flag to control the behavior of qr, the default is "reduced".
                 Suppose x's shape is `[..., M, N]` and denoting `K = min(M, N)`:
@@ -4125,28 +4125,28 @@ class Tensor:
                 R's shape is `[..., K, N]`.
             name (str, optional): Name for the operation (optional, default is None).
                 For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             If mode = "reduced" or mode = "complete", qr will return a two tensor-tuple, which represents Q and R.
             If mode = "r", qr will return a tensor which represents R.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]).astype('float64')
                 q, r = paddle.linalg.qr(x)
                 print (q)
                 print (r)
-    
+
                 # Q = [[-0.16903085,  0.89708523],
                 #      [-0.50709255,  0.27602622],
                 #      [-0.84515425, -0.34503278]])
-    
+
                 # R = [[-5.91607978, -7.43735744],
                 #      [ 0.        ,  0.82807867]])
-    
+
                 # one can verify : X = Q * R ;
         """
         ...
@@ -4154,50 +4154,50 @@ class Tensor:
     def lu(self, pivot=True, get_infos=False, name=None):
         r"""
         Computes the LU factorization of an N-D(N>=2) matrix x.
-    
+
         Returns the LU factorization(inplace x) and Pivots. low triangular matrix L and
         upper triangular matrix U are combined to a single LU matrix.
-    
+
         Pivoting is done if pivot is set to True.
         P mat can be get by pivots:
-    
+
         .. code-block:: text
             ones = eye(rows) #eye matrix of rank rows
             for i in range(cols):
                 swap(ones[i], ones[pivots[i]])
             return ones
-    
+
         Args:
-    
+
             X (Tensor): the tensor to factor of N-dimensions(N>=2).
-    
+
             pivot (bool, optional): controls whether pivoting is done. Default: True.
-    
+
             get_infos (bool, optional): if set to True, returns an info IntTensor. Default: False.
-    
+
             name (str, optional): Name for the operation (optional, default is None).
                 For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             factorization (Tensor), LU matrix, the factorization of input X.
-    
+
             pivots (IntTensor), the pivots of size(∗(N-2), min(m,n)). `pivots` stores all the
             intermediate transpositions of rows. The final permutation `perm` could be
             reconstructed by this, details refer to upper example.
-    
+
             infos (IntTensor, optional), if `get_infos` is `True`, this is a tensor of size (∗(N-2))
             where non-zero values indicate whether factorization for the matrix or each minibatch
             has succeeded or failed.
-    
-    
+
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]).astype('float64')
                 lu,p,info = paddle.linalg.lu(x, get_infos=True)
-    
+
                 # >>> lu:
                 # Tensor(shape=[3, 2], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
                 #    [[5.        , 6.        ],
@@ -4209,9 +4209,9 @@ class Tensor:
                 # >>> info
                 # Tensor(shape=[], dtype=int32, place=CUDAPlace(0), stop_gradient=True,
                 #    0)
-    
+
                 P,L,U = paddle.linalg.lu_unpack(lu,p)
-    
+
                 # >>> P
                 # (Tensor(shape=[3, 3], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
                 # [[0., 1., 0.],
@@ -4226,8 +4226,8 @@ class Tensor:
                 # Tensor(shape=[2, 2], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
                 # [[5.        , 6.        ],
                 # [0.        , 0.80000000]]))
-    
-    
+
+
                 # one can verify : X = P @ L @ U ;
         """
         ...
@@ -4236,42 +4236,42 @@ class Tensor:
         r"""
         Unpack L U and P to single matrix tensor .
         unpack L and U matrix from LU, unpack permutation matrix P from Pivtos .
-    
+
         P mat can be get by pivots:
-    
+
         .. code-block:: text
             ones = eye(rows) #eye matrix of rank rows
             for i in range(cols):
                 swap(ones[i], ones[pivots[i]])
-    
-    
+
+
         Args:
-    
+
             y (Tensor): Pivots get from paddle.linalg.lu.
-    
+
             unpack_ludata (bool,optional): whether to unpack L and U from x. Default: True.
-    
+
             unpack_pivots (bool, optional): whether to unpack permutation matrix P from Pivtos. Default: True.
-    
+
             name (str, optional): Name for the operation (optional, default is None).
                 For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             P (Tensor), Permutation matrix P of lu factorization.
-    
+
             L (Tensor), The lower triangular matrix tensor of lu factorization.
-    
+
             U (Tensor), The upper triangular matrix tensor of lu factorization.
-    
-    
+
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]).astype('float64')
                 lu,p,info = paddle.linalg.lu(x, get_infos=True)
-    
+
                 # >>> lu:
                 # Tensor(shape=[3, 2], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
                 #    [[5.        , 6.        ],
@@ -4283,9 +4283,9 @@ class Tensor:
                 # >>> info
                 # Tensor(shape=[], dtype=int32, place=CUDAPlace(0), stop_gradient=True,
                 #    0)
-    
+
                 P,L,U = paddle.linalg.lu_unpack(lu,p)
-    
+
                 # >>> P
                 # (Tensor(shape=[3, 3], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
                 # [[0., 1., 0.],
@@ -4300,7 +4300,7 @@ class Tensor:
                 # Tensor(shape=[2, 2], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
                 # [[5.        , 6.        ],
                 # [0.        , 0.80000000]]))
-    
+
                 # one can verify : X = P @ L @ U ;
         """
         ...
@@ -4308,29 +4308,29 @@ class Tensor:
     def eig(self, name=None):
         """
         Performs the eigenvalue decomposition of a square matrix or a batch of square matrices.
-    
+
         Note:
             - If the matrix is a Hermitian or a real symmetric matrix, please use :ref:`paddle.linalg.eigh` instead, which is much faster.
             - If only eigenvalues is needed, please use :ref:`paddle.linalg.eigvals` instead.
             - If the matrix is of any shape, please use :ref:`paddle.linalg.svd`.
             - This API is only supported on CPU device.
             - The output datatype is always complex for both real and complex input.
-    
+
         Args:
             name (str, optional): The default value is `None`. Normally there is no need for user to set
                 this property. For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Eigenvalues(Tensors): A tensor with shape math:`[*, N]` refers to the eigen values.
             Eigenvectors(Tensors): A tensor with shape math:`[*, N, N]` refers to the eigen vectors.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 paddle.device.set_device("cpu")
-    
+
                 x = paddle.to_tensor([[1.6707249, 7.2249975, 6.5045543],
                                    [9.956216,  8.749598,  6.066444 ],
                                    [4.4251957, 1.7983172, 0.370647 ]])
@@ -4343,7 +4343,7 @@ class Tensor:
                 #         (-0.6837005269141947+0j) ],
                 #        [(-0.23142567697893396+0j),  (0.4944999840400175+0j) ,
                 #         (0.7058765252952796+0j) ]])
-    
+
                 print(w)
                 # Tensor(shape=[3], dtype=complex128, place=CPUPlace, stop_gradient=False,
                 #       [ (16.50471283351188+0j)  , (-5.5034820550763515+0j) ,
@@ -4354,32 +4354,32 @@ class Tensor:
     def eigvals(self, name=None):
         """
         Compute the eigenvalues of one or more general matrices.
-    
+
         Warning:
             The gradient kernel of this operator does not yet developed.
             If you need back propagation through this operator, please replace it with paddle.linalg.eig.
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None).
                 For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, A tensor containing the unsorted eigenvalues which has the same batch
             dimensions with `x`. The eigenvalues are complex-valued even when `x` is real.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 paddle.set_device("cpu")
                 paddle.seed(1234)
-    
+
                 x = paddle.rand(shape=[3, 3], dtype='float64')
                 # [[0.02773777, 0.93004224, 0.06911496],
                 #  [0.24831591, 0.45733623, 0.07717843],
                 #  [0.48016702, 0.14235102, 0.42620817]])
-    
+
                 print(paddle.linalg.eigvals(x))
                 # [(-0.27078833542132674+0j), (0.29962280156230725+0j), (0.8824477020120244+0j)] #complex128
         """
@@ -4388,49 +4388,49 @@ class Tensor:
     def multi_dot(self, name=None):
         """
         Multi_dot is an operator that calculates multiple matrix multiplications.
-    
+
         Supports inputs of float16(only GPU support), float32 and float64 dtypes. This function does not
         support batched inputs.
-    
+
         The input tensor in [x] must be 2-D except for the first and last can be 1-D.
         If the first tensor is a 1-D vector of shape(n, ) it is treated as row vector
         of shape(1, n), similarly if the last tensor is a 1D vector of shape(n, ), it
         is treated as a column vector of shape(n, 1).
-    
+
         If the first and last tensor are 2-D matrix, then the output is also 2-D matrix,
         otherwise the output is a 1-D vector.
-    
+
         Multi_dot will select the lowest cost multiplication order for calculation. The
         cost of multiplying two matrices with shapes (a, b) and (b, c) is a * b * c.
         Given matrices A, B, C with shapes (20, 5), (5, 100), (100, 10) respectively,
         we can calculate the cost of different multiplication orders as follows:
         - Cost((AB)C) = 20x5x100 + 20x100x10 = 30000
         - Cost(A(BC)) = 5x100x10 + 20x5x10 = 6000
-    
+
         In this case, multiplying B and C first, then multiply A, which is 5 times faster
         than sequential calculation.
-    
+
         Args:
             name(str|None): A name for this layer(optional). If set None, the layer
                 will be named automatically.
-    
+
         Returns:
             Tensor: The output Tensor.
-    
-    
+
+
         Examples:
-    
+
         .. code-block:: python
-    
+
             import paddle
-    
+
             # A * B
             A = paddle.rand([3, 4])
             B = paddle.rand([4, 5])
             out = paddle.linalg.multi_dot([A, B])
             print(out.shape)
             # [3, 5]
-    
+
             # A * B * C
             A = paddle.rand([10, 5])
             B = paddle.rand([5, 8])
@@ -4438,46 +4438,46 @@ class Tensor:
             out = paddle.linalg.multi_dot([A, B, C])
             print(out.shape)
             # [10, 7]
-    
+
         """
         ...
 
     def solve(self, y, name=None):
         r"""
-    
+
         Computes the solution of a square system of linear equations with a unique solution for input 'X' and 'Y'.
         Let :math:`X` be a sqaure matrix or a batch of square matrices, :math:`Y` be
         a vector/matrix or a batch of vectors/matrices, the equation should be:
-    
+
         .. math::
             Out = X^-1 * Y
-    
+
         Specifically, this system of linear equations has one solution if and only if input 'X' is invertible.
-    
+
         Args:
             y (Tensor): A vector/matrix or a batch of vectors/matrices. Its shape should be ``[*, M, K]``, where ``*`` is zero or
                 more batch dimensions. Its data type should be float32 or float64.
             name(str, optional): Name for the operation (optional, default is None).
                 For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: The solution of a square system of linear equations with a unique solution for input 'x' and 'y'.
             Its data type should be the same as that of `x`.
-    
+
         Examples:
-    
+
             .. code-block:: python
-    
+
                 # a square system of linear equations:
                 # 2*X0 + X1 = 9
                 # X0 + 2*X1 = 8
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[3, 1],[1, 2]], dtype="float64")
                 y = paddle.to_tensor([9, 8], dtype="float64")
                 out = paddle.linalg.solve(x, y)
-    
+
                 print(out)
                 # [2., 3.])
         """
@@ -4488,20 +4488,20 @@ class Tensor:
         r"""
         Computes the solution of a system of equations with a triangular coefficient.  `x` is coefficient matrix
         `y` is multiple right-hand sides of equations.
-    
+
         Input `x` and `y` is 2D matrices or batches of 2D matrices. If the inputs are batches, the outputs is also
         batches.
-    
+
         Equations can be described as:
-    
+
         .. math::
             x * Out = y
-    
+
         Solution of Equations is:
-    
+
         .. math::
             Out = x ^ {-1} * y
-    
+
         Args:
             y (Tensor): Multiple right-hand sides of system of equations. Its shape should be `[*, M, K]`, where `*` is
                 zero or more batch dimensions. Its data type should be float32 or float64.
@@ -4512,25 +4512,25 @@ class Tensor:
                 to be 1 and not referenced from `x` . Default: False.
             name(str, optional): Name for the operation (optional, default is None).
                 For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: The solution of the system of equations. Its data type should be the same as that of `x`.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 # a square system of linear equations:
                 # x1 +   x2  +   x3 = 0
                 #      2*x2  +   x3 = -9
                 #               -x3 = 5
-    
+
                 import paddle
                 x = paddle.to_tensor([[1, 1, 1],
                                       [0, 2, 1],
                                       [0, 0,-1]], dtype="float64")
                 y = paddle.to_tensor([[0], [-9], [5]], dtype="float64")
                 out = paddle.linalg.triangular_solve(x, y, upper=True)
-    
+
                 print(out)
                 # [7, -2, -5]
         """
@@ -4539,31 +4539,31 @@ class Tensor:
     def cholesky_solve(self, y, upper=False, name=None):
         r"""
         Solves a linear system of equations A @ X = B, given A's Cholesky factor matrix u and  matrix B.
-    
+
         Input `x` and `y` is 2D matrices or batches of 2D matrices. If the inputs are batches, the outputs
         is also batches.
-    
+
         Args:
             y (Tensor): Multiple right-hand sides of system of equations. Its shape should be `[*, M, K]`, where `*` is
                 zero or more batch dimensions. Its data type should be float32 or float64.
             upper (bool, optional): whether to consider the Cholesky factor as a lower or upper triangular matrix. Default: False.
             name(str, optional): Name for the operation (optional, default is None).
                 For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: The solution of the system of equations. Its data type is the same as that of `x`.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 u = paddle.to_tensor([[1, 1, 1],
                                         [0, 2, 1],
                                         [0, 0,-1]], dtype="float64")
                 b = paddle.to_tensor([[0], [-9], [5]], dtype="float64")
                 out = paddle.linalg.cholesky_solve(b, u, upper=True)
-    
+
                 print(out)
                 # [-2.5, -7, 9.5]
         """
@@ -4573,20 +4573,20 @@ class Tensor:
         """
         Computes the eigenvalues of a
         complex Hermitian (conjugate symmetric) or a real symmetric matrix.
-    
+
         Args:
             UPLO(str, optional): Lower triangular part of a (‘L’, default) or the upper triangular part (‘U’).
             name(str, optional): The default value is None.  Normally there is no need for user to set this
                 property.  For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: The tensor eigenvalues in ascending order.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[1, -2j], [2j, 5]])
                 out_value = paddle.eigvalsh(x, UPLO='L')
                 print(out_value)
@@ -4599,7 +4599,7 @@ class Tensor:
         """
         Computes a solution to
         the least squares problem of a system of linear equations.
-    
+
         Args:
             y (Tensor): A tensor with shape ``(*, M, K)`` , the data type of the input Tensor ``y``
                 should be one of float32, float64.
@@ -4612,7 +4612,7 @@ class Tensor:
                 for CUDA inputs.
             name(str, optional): The default value is None. Normally there is no need for user to set
                 this property. For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tuple: A tuple of 4 Tensors which is (``solution``, ``residuals``, ``rank``, ``singular_values``).
             ``solution`` is a tensor with shape ``(*, N, K)``, meaning the least squares solution. ``residuals``
@@ -4622,12 +4622,12 @@ class Tensor:
             (‘gelsy’, ‘gelsd’, ‘gelss’), otherwise return an empty tensor. ``singular_values`` is a tensor with
             shape ``(*, min(M, N))``, meaning singular values of the matrices in ``x``, which is computed when
             ``driver`` in (‘gelsd’, ‘gelss’), otherwise return an empty tensor.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 paddle.set_device("cpu")
                 x = paddle.to_tensor([[1, 3], [3, 2], [5, 6.]])
                 y = paddle.to_tensor([[3, 4, 6], [5, 3, 4], [1, 2, 1.]])
@@ -4641,7 +4641,7 @@ class Tensor:
                 # 2
                 print(results[3])
                 # [9.03455734, 1.54167950]
-    
+
                 x = paddle.to_tensor([[10, 2, 3], [3, 10, 5], [5, 6, 12.]])
                 y = paddle.to_tensor([[4, 2, 9], [2, 0, 3], [2, 5, 3.]])
                 results = paddle.linalg.lstsq(x, y, driver="gels")
@@ -4656,48 +4656,48 @@ class Tensor:
 
     def corrcoef(self, rowvar=True, name=None):
         """
-    
+
         A correlation coefficient matrix indicate the correlation of each pair variables in the input matrix.
         For example, for an N-dimensional samples X=[x1,x2,…xN]T, then the correlation coefficient matrix
         element Rij is the correlation of xi and xj. The element Rii is the covariance of xi itself.
-    
+
         The relationship between the correlation coefficient matrix `R` and the
         covariance matrix `C`, is
-    
+
         .. math:: R_{ij} = \\frac{ C_{ij} } { \\sqrt{ C_{ii} * C_{jj} } }
-    
+
         The values of `R` are between -1 and 1.
-    
+
         Parameters:
-    
+
             x(Tensor): A N-D(N<=2) Tensor containing multiple variables and observations. By default, each row of x represents a variable. Also see rowvar below.
             rowvar(Bool, optional): If rowvar is True (default), then each row represents a variable, with observations in the columns. Default: True.
             name(str, optional): Name of the output. Default is None. It's used to print debug info for developers. Details: :ref:`api_guide_Name`.
-    
+
         Returns:
-    
+
             The correlation coefficient matrix of the variables.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 xt = paddle.rand((3,4))
                 print(paddle.linalg.corrcoef(xt))
-    
+
                 # Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
                 # [[ 1.        , -0.73702252,  0.66228950],
                 # [-0.73702258,  1.        , -0.77104872],
                 # [ 0.66228974, -0.77104825,  1.        ]])
-    
+
         """
         ...
 
     def mean(self, axis=None, keepdim=False, name=None):
         """
         Computes the mean of the input tensor's elements along ``axis``.
-    
+
         Args:
             axis (int|list|tuple, optional): The axis along which to perform mean
                 calculations. ``axis`` should be int, list(int) or tuple(int). If
@@ -4714,16 +4714,16 @@ class Tensor:
                 the output Tensor is squeezed in ``axis`` . Default is False.
             name (str, optional): Name for the operation (optional, default is None).
                 For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, results of average along ``axis`` of ``x``, with the same data
             type as ``x``.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[[1., 2., 3., 4.],
                                        [5., 6., 7., 8.],
                                        [9., 10., 11., 12.]],
@@ -4750,26 +4750,26 @@ class Tensor:
     def var(self, axis=None, unbiased=True, keepdim=False, name=None):
         """
         Computes the variance of ``x`` along ``axis`` .
-    
+
         Args:
             axis (int|list|tuple, optional): The axis along which to perform variance calculations. ``axis`` should be int, list(int) or tuple(int).
-    
+
                 - If ``axis`` is a list/tuple of dimension(s), variance is calculated along all element(s) of ``axis`` . ``axis`` or element(s) of ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
                 - If ``axis`` or element(s) of ``axis`` is less than 0, it works the same way as :math:`axis + D` .
                 - If ``axis`` is None, variance is calculated over all elements of ``x``. Default is None.
-    
+
             unbiased (bool, optional): Whether to use the unbiased estimation. If ``unbiased`` is True, the divisor used in the computation is :math:`N - 1`, where :math:`N` represents the number of elements along ``axis`` , otherwise the divisor is :math:`N`. Default is True.
             keep_dim (bool, optional): Whether to reserve the reduced dimension in the output Tensor. The result tensor will have one fewer dimension than the input unless keep_dim is true. Default is False.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, results of variance along ``axis`` of ``x``, with the same data type as ``x``.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[1.0, 2.0, 3.0], [1.0, 4.0, 5.0]])
                 out1 = paddle.var(x)
                 # [2.66666667]
@@ -4781,7 +4781,7 @@ class Tensor:
     def std(self, axis=None, unbiased=True, keepdim=False, name=None):
         """
         Computes the standard-deviation of ``x`` along ``axis`` .
-    
+
         Args:
             axis (int|list|tuple, optional): The axis along which to perform
                 standard-deviation calculations. ``axis`` should be int, list(int)
@@ -4805,16 +4805,16 @@ class Tensor:
                 the output Tensor is squeezed in ``axis`` . Default is False.
             name (str, optional): Name for the operation (optional, default is None).
                 For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, results of standard-deviation along ``axis`` of ``x``, with the
             same data type as ``x``.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[1.0, 2.0, 3.0], [1.0, 4.0, 5.0]])
                 out1 = paddle.std(x)
                 # [1.63299316]
@@ -4822,7 +4822,7 @@ class Tensor:
                 # [1.49071205]
                 out3 = paddle.std(x, axis=1)
                 # [1.       2.081666]
-    
+
         """
         ...
 
@@ -4830,33 +4830,33 @@ class Tensor:
         """
         Returns the number of elements for a tensor, which is a int64 Tensor with shape [1] in static mode
         or a scalar value in imperative mode.
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None).
                 For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: The number of elements for the input Tensor.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.full(shape=[4, 5, 7], fill_value=0, dtype='int32')
                 numel = paddle.numel(x) # 140
-    
-    
+
+
         """
         ...
 
     def nanmedian(self, axis=None, keepdim=True, name=None):
         r"""
         Compute the median along the specified axis, while ignoring NaNs.
-    
+
         If the valid count of elements is a even number,
         the average value of both elements in the middle is calculated as the median.
-    
+
         Args:
             axis (None|int|list|tuple, optional):
                 The axis along which to perform median calculations ``axis`` should be int or list of int.
@@ -4870,25 +4870,25 @@ class Tensor:
                 the output Tensor is squeezed in ``axis`` . Default is True.
             name (str, optional): Name for the operation (optional, default is None).
                 For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, results of median along ``axis`` of ``x``. The output dtype is the same as `x`.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
                 x = paddle.to_tensor([[float('nan'), 2. , 3. ], [0. , 1. , 2. ]])
-    
+
                 y1 = x.nanmedian()
                 # y1 is [[2.]]
-    
+
                 y2 = x.nanmedian(0)
                 # y2 is [[0.,  1.5, 2.5]]
-    
+
                 y3 = x.nanmedian(0, keepdim=False)
                 # y3 is [0.,  1.5, 2.5]
-    
+
                 y4 = x.nanmedian((0, 1))
                 # y4 is [[2.]]
         """
@@ -4897,7 +4897,7 @@ class Tensor:
     def median(self, axis=None, keepdim=False, name=None):
         """
         Compute the median along the specified axis.
-    
+
         Args:
             axis (int, optional): The axis along which to perform median calculations ``axis`` should be int.
                 ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
@@ -4910,37 +4910,37 @@ class Tensor:
                 the output Tensor is squeezed in ``axis`` . Default is False.
             name (str, optional): Name for the operation (optional, default is None).
                 For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, results of median along ``axis`` of ``x``. If data type of ``x`` is float64, data type of results will be float64, otherwise data type will be float32.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.arange(12).reshape([3, 4])
                 # Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
                 #        [[0 , 1 , 2 , 3 ],
                 #         [4 , 5 , 6 , 7 ],
                 #         [8 , 9 , 10, 11]])
-    
+
                 y1 = paddle.median(x)
                 # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
                 #        [5.50000000])
-    
+
                 y2 = paddle.median(x, axis=0)
                 # Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
                 #        [4., 5., 6., 7.])
-    
+
                 y3 = paddle.median(x, axis=1)
                 # Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
                 #        [1.50000000, 5.50000000, 9.50000000])
-    
+
                 y4 = paddle.median(x, axis=0, keepdim=True)
                 # Tensor(shape=[1, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
                 #        [[4., 5., 6., 7.]])
-    
+
         """
         ...
 
@@ -4948,7 +4948,7 @@ class Tensor:
         """
         Compute the quantile of the input along the specified axis.
         If any values in a reduced row are NaN, then the quantiles for that reduction will be NaN.
-    
+
         Args:
             q (int|float|list): The q for calculate quantile, which should be in range [0, 1]. If q is a list,
                 each q will be calculated and the first dimension of output is same to the number of ``q`` .
@@ -4964,36 +4964,36 @@ class Tensor:
                 the output Tensor is squeezed in ``axis`` . Default is False.
             name (str, optional): Name for the operation (optional, default is None).
                 For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, results of quantile along ``axis`` of ``x``.
             In order to obtain higher precision, data type of results will be float64.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 y = paddle.arange(0, 8 ,dtype="float32").reshape([4, 2])
                 # Tensor(shape=[4, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
                 #        [[0., 1.],
                 #         [2., 3.],
                 #         [4., 5.],
                 #         [6., 7.]])
-    
+
                 y1 = paddle.quantile(y, q=0.5, axis=[0, 1])
                 # Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
                 #        3.50000000)
-    
+
                 y2 = paddle.quantile(y, q=0.5, axis=1)
                 # Tensor(shape=[4], dtype=float64, place=Place(cpu), stop_gradient=True,
                 #        [0.50000000, 2.50000000, 4.50000000, 6.50000000])
-    
+
                 y3 = paddle.quantile(y, q=[0.3, 0.5], axis=0)
                 # Tensor(shape=[2, 2], dtype=float64, place=Place(cpu), stop_gradient=True,
                 #        [[1.80000000, 2.80000000],
                 #         [3.        , 4.        ]])
-    
+
                 y[0,0] = float("nan")
                 y4 = paddle.quantile(y, q=0.8, axis=1, keepdim=True)
                 # Tensor(shape=[4, 1], dtype=float64, place=Place(cpu), stop_gradient=True,
@@ -5001,7 +5001,7 @@ class Tensor:
                 #         [2.80000000],
                 #         [4.80000000],
                 #         [6.80000000]])
-    
+
         """
         ...
 
@@ -5009,7 +5009,7 @@ class Tensor:
         """
         Compute the quantile of the input as if NaN values in input did not exist.
         If all values in a reduced row are NaN, then the quantiles for that reduction will be NaN.
-    
+
         Args:
             q (int|float|list): The q for calculate quantile, which should be in range [0, 1]. If q is a list,
                 each q will be calculated and the first dimension of output is same to the number of ``q`` .
@@ -5025,53 +5025,53 @@ class Tensor:
                 the output Tensor is squeezed in ``axis`` . Default is False.
             name (str, optional): Name for the operation (optional, default is None).
                 For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, results of quantile along ``axis`` of ``x``.
             In order to obtain higher precision, data type of results will be float64.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor(
                     [[0, 1, 2, 3, 4],
                         [5, 6, 7, 8, 9]],
                     dtype="float32")
                 x[0,0] = float("nan")
-    
+
                 y1 = paddle.nanquantile(x, q=0.5, axis=[0, 1])
                 # Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
                 #        5.)
-    
+
                 y2 = paddle.nanquantile(x, q=0.5, axis=1)
                 # Tensor(shape=[2], dtype=float64, place=Place(cpu), stop_gradient=True,
                 #        [2.50000000, 7.        ])
-    
+
                 y3 = paddle.nanquantile(x, q=[0.3, 0.5], axis=0)
                 # Tensor(shape=[2, 5], dtype=float64, place=Place(cpu), stop_gradient=True,
                 #        [[5.        , 2.50000000, 3.50000000, 4.50000000, 5.50000000],
                 #         [5.        , 3.50000000, 4.50000000, 5.50000000, 6.50000000]])
-    
+
                 y4 = paddle.nanquantile(x, q=0.8, axis=1, keepdim=True)
                 # Tensor(shape=[2, 1], dtype=float64, place=Place(cpu), stop_gradient=True,
                 #        [[3.40000000],
                 #         [8.20000000]])
-    
+
                 nan = paddle.full(shape=[2, 3], fill_value=float("nan"))
                 y5 = paddle.nanquantile(nan, q=0.8, axis=1, keepdim=True)
                 # Tensor(shape=[2, 1], dtype=float64, place=Place(cpu), stop_gradient=True,
                 #        [[nan],
                 #         [nan]])
-    
+
         """
         ...
 
     def argsort(self, axis=-1, descending=False, name=None):
         """
         Sorts the input along the given axis, and returns the corresponding index tensor for the sorted output values. The default sort algorithm is ascending, if you want the sort algorithm to be descending, you must set the :attr:`descending` as True.
-    
+
         Args:
             axis(int, optional): Axis to compute indices along. The effective range
                 is [-R, R), where R is Rank(x). when axis<0, it works the same way
@@ -5080,17 +5080,17 @@ class Tensor:
                 algorithm will sort by descending order, else sort by
                 ascending order. Default is false.
             name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-    
+
         Returns:
             Tensor: sorted indices(with the same shape as ``x``
             and with data type int64).
-    
+
         Examples:
-    
+
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[[5,8,9,5],
                                        [0,0,1,7],
                                        [6,9,2,4]],
@@ -5101,7 +5101,7 @@ class Tensor:
                 out1 = paddle.argsort(x, axis=-1)
                 out2 = paddle.argsort(x, axis=0)
                 out3 = paddle.argsort(x, axis=1)
-    
+
                 print(out1)
                 #[[[0 3 1 2]
                 #  [0 1 2 3]
@@ -5109,7 +5109,7 @@ class Tensor:
                 # [[1 3 2 0]
                 #  [0 1 2 3]
                 #  [2 0 3 1]]]
-    
+
                 print(out2)
                 #[[[0 1 1 1]
                 #  [0 0 0 0]
@@ -5117,7 +5117,7 @@ class Tensor:
                 # [[1 0 0 0]
                 #  [1 1 1 1]
                 #  [0 0 0 1]]]
-    
+
                 print(out3)
                 #[[[1 1 1 2]
                 #  [0 0 2 0]
@@ -5132,7 +5132,7 @@ class Tensor:
         """
         Computes the indices of the max elements of the input tensor's
         element along the provided axis.
-    
+
         Args:
             axis(int, optional): Axis to compute indices along. The effective range
                 is [-R, R), where R is x.ndim. when axis < 0, it works the same way
@@ -5142,15 +5142,15 @@ class Tensor:
                         be int32, int64. The default value is ``int64`` , and it will
                         return the int64 indices.
             name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-    
+
         Returns:
             Tensor, return the tensor of int32 if set :attr:`dtype` is int32, otherwise return the tensor of int64.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[5,8,9,5],
                                      [0,0,1,7],
                                      [6,9,2,4]])
@@ -5172,7 +5172,7 @@ class Tensor:
         """
         Computes the indices of the min elements of the input tensor's
         element along the provided axis.
-    
+
         Args:
             axis(int, optional): Axis to compute indices along. The effective range
                 is [-R, R), where R is x.ndim. when axis < 0, it works the same way
@@ -5182,15 +5182,15 @@ class Tensor:
                         be int32, int64. The default value is 'int64', and it will
                         return the int64 indices.
             name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-    
+
         Returns:
             Tensor, return the tensor of `int32` if set :attr:`dtype` is `int32`, otherwise return the tensor of `int64`.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x =  paddle.to_tensor([[5,8,9,5],
                                          [0,0,1,7],
                                          [6,9,2,4]])
@@ -5210,25 +5210,25 @@ class Tensor:
 
     def index_select(self, index, axis=0, name=None):
         """
-    
+
         Returns a new tensor which indexes the ``input`` tensor along dimension ``axis`` using
         the entries in ``index`` which is a Tensor. The returned tensor has the same number
         of dimensions as the original ``x`` tensor. The dim-th dimension has the same
         size as the length of ``index``; other dimensions have the same size as in the ``x`` tensor.
-    
+
         Args:
             index (Tensor): The 1-D Tensor containing the indices to index. The data type of ``index`` must be int32 or int64.
             axis (int, optional): The dimension in which we index. Default: if None, the ``axis`` is 0.
             name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-    
+
         Returns:
             Tensor: A Tensor with same data type as ``x``.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[1.0, 2.0, 3.0, 4.0],
                                       [5.0, 6.0, 7.0, 8.0],
                                       [9.0, 10.0, 11.0, 12.0]])
@@ -5253,19 +5253,19 @@ class Tensor:
         as_tuple is False, we can get a output tensor with shape [z, n], where `z` is the
         number of all non-zero elements in the `input` tensor. If as_tuple is True, we can get
         a 1-D tensor tuple of length `n`, and the shape of each 1-D tensor is [z, 1].
-    
+
         Args:
             as_tuple (bool, optional): Return type, Tensor or tuple of Tensor.
-    
+
         Returns:
             Tensor. The data type is int64.
-    
+
         Examples:
-    
+
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x1 = paddle.to_tensor([[1.0, 0.0, 0.0],
                                        [0.0, 2.0, 0.0],
                                        [0.0, 0.0, 3.0]])
@@ -5293,15 +5293,15 @@ class Tensor:
                     print(out)
                 #[[1]
                 # [3]]
-    
+
         """
         ...
 
     def sort(self, axis=-1, descending=False, name=None):
         """
-    
+
         Sorts the input along the given axis, and returns the sorted output tensor. The default sort algorithm is ascending, if you want the sort algorithm to be descending, you must set the :attr:`descending` as True.
-    
+
         Args:
             axis(int, optional): Axis to compute indices along. The effective range
                 is [-R, R), where R is Rank(x). when axis<0, it works the same way
@@ -5310,15 +5310,15 @@ class Tensor:
                 algorithm will sort by descending order, else sort by
                 ascending order. Default is false.
             name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-    
+
         Returns:
             Tensor: sorted tensor(with the same shape and data type as ``x``).
         Examples:
-    
+
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[[5,8,9,5],
                                        [0,0,1,7],
                                        [6,9,2,4]],
@@ -5356,23 +5356,23 @@ class Tensor:
     def mode(self, axis=-1, keepdim=False, name=None):
         """
         Used to find values and indices of the modes at the optional axis.
-    
+
         Args:
             axis(int, optional): Axis to compute indices along. The effective range
                 is [-R, R), where R is x.ndim. when axis < 0, it works the same way
                 as axis + R. Default is -1.
             keepdim(bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimentions is one fewer than x since the axis is squeezed. Default is False.
             name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-    
+
         Returns:
             tuple(Tensor), return the values and indices. The value data type is the same as the input `x`. The indices data type is int64.
-    
+
         Examples:
-    
+
             .. code-block:: python
-    
+
                import paddle
-    
+
                tensor = paddle.to_tensor([[[1,2,2],[2,3,3]],[[0,5,5],[9,9,0]]], dtype=paddle.float32)
                res = paddle.mode(tensor, 2)
                print(res)
@@ -5381,46 +5381,46 @@ class Tensor:
                #    [5., 9.]]), Tensor(shape=[2, 2], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
                #   [[1, 1],
                #    [1, 0]]))
-    
+
         """
         ...
 
     def where(self, x=None, y=None, name=None):
         r"""
         Return a Tensor of elements selected from either :attr:`x` or :attr:`y` according to corresponding elements of :attr:`condition`. Concretely,
-    
+
         .. math::
-    
+
             out_i =
             \begin{cases}
             x_i, & \text{if}  \ condition_i \  \text{is} \ True \\
             y_i, & \text{if}  \ condition_i \  \text{is} \ False \\
             \end{cases}.
-    
+
         Notes:
             ``numpy.where(condition)`` is identical to ``paddle.nonzero(condition, as_tuple=True)``, please refer to :ref:`api_tensor_search_nonzero`.
-    
+
         Args:
             x (Tensor|scalar, optional): A Tensor or scalar to choose when the condition is True with data type of float32, float64, int32 or int64. Either both or neither of x and y should be given.
             y (Tensor|scalar, optional): A Tensor or scalar to choose when the condition is False with data type of float32, float64, int32 or int64. Either both or neither of x and y should be given.
             name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-    
+
         Returns:
             Tensor: A Tensor with the same shape as :attr:`condition` and same data type as :attr:`x` and :attr:`y`.
-    
+
         Examples:
-    
+
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([0.9383, 0.1983, 3.2, 1.2])
                 y = paddle.to_tensor([1.0, 1.0, 1.0, 1.0])
-    
+
                 out = paddle.where(x>1, x, y)
                 print(out)
                 #out: [1.0, 1.0, 3.2, 1.2]
-    
+
                 out = paddle.where(x>1)
                 print(out)
                 #out: (Tensor(shape=[2, 1], dtype=int64, place=CPUPlace, stop_gradient=True,
@@ -5432,39 +5432,39 @@ class Tensor:
     def index_sample(self, index):
         """
         **IndexSample Layer**
-    
+
         IndexSample OP returns the element of the specified location of X,
         and the location is specified by Index.
-    
+
         .. code-block:: text
-    
-    
+
+
                     Given:
-    
+
                     X = [[1, 2, 3, 4, 5],
                          [6, 7, 8, 9, 10]]
-    
+
                     Index = [[0, 1, 3],
                              [0, 2, 4]]
-    
+
                     Then:
-    
+
                     Out = [[1, 2, 4],
                            [6, 8, 10]]
-    
+
         Args:
             index (Tensor): The index input tensor with 2-D shape, first dimension should be same with X.
                 Data type is int32 or int64.
-    
+
         Returns:
             output (Tensor): The output is a tensor with the same shape as index.
-    
+
         Examples:
-    
+
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[1.0, 2.0, 3.0, 4.0],
                                       [5.0, 6.0, 7.0, 8.0],
                                       [9.0, 10.0, 11.0, 12.0]], dtype='float32')
@@ -5479,7 +5479,7 @@ class Tensor:
                 #[[1. 2. 3.]
                 # [6. 7. 8.]
                 # [9. 9. 9.]]
-    
+
                 # Use the index of the maximum value by topk op
                 # get the value of the element of the corresponding index in other tensors
                 top_value, top_index = paddle.topk(x, k=2)
@@ -5488,17 +5488,17 @@ class Tensor:
                 #[[ 4.  3.]
                 # [ 8.  7.]
                 # [12. 11.]]
-    
+
                 print(top_index)
                 #[[3 2]
                 # [3 2]
                 # [3 2]]
-    
+
                 print(out_z2)
                 #[[ 400  300]
                 # [ 800  700]
                 # [1200 1100]]
-    
+
         """
         ...
 
@@ -5506,20 +5506,20 @@ class Tensor:
         """
         Returns a new 1-D tensor which indexes the input tensor according to the ``mask``
         which is a tensor with data type of bool.
-    
+
         Args:
             mask (Tensor): The Tensor containing the binary mask to index with, it's data type is bool.
             name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-    
+
         Returns:
             A 1-D Tensor which is the same data type  as ``x``.
-    
+
         Examples:
-    
+
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[1.0, 2.0, 3.0, 4.0],
                                       [5.0, 6.0, 7.0, 8.0],
                                       [9.0, 10.0, 11.0, 12.0]])
@@ -5536,7 +5536,7 @@ class Tensor:
         Return values and indices of the k largest or smallest at the optional axis.
         If the input is a 1-D Tensor, finds the k largest or smallest values and indices.
         If the input is a Tensor with higher rank, this operator computes the top k values and indices along the :attr:`axis`.
-    
+
         Args:
             k(int, Tensor): The number of top elements to look for along the axis.
             axis(int, optional): Axis to compute indices along. The effective range
@@ -5547,58 +5547,58 @@ class Tensor:
                 ascending order. Default is True.
             sorted(bool, optional): controls whether to return the elements in sorted order, default value is True. In gpu device, it always return the sorted value.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             tuple(Tensor), return the values and indices. The value data type is the same as the input `x`. The indices data type is int64.
-    
+
         Examples:
-    
+
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 data_1 = paddle.to_tensor([1, 4, 5, 7])
                 value_1, indices_1 = paddle.topk(data_1, k=1)
                 print(value_1) # [7]
                 print(indices_1) # [3]
-    
+
                 data_2 = paddle.to_tensor([[1, 4, 5, 7], [2, 6, 2, 5]])
                 value_2, indices_2 = paddle.topk(data_2, k=1)
                 print(value_2) # [[7], [6]]
                 print(indices_2) # [[3], [1]]
-    
+
                 value_3, indices_3 = paddle.topk(data_2, k=1, axis=-1)
                 print(value_3) # [[7], [6]]
                 print(indices_3) # [[3], [1]]
-    
+
                 value_4, indices_4 = paddle.topk(data_2, k=1, axis=0)
                 print(value_4) # [[2, 6, 5, 7]]
                 print(indices_4) # [[1, 1, 0, 0]]
-    
-    
+
+
         """
         ...
 
     def bucketize(self, sorted_sequence, out_int32=False, right=False, name=None):
         """
         This API is used to find the index of the corresponding 1D tensor `sorted_sequence` in the innermost dimension based on the given `x`.
-    
+
         Args:
             sorted_sequence(Tensor): An input 1-D tensor with type int32, int64, float32, float64. The value of the tensor monotonically increases in the innermost dimension.
             out_int32(bool, optional): Data type of the output tensor which can be int32, int64. The default value is False, and it indicates that the output data type is int64.
             right(bool, optional): Find the upper or lower bounds of the sorted_sequence range in the innermost dimension based on the given `x`. If the value of the sorted_sequence is nan or inf, return the size of the innermost dimension.
                                    The default value is False and it shows the lower bounds.
             name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor（the same sizes of the `x`）, return the tensor of int32 if set :attr:`out_int32` is True, otherwise return the tensor of int64.
-    
+
         Examples:
-    
+
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 sorted_sequence = paddle.to_tensor([2, 4, 8, 16], dtype='int32')
                 x = paddle.to_tensor([[0, 8, 4, 16], [-1, 2, 8, 4]], dtype='int32')
                 out1 = paddle.bucketize(x, sorted_sequence)
@@ -5621,14 +5621,14 @@ class Tensor:
                 # Tensor(shape=[2, 4], dtype=int64, place=CPUPlace, stop_gradient=True,
                 #        [[0, 3, 2, 4],
                 #         [0, 1, 3, 2]])
-    
+
         """
         ...
 
     def kthvalue(self, k, axis=None, keepdim=False, name=None):
         """
         Find values and indices of the k-th smallest at the axis.
-    
+
         Args:
             k(int): The k for the k-th smallest number to look for along the axis.
             axis(int, optional): Axis to compute indices along. The effective range
@@ -5636,16 +5636,16 @@ class Tensor:
                 as axis + R. The default is None. And if the axis is None, it will computed as -1 by default.
             keepdim(bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimentions is one fewer than x since the axis is squeezed. Default is False.
             name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-    
+
         Returns:
             tuple(Tensor), return the values and indices. The value data type is the same as the input `x`. The indices data type is int64.
-    
+
         Examples:
-    
+
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.randn((2,3,2))
                 # Tensor(shape=[2, 3, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
                 #       [[[ 0.22954939, -0.01296274],
@@ -5667,24 +5667,24 @@ class Tensor:
     def log(self, name=None):
         r"""
         Calculates the natural log of the given input Tensor, element-wise.
-    
+
         .. math::
-    
+
             Out = \ln(x)
-    
+
         Args:
             name (str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
-    
-    
+
+
         Returns:
             Tensor: The natural log of the input Tensor computed element-wise.
-    
+
         Examples:
-    
+
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = [[2,3,4], [7,8,9]]
                 x = paddle.to_tensor(x, dtype='float32')
                 res = paddle.log(x)
@@ -5695,127 +5695,127 @@ class Tensor:
     def scale(self, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
         """
         Scale operator.
-    
+
         Putting scale and bias to the input Tensor as following:
-    
+
         ``bias_after_scale`` is True:
-    
+
         .. math::
                                 Out=scale*X+bias
-    
+
         ``bias_after_scale`` is False:
-    
+
         .. math::
                                 Out=scale*(X+bias)
-    
+
         Args:
             scale (float|Tensor): The scale factor of the input, it should be a float number or a Tensor with shape [1] and data type as float32.
             bias (float): The bias to be put on the input.
             bias_after_scale (bool): Apply bias addition after or before scaling. It is useful for numeric stability in some circumstances.
             act (str, optional): Activation applied to the output such as tanh, softmax, sigmoid, relu.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: Output Tensor of scale operator, with shape and data type same as input.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 # scale as a float32 number
                 import paddle
-    
+
                 data = paddle.randn(shape=[2,3], dtype='float32')
                 res = paddle.scale(data, scale=2.0, bias=1.0)
-    
+
             .. code-block:: python
-    
+
                 # scale with parameter scale as a Tensor
                 import paddle
-    
+
                 data = paddle.randn(shape=[2, 3], dtype='float32')
                 factor = paddle.to_tensor([2], dtype='float32')
                 res = paddle.scale(data, scale=factor, bias=1.0)
-    
+
         """
         ...
 
     def stanh(self, scale_a=0.67, scale_b=1.7159, name=None):
         r"""
-    
+
         stanh activation.
-    
+
         .. math::
-    
+
             out = b * \frac{e^{a * x} - e^{-a * x}}{e^{a * x} + e^{-a * x}}
-    
+
         Parameters:
             x (Tensor): The input Tensor with data type float32, float64.
             scale_a (float, optional): The scale factor a of the input. Default is 0.67.
             scale_b (float, optional): The scale factor b of the output. Default is 1.7159.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             A Tensor with the same data type and shape as ``x`` .
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
                 out = paddle.stanh(x, scale_a=0.67, scale_b=1.72) # [1.00616539, 1.49927628, 1.65933108, 1.70390463]
-    
+
         """
         ...
 
     def multiplex(self, index, name=None):
         """
-    
+
         Based on the given index parameter, the OP selects a specific row from each input Tensor to construct the output Tensor.
-    
+
         If the input of this OP contains :math:`m` Tensors, where :math:`I_{i}` means the i-th input Tensor, :math:`i` between :math:`[0,m)` .
-    
+
         And :math:`O` means the output, where :math:`O[i]` means the i-th row of the output, then the output satisfies that :math:`O[i] = I_{index[i]}[i]` .
-    
+
         For Example:
-    
+
                 .. code-block:: text
-    
+
                     Given:
-    
+
                     inputs = [[[0,0,3,4], [0,1,3,4], [0,2,4,4], [0,3,3,4]],
                               [[1,0,3,4], [1,1,7,8], [1,2,4,2], [1,3,3,4]],
                               [[2,0,3,4], [2,1,7,8], [2,2,4,2], [2,3,3,4]],
                               [[3,0,3,4], [3,1,7,8], [3,2,4,2], [3,3,3,4]]]
-    
+
                     index = [[3],[0],[1],[2]]
-    
+
                     out = [[3,0,3,4],    # out[0] = inputs[index[0]][0] = inputs[3][0] = [3,0,3,4]
                            [0,1,3,4],    # out[1] = inputs[index[1]][1] = inputs[0][1] = [0,1,3,4]
                            [1,2,4,2],    # out[2] = inputs[index[2]][2] = inputs[1][2] = [1,2,4,2]
                            [2,3,3,4]]    # out[3] = inputs[index[3]][3] = inputs[2][3] = [2,3,3,4]
-    
-    
+
+
         Args:
             index (Tensor): Used to select some rows in the input Tensor to construct an index of the output Tensor. It is a 2-D Tensor with data type int32 or int64 and shape [M, 1], where M is the number of input Tensors.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: Output of multiplex OP, with data type being float32, float64, int32, int64.
-    
+
         Examples:
-    
+
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 img1 = paddle.to_tensor([[1, 2], [3, 4]], dtype=paddle.float32)
                 img2 = paddle.to_tensor([[5, 6], [7, 8]], dtype=paddle.float32)
                 inputs = [img1, img2]
                 index = paddle.to_tensor([[1], [0]], dtype=paddle.int32)
                 res = paddle.multiplex(inputs, index)
                 print(res) # Tensor([[5., 6.], [3., 4.]], dtype=float32)
-    
+
         """
         ...
 
@@ -5829,31 +5829,31 @@ class Tensor:
     def pow(self, y, name=None):
         """
         Compute the power of Tensor elements. The equation is:
-    
+
         .. math::
             out = x^{y}
-    
+
         Note:
             ``paddle.pow`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
-    
+
             .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensors
-    
-    
+
+
         Args:
             y (float|int|Tensor): If it is an N-D Tensor, its data type should be the same as `x`.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             N-D Tensor. A location into which the result is stored. Its dimension and data type are the same as `x`.
-    
+
         Examples:
-    
+
             ..  code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([1, 2, 3], dtype='float32')
-    
+
                 # example 1: y is a float or int
                 res = paddle.pow(x, 2)
                 print(res)
@@ -5863,14 +5863,14 @@ class Tensor:
                 print(res)
                 # Tensor(shape=[3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
                 #        [1.         , 5.65685415 , 15.58845711])
-    
+
                 # example 2: y is a Tensor
                 y = paddle.to_tensor([2], dtype='float32')
                 res = paddle.pow(x, y)
                 print(res)
                 # Tensor(shape=[3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
                 #        [1., 4., 9.])
-    
+
         """
         ...
 
@@ -5879,49 +5879,49 @@ class Tensor:
         Elementwise Add Operator.
         Add two tensors element-wise
         The equation is:
-    
+
         ..  math::
-    
+
             Out=X+Y
-    
+
         $X$ the tensor of any dimension.
         $Y$ the tensor whose dimensions must be less than or equal to the dimensions of $X$.
-    
+
         There are two cases for this operator:
-    
+
         1. The shape of $Y$ is the same with $X$.
         2. The shape of $Y$ is a continuous subsequence of $X$.
-    
+
         For case 2:
-    
+
         1. Broadcast $Y$ to match the shape of $X$, where axis is the start dimension index for broadcasting $Y$ onto $X$.
         2. If $axis$ is -1 (default), $axis$=rank($X$)-rank($Y$).
         3. The trailing dimensions of size 1 for $Y$ will be ignored for the consideration of subsequence, such as shape($Y$) = (2, 1) => (2).
-    
+
             For example:
-    
+
             ..  code-block:: python
-    
+
                 shape(X) = (2, 3, 4, 5), shape(Y) = (,)
                 shape(X) = (2, 3, 4, 5), shape(Y) = (5,)
                 shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5), with axis=-1(default) or axis=2
                 shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
                 shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
                 shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1), with axis=0
-    
+
         Args:
             y (Tensor): Tensor or LoDTensor of any dimensions. Its dtype should be int32, int64, float32, float64.
             name (string, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-    
+
         Returns:
             N-D Tensor. A location into which the result is stored. It's dimension equals with x.
-    
+
         Examples:
-    
+
             ..  code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([2, 3, 4], 'float64')
                 y = paddle.to_tensor([1, 5, 2], 'float64')
                 z = paddle.add(x, y)
@@ -5939,28 +5939,28 @@ class Tensor:
     def subtract(self, y, name=None):
         """
         Substract two tensors element-wise. The equation is:
-    
+
         .. math::
             out = x - y
-    
+
         Note:
             ``paddle.subtract`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
-    
+
             .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-    
+
         Args:
             y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
-    
+
         Examples:
-    
+
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[1, 2], [7, 8]])
                 y = paddle.to_tensor([[5, 6], [3, 4]])
                 res = paddle.subtract(x, y)
@@ -5968,7 +5968,7 @@ class Tensor:
                 # Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
                 #        [[-4, -4],
                 #         [ 4,  4]])
-    
+
                 x = paddle.to_tensor([[[1, 2, 3], [1, 2, 3]]])
                 y = paddle.to_tensor([1, 0, 4])
                 res = paddle.subtract(x, y)
@@ -5976,14 +5976,14 @@ class Tensor:
                 # Tensor(shape=[1, 2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
                 #        [[[ 0,  2, -1],
                 #          [ 0,  2, -1]]])
-    
+
                 x = paddle.to_tensor([2, float('nan'), 5], dtype='float32')
                 y = paddle.to_tensor([1, 4, float('nan')], dtype='float32')
                 res = paddle.subtract(x, y)
                 print(res)
                 # Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
                 #        [1. , nan, nan])
-    
+
                 x = paddle.to_tensor([5, float('inf'), -float('inf')], dtype='float64')
                 y = paddle.to_tensor([1, 4, 5], dtype='float64')
                 res = paddle.subtract(x, y)
@@ -6003,102 +6003,102 @@ class Tensor:
     def divide(self, y, name=None):
         """
         Divide two tensors element-wise. The equation is:
-    
+
         .. math::
             out = x / y
-    
+
         Note:
             ``paddle.divide`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
-    
+
             .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-    
+
         Args:
             y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
-    
+
         Examples:
-    
+
             ..  code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([2, 3, 4], dtype='float64')
                 y = paddle.to_tensor([1, 5, 2], dtype='float64')
                 z = paddle.divide(x, y)
                 print(z)  # [2., 0.6, 2.]
-    
+
         """
         ...
 
     def floor_divide(self, y, name=None):
         """
         Floor divide two tensors element-wise and rounds the quotinents to the nearest integer toward zero. The equation is:
-    
+
         .. math::
             out = trunc(x / y)
-    
+
         Note:
             ``paddle.floor_divide`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
-    
+
             .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-    
+
             Also note that the name ``floor_divide`` can be misleading, as the quotinents are actually rounded toward zero, not toward negative infinite.
-    
+
         Args:
             y (Tensor): the input tensor, it's data type should be int32, int64.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             N-D Tensor. A location into which the result is stored. It's dimension equals with $x$.
-    
+
         Examples:
-    
+
             ..  code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([2, 3, 8, 7])
                 y = paddle.to_tensor([1, 5, 3, 3])
                 z = paddle.floor_divide(x, y)
                 print(z)  # [2, 0, 2, 2]
-    
+
         """
         ...
 
     def remainder(self, y, name=None):
         r"""
         Mod two tensors element-wise. The equation is:
-    
+
         .. math::
-    
+
             out = x \% y
-    
+
         Note:
             ``paddle.remainder`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
-    
+
             .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-    
+
         Args:
             y (Tensor): the input tensor, it's data type should be float16, float32, float64, int32, int64.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
-    
+
         Examples:
-    
+
             ..  code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([2, 3, 8, 7])
                 y = paddle.to_tensor([1, 5, 3, 3])
                 z = paddle.remainder(x, y)
                 print(z)  # [0, 3, 2, 1]
-    
+
         """
         ...
 
@@ -6112,66 +6112,66 @@ class Tensor:
     def multiply(self, y, name=None):
         """
         multiply two tensors element-wise. The equation is:
-    
+
         .. math::
             out = x * y
-    
+
         Note:
             ``paddle.multiply`` supports broadcasting. If you would like to know more about broadcasting, please refer to `Introduction to Tensor`_ .
-    
+
             .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-    
+
         Args:
             y (Tensor): the input tensor, its data type should be one of float32, float64, int32, int64, bool.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
-    
+
         Examples:
-    
+
             ..  code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[1, 2], [3, 4]])
                 y = paddle.to_tensor([[5, 6], [7, 8]])
                 res = paddle.multiply(x, y)
                 print(res) # [[5, 12], [21, 32]]
-    
+
                 x = paddle.to_tensor([[[1, 2, 3], [1, 2, 3]]])
                 y = paddle.to_tensor([2])
                 res = paddle.multiply(x, y)
                 print(res) # [[[2, 4, 6], [2, 4, 6]]]
-    
+
         """
         ...
 
     def maximum(self, y, name=None):
         """
         Compare two tensors and returns a new tensor containing the element-wise maxima. The equation is:
-    
+
         .. math::
             out = max(x, y)
-    
+
         Note:
             ``paddle.maximum`` supports broadcasting. If you want know more about broadcasting, please refer to  `Introduction to Tensor`_ .
-    
+
             .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-    
+
         Args:
             y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
-    
+
         Examples:
-    
+
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[1, 2], [7, 8]])
                 y = paddle.to_tensor([[3, 4], [5, 6]])
                 res = paddle.maximum(x, y)
@@ -6179,7 +6179,7 @@ class Tensor:
                 # Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
                 #        [[3, 4],
                 #         [7, 8]])
-    
+
                 x = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
                 y = paddle.to_tensor([3, 0, 4])
                 res = paddle.maximum(x, y)
@@ -6187,14 +6187,14 @@ class Tensor:
                 # Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
                 #        [[3, 2, 4],
                 #         [3, 2, 4]])
-    
+
                 x = paddle.to_tensor([2, 3, 5], dtype='float32')
                 y = paddle.to_tensor([1, float("nan"), float("nan")], dtype='float32')
                 res = paddle.maximum(x, y)
                 print(res)
                 # Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
                 #        [2. , nan, nan])
-    
+
                 x = paddle.to_tensor([5, 3, float("inf")], dtype='float32')
                 y = paddle.to_tensor([1, -float("inf"), 5], dtype='float32')
                 res = paddle.maximum(x, y)
@@ -6207,28 +6207,28 @@ class Tensor:
     def minimum(self, y, name=None):
         """
         Compare two tensors and return a new tensor containing the element-wise minima. The equation is:
-    
+
         .. math::
             out = min(x, y)
-    
+
         Note:
             ``paddle.minimum`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
-    
+
             .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-    
+
         Args:
             y (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
-    
+
         Examples:
-    
+
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[1, 2], [7, 8]])
                 y = paddle.to_tensor([[3, 4], [5, 6]])
                 res = paddle.minimum(x, y)
@@ -6236,7 +6236,7 @@ class Tensor:
                 # Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
                 #        [[1, 2],
                 #         [5, 6]])
-    
+
                 x = paddle.to_tensor([[[1, 2, 3], [1, 2, 3]]])
                 y = paddle.to_tensor([3, 0, 4])
                 res = paddle.minimum(x, y)
@@ -6244,14 +6244,14 @@ class Tensor:
                 # Tensor(shape=[1, 2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
                 #        [[[1, 0, 3],
                 #          [1, 0, 3]]])
-    
+
                 x = paddle.to_tensor([2, 3, 5], dtype='float32')
                 y = paddle.to_tensor([1, float("nan"), float("nan")], dtype='float32')
                 res = paddle.minimum(x, y)
                 print(res)
                 # Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
                 #        [1. , nan, nan])
-    
+
                 x = paddle.to_tensor([5, 3, float("inf")], dtype='float64')
                 y = paddle.to_tensor([1, -float("inf"), 5], dtype='float64')
                 res = paddle.minimum(x, y)
@@ -6266,28 +6266,28 @@ class Tensor:
         Compares the elements at the corresponding positions of the two tensors and returns a new tensor containing the maximum value of the element.
         If one of them is a nan value, the other value is directly returned, if both are nan values, then the first nan value is returned.
         The equation is:
-    
+
         .. math::
             out = fmax(x, y)
-    
+
         Note:
             ``paddle.fmax`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
-    
+
             .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-    
+
         Args:
             y (Tensor): the input tensor, it's data type should be float16, float32, float64, int32, int64.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
-    
+
         Examples:
-    
+
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[1, 2], [7, 8]])
                 y = paddle.to_tensor([[3, 4], [5, 6]])
                 res = paddle.fmax(x, y)
@@ -6295,7 +6295,7 @@ class Tensor:
                 # Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
                 #        [[3, 4],
                 #         [7, 8]])
-    
+
                 x = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
                 y = paddle.to_tensor([3, 0, 4])
                 res = paddle.fmax(x, y)
@@ -6303,14 +6303,14 @@ class Tensor:
                 # Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
                 #        [[3, 2, 4],
                 #         [3, 2, 4]])
-    
+
                 x = paddle.to_tensor([2, 3, 5], dtype='float32')
                 y = paddle.to_tensor([1, float("nan"), float("nan")], dtype='float32')
                 res = paddle.fmax(x, y)
                 print(res)
                 # Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
                 #        [2., 3., 5.])
-    
+
                 x = paddle.to_tensor([5, 3, float("inf")], dtype='float32')
                 y = paddle.to_tensor([1, -float("inf"), 5], dtype='float32')
                 res = paddle.fmax(x, y)
@@ -6325,28 +6325,28 @@ class Tensor:
         Compares the elements at the corresponding positions of the two tensors and returns a new tensor containing the minimum value of the element.
         If one of them is a nan value, the other value is directly returned, if both are nan values, then the first nan value is returned.
         The equation is:
-    
+
         .. math::
             out = fmin(x, y)
-    
+
         Note:
             ``paddle.fmin`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
-    
+
             .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-    
+
         Args:
             y (Tensor): the input tensor, it's data type should be float16, float32, float64, int32, int64.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
-    
+
         Examples:
-    
+
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[1, 2], [7, 8]])
                 y = paddle.to_tensor([[3, 4], [5, 6]])
                 res = paddle.fmin(x, y)
@@ -6354,7 +6354,7 @@ class Tensor:
                 # Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
                 #        [[1, 2],
                 #         [5, 6]])
-    
+
                 x = paddle.to_tensor([[[1, 2, 3], [1, 2, 3]]])
                 y = paddle.to_tensor([3, 0, 4])
                 res = paddle.fmin(x, y)
@@ -6362,14 +6362,14 @@ class Tensor:
                 # Tensor(shape=[1, 2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
                 #        [[[1, 0, 3],
                 #          [1, 0, 3]]])
-    
+
                 x = paddle.to_tensor([2, 3, 5], dtype='float32')
                 y = paddle.to_tensor([1, float("nan"), float("nan")], dtype='float32')
                 res = paddle.fmin(x, y)
                 print(res)
                 # Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
                 #        [1., 3., 5.])
-    
+
                 x = paddle.to_tensor([5, 3, float("inf")], dtype='float64')
                 y = paddle.to_tensor([1, -float("inf"), 5], dtype='float64')
                 res = paddle.fmin(x, y)
@@ -6382,7 +6382,7 @@ class Tensor:
     def sum(self, axis=None, dtype=None, keepdim=False, name=None):
         """
         Computes the sum of tensor elements over the given dimension.
-    
+
         Args:
             axis (int|list|tuple, optional): The dimensions along which the sum is performed. If
                 :attr:`None`, sum all elements of :attr:`x` and return a
@@ -6396,17 +6396,17 @@ class Tensor:
                 than the :attr:`x` unless :attr:`keepdim` is true, default
                 value is False.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: Results of summation operation on the specified axis of input Tensor `x`,
             if `x.dtype='bool'`, `x.dtype='int32'`, it's data type is `'int64'`,
             otherwise it's data type is the same as `x`.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 # x is a Tensor with following elements:
                 #    [[0.2, 0.3, 0.5, 0.9]
                 #     [0.1, 0.2, 0.6, 0.7]]
@@ -6417,7 +6417,7 @@ class Tensor:
                 out2 = paddle.sum(x, axis=0)  # [0.3, 0.5, 1.1, 1.6]
                 out3 = paddle.sum(x, axis=-1)  # [1.9, 1.6]
                 out4 = paddle.sum(x, axis=1, keepdim=True)  # [[1.9], [1.6]]
-    
+
                 # y is a Tensor with shape [2, 2, 2] and elements as below:
                 #      [[[1, 2], [3, 4]],
                 #      [[5, 6], [7, 8]]]
@@ -6426,7 +6426,7 @@ class Tensor:
                                       [[5, 6], [7, 8]]])
                 out5 = paddle.sum(y, axis=[1, 2]) # [10, 26]
                 out6 = paddle.sum(y, axis=[0, 1]) # [16, 20]
-    
+
                 # x is a Tensor with following elements:
                 #    [[True, True, True, True]
                 #     [False, False, False, False]]
@@ -6442,21 +6442,21 @@ class Tensor:
     def nan_to_num(self, nan=0.0, posinf=None, neginf=None, name=None):
         """
         Replaces NaN, positive infinity, and negative infinity values in input tensor.
-    
+
         Args:
             nan (float, optional): the value to replace NaNs with. Default is 0.
             posinf (float, optional): if a Number, the value to replace positive infinity values with. If None, positive infinity values are replaced with the greatest finite value representable by input’s dtype. Default is None.
             neginf (float, optional): if a Number, the value to replace negative infinity values with. If None, negative infinity values are replaced with the lowest finite value representable by input’s dtype. Default is None.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: Results of nan_to_num operation input Tensor ``x``.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([float('nan'), 0.3, float('+inf'), float('-inf')], dtype='float32')
                 out1 = paddle.nan_to_num(x)  # [0, 0.3, 3.4028235e+38, -3.4028235e+38]
                 out2 = paddle.nan_to_num(x, nan=1)  # [1, 0.3, 3.4028235e+38, -3.4028235e+38]
@@ -6468,7 +6468,7 @@ class Tensor:
     def nansum(self, axis=None, dtype=None, keepdim=False, name=None):
         """
         Computes the sum of tensor elements over the given axis, treating Not a Numbers (NaNs) as zero.
-    
+
         Args:
             axis (int|list|tuple, optional): The dimensions along which the nansum is performed. If
                 :attr:`None`, nansum all elements of :attr:`x` and return a
@@ -6482,15 +6482,15 @@ class Tensor:
                 than the :attr:`x` unless :attr:`keepdim` is true, default
                 value is False.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: Results of summation operation on the specified axis of input Tensor `x`,
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 # x is a Tensor with following elements:
                 #    [[nan, 0.3, 0.5, 0.9]
                 #     [0.1, 0.2, -nan, 0.7]]
@@ -6501,7 +6501,7 @@ class Tensor:
                 out2 = paddle.nansum(x, axis=0)  # [0.1, 0.5, 0.5, 1.6]
                 out3 = paddle.nansum(x, axis=-1)  # [1.7, 1.0]
                 out4 = paddle.nansum(x, axis=1, keepdim=True)  # [[1.7], [1.0]]
-    
+
                 # y is a Tensor with shape [2, 2, 2] and elements as below:
                 #      [[[1, nan], [3, 4]],
                 #      [[5, 6], [-nan, 8]]]
@@ -6516,7 +6516,7 @@ class Tensor:
     def nanmean(self, axis=None, keepdim=False, name=None):
         r"""
         Compute the arithmetic mean along the specified axis, ignoring NaNs.
-    
+
         Args:
             axis (int|list|tuple, optional):The axis along which to perform nanmean
                 calculations. ``axis`` should be int, list(int) or tuple(int). If
@@ -6533,16 +6533,16 @@ class Tensor:
                 the output Tensor is squeezed in ``axis`` . Default is False.
             name (str, optional): Name for the operation (optional, default is None).
                 For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, results of arithmetic mean along ``axis`` of ``x``, with the same data
             type as ``x``.
-    
+
         Examples:
-    
+
             .. code-block:: python
                 :name: code-example1
-    
+
                 import paddle
                 # x is a 2-D Tensor:
                 x = paddle.to_tensor([[float('nan'), 0.3, 0.5, 0.9],
@@ -6558,7 +6558,7 @@ class Tensor:
                 out5 = paddle.nanmean(x, axis=1, keepdim=True)
                 # [[0.56666666]
                 #  [0.33333334]]
-    
+
                 # y is a 3-D Tensor:
                 y = paddle.to_tensor([[[1, float('nan')], [3, 4]],
                                        [[5, 6], [float('-nan'), 8]]])
@@ -6572,7 +6572,7 @@ class Tensor:
     def count_nonzero(self, axis=None, keepdim=False, name=None):
         r"""
         Counts the number of non-zero values in the tensor x along the specified axis.
-    
+
         Args:
             axis (int|list|tuple, optional): The dimensions along which the sum is performed. If
                 :attr:`None`, sum all elements of :attr:`x` and return a
@@ -6584,14 +6584,14 @@ class Tensor:
                 than the :attr:`x` unless :attr:`keepdim` is true, default
                 value is False.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: Results of count operation on the specified axis of input Tensor `x`, it's data type is `'int64'`.
-    
+
         Examples:
-    
+
             .. code-block:: python
-    
+
                 import paddle
                 # x is a 2-D Tensor:
                 x = paddle.to_tensor([[0., 1.1, 1.2], [0., 0., 1.3], [0., 0., 0.]])
@@ -6607,7 +6607,7 @@ class Tensor:
                 #[[2],
                 # [1],
                 # [0]]
-    
+
                 # y is a 3-D Tensor:
                 y = paddle.to_tensor([[[0., 1.1, 1.2], [0., 0., 1.3], [0., 0., 0.]],
                                       [[0., 2.5, 2.6], [0., 0., 2.4], [2.1, 2.2, 2.3]]])
@@ -6621,52 +6621,52 @@ class Tensor:
     def add_n(self, name=None):
         """
         Sum one or more Tensor of the input.
-    
+
         For example:
-    
+
         .. code-block:: text
-    
+
             Case 1:
-    
+
                 Input:
                     input.shape = [2, 3]
                     input = [[1, 2, 3],
                              [4, 5, 6]]
-    
+
                 Output:
                     output.shape = [2, 3]
                     output = [[1, 2, 3],
                               [4, 5, 6]]
-    
+
             Case 2:
-    
+
                 Input:
                     First input:
                         input1.shape = [2, 3]
                         Input1 = [[1, 2, 3],
                                   [4, 5, 6]]
-    
+
                     The second input:
                         input2.shape = [2, 3]
                         input2 = [[7, 8, 9],
                                   [10, 11, 12]]
-    
+
                     Output:
                         output.shape = [2, 3]
                         output = [[8, 10, 12],
                                   [14, 16, 18]]
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, the sum of input :math:`inputs` , its shape and data types are consistent with :math:`inputs`.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 input0 = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], dtype='float32')
                 input1 = paddle.to_tensor([[7, 8, 9], [10, 11, 12]], dtype='float32')
                 output = paddle.add_n([input0, input1])
@@ -6678,24 +6678,24 @@ class Tensor:
     def trunc(self, name=None):
         '''
         This API is used to returns a new tensor with the truncated integer values of input.
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: The output Tensor of trunc.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 input = paddle.rand([2,2],'float32')
                 print(input)
                 # Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
                 #         [[0.02331470, 0.42374918],
                 #         [0.79647720, 0.74970269]])
-    
+
                 output = paddle.trunc(input)
                 print(output)
                 # Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
@@ -6706,59 +6706,59 @@ class Tensor:
 
     def mm(self, mat2, name=None):
         """
-    
+
         Applies matrix multiplication to two tensors.
-    
+
         Currently, the input tensors' rank can be any, but when the rank of any
         inputs is bigger than 3, this two inputs' rank should be equal.
-    
-    
+
+
         Also note that if the raw tensor :math:`x` or :math:`mat2` is rank-1 and
         nontransposed, the prepended or appended dimension :math:`1` will be
         removed after matrix multiplication.
-    
+
         Args:
             mat2 (Tensor): The input tensor which is a Tensor.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: The product Tensor.
-    
+
         ::
-    
+
             * example 1:
-    
+
             input: [B, ..., M, K], mat2: [B, ..., K, N]
             out: [B, ..., M, N]
-    
+
             * example 2:
-    
+
             input: [B, M, K], mat2: [B, K, N]
             out: [B, M, N]
-    
+
             * example 3:
-    
+
             input: [B, M, K], mat2: [K, N]
             out: [B, M, N]
-    
+
             * example 4:
-    
+
             input: [M, K], mat2: [K, N]
             out: [M, N]
-    
+
             * example 5:
-    
+
             input: [B, M, K], mat2: [K]
             out: [B, M]
-    
+
             * example 6:
-    
+
             input: [K], mat2: [K]
             out: [1]
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
                 input = paddle.arange(1, 7).reshape((3, 2)).astype('float32')
                 mat2 = paddle.arange(1, 9).reshape((2, 4)).astype('float32')
@@ -6767,45 +6767,45 @@ class Tensor:
                 #        [[11., 14., 17., 20.],
                 #         [23., 30., 37., 44.],
                 #         [35., 46., 57., 68.]])
-    
-    
+
+
         """
         ...
 
     def addmm(self, x, y, beta=1.0, alpha=1.0, name=None):
         """
         **addmm**
-    
+
         Perform matrix multiplication for input $x$ and $y$.
         $input$ is added to the final result.
         The equation is:
-    
+
         ..  math::
             Out = alpha * x * y + beta * input
-    
+
         $Input$, $x$ and $y$ can carry the LoD (Level of Details) information, or not. But the output only shares the LoD information with input $input$.
-    
+
         Args:
             x (Tensor): The first input Tensor for matrix multiplication.
             y (Tensor): The second input Tensor for matrix multiplication.
             beta (float, optional): Coefficient of $input$, default is 1.
             alpha (float, optional): Coefficient of $x*y$, default is 1.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: The output Tensor of addmm.
-    
+
         Examples:
             ..  code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.ones([2,2])
                 y = paddle.ones([2,2])
                 input = paddle.ones([2,2])
-    
+
                 out = paddle.addmm( input=input, x=x, y=y, beta=0.5, alpha=5.0 )
-    
+
                 print(out)
                 # [[10.5 10.5]
                 # [10.5 10.5]]
@@ -6814,21 +6814,21 @@ class Tensor:
 
     def inner(self, y, name=None):
         """
-    
+
         Inner product of two input Tensor.
-    
+
         Ordinary inner product for 1-D Tensors, in higher dimensions a sum product over the last axes.
-    
+
         Args:
             y (Tensor): An N-D Tensor or a Scalar Tensor. If its not a scalar Tensor, its last dimensions must match x's.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: The inner-product Tensor, the output shape is x.shape[:-1] + y.shape[:-1].
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
                 x = paddle.arange(1, 7).reshape((2, 3)).astype('float32')
                 y = paddle.arange(1, 10).reshape((3, 3)).astype('float32')
@@ -6836,28 +6836,28 @@ class Tensor:
                 print(out)
                 #        ([[14, 32, 50],
                 #         [32, 77, 122]])
-    
-    
+
+
         """
         ...
 
     def outer(self, y, name=None):
         """
-    
+
         Outer product of two Tensors.
-    
+
         Input is flattened if not already 1-dimensional.
-    
+
         Args:
             y (Tensor): An N-D Tensor or a Scalar Tensor.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: The outer-product Tensor.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
                 x = paddle.arange(1, 4).astype('float32')
                 y = paddle.arange(1, 6).astype('float32')
@@ -6866,18 +6866,18 @@ class Tensor:
                 #        ([[1, 2, 3, 4, 5],
                 #         [2, 4, 6, 8, 10],
                 #         [3, 6, 9, 12, 15]])
-    
-    
+
+
         """
         ...
 
     def logsumexp(self, axis=None, keepdim=False, name=None):
         r"""
         Calculates the log of the sum of exponentials of ``x`` along ``axis`` .
-    
+
         .. math::
            logsumexp(x) = \log\sum exp(x)
-    
+
         Args:
             axis (int|list|tuple, optional): The axis along which to perform
                 logsumexp calculations. ``axis`` should be int, list(int) or
@@ -6895,21 +6895,21 @@ class Tensor:
                 the output Tensor is squeezed in ``axis`` . Default is False.
             name (str, optional): Name for the operation (optional, default is None).
                 For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, results of logsumexp along ``axis`` of ``x``, with the same data
             type as ``x``.
-    
+
         Examples:
-    
+
         .. code-block:: python
-    
+
             import paddle
-    
+
             x = paddle.to_tensor([[-1.5, 0., 2.], [3., 1.2, -2.4]])
             out1 = paddle.logsumexp(x) # [3.4691226]
             out2 = paddle.logsumexp(x, 1) # [2.15317821, 3.15684602]
-    
+
         """
         ...
 
@@ -6918,37 +6918,37 @@ class Tensor:
         Takes the inverse of the square matrix. A square matrix is a matrix with
         the same number of rows and columns. The input can be a square matrix
         (2-D Tensor) or batches of square matrices.
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: A Tensor holds the inverse of x. The shape and data type
                             is the same as x.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 mat = paddle.to_tensor([[2, 0], [0, 2]], dtype='float32')
                 inv = paddle.inverse(mat)
                 print(inv) # [[0.5, 0], [0, 0.5]]
-    
+
         """
         ...
 
     def max(self, axis=None, keepdim=False, name=None):
         """
-    
+
         Computes the maximum of tensor elements over the given axis.
-    
+
         Note:
             The difference between max and amax is: If there are multiple maximum elements,
             amax evenly distributes gradient between these equal values,
             while max propagates gradient to all of them.
-    
-    
+
+
         Args:
             axis (int|list|tuple, optional): The axis along which the maximum is computed.
                 If :attr:`None`, compute the maximum over all elements of
@@ -6960,16 +6960,16 @@ class Tensor:
                 than the `x` unless :attr:`keepdim` is true, default
                 value is False.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, results of maximum on the specified axis of input tensor,
             it's data type is the same as `x`.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 # data_x is a Tensor with shape [2, 4]
                 # the axis is a int element
                 x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
@@ -6979,25 +6979,25 @@ class Tensor:
                 result1.backward()
                 print(result1, x.grad)
                 #[0.9], [[0., 0., 0., 1.], [0., 0., 0., 0.]]
-    
+
                 x.clear_grad()
                 result2 = paddle.max(x, axis=0)
                 result2.backward()
                 print(result2, x.grad)
                 #[0.2, 0.3, 0.6, 0.9], [[1., 1., 0., 1.], [0., 0., 1., 0.]]
-    
+
                 x.clear_grad()
                 result3 = paddle.max(x, axis=-1)
                 result3.backward()
                 print(result3, x.grad)
                 #[0.9, 0.7], [[0., 0., 0., 1.], [0., 0., 0., 1.]]
-    
+
                 x.clear_grad()
                 result4 = paddle.max(x, axis=1, keepdim=True)
                 result4.backward()
                 print(result4, x.grad)
                 #[[0.9], [0.7]], [[0., 0., 0., 1.], [0., 0., 0., 1.]]
-    
+
                 # data_y is a Tensor with shape [2, 2, 2]
                 # the axis is list
                 y = paddle.to_tensor([[[1.0, 2.0], [3.0, 4.0]],
@@ -7007,7 +7007,7 @@ class Tensor:
                 result5.backward()
                 print(result5, y.grad)
                 #[4., 8.], [[[0., 0.], [0., 1.]], [[0., 0.], [0., 1.]]]
-    
+
                 y.clear_grad()
                 result6 = paddle.max(y, axis=[0, 1])
                 result6.backward()
@@ -7018,14 +7018,14 @@ class Tensor:
 
     def min(self, axis=None, keepdim=False, name=None):
         """
-    
+
         Computes the minimum of tensor elements over the given axis
-    
+
         Note:
             The difference between min and amin is: If there are multiple minimum elements,
             amin evenly distributes gradient between these equal values,
             while min propagates gradient to all of them.
-    
+
         Args:
             axis (int|list|tuple, optional): The axis along which the minimum is computed.
                 If :attr:`None`, compute the minimum over all elements of
@@ -7037,16 +7037,16 @@ class Tensor:
                 than the `x` unless :attr:`keepdim` is true, default
                 value is False.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, results of minimum on the specified axis of input tensor,
             it's data type is the same as input's Tensor.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 # data_x is a Tensor with shape [2, 4]
                 # the axis is a int element
                 x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
@@ -7056,25 +7056,25 @@ class Tensor:
                 result1.backward()
                 print(result1, x.grad)
                 #[0.1], [[0., 0., 0., 0.], [1., 0., 0., 0.]]
-    
+
                 x.clear_grad()
                 result2 = paddle.min(x, axis=0)
                 result2.backward()
                 print(result2, x.grad)
                 #[0.1, 0.2, 0.5, 0.7], [[0., 0., 1., 0.], [1., 1., 0., 1.]]
-    
+
                 x.clear_grad()
                 result3 = paddle.min(x, axis=-1)
                 result3.backward()
                 print(result3, x.grad)
                 #[0.2, 0.1], [[1., 0., 0., 0.], [1., 0., 0., 0.]]
-    
+
                 x.clear_grad()
                 result4 = paddle.min(x, axis=1, keepdim=True)
                 result4.backward()
                 print(result4, x.grad)
                 #[[0.2], [0.1]], [[1., 0., 0., 0.], [1., 0., 0., 0.]]
-    
+
                 # data_y is a Tensor with shape [2, 2, 2]
                 # the axis is list
                 y = paddle.to_tensor([[[1.0, 2.0], [3.0, 4.0]],
@@ -7084,7 +7084,7 @@ class Tensor:
                 result5.backward()
                 print(result5, y.grad)
                 #[1., 5.], [[[1., 0.], [0., 0.]], [[1., 0.], [0., 0.]]]
-    
+
                 y.clear_grad()
                 result6 = paddle.min(y, axis=[0, 1])
                 result6.backward()
@@ -7096,12 +7096,12 @@ class Tensor:
     def amax(self, axis=None, keepdim=False, name=None):
         """
         Computes the maximum of tensor elements over the given axis.
-    
+
         Note:
             The difference between max and amax is: If there are multiple maximum elements,
             amax evenly distributes gradient between these equal values,
             while max propagates gradient to all of them.
-    
+
         Args:
             axis (int|list|tuple, optional): The axis along which the maximum is computed.
                 If :attr:`None`, compute the maximum over all elements of
@@ -7113,18 +7113,18 @@ class Tensor:
                 than the `x` unless :attr:`keepdim` is true, default
                 value is False.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, results of maximum on the specified axis of input tensor,
             it's data type is the same as `x`.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
                 # data_x is a Tensor with shape [2, 4] with multiple maximum elements
                 # the axis is a int element
-    
+
                 x = paddle.to_tensor([[0.1, 0.9, 0.9, 0.9],
                                       [0.9, 0.9, 0.6, 0.7]],
                                      dtype='float64', stop_gradient=False)
@@ -7137,33 +7137,33 @@ class Tensor:
                 result1.backward()
                 print(result1, x.grad)
                 #[0.9], [[0., 0.2, 0.2, 0.2], [0.2, 0.2, 0., 0.]]
-    
+
                 x.clear_grad()
                 result1_max = paddle.max(x)
                 result1_max.backward()
                 print(result1_max, x.grad)
                 #[0.9], [[0., 1.0, 1.0, 1.0], [1.0, 1.0, 0., 0.]]
-    
+
                 ###############################
-    
+
                 x.clear_grad()
                 result2 = paddle.amax(x, axis=0)
                 result2.backward()
                 print(result2, x.grad)
                 #[0.9, 0.9, 0.9, 0.9], [[0., 0.5, 1., 1.], [1., 0.5, 0., 0.]]
-    
+
                 x.clear_grad()
                 result3 = paddle.amax(x, axis=-1)
                 result3.backward()
                 print(result3, x.grad)
                 #[0.9, 0.9], [[0., 0.3333, 0.3333, 0.3333], [0.5, 0.5, 0., 0.]]
-    
+
                 x.clear_grad()
                 result4 = paddle.amax(x, axis=1, keepdim=True)
                 result4.backward()
                 print(result4, x.grad)
                 #[[0.9], [0.9]], [[0., 0.3333, 0.3333, 0.3333.], [0.5, 0.5, 0., 0.]]
-    
+
                 # data_y is a Tensor with shape [2, 2, 2]
                 # the axis is list
                 y = paddle.to_tensor([[[0.1, 0.9], [0.9, 0.9]],
@@ -7173,7 +7173,7 @@ class Tensor:
                 result5.backward()
                 print(result5, y.grad)
                 #[0.9., 0.9], [[[0., 0.3333], [0.3333, 0.3333]], [[0.5, 0.5], [0., 1.]]]
-    
+
                 y.clear_grad()
                 result6 = paddle.amax(y, axis=[0, 1])
                 result6.backward()
@@ -7184,14 +7184,14 @@ class Tensor:
 
     def amin(self, axis=None, keepdim=False, name=None):
         """
-    
+
         Computes the minimum of tensor elements over the given axis
-    
+
         Note:
             The difference between min and amin is: If there are multiple minimum elements,
             amin evenly distributes gradient between these equal values,
             while min propagates gradient to all of them.
-    
+
         Args:
             axis (int|list|tuple, optional): The axis along which the minimum is computed.
                 If :attr:`None`, compute the minimum over all elements of
@@ -7203,18 +7203,18 @@ class Tensor:
                 than the `x` unless :attr:`keepdim` is true, default
                 value is False.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, results of minimum on the specified axis of input tensor,
             it's data type is the same as input's Tensor.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
                 # data_x is a Tensor with shape [2, 4] with multiple minimum elements
                 # the axis is a int element
-    
+
                 x = paddle.to_tensor([[0.2, 0.1, 0.1, 0.1],
                                       [0.1, 0.1, 0.6, 0.7]],
                                      dtype='float64', stop_gradient=False)
@@ -7227,33 +7227,33 @@ class Tensor:
                 result1.backward()
                 print(result1, x.grad)
                 #[0.1], [[0., 0.2, 0.2, 0.2], [0.2, 0.2, 0., 0.]]
-    
+
                 x.clear_grad()
                 result1_min = paddle.min(x)
                 result1_min.backward()
                 print(result1_min, x.grad)
                 #[0.1], [[0., 1.0, 1.0, 1.0], [1.0, 1.0, 0., 0.]]
-    
+
                 ###############################
-    
+
                 x.clear_grad()
                 result2 = paddle.amin(x, axis=0)
                 result2.backward()
                 print(result2, x.grad)
                 #[0.1, 0.1, 0.1, 0.1], [[0., 0.5, 1., 1.], [1., 0.5, 0., 0.]]
-    
+
                 x.clear_grad()
                 result3 = paddle.amin(x, axis=-1)
                 result3.backward()
                 print(result3, x.grad)
                 #[0.1, 0.1], [[0., 0.3333, 0.3333, 0.3333], [0.5, 0.5, 0., 0.]]
-    
+
                 x.clear_grad()
                 result4 = paddle.amin(x, axis=1, keepdim=True)
                 result4.backward()
                 print(result4, x.grad)
                 #[[0.1], [0.1]], [[0., 0.3333, 0.3333, 0.3333.], [0.5, 0.5, 0., 0.]]
-    
+
                 # data_y is a Tensor with shape [2, 2, 2]
                 # the axis is list
                 y = paddle.to_tensor([[[0.2, 0.1], [0.1, 0.1]],
@@ -7263,7 +7263,7 @@ class Tensor:
                 result5.backward()
                 print(result5, y.grad)
                 #[0.1., 0.1], [[[0., 0.3333], [0.3333, 0.3333]], [[0.5, 0.5], [0., 1.]]]
-    
+
                 y.clear_grad()
                 result6 = paddle.amin(y, axis=[0, 1])
                 result6.backward()
@@ -7275,21 +7275,21 @@ class Tensor:
     def log1p(self, name=None):
         r"""
         Calculates the natural log of the given input tensor, element-wise.
-    
+
         .. math::
             Out = \ln(x+1)
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, the natural log of the input Tensor computed element-wise.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 data = paddle.to_tensor([[0], [1]], dtype='float32')
                 res = paddle.log1p(data)
                 # [[0.], [0.6931472]]
@@ -7299,34 +7299,34 @@ class Tensor:
     def log2(self, name=None):
         r"""
         Calculates the log to the base 2 of the given input tensor, element-wise.
-    
+
         .. math::
-    
+
             Out = \log_2x
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
-    
+
+
         Returns:
             Tensor: The log to the base 2 of the input Tensor computed element-wise.
-    
+
         Examples:
-    
+
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 # example 1: x is a float
                 x_i = paddle.to_tensor([[1.0], [2.0]])
                 res = paddle.log2(x_i) # [[0.], [1.0]]
-    
+
                 # example 2: x is float32
                 x_i = paddle.full(shape=[1], fill_value=2, dtype='float32')
                 paddle.to_tensor(x_i)
                 res = paddle.log2(x_i)
                 print(res) # [1.0]
-    
+
                 # example 3: x is float64
                 x_i = paddle.full(shape=[1], fill_value=2, dtype='float64')
                 paddle.to_tensor(x_i)
@@ -7338,34 +7338,34 @@ class Tensor:
     def log10(self, name=None):
         r"""
         Calculates the log to the base 10 of the given input tensor, element-wise.
-    
+
         .. math::
-    
+
             Out = \log_10_x
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
-    
+
+
         Returns:
             Tensor: The log to the base 10 of the input Tensor computed element-wise.
-    
+
         Examples:
-    
+
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 # example 1: x is a float
                 x_i = paddle.to_tensor([[1.0], [10.0]])
                 res = paddle.log10(x_i) # [[0.], [1.0]]
-    
+
                 # example 2: x is float32
                 x_i = paddle.full(shape=[1], fill_value=10, dtype='float32')
                 paddle.to_tensor(x_i)
                 res = paddle.log10(x_i)
                 print(res) # [1.0]
-    
+
                 # example 3: x is float64
                 x_i = paddle.full(shape=[1], fill_value=10, dtype='float64')
                 paddle.to_tensor(x_i)
@@ -7378,26 +7378,26 @@ class Tensor:
         """
         This operator clip all elements in input into the range [ min, max ] and return
         a resulting tensor as the following equation:
-    
+
         .. math::
-    
+
             Out = MIN(MAX(x, min), max)
-    
+
         Args:
             min (float|int|Tensor, optional): The lower bound with type ``float`` , ``int`` or a ``Tensor``
                 with shape [1] and type ``int32``, ``float32``, ``float64``.
             max (float|int|Tensor, optional): The upper bound with type ``float``, ``int`` or a ``Tensor``
                 with shape [1] and type ``int32``, ``float32``, ``float64``.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: A Tensor with the same data type and data shape as input.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x1 = paddle.to_tensor([[1.2, 3.5], [4.5, 6.4]], 'float32')
                 out1 = paddle.clip(x1, min=3.5, max=5.0)
                 out2 = paddle.clip(x1, min=2.5)
@@ -7419,36 +7419,36 @@ class Tensor:
 
     def trace(self, offset=0, axis1=0, axis2=1, name=None):
         """
-    
+
         Computes the sum along diagonals of the input tensor x.
-    
+
         If ``x`` is 2D, returns the sum of diagonal.
-    
+
         If ``x`` has larger dimensions, then returns an tensor of diagonals sum, diagonals be taken from
         the 2D planes specified by axis1 and axis2. By default, the 2D planes formed by the first and second axes
         of the input tensor x.
-    
+
         The argument ``offset`` determines where diagonals are taken from input tensor x:
-    
+
         - If offset = 0, it is the main diagonal.
         - If offset > 0, it is above the main diagonal.
         - If offset < 0, it is below the main diagonal.
         - Note that if offset is out of input's shape indicated by axis1 and axis2, 0 will be returned.
-    
+
         Args:
             offset (int, optional): Which diagonals in input tensor x will be taken. Default: 0 (main diagonals).
             axis1 (int, optional): The first axis with respect to take diagonal. Default: 0.
             axis2 (int, optional): The second axis with respect to take diagonal. Default: 1.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: the output data type is the same as input data type.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 case1 = paddle.randn([2, 3])
                 case2 = paddle.randn([3, 10, 10])
                 case3 = paddle.randn([3, 10, 5, 10])
@@ -7461,84 +7461,84 @@ class Tensor:
     def diagonal(self, offset=0, axis1=0, axis2=1, name=None):
         """
         This OP computes the diagonals of the input tensor x.
-    
+
         If ``x`` is 2D, returns the diagonal.
         If ``x`` has larger dimensions, diagonals be taken from the 2D planes specified by axis1 and axis2.
         By default, the 2D planes formed by the first and second axis of the input tensor x.
-    
+
         The argument ``offset`` determines where diagonals are taken from input tensor x:
-    
+
         - If offset = 0, it is the main diagonal.
         - If offset > 0, it is above the main diagonal.
         - If offset < 0, it is below the main diagonal.
-    
+
         Args:
             offset (int, optional): Which diagonals in input tensor x will be taken. Default: 0 (main diagonals).
             axis1 (int, optional): The first axis with respect to take diagonal. Default: 0.
             axis2 (int, optional): The second axis with respect to take diagonal. Default: 1.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: a partial view of input tensor in specify two dimensions, the output data type is the same as input data type.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.rand([2,2,3],'float32')
                 print(x)
                 # Tensor(shape=[2, 2, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
                 #        [[[0.45661032, 0.03751532, 0.90191704],
                 #          [0.43760979, 0.86177313, 0.65221709]],
-    
+
                 #         [[0.17020577, 0.00259554, 0.28954273],
                 #          [0.51795638, 0.27325270, 0.18117726]]])
-    
+
                 out1 = paddle.diagonal(x)
                 print(out1)
                 #Tensor(shape=[3, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
                 #       [[0.45661032, 0.51795638],
                 #        [0.03751532, 0.27325270],
                 #        [0.90191704, 0.18117726]])
-    
+
                 out2 = paddle.diagonal(x, offset=0, axis1=2, axis2=1)
                 print(out2)
                 #Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
                 #       [[0.45661032, 0.86177313],
                 #        [0.17020577, 0.27325270]])
-    
+
                 out3 = paddle.diagonal(x, offset=1, axis1=0, axis2=1)
                 print(out3)
                 #Tensor(shape=[3, 1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
                 #       [[0.43760979],
                 #        [0.86177313],
                 #        [0.65221709]])
-    
+
                 out4 = paddle.diagonal(x, offset=0, axis1=1, axis2=2)
                 print(out4)
                 #Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
                 #       [[0.45661032, 0.86177313],
                 #        [0.17020577, 0.27325270]])
-    
+
         """
         ...
 
     def kron(self, y, name=None):
         """
-    
+
         ${comment}
-    
+
         Args:
             y (Tensor): the second operand of kron op, data type: float16, float32, float64, int32 or int64. Its data type should be the same with x.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: The output of kron, data type: float16, float32, float64, int32 or int64. Its data is the same with x.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
                 x = paddle.to_tensor([[1, 2], [3, 4]], dtype='int64')
                 y = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype='int64')
@@ -7556,39 +7556,39 @@ class Tensor:
     def cumsum(self, axis=None, dtype=None, name=None):
         """
         The cumulative sum of the elements along a given axis.
-    
+
         Note:
             The first element of the result is the same as the first element of the input.
-    
+
         Args:
             axis (int, optional): The dimension to accumulate along. -1 means the last dimension. The default (None) is to compute the cumsum over the flattened array.
             dtype (str, optional): The data type of the output tensor, can be float16, float32, float64, int32, int64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, the result of cumsum operator.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 data = paddle.arange(12)
                 data = paddle.reshape(data, (3, 4))
-    
+
                 y = paddle.cumsum(data)
                 # [ 0  1  3  6 10 15 21 28 36 45 55 66]
-    
+
                 y = paddle.cumsum(data, axis=0)
                 # [[ 0  1  2  3]
                 #  [ 4  6  8 10]
                 #  [12 15 18 21]]
-    
+
                 y = paddle.cumsum(data, axis=-1)
                 # [[ 0  1  3  6]
                 #  [ 4  9 15 22]
                 #  [ 8 17 27 38]]
-    
+
                 y = paddle.cumsum(data, dtype='float64')
                 print(y.dtype)
                 # paddle.float64
@@ -7598,46 +7598,46 @@ class Tensor:
     def logcumsumexp(self, axis=None, dtype=None, name=None):
         r"""
         The logarithm of the cumulative summation of the exponentiation of the elements along a given axis.
-    
+
         For summation index j given by `axis` and other indices i, the result is
-    
+
         .. math::
-    
+
             logcumsumexp(x)_{ij} = log \sum_{i=0}^{j}exp(x_{ij})
-    
+
         Note:
             The first element of the result is the same as the first element of the input.
-    
+
         Args:
             axis (int, optional): The dimension to do the operation along. -1 means the last dimension. The default (None) is to compute the cumsum over the flattened array.
             dtype (str, optional): The data type of the output tensor, can be float16, float32, float64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, the result of logcumsumexp operator.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 data = paddle.arange(12, dtype='float64')
                 data = paddle.reshape(data, (3, 4))
-    
+
                 y = paddle.logcumsumexp(data)
                 # [ 0.         1.3132617  2.4076061  3.4401898  4.4519143  5.4561934
                 #   6.4577627  7.4583397  8.458551   9.45863   10.458658  11.458669 ]
-    
+
                 y = paddle.logcumsumexp(data, axis=0)
                 # [[ 0.        1.        2.        3.      ]
                 #  [ 4.01815   5.01815   6.01815   7.01815 ]
                 #  [ 8.018479  9.018479 10.018479 11.018479]]
-    
+
                 y = paddle.logcumsumexp(data, axis=-1)
                 # [[ 0.         1.3132617  2.4076061  3.4401898]
                 #  [ 4.         5.3132615  6.407606   7.44019  ]
                 #  [ 8.         9.313262  10.407606  11.440189 ]]
-    
+
                 y = paddle.logcumsumexp(data, dtype='float64')
                 print(y.dtype)
                 # paddle.float64
@@ -7647,10 +7647,10 @@ class Tensor:
     def cumprod(self, dim=None, dtype=None, name=None):
         """
         Compute the cumulative product of the input tensor x along a given dimension dim.
-    
+
         Note:
             The first element of the result is the same as the first element of the input.
-    
+
         Args:
             dim (int, optional): the dimension along which the input tensor will be accumulated. It need to be in the range of [-x.rank, x.rank),
                         where x.rank means the dimensions of the input tensor x and -1 means the last dimension.
@@ -7659,58 +7659,58 @@ class Tensor:
                         This is useful for preventing data type overflows. The default value is None.
             name (str, optional): Name for the operation (optional, default is None). For more information,
                         please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, the result of cumprod operator.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 data = paddle.arange(12)
                 data = paddle.reshape(data, (3, 4))
                 # [[ 0  1  2  3 ]
                 #  [ 4  5  6  7 ]
                 #  [ 8  9  10 11]]
-    
+
                 y = paddle.cumprod(data, dim=0)
                 # [[ 0  1   2   3]
                 #  [ 0  5  12  21]
                 #  [ 0 45 120 231]]
-    
+
                 y = paddle.cumprod(data, dim=-1)
                 # [[ 0   0   0    0]
                 #  [ 4  20 120  840]
                 #  [ 8  72 720 7920]]
-    
+
                 y = paddle.cumprod(data, dim=1, dtype='float64')
                 # [[ 0.   0.   0.    0.]
                 #  [ 4.  20. 120.  840.]
                 #  [ 8.  72. 720. 7920.]]
-    
+
                 print(y.dtype)
                 # paddle.float64
-    
+
         """
         ...
 
     def isfinite(self, name=None):
         """
-    
+
         Return whether every element of input tensor is finite number or not.
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             `Tensor`, the bool result which shows every element of `x` whether it is finite number or not.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
                 out = paddle.isfinite(x)
                 print(out)  # [False  True  True False  True False False]
@@ -7719,20 +7719,20 @@ class Tensor:
 
     def isinf(self, name=None):
         """
-    
+
         Return whether every element of input tensor is `+/-INF` or not.
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             `Tensor`, the bool result which shows every element of `x` whether it is `+/-INF` or not.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
                 out = paddle.isinf(x)
                 print(out)  # [ True False False  True False False False]
@@ -7741,20 +7741,20 @@ class Tensor:
 
     def isnan(self, name=None):
         """
-    
+
         Return whether every element of input tensor is `NaN` or not.
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             `Tensor`, the bool result which shows every element of `x` whether it is `NaN` or not.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
                 out = paddle.isnan(x)
                 print(out)  # [False False False False False  True  True]
@@ -7764,7 +7764,7 @@ class Tensor:
     def prod(self, axis=None, keepdim=False, dtype=None, name=None):
         """
         Compute the product of tensor elements over the given axis.
-    
+
         Args:
             axis (int|list|tuple, optional): The axis along which the product is computed. If :attr:`None`,
                 multiply all elements of `x` and return a Tensor with a single element,
@@ -7777,60 +7777,60 @@ class Tensor:
                 This is very useful for avoiding data type overflows. The default value is None, the dtype
                 of output is the same as input Tensor `x`.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, result of product on the specified dim of input tensor.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 # the axis is a int element
                 x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
                                       [0.1, 0.2, 0.6, 0.7]])
                 out1 = paddle.prod(x)
                 # [0.0002268]
-    
+
                 out2 = paddle.prod(x, -1)
                 # [0.027  0.0084]
-    
+
                 out3 = paddle.prod(x, 0)
                 # [0.02 0.06 0.3  0.63]
-    
+
                 out4 = paddle.prod(x, 0, keepdim=True)
                 # [[0.02 0.06 0.3  0.63]]
-    
+
                 out5 = paddle.prod(x, 0, dtype='int64')
                 # [0 0 0 0]
-    
+
                 # the axis is list
                 y = paddle.to_tensor([[[1.0, 2.0], [3.0, 4.0]],
                                       [[5.0, 6.0], [7.0, 8.0]]])
                 out6 = paddle.prod(y, [0, 1])
                 # [105. 384.]
-    
+
                 out7 = paddle.prod(y, (1, 2))
                 # [  24. 1680.]
-    
+
         """
         ...
 
     def sign(self, name=None):
         """
         Returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero.
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: The output sign tensor with identical shape and data type to the input :attr:`x`.
-    
+
         Examples:
             .. code-block:: python
-    
+
               import paddle
-    
+
               x = paddle.to_tensor([3.0, 0.0, -2.0, 1.7], dtype='float32')
               out = paddle.sign(x=x)
               print(out)  # [1.0, 0.0, -1.0, 1.0]
@@ -7840,22 +7840,22 @@ class Tensor:
     def tanh(self, name=None):
         r"""
         Tanh Activation Operator.
-    
+
         .. math::
             out = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Output of Tanh operator, a Tensor with same data type and shape as input.
-    
+
         Examples:
-    
+
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
                 out = paddle.tanh(x)
                 print(out)
@@ -7874,30 +7874,30 @@ class Tensor:
         """
         The API is usually used for control flow to increment the data of :attr:`x` by an amount :attr:`value`.
         Notice that the number of elements in :attr:`x` must be equal to 1.
-    
+
         Args:
             value (float, optional): The amount to increment the data of :attr:`x`. Default: 1.0.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, the elementwise-incremented tensor with the same shape and data type as :attr:`x`.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 data = paddle.zeros(shape=[1], dtype='float32')
                 counter = paddle.increment(data)
                 # [1.]
-    
+
         """
         ...
 
     def all(self, axis=None, keepdim=False, name=None):
         """
         Computes the ``logical and`` of tensor elements over the given dimension.
-    
+
         Args:
             axis (int|list|tuple, optional): The dimensions along which the ``logical and`` is compute. If
                 :attr:`None`, and all elements of :attr:`x` and return a
@@ -7909,45 +7909,45 @@ class Tensor:
                 than the :attr:`x` unless :attr:`keepdim` is true, default
                 value is False.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: Results the ``logical and`` on the specified axis of input Tensor `x`,  it's data type is bool.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 # x is a bool Tensor with following elements:
                 #    [[True, False]
                 #     [True, True]]
                 x = paddle.to_tensor([[1, 0], [1, 1]], dtype='int32')
                 print(x)
                 x = paddle.cast(x, 'bool')
-    
+
                 # out1 should be [False]
                 out1 = paddle.all(x)  # [False]
                 print(out1)
-    
+
                 # out2 should be [True, False]
                 out2 = paddle.all(x, axis=0)  # [True, False]
                 print(out2)
-    
+
                 # keepdim=False, out3 should be [False, True], out.shape should be (2,)
                 out3 = paddle.all(x, axis=-1)  # [False, True]
                 print(out3)
-    
+
                 # keepdim=True, out4 should be [[False], [True]], out.shape should be (2,1)
                 out4 = paddle.all(x, axis=1, keepdim=True) # [[False], [True]]
                 print(out4)
-    
+
         """
         ...
 
     def any(self, axis=None, keepdim=False, name=None):
         """
         Computes the ``logical or`` of tensor elements over the given dimension, and return the result.
-    
+
         Args:
             axis (int|list|tuple, optional): The dimensions along which the ``logical or`` is compute. If
                 :attr:`None`, and all elements of :attr:`x` and return a
@@ -7959,15 +7959,15 @@ class Tensor:
                 than the :attr:`x` unless :attr:`keepdim` is true, default
                 value is False.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: Results the ``logical or`` on the specified axis of input Tensor `x`,  it's data type is bool.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[1, 0], [1, 1]], dtype='int32')
                 x = paddle.assign(x)
                 print(x)
@@ -7975,101 +7975,101 @@ class Tensor:
                 # x is a bool Tensor with following elements:
                 #    [[True, False]
                 #     [True, True]]
-    
+
                 # out1 should be [True]
                 out1 = paddle.any(x)  # [True]
                 print(out1)
-    
+
                 # out2 should be [True, True]
                 out2 = paddle.any(x, axis=0)  # [True, True]
                 print(out2)
-    
+
                 # keepdim=False, out3 should be [True, True], out.shape should be (2,)
                 out3 = paddle.any(x, axis=-1)  # [True, True]
                 print(out3)
-    
+
                 # keepdim=True, result should be [[True], [True]], out.shape should be (2,1)
                 out4 = paddle.any(x, axis=1, keepdim=True)  # [[True], [True]]
                 print(out4)
-    
+
         """
         ...
 
     def broadcast_shape(self, y_shape):
         """
         The function returns the shape of doing operation with broadcasting on tensors of x_shape and y_shape.
-    
+
         Note:
             If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
-    
+
             .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-    
+
         Args:
             y_shape (list[int]|tuple[int]): A shape of tensor.
-    
-    
+
+
         Returns:
             list[int], the result shape.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 shape = paddle.broadcast_shape([2, 1, 3], [1, 3, 1])
                 # [2, 3, 3]
-    
+
                 # shape = paddle.broadcast_shape([2, 1, 3], [3, 3, 1])
                 # ValueError (terminated with error message).
-    
+
         """
         ...
 
     def conj(self, name=None):
         r"""
         This function computes the conjugate of the Tensor elementwisely.
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             out (Tensor): The conjugate of input. The shape and data type is the same with input. If the elements of tensor is real type such as float32, float64, int32 or int64, the out is the same with input.
-    
+
         Examples:
             .. code-block:: python
-    
+
               import paddle
-    
+
               data=paddle.to_tensor([[1+1j, 2+2j, 3+3j], [4+4j, 5+5j, 6+6j]])
               #Tensor(shape=[2, 3], dtype=complex64, place=CUDAPlace(0), stop_gradient=True,
               #       [[(1+1j), (2+2j), (3+3j)],
               #        [(4+4j), (5+5j), (6+6j)]])
-    
+
               conj_data=paddle.conj(data)
               #Tensor(shape=[2, 3], dtype=complex64, place=CUDAPlace(0), stop_gradient=True,
               #       [[(1-1j), (2-2j), (3-3j)],
               #        [(4-4j), (5-5j), (6-6j)]])
-    
+
         """
         ...
 
     def digamma(self, name=None):
         r"""
         Calculates the digamma of the given input tensor, element-wise.
-    
+
         .. math::
             Out = \Psi(x) = \frac{ \Gamma^{'}(x) }{ \Gamma(x) }
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
         Returns:
             Tensor, the digamma of the input Tensor, the shape and data type is the same with input.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 data = paddle.to_tensor([[1, 1.5], [0, -2.2]], dtype='float32')
                 res = paddle.digamma(data)
                 print(res)
@@ -8082,22 +8082,22 @@ class Tensor:
     def lgamma(self, name=None):
         r"""
         Calculates the lgamma of the given input tensor, element-wise.
-    
+
         This operator performs elementwise lgamma for input $X$.
         :math:`out = log\Gamma(x)`
-    
-    
+
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, the lgamma of the input Tensor, the shape and data type is the same with input.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
                 out = paddle.lgamma(x)
                 print(out)
@@ -8108,18 +8108,18 @@ class Tensor:
     def neg(self, name=None):
         """
         This function computes the negative of the Tensor elementwisely.
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             out (Tensor): The negative of input Tensor. The shape and data type are the same with input Tensor.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
                 out = paddle.neg(x)
                 print(out)
@@ -8130,15 +8130,15 @@ class Tensor:
     def logit(self, eps=None, name=None):
         r"""
         This function generates a new tensor with the logit of the elements of input x. x is clamped to [eps, 1-eps] when eps is not zero. When eps is zero and x < 0 or x > 1, the function will yields NaN.
-    
+
         .. math::
-    
+
             logit(x) = ln(\frac{x}{1 - x})
-    
+
         where
-    
+
         .. math::
-    
+
             x_i=
                 \left\{\begin{array}{rcl}
                     x_i & &\text{if } eps == Default \\
@@ -8146,56 +8146,56 @@ class Tensor:
                     x_i & &\text{if } eps <= x_i <= 1-eps \\
                     1-eps & &\text{if } x_i > 1-eps
                 \end{array}\right.
-    
+
         Args:
             eps (float, optional):  the epsilon for input clamp bound. Default is None.
             name (str, optional): Name for the operation (optional, default is None).
                 For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             out(Tensor): A Tensor with the same data type and shape as ``x`` .
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([0.2635, 0.0106, 0.2780, 0.2097, 0.8095])
                 out1 = paddle.logit(x)
                 print(out1)
                 # [-1.0277, -4.5365, -0.9544, -1.3269,  1.4468]
-    
+
         """
         ...
 
     def lerp(self, y, weight, name=None):
         r"""
         Does a linear interpolation between x and y based on weight.
-    
+
         Equation:
             .. math::
-    
+
                 lerp(x, y, weight) = x + weight * (y - x).
-    
+
         Args:
             y (Tensor): An N-D Tensor with ending points, the data type is float32, float64.
             weight (float|Tensor): The weight for the interpolation formula. When weight is Tensor, the data type is float32, float64.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             out (Tensor): An N-D Tensor, the shape and data type is the same with input.
-    
+
         Example:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.arange(1., 5., dtype='float32')
                 y = paddle.empty([4], dtype='float32')
                 y.fill_(10.)
                 out = paddle.lerp(x, y, 0.5)
                 # out: [5.5, 6., 6.5, 7.]
-    
+
         """
         ...
 
@@ -8209,26 +8209,26 @@ class Tensor:
     def erfinv(self, name=None):
         r"""
         The inverse error function of x. Please refer to :ref:`api_paddle_erf`
-    
+
             .. math::
-    
+
                 erfinv(erf(x)) = x.
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             out (Tensor), an N-D Tensor, the shape and data type is the same with input.
-    
+
         Example:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([0, 0.5, -1.], dtype="float32")
                 out = paddle.erfinv(x)
                 # out: [0, 0.4769, -inf]
-    
+
         """
         ...
 
@@ -8242,37 +8242,37 @@ class Tensor:
     def rad2deg(self, name=None):
         r"""
         Convert each of the elements of input x from angles in radians to degrees.
-    
+
         Equation:
             .. math::
-    
+
                 rad2deg(x)=180/ \pi * x
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             out (Tensor): An N-D Tensor, the shape and data type is the same with input (The output data type is float32 when the input data type is int).
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
                 import math
-    
+
                 x1 = paddle.to_tensor([3.142, -3.142, 6.283, -6.283, 1.570, -1.570])
                 result1 = paddle.rad2deg(x1)
                 print(result1)
                 # Tensor(shape=[6], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
                 #         [180.02334595, -180.02334595,  359.98937988, -359.98937988,
                 #           9.95437622 , -89.95437622])
-    
+
                 x2 = paddle.to_tensor(math.pi/2)
                 result2 = paddle.rad2deg(x2)
                 print(result2)
                 # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
                 #         [90.])
-    
+
                 x3 = paddle.to_tensor(1)
                 result3 = paddle.rad2deg(x3)
                 print(result3)
@@ -8284,29 +8284,29 @@ class Tensor:
     def deg2rad(self, name=None):
         r"""
         Convert each of the elements of input x from degrees to angles in radians.
-    
+
             .. math::
-    
+
                 deg2rad(x)=\pi * x / 180
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             out (Tensor): An N-D Tensor, the shape and data type is the same with input (The output data type is float32 when the input data type is int).
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x1 = paddle.to_tensor([180.0, -180.0, 360.0, -360.0, 90.0, -90.0])
                 result1 = paddle.deg2rad(x1)
                 print(result1)
                 # Tensor(shape=[6], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
                 #         [3.14159274, -3.14159274,  6.28318548, -6.28318548,  1.57079637,
                 #           -1.57079637])
-    
+
                 x2 = paddle.to_tensor(180)
                 result2 = paddle.deg2rad(x2)
                 print(result2)
@@ -8319,44 +8319,44 @@ class Tensor:
         """
         Computes the element-wise greatest common divisor (GCD) of input |x| and |y|.
         Both x and y must have integer types.
-    
+
         Note:
             gcd(0,0)=0, gcd(0, y)=|y|
-    
+
             If x.shape != y.shape, they must be broadcastable to a common shape (which becomes the shape of the output).
-    
+
         Args:
             y (Tensor): An N-D Tensor, the data type is int32，int64.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             out (Tensor): An N-D Tensor, the data type is the same with input.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x1 = paddle.to_tensor(12)
                 x2 = paddle.to_tensor(20)
                 paddle.gcd(x1, x2)
                 # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
                 #        [4])
-    
+
                 x3 = paddle.arange(6)
                 paddle.gcd(x3, x2)
                 # Tensor(shape=[6], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
                 #        [20, 1 , 2 , 1 , 4 , 5])
-    
+
                 x4 = paddle.to_tensor(0)
                 paddle.gcd(x4, x2)
                 # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
                 #        [20])
-    
+
                 paddle.gcd(x4, x4)
                 # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
                 #        [0])
-    
+
                 x5 = paddle.to_tensor(-20)
                 paddle.gcd(x1, x5)
                 # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
@@ -8368,44 +8368,44 @@ class Tensor:
         """
         Computes the element-wise least common multiple (LCM) of input |x| and |y|.
         Both x and y must have integer types.
-    
+
         Note:
             lcm(0,0)=0, lcm(0, y)=0
-    
+
             If x.shape != y.shape, they must be broadcastable to a common shape (which becomes the shape of the output).
-    
+
         Args:
             y (Tensor): An N-D Tensor, the data type is int32，int64.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             out (Tensor): An N-D Tensor, the data type is the same with input.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x1 = paddle.to_tensor(12)
                 x2 = paddle.to_tensor(20)
                 paddle.lcm(x1, x2)
                 # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
                 #        [60])
-    
+
                 x3 = paddle.arange(6)
                 paddle.lcm(x3, x2)
                 # Tensor(shape=[6], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
                 #        [0, 20, 20, 60, 20, 20])
-    
+
                 x4 = paddle.to_tensor(0)
                 paddle.lcm(x4, x2)
                 # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
                 #        [0])
-    
+
                 paddle.lcm(x4, x4)
                 # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
                 #        [0])
-    
+
                 x5 = paddle.to_tensor(-20)
                 paddle.lcm(x1, x5)
                 # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
@@ -8417,14 +8417,14 @@ class Tensor:
         r"""
         Computes the n-th forward difference along the given axis.
         The first-order differences is computed by using the following formula:
-    
+
         .. math::
-    
+
             out[i] = x[i+1] - x[i]
-    
+
         Higher-order differences are computed by using paddle.diff() recursively.
         Only n=1 is currently supported.
-    
+
         Args:
             n (int, optional): The number of times to recursively compute the difference.
                               Only support n=1. Default:1
@@ -8436,27 +8436,27 @@ class Tensor:
                                        It's dimensions must be equivalent to that of x,
                                        and its shapes must match x's shape except on axis.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: The output tensor with same dtype with x.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([1, 4, 5, 2])
                 out = paddle.diff(x)
                 print(out)
                 # out:
                 # [3, 1, -3]
-    
+
                 y = paddle.to_tensor([7, 9])
                 out = paddle.diff(x, append=y)
                 print(out)
                 # out:
                 # [3, 1, -3, 5, 2]
-    
+
                 z = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
                 out = paddle.diff(z, axis=0)
                 print(out)
@@ -8473,23 +8473,23 @@ class Tensor:
         r"""
         Element-wise angle of complex numbers. For non-negative real numbers, the angle is 0 while
         for negative real numbers, the angle is :math:`\pi`.
-    
+
         Equation:
             .. math::
-    
+
                 angle(x)=arctan2(x.imag, x.real)
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: An N-D Tensor of real data type with the same precision as that of x's data type.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([-2, -1, 0, 1]).unsqueeze(-1).astype('float32')
                 y = paddle.to_tensor([-2, -1, 0, 1]).astype('float32')
                 z = x + 1j * y
@@ -8499,7 +8499,7 @@ class Tensor:
                 #         [(-1-2j), (-1-1j), (-1+0j), (-1+1j)],
                 #         [-2j    , -1j    ,  0j    ,  1j    ],
                 #         [ (1-2j),  (1-1j),  (1+0j),  (1+1j)]])
-    
+
                 theta = paddle.angle(z)
                 print(theta)
                 # Tensor(shape=[4, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -8513,7 +8513,7 @@ class Tensor:
     def heaviside(self, y, name=None):
         r"""
         Computes the Heaviside step function determined by corresponding element in y for each element in x. The equation is
-    
+
         .. math::
             heaviside(x, y)=
                 \left\{
@@ -8523,22 +8523,22 @@ class Tensor:
                     1,& &\text{if} \ x > 0.
                     \end{array}
                 \right.
-    
+
         Note:
             ``paddle.heaviside`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
-    
+
             .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-    
+
         Args:
             y (Tensor): The tensor that determines a Heaviside step function, it's data type should be float16, float32, float64, int32 or int64.
             name (str, optional): Name for the operation (optional, default is None). Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             N-D Tensor. A location into which the result is stored. If x and y have different shapes and are broadcastable, the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape, its shape is the same as x and y.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
                 x = paddle.to_tensor([-0.5, 0, 0.5])
                 y = paddle.to_tensor([0.1])
@@ -8555,18 +8555,18 @@ class Tensor:
     def frac(self, name=None):
         """
         This API is used to return the fractional portion of each element in input.
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: The output Tensor of frac.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 input = paddle.to_tensor([[12.22000003, -1.02999997],
                                         [-0.54999995, 0.66000003]])
                 output = paddle.frac(input)
@@ -8583,23 +8583,23 @@ class Tensor:
         elements of input and absolute values of one.
         For other float dtype tensor,
         this API returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero, same as paddle.sign.
-    
+
         Args:
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor: A sign Tensor for real input, or normalized Tensor for complex input, shape and data type are same as input.
-    
+
         Examples:
             .. code-block:: Python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[3 + 4j, 7 - 24j, 0, 1 + 2j], [6 + 8j, 3, 0, -2]])
                 print(paddle.sgn(x))
                 #[[0.6+0.8j       0.28-0.96j      0.+0.j      0.4472136+0.8944272j]
                 # [0.6+0.8j       1.+0.j          0.+0.j      -1.+0.j]]
-    
+
         """
         ...
 
@@ -8608,86 +8608,86 @@ class Tensor:
         Returns a new tensor with the elements of input tensor x at the given index.
         The input tensor is treated as if it were viewed as a 1-D tensor.
         The result takes the same shape as the index.
-    
+
         Args:
             index (Tensor): An N-D Tensor, its data type should be int32, int64.
             mode (str, optional): Specifies how out-of-bounds index will behave. the candicates are ``'raise'``, ``'wrap'`` and ``'clip'``.
-    
+
                 - ``'raise'``: raise an error (default);
                 - ``'wrap'``: wrap around;
                 - ``'clip'``: clip to the range. ``'clip'`` mode means that all indices that are too large are replaced by the index that addresses the last element. Note that this disables indexing with negative numbers.
-    
+
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
         Returns:
             Tensor, Tensor with the same shape as index, the data type is the same with input.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x_int = paddle.arange(0, 12).reshape([3, 4])
                 x_float = x_int.astype(paddle.float64)
-    
+
                 idx_pos = paddle.arange(4, 10).reshape([2, 3])  # positive index
                 idx_neg = paddle.arange(-2, 4).reshape([2, 3])  # negative index
                 idx_err = paddle.arange(-2, 13).reshape([3, 5])  # index out of range
-    
+
                 paddle.take(x_int, idx_pos)
                 # Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
                 #        [[4, 5, 6],
                 #         [7, 8, 9]])
-    
+
                 paddle.take(x_int, idx_neg)
                 # Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
                 #        [[10, 11, 0 ],
                 #         [1 , 2 , 3 ]])
-    
+
                 paddle.take(x_float, idx_pos)
                 # Tensor(shape=[2, 3], dtype=float64, place=Place(cpu), stop_gradient=True,
                 #        [[4., 5., 6.],
                 #         [7., 8., 9.]])
-    
+
                 x_int.take(idx_pos)
                 # Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
                 #        [[4, 5, 6],
                 #         [7, 8, 9]])
-    
+
                 paddle.take(x_int, idx_err, mode='wrap')
                 # Tensor(shape=[3, 5], dtype=int32, place=Place(cpu), stop_gradient=True,
                 #        [[10, 11, 0 , 1 , 2 ],
                 #         [3 , 4 , 5 , 6 , 7 ],
                 #         [8 , 9 , 10, 11, 0 ]])
-    
+
                 paddle.take(x_int, idx_err, mode='clip')
                 # Tensor(shape=[3, 5], dtype=int32, place=Place(cpu), stop_gradient=True,
                 #        [[0 , 0 , 0 , 1 , 2 ],
                 #         [3 , 4 , 5 , 6 , 7 ],
                 #         [8 , 9 , 10, 11, 11]])
-    
+
         """
         ...
 
     def frexp(self, name=None):
         """
         The function used to decompose a floating point number into mantissa and exponent.
-    
+
         Args:
             name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
         Returns:
-    
+
             - mantissa (Tensor), A mantissa Tensor. The shape and data type of mantissa tensor and exponential tensor are
                 the same as those of input.
-    
+
             - exponent (Tensor), A exponent Tensor. The shape and data type of mantissa tensor and exponential tensor are
                 the same as those of input.
-    
+
         Examples:
             .. code-block:: python
-    
+
                 import paddle
-    
+
                 x = paddle.to_tensor([[1, 2, 3, 4]], dtype="float32")
                 print(paddle.tensor.math.frexp(x))
                 # (Tensor(shape=[1, 4], dtype=float32, place=Place(cpu), stop_gradient=True,[[0.50000000, 0.50000000, 0.75000000, 0.50000000]]),

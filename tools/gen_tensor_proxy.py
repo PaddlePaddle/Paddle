@@ -152,7 +152,7 @@ def _func_spec_to_tensor_method(func_code: str) -> str:
                 first_arg_offset = current_line_offset
             if is_first_arg:
                 continue
-        method_code += f"{INDENT}{line}\n"
+        method_code += f"{INDENT}{line}\n" if line else "\n"
         if line.lstrip().startswith("Args:"):
             is_first_arg = True
 
