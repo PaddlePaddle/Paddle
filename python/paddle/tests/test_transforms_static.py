@@ -98,5 +98,38 @@ class TestRandomVerticalFlip1(TestTransformUnitTestBase):
         self.api = transforms.RandomVerticalFlip(prob=1)
 
 
+class TestRandomCropBase(TestTransformUnitTestBase):
+    def get_shape(self):
+        return (3, 240, 240)
+
+    def set_trans_api(self):
+        self.crop_size = (224, 224)
+        self.api = transforms.RandomCrop(self.crop_size)
+
+    def assert_test_random_equal(self, res):
+
+        _, h, w = self.get_shape()
+        c_h, c_w = self.crop_size
+        res_assert = True
+        for y in range(h - c_h):
+            for x in range(w - c_w):
+                diff_abs_sum = np.abs(
+                    (self.img[:, y : y + c_h, x : x + c_w] - res)
+                ).sum()
+                if diff_abs_sum < 10e-5:
+                    res_assert = False
+                    break
+            if not res_assert:
+                break
+        assert not res_assert
+
+    def test_transform(self):
+        dy_res = self.dynamic_transform().numpy()
+        st_res = self.static_transform()
+
+        self.assert_test_random_equal(dy_res)
+        self.assert_test_random_equal(st_res)
+
+
 if __name__ == "__main__":
     unittest.main()
