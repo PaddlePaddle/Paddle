@@ -24,7 +24,6 @@ NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST = [
     'grid_sampler',
     'group_norm',
     'gru',
-    'gru_unit',
     'kldiv_loss',
     'lstm',
     'lstmp',
