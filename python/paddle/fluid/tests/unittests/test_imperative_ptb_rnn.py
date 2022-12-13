@@ -23,9 +23,8 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import Embedding
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.optimizer import SGDOptimizer
+from paddle.nn import Embedding
 
 
 class SimpleLSTMRNN(fluid.Layer):
@@ -172,10 +171,10 @@ class PtbModel(fluid.Layer):
             dropout=dropout,
         )
         self.embedding = Embedding(
-            size=[vocab_size, hidden_size],
-            dtype='float32',
-            is_sparse=is_sparse,
-            param_attr=fluid.ParamAttr(
+            vocab_size,
+            hidden_size,
+            sparse=is_sparse,
+            weight_attr=fluid.ParamAttr(
                 name='embedding_para',
                 initializer=fluid.initializer.UniformInitializer(
                     low=-init_scale, high=init_scale
@@ -238,14 +237,9 @@ class PtbModel(fluid.Layer):
 
 
 class TestDygraphPtbRnn(unittest.TestCase):
-    def func_test_ptb_rnn(self):
+    def test_ptb_rnn(self):
         for is_sparse in [True, False]:
             self.ptb_rnn_cpu_float32(is_sparse)
-
-    def test_ptb_rnn(self):
-        with _test_eager_guard():
-            self.func_test_ptb_rnn()
-        self.func_test_ptb_rnn()
 
     def ptb_rnn_cpu_float32(self, is_sparse):
         seed = 90

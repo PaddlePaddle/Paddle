@@ -21,7 +21,7 @@ endif()
 if(WITH_NCCL OR WITH_RCCL)
   cc_library(
     processgroup_nccl
-    SRCS ProcessGroupNCCL.cc NCCLTools.cc Common.cc static_check.cc
+    SRCS ProcessGroupNCCL.cc NCCLTools.cc Common.cc check.cc
     DEPS processgroup
          processgroup_stream
          place

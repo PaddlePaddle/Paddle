@@ -75,7 +75,9 @@ def train(to_static, build_strategy=None):
                 level='O2',
             ):
                 pred = resnet(img)
-                loss = fluid.layers.cross_entropy(input=pred, label=label)
+                loss = paddle.nn.functional.cross_entropy(
+                    input=pred, label=label, reduction='none', use_softmax=False
+                )
             avg_loss = paddle.mean(x=pred)
             acc_top1 = paddle.static.accuracy(input=pred, label=label, k=1)
             acc_top5 = paddle.static.accuracy(input=pred, label=label, k=5)

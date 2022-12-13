@@ -653,9 +653,22 @@ class RandomVerticalFlip(BaseTransform):
         self.prob = prob
 
     def _apply_image(self, img):
+        if paddle.in_dynamic_mode():
+            return self._dynamic_apply_image(img)
+        else:
+            return self._static_apply_image(img)
+
+    def _dynamic_apply_image(self, img):
         if random.random() < self.prob:
             return F.vflip(img)
         return img
+
+    def _static_apply_image(self, img):
+        return paddle.static.nn.cond(
+            paddle.rand(shape=(1,)) < self.prob,
+            lambda: F.vflip(img),
+            lambda: img,
+        )
 
 
 class Normalize(BaseTransform):
