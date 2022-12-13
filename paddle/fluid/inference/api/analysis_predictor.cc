@@ -1242,6 +1242,15 @@ void AnalysisPredictor::PrepareArgument() {
   }
 #endif
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  argument_.SetUseCustomDevice(config_.use_custom_device());
+  if (config_.use_custom_device()) {
+    LOG(INFO) << "CustomDevice is enabled";
+    argument_.SetCustomDeviceType(config_.custom_device_type());
+    argument_.SetCustomDeviceId(config_.custom_device_id());
+  }
+#endif
+
   auto *pass_builder = config_.pass_builder();
   // TODO(inference): Need to reconstruct the pass_builder, pass should be
   // processed in a single
