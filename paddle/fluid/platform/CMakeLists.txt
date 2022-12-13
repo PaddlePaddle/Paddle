@@ -186,7 +186,6 @@ cc_library(
        phi_place
        eigen3
        cpu_helper
-       phi_backends
        framework_proto
        ${IPU_CTX_DEPS}
        ${GPU_CTX_DEPS}
