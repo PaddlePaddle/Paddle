@@ -8695,6 +8695,12 @@ class Tensor:
         """
         ...
 
+    def __neg__(self) -> Tensor:
+        """
+        Negate the tensor elementwise.
+
+        """
+        ...
 
 
     reverse = flip

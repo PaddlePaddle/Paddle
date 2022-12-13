@@ -228,19 +228,39 @@ def get_tensor_monkey_patched_methods(
     return methods
 
 
+def get_attributes() -> dict[str, str]:
+    # TODO: add more attributes
+    return {
+        "shape": "list[int]",
+    }
+
+
+def get_other_methods() -> list[str]:
+    # TODO: more methods
+    methods = [
+        ("__neg__", "(self)", "Tensor", "Negate the tensor elementwise."),
+    ]
+    methods_code: list[str] = []
+    for method_name, args, ret_type, original_docstring in methods:
+        docstring = ""
+        for line in original_docstring.splitlines():
+            docstring += f"{INDENT}{INDENT}{line}\n"
+        method_code = f"""\
+{INDENT}def {method_name}{args} -> {ret_type}:
+{INDENT}{INDENT}\"\"\"
+{docstring}
+{INDENT}{INDENT}\"\"\"
+{INDENT}{INDENT}..."""
+        methods_code.append(method_code)
+    return methods_code
+
+
 def get_alias() -> dict[str, str]:
     # TODO: Add the reference from the source code
     return {
         "reverse": "flip",
         "mod": "remainder",
         "floor_mod": "remainder",
-    }
-
-
-def get_attributes() -> dict[str, str]:
-    # TODO: add more attributes
-    return {
-        "shape": "list[int]",
     }
 
 
@@ -264,6 +284,7 @@ def main():
     tensor_monkey_patched_methods = get_tensor_monkey_patched_methods(
         tensor_funcs_dir, tensor_method_func
     )
+    tensor_other_methods = get_other_methods()
     tensor_aliases = get_alias()
     tensor_attributes = get_attributes()
 
@@ -272,6 +293,8 @@ def main():
     for attr, type in tensor_attributes.items():
         tensor_gen.add_attribute(attr, type)
     for method in tensor_monkey_patched_methods:
+        tensor_gen.add_method(method)
+    for method in tensor_other_methods:
         tensor_gen.add_method(method)
     for aliases, target in tensor_aliases.items():
         tensor_gen.add_alias(aliases, target)
