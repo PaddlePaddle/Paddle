@@ -63,8 +63,7 @@ size_t CpuMaxAllocSize();
 //! Get the maximum allocation size for a machine.
 size_t CUDAPinnedMaxAllocSize();
 
-//! Get the minimum chunk size for buddy allocator.
-size_t CpuMinChunkSize();
+using phi::backends::cpu::CpuMinChunkSize;
 
 //! Get the maximum chunk size for buddy allocator.
 size_t CpuMaxChunkSize();

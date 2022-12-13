@@ -15,7 +15,6 @@
 #ifndef PADDLE_WITH_HIP
 
 #include "paddle/phi/kernels/affine_grid_kernel.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
