@@ -54,7 +54,7 @@ TEST(FCFusePass, basic) {
   auto* a = layers.data("a");
   auto* filters_0 = layers.data("conv2d_filters_0", {}, true);
   auto* bias_0 = layers.data("conv2d_bias_0", {}, true);
-  auto* conv2d_out = paddle.static.nn.conv2d(a, filters_0, bias_0, false);
+  auto* conv2d_out = layers.conv2d(a, filters_0, bias_0, false);
   auto* relu_out_0 = layers.relu(conv2d_out);
   auto* weights_0 = layers.data("weights_0", {5, 4}, true);
   auto* mul_out_0 = layers.mul(relu_out_0, weights_0);

@@ -59,7 +59,7 @@ void TestMain(const std::string& conv_type) {
   if (conv_type == "conv_transpose") {
     conv_out = layers.conv2d_transpose(in, filters, bias_0);
   } else {
-    conv_out = paddle.static.nn.conv2d(in, filters, bias_0);
+    conv_out = layers.conv2d(in, filters, bias_0);
   }
   conv_out->SetShape({1, 3, 20, 20});
   auto* scale = layers.data("scale", {3}, true);
