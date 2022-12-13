@@ -65,9 +65,7 @@ class TensorGen:
 
     @property
     def tensor_spec(self) -> str:
-        return """
-class Tensor:
-"""
+        return """class Tensor:"""
 
     @property
     def tensor_attributes(self) -> str:
@@ -96,12 +94,11 @@ class Tensor:
 
 {self.future_imports}
 
+
 {self.tensor_spec}
 
 {self.tensor_attributes}
-
 {self.tensor_methods}
-
 {self.tensor_aliases}
 """
         return code
@@ -232,6 +229,7 @@ def get_attributes() -> dict[str, str]:
     # TODO: add more attributes
     return {
         "shape": "list[int]",
+        "name": "str",
     }
 
 

@@ -5,9 +5,8 @@ from __future__ import annotations
 
 class Tensor:
 
-
     shape: list[int]
-
+    name: str
 
     def cast(self, dtype: np.dtype | str):
         """
@@ -8701,7 +8700,6 @@ class Tensor:
 
         """
         ...
-
 
     reverse = flip
     mod = remainder
