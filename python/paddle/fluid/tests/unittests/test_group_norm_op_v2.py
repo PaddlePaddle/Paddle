@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
 
 
@@ -37,106 +36,6 @@ def group_norm_naive_for_general_dimension(x, scale, bias, epsilon, groups):
         (-1, 1, 1)
     ) + bias.reshape((-1, 1, 1))
     return output
-
-
-class TestDygraphGroupNormv2(unittest.TestCase):
-    def test_dygraph(self):
-        places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
-            places.append(fluid.CUDAPlace(0))
-        shapes = [
-            [2, 2, 2, 2],
-            [2, 2, 4],
-            [4, 2],
-            [4, 2, 6, 6, 2],
-            [2, 2, 2, 2, 2, 2],
-        ]
-        for p in places:
-
-            def compute_v1(x):
-                with fluid.dygraph.guard(p):
-                    gn = fluid.dygraph.GroupNorm(channels=2, groups=2)
-                    y = gn(fluid.dygraph.to_variable(x))
-                return y.numpy()
-
-            def compute_v2(x):
-                with fluid.dygraph.guard(p):
-                    gn = paddle.nn.GroupNorm(num_channels=2, num_groups=2)
-                    y = gn(fluid.dygraph.to_variable(x))
-                return y.numpy()
-
-            def test_weight_bias_false():
-                with fluid.dygraph.guard(p):
-                    gn = paddle.nn.GroupNorm(
-                        num_channels=2,
-                        num_groups=2,
-                        weight_attr=False,
-                        bias_attr=False,
-                    )
-
-            def test_nn_exception():
-                with fluid.dygraph.guard(p):
-
-                    def attr_data_format():
-                        out = paddle.nn.GroupNorm(
-                            num_groups=2, num_channels=2, data_format="CNHW"
-                        )
-
-                    self.assertRaises(ValueError, attr_data_format)
-
-            for shape in shapes:
-                x = np.random.randn(*shape).astype("float32")
-                y1 = compute_v1(x)
-                y2 = compute_v2(x)
-                result = np.allclose(y1, y2, atol=1e-5)
-                if not result:
-                    print("y1:", y1, "\ty2:", y2)
-                self.assertTrue(result)
-                test_weight_bias_false()
-                test_nn_exception()
-
-    def test_static(self):
-        paddle.enable_static()
-        places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
-            places.append(fluid.CUDAPlace(0))
-        shapes = [
-            [2, 6, 2, 2],
-            [2, 6, 4],
-            [4, 6],
-            [4, 6, 6, 6, 2],
-            [4, 6, 2, 2, 2, 2],
-        ]
-        for p in places:
-            exe = fluid.Executor(p)
-
-            def compute_v1(x_np):
-                with program_guard(Program(), Program()):
-                    gn = fluid.dygraph.GroupNorm(channels=6, groups=2)
-                    x = fluid.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
-                    y = gn(x)
-                    exe.run(fluid.default_startup_program())
-                    r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
-                return r
-
-            def compute_v2(x_np):
-                with program_guard(Program(), Program()):
-                    gn = paddle.nn.GroupNorm(num_channels=6, num_groups=2)
-                    x = fluid.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
-                    y = gn(x)
-                    exe.run(fluid.default_startup_program())
-                    r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
-                return r
-
-            for shape in shapes:
-                x = np.random.randn(*shape).astype("float32")
-                y1 = compute_v1(x)
-                y2 = compute_v2(x)
-                np.testing.assert_allclose(y1, y2, rtol=1e-05, atol=1e-05)
-
-    def test_eager_api(self):
-        with _test_eager_guard():
-            self.test_dygraph()
 
 
 class TestGroupNormAPIV2_With_General_Dimensions(unittest.TestCase):

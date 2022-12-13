@@ -12,18 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.jit.dy2static.static_analysis import (
+from .static_analysis import (
     AstNodeWrapper,
 )
-from paddle.jit.dy2static.utils import (
+from .utils import (
     FunctionNameLivenessAnalysis,
 )
-from paddle.jit.dy2static.variable_trans_func import (
+from .variable_trans_func import (
     create_undefined_var,
 )
 from .base_transformer import (
     BaseTransformer,
 )
+
+
+__all__ = []
 
 
 class CreateVariableTransformer(BaseTransformer):

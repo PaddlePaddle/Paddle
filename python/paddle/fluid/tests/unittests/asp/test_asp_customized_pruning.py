@@ -269,7 +269,12 @@ class TestASPStaticCustomerizedPruneFunc(unittest.TestCase):
     def test_training_pruning(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             loss = paddle.mean(
-                fluid.layers.cross_entropy(input=self.predict, label=self.label)
+                paddle.nn.functional.cross_entropy(
+                    input=self.predict,
+                    label=self.label,
+                    reduction='none',
+                    use_softmax=False,
+                )
             )
             optimizer = sparsity.decorate(
                 fluid.optimizer.SGD(learning_rate=0.01)
