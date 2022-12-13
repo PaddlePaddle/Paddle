@@ -16,6 +16,7 @@ from .common import fc  # noqa: F401
 from .common import batch_norm  # noqa: F401
 from .common import instance_norm  # noqa: F401
 from .common import data_norm  # noqa: F401
+from .common import continuous_value_model  # noqa: F401
 from .common import group_norm  # noqa: F401
 from .common import deform_conv2d  # noqa: F401
 from .common import conv3d  # noqa: F401
@@ -29,7 +30,6 @@ from .control_flow import (
 from .common import bilinear_tensor_product  # noqa: F401
 from .common import py_func  # noqa: F401
 from ...tensor.creation import create_parameter  # noqa: F401
-from ...fluid.layers import cond  # noqa: F401
 from ...fluid.layers import conv2d  # noqa: F401
 from ...fluid.layers import crf_decoding  # noqa: F401
 from ...fluid.layers import layer_norm  # noqa: F401
@@ -57,6 +57,8 @@ from ...fluid.layers.sequence_lod import sequence_reshape  # noqa: F401
 from ...fluid.layers.sequence_lod import sequence_scatter  # noqa: F401
 from ...fluid.layers.sequence_lod import sequence_enumerate  # noqa: F401
 from ...fluid.layers.sequence_lod import sequence_reverse  # noqa: F401
+
+from .control_flow import cond
 
 __all__ = [  # noqa
     'fc',

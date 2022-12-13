@@ -17,7 +17,7 @@ from functools import reduce
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.param_attr as attr
-from paddle.fluid.dygraph import Embedding, Layer
+from paddle.fluid.dygraph import Layer
 from paddle.jit.api import declarative
 from paddle.static import Variable
 
@@ -42,11 +42,12 @@ class EmbeddingLayer:
         """
         # TODO(huihuangzheng): The original code set the is_sparse=True, but it
         # causes crush in dy2stat. Set it to True after fixing it.
-        emb = Embedding(
-            size=[self.dict_size, self.emb_dim],
-            is_sparse=True,
+        emb = paddle.nn.Embedding(
+            self.dict_size,
+            self.emb_dim,
+            sparse=True,
             padding_idx=self.padding_idx,
-            param_attr=attr.ParamAttr(
+            weight_attr=attr.ParamAttr(
                 name=self.name, initializer=fluid.initializer.Xavier()
             ),
         )
