@@ -44,7 +44,7 @@ from paddle.utils import gast
 
 from .base_transformer import BaseTransformer
 
-__all__ = ['IfElseTransformer']
+__all__ = []
 
 TRUE_FUNC_PREFIX = 'true_fn'
 FALSE_FUNC_PREFIX = 'false_fn'
