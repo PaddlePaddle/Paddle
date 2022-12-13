@@ -249,7 +249,7 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \return the argument obtained by config
   ///
-  Argument &analysis_argument() { return argument_; }
+  Argument &analysis_argument() { return *argument_; }
   ///
   /// \brief Clone to get the new predictor. thread safe.
   ///
