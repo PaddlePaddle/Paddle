@@ -47,7 +47,7 @@ def fused_ec_moe(
             bmm0_bias = paddle.randn([num_expert, d_model, d_feed_forward])
             bmm1_weight = paddle.randn([num_expert, d_model, d_feed_forward])
             bmm1_bias = paddle.randn([num_expert, d_model, d_feed_forward])
-            out = fused_ec_moe(x, gate, bmm0_weight, bmm0_bias, bmm1_weight, bmm1_bias, act=0)
+            out = fused_ec_moe(x, gate, bmm0_weight, bmm0_bias, bmm1_weight, bmm1_bias, act_type="gelu")
             print(out.shape) # [batch, seq_len, num_expert]
     """
     helper = LayerHelper('fused_moe', **locals())
