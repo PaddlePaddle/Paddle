@@ -42,9 +42,11 @@ class ExpandV2OpConverter : public OpConverter {
     auto rank = input_dims.nbDims;
 
     nvinfer1::ITensor* shape_tensor = nullptr;
+    int32_t shape_rank = 0;
     if (inputs.find("Shape") != inputs.end() &&
         op_desc.Input("Shape").size() >= 1) {
       shape_tensor = engine_->GetITensor(op_desc.Input("Shape")[0]);
+      shape_rank = shape_tensor->getDimensions().d[0];
     } else if (inputs.find("expand_shapes_tensor") != inputs.end() &&
                op_desc.Input("expand_shapes_tensor").size() >= 1) {
       int shape_size = op_desc.Input("expand_shapes_tensor").size();
@@ -54,17 +56,18 @@ class ExpandV2OpConverter : public OpConverter {
             engine_->GetITensor(op_desc.Input("expand_shapes_tensor")[i]));
       }
       shape_tensor = Concat(shape_tensors);
+      shape_rank = shape_size;
     } else {
       std::vector<int32_t> shape =
           PADDLE_GET_CONST(std::vector<int32_t>, op_desc.GetAttr("shape"));
       shape_tensor = Add1DConstantLayer(shape, output_name + "_shape_tensor_");
+      shape_rank = shape.size();
     }
-    int32_t nbDims_num = shape_tensor->getDimensions().nbDims;
 
     nvinfer1::ITensor* input_shape_tensor;
-    if (rank < nbDims_num) {
+    if (rank < shape_rank) {
       auto* one_rank_tensor =
-          Add1DConstantLayer(std::vector<int32_t>(nbDims_num - rank, 1),
+          Add1DConstantLayer(std::vector<int32_t>(shape_rank - rank, 1),
                              output_name + "_one_rank_tensor_");
       auto in_shape_tensor = Shape(input);
       std::vector<nvinfer1::ITensor*> itensors;
@@ -78,16 +81,16 @@ class ExpandV2OpConverter : public OpConverter {
     auto* shuffle = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
     shuffle->setInput(1, *input_shape_tensor);
 
-    std::vector<int32_t> start_vec(nbDims_num, 0);
+    std::vector<int32_t> start_vec(shape_rank, 0);
     nvinfer1::Dims start;
-    start.nbDims = nbDims_num;
-    for (int32_t i = 0; i < nbDims_num; ++i) {
+    start.nbDims = shape_rank;
+    for (int32_t i = 0; i < shape_rank; ++i) {
       start.d[i] = start_vec[i];
     }
     nvinfer1::Dims size;
-    size.nbDims = nbDims_num;
+    size.nbDims = shape_rank;
     nvinfer1::Dims stride;
-    stride.nbDims = nbDims_num;
+    stride.nbDims = shape_rank;
 
     auto starts_tensor =
         Add1DConstantLayer(start_vec, output_name + "_start_tensor_");
