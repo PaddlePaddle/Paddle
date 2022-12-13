@@ -182,6 +182,46 @@ class TestLayer(LayerTest):
 
             self.assertRaises(TypeError, test_type)
 
+    def test_cvm(self):
+        inp = np.ones([10, 10], dtype='float32')
+        arr = [[0.6931472, -1.904654e-09, 1, 1, 1, 1, 1, 1, 1, 1]] * 10
+        cvm1 = np.array(arr, dtype='float32')
+        cvm2 = np.ones([10, 8], dtype='float32')
+        show_clk = np.ones([10, 2], dtype='float32')
+        with self.static_graph():
+            x = paddle.static.data(
+                name='data',
+                shape=[10, 10],
+                dtype='float32',
+            )
+            u = paddle.static.data(
+                name='show_click',
+                shape=[10, 2],
+                dtype='float32',
+            )
+            no_cvm = paddle.static.nn.continuous_value_model(x, u, True)
+            static_ret1 = self.get_static_graph_result(
+                feed={'data': inp, 'show_click': show_clk},
+                fetch_list=[no_cvm],
+            )[0]
+        with self.static_graph():
+            x = paddle.static.data(
+                name='data',
+                shape=[10, 10],
+                dtype='float32',
+            )
+            u = paddle.static.data(
+                name='show_click',
+                shape=[10, 2],
+                dtype='float32',
+            )
+            cvm = paddle.static.nn.continuous_value_model(x, u, False)
+            static_ret2 = self.get_static_graph_result(
+                feed={'data': inp, 'show_click': show_clk}, fetch_list=[cvm]
+            )[0]
+        np.testing.assert_allclose(static_ret1, cvm1, rtol=1e-5, atol=1e-06)
+        np.testing.assert_allclose(static_ret2, cvm2, rtol=1e-5, atol=1e-06)
+
     def test_Flatten(self):
         inp = np.ones([3, 4, 4, 5], dtype='float32')
         with self.static_graph():
@@ -1579,7 +1619,7 @@ class TestLayer(LayerTest):
             b = fluid.layers.fill_constant(
                 shape=[1], dtype='float32', value=0.23
             )
-            out = fluid.layers.cond(
+            out = paddle.static.nn.cond(
                 a >= b,
                 lambda: greater_equal_branch(a, b),
                 lambda: less_than_branch(a, b),
@@ -1599,12 +1639,12 @@ class TestLayer(LayerTest):
                 b = fluid.dygraph.to_variable(
                     np.array([0.23]).astype('float32')
                 )
-                out = layers.cond(
+                out = paddle.static.nn.cond(
                     a < b,
                     lambda: less_than_branch(a, b),
                     lambda: greater_equal_branch(a, b),
                 )
-                out2 = layers.cond(
+                out2 = paddle.static.nn.cond(
                     a >= b,
                     lambda: greater_equal_branch(a, b),
                     lambda: less_than_branch(a, b),
@@ -1615,18 +1655,18 @@ class TestLayer(LayerTest):
                     eager_dynamic_res, eager_dynamic_res2
                 )
                 with self.assertRaises(TypeError):
-                    layers.cond(a < b, 'str', 'str')
+                    paddle.static.nn.cond(a < b, 'str', 'str')
                 with self.assertRaises(TypeError):
-                    layers.cond(a >= b, 'str', 'str')
+                    paddle.static.nn.cond(a >= b, 'str', 'str')
 
             a = fluid.dygraph.to_variable(np.array([0.1]).astype('float32'))
             b = fluid.dygraph.to_variable(np.array([0.23]).astype('float32'))
-            out = layers.cond(
+            out = paddle.static.nn.cond(
                 a < b,
                 lambda: less_than_branch(a, b),
                 lambda: greater_equal_branch(a, b),
             )
-            out2 = layers.cond(
+            out2 = paddle.static.nn.cond(
                 a >= b,
                 lambda: greater_equal_branch(a, b),
                 lambda: less_than_branch(a, b),
@@ -1635,9 +1675,9 @@ class TestLayer(LayerTest):
             dynamic_res2 = out2.numpy()
             np.testing.assert_array_equal(dynamic_res, dynamic_res2)
             with self.assertRaises(TypeError):
-                layers.cond(a < b, 'str', 'str')
+                paddle.static.nn.cond(a < b, 'str', 'str')
             with self.assertRaises(TypeError):
-                layers.cond(a >= b, 'str', 'str')
+                paddle.static.nn.cond(a >= b, 'str', 'str')
 
         np.testing.assert_array_equal(static_res, dynamic_res)
         np.testing.assert_array_equal(static_res, eager_dynamic_res)
