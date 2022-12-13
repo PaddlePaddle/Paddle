@@ -948,8 +948,18 @@ void AnalysisConfig::Update() {
 #endif
   }
 
+  // TODO(inference): When we enable memory_optimize and mkldnn, PaddleSeg model
+  // fail.
   if (enable_memory_optim_) {
-    pass_builder()->AppendAnalysisPass("memory_optimize_pass");
+    if (use_mkldnn_) {
+      enable_memory_optim_ = false;
+      LOG_FIRST_N(WARNING, 1)
+          << "It is detected that mkldnn and memory_optimize_pass are enabled "
+             "at the same time, but they are not supported yet. Currently, "
+             "memory_optimize_pass is explicitly disabled"
+    } else {
+      pass_builder()->AppendAnalysisPass("memory_optimize_pass");
+    }
   }
 
   if (use_lite_) {
