@@ -171,7 +171,7 @@ class TestImperativeQatMatmul(unittest.TestCase):
                 out = lenet(img)
                 acc = paddle.metric.accuracy(out, label)
                 loss = paddle.nn.functional.cross_entropy(
-                    out, label, use_softmax=False
+                    out, label, reduction='none', use_softmax=False
                 )
                 avg_loss = paddle.mean(loss)
 
