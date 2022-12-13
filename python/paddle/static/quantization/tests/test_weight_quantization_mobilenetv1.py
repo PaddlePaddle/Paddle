@@ -185,7 +185,7 @@ class TestWeightQuantization(unittest.TestCase):
                 inference_program,
                 feed_target_names,
                 fetch_targets,
-            ] = paddle.static.load_inference_model(
+            ] = paddle.fluid.io.load_inference_model(
                 model_dir,
                 exe,
                 model_filename=model_filename,

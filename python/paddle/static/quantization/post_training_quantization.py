@@ -29,7 +29,7 @@ from paddle.fluid.framework import IrGraph, _get_var
 
 from ... import io, static
 from ...fluid import reader
-from ...fluid.io import save_inference_model
+from ...fluid.io import load_inference_model, save_inference_model
 from ...framework import core
 from ...utils import unique_name
 from ..log_helper import get_logger
@@ -562,7 +562,7 @@ class PostTrainingQuantization:
                 self._program,
                 self._feed_list,
                 self._fetch_list,
-            ] = static.load_inference_model(
+            ] = load_inference_model(
                 self._model_dir,
                 executor=self._executor,
                 model_filename=self._model_filename,
@@ -1605,7 +1605,7 @@ class WeightQuantization:
         place = core.CPUPlace()
         exe = static.Executor(place)
         scope = static.global_scope()
-        [infer_program, feed_list, fetch_list] = static.load_inference_model(
+        [infer_program, feed_list, fetch_list] = load_inference_model(
             self._model_dir,
             executor=exe,
             model_filename=self._model_filename,
@@ -1696,8 +1696,8 @@ class WeightQuantization:
         place = core.CPUPlace()
         exe = static.Executor(place)
         scope = static.global_scope()
-        [program, feed_list, fetch_list] = static.load_inference_model(
-            dirname=self._model_dir,
+        [program, feed_list, fetch_list] = load_inference_model(
+            self._model_dir,
             executor=exe,
             model_filename=self._model_filename,
             params_filename=self._params_filename,

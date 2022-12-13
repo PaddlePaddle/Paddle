@@ -121,7 +121,7 @@ class TestPostTrainingQuantizationProgram(TestPostTrainingQuantization):
             infer_program,
             feed_dict,
             fetch_targets,
-        ] = paddle.static.load_inference_model(model_path, exe)
+        ] = paddle.fluid.io.load_inference_model(model_path, exe)
         val_reader = paddle.batch(val(), batch_size)
         iterations = infer_iterations
         test_info = []
@@ -160,7 +160,7 @@ class TestPostTrainingQuantizationProgram(TestPostTrainingQuantization):
             infer_program,
             feed_dict,
             fetch_targets,
-        ] = paddle.static.load_inference_model(model_path, exe)
+        ] = paddle.fluid.io.load_inference_model(model_path, exe)
         return (
             throughput,
             latency,
@@ -241,7 +241,6 @@ class TestPostTrainingQuantizationProgram(TestPostTrainingQuantization):
     ):
         infer_iterations = self.infer_iterations
         batch_size = self.batch_size
-        sample_iterations = self.sample_iterations
 
         model_cache_folder = self.download_data(data_urls, data_md5s, model)
 
@@ -262,11 +261,7 @@ class TestPostTrainingQuantizationProgram(TestPostTrainingQuantization):
             batch_size,
             infer_iterations,
         )
-        print(
-            "Start INT8 post training quantization for {0} on {1} images ...".format(
-                model, sample_iterations * batch_size
-            )
-        )
+
         self.generate_quantized_model(
             infer_program,
             quantizable_op_type,

@@ -208,7 +208,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
             infer_program,
             feed_dict,
             fetch_targets,
-        ] = paddle.static.load_inference_model(model_path, exe)
+        ] = paddle.fluid.io.load_inference_model(model_path, exe)
         val_reader = paddle.batch(val(), batch_size)
         iterations = infer_iterations
 
