@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-import numpy as np
-import unittest
 from paddle import _legacy_C_ops
 from paddle.fluid.framework import _test_eager_guard
+from paddle.tensor import random
 
 if fluid.is_compiled_with_cuda():
     fluid.core.globals()['FLAGS_cudnn_deterministic'] = True
@@ -119,7 +122,7 @@ class InstanceNorm(fluid.dygraph.Layer):
             )
             return out
         else:
-            return fluid.layers.instance_norm(
+            return paddle.static.nn.instance_norm(
                 input,
                 epsilon=self.epsilon,
                 param_attr=fluid.ParamAttr(self.scale.name),
@@ -163,7 +166,7 @@ class Conv2DLayer(fluid.dygraph.Layer):
             conv = self._norm(conv)
 
         if self.relufactor is not None:
-            conv = fluid.layers.leaky_relu(conv, alpha=self.relufactor)
+            conv = paddle.nn.functional.leaky_relu(conv, self.relufactor)
 
         return conv
 
@@ -182,10 +185,10 @@ class Deconv2DLayer(fluid.dygraph.Layer):
     ):
         super().__init__()
 
-        self._deconv = fluid.dygraph.Conv2DTranspose(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
+        self._deconv = paddle.nn.Conv2DTranspose(
+            num_channels,
+            num_filters,
+            filter_size,
             stride=stride,
             padding=padding,
             bias_attr=None if use_bias else False,
@@ -205,7 +208,7 @@ class Deconv2DLayer(fluid.dygraph.Layer):
             deconv = self._norm(deconv)
 
         if self.relufactor is not None:
-            deconv = fluid.layers.leaky_relu(deconv, alpha=self.relufactor)
+            deconv = paddle.nn.functional.leaky_relu(deconv, self.relufactor)
 
         return deconv
 
@@ -268,7 +271,7 @@ class Generator(fluid.dygraph.Layer):
             cur_channels *= 2
             sub_layers.append(sub_layer)
 
-        self._conv0 = fluid.dygraph.Sequential(*sub_layers)
+        self._conv0 = paddle.nn.Sequential(*sub_layers)
 
         repeat_num = cfg.g_repeat_num
         sub_layers = []
@@ -278,7 +281,7 @@ class Generator(fluid.dygraph.Layer):
             )
             sub_layers.append(res_block)
 
-        self._res_block = fluid.dygraph.Sequential(*sub_layers)
+        self._res_block = paddle.nn.Sequential(*sub_layers)
 
         cur_channels = cfg.g_base_dims * 4
         sub_layers = []
@@ -296,7 +299,7 @@ class Generator(fluid.dygraph.Layer):
             cur_channels = cfg.g_base_dims * rate
             sub_layers.append(deconv)
 
-        self._deconv = fluid.dygraph.Sequential(*sub_layers)
+        self._deconv = paddle.nn.Sequential(*sub_layers)
 
         self._conv1 = Conv2DLayer(
             num_channels=cur_channels,
@@ -309,12 +312,8 @@ class Generator(fluid.dygraph.Layer):
 
     def forward(self, input, label_trg):
         shape = input.shape
-        label_trg_e = fluid.layers.reshape(
-            label_trg, [-1, label_trg.shape[1], 1, 1]
-        )
-        label_trg_e = fluid.layers.expand(
-            x=label_trg_e, expand_times=[1, 1, shape[2], shape[3]]
-        )
+        label_trg_e = paddle.reshape(label_trg, [-1, label_trg.shape[1], 1, 1])
+        label_trg_e = paddle.expand(label_trg_e, [-1, -1, shape[2], shape[3]])
 
         input1 = fluid.layers.concat([input, label_trg_e], 1)
 
@@ -322,7 +321,7 @@ class Generator(fluid.dygraph.Layer):
         res_block = self._res_block(conv0)
         deconv = self._deconv(res_block)
         conv1 = self._conv1(deconv)
-        out = fluid.layers.tanh(conv1)
+        out = paddle.tanh(conv1)
         return out
 
 
@@ -355,7 +354,7 @@ class Discriminator(fluid.dygraph.Layer):
             cur_dim *= 2
             sub_layers.append(sub_layer)
 
-        self._conv0 = fluid.dygraph.Sequential(*sub_layers)
+        self._conv0 = paddle.nn.Sequential(*sub_layers)
 
         kernel_size = int(cfg.image_size / np.power(2, repeat_num))
 
@@ -380,12 +379,10 @@ class Discriminator(fluid.dygraph.Layer):
 
 def loss_cls(cls, label, cfg):
     cls_shape = cls.shape
-    cls = fluid.layers.reshape(
-        cls, [-1, cls_shape[1] * cls_shape[2] * cls_shape[3]]
-    )
+    cls = paddle.reshape(cls, [-1, cls_shape[1] * cls_shape[2] * cls_shape[3]])
     return (
-        fluid.layers.reduce_sum(
-            fluid.layers.sigmoid_cross_entropy_with_logits(cls, label)
+        paddle.sum(
+            paddle.nn.functional.binary_cross_entropy_with_logits(cls, label)
         )
         / cfg.batch_size
     )
@@ -408,13 +405,13 @@ def calc_gradients(outputs, inputs, no_grad_set):
 def gradient_penalty(f, real, fake, no_grad_set, cfg):
     def _interpolate(a, b):
         shape = [a.shape[0]]
-        alpha = fluid.layers.uniform_random_batch_size_like(
+        alpha = random.uniform_random_batch_size_like(
             input=a, shape=shape, min=0.1, max=1.0, seed=cfg.seed
         )
 
-        inner = fluid.layers.elementwise_mul(
+        inner = paddle.tensor.math._multiply_with_axis(
             b, 1.0 - alpha, axis=0
-        ) + fluid.layers.elementwise_mul(a, alpha, axis=0)
+        ) + paddle.tensor.math._multiply_with_axis(a, alpha, axis=0)
         return inner
 
     x = _interpolate(real, fake)
@@ -432,16 +429,14 @@ def gradient_penalty(f, real, fake, no_grad_set, cfg):
     gradient = gradient[0]
     grad_shape = gradient.shape
 
-    gradient = fluid.layers.reshape(
+    gradient = paddle.reshape(
         gradient, [-1, grad_shape[1] * grad_shape[2] * grad_shape[3]]
     )
 
     epsilon = 1e-16
-    norm = fluid.layers.sqrt(
-        fluid.layers.reduce_sum(fluid.layers.square(gradient), dim=1) + epsilon
-    )
+    norm = paddle.sqrt(paddle.sum(paddle.square(gradient), axis=1) + epsilon)
 
-    gp = fluid.layers.reduce_mean(fluid.layers.square(norm - 1.0))
+    gp = paddle.mean(paddle.square(norm - 1.0))
     return gp
 
 
@@ -450,9 +445,7 @@ def get_generator_loss(
 ):
     fake_img = generator(image_real, label_trg)
     rec_img = generator(fake_img, label_org)
-    g_loss_rec = fluid.layers.reduce_mean(
-        fluid.layers.abs(fluid.layers.elementwise_sub(image_real, rec_img))
-    )
+    g_loss_rec = paddle.mean(paddle.abs(paddle.subtract(image_real, rec_img)))
 
     pred_fake, cls_fake = discriminator(fake_img)
 

@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import os
 import tempfile
-import numpy as np
-import paddle
-import paddle.utils as utils
-import paddle.fluid as fluid
-import paddle.fluid.profiler as profiler
-import paddle.fluid.layers as layers
-import paddle.fluid.core as core
-import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
+import unittest
 
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.fluid.layers as layers
+import paddle.fluid.profiler as profiler
+import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
+import paddle.utils as utils
 from paddle.utils.flops import flops
 
 
@@ -44,22 +45,24 @@ class TestProfiler(unittest.TestCase):
             )
             until = layers.fill_constant([1], dtype='int64', value=10)
             data_arr = layers.array_write(hidden1, i)
-            cond = fluid.layers.less_than(x=counter, y=until)
-            while_op = fluid.layers.While(cond=cond)
+            cond = paddle.less_than(x=counter, y=until)
+            while_op = paddle.static.nn.control_flow.While(cond=cond)
             with while_op.block():
                 hidden_n = fluid.layers.fc(input=hidden1, size=64, act='relu')
                 layers.array_write(hidden_n, i, data_arr)
-                fluid.layers.increment(x=counter, value=1, in_place=True)
-                layers.less_than(x=counter, y=until, cond=cond)
+                paddle.increment(x=counter, value=1)
+                paddle.assign(paddle.less_than(x=counter, y=until), cond)
 
             hidden_n = layers.array_read(data_arr, i)
             hidden2 = fluid.layers.fc(input=hidden_n, size=64, act='relu')
             predict = fluid.layers.fc(input=hidden2, size=10, act='softmax')
             label = fluid.layers.data(name='y', shape=[1], dtype='int64')
-            cost = fluid.layers.cross_entropy(input=predict, label=label)
+            cost = paddle.nn.functional.cross_entropy(
+                input=predict, label=label, reduction='none', use_softmax=False
+            )
             avg_cost = paddle.mean(cost)
-            batch_size = fluid.layers.create_tensor(dtype='int64')
-            batch_acc = fluid.layers.accuracy(
+            batch_size = paddle.tensor.create_tensor(dtype='int64')
+            batch_acc = paddle.static.accuracy(
                 input=predict, label=label, total=batch_size
             )
 
@@ -225,8 +228,81 @@ class TestProfilerAPIError(unittest.TestCase):
 
 class TestFLOPSAPI(unittest.TestCase):
     def test_flops(self):
-        self.assertTrue(flops('relu', ([12, 12],), output=4) == 144)
-        self.assertTrue(flops('dropout', ([12, 12],), **{'output': 4}) == 0)
+        self.assertTrue(flops('relu', {'X': [[12, 12]]}, {'output': 4}) == 144)
+        self.assertTrue(flops('dropout', {}, {'output': 4}) == 0)
+        self.assertTrue(
+            flops(
+                'transpose2',
+                {
+                    'X': [[12, 12, 12]],
+                },
+                {},
+            )
+            == 0
+        )
+        self.assertTrue(
+            flops(
+                'reshape2',
+                {
+                    'X': [[12, 12, 12]],
+                },
+                {},
+            )
+            == 0
+        )
+        self.assertTrue(
+            flops(
+                'unsqueeze2',
+                {
+                    'X': [[12, 12, 12]],
+                },
+                {},
+            )
+            == 0
+        )
+        self.assertTrue(
+            flops(
+                'layer_norm',
+                {'Bias': [[128]], 'Scale': [[128]], 'X': [[32, 128, 28, 28]]},
+                {'epsilon': 0.01},
+            )
+            == 32 * 128 * 28 * 28 * 8
+        )
+        self.assertTrue(
+            flops(
+                'elementwise_add', {'X': [[12, 12, 12]], 'Y': [[2, 2, 12]]}, {}
+            )
+            == 12 * 12 * 12
+        )
+        self.assertTrue(
+            flops('gelu', {'X': [[12, 12, 12]]}, {}) == 5 * 12 * 12 * 12
+        )
+        self.assertTrue(
+            flops(
+                'matmul',
+                {'X': [[3, 12, 12, 8]], 'Y': [[12, 12, 8]]},
+                {'transpose_X': False, 'transpose_Y': True},
+            )
+            == 3 * 12 * 12 * 12 * 2 * 8
+        )
+        self.assertTrue(
+            flops(
+                'matmul_v2',
+                {'X': [[3, 12, 12, 8]], 'Y': [[12, 12, 8]]},
+                {'trans_x': False, 'trans_y': True},
+            )
+            == 3 * 12 * 12 * 12 * 2 * 8
+        )
+        self.assertTrue(
+            flops('relu', {'X': [[12, 12, 12]]}, {}) == 12 * 12 * 12
+        )
+        self.assertTrue(
+            flops('softmax', {'X': [[12, 12, 12]]}, {}) == 3 * 12 * 12 * 12
+        )
+        self.assertTrue(
+            flops('c_embedding', {'Ids': [[12, 12]], 'W': [[12, 12, 3]]}, {})
+            == 0
+        )
 
 
 if __name__ == '__main__':

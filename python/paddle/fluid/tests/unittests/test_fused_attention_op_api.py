@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
 
 import paddle
 from paddle.incubate.nn.layer.fused_transformer import FusedMultiHeadAttention
 from paddle.static import Program
-import unittest
 
 
 def fc(x, weight):

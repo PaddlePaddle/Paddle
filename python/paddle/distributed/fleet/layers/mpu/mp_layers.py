@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import paddle
-from . import mp_ops
 from paddle.fluid import core
-from paddle.fluid.dygraph.layers import Layer
-from .random import get_rng_state_tracker
+from paddle.nn import Layer
 from paddle.nn import functional as F
+
 from ...base import topology as tp
+from . import mp_ops
+from .random import get_rng_state_tracker
 
 __all__ = []
 

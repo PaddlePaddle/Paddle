@@ -14,10 +14,12 @@
 # limitations under the License.
 
 import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid.core as core
 from paddle.fluid.contrib.sparsity.asp import ASPHelper
-import numpy as np
 
 
 class MyLayer(paddle.nn.Layer):

@@ -17,7 +17,7 @@ import logging
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.dygraph.container import Sequential
+from paddle.nn import Sequential
 from paddle.nn import ReLU, ReLU6, LeakyReLU, Sigmoid, Softmax, PReLU
 from paddle.nn import Linear, Conv2D, Softmax, BatchNorm2D, MaxPool2D
 from paddle.nn import BatchNorm1D
@@ -70,7 +70,9 @@ def train_lenet(lenet, reader, optimizer):
         label = paddle.to_tensor(y_data)
 
         out = lenet(img)
-        loss = fluid.layers.cross_entropy(out, label)
+        loss = paddle.nn.functional.cross_entropy(
+            out, label, reduction='none', use_softmax=False
+        )
         avg_loss = paddle.mean(loss)
         avg_loss.backward()
 
@@ -153,7 +155,7 @@ class ImperativeLenet(fluid.dygraph.Layer):
         x = self.quant_stub(inputs)
         x = self.features(x)
 
-        x = fluid.layers.flatten(x, 1)
+        x = paddle.flatten(x, 1, -1)
         x = self.add(x, paddle.to_tensor(0.0))  # For CI
         x = self.fc(x)
         return x
@@ -238,7 +240,7 @@ class ImperativeLenetWithSkipQuant(fluid.dygraph.Layer):
         x = self.relu6_0(x)
         x = self.pool2d_1(x)
 
-        x = fluid.layers.flatten(x, 1)
+        x = paddle.flatten(x, 1, -1)
 
         x = self.linear_0(x)
         x = self.leaky_relu_0(x)

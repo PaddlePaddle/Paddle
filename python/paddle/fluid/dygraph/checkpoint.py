@@ -31,7 +31,7 @@ from . import learning_rate_scheduler
 import warnings
 from .. import core
 from .base import guard
-from paddle.fluid.dygraph.jit import _SaveLoadConfig
+from paddle.jit.api import _SaveLoadConfig
 from paddle.fluid.dygraph.io import (
     _construct_program_holders,
     _construct_params_and_buffers,
@@ -83,9 +83,10 @@ def save_dygraph(state_dict, model_path):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
 
             with fluid.dygraph.guard():
-                emb = fluid.dygraph.Embedding([10, 10])
+                emb = paddle.nn.Embedding(10, 10)
 
                 state_dict = emb.state_dict()
                 fluid.save_dygraph( state_dict, "paddle_dy")

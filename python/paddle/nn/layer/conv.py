@@ -17,14 +17,17 @@
 import numpy as np
 
 from paddle import get_flags
-from ...device import get_cudnn_version
-from .. import Layer
-from ..initializer import Normal
-from .. import functional as F
+
+from ...device import (
+    get_cudnn_version,
+    is_compiled_with_cuda,
+    is_compiled_with_rocm,
+)
 from ...fluid.layers import utils
+from .. import Layer
+from .. import functional as F
 from ..functional.conv import _update_padding_nd
-from ...device import is_compiled_with_cuda
-from ...device import is_compiled_with_rocm
+from ..initializer import Normal
 
 __all__ = []
 
@@ -446,7 +449,7 @@ class Conv1DTranspose(_ConvNd):
         in_channels(int): The number of channels in the input image.
         out_channels(int): The number of the filter. It is as same as the output
             feature map.
-        kernel_size(int|tuple|list, optional): The filter size. If kernel_size is a tuple/list,
+        kernel_size(int|tuple|list): The filter size. If kernel_size is a tuple/list,
             it must contain one integers, (kernel_size). None if
             use output size to calculate kernel_size. Default: None. kernel_size and
             output_size should not be None at the same time.
@@ -595,7 +598,7 @@ class Conv2D(_ConvNd):
     Parameters:
         in_channels(int): The number of input channels in the input image.
         out_channels(int): The number of output channels produced by the convolution.
-        kernel_size(int|list|tuple, optional): The size of the convolving kernel.
+        kernel_size(int|list|tuple): The size of the convolving kernel.
         stride(int|list|tuple, optional): The stride size. If stride is a list/tuple, it must
             contain three integers, (stride_H, stride_W). Otherwise, the
             stride_H = stride_W = stride. The default value is 1.
@@ -665,9 +668,8 @@ class Conv2D(_ConvNd):
 
           conv = nn.Conv2D(4, 6, (3, 3))
           y_var = conv(x_var)
-          y_np = y_var.numpy()
-          print(y_np.shape)
-          # (2, 6, 6, 6)
+          print(y_var.shape)
+          # [2, 6, 6, 6]
     """
 
     def __init__(
@@ -838,9 +840,8 @@ class Conv2DTranspose(_ConvNd):
 
           conv = nn.Conv2DTranspose(4, 6, (3, 3))
           y_var = conv(x_var)
-          y_np = y_var.numpy()
-          print(y_np.shape)
-          # (2, 6, 10, 10)
+          print(y_var.shape)
+          # [2, 6, 10, 10]
     """
 
     def __init__(
@@ -924,7 +925,7 @@ class Conv3D(_ConvNd):
     Parameters:
         in_channels(int): The number of input channels in the input image.
         out_channels(int): The number of output channels produced by the convolution.
-        kernel_size(int|list|tuple, optional): The size of the convolving kernel.
+        kernel_size(int|list|tuple): The size of the convolving kernel.
         stride(int|list|tuple, optional): The stride size. If stride is a list/tuple, it must
             contain three integers, (stride_D, stride_H, stride_W). Otherwise, the
             stride_D = stride_H = stride_W = stride. The default value is 1.
@@ -996,9 +997,8 @@ class Conv3D(_ConvNd):
 
           conv = nn.Conv3D(4, 6, (3, 3, 3))
           y_var = conv(x_var)
-          y_np = y_var.numpy()
-          print(y_np.shape)
-          # (2, 6, 6, 6, 6)
+          print(y_var.shape)
+          # [2, 6, 6, 6, 6]
     """
 
     def __init__(
@@ -1178,9 +1178,8 @@ class Conv3DTranspose(_ConvNd):
 
           conv = nn.Conv3DTranspose(4, 6, (3, 3, 3))
           y_var = conv(x_var)
-          y_np = y_var.numpy()
-          print(y_np.shape)
-          # (2, 6, 10, 10, 10)
+          print(y_var.shape)
+          # [2, 6, 10, 10, 10]
     """
 
     def __init__(

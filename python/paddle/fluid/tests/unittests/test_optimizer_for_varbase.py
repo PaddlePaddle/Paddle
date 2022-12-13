@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import unittest
+
+import numpy as np
 
 import paddle
 import paddle.optimizer as optimizer
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 
 
 class TestOptimizerForVarBase(unittest.TestCase):
@@ -183,7 +184,7 @@ class TestOptimizerForVarBase(unittest.TestCase):
         z.backward()
         opt.step()
 
-    def func_test_create_param_lr_with_no_1_value_for_coverage(self):
+    def test_create_param_lr_with_no_1_value_for_coverage(self):
         with _test_eager_guard():
             self.func_test_create_param_lr_with_1_for_coverage()
         self.func_test_create_param_lr_with_1_for_coverage()

@@ -136,6 +136,7 @@ TODO
 # Examples
 
 ```python
+import paddle
 class MyLayer(fluid.imperative.Layer):
     def __init__(self):
         super(MyLayer, self).__init__()
@@ -143,7 +144,7 @@ class MyLayer(fluid.imperative.Layer):
     def forward(self, inputs):
         x = fluid.layers.relu(inputs)
         x = fluid.layers.elementwise_mul(x, x)
-        x = fluid.layers.reduce_sum(x)
+        x = paddle.sum(x)
         return [x]
 
 
@@ -184,7 +185,7 @@ class MLP(fluid.Layer):
     def forward(self, inputs):
         x = self._linear1(inputs)
         x = self._linear2(x)
-        x = fluid.layers.reduce_sum(x)
+        x = paddle.sum(x)
         return x
 
 

@@ -13,35 +13,28 @@
 # limitations under the License.
 
 import paddle
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.tensor import fill_constant
-from ...tensor import concat
-from ...tensor.creation import zeros
-from paddle.static import Variable
+from paddle.framework import core, in_dynamic_mode
+from paddle.static import Variable, default_main_program
+from paddle.tensor.creation import full
 
-# TODO: define the common functions to build a neural network
-from ...tensor.manipulation import squeeze
-from ...tensor.manipulation import unsqueeze
-from ...tensor import clip
-from ...tensor import sum
-from ...tensor import sqrt
 from ...fluid.data_feeder import (
-    check_variable_and_dtype,
     check_dtype,
     check_type,
+    check_variable_and_dtype,
 )
 from ...fluid.framework import (
     _in_legacy_dygraph,
     _non_static_mode,
     in_dygraph_mode,
 )
+from ...tensor import clip, concat, sqrt, sum
+from ...tensor.creation import zeros
 
-from paddle import _C_ops, _legacy_C_ops
-from paddle.framework import in_dynamic_mode
-from paddle.tensor.creation import full
-from paddle.framework import core
-from paddle.fluid.framework import _in_legacy_dygraph
-from paddle.static import default_main_program
+# TODO: define the common functions to build a neural network
+from ...tensor.manipulation import squeeze, unsqueeze
 
 __all__ = []
 
@@ -77,17 +70,17 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
                                   data type can be float32 or float64
         kernel_sizes(int|list):   The size of convolution kernel, should be [k_h, k_w]
                                   or an integer k treated as [k, k].
-        strides(int|list):        The strides, should be [stride_h, stride_w]
+        strides(int|list, optional):        The strides, should be [stride_h, stride_w]
                                   or an integer stride treated as [sride, stride].
                                   For default, strides will be [1, 1].
-        paddings(int|list):       The paddings of each dimension, should be
+        paddings(int|list, optional):       The paddings of each dimension, should be
                                   [padding_top, padding_left, padding_bottom, padding_right]
                                   or [padding_h, padding_w] or an integer padding.
                                   If [padding_h, padding_w] was given, it will expanded to
                                   [padding_h, padding_w, padding_h, padding_w]. If an integer
                                   padding was given, [padding, padding, padding, padding] will
                                   be used. For default, paddings will be [0, 0, 0, 0]
-        dilations(int|list):      the dilations of convolution kernel, should be
+        dilations(int|list, optional):      the dilations of convolution kernel, should be
                                   [dilation_h, dilation_w], or an integer dilation treated as
                                   [dilation, dilation]. For default, it will be [1, 1].
         name(str, optional): The default value is None.
@@ -710,6 +703,7 @@ def upsample(
     name=None,
 ):
     """
+
     This API resizes a batch of images.
 
     The input must be a 3-D Tensor of the shape (num_batches, channels, in_w)
@@ -720,11 +714,12 @@ def upsample(
     and the resizing only applies on the three dimensions(depth, height and width).
 
     Supporting resample methods:
-        'linear' : Linear interpolation
-        'bilinear' : Bilinear interpolation
-        'trilinear' : Trilinear interpolation
-        'nearest' : Nearest neighbor interpolation
-        'bicubic' : Bicubic interpolation
+    - 'linear' : Linear interpolation
+    - 'bilinear' : Bilinear interpolation
+    - 'trilinear' : Trilinear interpolation
+    - 'nearest' : Nearest neighbor interpolation
+    - 'bicubic' : Bicubic interpolation
+
     Linear interpolation is the method of using a line connecting two known quantities
     to determine the value of an unknown quantity between the two known quantities.
 
@@ -757,77 +752,78 @@ def upsample(
     `paddle.nn.functional.adaptive_avg_pool2d` or `paddle.nn.functional.adaptive_avg_pool3d`.
 
     Example:
-    .. code-block:: text
+        .. code-block:: text
 
-        For scale_factor:
-            if align_corners = True && out_size > 1 :
-              scale_factor = (in_size-1.0)/(out_size-1.0)
+            For scale_factor:
+                if align_corners = True && out_size > 1 :
+                scale_factor = (in_size-1.0)/(out_size-1.0)
+                else:
+                scale_factor = float(in_size/out_size)
+            Linear interpolation:
+                if:
+                    align_corners = False , align_mode = 0
+                    input : (N,C,W_in)
+                    output: (N,C,W_out) where:
+                    W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+                else:
+                    input : (N,C,W_in)
+                    output: (N,C,W_out) where:
+                    W_out = W_{in} * scale_{factor}
+            Nearest neighbor interpolation:
+            if:
+                align_corners = False
+                input : (N,C,H_in,W_in)
+                output: (N,C,H_out,W_out) where:
+                H_out = floor (H_{in} * scale_{factor})
+                W_out = floor (W_{in} * scale_{factor})
             else:
-              scale_factor = float(in_size/out_size)
-        Linear interpolation:
+                align_corners = True
+                input : (N,C,H_in,W_in)
+                output: (N,C,H_out,W_out) where:
+                H_out = round(H_{in} * scale_{factor})
+                W_out = round(W_{in} * scale_{factor})
+
+            Bilinear interpolation:
             if:
                 align_corners = False , align_mode = 0
-                input : (N,C,W_in)
-                output: (N,C,W_out) where:
+                input : (N,C,H_in,W_in)
+                output: (N,C,H_out,W_out) where:
+                H_out = (H_{in}+0.5) * scale_{factor} - 0.5
                 W_out = (W_{in}+0.5) * scale_{factor} - 0.5
             else:
-                input : (N,C,W_in)
-                output: (N,C,W_out) where:
+                input : (N,C,H_in,W_in)
+                output: (N,C,H_out,W_out) where:
+                H_out = H_{in} * scale_{factor}
                 W_out = W_{in} * scale_{factor}
-        Nearest neighbor interpolation:
-          if:
-              align_corners = False
-              input : (N,C,H_in,W_in)
-              output: (N,C,H_out,W_out) where:
-              H_out = floor (H_{in} * scale_{factor})
-              W_out = floor (W_{in} * scale_{factor})
-          else:
-              align_corners = True
-              input : (N,C,H_in,W_in)
-              output: (N,C,H_out,W_out) where:
-              H_out = round(H_{in} * scale_{factor})
-              W_out = round(W_{in} * scale_{factor})
+            Bicubic interpolation:
+            if:
+                align_corners = False
+                input : (N,C,H_in,W_in)
+                output: (N,C,H_out,W_out) where:
+                H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+                W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+            else:
+                input : (N,C,H_in,W_in)
+                output: (N,C,H_out,W_out) where:
+                H_out = H_{in} * scale_{factor}
+                W_out = W_{in} * scale_{factor}
+            Trilinear interpolation:
+            if:
+                align_corners = False , align_mode = 0
+                input : (N,C,D_in,H_in,W_in)
+                output: (N,C,D_out,H_out,W_out) where:
+                D_out = (D_{in}+0.5) * scale_{factor} - 0.5
+                H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+                W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+            else:
+                input : (N,C,D_in,H_in,W_in)
+                output: (N,C,D_out,H_out,W_out) where:
+                D_out = D_{in} * scale_{factor}
+                H_out = H_{in} * scale_{factor}
+                W_out = W_{in} * scale_{factor}
 
-        Bilinear interpolation:
-          if:
-              align_corners = False , align_mode = 0
-              input : (N,C,H_in,W_in)
-              output: (N,C,H_out,W_out) where:
-              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
-              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
-          else:
-              input : (N,C,H_in,W_in)
-              output: (N,C,H_out,W_out) where:
-              H_out = H_{in} * scale_{factor}
-              W_out = W_{in} * scale_{factor}
-        Bicubic interpolation:
-          if:
-              align_corners = False
-              input : (N,C,H_in,W_in)
-              output: (N,C,H_out,W_out) where:
-              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
-              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
-          else:
-              input : (N,C,H_in,W_in)
-              output: (N,C,H_out,W_out) where:
-              H_out = H_{in} * scale_{factor}
-              W_out = W_{in} * scale_{factor}
-        Trilinear interpolation:
-          if:
-              align_corners = False , align_mode = 0
-              input : (N,C,D_in,H_in,W_in)
-              output: (N,C,D_out,H_out,W_out) where:
-              D_out = (D_{in}+0.5) * scale_{factor} - 0.5
-              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
-              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
-          else:
-              input : (N,C,D_in,H_in,W_in)
-              output: (N,C,D_out,H_out,W_out) where:
-              D_out = D_{in} * scale_{factor}
-              H_out = H_{in} * scale_{factor}
-              W_out = W_{in} * scale_{factor}
-    https://en.wikipedia.org/wiki/Linear_interpolation.
     For details of linear interpolation, please refer to Wikipedia:
+    https://en.wikipedia.org/wiki/Linear_interpolation.
 
     For details of nearest neighbor interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation.
@@ -871,23 +867,24 @@ def upsample(
         name(str, optional): The default value is None.
                              Normally there is no need for user to set this property.
                              For more information, please refer to :ref:`api_guide_Name`
+
     Returns:
         A 3-D Tensor of the shape (num_batches, channels, out_w) or (num_batches, out_w, channels),
         A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
         or 5-D Tensor of the shape (num_batches, channels, out_d, out_h, out_w) or (num_batches, out_d, out_h, out_w, channels).
 
-        Examples:
-            .. code-block:: python
+    Examples:
+        .. code-block:: python
 
-                import paddle
-                import paddle.nn as nn
+            import paddle
+            import paddle.nn as nn
 
-                input_data = paddle.randn(shape=(2,3,6,10)).astype(paddle.float32)
-                upsample_out = paddle.nn.Upsample(size=[12,12])
+            input_data = paddle.randn(shape=(2,3,6,10)).astype(paddle.float32)
+            upsample_out = paddle.nn.Upsample(size=[12,12])
 
-                output = upsample_out(x=input_data)
-                print(output.shape)
-                # [2L, 3L, 12L, 12L]
+            output = upsample_out(x=input_data)
+            print(output.shape)
+            # [2L, 3L, 12L, 12L]
 
     """
     return interpolate(

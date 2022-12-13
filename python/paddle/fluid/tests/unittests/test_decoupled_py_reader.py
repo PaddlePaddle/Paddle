@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
-import numpy as np
 import time
 import unittest
+
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
 
 EPOCH_NUM = 5
 BATCH_SIZE = 16
@@ -65,7 +67,12 @@ def simple_fc_net(places, use_legacy_py_reader, use_double_buffer):
                 hidden, size=CLASS_NUM, act='softmax'
             )
             loss = paddle.mean(
-                fluid.layers.cross_entropy(input=predict_label, label=label)
+                paddle.nn.functional.cross_entropy(
+                    input=predict_label,
+                    label=label,
+                    reduction='none',
+                    use_softmax=False,
+                )
             )
 
             optimizer = fluid.optimizer.Adam()

@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-from paddle.fluid import core
+from paddle.fluid import Program, core, program_guard
 from paddle.fluid.framework import _test_eager_guard
 
 
@@ -138,45 +139,45 @@ class TestLinspaceOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
 
             def test_dtype():
-                fluid.layers.linspace(0, 10, 1, dtype="int8")
+                paddle.linspace(0, 10, 1, dtype="int8")
 
             self.assertRaises(TypeError, test_dtype)
 
             def test_dtype1():
-                fluid.layers.linspace(0, 10, 1.33, dtype="int32")
+                paddle.linspace(0, 10, 1.33, dtype="int32")
 
             self.assertRaises(TypeError, test_dtype1)
 
             def test_start_type():
-                fluid.layers.linspace([0], 10, 1, dtype="float32")
+                paddle.linspace([0], 10, 1, dtype="float32")
 
             self.assertRaises(TypeError, test_start_type)
 
             def test_end_type():
-                fluid.layers.linspace(0, [10], 1, dtype="float32")
+                paddle.linspace(0, [10], 1, dtype="float32")
 
             self.assertRaises(TypeError, test_end_type)
 
             def test_step_dtype():
-                fluid.layers.linspace(0, 10, [0], dtype="float32")
+                paddle.linspace(0, 10, [0], dtype="float32")
 
             self.assertRaises(TypeError, test_step_dtype)
 
             def test_start_dtype():
                 start = fluid.data(shape=[1], dtype="float64", name="start")
-                fluid.layers.linspace(start, 10, 1, dtype="float32")
+                paddle.linspace(start, 10, 1, dtype="float32")
 
             self.assertRaises(ValueError, test_start_dtype)
 
             def test_end_dtype():
                 end = fluid.data(shape=[1], dtype="float64", name="end")
-                fluid.layers.linspace(0, end, 1, dtype="float32")
+                paddle.linspace(0, end, 1, dtype="float32")
 
             self.assertRaises(ValueError, test_end_dtype)
 
             def test_num_dtype():
                 num = fluid.data(shape=[1], dtype="int32", name="step")
-                fluid.layers.linspace(0, 10, num, dtype="float32")
+                paddle.linspace(0, 10, num, dtype="float32")
 
             self.assertRaises(TypeError, test_step_dtype)
 

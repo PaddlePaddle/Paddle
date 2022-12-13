@@ -42,8 +42,6 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-using framework::ir::Graph;
-
 #ifdef PADDLE_WITH_MKLDNN
 using VarQuantScale =
     std::unordered_map<std::string, std::pair<bool, phi::DenseTensor>>;
@@ -141,6 +139,7 @@ struct Argument {
   unique_ptr_t field__##_;
 
   DECL_ARGUMENT_FIELD(predictor_id, PredictorID, int);
+  DECL_ARGUMENT_FIELD(root_predictor_id, RootPredictorID, int);
   // Model path
   DECL_ARGUMENT_FIELD(model_dir, ModelDir, std::string);
   // Model specified with program and parameters files.
@@ -148,7 +147,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(model_params_path, ModelParamsPath, std::string);
   DECL_ARGUMENT_FIELD(model_from_memory, ModelFromMemory, bool);
   DECL_ARGUMENT_FIELD(optim_cache_dir, OptimCacheDir, std::string);
-  DECL_ARGUMENT_FIELD(enable_analysis_optim, EnableAnalysisOptim, bool);
+  DECL_ARGUMENT_FIELD(enable_ir_optim, EnableIrOptim, bool);
 
   // For JITLayer
   DECL_ARGUMENT_FIELD(skip_load_params, SkipLoadParams, bool);
@@ -366,6 +365,16 @@ struct Argument {
   DECL_ARGUMENT_FIELD(mixed_black_list,
                       MixedBlackList,
                       std::unordered_set<std::string>);
+  DECL_ARGUMENT_FIELD(enable_gpu_half, EnableGPUHalf, bool);
+  DECL_ARGUMENT_FIELD(mixed_precision_mode, MixedPrecisionMode, int);
+
+  // cinn compiler related
+  DECL_ARGUMENT_FIELD(use_cinn_compiler, UseCinnCompiler, bool);
+
+  // custom device
+  DECL_ARGUMENT_FIELD(use_custom_device, UseCustomDevice, bool);
+  DECL_ARGUMENT_FIELD(custom_device_type, CustomDeviceType, std::string);
+  DECL_ARGUMENT_FIELD(custom_device_id, CustomDeviceId, int);
 
  private:
   std::unordered_set<std::string> valid_fields_;

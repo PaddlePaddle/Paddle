@@ -45,7 +45,11 @@ void AddGradKernel(const Context& dev_ctx,
     T* dx_data = dev_ctx.template Alloc<T>(dx);
     if (dx->dims() == dz_dims) {
       if (dx_data != dz_data) {
-        Copy(dev_ctx, *dz, dev_ctx.GetPlace(), false, dx);
+        int ret = xpu::copy(dev_ctx.x_context(),
+                            reinterpret_cast<const XPUType*>(dz_data),
+                            reinterpret_cast<XPUType*>(dx->data<T>()),
+                            dx->numel());
+        PADDLE_ENFORCE_XDNN_SUCCESS(ret, "copy");
       }
     } else {
       // For inplace strategy, dx will be stored in addr of dz, which makes
@@ -70,10 +74,14 @@ void AddGradKernel(const Context& dev_ctx,
   }
 
   if (dy != nullptr) {
-    T* dy_data = dy->mutable_data<T>(dev_ctx.GetPlace());
+    T* dy_data = dev_ctx.template Alloc<T>(dy);
     if (dy->dims() == dz_dims) {
       if (dy_data != dz_data) {
-        Copy(dev_ctx, *dz, dev_ctx.GetPlace(), false, dy);
+        int ret = xpu::copy(dev_ctx.x_context(),
+                            reinterpret_cast<const XPUType*>(dz_data),
+                            reinterpret_cast<XPUType*>(dy->data<T>()),
+                            dy->numel());
+        PADDLE_ENFORCE_XDNN_SUCCESS(ret, "copy");
       }
     } else {
       std::vector<int> reduce_dims =

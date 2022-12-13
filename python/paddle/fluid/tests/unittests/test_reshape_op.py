@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 
+import numpy as np
 from op_test import OpTest, convert_float_to_uint16
+
 import paddle
 import paddle.fluid as fluid
 from paddle.static import Program, program_guard
@@ -301,11 +302,6 @@ class TestReshapeAPI(unittest.TestCase):
     def _executed_api(self):
         self.reshape = paddle.reshape
 
-    def _set_fluid_api(self):
-        self.fill_constant = fluid.layers.fill_constant
-        self.data = paddle.static.data
-        self.reshape = fluid.layers.reshape
-
     def _test_api(self):
         paddle.enable_static()
         input = np.random.random([2, 25]).astype("float32")
@@ -317,18 +313,16 @@ class TestReshapeAPI(unittest.TestCase):
 
             actual_shape = self.data(name="shape", shape=[3], dtype="int32")
 
-            # situation 1: have shape( list, no tensor), no actual shape(Tensor)
+            # situation 1: have shape( list, no tensor)
             out_1 = self.reshape(x, shape)
 
-            # situation 2: have shape(list, no tensor), have actual shape(Tensor)
-            out_2 = fluid.layers.reshape(
-                x, shape=shape, actual_shape=actual_shape
-            )
+            # situation 2: have shape(list, no tensor)
+            out_2 = paddle.reshape(x, actual_shape)
 
-            # Situation 3: have shape(list, have tensor), no actual shape(Tensor)
+            # Situation 3: have shape(list, have tensor)
             out_3 = self.reshape(x, shape=[positive_five, 10])
 
-            # Situation 4: have shape(Tensor), no actual shape(Tensor)
+            # Situation 4: have shape(Tensor)
             out_4 = self.reshape(x, shape=actual_shape)
 
         exe = paddle.static.Executor(place=paddle.CPUPlace())
@@ -345,10 +339,6 @@ class TestReshapeAPI(unittest.TestCase):
 
     def test_paddle_api(self):
         self._set_paddle_api()
-        self._test_api()
-
-    def test_fluid_api(self):
-        self._set_fluid_api()
         self._test_api()
 
     def test_imperative(self):
@@ -401,10 +391,6 @@ class TestReshapeOpError(unittest.TestCase):
         self.data = paddle.static.data
         self.reshape = paddle.reshape
 
-    def _set_fluid_api(self):
-        self.data = fluid.data
-        self.reshape = fluid.layers.reshape
-
     def _test_errors(self):
         with program_guard(Program(), Program()):
             # The x type of reshape_op must be Variable.
@@ -439,12 +425,6 @@ class TestReshapeOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_shape_type)
 
-            # The argument actual_shape's type of reshape_op must be Variable or None.
-            def test_actual_shape_type():
-                self.reshape(x3, shape=[25, 2], actual_shape=1)
-
-            self.assertRaises(TypeError, test_actual_shape_type)
-
             # The argument shape have more than one -1.
             def test_shape_1():
                 self.reshape(x3, shape=[-1, -1, 5])
@@ -465,10 +445,6 @@ class TestReshapeOpError(unittest.TestCase):
 
     def test_paddle_api_error(self):
         self._set_paddle_api()
-        self._test_errors()
-
-    def test_fluid_api_error(self):
-        self._set_fluid_api()
         self._test_errors()
 
 

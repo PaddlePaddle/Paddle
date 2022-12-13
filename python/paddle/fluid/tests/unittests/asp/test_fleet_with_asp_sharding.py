@@ -13,14 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.distributed.fleet as fleet
-import unittest
-import paddle
-import paddle.fluid as fluid
 import os
-from paddle.static import sparsity
-from paddle.fluid.contrib.sparsity.asp import ASPHelper
+import unittest
+
 import numpy as np
+
+import paddle
+import paddle.distributed.fleet as fleet
+import paddle.fluid as fluid
+from paddle.fluid.contrib.sparsity.asp import ASPHelper
+from paddle.static import sparsity
 
 cuda_visible_devices = os.getenv('CUDA_VISIBLE_DEVICES')
 if cuda_visible_devices is None or cuda_visible_devices == "":
@@ -58,7 +60,12 @@ class TestFleetWithASPSharding(unittest.TestCase):
             fc_3 = fluid.layers.fc(input=fc_2, size=64, act='tanh')
             fc_4 = fluid.layers.fc(input=fc_3, size=64, act='tanh')
             prediction = fluid.layers.fc(input=fc_4, size=2, act='softmax')
-            cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+            cost = paddle.nn.functional.cross_entropy(
+                input=prediction,
+                label=input_y,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_cost = paddle.mean(x=cost)
 
             dist_strategy = paddle.distributed.fleet.DistributedStrategy()
