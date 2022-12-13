@@ -476,7 +476,7 @@ class fused_attentionGradNodeCompat : public egr::GradNodeBase {
     SoftmaxOut_ = egr::TensorWrapper(SoftmaxOut, false);
   }
   void SetTensorWrapperSrcMask(const paddle::experimental::Tensor& SrcMask) {
-    SrcMask_ = egr::TensorWrapper(SrcMask, false);
+    SrcMask_ = egr::TensorWrapper(SrcMask, true);
   }
   void SetTensorWrapperSrcMaskOut(
       const paddle::experimental::Tensor& SrcMaskOut) {
@@ -609,6 +609,115 @@ class fused_gemm_epilogueGradNodeCompat : public egr::GradNodeBase {
   // TensorWrappers
   egr::TensorWrapper X_;
   egr::TensorWrapper Y_;
+
+  // Attribute Map
+  paddle::framework::AttributeMap attr_map_;
+  paddle::framework::AttributeMap default_attr_map_;
+};
+
+class fused_bias_dropout_residual_layer_normGradNodeCompat
+    : public egr::GradNodeBase {
+ public:
+  fused_bias_dropout_residual_layer_normGradNodeCompat() : egr::GradNodeBase() {
+    VLOG(7)
+        << " Construct fused_bias_dropout_residual_layer_normGradNodeCompat ";
+  }
+  fused_bias_dropout_residual_layer_normGradNodeCompat(size_t bwd_in_slot_num,
+                                                       size_t bwd_out_slot_num)
+      : egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {
+    VLOG(7)
+        << " Construct fused_bias_dropout_residual_layer_normGradNodeCompat ";
+  }
+  ~fused_bias_dropout_residual_layer_normGradNodeCompat() override {
+    VLOG(6)
+        << " Destruct fused_bias_dropout_residual_layer_normGradNodeCompat ";
+  }
+
+  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                               egr::kSlotSmallVectorSize>
+  operator()(
+      paddle::small_vector<std::vector<paddle::experimental::Tensor>,  // NOLINT
+                           egr::kSlotSmallVectorSize>& grads,          // NOLINT
+      bool create_graph = false,
+      bool is_new_grad = false) override;
+
+  void ClearTensorWrappers() override {
+    Bias_.clear();
+    BiasDropoutResidualOut_.clear();
+    DropoutMaskOut_.clear();
+    LnBias_.clear();
+    LnMean_.clear();
+    LnScale_.clear();
+    LnVariance_.clear();
+    Residual_.clear();
+    X_.clear();
+
+    SetIsTensorWrappersCleared(true);
+  }
+  std::string name() override {
+    return "fused_bias_dropout_residual_layer_normGradNodeCompat";
+  }
+
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    {
+      auto copied_node =
+          std::shared_ptr<fused_bias_dropout_residual_layer_normGradNodeCompat>(
+              new fused_bias_dropout_residual_layer_normGradNodeCompat(*this));
+      return copied_node;
+    }
+  }
+
+  // SetX, SetY, ...
+  void SetTensorWrapperBias(const paddle::experimental::Tensor& Bias) {
+    Bias_ = egr::TensorWrapper(Bias, false);
+  }
+  void SetTensorWrapperBiasDropoutResidualOut(
+      const paddle::experimental::Tensor& BiasDropoutResidualOut) {
+    BiasDropoutResidualOut_ = egr::TensorWrapper(BiasDropoutResidualOut, false);
+  }
+  void SetTensorWrapperDropoutMaskOut(
+      const paddle::experimental::Tensor& DropoutMaskOut) {
+    DropoutMaskOut_ = egr::TensorWrapper(DropoutMaskOut, false);
+  }
+  void SetTensorWrapperLnBias(const paddle::experimental::Tensor& LnBias) {
+    LnBias_ = egr::TensorWrapper(LnBias, false);
+  }
+  void SetTensorWrapperLnMean(const paddle::experimental::Tensor& LnMean) {
+    LnMean_ = egr::TensorWrapper(LnMean, false);
+  }
+  void SetTensorWrapperLnScale(const paddle::experimental::Tensor& LnScale) {
+    LnScale_ = egr::TensorWrapper(LnScale, false);
+  }
+  void SetTensorWrapperLnVariance(
+      const paddle::experimental::Tensor& LnVariance) {
+    LnVariance_ = egr::TensorWrapper(LnVariance, false);
+  }
+  void SetTensorWrapperResidual(const paddle::experimental::Tensor& Residual) {
+    Residual_ = egr::TensorWrapper(Residual, false);
+  }
+  void SetTensorWrapperX(const paddle::experimental::Tensor& X) {
+    X_ = egr::TensorWrapper(X, false);
+  }
+
+  // SetAttrMap
+  void SetAttrMap(paddle::framework::AttributeMap&& attr_map) {
+    attr_map_ = std::move(attr_map);
+  }
+  void SetDefaultAttrMap(paddle::framework::AttributeMap&& default_attr_map) {
+    default_attr_map_ = std::move(default_attr_map);
+  }
+
+ private:
+  // TensorWrappers
+  egr::TensorWrapper Bias_;
+  egr::TensorWrapper BiasDropoutResidualOut_;
+  egr::TensorWrapper DropoutMaskOut_;
+  egr::TensorWrapper LnBias_;
+  egr::TensorWrapper LnMean_;
+  egr::TensorWrapper LnScale_;
+  egr::TensorWrapper LnVariance_;
+  egr::TensorWrapper Residual_;
+  egr::TensorWrapper X_;
 
   // Attribute Map
   paddle::framework::AttributeMap attr_map_;

@@ -88,11 +88,10 @@ class MultiheadMatMulOpConverter : public OpConverter {
                           engine_->tensorrt_transformer_posid() != "" &&
                           engine_->tensorrt_transformer_maskid() != "";
     if (engine_->with_dynamic_shape()) {
-      if (engine_->tensorrt_transformer_maskid() != "") {
-        if (engine_->precision() == AnalysisConfig::Precision::kFloat32) {
-          PADDLE_THROW(platform::errors::Fatal(
-              "use use_varseqlen must be int8 or half, not float32."));
-        }
+      if (engine_->tensorrt_transformer_maskid() != "" &&
+          engine_->precision() != AnalysisConfig::Precision::kFloat32 &&
+          platform::GetGPUComputeCapability(platform::GetCurrentDeviceId()) >=
+              75) {
         nvinfer1::Weights weight{nvinfer1::DataType::kFLOAT,
                                  static_cast<void*>(weight_data),
                                  static_cast<int32_t>(weight_t->numel())};
@@ -400,7 +399,9 @@ class MultiheadMatMulOpConverter : public OpConverter {
         }
       } else {
         if (input_dims.d[1] <= 384 && !bias_qk_attr &&
-            engine_->precision() != AnalysisConfig::Precision::kFloat32) {
+            engine_->precision() != AnalysisConfig::Precision::kFloat32 &&
+            platform::GetGPUComputeCapability(platform::GetCurrentDeviceId()) >=
+                75) {
           /*
             * input_dims.d[0]: batch(-1)
             * input_dims.d[1]: length:256
