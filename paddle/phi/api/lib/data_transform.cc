@@ -169,10 +169,6 @@ inline phi::DenseTensor TransDataPlace(const phi::DenseTensor& tensor,
   VLOG(3) << "DeviceTransform in, src_place " << tensor.place()
           << " dst_place: " << dst_place;
 
-  DefaultAllocator alloc(dst_place);
-  phi::DenseTensor out(&alloc,
-                       {tensor.dtype(), tensor.dims(), tensor.layout()});
-
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   auto& pool = paddle::platform::DeviceContextPool::Instance();
   // NOTE(yy): TransDataPlace should wait for computation of input.
@@ -191,6 +187,7 @@ inline phi::DenseTensor TransDataPlace(const phi::DenseTensor& tensor,
   // the transforming is from CPU to GPU and the number of elements is little.
   // But the embarrassment is that this solution this solution makes training
   // slower.
+  phi::DenseTensor out;
   paddle::framework::TensorCopySync(tensor, dst_place, &out);
   return out;
 }
@@ -301,6 +298,47 @@ paddle::optional<std::vector<phi::DenseTensor>> PrepareData(
     const TransformFlag& transform_flag) {
   if (inputs) {
     return {*PrepareData(*inputs, target_args_def, transform_flag)};
+  }
+  return paddle::none;
+}
+
+std::shared_ptr<phi::SelectedRows> PrepareDataForSelectedRows(
+    const Tensor& input,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag) {
+  const auto& tensor_in = input.impl();
+  if (tensor_in) {
+    phi::SelectedRows& selected_rows =
+        *static_cast<phi::SelectedRows*>(tensor_in.get());
+    if (!transform_flag.NeedTransform() || !selected_rows.initialized() ||
+        (!NeedTransformPlace(
+            selected_rows.place(), target_args_def.backend, transform_flag))) {
+      return std::static_pointer_cast<phi::SelectedRows>(tensor_in);
+    }
+
+    auto dense_out = TransDataPlace(
+        selected_rows.value(), phi::TransToPhiPlace(target_args_def.backend));
+    if (selected_rows.place().GetType() == AllocationType::GPUPINNED) {
+      selected_rows.mutable_value()->ShareBufferWith(dense_out);
+      return std::static_pointer_cast<phi::SelectedRows>(tensor_in);
+    }
+
+    auto out_new = std::make_shared<phi::SelectedRows>(selected_rows.rows(),
+                                                       selected_rows.height());
+    *out_new->mutable_value() = dense_out;
+    return out_new;
+  }
+  PADDLE_THROW(phi::errors::InvalidArgument(
+      "The impl() of input tensor is nullptr, it doesn't support for "
+      "selected_rows data transform now."));
+}
+
+paddle::optional<phi::SelectedRows> PrepareDataForSelectedRows(
+    const paddle::optional<Tensor>& input,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag) {
+  if (input) {
+    return *PrepareDataForSelectedRows(*input, target_args_def, transform_flag);
   }
   return paddle::none;
 }

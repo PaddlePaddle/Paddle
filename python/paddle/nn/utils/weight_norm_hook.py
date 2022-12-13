@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import paddle
-from ...fluid import layers as F
-from ...fluid.layer_helper import LayerHelper
-from ...fluid.data_feeder import check_variable_and_dtype
-from ...framework import in_dygraph_mode
 from paddle import _C_ops
+
+from ...fluid import layers as F
+from ...fluid.data_feeder import check_variable_and_dtype
+from ...fluid.layer_helper import LayerHelper
+from ...framework import in_dygraph_mode
 
 __all__ = []
 
@@ -89,13 +90,13 @@ def _weight_norm(v, g, dim):
         v_normalized = F.l2_normalize(p_matrix, axis=1)
         v_normalized = paddle.reshape(v_normalized, transposed_shape)
         v_normalized = paddle.transpose(v_normalized, perm)
-    weight = F.elementwise_mul(
+    weight = paddle.tensor.math._multiply_with_axis(
         v_normalized, g, axis=dim if dim is not None else -1
     )
     return weight
 
 
-class WeightNorm(object):
+class WeightNorm:
     def __init__(self, name, dim):
         if dim is None:
             dim = -1

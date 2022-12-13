@@ -88,7 +88,7 @@ class TestLabelSmoothOp(OpTest):
 
 class TestLabelSmoothOpWithPriorDist(TestLabelSmoothOp):
     def set_inputs(self):
-        super(TestLabelSmoothOpWithPriorDist, self).set_inputs()
+        super().set_inputs()
         label_dim = self.inputs['X'].shape[-1]
         dist = np.random.random((1, label_dim)).astype(self.dtype)
         self.inputs['PriorDist'] = dist
@@ -96,13 +96,13 @@ class TestLabelSmoothOpWithPriorDist(TestLabelSmoothOp):
 
 class TestLabelSmoothOp3D(TestLabelSmoothOp):
     def set_inputs(self):
-        super(TestLabelSmoothOp3D, self).set_inputs()
+        super().set_inputs()
         self.inputs['X'].reshape([2, -1, self.inputs['X'].shape[-1]])
 
 
 class TestLabelSmoothOpWithPriorDist3D(TestLabelSmoothOpWithPriorDist):
     def set_inputs(self):
-        super(TestLabelSmoothOpWithPriorDist3D, self).set_inputs()
+        super().set_inputs()
         self.inputs['X'].reshape([2, -1, self.inputs['X'].shape[-1]])
 
 

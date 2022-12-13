@@ -12,18 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from threading import Thread
+import itertools
+import logging
 import multiprocessing
-import six
+import random
 import sys
 import warnings
-import logging
-
-from queue import Queue
 from itertools import zip_longest
-
-import itertools
-import random
+from queue import Queue
+from threading import Thread
 
 from paddle.fluid.reader import QUEUE_GET_TIMEOUT
 
@@ -610,9 +607,9 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
                     raise ValueError("sample has None")
                 queue.put(sample)
             queue.put(None)
-        except:
+        except Exception as e:
             queue.put("")
-            six.reraise(*sys.exc_info())
+            raise e
 
     def queue_reader():
         queue = fork_context.Queue(queue_size)
@@ -627,11 +624,11 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
         while finish_num < reader_num:
             try:
                 sample = queue.get(timeout=QUEUE_GET_TIMEOUT)
-            except:
+            except Exception as e:
                 logging.error(
                     "multiprocess_reader failed to get data from the multiprocessing.Queue."
                 )
-                six.reraise(*sys.exc_info())
+                raise e
 
             if sample is None:
                 finish_num += 1
@@ -650,10 +647,10 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
                 conn.send(json.dumps(sample))
             conn.send(json.dumps(None))
             conn.close()
-        except:
+        except Exception as e:
             conn.send(json.dumps(""))
             conn.close()
-            six.reraise(*sys.exc_info())
+            raise e
 
     def pipe_reader():
         conns = []

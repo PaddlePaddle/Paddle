@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import copy
+
 import paddle
-from .meta_optimizers import HybridParallelOptimizer, HeterParallelOptimizer
 from paddle.distributed import fleet
+
+from .meta_optimizers import HeterParallelOptimizer, HybridParallelOptimizer
 from .utils.log_util import logger
 
 
@@ -59,7 +61,7 @@ def _dygraph_distributed_optimizer(optimizer, strategy=None):
     fleet_env._context = {}
 
     if fleet_env.worker_num() > 1:
-        if fleet_env._user_defined_strategy.heter_ccl_mode == False:
+        if not fleet_env._user_defined_strategy.heter_ccl_mode:
             return HybridParallelOptimizer(
                 optimizer, fleet_env._hcg, fleet_env._user_defined_strategy
             )
@@ -72,7 +74,7 @@ def _dygraph_distributed_optimizer(optimizer, strategy=None):
 
 
 def distributed_optimizer(*args, **kwargs):
-    if paddle.fluid.framework._non_static_mode():
+    if paddle.framework._non_static_mode():
         return _dygraph_distributed_optimizer(*args, **kwargs)
     else:
         return fleet.fleet.distributed_optimizer(*args, **kwargs)

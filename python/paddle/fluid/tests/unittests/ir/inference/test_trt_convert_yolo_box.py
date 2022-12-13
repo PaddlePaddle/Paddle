@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
-from program_config import TensorConfig, ProgramConfig
-import numpy as np
-import paddle.inference as paddle_infer
+import os
+import unittest
 from functools import partial
 from typing import Any, Dict, List
-import unittest
-import os
+
+import numpy as np
+from program_config import ProgramConfig, TensorConfig
+from trt_layer_auto_scan_test import SkipReasons, TrtLayerAutoScanTest
+
+import paddle.inference as paddle_infer
 
 
 class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
@@ -28,7 +30,7 @@ class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_input1(attrs: List[Dict[str, Any]], batch, channel):
-            if attrs[0]['iou_aware'] == True:
+            if attrs[0]['iou_aware']:
                 return np.ones([batch, 3 * (channel + 6), 13, 13]).astype(
                     np.float32
                 )
@@ -108,7 +110,7 @@ class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            if attrs[0]['iou_aware'] == True:
+            if attrs[0]['iou_aware']:
                 channel = 3 * (attrs[0]['class_num'] + 6)
                 self.dynamic_shape.min_input_shape = {
                     "yolo_box_input": [1, channel, 12, 12],

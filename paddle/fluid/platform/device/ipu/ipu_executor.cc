@@ -14,9 +14,11 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/device/ipu/ipu_executor.h"
 
+#include <chrono>
 #include <popart/devicemanager.hpp>
 #include <popdist/popdist_poplar.hpp>
 
+#include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/device/ipu/ipu_compiler.h"
 #include "paddle/fluid/platform/device/ipu/ipu_names.h"
@@ -27,6 +29,13 @@ namespace platform {
 namespace ipu {
 
 namespace {
+
+model_runtime::AnchorCallbackPredicate PredFilterMain(
+    const model_runtime::Session *session) {
+  // Create predicates for binding Anchors from Main programs only
+  return model_runtime::predicate_factory::predProgramFlowMain(
+      session->model()->metadata.programFlow());
+}
 
 // Get paddle prefix and popart postfix of weight states
 // Format: {popart_postfix, paddle_prefix}
@@ -156,6 +165,10 @@ void Executor::Prepare(const std::string &proto) {
     VLOG(10) << "Setting random seed to: " << ipu_strategy_->random_seed;
     session_->setRandomSeed(ipu_strategy_->random_seed);
   }
+  enable_model_runtime_executor_ = ipu_strategy_->enable_model_runtime_executor;
+  if (enable_model_runtime_executor_) {
+    PreparePopefSession();
+  }
 }
 
 void Executor::Run(const std::vector<const Tensor *> &inputs,
@@ -232,6 +245,208 @@ void Executor::Run(const std::vector<const Tensor *> &inputs,
   VLOG(10) << "Running...";
   session_->run(stepio);
   VLOG(10) << "Running...done";
+}
+
+void Executor::PreparePopefSession() {
+  VLOG(10) << "enter Executor::PreparePopefSession";
+  if (popef_session_) {
+    VLOG(10) << "popef: previous popef model is not released, reset resources.";
+    ResetPopef();
+  }
+  auto popef_model = PopartSessionToPopefModel(session_.get());
+
+  auto num_buffers = ipu_strategy_->num_buffers;
+
+  // convert timeout_ms to timeout_ns
+  const std::chrono::nanoseconds timeout_ns(
+      int64_t(ipu_strategy_->timeout_ms * 1000000));
+
+  // prepare popef session
+  model_runtime::SessionConfig config;
+  config.policy = model_runtime::LaunchPolicy::Immediate;
+
+  popef_session_ =
+      std::make_unique<model_runtime::Session>(popef_model, config);
+
+  // prepare queue_manager
+  auto timeout_cb = [this](model_runtime::InputRingBuffer *buffer) {
+    VLOG(10) << "ModelRuntmie timeout callback is called.";
+    std::unique_lock lock(this->queue_mutex_);
+    if (buffer->readAvailable()) {
+      return;
+    }
+    this->queue_manager_->flushAll();
+  };
+
+  queue_manager_ =
+      popef_session_->createQueueManager(num_buffers,
+                                         timeout_cb,
+                                         timeout_ns,
+                                         PredFilterMain(popef_session_.get()),
+                                         PredFilterMain(popef_session_.get()));
+
+  // prepare program
+  popef_session_->runLoadPrograms();
+
+  main_program_ = std::thread([&]() {
+    while (!stop_.load()) {
+      VLOG(13) << "popef: Run main program";
+      popef_session_->runMainPrograms();
+    }
+  });
+
+  // Detach device from popart session
+  Detach();
+}
+
+void Executor::RunPopef(const std::vector<const Tensor *> &inputs,
+                        const std::vector<Tensor *> &outputs,
+                        const framework::ExecutionContext &ctx) {
+  VLOG(10) << "enter Executor::RunPopef";
+
+  auto input_names = ctx.InputNames("FeedList");
+  auto output_names = ctx.OutputNames("FetchList");
+
+  int batch_size = 0;
+  bool auto_batch = (ipu_strategy_->timeout_ms != 0);
+
+  auto tensor_check = [&](const Tensor *tensor,
+                          const popef::TensorInfo &info,
+                          int *batch_size,
+                          Tensor *cast_tensor) {
+    // check dtype
+    auto popef_phi_dtype = PopefDtype2PhiDtype(info.dataType());
+    bool casted = false;
+
+    if (popef_phi_dtype != tensor->dtype()) {
+      // popart may do some implicit conversion, int64->int32 for example, cast
+      // is needed in some case.
+      VLOG(10) << "Cast paddle input type " << tensor->dtype() << " to "
+               << popef_phi_dtype;
+      framework::TransDataType(
+          *tensor, PopefDType2VarType(info.dataType()), cast_tensor);
+      casted = true;
+    }
+
+    // check size
+    auto popef_input_shape = info.shape();
+    if (popef_input_shape.size() != tensor->dims().size()) {
+      PADDLE_THROW(
+          errors::Fatal("Incompatible size between paddle and popef."));
+    }
+
+    for (int i = 1; i < popef_input_shape.size(); ++i) {
+      PADDLE_ENFORCE_EQ(
+          popef_input_shape[i],
+          tensor->dims().at(i),
+          errors::InvalidArgument("Invalid tensor size at dim %s. "
+                                  "popef expecting %s but received %s ",
+                                  i,
+                                  popef_input_shape[i],
+                                  tensor->dims().at(i)));
+    }
+
+    // check batch_size
+    if (!auto_batch) {
+      // disable auto batching
+      PADDLE_ENFORCE_EQ(
+          popef_input_shape[0],
+          tensor->dims().at(0),
+          errors::InvalidArgument(
+              "Batch size doesn't equal between paddle and popef."));
+    } else {
+      // enable auto batching
+      bool is_single_batch = ipu_strategy_->micro_batch_size == 1;
+      if (*batch_size == 0) {
+        // retrieve batch_size
+        *batch_size = is_single_batch ? 1 : tensor->dims().at(0);
+      } else if (!is_single_batch) {
+        // input/output should have batch info when enable auto batch.
+        PADDLE_ENFORCE_EQ(*batch_size,
+                          tensor->dims().at(0),
+                          errors::InvalidArgument(
+                              "batch size should be equal for each tensor"));
+      }
+    }
+    return casted;
+  };
+
+  const auto &session_inputs = popef_session_->getUserInputAnchors();
+  std::vector<Tensor> cast_tensor(inputs.size());
+  const auto &session_outputs = popef_session_->getUserOutputAnchors();
+
+  // ModelRuntime::Queue is not thread safety.
+  std::unique_lock lock(queue_mutex_);
+  for (size_t i = 0; i < inputs.size(); ++i) {
+    const auto &popef_input_name =
+        compiler_resources_->tensors.at(input_names[i]);
+    auto &elem_queue = queue_manager_->inputQueue(popef_input_name);
+    const auto &info = elem_queue.tensorInfo();
+    VLOG(10) << "popef: handle popef input: " << popef_input_name
+             << " mapped with paddle " << input_names[i];
+
+    bool casted = tensor_check(inputs[i], info, &batch_size, &(cast_tensor[i]));
+
+    const void *data = casted ? cast_tensor[i].data() : inputs[i]->data();
+    const auto size =
+        casted ? cast_tensor[i].memory_size() : inputs[i]->memory_size();
+
+    elem_queue.enqueue(data, size, [popef_input_name]() {
+      VLOG(10) << "popef: enqueued data for input: " << popef_input_name;
+    });
+  }
+
+  std::vector<std::future<void>> finish_indicators;
+  finish_indicators.reserve(session_outputs.size());
+
+  for (size_t i = 0; i < session_outputs.size(); ++i) {
+    const auto &popef_output_name =
+        compiler_resources_->tensors.at(output_names[i]);
+    auto &out_queue = queue_manager_->outputQueue(popef_output_name);
+    const auto &info = out_queue.tensorInfo();
+    VLOG(10) << "popef: handle popef output: " << popef_output_name
+             << " mapped with paddle " << output_names[i];
+
+    auto popef_dtype = info.dataType();
+    auto paddle_dtype = PopefDType2VarType(popef_dtype);
+    auto output_shape = info.shape();
+    if (auto_batch) {
+      if (output_shape[0] == ipu_strategy_->micro_batch_size) {
+        output_shape[0] = batch_size;
+      } else {
+        // shape of output must have batch info when when auto batch enabled
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Auto batch doesn't support the tensor with no batch info. "
+            "Expected batch size in output tensor: %d should equal to "
+            "micro batch size: %d. Please make sure batch size is set "
+            "correctly in both IPU program compiling and IpuStrategy.",
+            output_shape[0],
+            ipu_strategy_->micro_batch_size));
+      }
+    }
+
+    auto *tensor = outputs[i];
+    // resize output size to make data_ptr valid.
+    tensor->Resize(phi::make_ddim(output_shape));
+    tensor->mutable_data(ctx.GetPlace(),
+                         framework::TransToPhiDataType(paddle_dtype));
+
+    const auto size = tensor->memory_size();
+
+    auto promise = std::make_shared<std::promise<void>>();
+    finish_indicators.emplace_back(promise->get_future());
+    out_queue.enqueue(tensor->data(), size, [popef_output_name, promise]() {
+      VLOG(10) << "popef: received output: " << popef_output_name;
+      promise->set_value();
+    });
+  }
+  lock.unlock();
+
+  // Synchronous waiting outputs. Asynchronous execution is not supported since
+  // python api calling is synchronous and output data is copied outside.
+  for (const auto &indicator : finish_indicators) {
+    indicator.wait();
+  }
 }
 
 void Executor::WeightsToHost() {
@@ -316,6 +531,32 @@ void Executor::Reset() {
   Detach();
   session_.reset();
   executor_resources_.reset();
+  if (enable_model_runtime_executor_) {
+    ResetPopef();
+  }
+}
+
+void Executor::ResetPopef() {
+  VLOG(10) << "Reset popef resources.";
+  stop_.store(true);
+  if (queue_manager_) {
+    queue_manager_->disconnectAll();
+  }
+  if (main_program_.joinable()) {
+    const auto future = std::async(std::launch::async,
+                                   [this]() { this->main_program_.join(); });
+    if (future.wait_for(std::chrono::seconds(10)) ==
+        std::future_status::timeout) {
+      popef_session_->stop();
+      VLOG(10) << "popef: failed to wait for main program. Force stop popef "
+                  "session.";
+    }
+  }
+  popef_session_.reset();
+
+  // reset stop back to false in case executor is reused.
+  stop_.store(false);
+  queue_manager_ = nullptr;
 }
 
 void Executor::SetWeightsIO() {

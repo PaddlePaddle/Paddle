@@ -16,9 +16,9 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/batch_norm_kernel.h"
+#include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/gpu/batch_norm_utils.h"
 
 namespace phi {
 
@@ -36,7 +36,6 @@ using ConstEigenVectorArrayMap =
 
 template <typename T, typename Context>
 void BatchNormGradRawKernel(const Context& ctx,
-
                             const DenseTensor& x,
                             const DenseTensor& scale,
                             const DenseTensor& bias,
@@ -52,7 +51,6 @@ void BatchNormGradRawKernel(const Context& ctx,
                             bool is_test,
                             bool use_global_stats,
                             bool trainable_statistics,
-                            bool fuse_with_relu,
                             bool is_inplace,
                             DenseTensor* x_grad,
                             DenseTensor* scale_grad,
@@ -310,7 +308,6 @@ void BatchNormGradKernel(const Context& dev_ctx,
                          bool is_test,
                          bool use_global_stats,
                          bool trainable_statistics,
-                         bool fuse_with_relu,
                          DenseTensor* x_grad,
                          DenseTensor* scale_grad,
                          DenseTensor* bias_grad) {
@@ -330,7 +327,6 @@ void BatchNormGradKernel(const Context& dev_ctx,
                                      is_test,
                                      use_global_stats,
                                      trainable_statistics,
-                                     fuse_with_relu,
                                      false,
                                      x_grad,
                                      scale_grad,
@@ -338,27 +334,27 @@ void BatchNormGradKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void BatchNormDoubleGradKernel(const Context& ctx,
-                               const DenseTensor& x,
-                               const DenseTensor& scale,
-                               const paddle::optional<DenseTensor>& mean,
-                               const paddle::optional<DenseTensor>& variance,
-                               const DenseTensor& saved_mean,
-                               const DenseTensor& saved_variance,
-                               const DenseTensor& y_grad,
-                               const DenseTensor& x_grad_grad,
-                               const DenseTensor& scale_grad_grad,
-                               const DenseTensor& bias_grad_grad,
-                               float momentum,
-                               float epsilon,
-                               const std::string& data_layout_str,
-                               bool is_test,
-                               bool use_global_stats,
-                               bool trainable_statistics,
-                               bool fuse_with_relu,
-                               DenseTensor* x_grad,
-                               DenseTensor* scale_grad,
-                               DenseTensor* y_grad_grad) {
+void BatchNormDoubleGradKernel(
+    const Context& ctx,
+    const DenseTensor& x,
+    const DenseTensor& scale,
+    const paddle::optional<DenseTensor>& mean,
+    const paddle::optional<DenseTensor>& variance,
+    const DenseTensor& saved_mean,
+    const DenseTensor& saved_variance,
+    const DenseTensor& y_grad,
+    const paddle::optional<DenseTensor>& x_grad_grad,
+    const paddle::optional<DenseTensor>& scale_grad_grad,
+    const paddle::optional<DenseTensor>& bias_grad_grad,
+    float momentum,
+    float epsilon,
+    const std::string& data_layout_str,
+    bool is_test,
+    bool use_global_stats,
+    bool trainable_statistics,
+    DenseTensor* x_grad,
+    DenseTensor* scale_grad,
+    DenseTensor* y_grad_grad) {
   const auto* X = &x;
   const auto* Scale = &scale;
   const auto* dY = &y_grad;
@@ -374,9 +370,9 @@ void BatchNormDoubleGradKernel(const Context& ctx,
 
   const auto data_layout = phi::StringToDataLayout(data_layout_str);
 
-  const auto* ddX = &x_grad_grad;
-  const auto* ddScale = &scale_grad_grad;
-  const auto* ddBias = &bias_grad_grad;
+  const auto* ddX = x_grad_grad.get_ptr();
+  const auto* ddScale = scale_grad_grad.get_ptr();
+  const auto* ddBias = bias_grad_grad.get_ptr();
 
   auto* dX = x_grad;
   auto* dScale = scale_grad;

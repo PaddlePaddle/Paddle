@@ -12,13 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
+import paddle
+import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.framework import _test_eager_guard
-from paddle.static import program_guard, Program
+from paddle.static import Program, program_guard
 
 paddle.enable_static()
 
@@ -237,6 +240,29 @@ class TestRandomValue(unittest.TestCase):
         np.testing.assert_array_equal(x[20, 1, 600, 600:605], expect)
         expect = [3581, 3420, -8027, -5237, -2436]
         np.testing.assert_array_equal(x[30, 2, 1000, 1000:1005], expect)
+
+
+# Test API shape
+class TestRandintAPI_ZeroDim(unittest.TestCase):
+    def test_dygraph(self):
+        paddle.disable_static()
+        x = paddle.randint(0, 2, [])
+        self.assertEqual(x.shape, [])
+        paddle.enable_static()
+
+    def test_static(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            x = paddle.randint(-10, 10, [])
+
+            # Test compile shape
+            self.assertEqual(x.shape, ())
+
+            # Test runtime shape
+            exe = fluid.Executor()
+            result = exe.run(fetch_list=[x])
+            self.assertEqual(result[0].shape, ())
+
+        paddle.enable_static()
 
 
 if __name__ == "__main__":

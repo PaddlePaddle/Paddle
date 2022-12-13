@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import warnings
-import numpy as np
 import numbers
+import warnings
+from collections import OrderedDict
+
+import numpy as np
 
 import paddle
 import paddle.nn as nn
-from paddle.static import InputSpec
 from paddle.autograd import no_grad
-from collections import OrderedDict
+from paddle.static import InputSpec
 
 __all__ = []
 
@@ -50,7 +51,7 @@ def summary(net, input_size=None, dtypes=None, input=None):
 
             class LeNet(nn.Layer):
                 def __init__(self, num_classes=10):
-                    super(LeNet, self).__init__()
+                    super().__init__()
                     self.num_classes = num_classes
                     self.features = nn.Sequential(
                         nn.Conv2D(
@@ -450,7 +451,7 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
                 total_output += np.sum(np.prod(output_shape, axis=-1))
 
         if "trainable" in summary[layer]:
-            if summary[layer]["trainable"] == True:
+            if summary[layer]["trainable"]:
                 trainable_params += summary[layer]["trainable_params"]
         summary_str += line_new + "\n"
 

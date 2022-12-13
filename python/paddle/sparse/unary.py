@@ -16,9 +16,9 @@ import numpy as np
 
 from paddle import _C_ops
 from paddle.fluid.framework import (
-    dygraph_only,
-    core,
     convert_np_dtype_to_dtype_,
+    core,
+    dygraph_only,
 )
 
 __all__ = []
@@ -521,12 +521,14 @@ def abs(x, name=None):
 
 
 @dygraph_only
-def coalesce(x):
+def coalesce(x, name=None):
     r"""
     the coalesced operator include sorted and merge, after coalesced, the indices of x is sorted and unique.
 
     Parameters:
         x (Tensor): the input SparseCooTensor.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: return the SparseCooTensor after coalesced.

@@ -22,7 +22,9 @@ def add_fn(x):
 
 
 def loss_fn(x, lable):
-    loss = fluid.layers.cross_entropy(x, lable)
+    loss = paddle.nn.functional.cross_entropy(
+        x, lable, reduction='none', use_softmax=False
+    )
     return loss
 
 
@@ -45,7 +47,9 @@ def dyfunc_with_if_else(x_v, label=None):
         x_v = x_v + 1
     # plain if in python
     if label is not None:
-        loss = fluid.layers.cross_entropy(x_v, label)
+        loss = paddle.nn.functional.cross_entropy(
+            x_v, label, reduction='none', use_softmax=False
+        )
         return loss
     return x_v
 
@@ -57,11 +61,11 @@ def dyfunc_with_if_else2(x, col=100):
         #  `x` is Tensor, `col` is not Tensor, and `col` is the return value of `true_fn` after transformed.
         # col = -1
         col = fluid.layers.fill_constant(shape=[1], value=-1, dtype="int64")
-    if fluid.layers.reduce_mean(x).numpy()[0] > x.numpy()[row][col]:
+    if paddle.mean(x).numpy()[0] > x.numpy()[row][col]:
         y = fluid.layers.relu(x)
     else:
-        x_pow = fluid.layers.pow(x, 2)
-        y = fluid.layers.tanh(x_pow)
+        x_pow = paddle.pow(x, 2)
+        y = paddle.tanh(x_pow)
     return y
 
 
@@ -85,7 +89,7 @@ def dyfunc_with_if_else3(x):
         m = x + 2
         n = x + 3
         return q, x, y, z
-    q, x, y, z = fluid.layers.cond(paddle.mean(x)[0] < 5, lambda :
+    q, x, y, z = paddle.static.nn.cond(paddle.mean(x)[0] < 5, lambda :
         paddle.jit.dy2static.convert_call(true_fn_0)(q, x, y),
         lambda : paddle.jit.dy2static.convert_call(false_fn_0)(q,
         x, y))
@@ -151,7 +155,7 @@ def nested_if_else(x_v):
         #  `x_v.shape[0]` is not Tensor, and `batch_size` is the return value of `true_fn` after transformed.
         # col = -1
         # batch_size = x_v.shape[0]
-        batch_size = fluid.layers.shape(x_v)[0]
+        batch_size = paddle.shape(x_v)[0]
 
     # if tensor.shape is [1], now support to compare with numpy.
     if paddle.mean(x_v).numpy() < 0:
@@ -161,7 +165,7 @@ def nested_if_else(x_v):
             tmp = y * w
             y = fluid.layers.relu(tmp)
             if paddle.mean(y).numpy()[0] < batch_size:
-                y = fluid.layers.abs(y)
+                y = paddle.abs(y)
             else:
                 tmp = fluid.layers.fill_constant(
                     y.shape, dtype='float32', value=-1
@@ -173,14 +177,14 @@ def nested_if_else(x_v):
 
 
 def nested_if_else_2(x):
-    y = fluid.layers.reshape(x, [-1, 1])
+    y = paddle.reshape(x, [-1, 1])
     b = 2
     if b < 1:
         # var `z` is not visible for outer scope
         z = y
     x_shape_0 = x.shape[0]
     if x_shape_0 < 1:
-        if fluid.layers.shape(y).numpy()[0] < 1:
+        if paddle.shape(y).numpy()[0] < 1:
             res = fluid.layers.fill_constant(
                 value=2, shape=x.shape, dtype="int32"
             )
@@ -196,7 +200,7 @@ def nested_if_else_2(x):
 
 
 def nested_if_else_3(x):
-    y = fluid.layers.reshape(x, [-1, 1])
+    y = paddle.reshape(x, [-1, 1])
     b = 2
     # var `z` is visible for func.body
     if b < 1:
@@ -212,7 +216,7 @@ def nested_if_else_3(x):
         else:
             out = x - 1
     else:
-        y_shape = fluid.layers.shape(y)
+        y_shape = paddle.shape(y)
         if y_shape.numpy()[0] < 1:
             res = fluid.layers.fill_constant(
                 value=2, shape=x.shape, dtype="int32"
@@ -230,16 +234,16 @@ def nested_if_else_3(x):
 
 class NetWithControlFlowIf(fluid.dygraph.Layer):
     def __init__(self, hidden_dim=16):
-        super(NetWithControlFlowIf, self).__init__()
+        super().__init__()
         self.hidden_dim = hidden_dim
-        self.fc = fluid.dygraph.Linear(
-            input_dim=hidden_dim,
-            output_dim=5,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.99)
+        self.fc = paddle.nn.Linear(
+            in_features=hidden_dim,
+            out_features=5,
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.99)
             ),
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.5)
+            bias_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.5)
             ),
         )
         self.alpha = 10.0
@@ -276,7 +280,7 @@ class NetWithControlFlowIf(fluid.dygraph.Layer):
                     self.constant_vars['w'] = fluid.layers.fill_constant(
                         [hidden_dim], dtype='float32', value=9
                     )
-                    y = fluid.layers.abs(y)
+                    y = paddle.abs(y)
                 else:
                     tmp = fluid.layers.fill_constant(
                         y.shape, dtype='float32', value=-1
@@ -290,7 +294,7 @@ class NetWithControlFlowIf(fluid.dygraph.Layer):
 
 
 def if_with_and_or(x_v, label=None):
-    batch_size = fluid.layers.shape(x_v)
+    batch_size = paddle.shape(x_v)
     if (
         x_v is not None
         and (paddle.mean(x_v).numpy()[0] > 0 or label is not None)
@@ -302,13 +306,15 @@ def if_with_and_or(x_v, label=None):
         x_v = x_v + 1
 
     if label is not None:
-        loss = fluid.layers.cross_entropy(x_v, label)
+        loss = paddle.nn.functional.cross_entropy(
+            x_v, label, reduction='none', use_softmax=False
+        )
         return loss
     return x_v
 
 
 def if_with_and_or_1(x, y=None):
-    batch_size = fluid.layers.shape(x)
+    batch_size = paddle.shape(x)
     if batch_size[0] > 1 and y is not None:
         x = x + 1
     if y is not None or batch_size[0] > 1:
@@ -317,7 +323,7 @@ def if_with_and_or_1(x, y=None):
 
 
 def if_with_and_or_2(x, y=None):
-    batch_size = fluid.layers.shape(x)
+    batch_size = paddle.shape(x)
     if x is not None and batch_size[0] > 1 and y is not None:
         x = x + 1
     if batch_size[0] > 1 or y is not None or x is not None:
@@ -326,7 +332,7 @@ def if_with_and_or_2(x, y=None):
 
 
 def if_with_and_or_3(x, y=None):
-    batch_size = fluid.layers.shape(x)
+    batch_size = paddle.shape(x)
     mean_res = paddle.mean(x)
     if (
         x is not None
@@ -341,7 +347,7 @@ def if_with_and_or_3(x, y=None):
 
 
 def if_with_and_or_4(x, y=None):
-    batch_size = fluid.layers.shape(x)
+    batch_size = paddle.shape(x)
     mean_res = paddle.mean(x)
     if (x is not None and batch_size[0] > 1) or (
         y is not None and mean_res.numpy()[0] > 0
@@ -355,13 +361,13 @@ def if_with_and_or_4(x, y=None):
 
 
 def if_with_class_var(x, y=None):
-    class Foo(object):
+    class Foo:
         def __init__(self):
             self.a = 1
             self.b = 2
 
     foo = Foo()
-    batch_size = fluid.layers.shape(x)
+    batch_size = paddle.shape(x)
     mean_res = paddle.mean(x)
 
     if batch_size[0] > foo.a:

@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .common import DistributedOperatorImplContainer
-from .common import DistributedOperatorImpl
-from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl
-from ..utils import is_dim_shard
-from ..utils import compute_compatible_and_update_dim_mapping
+from ..utils import compute_compatible_and_update_dim_mapping, is_dim_shard
+from .common import (
+    DistributedOperatorImpl,
+    DistributedOperatorImplContainer,
+    register_distributed_operator_impl,
+    register_distributed_operator_impl_container,
+)
 from .dist_default import DistributedDefaultImpl0
 
 
 class DistributedSplit(DistributedOperatorImplContainer):
     def __init__(self, op_type):
-        super(DistributedSplit, self).__init__(op_type)
+        super().__init__(op_type)
 
 
 register_distributed_operator_impl_container(DistributedSplit("split"))
@@ -31,7 +32,7 @@ register_distributed_operator_impl_container(DistributedSplit("split"))
 
 class DistributedSplitImpl(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedSplitImpl, self).__init__(name)
+        super().__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
 

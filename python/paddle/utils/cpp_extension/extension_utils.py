@@ -12,22 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import atexit
+import collections
+import glob
+import hashlib
+import importlib.util
+import json
+import logging
 import os
 import re
-import sys
-import json
-import glob
-import atexit
-import hashlib
-import logging
-import collections
-import textwrap
-import warnings
 import subprocess
+import sys
+import textwrap
 import threading
-
-from importlib import machinery
+import warnings
 from contextlib import contextmanager
+from importlib import machinery
+
 from setuptools.command import bdist_egg
 
 try:
@@ -197,7 +198,7 @@ def custom_write_stub(resource, pyfile):
         """
     ).lstrip()
 
-    # Parse registerring op information
+    # Parse registering op information
     _, op_info = CustomOpInfo.instance().last()
     so_path = op_info.so_path
 
@@ -250,7 +251,7 @@ class CustomOpInfo:
 
     def last(self):
         """
-        Return the lastest insert custom op info.
+        Return the last inserted custom op info.
         """
         assert len(self.op_info_map) > 0
         return next(reversed(self.op_info_map.items()))
@@ -559,13 +560,13 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         kwargs['extra_link_args'] = extra_link_args
 
     else:
-        ########################### Linux Platform ###########################
+        # ----------------------- Linux Platform ----------------------- #
         extra_link_args = kwargs.get('extra_link_args', [])
         # On Linux, GCC support '-l:xxx.so' to specify the library name
         # without `lib` prefix.
         if OS_NAME.startswith('linux'):
             extra_link_args.append('-l:{}'.format(_get_core_name()))
-        ########################### MacOS Platform ###########################
+        # ----------------------- MacOS Platform ----------------------- #
         else:
             # See _reset_so_rpath for details.
             extra_link_args.append('-Wl,-rpath,{}'.format(_get_fluid_path()))
@@ -573,7 +574,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
             # liblibpaddle.dylib symbol link.
             lib_core_name = create_sym_link_if_not_exist()
             extra_link_args.append('-l{}'.format(lib_core_name))
-        ###########################   -- END --    ###########################
+        # -----------------------   -- END --    ----------------------- #
 
         add_compile_flag(extra_compile_args, ['-w'])  # disable warning
 
@@ -1070,7 +1071,9 @@ def _load_module_from_file(api_file_path, module_name, verbose=False):
 
     # load module with RWLock
     loader = machinery.SourceFileLoader(ext_name, api_file_path)
-    module = loader.load_module()
+    spec = importlib.util.spec_from_loader(loader.name, loader)
+    module = importlib.util.module_from_spec(spec)
+    loader.exec_module(module)
 
     return module
 

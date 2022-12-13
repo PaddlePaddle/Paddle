@@ -20,9 +20,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/fc_functor.h"
 #include "paddle/phi/kernels/funcs/sequence2batch.h"
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
 
 namespace paddle {
 namespace operators {
@@ -180,22 +177,24 @@ framework::OpKernelType FusionLSTMOp::GetExpectedKernelType(
 }
 
 void FusionLSTMOpMaker::Make() {
-  AddInput("X",
-           "(LoDTensor) the input is a LodTensor, which support "
-           "variable-time length input sequence. The underlying tensor in "
-           "this LoDTensor is a matrix with shape (T X M), where T is the "
-           "total time steps in this mini-batch, M is the dim size of x.");
+  AddInput(
+      "X",
+      "(phi::DenseTensor) the input is a LodTensor, which support "
+      "variable-time length input sequence. The underlying tensor in "
+      "this phi::DenseTensor is a matrix with shape (T X M), where T is the "
+      "total time steps in this mini-batch, M is the dim size of x.");
   AddInput("WeightX",
-           "(Tensor) the learnable weights of X."
+           "(phi::DenseTensor) the learnable weights of X."
            " - The shape is (M x 4D), where M is the dim size of x, D is the "
            "hidden size. "
            " - Weight = {W_cx, W_ix, W_fx, W_ox}");
-  AddInput("WeightH",
-           "(Tensor) same as LSTMOp, the learnable hidden-hidden weights."
-           " - The shape is (D x 4D), where D is the hidden size. "
-           " - Weight = {W_ch, W_ih, W_fh, W_oh}");
+  AddInput(
+      "WeightH",
+      "(phi::DenseTensor) same as LSTMOp, the learnable hidden-hidden weights."
+      " - The shape is (D x 4D), where D is the hidden size. "
+      " - Weight = {W_ch, W_ih, W_fh, W_oh}");
   AddInput("Bias",
-           "(Tensor) the learnable weights. Almost same as LSTMOp"
+           "(phi::DenseTensor) the learnable weights. Almost same as LSTMOp"
            "Note: we should add the fc bias into this (1x4D) in bias."
            "input-hidden bias weight and peephole connections weight if "
            "setting `use_peepholes` True. "
@@ -206,35 +205,39 @@ void FusionLSTMOpMaker::Make() {
            " - The shape is (1 x 7D). "
            " - Bias = {b_c, b_i, b_f, b_o, W_ic, W_fc, W_oc}.");
   AddInput("H0",
-           "(Tensor, optional) (same as LSTMOp) the initial hidden state is an "
+           "(phi::DenseTensor, optional) (same as LSTMOp) the initial hidden "
+           "state is an "
            "optional "
            "input. This is a tensor with shape (N x D), where N is the "
            "batch size and D is the hidden size.")
       .AsDispensable();
   AddInput("C0",
-           "(Tensor, optional) (same as LSTMOp) (the initial cell state is an "
+           "(phi::DenseTensor, optional) (same as LSTMOp) (the initial cell "
+           "state is an "
            "optional "
            "input. This is a tensor with shape (N x D), where N is the "
            "batch size. `H0` and `C0` can be NULL but only at the same time.")
       .AsDispensable();
-  AddOutput("Hidden",
-            "(LoDTensor) (same as LSTMOp) the hidden state of LSTM operator. "
-            "The shape is (T x D), and lod is the same with the `Input`.");
-  AddOutput("Cell",
-            "(LoDTensor) (same as LSTMOp) the cell state of LSTM operator. "
-            "The shape is (T x D), and lod is the same with the `Input`.");
+  AddOutput(
+      "Hidden",
+      "(phi::DenseTensor) (same as LSTMOp) the hidden state of LSTM operator. "
+      "The shape is (T x D), and lod is the same with the `Input`.");
+  AddOutput(
+      "Cell",
+      "(phi::DenseTensor) (same as LSTMOp) the cell state of LSTM operator. "
+      "The shape is (T x D), and lod is the same with the `Input`.");
   AddOutput("XX",
-            "(LoDTensor) the result after X * WeightX (size is T x 4D)"
+            "(phi::DenseTensor) the result after X * WeightX (size is T x 4D)"
             " or batched_X (size is T x M), this will be automatically chosen,"
             " where T is the total time steps in this mini-batch,"
             " D is the hidden size, M is the dim size of x input.")
       .AsIntermediate();
-  AddOutput("BatchedInput", "(LoDTensor) (T x 4D).").AsIntermediate();
-  AddOutput("BatchedHidden", "(LoDTensor) (T x D).").AsIntermediate();
-  AddOutput("BatchedCell", "(LoDTensor) (T x D).").AsIntermediate();
-  AddOutput("ReorderedH0", "(LoDTensor) (N x D).").AsIntermediate();
-  AddOutput("ReorderedC0", "(LoDTensor) (N x D).").AsIntermediate();
-  AddOutput("CheckedCell", "(Tensor) (2 x D) only for peephole.")
+  AddOutput("BatchedInput", "(phi::DenseTensor) (T x 4D).").AsIntermediate();
+  AddOutput("BatchedHidden", "(phi::DenseTensor) (T x D).").AsIntermediate();
+  AddOutput("BatchedCell", "(phi::DenseTensor) (T x D).").AsIntermediate();
+  AddOutput("ReorderedH0", "(phi::DenseTensor) (N x D).").AsIntermediate();
+  AddOutput("ReorderedC0", "(phi::DenseTensor) (N x D).").AsIntermediate();
+  AddOutput("CheckedCell", "(phi::DenseTensor) (2 x D) only for peephole.")
       .AsIntermediate();
   AddAttr<bool>("use_peepholes",
                 "(bool, default: True) "
@@ -298,23 +301,23 @@ This operator fuse the X into LSTM, more details can refer to LSTM op.
 template <typename T>
 class FuisonLSTMKernel : public framework::OpKernel<T> {
  public:
-#define INIT_BASE_DEFINES                               \
-  using DeviceContext = phi::CPUContext;                \
-  auto* x = ctx.Input<LoDTensor>("X");                  \
-  auto* h0 = ctx.Input<phi::DenseTensor>("H0");         \
-  auto* c0 = ctx.Input<phi::DenseTensor>("C0");         \
-  auto* wx = ctx.Input<phi::DenseTensor>("WeightX");    \
-  auto* wh = ctx.Input<phi::DenseTensor>("WeightH");    \
-  auto* bias = ctx.Input<phi::DenseTensor>("Bias");     \
-  auto* xx = ctx.Output<LoDTensor>("XX");               \
-  auto* hidden_out = ctx.Output<LoDTensor>("Hidden");   \
-  auto* cell_out = ctx.Output<LoDTensor>("Cell");       \
-  bool is_reverse = ctx.Attr<bool>("is_reverse");       \
-  bool use_peepholes = ctx.Attr<bool>("use_peepholes"); \
-  auto x_dims = x->dims();   /* T x M*/                 \
-  auto wh_dims = wh->dims(); /* D x 4D*/                \
-  const int M = x_dims[1];                              \
-  const int D = wh_dims[0];                             \
+#define INIT_BASE_DEFINES                                    \
+  using DeviceContext = phi::CPUContext;                     \
+  auto* x = ctx.Input<phi::DenseTensor>("X");                \
+  auto* h0 = ctx.Input<phi::DenseTensor>("H0");              \
+  auto* c0 = ctx.Input<phi::DenseTensor>("C0");              \
+  auto* wx = ctx.Input<phi::DenseTensor>("WeightX");         \
+  auto* wh = ctx.Input<phi::DenseTensor>("WeightH");         \
+  auto* bias = ctx.Input<phi::DenseTensor>("Bias");          \
+  auto* xx = ctx.Output<phi::DenseTensor>("XX");             \
+  auto* hidden_out = ctx.Output<phi::DenseTensor>("Hidden"); \
+  auto* cell_out = ctx.Output<phi::DenseTensor>("Cell");     \
+  bool is_reverse = ctx.Attr<bool>("is_reverse");            \
+  bool use_peepholes = ctx.Attr<bool>("use_peepholes");      \
+  auto x_dims = x->dims();   /* T x M*/                      \
+  auto wh_dims = wh->dims(); /* D x 4D*/                     \
+  const int M = x_dims[1];                                   \
+  const int D = wh_dims[0];                                  \
   const int D4 = wh_dims[1]
 
 #define INIT_OTHER_DEFINES                                                     \
@@ -442,9 +445,9 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
 
     auto* reordered_h0 = ctx.Output<phi::DenseTensor>("ReorderedH0");
     auto* reordered_c0 = ctx.Output<phi::DenseTensor>("ReorderedC0");
-    auto* batched_input = ctx.Output<LoDTensor>("BatchedInput");
-    auto* batched_c_out = ctx.Output<LoDTensor>("BatchedCell");
-    auto* batched_h_out = ctx.Output<LoDTensor>("BatchedHidden");
+    auto* batched_input = ctx.Output<phi::DenseTensor>("BatchedInput");
+    auto* batched_c_out = ctx.Output<phi::DenseTensor>("BatchedCell");
+    auto* batched_h_out = ctx.Output<phi::DenseTensor>("BatchedHidden");
     T* xx_data = xx->mutable_data<T>(place);
     T* batched_input_data = batched_input->mutable_data<T>(place);
     T* batched_c_out_data = batched_c_out->mutable_data<T>(place);

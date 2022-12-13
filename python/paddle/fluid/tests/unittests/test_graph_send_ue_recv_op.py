@@ -14,12 +14,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from op_test import OpTest
+
 import paddle
 import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard
-
-from op_test import OpTest
 
 
 def get_broadcast_shape(shp1, shp2):
@@ -39,7 +40,7 @@ def get_broadcast_shape(shp1, shp2):
     return rst
 
 
-class BroadCastInfo(object):
+class BroadCastInfo:
     def __init__(self, x_shape, y_shape):
         self.x_shape = x_shape
         self.y_shape = y_shape

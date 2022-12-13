@@ -87,7 +87,7 @@ _logger = get_logger(
 )
 
 
-class _open_buffer(object):
+class _open_buffer:
     def __init__(self, buffer):
         self.buffer = buffer
 
@@ -97,7 +97,7 @@ class _open_buffer(object):
 
 class _buffer_reader(_open_buffer):
     def __init__(self, buffer):
-        super(_buffer_reader, self).__init__(buffer)
+        super().__init__(buffer)
         self.initial_tell = self.buffer.tell()
 
     def __exit__(self, *args):
@@ -214,8 +214,8 @@ def get_program_parameter(program):
 
             paddle.enable_static()
             data = fluid.data(name="img", shape=[64, 784])
-            w = fluid.layers.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
-            b = fluid.layers.create_parameter(shape=[200], dtype='float32', name='fc_b')
+            w = paddle.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
+            b = paddle.create_parameter(shape=[200], dtype='float32', name='fc_b')
             list_para  = fluid.io.get_program_parameter(  fluid.default_main_program() )
     """
     return list(filter(is_parameter, program.list_vars()))
@@ -240,8 +240,8 @@ def get_program_persistable_vars(program):
 
             paddle.enable_static()
             data = fluid.data(name="img", shape=[64, 784])
-            w = fluid.layers.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
-            b = fluid.layers.create_parameter(shape=[200], dtype='float32', name='fc_b')
+            w = paddle.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
+            b = paddle.create_parameter(shape=[200], dtype='float32', name='fc_b')
             list_para  = fluid.io.get_program_persistable_vars(  fluid.default_main_program() )
     """
     return list(filter(is_persistable, program.list_vars()))
@@ -356,9 +356,9 @@ def save_vars(
             startup_prog = fluid.Program()
             with fluid.program_guard(main_prog, startup_prog):
                 data = fluid.layers.data(name="img", shape=[64, 784], append_batch_size=False)
-                w = fluid.layers.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
-                b = fluid.layers.create_parameter(shape=[200], dtype='float32', name='fc_b')
-                hidden_w = fluid.layers.matmul(x=data, y=w)
+                w = paddle.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
+                b = paddle.create_parameter(shape=[200], dtype='float32', name='fc_b')
+                hidden_w = paddle.matmul(x=data, y=w)
                 hidden_b = fluid.layers.elementwise_add(hidden_w, b)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -825,9 +825,9 @@ def load_vars(
             startup_prog = fluid.Program()
             with fluid.program_guard(main_prog, startup_prog):
                 data = fluid.layers.data(name="img", shape=[64, 784], append_batch_size=False)
-                w = fluid.layers.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
-                b = fluid.layers.create_parameter(shape=[200], dtype='float32', name='fc_b')
-                hidden_w = fluid.layers.matmul(x=data, y=w)
+                w = paddle.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
+                b = paddle.create_parameter(shape=[200], dtype='float32', name='fc_b')
+                hidden_w = paddle.matmul(x=data, y=w)
                 hidden_b = fluid.layers.elementwise_add(hidden_w, b)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -1013,7 +1013,7 @@ def load_vars(
             if not isinstance(each_var, Parameter):
                 continue
             var_temp = paddle.fluid.global_scope().find_var(each_var.name)
-            assert var_temp != None, "can't not find var: " + each_var.name
+            assert var_temp is not None, "can't not find var: " + each_var.name
             new_shape = (np.array(var_temp.get_tensor())).shape
             assert each_var.name in orig_para_shape, (
                 each_var.name + "MUST in var list"
@@ -1590,9 +1590,9 @@ def load_inference_model(
             startup_prog = fluid.Program()
             with fluid.program_guard(main_prog, startup_prog):
                 data = fluid.layers.data(name="img", shape=[64, 784], append_batch_size=False)
-                w = fluid.layers.create_parameter(shape=[784, 200], dtype='float32')
-                b = fluid.layers.create_parameter(shape=[200], dtype='float32')
-                hidden_w = fluid.layers.matmul(x=data, y=w)
+                w = paddle.create_parameter(shape=[784, 200], dtype='float32')
+                b = paddle.create_parameter(shape=[200], dtype='float32')
+                hidden_w = paddle.matmul(x=data, y=w)
                 hidden_b = fluid.layers.elementwise_add(hidden_w, b)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -2146,7 +2146,7 @@ def load(program, model_path, executor=None, var_list=None):
 
             return
         elif os.path.isfile(model_path):
-            if var_list == None:
+            if var_list is None:
                 raise ValueError(
                     "var_list is required when loading model file saved with [ save_params, save_persistables, save_vars ]"
                 )
@@ -2479,7 +2479,7 @@ def set_program_state(program, state_dict):
     for para in parameter_list:
         var_temp = paddle.fluid.global_scope().find_var(para.name)
         assert (
-            var_temp != None
+            var_temp is not None
         ), "Variable [ {} ] Not found, Please make sure run startup program".format(
             para.name
         )

@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-from paddle import fluid, nn
-import paddle.fluid.dygraph as dg
-import paddle.nn.functional as F
-import paddle.fluid.initializer as I
 import unittest
+
+import numpy as np
+
+import paddle
+import paddle.fluid.dygraph as dg
+import paddle.fluid.initializer as I
+import paddle.nn.functional as F
+from paddle import fluid, nn
 
 
 class Conv2DTransposeTestCase(unittest.TestCase):
@@ -39,7 +42,7 @@ class Conv2DTransposeTestCase(unittest.TestCase):
         data_format="NCHW",
         dtype="float32",
     ):
-        super(Conv2DTransposeTestCase, self).__init__(methodName)
+        super().__init__(methodName)
         self.batch_size = batch_size
         self.num_channels = num_channels
         self.num_filters = num_filters
@@ -104,7 +107,7 @@ class Conv2DTransposeTestCase(unittest.TestCase):
                 else:
                     bias_attr = I.NumpyArrayInitializer(self.bias)
 
-                y_var = fluid.layers.conv2d_transpose(
+                y_var = paddle.static.nn.conv2d_transpose(
                     x_var,
                     self.num_filters,
                     filter_size=self.filter_size,

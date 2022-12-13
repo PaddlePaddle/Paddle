@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
 import os
 import sys
-import unittest
 import time
-import math
+import unittest
+
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid import compiler
 
 # open eager delete mode
@@ -89,7 +90,7 @@ class BuildIrMemOptBase(unittest.TestCase):
         first_loss, last_loss = None, None
         step_id = 0
         custom_iter = getattr(self, "iter", None)
-        if not custom_iter == None:
+        if custom_iter is not None:
             iter = custom_iter
         for data in reader():
             ret = exe.run(train_cp, feed=data, fetch_list=fetch_list)

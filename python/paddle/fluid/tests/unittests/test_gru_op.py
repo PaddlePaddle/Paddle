@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import functools
+import unittest
+
+import numpy as np
 from op_test import OpTest
-from paddle.fluid.tests.unittests.test_lstm_op import ACTIVATION
+
 from paddle import fluid
 from paddle.fluid import Program, program_guard
+from paddle.fluid.tests.unittests.test_lstm_op import ACTIVATION
 
 
 def gru(
@@ -258,7 +260,7 @@ class TestGRUOpInference(TestGRUOp):
         new_outputs = {}
         new_outputs['Hidden'] = self.outputs['Hidden']
         self.outputs = new_outputs
-        super(TestGRUOpInference, self).test_check_output()
+        super().test_check_output()
 
     # avoid checking gradient
     def test_check_grad(self):

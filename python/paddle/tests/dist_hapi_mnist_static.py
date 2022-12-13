@@ -18,18 +18,17 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-
 from paddle import Model, set_device
-from paddle.static import InputSpec as Input
-from paddle.nn.layer.loss import CrossEntropyLoss
 from paddle.metric import Accuracy
-from paddle.vision.models import LeNet
+from paddle.nn.layer.loss import CrossEntropyLoss
+from paddle.static import InputSpec as Input
 from paddle.vision.datasets import MNIST
+from paddle.vision.models import LeNet
 
 
 class MnistDataset(MNIST):
     def __init__(self, mode, return_label=True):
-        super(MnistDataset, self).__init__(mode=mode)
+        super().__init__(mode=mode)
         self.return_label = return_label
 
     def __getitem__(self, idx):

@@ -14,8 +14,7 @@
 
 # TODO: define specitial functions used in computer vision task
 
-from .. import Layer
-from .. import functional
+from .. import Layer, functional
 
 __all__ = []
 
@@ -53,15 +52,14 @@ class PixelShuffle(Layer):
 
             x = paddle.randn(shape=[2,9,4,4])
             pixel_shuffle = nn.PixelShuffle(3)
-            out_var = pixel_shuffle(x)
-            out = out_var.numpy()
+            out = pixel_shuffle(x)
             print(out.shape)
-            # (2, 1, 12, 12)
+            # [2, 1, 12, 12]
 
     """
 
     def __init__(self, upscale_factor, data_format="NCHW", name=None):
-        super(PixelShuffle, self).__init__()
+        super().__init__()
 
         if not isinstance(upscale_factor, int):
             raise TypeError("upscale factor must be int type")
@@ -124,7 +122,7 @@ class PixelUnshuffle(Layer):
     """
 
     def __init__(self, downscale_factor, data_format="NCHW", name=None):
-        super(PixelUnshuffle, self).__init__()
+        super().__init__()
 
         if not isinstance(downscale_factor, int):
             raise TypeError("Downscale factor must be int type")
@@ -199,7 +197,7 @@ class ChannelShuffle(Layer):
     """
 
     def __init__(self, groups, data_format="NCHW", name=None):
-        super(ChannelShuffle, self).__init__()
+        super().__init__()
 
         if not isinstance(groups, int):
             raise TypeError("groups must be int type")

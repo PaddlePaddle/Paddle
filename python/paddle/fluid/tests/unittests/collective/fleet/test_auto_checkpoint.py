@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
 import os
+import unittest
 
-from paddle.distributed.fleet.utils.fs import LocalFS, HDFSClient
+import paddle
 import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
+from paddle.distributed.fleet.utils.fs import HDFSClient, LocalFS
 from paddle.fluid.incubate.checkpoint.checkpoint_saver import PaddleModel
-
 from paddle.fluid.tests.unittests.auto_checkpoint_utils import (
     AutoCheckpointBase,
     get_logger,
@@ -71,15 +70,15 @@ class AutoCheckPointACLBase(AutoCheckpointBase):
             exe, main_prog, startup_prog
         )
         for i in range(3):
-            self.assertEqual(acp._get_train_epoch_range(), None)
-            self.assertEqual(acp.g_acp_type, None)
+            self.assertIsNone(acp._get_train_epoch_range())
+            self.assertIsNone(acp.g_acp_type)
             for data in data_loader():
-                self.assertEqual(acp.g_acp_type, None)
-                self.assertEqual(acp._get_train_epoch_range(), None)
+                self.assertIsNone(acp.g_acp_type)
+                self.assertIsNone(acp._get_train_epoch_range())
                 fetch = exe.run(compiled, feed=data, fetch_list=[loss])
 
-        self.assertEqual(acp.g_acp_type, None)
-        self.assertEqual(acp._get_train_epoch_range(), None)
+        self.assertIsNone(acp.g_acp_type)
+        self.assertIsNone(acp._get_train_epoch_range())
 
         m1 = PaddleModel(exe, compiled)
         m1.serialize(save_dir)
@@ -136,7 +135,7 @@ class AutoCheckPointACLBase(AutoCheckpointBase):
                     break
 
         o = acp._get_train_epoch_range()
-        assert o == None, "now train epoch must not exits now"
+        assert o is None, "now train epoch must not exits now"
         if break_epoch_no is None:
             self.assertEqual(i, 2)
         else:
@@ -169,7 +168,7 @@ class AutoCheckPointACLBase(AutoCheckpointBase):
                 fetch = exe.run(compiled, feed=data, fetch_list=[loss])
 
         o = acp._get_train_epoch_range()
-        self.assertTrue(o == None, "now train epoch must not exits now")
+        self.assertTrue(o is None, "now train epoch must not exits now")
         self.assertEqual(i, 2)
 
         if break_epoch_no is not None:

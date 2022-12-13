@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
-import numpy as np
-import decos
 import warnings
-from functools import wraps
 from contextlib import contextmanager
+from functools import wraps
+
+import decos
+import numpy as np
+
+import paddle
 
 
 def deco1(func):
@@ -73,7 +75,7 @@ def deco4(func=None, x=0):
 
         return inner_deco
 
-    if func == None:
+    if func is None:
         return decorated
     return decorated(func)
 

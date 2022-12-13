@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 
-import paddle.fluid.core as core
+import numpy as np
 from op_test import OpTest
-import paddle.fluid as fluid
+
 import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
 def conv3d_forward_naive(
@@ -327,7 +328,7 @@ class TestConv3DOp(OpTest):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
         self.check_output_with_place(
-            place, atol=1e-5, check_dygraph=(self.use_mkldnn == False)
+            place, atol=1e-5, check_dygraph=(not self.use_mkldnn)
         )
 
     def test_check_grad(self):
@@ -340,7 +341,7 @@ class TestConv3DOp(OpTest):
             {'Input', 'Filter'},
             'Output',
             max_relative_error=0.03,
-            check_dygraph=(self.use_mkldnn == False),
+            check_dygraph=(not self.use_mkldnn),
         )
 
     def test_check_grad_no_filter(self):
@@ -354,7 +355,7 @@ class TestConv3DOp(OpTest):
             'Output',
             max_relative_error=0.03,
             no_grad_set=set(['Filter']),
-            check_dygraph=(self.use_mkldnn == False),
+            check_dygraph=(not self.use_mkldnn),
         )
 
     def test_check_grad_no_input(self):
@@ -368,7 +369,7 @@ class TestConv3DOp(OpTest):
             'Output',
             max_relative_error=0.03,
             no_grad_set=set(['Input']),
-            check_dygraph=(self.use_mkldnn == False),
+            check_dygraph=(not self.use_mkldnn),
         )
 
     def init_test_case(self):
@@ -878,7 +879,7 @@ class TestConv3DAPI(unittest.TestCase):
             dtype="float32",
         )
 
-        fluid.layers.conv3d(
+        paddle.static.nn.conv3d(
             input=input_NDHWC,
             num_filters=3,
             filter_size=[3, 3, 3],
@@ -889,7 +890,7 @@ class TestConv3DAPI(unittest.TestCase):
             data_format="NCDHW",
         )
 
-        fluid.layers.conv3d(
+        paddle.static.nn.conv3d(
             input=input_NCDHW,
             num_filters=3,
             filter_size=[3, 3, 3],
@@ -900,7 +901,7 @@ class TestConv3DAPI(unittest.TestCase):
             data_format="NCDHW",
         )
 
-        fluid.layers.conv3d(
+        paddle.static.nn.conv3d(
             input=input_NCDHW,
             num_filters=3,
             filter_size=[3, 3, 3],
@@ -911,7 +912,7 @@ class TestConv3DAPI(unittest.TestCase):
             data_format="NCDHW",
         )
 
-        fluid.layers.conv3d(
+        paddle.static.nn.conv3d(
             input=input_NDHWC,
             num_filters=3,
             filter_size=[3, 3, 3],
@@ -922,7 +923,7 @@ class TestConv3DAPI(unittest.TestCase):
             data_format="NDHWC",
         )
 
-        fluid.layers.conv3d(
+        paddle.static.nn.conv3d(
             input=input_NCDHW,
             num_filters=3,
             filter_size=[3, 3, 3],
@@ -933,7 +934,7 @@ class TestConv3DAPI(unittest.TestCase):
             data_format="NCDHW",
         )
 
-        fluid.layers.conv3d(
+        paddle.static.nn.conv3d(
             input=input_NCDHW,
             num_filters=3,
             filter_size=[3, 3, 3],
@@ -956,7 +957,7 @@ class TestConv3DAPI_Error(unittest.TestCase):
 
         # ValueError: cudnn
         def run_1():
-            fluid.layers.conv3d(
+            paddle.static.nn.conv3d(
                 input=input,
                 num_filters=3,
                 filter_size=3,
@@ -972,7 +973,7 @@ class TestConv3DAPI_Error(unittest.TestCase):
 
         # ValueError: data_format
         def run_2():
-            fluid.layers.conv3d(
+            paddle.static.nn.conv3d(
                 input=input,
                 num_filters=3,
                 filter_size=[3, 3, 3],
@@ -988,7 +989,7 @@ class TestConv3DAPI_Error(unittest.TestCase):
 
         # ValueError: padding
         def run_3():
-            fluid.layers.conv3d(
+            paddle.static.nn.conv3d(
                 input=input,
                 num_filters=3,
                 filter_size=3,
@@ -1003,7 +1004,7 @@ class TestConv3DAPI_Error(unittest.TestCase):
         self.assertRaises(ValueError, run_3)
 
         def run_4():
-            fluid.layers.conv3d(
+            paddle.static.nn.conv3d(
                 input=input,
                 num_filters=3,
                 filter_size=3,
@@ -1018,7 +1019,7 @@ class TestConv3DAPI_Error(unittest.TestCase):
         self.assertRaises(ValueError, run_4)
 
         def run_5():
-            fluid.layers.conv3d(
+            paddle.static.nn.conv3d(
                 input=input,
                 num_filters=3,
                 filter_size=0,
@@ -1041,7 +1042,7 @@ class TestConv3DAPI_Error(unittest.TestCase):
         )
 
         def run_6():
-            fluid.layers.conv3d(
+            paddle.static.nn.conv3d(
                 input=x,
                 num_filters=3,
                 filter_size=3,
@@ -1057,7 +1058,7 @@ class TestConv3DAPI_Error(unittest.TestCase):
 
         # ValueError: groups
         def run_7():
-            fluid.layers.conv3d(
+            paddle.static.nn.conv3d(
                 input=input,
                 num_filters=3,
                 filter_size=3,
@@ -1073,7 +1074,7 @@ class TestConv3DAPI_Error(unittest.TestCase):
 
         # ValueError: filter num
         def run_8():
-            fluid.layers.conv3d(
+            paddle.static.nn.conv3d(
                 input=input,
                 num_filters=0,
                 filter_size=0,

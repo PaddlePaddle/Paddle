@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import multiprocessing
-import numpy as np
 import os
+import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.compiler as compiler
 import paddle.fluid.core as core
-import unittest
 
 os.environ['CPU_NUM'] = str(4)
 np.random.seed(123)
@@ -65,7 +67,12 @@ class TestFeedData(unittest.TestCase):
 
         predict_label = fluid.layers.fc(hidden, size=class_num, act='softmax')
         loss = paddle.mean(
-            fluid.layers.cross_entropy(input=predict_label, label=label)
+            paddle.nn.functional.cross_entropy(
+                input=predict_label,
+                label=label,
+                reduction='none',
+                use_softmax=False,
+            )
         )
 
         optimizer = fluid.optimizer.Adam()
@@ -106,7 +113,7 @@ class TestFeedData(unittest.TestCase):
                     "The fed Variable %r should have dimensions = %r, "
                     "shape = %r, but received fed shape %r on each device"
                     % (
-                        u'data',
+                        'data',
                         len(in_shape_tuple),
                         in_shape_tuple,
                         error_shape_list,
@@ -120,7 +127,7 @@ class TestFeedData(unittest.TestCase):
                 self.assertEqual(
                     str(dtype_mismatch_err.exception),
                     "The data type of fed Variable %r must be 'int64', but "
-                    "received 'float64'" % (u'label'),
+                    "received 'float64'" % ('label'),
                 )
 
     def _test_feed_data_dtype_mismatch(self, use_cuda, use_parallel_executor):

@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import paddle
-
-from paddle import Model, set_device
-from paddle.static import InputSpec as Input
-from paddle.metric import Accuracy
-from paddle.vision.datasets import MNIST
-from paddle.vision.models import LeNet
-import paddle.static.amp as amp
-import random
 import argparse
 import ast
+import random
+
+import numpy as np
+
+import paddle
+import paddle.static.amp as amp
+from paddle import Model, set_device
+from paddle.metric import Accuracy
+from paddle.static import InputSpec as Input
+from paddle.vision.datasets import MNIST
+from paddle.vision.models import LeNet
 
 SEED = 2
 paddle.seed(SEED)
@@ -50,7 +51,7 @@ def parse_args():
 
 class MnistDataset(MNIST):
     def __init__(self, mode, return_label=True):
-        super(MnistDataset, self).__init__(mode=mode)
+        super().__init__(mode=mode)
         self.return_label = return_label
 
     def __getitem__(self, idx):

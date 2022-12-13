@@ -17,14 +17,17 @@
 import numpy as np
 
 from paddle import get_flags
-from ...device import get_cudnn_version
-from .. import Layer
-from ..initializer import Normal
-from .. import functional as F
+
+from ...device import (
+    get_cudnn_version,
+    is_compiled_with_cuda,
+    is_compiled_with_rocm,
+)
 from ...fluid.layers import utils
+from .. import Layer
+from .. import functional as F
 from ..functional.conv import _update_padding_nd
-from ...device import is_compiled_with_cuda
-from ...device import is_compiled_with_rocm
+from ..initializer import Normal
 
 __all__ = []
 
@@ -61,7 +64,7 @@ class _ConvNd(Layer):
         bias_attr=None,
         data_format="NCHW",
     ):
-        super(_ConvNd, self).__init__()
+        super().__init__()
         assert (
             weight_attr is not False
         ), "weight_attr should not be False in Conv."
@@ -309,26 +312,26 @@ class Conv1D(_ConvNd):
     Examples:
         .. code-block:: python
 
-          import paddle
-          from paddle.nn import Conv1D
-          import numpy as np
-          x = np.array([[[4, 8, 1, 9],
-            [7, 2, 0, 9],
-            [6, 9, 2, 6]]]).astype(np.float32)
-          w=np.array(
-          [[[9, 3, 4],
-            [0, 0, 7],
-            [2, 5, 6]],
-           [[0, 3, 4],
-            [2, 9, 7],
-            [5, 6, 8]]]).astype(np.float32)
-          x_t = paddle.to_tensor(x)
-          conv = Conv1D(3, 2, 3)
-          conv.weight.set_value(w)
-          y_t = conv(x_t)
-          print(y_t)
-          # [[[133. 238.]
-          #   [160. 211.]]]
+            import paddle
+            from paddle.nn import Conv1D
+
+            x = paddle.to_tensor([[[4, 8, 1, 9],
+                                    [7, 2, 0, 9],
+                                    [6, 9, 2, 6]]], dtype="float32")
+            w = paddle.to_tensor([[[9, 3, 4],
+                                    [0, 0, 7],
+                                    [2, 5, 6]],
+                                    [[0, 3, 4],
+                                    [2, 9, 7],
+                                    [5, 6, 8]]], dtype="float32")
+
+            conv = Conv1D(3, 2, 3)
+            conv.weight.set_value(w)
+            y = conv(x)
+            print(y)
+            # Tensor(shape=[1, 2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
+            #        [[[133., 238.],
+            #          [160., 211.]]])
     """
 
     def __init__(
@@ -345,7 +348,7 @@ class Conv1D(_ConvNd):
         bias_attr=None,
         data_format="NCL",
     ):
-        super(Conv1D, self).__init__(
+        super().__init__(
             in_channels,
             out_channels,
             kernel_size,
@@ -446,7 +449,7 @@ class Conv1DTranspose(_ConvNd):
         in_channels(int): The number of channels in the input image.
         out_channels(int): The number of the filter. It is as same as the output
             feature map.
-        kernel_size(int|tuple|list, optional): The filter size. If kernel_size is a tuple/list,
+        kernel_size(int|tuple|list): The filter size. If kernel_size is a tuple/list,
             it must contain one integers, (kernel_size). None if
             use output size to calculate kernel_size. Default: None. kernel_size and
             output_size should not be None at the same time.
@@ -495,23 +498,22 @@ class Conv1DTranspose(_ConvNd):
     Examples:
        .. code-block:: python
 
-          import paddle
-          from paddle.nn import Conv1DTranspose
-          import numpy as np
+            import paddle
+            from paddle.nn import Conv1DTranspose
 
-          # shape: (1, 2, 4)
-          x=np.array([[[4, 0, 9, 7],
-                       [8, 0, 9, 2]]]).astype(np.float32)
-          # shape: (2, 1, 2)
-          y=np.array([[[7, 0]],
-                      [[4, 2]]]).astype(np.float32)
-          x_t = paddle.to_tensor(x)
-          conv = Conv1DTranspose(2, 1, 2)
-          conv.weight.set_value(y)
-          y_t = conv(x_t)
-          print(y_t)
+            # shape: (1, 2, 4)
+            x = paddle.to_tensor([[[4, 0, 9, 7],
+                                [8, 0, 9, 2]]], dtype="float32")
+            # shape: (2, 1, 2)
+            w = paddle.to_tensor([[[7, 0]],
+                                [[4, 2]]], dtype="float32")
 
-          # [[[60. 16. 99. 75.  4.]]]
+            conv = Conv1DTranspose(2, 1, 2)
+            conv.weight.set_value(w)
+            y = conv(x)
+            print(y)
+            # Tensor(shape=[1, 1, 5], dtype=float32, place=Place(gpu:0), stop_gradient=False,
+            #        [[[60., 16., 99., 75., 4. ]]])
     """
 
     def __init__(
@@ -528,7 +530,7 @@ class Conv1DTranspose(_ConvNd):
         bias_attr=None,
         data_format="NCL",
     ):
-        super(Conv1DTranspose, self).__init__(
+        super().__init__(
             in_channels,
             out_channels,
             kernel_size,
@@ -596,7 +598,7 @@ class Conv2D(_ConvNd):
     Parameters:
         in_channels(int): The number of input channels in the input image.
         out_channels(int): The number of output channels produced by the convolution.
-        kernel_size(int|list|tuple, optional): The size of the convolving kernel.
+        kernel_size(int|list|tuple): The size of the convolving kernel.
         stride(int|list|tuple, optional): The stride size. If stride is a list/tuple, it must
             contain three integers, (stride_H, stride_W). Otherwise, the
             stride_H = stride_W = stride. The default value is 1.
@@ -666,9 +668,8 @@ class Conv2D(_ConvNd):
 
           conv = nn.Conv2D(4, 6, (3, 3))
           y_var = conv(x_var)
-          y_np = y_var.numpy()
-          print(y_np.shape)
-          # (2, 6, 6, 6)
+          print(y_var.shape)
+          # [2, 6, 6, 6]
     """
 
     def __init__(
@@ -685,7 +686,7 @@ class Conv2D(_ConvNd):
         bias_attr=None,
         data_format="NCHW",
     ):
-        super(Conv2D, self).__init__(
+        super().__init__(
             in_channels,
             out_channels,
             kernel_size,
@@ -839,9 +840,8 @@ class Conv2DTranspose(_ConvNd):
 
           conv = nn.Conv2DTranspose(4, 6, (3, 3))
           y_var = conv(x_var)
-          y_np = y_var.numpy()
-          print(y_np.shape)
-          # (2, 6, 10, 10)
+          print(y_var.shape)
+          # [2, 6, 10, 10]
     """
 
     def __init__(
@@ -858,7 +858,7 @@ class Conv2DTranspose(_ConvNd):
         bias_attr=None,
         data_format="NCHW",
     ):
-        super(Conv2DTranspose, self).__init__(
+        super().__init__(
             in_channels,
             out_channels,
             kernel_size,
@@ -925,7 +925,7 @@ class Conv3D(_ConvNd):
     Parameters:
         in_channels(int): The number of input channels in the input image.
         out_channels(int): The number of output channels produced by the convolution.
-        kernel_size(int|list|tuple, optional): The size of the convolving kernel.
+        kernel_size(int|list|tuple): The size of the convolving kernel.
         stride(int|list|tuple, optional): The stride size. If stride is a list/tuple, it must
             contain three integers, (stride_D, stride_H, stride_W). Otherwise, the
             stride_D = stride_H = stride_W = stride. The default value is 1.
@@ -997,9 +997,8 @@ class Conv3D(_ConvNd):
 
           conv = nn.Conv3D(4, 6, (3, 3, 3))
           y_var = conv(x_var)
-          y_np = y_var.numpy()
-          print(y_np.shape)
-          # (2, 6, 6, 6, 6)
+          print(y_var.shape)
+          # [2, 6, 6, 6, 6]
     """
 
     def __init__(
@@ -1016,7 +1015,7 @@ class Conv3D(_ConvNd):
         bias_attr=None,
         data_format="NCDHW",
     ):
-        super(Conv3D, self).__init__(
+        super().__init__(
             in_channels,
             out_channels,
             kernel_size,
@@ -1179,9 +1178,8 @@ class Conv3DTranspose(_ConvNd):
 
           conv = nn.Conv3DTranspose(4, 6, (3, 3, 3))
           y_var = conv(x_var)
-          y_np = y_var.numpy()
-          print(y_np.shape)
-          # (2, 6, 10, 10, 10)
+          print(y_var.shape)
+          # [2, 6, 10, 10, 10]
     """
 
     def __init__(
@@ -1198,7 +1196,7 @@ class Conv3DTranspose(_ConvNd):
         bias_attr=None,
         data_format="NCDHW",
     ):
-        super(Conv3DTranspose, self).__init__(
+        super().__init__(
             in_channels,
             out_channels,
             kernel_size,

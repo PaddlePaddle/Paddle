@@ -13,20 +13,20 @@
 # limitations under the License.
 
 import numpy as np
+from op_test import OpTest
+from testsuite import append_loss_ops, create_op, set_input
+from white_list import no_grad_set_white_list, op_threshold_white_list
+from xpu.get_test_cover_info import (
+    get_xpu_op_support_types,
+    is_empty_grad_op_type,
+    type_dict_str_to_numpy,
+)
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Program, convert_np_dtype_to_dtype_
-from testsuite import append_loss_ops, create_op, set_input
-from white_list import op_threshold_white_list, no_grad_set_white_list
-from op_test import OpTest
-from xpu.get_test_cover_info import (
-    is_empty_grad_op_type,
-    get_xpu_op_support_types,
-    type_dict_str_to_numpy,
-)
 
 
 class XPUOpTest(OpTest):
@@ -51,7 +51,7 @@ class XPUOpTest(OpTest):
 
         if cls.dtype == np.float16:
             place = paddle.XPUPlace(0)
-            if core.is_float16_supported(place) == False:
+            if not core.is_float16_supported(place):
                 return
 
         if cls.dtype == np.float64:
@@ -98,7 +98,7 @@ class XPUOpTest(OpTest):
             return
 
         if self.dtype == np.float16:
-            if core.is_float16_supported(place) == False:
+            if not core.is_float16_supported(place):
                 return
 
         if self.dtype == np.float16:
@@ -172,7 +172,7 @@ class XPUOpTest(OpTest):
             return
 
         if self.dtype == np.float16:
-            if core.is_float16_supported(place) == False:
+            if not core.is_float16_supported(place):
                 return
 
         if self.dtype == np.float16:
@@ -254,7 +254,7 @@ class XPUOpTest(OpTest):
 
         # oneDNN numeric gradient should use CPU kernel
         use_onednn = False
-        if "use_mkldnn" in op_attrs and op_attrs["use_mkldnn"] == True:
+        if "use_mkldnn" in op_attrs and op_attrs["use_mkldnn"]:
             op_attrs["use_mkldnn"] = False
             use_onednn = True
 

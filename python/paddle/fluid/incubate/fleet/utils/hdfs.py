@@ -163,7 +163,7 @@ class HDFSClient(FS):
     def _test_match(self, lines):
         for l in lines:
             m = self._bd_err_re.match(l)
-            if m != None:
+            if m is not None:
                 return m
 
         return None

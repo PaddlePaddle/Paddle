@@ -11,18 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import paddle
-from paddle.fluid import core, unique_name
+import os
+import re
 from functools import reduce
+
+import paddle
 from paddle.distributed.fleet.meta_optimizers.common import (
-    is_loss_grad_op,
+    OP_ROLE_KEY,
+    OpRole,
     is_backward_op,
+    is_loss_grad_op,
     is_optimizer_op,
 )
-from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-
-import re
-import os
+from paddle.framework import core
+from paddle.utils import unique_name
 
 
 def check_broadcast(block):
@@ -38,7 +40,7 @@ def check_broadcast(block):
     broadcast_vars = {}
     for idx, op in enumerate(block.ops):
         if op.type == "c_broadcast":
-            if op.all_attrs()["use_calc_stream"] == False:
+            if not op.all_attrs()["use_calc_stream"]:
                 var_name = op.desc.input_arg_names()[0]
                 if "@BroadCast" in var_name:
                     if var_name in broadcast_vars:
@@ -72,7 +74,7 @@ def check_broadcast(block):
             last_sync_calc_op_idx = idx
             continue
         if op.type == "c_broadcast":
-            if op.all_attrs()["use_calc_stream"] == False:
+            if not op.all_attrs()["use_calc_stream"]:
                 var_name = op.desc.input_arg_names()[0]
                 if "@BroadCast" in var_name:
                     if broadcast_vars[var_name]["fill_constant_pos"] != -1:
@@ -117,7 +119,7 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
     for idx, op in enumerate(block.ops):
         # sharding use both allreduce and reduce to sync grad
         if op.type == "c_allreduce_sum" or op.type == "c_reduce_sum":
-            if op.all_attrs()["use_calc_stream"] == False:
+            if not op.all_attrs()["use_calc_stream"]:
                 ring_id = op.desc.attr("ring_id")
                 var_name = op.desc.input_arg_names()[0]
                 param = var_name.split("@")[0]
@@ -153,7 +155,7 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
                     dp_grads_status[var_name] = 1
         # check sharding allreduce and  reduce but skip megatron allreduce
         elif op.type == "c_allreduce_sum" or op.type == "c_reduce_sum":
-            if op.all_attrs()["use_calc_stream"] == False:
+            if not op.all_attrs()["use_calc_stream"]:
                 var_name = op.desc.input_arg_names()[0]
                 ring_id = op.desc.attr("ring_id")
                 if ring_id == sharding_ring_id:
@@ -408,7 +410,7 @@ def insert_allreduce_ops(
     return
 
 
-class FuseHelper(object):
+class FuseHelper:
     @staticmethod
     def sort_vars_by_dtype(block, vars_name):
         fp32_vars = []
@@ -1046,11 +1048,11 @@ def save_persistables(exe, dirname, main_program, filename=None):
         )
 
     if int(os.environ.get('PADDLE_TRAINER_ID', 0)) == 0:
-        paddle.fluid.io.save_persistables(
-            exe, dirname, main_program=main_program, filename=None
+        paddle.distributed.io.save_persistables(
+            exe, dirname, main_program=main_program, filename=filename
         )
     else:
-        paddle.fluid.io.save_vars(
+        paddle.static.save_vars(
             exe,
             dirname,
             main_program=main_program,

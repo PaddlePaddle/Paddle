@@ -20,12 +20,13 @@ of 25,000 highly polar movie reviews for training, and 25,000 for testing.
 Besides, this module also provides API for building dictionary.
 """
 
-import paddle.dataset.common
-import paddle.utils.deprecated as deprecated
 import collections
-import tarfile
 import re
 import string
+import tarfile
+
+import paddle.dataset.common
+import paddle.utils.deprecated as deprecated
 
 __all__ = []
 
@@ -45,7 +46,7 @@ def tokenize(pattern):
         # tarfile.extractfile, which does random access and might
         # destroy hard disks.
         tf = tarf.next()
-        while tf != None:
+        while tf is not None:
             if bool(pattern.match(tf.name)):
                 # newline and punctuations removal and ad-hoc tokenization.
                 yield tarf.extractfile(tf).read().rstrip(b'\n\r').translate(

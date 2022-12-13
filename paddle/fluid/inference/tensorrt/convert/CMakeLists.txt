@@ -23,7 +23,11 @@ list(
   gelu_op.cc
   layer_norm_op.cc
   multihead_matmul_op.cc
+  multihead_matmul_roformer_op.cc
   shuffle_channel_op.cc
+  fill_any_like_op.cc
+  where_op.cc
+  one_hot_op.cc
   swish_op.cc
   silu_op.cc
   instance_norm_op.cc
@@ -68,6 +72,7 @@ list(
   preln_residual_bias.cc
   c_allreduce_op.cc
   top_k_op.cc
+  range_op.cc
   squeeze2_op.cc
   unsqueeze2_op.cc
   rnn_op.cc
@@ -76,13 +81,20 @@ list(
   shape_op.cc
   fill_constant_op.cc
   fused_token_prune_op.cc
+  celu_op.cc
   layernorm_shift_partition_op.cc
+  reverse_roll_op.cc
+  tanhshrink_op.cc
+  take_along_axis_op.cc
+  logsigmoid_op.cc
+  preln_layernorm_shift_partition_op.cc
   merge_layernorm_op.cc
+  skip_merge_layernorm_op.cc
   generic_and_custom_plugin_creater.cc
   fused_lookup_tables_op.cc
   expand_v2_op.cc)
 
-if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7 AND NOT WIN32)
+if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
   list(APPEND CONVERT_FILES emb_eltwise_layernorm.cc
        preln_emb_eltwise_layernorm.cc)
 endif()

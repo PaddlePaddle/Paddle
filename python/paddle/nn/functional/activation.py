@@ -12,21 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...tensor.ops import sigmoid  # noqa: F401
-from ...tensor.math import tanh  # noqa: F401
-from ...tensor.math import tanh_  # noqa: F401
-
-from ...fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
-from ...tensor.manipulation import chunk
-
-from ...fluid.layer_helper import LayerHelper
-from ...fluid.framework import convert_np_dtype_to_dtype_
-from ...fluid.framework import _in_legacy_dygraph, in_dygraph_mode
-from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 import paddle
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
 from paddle.framework import core
-from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
+
+from ...fluid.data_feeder import check_dtype, check_variable_and_dtype
+from ...fluid.framework import (
+    _in_legacy_dygraph,
+    convert_np_dtype_to_dtype_,
+    in_dygraph_mode,
+)
+from ...fluid.layer_helper import LayerHelper
+from ...tensor.manipulation import chunk
+from ...tensor.math import tanh  # noqa: F401
+from ...tensor.math import tanh_  # noqa: F401
+from ...tensor.ops import sigmoid  # noqa: F401
 
 __all__ = []
 
@@ -35,17 +36,19 @@ def celu(x, alpha=1.0, name=None):
     r"""
     celu activation.
 
+    Apply the following operation to each element of the input Tensor accroding to the `Continuously Differentiable Exponential Linear Units <https://arxiv.org/abs/1704.07483>`_.
+
     .. math::
 
-        celu(x) = max(0, x) + min(0, \alpha * (e^{x/\alpha}-1))
+        \operatorname{celu}(x) = \max(0, x) + \min(0, \alpha * (\mathrm{e}^{x/\alpha}-1))
 
     Parameters:
-        x (Tensor): The input Tensor with data type float32, float64.
-        alpha (float, optional): The 'alpha' value of the CELU formulation. Default is 1.0.
+        x (Tensor): The input Tensor with data type float16, float32, or float64.
+        alpha (float, optional): The 'alpha' value of the CELU formula. Default is 1.0.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        A Tensor with the same data type and shape as ``x`` .
+        A ``Tensor`` with the same data type and shape as ``x`` .
 
     Examples:
         .. code-block:: python
@@ -288,7 +291,7 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.brelu(x, min, max)
+        return _C_ops.hardtanh(x, min, max)
 
     if _in_legacy_dygraph():
         return _legacy_C_ops.brelu(x, 't_min', min, 't_max', max)
@@ -402,7 +405,7 @@ def hardswish(x, name=None):
     if _in_legacy_dygraph():
         return _legacy_C_ops.hard_swish(x)
     if in_dygraph_mode():
-        return _C_ops.hardswish(x, 6, 6, 3)
+        return _C_ops.hardswish(x)
 
     check_variable_and_dtype(
         x, 'x', ['float16', 'float32', 'float64'], 'hardswish'
@@ -810,9 +813,9 @@ def maxout(x, groups, axis=1, name=None):
     Parameters:
         x (Tensor): The input is 4-D Tensor with shape [N, C, H, W] or [N, H, W, C], the data type
             of input is float32 or float64.
-        groups (int, optional): The groups number of maxout. `groups` specifies the
+        groups (int): The groups number of maxout. `groups` specifies the
             index of channel dimension where maxout will be performed. This must be
-            a factor of number of features. Default is 1.
+            a factor of number of features.
         axis (int, optional): The axis along which to perform maxout calculations.
             It should be 1 when data format is NCHW, be -1 or 3 when data format
             is NHWC. If ``axis`` < 0, it works the same way as :math:`axis + D` ,
@@ -893,7 +896,7 @@ def relu6(x, name=None):
     """
     threshold = 6.0
     if in_dygraph_mode():
-        return _C_ops.relu6(x, threshold)
+        return _C_ops.relu6(x)
     if in_dynamic_mode():
         return _legacy_C_ops.relu6(x, 'threshold', threshold)
 
@@ -1286,10 +1289,12 @@ def softshrink(x, threshold=0.5, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([-0.9, -0.2, 0.1, 0.8]))
-            out = F.softshrink(x) # [-0.4, 0, 0, 0.3]
+            x = paddle.to_tensor([-0.9, -0.2, 0.1, 0.8])
+            out = F.softshrink(x)
+            print(out)
+            # Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [-0.39999998,  0.        ,  0.        ,  0.30000001])
     """
     if threshold < 0:
         raise ValueError(
@@ -1337,10 +1342,12 @@ def softsign(x, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
-            out = F.softsign(x) # [-0.285714, -0.166667, 0.0909091, 0.230769]
+            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            out = F.softsign(x)
+            print(out)
+            # Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [-0.28571430, -0.16666666,  0.09090909,  0.23076925])
     """
     if in_dygraph_mode():
         return _C_ops.softsign(x)
@@ -1376,13 +1383,15 @@ def swish(x, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([-2., 0., 1.]))
-            out = F.swish(x) # [-0.238406, 0., 0.731059]
+            x = paddle.to_tensor([-2., 0., 1.])
+            out = F.swish(x)
+            print(out)
+            # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [-0.23840584,  0.        ,  0.73105854])
     """
     if in_dygraph_mode():
-        return _C_ops.swish(x, 1.0)
+        return _C_ops.swish(x)
     if _in_legacy_dygraph():
         return _legacy_C_ops.swish(x, 'beta', 1.0)
 
@@ -1456,10 +1465,12 @@ def tanhshrink(x, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
-            out = F.tanhshrink(x) # [-0.020051, -0.00262468, 0.000332005, 0.00868739]
+            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            out = F.tanhshrink(x)
+            print(out)
+            # Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [-0.02005106, -0.00262468,  0.00033200,  0.00868741])
     """
     if in_dygraph_mode():
         return _C_ops.tanh_shrink(x)
@@ -1504,10 +1515,12 @@ def thresholded_relu(x, threshold=1.0, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([2., 0., 1.]))
-            out = F.thresholded_relu(x) # [2., 0., 0.]
+            x = paddle.to_tensor([2., 0., 1.])
+            out = F.thresholded_relu(x)
+            print(out)
+            # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [2., 0., 0.])
     """
 
     if in_dygraph_mode():
@@ -1664,11 +1677,12 @@ def glu(x, axis=-1, name=None):
 
             x = paddle.to_tensor(
                 [[-0.22014759, -1.76358426,  0.80566144,  0.04241343],
-                 [-1.94900405, -1.89956081,  0.17134808, -1.11280477]]
+                    [-1.94900405, -1.89956081,  0.17134808, -1.11280477]]
             )
-            print(F.glu(x).numpy())
-            # array([[-0.15216254, -0.9004892 ],
-            #        [-1.0577879 , -0.46985325]], dtype=float32)
+            print(F.glu(x))
+            # Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[-0.15216254, -0.90048921],
+            #         [-1.05778778, -0.46985325]])
 
     """
     check_variable_and_dtype(

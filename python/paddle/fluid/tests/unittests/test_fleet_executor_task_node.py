@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+
 import paddle
 import paddle.fluid.core as core
 from paddle.distributed.fleet.fleet_executor_utils import TaskNode

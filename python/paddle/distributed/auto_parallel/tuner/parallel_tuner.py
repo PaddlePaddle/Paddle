@@ -12,23 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import time
-import math
 import copy
 import hashlib
 import itertools
+import math
+import time
 from collections import defaultdict
+
 import numpy as np
-from ..process_mesh import ProcessMesh
+
 from ..completion import Completer
-from ..parallelizer_v2 import Parallelizer
+from ..cost import CostEstimator
 from ..dist_context import _node_id
 from ..dist_op import DistributedOperator
 from ..operators.common import find_compatible_distributed_operator_impls
+from ..parallelizer_v2 import Parallelizer
+from ..process_mesh import ProcessMesh
 from .trial import Trial, TrialStatus
 from .tunable_space import TunableSpace
-from .tunable_variable import Boolean, IntRange
-from ..cost import CostEstimator
 from .tunable_variable import Boolean, IntRange
 
 
@@ -268,7 +269,7 @@ class ParallelTuner:
             return
 
         for idx, dim in enumerate(dims_list):
-            if visited[idx] == False:
+            if not visited[idx]:
                 dims_mapping[start] = dim
                 visited[idx] = True
                 self._generate_dims_mapping_candidates_helper(

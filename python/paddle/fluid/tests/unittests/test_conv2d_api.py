@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 import paddle
 
 paddle.enable_static()
-import paddle.fluid.core as core
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
 class TestConv2DAPI(unittest.TestCase):
@@ -359,20 +360,9 @@ class TestConv2DEnviron(unittest.TestCase):
             )
             result = conv(inputs)
 
-    def run3(self, place):
-        with fluid.dygraph.guard(place):
-            inputs = fluid.dygraph.to_variable(self.input_np)
-            conv = paddle.fluid.dygraph.nn.Conv2D(
-                num_channels=3,
-                num_filters=4,
-                filter_size=(3, 3),
-            )
-            result = conv(inputs)
-
     def run_all(self, place):
         self.run1(place)
         self.run2(place)
-        self.run3(place)
 
     def test_environ(self):
         self.input_np = np.random.random([2, 3, 5, 5]).astype("float32")

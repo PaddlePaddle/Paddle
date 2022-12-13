@@ -14,31 +14,45 @@
 
 import logging
 
-from .pass_base import PassBase, register_pass
-from paddle.fluid import core, unique_name
-from paddle.fluid import framework as framework
-from paddle.fluid.framework import Variable
-from paddle.fluid.backward import _append_grad_suffix_, _get_no_grad_set_name
-from paddle.fluid.backward import ProgramStats, _rename_arg_, _find_op_path_
 from paddle.distributed.auto_parallel.dist_attribute import (
     OperatorDistributedAttribute,
 )
 from paddle.distributed.auto_parallel.utils import (
     get_loss_op,
-    set_var_dist_attr,
-    set_dist_op_desc_original_id,
-)
-from paddle.distributed.auto_parallel.utils import (
+    insert_dependencies_for_two_ops,
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
+    set_dist_op_desc_original_id,
+    set_var_dist_attr,
 )
+from paddle.fluid import core
+from paddle.fluid import framework as framework
+from paddle.fluid import unique_name
+from paddle.fluid.backward import (
+    ProgramStats,
+    _append_grad_suffix_,
+    _find_op_path_,
+    _get_no_grad_set_name,
+    _rename_arg_,
+)
+
+from .pass_base import PassBase, register_pass
+
+
+def _to_be_recomputed(op):
+    return op.has_attr('op_namescope') and "/auto_parallel/rc_" in op.attr(
+        'op_namescope'
+    )
 
 
 class RecomputeState(ProgramStats):
     def __init__(self, block, ops):
-        super(RecomputeState, self).__init__(block=block, ops=ops)
+        super().__init__(block=block, ops=ops)
         self._block = block
         self._ops = ops
+        # {varname: {as_input_ops: op_idx, as_output_ops: op_idx}}
         self.var_op_deps = {}
+        # {segment_name: op_idx}
+        self.seg_op_deps = {}
 
     def build_stats(self):
         for i, op in enumerate(self._ops):
@@ -58,36 +72,72 @@ class RecomputeState(ProgramStats):
                     self.var_op_deps[name]["var_as_input_ops"] = []
                     self.var_op_deps[name]["var_as_output_ops"] = [i]
 
-    def get_recompute_segments(self, checkpoints):
-        """get recompute segments from checkpoints"""
-        segments = []
-        start_idx = -1
-        pre_segment_end_idx = -1
-        while start_idx + 1 < len(checkpoints):
-            if start_idx == -1:
-                ckpt_name = checkpoints[start_idx + 1]
-                if ckpt_name not in self.var_op_deps:
-                    start_idx += 1
-                    continue
-                op_idx_list = self.var_op_deps[ckpt_name]["var_as_output_ops"]
-                if op_idx_list:
-                    segments.append([0, max(op_idx_list) + 1])
+            if not _to_be_recomputed(op):
+                continue
+
+            seg_name = op.attr('op_namescope')
+            if seg_name not in self.seg_op_deps:
+                self.seg_op_deps[seg_name] = [i]
             else:
-                flag, min_idx, max_idx = self.is_subgraph(
-                    [checkpoints[start_idx]], [checkpoints[start_idx + 1]]
-                )
-                if flag:
-                    min_idx = self._update_segment_start(
-                        min_idx, pre_segment_end_idx
-                    )
-                    segments.append([min_idx, max_idx + 1])
+                assert (
+                    self.seg_op_deps[seg_name][-1] + 1 == i
+                ), "The recompute segment's ops should be continuous"
+                self.seg_op_deps[seg_name].extend([i])
+
+    def get_recompute_segments(
+        self, checkpoints_list=None, no_recompute_segments=[]
+    ):
+        """get recompute segments and checkpoints"""
+        segments = []
+        checkpoints = checkpoints_list or []
+
+        if len(checkpoints) == 0:
+            # the segments is marked by `auto.recompute()` api
+            for segment_idx in self.seg_op_deps.values():
+                if len(segment_idx) == 1:
+                    continue
+                segments.append([segment_idx[0], segment_idx[-1] + 1])
+                checkpoints.extend(self._ops[segment_idx[-1]].output_arg_names)
+        else:
+            # the segments is marked by `strategy.checkpoints` api
+            start_idx = -1
+            pre_segment_end_idx = -1
+            while start_idx + 1 < len(checkpoints):
+                if start_idx == -1:
+                    ckpt_name = checkpoints[start_idx + 1]
+                    if ckpt_name not in self.var_op_deps:
+                        start_idx += 1
+                        continue
+                    op_idx_list = self.var_op_deps[ckpt_name][
+                        "var_as_output_ops"
+                    ]
+                    if op_idx_list:
+                        segments.append([0, max(op_idx_list) + 1])
                 else:
-                    logging.info(
-                        "Could not recompute op range [{}] - [{}] ".format(
-                            min_idx, max_idx + 1
-                        )
+                    flag, min_idx, max_idx = self.is_subgraph(
+                        [checkpoints[start_idx]], [checkpoints[start_idx + 1]]
                     )
-            start_idx += 1
+                    if flag:
+                        min_idx = self._update_segment_start(
+                            min_idx, pre_segment_end_idx
+                        )
+                        segments.append([min_idx, max_idx + 1])
+                    else:
+                        logging.info(
+                            "Could not recompute op range [{}] - [{}] ".format(
+                                min_idx, max_idx + 1
+                            )
+                        )
+                start_idx += 1
+
+        if no_recompute_segments:
+            for i in reversed(sorted(no_recompute_segments)):
+                assert i < len(
+                    segments
+                ), "the no_recompute_segments idx [{}] should be lower the number of segment [{}]".format(
+                    i, len(segments)
+                )
+                segments.pop(i)
 
         for i, (idx1, idx2) in enumerate(segments):
             logging.info("recompute segment[{}]".format(i))
@@ -106,7 +156,10 @@ class RecomputeState(ProgramStats):
                 )
             )
 
-        return segments
+        return segments, checkpoints
+
+    def is_recompute(self):
+        return any([_to_be_recomputed(op) for op in self._ops])
 
     def modify_forward_desc_for_recompute(self, dist_context):
         """
@@ -155,6 +208,7 @@ class RecomputeState(ProgramStats):
                 if cur_op.attr("fix_seed") is False
                 else int(cur_op.attr("seed"))
             )
+            # TODO add dependency for seed op to ensure it be issued just before recompute.
             seed_op = self._block._insert_op_without_sync(
                 index=cur_op.idx,
                 type="seed",
@@ -162,6 +216,7 @@ class RecomputeState(ProgramStats):
                 outputs={"Out": seed_var},
                 attrs={"seed": seed, "force_cpu": True},
             )
+            seed_op._set_attr('op_namescope', cur_op.attr('op_namescope'))
             # set new seed op's dist_attr
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
                 seed_op, ref_process_mesh, ref_dims_mapping, dist_context
@@ -196,7 +251,6 @@ def _get_stop_gradients(program, no_grad_set):
 
     no_grad_set_name = set()
     for var in program.list_vars():
-        assert isinstance(var, Variable)
         if "@GRAD" in var.name:
             break
         if var.stop_gradient:
@@ -239,18 +293,17 @@ def _add_needed_descs_to_block(
 @register_pass("auto_parallel_recompute")
 class RecomputePass(PassBase):
     def __init__(self):
-        super(RecomputePass, self).__init__()
+        super().__init__()
         self.set_attr("checkpoints", None)
         self.set_attr("loss", None)
         self.set_attr("dist_context", None)
         self.set_attr("no_grad_set", None)
+        self.set_attr("no_recompute_segments", [])
 
     def _check_self(self):
         if self.get_attr("dist_context") is None:
             return False
         if self.get_attr("loss") is None:
-            return False
-        if self.get_attr("checkpoints") is None:
             return False
         return True
 
@@ -259,25 +312,32 @@ class RecomputePass(PassBase):
 
     def _apply_single_impl(self, main_program, startup_program, context):
         checkpoints = self.get_attr("checkpoints")
+        no_recompute_segments = self.get_attr("no_recompute_segments")
         loss = self.get_attr("loss")
         no_grad_set = self.get_attr("no_grad_set")
         self._dist_context = self.get_attr("dist_context")
 
+        # 0. get op_path which is related to loss
         main_block = main_program.global_block()
         no_grad_set_name = _get_stop_gradients(main_program, no_grad_set)
-        # get op_path which is related to loss
         op_path = _find_op_path_(main_block, [loss], [], no_grad_set_name)
 
-        # step 1: build recompute state
+        # 1. build recompute state
         rc_state = RecomputeState(main_block, op_path)
-        rc_state.modify_forward_desc_for_recompute(self._dist_context)
-        rc_state.build_stats()
-        checkpoints = rc_state.sort_checkpoints(checkpoints)
-        segments = rc_state.get_recompute_segments(checkpoints)
-        if segments == []:
+        if not rc_state.is_recompute() and not checkpoints:
             return
 
-        # step 2: get vars_should_be_hold
+        # 2. get the segments to be recomputed
+        rc_state.modify_forward_desc_for_recompute(self._dist_context)
+        rc_state.build_stats()
+        checkpoints = rc_state.sort_checkpoints(checkpoints or [])
+        segments, checkpoints = rc_state.get_recompute_segments(
+            checkpoints, no_recompute_segments
+        )
+        if segments == [] or checkpoints == []:
+            return
+
+        # 3. get vars that should be hold in memory
         vars_should_be_hold = []
         for segment in segments:
             vars_should_be_hold.extend(
@@ -295,9 +355,9 @@ class RecomputePass(PassBase):
         vars_should_be_hold = list(set(vars_should_be_hold))
         vars_in_memory = vars_should_be_hold + checkpoints
 
-        # step 3: get recomputed fwd ops desc
-        var_name_dict = {}
-        ckpt_ops_dict = {}
+        # 4. get the fwd ops desc to be recomputed.
+        var_name_dict = {}  # varname --> varname.subprog_XXX
+        ckpt_ops_dict = {}  # ckpt_op_id --> segment_descs
         buffer_block = main_block.program._create_block()
         for i, segment in enumerate(segments[::-1]):
             fwd_ops = op_path[segment[0] : segment[1]]
@@ -362,7 +422,7 @@ class RecomputePass(PassBase):
             ckpt_op = op_path[segment[1] - 1]
             ckpt_ops_dict[ckpt_op.desc.original_id()] = [True, segment_descs]
 
-        # step 4: insert recomputed fwd ops
+        # 5. insert recomputed fwd ops into backward parse
         ops = main_block.ops
         loss_op = get_loss_op(main_block)
         loss_op_idx = _find_op_index(main_block, loss_op)
@@ -396,6 +456,7 @@ class RecomputePass(PassBase):
                     while idx - 1 >= 0 and ops[idx - 1].type == "sum":
                         idx -= 1
                     segment_descs = ckpt_ops_dict[fwd_op_id][1]
+                    rc_op = None
                     for _, op_desc in reversed(list(enumerate(segment_descs))):
                         rc_op = main_block._insert_op_without_sync(
                             idx, type='nop'
@@ -413,7 +474,31 @@ class RecomputePass(PassBase):
                         )
 
                     ckpt_ops_dict[fwd_op_id][0] = False
-
+                    if rc_op:
+                        prior_op = main_block.ops[rc_op.idx - 1]
+                        posterior_op = rc_op
+                        prior_mesh = (
+                            self._dist_context.get_op_dist_attr_for_program(
+                                prior_op
+                            ).process_mesh
+                        )
+                        posterior_mesh = (
+                            self._dist_context.get_op_dist_attr_for_program(
+                                posterior_op
+                            ).process_mesh
+                        )
+                        # NOTE if two recompute segements across two pipeline stages
+                        # not need dependecies for it
+                        if prior_mesh == posterior_mesh:
+                            insert_dependencies_for_two_ops(
+                                main_block,
+                                idx,
+                                prior_op,
+                                posterior_op,
+                                self._dist_context,
+                                is_recompute=True,
+                                sync=False,
+                            )
         main_program._sync_with_cpp()
 
     def reset_op_dist_attr(self, op, var_name_dict):

@@ -12,22 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import unittest
 import sys
+import unittest
+
+import numpy as np
 
 sys.path.append("..")
+
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.backward import append_backward
-
-from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import (
-    create_test_class,
-    get_xpu_op_support_types,
-    XPUOpTestWrapper,
-)
 
 paddle.enable_static()
 
@@ -91,10 +92,10 @@ class TestXPUWhereAPI(unittest.TestCase):
         self.out = np.where(self.cond, self.x, self.y)
 
     def ref_x_backward(self, dout):
-        return np.where(self.cond == True, dout, 0)
+        return np.where(self.cond, dout, 0)
 
     def ref_y_backward(self, dout):
-        return np.where(self.cond == False, dout, 0)
+        return np.where(~self.cond, dout, 0)
 
     def test_api(self):
         for x_stop_gradient in [False, True]:

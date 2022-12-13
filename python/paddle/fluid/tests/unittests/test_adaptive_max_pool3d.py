@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 
-import paddle.fluid.core as core
+import numpy as np
 from op_test import check_out_dtype
+
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle.nn.functional as F
 
 
@@ -41,7 +42,7 @@ def adaptive_pool3d_forward(
         else [x.shape[4], x.shape[1], x.shape[2], x.shape[3]]
     )
 
-    if isinstance(output_size, int) or output_size == None:
+    if isinstance(output_size, int) or output_size is None:
         H_out = output_size
         W_out = output_size
         D_out = output_size
@@ -49,13 +50,13 @@ def adaptive_pool3d_forward(
     else:
         D_out, H_out, W_out = output_size
 
-    if output_size[0] == None:
+    if output_size[0] is None:
         output_size[0] = D
         D_out = D
-    if output_size[1] == None:
+    if output_size[1] is None:
         output_size[1] = H
         H_out = H
-    if output_size[2] == None:
+    if output_size[2] is None:
         output_size[2] = W
         W_out = W
 

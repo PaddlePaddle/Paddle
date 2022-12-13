@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
+import argparse
 import json
 import logging
-import argparse
+import os
 
 
 def check_path_exists(path):
@@ -40,7 +40,7 @@ def parse_log_file(log_file):
         for line in f.read().strip().split('\n')[::-1]:
             try:
                 result = json.loads(line)
-                if result.get("disabled", False) == True:
+                if result.get("disabled", False):
                     return None
                 return result
             except ValueError:

@@ -12,20 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import time
-import os
 import functools
+import glob
+import os
+import random
+import tarfile
 import time
 from functools import partial
 from os.path import expanduser
-import glob
-import random
-import tarfile
 
+import numpy as np
+from test_dist_base import RUN_STEP, TestDistRunnerBase, runtime_main
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-from test_dist_base import TestDistRunnerBase, runtime_main, RUN_STEP
+import paddle.nn.functional as F
 
 const_para_attr = fluid.ParamAttr(initializer=fluid.initializer.Constant(0.001))
 const_bias_attr = const_para_attr
@@ -36,7 +38,7 @@ fluid.default_main_program().random_seed = 1
 
 
 # from transformer_config import ModelHyperParams, TrainTaskConfig, merge_cfg_from_list
-class TrainTaskConfig(object):
+class TrainTaskConfig:
     # only support GPU currently
     use_gpu = True
     # the epoch number to train.
@@ -88,7 +90,7 @@ class TrainTaskConfig(object):
     use_token_batch = False
 
 
-class InferTaskConfig(object):
+class InferTaskConfig:
     use_gpu = True
     # the number of examples in one run for sequence generation.
     batch_size = 10
@@ -105,7 +107,7 @@ class InferTaskConfig(object):
     model_path = "trained_models/pass_1.infer.model"
 
 
-class ModelHyperParams(object):
+class ModelHyperParams:
     # These following five vocabularies related configurations will be set
     # automatically according to the passed vocabulary path and special tokens.
     # size of source word dictionary.
@@ -268,7 +270,7 @@ fast_decoder_data_input_fields = (
 
 
 # from optim import LearningRateScheduler
-class LearningRateScheduler(object):
+class LearningRateScheduler:
     """
     Wrapper for learning rate scheduling as described in the Transformer paper.
     LearningRateScheduler adapts the learning rate externally and the adapted
@@ -287,7 +289,7 @@ class LearningRateScheduler(object):
         self.warmup_steps = warmup_steps
         self.d_model = d_model
         self.static_lr = learning_rate
-        self.learning_rate = layers.create_global_var(
+        self.learning_rate = paddle.static.create_global_var(
             name=name,
             shape=[1],
             value=float(learning_rate),
@@ -714,13 +716,13 @@ def train_loop(
 
 
 # import transformer_reader as reader
-class SortType(object):
+class SortType:
     GLOBAL = 'global'
     POOL = 'pool'
     NONE = "none"
 
 
-class Converter(object):
+class Converter:
     def __init__(self, vocab, beg, end, unk, delimiter):
         self._vocab = vocab
         self._beg = beg
@@ -739,7 +741,7 @@ class Converter(object):
         )
 
 
-class ComposedConverter(object):
+class ComposedConverter:
     def __init__(self, converters):
         self._converters = converters
 
@@ -750,7 +752,7 @@ class ComposedConverter(object):
         ]
 
 
-class SentenceBatchCreator(object):
+class SentenceBatchCreator:
     def __init__(self, batch_size):
         self.batch = []
         self._batch_size = batch_size
@@ -763,7 +765,7 @@ class SentenceBatchCreator(object):
             return tmp
 
 
-class TokenBatchCreator(object):
+class TokenBatchCreator:
     def __init__(self, batch_size):
         self.batch = []
         self.max_len = -1
@@ -782,14 +784,14 @@ class TokenBatchCreator(object):
             self.batch.append(info)
 
 
-class SampleInfo(object):
+class SampleInfo:
     def __init__(self, i, max_len, min_len):
         self.i = i
         self.min_len = min_len
         self.max_len = max_len
 
 
-class MinMaxFilter(object):
+class MinMaxFilter:
     def __init__(self, max_len, min_len, underlying_creator):
         self._min_len = min_len
         self._max_len = max_len
@@ -806,7 +808,7 @@ class MinMaxFilter(object):
         return self._creator.batch
 
 
-class DataReader(object):
+class DataReader:
     """
     The data reader loads all data from files and produces batches of data
     in the way corresponding to settings.
@@ -1141,13 +1143,13 @@ def multi_head_attention(
         hidden_size = x.shape[-1]
         # The value 0 in shape attr means copying the corresponding dimension
         # size of the input as the output dimension size.
-        reshaped = layers.reshape(
+        reshaped = paddle.reshape(
             x=x, shape=[0, 0, n_head, hidden_size // n_head]
         )
 
         # permute the dimensions into:
         # [batch_size, n_head, max_sequence_len, hidden_size_per_head]
-        return layers.transpose(x=reshaped, perm=[0, 2, 1, 3])
+        return paddle.transpose(x=reshaped, perm=[0, 2, 1, 3])
 
     def __combine_heads(x):
         """
@@ -1159,10 +1161,10 @@ def multi_head_attention(
         if len(x.shape) != 4:
             raise ValueError("Input(x) should be a 4-D Tensor.")
 
-        trans_x = layers.transpose(x, perm=[0, 2, 1, 3])
+        trans_x = paddle.transpose(x, perm=[0, 2, 1, 3])
         # The value 0 in shape attr means copying the corresponding dimension
         # size of the input as the output dimension size.
-        return layers.reshape(
+        return paddle.reshape(
             x=trans_x,
             shape=list(map(int, [0, 0, trans_x.shape[2] * trans_x.shape[3]])),
         )
@@ -1171,11 +1173,11 @@ def multi_head_attention(
         """
         Scaled Dot-Product Attention
         """
-        scaled_q = layers.scale(x=q, scale=d_model**-0.5)
-        product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
+        scaled_q = paddle.scale(x=q, scale=d_model**-0.5)
+        product = paddle.matmul(x=scaled_q, y=k, transpose_y=True)
         if attn_bias:
             product += attn_bias
-        weights = layers.softmax(product)
+        weights = paddle.nn.functional.softmax(product)
         if dropout_rate:
             weights = layers.dropout(
                 weights,
@@ -1183,7 +1185,7 @@ def multi_head_attention(
                 seed=ModelHyperParams.dropout_seed,
                 is_test=False,
             )
-        out = layers.matmul(weights, v)
+        out = paddle.matmul(weights, v)
         return out
 
     q, k, v = __compute_qkv(queries, keys, values, n_head, d_key, d_value)
@@ -1303,7 +1305,7 @@ def prepare_encoder(
             ),
         )
 
-    src_word_emb = layers.scale(x=src_word_emb, scale=src_emb_dim**0.5)
+    src_word_emb = paddle.scale(x=src_word_emb, scale=src_emb_dim**0.5)
     src_pos_enc = layers.embedding(
         src_pos,
         size=[src_max_len, src_emb_dim],
@@ -1578,19 +1580,19 @@ def transformer(
     # cancel padding index in calculating the loss.
     label, weights = make_all_inputs(label_data_input_fields)
     if label_smooth_eps:
-        label = layers.label_smooth(
+        label = F.label_smooth(
             label=layers.one_hot(input=label, depth=trg_vocab_size),
             epsilon=label_smooth_eps,
         )
 
-    cost = layers.softmax_with_cross_entropy(
-        logits=layers.reshape(predict, shape=[-1, trg_vocab_size]),
+    cost = paddle.nn.functional.softmax_with_cross_entropy(
+        logits=paddle.reshape(predict, shape=[-1, trg_vocab_size]),
         label=label,
         soft_label=True if label_smooth_eps else False,
     )
     weighted_cost = cost * weights
-    sum_cost = layers.reduce_sum(weighted_cost)
-    token_num = layers.reduce_sum(weights)
+    sum_cost = paddle.sum(weighted_cost)
+    token_num = paddle.sum(weights)
     avg_cost = sum_cost / token_num
     avg_cost.stop_gradient = True
     return sum_cost, avg_cost, predict, token_num
@@ -1699,7 +1701,7 @@ def wrap_decoder(
     )
     # Return logits for training and probs for inference.
     if weight_sharing:
-        predict = layers.matmul(
+        predict = paddle.matmul(
             x=dec_output,
             y=fluid.framework._get_var(word_emb_param_names[0]),
             transpose_y=True,
@@ -1713,163 +1715,8 @@ def wrap_decoder(
             bias_attr=const_bias_attr,
         )
     if dec_inputs is None:
-        predict = layers.softmax(predict)
+        predict = paddle.nn.functional.softmax(predict)
     return predict
-
-
-def fast_decode(
-    src_vocab_size,
-    trg_vocab_size,
-    max_in_len,
-    n_layer,
-    n_head,
-    d_key,
-    d_value,
-    d_model,
-    d_inner_hid,
-    dropout_rate,
-    weight_sharing,
-    beam_size,
-    max_out_len,
-    eos_idx,
-):
-    """
-    Use beam search to decode. Caches will be used to store states of history
-    steps which can make the decoding faster.
-    """
-    enc_output = wrap_encoder(
-        src_vocab_size,
-        max_in_len,
-        n_layer,
-        n_head,
-        d_key,
-        d_value,
-        d_model,
-        d_inner_hid,
-        dropout_rate,
-        weight_sharing,
-    )
-    start_tokens, init_scores, trg_src_attn_bias = make_all_inputs(
-        fast_decoder_data_input_fields
-    )
-
-    def beam_search():
-        max_len = layers.fill_constant(
-            shape=[1], dtype=start_tokens.dtype, value=max_out_len
-        )
-        step_idx = layers.fill_constant(
-            shape=[1], dtype=start_tokens.dtype, value=0
-        )
-        cond = layers.less_than(x=step_idx, y=max_len)
-        while_op = layers.While(cond)
-        # array states will be stored for each step.
-        ids = layers.array_write(
-            layers.reshape(start_tokens, (-1, 1)), step_idx
-        )
-        scores = layers.array_write(init_scores, step_idx)
-        # cell states will be overwrited at each step.
-        # caches contains states of history steps to reduce redundant
-        # computation in decoder.
-        caches = [
-            {
-                "k": layers.fill_constant_batch_size_like(
-                    input=start_tokens,
-                    shape=[-1, 0, d_model],
-                    dtype=enc_output.dtype,
-                    value=0,
-                ),
-                "v": layers.fill_constant_batch_size_like(
-                    input=start_tokens,
-                    shape=[-1, 0, d_model],
-                    dtype=enc_output.dtype,
-                    value=0,
-                ),
-            }
-            for i in range(n_layer)
-        ]
-        with while_op.block():
-            pre_ids = layers.array_read(array=ids, i=step_idx)
-            pre_ids = layers.reshape(pre_ids, (-1, 1, 1))
-            pre_scores = layers.array_read(array=scores, i=step_idx)
-            # sequence_expand can gather sequences according to lod thus can be
-            # used in beam search to sift states corresponding to selected ids.
-            pre_src_attn_bias = layers.sequence_expand(
-                x=trg_src_attn_bias, y=pre_scores
-            )
-            pre_enc_output = layers.sequence_expand(x=enc_output, y=pre_scores)
-            pre_caches = [
-                {
-                    "k": layers.sequence_expand(x=cache["k"], y=pre_scores),
-                    "v": layers.sequence_expand(x=cache["v"], y=pre_scores),
-                }
-                for cache in caches
-            ]
-            pre_pos = layers.elementwise_mul(
-                x=layers.fill_constant_batch_size_like(
-                    input=pre_enc_output,  # can't use pre_ids here since it has lod
-                    value=1,
-                    shape=[-1, 1, 1],
-                    dtype=pre_ids.dtype,
-                ),
-                y=layers.increment(x=step_idx, value=1.0, in_place=False),
-                axis=0,
-            )
-            logits = wrap_decoder(
-                trg_vocab_size,
-                max_in_len,
-                n_layer,
-                n_head,
-                d_key,
-                d_value,
-                d_model,
-                d_inner_hid,
-                dropout_rate,
-                weight_sharing,
-                dec_inputs=(pre_ids, pre_pos, None, pre_src_attn_bias),
-                enc_output=pre_enc_output,
-                caches=pre_caches,
-            )
-            logits = layers.reshape(logits, (-1, trg_vocab_size))
-
-            topk_scores, topk_indices = layers.topk(
-                input=layers.softmax(logits), k=beam_size
-            )
-            accu_scores = layers.elementwise_add(
-                x=layers.log(topk_scores),
-                y=layers.reshape(pre_scores, shape=[-1]),
-                axis=0,
-            )
-            # beam_search op uses lod to distinguish branches.
-            topk_indices = layers.lod_reset(topk_indices, pre_ids)
-            selected_ids, selected_scores = layers.beam_search(
-                pre_ids=pre_ids,
-                pre_scores=pre_scores,
-                ids=topk_indices,
-                scores=accu_scores,
-                beam_size=beam_size,
-                end_id=eos_idx,
-            )
-
-            layers.increment(x=step_idx, value=1.0, in_place=True)
-            # update states
-            layers.array_write(selected_ids, i=step_idx, array=ids)
-            layers.array_write(selected_scores, i=step_idx, array=scores)
-            layers.assign(pre_src_attn_bias, trg_src_attn_bias)
-            layers.assign(pre_enc_output, enc_output)
-            for i in range(n_layer):
-                layers.assign(pre_caches[i]["k"], caches[i]["k"])
-                layers.assign(pre_caches[i]["v"], caches[i]["v"])
-            length_cond = layers.less_than(x=step_idx, y=max_len)
-            finish_cond = layers.logical_not(layers.is_empty(x=selected_ids))
-            layers.logical_and(x=length_cond, y=finish_cond, out=cond)
-
-        finished_ids, finished_scores = layers.beam_search_decode(
-            ids, scores, beam_size=beam_size, end_id=eos_idx
-        )
-        return finished_ids, finished_scores
-
-    finished_ids, finished_scores = beam_search()
-    return finished_ids, finished_scores
 
 
 def get_model(is_dist, is_async):

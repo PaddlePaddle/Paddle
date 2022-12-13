@@ -12,23 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
-import time
-import os
-import signal
 import copy
-import sys
-import subprocess
-import tempfile
-import shutil
-from contextlib import closing
+import json
+import logging
 import multiprocessing
+import os
+import shutil
+import signal
 import socket
 import struct
-import json
-
-import paddle.fluid as fluid
+import subprocess
+import sys
+import tempfile
+import time
+from contextlib import closing
 from distutils.util import strtobool
+
+import paddle.framework as framework
 import paddle.utils.cpp_extension.extension_utils as utils
 
 logger = logging.getLogger("root")
@@ -60,7 +60,7 @@ class DeviceMode:
     MLU = 4
 
 
-class Cluster(object):
+class Cluster:
     def __init__(self, hdfs):
         self.job_server = None
         self.pods = []
@@ -120,7 +120,7 @@ class Cluster(object):
         for pod in self.pods:
             ep = "{}:{}".format(pod.addr, pod.port)
             assert (
-                pod.port != None and pod.addr != None
+                pod.port is not None and pod.addr is not None
             ), "{} not a valid endpoint".format(ep)
             r.append(ep)
         return r
@@ -133,7 +133,7 @@ class Cluster(object):
         return None
 
 
-class JobServer(object):
+class JobServer:
     def __init__(self):
         self.endpoint = None
 
@@ -147,7 +147,7 @@ class JobServer(object):
         return not self == j
 
 
-class Trainer(object):
+class Trainer:
     def __init__(self):
         self.accelerators = []
         self.endpoint = None
@@ -179,7 +179,7 @@ class Trainer(object):
         return self.rank
 
 
-class Pod(object):
+class Pod:
     def __init__(self):
         self.rank = None
         self.id = None
@@ -483,7 +483,7 @@ def pretty_print_envs(envs, header=None):
     return _str
 
 
-class TrainerProc(object):
+class TrainerProc:
     def __init__(self):
         self.proc = None
         self.log_fn = None
@@ -572,7 +572,7 @@ def start_local_trainers(
                 [str(g) for g in t.accelerators]
             )
         # to do: same code style in future
-        if fluid.core.is_compiled_with_xpu() and len(t.accelerators) > 0:
+        if framework.core.is_compiled_with_xpu() and len(t.accelerators) > 0:
             proc_env["FLAGS_selected_xpus"] = "%s" % ",".join(
                 [str(g) for g in t.accelerators]
             )
@@ -706,7 +706,7 @@ def watch_local_trainers(procs, nranks):
 
 def get_gpus(gpus):
     if gpus is None:
-        gpus_num = fluid.core.get_cuda_device_count()
+        gpus_num = framework.core.get_cuda_device_count()
         res_gpus = [str(x) for x in range(0, gpus_num)]
     else:
         cuda_visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
@@ -740,7 +740,7 @@ def get_gpus(gpus):
 
 def get_xpus(xpus):
     if xpus is None:
-        xpus_num = fluid.core.get_xpu_device_count()
+        xpus_num = framework.core.get_xpu_device_count()
         res_xpus = [str(x) for x in range(0, xpus_num)]
     else:
         xpu_visible_devices = os.getenv("XPU_VISIBLE_DEVICES")
@@ -775,7 +775,7 @@ def get_xpus(xpus):
 
 def get_npus(npus):
     if npus is None:
-        npus_num = fluid.core.get_npu_device_count()
+        npus_num = framework.core.get_npu_device_count()
         res_npus = [str(x) for x in range(0, npus_num)]
     else:
         npu_visible_devices = os.getenv("ASCEND_VISIBLE_DEVICES")
@@ -809,7 +809,7 @@ def get_npus(npus):
 
 def get_mlus(mlus):
     if mlus is None:
-        mlus_num = fluid.core.get_mlu_device_count()
+        mlus_num = framework.core.get_mlu_device_count()
         res_mlus = [str(x) for x in range(0, mlus_num)]
     else:
         mlu_visible_devices = os.getenv("MLU_VISIBLE_DEVICES")
@@ -845,37 +845,37 @@ def get_mlus(mlus):
 def get_device_mode(backend):
     if backend == 'heter':
         if (
-            fluid.core.is_compiled_with_cuda()
-            and fluid.core.get_cuda_device_count() > 0
+            framework.core.is_compiled_with_cuda()
+            and framework.core.get_cuda_device_count() > 0
         ):
             print("launch train in heter mode with GPU device.")
             return DeviceMode.GPU
         if (
-            fluid.core.is_compiled_with_xpu()
-            and fluid.core.get_xpu_device_count() > 0
+            framework.core.is_compiled_with_xpu()
+            and framework.core.get_xpu_device_count() > 0
         ):
             print("launch train in heter mode with XPU device.")
             return DeviceMode.XPU
         if (
-            fluid.core.is_compiled_with_npu()
-            and fluid.core.get_npu_device_count() > 0
+            framework.core.is_compiled_with_npu()
+            and framework.core.get_npu_device_count() > 0
         ):
             print("launch train in heter mode with NPU device.")
             return DeviceMode.ASCEND_NPU
 
-    if backend == 'hccl' and fluid.core.get_npu_device_count() > 0:
+    if backend == 'hccl' and framework.core.get_npu_device_count() > 0:
         print("launch train in ascend npu mode!")
         return DeviceMode.ASCEND_NPU
 
-    if backend == 'nccl' and fluid.core.get_cuda_device_count() > 0:
+    if backend == 'nccl' and framework.core.get_cuda_device_count() > 0:
         print("launch train in GPU mode!")
         return DeviceMode.GPU
 
-    if backend == 'bkcl' and fluid.core.get_xpu_device_count() > 0:
+    if backend == 'bkcl' and framework.core.get_xpu_device_count() > 0:
         print("launch train in XPU mode")
         return DeviceMode.XPU
 
-    if backend == 'cncl' and fluid.core.get_mlu_device_count() > 0:
+    if backend == 'cncl' and framework.core.get_mlu_device_count() > 0:
         print("launch train in MLU mode")
         return DeviceMode.MLU
 
@@ -979,7 +979,7 @@ def get_custom_endpoints(origin_endpoints, offset=0):
     origin_endpoint: ip:port
     user_define_endpoint: ip:(port+offset)
     """
-    assert origin_endpoints != None
+    assert origin_endpoints is not None
     paddle_user_define_endpoints_list = []
     for ip_port in origin_endpoints.split(","):
         ip = ip_port.split(":")[0]
@@ -1063,7 +1063,7 @@ def get_mapped_cluster_from_args_without_rank_mapping(args, device_mode):
     assert (
         device_mode == DeviceMode.GPU
     ), "Only support get mapped cluster for gpu now."
-    gpus_num = fluid.core.get_cuda_device_count()
+    gpus_num = framework.core.get_cuda_device_count()
 
     # parse ip-ranks json file
     cluster_topo = None
@@ -1192,7 +1192,7 @@ def get_mapped_cluster_from_args_with_rank_mapping(args, device_mode):
     assert (
         device_mode == DeviceMode.GPU
     ), "Only support get mapped cluster for gpu now."
-    gpus_num = fluid.core.get_cuda_device_count()
+    gpus_num = framework.core.get_cuda_device_count()
 
     # parse ip-ranks json file
     rank_mapping_path = args.rank_mapping_path or os.getenv(
@@ -1278,7 +1278,7 @@ def get_mapped_cluster_from_args_with_rank_mapping(args, device_mode):
     )
 
 
-class ParameterServerLauncher(object):
+class ParameterServerLauncher:
     def __init__(self, args, distribute_mode):
         self.args = args
         self.distribute_mode = distribute_mode
@@ -1412,7 +1412,7 @@ class ParameterServerLauncher(object):
             assert (
                 args.heter_devices != ""
             ), "The setting of Parameter-Server heter mode must has heter_devices."
-            self.stage_device_map[1] = "cpu"  #  for cpu trainer
+            self.stage_device_map[1] = "cpu"  # for cpu trainer
             heter_devices_list = args.heter_devices.split(";")
             for i in range(len(heter_devices_list)):
                 self.stage_device_map[i + 2] = heter_devices_list[i]
@@ -1582,7 +1582,7 @@ class ParameterServerLauncher(object):
             x.strip().split(":")[0] for x in self.worker_endpoints.split(",")
         ]
 
-        if self.with_coordinator == True:
+        if self.with_coordinator:
             self.coordinator_endpoints_ips = [
                 x.strip().split(":")[0]
                 for x in self.coordinator_endpoints.split(",")
@@ -1625,7 +1625,7 @@ class ParameterServerLauncher(object):
         else:
             self.is_local = False
             pod_ip = os.getenv("POD_IP", None)
-            if pod_ip == None:
+            if pod_ip is None:
                 _, self.current_node_ip = get_host_name_ip()
             else:
                 self.current_node_ip = pod_ip
@@ -1866,11 +1866,11 @@ class ParameterServerLauncher(object):
 
         heter_device_num = 0
         device_list = []
-        if fluid.core.is_compiled_with_cuda():
+        if framework.core.is_compiled_with_cuda():
             device_list = get_gpus(args.gpus)
             heter_device_num = len(device_list)
-        elif fluid.core.is_compiled_with_xpu():
-            heter_device_num = fluid.core.get_xpu_device_count()
+        elif framework.core.is_compiled_with_xpu():
+            heter_device_num = framework.core.get_xpu_device_count()
             device_list = [str(x) for x in range(0, heter_device_num)]
 
         for idx, cur_worker in enumerate(pod.workers):
@@ -2042,11 +2042,11 @@ class ParameterServerLauncher(object):
 
         heter_device_num = 0
         device_list = []
-        if fluid.core.is_compiled_with_cuda():
+        if framework.core.is_compiled_with_cuda():
             device_list = get_gpus(args.gpus)
             heter_device_num = len(device_list)
-        elif fluid.core.is_compiled_with_xpu():
-            heter_device_num = fluid.core.get_xpu_device_count()
+        elif framework.core.is_compiled_with_xpu():
+            heter_device_num = framework.core.get_xpu_device_count()
             device_list = [str(x) for x in range(0, heter_device_num)]
 
         for idx, cur_heter_worker in enumerate(pod.heter_workers):
@@ -2144,25 +2144,25 @@ def check_backend(backend):
             "but got %s" % backend
         )
 
-    if backend == 'nccl' and not fluid.core.is_compiled_with_cuda():
+    if backend == 'nccl' and not framework.core.is_compiled_with_cuda():
         raise ValueError(
             "paddle.distributed initialize error, "
             "your paddle is not compiled with cuda but you assign 'nccl' as backend."
         )
 
-    if backend == 'bkcl' and not fluid.core.is_compiled_with_xpu():
+    if backend == 'bkcl' and not framework.core.is_compiled_with_xpu():
         raise ValueError(
             "paddle.distributed initialize error, "
             "your paddle is not compiled with xpu but you assign 'bkcl' as backend."
         )
 
-    if backend == 'hccl' and not fluid.core.is_compiled_with_npu():
+    if backend == 'hccl' and not framework.core.is_compiled_with_npu():
         raise ValueError(
             "paddle.distributed initialize error, "
             "your paddle is not compiled with npu but you assign 'hccl' as backend."
         )
 
-    if backend == 'cncl' and not fluid.core.is_compiled_with_mlu():
+    if backend == 'cncl' and not framework.core.is_compiled_with_mlu():
         raise ValueError(
             "paddle.distributed initialize error, "
             "your paddle is not compiled with mlu but you assign 'cncl' as backend."
@@ -2183,16 +2183,16 @@ def block_windows_and_macos(backend):
 
 
 def get_backend_by_compile_flag():
-    if fluid.core.is_compiled_with_cuda():
+    if framework.core.is_compiled_with_cuda():
         return 'nccl'
 
-    if fluid.core.is_compiled_with_xpu():
+    if framework.core.is_compiled_with_xpu():
         return 'bkcl'
 
-    if fluid.core.is_compiled_with_npu():
+    if framework.core.is_compiled_with_npu():
         return 'hccl'
 
-    if fluid.core.is_compiled_with_mlu():
+    if framework.core.is_compiled_with_mlu():
         return 'cncl'
 
     return 'gloo'

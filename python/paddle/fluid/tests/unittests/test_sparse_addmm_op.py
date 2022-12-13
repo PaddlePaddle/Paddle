@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import numpy as np
-import unittest
 import os
 import re
+import unittest
+
+import numpy as np
+
+import paddle
 
 paddle.set_default_dtype('float64')
 
@@ -91,8 +93,8 @@ class TestAddmm(unittest.TestCase):
         self.check_result([16, 10], [16, 12], [12, 10], 'csr')
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cuda() or get_cuda_version() < 11070,
-        "only support cuda>=11.7",
+        not paddle.is_compiled_with_cuda() or get_cuda_version() < 11080,
+        "only support cuda>=11.8",
     )
     def test_addmm_3d(self):
         self.check_result([8, 16, 10], [8, 16, 12], [8, 12, 10], 'coo')

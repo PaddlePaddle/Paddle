@@ -12,18 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import unittest
 import os
-import sys
-import subprocess
 import pickle
+import socket
+import subprocess
+import sys
 import tempfile
+import unittest
 from contextlib import closing
+
+import numpy as np
+from paddle_bfloat import bfloat16
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle_bfloat import bfloat16
 
 
 def create_bool_test_data(shape=None, seed=None):
@@ -99,7 +102,7 @@ def create_test_data(shape=None, dtype=None, seed=None):
         raise NotImplementedError("Unsupported dtype for creating test data.")
 
 
-class TestCollectiveAPIRunnerBase(object):
+class TestCollectiveAPIRunnerBase:
     def get_model(
         self, train_prog, startup_prog, rank, indata=None, dtype=None
     ):
@@ -157,10 +160,6 @@ def runtime_main(test_class, col_type):
     args["static_mode"] = int(os.getenv("STATIC_MODE"))
     args["dtype"] = os.getenv("DTYPE")
     model.run_trainer(args)
-
-
-import socket
-from contextlib import closing
 
 
 class TestDistBase(unittest.TestCase):

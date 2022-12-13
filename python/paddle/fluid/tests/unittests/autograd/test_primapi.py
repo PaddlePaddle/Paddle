@@ -15,14 +15,14 @@
 import typing
 import unittest
 
-import numpy as np
-import paddle
-
 import autograd
 import autograd.numpy as anp
 import autograd.scipy as ascipy
 import config
+import numpy as np
 import utils
+
+import paddle
 from paddle.incubate.autograd import primx
 
 
@@ -100,7 +100,7 @@ class TestFowardApi(unittest.TestCase):
         actual = actual()
         self.assertEqual(type(actual), type(expected))
         for i, j in zip(actual, expected):
-            np.testing.assert_allclose(i, j, atol=1e-3, rtol=1e-3)
+            np.testing.assert_allclose(i, j, rtol=1e-6)
 
 
 @utils.place(config.DEVICES)
@@ -677,16 +677,15 @@ where_wrap = lambda x, y: paddle.where(paddle.eye(3, 4) == 1, x, y)
             None,
             'float32',
         ),
-        ('var', paddle.var, (np.random.rand(200, 324),), None, 'float32'),
         (
-            'var_with_axis',
-            lambda x: paddle.var(x, axis=1),
-            (np.random.rand(10, 20, 30),),
+            'var',
+            lambda x: paddle.var(x, unbiased=False),
+            (np.random.rand(200, 324),),
             None,
             'float32',
         ),
         (
-            'var_without_unbiased',
+            'var_with_axis',
             lambda x: paddle.var(x, axis=1, unbiased=False),
             (np.random.rand(10, 20, 30),),
             None,
@@ -694,7 +693,7 @@ where_wrap = lambda x, y: paddle.where(paddle.eye(3, 4) == 1, x, y)
         ),
         (
             'var_with_keepdim',
-            lambda x: paddle.var(x, axis=1, keepdim=True),
+            lambda x: paddle.var(x, axis=1, keepdim=True, unbiased=False),
             (np.random.rand(10, 20, 30),),
             None,
             'float32',

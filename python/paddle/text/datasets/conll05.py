@@ -14,10 +14,11 @@
 
 import gzip
 import tarfile
+
 import numpy as np
 
-from paddle.io import Dataset
 from paddle.dataset.common import _check_exists_and_download
+from paddle.io import Dataset
 
 __all__ = []
 
@@ -71,7 +72,7 @@ class Conll05st(Dataset):
 
             class SimpleNet(paddle.nn.Layer):
                 def __init__(self):
-                    super(SimpleNet, self).__init__()
+                    super().__init__()
 
                 def forward(self, pred_idx, mark, label):
                     return paddle.sum(pred_idx), paddle.sum(mark), paddle.sum(label)
@@ -87,7 +88,7 @@ class Conll05st(Dataset):
 
                 model = SimpleNet()
                 pred_idx, mark, label= model(pred_idx, mark, label)
-                print(pred_idx.numpy(), mark.numpy(), label.numpy())
+                print(pred_idx, mark, label)
 
     """
 
@@ -228,9 +229,9 @@ class Conll05st(Dataset):
                             lbl_seq = []
                             verb_word = ''
                             for l in lbl:
-                                if l == '*' and is_in_bracket == False:
+                                if l == '*' and not is_in_bracket:
                                     lbl_seq.append('O')
-                                elif l == '*' and is_in_bracket == True:
+                                elif l == '*' and is_in_bracket:
                                     lbl_seq.append('I-' + cur_tag)
                                 elif l == '*)':
                                     lbl_seq.append('I-' + cur_tag)

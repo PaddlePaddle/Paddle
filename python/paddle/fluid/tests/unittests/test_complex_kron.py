@@ -12,17 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import fluid
+import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid.dygraph as dg
-import numpy as np
-import unittest
+from paddle import fluid
 from paddle.fluid.framework import _test_eager_guard
 
 
 class ComplexKronTestCase(unittest.TestCase):
     def __init__(self, methodName='runTest', x=None, y=None):
-        super(ComplexKronTestCase, self).__init__(methodName)
+        super().__init__(methodName)
         self.x = x
         self.y = y
 

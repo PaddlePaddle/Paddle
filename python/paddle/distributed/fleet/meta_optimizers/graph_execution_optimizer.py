@@ -12,20 +12,21 @@
 # See the License for the specific language governing permissions and
 
 import copy
-import paddle
-from paddle.fluid.framework import core
-from paddle.fluid import compiler
-from .meta_optimizer_base import MetaOptimizerBase
-from ..base.private_helper_function import wait_server_ready
 import logging
+
+import paddle
+from paddle.framework import core
 from paddle.static import BuildStrategy
+
+from ..base.private_helper_function import wait_server_ready
+from .meta_optimizer_base import MetaOptimizerBase
 
 __all__ = []
 
 
 class GraphExecutionOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
-        super(GraphExecutionOptimizer, self).__init__(optimizer)
+        super().__init__(optimizer)
         self.inner_opt = optimizer
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = []
@@ -136,7 +137,7 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
                 attrs={
                     "trainers": trainer_endpoints,
                     "trainer_id": trainer_id,
-                    "nccl_comm_num": build_strategy.nccl_comm_num,
+                    "bkcl_comm_num": build_strategy.bkcl_comm_num,
                     "use_hierarchical_allreduce": build_strategy.use_hierarchical_allreduce,
                     "hierarchical_allreduce_inter_ranks": build_strategy.hierarchical_allreduce_inter_nranks,
                 },
@@ -177,7 +178,7 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
             gradient_scale_configs['scale_strategy']
         ]
 
-        if self.user_defined_strategy.recompute == True:
+        if self.user_defined_strategy.recompute:
             logging.warn(
                 "set enable_sequential_execution=True since you have enable the recompute strategy"
             )
@@ -247,7 +248,7 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         )
         local_build_strategy.enable_backward_optimizer_op_deps = True
 
-        self._compiled_program = compiler.CompiledProgram(main_program)
+        self._compiled_program = paddle.static.CompiledProgram(main_program)
 
         self._compiled_program.with_data_parallel(
             loss_name=loss.name,
@@ -269,7 +270,7 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
     def minimize(
         self, loss, startup_program=None, parameter_list=None, no_grad_set=None
     ):
-        if startup_program == None:
+        if startup_program is None:
             startup_program = paddle.static.default_startup_program()
         compiled_program = self._try_to_compile(
             startup_program, loss.block.program, loss

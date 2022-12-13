@@ -14,7 +14,6 @@
 
 from . import core
 import sys
-import six
 import numpy as np
 import threading
 import paddle
@@ -52,7 +51,6 @@ from .dataloader.batch_sampler import _InfiniteIterableSampler
 from .layers.io import (
     monkey_patch_reader_methods,
     _copy_reader_var_,
-    double_buffer,
 )
 from .unique_name import UniqueNameGenerator
 from .framework import _get_paddle_place, _get_paddle_place_list
@@ -143,24 +141,15 @@ def _reader_process_loop(batch_reader, data_queue):
         # NOTE: Main process will raise KeyboardInterrupt anyways, ignore it in child process
         pass
     except:
-        six.reraise(*sys.exc_info())
+        raise
 
 
-class DataLoaderBase(object):
+class DataLoaderBase:
     def __init__(self):
         self._places = None
 
     def __call__(self):
         return self
-
-    def next(self):
-        '''
-        Get the next item in the DataLoader object. This method
-        should not be called by users directly. It is used for
-        implementing iterator protocol of Python 2.x inside
-        PaddlePaddle framework.
-        '''
-        return self.__next__()
 
     def __iter__(self):
         raise NotImplementedError()
@@ -182,7 +171,7 @@ class DataLoaderBase(object):
         return arr
 
 
-class AuToTune(object):
+class AuToTune:
     def __init__(self, loader):
         self.loader = loader
         self.max_num_worker = multiprocessing.cpu_count() / 2
@@ -319,7 +308,7 @@ class AuToTune(object):
         return best_workers
 
 
-class DataLoader(object):
+class DataLoader:
     """
     DataLoader prodives an iterator which iterates given dataset
     once by the batch_sampler.
@@ -456,7 +445,7 @@ class DataLoader(object):
 
             class SimpleNet(nn.Layer):
                 def __init__(self):
-                    super(SimpleNet, self).__init__()
+                    super().__init__()
                     self.fc = nn.Linear(IMAGE_SIZE, CLASS_NUM)
 
                 def forward(self, image, label=None):
@@ -869,7 +858,7 @@ class DataLoader(object):
 
                 class LinearNet(nn.Layer):
                     def __init__(self):
-                        super(LinearNet, self).__init__()
+                        super().__init__()
                         self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
 
                     @paddle.jit.to_static
@@ -1202,7 +1191,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
                 return self._reader.read_next_var_list()
         except StopIteration:
             self._reset()
-            six.reraise(*sys.exc_info())
+            raise
 
     def _exit_thread_expectedly(self):
         self._thread_done_event.set()
@@ -1232,7 +1221,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
                 # start trying to get data from queue. At this time, the child thread needs
                 # to wait slightly longer
                 tensor_list = self._data_queue.get(timeout=QUEUE_GET_TIMEOUT)
-            except:
+            except Exception as e:
                 # NOTE [ avoid handing ] After adding the shared memory mechanism, not only
                 # the queue.Empty exception will occur here, but other exceptions will also
                 # occur, such as mmap failure. If it is not handled here, it will hang.
@@ -1240,7 +1229,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
                 logging.error(
                     "DataLoader reader thread failed to read data from the multiprocessing.Queue."
                 )
-                six.reraise(*sys.exc_info())
+                raise e
 
             if not self._thread_done_event.is_set():
                 if tensor_list is not None:
@@ -1250,9 +1239,9 @@ class DygraphGeneratorLoader(DataLoaderBase):
                             array.append(tensor)
                         if not self._blocking_queue.push(array):
                             self._blocking_queue.close()
-                    except:
+                    except Exception as e:
                         self._exit_thread_unexpectedly()
-                        six.reraise(*sys.exc_info())
+                        raise e
                 else:
                     self._exit_thread_expectedly()
 
@@ -1278,13 +1267,13 @@ class DygraphGeneratorLoader(DataLoaderBase):
 
             self._blocking_queue.close()
             self._thread = None
-        except Exception:
+        except Exception as e:
             self._blocking_queue.kill()
             self._thread = None
             logging.warning(
                 "DygraphDataLoader reader thread raised an exception."
             )
-            six.reraise(*sys.exc_info())
+            raise e
 
     def set_sample_generator(
         self, reader, batch_size, drop_last=True, places=None
@@ -1362,6 +1351,11 @@ class GeneratorLoader(DataLoaderBase):
         self._use_double_buffer = use_double_buffer
         self._capacity = capacity
         if not self._iterable:
+            # Because layers.io.double_buffer is not supported anymore and that iterable is False and use_double_buffer
+            # is True is not spported, here if itrable is False, use_double_buffer will be
+            # forcely set False to avoid unexpected error.
+            # TODO: keep use_double_buffer
+            self._use_double_buffer = False
             self._init_non_iterable()
 
     def _wait_thread_ends(self):
@@ -1416,7 +1410,6 @@ class GeneratorLoader(DataLoaderBase):
             'lod_tensor_blocking_queue'
         )
         reader_name = data_loader_unique_name_generator('create_py_reader')
-        double_buffer_name = data_loader_unique_name_generator('double_buffer')
 
         var = global_scope().var(queue_name)
         self._queue = core.init_lod_tensor_blocking_queue(
@@ -1462,15 +1455,6 @@ class GeneratorLoader(DataLoaderBase):
 
             reader = monkey_patch_reader_methods(main_prog_var)
 
-        if self._use_double_buffer:
-            double_buffer_reader = double_buffer(
-                reader, name=double_buffer_name
-            )
-            # we return a double buffer reader. However, the reset method comes from
-            # py_reader.
-            double_buffer_reader.reset = reader.reset
-            reader = double_buffer_reader
-
         self._reader = reader
 
         default_main_program().current_block().append_op(
@@ -1510,7 +1494,7 @@ class GeneratorLoader(DataLoaderBase):
         except StopIteration:
             self._queue.close()
             self._reset()
-            six.reraise(*sys.exc_info())
+            raise
 
     def start(self):
         assert (
@@ -1551,11 +1535,11 @@ class GeneratorLoader(DataLoaderBase):
 
                 self._queue.close()
                 self._thread = None
-            except Exception as ex:
+            except Exception as e:
                 self._queue.kill()
                 self._thread = None
                 logging.warning('Your reader has raised an exception!')
-                six.reraise(*sys.exc_info())
+                raise e
 
         self._thread = threading.Thread(
             target=__thread_main__, args=(_current_expected_place(),)

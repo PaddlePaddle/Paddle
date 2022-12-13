@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
-from paddle.fluid.data_feeder import convert_dtype
 import paddle.fluid.core as core
-from paddle.static import program_guard, Program
+from paddle.fluid.data_feeder import convert_dtype
+from paddle.static import Program, program_guard
 
 
 class TestEmptyLikeAPICommon(unittest.TestCase):
@@ -47,8 +49,8 @@ class TestEmptyLikeAPICommon(unittest.TestCase):
             )
         elif data_type in ['bool']:
             total_num = out.size
-            true_num = np.sum(out == True)
-            false_num = np.sum(out == False)
+            true_num = np.sum(out)
+            false_num = np.sum(~out)
             self.assertTrue(
                 total_num == true_num + false_num,
                 'The value should always be True or False.',

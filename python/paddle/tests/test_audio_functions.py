@@ -11,16 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import itertools
 import unittest
 
 import librosa
 import numpy as np
-import paddle
-
-import paddle.audio
-from scipy import signal
-import itertools
 from parameterized import parameterized
+from scipy import signal
+
+import paddle
+import paddle.audio
 
 
 def parameterize(*params):
@@ -178,13 +178,6 @@ class TestAudioFuncitons(unittest.TestCase):
         np.testing.assert_array_almost_equal(
             window_scipy_exp, window_paddle_exp.numpy(), decimal=5
         )
-        try:
-            window_paddle = paddle.audio.functional.get_window(
-                ("kaiser", 1.0), self.n_fft
-            )
-        except NotImplementedError:
-            pass
-
         try:
             window_paddle = paddle.audio.functional.get_window("hann", -1)
         except ValueError:

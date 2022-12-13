@@ -17,16 +17,18 @@ import sys
 
 sys.path.append("..")
 import unittest
+
 import numpy as np
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
+
 import paddle
 import paddle.fluid.core as core
 from paddle import _legacy_C_ops
-from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import (
-    create_test_class,
-    get_xpu_op_support_types,
-    XPUOpTestWrapper,
-)
 
 
 def gelu(x):
@@ -106,14 +108,14 @@ class XPUTestFuseGemmOp(XPUOpTestWrapper):
                 - 0.5,
             }
 
-            if self.trans_x == True:
+            if self.trans_x:
                 numpy_input_x = (
                     self.inputs['X'].reshape((self.x_shape[0], -1)).T
                 )
             else:
                 numpy_input_x = self.inputs['X'].reshape((-1, self.x_shape[-1]))
 
-            if self.trans_y == True:
+            if self.trans_y:
                 numpy_input_y = self.inputs['Y'].T
             else:
                 numpy_input_y = self.inputs['Y']

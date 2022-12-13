@@ -14,8 +14,9 @@
 """Parameter Server utils"""
 
 import os
-import paddle
 import warnings
+
+import paddle
 
 __all__ = []
 
@@ -210,7 +211,7 @@ class DistributedInfer:
                                         if found:
                                             break
                                     if found:
-                                        if output_indexes[j] == True:
+                                        if output_indexes[j]:
                                             warnings.warn(
                                                 "unable to re-arrange dags order to combine distributed embedding ops"
                                             )

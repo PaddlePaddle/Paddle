@@ -35,7 +35,7 @@ def is_str(s):
     return isinstance(s, str)
 
 
-class OpDescCreationMethod(object):
+class OpDescCreationMethod:
     """
     Convert the user's input(only keyword arguments are supported) to OpDesc
     based on the OpProto.
@@ -181,7 +181,7 @@ class OpDescCreationMethod(object):
         return False
 
 
-class OpInfo(object):
+class OpInfo:
     def __init__(self, name, method, inputs, outputs, attrs, extra_attrs):
         self.name = name
         self.method = method
@@ -213,7 +213,7 @@ def create_op_creation_method(op_proto):
     )
 
 
-class OperatorFactory(object):
+class OperatorFactory:
     def __init__(self):
         self.op_methods = dict()
 
@@ -266,7 +266,7 @@ class OperatorFactory(object):
         return self.get_op_info(type).extra_attrs
 
 
-class __RecurrentOp__(object):
+class __RecurrentOp__:
     __proto__ = None
     type = "recurrent"
 
@@ -287,7 +287,7 @@ class __RecurrentOp__(object):
         return core.RecurrentOp.create(proto.SerializeToString())
 
 
-class __DynamicRecurrentOp__(object):
+class __DynamicRecurrentOp__:
     __proto__ = None
     type = "dynamic_recurrent"
 
@@ -308,7 +308,7 @@ class __DynamicRecurrentOp__(object):
         return core.DynamicRecurrentOp.create(proto.SerializeToString())
 
 
-class __CondOp__(object):
+class __CondOp__:
     __proto__ = None
     type = "cond"
 

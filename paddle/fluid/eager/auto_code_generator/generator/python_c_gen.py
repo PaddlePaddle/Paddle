@@ -12,15 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import argparse
-from codegen_utils import FunctionGeneratorBase, GeneratorBase
-from codegen_utils import GetForwardFunctionName, IsVectorTensorType
-from codegen_utils import GetInplacedFunctionName
+import os
 
-###########################
-## Global Configurations ##
-###########################
+from codegen_utils import (
+    FunctionGeneratorBase,
+    GeneratorBase,
+    GetForwardFunctionName,
+    GetInplacedFunctionName,
+    IsVectorTensorType,
+)
+
+#########################
+# Global Configurations #
+#########################
 skipped_forward_api_names = set([])
 
 
@@ -58,9 +63,9 @@ def FindParsingFunctionFromAttributeType(atype):
     return atype_to_parsing_function[atype]
 
 
-##########################
-## Refactored Functions ##
-##########################
+########################
+# Refactored Functions #
+########################
 PARSE_PYTHON_C_TENSORS_TEMPLATE = (
     "    auto {} = {}(\"{}\", \"{}\", args, {}, {});\n"
 )
@@ -115,7 +120,7 @@ NOAMP_DYGRAPH_FUNCTION_TEMPLATE = "decltype({}({})) out = {}({});"
 FUNCTION_SET_DEVICE_TEMPLATE = """{}    if (paddle::platform::is_gpu_place(place)) {{
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       phi::backends::gpu::SetDeviceId(place.device);
-      VLOG(1) <<"CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId() << " from " << (int)place.device;
+      VLOG(4) <<"CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId() << " from " << (int)place.device;
 #else
       PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU if use CUDAPlace."));
@@ -124,10 +129,19 @@ FUNCTION_SET_DEVICE_TEMPLATE = """{}    if (paddle::platform::is_gpu_place(place
     if (paddle::platform::is_custom_place(place)) {{
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
       phi::DeviceManager::SetDevice(place);
-      VLOG(1) <<"CurrentDeviceId: " << phi::DeviceManager::GetDevice(place.GetDeviceType()) << " from " << (int)place.device;
+      VLOG(4) <<"CurrentDeviceId: " << phi::DeviceManager::GetDevice(place.GetDeviceType()) << " from " << (int)place.device;
 #else
       PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with CUSTOM_DEVICE if use CustomPlace."));
+#endif
+    }}
+    if (paddle::platform::is_xpu_place(place)) {{
+#if defined(PADDLE_WITH_XPU)
+      phi::backends::xpu::SetXPUDeviceId(place.device);
+      VLOG(4) <<"CurrentDeviceId: " << phi::backends::xpu::GetXPUCurrentDeviceId() << " from " << (int)place.device;
+#else
+      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+        "PaddlePaddle should compile with XPU if use XPUPlace."));
 #endif
     }}
 """
@@ -234,9 +248,9 @@ NAMESPACE_WRAPPER_TEMPLATE = """namespace {} {{
 """
 
 
-#######################
-## Generator Classes ##
-#######################
+#####################
+# Generator Classes #
+#####################
 class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
     def __init__(self, forward_api_contents, namespace):
         # Members from Parent:
@@ -532,7 +546,7 @@ class PythonCGenerator(GeneratorBase):
             )
             status = f_generator.run()
 
-            if status == True:
+            if status:
                 self.python_c_functions_str += (
                     f_generator.python_c_function_str + "\n"
                 )
@@ -565,9 +579,9 @@ class PythonCGenerator(GeneratorBase):
         self.AttachNamespace()
 
 
-############################
-## Code Generation Helper ##
-############################
+##########################
+# Code Generation Helper #
+##########################
 def ParseArguments():
     parser = argparse.ArgumentParser(
         description='Eager Code Generator Args Parser'

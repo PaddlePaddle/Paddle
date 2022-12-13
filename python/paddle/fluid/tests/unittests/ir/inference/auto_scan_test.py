@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import unittest
 import abc
-import os
 import enum
-import time
 import logging
+import os
 import shutil
-import paddle
-from paddle.fluid.core import PassVersionChecker
-import paddle.inference as paddle_infer
-from typing import Optional, List, Callable, Dict, Any
+import time
+import unittest
+from typing import Any, Callable, Dict, List, Optional
+
+import hypothesis
+import hypothesis.strategies as st
+import numpy as np
+from hypothesis import given, settings
 from program_config import (
     OpConfig,
     ProgramConfig,
@@ -31,9 +32,9 @@ from program_config import (
     create_quant_model,
 )
 
-import hypothesis
-from hypothesis import given, settings
-import hypothesis.strategies as st
+import paddle
+import paddle.inference as paddle_infer
+from paddle.fluid.core import PassVersionChecker
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
@@ -83,7 +84,7 @@ class AutoScanTest(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         np.random.seed(1024)
         paddle.enable_static()
-        super(AutoScanTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.ignore_cases = []
         abs_dir = os.path.abspath(os.path.dirname(__file__))
         self.cache_dir = os.path.join(
@@ -181,14 +182,25 @@ class AutoScanTest(unittest.TestCase):
         ops = []
         for i in range(len(ops_config)):
             op_config = ops_config[i]
-            ops.append(
-                OpConfig(
-                    type=op_config['op_type'],
-                    inputs=op_config['op_inputs'],
-                    outputs=op_config['op_outputs'],
-                    attrs=op_config['op_attrs'],
+            if 'outputs_dtype' in op_config:
+                ops.append(
+                    OpConfig(
+                        type=op_config['op_type'],
+                        inputs=op_config['op_inputs'],
+                        outputs=op_config['op_outputs'],
+                        attrs=op_config['op_attrs'],
+                        outputs_dtype=op_config['outputs_dtype'],
+                    )
                 )
-            )
+            else:
+                ops.append(
+                    OpConfig(
+                        type=op_config['op_type'],
+                        inputs=op_config['op_inputs'],
+                        outputs=op_config['op_outputs'],
+                        attrs=op_config['op_attrs'],
+                    )
+                )
         return ops
 
     @abc.abstractmethod
@@ -229,7 +241,7 @@ class AutoScanTest(unittest.TestCase):
 
 class MkldnnAutoScanTest(AutoScanTest):
     def __init__(self, *args, **kwargs):
-        super(MkldnnAutoScanTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def run_test(self, quant=False, *args, **kwargs):
         status = True
@@ -325,7 +337,7 @@ class MkldnnAutoScanTest(AutoScanTest):
 
 class PassAutoScanTest(AutoScanTest):
     def __init__(self, *args, **kwargs):
-        super(PassAutoScanTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.passes = []
 
     def check_op_version(self):
@@ -620,7 +632,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
             self.disable_trt_plugin_fp16 = disable_trt_plugin_fp16
 
     def __init__(self, *args, **kwargs):
-        super(TrtLayerAutoScanTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.trt_param = self.TensorRTParam(
             workspace_size=1024,
             max_batch_size=4,

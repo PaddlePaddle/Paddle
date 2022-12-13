@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid.core as core
 import math
 import os
 import sys
@@ -22,6 +21,7 @@ import numpy
 
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 paddle.enable_static()
 
@@ -30,9 +30,11 @@ BATCH_SIZE = 64
 
 def loss_net(hidden, label):
     prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
-    loss = fluid.layers.cross_entropy(input=prediction, label=label)
+    loss = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     avg_loss = paddle.mean(loss)
-    acc = fluid.layers.accuracy(input=prediction, label=label)
+    acc = paddle.static.accuracy(input=prediction, label=label)
     return prediction, avg_loss, acc
 
 
@@ -51,7 +53,7 @@ def conv_net(img, label):
         pool_stride=2,
         act="relu",
     )
-    conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
+    conv_pool_1 = paddle.static.nn.batch_norm(conv_pool_1)
     conv_pool_2 = fluid.nets.simple_img_conv_pool(
         input=conv_pool_1,
         filter_size=5,
@@ -237,7 +239,7 @@ def main(use_cuda, parallel, nn_type, combine):
     if not use_cuda and not parallel:
         save_dirname = "recognize_digits_" + nn_type + ".inference.model"
         save_full_dirname = "recognize_digits_" + nn_type + ".train.model"
-        if combine == True:
+        if combine:
             model_filename = "__model_combined__"
             params_filename = "__params_combined__"
 

@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import op_test
 import unittest
+
 import numpy as np
+import op_test
+
 import paddle
 import paddle.fluid as fluid
 
@@ -115,7 +117,7 @@ class TestEqualReduceAPI(unittest.TestCase):
         x = paddle.ones(shape=[10, 10], dtype="int32")
         y = paddle.ones(shape=[10, 10], dtype="int32")
         out = paddle.equal_all(x, y)
-        assert out.numpy()[0] == True
+        assert out.numpy()[0] is np.True_
         paddle.enable_static()
 
 

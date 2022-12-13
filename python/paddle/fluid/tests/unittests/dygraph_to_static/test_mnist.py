@@ -12,23 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import os
 import tempfile
+import unittest
 from time import time
 
 import numpy as np
+from predictor_utils import PredictorTools
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph.nn import Conv2D, Linear, Pool2D
-from paddle.fluid.optimizer import AdamOptimizer
+from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-from paddle.fluid.framework import _test_eager_guard
-
-from predictor_utils import PredictorTools
+from paddle.fluid.optimizer import AdamOptimizer
+from paddle.nn import Linear
 
 SEED = 2020
 
@@ -56,29 +54,24 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
         param_attr=None,
         bias_attr=None,
     ):
-        super(SimpleImgConvPool, self).__init__()
+        super().__init__()
 
-        self._conv2d = Conv2D(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
+        self._conv2d = paddle.nn.Conv2D(
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=filter_size,
             stride=conv_stride,
             padding=conv_padding,
             dilation=conv_dilation,
             groups=conv_groups,
-            param_attr=None,
+            weight_attr=None,
             bias_attr=None,
-            act=act,
-            use_cudnn=use_cudnn,
         )
 
-        self._pool2d = Pool2D(
-            pool_size=pool_size,
-            pool_type=pool_type,
-            pool_stride=pool_stride,
-            pool_padding=pool_padding,
-            global_pooling=global_pooling,
-            use_cudnn=use_cudnn,
+        self._pool2d = paddle.nn.MaxPool2D(
+            kernel_size=pool_size,
+            stride=pool_stride,
+            padding=pool_padding,
         )
 
     def forward(self, inputs):
@@ -89,7 +82,7 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
 
 class MNIST(fluid.dygraph.Layer):
     def __init__(self):
-        super(MNIST, self).__init__()
+        super().__init__()
 
         self._simple_img_conv_pool_1 = SimpleImgConvPool(
             1, 20, 5, 2, 2, act="relu"
@@ -105,19 +98,18 @@ class MNIST(fluid.dygraph.Layer):
         self._fc = Linear(
             self.pool_2_shape,
             10,
-            param_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.NormalInitializer(
-                    loc=0.0, scale=scale
-                )
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Normal(mean=0.0, std=scale)
             ),
-            act="softmax",
         )
 
     def forward(self, inputs, label=None):
         x = self.inference(inputs)
         if label is not None:
-            acc = fluid.layers.accuracy(input=x, label=label)
-            loss = fluid.layers.cross_entropy(x, label)
+            acc = paddle.static.accuracy(input=x, label=label)
+            loss = paddle.nn.functional.cross_entropy(
+                x, label, reduction='none', use_softmax=False
+            )
             avg_loss = paddle.mean(loss)
 
             return x, acc, avg_loss
@@ -127,8 +119,9 @@ class MNIST(fluid.dygraph.Layer):
     def inference(self, inputs):
         x = self._simple_img_conv_pool_1(inputs)
         x = self._simple_img_conv_pool_2(x)
-        x = fluid.layers.reshape(x, shape=[-1, self.pool_2_shape])
+        x = paddle.reshape(x, shape=[-1, self.pool_2_shape])
         x = self._fc(x)
+        x = paddle.nn.functional.softmax(x)
         return x
 
 
@@ -176,17 +169,6 @@ class TestMNISTWithToStatic(TestMNIST):
                 dygraph_loss, static_loss
             ),
         )
-        with _test_eager_guard():
-            dygraph_loss = self.train_dygraph()
-            static_loss = self.train_static()
-            np.testing.assert_allclose(
-                dygraph_loss,
-                static_loss,
-                rtol=1e-05,
-                err_msg='dygraph is {}\n static_res is \n{}'.format(
-                    dygraph_loss, static_loss
-                ),
-            )
 
     def test_mnist_declarative_cpu_vs_mkldnn(self):
         dygraph_loss_cpu = self.train_dygraph()
@@ -271,7 +253,7 @@ class TestMNISTWithToStatic(TestMNIST):
             model_save_prefix = os.path.join(model_save_dir, 'mnist')
             model_filename = "mnist" + INFER_MODEL_SUFFIX
             params_filename = "mnist" + INFER_PARAMS_SUFFIX
-            fluid.dygraph.jit.save(
+            paddle.jit.save(
                 layer=model,
                 path=model_save_prefix,
                 input_spec=input_spec,
@@ -327,7 +309,7 @@ class TestMNISTWithToStatic(TestMNIST):
         return np.array(results[0])
 
     def jit_load_and_run_inference_dygraph(self, model_path, inputs):
-        infer_net = fluid.dygraph.jit.load(model_path)
+        infer_net = paddle.jit.load(model_path)
         pred = infer_net(inputs[0])
         return pred.numpy()
 

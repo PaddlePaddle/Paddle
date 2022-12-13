@@ -13,16 +13,16 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid import core
 from paddle.autograd import PyLayer
-from paddle.fluid import framework
+from paddle.fluid import core, framework
+
 from ..meta_parallel.parallel_layers.random import get_rng_state_tracker
+from ..meta_parallel.pp_utils import utils
 from .recompute import (
     check_recompute_necessary,
     detach_variable,
     swith_rng_state_tracker,
 )
-from ..meta_parallel.pp_utils import utils
 
 __all__ = []
 
@@ -86,7 +86,6 @@ class _HPRecomputeFunction(PyLayer):
         *args,
         **kwargs
     ):
-        check_recompute_necessary(args)
 
         # store for recomputing
         ctx.run_function = run_function
@@ -151,6 +150,18 @@ class _HPRecomputeFunction(PyLayer):
                 tensor_inputs.append(arg)
                 ctx.tensor_indices.append(i)
                 ctx.inputs.append(None)
+
+                # In new dygraph mode, in some cases a subset of outputs is identity to the subset of inputs,
+                #  which is inplace operating. When the inputs' stop_gradient is True, an
+                #  error will occurs because the stop_gradient=True and inpalce-op are not
+                #  supported in the same time. The solution is to mark the inputs non_differentiable
+                #  if its stop_gradient is True.
+                # Note:
+                #  If not marked non_differentiable, all output tensors' attr `stop gradient`
+                #  will be reset to `False` in c++ backend.
+                #  See https://github.com/PaddlePaddle/Paddle/blob/9d62efb0e6e5373823039d9eda96cd5905426c0a/paddle/fluid/pybind/eager_py_layer.cc#L388
+                if framework.in_dygraph_mode() and state:
+                    ctx.mark_non_differentiable(arg)
             else:
                 ctx.inputs.append(arg)
 
@@ -263,6 +274,9 @@ def recompute_hybrid(ctx, function, *args, **kwargs):
 
     offload = ctx.get('offload', False)
     partition = ctx.get('partition', False)
+
+    if framework._dygraph_tracer()._has_grad:
+        check_recompute_necessary(args)
 
     all_outputs = []
     _HPRecomputeFunction.apply(

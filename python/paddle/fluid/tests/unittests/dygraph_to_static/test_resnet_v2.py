@@ -16,15 +16,14 @@ import os
 
 os.environ["FLAGS_enable_eager_mode"] = "0"
 import math
+import tempfile
 import time
 import unittest
-import tempfile
 
 import numpy as np
+from predictor_utils import PredictorTools
 
 import paddle
-
-from predictor_utils import PredictorTools
 
 SEED = 2020
 IMAGENET1000 = 1281167
@@ -65,7 +64,7 @@ class ConvBNLayer(paddle.nn.Layer):
         groups=1,
         act=None,
     ):
-        super(ConvBNLayer, self).__init__()
+        super().__init__()
 
         self._conv = paddle.nn.Conv2D(
             in_channels=num_channels,
@@ -88,7 +87,7 @@ class ConvBNLayer(paddle.nn.Layer):
 
 class BottleneckBlock(paddle.nn.Layer):
     def __init__(self, num_channels, num_filters, stride, shortcut=True):
-        super(BottleneckBlock, self).__init__()
+        super().__init__()
 
         self.conv0 = ConvBNLayer(
             num_channels=num_channels,
@@ -142,7 +141,7 @@ class BottleneckBlock(paddle.nn.Layer):
 
 class ResNet(paddle.nn.Layer):
     def __init__(self, layers=50, class_dim=102):
-        super(ResNet, self).__init__()
+        super().__init__()
 
         self.layers = layers
         supported_layers = [50, 101, 152]
@@ -164,8 +163,8 @@ class ResNet(paddle.nn.Layer):
         self.conv = ConvBNLayer(
             num_channels=3, num_filters=64, filter_size=7, stride=2, act='relu'
         )
-        self.pool2d_max = paddle.fluid.dygraph.Pool2D(
-            pool_size=3, pool_stride=2, pool_padding=1, pool_type='max'
+        self.pool2d_max = paddle.nn.MaxPool2D(
+            kernel_size=3, stride=2, padding=1
         )
 
         self.bottleneck_block_list = []
@@ -185,10 +184,7 @@ class ResNet(paddle.nn.Layer):
                 )
                 self.bottleneck_block_list.append(bottleneck_block)
                 shortcut = True
-
-        self.pool2d_avg = paddle.fluid.dygraph.Pool2D(
-            pool_size=7, pool_type='avg', global_pooling=True
-        )
+        self.pool2d_avg = paddle.nn.AdaptiveAvgPool2D(1)
 
         self.pool2d_avg_output = num_filters[len(num_filters) - 1] * 4 * 1 * 1
 

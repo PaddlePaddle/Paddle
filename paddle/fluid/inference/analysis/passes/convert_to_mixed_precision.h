@@ -51,8 +51,8 @@ void ConvertToMixedPrecision(const std::string& model_file,
                              const std::string& mixed_params_file,
                              phi::DataType mixed_precision,
                              phi::Backend backend,
-                             bool keep_io_types = true,
-                             std::unordered_set<std::string> black_list = {});
+                             bool keep_io_types,
+                             const std::unordered_set<std::string>& black_list);
 
 }  // namespace analysis
 }  // namespace inference

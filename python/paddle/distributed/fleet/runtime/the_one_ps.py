@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import warnings
 
-import os
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.framework import Program
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.executor import Executor
+from paddle.fluid.framework import Program
 from paddle.fluid.parallel_executor import ParallelExecutor
-from .runtime_base import RuntimeBase
+
 from ..base.private_helper_function import wait_server_ready
+from .runtime_base import RuntimeBase
 
 __all__ = []
 
@@ -37,8 +38,6 @@ PSERVER_SAVE_SUFFIX = ".shard"
 def parse_table_class(varname, o_main_program):
     from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
         is_distributed_sparse_op,
-    )
-    from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
         is_sparse_op,
     )
 
@@ -250,8 +249,6 @@ class CommonAccessor:
     def parse_entry(self, varname, o_main_program):
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
             is_distributed_sparse_op,
-        )
-        from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
             is_sparse_op,
         )
 
@@ -337,7 +334,7 @@ class CommonAccessor:
         self.table_num = size
         self.table_dim = single_dim
 
-        if oop.type != 'adam' and adam_d2sum == True:
+        if oop.type != 'adam' and adam_d2sum:
             print('optimization algorithm is not adam, set adam_d2sum False')
             adam_d2sum = False
         print("adam_d2sum:", adam_d2sum)
@@ -677,7 +674,7 @@ class fsClient:
 
 class TheOnePSRuntime(RuntimeBase):
     def __init__(self):
-        super(TheOnePSRuntime, self).__init__()
+        super().__init__()
         self._communicator = None
         self._server = None
         self._worker = fluid.core.DistFleetWrapper()
@@ -902,7 +899,9 @@ class TheOnePSRuntime(RuntimeBase):
                 heter_device_type = self.role_maker._heter_device_type().upper()
                 if heter_device_type not in ["GPU", "XPU", "CPU"]:
                     raise ValueError(
-                        "Heter Worker Not Support Device {}".format(device_type)
+                        "Heter Worker Not Support Device {}".format(
+                            heter_device_type
+                        )
                     )
                 if heter_device_type == "GPU":
                     executor = Executor(
@@ -997,7 +996,7 @@ class TheOnePSRuntime(RuntimeBase):
             tensor_table_dict = self.compiled_strategy.get_tensor_table_dict()
             program_idx = 0
             for table_name in tensor_table_dict:
-                if tensor_table_dict[table_name]["startup_program"] != None:
+                if tensor_table_dict[table_name]["startup_program"] is not None:
                     tensor_table_dict[table_name][
                         "startup_program_id"
                     ] = program_idx
@@ -1005,7 +1004,7 @@ class TheOnePSRuntime(RuntimeBase):
                         tensor_table_dict[table_name]["startup_program"].desc
                     )
                     program_idx += 1
-                if tensor_table_dict[table_name]["main_program"] != None:
+                if tensor_table_dict[table_name]["main_program"] is not None:
                     tensor_table_dict[table_name][
                         "main_program_id"
                     ] = program_idx
@@ -1241,7 +1240,7 @@ class TheOnePSRuntime(RuntimeBase):
         self._communicator.stop()
         if self.role_maker._is_heter_parameter_server_mode:
             assert (
-                self._heter_client != None
+                self._heter_client is not None
             ), "heter client should not be None in heterps mode"
             self._heter_client.stop()
         # executor = self._get_executor()

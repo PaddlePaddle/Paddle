@@ -24,6 +24,7 @@ if [ -z ${BRANCH} ]; then
     BRANCH="develop"
 fi
 
+
 function print_usage() {
     echo -e "\n${RED}Usage${NONE}:
     ${BOLD}${SCRIPT_NAME}${NONE} [OPTION]"
@@ -259,6 +260,7 @@ function cmake_base() {
         -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF}
         -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}"
         -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
+        -DWITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -314,7 +316,8 @@ EOF
         -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}" \
         -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}  \
-        -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF};build_error=$?
+        -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}  \
+        -DWITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF};build_error=$?
 
     if [ "$build_error" != 0 ];then
         exit 7;
@@ -766,7 +769,9 @@ function run_linux_cpu_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     pip install hypothesis
-    pip install ${PADDLE_ROOT}/build/python/dist/*whl
+    if [ -d "${PADDLE_ROOT}/dist/" ]; then
+        pip install ${PADDLE_ROOT}/dist/*whl
+    fi
     cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/op_test.py ${PADDLE_ROOT}/build/python
     cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/testsuite.py ${PADDLE_ROOT}/build/python
     cp -r ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/white_list ${PADDLE_ROOT}/build/python
@@ -915,6 +920,7 @@ set +x
 set -ex
     fi
 }
+
 function get_precision_ut_mac() {
     on_precision=0
     UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
@@ -993,6 +999,7 @@ function check_whl_size() {
 }
 
 function generate_upstream_develop_api_spec() {
+    set -x
     cp ${PADDLE_ROOT}/python/requirements.txt /tmp
     pr_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
     mkdir -p ${PADDLE_ROOT}/build/pr_whl && mv ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl/
@@ -1002,16 +1009,18 @@ function generate_upstream_develop_api_spec() {
     cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
 
     cd ${PADDLE_ROOT}
-    git fetch upstream $BRANCH
     git checkout -b develop_base_pr -t upstream/$BRANCH
+    echo "develop git log: "
     git log --pretty=oneline -10
 
     dev_commit=`git log -1|head -1|awk '{print $2}'`
     dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${dev_commit}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl"
     url_return=`curl -s -m 5 -IL ${dev_url} |awk 'NR==1{print $2}'`
     if [ "$url_return" == '200' ];then
+        echo "wget develop whl from bos! "
         mkdir -p ${PADDLE_ROOT}/build/python/dist && wget -q -P ${PADDLE_ROOT}/build/python/dist ${dev_url}
     else
+        echo "compile develop whl localy! "
         if [[ ${cmake_change} ]];then
             rm -rf ${PADDLE_ROOT}/build/third_party
         fi
@@ -1023,6 +1032,7 @@ function generate_upstream_develop_api_spec() {
     endTime_s=`date +%s`
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
     echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+    set +x
 }
 
 function generate_api_spec() {
@@ -1043,7 +1053,9 @@ function generate_api_spec() {
     else
         pip install -r ${PADDLE_ROOT}/python/requirements.txt
     fi
-    pip --no-cache-dir install ${PADDLE_ROOT}/build/python/dist/*whl
+    if [ -d "${PADDLE_ROOT}/build/python/dist/" ]; then
+        pip --no-cache-dir install ${PADDLE_ROOT}/build/python/dist/*whl
+    fi
     spec_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.spec
     python ${PADDLE_ROOT}/tools/print_signatures.py paddle > $spec_path
 
@@ -1825,16 +1837,30 @@ function precise_card_test_single {
     set +x
     testcases=$1
     num=$2
-    for case in $(echo $testcases | tr "$|^" "\n")
+    for case in $(echo $testcases | tr "$|^" "\n" | awk '!/^$/')
     do
         cd ${PADDLE_ROOT}/build
         precise_card_test "^${case}$" $num
-        # c++
+
+        #if test failed,continue,if test succeed ,go on 
+        if_test_failed=$(cat $tmp_dir/^${case}$.log| grep "The following tests FAILED:")
+        if [[ "$if_test_failed" == "The following tests FAILED:" ]];then 
+            echo "$testcases has failed,put it into prec_delta"
+            continue
+        else
+            echo "$testcases succeed"
+        fi
+
+        # c++ 
         if [ ! -d "${PADDLE_ROOT}/build/ut_map/$case" ];then
             mkdir ${PADDLE_ROOT}/build/ut_map/$case
         fi
         set -x
         find paddle/fluid -name '*.gcda'|xargs -I {} cp --path {} ut_map/$case
+        find paddle/phi -name '*.gcda'|xargs -I {} cp --path {} ut_map/$case
+        find paddle/utils -name '*.gcda'|xargs -I {} cp --path {} ut_map/$case
+        find paddle/phi -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
+        find paddle/utils -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
         find paddle/fluid -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
         python ${PADDLE_ROOT}/tools/get_single_test_cov.py ${PADDLE_ROOT} $case &
 
@@ -1847,7 +1873,9 @@ function precise_card_test_single {
             fi
             mv python-coverage.data.* ${PADDLE_ROOT}/build/pytest/$case
         fi
-        find paddle/fluid -name *.gcda | xargs rm -f #delete gcda
+        find paddle/fluid -name *.gcda | xargs rm -f 
+        find paddle/phi -name *.gcda | xargs rm -f 
+        find paddle/utils -name *.gcda | xargs rm -f 
     done
 }
 
@@ -2009,12 +2037,12 @@ set -x
     #get notSuccessut including the failed uniitests and not executed unittests
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_not_success_ut' ${PADDLE_ROOT}
 
-    #analyze the mapping between unit tests and .cu files
-    python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'analy_h_cu_file' $tmp_dir ${PADDLE_ROOT}
-
-    wait;
     #rerun the notSuccessut and get the mapping between notSuccessut and .cu files
     get_failedUts_precise_map_file
+    
+    #analyze the mapping between unit tests and .cu files
+    python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'analy_h_cu_file' $tmp_dir ${PADDLE_ROOT}
+    wait;
 
     #generate python coverage and generate python file to tests_map_file
     python ${PADDLE_ROOT}/tools/pyCov_multithreading.py ${PADDLE_ROOT}
@@ -2117,12 +2145,6 @@ function get_failedUts_precise_map_file {
     if [[ -f "${PADDLE_ROOT}/build/utNotSuccess" ]]; then
         rerun_tests=`cat ${PADDLE_ROOT}/build/utNotSuccess`
         #remove pile to full h/cu file
-        python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'remove_pile_from_h_file' ${PADDLE_ROOT}
-        cd ${PADDLE_ROOT}/build
-        cmake_base ${PYTHON_ABI:-""}
-        build ${parallel_number}
-        pip uninstall -y paddlepaddle-gpu
-        pip install ${PADDLE_ROOT}/build/python/dist/*whl
         precise_card_test_single "$rerun_tests"
         wait;
 
@@ -2162,7 +2184,7 @@ EOF
 set +x
         export XPU_OP_LIST_DIR=$tmp_dir
         ut_startTime_s=`date +%s`
-        test_cases=$(ctest -N -V | grep "_xpu" )        # cases list which would be run exclusively
+        test_cases=$(ctest -N -V -LE "(RUN_TYPE=DIST_KUNLUN)" | grep "_xpu" )        # cases list which would be run exclusively
         get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
         while read -r line; do
             if [[ "$line" == "" ]]; then
@@ -2518,6 +2540,7 @@ set -x
         bash $PADDLE_ROOT/tools/check_added_ut.sh
         #check change of pr_unnitests and dev_unnitests
         check_approvals_of_unittest 2
+        ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > ${PADDLE_ROOT}/build/all_ut_list
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
             python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
         fi
@@ -2550,7 +2573,6 @@ set +x
         mkdir -p ${PADDLE_ROOT}/build/Testing/Temporary/
         cp -r ${PADDLE_ROOT}/build/CTestCostData.txt ${PADDLE_ROOT}/build/Testing/Temporary/
 
-        ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > all_ut_list
         get_quickly_disable_ut||disable_ut_quickly='disable_ut'    # indicate whether the case was in quickly disable list
         test_cases=$(ctest -N -V) # get all test cases
 
@@ -2846,8 +2868,9 @@ function parallel_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     pip install hypothesis
-    pip install ${PADDLE_ROOT}/build/python/dist/*whl
-    cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/op_test.py ${PADDLE_ROOT}/build/python
+    if [ -d "${PADDLE_ROOT}/build/python/dist/" ]; then
+        pip install ${PADDLE_ROOT}/build/python/dist/*whl
+    fi
     cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/testsuite.py ${PADDLE_ROOT}/build/python
     cp -r ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/white_list ${PADDLE_ROOT}/build/python
     ut_total_startTime_s=`date +%s`
@@ -2872,6 +2895,12 @@ function parallel_test() {
     echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s"
     echo "ipipe_log_param_TestCases_Total_Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 }
+
+function nv_test() {
+    export FLAGS_enable_cudnn_frontend=0
+    ctest -R "conv" --output-on-failure --timeout 150
+}
+
 
 function enable_unused_var_check() {
     # NOTE(zhiqiu): Set FLAGS_enable_unused_var_check=1 here to enable unused_var_check,
@@ -3432,7 +3461,203 @@ function check_coverage_build() {
     fi
     set -x
 }
+function run_setup(){
+    rm -rf ${PADDLE_ROOT}/build
+    # Build script will not fail if *.deb does not exist
+    rm *.deb 2>/dev/null || true
+    # Delete previous built egg packages
+    rm -rf ${PADDLE_ROOT}/dist 2>/dev/null || true
+    # Delete previous built paddle cache
+    rm -rf ${PADDLE_ROOT}/build/python/paddle 2>/dev/null || true
+    startTime_s=`date +%s`
 
+    SYSTEM=`uname -s`
+    if [ "$SYSTEM" == "Darwin" ]; then
+        echo "Using python abi: $1"
+        if [ "$1" == "cp37-cp37m" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.7" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.7/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.7/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.7/bin/python3
+                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.7/include/python3.7m/
+                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.7/lib/libpython3.7m.dylib
+                pip3.7 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+            else
+                exit 1
+            fi
+        elif [ "$1" == "cp38-cp38" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.8" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.8/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.8/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.8/bin/python3
+                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.8/include/python3.8/
+                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.8/lib/libpython3.8.dylib
+                pip3.8 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+            else
+                exit 1
+            fi
+        elif [ "$1" == "cp39-cp39" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.9" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.9/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.9/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.9/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.9/bin/python3
+                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.9/include/python3.9/
+                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.9/lib/libpython3.9.dylib
+                pip3.9 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+            else
+                exit 1
+            fi
+        elif [ "$1" == "cp310-cp310" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.10" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.10/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.10/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.10/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.9/lib/libpython3.9.dylib
+                export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.10/include/python3.10/
+                export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.10/lib/libpython3.10.dylib
+                pip3.10 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+            else
+                exit 1
+            fi
+        fi
+    else
+        if [ "$1" != "" ]; then
+            echo "using python abi: $1"
+            if [ "$1" == "cp37-cp37m" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.7.0/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.7.0/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.7.0/bin/python3.7
+                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.7.0/include/python3.7m
+                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.7.0/lib/libpython3.so
+                pip3.7 install -r ${PADDLE_ROOT}/python/requirements.txt
+            elif [ "$1" == "cp38-cp38" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.8.0/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.8.0/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.8.0/bin/python3.8
+                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.8.0/include/python3.8
+                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.8.0/lib/libpython3.so
+                pip3.8 install -r ${PADDLE_ROOT}/python/requirements.txt
+            elif [ "$1" == "cp39-cp39" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.9.0/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.9.0/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.9.0/bin/python3.9
+                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.9.0/include/python3.9
+                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.9.0/lib/libpython3.so
+                pip3.9 install -r ${PADDLE_ROOT}/python/requirements.txt
+            elif [ "$1" == "cp310-cp310" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.10.0/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.10.0/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.10.0/bin/python3.10
+                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.10.0/include/python3.10
+                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.10.0/lib/libpython3.so
+                pip3.10 install -r ${PADDLE_ROOT}/python/requirements.txt
+           elif [ "$1" == "conda-python3.7" ]; then
+                export LD_LIBRARY_PATH=/opt/conda/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/conda/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export DPYTHON_EXECUTABLE=/opt/conda/bin/python
+                export PYTHON_INCLUDE_DIR=/opt/conda/include/python3.7m
+                export PYTHON_LIBRARIES=/opt/conda/lib/libpython3.so
+                /opt/conda/bin/pip install -r ${PADDLE_ROOT}/python/requirements.txt
+           fi
+        else
+            pip install -r ${PADDLE_ROOT}/python/requirements.txt
+        fi
+    fi
+
+    if [ "$SYSTEM" == "Darwin" ]; then
+        WITH_DISTRIBUTE="OFF"
+        WITH_AVX=${WITH_AVX:-ON}
+        WITH_ARM=${WITH_ARM:-OFF}
+        INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-~/.cache/inference_demo}
+    else
+        INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo}
+    fi
+
+    distibuted_flag=${WITH_DISTRIBUTE:-OFF}
+    gloo_flag=${distibuted_flag}
+
+    if [ "$CMD" != "assert_file_approvals" ];then
+      which python
+      python -V
+      python -m pip install distro
+      python ${PADDLE_ROOT}/tools/summary_env.py
+      bash ${PADDLE_ROOT}/tools/get_cpu_info.sh
+    fi
+    export CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
+    export WITH_GPU=${WITH_GPU:-OFF}
+    export WITH_TENSORRT=${WITH_TENSORRT:-ON}
+    export WITH_ROCM=${WITH_ROCM:-OFF}
+    export WITH_CINN=${WITH_CINN:-OFF}
+    export WITH_DISTRIBUTE=${distibuted_flag}
+    export WITH_MKL=${WITH_MKL:-ON}
+    export WITH_AVX=${WITH_AVX:-OFF}
+    export CUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
+    export NEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF} 
+    export NEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF}
+    export NEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF}
+    export WITH_PYTHON=${WITH_PYTHON:-ON}
+    export CUDNN_ROOT=/usr/
+    export WITH_TESTING=${WITH_TESTING:-ON}
+    export WITH_COVERAGE=${WITH_COVERAGE:-OFF}
+    export WITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF}
+    export CMAKE_MODULE_PATH=/opt/rocm/hip/cmake
+    export CMAKE_EXPORT_COMPILE_COMMANDS=ON
+    export WITH_CONTRIB=${WITH_CONTRIB:-ON}
+    export WITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
+    export WITH_INFRT=${WITH_INFRT:-OFF}
+    export INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
+    export PY_VERSION=${PY_VERSION:-3.7}
+    export CMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
+    export WITH_PSCORE=${distibuted_flag}
+    export WITH_PSLIB=${WITH_PSLIB:-OFF}
+    export WITH_GLOO=${gloo_flag}
+    export LITE_GIT_TAG=release/v2.10
+    export WITH_XPU=${WITH_XPU:-OFF}
+    export WITH_MLU=${WITH_MLU:-OFF}
+    export WITH_IPU=${WITH_IPU:-OFF}
+    export WITH_CNCL=${WITH_CNCL:-OFF}
+    export XPU_SDK_ROOT=${XPU_SDK_ROOT:-}
+    export WITH_LITE=${WITH_LITE:-OFF}
+    export WITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
+    export WITH_ARM=${WITH_ARM:-OFF}
+    export WITH_ASCEND=${WITH_ASCEND:-OFF}
+    export WITH_ASCEND_CL=${WITH_ASCEND_CL:-OFF}
+    export WITH_ASCEND_INT64=${WITH_ASCEND_INT64:-OFF}
+    export WITH_STRIP=${WITH_STRIP:-ON}
+    export ON_INFER=${ON_INFER:-OFF}
+    export WITH_HETERPS=${WITH_HETERPS:-OFF}
+    export WITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF}
+    export CUDA_ARCH_BIN=${CUDA_ARCH_BIN}
+    export WITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF}
+    export WITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
+    export WITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
+    export WITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
+
+    # reset ccache zero stats for collect PR's actual hit rate
+    ccache -z
+
+    python setup.py $2;build_error=$?
+    
+    # ci will collect ccache hit rate
+    collect_ccache_hits
+
+    if [ "$build_error" != 0 ];then
+        exit 7;
+    fi
+
+}
 function main() {
     local CMD=$1
     local parallel_number=$2
@@ -3571,6 +3796,11 @@ function main() {
         parallel_test
         check_coverage
         ;;
+      nv_cicheck_coverage)
+        parallel_test
+        nv_test
+        check_coverage
+        ;;
       check_coverage_build)
         check_coverage_build
         ;;
@@ -3638,7 +3868,7 @@ function main() {
         build_mac
         ;;
       cicheck_py37)
-        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        run_setup ${PYTHON_ABI:-""} bdist_wheel
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       test_cicheck_py37)
@@ -3651,7 +3881,7 @@ function main() {
         parallel_test
         ;;
       build_gpubox)
-        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        run_setup ${PYTHON_ABI:-""} install
         ;;
       check_xpu)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}

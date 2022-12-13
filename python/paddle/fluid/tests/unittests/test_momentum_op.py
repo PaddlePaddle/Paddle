@@ -13,14 +13,16 @@
 # limitations under the License.
 
 import unittest
+
+import numpy
 import numpy as np
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
 from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
-import numpy
+import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.op import Operator
 
 
 def calculate_momentum_by_numpy(
@@ -530,7 +532,9 @@ class TestMomentumV2(unittest.TestCase):
             x = fluid.layers.data(name='x', shape=[13], dtype='float32')
             y = fluid.layers.data(name='y', shape=[1], dtype='float32')
             y_predict = fluid.layers.fc(input=x, size=1, act=None)
-            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
             rms_optimizer = paddle.optimizer.Momentum(
@@ -671,7 +675,9 @@ class TestMomentumOpWithDecayAPI(unittest.TestCase):
             x = fluid.layers.data(name='x', shape=[13], dtype='float32')
             y = fluid.layers.data(name='y', shape=[1], dtype='float32')
             y_predict = fluid.layers.fc(input=x, size=1, act=None)
-            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
             momentum_optimizer = paddle.fluid.contrib.optimizer.Momentum(
@@ -889,23 +895,31 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
                 multi_precision=use_amp,
             )
         else:
+            parameters = list(model.parameters())
+            n = len(parameters)
             optimizer = paddle.optimizer.Momentum(
                 parameters=[
                     {
-                        'params': model.parameters(),
+                        'params': parameters[: int(n / 2)],
                         'weight_decay': 0.001,
                         'learning_rate': 0.1,
                         'momentum': 0.99,
-                    }
+                    },
+                    {
+                        'params': parameters[int(n / 2) :],
+                        'weight_decay': 0.001,
+                        'learning_rate': 0.1,
+                        'momentum': 0.99,
+                    },
                 ],
                 use_multi_tensor=use_multi_tensor,
                 multi_precision=use_amp,
             )
         for idx in range(5):
-            if place == 'gpu' and use_amp == True:
+            if place == 'gpu' and use_amp:
                 model = paddle.amp.decorate(models=model, level='O2')
                 scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
-            if place == 'gpu' and use_amp == True:
+            if place == 'gpu' and use_amp:
                 with paddle.amp.auto_cast(level='O2'):
                     output = model(input)
                     loss = paddle.mean(output)

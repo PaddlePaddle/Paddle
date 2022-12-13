@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import yaml
 import argparse
 import re
 
+import yaml
 from api_base import BaseAPI
 
 
 class BackwardAPI(BaseAPI):
     def __init__(self, backward_item_yaml):
-        super(BackwardAPI, self).__init__(backward_item_yaml)
+        super().__init__(backward_item_yaml)
         self.check_args(backward_item_yaml['forward'])
         self.no_need_buffer = self.parse_no_need_buffer(backward_item_yaml)
 
@@ -97,7 +97,7 @@ class BackwardAPI(BaseAPI):
             'Tensor': 'Tensor*',
             'std::vector<Tensor>': 'std::vector<Tensor*>',
         }
-        intputs_and_attrs = super(BackwardAPI, self).get_define_args()
+        intputs_and_attrs = super().get_define_args()
         outs = []
         for i, name in enumerate(self.outputs['names']):
             outs.append(
@@ -285,7 +285,6 @@ def source_include(header_file_path):
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/unary.h"
 
-#include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 
@@ -352,7 +351,7 @@ def main():
         '--backward_yaml_path',
         help='path to backward yaml file',
         nargs='+',
-        default='paddle/phi/api/yaml/backward.yaml',
+        default=['paddle/phi/api/yaml/backward.yaml'],
     )
     parser.add_argument(
         '--backward_header_path',

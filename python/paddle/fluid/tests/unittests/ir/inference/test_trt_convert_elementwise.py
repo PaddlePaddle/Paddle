@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest
-from program_config import TensorConfig, ProgramConfig
 import unittest
-import numpy as np
-import paddle.inference as paddle_infer
 from functools import partial
 from typing import List
+
+import numpy as np
+from program_config import ProgramConfig, TensorConfig
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
+
+import paddle.inference as paddle_infer
 
 
 # This is the special test case with weight including batch dimension
@@ -28,11 +30,22 @@ class TrtConvertElementwiseTest_one_input_special_case0(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input(shape):
-            return np.random.random(shape).astype(np.float32)
+        def generate_input(shape, op_type):
+            # elementwise_floordiv is integer only
+            if op_type == "elementwise_floordiv":
+                return np.random.randint(
+                    low=1, high=10000, size=shape, dtype=np.int32
+                )
+            else:
+                return np.random.random(shape).astype(np.float32)
 
-        def generate_weight():
-            return np.random.randn(1, 32, 1, 1).astype(np.float32)
+        def generate_weight(op_type):
+            if op_type == "elementwise_floordiv":
+                return np.random.randint(
+                    low=1, high=10000, size=[1, 32, 1, 1], dtype=np.int32
+                )
+            else:
+                return np.random.randn(1, 32, 1, 1).astype(np.float32)
 
         for batch in [1, 4]:
             for shape in [[batch, 32, 16, 32]]:
@@ -44,6 +57,7 @@ class TrtConvertElementwiseTest_one_input_special_case0(TrtLayerAutoScanTest):
                     "elementwise_pow",
                     "elementwise_min",
                     "elementwise_max",
+                    "elementwise_floordiv",
                 ]:
                     for axis in [-1]:
                         self.dims = len(shape)
@@ -65,12 +79,14 @@ class TrtConvertElementwiseTest_one_input_special_case0(TrtLayerAutoScanTest):
                             ops=ops,
                             weights={
                                 "weight": TensorConfig(
-                                    data_gen=partial(generate_weight)
+                                    data_gen=partial(generate_weight, op_type)
                                 )
                             },
                             inputs={
                                 "input_data": TensorConfig(
-                                    data_gen=partial(generate_input, shape)
+                                    data_gen=partial(
+                                        generate_input, shape, op_type
+                                    )
                                 ),
                             },
                             outputs=["output_data"],
@@ -142,11 +158,23 @@ class TrtConvertElementwiseTest_one_input_special_case1(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input(shape):
-            return np.random.random(shape).astype(np.float32)
+        def generate_input(shape, op_type):
+            # elementwise_floordiv is integer only
+            if op_type == "elementwise_floordiv":
+                return np.random.randint(
+                    low=1, high=10000, size=shape, dtype=np.int32
+                )
+            else:
+                return np.random.random(shape).astype(np.float32)
 
-        def generate_weight():
-            return np.random.randn(1).astype(np.float32)
+        def generate_weight(op_type):
+            # elementwise_floordiv is integer only
+            if op_type == "elementwise_floordiv":
+                return np.random.randint(
+                    low=1, high=10000, size=[1], dtype=np.int32
+                )
+            else:
+                return np.random.randn(1).astype(np.float32)
 
         for shape in [[32]]:
             for op_type in [
@@ -157,6 +185,7 @@ class TrtConvertElementwiseTest_one_input_special_case1(TrtLayerAutoScanTest):
                 "elementwise_pow",
                 "elementwise_min",
                 "elementwise_max",
+                "elementwise_floordiv",
             ]:
                 for axis in [-1]:
                     self.dims = len(shape)
@@ -175,12 +204,12 @@ class TrtConvertElementwiseTest_one_input_special_case1(TrtLayerAutoScanTest):
                         ops=ops,
                         weights={
                             "weight": TensorConfig(
-                                data_gen=partial(generate_weight)
+                                data_gen=partial(generate_weight, op_type)
                             )
                         },
                         inputs={
                             "input_data": TensorConfig(
-                                data_gen=partial(generate_input, shape)
+                                data_gen=partial(generate_input, shape, op_type)
                             ),
                         },
                         outputs=["output_data"],
@@ -245,11 +274,23 @@ class TrtConvertElementwiseTest_one_input(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input(shape):
-            return np.random.random(shape).astype(np.float32)
+        def generate_input(shape, op_type):
+            # elementwise_floordiv is integer only
+            if op_type == "elementwise_floordiv":
+                return np.random.randint(
+                    low=1, high=10000, size=shape, dtype=np.int32
+                )
+            else:
+                return np.random.random(shape).astype(np.float32)
 
-        def generate_weight():
-            return np.random.randn(32).astype(np.float32)
+        def generate_weight(op_type):
+            # elementwise_floordiv is integer only
+            if op_type == "elementwise_floordiv":
+                return np.random.randint(
+                    low=1, high=10000, size=[32], dtype=np.int32
+                )
+            else:
+                return np.random.randn(32).astype(np.float32)
 
         for batch in [1, 4]:
             for shape in [
@@ -266,6 +307,7 @@ class TrtConvertElementwiseTest_one_input(TrtLayerAutoScanTest):
                     "elementwise_pow",
                     "elementwise_min",
                     "elementwise_max",
+                    "elementwise_floordiv",
                 ]:
                     for axis in [-1 if len(shape) == 1 else 1]:
                         self.dims = len(shape)
@@ -287,12 +329,14 @@ class TrtConvertElementwiseTest_one_input(TrtLayerAutoScanTest):
                             ops=ops,
                             weights={
                                 "weight": TensorConfig(
-                                    data_gen=partial(generate_weight)
+                                    data_gen=partial(generate_weight, op_type)
                                 )
                             },
                             inputs={
                                 "input_data": TensorConfig(
-                                    data_gen=partial(generate_input, shape)
+                                    data_gen=partial(
+                                        generate_input, shape, op_type
+                                    )
                                 ),
                             },
                             outputs=["output_data"],
@@ -379,10 +423,16 @@ class TrtConvertElementwiseTest_two_input_without_broadcast(
         return True
 
     def sample_program_configs(self):
-        def generate_input(shape):
-            return np.random.random(shape).astype(np.float32)
+        def generate_input(shape, op_type):
+            # elementwise_floordiv is integer only
+            if op_type == "elementwise_floordiv":
+                return np.random.randint(
+                    low=1, high=10000, size=shape, dtype=np.int32
+                )
+            else:
+                return np.random.random(shape).astype(np.float32)
 
-        for shape in [[4], [4, 32], [2, 64, 32], [1, 8, 16, 32]]:
+        for shape in [[4], [4, 32], [2, 32, 16], [1, 8, 16, 32]]:
             for op_type in [
                 "elementwise_add",
                 "elementwise_mul",
@@ -391,6 +441,7 @@ class TrtConvertElementwiseTest_two_input_without_broadcast(
                 "elementwise_pow",
                 "elementwise_min",
                 "elementwise_max",
+                "elementwise_floordiv",
             ]:
                 for axis in [0, -1]:
                     self.dims = len(shape)
@@ -413,10 +464,10 @@ class TrtConvertElementwiseTest_two_input_without_broadcast(
                         weights={},
                         inputs={
                             "input_data1": TensorConfig(
-                                data_gen=partial(generate_input, shape)
+                                data_gen=partial(generate_input, shape, op_type)
                             ),
                             "input_data2": TensorConfig(
-                                data_gen=partial(generate_input, shape)
+                                data_gen=partial(generate_input, shape, op_type)
                             ),
                         },
                         outputs=["output_data"],
@@ -464,8 +515,8 @@ class TrtConvertElementwiseTest_two_input_without_broadcast(
                     "input_data2": [128, 128, 256],
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "input_data1": [2, 64, 64],
-                    "input_data2": [2, 64, 64],
+                    "input_data1": [2, 32, 16],
+                    "input_data2": [2, 32, 16],
                 }
             elif self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
@@ -530,8 +581,14 @@ class TrtConvertElementwiseTest_two_input_with_broadcast(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input(shape):
-            return np.random.random(shape).astype(np.float32)
+        def generate_input(shape, op_type):
+            # elementwise_floordiv is integer only
+            if op_type == "elementwise_floordiv":
+                return np.random.randint(
+                    low=1, high=10000, size=shape, dtype=np.int32
+                )
+            else:
+                return np.random.random(shape).astype(np.float32)
 
         input1_shape_list = [[4, 32], [2, 4, 32], [4, 2, 4, 32]]
         input2_shape1_list = [[32], [4, 32], [2, 4, 32]]
@@ -575,6 +632,7 @@ class TrtConvertElementwiseTest_two_input_with_broadcast(TrtLayerAutoScanTest):
                     "elementwise_pow",
                     "elementwise_min",
                     "elementwise_max",
+                    "elementwise_floordiv",
                 ]:
                     for axis in axis_list[j][i]:
                         self.shape1 = input1_shape
@@ -599,12 +657,12 @@ class TrtConvertElementwiseTest_two_input_with_broadcast(TrtLayerAutoScanTest):
                             inputs={
                                 "input_data1": TensorConfig(
                                     data_gen=partial(
-                                        generate_input, input1_shape
+                                        generate_input, input1_shape, op_type
                                     )
                                 ),
                                 "input_data2": TensorConfig(
                                     data_gen=partial(
-                                        generate_input, input2_shape
+                                        generate_input, input2_shape, op_type
                                     )
                                 ),
                             },
@@ -676,12 +734,23 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input(shape):
-            return np.random.random(shape).astype(np.float32)
+        def generate_input(shape, op_type):
+            # elementwise_floordiv is integer only
+            if op_type == "elementwise_floordiv":
+                return np.random.randint(
+                    low=1, high=10000, size=shape, dtype=np.int32
+                )
+            else:
+                return np.random.random(shape).astype(np.float32)
 
         # use rand not randn to avoiding pow producing `NAN`
-        def generate_weight():
-            return np.random.rand(32).astype(np.float32)
+        def generate_weight(op_type):
+            if op_type == "elementwise_floordiv":
+                return np.random.randint(
+                    low=1, high=10000, size=[32], dtype=np.int32
+                )
+            else:
+                return np.random.rand(32).astype(np.float32)
 
         for batch in [1, 2, 4]:
             for shape in [
@@ -698,6 +767,7 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
                     "elementwise_pow",
                     "elementwise_min",
                     "elementwise_max",
+                    "elementwise_floordiv",
                 ]:
                     self.op_type = op_type
                     for axis in [-1 if len(shape) == 1 else 1]:
@@ -720,12 +790,14 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
                             ops=ops,
                             weights={
                                 "weight": TensorConfig(
-                                    data_gen=partial(generate_weight)
+                                    data_gen=partial(generate_weight, op_type)
                                 )
                             },
                             inputs={
                                 "input_data": TensorConfig(
-                                    data_gen=partial(generate_input, shape)
+                                    data_gen=partial(
+                                        generate_input, shape, op_type
+                                    )
                                 ),
                             },
                             outputs=["output_data"],

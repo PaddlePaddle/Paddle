@@ -26,7 +26,7 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-#pragma pack(4)
+#pragma pack(push, 4)
 struct bloomfilter {
   uint64_t magic_num;
   uint64_t m;
@@ -34,6 +34,8 @@ struct bloomfilter {
   uint64_t count;
   unsigned char bit_vector[1];
 };
+#pragma pack(pop)
+
 int bloomfilter_get(const struct bloomfilter *bloomfilter,
                     const void *key,
                     size_t len);

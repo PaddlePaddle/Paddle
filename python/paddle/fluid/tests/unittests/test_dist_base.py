@@ -12,26 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import tempfile
-
-import ast
-import unittest
-import os
-import sys
-import subprocess
 import argparse
+import ast
+import os
 import pickle
 import random
-import numpy as np
+import subprocess
+import sys
+import tempfile
 import time
+import unittest
+
+import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import compiler
 import paddle.fluid.dygraph as dygraph
-from paddle.fluid.framework import _test_eager_guard
-from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+from paddle.fluid import compiler
+from paddle.fluid.incubate.fleet.collective import DistributedStrategy, fleet
 
 RUN_STEP = 5
 DEFAULT_BATCH_SIZE = 2
@@ -52,7 +51,7 @@ def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 
-class TestDistRunnerBase(object):
+class TestDistRunnerBase:
     def get_model(
         self,
         batch_size=DEFAULT_BATCH_SIZE,
@@ -381,7 +380,7 @@ class TestDistRunnerBase(object):
                 infer_save_dir_fleet = os.path.join(
                     model_save_dir, "fleet_infer_2"
                 )
-            fluid.io.save_persistables(
+            paddle.distributed.io.save_persistables(
                 exe, model_save_dir_fluid, fleet._origin_program
             )
             fleet.save_persistables(executor=exe, dirname=model_save_dir_fleet)
@@ -586,7 +585,7 @@ class TestDistRunnerBase(object):
         print_to_out(out_losses)
 
 
-class TestParallelDyGraphRunnerBase(object):
+class TestParallelDyGraphRunnerBase:
     def get_model(self):
         raise NotImplementedError(
             "get_model should be implemented by child classes."
@@ -1330,8 +1329,8 @@ class TestDistBase(unittest.TestCase):
             tr_cmd += " --diff_batch"
         self.__use_cuda = False
         self.__use_xpu = False
-        assert self.__use_cuda == False, "gloo not support use cuda"
-        assert self.__use_xpu == False, "gloo not support use xpu"
+        assert not self.__use_cuda, "gloo not support use cuda"
+        assert not self.__use_xpu, "gloo not support use xpu"
         tr_cmd += " --use_cpu"
         env.update(
             {
@@ -1345,7 +1344,7 @@ class TestDistBase(unittest.TestCase):
             }
         )
 
-        assert self._use_dgc == False, "gloo not support use dgc"
+        assert not self._use_dgc, "gloo not support use dgc"
 
         if self._accumulate_gradient:
             tr_cmd += " --accumulate_gradient"
@@ -1353,7 +1352,7 @@ class TestDistBase(unittest.TestCase):
         if self._find_unused_parameters:
             tr_cmd += " --find_unused_parameters"
 
-        assert self._pipeline_mode == False, "gloo not support use pipeline"
+        assert not self._pipeline_mode, "gloo not support use pipeline"
 
         if self._enable_backward_deps:  # build strategy, save it
             tr_cmd += " --enable_backward_deps"
@@ -1361,8 +1360,8 @@ class TestDistBase(unittest.TestCase):
         if self._fuse_all_reduce is not None:
             tr_cmd += " --fuse_all_reduce {}".format(self._fuse_all_reduce)
 
-        assert self._use_fleet_api == False, "gloo not support use fleet api"
-        assert self._use_fleet_api_20 == False, "gloo not support use fleet api"
+        assert not self._use_fleet_api, "gloo not support use fleet api"
+        assert not self._use_fleet_api_20, "gloo not support use fleet api"
         return tr_cmd, env
 
     def _get_nccl2_trainer_cmd(
@@ -1718,16 +1717,6 @@ class TestDistBase(unittest.TestCase):
         log_name="",
     ):
         if self._dygraph and (self._gloo_mode or self._nccl2_mode):
-            need_envs.update({"FLAGS_enable_eager_mode": "1"})
-            with _test_eager_guard():
-                self.check_with_place_func(
-                    model_file=model_file,
-                    delta=delta,
-                    check_error_log=check_error_log,
-                    need_envs=need_envs,
-                    log_name=log_name,
-                )
-            need_envs.update({"FLAGS_enable_eager_mode": "0"})
             self.check_with_place_func(
                 model_file=model_file,
                 delta=delta,

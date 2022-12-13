@@ -18,11 +18,10 @@ Distribute CTR model for test fleet api
 import os
 
 import numpy as np
+from test_dist_fleet_base import FleetDistRunnerBase, runtime_main
 
 import paddle
 import paddle.fluid as fluid
-
-from test_dist_fleet_base import runtime_main, FleetDistRunnerBase
 
 
 def fake_ctr_reader():
@@ -139,9 +138,11 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
         predict = fluid.layers.fc(input=merge_layer, size=2, act='softmax')
 
-        acc = fluid.layers.accuracy(input=predict, label=label)
-        auc_var, _, _ = fluid.layers.auc(input=predict, label=label)
-        cost = fluid.layers.cross_entropy(input=predict, label=label)
+        acc = paddle.static.accuracy(input=predict, label=label)
+        auc_var, _, _ = paddle.static.auc(input=predict, label=label)
+        cost = paddle.nn.functional.cross_entropy(
+            input=predict, label=label, reduction='none', use_softmax=False
+        )
         avg_cost = paddle.mean(x=cost)
 
         self.feeds = datas

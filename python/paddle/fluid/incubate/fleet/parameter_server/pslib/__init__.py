@@ -30,7 +30,7 @@ class PSLib(Fleet):
     """PSLib class."""
 
     def __init__(self):
-        super(PSLib, self).__init__(Mode.PSLIB)
+        super().__init__(Mode.PSLIB)
         self._opt_info = None
         self._local_ip = 0
         self._fleet_ptr = None
@@ -43,7 +43,7 @@ class PSLib(Fleet):
     def init(self, role_maker=None):
         if role_maker is None:
             role_maker = MPISymetricRoleMaker()
-        super(PSLib, self).init(role_maker)
+        super().init(role_maker)
         self._fleet_ptr = fluid.core.Fleet()
         self._heter_ptr = None
         if isinstance(role_maker, HeterRoleMaker):
@@ -1027,7 +1027,7 @@ def _fleet_embedding_v2(
     )
 
 
-class fleet_embedding(object):
+class fleet_embedding:
     """
     fleet embedding class, it is used as a wrapper
     Example:
@@ -1085,7 +1085,7 @@ class DownpourOptimizer(DistributedOptimizer):
     """
 
     def __init__(self, optimizer, strategy=None):
-        super(DownpourOptimizer, self).__init__(optimizer, strategy)
+        super().__init__(optimizer, strategy)
 
         self._optimizer = optimizer
         self._optimizer_name = "Distributed%s" % optimizer.type.capitalize()

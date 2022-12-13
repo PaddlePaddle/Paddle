@@ -17,15 +17,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
-
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
 using DataLayout = phi::DataLayout;
 
 class LayerNormOp : public framework::OperatorWithKernel {
@@ -111,17 +105,13 @@ class LayerNormOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-#ifdef PADDLE_WITH_MKLDNN
+    // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
     int begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type) &&
-        begin_norm_axis ==
-            ctx.Input<phi::DenseTensor>("X")->dims().size() - 1) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     phi::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
+    if (begin_norm_axis !=
+        ctx.Input<phi::DenseTensor>("X")->dims().size() - 1) {
+      this->SetDnnFallback(true);
     }
-#endif
+    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
@@ -219,11 +209,11 @@ class LayerNormGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_NOT_NULL(
         var,
         platform::errors::NotFound("Y@GRAD of LayerNorm Op is not found."));
-    const Tensor *t = nullptr;
-    if (var->IsType<Tensor>()) {
-      t = &var->Get<Tensor>();
-    } else if (var->IsType<LoDTensor>()) {
-      t = &var->Get<LoDTensor>();
+    const phi::DenseTensor *t = nullptr;
+    if (var->IsType<phi::DenseTensor>()) {
+      t = &var->Get<phi::DenseTensor>();
+    } else if (var->IsType<phi::DenseTensor>()) {
+      t = &var->Get<phi::DenseTensor>();
     }
     PADDLE_ENFORCE_NOT_NULL(
         t, platform::errors::NotFound("Y@GRAD of LayerNorm Op is not found."));

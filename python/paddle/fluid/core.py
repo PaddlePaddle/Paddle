@@ -44,8 +44,6 @@ try:
             os.add_dll_directory(third_lib_path)
 
 except ImportError as e:
-    from .. import compat as cpt
-
     if os.name == 'nt':
         executable_path = os.path.abspath(os.path.dirname(sys.executable))
         raise ImportError(
@@ -71,13 +69,13 @@ def avx_supported():
     """
     Whether current system(Linux, MacOS, Windows) is supported with AVX.
     """
-    from .. import compat as cpt
-
     sysstr = platform.system().lower()
     has_avx = False
     if sysstr == 'linux':
         try:
-            has_avx = os.popen('cat /proc/cpuinfo | grep -i avx').read() != ''
+            pipe = os.popen('cat /proc/cpuinfo | grep -i avx')
+            has_avx = pipe.read() != ''
+            pipe.close()
         except Exception as e:
             sys.stderr.write(
                 'Can not get the AVX flag from /proc/cpuinfo.\n'
@@ -86,10 +84,9 @@ def avx_supported():
         return has_avx
     elif sysstr == 'darwin':
         try:
-            has_avx = (
-                os.popen('sysctl machdep.cpu.features | grep -i avx').read()
-                != ''
-            )
+            pipe = os.popen('sysctl machdep.cpu.features | grep -i avx')
+            has_avx = pipe.read() != ''
+            pipe.close()
         except Exception as e:
             sys.stderr.write(
                 'Can not get the AVX flag from machdep.cpu.features.\n'
@@ -303,6 +300,7 @@ try:
     from .libpaddle import _promote_types_if_complex_exists
     from .libpaddle import _set_cached_executor_build_strategy
     from .libpaddle import _device_synchronize
+    from .libpaddle import _xpu_device_synchronize
     from .libpaddle import _get_current_stream
     from .libpaddle import _Profiler, _ProfilerResult, _RecordEvent
     from .libpaddle import _set_current_stream

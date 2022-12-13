@@ -39,7 +39,7 @@ _logger = get_logger(
 fleet = None
 
 
-class FleetUtil(object):
+class FleetUtil:
     """
     FleetUtil provides some common functions for users' convenience.
 
@@ -192,7 +192,7 @@ class FleetUtil(object):
                       fluid.layers.ceil(similarity_norm), similarity_norm),\
                   similarity_norm], axis=1)
               auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos, \
-                  stat_neg] = fluid.layers.auc(input=binary_predict,\
+                  stat_neg] = paddle.static.auc(input=binary_predict,\
                                                label=label, curve='ROC',\
                                                num_thresholds=4096)
 
@@ -1381,7 +1381,7 @@ class FleetUtil(object):
                       fluid.layers.ceil(similarity_norm), similarity_norm),\
                   similarity_norm], axis=1)
               auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos, \
-                  stat_neg] = fluid.layers.auc(input=binary_predict,\
+                  stat_neg] = paddle.static.auc(input=binary_predict,\
                                                label=label, curve='ROC',\
                                                num_thresholds=4096)
               local_sqrerr, local_abserr, local_prob, local_q, local_pos_ins,\
@@ -1581,7 +1581,7 @@ class FleetUtil(object):
                       fluid.layers.ceil(similarity_norm), similarity_norm),\
                   similarity_norm], axis=1)
               auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos, \
-                  stat_neg] = fluid.layers.auc(input=binary_predict,\
+                  stat_neg] = paddle.static.auc(input=binary_predict,\
                                                label=label, curve='ROC',\
                                                num_thresholds=4096)
               local_sqrerr, local_abserr, local_prob, local_q, local_pos_ins, \
@@ -1880,7 +1880,7 @@ class GPUPSUtil(FleetUtil):
     """
 
     def __init__(self, fs_client=None):
-        super(GPUPSUtil, self).__init__("pslib")
+        super().__init__("pslib")
         self._afs = fs_client
         # self._afs = fs_client._fs
 

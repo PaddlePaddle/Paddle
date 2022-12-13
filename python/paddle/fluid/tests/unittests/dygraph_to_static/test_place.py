@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
+
+import paddle
 
 
 class TestPlace(unittest.TestCase):
@@ -21,7 +22,7 @@ class TestPlace(unittest.TestCase):
 
         paddle.enable_static()
         x = paddle.to_tensor([1, 2, 3, 4])
-        self.assertTrue(x.place() == None)
+        self.assertIsNone(x.place())
 
 
 if __name__ == '__main__':

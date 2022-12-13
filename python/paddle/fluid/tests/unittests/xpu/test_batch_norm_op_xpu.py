@@ -16,16 +16,18 @@ import sys
 
 sys.path.append("..")
 import unittest
+
 import numpy as np
-import paddle.fluid.core as core
-import paddle
-import paddle.fluid as fluid
-import paddle.nn.functional as F
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.nn.functional as F
 
 paddle.enable_static()
 
@@ -355,7 +357,7 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
             self.places = [paddle.XPUPlace(0)]
             self.init_test()
 
-        ### train mode
+        # train mode
         def init_test(self):
             self.use_global_stats = True
             self.trainable_statistics = False
@@ -364,7 +366,7 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
             for p in self.places:
                 with fluid.dygraph.guard(p):
                     x = paddle.randn([2, 6, 6, 4])
-                    net1 = paddle.fluid.dygraph.BatchNorm(
+                    net1 = paddle.nn.BatchNorm(
                         6,
                         param_attr=fluid.ParamAttr(
                             initializer=fluid.initializer.Constant(1.0)
@@ -377,7 +379,7 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
                     )
                     net2.weight = net1.weight
                     net2.bias = net1.bias
-                    if self.trainable_statistics == True:
+                    if self.trainable_statistics:
                         net1.training = False
                         net2.training = False
                     y1 = net1(x)
@@ -387,13 +389,13 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
                     )
 
     class TestBatchNormOpUseGlobalStats1(TestBatchNormOpUseGlobalStats):
-        ### test mode
+        # test mode
         def init_test(self):
             self.use_global_stats = True
             self.trainable_statistics = True
 
     class TestBatchNormUseGlobalStats2(TestBatchNormOpUseGlobalStats):
-        ### train mode
+        # train mode
         def init_test(self):
             self.use_global_stats = True
             self.trainable_statistics = False

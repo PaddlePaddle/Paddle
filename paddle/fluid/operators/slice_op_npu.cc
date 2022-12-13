@@ -12,14 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/slice_op.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using NPUDeviceContext = platform::NPUDeviceContext;
 
 void UpdateAttr(const framework::DDim& in_dims,
@@ -198,7 +198,7 @@ class SliceGradNPUKernel : public framework::OpKernel<T> {
       paddings[i][1] = static_cast<int64_t>(in_dims[i] - size[i] - offsets[i]);
     }
 
-    Tensor tmp_dout;
+    phi::DenseTensor tmp_dout;
     tmp_dout.ShareDataWith(*dout);
     auto out_dims = dout->dims();
     auto decrease_axis = ctx.Attr<std::vector<int>>("decrease_axis");

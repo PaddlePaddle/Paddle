@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import paddle
+import paddle.distributed.communication.stream as stream
 import paddle.fluid.framework as framework
-from paddle.distributed.communication import stream as stream
 from paddle.distributed.communication.reduce import ReduceOp
 
 
@@ -63,6 +63,8 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, sync_op=True):
         )
 
     # code below will be removed after we remove the old dygraph
+    if group is not None and not group.is_member():
+        return
     use_calc_stream = sync_op
     ring_id = 0 if group is None else group.id
     if op == ReduceOp.SUM:

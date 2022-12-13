@@ -14,7 +14,21 @@
 
 import logging
 
-import paddle.fluid as fluid
+import paddle
+from paddle.fluid.layers.learning_rate_scheduler import (
+    exponential_decay,
+    inverse_time_decay,
+    natural_exp_decay,
+    noam_decay,
+)
+from paddle.optimizer.lr import (
+    ExponentialDecay,
+    InverseTimeDecay,
+    LRScheduler,
+    NaturalExpDecay,
+    NoamDecay,
+)
+
 from ..ps.utils.public import (
     get_optimize_ops,
     get_ps_endpoint,
@@ -22,25 +36,12 @@ from ..ps.utils.public import (
     get_trainers,
 )
 from .pass_base import PassBase, register_pass
-from paddle.optimizer.lr import LRScheduler
-from paddle.optimizer.lr import (
-    ExponentialDecay,
-    InverseTimeDecay,
-    NaturalExpDecay,
-    NoamDecay,
-)
-from paddle.fluid.layers.learning_rate_scheduler import (
-    exponential_decay,
-    inverse_time_decay,
-    natural_exp_decay,
-    noam_decay,
-)
 
 
 @register_pass("add_lr_decay_table_pass")
 class AddLrDecayTablePass(PassBase):
     def __init__(self):
-        super(AddLrDecayTablePass, self).__init__()
+        super().__init__()
 
     def _check_self(self):
         return True
@@ -76,12 +77,14 @@ class AddLrDecayTablePass(PassBase):
             'ExponentialDecay',
         ]
 
-        decay_main_program = fluid.framework.Program()
-        decay_startup_program = fluid.framework.Program()
+        decay_main_program = paddle.static.Program()
+        decay_startup_program = paddle.static.Program()
         lr_name = ""
 
         if isinstance(lr_sheduler, ExponentialDecay):
-            with fluid.program_guard(decay_main_program, decay_startup_program):
+            with paddle.static.program_guard(
+                decay_main_program, decay_startup_program
+            ):
                 lr = exponential_decay(
                     1.0, lr_decay_steps, lr_sheduler.gamma, True
                 )
@@ -94,7 +97,9 @@ class AddLrDecayTablePass(PassBase):
                     % lr_decay_steps
                 )
         elif isinstance(lr_sheduler, NoamDecay):
-            with fluid.program_guard(decay_main_program, decay_startup_program):
+            with paddle.static.program_guard(
+                decay_main_program, decay_startup_program
+            ):
                 lr = noam_decay(
                     lr_sheduler.d_model, lr_sheduler.warmup_steps, 1.0
                 )
@@ -104,7 +109,9 @@ class AddLrDecayTablePass(PassBase):
                     % lr_sheduler.warmup_steps
                 )
         elif isinstance(lr_sheduler, NaturalExpDecay):
-            with fluid.program_guard(decay_main_program, decay_startup_program):
+            with paddle.static.program_guard(
+                decay_main_program, decay_startup_program
+            ):
                 lr = natural_exp_decay(
                     1.0, lr_decay_steps, lr_sheduler.gamma, True
                 )
@@ -117,7 +124,9 @@ class AddLrDecayTablePass(PassBase):
                     % lr_decay_steps
                 )
         elif isinstance(lr_sheduler, InverseTimeDecay):
-            with fluid.program_guard(decay_main_program, decay_startup_program):
+            with paddle.static.program_guard(
+                decay_main_program, decay_startup_program
+            ):
                 lr = inverse_time_decay(
                     1.0, lr_decay_steps, lr_sheduler.gamma, True
                 )
@@ -140,7 +149,7 @@ class AddLrDecayTablePass(PassBase):
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
         attrs = pass_ctx._attrs
-        if hasattr(attrs['origin_main_program'], 'lr_sheduler') == False:
+        if not hasattr(attrs['origin_main_program'], 'lr_sheduler'):
             return
 
         assert isinstance(
@@ -169,7 +178,7 @@ class AddLrDecayTablePass(PassBase):
 @register_pass("add_listen_and_serv_pass")
 class AddListenAndServPass(PassBase):
     def __init__(self):
-        super(AddListenAndServPass, self).__init__()
+        super().__init__()
 
     def _check_self(self):
         return True
@@ -202,7 +211,7 @@ class AddListenAndServPass(PassBase):
 @register_pass("add_rpc_global_flags_pass")
 class AddRpcGlobalFlagsPass(PassBase):
     def __init__(self):
-        super(AddRpcGlobalFlagsPass, self).__init__()
+        super().__init__()
 
     def _check_self(self):
         return True
@@ -217,7 +226,7 @@ class AddRpcGlobalFlagsPass(PassBase):
 @register_pass("add_optimizer_pass")
 class AddOptimizerPass(PassBase):
     def __init__(self):
-        super(AddOptimizerPass, self).__init__()
+        super().__init__()
 
     def _check_self(self):
         return True
@@ -232,7 +241,7 @@ class AddOptimizerPass(PassBase):
 @register_pass("add_geo_optimizer_pass")
 class AddGeoOptimizerPass(PassBase):
     def __init__(self):
-        super(AddGeoOptimizerPass, self).__init__()
+        super().__init__()
 
     def _check_self(self):
         return True
@@ -247,7 +256,7 @@ class AddGeoOptimizerPass(PassBase):
 @register_pass("build_pserver_startup_program_pass")
 class BuildPserverStartupProgramPass(PassBase):
     def __init__(self):
-        super(BuildPserverStartupProgramPass, self).__init__()
+        super().__init__()
 
     def _check_self(self):
         return True
@@ -262,7 +271,7 @@ class BuildPserverStartupProgramPass(PassBase):
 @register_pass("delete_unused_in_startup_pass")
 class DeleteUnusedInStartupPass(PassBase):
     def __init__(self):
-        super(DeleteUnusedInStartupPass, self).__init__()
+        super().__init__()
 
     def _check_self(self):
         return True

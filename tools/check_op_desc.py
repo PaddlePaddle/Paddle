@@ -14,8 +14,9 @@
 
 import json
 import sys
-from paddle.utils import OpLastCheckpointChecker
+
 from paddle.fluid.core import OpUpdateType
+from paddle.utils import OpLastCheckpointChecker
 
 INPUTS = "Inputs"
 OUTPUTS = "Outputs"
@@ -173,7 +174,7 @@ def diff_attr(ori_attrs, new_attrs):
 
     for attr_name in attrs_only_in_new:
         attr_added_error_massage.append(attr_name)
-        if new_attrs.get(attr_name).get(DEFAULT_VALUE) == None:
+        if new_attrs.get(attr_name).get(DEFAULT_VALUE) is None:
             error, attr_error = True, True
             attr_added_def_error_massage.append(attr_name)
 

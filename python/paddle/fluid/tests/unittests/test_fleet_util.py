@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
-import tarfile
-import tempfile
 import os
 import sys
-from paddle.dataset.common import download
+import tarfile
+import tempfile
+import unittest
+
+import numpy as np
+
 import paddle.distributed.fleet.base.role_maker as role_maker
+from paddle.dataset.common import download
 
 
 class TestFleetUtil(unittest.TestCase):
@@ -50,7 +52,7 @@ class TestFleetUtil(unittest.TestCase):
         context["role_maker"] = role_maker
         context["valid_strategy"] = strategy
         util = factory._create_util(context)
-        self.assertEqual(util.role_maker, None)
+        self.assertIsNone(util.role_maker)
 
     def test_get_util(self):
         import paddle.distributed.fleet as fleet
@@ -58,14 +60,14 @@ class TestFleetUtil(unittest.TestCase):
 
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
-        self.assertNotEqual(fleet.util, None)
+        self.assertIsNotNone(fleet.util)
 
     def test_set_user_defined_util(self):
         import paddle.distributed.fleet as fleet
 
         class UserDefinedUtil(fleet.UtilBase):
             def __init__(self):
-                super(UserDefinedUtil, self).__init__()
+                super().__init__()
 
             def get_user_id(self):
                 return 10

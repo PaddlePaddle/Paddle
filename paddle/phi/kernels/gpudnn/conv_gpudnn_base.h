@@ -20,6 +20,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -28,13 +29,40 @@ limitations under the License. */
 
 namespace phi {
 
-using GPUDNNDataLayout = paddle::platform::DataLayout;
+using GPUDNNDataLayout = phi::backends::gpu::DataLayout;
 
 template <typename T>
 using ScalingParamType =
-    typename paddle::platform::CudnnDataType<T>::ScalingParamType;
+    typename phi::backends::gpu::CudnnDataType<T>::ScalingParamType;
 
-// As the container of searchAlgorithm::Find() result.
+enum class ConvKind { kForward = 1, kBackwardData = 2, kBackwardFilter = 3 };
+
+static inline double ToMegaBytes(size_t bytes) {
+  return static_cast<double>(bytes) / (1 << 20);
+}
+
+static inline bool UseFixedWorkspace() {
+  return FLAGS_conv_workspace_size_limit >= 0;
+}
+
+static size_t CalcWorkspaceLimitInBytes(bool use_fixed_workspace) {
+  if (!use_fixed_workspace) {
+    int device_id = phi::backends::gpu::GetCurrentDeviceId();
+    int64_t allocated =
+        paddle::memory::DeviceMemoryStatCurrentValue("Allocated", device_id);
+    int64_t reserved =
+        paddle::memory::DeviceMemoryStatCurrentValue("Reserved", device_id);
+    int64_t availble = paddle::platform::GpuAvailableMemToAlloc();
+    VLOG(3) << "[memory] allocated=" << ToMegaBytes(allocated)
+            << " MB, reserved=" << ToMegaBytes(reserved)
+            << " MB, available_to_alloc=" << ToMegaBytes(availble) << " MB.";
+    return std::max(availble, reserved - allocated);
+  } else {
+    return FLAGS_conv_workspace_size_limit * 1024 * 1024;
+  }
+}
+
+// The container of SearchAlgorithm::Find() result.
 template <typename AlgoT>
 struct SearchResult {
   SearchResult() {}
@@ -69,10 +97,15 @@ static std::ostream& operator<<(std::ostream& out, const std::vector<T>& v) {
 template <typename HandleT, typename DataT>
 struct ConvArgsBase {
   HandleT handle;
-  paddle::platform::TensorDescriptor idesc, odesc;
-  paddle::platform::FilterDescriptor wdesc;
-  paddle::platform::ConvolutionDescriptor cdesc;
-  const phi::DenseTensor *x, *w, *o;
+  phi::backends::gpu::TensorDescriptor idesc;
+  phi::backends::gpu::TensorDescriptor odesc;
+  phi::backends::gpu::FilterDescriptor wdesc;
+  phi::backends::gpu::ConvolutionDescriptor cdesc;
+
+  const phi::DenseTensor* x = nullptr;
+  const phi::DenseTensor* w = nullptr;
+  const phi::DenseTensor* o = nullptr;
+
   DataT cudnn_dtype;
 
   // strides
@@ -88,7 +121,8 @@ struct ConvArgsBase {
   // data foramt
   GPUDNNDataLayout data_layout;
 
-  ConvArgsBase(const phi::DenseTensor* x,
+  ConvArgsBase(const HandleT& h,
+               const phi::DenseTensor* x,
                const phi::DenseTensor* w,
                const phi::DenseTensor* o,
                const std::vector<int> s,
@@ -97,7 +131,8 @@ struct ConvArgsBase {
                DataT dtype,
                int g,
                GPUDNNDataLayout layout)
-      : x(x),
+      : handle(h),
+        x(x),
         w(w),
         o(o),
         s(s),
@@ -108,7 +143,7 @@ struct ConvArgsBase {
         data_layout(layout) {}
 
   template <typename T>
-  phi::autotune::ConvCacheKey Convert2ConvCacheKey() const {
+  phi::autotune::ConvCacheKey ConvertToConvCacheKey() const {
     auto x_shape = phi::vectorize(x->dims());
     auto w_shape = phi::vectorize(w->dims());
     VLOG(10) << "[ConvArgs] x_dims=" << x_shape << ", w_dims=" << w_shape

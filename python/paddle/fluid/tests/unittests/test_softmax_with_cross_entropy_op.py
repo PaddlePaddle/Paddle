@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-import paddle
-import paddle.fluid.core as core
 
+import numpy as np
 from op_test import OpTest
 from test_softmax_op import stable_softmax
+
+import paddle
+import paddle.fluid.core as core
 
 
 def cross_entropy(softmax, label, soft_label, axis, ignore_index=-1):
@@ -131,7 +132,7 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
             softmax, labels, self.soft_label, self.axis, self.ignore_index
         )
 
-        if self.use_softmax == False:
+        if not self.use_softmax:
             self.inputs = {"Logits": softmax, "Label": labels}
         else:
             self.inputs = {"Logits": logits, "Label": labels}

@@ -72,8 +72,8 @@ def _squared_l2_norm(x):
         or x.dtype == core.VarDesc.VarType.FP16
         or x.dtype == core.VarDesc.VarType.BF16
     ):
-        square = layers.square(x)
-        sum_square = layers.reduce_sum(square)
+        square = paddle.square(x)
+        sum_square = paddle.sum(square)
         return sum_square
 
     if in_dygraph_mode():
@@ -92,7 +92,7 @@ def _squared_l2_norm(x):
     return out
 
 
-class BaseErrorClipAttr(object):
+class BaseErrorClipAttr:
     def __str__(self):
         raise NotImplementedError()
 
@@ -119,6 +119,8 @@ class ErrorClipByValue(BaseErrorClipAttr):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
             BATCH_SIZE = 128
             CLIP_MAX = 2e-6
             CLIP_MIN = -1e-6
@@ -132,11 +134,12 @@ class ErrorClipByValue(BaseErrorClipAttr):
                     input=hidden2, size=10, act='softmax')
                 label = fluid.layers.data(name='y', shape=[1], dtype='int64')
                 cost = fluid.layers.cross_entropy(input=predict, label=label)
-                avg_cost = fluid.layers.mean(cost)
+                avg_cost = paddle.mean(cost)
             prog_clip = prog.clone()
             prog_clip.block(0).var(hidden1.name)._set_error_clip(
                 fluid.clip.ErrorClipByValue(
                     max=CLIP_MAX, min=CLIP_MIN)
+                    )
     """
 
     def __init__(self, max, min=None):
@@ -177,9 +180,9 @@ def error_clip_callback(block, context):
             error_clip._append_clip_op(block, grad_n)
 
 
-class ClipGradBase(object):
+class ClipGradBase:
     def __init__(self):
-        super(ClipGradBase, self).__init__()
+        super().__init__()
 
     def __str__(self):
         raise NotImplementedError()
@@ -254,7 +257,7 @@ class ClipGradByValue(ClipGradBase):
     """
 
     def __init__(self, max, min=None):
-        super(ClipGradByValue, self).__init__()
+        super().__init__()
         if min is None:
             assert max > 0.0
             min = -max
@@ -360,7 +363,7 @@ class ClipGradByNorm(ClipGradBase):
     """
 
     def __init__(self, clip_norm):
-        super(ClipGradByNorm, self).__init__()
+        super().__init__()
         self.clip_norm = float(clip_norm)
 
     def __str__(self):
@@ -475,7 +478,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
     def __init__(
         self, clip_norm, group_name="default_group", auto_skip_clip=False
     ):
-        super(ClipGradByGlobalNorm, self).__init__()
+        super().__init__()
         self.clip_norm = float(clip_norm)
         self.group_name = group_name
         assert isinstance(auto_skip_clip, bool)
@@ -540,7 +543,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
             global_norm_var_fp64 = paddle.add_n(sum_square_list)
             global_norm_var.append(global_norm_var_fp64)
         global_norm_var = paddle.add_n(global_norm_var)
-        global_norm_var = layers.sqrt(global_norm_var)
+        global_norm_var = paddle.sqrt(global_norm_var)
         max_global_norm = layers.fill_constant(
             shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm
         )
@@ -548,16 +551,14 @@ class ClipGradByGlobalNorm(ClipGradBase):
         need_clip = False
         if not self.auto_skip_clip:  # always apply clip
             need_clip = True
-            clip_var = layers.elementwise_div(
+            clip_var = paddle.divide(
                 x=max_global_norm,
-                y=layers.elementwise_max(x=global_norm_var, y=max_global_norm),
+                y=paddle.maximum(x=global_norm_var, y=max_global_norm),
             )
         elif global_norm_var > max_global_norm:
             # only when global_norm_var > max_global_norm, grad need clip
             need_clip = True
-            clip_var = layers.elementwise_div(
-                x=max_global_norm, y=global_norm_var
-            )
+            clip_var = paddle.divide(x=max_global_norm, y=global_norm_var)
 
         for p, g in params_grads:
             if g is None:
@@ -572,7 +573,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     if clip_var.dtype != g.dtype
                     else clip_var
                 )
-                new_grad = layers.elementwise_mul(g, clip_input)
+                new_grad = paddle.multiply(g, clip_input)
                 params_and_grads.append((p, new_grad))
             else:
                 params_and_grads.append((p, g))
@@ -648,15 +649,13 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     if len(global_norm_var) > 1
                     else global_norm_var[0]
                 )
-                global_norm_var = layers.sqrt(x=global_norm_var)
+                global_norm_var = paddle.sqrt(x=global_norm_var)
                 max_global_norm = layers.fill_constant(
                     shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm
                 )
-                scale_var = layers.elementwise_div(
+                scale_var = paddle.divide(
                     x=max_global_norm,
-                    y=layers.elementwise_max(
-                        x=max_global_norm, y=global_norm_var
-                    ),
+                    y=paddle.maximum(x=max_global_norm, y=global_norm_var),
                 )
             param_new_grad_name_dict = dict()
             for p, g in params_grads:
@@ -729,11 +728,11 @@ class ClipGradByGlobalNorm(ClipGradBase):
         group_scale_name = self.group_name + "_scale"
         if group_scale_name not in self.context:
             group_norm_var = layers.sums(input=self.context[self.group_name])
-            group_norm_var = layers.sqrt(x=group_norm_var)
+            group_norm_var = paddle.sqrt(x=group_norm_var)
             clip_var = self.context[self.group_name + "_clip"]
-            group_scale_var = layers.elementwise_div(
+            group_scale_var = paddle.divide(
                 x=clip_var,
-                y=layers.elementwise_max(x=clip_var, y=group_norm_var),
+                y=paddle.maximum(x=clip_var, y=group_norm_var),
             )
             assert group_scale_var.shape == (1,)
             self.context[group_scale_name] = group_scale_var

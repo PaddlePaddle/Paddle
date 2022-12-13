@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
+
+import numpy
+
 import paddle
 import paddle.fluid as fluid
-import numpy
-import os
 
 
 class TestParallelExecutorDropExeScope(unittest.TestCase):
@@ -58,8 +60,8 @@ class TestParallelExecutorDropExeScope(unittest.TestCase):
         train_exe.run(feed={"X": x}, fetch_list=[loss.name])
         test_exe.run(feed={"X": x}, fetch_list=[loss.name])
 
-        assert train_exe._need_create_local_exe_scopes() == False
-        assert test_exe._need_create_local_exe_scopes() == False
+        assert not train_exe._need_create_local_exe_scopes()
+        assert not test_exe._need_create_local_exe_scopes()
 
         # drop the local execution scope immediately
         train_exe.drop_local_exe_scopes()

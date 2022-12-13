@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+
 import paddle
 import paddle.fluid as fluid
-from op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestElementwiseOp(OpTest):
@@ -44,6 +45,36 @@ class TestElementwiseOp(OpTest):
         self.check_grad(
             ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y')
         )
+
+
+class TestElementwiseSubOp_ZeroDim1(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, []).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, []).astype("float64"),
+        }
+        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+
+
+class TestElementwiseSubOp_ZeroDim2(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, []).astype("float64"),
+        }
+        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+
+
+class TestElementwiseSubOp_ZeroDim3(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, []).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
+        }
+        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
 
 class TestBF16ElementwiseOp(OpTest):
@@ -382,7 +413,7 @@ class TestSubtractInplaceBroadcastError3(TestSubtractInplaceBroadcastError):
 
 
 class TestFloatElementwiseSubop(unittest.TestCase):
-    def func_dygraph_sub(self):
+    def test_dygraph_sub(self):
         paddle.disable_static()
 
         np_a = np.random.random((2, 3, 4)).astype(np.float64)
@@ -414,10 +445,31 @@ class TestFloatElementwiseSubop(unittest.TestCase):
 
         paddle.enable_static()
 
+
+class TestFloatElementwiseSubop1(unittest.TestCase):
     def test_dygraph_sub(self):
-        with _test_eager_guard():
-            self.func_dygraph_sub()
-        self.func_dygraph_sub()
+        paddle.disable_static()
+
+        np_a = np.random.random((2, 3, 4)).astype(np.float32)
+        np_b = np.random.random((2, 3, 4)).astype(np.float32)
+
+        tensor_a = paddle.to_tensor(np_a, dtype="float32")
+        tensor_b = paddle.to_tensor(np_b, dtype="float32")
+
+        # normal case: nparray - tenor
+        expect_out = np_a - np_b
+        actual_out = np_a - tensor_b
+        np.testing.assert_allclose(
+            actual_out, expect_out, rtol=1e-07, atol=1e-07
+        )
+
+        # normal case: tenor - nparray
+        actual_out = tensor_a - np_b
+        np.testing.assert_allclose(
+            actual_out, expect_out, rtol=1e-07, atol=1e-07
+        )
+
+        paddle.enable_static()
 
 
 if __name__ == '__main__':

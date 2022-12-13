@@ -12,23 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import os
 import json
+import os
 import tempfile
+import unittest
+
+from test_cluster import cluster_json, multi_cluster_json
 
 import paddle
 from paddle.distributed.auto_parallel.cluster import Cluster
-from paddle.distributed.auto_parallel.cost import CommContext
-from paddle.distributed.auto_parallel.cost import build_comm_desc
-from paddle.distributed.auto_parallel.cost import AllreduceSumOpCost
-from paddle.distributed.auto_parallel.cost import AllgatherOpCost
-from paddle.distributed.auto_parallel.cost import BroadcastOpCost
-from paddle.distributed.auto_parallel.cost import SendOpCost
-from paddle.distributed.auto_parallel.cost import RecvOpCost
-from paddle.distributed.auto_parallel.cost import IdentityOpCost
-
-from test_cluster import cluster_json, multi_cluster_json
+from paddle.distributed.auto_parallel.cost import (
+    AllgatherOpCost,
+    AllreduceSumOpCost,
+    BroadcastOpCost,
+    CommContext,
+    IdentityOpCost,
+    RecvOpCost,
+    SendOpCost,
+    build_comm_desc,
+)
 
 
 class TestCommOpCost(unittest.TestCase):

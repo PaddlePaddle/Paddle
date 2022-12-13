@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUD2STest, IPUOpTest
 from paddle.jit import to_static
-from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest, IPUD2STest
 
 
 class TestBase(IPUOpTest):
@@ -107,7 +108,7 @@ class TestCase2(TestBase):
 
 class SimpleLayer(paddle.nn.Layer):
     def __init__(self):
-        super(SimpleLayer, self).__init__()
+        super().__init__()
         self.conv = paddle.nn.Conv2D(
             in_channels=3, out_channels=1, kernel_size=2, stride=1
         )
@@ -116,10 +117,12 @@ class SimpleLayer(paddle.nn.Layer):
     def forward(self, x, target=None):
         x = self.conv(x)
         print(x)
-        x = paddle.fluid.layers.flatten(x, axis=1)
+        x = paddle.flatten(x, 1, -1)
         if target is not None:
-            x = paddle.fluid.layers.softmax(x)
-            loss = paddle.fluid.layers.cross_entropy(x, target)
+            x = paddle.nn.functional.softmax(x)
+            loss = paddle.paddle.nn.functional.cross_entropy(
+                x, target, reduction='none', use_softmax=False
+            )
             loss = paddle.incubate.identity_loss(loss, 1)
             return x, loss
         return x

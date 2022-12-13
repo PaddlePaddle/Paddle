@@ -18,7 +18,7 @@ import sys
 __all__ = ['MultiSlotDataGenerator', 'MultiSlotStringDataGenerator']
 
 
-class DataGenerator(object):
+class DataGenerator:
     """
     DataGenerator is a general Base class for user to inherit
     A user who wants to define his/her own python processing logic
@@ -80,7 +80,7 @@ class DataGenerator(object):
         batch_samples = []
         line_iter = self.generate_sample(None)
         for user_parsed_line in line_iter():
-            if user_parsed_line == None:
+            if user_parsed_line is None:
                 continue
             batch_samples.append(user_parsed_line)
             if len(batch_samples) == self.batch_size_:
@@ -117,7 +117,7 @@ class DataGenerator(object):
         for line in sys.stdin:
             line_iter = self.generate_sample(line)
             for user_parsed_line in line_iter():
-                if user_parsed_line == None:
+                if user_parsed_line is None:
                     continue
                 batch_samples.append(user_parsed_line)
                 if len(batch_samples) == self.batch_size_:

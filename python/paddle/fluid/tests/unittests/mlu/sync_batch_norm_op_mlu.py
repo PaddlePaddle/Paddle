@@ -86,7 +86,7 @@ class TestSyncBatchNormOpTraining(TestSyncBatchNormRunnerBase):
                 )
                 if self.bn_dtype == np.float16:
                     conv = fluid.layers.cast(conv, 'float16')
-                bn = fluid.layers.batch_norm(
+                bn = paddle.static.nn.batch_norm(
                     conv,
                     param_attr=fluid.ParamAttr(name='bn_scale'),
                     bias_attr=fluid.ParamAttr(name='bn_bias'),
@@ -97,8 +97,8 @@ class TestSyncBatchNormOpTraining(TestSyncBatchNormRunnerBase):
                 )
                 if self.bn_dtype == np.float16:
                     bn = fluid.layers.cast(bn, 'float32')
-                sigmoid = fluid.layers.sigmoid(bn)
-                out = fluid.layers.reduce_sum(sigmoid)
+                sigmoid = paddle.nn.functional.sigmoid(bn)
+                out = paddle.sum(sigmoid)
                 # if not sync_bn:
                 #     out = out / core.get_mlu_device_count()
                 if not only_forward:

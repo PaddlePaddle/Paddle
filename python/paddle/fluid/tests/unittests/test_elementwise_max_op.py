@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
-import paddle.fluid.core as core
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+
 import paddle
+import paddle.fluid.core as core
 
 
 class TestElementwiseOp(OpTest):
@@ -53,6 +55,36 @@ class TestElementwiseOp(OpTest):
         self.check_grad(
             ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y')
         )
+
+
+class TestElementwiseMaxOp_ZeroDim1(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_max"
+        self.python_api = paddle.maximum
+        x = np.random.uniform(0.1, 1, []).astype("float64")
+        y = np.random.uniform(0.1, 1, []).astype("float64")
+        self.inputs = {'X': x, 'Y': y}
+        self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
+
+
+class TestElementwiseMaxOp_ZeroDim2(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_max"
+        self.python_api = paddle.maximum
+        x = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
+        y = np.random.uniform(0.1, 1, []).astype("float64")
+        self.inputs = {'X': x, 'Y': y}
+        self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
+
+
+class TestElementwiseMaxOp_ZeroDim3(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_max"
+        self.python_api = paddle.maximum
+        x = np.random.uniform(0.1, 1, []).astype("float64")
+        y = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
+        self.inputs = {'X': x, 'Y': y}
+        self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
 
 
 @unittest.skipIf(

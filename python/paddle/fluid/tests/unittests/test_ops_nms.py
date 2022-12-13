@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import os
-import unittest
-import numpy as np
-import paddle
-from test_nms_op import nms
 import tempfile
+import unittest
+
+import numpy as np
+from test_nms_op import nms
+
+import paddle
 
 
 def _find(condition):
@@ -55,7 +57,7 @@ def multiclass_nms(boxes, scores, category_idxs, iou_threshold, top_k):
 
         mask[cur_category_boxes_idxs[cur_category_keep_boxes_sub_idxs]] = True
 
-    keep_boxes_idxs = _find(mask == True)
+    keep_boxes_idxs = _find(mask)
     topK_sub_indices = np.argsort(-scores[keep_boxes_idxs])[:top_k]
     return keep_boxes_idxs[topK_sub_indices]
 

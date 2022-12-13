@@ -15,13 +15,13 @@
 import unittest
 
 import numpy as np
+from simple_nets import init_data, simple_fc_net
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid import core
 from paddle.fluid.framework import switch_main_program
-from simple_nets import simple_fc_net, init_data
 from paddle.static import Program, program_guard
 
 paddle.enable_static()
@@ -125,7 +125,7 @@ class TestPrintOpBackward(unittest.TestCase):
             loss = paddle.static.Print(loss)
             paddle.optimizer.Adam().minimize(loss)
 
-        print_ops = [op for op in main.blocks[0].ops if op.type == u'print']
+        print_ops = [op for op in main.blocks[0].ops if op.type == 'print']
         assert len(print_ops) == 2, "The number of print op should be 2"
 
         place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()

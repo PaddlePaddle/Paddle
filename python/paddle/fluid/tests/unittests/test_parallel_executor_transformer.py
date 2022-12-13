@@ -12,20 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import transformer_model
-import numpy as np
-from parallel_executor_test_base import TestParallelExecutorBase, DeviceType
-import unittest
-import paddle
-import paddle.fluid.core as core
-import paddle.dataset.wmt16 as wmt16
 import os
+import unittest
+
+import numpy as np
+import transformer_model
 from feed_data_reader import FeedDataReader
+from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
+
+import paddle
+import paddle.dataset.wmt16 as wmt16
+import paddle.fluid.core as core
 
 os.environ['CPU_NUM'] = str(4)
 
 
-class ModelHyperParams(object):
+class ModelHyperParams:
     # Dictionary size for source and target language. This model directly uses
     # paddle.dataset.wmt16 in which <bos>, <eos> and <unk> token has
     # alreay been added, but the <pad> token is not added. Transformer requires

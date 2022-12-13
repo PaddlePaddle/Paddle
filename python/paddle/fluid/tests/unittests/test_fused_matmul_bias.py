@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid.core as core
-import unittest
-import numpy as np
-from paddle.incubate.nn.functional import fused_matmul_bias, fused_linear
 from paddle.incubate.nn import FusedLinear
+from paddle.incubate.nn.functional import fused_linear, fused_matmul_bias
 
 
 def is_fused_matmul_bias_supported():
@@ -112,7 +114,7 @@ class TestFusedMatmulBias(unittest.TestCase):
         if need_bias:
             np.testing.assert_array_equal(bias.grad.numpy(), bias_grad_np)
         else:
-            self.assertTrue(bias_grad_np is None)
+            self.assertIsNone(bias_grad_np)
 
     def rand_test(self, m, n, k, dtype):
         seed = int(np.random.randint(low=0, high=1000, size=[1]))

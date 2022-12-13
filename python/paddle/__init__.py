@@ -61,7 +61,6 @@ else:
     from .framework import VarBase as Tensor  # noqa: F401
 
 Tensor.__qualname__ = 'Tensor'  # noqa: F401
-import paddle.compat  # noqa: F401
 import paddle.distributed  # noqa: F401
 import paddle.sysconfig  # noqa: F401
 import paddle.distribution  # noqa: F401
@@ -94,6 +93,7 @@ from .tensor.attribute import shape  # noqa: F401
 from .tensor.attribute import real  # noqa: F401
 from .tensor.attribute import imag  # noqa: F401
 from .tensor.attribute import is_floating_point  # noqa: F401
+from .tensor.creation import create_parameter  # noqa: F401
 from .tensor.creation import to_tensor  # noqa: F401
 from .tensor.creation import diag  # noqa: F401
 from .tensor.creation import diagflat  # noqa: F401
@@ -230,6 +230,7 @@ from .tensor.math import sqrt  # noqa: F401
 from .tensor.math import square  # noqa: F401
 from .tensor.math import stanh  # noqa: F401
 from .tensor.math import sum  # noqa: F401
+from .tensor.math import nan_to_num  # noqa: F401
 from .tensor.math import nansum  # noqa: F401
 from .tensor.math import nanmean  # noqa: F401
 from .tensor.math import count_nonzero  # noqa: F401
@@ -326,7 +327,6 @@ from .framework.random import seed  # noqa: F401
 from .framework.random import get_cuda_rng_state  # noqa: F401
 from .framework.random import set_cuda_rng_state  # noqa: F401
 from .framework import ParamAttr  # noqa: F401
-from .framework import create_parameter  # noqa: F401
 from .framework import CPUPlace  # noqa: F401
 from .framework import IPUPlace  # noqa: F401
 from .framework import CUDAPlace  # noqa: F401
@@ -666,6 +666,7 @@ __all__ = [  # noqa
     'renorm',
     'take_along_axis',
     'put_along_axis',
+    'nan_to_num',
     'heaviside',
     'tril_indices',
     'index_add',

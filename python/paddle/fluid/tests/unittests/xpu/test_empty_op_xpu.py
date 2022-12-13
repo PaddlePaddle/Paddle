@@ -17,15 +17,17 @@ import sys
 sys.path.append("..")
 
 import unittest
+
 import numpy as np
-import paddle
 from op_test_xpu import XPUOpTest
-from paddle.fluid.framework import convert_np_dtype_to_dtype_
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 paddle.enable_static()
 
@@ -72,8 +74,8 @@ class XPUTestEmptyOp(XPUOpTestWrapper):
                 )
             elif data_type in ['bool']:
                 total_num = outs[0].size
-                true_num = np.sum(outs[0] == True)
-                false_num = np.sum(outs[0] == False)
+                true_num = np.sum(outs[0])
+                false_num = np.sum(~outs[0])
                 self.assertTrue(
                     total_num == true_num + false_num,
                     'The value should always be True or False.',

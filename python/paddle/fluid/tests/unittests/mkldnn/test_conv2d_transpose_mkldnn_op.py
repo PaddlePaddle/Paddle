@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest
+
 from paddle import enable_static
+from paddle.fluid.tests.unittests.op_test import OpTest
 from paddle.fluid.tests.unittests.test_conv2d_transpose_op import (
     TestConv2DTransposeOp,
 )
@@ -133,7 +135,7 @@ class TestMKLDNNWithValidPad(TestConv2DTransposeMKLDNNOp):
 
 class TestMKLDNNWithValidPad_NHWC(TestMKLDNNWithValidPad):
     def init_test_case(self):
-        super(TestMKLDNNWithValidPad_NHWC, self).init_test_case()
+        super().init_test_case()
         self.data_format = "NHWC"
         N, C, H, W = self.input_size
         self.input_size = [N, H, W, C]

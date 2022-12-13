@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest
-from program_config import TensorConfig, ProgramConfig
-import numpy as np
-import paddle.inference as paddle_infer
+import unittest
 from functools import partial
 from typing import Any, Dict, List
-import unittest
+
+import numpy as np
+from program_config import ProgramConfig, TensorConfig
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
+
+import paddle.inference as paddle_infer
 
 
 class TrtConvertShuffleChannelTest(TrtLayerAutoScanTest):
@@ -77,7 +79,7 @@ class TrtConvertShuffleChannelTest(TrtLayerAutoScanTest):
             ver = paddle_infer.get_trt_compile_version()
             if (
                 ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8000
-                and dynamic_shape == True
+                and dynamic_shape
             ):
                 return 0, 3
             else:

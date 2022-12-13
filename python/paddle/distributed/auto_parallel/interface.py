@@ -13,13 +13,16 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid import core
-from .process_mesh import ProcessMesh
-from .process_mesh import get_current_process_mesh
+
 from .dist_context import get_default_distributed_context
-from .dist_tensor import DistributedTensor
 from .dist_op import DistributedOperatorHelper
-from .utils import verify_shard_spec, convert_to_dims_mapping
+from .dist_tensor import DistributedTensor
+from .process_mesh import ProcessMesh, get_current_process_mesh
+from .utils import (
+    __no_shape_var_type__,
+    convert_to_dims_mapping,
+    verify_shard_spec,
+)
 
 
 def shard_tensor(x, process_mesh=None, shard_spec=None):
@@ -79,11 +82,7 @@ def shard_tensor(x, process_mesh=None, shard_spec=None):
     dist_tensor = DistributedTensor(x)
     serial_tensor = dist_tensor.serial_tensor
     dist_tensor.dist_attr.process_mesh = process_mesh
-    if (
-        serial_tensor.type == core.VarDesc.VarType.READER
-        or serial_tensor.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY
-        or serial_tensor.type == core.VarDesc.VarType.STEP_SCOPES
-    ):
+    if serial_tensor.type in __no_shape_var_type__:
         tensor_shape = []
     else:
         tensor_shape = serial_tensor.shape
@@ -196,7 +195,13 @@ def shard_op(op, process_mesh=None, in_shard_specs=None, out_shard_specs=None):
     return op
 
 
+_g_recompute_idx = -1
+
+
 def recompute(op):
+    global _g_recompute_idx
+    _g_recompute_idx += 1
+
     class RecomputeOperator:
         def __init__(self, op):
             self._op = op
@@ -210,7 +215,9 @@ def recompute(op):
 
             for idx in range(op_size, new_op_size):
                 op = cur_block.ops[idx]
-                op._set_attr("is_recompute@auto_parallel", True)
+                op._set_attr(
+                    'op_namescope', "/auto_parallel/rc_" + str(_g_recompute_idx)
+                )
 
             return output
 
@@ -220,7 +227,7 @@ def recompute(op):
 _g_collections = {}
 
 
-class CollectionNames(object):
+class CollectionNames:
     FETCHES = "fetches"
     LOGGING = "logging"
 

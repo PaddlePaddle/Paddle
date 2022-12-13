@@ -71,6 +71,11 @@ if(WIN32 AND WITH_GPU)
   cc_library(paddle_inference DEPS ${fluid_modules} phi ${STATIC_INFERENCE_API}
                                    ${utils_modules})
 else()
+  # message("${fluid_modules}")
+  # message("PHI_MODULES ${phi_modules}")
+  # message("${phi_kernels}")
+  # message("${STATIC_INFERENCE_API}")
+  # message("${utils_modules}")
   create_static_lib(paddle_inference ${fluid_modules} ${phi_modules}
                     ${phi_kernels} ${STATIC_INFERENCE_API} ${utils_modules})
 endif()
@@ -124,6 +129,12 @@ if(WITH_ONNXRUNTIME)
   set(SHARED_INFERENCE_SRCS
       ${SHARED_INFERENCE_SRCS}
       ${CMAKE_CURRENT_SOURCE_DIR}/api/onnxruntime_predictor.cc)
+endif()
+
+#export all symbols for paddle/phi/api/include/api.h on paddle_inference_shared, only for UNIX
+if(UNIX)
+  set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS}
+                            $<TARGET_OBJECTS:phi_function_api>)
 endif()
 
 # Create shared inference library

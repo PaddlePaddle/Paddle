@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import collections
+import unittest
+
 import numpy as np
 from op_test import OpTest
 
@@ -110,13 +111,13 @@ class TestSampleLogitsOp(OpTest):
 
 class TestSampleLogitsOpNoUniq(TestSampleLogitsOp):
     def setUp(self):
-        super(TestSampleLogitsOpNoUniq, self).setUp()
+        super().setUp()
         self.attrs = {'num_samples': self.S, 'uniq': False}
 
 
 class TestSampleLogitsOpWithAccidentalHits(TestSampleLogitsOp):
     def setUp(self):
-        super(TestSampleLogitsOpWithAccidentalHits, self).setUp()
+        super().setUp()
         self.attrs = {'num_samples': self.S, 'remove_accidental_hits': False}
 
 

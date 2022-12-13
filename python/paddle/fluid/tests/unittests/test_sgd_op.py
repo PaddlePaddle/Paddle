@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from op_test import OpTest
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-from op_test import OpTest
-import paddle
 from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.op import Operator
 
 paddle.enable_static()
 
@@ -202,7 +204,7 @@ class TestSGDOpWithLargeInput(unittest.TestCase):
         emb = fluid.embedding(input=data, size=(10000000, 150), dtype='float32')
         out = fluid.layers.l2_normalize(x=emb, axis=-1)
 
-        cost = fluid.layers.square_error_cost(input=out, label=label)
+        cost = paddle.nn.functional.square_error_cost(input=out, label=label)
         avg_cost = paddle.mean(cost)
         sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
         sgd_optimizer.minimize(avg_cost)
@@ -321,12 +323,12 @@ class TestSGDMultiPrecision2_0(unittest.TestCase):
         optimizer = paddle.optimizer.SGD(
             parameters=model.parameters(), multi_precision=mp
         )
-        if mp == True:
+        if mp:
             model = paddle.amp.decorate(models=model, level='O2')
             scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
 
         for idx in range(5):
-            if mp == True:
+            if mp:
                 with paddle.amp.auto_cast(level='O2'):
                     output = model(input)
                     loss = paddle.mean(output)
@@ -429,12 +431,12 @@ class TestSGDMultiPrecision1_0(unittest.TestCase):
             parameter_list=model.parameters(),
             multi_precision=mp,
         )
-        if mp == True:
+        if mp:
             model = paddle.amp.decorate(models=model, level='O2')
             scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
 
         for idx in range(5):
-            if mp == True:
+            if mp:
                 with paddle.amp.auto_cast(level='O2'):
                     output = model(input)
                     loss = paddle.mean(output)

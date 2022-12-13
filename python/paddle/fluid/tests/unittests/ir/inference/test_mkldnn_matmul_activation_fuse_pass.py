@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest
-from program_config import TensorConfig, ProgramConfig, OpConfig
-import numpy as np
-from functools import partial
 import unittest
+from functools import partial
+
 import hypothesis.strategies as st
+import numpy as np
+from auto_scan_test import PassAutoScanTest
+from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestMatmulActivationMkldnnFusePass(PassAutoScanTest):
@@ -44,6 +45,7 @@ class TestMatmulActivationMkldnnFusePass(PassAutoScanTest):
                     'tanh',
                     'hard_sigmoid',
                     'leaky_relu',
+                    'scale',
                 ]
             )
         )
@@ -75,6 +77,7 @@ class TestMatmulActivationMkldnnFusePass(PassAutoScanTest):
                 'transpose_X': transpose_X,
                 'transpose_Y': transpose_Y,
                 'alpha': alpha,
+                'use_mkldnn': True,
             },
         )
 
@@ -91,6 +94,13 @@ class TestMatmulActivationMkldnnFusePass(PassAutoScanTest):
                 inputs={"X": ["matmul_output"]},
                 outputs={"Out": ["activation_output"]},
                 alpha=draw(st.floats(min_value=0.1, max_value=1.0)),
+            )
+        elif activation_type == "scale":
+            activation_op = OpConfig(
+                activation_type,
+                inputs={"X": ["matmul_output"]},
+                outputs={"Out": ["activation_output"]},
+                scale=draw(st.sampled_from([0.125, 0.4, 0.875, 2])),
             )
         elif activation_type == "swish":
             activation_op = OpConfig(
@@ -129,14 +139,23 @@ class TestMatmulActivationMkldnnFusePass(PassAutoScanTest):
         return program_config
 
     def sample_predictor_configs(self, program_config):
-        config = self.create_inference_config(use_mkldnn=True)
+        config = self.create_inference_config(
+            use_mkldnn=True,
+            passes=[
+                'matmul_activation_mkldnn_fuse_pass',
+                'operator_scale_onednn_fuse_pass',
+            ],
+        )
         yield config, ['matmul'], (1e-5, 1e-5)
 
     def test(self):
         self.run_and_statis(
             quant=False,
-            max_examples=30,
-            passes=['matmul_activation_mkldnn_fuse_pass'],
+            max_examples=50,
+            passes=[
+                'matmul_activation_mkldnn_fuse_pass',
+                'operator_scale_onednn_fuse_pass',
+            ],
         )
 
 

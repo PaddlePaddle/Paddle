@@ -16,17 +16,17 @@ import sys
 
 sys.path.append("..")
 import unittest
+
 import numpy as np
 from op_test_xpu import XPUOpTest
-import paddle
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+import paddle.fluid as fluid
 
 
 def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
@@ -72,7 +72,7 @@ def generate_compatible_shapes(
     dim_X, dim_Y, transpose_X, transpose_Y, batch_size
 ):
     BATCH_SIZE = 2
-    if batch_size != None:
+    if batch_size is not None:
         BATCH_SIZE = batch_size
 
     M = 3
@@ -106,7 +106,7 @@ def generate_compatible_shapes(
         shape_Y = [BATCH_SIZE] + shape_Y
 
     if dim_Y == 3 and dim_X == 2:
-        if transpose_X == False:
+        if not transpose_X:
             shape_X[1] = shape_X[1] * BATCH_SIZE
         else:
             shape_X[0] = shape_X[0] * BATCH_SIZE
@@ -134,70 +134,10 @@ def generate_compatible_shapes_2(dim, transpose_X, transpose_Y):
     return shape_X, shape_Y
 
 
-def generate_negative_dims(in_shape):
-    from itertools import combinations
-
-    size = len(in_shape)
-    indexs = list()
-    shapes = list()
-    for i in range(size):
-        indexs.extend(list(combinations([j for j in range(size)], i + 1)))
-    for idx in indexs:
-        shapes.append(
-            [in_shape[i] if i not in idx else -1 for i in range(size)]
-        )
-    return shapes
-
-
-def test_negative_dims_program(obj):
-    for shape_x in generate_negative_dims(obj.shape_X):
-        for shape_y in generate_negative_dims(obj.shape_Y):
-            X = np.random.random(obj.shape_X).astype(obj.in_type)
-            Y = np.random.random(obj.shape_Y).astype(obj.in_type)
-            Ref = reference_matmul(X, Y, obj.transpose_X, obj.transpose_Y)
-            with program_guard(Program(), Program()):
-                x = fluid.data(name='x', shape=shape_x, dtype=obj.in_type_str)
-                y = fluid.data(name='y', shape=shape_y, dtype=obj.in_type_str)
-                output = fluid.layers.matmul(
-                    x, y, obj.transpose_X, obj.transpose_Y
-                )
-                obj.assertEqual(len(Ref.shape), len(output.shape))
-                for idx in range(len(Ref.shape)):
-                    if output.shape[idx] != -1:
-                        obj.assertEqual(Ref.shape[idx], output.shape[idx])
-                exe = fluid.Executor(fluid.XPUPlace(0))
-                (res,) = exe.run(
-                    fluid.default_main_program(),
-                    feed={'x': X, 'y': Y},
-                    fetch_list=[output],
-                )
-                np.allclose(res, Ref, atol=1e-3)
-
-
 class XPUTestMatmulOpErr(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = "matmul"
         self.use_dynamic_create_class = False
-
-    class TestMatmulOpError(unittest.TestCase):
-        def test_errors(self):
-            with program_guard(Program(), Program()):
-                # The inputs type of matmul_op must be Variable.
-                input1 = 12
-                self.assertRaises(
-                    TypeError, fluid.layers.matmul, input1, input1
-                )
-                # The inputs dtype of matmul_op must be float32, float16
-                input2 = fluid.layers.data(
-                    name='input2', shape=[10, 10], dtype="int32"
-                )
-                self.assertRaises(
-                    TypeError, fluid.layers.matmul, input2, input2
-                )
-                input3 = fluid.layers.data(
-                    name='input3', shape=[2, 2], dtype="float16"
-                )
-                fluid.layers.matmul(input3, input3)
 
     class API_TestMm(unittest.TestCase):
         def test_out(self):
@@ -326,7 +266,7 @@ class TestMatmulBaseGenerator(XPUOpTest):
     def test_check_grad_normal(self):
         if (
             hasattr(self.__class__, "no_need_check_grad")
-            and self.__class__.no_need_check_grad == True
+            and self.__class__.no_need_check_grad
         ):
             return
 
@@ -338,7 +278,7 @@ class TestMatmulBaseGenerator(XPUOpTest):
     def test_check_grad_ignore_x(self):
         if (
             hasattr(self.__class__, "no_need_check_grad")
-            and self.__class__.no_need_check_grad == True
+            and self.__class__.no_need_check_grad
         ):
             return
 
@@ -350,7 +290,7 @@ class TestMatmulBaseGenerator(XPUOpTest):
     def test_check_grad_ignore_y(self):
         if (
             hasattr(self.__class__, "no_need_check_grad")
-            and self.__class__.no_need_check_grad == True
+            and self.__class__.no_need_check_grad
         ):
             return
 
@@ -398,39 +338,6 @@ class XPUTestMatmulOp1(XPUOpTestWrapper):
         return base_class, classes
 
 
-class XPUTestMatmulOp2(XPUOpTestWrapper):
-    def __init__(self):
-        self.op_name = "matmul"
-        self.use_dynamic_create_class = True
-
-    def dynamic_create_class(self):
-        base_class = unittest.TestCase
-        classes = []
-        xpu_support_dims_list = [[1, 1], [2, 2], [3, 3]]
-        batch_size = [2, 4, 5, 10, 50, 100, 300]
-        for dims in xpu_support_dims_list:
-            dim_X = dims[0]
-            dim_Y = dims[1]
-            for transose_x in [True, False]:
-                for transose_y in [True, False]:
-                    for batch in batch_size:
-                        class_name = 'TestMatMulAPI_dimX_{}_dim_Y_{}_transX_{}_transY_{}_batch_{}'.format(
-                            dim_X, dim_Y, transose_x, transose_y, batch
-                        )
-                        shape_x, shape_y = generate_compatible_shapes(
-                            dim_X, dim_Y, transose_x, transose_y, batch
-                        )
-                        attr_dict = {
-                            'shape_X': shape_x,
-                            'shape_Y': shape_y,
-                            'transpose_X': transose_x,
-                            'transpose_Y': transose_y,
-                            'test_propram': test_negative_dims_program,
-                        }
-                        classes.append([class_name, attr_dict])
-        return base_class, classes
-
-
 class XPUTestMatmulOp3(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = "matmul"
@@ -463,7 +370,6 @@ support_types = get_xpu_op_support_types('matmul')
 for stype in support_types:
     create_test_class(globals(), XPUTestMatmulOpErr, stype)
     create_test_class(globals(), XPUTestMatmulOp1, stype)
-    create_test_class(globals(), XPUTestMatmulOp2, stype)
     create_test_class(globals(), XPUTestMatmulOp3, stype)
 
 if __name__ == "__main__":

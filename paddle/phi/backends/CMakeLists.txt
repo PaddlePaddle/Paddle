@@ -1,4 +1,5 @@
 add_subdirectory(dynload)
+add_subdirectory(gpu)
 
 set(BACKENDS_SRCS all_context.cc cpu/cpu_context.cc)
 set(BACKENDS_DEPS enforce place flags eigen3 phi_device_context)
@@ -7,7 +8,7 @@ if(WITH_GPU OR WITH_ROCM)
   list(APPEND BACKENDS_SRCS gpu/gpu_context.cc gpu/gpu_info.cc
        gpu/gpu_resources.cc)
   if(WITH_GPU)
-    list(APPEND BACKENDS_SRCS gpu/cuda/cuda_info.cc)
+    list(APPEND BACKENDS_SRCS gpu/cuda/cuda_info.cc gpu/cuda/cuda_graph.cc)
   endif()
   if(WITH_ROCM)
     list(APPEND BACKENDS_SRCS gpu/rocm/rocm_info.cc)
@@ -17,6 +18,8 @@ endif()
 
 if(WITH_XPU)
   list(APPEND BACKENDS_SRCS xpu/xpu_context.cc xpu/xpu_info.cc)
+  list(APPEND BACKENDS_SRCS xpu/xpu_op_list.cc xpu/xpu1_op_list.cc
+       xpu/xpu2_op_list.cc)
 endif()
 
 if(WITH_MKLDNN)
@@ -58,3 +61,15 @@ if(WITH_CUSTOM_DEVICE)
     SRCS custom/capi_test.cc
     DEPS phi_capi)
 endif()
+
+set(COMM_UTILS_DEPS processgroup)
+if(WITH_NCCL OR WITH_RCCL)
+  set(COMM_UTILS_DEPS ${PROCESS_GROUP_UTILS_DEPS} processgroup_nccl)
+endif()
+if(WITH_CUSTOM_DEVICE)
+  set(COMM_UTILS_DEPS ${PROCESS_GROUP_UTILS_DEPS} processgroup_custom)
+endif()
+cc_library(
+  processgroup_comm_utils
+  SRCS processgroup_comm_utils.cc
+  DEPS ${COMM_UTILS_DEPS})

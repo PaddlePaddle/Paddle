@@ -12,38 +12,40 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# import yaml
-import os
-import sys
 import copy
-import shlex
-import pathlib
-import time
-import shutil
-import pickle
 import json
 import logging
+
+# import yaml
+import os
+import pathlib
+import pickle
+import shlex
+import shutil
 import subprocess
+import sys
+import time
 
 import paddle
-from paddle.fluid import program_guard
-from paddle.fluid.backward import append_backward
-from paddle.distributed.passes import new_pass, PassContext
-
-from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.completion import Completer
-from paddle.distributed.auto_parallel.reshard import Resharder
+from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.process_group import (
     clear_all_process_groups,
     get_all_process_groups,
 )
-from paddle.distributed.auto_parallel.utils import debug_program
-from paddle.distributed.auto_parallel.utils import set_grad_var_shape
+from paddle.distributed.auto_parallel.reshard import Resharder
+from paddle.distributed.auto_parallel.utils import (
+    debug_program,
+    set_grad_var_shape,
+)
+from paddle.distributed.passes import PassContext, new_pass
+from paddle.fluid import program_guard
+from paddle.fluid.backward import append_backward
 
 from ..utils import get_logger
-from .config import TuningConfig
 from .algorithms import new_algorithm
+from .config import TuningConfig
 from .trial import TrialStatus
 
 
@@ -530,7 +532,7 @@ class OptimizationTuner:
         self._finished_trials.append(trial)
 
         cur_mertic = get_metric(results)
-        if self._best_metric == None or cur_mertic > self._best_metric:
+        if self._best_metric is None or cur_mertic > self._best_metric:
             self._best_metric = cur_mertic
             self._best_iter = i
 

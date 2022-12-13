@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from paddle.static import InputSpec
-from paddle.fluid.dygraph.dygraph_to_static.function_spec import FunctionSpec
+import unittest
 
 from test_declarative import foo_func
 
-import unittest
+import paddle
+from paddle.jit.dy2static.function_spec import FunctionSpec
+from paddle.static import InputSpec
 
 paddle.enable_static()
 
@@ -29,7 +29,7 @@ class TestFunctionSpec(unittest.TestCase):
         args_name = foo_spec.args_name
         self.assertListEqual(args_name, ['a', 'b', 'c', 'd'])
         self.assertTrue(foo_spec.dygraph_function == foo_func)
-        self.assertTrue(foo_spec.input_spec is None)
+        self.assertIsNone(foo_spec.input_spec)
 
     def test_verify_input_spec(self):
         a_spec = InputSpec([None, 10], name='a')

@@ -16,19 +16,21 @@ import sys
 
 sys.path.append("..")
 import unittest
+
 import numpy as np
-from paddle import _legacy_C_ops
+from op_test_xpu import XPUOpTest
+
 import paddle
 import paddle.fluid as fluid
+from paddle import _legacy_C_ops
 from paddle.fluid import Program, program_guard
-from op_test_xpu import XPUOpTest
 
 paddle.enable_static()
 
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
 
 
@@ -52,7 +54,7 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
             }
 
             out = self.inputs['X'] * (1.0 - self.dropout_prob)
-            if self.is_test == False:
+            if not self.is_test:
                 mask = None
                 if self.dropout_prob == 0.0:
                     mask = np.ones(self.shape).astype(self.dtype)
@@ -78,7 +80,7 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
         def test_check_grad_normal(self):
             if (
                 hasattr(self.__class__, "no_need_check_grad")
-                and self.__class__.no_need_check_grad == True
+                and self.__class__.no_need_check_grad
             ):
                 return
 

@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
-import paddle
-import numpy as np
 import unittest
+
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
 
 
 class TestClass(unittest.TestCase):
@@ -106,9 +108,9 @@ class TestClass(unittest.TestCase):
                                 break
 
                         if break_beforehand:
-                            self.assertTrue(next(gen, None) is not None)
+                            self.assertIsNotNone(next(gen, None))
                         else:
-                            self.assertTrue(next(gen, None) is None)
+                            self.assertIsNone(next(gen, None))
 
 
 class TestClass2(TestClass):

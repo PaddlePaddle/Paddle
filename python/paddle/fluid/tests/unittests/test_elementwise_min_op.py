@@ -13,11 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle import _legacy_C_ops
 
 paddle.enable_static()
 
@@ -56,6 +59,36 @@ class TestElementwiseOp(OpTest):
         self.check_grad(
             ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y')
         )
+
+
+class TestElementwiseMinOp_ZeroDim1(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_min"
+        self.python_api = paddle.minimum
+        x = np.random.uniform(0.1, 1, []).astype("float64")
+        y = np.random.uniform(0.1, 1, []).astype("float64")
+        self.inputs = {'X': x, 'Y': y}
+        self.outputs = {'Out': np.minimum(self.inputs['X'], self.inputs['Y'])}
+
+
+class TestElementwiseMinOp_ZeroDim2(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_min"
+        self.python_api = paddle.minimum
+        x = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
+        y = np.random.uniform(0.1, 1, []).astype("float64")
+        self.inputs = {'X': x, 'Y': y}
+        self.outputs = {'Out': np.minimum(self.inputs['X'], self.inputs['Y'])}
+
+
+class TestElementwiseMinOp_ZeroDim3(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_min"
+        self.python_api = paddle.minimum
+        x = np.random.uniform(0.1, 1, []).astype("float64")
+        y = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
+        self.inputs = {'X': x, 'Y': y}
+        self.outputs = {'Out': np.minimum(self.inputs['X'], self.inputs['Y'])}
 
 
 @skip_check_grad_ci(
@@ -183,7 +216,7 @@ class TestElementwiseMinOpFP16(unittest.TestCase):
             y = paddle.to_tensor(y_np)
             x.stop_gradient = False
             y.stop_gradient = False
-            z = fluid.layers.elementwise_min(x, y, axis)
+            z = _legacy_C_ops.elementwise_min(x, y, 'axis', axis)
             x_g, y_g = paddle.grad([z], [x, y])
             return (
                 z.numpy().astype(dtype),

@@ -69,7 +69,7 @@ void NCCLWrapper::SyncVar(const int root_rank,
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   for (auto& name : var_names) {
     auto var = scope.FindVar(name);
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     int32_t total_size = tensor->numel();
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
         reinterpret_cast<void*>(tensor->data<float>()),

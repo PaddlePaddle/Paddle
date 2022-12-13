@@ -14,12 +14,13 @@
 
 import unittest
 
-import paddle
 import numpy as np
+
+import paddle
 import paddle.distributed as dist
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.framework import _test_eager_guard
+from paddle.nn import Linear
 
 paddle.seed(1024)
 np.random.seed(2021)
@@ -31,7 +32,7 @@ out_dim = 20
 
 class SimpleNet(fluid.Layer):
     def __init__(self, train_id):
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.w1 = self.create_parameter(
             shape=[in_dim, out_dim], dtype="float32"
         )

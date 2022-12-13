@@ -18,15 +18,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
 #include "paddle/phi/infermeta/nullary.h"
 
 namespace paddle {
 namespace operators {
-
-using Tensor = phi::DenseTensor;
 
 template <typename T>
 class CPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
@@ -132,7 +127,7 @@ namespace ops = paddle::operators;
 
 DECLARE_INFER_SHAPE_FUNCTOR(gaussian_random,
                             GaussianRandomInferShapeFunctor,
-                            PD_INFER_META(phi::GaussianRandomInferMeta));
+                            PD_INFER_META(phi::GaussianInferMeta));
 
 REGISTER_OPERATOR(
     gaussian_random,

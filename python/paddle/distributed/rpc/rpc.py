@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import datetime
 import os
-from collections import namedtuple
 import pickle
 import time
-import datetime
+from collections import namedtuple
 
 import paddle.fluid.core as core
-from paddle.distributed.utils.launch_utils import logger
-from paddle.distributed.rpc.internal import _serialize, PythonFunc
 from paddle.distributed.launch.context import Node
+from paddle.distributed.rpc.internal import PythonFunc, _serialize
+from paddle.distributed.utils.launch_utils import logger
 
 WorkerInfo = namedtuple("WorkerInfo", ["name", "rank", "ip", "port"])
 
@@ -106,7 +106,7 @@ def init_rpc(name, rank=None, world_size=None, master_endpoint=None):
     logger.info("Trainer {}: worker endpoint: {}".format(rank, worker_endpoint))
     master_endpoint = (
         master_endpoint
-        if master_endpoint != None
+        if master_endpoint is not None
         else os.environ["PADDLE_MASTER_ENDPOINT"]
     )
     master_addr, master_port = master_endpoint.split(":")

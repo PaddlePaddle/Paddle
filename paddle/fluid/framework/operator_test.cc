@@ -341,7 +341,8 @@ class IndicateLoDTensorDataTypeTest : public OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {}
   OpKernelType GetExpectedKernelType(
       const ExecutionContext& ctx) const override {
-    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "LoDTensor");
+    auto data_type =
+        OperatorWithKernel::IndicateVarDataType(ctx, "phi::DenseTensor");
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
@@ -349,7 +350,7 @@ class IndicateLoDTensorDataTypeTest : public OperatorWithKernel {
 class IndicateLoDTensorDataTypeTestProtoMaker : public OpProtoAndCheckerMaker {
  public:
   void Make() {
-    AddInput("LoDTensor", "Input of phi::DenseTensor type Variable.");
+    AddInput("phi::DenseTensor", "Input of phi::DenseTensor type Variable.");
     AddComment("This Op is only for IndicateVarDataType interface test.");
   }
 };
@@ -428,61 +429,6 @@ REGISTER_OP_CPU_KERNEL(
     indicate_other_data_type_test,
     paddle::framework::EmptyTestKernel<phi::CPUContext, int>);
 
-TEST(IndicateVarDataTypeTest, lodtensor) {
-  paddle::framework::InitDevices();
-  paddle::framework::proto::OpDesc op_desc;
-  op_desc.set_type("indicate_lod_tensor_data_type_test");
-  BuildVar("LoDTensor", {"lodtensor_1"}, op_desc.add_inputs());
-
-  paddle::platform::CPUPlace cpu_place;
-  paddle::framework::Scope scope;
-
-  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
-  auto* var = scope.Var("lodtensor_1");
-  var->GetMutable<phi::DenseTensor>();
-
-  bool caught = false;
-  try {
-    op->Run(scope, cpu_place);
-  } catch (paddle::platform::EnforceNotMet& err) {
-    caught = true;
-    std::string ex_msg = err.what();
-    EXPECT_TRUE(
-        ex_msg.find(
-            "The indicate_lod_tensor_data_type_test Op's Input Variable "
-            "`LoDTensor` contains uninitialized phi::DenseTensor.") !=
-        std::string::npos);
-  }
-  ASSERT_TRUE(caught);
-}
-
-TEST(IndicateVarDataTypeTest, selectedrows) {
-  paddle::framework::InitDevices();
-  paddle::framework::proto::OpDesc op_desc;
-  op_desc.set_type("indicate_selected_rows_data_type_test");
-  BuildVar("SelectedRows", {"selected_rows_1"}, op_desc.add_inputs());
-
-  paddle::platform::CPUPlace cpu_place;
-  paddle::framework::Scope scope;
-
-  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
-  auto* var = scope.Var("selected_rows_1");
-  var->GetMutable<phi::SelectedRows>();
-
-  bool caught = false;
-  try {
-    op->Run(scope, cpu_place);
-  } catch (paddle::platform::EnforceNotMet& err) {
-    caught = true;
-    std::string ex_msg = err.what();
-    EXPECT_TRUE(
-        ex_msg.find("The indicate_selected_rows_data_type_test Op's "
-                    "Input Variable `SelectedRows` contains uninitialized "
-                    "phi::DenseTensor.") != std::string::npos);
-  }
-  ASSERT_TRUE(caught);
-}
-
 TEST(IndicateVarDataTypeTest, other) {
   paddle::framework::InitDevices();
   paddle::framework::proto::OpDesc op_desc;
@@ -502,13 +448,11 @@ TEST(IndicateVarDataTypeTest, other) {
   } catch (paddle::platform::EnforceNotMet& err) {
     caught = true;
     std::string ex_msg = err.what();
-    EXPECT_TRUE(
-        ex_msg.find(
-            "The Input Variable(Other) of "
-            "(indicate_other_data_type_test) Operator used to "
-            "determine kernel data type "
-            "is empty or not LoDTensor or SelectedRows or LoDTensorArray.") !=
-        std::string::npos);
+    EXPECT_TRUE(ex_msg.find("The Input Variable(Other) of "
+                            "(indicate_other_data_type_test) Operator used to "
+                            "determine kernel data type "
+                            "is empty or not phi::DenseTensor or SelectedRows "
+                            "or LoDTensorArray.") != std::string::npos);
   }
   ASSERT_TRUE(caught);
 }
@@ -583,8 +527,8 @@ class SetLoDLevelTest : public OperatorWithKernel {
 class GetSetLoDLevelTestMaker : public OpProtoAndCheckerMaker {
  public:
   void Make() {
-    AddInput("X", "(LoDTensor) Input Variable.");
-    AddOutput("Out", "(LoDTensor) Output Variable.");
+    AddInput("X", "(phi::DenseTensor) Input Variable.");
+    AddOutput("Out", "(phi::DenseTensor) Output Variable.");
     AddComment("This Op is only for Get/SetLoDLevel interface test.");
   }
 };

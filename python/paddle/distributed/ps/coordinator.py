@@ -12,16 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from paddle.fluid.communicator import FLCommunicator
-from paddle.distributed.fleet.proto import the_one_ps_pb2
-from google.protobuf import text_format
-from paddle.distributed.ps.utils.public import is_distributed_env
-from paddle.distributed import fleet
-import time
 import abc
-import os
 import logging
+import os
+import time
+
+from google.protobuf import text_format
+
+import paddle
+from paddle.distributed import fleet
+from paddle.distributed.communicator import FLCommunicator
+from paddle.distributed.fleet.proto import the_one_ps_pb2
+from paddle.distributed.ps.utils.public import is_distributed_env
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -197,7 +199,7 @@ class FLClientBase(abc.ABC):
 
 class FLClient(FLClientBase):
     def __init__(self):
-        super(FLClient, self).__init__()
+        super().__init__()
 
     def __build_fl_client_info_desc(self, state_info):
         # ......... to implement ...... #
@@ -287,7 +289,7 @@ class FLClient(FLClientBase):
         fleet.init_worker()
 
     def callback_initialize_model_params(self):
-        if self.exe == None or self.main_program == None:
+        if self.exe is None or self.main_program is None:
             raise AssertionError("exe or main_program not set")
         self.exe.run(self.startup_program)
 
@@ -353,7 +355,7 @@ class FLClient(FLClientBase):
             f.write(str(self.train_statical_info))
 
 
-class Coordinator(object):
+class Coordinator:
     def __init__(self, ps_hosts):
         self._communicator = FLCommunicator(ps_hosts)
         self._client_selector = None

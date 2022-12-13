@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import random
 import unittest
+
 import numpy as np
-import paddle
-import paddle.fluid as fluid
 from op_test import OpTest
 
-import random
+import paddle
+import paddle.fluid as fluid
 
 
 class TestElementwiseModOp(OpTest):
@@ -55,6 +56,27 @@ class TestElementwiseModOp(OpTest):
 
     def init_axis(self):
         pass
+
+
+class TestElementwiseFloorDivOp_ZeroDim1(TestElementwiseModOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0, 10000, []).astype(self.dtype)
+        self.y = np.random.uniform(0, 1000, []).astype(self.dtype)
+        self.out = np.floor_divide(self.x, self.y)
+
+
+class TestElementwiseFloorDivOp_ZeroDim2(TestElementwiseModOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0, 10000, [10, 10]).astype(self.dtype)
+        self.y = np.random.uniform(0, 1000, []).astype(self.dtype)
+        self.out = np.floor_divide(self.x, self.y)
+
+
+class TestElementwiseFloorDivOp_ZeroDim3(TestElementwiseModOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0, 10000, []).astype(self.dtype)
+        self.y = np.random.uniform(0, 1000, [10, 10]).astype(self.dtype)
+        self.out = np.floor_divide(self.x, self.y)
 
 
 class TestElementwiseModOp_scalar(TestElementwiseModOp):

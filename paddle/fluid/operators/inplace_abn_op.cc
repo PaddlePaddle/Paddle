@@ -113,7 +113,7 @@ class InplaceABNGradOp : public paddle::operators::BatchNormGradOp {
           true,
           platform::errors::InvalidArgument(
               "Using global stats during training is not supported "
-              "in gradient op kernel of batch_norm_mkldnn_op now."));
+              "in oneDNN version of batch_norm_gradient kernel now."));
     }
 
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "InplaceABNGrad");
@@ -145,10 +145,10 @@ class InplaceABNGradOp : public paddle::operators::BatchNormGradOp {
           "can't find gradient variable of Y"));
     }
     const phi::DenseTensor* t = nullptr;
-    if (var->IsType<Tensor>()) {
-      t = &var->Get<Tensor>();
-    } else if (var->IsType<LoDTensor>()) {
-      t = &var->Get<LoDTensor>();
+    if (var->IsType<phi::DenseTensor>()) {
+      t = &var->Get<phi::DenseTensor>();
+    } else if (var->IsType<phi::DenseTensor>()) {
+      t = &var->Get<phi::DenseTensor>();
     }
     if (t == nullptr) {
       PADDLE_THROW(
@@ -242,7 +242,6 @@ class InplaceABNKernel : public framework::OpKernel<T> {
     auto is_test = ctx.Attr<bool>("is_test");
     auto use_global_stats = ctx.Attr<bool>("use_global_stats");
     auto trainable_statistics = ctx.Attr<bool>("trainable_statistics");
-    auto fuse_with_relu = ctx.Attr<bool>("fuse_with_relu");
 
     auto* mean_out = ctx.Output<phi::DenseTensor>("MeanOut");
     auto* variance_out = ctx.Output<phi::DenseTensor>("VarianceOut");
@@ -255,17 +254,16 @@ class InplaceABNKernel : public framework::OpKernel<T> {
         static_cast<const typename framework::ConvertToPhiContext<
             DeviceContext>::TYPE&>(dev_ctx),
         *x,
-        *scale,
-        *bias,
         *mean,
         *variance,
+        *scale,
+        *bias,
+        is_test,
         momentum,
         epsilon,
         data_layout,
-        is_test,
         use_global_stats,
         trainable_statistics,
-        fuse_with_relu,
         y,
         mean_out,
         variance_out,
@@ -315,7 +313,6 @@ class InplaceABNGradKernel : public framework::OpKernel<T> {
     auto is_test = ctx.Attr<bool>("is_test");
     auto use_global_stats = ctx.Attr<bool>("use_global_stats");
     auto trainable_statistics = ctx.Attr<bool>("trainable_statistics");
-    auto fuse_with_relu = ctx.Attr<bool>("fuse_with_relu");
 
     auto* scale_grad =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("Scale"));
@@ -326,9 +323,9 @@ class InplaceABNGradKernel : public framework::OpKernel<T> {
     auto* mean = ctx.Input<phi::DenseTensor>("ReserveSpace");
     auto* variance = ctx.Input<phi::DenseTensor>("ReserveSpace");
 
-    paddle::optional<Tensor> space_opt;
-    paddle::optional<Tensor> mean_opt;
-    paddle::optional<Tensor> variance_opt;
+    paddle::optional<phi::DenseTensor> space_opt;
+    paddle::optional<phi::DenseTensor> mean_opt;
+    paddle::optional<phi::DenseTensor> variance_opt;
 
     if (reserve_space != nullptr) {
       space_opt = *reserve_space;
@@ -361,7 +358,6 @@ class InplaceABNGradKernel : public framework::OpKernel<T> {
         is_test,
         use_global_stats,
         trainable_statistics,
-        fuse_with_relu,
         true,
         d_x,
         scale_grad,

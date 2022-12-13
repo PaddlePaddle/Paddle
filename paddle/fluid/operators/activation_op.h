@@ -261,60 +261,24 @@ struct BaseActivationFunctor {
   template <typename T>                   \
   using name##TripleGradFunctor = phi::funcs::name##TripleGradFunctor<T>;
 
-USE_PHI_FUNCTOR(Cos)
-USE_PHI_FUNCTOR(Tan)
-USE_PHI_FUNCTOR(Acos)
-USE_PHI_FUNCTOR(Sin)
-USE_PHI_FUNCTOR(Asin)
-USE_PHI_FUNCTOR(Atan)
-USE_PHI_FUNCTOR(Sinh)
-USE_PHI_FUNCTOR(Cosh)
-USE_PHI_FUNCTOR(Asinh)
-USE_PHI_FUNCTOR(Acosh)
-USE_PHI_FUNCTOR(Atanh)
+template <typename T>
+using BReluFunctor = phi::funcs::HardTanhFunctor<T>;
+template <typename T>
+using BReluGradFunctor = phi::funcs::HardTanhGradFunctor<T>;
+
 USE_PHI_FUNCTOR(Tanh)
-USE_PHI_FUNCTOR(Exp)
-USE_PHI_DOUBLE_GRAD_FUNCTOR(Tanh)
-USE_PHI_TRIPLE_GRAD_FUNCTOR(Tanh)
-USE_PHI_FUNCTOR(BRelu)
-USE_PHI_FUNCTOR(ThresholdedRelu)
 USE_PHI_FUNCTOR(Relu6)
 USE_PHI_FUNCTOR(LeakyRelu)
 USE_PHI_DOUBLE_GRAD_FUNCTOR(LeakyRelu)
 USE_PHI_FUNCTOR(HardShrink)
-USE_PHI_FUNCTOR(SoftShrink)
-USE_PHI_FUNCTOR(TanhShrink)
-USE_PHI_FUNCTOR(Silu)
 USE_PHI_FUNCTOR(ELU)
-USE_PHI_DOUBLE_GRAD_FUNCTOR(ELU)
-USE_PHI_FUNCTOR(Softsign)
 USE_PHI_FUNCTOR(Sigmoid)
-USE_PHI_DOUBLE_GRAD_FUNCTOR(Sigmoid)
-USE_PHI_TRIPLE_GRAD_FUNCTOR(Sigmoid)
-USE_PHI_FUNCTOR(LogSigmoid)
 USE_PHI_FUNCTOR(HardSigmoid)
-USE_PHI_FUNCTOR(Log)
-USE_PHI_DOUBLE_GRAD_FUNCTOR(Log)
-USE_PHI_FUNCTOR(Log2)
-USE_PHI_FUNCTOR(Log10)
-USE_PHI_FUNCTOR(Log1p)
 USE_PHI_FUNCTOR(Swish)
 USE_PHI_FUNCTOR(HardSwish)
 USE_PHI_FUNCTOR(Pow)
-USE_PHI_FUNCTOR(Exp)
-USE_PHI_FUNCTOR(Expm1)
 USE_PHI_FUNCTOR(Mish)
 USE_PHI_FUNCTOR(STanh)
-USE_PHI_FUNCTOR(Reciprocal)
-USE_PHI_FUNCTOR(Square)
-USE_PHI_DOUBLE_GRAD_FUNCTOR(Square)
-USE_PHI_FUNCTOR(Sqrt)
-USE_PHI_DOUBLE_GRAD_FUNCTOR(Sqrt)
-USE_PHI_FUNCTOR(Rsqrt)
-USE_PHI_DOUBLE_GRAD_FUNCTOR(Rsqrt)
-USE_PHI_FUNCTOR(Softplus)
-USE_PHI_FUNCTOR(CELU)
-USE_PHI_DOUBLE_GRAD_FUNCTOR(CELU)
 
 template <typename T>
 using ELUGradNegativeAlphaFunctor = phi::funcs::ELUGradNegativeAlphaFunctor<T>;
@@ -381,40 +345,6 @@ struct SoftReluGradFunctor : public BaseActivationFunctor<T> {
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {
     return ActBwdOpFwdDeps::kDepOut;
-  }
-};
-
-template <typename DeviceContext, typename T>
-class ELUGradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* X = context.Input<phi::DenseTensor>("X");
-    auto* Out = context.Input<phi::DenseTensor>("Out");
-    auto* dOut = context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto* dX = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
-    const float alpha = context.Attr<float>("alpha");
-    dX->mutable_data<T>(context.GetPlace());
-
-    auto x = framework::EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(X, "Input", "X", "elu_grad"));
-    auto out = framework::EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(Out, "Input", "Out", "elu_grad"));
-    auto dout = framework::EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(dOut, "Input", "dOut", "elu_grad"));
-    auto dx = framework::EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(dX, "Output", "dX", "elu_grad"));
-    auto* place =
-        context.template device_context<DeviceContext>().eigen_device();
-
-    if (alpha > 0) {
-      ELUGradFunctor<T> functor;
-      functor.alpha = alpha;
-      functor(*place, x, out, dout, dx);
-    } else {
-      ELUGradNegativeAlphaFunctor<T> functor;
-      functor.alpha = alpha;
-      functor(*place, x, out, dout, dx);
-    }
   }
 };
 

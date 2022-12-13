@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
-from op_test import OpTest
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
@@ -43,8 +45,8 @@ class TestEmptyOp(OpTest):
             )
         elif data_type in ['bool']:
             total_num = outs[0].size
-            true_num = np.sum(outs[0] == True)
-            false_num = np.sum(outs[0] == False)
+            true_num = np.sum(outs[0])
+            false_num = np.sum(~outs[0])
             self.assertTrue(
                 total_num == true_num + false_num,
                 'The value should always be True or False.',
@@ -132,8 +134,8 @@ class TestEmptyOp_ShapeTensor(OpTest):
             )
         elif data_type in ['bool']:
             total_num = outs[0].size
-            true_num = np.sum(outs[0] == True)
-            false_num = np.sum(outs[0] == False)
+            true_num = np.sum(outs[0])
+            false_num = np.sum(~outs[0])
             self.assertTrue(
                 total_num == true_num + false_num,
                 'The value should always be True or False.',
@@ -182,8 +184,8 @@ class TestEmptyOp_ShapeTensorList(OpTest):
             )
         elif data_type in ['bool']:
             total_num = outs[0].size
-            true_num = np.sum(outs[0] == True)
-            false_num = np.sum(outs[0] == False)
+            true_num = np.sum(outs[0])
+            false_num = np.sum(~outs[0])
             self.assertTrue(
                 total_num == true_num + false_num,
                 'The value should always be True or False.',

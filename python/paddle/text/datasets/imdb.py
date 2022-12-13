@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import re
 import string
 import tarfile
-import numpy as np
-import collections
 
-from paddle.io import Dataset
+import numpy as np
+
 from paddle.dataset.common import _check_exists_and_download
+from paddle.io import Dataset
 
 __all__ = []
 
@@ -51,7 +52,7 @@ class Imdb(Dataset):
 
             class SimpleNet(paddle.nn.Layer):
                 def __init__(self):
-                    super(SimpleNet, self).__init__()
+                    super().__init__()
 
                 def forward(self, doc, label):
                     return paddle.sum(doc), label
@@ -66,7 +67,7 @@ class Imdb(Dataset):
 
                 model = SimpleNet()
                 image, label = model(doc, label)
-                print(doc.numpy().shape, label.numpy().shape)
+                print(doc.shape, label.shape)
 
     """
 
@@ -112,7 +113,7 @@ class Imdb(Dataset):
         data = []
         with tarfile.open(self.data_file) as tarf:
             tf = tarf.next()
-            while tf != None:
+            while tf is not None:
                 if bool(pattern.match(tf.name)):
                     # newline and punctuations removal and ad-hoc tokenization.
                     data.append(

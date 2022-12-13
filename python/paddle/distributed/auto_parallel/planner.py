@@ -13,28 +13,33 @@
 # limitations under the License.
 
 import copy
-import time
 import random
+import time
+from collections import OrderedDict
 from functools import reduce
 from itertools import chain, product
-from collections import OrderedDict
 
 import numpy as np
 
 import paddle
 from paddle.distributed.fleet import auto
+
 from .cost_model import estimate_cost
-from .dist_op import DistributedOperator
-from .process_group import get_process_group
-from .operators.common import is_elementwise_op
-from .operators.common import get_distributed_operator_impl_container
-from .utils import update_op_dims_mapping_by_default_dist_impl
-from .utils import update_op_dims_mapping_by_elementwise_like_dist_impl
-from .utils import get_all_distributed_main_program
-from .dist_context import DistributedContext, DistributedOperatorContext
 from .dist_attribute import (
     OperatorDistributedAttribute,
     TensorDistributedAttribute,
+)
+from .dist_context import DistributedContext, DistributedOperatorContext
+from .dist_op import DistributedOperator
+from .operators.common import (
+    get_distributed_operator_impl_container,
+    is_elementwise_op,
+)
+from .process_group import get_process_group
+from .utils import (
+    get_all_distributed_main_program,
+    update_op_dims_mapping_by_default_dist_impl,
+    update_op_dims_mapping_by_elementwise_like_dist_impl,
 )
 
 paddle.seed(123)
@@ -437,7 +442,7 @@ class SearchAlgorithm:
 
     @property
     def name(self):
-        self.name = name
+        self.name = self._name
 
     def search(self):
         raise NotImplementedError("Please Implement this method in subclass.")
@@ -445,7 +450,7 @@ class SearchAlgorithm:
 
 class MCMC(SearchAlgorithm):
     def __init__(self, serial_program_info, parallelizer, max_search_times=5):
-        super(MCMC, self).__init__("mcmc")
+        super().__init__("mcmc")
         self._serial_program_info = serial_program_info
         self._max_search_times = max_search_times
         self._parallelizer = parallelizer

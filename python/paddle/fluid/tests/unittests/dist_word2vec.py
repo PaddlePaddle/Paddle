@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
+from test_dist_base import TestDistRunnerBase, runtime_main
+
 import paddle
 import paddle.fluid as fluid
-import os
-from test_dist_base import TestDistRunnerBase, runtime_main
 
 IS_SPARSE = True
 EMBED_SIZE = 32
@@ -136,8 +138,6 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
 
 
 if __name__ == "__main__":
-    import os
-
     os.environ['CPU_NUM'] = '1'
     os.environ['USE_CUDA'] = "FALSE"
     runtime_main(TestDistWord2vec2x2)

@@ -14,16 +14,18 @@
 # limitations under the License.
 
 import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.contrib.sparsity.asp import ASPHelper
-import numpy as np
 
 
 class MyLayer(paddle.nn.Layer):
     def __init__(self):
-        super(MyLayer, self).__init__()
+        super().__init__()
         self.conv1 = paddle.nn.Conv2D(
             in_channels=3, out_channels=4, kernel_size=3, padding=2
         )
@@ -144,7 +146,12 @@ class TestASPStaticOptimize(unittest.TestCase):
         with fluid.program_guard(self.main_program, self.startup_program):
             self.img, self.label, predict = build_model()
             self.loss = paddle.mean(
-                fluid.layers.cross_entropy(input=predict, label=self.label)
+                paddle.nn.functional.cross_entropy(
+                    input=predict,
+                    label=self.label,
+                    reduction='none',
+                    use_softmax=False,
+                )
             )
             self.optimizer = fluid.optimizer.SGD(learning_rate=0.01)
             self.optimizer = paddle.incubate.asp.decorate(self.optimizer)

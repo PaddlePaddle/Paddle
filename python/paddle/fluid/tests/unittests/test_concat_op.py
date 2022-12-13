@@ -13,19 +13,21 @@
 # limitations under the License.
 
 import unittest
+
+import gradient_checker
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import (
-    OpTest,
-    skip_check_grad_ci,
-    convert_float_to_uint16,
-)
+from decorator_helper import prog_scope
+
+import paddle
 import paddle.fluid as fluid
+import paddle.fluid.layers as layers
 from paddle.fluid import Program, core, program_guard
 from paddle.fluid.framework import _test_eager_guard
-import paddle
-import gradient_checker
-from decorator_helper import prog_scope
-import paddle.fluid.layers as layers
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    skip_check_grad_ci,
+)
 
 
 class TestConcatOp(OpTest):
@@ -412,7 +414,7 @@ class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
             self.program = fluid.Program()
             with fluid.program_guard(self.program):
                 input = fluid.layers.assign(self.x)
-                tensor_array = fluid.layers.create_array(dtype='float32')
+                tensor_array = paddle.tensor.create_array(dtype='float32')
                 zero = fluid.layers.fill_constant(
                     shape=[1], value=0, dtype="int64"
                 )
@@ -425,7 +427,7 @@ class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
             self.program = paddle.static.Program()
             with paddle.static.program_guard(self.program):
                 input = paddle.assign(self.x)
-                tensor_array = fluid.layers.create_array(
+                tensor_array = paddle.tensor.create_array(
                     dtype='float32'
                 )  # Api create_array is not supported in paddle 2.0 yet.
                 zero = paddle.zeros(shape=[1], dtype="int64")

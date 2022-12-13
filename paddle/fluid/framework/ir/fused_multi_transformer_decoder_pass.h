@@ -88,8 +88,6 @@ struct FusedMultiTransformerDecoderPattern : public PatternBase {
   PATTERN_DECL_NODE(eltadd_qk_out);
   PATTERN_DECL_NODE(softmax_qk);
   PATTERN_DECL_NODE(softmax_qk_out);
-  PATTERN_DECL_NODE(dropout_qk);
-  PATTERN_DECL_NODE(dropout_qk_out);
 
   // QK, V matmul
   PATTERN_DECL_NODE(matmul_qkv);
@@ -106,8 +104,6 @@ struct FusedMultiTransformerDecoderPattern : public PatternBase {
   PATTERN_DECL_NODE(eltadd_linear);
   PATTERN_DECL_NODE(eltadd_linear_b);
   PATTERN_DECL_NODE(eltadd_linear_out);
-  PATTERN_DECL_NODE(dropout_linear);
-  PATTERN_DECL_NODE(dropout_linear_out);
 
   // output elementwise_add
   PATTERN_DECL_NODE(eltadd_out)
@@ -137,8 +133,6 @@ struct FusedMultiTransformerDecoderPattern : public PatternBase {
   PATTERN_DECL_NODE(ffn_eltadd1);    // ELEMENTWISE_ADD
   PATTERN_DECL_NODE(ffn_eltadd1_b);  // ELEMENTWISE_ADD
   PATTERN_DECL_NODE(ffn_eltadd1_out);
-  PATTERN_DECL_NODE(ffn_dropout);
-  PATTERN_DECL_NODE(ffn_dropout_out);
 
   // output elementwise_add
   PATTERN_DECL_NODE(ffn_eltadd_out)
@@ -188,13 +182,13 @@ struct FusedMultiTransformerDecoderFuseQKVPattern : public PatternBase {
   // Q, K matmul
   PATTERN_DECL_NODE(matmul_qk);
   PATTERN_DECL_NODE(matmul_qk_out);
+  PATTERN_DECL_NODE(scale_qk);
+  PATTERN_DECL_NODE(scale_qk_out);
   PATTERN_DECL_NODE(eltadd_qk);
   PATTERN_DECL_NODE(eltadd_qk_b);
   PATTERN_DECL_NODE(eltadd_qk_out);
   PATTERN_DECL_NODE(softmax_qk);
   PATTERN_DECL_NODE(softmax_qk_out);
-  PATTERN_DECL_NODE(dropout_qk);
-  PATTERN_DECL_NODE(dropout_qk_out);
 
   // QK, V matmul
   PATTERN_DECL_NODE(matmul_qkv);
@@ -211,8 +205,6 @@ struct FusedMultiTransformerDecoderFuseQKVPattern : public PatternBase {
   PATTERN_DECL_NODE(eltadd_linear);
   PATTERN_DECL_NODE(eltadd_linear_b);
   PATTERN_DECL_NODE(eltadd_linear_out);
-  PATTERN_DECL_NODE(dropout_linear);
-  PATTERN_DECL_NODE(dropout_linear_out);
 
   // output elementwise_add
   PATTERN_DECL_NODE(eltadd_out)
@@ -239,8 +231,6 @@ struct FusedMultiTransformerDecoderFuseQKVPattern : public PatternBase {
   PATTERN_DECL_NODE(ffn_eltadd1);    // ELEMENTWISE_ADD
   PATTERN_DECL_NODE(ffn_eltadd1_b);  // ELEMENTWISE_ADD
   PATTERN_DECL_NODE(ffn_eltadd1_out);
-  PATTERN_DECL_NODE(ffn_dropout);
-  PATTERN_DECL_NODE(ffn_dropout_out);
 
   // output elementwise_add
   PATTERN_DECL_NODE(ffn_eltadd_out)
@@ -294,13 +284,13 @@ struct MultiDevicesFusedMultiTransformerDecoderFuseQKVPattern
   // Q, K matmul
   PATTERN_DECL_NODE(matmul_qk);
   PATTERN_DECL_NODE(matmul_qk_out);
+  PATTERN_DECL_NODE(scale_qk);
+  PATTERN_DECL_NODE(scale_qk_out);
   PATTERN_DECL_NODE(eltadd_qk);
   PATTERN_DECL_NODE(eltadd_qk_b);
   PATTERN_DECL_NODE(eltadd_qk_out);
   PATTERN_DECL_NODE(softmax_qk);
   PATTERN_DECL_NODE(softmax_qk_out);
-  PATTERN_DECL_NODE(dropout_qk);
-  PATTERN_DECL_NODE(dropout_qk_out);
 
   // QK, V matmul
   PATTERN_DECL_NODE(matmul_qkv);
@@ -319,8 +309,6 @@ struct MultiDevicesFusedMultiTransformerDecoderFuseQKVPattern
   PATTERN_DECL_NODE(eltadd_linear);
   PATTERN_DECL_NODE(eltadd_linear_b);
   PATTERN_DECL_NODE(eltadd_linear_out);
-  PATTERN_DECL_NODE(dropout_linear);
-  PATTERN_DECL_NODE(dropout_linear_out);
 
   // output elementwise_add
   PATTERN_DECL_NODE(eltadd_out)
@@ -351,8 +339,6 @@ struct MultiDevicesFusedMultiTransformerDecoderFuseQKVPattern
   PATTERN_DECL_NODE(ffn_eltadd1);    // ELEMENTWISE_ADD
   PATTERN_DECL_NODE(ffn_eltadd1_b);  // ELEMENTWISE_ADD
   PATTERN_DECL_NODE(ffn_eltadd1_out);
-  PATTERN_DECL_NODE(ffn_dropout);
-  PATTERN_DECL_NODE(ffn_dropout_out);
 
   // output elementwise_add
   PATTERN_DECL_NODE(ffn_eltadd_out)

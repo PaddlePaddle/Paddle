@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import os
+import unittest
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
@@ -63,6 +63,13 @@ class TestHybridPipeParallel(TestMultipleGpus):
     def test_hybrid_parallel_pp_clip_grad(self):
         self.run_mnist_2gpu('hybrid_parallel_pp_clip_grad.py')
         self.run_mnist_2gpu('hybrid_parallel_pp_clip_grad.py', eager_mode=False)
+
+    def test_hybrid_parallel_transformer_unbalanced_data(self):
+        self.run_mnist_2gpu('hybrid_parallel_pp_transformer_unbalanced_data.py')
+        self.run_mnist_2gpu(
+            'hybrid_parallel_pp_transformer_unbalanced_data.py',
+            eager_mode=False,
+        )
 
 
 if __name__ == "__main__":

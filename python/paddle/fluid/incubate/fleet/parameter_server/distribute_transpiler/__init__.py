@@ -75,7 +75,7 @@ class FleetTranspiler(Fleet):
     """
 
     def __init__(self):
-        super(FleetTranspiler, self).__init__(Mode.TRANSPILER)
+        super().__init__(Mode.TRANSPILER)
 
         self._inner_mode = None
 
@@ -104,7 +104,7 @@ class FleetTranspiler(Fleet):
     def init(self, role_maker=None):
         if role_maker is None:
             role_maker = MPISymetricRoleMaker()
-        super(FleetTranspiler, self).init(role_maker)
+        super().init(role_maker)
         if self._fleet_ptr is None:
             self._fleet_ptr = core.Fleet()
 
@@ -830,7 +830,7 @@ class ParameterServerOptimizer(DistributedOptimizer):
     """
 
     def __init__(self, optimizer, strategy, mode=PSMode.TRANSPILER):
-        super(ParameterServerOptimizer, self).__init__(optimizer, strategy)
+        super().__init__(optimizer, strategy)
         self._mode = mode
         if self._mode == PSMode.PSLIB:
             self._optimizer_name = "Distributed%s" % optimizer.type.capitalize()

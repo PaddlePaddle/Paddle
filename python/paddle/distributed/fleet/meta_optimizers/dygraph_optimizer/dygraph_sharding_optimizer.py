@@ -18,6 +18,7 @@ from functools import reduce
 
 import paddle
 from paddle import framework
+
 from ...utils.log_util import logger
 
 
@@ -25,7 +26,7 @@ def _is_trainable(param):
     return not param.stop_gradient
 
 
-class DygraphShardingOptimizer(object):
+class DygraphShardingOptimizer:
     """
     A wrapper for Sharding Optimizer in Dygraph.
 

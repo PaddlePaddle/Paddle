@@ -11,8 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.framework import _test_eager_guard
@@ -44,6 +46,24 @@ class TestGumbelSoftmaxOp(OpTest):
 
     def test_check_output(self):
         self.check_output_customized(self.verify_output)
+
+    def test_check_grad(self):
+        self.check_grad(["X"], "Out")
+
+
+class TestGumbelSoftmax_ZeroDim(OpTest):
+    def setUp(self):
+        self.op_type = "gumbel_softmax"
+        self.dtype = "float64"
+        x = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        out = np.array(1.0).astype(self.dtype)
+
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+        self.attrs = {"hard": True, "axis": -1}
+
+    def test_check_output(self):
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out")

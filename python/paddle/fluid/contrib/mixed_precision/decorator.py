@@ -34,7 +34,7 @@ import paddle
 __all__ = ["decorate"]
 
 
-class OptimizerWithMixedPrecision(object):
+class OptimizerWithMixedPrecision:
     """
     Optimizer with mixed-precision (MP) training. This is a wrapper of a common
     optimizer, plus the support of mixed-precision pre-training. The object
@@ -122,7 +122,7 @@ class OptimizerWithMixedPrecision(object):
         return getattr(self._optimizer, "_supports_check_nan_inf", False)
 
     def _init_amp_var(self):
-        self._loss_scaling = layers.create_global_var(
+        self._loss_scaling = paddle.static.create_global_var(
             name=unique_name.generate("loss_scaling"),
             shape=[1],
             value=self._init_loss_scaling,
@@ -131,14 +131,14 @@ class OptimizerWithMixedPrecision(object):
         )
 
         if self._use_dynamic_loss_scaling:
-            self._num_good_steps = layers.create_global_var(
+            self._num_good_steps = paddle.static.create_global_var(
                 name=unique_name.generate("num_good_steps"),
                 shape=[1],
                 value=0,
                 dtype='int32',
                 persistable=True,
             )
-            self._num_bad_steps = layers.create_global_var(
+            self._num_bad_steps = paddle.static.create_global_var(
                 name=unique_name.generate("num_bad_steps"),
                 shape=[1],
                 value=0,
@@ -151,7 +151,7 @@ class OptimizerWithMixedPrecision(object):
         if isinstance(self._optimizer._learning_rate, float):
             self._optimizer._learning_rate_map[
                 default_main_program()
-            ] = layers.create_global_var(
+            ] = paddle.static.create_global_var(
                 name=unique_name.generate("learning_rate"),
                 shape=[1],
                 value=float(self._optimizer._learning_rate),
@@ -460,7 +460,7 @@ class OptimizerWithMixedPrecision(object):
         if self._is_distributed or self._use_pure_fp16:
             with self._train_program._optimized_guard([]):
                 all_infs = layers.concat(found_infs)
-                found_inf = layers.reduce_any(all_infs)
+                found_inf = paddle.any(all_infs)
 
         return found_inf
 

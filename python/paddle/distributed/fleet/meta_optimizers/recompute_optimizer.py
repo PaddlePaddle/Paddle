@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 
 from paddle.fluid.optimizer import RecomputeOptimizer as RO
+
 from .meta_optimizer_base import MetaOptimizerBase
 
 __all__ = []
@@ -19,7 +20,7 @@ __all__ = []
 
 class RecomputeOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
-        super(RecomputeOptimizer, self).__init__(optimizer)
+        super().__init__(optimizer)
         self.inner_opt = optimizer
         self.wrapped_opt = None
         # we do not allow meta optimizer to be inner optimizer currently
@@ -34,7 +35,7 @@ class RecomputeOptimizer(MetaOptimizerBase):
     def _set_basic_info(
         self, loss, role_maker, user_defined_optimizer, user_defined_strategy
     ):
-        super(RecomputeOptimizer, self)._set_basic_info(
+        super()._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy
         )
 
@@ -55,7 +56,7 @@ class RecomputeOptimizer(MetaOptimizerBase):
         if not self.role_maker._is_collective:
             return False
 
-        if self.user_defined_strategy.recompute == True:
+        if self.user_defined_strategy.recompute:
             if (
                 len(self.user_defined_strategy.recompute_configs["checkpoints"])
                 == 0

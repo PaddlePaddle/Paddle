@@ -47,11 +47,11 @@ class ShapeOp : public framework::OperatorWithKernel {
 class ShapeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Input", "(LoDTensor), The input tensor.");
-    AddOutput(
-        "Out",
-        "(LoDTensor), The shape of input tensor, the data type of the shape"
-        " is int32_t, will be on the same device with the input Tensor.");
+    AddInput("Input", "(phi::DenseTensor), The input tensor.");
+    AddOutput("Out",
+              "(phi::DenseTensor), The shape of input tensor, the data type of "
+              "the shape"
+              " is int32_t, will be on the same device with the input Tensor.");
     AddComment(R"DOC(
 Shape Operator.
 
@@ -59,6 +59,8 @@ Return the shape of the input.
 )DOC");
   }
 };
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ShapeNoNeedBufferVarsInferer, "Input");
 
 }  // namespace operators
 }  // namespace paddle
@@ -76,4 +78,5 @@ REGISTER_OPERATOR(
     ops::ShapeOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::ShapeNoNeedBufferVarsInferer,
     ShapeInferShapeFunctor);

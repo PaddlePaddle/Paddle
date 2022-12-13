@@ -13,18 +13,18 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import unittest
 
 import paddle.fluid as fluid
-import paddle.fluid.dygraph as dygraph
-from paddle.fluid.dygraph.nn import Linear
 import paddle.fluid.core as core
+import paddle.fluid.dygraph as dygraph
+from paddle.nn import Linear
 
 
 class MLP(fluid.Layer):
     def __init__(self, param_attr=None, bias_attr=None):
-        super(MLP, self).__init__()
+        super().__init__()
 
         self._linear1 = Linear(784, 10)
         self._linear2 = Linear(10, 10)

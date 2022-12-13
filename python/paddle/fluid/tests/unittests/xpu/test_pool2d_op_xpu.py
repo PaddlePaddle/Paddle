@@ -16,15 +16,16 @@ import sys
 
 sys.path.append("..")
 import unittest
-import numpy as np
 
+import numpy as np
 from op_test_xpu import XPUOpTest
-from test_pool2d_op import adaptive_start_index, adaptive_end_index
+from test_pool2d_op import adaptive_end_index, adaptive_start_index
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
 import paddle
 
 paddle.enable_static()
@@ -178,7 +179,7 @@ def pool2D_forward_naive(
 
         if padding_algorithm == "VALID":
             paddings = [0, 0, 0, 0]
-            if ceil_mode != False:
+            if ceil_mode is not False:
                 raise ValueError(
                     "When Attr(pool_padding) is \"VALID\", Attr(ceil_mode)"
                     " must be False. "

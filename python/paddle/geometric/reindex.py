@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import _non_static_mode, Variable
-from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle import _legacy_C_ops
+from paddle.fluid.data_feeder import check_variable_and_dtype
+from paddle.fluid.framework import Variable, _non_static_mode
+from paddle.fluid.layer_helper import LayerHelper
 
 __all__ = []
 
@@ -25,27 +25,22 @@ def reindex_graph(
     x, neighbors, count, value_buffer=None, index_buffer=None, name=None
 ):
     """
+
     Reindex Graph API.
 
     This API is mainly used in Graph Learning domain, which should be used
-    in conjunction with `graph_sample_neighbors` API. And the main purpose
+    in conjunction with `paddle.geometric.sample_neighbors` API. And the main purpose
     is to reindex the ids information of the input nodes, and return the
     corresponding graph edges after reindex.
 
-    **Notes**:
-        The number in x should be unique, otherwise it would cause potential errors.
-    We will reindex all the nodes from 0.
-
-    Take input nodes x = [0, 1, 2] as an example.
-    If we have neighbors = [8, 9, 0, 4, 7, 6, 7], and count = [2, 3, 2],
-    then we know that the neighbors of 0 is [8, 9], the neighbors of 1
-    is [0, 4, 7], and the neighbors of 2 is [6, 7].
-    Then after graph_reindex, we will have 3 different outputs:
-        1. reindex_src: [3, 4, 0, 5, 6, 7, 6]
-        2. reindex_dst: [0, 0, 1, 1, 1, 2, 2]
-        3. out_nodes: [0, 1, 2, 8, 9, 4, 7, 6]
-    We can see that the numbers in `reindex_src` and `reindex_dst` is the corresponding index
+    Take input nodes x = [0, 1, 2] as an example. If we have neighbors = [8, 9, 0, 4, 7, 6, 7], and count = [2, 3, 2],
+    then we know that the neighbors of 0 is [8, 9], the neighbors of 1 is [0, 4, 7], and the neighbors of 2 is [6, 7].
+    Then after graph_reindex, we will have 3 different outputs: reindex_src: [3, 4, 0, 5, 6, 7, 6], reindex_dst: [0, 0, 1, 1, 1, 2, 2]
+    and out_nodes: [0, 1, 2, 8, 9, 4, 7, 6]. We can see that the numbers in `reindex_src` and `reindex_dst` is the corresponding index
     of nodes in `out_nodes`.
+
+    Note:
+        The number in x should be unique, otherwise it would cause potential errors. We will reindex all the nodes from 0.
 
     Args:
         x (Tensor): The input nodes which we sample neighbors for. The available
@@ -54,40 +49,37 @@ def reindex_graph(
                             should be the same with `x`.
         count (Tensor): The neighbor count of the input nodes `x`. And the
                         data type should be int32.
-        value_buffer (Tensor|None): Value buffer for hashtable. The data type should be int32,
-                                    and should be filled with -1. Only useful for gpu version.
-        index_buffer (Tensor|None): Index buffer for hashtable. The data type should be int32,
+        value_buffer (Tensor, optional): Value buffer for hashtable. The data type should be int32,
+                                    and should be filled with -1. Only useful for gpu version. Default is None.
+        index_buffer (Tensor, optional): Index buffer for hashtable. The data type should be int32,
                                     and should be filled with -1. Only useful for gpu version.
                                     `value_buffer` and `index_buffer` should be both not None
-                                    if you want to speed up by using hashtable buffer.
+                                    if you want to speed up by using hashtable buffer. Default is None.
         name (str, optional): Name for the operation (optional, default is None).
                               For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        reindex_src (Tensor): The source node index of graph edges after reindex.
-        reindex_dst (Tensor): The destination node index of graph edges after reindex.
-        out_nodes (Tensor): The index of unique input nodes and neighbors before reindex,
-                            where we put the input nodes `x` in the front, and put neighbor
-                            nodes in the back.
+        - reindex_src (Tensor), the source node index of graph edges after reindex.
+
+        - reindex_dst (Tensor), the destination node index of graph edges after reindex.
+
+        - out_nodes (Tensor), the index of unique input nodes and neighbors before reindex, where we put the input nodes `x` in the front, and put neighbor nodes in the back.
 
     Examples:
-
         .. code-block:: python
 
-        import paddle
+            import paddle
 
-        x = [0, 1, 2]
-        neighbors = [8, 9, 0, 4, 7, 6, 7]
-        count = [2, 3, 2]
-        x = paddle.to_tensor(x, dtype="int64")
-        neighbors = paddle.to_tensor(neighbors, dtype="int64")
-        count = paddle.to_tensor(count, dtype="int32")
-
-        reindex_src, reindex_dst, out_nodes = \
-             paddle.geometric.reindex_graph(x, neighbors, count)
-        # reindex_src: [3, 4, 0, 5, 6, 7, 6]
-        # reindex_dst: [0, 0, 1, 1, 1, 2, 2]
-        # out_nodes: [0, 1, 2, 8, 9, 4, 7, 6]
+            x = [0, 1, 2]
+            neighbors = [8, 9, 0, 4, 7, 6, 7]
+            count = [2, 3, 2]
+            x = paddle.to_tensor(x, dtype="int64")
+            neighbors = paddle.to_tensor(neighbors, dtype="int64")
+            count = paddle.to_tensor(count, dtype="int32")
+            reindex_src, reindex_dst, out_nodes = paddle.geometric.reindex_graph(x, neighbors, count)
+            # reindex_src: [3, 4, 0, 5, 6, 7, 6]
+            # reindex_dst: [0, 0, 1, 1, 1, 2, 2]
+            # out_nodes: [0, 1, 2, 8, 9, 4, 7, 6]
 
     """
     use_buffer_hashtable = (
@@ -147,29 +139,22 @@ def reindex_heter_graph(
     x, neighbors, count, value_buffer=None, index_buffer=None, name=None
 ):
     """
+
     Reindex HeterGraph API.
 
     This API is mainly used in Graph Learning domain, which should be used
-    in conjunction with `graph_sample_neighbors` API. And the main purpose
+    in conjunction with `paddle.geometric.sample_neighbors` API. And the main purpose
     is to reindex the ids information of the input nodes, and return the
     corresponding graph edges after reindex.
 
-    **Notes**:
-        The number in x should be unique, otherwise it would cause potential errors.
-    We support multi-edge-types neighbors reindexing in reindex_heter_graph api.
-    We will reindex all the nodes from 0.
+    Take input nodes x = [0, 1, 2] as an example. For graph A, suppose we have neighbors = [8, 9, 0, 4, 7, 6, 7], and count = [2, 3, 2],
+    then we know that the neighbors of 0 is [8, 9], the neighbors of 1 is [0, 4, 7], and the neighbors of 2 is [6, 7]. For graph B,
+    suppose we have neighbors = [0, 2, 3, 5, 1], and count = [1, 3, 1], then we know that the neighbors of 0 is [0], the neighbors of 1 is [2, 3, 5],
+    and the neighbors of 3 is [1]. We will get following outputs: reindex_src: [3, 4, 0, 5, 6, 7, 6, 0, 2, 8, 9, 1], reindex_dst: [0, 0, 1, 1, 1, 2, 2, 0, 1, 1, 1, 2]
+    and out_nodes: [0, 1, 2, 8, 9, 4, 7, 6, 3, 5].
 
-    Take input nodes x = [0, 1, 2] as an example.
-    For graph A, suppose we have neighbors = [8, 9, 0, 4, 7, 6, 7], and count = [2, 3, 2],
-    then we know that the neighbors of 0 is [8, 9], the neighbors of 1
-    is [0, 4, 7], and the neighbors of 2 is [6, 7].
-    For graph B, suppose we have neighbors = [0, 2, 3, 5, 1], and count = [1, 3, 1],
-    then we know that the neighbors of 0 is [0], the neighbors of 1 is [2, 3, 5],
-    and the neighbors of 3 is [1].
-    We will get following outputs:
-        1. reindex_src: [3, 4, 0, 5, 6, 7, 6, 0, 2, 8, 9, 1]
-        2. reindex_dst: [0, 0, 1, 1, 1, 2, 2, 0, 1, 1, 1, 2]
-        3. out_nodes: [0, 1, 2, 8, 9, 4, 7, 6, 3, 5]
+    Note:
+        The number in x should be unique, otherwise it would cause potential errors. We support multi-edge-types neighbors reindexing in reindex_heter_graph api. We will reindex all the nodes from 0.
 
     Args:
         x (Tensor): The input nodes which we sample neighbors for. The available
@@ -178,47 +163,45 @@ def reindex_heter_graph(
                                 The data type should be the same with `x`.
         count (list|tuple): The neighbor counts of the input nodes `x` from different graphs.
                             And the data type should be int32.
-        value_buffer (Tensor|None): Value buffer for hashtable. The data type should be int32,
-                                    and should be filled with -1. Only useful for gpu version.
-        index_buffer (Tensor|None): Index buffer for hashtable. The data type should be int32,
+        value_buffer (Tensor, optional): Value buffer for hashtable. The data type should be int32,
+                                    and should be filled with -1. Only useful for gpu version. Default is None.
+        index_buffer (Tensor, optional): Index buffer for hashtable. The data type should be int32,
                                     and should be filled with -1. Only useful for gpu version.
                                     `value_buffer` and `index_buffer` should be both not None
-                                    if you want to speed up by using hashtable buffer.
+                                    if you want to speed up by using hashtable buffer. Default is None.
         name (str, optional): Name for the operation (optional, default is None).
                               For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        reindex_src (Tensor): The source node index of graph edges after reindex.
-        reindex_dst (Tensor): The destination node index of graph edges after reindex.
-        out_nodes (Tensor): The index of unique input nodes and neighbors before reindex,
-                            where we put the input nodes `x` in the front, and put neighbor
-                            nodes in the back.
+        - reindex_src (Tensor), the source node index of graph edges after reindex.
+
+        - reindex_dst (Tensor), the destination node index of graph edges after reindex.
+
+        - out_nodes (Tensor), the index of unique input nodes and neighbors before reindex,
+                              where we put the input nodes `x` in the front, and put neighbor
+                              nodes in the back.
 
     Examples:
-
         .. code-block:: python
 
-        import paddle
+            import paddle
 
-        x = [0, 1, 2]
-        neighbors_a = [8, 9, 0, 4, 7, 6, 7]
-        count_a = [2, 3, 2]
-        x = paddle.to_tensor(x, dtype="int64")
-        neighbors_a = paddle.to_tensor(neighbors_a, dtype="int64")
-        count_a = paddle.to_tensor(count_a, dtype="int32")
-
-        neighbors_b = [0, 2, 3, 5, 1]
-        count_b = [1, 3, 1]
-        neighbors_b = paddle.to_tensor(neighbors_b, dtype="int64")
-        count_b = paddle.to_tensor(count_b, dtype="int32")
-
-        neighbors = [neighbors_a, neighbors_b]
-        count = [count_a, count_b]
-        reindex_src, reindex_dst, out_nodes = \
-             paddle.geometric.reindex_heter_graph(x, neighbors, count)
-        # reindex_src: [3, 4, 0, 5, 6, 7, 6, 0, 2, 8, 9, 1]
-        # reindex_dst: [0, 0, 1, 1, 1, 2, 2, 0, 1, 1, 1, 2]
-        # out_nodes: [0, 1, 2, 8, 9, 4, 7, 6, 3, 5]
+            x = [0, 1, 2]
+            neighbors_a = [8, 9, 0, 4, 7, 6, 7]
+            count_a = [2, 3, 2]
+            x = paddle.to_tensor(x, dtype="int64")
+            neighbors_a = paddle.to_tensor(neighbors_a, dtype="int64")
+            count_a = paddle.to_tensor(count_a, dtype="int32")
+            neighbors_b = [0, 2, 3, 5, 1]
+            count_b = [1, 3, 1]
+            neighbors_b = paddle.to_tensor(neighbors_b, dtype="int64")
+            count_b = paddle.to_tensor(count_b, dtype="int32")
+            neighbors = [neighbors_a, neighbors_b]
+            count = [count_a, count_b]
+            reindex_src, reindex_dst, out_nodes = paddle.geometric.reindex_heter_graph(x, neighbors, count)
+            # reindex_src: [3, 4, 0, 5, 6, 7, 6, 0, 2, 8, 9, 1]
+            # reindex_dst: [0, 0, 1, 1, 1, 2, 2, 0, 1, 1, 1, 2]
+            # out_nodes: [0, 1, 2, 8, 9, 4, 7, 6, 3, 5]
 
     """
     use_buffer_hashtable = (

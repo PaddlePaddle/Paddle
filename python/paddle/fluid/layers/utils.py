@@ -14,7 +14,6 @@
 
 import collections
 import copy
-import six
 import numpy as np
 from ..framework import Block, Variable, _non_static_mode
 from ..data_feeder import (
@@ -26,10 +25,7 @@ from ..data_feeder import (
 from ..layer_helper import LayerHelper
 from sys import version_info
 
-try:
-    from collections.abc import Sequence
-except:
-    from collections import Sequence
+from collections.abc import Sequence
 
 
 def convert_to_list(value, n, name, dtype=int):

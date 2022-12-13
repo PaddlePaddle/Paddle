@@ -828,16 +828,19 @@ int TrtMultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     // mul (B * S * Hidden) x (Hidden * 3 * N * H) = (B * S * 3 * N * H)
     // bias (B * S * 3 * N * H) + bias (3 * N * H)
     // Transpose (B * S * 3 * N * H) -> (3 * B * N * S * H)
-    auto* wq_tensor = scope->FindVar(mul0_w->Name())->GetMutable<LoDTensor>();
-    auto* wk_tensor = scope->FindVar(mul1_w->Name())->GetMutable<LoDTensor>();
-    auto* wv_tensor = scope->FindVar(mul2_w->Name())->GetMutable<LoDTensor>();
+    auto* wq_tensor =
+        scope->FindVar(mul0_w->Name())->GetMutable<phi::DenseTensor>();
+    auto* wk_tensor =
+        scope->FindVar(mul1_w->Name())->GetMutable<phi::DenseTensor>();
+    auto* wv_tensor =
+        scope->FindVar(mul2_w->Name())->GetMutable<phi::DenseTensor>();
 
     auto* bq_tensor =
-        scope->FindVar(eltadd0_b->Name())->GetMutable<LoDTensor>();
+        scope->FindVar(eltadd0_b->Name())->GetMutable<phi::DenseTensor>();
     auto* bk_tensor =
-        scope->FindVar(eltadd1_b->Name())->GetMutable<LoDTensor>();
+        scope->FindVar(eltadd1_b->Name())->GetMutable<phi::DenseTensor>();
     auto* bv_tensor =
-        scope->FindVar(eltadd2_b->Name())->GetMutable<LoDTensor>();
+        scope->FindVar(eltadd2_b->Name())->GetMutable<phi::DenseTensor>();
 
     auto* wq_data = wq_tensor->mutable_data<float>(platform::CPUPlace());
     auto* wk_data = wk_tensor->mutable_data<float>(platform::CPUPlace());
@@ -885,6 +888,7 @@ int TrtMultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
            sizeof(float) * wq_tensor->numel());
 
     scope->EraseVars({mul1_w->Name(), mul2_w->Name()});
+    paddle::memory::Release(platform::CPUPlace());
 
     phi::DenseTensor tmp_combined_bias_tensor;
     tmp_combined_bias_tensor.Resize(combined_bias_dims);
@@ -907,6 +911,7 @@ int TrtMultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
            sizeof(float) * bq_tensor->numel());
 
     scope->EraseVars({eltadd1_b->Name(), eltadd2_b->Name()});
+    paddle::memory::Release(platform::CPUPlace());
 
     auto reshape_desc = reshape2->Op();
     int head_number =
@@ -1165,14 +1170,14 @@ void TrtMultiHeadMatmulV2FusePass::ApplyImpl(Graph* graph) const {
                                     "preln_embedding_eltwise_layernorm_fuse_"
                                     "pass. please use no_varseqlen"));
       }
-    } else if (!use_varseqlen && pos_id == "" && mask_id == "") {
+    } else if (!use_varseqlen && pos_id == "") {
       VLOG(3) << "start no_varseqlen_trt_multihead_matmul_fuse_pass";
     } else {
       PADDLE_THROW(
           platform::errors::Fatal("Use transformer'varseqlen need config: "
                                   "use_varseqlen, set pos_id, set "
                                   "mask_id. Or not use varseqlen, do not set "
-                                  "pos_id, set mask_id. Please "
+                                  "pos_id. Please "
                                   "reconfig"));
     }
     graph->Set(kMultiheadMatmulPass, new bool(true));
@@ -1345,16 +1350,19 @@ int TrtMultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
     // mul (B * S * Hidden) x (Hidden * 3 * N * H) = (B * S * 3 * N * H)
     // bias (B * S * 3 * N * H) + bias (3 * N * H)
     // Transpose (B * S * 3 * N * H) -> (3 * B * N * S * H)
-    auto* wq_tensor = scope->FindVar(mul0_w->Name())->GetMutable<LoDTensor>();
-    auto* wk_tensor = scope->FindVar(mul1_w->Name())->GetMutable<LoDTensor>();
-    auto* wv_tensor = scope->FindVar(mul2_w->Name())->GetMutable<LoDTensor>();
+    auto* wq_tensor =
+        scope->FindVar(mul0_w->Name())->GetMutable<phi::DenseTensor>();
+    auto* wk_tensor =
+        scope->FindVar(mul1_w->Name())->GetMutable<phi::DenseTensor>();
+    auto* wv_tensor =
+        scope->FindVar(mul2_w->Name())->GetMutable<phi::DenseTensor>();
 
     auto* bq_tensor =
-        scope->FindVar(eltadd0_b->Name())->GetMutable<LoDTensor>();
+        scope->FindVar(eltadd0_b->Name())->GetMutable<phi::DenseTensor>();
     auto* bk_tensor =
-        scope->FindVar(eltadd1_b->Name())->GetMutable<LoDTensor>();
+        scope->FindVar(eltadd1_b->Name())->GetMutable<phi::DenseTensor>();
     auto* bv_tensor =
-        scope->FindVar(eltadd2_b->Name())->GetMutable<LoDTensor>();
+        scope->FindVar(eltadd2_b->Name())->GetMutable<phi::DenseTensor>();
 
     auto* wq_data = wq_tensor->mutable_data<float>(platform::CPUPlace());
     auto* wk_data = wk_tensor->mutable_data<float>(platform::CPUPlace());
@@ -1402,6 +1410,7 @@ int TrtMultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
            sizeof(float) * wq_tensor->numel());
 
     scope->EraseVars({mul1_w->Name(), mul2_w->Name()});
+    paddle::memory::Release(platform::CPUPlace());
 
     phi::DenseTensor tmp_combined_bias_tensor;
     tmp_combined_bias_tensor.Resize(combined_bias_dims);
@@ -1424,6 +1433,7 @@ int TrtMultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
            sizeof(float) * bq_tensor->numel());
 
     scope->EraseVars({eltadd1_b->Name(), eltadd2_b->Name()});
+    paddle::memory::Release(platform::CPUPlace());
 
     auto reshape_desc = reshape2->Op();
     int head_number =
@@ -1631,14 +1641,14 @@ void TrtMultiHeadMatmulV3FusePass::ApplyImpl(Graph* graph) const {
                                     "preln_embedding_eltwise_layernorm_fuse_"
                                     "pass. please use no_varseqlen"));
       }
-    } else if (!use_varseqlen && pos_id == "" && mask_id == "") {
+    } else if (!use_varseqlen && pos_id == "") {
       VLOG(3) << "start no_varseqlen_trt_multihead_matmul_fuse_pass";
     } else {
       PADDLE_THROW(
           platform::errors::Fatal("Use transformer'varseqlen need config: "
                                   "use_varseqlen, set pos_id, set "
                                   "mask_id. Or not use varseqlen, do not set "
-                                  "pos_id, set mask_id. Please "
+                                  "pos_id. Please "
                                   "reconfig"));
     }
     graph->Set(kMultiheadMatmulPass, new bool(true));

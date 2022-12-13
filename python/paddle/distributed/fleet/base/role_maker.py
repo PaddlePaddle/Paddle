@@ -14,12 +14,13 @@
 """Defination of Role Makers."""
 import os
 import time
-import numpy as np
 import warnings
-from multiprocessing import Process, Manager
+from multiprocessing import Manager, Process
+
+import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
@@ -35,7 +36,7 @@ class Role:
     COORDINATOR = 5
 
 
-class Gloo(object):
+class Gloo:
     """
     Gloo is a universal class for barrier and collective communication
     """
@@ -128,7 +129,7 @@ class Gloo(object):
 
     def _init_fs(self, fs_path, prefix):
         def init(rank, nodes, role):
-            gloo = fluid.core.Gloo()
+            gloo = core.Gloo()
             gloo.set_rank(rank)
             gloo.set_size(nodes)
             gloo.set_prefix(prefix)
@@ -156,7 +157,7 @@ class Gloo(object):
 
     def _init_dfs(self, dfs_name, dfs_ugi, dfs_path, prefix):
         def init(rank, nodes, role):
-            gloo = fluid.core.Gloo()
+            gloo = core.Gloo()
             gloo.set_rank(rank)
             gloo.set_size(nodes)
             gloo.set_prefix(prefix)
@@ -216,7 +217,7 @@ class Gloo(object):
             return _http_server
 
         def init(rank, nodes, role):
-            gloo = fluid.core.Gloo()
+            gloo = core.Gloo()
             gloo.set_rank(rank)
             gloo.set_size(nodes)
             gloo.set_prefix(prefix)
@@ -293,7 +294,7 @@ class Gloo(object):
             if "Gateway" in item and "Iface" in item:
                 gateway_idx = item.index("Gateway")
                 iface_idx = item.index("Iface")
-            elif gateway_idx != None and iface_idx != None:
+            elif gateway_idx is not None and iface_idx is not None:
                 gateway = None
                 if len(item) > gateway_idx:
                     gateway = item[gateway_idx]
@@ -383,7 +384,7 @@ class Gloo(object):
         return output
 
 
-class RoleMakerBase(object):
+class RoleMakerBase:
     """
     RoleMakerBase is a base class for assigning a role to current process
     in distributed training.
@@ -545,7 +546,7 @@ class RoleMakerBase(object):
 
 class PaddleCloudRoleMaker(RoleMakerBase):
     def __init__(self, is_collective=False, **kwargs):
-        super(PaddleCloudRoleMaker, self).__init__()
+        super().__init__()
         self._is_collective = is_collective
         self._non_distributed = False
 
@@ -845,7 +846,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._server_endpoints = self._server_endpoints.split(",")
 
         self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS", None)
-        if self._worker_endpoints != None:
+        if self._worker_endpoints is not None:
             self._worker_endpoints = self._worker_endpoints.split(",")
         else:
             self._worker_endpoints = []
@@ -860,14 +861,14 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             self._coordinator_endpoints = self._coordinator_endpoints.split(",")
 
         trainers_num = os.getenv("PADDLE_TRAINERS_NUM", None)
-        if trainers_num == None:
+        if trainers_num is None:
             raise ValueError(
                 "Can not find PADDLE_TRAINERS_NUM, please check your environment."
             )
         trainers_num = int(trainers_num)
 
         training_role = os.getenv("TRAINING_ROLE", None)
-        if training_role == None:
+        if training_role is None:
             raise ValueError(
                 "Can not find TRAINING_ROLE, please check your environment."
             )
@@ -937,20 +938,20 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         if training_role == "TRAINER":
             role = Role.WORKER
             current_id = os.getenv("PADDLE_TRAINER_ID", None)
-            if current_id == None:
+            if current_id is None:
                 raise ValueError(
                     "Can not find PADDLE_TRAINER_ID, please check your environment."
                 )
             current_id = int(current_id)
             if self._is_heter_parameter_server_mode:
                 self._stage_id = os.getenv("STAGE_ID", None)
-                if self._stage_id == None:
+                if self._stage_id is None:
                     raise ValueError(
                         "Can not find STAGE_ID, please check your environment."
                     )
                 self._stage_id = int(self._stage_id)
                 self._stage_num = os.getenv("STAGE_NUM", None)
-                if self._stage_num == None:
+                if self._stage_num is None:
                     raise ValueError(
                         "Can not find STAGE_NUM, please check your environment."
                     )
@@ -958,18 +959,18 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                 self._stage_trainers = os.getenv(
                     "PADDLE_STAGE_TRAINERS_NUM", None
                 )
-                if self._stage_trainers == None:
+                if self._stage_trainers is None:
                     raise ValueError(
                         "Can not find PADDLE_STAGE_TRAINERS_NUM, please check your environment."
                     )
                 self._stage_trainers = eval(self._stage_trainers)
             cur_port = os.getenv("PADDLE_PORT", None)
-            if cur_port == None:
+            if cur_port is None:
                 raise ValueError(
                     "Can not find PADDLE_PORT, please check your environment."
                 )
             cur_ip = os.getenv("POD_IP", None)
-            if cur_ip == None:
+            if cur_ip is None:
                 raise ValueError(
                     "Can not find POD_IP, please check your environment."
                 )
@@ -982,12 +983,12 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         elif training_role == "PSERVER":
             role = Role.SERVER
             cur_port = os.getenv("PADDLE_PORT", None)
-            if cur_port == None:
+            if cur_port is None:
                 raise ValueError(
                     "Can not find PADDLE_PORT, please check your environment."
                 )
             cur_ip = os.getenv("POD_IP", None)
-            if cur_ip == None:
+            if cur_ip is None:
                 raise ValueError(
                     "Can not find POD_IP, please check your environment."
                 )
@@ -997,20 +998,20 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         elif training_role == "HETER_TRAINER":
             role = Role.HETER_WORKER
             self._stage_id = os.getenv("STAGE_ID", None)
-            if self._stage_id == None:
+            if self._stage_id is None:
                 raise ValueError(
                     "Can not find STAGE_ID, please check your environment."
                 )
             self._stage_id = int(self._stage_id)
             self._stage_num = os.getenv("STAGE_NUM", None)
-            if self._stage_num == None:
+            if self._stage_num is None:
                 raise ValueError(
                     "Can not find STAGE_NUM, please check your environment."
                 )
             self._stage_num = int(self._stage_num)
 
             self._stage_trainers = os.getenv("PADDLE_STAGE_TRAINERS_NUM", None)
-            if self._stage_trainers == None:
+            if self._stage_trainers is None:
                 raise ValueError(
                     "Can not find PADDLE_STAGE_TRAINERS_NUM, please check your environment."
                 )
@@ -1019,7 +1020,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             self._heter_trainer_device_type = os.getenv(
                 "HETER_DEVICE_TYPE", None
             )
-            if self._heter_trainer_device_type == None:
+            if self._heter_trainer_device_type is None:
                 raise ValueError(
                     "Can not find HETER_DEVICE_TYPE, please check your environment."
                 )
@@ -1040,12 +1041,12 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                 )
 
             cur_port = os.getenv("PADDLE_PORT", None)
-            if cur_port == None:
+            if cur_port is None:
                 raise ValueError(
                     "Can not find PADDLE_PORT, please check your environment."
                 )
             cur_ip = os.getenv("POD_IP", None)
-            if cur_ip == None:
+            if cur_ip is None:
                 raise ValueError(
                     "Can not find POD_IP, please check your environment."
                 )
@@ -1175,13 +1176,13 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             else:
                 self._collective_env()
             self._role_is_generated = True
-            if not paddle.fluid.framework._non_static_mode():
+            if not paddle.framework.in_dynamic_mode():
                 self._gloo_init()
 
 
 class UserDefinedRoleMaker(PaddleCloudRoleMaker):
     def __init__(self, is_collective=False, init_gloo=False, **kwargs):
-        super(UserDefinedRoleMaker, self).__init__(
+        super().__init__(
             is_collective=is_collective, init_gloo=init_gloo, **kwargs
         )
         self._init_gloo = init_gloo

@@ -256,7 +256,7 @@ def try_load_model_vars(
         }
         for each_var in saved_params:
             var_temp = fluid.global_scope().find_var(each_var.name)
-            assert var_temp != None, "can't not find var: " + each_var.name
+            assert var_temp is not None, "can't not find var: " + each_var.name
             new_shape = (np.array(var_temp.get_tensor())).shape
             assert each_var.name in orig_para_shape, (
                 each_var.name + "MUST in var list"

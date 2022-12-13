@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import glob
+import json
+import logging
 import os
 import time
-import json
-import glob
-import logging
 from multiprocessing import Lock
 
 """ Some terms to clarify the code
@@ -73,7 +73,7 @@ FILEORGANIZEFORM = [
 ]
 
 
-class FileReader(object):
+class FileReader:
     def __init__(self, logger, args):
         self._logger = logger
         self._args = args

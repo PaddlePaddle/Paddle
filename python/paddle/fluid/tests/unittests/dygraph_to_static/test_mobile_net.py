@@ -15,18 +15,19 @@
 import os
 import tempfile
 import time
-import numpy as np
-import paddle
-import paddle.fluid as fluid
-from paddle.fluid.initializer import MSRA
-from paddle.fluid.param_attr import ParamAttr
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
-from paddle.fluid.dygraph import declarative, ProgramTranslator
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-
 import unittest
 
+import numpy as np
 from predictor_utils import PredictorTools
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.fluid.initializer import MSRA
+from paddle.fluid.param_attr import ParamAttr
+from paddle.jit import ProgramTranslator
+from paddle.jit.api import declarative
+from paddle.nn import BatchNorm, Linear
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
@@ -52,18 +53,16 @@ class ConvBNLayer(fluid.dygraph.Layer):
         use_cudnn=True,
         name=None,
     ):
-        super(ConvBNLayer, self).__init__()
+        super().__init__()
 
-        self._conv = Conv2D(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
+        self._conv = paddle.nn.Conv2D(
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=filter_size,
             stride=stride,
             padding=padding,
             groups=num_groups,
-            act=None,
-            use_cudnn=use_cudnn,
-            param_attr=ParamAttr(
+            weight_attr=ParamAttr(
                 initializer=MSRA(), name=self.full_name() + "_weights"
             ),
             bias_attr=False,
@@ -82,7 +81,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
         y = self._conv(inputs)
         y = self._batch_norm(y)
         if if_act:
-            y = fluid.layers.relu6(y)
+            y = paddle.nn.functional.relu6(y)
         return y
 
 
@@ -97,7 +96,7 @@ class DepthwiseSeparable(fluid.dygraph.Layer):
         scale,
         name=None,
     ):
-        super(DepthwiseSeparable, self).__init__()
+        super().__init__()
 
         self._depthwise_conv = ConvBNLayer(
             num_channels=num_channels,
@@ -125,7 +124,7 @@ class DepthwiseSeparable(fluid.dygraph.Layer):
 
 class MobileNetV1(fluid.dygraph.Layer):
     def __init__(self, scale=1.0, class_dim=1000):
-        super(MobileNetV1, self).__init__()
+        super().__init__()
         self.scale = scale
         self.dwsl = []
 
@@ -256,12 +255,12 @@ class MobileNetV1(fluid.dygraph.Layer):
         )
         self.dwsl.append(dws6)
 
-        self.pool2d_avg = Pool2D(pool_type='avg', global_pooling=True)
+        self.pool2d_avg = paddle.nn.AdaptiveAvgPool2D(1)
 
         self.out = Linear(
             int(1024 * scale),
             class_dim,
-            param_attr=ParamAttr(
+            weight_attr=ParamAttr(
                 initializer=MSRA(), name=self.full_name() + "fc7_weights"
             ),
             bias_attr=ParamAttr(name="fc7_offset"),
@@ -273,7 +272,7 @@ class MobileNetV1(fluid.dygraph.Layer):
         for dws in self.dwsl:
             y = dws(y)
         y = self.pool2d_avg(y)
-        y = fluid.layers.reshape(y, shape=[-1, 1024])
+        y = paddle.reshape(y, shape=[-1, 1024])
         y = self.out(y)
         return y
 
@@ -289,7 +288,7 @@ class InvertedResidualUnit(fluid.dygraph.Layer):
         padding,
         expansion_factor,
     ):
-        super(InvertedResidualUnit, self).__init__()
+        super().__init__()
         num_expfilter = int(round(num_in_filter * expansion_factor))
         self._expand_conv = ConvBNLayer(
             num_channels=num_channels,
@@ -327,13 +326,13 @@ class InvertedResidualUnit(fluid.dygraph.Layer):
         y = self._bottleneck_conv(y, if_act=True)
         y = self._linear_conv(y, if_act=False)
         if ifshortcut:
-            y = fluid.layers.elementwise_add(inputs, y)
+            y = paddle.add(inputs, y)
         return y
 
 
 class InvresiBlocks(fluid.dygraph.Layer):
     def __init__(self, in_c, t, c, n, s):
-        super(InvresiBlocks, self).__init__()
+        super().__init__()
 
         self._first_block = InvertedResidualUnit(
             num_channels=in_c,
@@ -370,7 +369,7 @@ class InvresiBlocks(fluid.dygraph.Layer):
 
 class MobileNetV2(fluid.dygraph.Layer):
     def __init__(self, class_dim=1000, scale=1.0):
-        super(MobileNetV2, self).__init__()
+        super().__init__()
         self.scale = scale
         self.class_dim = class_dim
 
@@ -422,14 +421,14 @@ class MobileNetV2(fluid.dygraph.Layer):
         )
 
         # 4. pool
-        self._pool2d_avg = Pool2D(pool_type='avg', global_pooling=True)
+        self._pool2d_avg = paddle.nn.AdaptiveAvgPool2D(1)
 
         # 5. fc
         tmp_param = ParamAttr(name=self.full_name() + "fc10_weights")
         self._fc = Linear(
             self._out_c,
             class_dim,
-            param_attr=tmp_param,
+            weight_attr=tmp_param,
             bias_attr=ParamAttr(name="fc10_offset"),
         )
 
@@ -440,7 +439,7 @@ class MobileNetV2(fluid.dygraph.Layer):
             y = inv(y)
         y = self._conv9(y, if_act=True)
         y = self._pool2d_avg(y)
-        y = fluid.layers.reshape(y, shape=[-1, self._out_c])
+        y = paddle.reshape(y, shape=[-1, self._out_c])
         y = self._fc(y)
         return y
 
@@ -472,7 +471,7 @@ def fake_data_reader(batch_size, label_size):
     return reader
 
 
-class Args(object):
+class Args:
     batch_size = 4
     model = "MobileNetV1"
     lr = 0.001
@@ -531,13 +530,16 @@ def train_mobilenet(args, to_static):
                 out = net(img)
 
                 t_end = time.time()
-                softmax_out = fluid.layers.softmax(out, use_cudnn=False)
-                loss = fluid.layers.cross_entropy(
-                    input=softmax_out, label=label
+                softmax_out = paddle.nn.functional.softmax(out)
+                loss = paddle.nn.functional.cross_entropy(
+                    input=softmax_out,
+                    label=label,
+                    reduction='none',
+                    use_softmax=False,
                 )
                 avg_loss = paddle.mean(x=loss)
-                acc_top1 = fluid.layers.accuracy(input=out, label=label, k=1)
-                acc_top5 = fluid.layers.accuracy(input=out, label=label, k=5)
+                acc_top1 = paddle.static.accuracy(input=out, label=label, k=1)
+                acc_top5 = paddle.static.accuracy(input=out, label=label, k=5)
                 t_start_back = time.time()
 
                 loss_data.append(avg_loss.numpy())
@@ -567,7 +569,7 @@ def train_mobilenet(args, to_static):
                 t_last = time.time()
                 if batch_id > args.train_step:
                     if to_static:
-                        fluid.dygraph.jit.save(net, args.model_save_prefix)
+                        paddle.jit.save(net, args.model_save_prefix)
                     else:
                         fluid.dygraph.save_dygraph(
                             net.state_dict(), args.dy_state_dict_save_path
@@ -620,7 +622,7 @@ def predict_dygraph(args, data):
 
 def predict_dygraph_jit(args, data):
     with fluid.dygraph.guard(args.place):
-        model = fluid.dygraph.jit.load(args.model_save_prefix)
+        model = paddle.jit.load(args.model_save_prefix)
         model.eval()
 
         pred_res = model(data)
@@ -726,5 +728,4 @@ class TestMobileNet(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()
