@@ -14,7 +14,10 @@
 
 # TODO: define functions to manipulate a tensor
 
+from __future__ import annotations
+
 from collections import Counter
+from typing import Any
 
 import numpy as np
 
@@ -43,8 +46,13 @@ from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
 
 __all__ = []
 
+import typing
 
-def cast(x, dtype):
+if typing.TYPE_CHECKING:
+    Tensor = Any
+
+
+def cast(x: Tensor, dtype: np.dtype | str):
     """
 
     This OP takes in the Tensor :attr:`x` with :attr:`x.dtype` and casts it
