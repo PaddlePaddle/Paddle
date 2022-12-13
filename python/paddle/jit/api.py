@@ -48,7 +48,7 @@ from .dy2static.program_translator import (
     StaticFunction,
     unwrap_decorators,
 )
-from paddle.fluid.dygraph.io import (
+from paddle.jit.translated_layer import (
     TranslatedLayer,
     INFER_MODEL_SUFFIX,
     INFER_PARAMS_SUFFIX,

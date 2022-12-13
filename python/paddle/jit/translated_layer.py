@@ -22,7 +22,6 @@ from paddle.fluid import framework
 from paddle.fluid import backward
 from paddle.fluid import unique_name
 from paddle.fluid.dygraph import layers
-from paddle.fluid.layers import nn
 from paddle.fluid.layers.utils import _hash_with_id
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.framework import _non_static_mode, OpProtoHolder
@@ -34,7 +33,7 @@ from paddle.jit.dy2static.partial_program import (
     add_build_strategy_for,
     LazyInitialized,
 )
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
 
 __all__ = ['TranslatedLayer']
 
@@ -1193,7 +1192,7 @@ def _append_block(
     dest_program._sync_with_cpp()
 
     offset_block_idx = dest_program.num_blocks - 1
-
+    parent_idx = 0
     if src_program_desc.num_blocks() > 1:
         for src_block_idx in range(1, src_program_desc.num_blocks()):
             src_block = src_program_desc.block(src_block_idx)

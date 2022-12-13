@@ -22,7 +22,7 @@ from paddle.fluid.dygraph import layers
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.layers.utils import pack_sequence_as
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.dygraph.io import TranslatedLayer
+from paddle.jit.translated_layer import TranslatedLayer
 
 from . import logging_utils
 from .utils import (
