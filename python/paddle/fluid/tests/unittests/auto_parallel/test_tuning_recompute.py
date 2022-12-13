@@ -36,7 +36,7 @@ def generate_model():
     gpt = GPTModel(
         vocab_size=50304,
         hidden_size=1024,
-        num_hidden_layers=2,
+        num_hidden_layers=14,
         num_attention_heads=16,
         intermediate_size=1024 * 4,
         hidden_act="gelu",
@@ -70,7 +70,7 @@ def apply_pass():
     tuning = strategy.tuning
     tuning.enable = True
     tuning.profile_start_step = 1
-    tuning.profile_end_step = 5
+    tuning.profile_end_step = 2
     tuning.run_after_tuning = True
     tuning.verbose = True
     return strategy
@@ -97,7 +97,12 @@ class TestRecomputePassTuning(unittest.TestCase):
         engine = auto.Engine(model, loss, opt, strategy=strategy)
         engine._tune(self.dataset, 3, batch_size=self.batch_size)
 
-        assert not engine._dist_contexts['train'].strategy.recompute.enable
+        assert (
+            engine._dist_contexts[
+                'train'
+            ].strategy.recompute.no_recompute_segments
+            > 0
+        )
 
 
 if __name__ == "__main__":

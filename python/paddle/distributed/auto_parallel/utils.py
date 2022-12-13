@@ -1926,7 +1926,7 @@ def is_recompute_op(op):
     )
 
 
-def set_recompute_scope(model, losses, strategy, program):
+def set_recompute_segments(model, losses, strategy, program):
     from ..passes.auto_parallel_recompute import RecomputeState
 
     if not losses:
