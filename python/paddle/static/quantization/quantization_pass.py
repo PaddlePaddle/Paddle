@@ -3115,7 +3115,7 @@ class QuantWeightPass:
             from paddle.fluid.framework import IrGraph
             from paddle.framework import core
 
-            graph = IrGraph(core.Graph(static.Program().desc), for_test=False)
+            graph = IrGraph(core.Graph(paddle.static.Program().desc), for_test=False)
             place = paddle.CPUPlace()
             scope = paddle.static.global_scope()
             quant_weight_pass = QuantWeightPass(scope, place)
