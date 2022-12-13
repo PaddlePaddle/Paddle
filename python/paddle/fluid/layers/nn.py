@@ -67,7 +67,6 @@ __all__ = [
     'embedding',
     'linear_chain_crf',
     'crf_decoding',
-    'conv2d',
     'dropout',
     'split',
     'l2_normalize',
