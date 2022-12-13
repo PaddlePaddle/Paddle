@@ -83,9 +83,10 @@ def save_dygraph(state_dict, model_path):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
 
             with fluid.dygraph.guard():
-                emb = fluid.dygraph.Embedding([10, 10])
+                emb = paddle.nn.Embedding(10, 10)
 
                 state_dict = emb.state_dict()
                 fluid.save_dygraph( state_dict, "paddle_dy")

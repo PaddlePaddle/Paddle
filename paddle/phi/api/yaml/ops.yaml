@@ -179,6 +179,16 @@
     func : cosh
   backward : cosh_grad
 
+- op : crop
+  args : (Tensor x, IntArray shape = {}, IntArray offsets = {})
+  output : Tensor(out)
+  infer_meta :
+    func : CropInferMeta
+  kernel :
+    func : crop
+    data_type : x
+  backward : crop_grad
+
 - op : cross
   args : (Tensor x, Tensor y, int axis = 9)
   output : Tensor
@@ -618,6 +628,15 @@
     func : log2
   backward: log2_grad
 
+- op : log_loss
+  args : (Tensor input, Tensor label, float epsilon)
+  output : Tensor
+  infer_meta :
+    func : LogLossInferMeta
+  kernel :
+    func : log_loss
+  backward : log_loss_grad
+
 - op : logit
   args : (Tensor x, float eps = 1e-6f)
   output : Tensor
@@ -684,6 +703,15 @@
     func : mode
   backward : mode_grad
 
+- op : multinomial
+  args : (Tensor x, Scalar(int) num_samples = 1, bool replacement = false)
+  output : Tensor(out)
+  infer_meta :
+    func : MultinomialInferMeta
+  kernel :
+    func : multinomial
+    data_type : x
+
 - op : mv
   args : (Tensor x, Tensor vec)
   output : Tensor
@@ -721,6 +749,18 @@
   kernel :
     func : poisson
   backward : poisson_grad
+
+- op : put_along_axis
+  args : (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign")
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [arr]
+  kernel :
+    func : put_along_axis
+    data_type : arr
+  inplace : (arr -> out)
+  backward : put_along_axis_grad
 
 - op : qr
   args : (Tensor x, str mode = "reduced")
@@ -780,6 +820,15 @@
     func : rsqrt
   inplace : (x -> out)
   backward : rsqrt_grad
+
+- op : searchsorted
+  args : (Tensor sorted_sequence, Tensor values, bool out_int32 = false, bool right = false)
+  output : Tensor(out)
+  infer_meta :
+    func : SearchsortedInferMeta
+  kernel :
+    func : searchsorted
+    data_type : sorted_sequence
 
 - op : send_uv
   args : (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str message_op = "ADD")
@@ -888,6 +937,26 @@
            square_sr {selected_rows -> selected_rows}
   backward : square_grad
 
+- op : svd
+  args : (Tensor x, bool full_matrices = false)
+  output : Tensor(u), Tensor(s), Tensor(vh)
+  infer_meta :
+    func : SvdInferMeta
+  kernel :
+    func : svd
+  backward : svd_grad
+
+- op : take_along_axis
+  args : (Tensor arr, Tensor indices, int axis)
+  output : Tensor
+  infer_meta :
+    func : TakeAlongAxisInferMeta
+    param : [arr, indices, axis]
+  kernel :
+    func : take_along_axis
+    data_type : arr
+  backward : take_along_axis_grad
+
 - op : tan
   args : (Tensor x)
   output : Tensor
@@ -925,6 +994,16 @@
   kernel :
     func : thresholded_relu
   backward : thresholded_relu_grad
+
+- op : topk
+  args : (Tensor x, Scalar(int) k = 1, int axis = -1, bool largest = true, bool sorted = true)
+  output : Tensor(out), Tensor(indices)
+  infer_meta :
+    func : TopKInferMeta
+  kernel :
+    func : topk
+    data_type : x
+  backward : topk_grad
 
 - op : trace
   args : (Tensor x, int offset = 0, int axis1 = 0, int axis2 = 1)
