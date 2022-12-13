@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 
 class LinearNet(paddle.nn.Layer):
@@ -41,33 +40,23 @@ class Logic(paddle.nn.Layer):
 
 
 class TestExportWithTensor(unittest.TestCase):
-    def func_with_tensor(self):
+    def test_with_tensor(self):
         self.x_spec = paddle.static.InputSpec(
             shape=[None, 128], dtype='float32'
         )
         model = LinearNet()
         paddle.onnx.export(model, 'linear_net', input_spec=[self.x_spec])
 
-    def test_with_tensor(self):
-        with _test_eager_guard():
-            self.func_with_tensor()
-        self.func_with_tensor()
-
 
 class TestExportWithTensor1(unittest.TestCase):
-    def func_with_tensor(self):
+    def test_with_tensor(self):
         self.x = paddle.to_tensor(np.random.random((1, 128)))
         model = LinearNet()
         paddle.onnx.export(model, 'linear_net', input_spec=[self.x])
 
-    def test_with_tensor(self):
-        with _test_eager_guard():
-            self.func_with_tensor()
-        self.func_with_tensor()
-
 
 class TestExportPrunedGraph(unittest.TestCase):
-    def func_prune_graph(self):
+    def test_prune_graph(self):
         model = Logic()
         self.x = paddle.to_tensor(np.array([1]))
         self.y = paddle.to_tensor(np.array([-1]))
@@ -76,12 +65,6 @@ class TestExportPrunedGraph(unittest.TestCase):
         paddle.onnx.export(
             model, 'pruned', input_spec=[self.x], output_spec=[out]
         )
-
-    def test_prune_graph(self):
-        # test eager
-        with _test_eager_guard():
-            self.func_prune_graph()
-        self.func_prune_graph()
 
 
 if __name__ == '__main__':

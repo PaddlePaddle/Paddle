@@ -13,34 +13,21 @@
 # limitations under the License.
 
 import re
+
 import paddle
 from paddle.fluid.data_feeder import convert_dtype
-from .variable_trans_func import (
-    to_static_variable,
-)
-from paddle.fluid.framework import core, Variable
-from paddle.fluid.layers import Print
-from paddle.fluid.layers import (
-    assign,
-    fill_constant,
-)
-from paddle.fluid.layers import (
-    cast,
-    control_flow,
-)
-from paddle.fluid.layers.control_flow import (
-    while_loop,
-)
-from .return_transformer import (
-    RETURN_NO_VALUE_VAR_NAME,
-)
+from paddle.fluid.framework import Variable, core
+from paddle.fluid.layers import Print, assign, cast, control_flow, fill_constant
+from paddle.fluid.layers.control_flow import while_loop
+from paddle.fluid.layers.utils import copy_mutable_vars
 from paddle.jit.dy2static.utils import (
-    UndefinedVar,
     Dygraph2StaticException,
     GetterSetterHelper,
+    UndefinedVar,
 )
 
-from paddle.fluid.layers.utils import copy_mutable_vars
+from .return_transformer import RETURN_NO_VALUE_VAR_NAME
+from .variable_trans_func import to_static_variable
 
 __all__ = []
 
