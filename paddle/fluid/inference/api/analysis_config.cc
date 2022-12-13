@@ -951,6 +951,7 @@ void AnalysisConfig::Update() {
   // TODO(inference): When we enable memory_optimize and mkldnn, PaddleSeg model
   // fail.
   if (enable_memory_optim_) {
+#ifdef PADDLE_WITH_MKLDNN
     if (use_mkldnn_) {
       enable_memory_optim_ = false;
       LOG_FIRST_N(WARNING, 1)
@@ -960,6 +961,9 @@ void AnalysisConfig::Update() {
     } else {
       pass_builder()->AppendAnalysisPass("memory_optimize_pass");
     }
+#else
+    pass_builder()->AppendAnalysisPass("memory_optimize_pass");
+#endif
   }
 
   if (use_lite_) {
