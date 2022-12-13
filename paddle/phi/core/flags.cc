@@ -1040,7 +1040,6 @@ PADDLE_DEFINE_EXPORTED_string(jit_engine_type,
                               "Predictor",
                               "Choose default funciton type in JitLayer.");
 
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
 /**
  * Custom Device NPU related FLAG
  * Name: FLAGS_npu_storage_format
@@ -1050,7 +1049,6 @@ PADDLE_DEFINE_EXPORTED_string(jit_engine_type,
  * Note: Enable NPU Storage Format for Ascend910 performance improvement.
  */
 PADDLE_DEFINE_EXPORTED_bool(npu_storage_format, false, "");
-#endif
 
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
 /**
