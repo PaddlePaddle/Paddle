@@ -543,7 +543,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_transpiler_ops',
     'test_communicator_sync',
     'test_collective_optimizer',
-    'test_parallel_executor_crf',
     'test_parallel_executor_profiler',
     'test_parallel_executor_transformer',
     'test_parallel_executor_transformer_auto_growth',
