@@ -106,7 +106,7 @@ class TestRandomCropBase(TestTransformUnitTestBase):
         self.crop_size = (224, 224)
         self.api = transforms.RandomCrop(self.crop_size)
 
-    def assert_test_random_equal(self, res):
+    def assert_test_random_equal(self, res, eps=10e-5):
 
         _, h, w = self.get_shape()
         c_h, c_w = self.crop_size
@@ -116,7 +116,7 @@ class TestRandomCropBase(TestTransformUnitTestBase):
                 diff_abs_sum = np.abs(
                     (self.img[:, y : y + c_h, x : x + c_w] - res)
                 ).sum()
-                if diff_abs_sum < 10e-5:
+                if diff_abs_sum < eps:
                     res_assert = False
                     break
             if not res_assert:
