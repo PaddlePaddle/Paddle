@@ -174,6 +174,7 @@ def weight_norm(layer, name='weight', dim=0):
     replaces the parameter specified by `name`(eg: 'weight') with two parameters: one parameter
     specifying the magnitude (eg: 'weight_g') and one parameter specifying the direction
     (eg: 'weight_v'). Weight normalization has been implemented as discussed in this paper:
+
     `Weight Normalization: A Simple Reparameterization to Accelerate Training of Deep Neural Networks
     <https://arxiv.org/pdf/1602.07868.pdf>`_.
 
