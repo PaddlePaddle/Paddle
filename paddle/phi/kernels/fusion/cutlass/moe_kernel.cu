@@ -557,7 +557,7 @@ void gemm_bias_act(const T* A,
       generic_moe_gemm_kernelLauncher<T,
                                       T,
                                       cutlass::arch::Sm70,
-                                      EpilogueOpBiasFtGelu>(
+                                      EpilogueOpBiasReLU>(
           A,
           B,
           weight_scales,
