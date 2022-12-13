@@ -51,6 +51,7 @@ class ConvTransposeOneDNNHandlerT
                               const std::string& padding_algorithm,
                               int groups,
                               const std::vector<int>& dilations_in,
+                              const std::string& data_format,
                               DenseTensor* out)
       : funcs::OneDNNHandlerNoCachingT<T, dnnl::deconvolution_forward>(
             dev_ctx.GetEngine(), dev_ctx.GetPlace()),
@@ -544,6 +545,7 @@ void ComputeFP32(const OneDNNContext& dev_ctx,
                  const std::string& padding_algorithm,
                  int groups,
                  const std::vector<int>& dilations,
+                 const std::string& data_format,
                  DenseTensor* out) {
   const auto* bias =
       dev_ctx.HasDnnInput("Bias") ? dev_ctx.GetDnnInput("Bias") : nullptr;
@@ -557,6 +559,7 @@ void ComputeFP32(const OneDNNContext& dev_ctx,
                                                        padding_algorithm,
                                                        groups,
                                                        dilations,
+                                                       data_format,
                                                        out);
 
   auto src_memory_p = handler.AcquireSrcMemoryWithReorder(x);
@@ -599,6 +602,7 @@ void ComputeINT8(const OneDNNContext& dev_ctx,
                  const std::string& padding_algorithm,
                  int groups,
                  const std::vector<int>& dilations,
+                 const std::string& data_format,
                  DenseTensor* out) {
   const auto* bias =
       dev_ctx.HasDnnInput("Bias") ? dev_ctx.GetDnnInput("Bias") : nullptr;
@@ -619,6 +623,7 @@ void ComputeINT8(const OneDNNContext& dev_ctx,
                                                        padding_algorithm,
                                                        groups,
                                                        dilations,
+                                                       data_format,
                                                        out);
   if (filter->dtype() == phi::DataType::INT8) {
     ConvTransposeOneDNNHandlerT<T, int8_t, T_out> handler(dev_ctx,
@@ -630,6 +635,7 @@ void ComputeINT8(const OneDNNContext& dev_ctx,
                                                           padding_algorithm,
                                                           groups,
                                                           dilations,
+                                                          data_format,
                                                           out);
   }
 
@@ -741,6 +747,7 @@ void Conv2dTransposeKernel(const Context& dev_ctx,
                             padding_algorithm,
                             groups,
                             dilations,
+                            data_format,
                             out);
     } else if (dst_dt == dnnl::memory::data_type::bf16) {
       ComputeFP32<T, dtype::bfloat16>(dev_ctx,
@@ -751,6 +758,7 @@ void Conv2dTransposeKernel(const Context& dev_ctx,
                                       padding_algorithm,
                                       groups,
                                       dilations,
+                                      data_format,
                                       out);
     }
   } else {
@@ -763,6 +771,7 @@ void Conv2dTransposeKernel(const Context& dev_ctx,
                             padding_algorithm,
                             groups,
                             dilations,
+                            data_format,
                             out);
     } else if (dst_dt == dnnl::memory::data_type::u8) {
       ComputeINT8<T, uint8_t>(dev_ctx,
@@ -773,6 +782,7 @@ void Conv2dTransposeKernel(const Context& dev_ctx,
                               padding_algorithm,
                               groups,
                               dilations,
+                              data_format,
                               out);
     } else if (dst_dt == dnnl::memory::data_type::s8) {
       ComputeINT8<T, int8_t>(dev_ctx,
@@ -783,6 +793,7 @@ void Conv2dTransposeKernel(const Context& dev_ctx,
                              padding_algorithm,
                              groups,
                              dilations,
+                             data_format,
                              out);
     }
   }
