@@ -19,7 +19,7 @@ from functools import partial
 
 from paddle.nn import Layer
 
-from .quanter import BaseQuanter
+from .base_quanter import BaseQuanter
 
 __all__ = ["QuanterFactory", "quanter"]
 
@@ -82,20 +82,20 @@ def quanter(class_name):
     Examples:
        .. code-block:: python
 
-            # Given codes in ./custom_quanter.py
-            from paddle.quantization.factory import quanter
-            from paddle.quantization.quanter import BaseQuanter
-            @quanter("CustomQuanter")
-            class CustomQuanterLayer(BaseQuanter):
+            # Given codes in ./customized_quanter.py
+            from paddle.quantization import quanter
+            from paddle.quantization import BaseQuanter
+            @quanter("CustomizedQuanter")
+            class CustomizedQuanterLayer(BaseQuanter):
                 def __init__(self, arg1, kwarg1=None):
                     pass
 
             # Used in ./test.py
-            # from .custom_quanter import CustomQuanter
+            # from .customized_quanter import CustomizedQuanter
             from paddle.quantization import QuantConfig
             arg1_value = "test"
             kwarg1_value = 20
-            quanter = CustomQuanter(arg1_value, kwarg1=kwarg1_value)
+            quanter = CustomizedQuanter(arg1_value, kwarg1=kwarg1_value)
             q_config = QuantConfig(activation=quanter, weight=quanter)
 
     """

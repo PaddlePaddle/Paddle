@@ -87,7 +87,7 @@ class QuantConfig(object):
         self._model = None
         self._qat_layer_mapping = copy.deepcopy(DEFAULT_QAT_LAYER_MAPPINGS)
 
-        self._custom_leaves = []
+        self._customized_leaves = []
 
     def add_layer_config(
         self,
@@ -133,9 +133,9 @@ class QuantConfig(object):
                 layer.full_name(), activation=activation, weight=weight
             )
 
-    def add_prefix_config(
+    def add_name_config(
         self,
-        group: Union[str, list],
+        layer_name: Union[str, list],
         activation: QuanterFactory = None,
         weight: QuanterFactory = None,
     ):
@@ -144,7 +144,7 @@ class QuantConfig(object):
          lower than `add_layer_config`.
 
          Args:
-             layer(Union[str, list]): One or a list of layers' full name.
+             layer_name(Union[str, list]): One or a list of layers' full name.
              activation(QuanterFactory): Quanter used for activations.
              weight(QuanterFactory): Quanter used for weights.
 
@@ -163,15 +163,15 @@ class QuantConfig(object):
              model = Model()
              quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
              q_config = QuantConfig(activation=None, weight=None)
-             q_config.add_prefix_config([model.fc.full_name()], activation=quanter, weight=quanter)
+             q_config.add_name_config([model.fc.full_name()], activation=quanter, weight=quanter)
              print(q_config)
 
         """
-        if isinstance(group, str):
+        if isinstance(layer_name, str):
             config = SingleLayerConfig(activation, weight)
-            self._prefix2config[group] = config
-        if isinstance(group, list):
-            for _element in group:
+            self._prefix2config[layer_name] = config
+        if isinstance(layer_name, list):
+            for _element in layer_name:
                 self.add_prefix_config(
                     _element, activation=activation, weight=weight
                 )
@@ -185,10 +185,11 @@ class QuantConfig(object):
         r"""
         Set the quantization config by the type of layer. The `layer_type` should be
         subclass of `paddle.nn.Layer`. Its priority is lower than `add_layer_config`
-        and `add_prefix_config`.
+        and `add_name_config`.
 
         Args:
-            layer(Union[str, list]): One or a list of layers' type.
+            layer_type(Union[type, list]): One or a list of layers' type. It should be subclass of
+            `paddle.nn.Layer`. Python build-in function `type()` can be used to get the type of a layer.
             activation(QuanterFactory): Quanter used for activations.
             weight(QuanterFactory): Quanter used for weights.
 
@@ -242,7 +243,10 @@ class QuantConfig(object):
             from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
             quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
             q_config = QuantConfig(activation=None, weight=None)
-            q_config.add_qat_layer_mapping(Conv2D, Conv2D)
+            class CustomizedQuantedConv2D:
+                def forward(self, x):
+                    # add some code for quantization simulation
+            q_config.add_qat_layer_mapping(Conv2D, CustomizedQuantedConv2D)
         """
         assert isinstance(source, type) and issubclass(
             source, paddle.nn.Layer
@@ -252,9 +256,9 @@ class QuantConfig(object):
         ), "The target layer should be a subclass of paddle.nn.qat.Layer"
         self._qat_layer_mapping[source] = target
 
-    def add_custom_leaf(self, layer_type: type):
+    def add_customized_leaf(self, layer_type: type):
         r"""
-        Declare the custom layer as leaf of model for quantization.
+        Declare the customized layer as leaf of model for quantization.
         The leaf layer is quantized as one layer. The sublayers of
         leaf layer will not be quantized.
 
@@ -268,17 +272,17 @@ class QuantConfig(object):
             from paddle.quantization import QuantConfig
             from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
             q_config = QuantConfig(activation=None, weight=None)
-            q_config.add_custom_leaf(Sequential)
+            q_config.add_customized_leaf(Sequential)
 
         """
-        self._custom_leaves.append(layer_type)
+        self._customized_leaves.append(layer_type)
 
     @property
-    def custom_leaves(self):
+    def customized_leaves(self):
         r"""
-        Get all the custom leaves.
+        Get all the customized leaves.
         """
-        return self._custom_leaves
+        return self._customized_leaves
 
     def _need_observe(self, layer: Layer):
         r"""
@@ -297,7 +301,7 @@ class QuantConfig(object):
         return (
             self._is_default_leaf(layer)
             or self._is_real_leaf(layer)
-            or self._is_custom_leaf(layer)
+            or self._is_customized_leaf(layer)
         )
 
     def _is_default_leaf(self, layer: Layer):
@@ -309,8 +313,8 @@ class QuantConfig(object):
         """
         return layer._sub_layers is None or len(layer._sub_layers) == 0
 
-    def _is_custom_leaf(self, layer: Layer):
-        return type(layer) in self.custom_leaves
+    def _is_customized_leaf(self, layer: Layer):
+        return type(layer) in self.customized_leaves
 
     def _get_observer(self, layer: Layer):
         r"""

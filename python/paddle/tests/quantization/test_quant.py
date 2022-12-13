@@ -18,8 +18,8 @@ import paddle
 import paddle.nn.functional as F
 from paddle.nn import Conv2D, Linear, ReLU, Sequential
 from paddle.quantization import QuantConfig
-from paddle.quantization.quanter import BaseQuanter
 from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+from python.paddle.quantization.base_quanter import BaseQuanter
 
 
 class LeNetDygraph(paddle.nn.Layer):

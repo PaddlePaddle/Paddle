@@ -47,8 +47,12 @@ from ..fluid.contrib.slim.quantization.imperative.qat import (
 
 
 from .config import QuantConfig
+from .base_quanter import BaseQuanter
+from .factory import quanter
 from .quanters import FakeQuanterWithAbsMaxObserver
 
 __all__ = []
 __all__ += ["QuantConfig"]
+__all__ += ["BaseQuanter"]
+__all__ += ["quanter"]
 __all__ += ["FakeQuanterWithAbsMaxObserver"]

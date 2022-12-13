@@ -19,8 +19,8 @@ from paddle.framework import ParamAttr
 from paddle.nn.initializer import Constant
 from paddle.utils import unique_name
 
+from ..base_quanter import BaseQuanter
 from ..factory import quanter
-from ..quanter import BaseQuanter
 
 __all__ = []
 
