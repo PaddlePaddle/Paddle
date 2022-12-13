@@ -328,7 +328,7 @@ def layer_norm(
 ):
     """
     nn.LayerNorm is recommended.
-    For more information, please refer to :ref:`cn_api_nn_LayerNorm` .
+    For more information, please refer to :ref:`api_paddle_nn_LayerNorm` .
 
     Parameters:
         x(Tensor): Input Tensor. It's data type should be float32, float64.
@@ -449,7 +449,7 @@ def instance_norm(
     name=None,
 ):
     """
-    It is recommended to use :ref:`cn_api_nn_InstanceNorm1D` , :ref:`cn_api_nn_InstanceNorm2D` , :ref:`cn_api_nn_InstanceNorm3D` to call this method internally.
+    It is recommended to use :ref:`api_paddle_nn_InstanceNorm1D` , :ref:`api_paddle_nn_InstanceNorm2D` , :ref:`api_paddle_nn_InstanceNorm3D` to call this method internally.
 
     Parameters:
         x(Tensor): Input Tensor. It's data type should be float32, float64.
