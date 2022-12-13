@@ -257,6 +257,8 @@ def main():
     )
 
     args = parser.parse_args()
+
+    # Get methods of Tensor
     tensor_funcs_dir = Path(args.tensor_funcs_dir)
     tensor_method_func = get_tensor_method_func(tensor_funcs_dir)
     tensor_monkey_patched_methods = get_tensor_monkey_patched_methods(
@@ -265,14 +267,16 @@ def main():
     tensor_aliases = get_alias()
     tensor_attributes = get_attributes()
 
+    # Generate the proxy Tensor class
     tensor_gen = TensorGen()
-    tensor_gen.add_attribute("shape", "list[int]")
     for attr, type in tensor_attributes.items():
         tensor_gen.add_attribute(attr, type)
     for method in tensor_monkey_patched_methods:
         tensor_gen.add_method(method)
     for aliases, target in tensor_aliases.items():
         tensor_gen.add_alias(aliases, target)
+
+    # Write to target file
     with open(args.output_file, "w") as f:
         f.write(tensor_gen.codegen())
 
