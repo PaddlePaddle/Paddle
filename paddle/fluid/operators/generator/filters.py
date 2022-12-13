@@ -114,17 +114,44 @@ def to_input_name(s):
     return match.group(2)
 
 
+def to_scalar_tensor_name(attr):
+    if 'tensor_name' in attr:
+        return attr['tensor_name']
+    return to_pascal_case(attr['name']) + 'Tensor'
+
+
+def to_int_array_tensor_name(attr):
+    if 'tensor_name' in attr:
+        return attr['tensor_name']
+    return to_pascal_case(attr['name']) + 'Tensor'
+
+
+def to_int_array_tensors_name(attr):
+    if 'tensors_name' in attr:
+        return attr['tensors_name']
+    return to_pascal_case(attr['name']) + 'TensorList'
+
+
 def cartesian_prod_attrs(attrs):
     items = []
     for attr in attrs:
         type_name = attr["typename"]
         name = attr["name"]
         if type_name == "Scalar":
-            items.append((name, "{}Tensor".format(name)))
+            items.append((name, to_scalar_tensor_name(attr)))
         elif type_name == "IntArray":
-            items.append(
-                (name, "{}Tensor".format(name), "{}TensorList".format(name))
-            )
+            if 'tensor_name' not in attr and 'manual_flag' in attr:
+                items.append((name, to_int_array_tensors_name(attr)))
+            elif 'tensors_name' not in attr and 'manual_flag' in attr:
+                items.append((name, to_int_array_tensor_name(attr)))
+            else:
+                items.append(
+                    (
+                        name,
+                        to_int_array_tensor_name(attr),
+                        to_int_array_tensors_name(attr),
+                    )
+                )
         else:
             items.append((name,))
 

@@ -23,7 +23,7 @@ import paddle.fluid.core as core
 
 
 def norm(*args, **kargs):
-    return fluid.layers.batch_norm(*args, **kargs)
+    return paddle.static.nn.batch_norm(*args, **kargs)
 
 
 def sep_conv(input, channel, stride, filter, dilation=1, act=None):
@@ -61,7 +61,9 @@ def simple_depthwise_net(use_feed):
         hidden = sep_conv(hidden, channel=200, stride=2, filter=5)
         hidden = fluid.layers.relu(hidden)
     prediction = fluid.layers.fc(hidden, size=10, act='softmax')
-    loss = fluid.layers.cross_entropy(input=prediction, label=label)
+    loss = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     loss = paddle.mean(loss)
     return loss
 
