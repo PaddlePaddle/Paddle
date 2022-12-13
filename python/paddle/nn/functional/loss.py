@@ -1405,15 +1405,13 @@ def l1_loss(input, label, reduction='mean', name=None):
     )
 
     if reduction == 'sum':
-        unreduced = paddle.fluid.layers.elementwise_sub(input, label, act='abs')
+        unreduced = paddle.abs(paddle.subtract(x=input, y=label))
         return paddle.sum(unreduced, name=name)
     elif reduction == 'mean':
-        unreduced = paddle.fluid.layers.elementwise_sub(input, label, act='abs')
+        unreduced = paddle.abs(paddle.subtract(x=input, y=label))
         return paddle.mean(unreduced, name=name)
     else:
-        return paddle.fluid.layers.elementwise_sub(
-            input, label, act='abs', name=name
-        )
+        return paddle.abs(paddle.subtract(x=input, y=label, name=name))
 
 
 def nll_loss(

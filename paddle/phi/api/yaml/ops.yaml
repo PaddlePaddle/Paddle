@@ -821,6 +821,27 @@
   inplace : (x -> out)
   backward : rsqrt_grad
 
+- op : scatter
+  args : (Tensor x, Tensor index, Tensor updates, bool overwrite=true)
+  output : Tensor(out)
+  infer_meta :
+    func : ScatterInferMeta
+  kernel :
+    func : scatter
+    data_type : x
+  inplace : (x -> out)
+  backward : scatter_grad
+
+- op : scatter_nd_add
+  args : (Tensor x, Tensor index, Tensor updates)
+  output : Tensor
+  infer_meta :
+    func : ScatterNdAddInferMeta
+  kernel :
+    func : scatter_nd_add
+    data_type : x
+  backward : scatter_nd_add_grad
+
 - op : searchsorted
   args : (Tensor sorted_sequence, Tensor values, bool out_int32 = false, bool right = false)
   output : Tensor(out)
@@ -829,6 +850,16 @@
   kernel :
     func : searchsorted
     data_type : sorted_sequence
+
+- op : selu
+  args : (Tensor x, float scale=1.0507009873554804934193349852946, float alpha=1.6732632423543772848170429916717)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : selu
+  backward : selu_grad
 
 - op : send_uv
   args : (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str message_op = "ADD")
@@ -839,6 +870,14 @@
     func : send_uv
     data_type : x
   backward : send_uv_grad
+
+- op : shard_index
+  args : (Tensor input, int index_num, int nshards, int shard_id, int ignore_value=-1)
+  output : Tensor(out)
+  infer_meta :
+    func : ShardIndexInferMeta
+  kernel :
+    func : shard_index
 
 - op : sigmoid
   args : (Tensor x)
@@ -1032,6 +1071,15 @@
     func : unfold
   backward : unfold_grad
 
+- op : viterbi_decode
+  args : (Tensor potentials, Tensor transition_params, Tensor lengths, bool include_bos_eos_tag = true)
+  output : Tensor(scores), Tensor(path)
+  infer_meta :
+    func : ViterbiDecodeInferMeta
+  kernel :
+    func : viterbi_decode
+    data_type : potentials
+
 - op : warprnnt
   args : (Tensor acts, Tensor labels, Tensor acts_length, Tensor labels_length, int blank = 0, float fastemit_lambda = 0.0, int num_threads = 1)
   output :  Tensor(loss), Tensor(warprnntgrad)
@@ -1042,3 +1090,12 @@
     data_type: acts
   intermediate: warprnntgrad
   backward : warprnnt_grad
+
+- op : where
+  args : (Tensor condition, Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : WhereInferMeta
+  kernel :
+    func : where
+  backward : where_grad

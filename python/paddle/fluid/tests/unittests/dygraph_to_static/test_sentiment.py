@@ -106,7 +106,9 @@ class CNN(fluid.dygraph.Layer):
         prediction = self._fc_prediction(fc_1)
         prediction = self._fc1_act(prediction)
 
-        cost = fluid.layers.cross_entropy(input=prediction, label=label)
+        cost = paddle.nn.functional.cross_entropy(
+            input=prediction, label=label, reduction='none', use_softmax=False
+        )
         avg_cost = paddle.mean(x=cost)
         acc = paddle.static.accuracy(input=prediction, label=label)
         return avg_cost, prediction, acc
@@ -149,7 +151,9 @@ class BOW(fluid.dygraph.Layer):
         prediction = self._fc_prediction(fc_2)
         prediction = paddle.nn.functional.softmax(prediction)
 
-        cost = fluid.layers.cross_entropy(input=prediction, label=label)
+        cost = paddle.nn.functional.cross_entropy(
+            input=prediction, label=label, reduction='none', use_softmax=False
+        )
         avg_cost = paddle.mean(x=cost)
         acc = paddle.static.accuracy(input=prediction, label=label)
         return avg_cost, prediction, acc
@@ -195,7 +199,9 @@ class GRU(fluid.dygraph.Layer):
         fc_2 = paddle.tanh(fc_2)
         prediction = self._fc_prediction(fc_2)
         prediction = paddle.nn.functional.softmax(prediction)
-        cost = fluid.layers.cross_entropy(input=prediction, label=label)
+        cost = paddle.nn.functional.cross_entropy(
+            input=prediction, label=label, reduction='none', use_softmax=False
+        )
         avg_cost = paddle.mean(x=cost)
         acc = paddle.static.accuracy(input=prediction, label=label)
         return avg_cost, prediction, acc
@@ -254,7 +260,9 @@ class BiGRU(fluid.dygraph.Layer):
         prediction = paddle.nn.functional.softmax(prediction)
         # TODO(Aurelius84): Uncomment the following codes when we support return variable-length vars.
         # if label is not None:
-        cost = fluid.layers.cross_entropy(input=prediction, label=label)
+        cost = paddle.nn.functional.cross_entropy(
+            input=prediction, label=label, reduction='none', use_softmax=False
+        )
         avg_cost = paddle.mean(x=cost)
         acc = paddle.static.accuracy(input=prediction, label=label)
         return avg_cost, prediction, acc

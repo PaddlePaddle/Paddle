@@ -90,7 +90,7 @@ def _weight_norm(v, g, dim):
         v_normalized = F.l2_normalize(p_matrix, axis=1)
         v_normalized = paddle.reshape(v_normalized, transposed_shape)
         v_normalized = paddle.transpose(v_normalized, perm)
-    weight = F.elementwise_mul(
+    weight = paddle.tensor.math._multiply_with_axis(
         v_normalized, g, axis=dim if dim is not None else -1
     )
     return weight
