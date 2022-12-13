@@ -25,6 +25,7 @@ from ifelse_simple_func import (
 
 import paddle
 import paddle.fluid as fluid
+import paddle.nn.functional as F
 from paddle.jit.dy2static.utils import ast_to_func
 from paddle.utils import gast
 
@@ -60,7 +61,7 @@ class TestAST2Func(unittest.TestCase):
 
     def test_ast2func_static(self):
         def func(x):
-            y = fluid.layers.relu(x)
+            y = F.relu(x)
             loss = paddle.mean(y)
             return loss
 
