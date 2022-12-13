@@ -266,8 +266,7 @@ def stft(
     windows of the input using this formula:
 
     .. math::
-        X_t[f] = \sum_{n = 0}^{N-1} \text{window}[n]\ x[t \times H + n]\ %
-                 e^{-{2 \pi j f n}/{N}}
+        X_t[f] = \sum_{n = 0}^{N-1} \text{window}[n]\ x[t \times H + n]\ e^{-{2 \pi j f n}/{N}}
 
     Where:
     - :math:`t`: The :math:`t`-th input window.
@@ -465,7 +464,7 @@ def istft(
             a rectangle window with value equal to 1 of size `win_length`).
         center (bool, optional): It means that whether the time-domain signal has been
             center padded. Default: `True`.
-        normalized (bool, optional): Control whether to scale the output by :math:`1/sqrt(n_fft)`.
+        normalized (bool, optional): Control whether to scale the output by :math:`1/sqrt(n_{fft})`.
             Default: `False`
         onesided (bool, optional): It means that whether the input STFT tensor is a half
             of the conjugate symmetry STFT tensor transformed from a real-valued signal
