@@ -28,7 +28,6 @@ from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage2 import (
 from paddle.distributed.fleet.meta_parallel.sharding.sharding_utils import (
     ShardingScaler,
 )
-from paddle.fluid.framework import _test_eager_guard
 
 seed = 2021
 epoch = 2
@@ -119,7 +118,5 @@ def test_sharding_stage2_offload():
 
 
 if __name__ == '__main__':
-    with _test_eager_guard():
-        pass
     fleet.init(is_collective=True, strategy=strategy)
     test_sharding_stage2_offload()
