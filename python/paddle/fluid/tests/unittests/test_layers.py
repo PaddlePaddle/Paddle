@@ -2650,15 +2650,6 @@ class TestBook(LayerTest):
             length = layers.data(name='length', shape=[], dtype='int64')
             return layers.sequence_unpad(x=x, length=length)
 
-    def test_sequence_softmax(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            seq_data = layers.data(
-                name='seq_data', shape=[10, 10], dtype='float32', lod_level=1
-            )
-            seq = layers.fc(input=seq_data, size=20)
-            return layers.sequence_softmax(seq)
-
     def test_sequence_unsqueeze(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
