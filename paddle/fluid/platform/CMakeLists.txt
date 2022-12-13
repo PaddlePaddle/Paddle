@@ -60,15 +60,10 @@ cc_test(
   SRCS enforce_test.cc
   DEPS enforce)
 
-set(CPU_INFO_DEPS gflags glog enforce phi_backends)
-cc_library(
-  cpu_info
-  SRCS cpu_info.cc
-  DEPS ${CPU_INFO_DEPS})
 cc_test(
   cpu_info_test
   SRCS cpu_info_test.cc
-  DEPS cpu_info)
+  DEPS phi_backends)
 cc_library(
   os_info
   SRCS os_info.cc
@@ -200,7 +195,7 @@ cc_library(
        phi_place
        eigen3
        cpu_helper
-       cpu_info
+       phi_backends
        framework_proto
        ${IPU_CTX_DEPS}
        ${GPU_CTX_DEPS}
