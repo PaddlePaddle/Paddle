@@ -146,7 +146,13 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
   bool cutlass_enable = false;
 
 #ifdef PADDLE_WITH_CUTLASS
-  cutlass_enable = true;
+  cudaDeviceProp props;
+  cudaGetDeviceProperties(&props, Get<int>("gpu_device_id"));
+  int sm_version = props.major * 10 + props.minor;
+  // Cutlass now only support SM75
+  if (sm_version == 75) {
+    cutlass_enable = true;
+  }
 #endif
 
   if (!(is_fp16_precision && cutlass_enable)) return;
@@ -205,14 +211,6 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
     }
     return true;
   };
-
-  // # ifdef 0
-  //   cudaDeviceProp props;
-  //   cudaGetDeviceProperties(&props, 0);
-  //   if (props.major == 7 && props.minor == 5) {
-  //     std::cout << "sm75" << std::endl;
-  //   }
-  // #endif
 
   for (auto *op_node : op_nodes) {
     CHECK_EQ(op_node->IsOp(), true);
