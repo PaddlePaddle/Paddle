@@ -18,8 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class TensorAssign {
  public:
   template <typename tensor_t>
@@ -107,10 +105,10 @@ template <typename tensor_t,
           bool is_scatter_like = true>
 struct gpu_gather_scatter_functor {
   template <typename func_t>
-  void operator()(Tensor self,
+  void operator()(phi::DenseTensor self,
                   int dim,
                   const phi::DenseTensor& index,
-                  Tensor src,
+                  phi::DenseTensor src,
                   const std::string& method_name,
                   const func_t& reduce_op,
                   const platform::DeviceContext& ctx) {
@@ -160,10 +158,10 @@ struct gpu_gather_scatter_functor {
 };  // struct gpu_gather_scatter_functor
 
 template <typename tensor_t, typename index_t>
-void gpu_gather_kernel(Tensor self,
+void gpu_gather_kernel(phi::DenseTensor self,
                        int dim,
                        const phi::DenseTensor& index,
-                       Tensor result,
+                       phi::DenseTensor result,
                        const platform::DeviceContext& ctx) {
   gpu_gather_scatter_functor<tensor_t,
                              index_t,
@@ -173,10 +171,10 @@ void gpu_gather_kernel(Tensor self,
 }
 
 template <typename tensor_t, typename index_t>
-void gpu_scatter_assign_kernel(Tensor self,
+void gpu_scatter_assign_kernel(phi::DenseTensor self,
                                int dim,
                                const phi::DenseTensor& index,
-                               Tensor src,
+                               phi::DenseTensor src,
                                const platform::DeviceContext& ctx) {
   gpu_gather_scatter_functor<tensor_t,
                              index_t,
@@ -185,10 +183,10 @@ void gpu_scatter_assign_kernel(Tensor self,
 }
 
 template <typename tensor_t, typename index_t>
-void gpu_scatter_add_kernel(Tensor self,
+void gpu_scatter_add_kernel(phi::DenseTensor self,
                             int dim,
                             const phi::DenseTensor& index,
-                            Tensor src,
+                            phi::DenseTensor src,
                             const platform::DeviceContext& ctx) {
   gpu_gather_scatter_functor<tensor_t,
                              index_t,
@@ -197,10 +195,10 @@ void gpu_scatter_add_kernel(Tensor self,
 }
 
 template <typename tensor_t, typename index_t>
-void gpu_scatter_mul_kernel(Tensor self,
+void gpu_scatter_mul_kernel(phi::DenseTensor self,
                             int dim,
                             const phi::DenseTensor& index,
-                            Tensor src,
+                            phi::DenseTensor src,
                             const platform::DeviceContext& ctx) {
   gpu_gather_scatter_functor<tensor_t,
                              index_t,
@@ -230,10 +228,10 @@ __global__ void ScatterInputGradGPUKernel(tensor_t* grad_data,
   grad_data[replace_index] = 0;
 }
 template <typename tensor_t, typename index_t>
-void gpu_scatter_input_grad_kernel(Tensor self,
+void gpu_scatter_input_grad_kernel(phi::DenseTensor self,
                                    int dim,
                                    const phi::DenseTensor& index,
-                                   Tensor grad,
+                                   phi::DenseTensor grad,
                                    const platform::DeviceContext& ctx) {
   auto* index_data = index.data<index_t>();
   auto* grad_data = grad.data<tensor_t>();

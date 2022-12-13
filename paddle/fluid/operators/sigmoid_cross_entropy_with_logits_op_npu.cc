@@ -18,7 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 const int kIgnoreIndex = -100;
 
 void CheckAttrs(const framework::ExecutionContext& ctx) {

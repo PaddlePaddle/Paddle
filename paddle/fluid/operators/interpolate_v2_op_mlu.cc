@@ -175,7 +175,7 @@ class InterpolateV2MLUKernel : public framework::OpKernel<T> {
     // cnnlInterp_v2 only accepts NHWC when mode is CNNL_INTERP_BILINEAR and
     // CNNL_INTERP_NEAREST,
     framework::DDim dim_in, dim_in_trans, dim_out, dim_out_trans;
-    Tensor transformed_input, transformed_output;
+    phi::DenseTensor transformed_input, transformed_output;
     bool need_transpose = input_dims.size() != 2;
     if (input_dims.size() == 4) {
       // need to do transpose if layout is kNCHW
@@ -439,7 +439,7 @@ class InterpolateV2GradMLUKernel : public framework::OpKernel<T> {
     framework::DDim dim_grad;
     framework::DDim dim_out_grad, dim_out_trans_grad, dim_in_grad,
         dim_in_trans_grad;
-    Tensor transformed_output_grad, transformed_input_grad;
+    phi::DenseTensor transformed_output_grad, transformed_input_grad;
     bool need_transpose =
         input_dims.size() != 2 && data_layout == DataLayout::kNCHW;
 

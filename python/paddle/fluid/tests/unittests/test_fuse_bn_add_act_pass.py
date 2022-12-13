@@ -87,7 +87,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
                 bias_attr=False,
                 data_format='NHWC',
             )
-            bn = fluid.layers.batch_norm(
+            bn = paddle.static.nn.batch_norm(
                 input=conv1_1,
                 param_attr=self.bn_param_attr1,
                 bias_attr=self.bn_bias_attr1,
@@ -106,7 +106,9 @@ class TestFusedBnAddActAPI(unittest.TestCase):
                 act='softmax',
                 param_attr=self.fc_param_attr,
             )
-            loss = fluid.layers.cross_entropy(input=prediction, label=y)
+            loss = paddle.nn.functional.cross_entropy(
+                input=prediction, label=y, reduction='none', use_softmax=False
+            )
             loss = paddle.mean(loss)
             sgd = fluid.optimizer.SGD(learning_rate=0.001)
             sgd = fluid.contrib.mixed_precision.decorate(
@@ -133,7 +135,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
                 bias_attr=False,
                 data_format='NHWC',
             )
-            bn1 = fluid.layers.batch_norm(
+            bn1 = paddle.static.nn.batch_norm(
                 input=conv1_1,
                 param_attr=self.bn_param_attr1,
                 bias_attr=self.bn_bias_attr1,
@@ -150,7 +152,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
                 bias_attr=False,
                 data_format='NHWC',
             )
-            bn2 = fluid.layers.batch_norm(
+            bn2 = paddle.static.nn.batch_norm(
                 input=conv1_1,
                 param_attr=self.bn_param_attr2,
                 bias_attr=self.bn_bias_attr2,
@@ -162,7 +164,9 @@ class TestFusedBnAddActAPI(unittest.TestCase):
             prediction = fluid.layers.fc(
                 input=out, size=10, act='softmax', param_attr=self.fc_param_attr
             )
-            loss = fluid.layers.cross_entropy(input=prediction, label=y)
+            loss = paddle.nn.functional.cross_entropy(
+                input=prediction, label=y, reduction='none', use_softmax=False
+            )
             loss = paddle.mean(loss)
             sgd = fluid.optimizer.SGD(learning_rate=0.001)
             sgd = fluid.contrib.mixed_precision.decorate(
