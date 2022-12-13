@@ -21,7 +21,7 @@ namespace phi {
 
 static const float HALF_FLT_MAX = 65504.F;
 static const float HALF_FLT_MIN = -65504.F;
-static inline size_t pad_to_multiple_of_16(const size_t& input) {
+static inline size_t AlignTo16(const size_t& input) {
   static constexpr int ALIGNMENT = 16;
   return ALIGNMENT * ((input + ALIGNMENT - 1) / ALIGNMENT);
 }
@@ -246,12 +246,11 @@ size_t getWorkspaceSize(const int num_rows,
                         const int k,
                         const int batch_size,
                         const int max_seq_len) {
-  const int buf_size =
-      pad_to_multiple_of_16(num_experts * batch_size * k * hidden_size);
+  const int buf_size = AlignTo16(num_experts * batch_size * k * hidden_size);
   const int interbuf_size =
-      pad_to_multiple_of_16(num_experts * batch_size * k * inter_size);
-  const int padded_experts = pad_to_multiple_of_16(num_experts);
-  const int num_moe_inputs = pad_to_multiple_of_16(num_experts * num_rows);
+      AlignTo16(num_experts * batch_size * k * inter_size);
+  const int padded_experts = AlignTo16(num_experts);
+  const int num_moe_inputs = AlignTo16(num_experts * num_rows);
   int padded_num_moe_inputs = num_experts * batch_size * max_seq_len;
 
   size_t total_ws_bytes = sizeof(int) * num_moe_inputs;   // source_rows_
@@ -268,13 +267,13 @@ size_t getWorkspaceSize(const int num_rows,
 
   const int bytes_for_fc1_result = interbuf_size * sizeof(T);
   const int sorter_ws_size_bytes =
-      pad_to_multiple_of_16(sorter_.getWorkspaceSize(num_experts * k));
+      AlignTo16(sorter_.getWorkspaceSize(num_experts * k));
   sorter_.update_num_experts(k);
 
   int bytes_for_intermediate_and_sorting = bytes_for_fc1_result;
   if (sorter_ws_size_bytes > bytes_for_fc1_result) {
     int remaining_bytes =
-        pad_to_multiple_of_16(sorter_ws_size_bytes - bytes_for_fc1_result);
+        AlignTo16(sorter_ws_size_bytes - bytes_for_fc1_result);
     bytes_for_intermediate_and_sorting += remaining_bytes;
   }
 
@@ -756,8 +755,6 @@ __global__ void initialize_moe_routing_kernel(
                                                               k * max_seq_len +
                                                           expanded_dest_row % k]
                : expanded_dest_row_to_expanded_source_row[expanded_dest_row];
-  // const int expanded_source_row =
-  // expanded_dest_row_to_expanded_source_row[expanded_dest_row];
   if (threadIdx.x == 0) {
     expanded_source_row_to_expanded_dest_row[expanded_source_row] =
         expanded_dest_row;

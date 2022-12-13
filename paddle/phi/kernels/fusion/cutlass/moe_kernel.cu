@@ -32,9 +32,9 @@
 #include "cutlass/gemm/kernel/default_gemm_grouped.h"
 #include "cutlass/numeric_conversion.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/kernels/fusion/cutlass/default_moe_fc_traits.h"
 #include "paddle/phi/kernels/fusion/cutlass/linear_combination_ft_gelu.h"
 #include "paddle/phi/kernels/fusion/cutlass/moe_cutlass_kernel.h"
-#include "paddle/phi/kernels/gpu/default_moe_fc_traits.h"
 #pragma GCC diagnostic pop
 namespace phi {
 
@@ -125,7 +125,7 @@ struct Epilogue<ElementType,
 namespace fusion {
 
 template <typename T>
-void initialize_expert_choice_route_kernelLauncher(
+void InitExpertChoiceRouteKernelLauncher(
     int* expert_for_source_row,
     int* source_row,
     int* expanded_source_row_to_expanded_dest_row,
@@ -220,7 +220,7 @@ void invokeMaskedSoftMax(T* buffer,
 }
 
 template <typename T>
-void invokeTransposeAxis01(T* out,
+void InvokeTransposeAxis01(T* out,
                            T* in,
                            const int dim0,
                            const int dim1,
@@ -232,7 +232,7 @@ void invokeTransposeAxis01(T* out,
 }
 
 template <typename T>
-void invokePadding(T* output1,
+void InvokePadding(T* output1,
                    int* output2,
                    const T* input1,
                    const int* input2,
@@ -257,7 +257,7 @@ void invokePadding(T* output1,
 }
 
 template <typename T>
-void invokeGeneralTopKPairSort(T* out_keys,
+void InvokeGeneralTopKPairSort(T* out_keys,
                                int* out_values,
                                T* in_keys,
                                int* in_values,
@@ -288,7 +288,7 @@ void invokeGeneralTopKPairSort(T* out_keys,
 }
 
 template <typename T>
-void initialize_moe_routing_kernelLauncher(
+void InitMoeRoutingKernelLauncher(
     const T* unpermuted_input,
     T* permuted_output,
     const int* expanded_dest_row_to_expanded_source_row,
@@ -336,17 +336,17 @@ void initialize_moe_routing_kernelLauncher(
 }
 
 template <typename T, typename WeightType, typename arch, typename EpilogueType>
-void generic_moe_gemm_kernelLauncher(const T* A,
-                                     const T* B,
-                                     const T* weight_scales,
-                                     const T* biases,
-                                     T* C,
-                                     int64_t* total_rows_before_expert,
-                                     int64_t gemm_n,
-                                     int64_t gemm_k,
-                                     int num_experts,
-                                     const int multi_processor_count,
-                                     cudaStream_t stream) {
+void GenericMoeGemmKernelLauncher(const T* A,
+                                  const T* B,
+                                  const T* weight_scales,
+                                  const T* biases,
+                                  T* C,
+                                  int64_t* total_rows_before_expert,
+                                  int64_t gemm_n,
+                                  int64_t gemm_k,
+                                  int num_experts,
+                                  const int multi_processor_count,
+                                  cudaStream_t stream) {
   static_assert(cutlass::platform::is_same<T, half>::value ||
                     cutlass::platform::is_same<T, float>::value,
                 "Specialized for half, float");
@@ -354,8 +354,7 @@ void generic_moe_gemm_kernelLauncher(const T* A,
       cutlass::platform::is_same<T, WeightType>::value ||
           cutlass::platform::is_same<WeightType, uint8_t>::value ||
           cutlass::platform::is_same<WeightType, cutlass::uint4b_t>::value,
-      "");
-
+      "cutlass weight type only support float, half, uint8_t, uint4b_t");
   // The cutlass type for the input elements. This is needed to convert to
   // cutlass::half_t if necessary.
   using ElementType_ = typename cutlass::platform::conditional<
@@ -413,9 +412,9 @@ void generic_moe_gemm_kernelLauncher(const T* A,
   int occupancy = GemmGrouped::maximum_active_blocks();
   const int threadblock_count = multi_processor_count * occupancy;
   if (occupancy == 0) {
-    throw std::runtime_error(
+    PADDLE_THROW(paddle::platform::errors::Fatal(
         "[MoE Runner] GPU lacks the shared memory resources to run GroupedGEMM "
-        "kernel");
+        "kernel"));
   }
 
   typename EpilogueOp::Params epilogue_op(ElementAccumulator(1.f),
@@ -437,21 +436,21 @@ void generic_moe_gemm_kernelLauncher(const T* A,
   if (can_implement != cutlass::Status::kSuccess) {
     std::string err_msg = "MoEFC kernel will fail for params. Error: " +
                           std::string(cutlassGetStatusString(can_implement));
-    throw std::runtime_error("[MoE Runner] " + err_msg);
+    PADDLE_THROW(paddle::platform::errors::Fatal("[MoE Runner] " + err_msg));
   }
   auto init_status = gemm.initialize(args);
   if (init_status != cutlass::Status::kSuccess) {
     std::string err_msg =
         "Failed to initialize cutlass variable batched gemm. Error: " +
         std::string(cutlassGetStatusString(init_status));
-    throw std::runtime_error("[MoE Runner] " + err_msg);
+    PADDLE_THROW(paddle::platform::errors::Fatal("[MoE Runner] " + err_msg));
   }
   auto run_status = gemm.run(stream);
   if (run_status != cutlass::Status::kSuccess) {
     std::string err_msg =
         "Failed to run cutlass variable batched gemm. Error: " +
         std::string(cutlassGetStatusString(run_status));
-    throw std::runtime_error("[MoE Runner] " + err_msg);
+    PADDLE_THROW(paddle::platform::errors::Fatal("[MoE Runner] " + err_msg));
   }
 }
 
@@ -465,16 +464,16 @@ void gemm_bias_act(const T* A,
                    int64_t gemm_n,
                    int64_t gemm_k,
                    int num_experts,
-                   int sm_,
-                   int multi_processor_count_,
+                   int sm,
+                   int multi_processor_count,
                    const std::string& act_type,
                    cudaStream_t stream) {
   if (act_type == "gelu") {
-    if (sm_ == 75) {
-      generic_moe_gemm_kernelLauncher<T,
-                                      T,
-                                      cutlass::arch::Sm75,
-                                      EpilogueOpBiasFtGelu>(
+    if (sm == 75) {
+      GenericMoeGemmKernelLauncher<T,
+                                   T,
+                                   cutlass::arch::Sm75,
+                                   EpilogueOpBiasFtGelu>(
           A,
           B,
           weight_scales,
@@ -484,13 +483,13 @@ void gemm_bias_act(const T* A,
           gemm_n,
           gemm_k,
           num_experts,
-          multi_processor_count_,
+          multi_processor_count,
           stream);
-    } else if (sm_ == 80 || sm_ == 86) {
-      generic_moe_gemm_kernelLauncher<T,
-                                      T,
-                                      cutlass::arch::Sm80,
-                                      EpilogueOpBiasFtGelu>(
+    } else if (sm == 80 || sm == 86) {
+      GenericMoeGemmKernelLauncher<T,
+                                   T,
+                                   cutlass::arch::Sm80,
+                                   EpilogueOpBiasFtGelu>(
           A,
           B,
           weight_scales,
@@ -500,13 +499,13 @@ void gemm_bias_act(const T* A,
           gemm_n,
           gemm_k,
           num_experts,
-          multi_processor_count_,
+          multi_processor_count,
           stream);
     } else {
-      generic_moe_gemm_kernelLauncher<T,
-                                      T,
-                                      cutlass::arch::Sm70,
-                                      EpilogueOpBiasFtGelu>(
+      GenericMoeGemmKernelLauncher<T,
+                                   T,
+                                   cutlass::arch::Sm70,
+                                   EpilogueOpBiasFtGelu>(
           A,
           B,
           weight_scales,
@@ -516,59 +515,56 @@ void gemm_bias_act(const T* A,
           gemm_n,
           gemm_k,
           num_experts,
-          multi_processor_count_,
+          multi_processor_count,
           stream);
     }
   } else {
     // act type is relu.
-    if (sm_ == 75) {
-      generic_moe_gemm_kernelLauncher<T,
-                                      T,
-                                      cutlass::arch::Sm75,
-                                      EpilogueOpBiasReLU>(
-          A,
-          B,
-          weight_scales,
-          biases,
-          C,
-          total_rows_before_expert,
-          gemm_n,
-          gemm_k,
-          num_experts,
-          multi_processor_count_,
-          stream);
-    } else if (sm_ == 80 || sm_ == 86) {
-      generic_moe_gemm_kernelLauncher<T,
-                                      T,
-                                      cutlass::arch::Sm80,
-                                      EpilogueOpBiasReLU>(
-          A,
-          B,
-          weight_scales,
-          biases,
-          C,
-          total_rows_before_expert,
-          gemm_n,
-          gemm_k,
-          num_experts,
-          multi_processor_count_,
-          stream);
+    if (sm == 75) {
+      GenericMoeGemmKernelLauncher<T,
+                                   T,
+                                   cutlass::arch::Sm75,
+                                   EpilogueOpBiasReLU>(A,
+                                                       B,
+                                                       weight_scales,
+                                                       biases,
+                                                       C,
+                                                       total_rows_before_expert,
+                                                       gemm_n,
+                                                       gemm_k,
+                                                       num_experts,
+                                                       multi_processor_count,
+                                                       stream);
+    } else if (sm == 80 || sm == 86) {
+      GenericMoeGemmKernelLauncher<T,
+                                   T,
+                                   cutlass::arch::Sm80,
+                                   EpilogueOpBiasReLU>(A,
+                                                       B,
+                                                       weight_scales,
+                                                       biases,
+                                                       C,
+                                                       total_rows_before_expert,
+                                                       gemm_n,
+                                                       gemm_k,
+                                                       num_experts,
+                                                       multi_processor_count,
+                                                       stream);
     } else {
-      generic_moe_gemm_kernelLauncher<T,
-                                      T,
-                                      cutlass::arch::Sm70,
-                                      EpilogueOpBiasReLU>(
-          A,
-          B,
-          weight_scales,
-          biases,
-          C,
-          total_rows_before_expert,
-          gemm_n,
-          gemm_k,
-          num_experts,
-          multi_processor_count_,
-          stream);
+      GenericMoeGemmKernelLauncher<T,
+                                   T,
+                                   cutlass::arch::Sm70,
+                                   EpilogueOpBiasReLU>(A,
+                                                       B,
+                                                       weight_scales,
+                                                       biases,
+                                                       C,
+                                                       total_rows_before_expert,
+                                                       gemm_n,
+                                                       gemm_k,
+                                                       num_experts,
+                                                       multi_processor_count,
+                                                       stream);
     }
   }
 }
@@ -582,54 +578,48 @@ void gemm(const T* A,
           const int gemm_n,
           const int gemm_k,
           const int num_experts,
-          int sm_,
-          int multi_processor_count_,
+          int sm,
+          int multi_processor_count,
           cudaStream_t stream) {
-  if (sm_ == 75) {
-    generic_moe_gemm_kernelLauncher<T,
-                                    T,
-                                    cutlass::arch::Sm75,
-                                    EpilogueOpNoBias>(A,
-                                                      B,
-                                                      weight_scales,
-                                                      nullptr,
-                                                      C,
-                                                      total_rows_before_expert,
-                                                      gemm_n,
-                                                      gemm_k,
-                                                      num_experts,
-                                                      multi_processor_count_,
-                                                      stream);
-  } else if (sm_ == 80 || sm_ == 86) {
-    generic_moe_gemm_kernelLauncher<T,
-                                    T,
-                                    cutlass::arch::Sm80,
-                                    EpilogueOpNoBias>(A,
-                                                      B,
-                                                      weight_scales,
-                                                      nullptr,
-                                                      C,
-                                                      total_rows_before_expert,
-                                                      gemm_n,
-                                                      gemm_k,
-                                                      num_experts,
-                                                      multi_processor_count_,
-                                                      stream);
+  if (sm == 75) {
+    GenericMoeGemmKernelLauncher<T, T, cutlass::arch::Sm75, EpilogueOpNoBias>(
+        A,
+        B,
+        weight_scales,
+        nullptr,
+        C,
+        total_rows_before_expert,
+        gemm_n,
+        gemm_k,
+        num_experts,
+        multi_processor_count,
+        stream);
+  } else if (sm == 80 || sm == 86) {
+    GenericMoeGemmKernelLauncher<T, T, cutlass::arch::Sm80, EpilogueOpNoBias>(
+        A,
+        B,
+        weight_scales,
+        nullptr,
+        C,
+        total_rows_before_expert,
+        gemm_n,
+        gemm_k,
+        num_experts,
+        multi_processor_count,
+        stream);
   } else {
-    generic_moe_gemm_kernelLauncher<T,
-                                    T,
-                                    cutlass::arch::Sm70,
-                                    EpilogueOpNoBias>(A,
-                                                      B,
-                                                      weight_scales,
-                                                      nullptr,
-                                                      C,
-                                                      total_rows_before_expert,
-                                                      gemm_n,
-                                                      gemm_k,
-                                                      num_experts,
-                                                      multi_processor_count_,
-                                                      stream);
+    GenericMoeGemmKernelLauncher<T, T, cutlass::arch::Sm70, EpilogueOpNoBias>(
+        A,
+        B,
+        weight_scales,
+        nullptr,
+        C,
+        total_rows_before_expert,
+        gemm_n,
+        gemm_k,
+        num_experts,
+        multi_processor_count,
+        stream);
   }
 }
 
@@ -705,41 +695,40 @@ void MoeKernel(const Context& ctx,
                                       max_seq_len);
 
   // Pointers
-  int* source_rows_;
-  int* padded_source_rows_;
-  int* permuted_rows_;
-  int* permuted_experts_;
+  int* source_rows;
+  int* padded_source_rows;
+  int* permuted_rows;
+  int* permuted_experts;
   char* sorter_ws_;
-  T* permuted_data_;
-  T* padded_expert_scales_;
-  int64_t* total_rows_before_expert_;
-  T* sorted_softmax_output_;
-  T* attr_mask_;
-  T* fc1_result_;
+  T* permuted_data;
+  T* padded_expert_scales;
+  int64_t* total_rows_before_expert;
+  T* sorted_softmax_output;
+  T* attr_mask;
+  T* fc1_result;
 
   phi::DenseTensor ws_ptr_tensor = phi::Empty<int8_t>(ctx, {bytes});
   int8_t* ws_ptr = ws_ptr_tensor.data<int8_t>();
 
-  const int buf_size =
-      pad_to_multiple_of_16(num_experts * batch_size * k * hidden_size);
-  const int padded_experts = pad_to_multiple_of_16(num_experts);
-  const int num_moe_inputs = pad_to_multiple_of_16(num_experts * num_rows);
+  const int buf_size = AlignTo16(num_experts * batch_size * k * hidden_size);
+  const int padded_experts = AlignTo16(num_experts);
+  const int num_moe_inputs = AlignTo16(num_experts * num_rows);
   // padded_num_moe_inputs for topk sort
   int padded_num_moe_inputs = num_experts * batch_size * max_seq_len;
 
-  source_rows_ = reinterpret_cast<int*>(ws_ptr);
-  padded_source_rows_ = source_rows_ + num_moe_inputs;
-  permuted_rows_ = padded_source_rows_ + padded_num_moe_inputs;
-  permuted_experts_ = permuted_rows_ + padded_num_moe_inputs;
-  permuted_data_ = reinterpret_cast<T*>(permuted_experts_ + num_experts * k);
-  padded_expert_scales_ = reinterpret_cast<T*>(permuted_data_ + buf_size);
-  total_rows_before_expert_ =
-      reinterpret_cast<int64_t*>(padded_expert_scales_ + padded_num_moe_inputs);
-  sorted_softmax_output_ =
-      reinterpret_cast<T*>(total_rows_before_expert_ + padded_experts);
-  attr_mask_ =
-      reinterpret_cast<T*>(sorted_softmax_output_ + padded_num_moe_inputs);
-  fc1_result_ = reinterpret_cast<T*>(attr_mask_ + num_moe_inputs);
+  source_rows = reinterpret_cast<int*>(ws_ptr);
+  padded_source_rows = source_rows + num_moe_inputs;
+  permuted_rows = padded_source_rows + padded_num_moe_inputs;
+  permuted_experts = permuted_rows + padded_num_moe_inputs;
+  permuted_data = reinterpret_cast<T*>(permuted_experts + num_experts * k);
+  padded_expert_scales = reinterpret_cast<T*>(permuted_data + buf_size);
+  total_rows_before_expert =
+      reinterpret_cast<int64_t*>(padded_expert_scales + padded_num_moe_inputs);
+  sorted_softmax_output =
+      reinterpret_cast<T*>(total_rows_before_expert + padded_experts);
+  attr_mask =
+      reinterpret_cast<T*>(sorted_softmax_output + padded_num_moe_inputs);
+  fc1_result = reinterpret_cast<T*>(attr_mask + num_moe_inputs);
 
   phi::DenseTensor expert_for_source_row_tensor =
       phi::Empty<int>(ctx, {num_experts, num_rows});
@@ -759,16 +748,16 @@ void MoeKernel(const Context& ctx,
   funcs::SetConstant<Context, int> set_len;
   set_len(ctx, &input_lengths_tensor, static_cast<int>(max_seq_len));
 
-  int sm_ = getSMVersion();
-  int multi_processor_count_ = phi::backends::gpu::GetGPUMultiProcessors(
+  int sm = getSMVersion();
+  int multi_processor_count = phi::backends::gpu::GetGPUMultiProcessors(
       phi::backends::gpu::GetCurrentDeviceId());
 
-  initialize_expert_choice_route_kernelLauncher<T>(
+  InitExpertChoiceRouteKernelLauncher<T>(
       expert_for_source_row,
-      source_rows_,
+      source_rows,
       expanded_source_row_to_expanded_dest_row,
-      total_rows_before_expert_,
-      attr_mask_,
+      total_rows_before_expert,
+      attr_mask,
       num_experts,
       num_rows,
       k,
@@ -778,7 +767,7 @@ void MoeKernel(const Context& ctx,
   if (IS_FP16) {
     invokeMaskedSoftMax<__half>(reinterpret_cast<__half*>(gating_output),
                                 reinterpret_cast<const __half*>(gating_output),
-                                reinterpret_cast<const __half*>(attr_mask_),
+                                reinterpret_cast<const __half*>(attr_mask),
                                 /*batch_size=*/num_rows,
                                 /*seq_len_1=*/1,
                                 /*seq_len_2=*/num_experts,
@@ -788,7 +777,7 @@ void MoeKernel(const Context& ctx,
   } else {
     invokeMaskedSoftMax<float>(reinterpret_cast<float*>(gating_output),
                                reinterpret_cast<const float*>(gating_output),
-                               reinterpret_cast<const float*>(attr_mask_),
+                               reinterpret_cast<const float*>(attr_mask),
                                /*batch_size=*/num_rows,
                                /*seq_len_1=*/1,
                                /*seq_len_2=*/num_experts,
@@ -796,14 +785,14 @@ void MoeKernel(const Context& ctx,
                                *reinterpret_cast<const float*>(&scalar),
                                ctx.stream());
   }
-  invokeTransposeAxis01(
+  InvokeTransposeAxis01(
       expert_scales, gating_output, num_rows, num_experts, 1, ctx.stream());
 
   int padded_max_seq_len = max_seq_len <= 128 ? 128 : 256;
-  invokePadding(padded_expert_scales_,
-                padded_source_rows_,
+  InvokePadding(padded_expert_scales,
+                padded_source_rows,
                 expert_scales,
-                source_rows_,
+                source_rows,
                 input_lengths,
                 num_rows,
                 batch_size,
@@ -811,90 +800,89 @@ void MoeKernel(const Context& ctx,
                 num_experts,
                 ctx.stream());
   if (IS_FP16) {
-    invokeGeneralTopKPairSort<__half>(
-        reinterpret_cast<__half*>(sorted_softmax_output_),
-        permuted_rows_,
-        reinterpret_cast<__half*>(padded_expert_scales_),
-        padded_source_rows_,
+    InvokeGeneralTopKPairSort<__half>(
+        reinterpret_cast<__half*>(sorted_softmax_output),
+        permuted_rows,
+        reinterpret_cast<__half*>(padded_expert_scales),
+        padded_source_rows,
         num_experts * batch_size,
         padded_max_seq_len,
         ctx.stream());
   } else {
-    invokeGeneralTopKPairSort<float>(
-        reinterpret_cast<float*>(sorted_softmax_output_),
-        permuted_rows_,
-        reinterpret_cast<float*>(padded_expert_scales_),
-        padded_source_rows_,
+    InvokeGeneralTopKPairSort<float>(
+        reinterpret_cast<float*>(sorted_softmax_output),
+        permuted_rows,
+        reinterpret_cast<float*>(padded_expert_scales),
+        padded_source_rows,
         num_experts * batch_size,
         padded_max_seq_len,
         ctx.stream());
   }
-  initialize_moe_routing_kernelLauncher(
-      input_activations,
-      permuted_data_,
-      permuted_rows_,
-      expanded_source_row_to_expanded_dest_row,
-      num_experts,
-      num_rows,
-      num_rows,
-      hidden_size,
-      k,
-      batch_size,
-      max_seq_len,
-      true,
-      ctx.stream());
+  InitMoeRoutingKernelLauncher(input_activations,
+                               permuted_data,
+                               permuted_rows,
+                               expanded_source_row_to_expanded_dest_row,
+                               num_experts,
+                               num_rows,
+                               num_rows,
+                               hidden_size,
+                               k,
+                               batch_size,
+                               max_seq_len,
+                               true,
+                               ctx.stream());
 
   const T* fc1_scales = nullptr;
   const T* fc2_scales = nullptr;
   if (IS_FP16) {
-    gemm_bias_act(reinterpret_cast<const __half*>(permuted_data_),
+    gemm_bias_act(reinterpret_cast<const __half*>(permuted_data),
                   reinterpret_cast<const __half*>(fc1_expert_weights),
                   reinterpret_cast<const __half*>(fc1_scales),
                   reinterpret_cast<const __half*>(fc1_expert_biases),
-                  reinterpret_cast<__half*>(fc1_result_),
-                  total_rows_before_expert_,
+                  reinterpret_cast<__half*>(fc1_result),
+                  total_rows_before_expert,
                   inter_size,
                   hidden_size,
                   num_experts,
-                  sm_,
-                  multi_processor_count_,
+                  sm,
+                  multi_processor_count,
                   act_type,
                   ctx.stream());
-    gemm(reinterpret_cast<const __half*>(fc1_result_),
+    gemm(reinterpret_cast<const __half*>(fc1_result),
          reinterpret_cast<const __half*>(fc2_expert_weights),
          reinterpret_cast<const __half*>(fc2_scales),
          reinterpret_cast<__half*>(fc2_result),
-         total_rows_before_expert_,
+         total_rows_before_expert,
          hidden_size,
          inter_size,
          num_experts,
-         sm_,
-         multi_processor_count_,
+         sm,
+         multi_processor_count,
          ctx.stream());
   } else {
-    gemm_bias_act<float>(reinterpret_cast<const float*>(permuted_data_),
+    gemm_bias_act<float>(reinterpret_cast<const float*>(permuted_data),
                          reinterpret_cast<const float*>(fc1_expert_weights),
                          reinterpret_cast<const float*>(fc1_scales),
                          reinterpret_cast<const float*>(fc1_expert_biases),
-                         reinterpret_cast<float*>(fc1_result_),
-                         total_rows_before_expert_,
+                         reinterpret_cast<float*>(fc1_result),
+                         total_rows_before_expert,
                          inter_size,
                          hidden_size,
                          num_experts,
-                         sm_,
-                         multi_processor_count_,
+                         sm,
+                         multi_processor_count,
                          act_type,
                          ctx.stream());
-    gemm<float>(reinterpret_cast<const float*>(fc1_result_),
+    gemm<float>(reinterpret_cast<const float*>(fc1_result),
                 reinterpret_cast<const float*>(fc2_expert_weights),
                 reinterpret_cast<const float*>(fc2_scales),
                 reinterpret_cast<float*>(fc2_result),
-                total_rows_before_expert_,
+                total_rows_before_expert,
                 hidden_size,
                 inter_size,
                 num_experts,
-                sm_,
-                multi_processor_count_,
+                sm,
+                multi_processor_count,
                 ctx.stream());
   }
 
