@@ -233,7 +233,7 @@ bool options_test() {
                                    options),
                  "Error: compute_rnnt_loss in small_test");
 
-#ifdef __HIPC__
+#ifdef __HIPCC__
   hipMemcpyAsync(grads.data(),
                  grads_gpu,
                  grads.size() * sizeof(float),
