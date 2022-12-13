@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.core import PassVersionChecker
 
