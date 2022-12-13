@@ -54,7 +54,7 @@ class SkipLayernormFusePassTest0(InferencePassTest):
         self.fetch_list = [out]
 
     def append_eltwise(self, data1, data2):
-        return fluid.layers.elementwise_add(x=data1, y=data2, axis=0)
+        return fluid.layers.elementwise_add(x=data1, y=data2)
 
     def test_check_output(self):
         if os.path.exists(self.path + "_opt_cache"):
@@ -99,7 +99,7 @@ class SkipLayernormFusePassTest1(InferencePassTest):
         self.fetch_list = [out]
 
     def append_eltwise(self, data1, data2):
-        return fluid.layers.elementwise_add(x=data1, y=data2, axis=0)
+        return fluid.layers.elementwise_add(x=data1, y=data2)
 
     def test_check_output(self):
         if os.path.exists(self.path + "_opt_cache"):
@@ -144,7 +144,7 @@ class SkipLayernormFusePassTest2(InferencePassTest):
         self.fetch_list = [out]
 
     def append_eltwise(self, data1, data2):
-        return fluid.layers.elementwise_add(x=data1, y=data2, axis=0)
+        return fluid.layers.elementwise_add(x=data1, y=data2)
 
     def test_check_output(self):
         if os.path.exists(self.path + "_opt_cache"):
@@ -189,7 +189,7 @@ class SkipLayernormFusePassTest3(InferencePassTest):
         self.fetch_list = [out]
 
     def append_eltwise(self, data1, data2):
-        return fluid.layers.elementwise_add(x=data1, y=data2, axis=0)
+        return fluid.layers.elementwise_add(x=data1, y=data2)
 
     def test_check_output(self):
         if os.path.exists(self.path + "_opt_cache"):
