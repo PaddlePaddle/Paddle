@@ -42,10 +42,18 @@ class ExpandV2OpConverter : public OpConverter {
     auto rank = input_dims.nbDims;
 
     nvinfer1::ITensor* shape_tensor = nullptr;
-    if (inputs.find("expand_shapes_tensor") != inputs.end() &&
-        op_desc.Input("expand_shapes_tensor").size() >= 1) {
-      shape_tensor =
-          engine_->GetITensor(op_desc.Input("expand_shapes_tensor")[0]);
+    if (inputs.find("Shape") != inputs.end() &&
+        op_desc.Input("Shape").size() >= 1) {
+      shape_tensor = engine_->GetITensor(op_desc.Input("Shape")[0]);
+    } else if (inputs.find("expand_shapes_tensor") != inputs.end() &&
+               op_desc.Input("expand_shapes_tensor").size() >= 1) {
+      int shape_size = op_desc.Input("expand_shapes_tensor").size();
+      std::vector<nvinfer1::ITensor*> shape_tensors;
+      for (int i = 0; i < shape_size; ++i) {
+        shape_tensors.push_back(
+            engine_->GetITensor(op_desc.Input("expand_shapes_tensor")[i]));
+      }
+      shape_tensor = Concat(shape_tensors);
     } else {
       std::vector<int32_t> shape =
           PADDLE_GET_CONST(std::vector<int32_t>, op_desc.GetAttr("shape"));

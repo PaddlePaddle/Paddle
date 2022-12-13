@@ -2364,12 +2364,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (!desc.HasAttr("shape")) {
         return false;
       }
-      auto expand_v2_inputs = desc.Inputs();
-      if (expand_v2_inputs.find("Shape") != expand_v2_inputs.end()) {
-        if (desc.Input("Shape").size() >= 1) {
-          return false;
-        }
-      }
     }
 
     if (use_no_calib_int8) {
