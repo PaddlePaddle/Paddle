@@ -38,7 +38,12 @@ class FCQuantDequantFusePassTRTDims3Cols1Test(QuantDequantTest):
                 act="relu",
             )
             result = fluid.layers.relu(fc_out)
-            loss = fluid.layers.cross_entropy(input=result, label=self.label)
+            loss = paddle.nn.functional.cross_entropy(
+                input=result,
+                label=self.label,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_loss = paddle.mean(loss)
             return avg_loss, result
 
@@ -105,7 +110,12 @@ class FCQuantDequantFusePassTRTDims3Cols2Test(QuantDequantTest):
             )
             c_out = paddle.reshape(fc_out, shape=[0, 784])
             result = fluid.layers.relu(c_out)
-            loss = fluid.layers.cross_entropy(input=result, label=self.label)
+            loss = paddle.nn.functional.cross_entropy(
+                input=result,
+                label=self.label,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_loss = paddle.mean(loss)
             return avg_loss, result
 
@@ -174,7 +184,12 @@ class FCQuantDequantFusePassTRTDims3Cols3Test(QuantDequantTest):
             )
             c_out = paddle.reshape(fc_out, shape=[1, 1, 2744])
             result = fluid.layers.relu(c_out)
-            loss = fluid.layers.cross_entropy(input=result, label=label_shape)
+            loss = paddle.nn.functional.cross_entropy(
+                input=result,
+                label=label_shape,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_loss = paddle.mean(loss)
             return avg_loss, result
 

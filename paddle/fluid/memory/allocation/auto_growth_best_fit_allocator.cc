@@ -31,7 +31,7 @@ PADDLE_DEFINE_EXPORTED_READONLY_bool(
 
 PADDLE_DEFINE_EXPORTED_READONLY_bool(
     free_when_no_cache_hit,
-    true,
+    false,
     "Whether to free idle chunks when no cache hit. If true, idle "
     "chunk would be freed when no cache hit; if false, idle "
     "chunk would be freed when out of memory occurs. This flag "
