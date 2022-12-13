@@ -740,7 +740,6 @@ def lstm(
                          If set None, default initializer will be used. Default: None.
         seed(int, optional): Seed for dropout in LSTM, If it's -1, dropout will use random seed. Default: 1.
 
-
     Returns:
         tuple ( :ref:`api_guide_Variable_en` , :ref:`api_guide_Variable_en` , :ref:`api_guide_Variable_en` ) :
 
@@ -754,7 +753,6 @@ def lstm(
                         - last_c(Tensor): the cell state of the last step of LSTM \
                           shape is :math:`[num\_layers, batch\_size, hidden\_size]` \
                           if is_bidirec set to True, shape will be :math:`[num\_layers*2, batch\_size, hidden\_size]`
-
 
     Examples:
         .. code-block:: python
