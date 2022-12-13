@@ -23,7 +23,6 @@ from ..framework import Variable, _non_static_mode, static_only, in_dygraph_mode
 from .. import core
 from paddle.fluid.layers import softmax_with_cross_entropy
 from . import tensor
-from . import nn
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
 import math
 import numpy as np
@@ -35,6 +34,7 @@ from ..data_feeder import (
     check_dtype,
 )
 from paddle.utils import deprecated
+import paddle.static as static
 from paddle import _C_ops, _legacy_C_ops
 from ..framework import in_dygraph_mode
 
@@ -645,7 +645,7 @@ def multi_box_head(
 
         # get loc
         num_loc_output = num_boxes * 4
-        mbox_loc = nn.conv2d(
+        mbox_loc = static.nn.conv2d(
             input=input,
             num_filters=num_loc_output,
             filter_size=kernel_size,
@@ -659,7 +659,7 @@ def multi_box_head(
 
         # get conf
         num_conf_output = num_boxes * num_classes
-        conf_loc = nn.conv2d(
+        conf_loc = static.nn.conv2d(
             input=input,
             num_filters=num_conf_output,
             filter_size=kernel_size,
