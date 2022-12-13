@@ -220,7 +220,8 @@ def GroupShardedScaler(scaler):
         temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool_))
         temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool_))
 
-        device = "cpu" if optimizer.offload else "gpu"
+        device = paddle.get_device().split(":")[0]
+        device = "cpu" if optimizer.offload else device
         dev_id = (
             0 if device == "cpu" else int(paddle.get_device().split(":")[1])
         )
@@ -245,8 +246,9 @@ def GroupShardedScaler(scaler):
         is_found_inf = paddle.to_tensor([self._found_inf], dtype="int32")
 
         paddle.distributed.all_reduce(
-            is_found_inf, op=paddle.distributed.ReduceOp.MAX, group=None
+            is_found_inf, op=paddle.distributed.ReduceOp.SUM, group=None
         )
+
         self._found_inf = is_found_inf.numpy()[0]
 
     scaler._unscale = MethodType(unscale_method, scaler)
