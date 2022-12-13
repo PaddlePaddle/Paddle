@@ -710,7 +710,7 @@ class TestSetGlobalInitializer(unittest.TestCase):
 
 
 class TestUniformInitializerDygraph(unittest.TestCase):
-    def func_uniform_initializer(self, dtype="float32"):
+    def test_uniform_initializer(self, dtype="float32"):
         """
         In dygraph mode, we can use initializer directly to initialize a tensor.
         """
@@ -734,10 +734,6 @@ class TestUniformInitializerDygraph(unittest.TestCase):
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.001)
 
         paddle.enable_static()
-
-    def test_uniform_initializer(self, dtype="float32"):
-        self.func_uniform_initializer()
-        self.func_uniform_initializer()
 
 
 class TestXavierInitializerDygraph(unittest.TestCase):
