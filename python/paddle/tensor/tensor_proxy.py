@@ -8694,12 +8694,22 @@ class Tensor:
         """
         ...
 
+
     def __neg__(self) -> Tensor:
         """
         Negate the tensor elementwise.
 
         """
         ...
+
+    @property
+    def T(self) -> Tensor:
+        """
+        The transpose of the tensor.
+
+        """
+        ...
+
 
     reverse = flip
     mod = remainder

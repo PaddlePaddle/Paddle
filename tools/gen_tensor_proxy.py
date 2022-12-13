@@ -236,19 +236,23 @@ def get_attributes() -> dict[str, str]:
 def get_other_methods() -> list[str]:
     # TODO: more methods
     methods = [
-        ("__neg__", "(self)", "Tensor", "Negate the tensor elementwise."),
+        ("__neg__", "(self)", "Tensor", None, "Negate the tensor elementwise."),
+        ("T", "(self)", "Tensor", "property", "The transpose of the tensor."),
     ]
     methods_code: list[str] = []
-    for method_name, args, ret_type, original_docstring in methods:
+    for method_name, args, ret_type, decorator_, docstring_ in methods:
         docstring = ""
-        for line in original_docstring.splitlines():
+        for line in docstring_.splitlines():
             docstring += f"{INDENT}{INDENT}{line}\n"
+        decorator = f"{INDENT}@{decorator_}" if decorator_ is not None else ""
         method_code = f"""\
+{decorator}
 {INDENT}def {method_name}{args} -> {ret_type}:
 {INDENT}{INDENT}\"\"\"
 {docstring}
 {INDENT}{INDENT}\"\"\"
-{INDENT}{INDENT}..."""
+{INDENT}{INDENT}...
+"""
         methods_code.append(method_code)
     return methods_code
 
