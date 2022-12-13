@@ -465,11 +465,7 @@ class WhileGradOp : public framework::OperatorBase {
           auto &outside_tensor = og_outside.Get<phi::DenseTensor>();
           auto &inside_tensor = *og_inside.GetMutable<phi::DenseTensor>();
           inside_tensor.set_lod(outside_tensor.lod());
-          if (outside_tensor.IsInitialized()) {
-            // (todo hongyu, need to update here)
-            VLOG(8) << "skip data share " << outside_og_name;
-            inside_tensor.ShareDataWith(outside_tensor);
-          }
+          inside_tensor.ShareDataWith(outside_tensor);
         } else if (og_outside.IsType<framework::LoDTensorArray>()) {
           auto outside_array =
               og_outside.GetMutable<framework::LoDTensorArray>();

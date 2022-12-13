@@ -301,7 +301,7 @@ class Instruction {
 
   void AddEventToRecord(std::shared_ptr<platform::DeviceEvent> event,
                         platform::DeviceType waiter_type) {
-    event_to_record_ = std::make_unique<EventInter>(id_, event, waiter_type);
+    event_to_record_ = std::make_shared<EventInter>(id_, event, waiter_type);
   }
 
   void AddEventToWait(size_t instr_id,
@@ -379,7 +379,7 @@ class Instruction {
   std::vector<size_t> next_instrs_in_different_thread;
   std::vector<size_t> next_instrs_in_same_thread;
 
-  std::unique_ptr<EventInter> event_to_record_;
+  std::shared_ptr<EventInter> event_to_record_;
   std::vector<EventInter> events_to_wait_;
 
   OpFuncNode op_func_node_;

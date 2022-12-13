@@ -21,8 +21,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-from paddle.fluid.dygraph.nn import BatchNorm
-from paddle.nn import Linear
+from paddle.nn import BatchNorm, Linear
 
 
 class TestDygraphLoadStatic(unittest.TestCase):

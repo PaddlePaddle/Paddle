@@ -37,6 +37,7 @@ from ..data_feeder import (
     check_type,
     check_dtype,
 )
+
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 from .. import unique_name
@@ -49,9 +50,7 @@ import os
 import paddle.utils.deprecated as deprecated
 from paddle import _C_ops, _legacy_C_ops
 
-__all__ = [
-    'BatchNorm',
-]
+__all__ = []
 
 
 class BatchNorm(layers.Layer):

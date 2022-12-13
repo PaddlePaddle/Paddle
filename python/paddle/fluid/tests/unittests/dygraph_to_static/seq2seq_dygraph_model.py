@@ -196,9 +196,11 @@ class BaseModel(fluid.dygraph.Layer):
         return x
 
     def _real_state(self, state, new_state, step_mask):
-        new_state = fluid.layers.elementwise_mul(
+        new_state = paddle.tensor.math._multiply_with_axis(
             new_state, step_mask, axis=0
-        ) - fluid.layers.elementwise_mul(state, (step_mask - 1), axis=0)
+        ) - paddle.tensor.math._multiply_with_axis(
+            state, (step_mask - 1), axis=0
+        )
         return new_state
 
     def _gather(self, x, indices, batch_pos):
@@ -452,10 +454,10 @@ class BaseModel(fluid.dygraph.Layer):
                     [-1, -1, self.tar_vocab_size],
                 ),
                 noend_mask_tensor,
-            ) - fluid.layers.elementwise_mul(
+            ) - paddle.tensor.math._multiply_with_axis(
                 step_log_probs, (beam_finished - 1), axis=0
             )
-            log_probs = fluid.layers.elementwise_add(
+            log_probs = paddle.tensor.math._add_with_axis(
                 x=step_log_probs, y=beam_state_log_probs, axis=0
             )
             scores = paddle.reshape(
@@ -689,9 +691,11 @@ class AttentionModel(fluid.dygraph.Layer):
         return x
 
     def _real_state(self, state, new_state, step_mask):
-        new_state = fluid.layers.elementwise_mul(
+        new_state = paddle.tensor.math._multiply_with_axis(
             new_state, step_mask, axis=0
-        ) - fluid.layers.elementwise_mul(state, (step_mask - 1), axis=0)
+        ) - paddle.tensor.math._multiply_with_axis(
+            state, (step_mask - 1), axis=0
+        )
         return new_state
 
     def _gather(self, x, indices, batch_pos):

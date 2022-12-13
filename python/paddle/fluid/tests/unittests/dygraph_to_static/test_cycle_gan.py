@@ -31,15 +31,16 @@ import unittest
 import numpy as np
 from PIL import Image, ImageOps
 
+import paddle.fluid as fluid
+
 # Use GPU:0 to elimate the influence of other tasks.
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 import paddle
-import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph.nn import BatchNorm
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
+from paddle.nn import BatchNorm
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
@@ -105,18 +106,14 @@ class Cycle_Gan(fluid.dygraph.Layer):
         G = g_A_loss + g_B_loss
         idt_A = self.build_generator_resnet_9blocks_a(input_B)
         idt_loss_A = (
-            paddle.mean(
-                paddle.abs(fluid.layers.elementwise_sub(x=input_B, y=idt_A))
-            )
+            paddle.mean(paddle.abs(paddle.subtract(x=input_B, y=idt_A)))
             * lambda_B
             * lambda_identity
         )
 
         idt_B = self.build_generator_resnet_9blocks_b(input_A)
         idt_loss_B = (
-            paddle.mean(
-                paddle.abs(fluid.layers.elementwise_sub(x=input_A, y=idt_B))
-            )
+            paddle.mean(paddle.abs(paddle.subtract(x=input_A, y=idt_B)))
             * lambda_A
             * lambda_identity
         )
