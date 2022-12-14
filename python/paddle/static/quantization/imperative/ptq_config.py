@@ -21,8 +21,6 @@ from .ptq_quantizer import (
     PerChannelAbsmaxQuantizer,
 )
 
-__all__ = ['PTQConfig', 'default_ptq_config']
-
 
 class PTQConfig:
     """

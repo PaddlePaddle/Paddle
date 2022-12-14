@@ -29,7 +29,6 @@ from ..utils import (
 )
 from . import fuse_utils, utils
 
-__all__ = ['ImperativeQuantAware']
 INFER_MODEL_SUFFIX = ".pdmodel"
 INFER_PARAMS_SUFFIX = ".pdiparams"
 

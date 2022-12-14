@@ -29,21 +29,6 @@ from ...static import Program, data, program_guard, scope_guard
 from ...utils import unique_name
 from . import utils
 
-__all__ = [
-    'QuantizationTransformPass',
-    'QuantizationFreezePass',
-    'ConvertToInt8Pass',
-    'TransformForMobilePass',
-    'OutScaleForTrainingPass',
-    'OutScaleForInferencePass',
-    'AddQuantDequantPass',
-    'QuantizationTransformPassV2',
-    'AddQuantDequantPassV2',
-    'ReplaceFakeQuantDequantPass',
-    'QuantWeightPass',
-    'AddQuantDequantForInferencePass',
-]
-
 _fake_quant_op_list = [
     'fake_quantize_abs_max',
     'fake_quantize_range_abs_max',

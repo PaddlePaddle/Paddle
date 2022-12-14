@@ -17,8 +17,6 @@ import numpy as np
 from ...fluid.framework import IrGraph
 from ...framework import _get_paddle_place, core
 
-__all__ = ['Quant2Int8MkldnnPass']
-
 OpRole = core.op_proto_and_checker_maker.OpRole
 
 

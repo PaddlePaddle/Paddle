@@ -23,8 +23,6 @@ _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
 
-__all__ = ['cal_kl_threshold']
-
 
 def expand_quantized_bins(quantized_bins, reference_bins):
     '''

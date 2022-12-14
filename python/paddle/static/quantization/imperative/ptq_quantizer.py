@@ -22,16 +22,6 @@ import paddle
 from ..cal_kl_threshold import cal_kl_threshold
 from . import utils
 
-__all__ = [
-    'BaseQuantizer',
-    'AbsmaxQuantizer',
-    'PerChannelAbsmaxQuantizer',
-    'KLQuantizer',
-    'HistQuantizer',
-    'SUPPORT_ACT_QUANTIZERS',
-    'SUPPORT_WT_QUANTIZERS',
-]
-
 
 def abs_max_value(tensor):
     return float(paddle.max(paddle.abs(tensor)).numpy())

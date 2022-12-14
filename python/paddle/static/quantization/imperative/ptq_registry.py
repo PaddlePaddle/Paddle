@@ -14,8 +14,6 @@
 
 import paddle
 
-__all__ = ['PTQRegistry']
-
 
 class LayerInfo:
     """

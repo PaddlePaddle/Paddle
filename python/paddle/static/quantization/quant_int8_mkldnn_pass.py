@@ -17,8 +17,6 @@ import numpy as np
 from ...fluid.framework import IrGraph
 from ...framework import _get_paddle_place
 
-__all__ = ['QuantInt8MkldnnPass']
-
 
 class QuantInt8MkldnnPass:
     """

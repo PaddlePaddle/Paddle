@@ -45,12 +45,6 @@ from .quantization_pass import (
     QuantWeightPass,
 )
 
-__all__ = [
-    'PostTrainingQuantization',
-    'WeightQuantization',
-    'PostTrainingQuantizationProgram',
-]
-
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )

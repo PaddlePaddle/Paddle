@@ -31,7 +31,6 @@ from ..utils import (
 from . import fuse_utils, ptq_config, ptq_hooks, ptq_quantizer, utils
 from .ptq_registry import PTQRegistry
 
-__all__ = ['ImperativePTQ']
 INFER_MODEL_SUFFIX = ".pdmodel"
 INFER_PARAMS_SUFFIX = ".pdiparams"
 
