@@ -435,14 +435,14 @@ static std::string PDNodeName(const std::string& name_scope,
 static std::string PDNodeName(const std::string& name_scope,
                               const std::string& repr) {
   return string::Sprintf(
-    "%s/%s/%d", name_scope, repr, KeyCounter::Instance().IncCounter(repr));
+      "%s/%s/%d", name_scope, repr, KeyCounter::Instance().IncCounter(repr));
 }
 // Generate a unique key. It can be used for a universally unique temporary
 // name.
 // The format is {repr}/{id}
 static std::string UniqueKey(const std::string& repr) {
   return string::Sprintf(
-    "%s/%d", repr, KeyCounter::Instance().IncCounter(repr));
+      "%s/%d", repr, KeyCounter::Instance().IncCounter(repr));
 }
 
 // Declare a PDNode in a pattern, will create two methods:
