@@ -385,7 +385,8 @@ class PRChecker:
                 % PRECISION_TEST_Cases_ratio
             )
             print(
-                "The unittests in prec delta is shown as following:%s" % ut_list
+                "The unittests in prec delta is shown as following: %s"
+                % ut_list
             )
             return '\n'.join(ut_list)
         else:
