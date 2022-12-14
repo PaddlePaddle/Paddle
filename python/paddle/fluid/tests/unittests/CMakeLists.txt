@@ -76,6 +76,11 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_fused_transformer_encoder_layer)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op_api)
+  list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
+endif()
+
+if(NOT WITH_CUTLASS)
+  list(REMOVE_ITEM TEST_OPS test_fused_ec_moe)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
