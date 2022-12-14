@@ -437,8 +437,7 @@ void TestKernelNCHW16CMulNC() {
   EXPECT_TRUE(tgt != nullptr);
 
   if (std::is_same<T, float>::value &&
-      paddle::phi::backends::cpu::MayIUse(
-          paddle::phi::backends::cpu::avx512f)) {
+      phi::backends::cpu::MayIUse(phi::backends::cpu::avx512f)) {
     EXPECT_TRUE(jitcode != nullptr);
   }
   for (int ni = 0; ni < n; ni++) {
@@ -1394,8 +1393,7 @@ TEST(JITKernel_helper, pack_weights) {
   }
   int block = 0;
   std::vector<int> groups;
-  if (paddle::phi::backends::cpu::MayIUse(
-          paddle::phi::backends::cpu::avx512f)) {
+  if (phi::backends::cpu::MayIUse(phi::backends::cpu::avx512f)) {
     block = ZMM_FLOAT_BLOCK;
     groups.push_back(30);
   } else {
