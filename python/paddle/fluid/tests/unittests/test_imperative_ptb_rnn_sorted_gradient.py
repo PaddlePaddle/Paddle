@@ -13,20 +13,21 @@
 # limitations under the License.
 
 import unittest
+
+import numpy as np
+from test_imperative_base import new_program_scope
+from test_imperative_ptb_rnn import PtbModel
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
-from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.base import to_variable
-from test_imperative_base import new_program_scope
-from test_imperative_ptb_rnn import PtbModel
-import numpy as np
-from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.optimizer import SGDOptimizer
 
 
 class TestDygraphPtbRnnSortGradient(unittest.TestCase):
-    def func_ptb_rnn_sort_gradient(self):
+    def test_ptb_rnn_sort_gradient(self):
         for is_sparse in [True, False]:
             self.ptb_rnn_sort_gradient_cpu_float32(is_sparse)
 
@@ -189,11 +190,6 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
             np.testing.assert_array_equal(value, dy_param_init[key])
         for key, value in static_param_updated.items():
             np.testing.assert_array_equal(value, dy_param_updated[key])
-
-    def test_ptb_rnn_sort_gradient(self):
-        with _test_eager_guard():
-            self.func_ptb_rnn_sort_gradient()
-        self.func_ptb_rnn_sort_gradient()
 
 
 if __name__ == '__main__':

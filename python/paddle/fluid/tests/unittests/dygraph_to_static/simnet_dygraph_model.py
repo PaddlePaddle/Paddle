@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from functools import reduce
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.param_attr as attr
-
-from functools import reduce
+from paddle.fluid.dygraph import Layer
 from paddle.jit.api import declarative
-from paddle.fluid.dygraph import Embedding, Layer, Linear
 from paddle.static import Variable
 
 
@@ -42,11 +42,12 @@ class EmbeddingLayer:
         """
         # TODO(huihuangzheng): The original code set the is_sparse=True, but it
         # causes crush in dy2stat. Set it to True after fixing it.
-        emb = Embedding(
-            size=[self.dict_size, self.emb_dim],
-            is_sparse=True,
+        emb = paddle.nn.Embedding(
+            self.dict_size,
+            self.emb_dim,
+            sparse=True,
             padding_idx=self.padding_idx,
-            param_attr=attr.ParamAttr(
+            weight_attr=attr.ParamAttr(
                 name=self.name, initializer=fluid.initializer.Xavier()
             ),
         )
@@ -114,7 +115,7 @@ class ReduceMeanLayer:
         """
         operation
         """
-        mean = fluid.layers.reduce_mean(input)
+        mean = paddle.mean(input)
         return mean
 
 
@@ -133,7 +134,7 @@ class CosSimLayer:
         """
         operation
         """
-        sim = fluid.layers.cos_sim(x, y)
+        sim = paddle.nn.functional.cosine_similarity(x, y)
         return sim
 
 
@@ -171,7 +172,7 @@ class ElementwiseAddLayer:
         """
         operation
         """
-        add = fluid.layers.elementwise_add(x, y)
+        add = paddle.add(x, y)
         return add
 
 
@@ -190,7 +191,7 @@ class ElementwiseSubLayer:
         """
         operation
         """
-        sub = fluid.layers.elementwise_sub(x, y)
+        sub = paddle.subtract(x, y)
         return sub
 
 
@@ -210,7 +211,7 @@ class ConstantLayer:
         operation
         """
         shape = list(shape)
-        input_shape = fluid.layers.shape(input)
+        input_shape = paddle.shape(input)
         shape[0] = input_shape[0]
         constant = fluid.layers.fill_constant(shape, dtype, value)
         return constant
@@ -490,7 +491,7 @@ class BOW(Layer):
         self.emb_layer = EmbeddingLayer(
             self.dict_size, self.emb_dim, "emb"
         ).ops()
-        self.bow_layer = Linear(self.bow_dim, self.bow_dim)
+        self.bow_layer = paddle.nn.Linear(self.bow_dim, self.bow_dim)
         self.bow_layer_po = FCLayer(self.bow_dim, None, "fc").ops()
         self.softmax_layer = FCLayer(2, "softmax", "cos_sim").ops()
 

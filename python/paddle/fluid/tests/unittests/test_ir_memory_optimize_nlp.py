@@ -14,10 +14,12 @@
 
 # nlp model stack of op operate on lod. It's a classical test case in optimize pass.
 
+import unittest
+
+from ir_memory_optimize_net_base import TestIrMemOptBase
+
 import paddle
 import paddle.fluid as fluid
-import unittest
-from ir_memory_optimize_net_base import TestIrMemOptBase
 
 
 def lstm_net(
@@ -44,7 +46,9 @@ def lstm_net(
     lstm_max_tanh = paddle.tanh(lstm_max)
     fc1 = fluid.layers.fc(input=lstm_max_tanh, size=hid_dim2, act='tanh')
     prediction = fluid.layers.fc(input=fc1, size=class_dim, act='softmax')
-    cost = fluid.layers.cross_entropy(input=prediction, label=label)
+    cost = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     avg_cost = paddle.mean(x=cost)
     return avg_cost
 

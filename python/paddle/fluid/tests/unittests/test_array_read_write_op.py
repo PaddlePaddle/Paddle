@@ -14,32 +14,33 @@
 
 import unittest
 
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
-from paddle.fluid.executor import Executor
-from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import default_main_program
 from paddle.fluid import Program, program_guard
-import numpy as np
+from paddle.fluid.backward import append_backward
+from paddle.fluid.executor import Executor
+from paddle.fluid.framework import default_main_program
 
 
 def _test_read_write(x):
     i = layers.zeros(shape=[1], dtype='int64')
     i.stop_gradient = False
     arr = layers.array_write(x=x[0], i=i)
-    i = layers.increment(x=i)
+    i = paddle.increment(x=i)
     arr = layers.array_write(x=x[1], i=i, array=arr)
-    i = layers.increment(x=i)
+    i = paddle.increment(x=i)
     arr = layers.array_write(x=x[2], i=i, array=arr)
 
     i = layers.zeros(shape=[1], dtype='int64')
     i.stop_gradient = False
     a0 = layers.array_read(array=arr, i=i)
-    i = layers.increment(x=i)
+    i = paddle.increment(x=i)
     a1 = layers.array_read(array=arr, i=i)
-    i = layers.increment(x=i)
+    i = paddle.increment(x=i)
     a2 = layers.array_read(array=arr, i=i)
 
     mean_a0 = paddle.mean(a0)

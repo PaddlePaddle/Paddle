@@ -15,8 +15,10 @@
 import unittest
 
 import numpy as np
+
+import paddle
 from paddle.fluid.executor import Executor
-from paddle.fluid.layers import mul, data, zeros, array_write, increment
+from paddle.fluid.layers import array_write, data, mul, zeros
 
 
 class TestExecutor(unittest.TestCase):
@@ -25,13 +27,13 @@ class TestExecutor(unittest.TestCase):
         a = data(name='a', shape=[784], dtype='float32')
         array = array_write(x=a, i=i)
 
-        i = increment(i)
+        i = paddle.increment(i)
         b = data(
             name='b', shape=[784, 100], dtype='float32', append_batch_size=False
         )
         array_write(x=b, i=i, array=array)
 
-        i = increment(i)
+        i = paddle.increment(i)
         out = mul(x=a, y=b)
         array_write(x=out, i=i, array=array)
 

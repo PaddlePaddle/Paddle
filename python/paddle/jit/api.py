@@ -13,6 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Temporary disable isort to avoid circular import
+# This can be removed after the circular import is resolved
+# isort: skip_file
 import os
 import pickle
 import warnings
@@ -34,16 +37,12 @@ from paddle.fluid.dygraph.base import (
     program_desc_tracing_guard,
     switch_to_static_graph,
 )
-from paddle.fluid.dygraph.dygraph_to_static import logging_utils
-from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import (
+from .dy2static import logging_utils
+from .dy2static.convert_call_func import (
     ConversionOptions,
     CONVERSION_OPTIONS,
 )
-from paddle.fluid.dygraph.dygraph_to_static.logging_utils import (
-    set_code_level,
-    set_verbosity,
-)
-from paddle.jit.dy2static.program_translator import (
+from .dy2static.program_translator import (
     ProgramTranslator,
     StaticFunction,
     unwrap_decorators,
@@ -73,16 +72,7 @@ from paddle.fluid.framework import (
 from paddle.fluid.framework import dygraph_only, _non_static_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
 
-__all__ = [
-    'TracedLayer',
-    'declarative',
-    'dygraph_to_static_func',
-    'set_code_level',
-    'set_verbosity',
-    'save',
-    'load',
-    'not_to_static',
-]
+__all__ = []
 
 
 def create_program_from_desc(program_desc):

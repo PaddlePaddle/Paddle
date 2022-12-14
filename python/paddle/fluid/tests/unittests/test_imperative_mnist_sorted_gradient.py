@@ -13,16 +13,17 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from test_imperative_base import new_program_scope
+from test_imperative_mnist import MNIST
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.base import to_variable
-from test_imperative_base import new_program_scope
-from test_imperative_mnist import MNIST
 from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.optimizer import SGDOptimizer
 
 
 class TestImperativeMnistSortGradient(unittest.TestCase):
@@ -61,7 +62,9 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
                     label2.stop_gradient = True
 
                     cost2 = mnist2(img2)
-                    loss2 = fluid.layers.cross_entropy(cost2, label2)
+                    loss2 = paddle.nn.functional.cross_entropy(
+                        cost2, label2, reduction='none', use_softmax=False
+                    )
                     avg_loss2 = paddle.mean(loss2)
 
                     dy_out2 = avg_loss2.numpy()
@@ -101,7 +104,9 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
             )
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             cost = mnist(img)
-            loss = fluid.layers.cross_entropy(cost, label)
+            loss = paddle.nn.functional.cross_entropy(
+                cost, label, reduction='none', use_softmax=False
+            )
             avg_loss = paddle.mean(loss)
             sgd.minimize(avg_loss)
 

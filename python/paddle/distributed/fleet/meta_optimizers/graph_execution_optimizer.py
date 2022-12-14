@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 
 import copy
+import logging
+
 import paddle
 from paddle.framework import core
-from .meta_optimizer_base import MetaOptimizerBase
-from ..base.private_helper_function import wait_server_ready
-import logging
 from paddle.static import BuildStrategy
+
+from ..base.private_helper_function import wait_server_ready
+from .meta_optimizer_base import MetaOptimizerBase
 
 __all__ = []
 
@@ -135,7 +137,7 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
                 attrs={
                     "trainers": trainer_endpoints,
                     "trainer_id": trainer_id,
-                    "nccl_comm_num": build_strategy.nccl_comm_num,
+                    "bkcl_comm_num": build_strategy.bkcl_comm_num,
                     "use_hierarchical_allreduce": build_strategy.use_hierarchical_allreduce,
                     "hierarchical_allreduce_inter_ranks": build_strategy.hierarchical_allreduce_inter_nranks,
                 },

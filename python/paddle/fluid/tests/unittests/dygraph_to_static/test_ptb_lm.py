@@ -17,13 +17,13 @@ import time
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-from paddle.jit import ProgramTranslator
 from paddle.fluid.dygraph.base import to_variable
-from paddle.jit.api import declarative
-from paddle.fluid.dygraph.nn import Embedding
 from paddle.fluid.optimizer import SGDOptimizer
+from paddle.jit import ProgramTranslator
+from paddle.jit.api import declarative
 
 PRINT_STEP = 20
 SEED = 2020
@@ -93,9 +93,9 @@ class SimpleLSTMRNN(fluid.Layer):
                 bias = self.bias_arr[k]
 
                 nn = fluid.layers.concat([step_input, pre_hidden], 1)
-                gate_input = fluid.layers.matmul(x=nn, y=weight_1)
+                gate_input = paddle.matmul(x=nn, y=weight_1)
 
-                gate_input = fluid.layers.elementwise_add(gate_input, bias)
+                gate_input = paddle.add(gate_input, bias)
                 i, j, f, o = fluid.layers.split(
                     gate_input, num_or_sections=4, dim=-1
                 )
@@ -155,11 +155,11 @@ class PtbModel(fluid.Layer):
             init_scale=init_scale,
             dropout=dropout,
         )
-        self.embedding = Embedding(
-            size=[vocab_size, hidden_size],
-            dtype='float32',
-            is_sparse=False,
-            param_attr=fluid.ParamAttr(
+        self.embedding = paddle.nn.Embedding(
+            vocab_size,
+            hidden_size,
+            sparse=False,
+            weight_attr=fluid.ParamAttr(
                 name='embedding_para',
                 initializer=fluid.initializer.UniformInitializer(
                     low=-init_scale, high=init_scale
@@ -212,14 +212,14 @@ class PtbModel(fluid.Layer):
             x_emb, init_h, init_c
         )
 
-        projection = fluid.layers.matmul(rnn_out, self.softmax_weight)
-        projection = fluid.layers.elementwise_add(projection, self.softmax_bias)
+        projection = paddle.matmul(rnn_out, self.softmax_weight)
+        projection = paddle.add(projection, self.softmax_bias)
 
-        loss = fluid.layers.softmax_with_cross_entropy(
+        loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=projection, label=label, soft_label=False
         )
         loss = paddle.reshape(loss, shape=[-1, self.num_steps])
-        loss = fluid.layers.reduce_mean(loss, dim=[0])
+        loss = paddle.mean(loss, axis=[0])
         loss = paddle.sum(loss)
 
         return loss, last_hidden, last_cell
@@ -346,6 +346,4 @@ class TestPtb(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    # switch into new eager mode
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

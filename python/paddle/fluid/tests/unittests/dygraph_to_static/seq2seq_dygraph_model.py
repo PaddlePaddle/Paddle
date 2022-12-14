@@ -14,15 +14,15 @@
 # limitations under the License.
 
 import numpy as np
+from seq2seq_utils import Seq2SeqModelHyperParams as args
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import ParamAttr
-from paddle.fluid import layers
+from paddle.fluid import ParamAttr, layers
 from paddle.fluid.dygraph import Layer
 from paddle.fluid.dygraph.base import to_variable
 from paddle.jit.api import declarative
-from paddle.fluid.dygraph.nn import Embedding
-from seq2seq_utils import Seq2SeqModelHyperParams as args
+from paddle.nn import Embedding
 
 INF = 1.0 * 1e5
 alpha = 0.6
@@ -70,17 +70,15 @@ class BasicLSTMUnit(Layer):
 
     def forward(self, input, pre_hidden, pre_cell):
         concat_input_hidden = layers.concat([input, pre_hidden], 1)
-        gate_input = layers.matmul(x=concat_input_hidden, y=self._weight)
+        gate_input = paddle.matmul(x=concat_input_hidden, y=self._weight)
 
-        gate_input = layers.elementwise_add(gate_input, self._bias)
+        gate_input = paddle.add(gate_input, self._bias)
         i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
-        new_cell = layers.elementwise_add(
-            layers.elementwise_mul(
+        new_cell = paddle.add(
+            paddle.multiply(
                 pre_cell, paddle.nn.functional.sigmoid(f + self._forget_bias)
             ),
-            layers.elementwise_mul(
-                paddle.nn.functional.sigmoid(i), paddle.tanh(j)
-            ),
+            paddle.multiply(paddle.nn.functional.sigmoid(i), paddle.tanh(j)),
         )
 
         new_hidden = paddle.tanh(new_cell) * paddle.nn.functional.sigmoid(o)
@@ -124,16 +122,18 @@ class BaseModel(fluid.dygraph.Layer):
         forget_bias = 1.0
 
         self.src_embeder = Embedding(
-            size=[self.src_vocab_size, self.hidden_size],
-            param_attr=fluid.ParamAttr(
+            self.src_vocab_size,
+            self.hidden_size,
+            weight_attr=fluid.ParamAttr(
                 initializer=uniform_initializer(init_scale)
             ),
         )
 
         self.tar_embeder = Embedding(
-            size=[self.tar_vocab_size, self.hidden_size],
-            is_sparse=False,
-            param_attr=fluid.ParamAttr(
+            self.tar_vocab_size,
+            self.hidden_size,
+            sparse=False,
+            weight_attr=fluid.ParamAttr(
                 initializer=uniform_initializer(init_scale)
             ),
         )
@@ -168,10 +168,14 @@ class BaseModel(fluid.dygraph.Layer):
                 )
             )
 
-        self.fc = fluid.dygraph.nn.Linear(
+        self.fc = paddle.nn.Linear(
             self.hidden_size,
             self.tar_vocab_size,
-            param_attr=param_attr,
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Uniform(
+                    low=-self.init_scale, high=self.init_scale
+                )
+            ),
             bias_attr=False,
         )
 
@@ -192,14 +196,16 @@ class BaseModel(fluid.dygraph.Layer):
         return x
 
     def _real_state(self, state, new_state, step_mask):
-        new_state = fluid.layers.elementwise_mul(
+        new_state = paddle.tensor.math._multiply_with_axis(
             new_state, step_mask, axis=0
-        ) - fluid.layers.elementwise_mul(state, (step_mask - 1), axis=0)
+        ) - paddle.tensor.math._multiply_with_axis(
+            state, (step_mask - 1), axis=0
+        )
         return new_state
 
     def _gather(self, x, indices, batch_pos):
         topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
-        return fluid.layers.gather_nd(x, topk_coordinates)
+        return paddle.gather_nd(x, topk_coordinates)
 
     @declarative
     def forward(self, inputs):
@@ -218,8 +224,8 @@ class BaseModel(fluid.dygraph.Layer):
             np.zeros((self.batch_size, self.hidden_size), dtype='float32')
         )
         zero = fluid.layers.zeros(shape=[1], dtype="int64")
-        enc_hidden = fluid.layers.create_array(dtype="float32")
-        enc_cell = fluid.layers.create_array(dtype="float32")
+        enc_hidden = paddle.tensor.create_array(dtype="float32")
+        enc_cell = paddle.tensor.create_array(dtype="float32")
         for i in range(self.num_layers):
             index = zero + i
             enc_hidden = fluid.layers.array_write(
@@ -292,16 +298,16 @@ class BaseModel(fluid.dygraph.Layer):
 
         dec_output = paddle.stack(dec_output)
         dec_output = self.fc(self._transpose_batch_time(dec_output))
-        loss = fluid.layers.softmax_with_cross_entropy(
+        loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=dec_output, label=label, soft_label=False
         )
         loss = paddle.squeeze(loss, axes=[2])
-        max_tar_seq_len = fluid.layers.shape(tar)[1]
+        max_tar_seq_len = paddle.shape(tar)[1]
         tar_mask = fluid.layers.sequence_mask(
             tar_sequence_length, maxlen=max_tar_seq_len, dtype='float32'
         )
         loss = loss * tar_mask
-        loss = fluid.layers.reduce_mean(loss, dim=[0])
+        loss = paddle.mean(loss, axis=[0])
         loss = paddle.sum(loss)
 
         return loss
@@ -320,8 +326,8 @@ class BaseModel(fluid.dygraph.Layer):
             np.zeros((self.batch_size, self.hidden_size), dtype='float32')
         )
         zero = fluid.layers.zeros(shape=[1], dtype="int64")
-        enc_hidden = fluid.layers.create_array(dtype="float32")
-        enc_cell = fluid.layers.create_array(dtype="float32")
+        enc_hidden = paddle.tensor.create_array(dtype="float32")
+        enc_cell = paddle.tensor.create_array(dtype="float32")
         for j in range(self.num_layers):
             index = zero + j
             enc_hidden = fluid.layers.array_write(
@@ -433,8 +439,8 @@ class BaseModel(fluid.dygraph.Layer):
             cell_outputs = self._split_batch_beams(step_input)
             cell_outputs = self.fc(cell_outputs)
 
-            step_log_probs = fluid.layers.log(
-                fluid.layers.softmax(cell_outputs)
+            step_log_probs = paddle.log(
+                paddle.nn.functional.softmax(cell_outputs)
             )
             noend_array = [-self.kinf] * self.tar_vocab_size
             noend_array[self.beam_end_token] = 0
@@ -442,25 +448,22 @@ class BaseModel(fluid.dygraph.Layer):
                 np.array(noend_array, dtype='float32')
             )
 
-            step_log_probs = fluid.layers.elementwise_mul(
+            step_log_probs = paddle.multiply(
                 paddle.expand(
                     fluid.layers.unsqueeze(beam_finished, [2]),
                     [-1, -1, self.tar_vocab_size],
                 ),
                 noend_mask_tensor,
-                axis=-1,
-            ) - fluid.layers.elementwise_mul(
+            ) - paddle.tensor.math._multiply_with_axis(
                 step_log_probs, (beam_finished - 1), axis=0
             )
-            log_probs = fluid.layers.elementwise_add(
+            log_probs = paddle.tensor.math._add_with_axis(
                 x=step_log_probs, y=beam_state_log_probs, axis=0
             )
             scores = paddle.reshape(
                 log_probs, [-1, self.beam_size * self.tar_vocab_size]
             )
-            topk_scores, topk_indices = fluid.layers.topk(
-                input=scores, k=self.beam_size
-            )
+            topk_scores, topk_indices = paddle.topk(x=scores, k=self.beam_size)
 
             beam_indices = paddle.floor_divide(topk_indices, vocab_size_tensor)
             token_indices = paddle.remainder(topk_indices, vocab_size_tensor)
@@ -490,7 +493,7 @@ class BaseModel(fluid.dygraph.Layer):
             next_finished = fluid.layers.cast(next_finished, "bool")
             next_finished = paddle.logical_or(
                 next_finished,
-                fluid.layers.equal(token_indices, end_token_tensor),
+                paddle.equal(token_indices, end_token_tensor),
             )
             next_finished = fluid.layers.cast(next_finished, "float32")
 
@@ -503,7 +506,9 @@ class BaseModel(fluid.dygraph.Layer):
 
         predicted_ids = paddle.stack(predicted_ids)
         parent_ids = paddle.stack(parent_ids)
-        predicted_ids = fluid.layers.gather_tree(predicted_ids, parent_ids)
+        predicted_ids = paddle.nn.functional.gather_tree(
+            predicted_ids, parent_ids
+        )
         predicted_ids = self._transpose_batch_time(predicted_ids)
         return predicted_ids
 
@@ -544,17 +549,19 @@ class AttentionModel(fluid.dygraph.Layer):
         forget_bias = 1.0
 
         self.src_embeder = Embedding(
-            size=[self.src_vocab_size, self.hidden_size],
-            param_attr=fluid.ParamAttr(
+            self.src_vocab_size,
+            self.hidden_size,
+            weight_attr=fluid.ParamAttr(
                 name='source_embedding',
                 initializer=uniform_initializer(init_scale),
             ),
         )
 
         self.tar_embeder = Embedding(
-            size=[self.tar_vocab_size, self.hidden_size],
-            is_sparse=False,
-            param_attr=fluid.ParamAttr(
+            self.tar_vocab_size,
+            self.hidden_size,
+            sparse=False,
+            weight_attr=fluid.ParamAttr(
                 name='target_embedding',
                 initializer=uniform_initializer(init_scale),
             ),
@@ -614,31 +621,38 @@ class AttentionModel(fluid.dygraph.Layer):
                     )
                 )
 
-        self.attn_fc = fluid.dygraph.nn.Linear(
+        self.attn_fc = paddle.nn.Linear(
             self.hidden_size,
             self.hidden_size,
-            param_attr=ParamAttr(
+            weight_attr=paddle.ParamAttr(
                 name="self_attn_fc",
-                initializer=uniform_initializer(self.init_scale),
+                initializer=paddle.nn.initializer.Uniform(
+                    low=-self.init_scale, high=self.init_scale
+                ),
             ),
             bias_attr=False,
         )
 
-        self.concat_fc = fluid.dygraph.nn.Linear(
+        self.concat_fc = paddle.nn.Linear(
             2 * self.hidden_size,
             self.hidden_size,
-            param_attr=ParamAttr(
+            weight_attr=paddle.ParamAttr(
                 name="self_concat_fc",
-                initializer=uniform_initializer(self.init_scale),
+                initializer=paddle.nn.initializer.Uniform(
+                    low=-self.init_scale, high=self.init_scale
+                ),
             ),
             bias_attr=False,
         )
 
-        self.fc = fluid.dygraph.nn.Linear(
+        self.fc = paddle.nn.Linear(
             self.hidden_size,
             self.tar_vocab_size,
-            param_attr=ParamAttr(
-                name="self_fc", initializer=uniform_initializer(self.init_scale)
+            weight_attr=paddle.ParamAttr(
+                name="self_fc",
+                initializer=paddle.nn.initializer.Uniform(
+                    low=-self.init_scale, high=self.init_scale
+                ),
             ),
             bias_attr=False,
         )
@@ -677,26 +691,28 @@ class AttentionModel(fluid.dygraph.Layer):
         return x
 
     def _real_state(self, state, new_state, step_mask):
-        new_state = fluid.layers.elementwise_mul(
+        new_state = paddle.tensor.math._multiply_with_axis(
             new_state, step_mask, axis=0
-        ) - fluid.layers.elementwise_mul(state, (step_mask - 1), axis=0)
+        ) - paddle.tensor.math._multiply_with_axis(
+            state, (step_mask - 1), axis=0
+        )
         return new_state
 
     def _gather(self, x, indices, batch_pos):
         topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
-        return fluid.layers.gather_nd(x, topk_coordinates)
+        return paddle.gather_nd(x, topk_coordinates)
 
     def attention(self, query, enc_output, mask=None):
         query = fluid.layers.unsqueeze(query, [1])
         memory = self.attn_fc(enc_output)
-        attn = fluid.layers.matmul(query, memory, transpose_y=True)
+        attn = paddle.matmul(query, memory, transpose_y=True)
 
         if mask is not None:
             attn = paddle.transpose(attn, [1, 0, 2])
-            attn = fluid.layers.elementwise_add(attn, mask * 1000000000, -1)
+            attn = paddle.add(attn, mask * 1000000000)
             attn = paddle.transpose(attn, [1, 0, 2])
-        weight = fluid.layers.softmax(attn)
-        weight_memory = fluid.layers.matmul(weight, memory)
+        weight = paddle.nn.functional.softmax(attn)
+        weight_memory = paddle.matmul(weight, memory)
 
         return weight_memory
 
@@ -727,8 +743,8 @@ class AttentionModel(fluid.dygraph.Layer):
         )
         enc_hidden_0.stop_gradient = True
         zero = fluid.layers.zeros(shape=[1], dtype="int64")
-        enc_hidden = fluid.layers.create_array(dtype="float32")
-        enc_cell = fluid.layers.create_array(dtype="float32")
+        enc_hidden = paddle.tensor.create_array(dtype="float32")
+        enc_cell = paddle.tensor.create_array(dtype="float32")
         for i in range(self.num_layers):
             index = zero + i
             enc_hidden = fluid.layers.array_write(
@@ -820,16 +836,16 @@ class AttentionModel(fluid.dygraph.Layer):
 
         dec_output = paddle.stack(dec_output)
         dec_output = self.fc(self._transpose_batch_time(dec_output))
-        loss = fluid.layers.softmax_with_cross_entropy(
+        loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=dec_output, label=label, soft_label=False
         )
         loss = paddle.squeeze(loss, axes=[2])
-        max_tar_seq_len = fluid.layers.shape(tar)[1]
+        max_tar_seq_len = paddle.shape(tar)[1]
         tar_mask = fluid.layers.sequence_mask(
             tar_sequence_length, maxlen=max_tar_seq_len, dtype='float32'
         )
         loss = loss * tar_mask
-        loss = fluid.layers.reduce_mean(loss, dim=[0])
-        loss = paddle.sum(loss)
+        loss = paddle.mean(loss, axis=[0])
+        loss = fluid.layers.reduce_sum(loss)
 
         return loss

@@ -15,15 +15,16 @@
 import unittest
 
 import numpy as np
+from jit_load_rename_var import rename_var_with_generator
+from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid import unique_name
-from test_imperative_base import new_program_scope
-from jit_load_rename_var import rename_var_with_generator
+from paddle.fluid import core, unique_name
 
 LOADED_VAR_SUFFIX = ".load_0"
+
+paddle.enable_static()
 
 
 def while_softmax_regression(img):
@@ -38,7 +39,7 @@ def while_softmax_regression(img):
     i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
     times = fluid.layers.fill_constant(shape=[1], dtype='int64', value=5)
     pred = fluid.layers.fc(input=img, size=10, act='softmax')
-    i, times, pred = fluid.layers.while_loop(
+    i, times, pred = paddle.static.nn.while_loop(
         cond=cond, body=body, loop_vars=[i, times, pred]
     )
     return pred
@@ -77,7 +78,9 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
 
         pred = while_softmax_regression(img)
 
-        loss = fluid.layers.cross_entropy(input=pred, label=label)
+        loss = paddle.nn.functional.cross_entropy(
+            input=pred, label=label, reduction='none', use_softmax=False
+        )
         avg_loss = paddle.mean(loss)
 
         optimizer = fluid.optimizer.SGD(learning_rate=0.001)
@@ -148,7 +151,9 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
 
                 cost = while_net(img)
 
-                loss = fluid.layers.cross_entropy(cost, label)
+                loss = paddle.nn.functional.cross_entropy(
+                    cost, label, reduction='none', use_softmax=False
+                )
                 avg_loss = paddle.mean(loss)
 
                 avg_loss.backward()
@@ -173,7 +178,9 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
 
             pred = while_softmax_regression(img)
 
-            loss = fluid.layers.cross_entropy(input=pred, label=label)
+            loss = paddle.nn.functional.cross_entropy(
+                input=pred, label=label, reduction='none', use_softmax=False
+            )
             avg_loss = paddle.mean(loss)
 
             optimizer = fluid.optimizer.SGD(learning_rate=0.001)

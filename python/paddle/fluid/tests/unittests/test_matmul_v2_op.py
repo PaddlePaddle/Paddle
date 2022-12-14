@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
-from paddle.fluid.tests.unittests.testsuite import create_op
-import paddle.fluid.core as core
 
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.tests.unittests.testsuite import create_op
 
 
 def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
@@ -731,7 +732,7 @@ class TestMatmulop(unittest.TestCase):
 
         paddle.enable_static()
 
-    def func_dygraph_matmul(self):
+    def func_dygraph_matmul(self):  # noqa: F811
         with _test_eager_guard():
             self.func_dygraph_matmul()
 

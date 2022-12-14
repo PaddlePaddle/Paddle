@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
 
@@ -126,9 +127,6 @@ class TestTemporalShiftFP16(TestTemporalShift):
 class TestTemporalShiftAPI(unittest.TestCase):
     def test_api(self):
         input = paddle.randn([6, 4, 2, 2])
-        out = paddle.fluid.layers.temporal_shift(
-            x=input, seg_num=2, shift_ratio=0.2
-        )
 
         out_from_function = paddle.nn.functional.temporal_shift(
             x=input, seg_num=2, shift_ratio=0.2

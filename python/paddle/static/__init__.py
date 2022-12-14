@@ -16,6 +16,9 @@
 from . import amp  # noqa: F401
 from . import sparsity  # noqa: F401
 from . import nn  # noqa: F401
+
+from .nn.common import py_func  # noqa: F401
+
 from .io import save_inference_model  # noqa: F401
 from .io import load_inference_model  # noqa: F401
 from .io import deserialize_persistables  # noqa: F401
@@ -28,6 +31,10 @@ from .io import normalize_program  # noqa: F401
 from ..fluid import Scope  # noqa: F401
 from .input import data  # noqa: F401
 from .input import InputSpec  # noqa: F401
+
+from ..tensor.creation import create_parameter  # noqa: F401
+from ..tensor.creation import create_global_var  # noqa: F401
+
 from ..fluid.executor import Executor  # noqa: F401
 from ..fluid.executor import global_scope  # noqa: F401
 from ..fluid.executor import scope_guard  # noqa: F401
@@ -53,7 +60,6 @@ from ..fluid.framework import Variable  # noqa: F401
 from ..fluid.framework import ipu_shard_guard  # noqa: F401
 from ..fluid.framework import set_ipu_shard  # noqa: F401
 from ..fluid.layers.control_flow import Print  # noqa: F401
-from ..fluid.layers.nn import py_func  # noqa: F401
 from ..fluid.parallel_executor import ParallelExecutor  # noqa: F401
 from ..fluid.param_attr import WeightNormParamAttr  # noqa: F401
 from ..fluid.optimizer import ExponentialMovingAverage  # noqa: F401
@@ -61,17 +67,15 @@ from ..fluid.io import save  # noqa: F401
 from ..fluid.io import load  # noqa: F401
 from ..fluid.io import load_program_state  # noqa: F401
 from ..fluid.io import set_program_state  # noqa: F401
-
 from ..fluid.io import load_vars  # noqa: F401
 from ..fluid.io import save_vars  # noqa: F401
 from ..fluid.io import batch  # noqa: F401
 
-from ..fluid.layers import create_parameter  # noqa: F401
-from ..fluid.layers import create_global_var  # noqa: F401
-from ..fluid.layers.metric_op import auc  # noqa: F401
-from ..fluid.layers.metric_op import accuracy  # noqa: F401
 from ..fluid.contrib.layers import ctr_metric_bundle  # noqa: F401
 from ..fluid.layers import exponential_decay  # noqa: F401
+
+from .nn.metric import auc  # noqa: F401
+from .nn.metric import accuracy  # noqa: F401
 
 __all__ = [  # noqa
     'append_backward',

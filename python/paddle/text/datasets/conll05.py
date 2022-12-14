@@ -14,10 +14,11 @@
 
 import gzip
 import tarfile
+
 import numpy as np
 
-from paddle.io import Dataset
 from paddle.dataset.common import _check_exists_and_download
+from paddle.io import Dataset
 
 __all__ = []
 
@@ -87,7 +88,7 @@ class Conll05st(Dataset):
 
                 model = SimpleNet()
                 pred_idx, mark, label= model(pred_idx, mark, label)
-                print(pred_idx.numpy(), mark.numpy(), label.numpy())
+                print(pred_idx, mark, label)
 
     """
 

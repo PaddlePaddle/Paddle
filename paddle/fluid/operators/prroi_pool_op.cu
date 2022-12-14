@@ -17,9 +17,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
-
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaximumNumBlocks = 4096;
 
@@ -219,7 +216,7 @@ class GPUPRROIPoolOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<phi::DenseTensor>("X");
-    auto* rois = ctx.Input<LoDTensor>("ROIs");
+    auto* rois = ctx.Input<phi::DenseTensor>("ROIs");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     auto pooled_height = ctx.Attr<int>("pooled_height");
@@ -322,7 +319,7 @@ class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<phi::DenseTensor>("X");
-    auto* rois = ctx.Input<LoDTensor>("ROIs");
+    auto* rois = ctx.Input<phi::DenseTensor>("ROIs");
     auto* out = ctx.Input<phi::DenseTensor>("Out");
 
     auto* output_grad =
@@ -330,7 +327,7 @@ class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
     auto* input_grad =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto* input_roi_grad =
-        ctx.Output<LoDTensor>(framework::GradVarName("ROIs"));
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("ROIs"));
 
     auto pooled_height = ctx.Attr<int>("pooled_height");
     auto pooled_width = ctx.Attr<int>("pooled_width");
