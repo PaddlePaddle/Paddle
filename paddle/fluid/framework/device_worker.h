@@ -290,7 +290,7 @@ class HogwildWorker : public CPUWorkerBase {
   HogwildWorkerParameter param_;
   std::vector<std::string> skip_ops_;
   std::map<std::string, int> stat_var_name_map_;
-  static std::atomic<uint64_t> worker_num_stat_;
+  static std::atomic<bool> quit_flag_;
 };
 
 class DownpourWorker : public HogwildWorker {
