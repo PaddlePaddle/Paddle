@@ -230,7 +230,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "constant_folding_pass",               //
         // following pass should be located in the last, since it will
         // work on all fused ops.
-        "float_to_half_pass",  //
+        "auto_mixed_precision_pass",  //
         "runtime_context_cache_pass"
   });
 
