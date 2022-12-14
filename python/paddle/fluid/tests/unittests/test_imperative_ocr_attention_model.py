@@ -21,8 +21,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import BatchNorm
-from paddle.nn import Linear
+from paddle.nn import BatchNorm, Linear
 
 
 class Config:
