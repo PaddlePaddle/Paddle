@@ -979,6 +979,23 @@ PDNode *patterns::OperatorActivation::operator()(
   return activation_out;
 }
 
+PDNode *patterns::QuantTranspose2::operator()() {
+  auto quant_in = pattern->NewNode(quant_in_repr())
+                      ->AsInput()
+                      ->assert_is_op_input("quantize", "Input");
+  auto quant_op = pattern->NewNode(quant_op_repr())->assert_is_op("quantize");
+  auto transpose2_in = pattern->NewNode(transpose2_in_repr())
+                           ->AsInput()
+                           ->assert_is_op_input("transpose2", "X");
+  auto transpose2_op =
+      pattern->NewNode(transpose2_op_repr())->assert_is_op("transpose2");
+
+  quant_op->LinksFrom({quant_in}).LinksTo({transpose2_in});
+  transpose2_op->LinksFrom({transpose2_in});
+
+  return transpose2_op;
+}
+
 PDNode *patterns::Squeeze2Transpose2::operator()() {
   auto *squeeze2_op_in = pattern->NewNode(squeeze2_op_in_repr())
                              ->AsInput()

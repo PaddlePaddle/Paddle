@@ -552,6 +552,18 @@ struct OperatorActivation : public PatternBase {
   PATTERN_DECL_NODE(activation_out);
 };
 
+struct QuantTranspose2 : public PatternBase {
+  QuantTranspose2(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "quant_transpose2") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(quant_in);
+  PATTERN_DECL_NODE(quant_op);
+  PATTERN_DECL_NODE(transpose2_in);
+  PATTERN_DECL_NODE(transpose2_op);
+};
+
 struct Squeeze2Transpose2 : public PatternBase {
   Squeeze2Transpose2(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "squeeze2_transpose2") {}
