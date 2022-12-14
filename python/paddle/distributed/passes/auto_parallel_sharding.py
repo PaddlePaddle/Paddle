@@ -866,7 +866,10 @@ def _inference_data_parallel_group_for_operator(rank_id, op, dist_context):
 
     dp_group = None
     for input_name in op.input_arg_names:
-        if not is_parameter_related(input_name, op.block):
+        if (
+            not is_parameter_related(input_name, op.block)
+            and "embedding_0.w_0" not in input_name
+        ):
             dist_attr = dist_context.get_op_dist_attr_for_program(op)
             process_mesh = dist_attr.process_mesh
             input_dim_mapping = dist_attr.get_input_dims_mapping(input_name)
