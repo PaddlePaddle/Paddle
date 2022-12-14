@@ -83,12 +83,10 @@ class TestFusedEcMoEOp(OpTest):
 
     def GetBaselineOut(self, tensor_x, gate_logits):
         def expert_choice_gating(logits, capacity, batch_idx, expert_idx):
-            gates = F.softmax(logits, -1)  # [b, s, e]
+            gates = F.softmax(logits, -1)
             indices1_s = paddle.topk(
                 logits.transpose([0, 2, 1]), k=capacity, axis=-1
-            )[1].cast(
-                "int32"
-            )  # [bsz, e, cap]
+            )[1].cast("int32")
             seqlen_idx = indices1_s.reshape([-1])
             gather_idx = paddle.stack([batch_idx, seqlen_idx, expert_idx], -1)
             prob = paddle.gather_nd(gates, gather_idx)
@@ -107,38 +105,32 @@ class TestFusedEcMoEOp(OpTest):
             expert_idx_flatten,
             gather_idx,
             cap,
-        ) = expert_choice_gating(
-            gate_logits, capacity, batch_idx, expert_idx
-        )  # [S, k]
+        ) = expert_choice_gating(gate_logits, capacity, batch_idx, expert_idx)
         outputs = paddle.zeros_like(tensor_x)
         batch_prob = expert_prob_flatten.reshape(
             [self.batch_size, self.num_expert, -1, 1]
-        )  # [b, e, cap] 10 32 8
+        )
 
-        batch_idx = gather_idx[:, :2]  # [b*c*e]【2560 2】
-        selected_token = tensor_x.gather_nd(batch_idx)  # [b*c*e,m]
+        batch_idx = gather_idx[:, :2]
+        selected_token = tensor_x.gather_nd(batch_idx)
 
         batch_selected_token = selected_token.reshape(
             [self.batch_size, self.num_expert, -1, tensor_x.shape[-1]]
-        )  # [b,e,c,m]
+        )
         batch_selected_token = batch_selected_token.transpose(
             [1, 0, 2, 3]
-        ).reshape(
-            [self.num_expert, -1, tensor_x.shape[-1]]
-        )  # [e,b*c,m]
+        ).reshape([self.num_expert, -1, tensor_x.shape[-1]])
 
-        output = (
-            paddle.bmm(batch_selected_token, self.bmm_w0) + self.bmm_b0
-        )  # [e, b*c,m]
+        output = paddle.bmm(batch_selected_token, self.bmm_w0) + self.bmm_b0
         output = self.activation(output)
-        output = paddle.bmm(output, self.bmm_w1) + self.bmm_b1  # [e, b*c,m]
+        output = paddle.bmm(output, self.bmm_w1) + self.bmm_b1
 
         output = output.transpose([1, 0, 2]).reshape(
             [self.batch_size, -1, self.num_expert, tensor_x.shape[-1]]
-        )  # [b, c, e, m] 10  32 8 768
-        output = output.transpose([0, 2, 1, 3])  # [b,e,c,m]
-        output = batch_prob * output  # [b,e,c,m]
-        output = output.reshape([-1, tensor_x.shape[-1]])  # 【2560 768】
+        )
+        output = output.transpose([0, 2, 1, 3])
+        output = batch_prob * output
+        output = output.reshape([-1, tensor_x.shape[-1]])
 
         outputs = outputs.scatter_nd_add(batch_idx, output)
         return outputs + tensor_x
