@@ -701,18 +701,21 @@ class TestSundryAPI(unittest.TestCase):
 
     def test_scatter_nd(self):
         index = paddle.to_tensor(
-            [[1, 1], [0, 1], [1, 3]], dtype="int64", stop_gradient=False
+            [[1, 1], [0, 1], [1, 3], [2, 4]], dtype="int64", stop_gradient=False
         )
         updates = paddle.full([], 2, dtype='float32')
+        updates.stop_gradient = False
         shape = [3, 5]
 
-        output = paddle.scatter_nd(index, updates, shape)
-        output.backward()
+        out = paddle.scatter_nd(index, updates, shape)
+        out.backward()
 
-        self.assertEqual(output.shape, [3, 5])
-        self.assertEqual(output.numpy()[1][1], 2)
-        self.assertEqual(output.numpy()[0][1], 2)
-        self.assertEqual(output.numpy()[1][3], 2)
+        self.assertEqual(out.shape, [3, 5])
+        self.assertEqual(out.numpy()[1][1], 2)
+        self.assertEqual(out.numpy()[0][1], 2)
+        self.assertEqual(out.numpy()[1][3], 2)
+        self.assertEqual(out.numpy()[2][4], 2)
+        self.assertEqual(out.grad.shape, [3, 5])
 
 
 class TestSundryAPIStatic(unittest.TestCase):
@@ -901,6 +904,23 @@ class TestSundryAPIStatic(unittest.TestCase):
         res = self.exe.run(prog, fetch_list=[out])
         for i in range(3):
             self.assertEqual(res[0][1][i], 4)
+
+    @prog_scope()
+    def test_scatter_nd(self):
+        index = paddle.static.data(name='index', shape=[4, 2], dtype='int64')
+        updates = paddle.full([], 2, 'int64')
+        shape = [3, 5]
+        index_data = np.array([[1, 1], [0, 1], [1, 3], [2, 4]])
+        out = paddle.scatter_nd(index, updates, shape)
+        paddle.static.append_backward(out)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, feed={'index': index_data}, fetch_list=[out])
+        self.assertEqual(res[0].shape, (3, 5))
+        self.assertEqual(res[0][1][1], 2)
+        self.assertEqual(res[0][0][1], 2)
+        self.assertEqual(res[0][1][3], 2)
+        self.assertEqual(res[0][2][4], 2)
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
