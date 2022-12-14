@@ -86,11 +86,6 @@ class TestNNFunctionalNormalize(unittest.TestCase):
         with fluid.program_guard(fluid.Program()):
             self.run_static()
 
-    def test_cpu_eager(self):
-        paddle.disable_static(place=paddle.fluid.CPUPlace())
-        self.run_imperative()
-        paddle.enable_static()
-
     def test_gpu(self):
         if not fluid.core.is_compiled_with_cuda():
             return
@@ -101,14 +96,6 @@ class TestNNFunctionalNormalize(unittest.TestCase):
 
         with fluid.program_guard(fluid.Program()):
             self.run_static(use_gpu=True)
-
-    def test_gpu_eager(self):
-        if not fluid.core.is_compiled_with_cuda():
-            return
-
-        paddle.disable_static(place=paddle.fluid.CUDAPlace(0))
-        self.run_imperative()
-        paddle.enable_static()
 
 
 if __name__ == "__main__":
