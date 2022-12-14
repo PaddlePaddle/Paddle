@@ -35,7 +35,6 @@ from paddle.distributed.auto_parallel.utils import (
     set_var_dist_attr,
     use_standalone_executor,
 )
-from paddle.distributed.fleet.meta_optimizers.common import is_backward_op
 from paddle.distributed.fleet.meta_optimizers.sharding.utils import get_var_size
 from paddle.fluid import unique_name
 from paddle.fluid.framework import default_main_program, default_startup_program
@@ -921,6 +920,9 @@ class ShardingPass(PassBase):
                 cur_group = VarGroup(max_fuse_numel)
 
             i += 1
+        # some grad not in this rank may not be used after dp reduced
+        if len(cur_group.vars) >= 1:
+            grad_groups.append(cur_group)
 
         _logger.info("Sharding Gradient Communication Optimization:")
         _logger.info(
