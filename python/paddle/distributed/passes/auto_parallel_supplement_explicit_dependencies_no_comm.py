@@ -117,11 +117,12 @@ class AutoParalSupplementDepPass(PassBase):
         from .auto_parallel_sharding import is_sharding_param_broadcast_op
 
         for idx, op in reversed(list(enumerate(main_block.ops))):
-            if is_data_parallel_reduce_op(op) or is_sharding_param_broadcast_op(
-                op
+            if (
+                is_data_parallel_reduce_op(op)
+                or is_sharding_param_broadcast_op(op)
+                or is_amp_flag_sync_op(op)
+                or is_global_norm_sync_op(op)
             ):
-                main_block._remove_op(idx, sync=False)
-            if is_amp_flag_sync_op(op) or is_global_norm_sync_op(op):
                 main_block._remove_op(idx, sync=False)
 
         main_block._sync_with_cpp()
