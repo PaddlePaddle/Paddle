@@ -24,10 +24,9 @@ from tsm_config_utils import merge_configs, parse_config, print_configs
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph.nn import BatchNorm
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
-from paddle.nn import Linear
+from paddle.nn import BatchNorm, Linear
 
 random.seed(0)
 np.random.seed(0)
@@ -185,9 +184,7 @@ class TSM_ResNet(fluid.dygraph.Layer):
                 num_channels = int(bottleneck_block._num_channels_out)
                 self.bottleneck_block_list.append(bottleneck_block)
                 shortcut = True
-        self.pool2d_avg = paddle.fluid.dygraph.nn.Pool2D(
-            pool_size=7, pool_type='avg', global_pooling=True
-        )
+        self.pool2d_avg = paddle.nn.AdaptiveAvgPool2D(1)
         import math
 
         stdv = 1.0 / math.sqrt(2048 * 1.0)
@@ -332,8 +329,12 @@ def train(args, fake_data_reader, to_static):
                 labels = to_variable(y_data)
                 labels.stop_gradient = True
                 outputs = video_model(imgs)
-                loss = fluid.layers.cross_entropy(
-                    input=outputs, label=labels, ignore_index=-1
+                loss = paddle.nn.functional.cross_entropy(
+                    input=outputs,
+                    label=labels,
+                    ignore_index=-1,
+                    reduction='none',
+                    use_softmax=False,
                 )
                 avg_loss = paddle.mean(loss)
                 acc_top1 = paddle.static.accuracy(
@@ -392,6 +393,4 @@ class TestTsm(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    # switch into new eager mode
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

@@ -20,6 +20,7 @@ from quant_dequant_test import QuantDequantTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.nn.functional as F
 from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
@@ -52,8 +53,13 @@ class QuantDequantTensorRTSubgraphPassConvTest(QuantDequantTest):
                 cout = paddle.reshape(conv_out, shape=[1, 1, 12544])
             elif self.conv_groups == 4:
                 cout = paddle.reshape(conv_out, shape=[1, 1, 10816])
-            result = fluid.layers.relu(cout)
-            loss = fluid.layers.cross_entropy(input=result, label=label_shape)
+            result = F.relu(cout)
+            loss = paddle.nn.functional.cross_entropy(
+                input=result,
+                label=label_shape,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_loss = paddle.mean(loss)
             return avg_loss, result
 
@@ -155,8 +161,13 @@ class DynamicShapeQuantDequantTensorRTSubgraphPassConvTest(QuantDequantTest):
                 act=None,
             )
             cout = paddle.reshape(conv_out, shape=[1, 1, 10816])
-            result = fluid.layers.relu(cout)
-            loss = fluid.layers.cross_entropy(input=result, label=label_shape)
+            result = F.relu(cout)
+            loss = paddle.nn.functional.cross_entropy(
+                input=result,
+                label=label_shape,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_loss = paddle.mean(loss)
             return avg_loss, result
 
@@ -256,8 +267,13 @@ class QuantDequantTensorRTSubgraphPassConvTransposeTest(QuantDequantTest):
                 cout = paddle.reshape(conv_out, shape=[1, 1, 12544])
             elif self.conv_groups == 4:
                 cout = paddle.reshape(conv_out, shape=[1, 1, 10816])
-            result = fluid.layers.relu(cout)
-            loss = fluid.layers.cross_entropy(input=result, label=label_shape)
+            result = F.relu(cout)
+            loss = paddle.nn.functional.cross_entropy(
+                input=result,
+                label=label_shape,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_loss = paddle.mean(loss)
             return avg_loss, result
 

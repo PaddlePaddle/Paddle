@@ -16,9 +16,9 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
-#include "paddle/fluid/platform/device_memory_aligment.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/backends/device_memory_aligment.h"
 
 DEFINE_bool(skip_fused_all_reduce_check, false, "");
 DECLARE_bool(allreduce_record_one_event);
@@ -247,7 +247,7 @@ void FusedAllReduceOpHandle::FusedAllReduceFunc(
     for (size_t k = 1; k < g_tensor.size(); ++k) {
       const void *cur_address = g_tensor.at(k - 1).second->data();
       int64_t len = g_tensor.at(k - 1).second->numel();
-      auto offset = platform::Alignment(len * size_of_dtype, places_[0]);
+      auto offset = phi::Alignment(len * size_of_dtype, places_[0]);
       void *infer_next_address = reinterpret_cast<void *>(
           reinterpret_cast<uintptr_t>(cur_address) + offset);
       const void *next_address = g_tensor.at(k).second->data();
@@ -400,8 +400,7 @@ void FusedAllReduceOpHandle::GetDTypeAndNumel(
             "The size of grad tensors of fused_all_reduce_op_handle  "
             "must be > 0, but got %d.",
             len));
-    *numel +=
-        platform::Alignment(len * size_of_dtype, places_[0]) / size_of_dtype;
+    *numel += phi::Alignment(len * size_of_dtype, places_[0]) / size_of_dtype;
   }
 }
 

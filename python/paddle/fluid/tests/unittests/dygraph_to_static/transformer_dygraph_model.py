@@ -18,7 +18,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.nn.functional as F
-from paddle.fluid.dygraph import Embedding, Layer, to_variable
+from paddle.fluid.dygraph import Layer, to_variable
 from paddle.fluid.layers.utils import map_structure
 from paddle.jit.api import dygraph_to_static_func
 from paddle.nn import Linear
@@ -148,16 +148,14 @@ class MultiHeadAttention(Layer):
             v = layers.concat([cache_v, v], axis=2)
             cache["k"], cache["v"] = k, v
         # scale dot product attention
-        product = layers.matmul(
-            x=q, y=k, transpose_y=True, alpha=self.d_model**-0.5
-        )
+        product = paddle.matmul(x=q, y=k, transpose_y=True)
+        product = paddle.scale(product, scale=self.d_model**-0.5)
         if attn_bias is not None:
             product += attn_bias
         weights = paddle.nn.functional.softmax(product)
         if self.dropout_rate:
             weights = layers.dropout(weights, dropout_prob=self.dropout_rate)
-            out = layers.matmul(weights, v)
-
+            out = paddle.matmul(weights, v)
         out = paddle.transpose(out, perm=[0, 2, 1, 3])
         out = paddle.reshape(x=out, shape=[0, 0, out.shape[2] * out.shape[3]])
 
@@ -278,10 +276,10 @@ class Encoder(Layer):
 class Embedder(Layer):
     def __init__(self, vocab_size, emb_dim, bos_idx=0):
         super().__init__()
-        self.word_embedder = Embedding(
-            size=[vocab_size, emb_dim],
-            padding_idx=bos_idx,
-            param_attr=fluid.ParamAttr(
+        self.word_embedder = paddle.nn.Embedding(
+            vocab_size,
+            emb_dim,
+            weight_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Normal(0.0, emb_dim**-0.5)
             ),
         )
@@ -313,9 +311,10 @@ class WrapEncoder(Layer):
         self.emb_dropout = prepostprocess_dropout
         self.emb_dim = d_model
         self.word_embedder = word_embedder
-        self.pos_encoder = Embedding(
-            size=[max_length, self.emb_dim],
-            param_attr=fluid.ParamAttr(
+        self.pos_encoder = paddle.nn.Embedding(
+            max_length,
+            self.emb_dim,
+            weight_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.NumpyArrayInitializer(
                     position_encoding_init(max_length, self.emb_dim)
                 ),
@@ -501,9 +500,10 @@ class WrapDecoder(Layer):
         self.emb_dropout = prepostprocess_dropout
         self.emb_dim = d_model
         self.word_embedder = word_embedder
-        self.pos_encoder = Embedding(
-            size=[max_length, self.emb_dim],
-            param_attr=fluid.ParamAttr(
+        self.pos_encoder = paddle.nn.Embedding(
+            max_length,
+            self.emb_dim,
+            weight_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.NumpyArrayInitializer(
                     position_encoding_init(max_length, self.emb_dim)
                 ),
@@ -524,7 +524,7 @@ class WrapDecoder(Layer):
             postprocess_cmd,
         )
         if share_input_output_embed:
-            self.linear = lambda x: layers.matmul(
+            self.linear = lambda x: paddle.matmul(
                 x=x, y=self.word_embedder.word_embedder.weight, transpose_y=True
             )
         else:
@@ -758,7 +758,9 @@ class Transformer(Layer):
                     [-1, -1, self.trg_vocab_size],
                 ),
                 noend_mask_tensor,
-            ) - layers.elementwise_mul(probs, (finished - 1), axis=0)
+            ) - paddle.tensor.math._multiply_with_axis(
+                probs, (finished - 1), axis=0
+            )
             return probs
 
         def gather(input, indices, batch_pos):
@@ -846,16 +848,14 @@ class Transformer(Layer):
             step_log_probs = mask_probs(
                 step_log_probs, finished, noend_mask_tensor
             )
-            log_probs = layers.elementwise_add(
+            log_probs = paddle.tensor.math._add_with_axis(
                 x=step_log_probs, y=log_probs, axis=0
             )
             log_probs = paddle.reshape(
                 log_probs, [-1, beam_size * self.trg_vocab_size]
             )
             scores = log_probs
-            topk_scores, topk_indices = fluid.layers.topk(
-                input=scores, k=beam_size
-            )
+            topk_scores, topk_indices = paddle.topk(x=scores, k=beam_size)
             beam_indices = paddle.floor_divide(topk_indices, vocab_size_tensor)
             token_indices = paddle.remainder(topk_indices, vocab_size_tensor)
 

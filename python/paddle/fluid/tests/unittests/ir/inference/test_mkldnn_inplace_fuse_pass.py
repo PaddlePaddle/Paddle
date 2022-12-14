@@ -19,6 +19,7 @@ from inference_pass_test import InferencePassTest
 
 import paddle
 import paddle.fluid as fluid
+import paddle.nn.functional as F
 from paddle.fluid.core import PassVersionChecker
 
 
@@ -33,10 +34,8 @@ class MkldnnInplacePassTest(InferencePassTest):
                 data, num_filters=3, filter_size=3, bias_attr=False
             )
             softmax_out = paddle.nn.functional.softmax(conv_out_1)
-            relu_out = fluid.layers.relu(conv_out_1)
-            eltwise_out = fluid.layers.elementwise_add(
-                softmax_out, relu_out, axis=-1
-            )
+            relu_out = F.relu(conv_out_1)
+            eltwise_out = paddle.add(softmax_out, relu_out)
 
         self.pass_name = 'mkldnn_inplace_pass'
         self.feeds = {
