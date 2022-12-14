@@ -49,7 +49,8 @@ class ExtendedTensor : public TensorBase {
 
   void* AllocateFrom(Allocator* allocator,
                      DataType dtype,
-                     size_t requested_size = 0) override;
+                     size_t requested_size = 0,
+                     bool check_size = 0) override;
 };
 
 }  // namespace phi

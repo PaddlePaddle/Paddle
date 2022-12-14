@@ -83,7 +83,8 @@ class TensorArray : public TensorBase,
   /// \return Void pointer
   void* AllocateFrom(Allocator* allocator,
                      DataType dtype,
-                     size_t requested_size = 0) override;
+                     size_t requested_size = 0,
+                     bool check_size = true) override;
 
   bool empty() const { return tensors_.empty(); }
 

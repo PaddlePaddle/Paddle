@@ -67,8 +67,10 @@ SparseCooTensor SparseCooTensor::operator=(const SparseCooTensor& other) {
 
 void* SparseCooTensor::AllocateFrom(Allocator* allocator,
                                     DataType dtype,
-                                    size_t requested_size) {
-  return non_zero_elements_.AllocateFrom(allocator, dtype, requested_size);
+                                    size_t requested_size,
+                                    bool check_size) {
+  return non_zero_elements_.AllocateFrom(
+      allocator, dtype, requested_size, check_size);
 }
 
 int64_t SparseCooTensor::nnz() const {

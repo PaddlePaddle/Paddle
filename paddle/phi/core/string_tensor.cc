@@ -130,7 +130,8 @@ void StringTensor::init_holder() {
 
 void* StringTensor::AllocateFrom(Allocator* allocator,
                                  DataType dtype,
-                                 size_t requested_size) {
+                                 size_t requested_size,
+                                 bool check_size) {
   PADDLE_ENFORCE_NOT_NULL(
       allocator,
       errors::InvalidArgument(
@@ -141,13 +142,15 @@ void* StringTensor::AllocateFrom(Allocator* allocator,
           "The meta data must be valid when call the mutable data function."));
   size_t bytes = numel() * SizeOf(this->dtype());
   if (requested_size) {
-    PADDLE_ENFORCE_GE(requested_size,
-                      bytes,
-                      errors::InvalidArgument(
-                          "The reserved size %d should be enough to meet the "
-                          "volume required by metadata %d.",
-                          requested_size,
-                          bytes));
+    if (check_size) {
+      PADDLE_ENFORCE_GE(requested_size,
+                        bytes,
+                        errors::InvalidArgument(
+                            "The reserved size %d should be enough to meet the "
+                            "volume required by metadata %d.",
+                            requested_size,
+                            bytes));
+    }
     bytes = requested_size;
   }
 
