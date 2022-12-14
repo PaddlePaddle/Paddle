@@ -12,24 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import inspect
-import numpy as np
 import collections
+import inspect
+
+import numpy as np
 
 import paddle
 from paddle.fluid import core
 from paddle.fluid.dygraph import layers
-from paddle.fluid.layers.utils import flatten
-from paddle.fluid.layers.utils import pack_sequence_as
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph.io import TranslatedLayer
+from paddle.fluid.layers.utils import flatten, pack_sequence_as
 
 from . import logging_utils
 from .utils import (
+    func_to_source_code,
     parse_arg_and_kwargs,
     parse_varargs_name,
     type_name,
-    func_to_source_code,
 )
 
 __all__ = []

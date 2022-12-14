@@ -1279,10 +1279,10 @@ void AnalysisPredictor::PrepareArgument() {
 
   if (!config_.ir_optim()) {
     argument_->SetEnableIrOptim(false);
-    if (config_.enable_gpu_half_) {
+    if (config_.enable_gpu_mixed_) {
       argument_->SetEnableIrOptim(true);
       pass_builder->ClearPasses();
-      pass_builder->AppendPass("float_to_half_pass");
+      pass_builder->AppendPass("auto_mixed_precision_pass");
       LOG(INFO)
           << "This model run in Paddle-GPU mixed precision mode with no ir "
              "optimization.";
@@ -1293,7 +1293,7 @@ void AnalysisPredictor::PrepareArgument() {
     if (config_.ir_debug_) {
       pass_builder->TurnOnDebug();
     }
-    if (config_.enable_gpu_half_) {
+    if (config_.enable_gpu_mixed_) {
       LOG(INFO) << "This model run in Paddle-GPU mixed precision mode.";
     }
   }
@@ -1305,7 +1305,7 @@ void AnalysisPredictor::PrepareArgument() {
   // mixed precison.
   argument_->SetModelPrecision(static_cast<int>(model_precision_));
   argument_->SetMixedBlackList(config_.mixed_black_list_);
-  argument_->SetEnableGPUHalf(config_.enable_gpu_half_);
+  argument_->SetEnableGPUMixed(config_.enable_gpu_mixed_);
   argument_->SetMixedPrecisionMode(static_cast<int>(
       paddle::ConvertPrecision(config_.mixed_precision_mode_)));
 }
@@ -2286,13 +2286,9 @@ USE_TRT_CONVERTER(flatten_contiguous_range);
 USE_TRT_CONVERTER(matmul);
 USE_TRT_CONVERTER(matmul_v2);
 USE_TRT_CONVERTER(bmm);
-USE_TRT_CONVERTER(rsqrt);
 USE_TRT_CONVERTER(conv2d);
 USE_TRT_CONVERTER(relu);
-USE_TRT_CONVERTER(exp);
-USE_TRT_CONVERTER(log);
 USE_TRT_CONVERTER(sigmoid);
-USE_TRT_CONVERTER(tanh);
 USE_TRT_CONVERTER(fc);
 USE_TRT_CONVERTER(pool2d);
 USE_TRT_CONVERTER(softmax);
@@ -2348,6 +2344,32 @@ USE_TRT_CONVERTER(conv3d_transpose);
 USE_TRT_CONVERTER(mish);
 USE_TRT_CONVERTER(deformable_conv);
 USE_TRT_CONVERTER(pool3d)
+USE_TRT_CONVERTER(square);
+// unary op
+USE_TRT_CONVERTER(exp);
+USE_TRT_CONVERTER(log);
+USE_TRT_CONVERTER(sqrt);
+USE_TRT_CONVERTER(reciprocal);
+USE_TRT_CONVERTER(abs);
+USE_TRT_CONVERTER(sin);
+USE_TRT_CONVERTER(cos);
+USE_TRT_CONVERTER(tan);
+USE_TRT_CONVERTER(sinh);
+USE_TRT_CONVERTER(cosh);
+USE_TRT_CONVERTER(tanh);
+USE_TRT_CONVERTER(asin);
+USE_TRT_CONVERTER(acos);
+USE_TRT_CONVERTER(atan);
+USE_TRT_CONVERTER(asinh);
+USE_TRT_CONVERTER(acosh);
+USE_TRT_CONVERTER(atanh);
+USE_TRT_CONVERTER(ceil);
+USE_TRT_CONVERTER(floor);
+#if IS_TRT_VERSION_GE(8200)
+USE_TRT_CONVERTER(round);
+USE_TRT_CONVERTER(sign);
+#endif
+USE_TRT_CONVERTER(rsqrt);
 USE_TRT_CONVERTER(fused_preln_embedding_eltwise_layernorm)
 USE_TRT_CONVERTER(fused_embedding_eltwise_layernorm);
 USE_TRT_CONVERTER(preln_skip_layernorm)
