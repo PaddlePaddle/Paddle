@@ -118,6 +118,44 @@ class TestLayer(LayerTest):
             ret = custom(x, do_linear2=True)
             np.testing.assert_array_equal(ret.numpy().shape, [3, 1])
 
+    def test_dropout(self):
+        inp = np.ones([3, 32, 32], dtype='float32')
+        with self.static_graph():
+            t = layers.data(
+                name='data',
+                shape=[3, 32, 32],
+                dtype='float32',
+                append_batch_size=False,
+            )
+            dropout = paddle.nn.Dropout(p=0.35)
+            ret = dropout(t)
+            ret2 = paddle.nn.functional.dropout(t, p=0.35)
+            static_ret, static_ret2 = self.get_static_graph_result(
+                feed={'data': inp}, fetch_list=[ret, ret2]
+            )
+        with self.dynamic_graph():
+            with _test_eager_guard():
+                t = base.to_variable(inp)
+                dropout = paddle.nn.Dropout(p=0.35)
+                dy_eager_ret = dropout(t)
+                dy_eager_ret2 = paddle.nn.functional.dropout(t, p=0.35)
+                dy_eager_ret_value = dy_eager_ret.numpy()
+                dy_eager_ret2_value = dy_eager_ret2.numpy()
+
+            t = base.to_variable(inp)
+            dropout = paddle.nn.Dropout(p=0.35)
+            dy_ret = dropout(t)
+            dy_ret2 = paddle.nn.functional.dropout(t, p=0.35)
+            dy_ret_value = dy_ret.numpy()
+            dy_ret2_value = dy_ret2.numpy()
+
+        np.testing.assert_array_equal(dy_eager_ret_value, dy_eager_ret2_value)
+        np.testing.assert_array_equal(static_ret, dy_eager_ret_value)
+
+        np.testing.assert_array_equal(static_ret, static_ret2)
+        np.testing.assert_array_equal(dy_ret_value, dy_ret2_value)
+        np.testing.assert_array_equal(static_ret, dy_ret_value)
+
     def test_linear(self):
         inp = np.ones([3, 32, 32], dtype='float32')
         with self.static_graph():
