@@ -55,6 +55,7 @@ NEED_TO_FIX_OP_LIST = [
     'instance_norm',
     'kldiv_loss',
     'linear_chain_crf',
+    'lod_reset',
     'lookup_table',
     'lookup_table_v2',
     'lstm',
