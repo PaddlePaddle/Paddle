@@ -437,13 +437,15 @@ def sequence_concat(input, name=None):
     ), "sequence layer is not supported in dygraph mode yet."
     helper = LayerHelper('sequence_concat', **locals())
 
-    check_type(input, 'input', list, 'fluid.layers.sequence_concat')
+    check_type(
+        input, 'input', list, 'paddle.static.nn.sequence_lod.sequence_concat'
+    )
     for i, input_x in enumerate(input):
         check_variable_and_dtype(
             input_x,
             'input[' + str(i) + ']',
             ['int64', 'float32', 'float64'],
-            'fluid.layers.sequence_concat',
+            'paddle.static.nn.sequence_lod.sequence_concat',
         )
 
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -1018,13 +1020,13 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
         x,
         'x',
         ['float32', 'float64', 'int32', 'int64'],
-        'fluid.layers.sequence_pad',
+        'paddle.static.nn.sequence_lod.sequence_pad',
     )
     check_variable_and_dtype(
         pad_value,
         'pad_value',
         ['float32', 'float64', 'int32', 'int64'],
-        'fluid.layers.sequence_pad',
+        'paddle.static.nn.sequence_lod.sequence_pad',
     )
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
@@ -1107,10 +1109,13 @@ def sequence_unpad(x, length, name=None):
         x,
         'x',
         ['float32', 'float64', 'int32', 'int64'],
-        'fluid.layers.sequence_unpad',
+        'paddle.static.nn.sequence_lod.sequence_unpad',
     )
     check_variable_and_dtype(
-        length, 'length', ['int64'], 'fluid.layers.sequence_unpad'
+        length,
+        'length',
+        ['int64'],
+        'paddle.static.nn.sequence_lod.sequence_unpad',
     )
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)

@@ -20,6 +20,7 @@ import numpy as np
 sys.path.append("../")
 from op_test import OpTest
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 
@@ -157,7 +158,7 @@ class TestSequencePadOpError(unittest.TestCase):
             pad_value = fluid.layers.assign(
                 input=np.array([0.0], dtype=np.float32)
             )
-            fluid.layers.sequence_pad(x=x, pad_value=pad_value)
+            paddle.static.nn.sequence_lod.sequence_pad(x=x, pad_value=pad_value)
 
         self.assertRaises(TypeError, test_x_variable)
 
@@ -166,7 +167,9 @@ class TestSequencePadOpError(unittest.TestCase):
                 name='x1', shape=[10, 5], dtype='float32', lod_level=1
             )
             pad_value1 = np.array([0.0], dtype=np.float32)
-            fluid.layers.sequence_pad(x=x1, pad_value=pad_value1)
+            paddle.static.nn.sequence_lod.sequence_pad(
+                x=x1, pad_value=pad_value1
+            )
 
         self.assertRaises(TypeError, test_pad_value_variable)
 
@@ -177,14 +180,18 @@ class TestSequencePadOpError(unittest.TestCase):
             pad_value2 = fluid.layers.assign(
                 input=np.array([0.0], dtype=np.int32)
             )
-            fluid.layers.sequence_pad(x=x2, pad_value=pad_value2)
+            paddle.static.nn.sequence_lod.sequence_pad(
+                x=x2, pad_value=pad_value2
+            )
 
         self.assertRaises(TypeError, test_dtype)
 
     def test_length_dtype(self):
         x = fluid.data(name='x', shape=[10, 5], dtype='float32', lod_level=1)
         pad_value = fluid.layers.assign(input=np.array([0.0], dtype=np.float32))
-        out, length = fluid.layers.sequence_pad(x=x, pad_value=pad_value)
+        out, length = paddle.static.nn.sequence_lod.sequence_pad(
+            x=x, pad_value=pad_value
+        )
         # check if the dtype of length is int64 in compile time
         self.assertEqual(length.dtype, core.VarDesc.VarType.INT64)
 

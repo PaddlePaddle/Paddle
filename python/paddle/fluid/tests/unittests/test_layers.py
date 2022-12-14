@@ -2627,28 +2627,12 @@ class TestBook(LayerTest):
             )
             return out
 
-    def test_sequence_expand(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            x = layers.data(name='x', shape=[10], dtype='float32')
-            y = layers.data(
-                name='y', shape=[10, 20], dtype='float32', lod_level=2
-            )
-            return layers.sequence_expand(x=x, y=y, ref_level=1)
-
     def test_sequence_reshape(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
             x = layers.data(name='x', shape=[8], dtype='float32', lod_level=1)
             out = layers.sequence_reshape(input=x, new_dim=16)
             return out
-
-    def test_sequence_unpad(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            x = layers.data(name='x', shape=[10, 5], dtype='float32')
-            length = layers.data(name='length', shape=[], dtype='int64')
-            return layers.sequence_unpad(x=x, length=length)
 
     def test_sequence_unsqueeze(self):
         # TODO(minqiyang): dygraph do not support lod now
@@ -2678,21 +2662,6 @@ class TestBook(LayerTest):
                 lod_level=1,
             )
             out = layers.sequence_scatter(input=x, index=idx, updates=updates)
-            return out
-
-    def test_sequence_slice(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            import numpy as np
-
-            seqs = layers.data(
-                name='x', shape=[10, 5], dtype='float32', lod_level=1
-            )
-            offset = layers.assign(input=np.array([[0, 1]]).astype('int32'))
-            length = layers.assign(input=np.array([[2, 1]]).astype('int32'))
-            out = layers.sequence_slice(
-                input=seqs, offset=offset, length=length
-            )
             return out
 
     def test_shuffle_batch(self):

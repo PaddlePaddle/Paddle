@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.framework import Program, program_guard
 
@@ -29,7 +30,7 @@ class TestSequenceFirstStepOpError(unittest.TestCase):
             def test_Variable():
                 # the input must be Variable
                 input_data = np.random.randint(1, 5, [4]).astype("int64")
-                fluid.layers.sequence_last_step(input_data)
+                paddle.static.nn.sequence_lod.sequence_last_step(input_data)
 
             self.assertRaises(TypeError, test_Variable)
 
@@ -42,7 +43,7 @@ class TestSequenceFirstStepOpError(unittest.TestCase):
                     dtype='int64',
                     lod_level=1,
                 )
-                fluid.layers.sequence_last_step(type_data)
+                paddle.static.nn.sequence_lod.sequence_last_step(type_data)
 
             self.assertRaises(TypeError, test_input_dtype)
 
