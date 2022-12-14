@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle.jit.api import _SaveLoadConfig
-from paddle.fluid.dygraph.io import TranslatedLayer
+from paddle.jit.translated_layer import TranslatedLayer
 
 
 # NOTE: This class will be deprecated later.
