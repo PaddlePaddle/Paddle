@@ -190,10 +190,21 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
     auto filter_names = op_node->Op()->Input("Filter");
     auto act_type = op_node->Op()->GetAttrIfExists<std::string>("activation");
     constexpr int CUTLASS_NHWC_ALIGNMENT = 8;
-    std::unordered_set<std::string> cutlass_act_set = {
+    // conv2d_fusion has two forms: conv + bias + act, conv + bias +
+    // elmentwise_add + act.
+    std::unordered_set<std::string> cutlass_cba_act_set = {
         "relu", "swish", "identity", "leaky_relu"};
-    if (!cutlass_act_set.count(act_type)) {
-      return false;
+    std::unordered_set<std::string> cutlass_cbaa_act_set = {"relu"};
+    bool is_residual = op_node->Op()->Input("ResidualData").size() >= 1UL;
+
+    if (is_residual) {
+      if (!cutlass_cbaa_act_set.count(act_type)) {
+        return false;
+      }
+    } else {
+      if (!cutlass_cba_act_set.count(act_type)) {
+        return false;
+      }
     }
 
     // If filter's channel is not multiple of 8, conv2d_fusion not run at nhwc.
