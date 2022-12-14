@@ -76,7 +76,7 @@ class CinnLaunchContext {
                                             framework::Scope* scope);
 
   framework::InterpreterCore* InitializeInterpreterCore(
-      const platform::Place& place, const framework::Scope* scope);
+      const platform::Place& place, framework::Scope* scope);
 
   // explicitly update several environment variables captured
   // by callback of execution arguments

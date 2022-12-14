@@ -450,29 +450,30 @@ ParallelExecutor* CinnLaunchContext::InitializePE(const platform::Place& place,
 }
 
 framework::InterpreterCore* CinnLaunchContext::InitializeInterpreterCore(
-    const platform::Place& place, const framework::Scope* scope) {
+    const platform::Place& place, framework::Scope* scope) {
   if (!interpreter_core_ || scope != cached_scope_) {
-    framework::Scope& exec_scope = scope->NewScope();
+    VLOG(1) << "interpreter_core_ is null or scope != cached_scope_: "
+               "interpreter_core_: "
+            << interpreter_core_.get() << "; scope: " << scope
+            << "; cached_scope_: " << cached_scope_;
     for (auto&& var_name : internal_var_names_) {
-      auto* var = exec_scope.FindVar(var_name);
+      auto* var = scope->FindVar(var_name);
       if (var != nullptr) {
         continue;
       }
-      framework::InitializeVariable(exec_scope.Var(var_name),
+      framework::InitializeVariable(scope->Var(var_name),
                                     framework::proto::VarType::LOD_TENSOR);
     }
     if (!interpreter_core_) {
       interpreter_core_ = std::make_unique<framework::InterpreterCore>(
-          place, runtime_program_->Block(0), skip_gc_vars_, &exec_scope, false);
+          place, runtime_program_->Block(0), skip_gc_vars_, scope, false);
     } else {
-      interpreter_core_->reset_scope(&exec_scope);
+      interpreter_core_->reset_scope(scope);
     }
     UpdateCapturedEnv(*scope, place);
   }
   for (auto&& var_name : initialized_beforehand_vars_) {
-    auto* var =
-        interpreter_core_->GetVariableScope()->GetMutableScope()->GetVar(
-            var_name);
+    auto* var = scope->GetVar(var_name);
     auto* buffer = GetCinnBufferOfVar(var_name);
     auto dim = framework::DDim(buffer->dims, buffer->dimensions);
     var->GetMutable<phi::DenseTensor>()->Resize(dim);

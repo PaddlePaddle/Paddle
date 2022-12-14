@@ -615,7 +615,8 @@ void BuildOpFuncList(const platform::Place& place,
         // NOTE(Ruibiao): We do not encourage directly using scope in OP kernel.
         // But some OPs do have such behavior (e.g., cinn_launch OP). Here
         // special treatment for them.
-        if (op_with_kernel->Type() == "cinn_launch") {
+        if (op_with_kernel->Type() == "cinn_launch" ||
+            op_with_kernel->Type() == "cinn_instruction_run") {
           VLOG(6) << "OP(" << op_with_kernel->Type()
                   << ") use scope in kernel, "
                      "so pass a real scope to "

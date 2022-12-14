@@ -77,6 +77,9 @@ class InterpreterCore {
 
   const platform::Place& GetPlace() const { return place_; }
 
+  // scope
+  bool HasLocalScope() const;
+
  private:
   // build graph
   void Convert(std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
@@ -116,9 +119,6 @@ class InterpreterCore {
 
   // workqueue
   std::shared_ptr<interpreter::AsyncWorkQueue> GetWorkQueue();
-
-  // scope
-  bool HasLocalScope() const;
 
  private:
   bool is_build_{false};

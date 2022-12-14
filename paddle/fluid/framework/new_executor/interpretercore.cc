@@ -421,8 +421,9 @@ void InterpreterCore::BuildAndCacheInstructionCtx(Instruction* instr_node) {
   }
 
   // set runtime_ctx and infershape_ctx_
-  if (instr_node->OpBase()->Type() == "cinn_launch") {  // OP use scope in
-                                                        // kernel
+  if (instr_node->OpBase()->Type() == "cinn_launch" ||
+      instr_node->OpBase()->Type() == "cinn_instruction_run") {  // OP use scope
+                                                                 // in kernel
     Scope* local_scope = HasLocalScope() ? var_scope_.GetMutableLocalScope()
                                          : var_scope_.GetMutableScope();
     instr_node->ResetContextWithScope(ins_map, outs_map, *local_scope);

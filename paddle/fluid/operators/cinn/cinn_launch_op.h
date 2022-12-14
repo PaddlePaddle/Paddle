@@ -139,8 +139,8 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
       platform::RecordEvent record_event_4(
           "Step 4. Execute the runtime program by InterpreterCore.");
       VLOG(4) << "Execute the runtime program by InterpreterCore";
-      auto* interpreter_core =
-          launch_context->InitializeInterpreterCore(place, &scope);
+      auto* interpreter_core = launch_context->InitializeInterpreterCore(
+          place, const_cast<framework::Scope*>(&scope));
       interpreter_core->Run({});
     } else if (FLAGS_enable_pe_launch_cinn) {
       platform::RecordEvent record_event_4(
