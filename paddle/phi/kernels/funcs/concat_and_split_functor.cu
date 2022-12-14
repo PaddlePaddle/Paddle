@@ -28,8 +28,8 @@ struct PointerWarpper {
   PointerWarpper() {}
   PointerWarpper(const phi::GPUContext& ctx,
                  const std::vector<phi::DenseTensor>& ins,
-                 const int& in_num,
-                 const paddle::memory::AllocationPtr& data_alloc) {
+                 const int64_t& in_num,
+                 const T** inputs_data) {
     for (auto i = 0; i < in_num; ++i) {
       data[i] = ins[i].data<T>();
     }
@@ -45,23 +45,8 @@ struct PointerWarpper<T, 0> {
   PointerWarpper() {}
   PointerWarpper(const phi::GPUContext& ctx,
                  const std::vector<phi::DenseTensor>& ins,
-                 const int& in_num,
-                 const paddle::memory::AllocationPtr& data_alloc) {
-    std::vector<const T*> inputs_data_vec(in_num, nullptr);
-    const T** inputs_data = inputs_data_vec.data();
-#ifdef PADDLE_WITH_HIP
-    // There are some differences between hip runtime and NV runtime.
-    // In NV, when the pageable memory data less than 64K is transferred from
-    // hosttodevice, it will be automatically asynchronous.
-    // However, only pinned memory in hip can copy asynchronously
-    // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#concurrent-execution-host-device
-    // 3.2.6.1. Concurrent Execution between Host and Device
-    // Memory copies from host to device of a memory block of 64 KB or less
-    // TODO(chentianyu03): try to find a method to remove the Alloc function
-    data_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
-                                       in_num * sizeof(T*));
-    inputs_data = reinterpret_cast<const T**>(data_alloc->ptr());
-#endif
+                 const int64_t& in_num,
+                 const T** inputs_data) {
     for (auto i = 0; i < in_num; ++i) {
       inputs_data[i] = ins[i].data<T>();
     }
@@ -83,20 +68,20 @@ struct PointerWarpper<T, 0> {
 };
 
 template <typename T, typename IndexT, int Size>
-struct DataAndColWarpper {
+struct PointerAndColWarpper {
  public:
   IndexT col_data[Size];
-  DataAndColWarpper(const phi::GPUContext& ctx,
-                    const std::vector<phi::DenseTensor>& ins,
-                    const int& in_num,
-                    const int& ins_col_num,
-                    int64_t* ins_col_vec,
-                    const paddle::memory::AllocationPtr& data_alloc,
-                    const paddle::memory::AllocationPtr& col_alloc) {
-    for (auto i = 0; i < ins_col_num; ++i) {
-      col_data[i] = static_cast<IndexT>(ins_col_vec[i]);
+  PointerAndColWarpper(const phi::GPUContext& ctx,
+                       const std::vector<phi::DenseTensor>& ins,
+                       const IndexT& in_num,
+                       const IndexT& inputs_col_num,
+                       const T** inputs_data,
+                       IndexT* inputs_col) {
+    for (auto i = 0; i < inputs_col_num; ++i) {
+      col_data[i] = inputs_col[i];
     }
-    data_warpper = PointerWarpper<T, Size>(ctx, ins, in_num, data_alloc);
+    data_warpper = PointerWarpper<T, Size>(
+        ctx, ins, static_cast<int64_t>(in_num), inputs_data);
   }
 
   __device__ inline const T* operator[](int i) const { return data_warpper[i]; }
@@ -106,49 +91,30 @@ struct DataAndColWarpper {
 };
 
 template <typename T, typename IndexT>
-struct DataAndColWarpper<T, IndexT, 0> {
+struct PointerAndColWarpper<T, IndexT, 0> {
  public:
   IndexT* col_data;
-  DataAndColWarpper(const phi::GPUContext& ctx,
-                    const std::vector<phi::DenseTensor>& ins,
-                    const int& in_num,
-                    const int& ins_col_num,
-                    int64_t* ins_col_vec,
-                    const paddle::memory::AllocationPtr& data_alloc,
-                    const paddle::memory::AllocationPtr& col_alloc) {
-    std::vector<IndexT> inputs_col_vec(ins_col_num, 0);
-    IndexT* in_col = inputs_col_vec.data();
-#ifdef PADDLE_WITH_HIP
-    // There are some differences between hip runtime and NV runtime.
-    // In NV, when the pageable memory data less than 64K is transferred from
-    // hosttodevice, it will be automatically asynchronous.
-    // However, only pinned memory in hip can copy asynchronously
-    // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#concurrent-execution-host-device
-    // 3.2.6.1. Concurrent Execution between Host and Device
-    // Memory copies from host to device of a memory block of 64 KB or less
-    // TODO(chentianyu03): try to find a method to remove the Alloc function
-    col_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
-                                      ins_col_num * sizeof(IndexT));
-    in_col = reinterpret_cast<IndexT*>(col_alloc->ptr());
-#endif
-    for (auto i = 0; i < ins_col_num; ++i) {
-      in_col[i] = static_cast<IndexT>(ins_col_vec[i]);
-    }
-
+  PointerAndColWarpper(const phi::GPUContext& ctx,
+                       const std::vector<phi::DenseTensor>& ins,
+                       const IndexT& in_num,
+                       const IndexT& inputs_col_num,
+                       const T** inputs_data,
+                       IndexT* inputs_col) {
     auto tmp_dev_ins_col_data = paddle::memory::Alloc(
         ctx.GetPlace(),
-        ins_col_num * sizeof(IndexT),
+        inputs_col_num * sizeof(IndexT),
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
     auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
-        in_col, ins_col_num);
+        inputs_col, inputs_col_num);
     paddle::memory::Copy(ctx.GetPlace(),
                          tmp_dev_ins_col_data->ptr(),
                          paddle::platform::CPUPlace(),
                          restored,
-                         ins_col_num * sizeof(IndexT),
+                         inputs_col_num * sizeof(IndexT),
                          ctx.stream());
     col_data = static_cast<IndexT*>(tmp_dev_ins_col_data->ptr());
-    data_warpper = PointerWarpper<T, 0>(ctx, ins, in_num, data_alloc);
+    data_warpper = PointerWarpper<T, 0>(
+        ctx, ins, static_cast<int64_t>(in_num), inputs_data);
   }
 
   __device__ inline const T* operator[](int i) const { return data_warpper[i]; }
@@ -333,122 +299,130 @@ static inline void GetBlockDims(const phi::GPUContext& context,
  * each dimension must be the same, except the axis dimension.
  */
 
+template <typename T, typename IndexT>
+void ConcatFunctorWithIndexType(const phi::GPUContext& context,
+                                const std::vector<phi::DenseTensor>& input,
+                                int axis,
+                                phi::DenseTensor* output) {
+  // TODO(zcd): Add input data validity checking
+  IndexT in_num = input.size();
+  IndexT in_row = 1;
+  auto dim_0 = input[0].dims();
+  for (int i = 0; i < axis; ++i) {
+    in_row *= dim_0[i];
+  }
+  IndexT in_col = input[0].numel() / in_row;
+  IndexT out_row = in_row, out_col = 0;
+
+  IndexT inputs_col_num = in_num + 1;
+  std::vector<const T*> inputs_data_vec(in_num, 0);
+  std::vector<IndexT> inputs_col_vec(inputs_col_num, 0);
+  const T** inputs_data = inputs_data_vec.data();
+  IndexT* inputs_col = inputs_col_vec.data();
+
+#ifdef PADDLE_WITH_HIP
+  // There are some differences between hip runtime and NV runtime.
+  // In NV, when the pageable memory data less than 64K is transferred from
+  // hosttodevice, it will be automatically asynchronous.
+  // However, only pinned memory in hip can copy asynchronously
+  // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#concurrent-execution-host-device
+  // 3.2.6.1. Concurrent Execution between Host and Device
+  // Memory copies from host to device of a memory block of 64 KB or less
+  // TODO(chentianyu03): try to find a method to remove the Alloc function
+  paddle::memory::AllocationPtr data_alloc{nullptr};
+  paddle::memory::AllocationPtr col_alloc{nullptr};
+  // TODO(chentianyu03): try to find a method to remove the Alloc function
+  data_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
+                                     in_num * sizeof(T*));
+  inputs_data = reinterpret_cast<const T**>(data_alloc->ptr());
+  // TODO(chentianyu03): try to find a method to remove the Alloc function
+  col_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
+                                    inputs_col_num * sizeof(IndexT));
+  inputs_col = reinterpret_cast<IndexT*>(col_alloc->ptr());
+#endif
+
+  bool has_same_shape = true;
+  for (int i = 0; i < in_num; ++i) {
+    IndexT t_cols = input[i].numel() / in_row;
+    if (has_same_shape) {
+      has_same_shape &= (t_cols == in_col);
+    }
+    out_col += t_cols;
+    inputs_col[i + 1] = out_col;
+  }
+  dim3 block_dims;
+  dim3 grid_dims;
+  GetBlockDims(context, out_row, out_col, &block_dims, &grid_dims);
+
+  IndexT limit_num = has_same_shape ? in_num : inputs_col_num;
+  if (has_same_shape) {
+#define IMPL_CONCAT_WITH_WARPPER(size)                                    \
+  PointerWarpper<T, size> ptr_array(context, input, in_num, inputs_data); \
+  ConcatKernel<T, IndexT, decltype(ptr_array)>                            \
+      <<<grid_dims, block_dims, 0, context.stream()>>>(                   \
+          ptr_array, in_col, out_row, out_col, output->data<T>());
+
+    if (limit_num < 32) {
+      IMPL_CONCAT_WITH_WARPPER(32);
+    } else if (limit_num < 64) {
+      IMPL_CONCAT_WITH_WARPPER(64);
+    } else if (limit_num <= 128) {
+      IMPL_CONCAT_WITH_WARPPER(128);
+    } else {
+      IMPL_CONCAT_WITH_WARPPER(0);
+    }
+#undef IMPL_CONCAT_WITH_WARPPER
+  } else {
+#define IMPL_CONCAT_WITH_COMPLEX_WARPPER(size)                          \
+  PointerAndColWarpper<T, IndexT, size> ptr_col_array(                  \
+      context, input, in_num, inputs_col_num, inputs_data, inputs_col); \
+  ConcatKernel_<T, IndexT, decltype(ptr_col_array)>                     \
+      <<<grid_dims, block_dims, 0, context.stream()>>>(ptr_col_array,   \
+                                                       inputs_col_num,  \
+                                                       (out_row),       \
+                                                       (out_col),       \
+                                                       output->data<T>());
+
+    if (limit_num < 32) {
+      IMPL_CONCAT_WITH_COMPLEX_WARPPER(32);
+    } else if (limit_num < 64) {
+      IMPL_CONCAT_WITH_COMPLEX_WARPPER(64);
+    } else if (limit_num <= 128) {
+      IMPL_CONCAT_WITH_COMPLEX_WARPPER(128);
+    } else {
+      IMPL_CONCAT_WITH_COMPLEX_WARPPER(0);
+    }
+#undef IMPL_CONCAT_WITH_COMPLEX_WARPPER
+  }
+
+#ifdef PADDLE_WITH_HIP
+  // Prevent the pinned memory value from being covered and release the memory
+  // after the launch kernel of the stream is executed (reapply pinned memory
+  // next time)
+  auto* data_alloc_released = data_alloc.release();
+  auto* col_alloc_released = col_alloc.release();
+  context.AddStreamCallback([data_alloc_released, col_alloc_released] {
+    VLOG(4) << "Delete cuda pinned at " << data_alloc_released;
+    VLOG(4) << "Delete cuda pinned at " << col_alloc_released;
+    paddle::memory::allocation::Allocator::AllocationDeleter(
+        data_alloc_released);
+    paddle::memory::allocation::Allocator::AllocationDeleter(
+        col_alloc_released);
+  });
+#endif
+}
+
 template <typename T>
 struct ConcatFunctor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext& context,
                   const std::vector<phi::DenseTensor>& input,
                   int axis,
                   phi::DenseTensor* output) {
-    // TODO(zcd): Add input data validity checking
-    int in_num = input.size();
-    int64_t in_row = 1;
-    auto dim_0 = input[0].dims();
-    for (int i = 0; i < axis; ++i) {
-      in_row *= dim_0[i];
-    }
-    int64_t in_col = input[0].numel() / in_row;
-    int64_t out_row = in_row, out_col = 0;
-    int ins_col_num = in_num + 1;
-
-    paddle::memory::AllocationPtr data_alloc{nullptr};
-    paddle::memory::AllocationPtr col_alloc{nullptr};
-
-    bool has_same_shape = true;
-    std::vector<int64_t> ins_col_vec(ins_col_num, 0);
-    int64_t* inputs_col = ins_col_vec.data();
-    for (int i = 0; i < in_num; ++i) {
-      int64_t t_cols = input[i].numel() / in_row;
-      if (has_same_shape) {
-        has_same_shape &= (t_cols == in_col);
-      }
-      out_col += t_cols;
-      inputs_col[i + 1] = out_col;
-    }
-
-    dim3 block_dims;
-    dim3 grid_dims;
-    GetBlockDims(context, out_row, out_col, &block_dims, &grid_dims);
-
-    bool use_int32 = output->numel() < std::numeric_limits<int32_t>::max();
-    if (has_same_shape) {
-#define IMPL_CONCAT_WITH_WARPPER(size, index_t)                          \
-  PointerWarpper<T, size> ptr_array(context, input, in_num, data_alloc); \
-  ConcatKernel<T, index_t, decltype(ptr_array)>                          \
-      <<<grid_dims, block_dims, 0, context.stream()>>>(                  \
-          ptr_array, in_col, out_row, out_col, output->data<T>());
-      if (use_int32) {
-        if (in_num < 32) {
-          IMPL_CONCAT_WITH_WARPPER(32, int32_t);
-        } else if (in_num < 64) {
-          IMPL_CONCAT_WITH_WARPPER(64, int32_t);
-        } else if (in_num < 128) {
-          IMPL_CONCAT_WITH_WARPPER(128, int32_t);
-        } else {
-          IMPL_CONCAT_WITH_WARPPER(0, int32_t);
-        }
-      } else {
-        if (in_num < 32) {
-          IMPL_CONCAT_WITH_WARPPER(32, int64_t);
-        } else if (in_num < 64) {
-          IMPL_CONCAT_WITH_WARPPER(64, int64_t);
-        } else if (in_num < 128) {
-          IMPL_CONCAT_WITH_WARPPER(128, int64_t);
-        } else {
-          IMPL_CONCAT_WITH_WARPPER(0, int64_t);
-        }
-      }
-#undef IMPL_CONCAT_WITH_WARPPER
+    if (output->numel() < std::numeric_limits<int32_t>::max()) {
+      ConcatFunctorWithIndexType<T, int32_t>(context, input, axis, output);
     } else {
-#define IMPL_CONCAT_WITH_COMPLEX_WARPPER(size, index_t)                        \
-  DataAndColWarpper<T, index_t, size> ptr_col_array(                           \
-      context, input, in_num, ins_col_num, inputs_col, data_alloc, col_alloc); \
-  ConcatKernel_<T, index_t, decltype(ptr_col_array)>                           \
-      <<<grid_dims, block_dims, 0, context.stream()>>>(                        \
-          ptr_col_array,                                                       \
-          ins_col_num,                                                         \
-          static_cast<index_t>(out_row),                                       \
-          static_cast<index_t>(out_col),                                       \
-          output->data<T>());
-
-      if (use_int32) {
-        if (in_num < 32) {
-          IMPL_CONCAT_WITH_COMPLEX_WARPPER(32, int32_t);
-        } else if (in_num < 64) {
-          IMPL_CONCAT_WITH_COMPLEX_WARPPER(64, int32_t);
-        } else if (in_num < 128) {
-          IMPL_CONCAT_WITH_COMPLEX_WARPPER(64, int32_t);
-        } else {
-          IMPL_CONCAT_WITH_COMPLEX_WARPPER(0, int32_t);
-        }
-      } else {
-        if (in_num < 32) {
-          IMPL_CONCAT_WITH_COMPLEX_WARPPER(32, int64_t);
-        } else if (in_num < 64) {
-          IMPL_CONCAT_WITH_COMPLEX_WARPPER(64, int64_t);
-        } else if (in_num < 128) {
-          IMPL_CONCAT_WITH_COMPLEX_WARPPER(64, int64_t);
-        } else {
-          IMPL_CONCAT_WITH_COMPLEX_WARPPER(0, int64_t);
-        }
-      }
-#undef IMPL_CONCAT_WITH_COMPLEX_WARPPER
+      ConcatFunctorWithIndexType<T, int64_t>(context, input, axis, output);
     }
-
-#ifdef PADDLE_WITH_HIP
-    // Prevent the pinned memory value from being covered and release the memory
-    // after the launch kernel of the stream is executed (reapply pinned memory
-    // next time)
-    auto* data_alloc_released = data_alloc.release();
-    auto* col_alloc_released = col_alloc.release();
-    context.AddStreamCallback([data_alloc_released, col_alloc_released] {
-      VLOG(4) << "Delete cuda pinned at " << data_alloc_released;
-      VLOG(4) << "Delete cuda pinned at " << col_alloc_released;
-      paddle::memory::allocation::Allocator::AllocationDeleter(
-          data_alloc_released);
-      paddle::memory::allocation::Allocator::AllocationDeleter(
-          col_alloc_released);
-    });
-#endif
   }
 };
 
