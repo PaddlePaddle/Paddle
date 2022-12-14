@@ -102,14 +102,16 @@ void FusionSeqConvEltAddReluOpMaker::Make() {
       "this phi::DenseTensor is a matrix with shape (T X M), where T is the "
       "total time steps in this mini-batch, M is the dim size of x.");
   // PaddingData only support false yet, should be ensured at pass.
-  AddInput("Filter",
-           "(Tensor) same as the input(Filter) of sequence conv op is an "
-           "learnable parameter."
-           "This is a tensor with shape (K, N), where K is the "
-           "context_length * dim size of x, N is the output feature size.");
-  AddInput("Bias",
-           "(Tensor) the learnable weights. shape (1, N), where N is the "
-           "output feature size");
+  AddInput(
+      "Filter",
+      "(phi::DenseTensor) same as the input(Filter) of sequence conv op is an "
+      "learnable parameter."
+      "This is a tensor with shape (K, N), where K is the "
+      "context_length * dim size of x, N is the output feature size.");
+  AddInput(
+      "Bias",
+      "(phi::DenseTensor) the learnable weights. shape (1, N), where N is the "
+      "output feature size");
   AddOutput(
       "Out",
       "(phi::DenseTensor) the output(Out) is a LodTensor, which support "
@@ -117,7 +119,7 @@ void FusionSeqConvEltAddReluOpMaker::Make() {
       "this phi::DenseTensor is a matrix with shape (T, N), where, T is the "
       "total time steps in this mini-batch, N is the output feature size.");
   AddOutput("ColMat",
-            "(Tensor) (T, K), where T is where T is the "
+            "(phi::DenseTensor) (T, K), where T is where T is the "
             "total time steps in this mini-batch, K is height of Filter")
       .AsIntermediate();
   AddAttr<int>("contextLength",

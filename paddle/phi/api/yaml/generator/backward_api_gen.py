@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import yaml
 import argparse
 import re
 
+import yaml
 from api_base import BaseAPI
 
 
@@ -351,7 +351,7 @@ def main():
         '--backward_yaml_path',
         help='path to backward yaml file',
         nargs='+',
-        default='paddle/phi/api/yaml/backward.yaml',
+        default=['paddle/phi/api/yaml/backward.yaml'],
     )
     parser.add_argument(
         '--backward_header_path',

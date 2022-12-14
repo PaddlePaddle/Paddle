@@ -20,7 +20,6 @@ import numpy as np
 import paddle
 import paddle.distributed as dist
 from paddle.fluid.dygraph.parallel import ParallelEnv
-from paddle.fluid.framework import _test_eager_guard
 
 
 def init_process_group(strategy=None):
@@ -44,412 +43,428 @@ class TestProcessGroupFp32(unittest.TestCase):
         self.shape = (2, 10, 5)
 
     def test_create_process_group_nccl(self):
-        with _test_eager_guard():
-            device_id = paddle.distributed.ParallelEnv().dev_id
-            paddle.set_device('gpu:%d' % device_id)
+        device_id = paddle.distributed.ParallelEnv().dev_id
+        paddle.set_device('gpu:%d' % device_id)
 
-            pg = init_process_group()
-            print("rank:", pg.rank(), "size:", pg.size(), "name:", pg.name())
-            print("test new group api ok")
+        pg = init_process_group()
+        print("rank:", pg.rank(), "size:", pg.size(), "name:", pg.name())
+        print("test new group api ok")
 
-            # test allreduce sum
-            # rank 0
-            x = np.random.random(self.shape).astype(self.dtype)
-            tensor_x = paddle.to_tensor(x)
-            # rank 1
-            y = np.random.random(self.shape).astype(self.dtype)
-            tensor_y = paddle.to_tensor(y)
+        # test allreduce sum
+        # rank 0
+        x = np.random.random(self.shape).astype(self.dtype)
+        tensor_x = paddle.to_tensor(x)
+        # rank 1
+        y = np.random.random(self.shape).astype(self.dtype)
+        tensor_y = paddle.to_tensor(y)
 
-            sum_result = tensor_x + tensor_y
-            if pg.rank() == 0:
-                task = dist.all_reduce(tensor_x)
-                assert np.array_equal(tensor_x, sum_result)
-            else:
-                task = dist.all_reduce(tensor_y)
-                assert np.array_equal(tensor_y, sum_result)
+        sum_result = tensor_x + tensor_y
+        if pg.rank() == 0:
+            task = dist.all_reduce(tensor_x)
+            assert np.array_equal(tensor_x, sum_result)
+        else:
+            task = dist.all_reduce(tensor_y)
+            assert np.array_equal(tensor_y, sum_result)
 
-            print("test allreduce sum api ok")
+        print("test allreduce sum api ok")
 
-            # test allreduce max
-            # rank 0
-            x = np.random.random(self.shape).astype(self.dtype)
-            tensor_x = paddle.to_tensor(x)
-            # rank 1
-            y = np.random.random(self.shape).astype(self.dtype)
-            tensor_y = paddle.to_tensor(y)
+        # test allreduce max
+        # rank 0
+        x = np.random.random(self.shape).astype(self.dtype)
+        tensor_x = paddle.to_tensor(x)
+        # rank 1
+        y = np.random.random(self.shape).astype(self.dtype)
+        tensor_y = paddle.to_tensor(y)
 
-            max_result = paddle.maximum(tensor_x, tensor_y)
+        max_result = paddle.maximum(tensor_x, tensor_y)
 
-            if pg.rank() == 0:
-                task = dist.all_reduce(
-                    tensor_x, dist.ReduceOp.MAX, sync_op=False
-                )
-                task.wait()
-                assert np.array_equal(tensor_x, max_result)
-            else:
-                task = dist.all_reduce(
-                    tensor_y, dist.ReduceOp.MAX, sync_op=False
-                )
-                task.wait()
-                assert np.array_equal(tensor_y, max_result)
+        if pg.rank() == 0:
+            task = dist.all_reduce(tensor_x, dist.ReduceOp.MAX, sync_op=False)
+            task.wait()
+            assert np.array_equal(tensor_x, max_result)
+        else:
+            task = dist.all_reduce(tensor_y, dist.ReduceOp.MAX, sync_op=False)
+            task.wait()
+            assert np.array_equal(tensor_y, max_result)
 
-            print("test allreduce max api ok")
+        print("test allreduce max api ok")
 
-            # test allreduce min
-            # rank 0
-            x = np.random.random(self.shape).astype(self.dtype)
-            tensor_x = paddle.to_tensor(x)
-            # rank 1
-            y = np.random.random(self.shape).astype(self.dtype)
-            tensor_y = paddle.to_tensor(y)
+        # test allreduce min
+        # rank 0
+        x = np.random.random(self.shape).astype(self.dtype)
+        tensor_x = paddle.to_tensor(x)
+        # rank 1
+        y = np.random.random(self.shape).astype(self.dtype)
+        tensor_y = paddle.to_tensor(y)
 
-            min_result = paddle.minimum(tensor_x, tensor_y)
+        min_result = paddle.minimum(tensor_x, tensor_y)
 
-            if pg.rank() == 0:
-                task = dist.all_reduce(
-                    tensor_x, dist.ReduceOp.MIN, sync_op=False
-                )
-                task.wait()
-                assert np.array_equal(tensor_x, min_result)
-            else:
-                task = dist.all_reduce(
-                    tensor_y, dist.ReduceOp.MIN, sync_op=False
-                )
-                task.wait()
-                assert np.array_equal(tensor_y, min_result)
+        if pg.rank() == 0:
+            task = dist.all_reduce(tensor_x, dist.ReduceOp.MIN, sync_op=False)
+            task.wait()
+            assert np.array_equal(tensor_x, min_result)
+        else:
+            task = dist.all_reduce(tensor_y, dist.ReduceOp.MIN, sync_op=False)
+            task.wait()
+            assert np.array_equal(tensor_y, min_result)
 
-            print("test allreduce min api ok")
+        print("test allreduce min api ok")
 
-            # test allreduce prod
-            # rank 0
-            x = np.random.random(self.shape).astype(self.dtype)
-            tensor_x = paddle.to_tensor(x)
-            # rank 1
-            y = np.random.random(self.shape).astype(self.dtype)
-            tensor_y = paddle.to_tensor(y)
+        # test allreduce prod
+        # rank 0
+        x = np.random.random(self.shape).astype(self.dtype)
+        tensor_x = paddle.to_tensor(x)
+        # rank 1
+        y = np.random.random(self.shape).astype(self.dtype)
+        tensor_y = paddle.to_tensor(y)
 
-            prod_result = np.multiply(x, y)
+        prod_result = np.multiply(x, y)
 
-            if pg.rank() == 0:
-                task = dist.all_reduce(
-                    tensor_x, dist.ReduceOp.PROD, sync_op=False
-                )
-                task.wait()
-                assert np.array_equal(tensor_x, prod_result)
-            else:
-                task = dist.all_reduce(
-                    tensor_y, dist.ReduceOp.PROD, sync_op=False
-                )
-                task.wait()
-                assert np.array_equal(tensor_y, prod_result)
+        if pg.rank() == 0:
+            task = dist.all_reduce(tensor_x, dist.ReduceOp.PROD, sync_op=False)
+            task.wait()
+            assert np.array_equal(tensor_x, prod_result)
+        else:
+            task = dist.all_reduce(tensor_y, dist.ReduceOp.PROD, sync_op=False)
+            task.wait()
+            assert np.array_equal(tensor_y, prod_result)
 
-            print("test allreduce prod api ok")
+        print("test allreduce prod api ok")
 
-            # test broadcast
-            # rank 0
-            x = np.random.random(self.shape).astype(self.dtype)
-            tensor_x = paddle.to_tensor(x)
-            # rank 1
-            y = np.random.random(self.shape).astype(self.dtype)
-            tensor_y = paddle.to_tensor(y)
+        # test broadcast
+        # rank 0
+        x = np.random.random(self.shape).astype(self.dtype)
+        tensor_x = paddle.to_tensor(x)
+        # rank 1
+        y = np.random.random(self.shape).astype(self.dtype)
+        tensor_y = paddle.to_tensor(y)
 
-            broadcast_result = paddle.assign(tensor_x)
-            if pg.rank() == 0:
-                task = dist.broadcast(tensor_x, 0, sync_op=False)
-                task.synchronize()
-                paddle.device.cuda.synchronize()
-                assert task.is_completed()
-                assert np.array_equal(broadcast_result, tensor_x)
-            else:
-                task = dist.broadcast(tensor_y, 0)
-                paddle.device.cuda.synchronize()
-                assert np.array_equal(broadcast_result, tensor_y)
+        broadcast_result = paddle.assign(tensor_x)
+        if pg.rank() == 0:
+            task = dist.broadcast(tensor_x, 0, sync_op=False)
+            task.synchronize()
+            paddle.device.cuda.synchronize()
+            assert task.is_completed()
+            assert np.array_equal(broadcast_result, tensor_x)
+        else:
+            task = dist.broadcast(tensor_y, 0)
+            paddle.device.cuda.synchronize()
+            assert np.array_equal(broadcast_result, tensor_y)
 
-            print("test broadcast api ok")
+        print("test broadcast api ok")
 
-            # test barrier
-            # rank 0
-            if pg.rank() == 0:
-                pg.barrier(device_id)
-            # rank 1
-            else:
-                task = pg.barrier(device_id)
-                task.wait()
+        # test broadcast with shape=[]
+        # rank 0
+        x = np.random.random([]).astype(self.dtype)
+        tensor_x = paddle.to_tensor(x)
+        # rank 1
+        y = np.random.random([]).astype(self.dtype)
+        tensor_y = paddle.to_tensor(y)
 
-            print("test barrier api ok\n")
+        broadcast_result = paddle.assign(tensor_x)
+        if pg.rank() == 0:
+            task = dist.broadcast(tensor_x, 0, sync_op=False)
+            task.synchronize()
+            paddle.device.cuda.synchronize()
+            assert task.is_completed()
+            assert np.array_equal(broadcast_result, tensor_x)
+        else:
+            task = dist.broadcast(tensor_y, 0)
+            paddle.device.cuda.synchronize()
+            assert np.array_equal(broadcast_result, tensor_y)
+        assert tensor_y.shape == []
 
-            # test allgather
-            # rank 0
-            x = np.random.random(self.shape).astype(self.dtype)
-            y = np.random.random(self.shape).astype(self.dtype)
-            tensor_x = paddle.to_tensor(x)
-            tensor_y = paddle.to_tensor(y)
-            out_shape = list(self.shape)
-            out_shape[0] *= 2
-            out = np.random.random(out_shape).astype(self.dtype)
-            tensor_out = paddle.to_tensor(out)
-            if pg.rank() == 0:
-                task = pg.all_gather(tensor_x, tensor_out)
-                task.wait()
-                paddle.device.cuda.synchronize()
-            # rank 1
-            else:
-                tensor_out_list = [
-                    paddle.empty_like(tensor_x),
-                    paddle.empty_like(tensor_x),
-                ]
-                task = dist.all_gather(tensor_out_list, tensor_y, sync_op=False)
-                paddle.device.cuda.synchronize()
-                tensor_out = paddle.concat(tensor_out_list)
-            out_1 = paddle.slice(tensor_out, [0], [0], [out_shape[0] // 2])
-            out_2 = paddle.slice(
-                tensor_out, [0], [out_shape[0] // 2], [out_shape[0]]
-            )
-            assert np.array_equal(tensor_x, out_1)
-            assert np.array_equal(tensor_y, out_2)
-            print("test allgather api ok\n")
+        print("test broadcast api with shape=[] ok")
 
-            if pg.rank() == 0:
-                task = pg.all_gather(tensor_x, tensor_out)
-                task.wait()
-                paddle.device.cuda.synchronize()
-            # rank 1
-            else:
-                tensor_out_list = []
-                task = dist.all_gather(tensor_out_list, tensor_y, sync_op=False)
-                paddle.device.cuda.synchronize()
-                tensor_out = paddle.concat(tensor_out_list)
-            out_1 = paddle.slice(tensor_out, [0], [0], [out_shape[0] // 2])
-            out_2 = paddle.slice(
-                tensor_out, [0], [out_shape[0] // 2], [out_shape[0]]
-            )
-            assert np.array_equal(tensor_x, out_1)
-            assert np.array_equal(tensor_y, out_2)
-            print("test allgather api2 ok\n")
+        # test barrier
+        # rank 0
+        if pg.rank() == 0:
+            pg.barrier(device_id)
+        # rank 1
+        else:
+            task = pg.barrier(device_id)
+            task.wait()
 
-            # test alltoall
-            # rank 0
-            x = np.random.random(self.shape).astype(self.dtype)
-            y = np.random.random(self.shape).astype(self.dtype)
-            out1 = np.random.random(self.shape).astype(self.dtype)
-            out2 = np.random.random(self.shape).astype(self.dtype)
-            tensor_x = paddle.to_tensor(x)
-            tensor_y = paddle.to_tensor(y)
-            tensor_out1 = paddle.to_tensor(out1)
-            tensor_out2 = paddle.to_tensor(out2)
-            raw_tensor_x_2 = paddle.slice(
-                tensor_x, [0], [self.shape[0] // 2], [self.shape[0]]
-            )
-            raw_tensor_y_1 = paddle.slice(
-                tensor_y, [0], [0], [self.shape[0] // 2]
-            )
-            if pg.rank() == 0:
-                task = pg.alltoall(tensor_x, tensor_out1)
-                task.wait()
-            # rank 1
-            else:
-                in_1, in_2 = paddle.split(tensor_y, 2)
-                out_1, out_2 = paddle.split(tensor_out2, 2)
-                out_tensor_list = [out_1, out_2]
-                task = dist.alltoall([in_1, in_2], out_tensor_list)
-                paddle.device.cuda.synchronize()
-                tensor_out2 = paddle.concat(out_tensor_list)
-            out1_2 = paddle.slice(
-                tensor_out1, [0], [self.shape[0] // 2], [self.shape[0]]
-            )
-            out2_1 = paddle.slice(tensor_out2, [0], [0], [self.shape[0] // 2])
-            if pg.rank() == 0:
-                assert np.array_equal(out1_2.numpy(), raw_tensor_y_1.numpy())
-            else:
-                assert np.array_equal(out2_1, raw_tensor_x_2)
-            print("test alltoall api ok\n")
+        print("test barrier api ok\n")
 
-            x = np.random.random(self.shape).astype(self.dtype)
-            y = np.random.random(self.shape).astype(self.dtype)
-            out1 = np.random.random(self.shape).astype(self.dtype)
-            out2 = np.random.random(self.shape).astype(self.dtype)
-            tensor_x = paddle.to_tensor(x)
-            tensor_y = paddle.to_tensor(y)
-            tensor_out1 = paddle.to_tensor(out1)
-            tensor_out2 = paddle.to_tensor(out2)
-            raw_tensor_x_2 = paddle.slice(
-                tensor_x, [0], [self.shape[0] // 2], [self.shape[0]]
-            )
-            raw_tensor_y_1 = paddle.slice(
-                tensor_y, [0], [0], [self.shape[0] // 2]
-            )
-            if pg.rank() == 0:
-                task = pg.alltoall(tensor_x, tensor_out1)
-                task.wait()
-            # rank 1
-            else:
-                in_1, in_2 = paddle.split(tensor_y, 2)
-                out_1, out_2 = paddle.split(tensor_out2, 2)
-                out_tensor_list = []
-                task = dist.alltoall([in_1, in_2], out_tensor_list)
-                paddle.device.cuda.synchronize()
-                tensor_out2 = paddle.concat(out_tensor_list)
-            out1_2 = paddle.slice(
-                tensor_out1, [0], [self.shape[0] // 2], [self.shape[0]]
-            )
-            out2_1 = paddle.slice(tensor_out2, [0], [0], [self.shape[0] // 2])
-            if pg.rank() == 0:
-                assert np.array_equal(out1_2.numpy(), raw_tensor_y_1.numpy())
-            else:
-                assert np.array_equal(out2_1, raw_tensor_x_2)
-            print("test alltoall api2 ok\n")
+        # test allgather
+        # rank 0
+        x = np.random.random(self.shape).astype(self.dtype)
+        y = np.random.random(self.shape).astype(self.dtype)
+        tensor_x = paddle.to_tensor(x)
+        tensor_y = paddle.to_tensor(y)
+        out_shape = list(self.shape)
+        out_shape[0] *= 2
+        out = np.random.random(out_shape).astype(self.dtype)
+        tensor_out = paddle.to_tensor(out)
+        if pg.rank() == 0:
+            task = pg.all_gather(tensor_x, tensor_out)
+            task.wait()
+            paddle.device.cuda.synchronize()
+        # rank 1
+        else:
+            tensor_out_list = [
+                paddle.empty_like(tensor_x),
+                paddle.empty_like(tensor_x),
+            ]
+            task = dist.all_gather(tensor_out_list, tensor_y, sync_op=False)
+            paddle.device.cuda.synchronize()
+            tensor_out = paddle.concat(tensor_out_list)
+        out_1 = paddle.slice(tensor_out, [0], [0], [out_shape[0] // 2])
+        out_2 = paddle.slice(
+            tensor_out, [0], [out_shape[0] // 2], [out_shape[0]]
+        )
+        assert np.array_equal(tensor_x, out_1)
+        assert np.array_equal(tensor_y, out_2)
+        print("test allgather api ok\n")
 
-            # test Reduce
-            # rank 0
-            x = np.random.random(self.shape).astype(self.dtype)
-            y = np.random.random(self.shape).astype(self.dtype)
-            tensor_x = paddle.to_tensor(x)
-            tensor_y = paddle.to_tensor(y)
-            sum_result = tensor_x + tensor_y
-            if pg.rank() == 0:
-                task = dist.reduce(tensor_x, 0, sync_op=True)
-                paddle.device.cuda.synchronize()
-            # rank 1
-            else:
-                task = dist.reduce(tensor_y, 0, sync_op=False)
-                task.wait()
-                paddle.device.cuda.synchronize()
-            if pg.rank() == 0:
-                assert np.array_equal(tensor_x, sum_result)
-            print("test reduce sum api ok\n")
+        if pg.rank() == 0:
+            task = pg.all_gather(tensor_x, tensor_out)
+            task.wait()
+            paddle.device.cuda.synchronize()
+        # rank 1
+        else:
+            tensor_out_list = []
+            task = dist.all_gather(tensor_out_list, tensor_y, sync_op=False)
+            paddle.device.cuda.synchronize()
+            tensor_out = paddle.concat(tensor_out_list)
+        out_1 = paddle.slice(tensor_out, [0], [0], [out_shape[0] // 2])
+        out_2 = paddle.slice(
+            tensor_out, [0], [out_shape[0] // 2], [out_shape[0]]
+        )
+        assert np.array_equal(tensor_x, out_1)
+        assert np.array_equal(tensor_y, out_2)
+        print("test allgather api2 ok\n")
 
-            # test reduce max
-            # rank 0
-            x = np.random.random(self.shape).astype(self.dtype)
-            tensor_x = paddle.to_tensor(x)
-            # rank 1
-            y = np.random.random(self.shape).astype(self.dtype)
-            tensor_y = paddle.to_tensor(y)
+        # test alltoall
+        # rank 0
+        x = np.random.random(self.shape).astype(self.dtype)
+        y = np.random.random(self.shape).astype(self.dtype)
+        out1 = np.random.random(self.shape).astype(self.dtype)
+        out2 = np.random.random(self.shape).astype(self.dtype)
+        tensor_x = paddle.to_tensor(x)
+        tensor_y = paddle.to_tensor(y)
+        tensor_out1 = paddle.to_tensor(out1)
+        tensor_out2 = paddle.to_tensor(out2)
+        raw_tensor_x_2 = paddle.slice(
+            tensor_x, [0], [self.shape[0] // 2], [self.shape[0]]
+        )
+        raw_tensor_y_1 = paddle.slice(tensor_y, [0], [0], [self.shape[0] // 2])
+        if pg.rank() == 0:
+            task = pg.alltoall(tensor_x, tensor_out1)
+            task.wait()
+        # rank 1
+        else:
+            in_1, in_2 = paddle.split(tensor_y, 2)
+            out_1, out_2 = paddle.split(tensor_out2, 2)
+            out_tensor_list = [out_1, out_2]
+            task = dist.alltoall([in_1, in_2], out_tensor_list)
+            paddle.device.cuda.synchronize()
+            tensor_out2 = paddle.concat(out_tensor_list)
+        out1_2 = paddle.slice(
+            tensor_out1, [0], [self.shape[0] // 2], [self.shape[0]]
+        )
+        out2_1 = paddle.slice(tensor_out2, [0], [0], [self.shape[0] // 2])
+        if pg.rank() == 0:
+            assert np.array_equal(out1_2.numpy(), raw_tensor_y_1.numpy())
+        else:
+            assert np.array_equal(out2_1, raw_tensor_x_2)
+        print("test alltoall api ok\n")
 
-            max_result = paddle.maximum(tensor_x, tensor_y)
+        x = np.random.random(self.shape).astype(self.dtype)
+        y = np.random.random(self.shape).astype(self.dtype)
+        out1 = np.random.random(self.shape).astype(self.dtype)
+        out2 = np.random.random(self.shape).astype(self.dtype)
+        tensor_x = paddle.to_tensor(x)
+        tensor_y = paddle.to_tensor(y)
+        tensor_out1 = paddle.to_tensor(out1)
+        tensor_out2 = paddle.to_tensor(out2)
+        raw_tensor_x_2 = paddle.slice(
+            tensor_x, [0], [self.shape[0] // 2], [self.shape[0]]
+        )
+        raw_tensor_y_1 = paddle.slice(tensor_y, [0], [0], [self.shape[0] // 2])
+        if pg.rank() == 0:
+            task = pg.alltoall(tensor_x, tensor_out1)
+            task.wait()
+        # rank 1
+        else:
+            in_1, in_2 = paddle.split(tensor_y, 2)
+            out_1, out_2 = paddle.split(tensor_out2, 2)
+            out_tensor_list = []
+            task = dist.alltoall([in_1, in_2], out_tensor_list)
+            paddle.device.cuda.synchronize()
+            tensor_out2 = paddle.concat(out_tensor_list)
+        out1_2 = paddle.slice(
+            tensor_out1, [0], [self.shape[0] // 2], [self.shape[0]]
+        )
+        out2_1 = paddle.slice(tensor_out2, [0], [0], [self.shape[0] // 2])
+        if pg.rank() == 0:
+            assert np.array_equal(out1_2.numpy(), raw_tensor_y_1.numpy())
+        else:
+            assert np.array_equal(out2_1, raw_tensor_x_2)
+        print("test alltoall api2 ok\n")
 
-            if pg.rank() == 0:
-                task = dist.reduce(
-                    tensor_x, 0, dist.ReduceOp.MAX, sync_op=False
-                )
-                task.wait()
-                assert np.array_equal(tensor_x, max_result)
-            else:
-                task = dist.reduce(
-                    tensor_y, 0, dist.ReduceOp.MAX, sync_op=False
-                )
-                task.wait()
+        # test Reduce
+        # rank 0
+        x = np.random.random(self.shape).astype(self.dtype)
+        y = np.random.random(self.shape).astype(self.dtype)
+        tensor_x = paddle.to_tensor(x)
+        tensor_y = paddle.to_tensor(y)
+        sum_result = tensor_x + tensor_y
+        if pg.rank() == 0:
+            task = dist.reduce(tensor_x, 0, sync_op=True)
+            paddle.device.cuda.synchronize()
+        # rank 1
+        else:
+            task = dist.reduce(tensor_y, 0, sync_op=False)
+            task.wait()
+            paddle.device.cuda.synchronize()
+        if pg.rank() == 0:
+            assert np.array_equal(tensor_x, sum_result)
+        print("test reduce sum api ok\n")
 
-            print("test reduce max api ok")
+        # test reduce max
+        # rank 0
+        x = np.random.random(self.shape).astype(self.dtype)
+        tensor_x = paddle.to_tensor(x)
+        # rank 1
+        y = np.random.random(self.shape).astype(self.dtype)
+        tensor_y = paddle.to_tensor(y)
 
-            # test reduce min
-            # rank 0
-            x = np.random.random(self.shape).astype(self.dtype)
-            tensor_x = paddle.to_tensor(x)
-            # rank 1
-            y = np.random.random(self.shape).astype(self.dtype)
-            tensor_y = paddle.to_tensor(y)
+        max_result = paddle.maximum(tensor_x, tensor_y)
 
-            min_result = paddle.minimum(tensor_x, tensor_y)
+        if pg.rank() == 0:
+            task = dist.reduce(tensor_x, 0, dist.ReduceOp.MAX, sync_op=False)
+            task.wait()
+            assert np.array_equal(tensor_x, max_result)
+        else:
+            task = dist.reduce(tensor_y, 0, dist.ReduceOp.MAX, sync_op=False)
+            task.wait()
 
-            if pg.rank() == 0:
-                task = dist.reduce(
-                    tensor_x, 0, dist.ReduceOp.MIN, sync_op=False
-                )
-                task.wait()
-                assert np.array_equal(tensor_x, min_result)
-            else:
-                task = dist.reduce(
-                    tensor_y, 0, dist.ReduceOp.MIN, sync_op=False
-                )
-                task.wait()
+        print("test reduce max api ok")
 
-            print("test reduce min api ok")
+        # test reduce min
+        # rank 0
+        x = np.random.random(self.shape).astype(self.dtype)
+        tensor_x = paddle.to_tensor(x)
+        # rank 1
+        y = np.random.random(self.shape).astype(self.dtype)
+        tensor_y = paddle.to_tensor(y)
 
-            # test reduce product
-            # rank 0
-            x = np.random.random(self.shape).astype(self.dtype)
-            tensor_x = paddle.to_tensor(x)
-            # rank 1
-            y = np.random.random(self.shape).astype(self.dtype)
-            tensor_y = paddle.to_tensor(y)
+        min_result = paddle.minimum(tensor_x, tensor_y)
 
-            prod_result = np.multiply(x, y)
+        if pg.rank() == 0:
+            task = dist.reduce(tensor_x, 0, dist.ReduceOp.MIN, sync_op=False)
+            task.wait()
+            assert np.array_equal(tensor_x, min_result)
+        else:
+            task = dist.reduce(tensor_y, 0, dist.ReduceOp.MIN, sync_op=False)
+            task.wait()
 
-            if pg.rank() == 0:
-                task = dist.reduce(
-                    tensor_x, 0, dist.ReduceOp.PROD, sync_op=False
-                )
-                task.wait()
-                assert np.array_equal(tensor_x, prod_result)
-            else:
-                task = dist.reduce(
-                    tensor_y, 0, dist.ReduceOp.PROD, sync_op=False
-                )
-                task.wait()
+        print("test reduce min api ok")
 
-            print("test reduce prod api ok")
-            # test Scatter
-            # rank 0
-            in_shape = list(self.shape)
-            in_shape[0] *= 2
-            x = np.random.random(in_shape).astype(self.dtype)
-            y = np.random.random(self.shape).astype(self.dtype)
-            tensor_x = paddle.to_tensor(x)
-            tensor_y = paddle.to_tensor(y)
-            if pg.rank() == 0:
-                in_1, in_2 = paddle.split(tensor_x, 2)
-                task = dist.scatter(tensor_y, [in_1, in_2], 0, sync_op=True)
-                # task.wait()
-                paddle.device.cuda.synchronize()
-            # rank 1
-            else:
-                task = dist.scatter(tensor_y, [], 0, sync_op=False)
-                task.wait()
-                paddle.device.cuda.synchronize()
-            out1 = paddle.slice(tensor_x, [0], [0], [self.shape[0]])
-            out2 = paddle.slice(
-                tensor_x, [0], [self.shape[0]], [self.shape[0] * 2]
-            )
-            if pg.rank() == 0:
-                assert np.array_equal(tensor_y, out1)
-            else:
-                assert np.array_equal(tensor_y, out2)
-            print("test scatter api ok\n")
+        # test reduce product
+        # rank 0
+        x = np.random.random(self.shape).astype(self.dtype)
+        tensor_x = paddle.to_tensor(x)
+        # rank 1
+        y = np.random.random(self.shape).astype(self.dtype)
+        tensor_y = paddle.to_tensor(y)
 
-            # test send min
-            # rank 0
-            x = np.random.random(self.shape).astype(self.dtype)
-            tensor_x = paddle.to_tensor(x)
-            # rank 1
-            y = np.random.random(self.shape).astype(self.dtype)
-            tensor_y = paddle.to_tensor(y)
+        prod_result = np.multiply(x, y)
 
-            if pg.rank() == 0:
-                task = dist.send(tensor_x, 1, sync_op=False)
-                task.wait()
-            else:
-                task = dist.recv(tensor_y, 0, sync_op=False)
-                task.wait()
-                assert np.array_equal(tensor_y, tensor_x)
+        if pg.rank() == 0:
+            task = dist.reduce(tensor_x, 0, dist.ReduceOp.PROD, sync_op=False)
+            task.wait()
+            assert np.array_equal(tensor_x, prod_result)
+        else:
+            task = dist.reduce(tensor_y, 0, dist.ReduceOp.PROD, sync_op=False)
+            task.wait()
 
-            print("test send api ok")
+        print("test reduce prod api ok")
+        # test Scatter
+        # rank 0
+        in_shape = list(self.shape)
+        in_shape[0] *= 2
+        x = np.random.random(in_shape).astype(self.dtype)
+        y = np.random.random(self.shape).astype(self.dtype)
+        tensor_x = paddle.to_tensor(x)
+        tensor_y = paddle.to_tensor(y)
+        if pg.rank() == 0:
+            in_1, in_2 = paddle.split(tensor_x, 2)
+            task = dist.scatter(tensor_y, [in_1, in_2], 0, sync_op=True)
+            # task.wait()
+            paddle.device.cuda.synchronize()
+        # rank 1
+        else:
+            task = dist.scatter(tensor_y, [], 0, sync_op=False)
+            task.wait()
+            paddle.device.cuda.synchronize()
+        out1 = paddle.slice(tensor_x, [0], [0], [self.shape[0]])
+        out2 = paddle.slice(tensor_x, [0], [self.shape[0]], [self.shape[0] * 2])
+        if pg.rank() == 0:
+            assert np.array_equal(tensor_y, out1)
+        else:
+            assert np.array_equal(tensor_y, out2)
+        print("test scatter api ok\n")
 
-            # test send min
-            # rank 0
-            x = np.random.random(self.shape).astype(self.dtype)
-            tensor_x = paddle.to_tensor(x)
-            # rank 1
-            y = np.random.random(self.shape).astype(self.dtype)
-            tensor_y = paddle.to_tensor(y)
+        # test Scatter with shape=[]
+        # rank 0
+        x = np.random.random([]).astype(self.dtype)
+        y = np.random.random([]).astype(self.dtype)
+        tensor_x = paddle.to_tensor(x)
+        tensor_y = paddle.to_tensor(y)
+        if pg.rank() == 0:
+            in_1, in_2 = tensor_x, tensor_x + 1
+            task = dist.scatter(tensor_y, [in_1, in_2], 0, sync_op=True)
+            paddle.device.cuda.synchronize()
+        # rank 1
+        else:
+            task = dist.scatter(tensor_y, [], 0, sync_op=True)
+            task.wait()
+            paddle.device.cuda.synchronize()
+        out1 = paddle.assign(tensor_x)
+        out2 = paddle.assign(tensor_x + 1)
+        if pg.rank() == 0:
+            assert np.array_equal(tensor_y, out1)
+        else:
+            assert np.array_equal(tensor_y, out2), f"{tensor_y}, {out2}"
+        assert tensor_y.shape == []
+        print("test scatter api with shape=[] ok\n")
 
-            if pg.rank() == 0:
-                task = dist.send(tensor_x, 1, sync_op=True)
-            else:
-                task = dist.recv(tensor_y, 0, sync_op=True)
-                assert np.array_equal(tensor_y, tensor_x)
+        # test send min
+        # rank 0
+        x = np.random.random(self.shape).astype(self.dtype)
+        tensor_x = paddle.to_tensor(x)
+        # rank 1
+        y = np.random.random(self.shape).astype(self.dtype)
+        tensor_y = paddle.to_tensor(y)
 
-            print("test send api ok")
+        if pg.rank() == 0:
+            task = dist.send(tensor_x, 1, sync_op=False)
+            task.wait()
+        else:
+            task = dist.recv(tensor_y, 0, sync_op=False)
+            task.wait()
+            assert np.array_equal(tensor_y, tensor_x)
+
+        print("test send api ok")
+
+        # test send min
+        # rank 0
+        x = np.random.random(self.shape).astype(self.dtype)
+        tensor_x = paddle.to_tensor(x)
+        # rank 1
+        y = np.random.random(self.shape).astype(self.dtype)
+        tensor_y = paddle.to_tensor(y)
+
+        if pg.rank() == 0:
+            task = dist.send(tensor_x, 1, sync_op=True)
+        else:
+            task = dist.recv(tensor_y, 0, sync_op=True)
+            assert np.array_equal(tensor_y, tensor_x)
+
+        print("test send api ok")
 
 
 class TestProcessGroupFp16(TestProcessGroupFp32):

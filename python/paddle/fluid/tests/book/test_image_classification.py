@@ -40,7 +40,7 @@ def resnet_cifar10(input, depth=32):
             act=None,
             bias_attr=bias_attr,
         )
-        return fluid.layers.batch_norm(input=tmp, act=act)
+        return paddle.static.nn.batch_norm(input=tmp, act=act)
 
     def shortcut(input, ch_in, ch_out, stride):
         if ch_in != ch_out:
@@ -52,7 +52,7 @@ def resnet_cifar10(input, depth=32):
         tmp = conv_bn_layer(input, ch_out, 3, stride, 1)
         tmp = conv_bn_layer(tmp, ch_out, 3, 1, 1, act=None, bias_attr=True)
         short = shortcut(input, ch_in, ch_out, stride)
-        return fluid.layers.elementwise_add(x=tmp, y=short, act='relu')
+        return paddle.nn.functional.relu(paddle.add(x=tmp, y=short))
 
     def layer_warp(block_func, input, ch_in, ch_out, count, stride):
         tmp = block_func(input, ch_in, ch_out, stride)
@@ -68,9 +68,7 @@ def resnet_cifar10(input, depth=32):
     res1 = layer_warp(basicblock, conv1, 16, 16, n, 1)
     res2 = layer_warp(basicblock, res1, 16, 32, n, 2)
     res3 = layer_warp(basicblock, res2, 32, 64, n, 2)
-    pool = fluid.layers.pool2d(
-        input=res3, pool_size=8, pool_type='avg', pool_stride=1
-    )
+    pool = paddle.nn.functional.avg_pool2d(x=res3, kernel_size=8, stride=1)
     return pool
 
 
@@ -94,10 +92,10 @@ def vgg16_bn_drop(input):
     conv4 = conv_block(conv3, 512, 3, [0.4, 0.4, 0])
     conv5 = conv_block(conv4, 512, 3, [0.4, 0.4, 0])
 
-    drop = fluid.layers.dropout(x=conv5, dropout_prob=0.5)
+    drop = paddle.nn.functional.dropout(x=conv5, p=0.5)
     fc1 = fluid.layers.fc(input=drop, size=4096, act=None)
-    bn = fluid.layers.batch_norm(input=fc1, act='relu')
-    drop2 = fluid.layers.dropout(x=bn, dropout_prob=0.5)
+    bn = paddle.static.nn.batch_norm(input=fc1, act='relu')
+    drop2 = paddle.nn.functional.dropout(x=bn, p=0.5)
     fc2 = fluid.layers.fc(input=drop2, size=4096, act=None)
     return fc2
 
@@ -119,9 +117,11 @@ def train(net_type, use_cuda, save_dirname, is_local):
         raise ValueError("%s network is not supported" % net_type)
 
     predict = fluid.layers.fc(input=net, size=classdim, act='softmax')
-    cost = fluid.layers.cross_entropy(input=predict, label=label)
+    cost = paddle.nn.functional.cross_entropy(
+        input=predict, label=label, reduction='none', use_softmax=False
+    )
     avg_cost = paddle.mean(cost)
-    acc = fluid.layers.accuracy(input=predict, label=label)
+    acc = paddle.static.accuracy(input=predict, label=label)
 
     # Test program
     test_program = fluid.default_main_program().clone(for_test=True)

@@ -41,8 +41,6 @@ class OpBase;
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class ReshapeOp : public framework::OperatorWithKernel {
  public:
   ReshapeOp(const std::string &type,
@@ -258,12 +256,21 @@ class ReshapeOp : public framework::OperatorWithKernel {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     phi::DataLayout::ONEDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "ShapeTensor") {
       return expected_kernel_type;
@@ -615,12 +622,21 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
     auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
 
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     phi::DataLayout::ONEDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "ShapeTensor") {
       return expected_kernel_type;
@@ -648,7 +664,7 @@ class Reshape2DoubleGradOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "ShapeTensor") {
       return expected_kernel_type;

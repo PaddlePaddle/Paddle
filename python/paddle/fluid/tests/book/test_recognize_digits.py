@@ -30,9 +30,11 @@ BATCH_SIZE = 64
 
 def loss_net(hidden, label):
     prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
-    loss = fluid.layers.cross_entropy(input=prediction, label=label)
+    loss = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     avg_loss = paddle.mean(loss)
-    acc = fluid.layers.accuracy(input=prediction, label=label)
+    acc = paddle.static.accuracy(input=prediction, label=label)
     return prediction, avg_loss, acc
 
 
@@ -51,7 +53,7 @@ def conv_net(img, label):
         pool_stride=2,
         act="relu",
     )
-    conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
+    conv_pool_1 = paddle.static.nn.batch_norm(conv_pool_1)
     conv_pool_2 = fluid.nets.simple_img_conv_pool(
         input=conv_pool_1,
         filter_size=5,

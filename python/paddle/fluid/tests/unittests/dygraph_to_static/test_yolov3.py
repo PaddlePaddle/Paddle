@@ -12,17 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import random
 import time
 import unittest
 
+import numpy as np
+from yolov3 import YOLOv3, cfg
+
 import paddle
 import paddle.fluid as fluid
-from paddle.jit import ProgramTranslator
 from paddle.fluid.dygraph import to_variable
-
-from yolov3 import cfg, YOLOv3
+from paddle.jit import ProgramTranslator
 
 paddle.enable_static()
 random.seed(0)
@@ -177,5 +177,4 @@ class TestYolov3(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

@@ -118,9 +118,15 @@ int FuseMultiTransformerLayerPass::BuildFusion(Graph* graph,
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
 
-  // TODO(wufeisheng): Get enable_int8 attr from graph after
-  // fused_multi_transformer pass with int8 merged
   bool enable_int8 = false;
+  if (graph->Has("enable_int8")) {
+    enable_int8 = graph->Get<bool>("enable_int8");
+  }
+  if (!enable_int8) {
+    VLOG(4)
+        << "fuse_multi_layer_transformer_pass will match float transformer op "
+           "cause enable_int8 is not been set or set to false";
+  }
 
   int num_fuse_op = 0;
   bool is_decoder = false;
@@ -209,7 +215,13 @@ int FuseMultiTransformerLayerPass::BuildFusion(Graph* graph,
                                              "OutLinearW",
                                              "QKVBias",
                                              "QKVW"};
-
+    if (enable_int8) {
+      std::vector<std::string> inputs_names_int8_supp = {
+          "FFN1OutScale", "FFN2OutScale", "OutLinearOutScale", "QKVOutScale"};
+      inputs_names.insert(inputs_names.end(),
+                          inputs_names_int8_supp.begin(),
+                          inputs_names_int8_supp.end());
+    }
     for (const auto& input_name : inputs_names) {
       MergeInput(fuse_op_descs[0], fuse_op_input_var_name_maps, input_name);
     }
@@ -226,6 +238,17 @@ int FuseMultiTransformerLayerPass::BuildFusion(Graph* graph,
                                        out_var_names.end());
     }
     fuse_op_descs[0]->SetOutput("CacheKVOut", merged_cache_kv_out_names);
+
+    if (enable_int8) {
+      // Merge inputs scale
+      std::vector<std::string> attr_names = {"qkv_in_scale",
+                                             "out_linear_in_scale",
+                                             "ffn1_in_scale",
+                                             "ffn2_in_scale"};
+      for (const auto& name : attr_names) {
+        MergeAttrs<float>(fuse_op_descs, name);
+      }
+    }
 
     ////////////////
     //// ReLink ////

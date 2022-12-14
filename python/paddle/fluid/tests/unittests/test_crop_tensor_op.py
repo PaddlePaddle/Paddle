@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
 
@@ -269,7 +271,5 @@ class TestCropTensorException(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    import paddle
-
     paddle.enable_static()
     unittest.main()

@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import math
+import unittest
+
+import numpy as np
 from op_test import OpTest
 from test_anchor_generator_op import anchor_generator_in_python
 from test_multiclass_nms_op import nms
+
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-import paddle
 
 
 def multiclass_nms(prediction, class_num, keep_top_k, nms_threshold):

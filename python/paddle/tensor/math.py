@@ -14,7 +14,6 @@
 """
 math functions
 """
-
 # TODO: define math functions
 
 import numpy as np
@@ -23,15 +22,16 @@ import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.common_ops_import import VarDesc, dygraph_only, dygraph_utils
 
+# TODO: define math functions
+from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
+
 from ..fluid.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
     convert_dtype,
 )
-from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
-from ..fluid.framework import _in_legacy_dygraph
-from ..fluid.layers import elementwise_sub, utils
+from ..fluid.layers import utils
 from ..framework import (
     LayerHelper,
     _in_legacy_dygraph,
@@ -420,7 +420,9 @@ def pow(x, y, name=None):
         out = x^{y}
 
     Note:
-        ``paddle.pow`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+        ``paddle.pow`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensors
 
 
     Args:
@@ -679,7 +681,9 @@ def subtract(x, y, name=None):
         out = x - y
 
     Note:
-        ``paddle.subtract`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+        ``paddle.subtract`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -773,7 +777,9 @@ def divide(x, y, name=None):
         out = x / y
 
     Note:
-        ``paddle.divide`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+        ``paddle.divide`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -817,7 +823,10 @@ def floor_divide(x, y, name=None):
         out = trunc(x / y)
 
     Note:
-        ``paddle.floor_divide`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+        ``paddle.floor_divide`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
         Also note that the name ``floor_divide`` can be misleading, as the quotinents are actually rounded toward zero, not toward negative infinite.
 
     Args:
@@ -859,7 +868,9 @@ def remainder(x, y, name=None):
         out = x \% y
 
     Note:
-        ``paddle.remainder`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+        ``paddle.remainder`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): the input tensor, it's data type should be float16, float32, float64, int32, int64.
@@ -924,7 +935,9 @@ def multiply(x, y, name=None):
         out = x * y
 
     Note:
-        ``paddle.multiply`` supports broadcasting. If you would like to know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
+        ``paddle.multiply`` supports broadcasting. If you would like to know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): the input tensor, its data type should be one of float32, float64, int32, int64, bool.
@@ -972,6 +985,115 @@ def multiply(x, y, name=None):
             return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
+@dygraph_only
+def _elementwise_op_with_axis_in_dygraph(
+    x, y, axis=-1, name=None, op_type="Undifined"
+):
+    assert (
+        in_dygraph_mode()
+    ), "You can only call `_elementwise_op_with_axis_in_dygraph` function within in_dygraph_mode"
+    assert op_type in ["add", "subtract", "multiply", "divide"], (
+        "op_name input error! _elementwise_op_with_axis is an inner function to replace elementwise_add/sub/mul/div. Input op_name=%s, Expect op_name=[add|subtract|multiply|divide]\n"
+        % op_type
+    )
+    op = getattr(_C_ops, op_type)
+    x_shape = list(x.shape)
+    y_shape = list(y.shape)
+    if axis == -1 or len(x_shape) == len(y_shape):
+        return op(x, y)
+    if len(x_shape) > len(y_shape):
+        padding = len(x_shape) - len(y_shape) - axis
+        y = paddle.reshape(y, [1] * axis + y_shape + [1] * padding)
+    else:
+        padding = len(y_shape) - len(x_shape) - axis
+        x = paddle.reshape(x, [1] * axis + y_shape + [1] * padding)
+    return op(x, y)
+
+
+def _add_with_axis(x, y, axis=-1, name=None):
+    # opt performance, only dynamic mode needs reshape
+    if in_dygraph_mode():
+        return _elementwise_op_with_axis_in_dygraph(x, y, axis, name, "add")
+    else:
+        op_type = 'elementwise_add'
+        act = None
+        if _in_legacy_dygraph():
+            return _elementwise_op_in_dygraph(
+                x, y, axis=axis, act=act, op_name=op_type
+            )
+        else:
+            if x.dtype != y.dtype:
+                raise TypeError(
+                    'Input tensors must be same type, but received type of x: %s, type of y: %s '
+                    % (x.dtype, y.dtype)
+                )
+            return _elementwise_op(LayerHelper(op_type, **locals()))
+
+
+def _subtract_with_axis(x, y, axis=-1, name=None):
+    # opt performance, only dynamic mode needs reshape
+    if in_dygraph_mode():
+        return _elementwise_op_with_axis_in_dygraph(
+            x, y, axis, name, "subtract"
+        )
+    else:
+        op_type = 'elementwise_sub'
+        act = None
+        if _in_legacy_dygraph():
+            return _elementwise_op_in_dygraph(
+                x, y, axis=axis, act=act, op_name=op_type
+            )
+        else:
+            if x.dtype != y.dtype:
+                raise TypeError(
+                    'Input tensors must be same type, but received type of x: %s, type of y: %s '
+                    % (x.dtype, y.dtype)
+                )
+            return _elementwise_op(LayerHelper(op_type, **locals()))
+
+
+def _multiply_with_axis(x, y, axis=-1, name=None):
+    # opt performance, only dynamic mode needs reshape
+    if in_dygraph_mode():
+        return _elementwise_op_with_axis_in_dygraph(
+            x, y, axis, name, "multiply"
+        )
+    else:
+        op_type = 'elementwise_mul'
+        act = None
+        if _in_legacy_dygraph():
+            return _elementwise_op_in_dygraph(
+                x, y, axis=axis, act=act, op_name=op_type
+            )
+        else:
+            if x.dtype != y.dtype:
+                raise TypeError(
+                    'Input tensors must be same type, but received type of x: %s, type of y: %s '
+                    % (x.dtype, y.dtype)
+                )
+            return _elementwise_op(LayerHelper(op_type, **locals()))
+
+
+def _divide_with_axis(x, y, axis=-1, name=None):
+    # opt performance, only dynamic mode needs reshape
+    if in_dygraph_mode():
+        return _elementwise_op_with_axis_in_dygraph(x, y, axis, name, "divide")
+    else:
+        op_type = 'elementwise_div'
+        act = None
+        if _in_legacy_dygraph():
+            return _elementwise_op_in_dygraph(
+                x, y, axis=axis, act=act, op_name=op_type
+            )
+        else:
+            if x.dtype != y.dtype:
+                raise TypeError(
+                    'Input tensors must be same type, but received type of x: %s, type of y: %s '
+                    % (x.dtype, y.dtype)
+                )
+            return _elementwise_op(LayerHelper(op_type, **locals()))
+
+
 def maximum(x, y, name=None):
     """
     Compare two tensors and returns a new tensor containing the element-wise maxima. The equation is:
@@ -980,7 +1102,9 @@ def maximum(x, y, name=None):
         out = max(x, y)
 
     Note:
-        ``paddle.maximum`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+        ``paddle.maximum`` supports broadcasting. If you want know more about broadcasting, please refer to  `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -1046,7 +1170,9 @@ def minimum(x, y, name=None):
         out = min(x, y)
 
     Note:
-        ``paddle.minimum`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+        ``paddle.minimum`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -1114,7 +1240,9 @@ def fmax(x, y, name=None):
         out = fmax(x, y)
 
     Note:
-        ``paddle.fmax`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+        ``paddle.fmax`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): the input tensor, it's data type should be float16, float32, float64, int32, int64.
@@ -1182,7 +1310,9 @@ def fmin(x, y, name=None):
         out = fmin(x, y)
 
     Note:
-        ``paddle.fmin`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+        ``paddle.fmin`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): the input tensor, it's data type should be float16, float32, float64, int32, int64.
@@ -3429,9 +3559,13 @@ def cumprod(x, dim=None, dtype=None, name=None):
 
     Args:
         x (Tensor): the input tensor need to be cumproded.
-        dim (int): the dimension along which the input tensor will be accumulated. It need to be in the range of [-x.rank, x.rank), where x.rank means the dimensions of the input tensor x and -1 means the last dimension.
-        dtype (str, optional): The data type of the output tensor, can be float32, float64, int32, int64, complex64, complex128. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        dim (int, optional): the dimension along which the input tensor will be accumulated. It need to be in the range of [-x.rank, x.rank),
+                    where x.rank means the dimensions of the input tensor x and -1 means the last dimension.
+        dtype (str, optional): The data type of the output tensor, can be float32, float64, int32, int64, complex64,
+                    complex128. If specified, the input tensor is casted to dtype before the operation is performed.
+                    This is useful for preventing data type overflows. The default value is None.
+        name (str, optional): Name for the operation (optional, default is None). For more information,
+                    please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, the result of cumprod operator.
@@ -3962,7 +4096,12 @@ def any(x, axis=None, keepdim=False, name=None):
 
 def broadcast_shape(x_shape, y_shape):
     """
-    The function returns the shape of doing operation with broadcasting on tensors of x_shape and y_shape, please refer to :ref:`user_guide_broadcasting` for more details.
+    The function returns the shape of doing operation with broadcasting on tensors of x_shape and y_shape.
+
+    Note:
+        If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x_shape (list[int]|tuple[int]): A shape of tensor.
@@ -4847,7 +4986,9 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
         if x.dtype == paddle.bool:
             return _legacy_C_ops.logical_xor(input_back, input_front)
         else:
-            return elementwise_sub(input_back, input_front, axis=axis)
+            return paddle.tensor.math._subtract_with_axis(
+                input_back, input_front, axis=axis
+            )
     else:
         check_variable_and_dtype(
             x, 'x', ['float32', 'float64', 'bool', 'int32', 'int64'], 'diff'
@@ -4911,7 +5052,9 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
                 outputs={"Out": out},
             )
         else:
-            out = elementwise_sub(input_back, input_front, axis=axis)
+            out = paddle.tensor.math._subtract_with_axis(
+                input_back, input_front, axis=axis
+            )
 
         return out
 
@@ -4991,7 +5134,9 @@ def heaviside(x, y, name=None):
             \right.
 
     Note:
-        ``paddle.heaviside`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
+        ``paddle.heaviside`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         x (Tensor): The input tensor of Heaviside step function, it's data type should be float16, float32, float64, int32 or int64.

@@ -14,9 +14,10 @@
 # limitations under the License.
 
 import os
-import numpy as np
 import tempfile
 import unittest
+
+import numpy as np
 
 import paddle
 import paddle.fluid as fluid
@@ -222,7 +223,7 @@ class TestTracedLayerErrMsg(unittest.TestCase):
                     ).astype('float32')
                 )
                 dygraph_out = layer(in_x)
-                loss = fluid.layers.reduce_mean(dygraph_out)
+                loss = paddle.mean(dygraph_out)
                 loss.backward()
                 optimizer.minimize(loss)
         return layer

@@ -10,15 +10,17 @@
 # without warranties or conditions of any kind, either express or implied.
 # see the license for the specific language governing permissions and
 # limitations under the license.
-import os
-import io
-import numpy as np
-import sys
-from PIL import Image
-from paddle.dataset.common import download
-import tarfile
 import argparse
+import io
+import os
 import shutil
+import sys
+import tarfile
+
+import numpy as np
+from PIL import Image
+
+from paddle.dataset.common import download
 
 np.random.seed(0)
 

@@ -15,37 +15,33 @@
 from collections import defaultdict
 
 import paddle
-from paddle.framework import core
-from paddle.fluid.framework import default_main_program, default_startup_program
-from paddle.fluid import unique_name
-from .pass_base import register_pass
-from paddle.fluid.data_feeder import check_variable_and_dtype, check_type
-from paddle.distributed.auto_parallel.utils import (
-    set_var_dist_attr,
-    naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
+from paddle.distributed.auto_parallel.dist_attribute import (
+    OperatorDistributedAttribute,
 )
 from paddle.distributed.auto_parallel.process_group import (
     get_world_process_group,
 )
+from paddle.distributed.auto_parallel.utils import (
+    is_backward_op,
+    is_forward_op,
+    naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
+    set_var_dist_attr,
+)
+from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
+from paddle.fluid import unique_name
 from paddle.fluid.contrib.mixed_precision.fp16_utils import (
     AutoMixedPrecisionLists,
-)
-from paddle.fluid.contrib.mixed_precision.fp16_utils import (
+    _dtype_to_str,
     _keep_layer_norm_scale_bias_to_fp32,
     _need_keep_fp32,
     _valid_types,
-    _dtype_to_str,
 )
-from paddle.distributed.auto_parallel.dist_attribute import (
-    OperatorDistributedAttribute,
-)
-from paddle.distributed.auto_parallel.utils import (
-    is_forward_op,
-    is_backward_op,
-    OP_ROLE_KEY,
-    OpRole,
-)
+from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
+from paddle.fluid.framework import default_main_program, default_startup_program
+from paddle.framework import core
+
 from .auto_parallel_amp import AMPPass
+from .pass_base import register_pass
 
 world_process_group = get_world_process_group()
 # if user use python "+, -, * /" for network, there might be cast in vanilla program
@@ -420,6 +416,9 @@ class FP16State:
                             dist_context, cast_var, ref_mapping, ref_mesh
                         )
 
+                        op_namescope = "/"
+                        if op.has_attr('op_namescope'):
+                            op_namescope = op.attr('op_namescope')
                         cast_op = block._insert_op_without_sync(
                             idx,
                             type="cast",
@@ -431,6 +430,9 @@ class FP16State:
                                 OP_ROLE_KEY: OpRole.Forward,
                             },
                         )
+                        cast_op._set_attr(
+                            'op_namescope', op_namescope
+                        )  # for recompute
                         naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
                             cast_op, ref_mesh, ref_mapping, dist_context
                         )

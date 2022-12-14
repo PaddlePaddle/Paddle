@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numbers
+
 # TODO: define normalization api
 import paddle
 import paddle.fluid as fluid
-from ...fluid.data_feeder import check_variable_and_dtype, check_type
-from ...fluid.layer_helper import LayerHelper
-from ...fluid import dygraph_utils
-import numbers
-from paddle import _C_ops, _legacy_C_ops
-from paddle import in_dynamic_mode
+from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
 from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+
+from ...fluid import dygraph_utils
+from ...fluid.data_feeder import check_type, check_variable_and_dtype
+from ...fluid.layer_helper import LayerHelper
 
 __all__ = []
 
@@ -326,7 +327,8 @@ def layer_norm(
     x, normalized_shape, weight=None, bias=None, epsilon=1e-05, name=None
 ):
     """
-    see more detail in paddle.nn.LayerNorm
+    nn.LayerNorm is recommended.
+    For more information, please refer to :ref:`api_paddle_nn_LayerNorm` .
 
     Parameters:
         x(Tensor): Input Tensor. It's data type should be float32, float64.
@@ -334,11 +336,11 @@ def layer_norm(
             size :math:`[*, normalized_shape[0], normalized_shape[1], ..., normalized_shape[-1]]`.
             If it is a single integer, this module will normalize over the last dimension
             which is expected to be of that specific size.
-        epsilon(float, optional): The small value added to the variance to prevent
-            division by zero. Default: 1e-05.
         weight(Tensor, optional): The weight tensor of batch_norm. Default: None.
         bias(Tensor, optional): The bias tensor of batch_norm. Default: None.
-        name(str, optional): Name for the LayerNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
+        epsilon(float, optional): The small value added to the variance to prevent
+            division by zero. Default: 1e-05.
+        name(str, optional): Name for the LayerNorm, default is None. For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
         None
@@ -381,16 +383,11 @@ def layer_norm(
         )
 
     if in_dygraph_mode():
-        (
-            pre_act,
-            _,
-            _,
-        ) = _C_ops.layer_norm(x, weight, bias, epsilon, begin_norm_axis)
-
-        return dygraph_utils._append_activation_in_dygraph(pre_act, act=None)
+        out, _, _ = _C_ops.layer_norm(x, weight, bias, epsilon, begin_norm_axis)
+        return out
 
     if _in_legacy_dygraph():
-        pre_act, _, _ = _legacy_C_ops.layer_norm(
+        out, _, _ = _legacy_C_ops.layer_norm(
             x,
             weight,
             bias,
@@ -399,7 +396,7 @@ def layer_norm(
             'begin_norm_axis',
             begin_norm_axis,
         )
-        return dygraph_utils._append_activation_in_dygraph(pre_act, act=None)
+        return out
 
     check_variable_and_dtype(
         x, 'input', ['float16', 'float32', 'float64'], 'LayerNorm'
@@ -452,7 +449,7 @@ def instance_norm(
     name=None,
 ):
     """
-    See more detail in nn.layer.InstanceNorm2D.
+    It is recommended to use :ref:`api_paddle_nn_InstanceNorm1D` , :ref:`api_paddle_nn_InstanceNorm2D` , :ref:`api_paddle_nn_InstanceNorm3D` to call this method internally.
 
     Parameters:
         x(Tensor): Input Tensor. It's data type should be float32, float64.

@@ -13,12 +13,14 @@
 # limitations under the license.
 
 import unittest
+
 import numpy as np
+from simple_nets import simple_fc_net
+from test_imperative_base import new_program_scope
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from test_imperative_base import new_program_scope
-from simple_nets import simple_fc_net
 
 
 class TestCompiledProgram(unittest.TestCase):
@@ -105,7 +107,9 @@ class TestCompiledProgramError(unittest.TestCase):
         )
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
         prediction = fluid.layers.fc(input=img, size=10, act='softmax')
-        loss = fluid.layers.cross_entropy(input=prediction, label=label)
+        loss = paddle.nn.functional.cross_entropy(
+            input=prediction, label=label, reduction='none', use_softmax=False
+        )
         avg_loss = paddle.mean(loss)
 
     def compile_program_not_compiled(self):

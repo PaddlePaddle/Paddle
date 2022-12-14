@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/distributed/collective/NCCLTools.h"
 
-#include "paddle/fluid/distributed/collective/Types.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace distributed {
@@ -42,110 +42,6 @@ std::string SerializeNCCLUniqueId(const ncclUniqueId& ncclID) {
     oss << std::hex << static_cast<int>(bytes[i]);
   }
   return oss.str();
-}
-
-void StaticCheckTensor(const phi::DenseTensor& tensor,
-                       int rank,
-                       int world_size) {
-  // place check
-  PADDLE_ENFORCE_EQ(
-      platform::is_gpu_place(tensor.place()),
-      true,
-      platform::errors::InvalidArgument("Tensor should be in GPU place."));
-  // rank check
-  PADDLE_ENFORCE_GE(rank,
-                    0,
-                    platform::errors::InvalidArgument(
-                        "Rank should be greater than or equal to 0."));
-  PADDLE_ENFORCE_LT(
-      rank,
-      world_size,
-      platform::errors::InvalidArgument("Rank is out of the process group."));
-}
-
-// static check for collective
-void StaticCheckTensors(const phi::DenseTensor& out_tensor,
-                        const phi::DenseTensor& in_tensor,
-                        int rank,
-                        int world_size,
-                        int out_size_factor,
-                        int in_size_factor) {
-  // place check
-  PADDLE_ENFORCE_EQ(platform::is_gpu_place(out_tensor.place()),
-                    true,
-                    platform::errors::InvalidArgument(
-                        "Output tensor should be in GPU place."));
-  PADDLE_ENFORCE_EQ(platform::is_gpu_place(in_tensor.place()),
-                    true,
-                    platform::errors::InvalidArgument(
-                        "Input tensor should be in GPU place."));
-  // rank check
-  PADDLE_ENFORCE_GE(rank,
-                    0,
-                    platform::errors::InvalidArgument(
-                        "Rank should be greater than or equal to 0."));
-  PADDLE_ENFORCE_LT(
-      rank,
-      world_size,
-      platform::errors::InvalidArgument("Rank is out of the process group."));
-  // shape check
-  int64_t out_size = out_tensor.numel();
-  PADDLE_ENFORCE_GT(out_size,
-                    0,
-                    platform::errors::InvalidArgument(
-                        "Size of output tensor should be greater than 0."));
-  int64_t in_size = in_tensor.numel();
-  PADDLE_ENFORCE_GT(in_size,
-                    0,
-                    platform::errors::InvalidArgument(
-                        "Size of input tensor should be greater than 0."));
-  PADDLE_ENFORCE_EQ(
-      out_size * out_size_factor,
-      in_size * in_size_factor,
-      platform::errors::InvalidArgument(
-          "Input and output tensors should have matching sizes."));
-  // dtype check
-  PADDLE_ENFORCE_EQ(
-      out_tensor.dtype(),
-      in_tensor.dtype(),
-      platform::errors::InvalidArgument(
-          "Input and output tensors should have the same data type."));
-}
-
-void StaticCheckTensorsSameShape(const phi::DenseTensor& out_tensor,
-                                 const phi::DenseTensor& in_tensor,
-                                 int rank,
-                                 int world_size) {
-  StaticCheckTensors(out_tensor,
-                     in_tensor,
-                     rank,
-                     world_size,
-                     /*out_size_factor*/ 1,
-                     /*in_size_factor*/ 1);
-}
-
-void StaticCheckTensorsScatterLikeShape(const phi::DenseTensor& out_tensor,
-                                        const phi::DenseTensor& in_tensor,
-                                        int rank,
-                                        int world_size) {
-  StaticCheckTensors(out_tensor,
-                     in_tensor,
-                     rank,
-                     world_size,
-                     /*out_size_factor*/ world_size,
-                     /*in_size_factor*/ 1);
-}
-
-void StaticCheckTensorsGatherLikeShape(const phi::DenseTensor& out_tensor,
-                                       const phi::DenseTensor& in_tensor,
-                                       int rank,
-                                       int world_size) {
-  StaticCheckTensors(out_tensor,
-                     in_tensor,
-                     rank,
-                     world_size,
-                     /*out_size_factor*/ 1,
-                     /*in_size_factor*/ world_size);
 }
 
 }  //  namespace distributed

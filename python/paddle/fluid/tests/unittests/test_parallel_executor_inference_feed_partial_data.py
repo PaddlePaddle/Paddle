@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
-import numpy as np
 import unittest
+
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
 
 
 class TestInferencePartialFeed(unittest.TestCase):
@@ -181,7 +184,7 @@ class TestInferencePartialFeedUsingDataLoader(unittest.TestCase):
             feed_list=[x], capacity=16, iterable=iterable, drop_last=drop_last
         )
         y = fluid.layers.fc(x, size=10)
-        loss = fluid.layers.reduce_mean(y)
+        loss = paddle.mean(y)
 
         exe = fluid.Executor(places[0])
         exe.run(fluid.default_startup_program())

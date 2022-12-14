@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-
+import paddle.nn.functional as F
 from paddle.jit.api import declarative
 
 
@@ -47,7 +49,7 @@ def call_lambda_in_func(x):
 
     add_func = lambda x: x + 1
 
-    y = paddle.mean((lambda x: fluid.layers.relu(x))(x))
+    y = paddle.mean((lambda x: F.relu(x))(x))
     out = add_func(y) if y > 1 and y < 2 else (lambda x: x**2)(y)
 
     return out

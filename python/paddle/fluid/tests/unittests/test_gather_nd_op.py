@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
-import paddle.fluid as fluid
+
 import paddle
+import paddle.fluid as fluid
 
 
 class TestGatherNdOpWithEmptyIndex(OpTest):
@@ -162,17 +164,17 @@ class TestGatherNdOpAPI(unittest.TestCase):
             name='x1', shape=[30, 40, 50, 60], dtype='float32'
         )
         index1 = fluid.layers.data(name='index1', shape=[2, 4], dtype='int32')
-        output1 = fluid.layers.gather_nd(x1, index1)
+        output1 = paddle.gather_nd(x1, index1)
 
     def test_case2(self):
         x2 = fluid.layers.data(name='x2', shape=[30, 40, 50], dtype='float32')
         index2 = fluid.layers.data(name='index2', shape=[2, 2], dtype='int64')
-        output2 = fluid.layers.gather_nd(x2, index2)
+        output2 = paddle.gather_nd(x2, index2)
 
     def test_case3(self):
         x3 = fluid.layers.data(name='x3', shape=[3, 4, 5], dtype='float32')
         index3 = fluid.layers.data(name='index3', shape=[2, 1], dtype='int32')
-        output3 = fluid.layers.gather_nd(x3, index3, name="gather_nd_layer")
+        output3 = paddle.gather_nd(x3, index3, name="gather_nd_layer")
 
 
 # Test Raise Index Error
@@ -186,7 +188,7 @@ class TestGatherNdOpRaise(unittest.TestCase):
                 index = fluid.layers.data(
                     name='index', shape=[2, 10], dtype='int32'
                 )
-                output = fluid.layers.gather_nd(x, index)
+                output = paddle.gather_nd(x, index)
             except Exception as e:
                 t = "Input(Index).shape[-1] should be no greater than Input(X).rank"
                 if t in str(e):

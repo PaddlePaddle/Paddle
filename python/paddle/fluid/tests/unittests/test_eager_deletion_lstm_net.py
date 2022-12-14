@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 from test_eager_deletion_dynamic_rnn_base import TestBase
+
 import paddle
 import paddle.fluid as fluid
-import unittest
 
 fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
 
@@ -43,7 +45,9 @@ def lstm_net(
     lstm_max_tanh = paddle.tanh(lstm_max)
     fc1 = fluid.layers.fc(input=lstm_max_tanh, size=hid_dim2, act='tanh')
     prediction = fluid.layers.fc(input=fc1, size=class_dim, act='softmax')
-    cost = fluid.layers.cross_entropy(input=prediction, label=label)
+    cost = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     avg_cost = paddle.mean(x=cost)
     return avg_cost
 

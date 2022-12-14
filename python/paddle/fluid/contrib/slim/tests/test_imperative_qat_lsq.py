@@ -170,8 +170,10 @@ class TestImperativeQatLSQ(unittest.TestCase):
                 img = fluid.dygraph.to_variable(x_data)
                 label = fluid.dygraph.to_variable(y_data)
                 out = lenet(img)
-                acc = fluid.layers.accuracy(out, label)
-                loss = fluid.layers.cross_entropy(out, label)
+                acc = paddle.static.accuracy(out, label)
+                loss = paddle.nn.functional.cross_entropy(
+                    out, label, reduction='none', use_softmax=False
+                )
                 avg_loss = paddle.mean(loss)
 
                 avg_loss.backward()
@@ -202,10 +204,10 @@ class TestImperativeQatLSQ(unittest.TestCase):
                     label = fluid.dygraph.to_variable(y_data)
 
                     out = lenet(img)
-                    acc_top1 = fluid.layers.accuracy(
+                    acc_top1 = paddle.static.accuracy(
                         input=out, label=label, k=1
                     )
-                    acc_top5 = fluid.layers.accuracy(
+                    acc_top5 = paddle.static.accuracy(
                         input=out, label=label, k=5
                     )
 

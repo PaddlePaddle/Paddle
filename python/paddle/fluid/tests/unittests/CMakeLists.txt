@@ -422,7 +422,6 @@ endfunction()
 list(REMOVE_ITEM TEST_OPS test_feed_data_check_shape_type)
 list(REMOVE_ITEM TEST_OPS test_fetch_lod_tensor_array)
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
-list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_profiler)
 list(REMOVE_ITEM TEST_OPS test_data_norm_op)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_fetch_feed)
@@ -748,7 +747,6 @@ if(WITH_DISTRIBUTE)
   endif()
 endif()
 
-py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf)
 # profiler will random hang in linux cuda 10.1 or 10.2
 # see https://github.com/PaddlePaddle/Paddle/issues/29082 for details.
 # We guess there are some bugs in linux cuda 10.1 or 10.2,
@@ -916,7 +914,6 @@ set_tests_properties(
   test_buffer_shared_memory_reuse_pass
   PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(
-  test_parallel_executor_crf
   test_sync_batch_norm_op
   test_inplace_abn_op
   test_parallel_executor_seresnext_base_gpu
@@ -1053,7 +1050,6 @@ set_tests_properties(test_index_select_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_index_add_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_ssa_graph_inference_feed_partial_data
                      PROPERTIES TIMEOUT 120)
-set_tests_properties(test_parallel_executor_crf PROPERTIES TIMEOUT 120)
 set_tests_properties(test_tensordot PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_save_load PROPERTIES TIMEOUT 120)
 set_tests_properties(test_partial_eager_deletion_transformer PROPERTIES TIMEOUT
@@ -1079,7 +1075,6 @@ set_tests_properties(test_nan_inf PROPERTIES TIMEOUT 120)
 set_tests_properties(test_deformable_conv_v1_op PROPERTIES TIMEOUT 300)
 set_tests_properties(test_parallel_executor_transformer_auto_growth
                      PROPERTIES TIMEOUT 120)
-set_tests_properties(test_py_reader_using_executor PROPERTIES TIMEOUT 120)
 set_tests_properties(test_elementwise_add_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_weight_decay PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_ptb_rnn_sorted_gradient PROPERTIES TIMEOUT
@@ -1090,7 +1085,6 @@ set_tests_properties(test_parallel_executor_mnist PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_ptb_rnn PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_save_load_v2 PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv2d_transpose_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_prroi_pool_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_multiprocess_dataloader_iterable_dataset_static
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_lstm_cudnn_op PROPERTIES TIMEOUT 120)
@@ -1099,7 +1093,6 @@ set_tests_properties(test_bilinear_interp_v2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_svd_op PROPERTIES TIMEOUT 80)
 set_tests_properties(test_einsum_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_qr_op PROPERTIES TIMEOUT 60)
-set_tests_properties(test_deformable_psroi_pooling PROPERTIES TIMEOUT 120)
 set_tests_properties(test_trilinear_interp_v2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_static_runner_mnist PROPERTIES TIMEOUT 120)
 set_tests_properties(test_masked_select_op PROPERTIES TIMEOUT 120)
@@ -1109,7 +1102,6 @@ set_tests_properties(test_imperative_optimizer_v2 PROPERTIES TIMEOUT 150)
 set_tests_properties(test_partial_sum_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cond PROPERTIES TIMEOUT 120)
 set_tests_properties(test_space_to_depth_op PROPERTIES TIMEOUT 200)
-set_tests_properties(test_dyn_rnn PROPERTIES TIMEOUT 120)
 set_tests_properties(test_sgd_op PROPERTIES TIMEOUT 250)
 set_tests_properties(test_parallel_executor_seresnext_base_gpu
                      PROPERTIES TIMEOUT 120)
