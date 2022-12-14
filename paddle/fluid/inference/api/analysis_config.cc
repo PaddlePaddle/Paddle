@@ -957,7 +957,7 @@ void AnalysisConfig::Update() {
       LOG_FIRST_N(WARNING, 1)
           << "It is detected that mkldnn and memory_optimize_pass are enabled "
              "at the same time, but they are not supported yet. Currently, "
-             "memory_optimize_pass is explicitly disabled"
+             "memory_optimize_pass is explicitly disabled";
     } else {
       pass_builder()->AppendAnalysisPass("memory_optimize_pass");
     }
