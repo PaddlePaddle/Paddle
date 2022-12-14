@@ -3481,7 +3481,7 @@ def cosine_embedding_loss(
     input1, input2, label, margin=0, reduction='mean', name=None
 ):
     r"""
-    Computes the cosine embedding loss of Tensor ``input1``, ``input2`` and ``label`` as follows.
+    Compute the cosine embedding loss of Tensor ``input1``, ``input2`` and ``label`` as follows.
 
     If label = 1, then the loss value can be calculated as follow:
 
