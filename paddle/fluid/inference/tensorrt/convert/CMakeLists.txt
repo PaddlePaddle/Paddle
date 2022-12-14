@@ -18,6 +18,7 @@ list(
   group_norm_op.cc
   pad_op.cc
   split_op.cc
+  square_op.cc
   prelu_op.cc
   leaky_relu_op.cc
   gelu_op.cc
@@ -94,7 +95,7 @@ list(
   fused_lookup_tables_op.cc
   expand_v2_op.cc)
 
-if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7 AND NOT WIN32)
+if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
   list(APPEND CONVERT_FILES emb_eltwise_layernorm.cc
        preln_emb_eltwise_layernorm.cc)
 endif()

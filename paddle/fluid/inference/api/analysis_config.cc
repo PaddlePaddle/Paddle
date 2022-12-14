@@ -99,7 +99,7 @@ void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
     // default
   } else if (precision_mode == Precision::kHalf ||
              precision_mode == Precision::kBf16) {
-    enable_gpu_half_ = true;
+    enable_gpu_mixed_ = true;
   } else {
     LOG(ERROR)
         << "The Paddle-GPU inference currently only supports "
@@ -108,6 +108,7 @@ void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
   }
 #else
   LOG(ERROR) << "Please use PaddlePaddle with GPU version.";
+  use_gpu_ = false;
 #endif
 
   Update();
@@ -299,7 +300,7 @@ void AnalysisConfig::LoadIpuConfig(const std::string &config_path) {
 
     if (ipu_config_mapper_.find(key) == ipu_config_mapper_.end()) {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "invalid key {} in IPU config: ", key));
+          "invalid key %s in IPU config: ", key));
     }
     switch (ipu_config_mapper_.at(key)) {
       case ipu_config_code::ipu_device_num:
@@ -335,10 +336,9 @@ void AnalysisConfig::LoadIpuConfig(const std::string &config_path) {
       case ipu_config_code::ipu_enable_model_runtime_executor:
         ipu_enable_model_runtime_executor_ = string2bool(value);
         break;
-
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "invalid key {} in IPU config", key));
+            "invalid key %s in IPU config", key));
         break;
     }
   }
@@ -396,7 +396,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   // Mixed precision related.
   CP_MEMBER(mixed_black_list_);
-  CP_MEMBER(enable_gpu_half_);
+  CP_MEMBER(enable_gpu_mixed_);
   CP_MEMBER(mixed_precision_mode_);
 
   CP_MEMBER(enable_memory_optim_);
@@ -948,12 +948,7 @@ void AnalysisConfig::Update() {
 #endif
   }
 
-#ifdef PADDLE_WITH_MKLDNN
-  // Do not optimize when mkldnn is on
-  if (enable_memory_optim_ && !use_mkldnn_) {
-#else
   if (enable_memory_optim_) {
-#endif
     pass_builder()->AppendAnalysisPass("memory_optimize_pass");
   }
 
@@ -1022,7 +1017,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << params_file_;
 
   ss << use_gpu_;
-  ss << enable_gpu_half_;
+  ss << enable_gpu_mixed_;
   ss << use_external_stream_;
   ss << exec_stream_;
   ss << use_fc_padding_;
@@ -1239,7 +1234,7 @@ std::string AnalysisConfig::Summary() {
   os.InsertRow({"use_gpu", use_gpu_ ? "true" : "false"});
   if (use_gpu_) {
     os.InsertRow({"gpu_device_id", std::to_string(gpu_device_id_)});
-    os.InsertRow({"enable_gpu_half_", std::to_string(enable_gpu_half_)});
+    os.InsertRow({"enable_gpu_mixed_", std::to_string(enable_gpu_mixed_)});
     os.InsertRow({"memory_pool_init_size",
                   std::to_string(memory_pool_init_size_mb_) + "MB"});
     os.InsertRow(
@@ -1438,7 +1433,7 @@ bool AnalysisConfig::trt_allow_build_at_runtime() const {
   return trt_allow_build_at_runtime_;
 }
 
-void AnalysisConfig::Exp_DisableMixedInferOps(
+void AnalysisConfig::Exp_DisableMixedPrecisionOps(
     const std::unordered_set<std::string> &black_list) {
   mixed_black_list_ = black_list;
 }

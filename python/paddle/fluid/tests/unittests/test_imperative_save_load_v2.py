@@ -23,8 +23,8 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.learning_rate_scheduler import LearningRateDecay
-from paddle.fluid.dygraph.nn import Embedding
 from paddle.fluid.framework import _test_eager_guard
+from paddle.nn import Embedding
 from paddle.optimizer import Adam
 
 
@@ -120,10 +120,10 @@ class SimpleLSTMRNN(fluid.Layer):
                 self._input = m
 
                 if self._dropout is not None and self._dropout > 0.0:
-                    self._input = fluid.layers.dropout(
+                    self._input = paddle.nn.functional.dropout(
                         self._input,
-                        dropout_prob=self._dropout,
-                        dropout_implementation='upscale_in_train',
+                        p=self._dropout,
+                        mode='upscale_in_train',
                     )
             res.append(
                 paddle.reshape(self._input, shape=[1, -1, self._hidden_size])
@@ -168,10 +168,10 @@ class PtbModel(fluid.Layer):
             dropout=dropout,
         )
         self.embedding = Embedding(
-            size=[vocab_size, hidden_size],
-            dtype='float32',
-            is_sparse=False,
-            param_attr=fluid.ParamAttr(
+            vocab_size,
+            hidden_size,
+            sparse=False,
+            weight_attr=fluid.ParamAttr(
                 name='embedding_para',
                 initializer=fluid.initializer.UniformInitializer(
                     low=-init_scale, high=init_scale
@@ -210,10 +210,10 @@ class PtbModel(fluid.Layer):
             x_emb, shape=[-1, self.num_steps, self.hidden_size]
         )
         if self.dropout is not None and self.dropout > 0.0:
-            x_emb = fluid.layers.dropout(
+            x_emb = paddle.nn.functional.dropout(
                 x_emb,
-                dropout_prob=self.drop_out,
-                dropout_implementation='upscale_in_train',
+                p=self.drop_out,
+                mode='upscale_in_train',
             )
         rnn_out, last_hidden, last_cell = self.simple_lstm_rnn(
             x_emb, init_h, init_c
@@ -1015,7 +1015,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
     def func_testOnlyLoadParams(self):
         with fluid.dygraph.guard():
-            emb = fluid.dygraph.Embedding([10, 10])
+            emb = paddle.nn.Embedding(10, 10)
             state_dict = emb.state_dict()
             paddle.save(
                 state_dict,
@@ -1028,7 +1028,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
     def func_test_no_state_in_input_dict(self):
         with fluid.dygraph.guard():
-            emb = fluid.dygraph.Embedding([10, 10])
+            emb = paddle.nn.Embedding(10, 10)
             state_dict = emb.state_dict()
             paddle.save(
                 state_dict,
@@ -1044,7 +1044,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
     def func_test_state_shape_mismatch(self):
         with fluid.dygraph.guard():
-            emb = fluid.dygraph.Embedding([10, 10])
+            emb = paddle.nn.Embedding(10, 10)
             state_dict = emb.state_dict()
             paddle.save(
                 state_dict,

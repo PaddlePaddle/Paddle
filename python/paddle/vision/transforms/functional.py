@@ -20,6 +20,7 @@ from PIL import Image
 
 import paddle
 
+from ...fluid.framework import Variable
 from . import functional_cv2 as F_cv2
 from . import functional_pil as F_pil
 from . import functional_tensor as F_t
@@ -32,7 +33,10 @@ def _is_pil_image(img):
 
 
 def _is_tensor_image(img):
-    return isinstance(img, paddle.Tensor)
+    """
+    Return True if img is a Tensor for dynamic mode or Variable for static mode.
+    """
+    return isinstance(img, (paddle.Tensor, Variable))
 
 
 def _is_numpy_image(img):
