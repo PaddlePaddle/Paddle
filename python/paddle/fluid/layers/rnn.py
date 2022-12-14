@@ -494,7 +494,6 @@ def dynamic_lstm(
     name=None,
 ):
     r"""
-	:api_attr: Static Graph
 
     **Note**:
         1. This OP only supports LoDTensor as inputs. If you need to deal with Tensor, please use :ref:`api_fluid_layers_lstm` .
@@ -684,12 +683,11 @@ def lstm(
     seed=-1,
 ):
     r"""
-	:api_attr: Static Graph
 
     **Note**:
         This OP only supports running on GPU devices.
 
-    This OP implements LSTM operation - `Hochreiter, S., & Schmidhuber, J. (1997) <http://deeplearning.cs.cmu.edu/pdfs/Hochreiter97_lstm.pdf>`_ .
+    This OP implements LSTM operation - `Hochreiter, S., & Schmidhuber, J. (1997) <https://blog.xpgreat.com/file/lstm.pdf>`_ .
 
     The implementation of this OP does not include diagonal/peephole connections.
     Please refer to `Gers, F. A., & Schmidhuber, J. (2000) <ftp://ftp.idsia.ch/pub/juergen/TimeCount-IJCNN2000.pdf>`_ .
@@ -742,7 +740,6 @@ def lstm(
                          If set None, default initializer will be used. Default: None.
         seed(int, optional): Seed for dropout in LSTM, If it's -1, dropout will use random seed. Default: 1.
 
-
     Returns:
         tuple ( :ref:`api_guide_Variable_en` , :ref:`api_guide_Variable_en` , :ref:`api_guide_Variable_en` ) :
 
@@ -756,7 +753,6 @@ def lstm(
                         - last_c(Tensor): the cell state of the last step of LSTM \
                           shape is :math:`[num\_layers, batch\_size, hidden\_size]` \
                           if is_bidirec set to True, shape will be :math:`[num\_layers*2, batch\_size, hidden\_size]`
-
 
     Examples:
         .. code-block:: python
@@ -875,7 +871,6 @@ def dynamic_lstmp(
     proj_clip=None,
 ):
     r"""
-	:api_attr: Static Graph
 
     **Note**:
         1. In order to improve efficiency, users must first map the input of dimension [T, hidden_size] to input of [T, 4 * hidden_size], and then pass it to this OP.
@@ -1100,7 +1095,6 @@ def dynamic_gru(
     origin_mode=False,
 ):
     r"""
-	:api_attr: Static Graph
 
     **Note: The input type of this must be LoDTensor. If the input type to be
     processed is Tensor, use** :ref:`api_fluid_layers_StaticRNN` .
@@ -1270,7 +1264,6 @@ def gru_unit(
     origin_mode=False,
 ):
     r"""
-	:api_attr: Static Graph
 
     Gated Recurrent Unit (GRU) RNN cell. This operator performs GRU calculations for
     one time step and it supports these two modes:

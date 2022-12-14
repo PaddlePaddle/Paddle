@@ -36,7 +36,7 @@ def launch():
 
 
     Base Parameters:
-        - ``--master``: The master/rendezvous server, support http:// and etcd://, default with http://. e.g., ``--master=127.0.0.1:8080``. Default ``--master=None``.
+        - ``--master``: The master/rendezvous server, support ``http://`` and ``etcd://``, default with ``http://``. e.g., ``--master=127.0.0.1:8080``. Default ``--master=None``.
 
         - ``--rank``: The rank of the node, can be auto assigned by master. Default ``--rank=-1``.
 
