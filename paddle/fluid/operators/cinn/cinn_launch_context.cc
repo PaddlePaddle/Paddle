@@ -466,7 +466,13 @@ framework::InterpreterCore* CinnLaunchContext::InitializeInterpreterCore(
     }
     if (!interpreter_core_) {
       interpreter_core_ = std::make_unique<framework::InterpreterCore>(
-          place, runtime_program_->Block(0), skip_gc_vars_, scope, false);
+          place,
+          runtime_program_->Block(0),
+          skip_gc_vars_,
+          scope,
+          /*used_for_jit*/ false,
+          /*used_for_control_flow_op*/ false,
+          /*used_for_cinn*/ true);
     } else {
       interpreter_core_->reset_scope(scope);
     }

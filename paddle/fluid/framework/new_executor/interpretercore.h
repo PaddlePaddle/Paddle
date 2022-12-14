@@ -46,7 +46,8 @@ class InterpreterCore {
                   const std::set<std::string>& skip_gc_vars,
                   Scope* scope,
                   bool used_for_jit = false,
-                  bool used_for_control_flow_op = false);
+                  bool used_for_control_flow_op = false,
+                  bool used_for_cinn = false);
 
   ~InterpreterCore();
 
@@ -76,9 +77,6 @@ class InterpreterCore {
   void reset_scope(Scope* new_scope);
 
   const platform::Place& GetPlace() const { return place_; }
-
-  // scope
-  bool HasLocalScope() const;
 
  private:
   // build graph
@@ -119,6 +117,9 @@ class InterpreterCore {
 
   // workqueue
   std::shared_ptr<interpreter::AsyncWorkQueue> GetWorkQueue();
+
+  // scope
+  bool HasLocalScope() const;
 
  private:
   bool is_build_{false};

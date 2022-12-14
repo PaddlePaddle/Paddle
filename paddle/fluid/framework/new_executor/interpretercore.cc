@@ -113,7 +113,8 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
                                  const std::set<std::string>& skip_gc_vars,
                                  framework::Scope* scope,
                                  bool used_for_jit,
-                                 bool used_for_control_flow_op)
+                                 bool used_for_control_flow_op,
+                                 bool used_for_cinn)
     : place_(place),
       block_(block),
       execution_config_(place, block.OpSize()),
@@ -126,9 +127,9 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
 
   execution_config_.used_for_jit = used_for_jit;
   execution_config_.used_for_control_flow_op = used_for_control_flow_op;
-  execution_config_.create_local_scope = !used_for_jit &&
-                                         FLAGS_new_executor_use_local_scope &&
-                                         !used_for_control_flow_op;
+  execution_config_.create_local_scope =
+      !used_for_jit && FLAGS_new_executor_use_local_scope &&
+      !used_for_control_flow_op && !used_for_cinn;
   execution_config_.skip_gc_vars = skip_gc_vars;
   execution_config_.Log(/*log_level=*/8);
 
