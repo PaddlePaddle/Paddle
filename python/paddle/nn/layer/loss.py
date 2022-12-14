@@ -911,8 +911,11 @@ class KLDivLoss(Layer):
             Default is ``'mean'``.
 
     Shape:
+
         input (Tensor): ``(N, *)``, where ``*`` means, any number of additional dimensions.
+
         label (Tensor): ``(N, *)``, same shape as input.
+
         output (Tensor): tensor with shape: [1] by default.
 
     Examples:
