@@ -572,15 +572,17 @@ fused_attention_dygraph_function(
       egr::EagerUtils::CheckAndRetainGrad(SoftmaxOut);
       grad_node->SetGradOutMeta(SoftmaxOut, 19);
 
-      auto AttnDropoutOut_accumulation_node =
-          std::make_shared<egr::GradNodeAccumulation>(
-              p_autograd_AttnDropoutOut);
-      egr::EagerUtils::SetOutRankWithSlot(p_autograd_AttnDropoutOut, 0);
-      egr::EagerUtils::SetHistory(p_autograd_AttnDropoutOut,
-                                  AttnDropoutOut_accumulation_node);
-      AttnDropoutOut_accumulation_node->SetGradInMeta(AttnDropoutOut, 0);
-      egr::EagerUtils::CheckAndRetainGrad(AttnDropoutOut);
-      grad_node->SetGradOutMeta(AttnDropoutOut, 20);
+      if (AttnDropoutOut.initialized()) {
+        auto AttnDropoutOut_accumulation_node =
+            std::make_shared<egr::GradNodeAccumulation>(
+                p_autograd_AttnDropoutOut);
+        egr::EagerUtils::SetOutRankWithSlot(p_autograd_AttnDropoutOut, 0);
+        egr::EagerUtils::SetHistory(p_autograd_AttnDropoutOut,
+                                    AttnDropoutOut_accumulation_node);
+        AttnDropoutOut_accumulation_node->SetGradInMeta(AttnDropoutOut, 0);
+        egr::EagerUtils::CheckAndRetainGrad(AttnDropoutOut);
+        grad_node->SetGradOutMeta(AttnDropoutOut, 20);
+      }
 
       auto FMHAOut_accumulation_node =
           std::make_shared<egr::GradNodeAccumulation>(p_autograd_FMHAOut);
