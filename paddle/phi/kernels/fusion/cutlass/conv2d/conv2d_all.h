@@ -13,6 +13,7 @@
 // limitations under the License.
 #pragma once
 #include <cuda_fp16.h>
+#include <glog/logging.h>
 #include <iostream>
 #include <map>
 #include <vector>
@@ -26,10 +27,10 @@
 namespace phi {
 namespace fusion {
 
-#define check(status)                                                        \
+#define CUTLASS_CHECK(status)                                                \
   if (status != cutlass::Status::kSuccess) {                                 \
-    printf(                                                                  \
-        "cutlass can not deal with this problem size, skip this kernel!\n"); \
+    VLOG(3)                                                                  \
+        << "Cutlass can not deal with this problem size, skip this kernel!"; \
     return status;                                                           \
   }
 

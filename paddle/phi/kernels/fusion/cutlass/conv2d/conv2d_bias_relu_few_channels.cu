@@ -116,11 +116,11 @@ cutlass::Status cutlass_nhwc_conv2d_bias_relu_few_channels(
   cudaMalloc(&workspace, bytes);
 
   cutlass::Status status = implicit_gemm_op.can_implement(arguments);
-  check(status);
+  CUTLASS_CHECK(status);
   status = implicit_gemm_op.initialize(arguments, workspace);
-  check(status);
+  CUTLASS_CHECK(status);
   status = implicit_gemm_op();
-  check(status);
+  CUTLASS_CHECK(status);
   cudaFree(workspace);
   return status;
 }

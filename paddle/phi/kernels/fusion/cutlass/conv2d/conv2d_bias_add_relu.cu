@@ -110,11 +110,11 @@ cutlass::Status cutlass_nhwc_conv2d_bias_add_relu(ConvAllParams params) {
   cudaMalloc(&workspace, bytes);
 
   cutlass::Status status = implicit_gemm_op.can_implement(arguments);
-  check(status);
+  CUTLASS_CHECK(status);
   status = implicit_gemm_op.initialize(arguments, workspace);
-  check(status);
+  CUTLASS_CHECK(status);
   status = implicit_gemm_op();
-  check(status);
+  CUTLASS_CHECK(status);
   cudaFree(workspace);
   return status;
 }
@@ -255,7 +255,9 @@ void cutlass_conv2d_bias_add_relu(ConvAllParams params) {
     }
 
     // debug code
-    std::cout << conv2d_diff_gpu(params, CONV2D_BIAS_ADD_RELU) << std::endl;
+    VLOG(3) << "conv2d_bias_add_relu: tactic " << i << " has max diff "
+            << conv2d_diff_gpu(params, CONV2D_BIAS_ADD_RELU)
+            << " compared with baseline";
   }
 }
 
