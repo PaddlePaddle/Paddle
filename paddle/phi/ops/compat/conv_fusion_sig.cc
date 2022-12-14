@@ -19,17 +19,20 @@ namespace phi {
 KernelSignature ConvFusionOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("conv2d_fusion",
                          {"Input", "Filter", "Bias", "ResidualData"},
-                         {"strides",
-                          "paddings",
-                          "padding_algorithm",
-                          "dilations",
-                          "groups",
-                          "data_format",
-                          "activation",
-                          "exhaustive_search"},
-                         {"Output"});
+                         {
+                             "strides",
+                             "paddings",
+                             "padding_algorithm",
+                             "dilations",
+                             "groups",
+                             "data_format",
+                             "activation",
+                             "exhaustive_search",
+                             "split_channels",
+                             "workspace_size_MB",
+                         },
+                         {"Output", "Outputs"});
 }
-
 }  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(conv2d_fusion, phi::ConvFusionOpArgumentMapping);
