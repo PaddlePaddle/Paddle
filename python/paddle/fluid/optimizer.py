@@ -4172,7 +4172,6 @@ class ModelAverage(Optimizer):
 
 class ExponentialMovingAverage:
     r"""
-        :api_attr: Static Graph
 
     Compute the moving average of parameters with exponential decay.
     Given a parameter :math:`\\theta`, its exponential moving average (EMA)
