@@ -45,7 +45,7 @@ class Policy(Layer):
     def forward(self, x):
         x = paddle.reshape(x, shape=[1, 4])
         x = self.affine1(x)
-        x = fluid.layers.dropout(x, self.dropout_ratio)
+        x = paddle.nn.functional.dropout(x, self.dropout_ratio)
         x = F.relu(x)
         action_scores = self.affine2(x)
 
