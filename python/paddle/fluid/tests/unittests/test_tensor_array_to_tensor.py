@@ -197,7 +197,7 @@ class TestLoDTensorArrayStack(unittest.TestCase):
             idx = fluid.layers.fill_constant(shape=[1], dtype="int64", value=0)
             for i, x in enumerate(self.inputs):
                 x = fluid.layers.assign(x)
-                fluid.layers.array_write(x, idx + i, array)
+                paddle.tensor.array_write(x, idx + i, array)
             output, output_index = fluid.layers.tensor_array_to_tensor(
                 input=array, **self.attrs
             )
@@ -239,8 +239,8 @@ class TestTensorArrayToTensorAPI(unittest.TestCase):
         x1.stop_gradient = False
         i = fluid.layers.fill_constant(shape=[1], dtype="int64", value=0)
         array = paddle.tensor.create_array(dtype='float32')
-        fluid.layers.array_write(x0, i, array)
-        fluid.layers.array_write(x1, i + 1, array)
+        paddle.tensor.array_write(x0, i, array)
+        paddle.tensor.array_write(x1, i + 1, array)
         output_stack, output_index_stack = fluid.layers.tensor_array_to_tensor(
             input=array, axis=1, use_stack=True
         )
@@ -280,14 +280,14 @@ class TestTensorArrayToTensorAPI(unittest.TestCase):
             array = paddle.tensor.create_array(dtype='float32')
             inp0 = np.random.rand(2, 3, 4).astype("float32")
             x0 = fluid.layers.assign(inp0)
-            fluid.layers.array_write(x0, zero, array)
+            paddle.tensor.array_write(x0, zero, array)
 
             def cond(i, end, array):
                 return paddle.less_than(i, end)
 
             def body(i, end, array):
-                prev = fluid.layers.array_read(array, i - 1)
-                fluid.layers.array_write(prev, i, array)
+                prev = paddle.tensor.array_read(array, i - 1)
+                paddle.tensor.array_write(prev, i, array)
                 return i + 1, end, array
 
             _, _, array = paddle.static.nn.while_loop(
@@ -297,7 +297,7 @@ class TestTensorArrayToTensorAPI(unittest.TestCase):
             self.assertTrue(paddle.tensor.array_length(array), 10)
             last = fluid.layers.fill_constant(shape=[1], dtype='int64', value=9)
             np.testing.assert_array_equal(
-                fluid.layers.array_read(array, last).numpy(), inp0
+                paddle.tensor.array_read(array, last).numpy(), inp0
             )
 
 

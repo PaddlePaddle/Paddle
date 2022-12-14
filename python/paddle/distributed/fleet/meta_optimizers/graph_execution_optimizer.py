@@ -137,7 +137,7 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
                 attrs={
                     "trainers": trainer_endpoints,
                     "trainer_id": trainer_id,
-                    "nccl_comm_num": build_strategy.nccl_comm_num,
+                    "bkcl_comm_num": build_strategy.bkcl_comm_num,
                     "use_hierarchical_allreduce": build_strategy.use_hierarchical_allreduce,
                     "hierarchical_allreduce_inter_ranks": build_strategy.hierarchical_allreduce_inter_nranks,
                 },

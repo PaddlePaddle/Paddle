@@ -33,6 +33,7 @@ from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.process_group import (
     clear_all_process_groups,
     get_all_process_groups,
+    new_process_group,
 )
 from paddle.distributed.auto_parallel.reshard import Resharder
 from paddle.distributed.auto_parallel.utils import (
@@ -40,7 +41,7 @@ from paddle.distributed.auto_parallel.utils import (
     set_grad_var_shape,
 )
 from paddle.distributed.passes import PassContext, new_pass
-from paddle.fluid import program_guard
+from paddle.fluid import program_guard, unique_name
 from paddle.fluid.backward import append_backward
 
 from ..utils import get_logger
@@ -109,7 +110,12 @@ def parse_results(results):
 # all env need to be start a new pass are member of dist context
 def _copy_context(ref_dist_context):
 
+    # clear all process groups and recover the world process group
     clear_all_process_groups()
+    ranks = []
+    for process_mesh in ref_dist_context._process_meshes:
+        ranks.extend(process_mesh.processes)
+    new_process_group(list(set(ranks)))
 
     new_dist_context = DistributedContext()
     new_dist_context._serial_main_program = (
@@ -195,7 +201,6 @@ class OptimizationTuner:
 
     def __init__(
         self,
-        user_configs,
         dist_context,
         dataset,
         inputs_spec,
@@ -204,7 +209,7 @@ class OptimizationTuner:
         rank,
     ):
 
-        self._config = TuningConfig(user_configs, dist_context._strategy)
+        self._config = TuningConfig(dist_context.strategy)
         # should not modify dist context from calling function
         self._baseline_dist_context = _copy_context(dist_context)
         self._baseline_completer = Completer(self._baseline_dist_context)
@@ -264,7 +269,7 @@ class OptimizationTuner:
         )
         self._baseline_dist_context._params_grads = params_grads
 
-        if self._config.verbose:
+        if self._config.debug:
             baseline_dir = os.path.join(self.project_dir, "baseline")
             if not os.path.exists(baseline_dir):
                 pathlib.Path(baseline_dir).mkdir(parents=True, exist_ok=True)
@@ -299,7 +304,6 @@ class OptimizationTuner:
             config = copy.deepcopy(new_strategy.amp.to_dict())
             config["dist_context"] = dist_context
             config["params_grads"] = dist_context._params_grads
-
             # TODO AMP Pass should not use loss var
             config["loss"] = dist_context.serial_loss
             config["input_data"] = (
@@ -312,13 +316,13 @@ class OptimizationTuner:
                 auto_parallel_fp16_pass.apply(
                     [main_program], [startup_program], pass_context
                 )
-                dist_context.serial_loss = auto_parallel_fp16_pass.get_loss()
+                dist_context._serial_loss = auto_parallel_fp16_pass.get_loss()
             else:
                 auto_parallel_amp_pass = new_pass("auto_parallel_amp", config)
                 auto_parallel_amp_pass.apply(
                     [main_program], [startup_program], pass_context
                 )
-                dist_context.serial_loss = auto_parallel_amp_pass.get_loss()
+                dist_context._serial_loss = auto_parallel_amp_pass.get_loss()
 
         if new_strategy.recompute.enable:
             config = copy.deepcopy(new_strategy.recompute.to_dict())
@@ -345,9 +349,10 @@ class OptimizationTuner:
         # Generate optimizer
         # FIXME should be remove from apply pass after pass support optimizers
         with program_guard(dist_main_prog, dist_startup_prog):
-            optimizer_ops = dist_context.serial_optimizer.apply_gradients(
-                dist_params_grads
-            )
+            with unique_name.guard("opt_"):
+                optimizer_ops = dist_context.serial_optimizer.apply_gradients(
+                    dist_params_grads
+                )
         completer.complete_update_annotation(dist_main_prog)
 
         # Do reshard process
@@ -361,6 +366,13 @@ class OptimizationTuner:
         )
         resharder.reshard()
 
+        config = {}
+        config["dist_context"] = dist_context
+        config["global_rank"] = self.rank
+        config["use_sharding"] = new_strategy.sharding.enable
+        dp_pass = new_pass("auto_parallel_data_parallel_optimization", config)
+        dp_pass.apply([dist_main_prog], [dist_startup_prog], pass_context)
+
         if new_strategy.sharding.enable:
             config = copy.deepcopy(new_strategy.sharding.to_dict())
             config["dist_context"] = dist_context
@@ -372,6 +384,17 @@ class OptimizationTuner:
             auto_parallel_sharding_pass.apply(
                 [dist_main_prog], [dist_startup_prog], pass_context
             )
+            dist_params_grads = pass_context.get_attr("params_grads")
+
+        # gradient clip
+        config = copy.deepcopy(new_strategy.sharding.to_dict())
+        config["dist_context"] = dist_context
+        config["params_grads"] = dist_params_grads
+        config["rank_id"] = self.rank
+        auto_parallel_clip_pass = new_pass("auto_parallel_grad_clip", config)
+        auto_parallel_clip_pass.apply(
+            [dist_main_prog], [dist_startup_prog], pass_context
+        )
 
         if new_strategy.gradient_merge.enable:
             config = copy.deepcopy(new_strategy.gradient_merge.to_dict())
@@ -488,7 +511,7 @@ class OptimizationTuner:
         with open(ctx_path, 'wb') as f:
             pickle.dump(profile_ctx, f, protocol=4)
 
-        if self._config.verbose:
+        if self._config.debug:
             debug_program(trial.main_program, trial_dir, "main_program")
             debug_program(trial.startup_program, trial_dir, "startup_program")
 
@@ -581,7 +604,7 @@ The best trial is: [{}], whose configuration is following:
         Clear the temporary file generated in tuning procedure.
         """
         # TODO clear up zombie process created by tuning
-        if not self._config.verbose:
+        if not self._config.debug:
             for trial in self._finished_trials:
                 trial_dir = self._get_trial_dir(trial)
                 shutil.rmtree(trial_dir, ignore_errors=True)
