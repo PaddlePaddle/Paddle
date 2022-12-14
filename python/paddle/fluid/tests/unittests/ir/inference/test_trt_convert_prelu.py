@@ -49,22 +49,22 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
                 if dim1 != 0:
                     shape.append(dim1)
                 if dim2 != 0:
-                    shape.append(1)
+                    shape.append(dim2)
                 if dim3 != 0:
-                    shape.append(1)
-                return np.random.random(size=shape).astype(np.float32)
+                    shape.append(dim3)
+                return np.random.random(size=shape[1]).astype(np.float32)
             elif (
                 attrs[0]["mode"] == "channel"
                 and attrs[0]["data_format"] == "NHWC"
             ):
                 shape = [1]
                 if dim1 != 0:
-                    shape.append(1)
+                    shape.append(dim1)
                 if dim2 != 0:
-                    shape.append(1)
+                    shape.append(dim2)
                 if dim3 != 0:
                     shape.append(dim3)
-                return np.random.random(size=shape).astype(np.float32)
+                return np.random.random(size=shape[-1]).astype(np.float32)
             elif attrs[0]["mode"] == "element":
                 shape = [1]
                 if dim1 != 0:

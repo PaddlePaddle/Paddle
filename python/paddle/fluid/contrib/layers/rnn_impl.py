@@ -367,9 +367,9 @@ def basic_gru(
                 new_hidden = unit_list[i](step_input, pre_hidden)
 
                 if mask:
-                    new_hidden = layers.elementwise_mul(
+                    new_hidden = paddle.tensor.math._multiply_with_axis(
                         new_hidden, step_mask, axis=0
-                    ) - layers.elementwise_mul(
+                    ) - paddle.tensor.math._multiply_with_axis(
                         pre_hidden, (step_mask - 1), axis=0
                     )
                 rnn.update_memory(pre_hidden, new_hidden)
@@ -378,9 +378,9 @@ def basic_gru(
 
                 step_input = new_hidden
                 if dropout_prob is not None and dropout_prob > 0.0:
-                    step_input = layers.dropout(
+                    step_input = paddle.nn.functional.dropout(
                         step_input,
-                        dropout_prob=dropout_prob,
+                        p=dropout_prob,
                     )
 
             rnn.step_output(step_input)
@@ -661,14 +661,14 @@ def basic_lstm(
                 )
 
                 if mask:
-                    new_hidden = layers.elementwise_mul(
+                    new_hidden = paddle.tensor.math._multiply_with_axis(
                         new_hidden, step_mask, axis=0
-                    ) - layers.elementwise_mul(
+                    ) - paddle.tensor.math._multiply_with_axis(
                         pre_hidden, (step_mask - 1), axis=0
                     )
-                    new_cell = layers.elementwise_mul(
+                    new_cell = paddle.tensor.math._multiply_with_axis(
                         new_cell, step_mask, axis=0
-                    ) - layers.elementwise_mul(
+                    ) - paddle.tensor.math._multiply_with_axis(
                         pre_cell, (step_mask - 1), axis=0
                     )
 
@@ -680,10 +680,10 @@ def basic_lstm(
 
                 step_input = new_hidden
                 if dropout_prob is not None and dropout_prob > 0.0:
-                    step_input = layers.dropout(
+                    step_input = paddle.nn.functional.dropout(
                         step_input,
-                        dropout_prob=dropout_prob,
-                        dropout_implementation='upscale_in_train',
+                        p=dropout_prob,
+                        mode='upscale_in_train',
                     )
 
             rnn.step_output(step_input)

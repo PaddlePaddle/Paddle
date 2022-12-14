@@ -1242,6 +1242,15 @@ void AnalysisPredictor::PrepareArgument() {
   }
 #endif
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  argument_.SetUseCustomDevice(config_.use_custom_device());
+  if (config_.use_custom_device()) {
+    LOG(INFO) << "CustomDevice is enabled";
+    argument_.SetCustomDeviceType(config_.custom_device_type());
+    argument_.SetCustomDeviceId(config_.custom_device_id());
+  }
+#endif
+
   auto *pass_builder = config_.pass_builder();
   // TODO(inference): Need to reconstruct the pass_builder, pass should be
   // processed in a single
@@ -1422,8 +1431,7 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
       }
 
       // support set flags from enviorment.
-      const platform::ExportedFlagInfoMap &env_map =
-          platform::GetExportedFlagInfoMap();
+      const phi::ExportedFlagInfoMap &env_map = phi::GetExportedFlagInfoMap();
       std::ostringstream os;
       os << "--tryfromenv=";
       for (auto &pair : env_map) {
@@ -2276,13 +2284,9 @@ USE_TRT_CONVERTER(flatten_contiguous_range);
 USE_TRT_CONVERTER(matmul);
 USE_TRT_CONVERTER(matmul_v2);
 USE_TRT_CONVERTER(bmm);
-USE_TRT_CONVERTER(rsqrt);
 USE_TRT_CONVERTER(conv2d);
 USE_TRT_CONVERTER(relu);
-USE_TRT_CONVERTER(exp);
-USE_TRT_CONVERTER(log);
 USE_TRT_CONVERTER(sigmoid);
-USE_TRT_CONVERTER(tanh);
 USE_TRT_CONVERTER(fc);
 USE_TRT_CONVERTER(pool2d);
 USE_TRT_CONVERTER(softmax);
@@ -2338,11 +2342,34 @@ USE_TRT_CONVERTER(conv3d_transpose);
 USE_TRT_CONVERTER(mish);
 USE_TRT_CONVERTER(deformable_conv);
 USE_TRT_CONVERTER(pool3d)
-#ifdef _WIN32
-#else
+USE_TRT_CONVERTER(square);
+// unary op
+USE_TRT_CONVERTER(exp);
+USE_TRT_CONVERTER(log);
+USE_TRT_CONVERTER(sqrt);
+USE_TRT_CONVERTER(reciprocal);
+USE_TRT_CONVERTER(abs);
+USE_TRT_CONVERTER(sin);
+USE_TRT_CONVERTER(cos);
+USE_TRT_CONVERTER(tan);
+USE_TRT_CONVERTER(sinh);
+USE_TRT_CONVERTER(cosh);
+USE_TRT_CONVERTER(tanh);
+USE_TRT_CONVERTER(asin);
+USE_TRT_CONVERTER(acos);
+USE_TRT_CONVERTER(atan);
+USE_TRT_CONVERTER(asinh);
+USE_TRT_CONVERTER(acosh);
+USE_TRT_CONVERTER(atanh);
+USE_TRT_CONVERTER(ceil);
+USE_TRT_CONVERTER(floor);
+#if IS_TRT_VERSION_GE(8200)
+USE_TRT_CONVERTER(round);
+USE_TRT_CONVERTER(sign);
+#endif
+USE_TRT_CONVERTER(rsqrt);
 USE_TRT_CONVERTER(fused_preln_embedding_eltwise_layernorm)
 USE_TRT_CONVERTER(fused_embedding_eltwise_layernorm);
-#endif
 USE_TRT_CONVERTER(preln_skip_layernorm)
 USE_TRT_CONVERTER(preln_residual_bias)
 USE_TRT_CONVERTER(c_allreduce_sum)

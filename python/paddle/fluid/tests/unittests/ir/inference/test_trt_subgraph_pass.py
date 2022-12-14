@@ -394,7 +394,7 @@ class TensorRTSubgraphPassElementwiseMulTest(
     TensorRTSubgraphPassElementwiseTest
 ):
     def append_eltwise(self, data1, data2):
-        return fluid.layers.elementwise_mul(x=data1, y=data2)
+        return paddle.multiply(x=data1, y=data2)
 
 
 class TensorRTSubgraphPassElementwiseSerializeTest(
