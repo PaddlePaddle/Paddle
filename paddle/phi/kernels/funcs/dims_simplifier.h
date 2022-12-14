@@ -34,18 +34,6 @@ struct BroadcastDimsSimplifier {
   BroadcastDimsSimplifier(const std::vector<const DenseTensor *> &ins,
                           const phi::DDim &dims,
                           int axis) {
-    if (!NeedBroadcast(ins, dims)) {
-      int64_t numel = phi::product(dims);
-      rank = 1;
-      N = ins.size();
-      out_dims = DimVector{numel};
-      in_dims.resize(N);
-      for (int64_t i = 0; i < N; ++i) {
-        in_dims[i] = DimVector{numel};
-      }
-      return;
-    }
-
     N = std::max(static_cast<int>(ins.size()), 2);
     in_dims.resize(N);
     rank = dims.size();
@@ -112,18 +100,6 @@ struct BroadcastDimsSimplifier {
   }
 
  private:
-  bool NeedBroadcast(const std::vector<const DenseTensor *> &ins,
-                     const phi::DDim &dims) {
-    bool no_broadcast_flag = true;
-    for (auto *in : ins) {
-      no_broadcast_flag &= ins[0]->dims() == in->dims();
-    }
-    if (ins.size() > 0) {
-      no_broadcast_flag &= dims == ins[0]->dims();
-    }
-    return !no_broadcast_flag;
-  }
-
   // To compensate the lackage of input_tensors' dimension with axis.
   void ExtendInputDimensions(int N, int axis) {
     for (auto &in_dim : in_dims) {
@@ -244,18 +220,18 @@ struct BroadcastDimsSimplifier {
 };
 
 // Simplify the input dims and permute dims if possible.
-struct DimsSimplifier {
+struct PermuteDimsSimplifier {
  public:
-  explicit DimsSimplifier(const int rank,
-                          const int64_t numel,
-                          const std::vector<int32_t> &perm,
-                          const std::vector<int64_t> &dims)
+  PermuteDimsSimplifier(const int rank,
+                        const int64_t numel,
+                        const std::vector<int32_t> &perm,
+                        const std::vector<int64_t> &dims)
       : perm_(rank), src_dims_(rank), count_(numel) {
     SimplifyPermAndDims(rank, dims, perm);
     perm_.resize(rank_);
     src_dims_.resize(rank_);
     dst_dims_.resize(rank_);
-    if (!is_seq_perm_) {
+    if (!is_sequential_perm_) {
       for (auto i = 0; i < rank_; ++i) {
         dst_dims_[i] = src_dims_[perm_[i]];
       }
@@ -265,7 +241,7 @@ struct DimsSimplifier {
     }
   }
 
-  ~DimsSimplifier() = default;
+  ~PermuteDimsSimplifier() = default;
 
   const int &GetRank() const { return rank_; }
   const int64_t &GetCount() const { return count_; }
@@ -276,8 +252,8 @@ struct DimsSimplifier {
  private:
   int rank_{1};
   int64_t count_{0};
-  bool is_seq_perm_{true};
   std::vector<int> perm_;
+  bool is_sequential_perm_{true};
   std::vector<int64_t> src_dims_;
   std::vector<int64_t> dst_dims_;
 
@@ -336,11 +312,44 @@ struct DimsSimplifier {
       const int mapped = valid_map[perm[i]];
       if (mapped >= 0) {
         perm_[perm_idx] = mapped;
-        is_seq_perm_ &= (mapped == perm_idx);
+        is_sequential_perm_ &= (mapped == perm_idx);
         perm_idx += 1;
       }
     }
-    rank_ = is_seq_perm_ ? 1 : valid_dim_idx;
+    rank_ = is_sequential_perm_ ? 1 : valid_dim_idx;
+  }
+};
+
+template <typename T>
+struct DimsSimplifiedLogger {
+ public:
+  static void Log(const std::vector<const DenseTensor *> &ins,
+                  std::vector<DenseTensor *> *outs,
+                  const BroadcastDimsSimplifier &dims_simplifier,
+                  const std::string &op_name) {
+    VLOG(6) << op_name << "`s dims after simplification is below :";
+    for (size_t i = 0; i < ins.size(); ++i) {
+      VLOG(6) << "input i=" << i << ": origin_dims={" << ins[i]->dims()
+              << "}, simplied_dims={"
+              << ReversedVectorToString(dims_simplifier.in_dims[i]) << "}";
+    }
+    VLOG(6) << "output: origin_dims={" << (*outs)[0]->dims()
+            << "}, simplied_dims={"
+            << ReversedVectorToString(dims_simplifier.out_dims) << "}";
+  }
+
+  static std::string ReversedVectorToString(const std::vector<T> &reversed_v) {
+    std::stringstream ss;
+    bool is_last = true;
+    for (int i = reversed_v.size() - 1; i >= 0; --i) {
+      if (is_last) {
+        ss << reversed_v[i];
+        is_last = false;
+      } else {
+        ss << ", " << reversed_v[i];
+      }
+    }
+    return ss.str();
   }
 };
 

@@ -165,7 +165,7 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
   bool is_fp16_precision =
       static_cast<phi::DataType>(Get<int>("model_precision")) ==
           phi::DataType::FLOAT16 ||
-      Get<bool>("enable_gpu_half");
+      Get<bool>("enable_gpu_mixed");
   constexpr int CUTLASS_NHWC_ALIGNMENT = 8;
   if (is_fp16_precision) {
 #ifdef PADDLE_WITH_CUTLASS

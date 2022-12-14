@@ -23,7 +23,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid import Program, core, program_guard
-from paddle.fluid.framework import _test_eager_guard
 
 
 # Situation 1: shape is a list(without tensor)
@@ -256,26 +255,12 @@ class TestExpandInferShape(unittest.TestCase):
 class TestExpandV2DygraphAPI(unittest.TestCase):
     def test_expand_times_is_tensor(self):
         with paddle.fluid.dygraph.guard():
-            with _test_eager_guard():
-                paddle.seed(1)
-                a = paddle.rand([2, 5])
-                egr_expand_1 = paddle.expand(a, shape=[2, 5])
-                np_array = np.array([2, 5])
-                egr_expand_2 = paddle.expand(a, shape=np_array)
-
             paddle.seed(1)
             a = paddle.rand([2, 5])
             expand_1 = paddle.expand(a, shape=[2, 5])
             np_array = np.array([2, 5])
             expand_2 = paddle.expand(a, shape=np_array)
-
-            np.testing.assert_array_equal(
-                egr_expand_1.numpy(), egr_expand_2.numpy()
-            )
             np.testing.assert_array_equal(expand_1.numpy(), expand_2.numpy())
-            np.testing.assert_array_equal(
-                expand_1.numpy(), egr_expand_1.numpy()
-            )
 
 
 class TestExpandDoubleGradCheck(unittest.TestCase):

@@ -23,7 +23,6 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.nn import Embedding
 
@@ -123,10 +122,10 @@ class SimpleLSTMRNN(fluid.Layer):
                 self._input = m
 
                 if self._dropout is not None and self._dropout > 0.0:
-                    self._input = fluid.layers.dropout(
+                    self._input = paddle.nn.functional.dropout(
                         self._input,
-                        dropout_prob=self._dropout,
-                        dropout_implementation='upscale_in_train',
+                        p=self._dropout,
+                        mode='upscale_in_train',
                     )
             res.append(
                 paddle.reshape(self._input, shape=[1, -1, self._hidden_size])
@@ -213,10 +212,10 @@ class PtbModel(fluid.Layer):
             x_emb, shape=[-1, self.num_steps, self.hidden_size]
         )
         if self.dropout is not None and self.dropout > 0.0:
-            x_emb = fluid.layers.dropout(
+            x_emb = paddle.nn.functional.dropout(
                 x_emb,
-                dropout_prob=self.drop_out,
-                dropout_implementation='upscale_in_train',
+                p=self.drop_out,
+                mode='upscale_in_train',
             )
         rnn_out, last_hidden, last_cell = self.simple_lstm_rnn(
             x_emb, init_h, init_c
@@ -238,14 +237,9 @@ class PtbModel(fluid.Layer):
 
 
 class TestDygraphPtbRnn(unittest.TestCase):
-    def func_test_ptb_rnn(self):
+    def test_ptb_rnn(self):
         for is_sparse in [True, False]:
             self.ptb_rnn_cpu_float32(is_sparse)
-
-    def test_ptb_rnn(self):
-        with _test_eager_guard():
-            self.func_test_ptb_rnn()
-        self.func_test_ptb_rnn()
 
     def ptb_rnn_cpu_float32(self, is_sparse):
         seed = 90

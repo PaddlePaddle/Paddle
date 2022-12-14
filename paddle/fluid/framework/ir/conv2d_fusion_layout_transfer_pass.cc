@@ -142,7 +142,7 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
   bool is_fp16_precision =
       static_cast<phi::DataType>(Get<int>("model_precision")) ==
           phi::DataType::FLOAT16 ||
-      Get<bool>("enable_gpu_half");
+      Get<bool>("enable_gpu_mixed");
   bool cutlass_enable = false;
 
 #ifdef PADDLE_WITH_CUTLASS

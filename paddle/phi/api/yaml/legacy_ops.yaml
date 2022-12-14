@@ -1646,7 +1646,7 @@
   kernel :
     func : rmsprop {dense, dense, dense, dense, dense, dense -> dense, dense, dense, dense}
            rmsprop_dense_param_sparse_grad {dense, dense, selected_rows, dense, dense, dense -> dense, dense, dense, dense}
-    optional : mean_grad
+  optional : mean_grad
   inplace : (param -> param_out), (moment -> moment_out), (mean_square -> mean_square_out), (mean_grad -> mean_grad_out)
 
 - op : rnn
@@ -1708,27 +1708,6 @@
   inplace : (x -> out)
   backward : scale_grad
 
-- op : scatter
-  args : (Tensor x, Tensor index, Tensor updates, bool overwrite)
-  output : Tensor(out)
-  infer_meta :
-    func : ScatterInferMeta
-    dtype : x
-  kernel :
-    func : scatter
-  inplace : (x -> out)
-  backward : scatter_grad
-
-- op : scatter_nd_add
-  args : (Tensor x, Tensor index, Tensor updates)
-  output : Tensor
-  infer_meta :
-    func : ScatterNdAddInferMeta
-    dtype : x
-  kernel :
-    func : scatter_nd_add
-  backward : scatter_nd_add_grad
-
 - op : segment_pool
   args : (Tensor x, Tensor segment_ids, str pooltype)
   output : Tensor(out), Tensor(summed_ids)
@@ -1738,16 +1717,6 @@
     func : segment_pool
     data_type : x
   backward : segment_pool_grad
-
-- op : selu
-  args : (Tensor x, float scale, float alpha)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : selu
-  backward : selu_grad
 
 - op : send_u_recv
   args : (Tensor x, Tensor src_index, Tensor dst_index, str reduce_op = "SUM", IntArray out_size = {0})
@@ -1796,14 +1765,6 @@
            shape_sr {selected_rows -> selected_rows}
   data_transform:
     skip_transform : input
-
-- op : shard_index
-  args : (Tensor input, int index_num, int nshards, int shard_id, int ignore_value)
-  output : Tensor(out)
-  infer_meta :
-    func : ShardIndexInferMeta
-  kernel :
-    func : shard_index
 
 - op : sigmoid_cross_entropy_with_logits
   args : (Tensor x, Tensor label, bool normalize, int ignore_index)
@@ -1993,6 +1954,7 @@
     func : TriangularSolveInferMeta
   kernel :
     func : triangular_solve
+    data_type : x
   backward : triangular_solve_grad
 
 - op : tril
@@ -2164,15 +2126,6 @@
     data_type : x
   inplace : (x -> out), (prev_loss_scaling -> loss_scaling), (in_good_steps -> out_good_steps), (in_bad_steps -> out_bad_steps)
 
-- op : viterbi_decode
-  args : (Tensor potentials, Tensor transition_params, Tensor lengths, bool include_bos_eos_tag)
-  output : Tensor(scores), Tensor(path)
-  infer_meta :
-    func : ViterbiDecodeInferMeta
-  kernel :
-    func : viterbi_decode
-    data_type : potentials
-
 - op : warpctc
   args : (Tensor logits, Tensor label, Tensor logits_length, Tensor labels_length, int blank, bool norm_by_times)
   output :  Tensor(loss), Tensor(warpctcgrad)
@@ -2184,15 +2137,6 @@
   optional: logits_length, labels_length
   intermediate: warpctcgrad
   backward : warpctc_grad
-
-- op : where
-  args : (Tensor condition, Tensor x, Tensor y)
-  output : Tensor
-  infer_meta :
-    func : WhereInferMeta
-  kernel :
-    func : where
-  backward : where_grad
 
 - op : yolo_box
   args : (Tensor x, Tensor img_size, int[] anchors, int class_num, float conf_thresh, int downsample_ratio, bool clip_bbox, float scale_x_y=1.0, bool iou_aware=false, float iou_aware_factor=0.5)
