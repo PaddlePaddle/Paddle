@@ -24,7 +24,6 @@ import paddle.fluid.layers as layers
 from paddle.fluid import core
 from paddle.fluid.dygraph import base
 from paddle.fluid.framework import Program, program_guard
-from paddle.fluid.layers import detection
 
 paddle.enable_static()
 
@@ -74,136 +73,6 @@ class LayerTest(unittest.TestCase):
             fluid.default_startup_program().random_seed = self.seed
             fluid.default_main_program().random_seed = self.seed
             yield
-
-
-class TestDetection(unittest.TestCase):
-    def test_detection_output(self):
-        program = Program()
-        with program_guard(program):
-            pb = layers.data(
-                name='prior_box',
-                shape=[10, 4],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            pbv = layers.data(
-                name='prior_box_var',
-                shape=[10, 4],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            loc = layers.data(
-                name='target_box',
-                shape=[2, 10, 4],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            scores = layers.data(
-                name='scores',
-                shape=[2, 10, 20],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            out = layers.detection_output(
-                scores=scores, loc=loc, prior_box=pb, prior_box_var=pbv
-            )
-            out2, index = layers.detection_output(
-                scores=scores,
-                loc=loc,
-                prior_box=pb,
-                prior_box_var=pbv,
-                return_index=True,
-            )
-            self.assertIsNotNone(out)
-            self.assertIsNotNone(out2)
-            self.assertIsNotNone(index)
-            self.assertEqual(out.shape[-1], 6)
-        print(str(program))
-
-    def test_box_coder_api(self):
-        program = Program()
-        with program_guard(program):
-            x = layers.data(name='x', shape=[4], dtype='float32')
-            y = layers.data(name='z', shape=[4], dtype='float32', lod_level=1)
-            bcoder = layers.box_coder(
-                prior_box=x,
-                prior_box_var=[0.1, 0.2, 0.1, 0.2],
-                target_box=y,
-                code_type='encode_center_size',
-            )
-            self.assertIsNotNone(bcoder)
-        print(str(program))
-
-    def test_box_coder_error(self):
-        program = Program()
-        with program_guard(program):
-            x1 = fluid.data(name='x1', shape=[10, 4], dtype='int32')
-            y1 = fluid.data(
-                name='y1', shape=[10, 4], dtype='float32', lod_level=1
-            )
-            x2 = fluid.data(name='x2', shape=[10, 4], dtype='float32')
-            y2 = fluid.data(
-                name='y2', shape=[10, 4], dtype='int32', lod_level=1
-            )
-
-            self.assertRaises(
-                TypeError,
-                layers.box_coder,
-                prior_box=x1,
-                prior_box_var=[0.1, 0.2, 0.1, 0.2],
-                target_box=y1,
-                code_type='encode_center_size',
-            )
-            self.assertRaises(
-                TypeError,
-                layers.box_coder,
-                prior_box=x2,
-                prior_box_var=[0.1, 0.2, 0.1, 0.2],
-                target_box=y2,
-                code_type='encode_center_size',
-            )
-
-
-class TestPriorBox(unittest.TestCase):
-    def test_prior_box(self):
-        program = Program()
-        with program_guard(program):
-            data_shape = [3, 224, 224]
-            images = fluid.layers.data(
-                name='pixel', shape=data_shape, dtype='float32'
-            )
-            conv1 = fluid.layers.conv2d(images, 3, 3, 2)
-            box, var = layers.prior_box(
-                input=conv1,
-                image=images,
-                min_sizes=[100.0],
-                aspect_ratios=[1.0],
-                flip=True,
-                clip=True,
-            )
-            assert len(box.shape) == 4
-            assert box.shape == var.shape
-            assert box.shape[3] == 4
-
-
-class TestPriorBox2(unittest.TestCase):
-    def test_prior_box(self):
-        program = Program()
-        with program_guard(program):
-            data_shape = [None, 3, None, None]
-            images = fluid.data(name='pixel', shape=data_shape, dtype='float32')
-            conv1 = fluid.layers.conv2d(images, 3, 3, 2)
-            box, var = layers.prior_box(
-                input=conv1,
-                image=images,
-                min_sizes=[100.0],
-                aspect_ratios=[1.0],
-                flip=True,
-                clip=True,
-            )
-            assert len(box.shape) == 4
-            assert box.shape == var.shape
-            assert box.shape[3] == 4
 
 
 class TestDensityPriorBox(unittest.TestCase):
@@ -430,29 +299,6 @@ class TestMultiBoxHead(unittest.TestCase):
         return mbox_locs, mbox_confs, box, var
 
 
-class TestDetectionMAP(unittest.TestCase):
-    def test_detection_map(self):
-        program = Program()
-        with program_guard(program):
-            detect_res = layers.data(
-                name='detect_res',
-                shape=[10, 6],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            label = layers.data(
-                name='label',
-                shape=[10, 6],
-                append_batch_size=False,
-                dtype='float32',
-            )
-
-            map_out = detection.detection_map(detect_res, label, 21)
-            self.assertIsNotNone(map_out)
-            self.assertEqual(map_out.shape, (1,))
-        print(str(program))
-
-
 class TestGenerateProposals(LayerTest):
     def test_generate_proposals(self):
         scores_np = np.random.rand(2, 3, 4, 4).astype('float32')
@@ -526,75 +372,6 @@ class TestGenerateProposals(LayerTest):
         np.testing.assert_array_equal(np.array(rois_stat), rois_dy)
         np.testing.assert_array_equal(np.array(roi_probs_stat), roi_probs_dy)
         np.testing.assert_array_equal(np.array(rois_num_stat), rois_num_dy)
-
-
-class TestYoloDetection(unittest.TestCase):
-    def test_yolov3_loss(self):
-        program = Program()
-        with program_guard(program):
-            x = layers.data(name='x', shape=[30, 7, 7], dtype='float32')
-            gt_box = layers.data(name='gt_box', shape=[10, 4], dtype='float32')
-            gt_label = layers.data(name='gt_label', shape=[10], dtype='int32')
-            gt_score = layers.data(name='gt_score', shape=[10], dtype='float32')
-            loss = layers.yolov3_loss(
-                x,
-                gt_box,
-                gt_label,
-                [10, 13, 30, 13],
-                [0, 1],
-                10,
-                0.7,
-                32,
-                gt_score=gt_score,
-                use_label_smooth=False,
-            )
-
-            self.assertIsNotNone(loss)
-
-    def test_yolo_box(self):
-        program = Program()
-        with program_guard(program):
-            x = layers.data(name='x', shape=[30, 7, 7], dtype='float32')
-            img_size = layers.data(name='img_size', shape=[2], dtype='int32')
-            boxes, scores = layers.yolo_box(
-                x, img_size, [10, 13, 30, 13], 10, 0.01, 32
-            )
-            self.assertIsNotNone(boxes)
-            self.assertIsNotNone(scores)
-
-    def test_yolov3_loss_with_scale(self):
-        program = Program()
-        with program_guard(program):
-            x = layers.data(name='x', shape=[30, 7, 7], dtype='float32')
-            gt_box = layers.data(name='gt_box', shape=[10, 4], dtype='float32')
-            gt_label = layers.data(name='gt_label', shape=[10], dtype='int32')
-            gt_score = layers.data(name='gt_score', shape=[10], dtype='float32')
-            loss = layers.yolov3_loss(
-                x,
-                gt_box,
-                gt_label,
-                [10, 13, 30, 13],
-                [0, 1],
-                10,
-                0.7,
-                32,
-                gt_score=gt_score,
-                use_label_smooth=False,
-                scale_x_y=1.2,
-            )
-
-            self.assertIsNotNone(loss)
-
-    def test_yolo_box_with_scale(self):
-        program = Program()
-        with program_guard(program):
-            x = layers.data(name='x', shape=[30, 7, 7], dtype='float32')
-            img_size = layers.data(name='img_size', shape=[2], dtype='int32')
-            boxes, scores = layers.yolo_box(
-                x, img_size, [10, 13, 30, 13], 10, 0.01, 32, scale_x_y=1.2
-            )
-            self.assertIsNotNone(boxes)
-            self.assertIsNotNone(scores)
 
 
 class TestBoxClip(unittest.TestCase):

@@ -27,11 +27,11 @@ from paddle.fluid.optimizer import SGDOptimizer
 class SimpleNet(paddle.nn.Layer):
     def __init__(self, vocab_size, hidden_size, dtype):
         super().__init__()
-        self.emb = fluid.dygraph.Embedding(
-            size=[vocab_size, hidden_size],
-            dtype=dtype,
-            param_attr='emb.w',
-            is_sparse=True,
+        self.emb = paddle.nn.Embedding(
+            vocab_size,
+            hidden_size,
+            weight_attr='emb.w',
+            sparse=True,
         )
 
     def forward(self, input):

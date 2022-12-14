@@ -314,7 +314,7 @@ def uniform_random_batch_size_like(
     return out
 
 
-def gaussian(shape, mean=0.0, std=1.0, dtype=None, name=None):
+def gaussian(shape, mean=0.0, std=1.0, seed=0, dtype=None, name=None):
     """
     Returns a Tensor filled with random values sampled from a Gaussian
     distribution, with ``shape`` and ``dtype``.
@@ -338,7 +338,6 @@ def gaussian(shape, mean=0.0, std=1.0, dtype=None, name=None):
         distribution, with ``shape`` and ``dtype``.
     """
     op_type_for_check = 'gaussian/standard_normal/randn/normal'
-    seed = 0
 
     if dtype is None:
         dtype = paddle.framework.get_default_dtype()
