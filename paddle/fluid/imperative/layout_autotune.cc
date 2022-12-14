@@ -38,7 +38,7 @@ LayoutAutoTune::LayoutAutoTune() {
       continue;
     }
 
-    auto* attr_checker = it->second.Checker();
+    auto* attr_checker = it->second->Checker();
     bool layout_agnostic = true;
     if (attr_checker) {
       auto attrs = attr_checker->GetDefaultAttrMap();

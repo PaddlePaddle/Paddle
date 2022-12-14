@@ -569,9 +569,9 @@ static void inline CreateVariableIfNotExist(
 static void AssertStaticGraphAndDygraphGradMakerNoDiff() {
   std::set<std::string> ops;
   for (auto &pair : framework::OpInfoMap::Instance().map()) {
-    bool has_static_grad_maker = (pair.second.grad_op_maker_ != nullptr);
+    bool has_static_grad_maker = (pair.second->grad_op_maker_ != nullptr);
     bool has_dygraph_grad_maker =
-        (pair.second.dygraph_grad_op_maker_ != nullptr);
+        (pair.second->dygraph_grad_op_maker_ != nullptr);
     if (has_static_grad_maker ^ has_dygraph_grad_maker) {
       bool has_kernel =
           (framework::OperatorWithKernel::AllOpKernels().count(pair.first) > 0);
@@ -1125,7 +1125,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_all_op_protos", []() -> std::vector<py::bytes> {
     std::vector<py::bytes> ret_values;
     for (auto &iter : OpInfoMap::Instance().map()) {
-      auto &info = iter.second;
+      auto &info = *(iter.second);
       if (info.HasOpProtoAndChecker()) {
         std::string str;
         PADDLE_ENFORCE_EQ(

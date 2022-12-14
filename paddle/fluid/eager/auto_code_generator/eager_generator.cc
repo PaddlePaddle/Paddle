@@ -3151,10 +3151,10 @@ static void DygraphCodeGeneration(const std::string& output_dir,
 
   auto& op_info_map = paddle::framework::OpInfoMap::Instance().map();
 
-  paddle::flat_hash_map<std::string, OpInfo> op_info_map_need_gen;
+  paddle::flat_hash_map<std::string, OpInfo*> op_info_map_need_gen;
 
   for (auto& pair : op_info_map) {
-    const OpInfo& op_info = pair.second;
+    const OpInfo& op_info = *(pair.second);
     proto::OpProto* op_proto = op_info.proto_;
 
     if (!CheckOpProto(op_proto)) continue;
@@ -3189,7 +3189,7 @@ static void DygraphCodeGeneration(const std::string& output_dir,
   int file_index = 0;
 
   for (auto& pair : op_info_map_need_gen) {
-    const OpInfo& op_info = pair.second;
+    const OpInfo& op_info = *(pair.second);
     proto::OpProto* op_proto = op_info.proto_;
 
     const std::string& op_type = op_proto->type();

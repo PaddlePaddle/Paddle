@@ -406,7 +406,7 @@ GenerateOpFunctions() {
   std::vector<std::string> op_function_list, bind_function_list;
   auto& all_kernels = paddle::framework::OperatorWithKernel::AllOpKernels();
   for (auto& pair : op_info_map) {
-    auto& op_info = pair.second;
+    auto& op_info = *(pair.second);
     auto op_proto = op_info.proto_;
     if (op_proto == nullptr) {
       continue;

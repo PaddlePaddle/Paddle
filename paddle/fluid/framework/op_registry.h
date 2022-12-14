@@ -96,8 +96,8 @@ struct OperatorRegistrar : public Registrar {
             "Operator '%s' is registered more than once.", op_type));
     static_assert(sizeof...(ARGS) != 0,
                   "OperatorRegistrar should be invoked at least by OpClass");
-    OpInfo info;
-    details::OperatorRegistrarRecursive<0, false, ARGS...>(op_type, &info);
+    OpInfo* info = new OpInfo();
+    details::OperatorRegistrarRecursive<0, false, ARGS...>(op_type, info);
     OpInfoMap::Instance().Insert(op_type, info);
   }
 };
@@ -166,16 +166,16 @@ inline void RegisterKernelClass(const char* op_type,
                                 const char* library_type,
                                 int customized_type_value,
                                 Func func) {
-  std::string library(library_type);
-  std::string data_layout = "ANYLAYOUT";
-  if (library == "MKLDNN") {
-    data_layout = "MKLDNNLAYOUT";
-  }
+  // std::string library(library_type);
+  // std::string data_layout = "ANYLAYOUT";
+  // if (library == "MKLDNN") {
+  //   data_layout = "MKLDNNLAYOUT";
+  // }
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (std::is_same<PlaceType, platform::CustomPlace>::value) {
     OpKernelType key(ToDataType(std::type_index(typeid(T))),
                      platform::CustomPlace(library_type),
-                     phi::StringToDataLayout(data_layout),
+                     phi::StringToDataLayout("ANYLAYOUT"),
                      LibraryType::kPlain,
                      customized_type_value);
     OperatorWithKernel::AllOpKernels()[op_type][key] = func;
@@ -184,7 +184,7 @@ inline void RegisterKernelClass(const char* op_type,
 #endif
   OpKernelType key(ToDataType(std::type_index(typeid(T))),
                    PlaceType(),
-                   phi::StringToDataLayout(data_layout),
+                   phi::StringToDataLayout("ANYLAYOUT"),
                    StringToLibraryType(library_type),
                    customized_type_value);
   OperatorWithKernel::AllOpKernels()[op_type][key] = func;

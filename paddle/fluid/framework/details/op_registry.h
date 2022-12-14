@@ -182,8 +182,10 @@ struct OpInfoFiller<T, kOperator> {
           platform::errors::AlreadyExists(
               "Duplicate InferShapeFN of %s has been registered", op_type));
 
-      OperatorWithKernel* op = dynamic_cast<OperatorWithKernel*>(info->creator_(
-          std::string{}, VariableNameMap{}, VariableNameMap{}, AttributeMap{}));
+      OperatorBase* base = info->creator_(
+          std::string{}, VariableNameMap{}, VariableNameMap{}, AttributeMap{});
+      OperatorWithKernel* op = dynamic_cast<OperatorWithKernel*>(base);
+      info->op_ = base;
       PADDLE_ENFORCE_NOT_NULL(
           op,
           platform::errors::InvalidArgument("%s should have kernels", op_type));

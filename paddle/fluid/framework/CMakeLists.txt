@@ -421,7 +421,7 @@ cc_library(
 cc_library(
   op_info
   SRCS op_info.cc
-  DEPS attribute framework_proto no_need_buffer_vars_inference)
+  DEPS attribute framework_proto no_need_buffer_vars_inference operator)
 cc_library(
   shape_inference
   SRCS shape_inference.cc

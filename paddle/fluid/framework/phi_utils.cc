@@ -249,7 +249,7 @@ void InitDefaultKernelSignatureMap() {
   std::call_once(kernel_sig_map_init_flag, [] {
     for (const auto& pair : paddle::framework::OpInfoMap::Instance().map()) {
       const auto& op_type = pair.first;
-      const auto* op_proto = pair.second.proto_;
+      const auto* op_proto = pair.second->proto_;
       if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(op_type) &&
           op_proto) {
         paddle::framework::KernelArgsNameMakerByOpProto maker(op_proto);

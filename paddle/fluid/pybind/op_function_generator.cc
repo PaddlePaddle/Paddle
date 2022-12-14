@@ -431,10 +431,10 @@ GenerateOpFunctions(int split_count) {
   std::vector<std::string> op_function_list, bind_function_list;
   auto& all_kernels = paddle::framework::OperatorWithKernel::AllOpKernels();
 
-  paddle::flat_hash_map<std::string, paddle::framework::OpInfo>
+  paddle::flat_hash_map<std::string, paddle::framework::OpInfo*>
       op_info_map_need_gen;
   for (auto& pair : op_info_map) {
-    auto& op_info = pair.second;
+    auto& op_info = *(pair.second);
     auto op_proto = op_info.proto_;
     if (op_proto == nullptr) {
       continue;
@@ -465,7 +465,7 @@ GenerateOpFunctions(int split_count) {
 
   for (auto& pair : op_info_map_need_gen) {
     auto& op_info = pair.second;
-    auto op_proto = op_info.proto_;
+    auto op_proto = op_info->proto_;
 
     auto& op_type = op_proto->type();
 

@@ -54,8 +54,6 @@ class Version;
 namespace paddle {
 namespace framework {
 
-class OperatorBase;
-
 using InferShapeVarPtr = paddle::variant<VarDesc *, Variable *>;
 
 class InferShapeContext {

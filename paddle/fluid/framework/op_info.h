@@ -45,6 +45,7 @@ class OpInfo {
   GradOpMakerFN grad_op_maker_;
   proto::OpProto* proto_{nullptr};
   OpAttrChecker* checker_{nullptr};
+  OperatorBase* op_{nullptr};
   InferVarTypeFN infer_var_type_;
   InferShapeFN infer_shape_;
   InferInplaceOpFN infer_inplace_;
@@ -131,17 +132,25 @@ class OpInfo {
   const InferNoNeedBufferVarsFN& NoNeedBufferVarsInferer() const {
     return infer_no_need_buffer_vars_;
   }
+
+  ~OpInfo();
 };
 
 class OpInfoMap {
  public:
   static OpInfoMap& Instance();
 
+  ~OpInfoMap() {
+    for (auto it = map_.begin(); it != map_.end(); it++) {
+      delete it->second;
+    }
+  }
+
   bool Has(const std::string& op_type) const {
     return map_.find(op_type) != map_.end();
   }
 
-  void Insert(const std::string& type, const OpInfo& info) {
+  void Insert(const std::string& type, OpInfo* info) {
     PADDLE_ENFORCE_NE(Has(type),
                       true,
                       platform::errors::AlreadyExists(
@@ -162,19 +171,21 @@ class OpInfoMap {
     if (it == map_.end()) {
       return nullptr;
     } else {
-      return &it->second;
+      return it->second;
     }
   }
 
-  const paddle::flat_hash_map<std::string, OpInfo>& map() const { return map_; }
+  const paddle::flat_hash_map<std::string, OpInfo*>& map() const {
+    return map_;
+  }
 
-  paddle::flat_hash_map<std::string, OpInfo>* mutable_map() { return &map_; }
+  paddle::flat_hash_map<std::string, OpInfo*>* mutable_map() { return &map_; }
 
   std::vector<std::string> GetUseDefaultGradOpDescMakerOps() const;
 
  private:
   OpInfoMap() = default;
-  paddle::flat_hash_map<std::string, OpInfo> map_;
+  paddle::flat_hash_map<std::string, OpInfo*> map_;
 
   DISABLE_COPY_AND_ASSIGN(OpInfoMap);
 };

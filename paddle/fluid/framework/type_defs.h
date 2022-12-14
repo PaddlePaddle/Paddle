@@ -84,11 +84,11 @@ using NPUAttribute = paddle::variant<paddle::blank,
 using NPUAttributeMap = std::unordered_map<std::string, NPUAttribute>;
 #endif
 
-using OpCreator =
-    std::function<OperatorBase*(const std::string& /*type*/,
-                                const VariableNameMap& /*inputs*/,
-                                const VariableNameMap& /*outputs*/,
-                                const AttributeMap& /*attrs*/)>;
+using OpCreator = std::function<paddle::framework::OperatorBase*(
+    const std::string& /*type*/,
+    const VariableNameMap& /*inputs*/,
+    const VariableNameMap& /*outputs*/,
+    const AttributeMap& /*attrs*/)>;
 
 using GradOpMakerFN = std::function<std::vector<std::unique_ptr<OpDesc>>(
     const OpDesc&,

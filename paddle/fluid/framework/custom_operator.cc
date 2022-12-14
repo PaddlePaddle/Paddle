@@ -713,7 +713,7 @@ static void RegisterOperatorKernel(const std::string& name,
 void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
                                   void* dso_handle) {
   /* Op register */
-  OpInfo info;
+  OpInfo* info = new OpInfo();
 
   auto& base_op_meta = op_meta_infos.front();
 
@@ -740,32 +740,32 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
           << string::join_strings(op_attrs, ',');
 
   // Op
-  info.creator_ = [](const std::string& op_name,
-                     const VariableNameMap& inputs,
-                     const VariableNameMap& outputs,
-                     const AttributeMap& attrs) {
+  info->creator_ = [](const std::string& op_name,
+                      const VariableNameMap& inputs,
+                      const VariableNameMap& outputs,
+                      const AttributeMap& attrs) {
     return new CustomOperator(op_name, inputs, outputs, attrs);
   };
 
   // OpMaker
-  info.proto_ = new proto::OpProto;
-  info.proto_->set_type(op_name);
+  info->proto_ = new proto::OpProto;
+  info->proto_->set_type(op_name);
 
-  info.checker_ = new OpAttrChecker();
+  info->checker_ = new OpAttrChecker();
   CustomOpMaker custom_maker(op_inputs, op_outputs, op_attrs);
-  custom_maker(info.proto_, info.checker_);
+  custom_maker(info->proto_, info->checker_);
   PADDLE_ENFORCE_EQ(
-      info.proto_->IsInitialized(),
+      info->proto_->IsInitialized(),
       true,
       platform::errors::PreconditionNotMet(
           "Fail to initialize %s's OpProto, because %s is not initialized.",
           op_name,
-          info.proto_->InitializationErrorString()));
+          info->proto_->InitializationErrorString()));
 
   // InferShape
   if (infer_shape_func == nullptr) {
     // use default InferShape
-    info.infer_shape_ = [op_inputs, op_outputs](InferShapeContext* ctx) {
+    info->infer_shape_ = [op_inputs, op_outputs](InferShapeContext* ctx) {
       PADDLE_ENFORCE_EQ(
           op_inputs.size(),
           1UL,
@@ -793,8 +793,8 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
       ctx->ShareDim(op_inputs[0], op_outputs[0]);
     };
   } else {
-    info.infer_shape_ = [op_inputs, op_outputs, op_attrs, infer_shape_func](
-                            InferShapeContext* ctx) {
+    info->infer_shape_ = [op_inputs, op_outputs, op_attrs, infer_shape_func](
+                             InferShapeContext* ctx) {
       RunInferShapeFunc(ctx, infer_shape_func, op_inputs, op_outputs, op_attrs);
     };
   }
@@ -802,7 +802,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
   // Infer Dtype
   if (infer_dtype_func == nullptr) {
     // use default InferDtype
-    info.infer_var_type_ = [op_inputs, op_outputs](InferVarTypeContext* ctx) {
+    info->infer_var_type_ = [op_inputs, op_outputs](InferVarTypeContext* ctx) {
       PADDLE_ENFORCE_EQ(
           op_inputs.size(),
           1UL,
@@ -831,7 +831,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
       ctx->SetOutputDataType(op_outputs[0], dtype);
     };
   } else {
-    info.infer_var_type_ =
+    info->infer_var_type_ =
         [op_inputs, op_outputs, infer_dtype_func](InferVarTypeContext* ctx) {
           std::vector<DataType> input_dtypes;
           std::vector<std::vector<DataType>> vec_input_dtypes;
@@ -899,7 +899,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
     bool is_double_grad = (i == 2);
 
     // GradOpDescMaker
-    info.grad_op_maker_ =
+    info->grad_op_maker_ =
         [grad_op_name, grad_op_inputs, grad_op_outputs, is_double_grad](
             const OpDesc& fwd_op,
             const std::unordered_set<std::string>& no_grad_set,
@@ -917,7 +917,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
         };
 
     // GradOpBaseMaker
-    info.dygraph_grad_op_maker_ =
+    info->dygraph_grad_op_maker_ =
         [grad_op_name, grad_op_inputs, grad_op_outputs, is_double_grad](
             const std::string& type,
             const imperative::NameVarBaseMap& var_base_map_in,
@@ -939,21 +939,21 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
         };
 
     /* Grad op register */
-    OpInfo grad_info;
+    OpInfo* grad_info = new OpInfo();
 
     // Grad Op
-    grad_info.creator_ = [](const std::string& type,
-                            const VariableNameMap& inputs,
-                            const VariableNameMap& outputs,
-                            const AttributeMap& attrs) {
+    grad_info->creator_ = [](const std::string& type,
+                             const VariableNameMap& inputs,
+                             const VariableNameMap& outputs,
+                             const AttributeMap& attrs) {
       return new CustomOperator(type, inputs, outputs, attrs);
     };
 
     // Grad InferShape
     if (grad_infer_shape_fn == nullptr) {
-      grad_info.infer_shape_ = [grad_op_inputs,
-                                grad_op_outputs,
-                                is_double_grad](InferShapeContext* ctx) {
+      grad_info->infer_shape_ = [grad_op_inputs,
+                                 grad_op_outputs,
+                                 is_double_grad](InferShapeContext* ctx) {
         // 1. if forward input exists, gradient's shape is same with forward
         // input
         // default
@@ -991,10 +991,10 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
         }
       };
     } else {
-      grad_info.infer_shape_ = [grad_op_inputs,
-                                grad_op_outputs,
-                                grad_op_attrs,
-                                grad_infer_shape_fn](InferShapeContext* ctx) {
+      grad_info->infer_shape_ = [grad_op_inputs,
+                                 grad_op_outputs,
+                                 grad_op_attrs,
+                                 grad_infer_shape_fn](InferShapeContext* ctx) {
         RunInferShapeFunc(ctx,
                           grad_infer_shape_fn,
                           grad_op_inputs,

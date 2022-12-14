@@ -129,7 +129,6 @@ const phi::DenseTensor* GetLoDTensorOrSelectedRowsValueFromVar(
 phi::DenseTensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var);
 
 class ExecutionContext;
-class OperatorBase;
 
 class RuntimeContext {
  public:

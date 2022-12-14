@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_info.h"
+#include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
 namespace framework {
@@ -29,11 +30,25 @@ std::vector<std::string> OpInfoMap::GetUseDefaultGradOpDescMakerOps() const {
   // Use set to sort op names
   std::set<std::string> result_ops;
   for (auto& pair : map_) {
-    if (pair.second.use_default_grad_op_desc_maker_) {
+    if (pair.second->use_default_grad_op_desc_maker_) {
       result_ops.insert(pair.first);
     }
   }
   return std::vector<std::string>(result_ops.begin(), result_ops.end());
+}
+
+OpInfo::~OpInfo() {
+  if (proto_ != nullptr) {
+    delete proto_;
+  }
+
+  if (checker_ != nullptr) {
+    delete checker_;
+  }
+
+  if (op_ != nullptr) {
+    delete op_;
+  }
 }
 
 }  // namespace framework

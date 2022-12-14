@@ -973,7 +973,7 @@ unsigned long GetUnsignedLongFromArgs(  // NOLINT
 void InitOpsAttrTypeMap() {
   auto op_info_map = paddle::framework::OpInfoMap::Instance().map();
   for (auto iter = op_info_map.begin(); iter != op_info_map.end(); ++iter) {
-    auto op_proto = iter->second.proto_;
+    auto op_proto = iter->second->proto_;
     if (op_proto == nullptr) {
       continue;
     }
