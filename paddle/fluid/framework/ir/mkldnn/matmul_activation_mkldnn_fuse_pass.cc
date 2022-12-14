@@ -77,6 +77,16 @@ void MatmulActivationMkldnnFusePass::FuseMatmulAct(
               ? "gelu_tanh"
               : "gelu_erf";
     }
+
+    if (matmul_type == "matmul") {
+      matmul_op->SetType("matmul_v2");
+      matmul_op->SetAttr("trans_x", matmul_op->GetAttr("transpose_X"));
+      matmul_op->SetAttr("trans_y", matmul_op->GetAttr("transpose_Y"));
+      auto matmul_alpha = matmul_op->GetAttrIfExists<float>("alpha");
+      if (matmul_alpha != 1.0f) {
+        matmul_op->SetAttr("alpha", matmul_alpha);
+      }
+    }
     matmul_op->SetAttr("fuse_activation", act_type);
     matmul_op->SetOutput("Out", {activation_out->Name()});
 
