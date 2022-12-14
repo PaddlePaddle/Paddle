@@ -53,10 +53,10 @@ from ...static.nn.sequence_lod import sequence_expand  # noqa: F401
 from ...static.nn.sequence_lod import sequence_expand_as  # noqa: F401
 from ...static.nn.sequence_lod import sequence_pad  # noqa: F401
 from ...static.nn.sequence_lod import sequence_unpad  # noqa: F401
-from ...fluid.layers.sequence_lod import sequence_reshape  # noqa: F401
-from ...fluid.layers.sequence_lod import sequence_scatter  # noqa: F401
-from ...fluid.layers.sequence_lod import sequence_enumerate  # noqa: F401
-from ...fluid.layers.sequence_lod import sequence_reverse  # noqa: F401
+from ...static.nn.sequence_lod import sequence_reshape  # noqa: F401
+from ...static.nn.sequence_lod import sequence_scatter  # noqa: F401
+from ...static.nn.sequence_lod import sequence_enumerate  # noqa: F401
+from ...static.nn.sequence_lod import sequence_reverse  # noqa: F401
 
 from .control_flow import cond
 

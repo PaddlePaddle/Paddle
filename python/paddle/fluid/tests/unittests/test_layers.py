@@ -2661,41 +2661,11 @@ class TestBook(LayerTest):
             )
             return out
 
-    def test_sequence_reshape(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            x = layers.data(name='x', shape=[8], dtype='float32', lod_level=1)
-            out = layers.sequence_reshape(input=x, new_dim=16)
-            return out
-
     def test_sequence_unsqueeze(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
             x = layers.data(name='x', shape=[8, 2], dtype='float32')
             out = layers.unsqueeze(input=x, axes=[1])
-            return out
-
-    def test_sequence_scatter(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            x = layers.data(
-                name='x', shape=[3, 6], append_batch_size=False, dtype='float32'
-            )
-            idx = layers.data(
-                name='idx',
-                shape=[12, 1],
-                append_batch_size=False,
-                dtype='int32',
-                lod_level=1,
-            )
-            updates = layers.data(
-                name='updates',
-                shape=[12, 1],
-                append_batch_size=False,
-                dtype='float32',
-                lod_level=1,
-            )
-            out = layers.sequence_scatter(input=x, index=idx, updates=updates)
             return out
 
     def test_shuffle_batch(self):
@@ -2759,12 +2729,6 @@ class TestBook(LayerTest):
                 max_rank=3,
             )
             return out
-
-    def test_sequence_enumerate(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            x = layers.data(name="input", shape=[1], dtype='int32', lod_level=1)
-            out = layers.sequence_enumerate(input=x, win_size=2, pad_value=0)
 
     def test_roi_perspective_transform(self):
         # TODO(minqiyang): dygraph do not support lod now

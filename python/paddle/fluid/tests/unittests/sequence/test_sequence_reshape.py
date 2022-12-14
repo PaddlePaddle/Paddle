@@ -20,6 +20,7 @@ import numpy as np
 sys.path.append("../")
 from op_test import OpTest
 
+import paddle
 import paddle.fluid as fluid
 
 
@@ -88,7 +89,7 @@ class TestSequenceReshapeOpError(unittest.TestCase):
     def test_error(self):
         def test_variable():
             x = np.random.random((2, 4)).astype("float32")
-            fluid.layers.sequence_reshape(x=x, new_dim=4)
+            paddle.static.nn.sequence_lod.sequence_reshape(x=x, new_dim=4)
 
         self.assertRaises(TypeError, test_variable)
 
@@ -100,7 +101,7 @@ class TestSequenceReshapeOpError(unittest.TestCase):
                 dtype='float16',
                 lod_level=1,
             )
-            fluid.layers.sequence_reshape(x=x1, new_dim=4)
+            paddle.static.nn.sequence_lod.sequence_reshape(x=x1, new_dim=4)
 
         self.assertRaises(TypeError, test_dtype)
 
