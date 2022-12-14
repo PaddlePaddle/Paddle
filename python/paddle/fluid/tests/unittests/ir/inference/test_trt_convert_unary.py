@@ -25,6 +25,10 @@ import paddle.inference as paddle_infer
 
 class TrtConvertActivationTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        ver = paddle_infer.get_trt_compile_version()
+        if ver[0] * 1000 + ver[1] * 100 + ver[0] * 10 < 8200:
+            if program_config.ops[0].type == "round":
+                return False
         return True
 
     def sample_program_configs(self):
@@ -54,11 +58,13 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                     "acos",
                     "atan",
                     "asinh",
+                    "acosh",
                     "atanh",
                     "ceil",
                     "floor",
                     "rsqrt",
                     "reciprocal",
+                    "round",
                     "sign",
                 ]:
                     self.dims = dims
