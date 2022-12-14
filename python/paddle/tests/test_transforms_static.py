@@ -60,6 +60,8 @@ class TestTransformUnitTestBase(unittest.TestCase):
 
     def test_transform(self):
         dy_res = self.dynamic_transform()
+        if isinstance(dy_res, paddle.Tensor):
+            dy_res = dy_res.numpy()
         st_res = self.static_transform()
 
         np.testing.assert_almost_equal(dy_res, st_res)
@@ -98,7 +100,7 @@ class TestRandomVerticalFlip1(TestTransformUnitTestBase):
         self.api = transforms.RandomVerticalFlip(prob=1)
 
 
-class TestRandomCropBase(TestTransformUnitTestBase):
+class TestRandomCrop_random(TestTransformUnitTestBase):
     def get_shape(self):
         return (3, 240, 240)
 
@@ -129,6 +131,15 @@ class TestRandomCropBase(TestTransformUnitTestBase):
 
         self.assert_test_random_equal(dy_res)
         self.assert_test_random_equal(st_res)
+
+
+class TestRandomCrop_same(TestTransformUnitTestBase):
+    def get_shape(self):
+        return (3, 224, 224)
+
+    def set_trans_api(self):
+        self.crop_size = (224, 224)
+        self.api = transforms.RandomCrop(self.crop_size)
 
 
 if __name__ == "__main__":
