@@ -908,9 +908,11 @@ class TestSundryAPIStatic(unittest.TestCase):
     @prog_scope()
     def test_scatter_nd(self):
         index = paddle.static.data(name='index', shape=[4, 2], dtype='int64')
-        updates = paddle.full([], 2, 'int64')
+        updates = paddle.full([], 2, 'float32')
         shape = [3, 5]
-        index_data = np.array([[1, 1], [0, 1], [1, 3], [2, 4]])
+        index_data = np.array(
+            [[1, 1], [0, 1], [1, 3], [2, 4]], dtype=np.longlong
+        )
         out = paddle.scatter_nd(index, updates, shape)
         paddle.static.append_backward(out)
 
