@@ -21,7 +21,7 @@ namespace {
 using dnnl::memory;
 using paddle::framework::ExecutionContext;
 using paddle::framework::GradVarName;
-using paddle::platform::MatMulV2MKLDNNHandler;
+using paddle::platform::MatMulMKLDNNHandler;
 using phi::OneDNNContext;
 using phi::vectorize;
 using phi::funcs::OneDNNGetDataType;
@@ -279,73 +279,16 @@ std::vector<int64_t> Transpose(const std::vector<int64_t> &x,
   return new_x;
 }
 
-std::vector<int64_t> GetInputStrides(const ExecutionContext &ctx,
-                                     const std::string input_name) {
-  auto shape = ctx.Attr<std::vector<int>>("fused_reshape_" + input_name);
-  auto axis = ctx.Attr<std::vector<int>>("fused_transpose_" + input_name);
-  auto input_dims = ctx.Input<phi::DenseTensor>(input_name)->dims();
-  auto new_dims = input_dims;
-  if (!shape.empty() && !axis.empty()) {
-    new_dims = input_dims.reshape(shape).transpose(axis);
-  }
-
-  auto &MatrixDimsFromVector = input_name == "X"
-                                   ? phi::funcs::RowMatrixDimsFromVector
-                                   : phi::funcs::ColumnMatrixDimsFromVector;
-  phi::funcs::MatDescriptor mat_dim = phi::funcs::CreateMatrixDescriptor(
-      MatrixDimsFromVector(new_dims),
-      0,
-      ctx.HasAttr("trans_x")
-          ? ctx.Attr<bool>(std::string("trans_") +
-                           static_cast<char>(std::tolower(input_name[0])))
-          : ctx.Attr<bool>(std::string("transpose_") + input_name[0]));
-
-  std::vector<int64_t> strides;
-  if (!shape.empty()) {
-    auto shape2 = input_dims.reshape(shape);
-    strides.push_back(1);
-    for (auto i = shape2.size() - 1; i > 0; --i) {
-      strides.insert(strides.begin(),
-                     strides.front() * static_cast<int64_t>(shape2[i]));
-    }
-    strides = Transpose(strides, axis);
-    if (shape.size() == 2)
-      strides.insert(strides.begin(),
-                     static_cast<int64_t>(shape[0] * shape[1]));
-    mat_dim.stride_ = strides[0];
-    if (mat_dim.trans_) std::swap(*strides.rbegin(), *(++strides.rbegin()));
-  }
-  return strides;
-}
-
-bool IsOutputFused(const ExecutionContext &ctx) {
-  auto &fused_reshape_Out = ctx.Attr<std::vector<int>>("fused_reshape_Out");
-  auto &fused_transpose_Out = ctx.Attr<std::vector<int>>("fused_transpose_Out");
-  return !fused_reshape_Out.empty() && !fused_transpose_Out.empty();
-}
-
 template <typename T, typename T_out>
-void ExecuteMatMulV2(const ExecutionContext &ctx,
-                     const dnnl::engine onednn_engine,
-                     const phi::DenseTensor *x,
-                     const std::vector<int64_t> &x_dims,
-                     bool trans_x,
-                     const phi::DenseTensor *y,
-                     const std::vector<int64_t> &y_dims,
-                     bool trans_y,
-                     phi::DenseTensor *out) {
-  std::vector<int64_t> x_strides_override = GetInputStrides(ctx, "X");
-  std::vector<int64_t> y_strides_override = GetInputStrides(ctx, "Y");
-  MatMulV2MKLDNNHandler<T, T, T_out> handler(ctx,
-                                             onednn_engine,
-                                             ctx.GetPlace(),
-                                             x_dims,
-                                             trans_x,
-                                             y_dims,
-                                             trans_y,
-                                             IsOutputFused(ctx),
-                                             x_strides_override,
-                                             y_strides_override);
+void ExecuteMatMul(const ExecutionContext &ctx,
+                   const phi::DenseTensor *x,
+                   const std::vector<int64_t> &x_dims,
+                   const phi::DenseTensor *y,
+                   const std::vector<int64_t> &y_dims,
+                   phi::DenseTensor *out) {
+  const auto &dev_ctx = ctx.template device_context<OneDNNContext>();
+  MatMulMKLDNNHandler<T, T, T_out> handler(
+      ctx, dev_ctx.GetEngine(), ctx.GetPlace(), x_dims, y_dims);
 
   const auto src_memory_p = handler.AcquireSrcMemory(x);
   const auto weights_memory_p = handler.AcquireWeightsMemory(y);
@@ -358,27 +301,12 @@ void ExecuteMatMulV2(const ExecutionContext &ctx,
       {DNNL_ARG_WEIGHTS, *weights_memory_p},
       {DNNL_ARG_DST, *dst_memory_p}};
 
-  if (ctx.HasInput("ResidualData")) {
-    auto *residual_data = ctx.Input<phi::DenseTensor>("ResidualData");
-    const auto residual_data_memory_p = handler.AcquireSrcMemory(residual_data);
-    matmul_args.insert({DNNL_ARG_ATTR_MULTIPLE_POST_OP(0) | DNNL_ARG_SRC_1,
-                        *residual_data_memory_p});
-  }
-
   auto &astream = OneDNNContext::tls().get_stream();
   matmul_p->execute(astream, matmul_args);
   astream.wait();
 
-  // TODO(jczaja): Explain why int8 format of dst is ABCD and do not need
-  // permute
-  if (IsOutputFused(ctx) && !phi::funcs::is_int8<T_out>()) {
-    auto axis = ctx.Attr<std::vector<int>>("fused_transpose_Out");
-    auto permuted_md = dst_memory_p->get_desc().permute_axes(axis);
-    out->set_mem_desc(permuted_md.reshape(vectorize<int64_t>(out->dims())));
-  } else {
-    out->set_mem_desc(
-        dst_memory_p->get_desc().reshape(vectorize<int64_t>(out->dims())));
-  }
+  out->set_mem_desc(
+      dst_memory_p->get_desc().reshape(vectorize<int64_t>(out->dims())));
 }
 
 template <typename T>
@@ -401,19 +329,12 @@ class MatMulMKLDNNKernel : public paddle::framework::OpKernel<T> {
                                        : false;
     constexpr bool fuse_relu = false;  // TODO(intel): Enable eltwise fuses
 
-    const auto &dev_ctx = ctx.template device_context<OneDNNContext>();
-    const auto &onednn_engine = dev_ctx.GetEngine();
-
     auto *x = ctx.Input<phi::DenseTensor>("X");
     auto *y = ctx.Input<phi::DenseTensor>("Y");
     auto *out = ctx.Output<phi::DenseTensor>("Out");
-    bool trans_x = ctx.HasAttr("trans_x") ? ctx.Attr<bool>("trans_x")
-                                          : ctx.Attr<bool>("transpose_X");
-    bool trans_y = ctx.HasAttr("trans_y") ? ctx.Attr<bool>("trans_y")
-                                          : ctx.Attr<bool>("transpose_Y");
 
-    auto x_dims = vectorize(GetDimForInput(ctx, "X"));
-    auto y_dims = vectorize(GetDimForInput(ctx, "Y"));
+    auto x_dims = vectorize(x->dims());
+    auto y_dims = vectorize(y->dims());
 
     int ndims = std::max(x_dims.size(), y_dims.size());
     ndims = std::max(ndims, 3);
@@ -421,54 +342,22 @@ class MatMulMKLDNNKernel : public paddle::framework::OpKernel<T> {
     std::vector<int64_t> x_bd_dims(ndims, 1);
     std::vector<int64_t> y_bd_dims(ndims, 1);
 
-    CalculateMatrixDims(ctx, x_dims, y_dims, &x_bd_dims, &y_bd_dims, out);
+    CalculateMatrixDims(x_dims, y_dims, &x_bd_dims, &y_bd_dims, out);
 
     if (force_fp32_output || ((!is_int8) && (!is_bfloat16))) {
-      ExecuteMatMulV2<T, float>(ctx,
-                                onednn_engine,
-                                x,
-                                x_bd_dims,
-                                trans_x,
-                                y,
-                                y_bd_dims,
-                                trans_y,
-                                out);
+      ExecuteMatMul<T, float>(ctx, x, x_bd_dims, y, y_bd_dims, out);
     } else if (is_bfloat16) {
-      ExecuteMatMulV2<T, paddle::platform::bfloat16>(ctx,
-                                                     onednn_engine,
-                                                     x,
-                                                     x_bd_dims,
-                                                     trans_x,
-                                                     y,
-                                                     y_bd_dims,
-                                                     trans_y,
-                                                     out);
+      ExecuteMatMul<T, paddle::platform::bfloat16>(
+          ctx, x, x_bd_dims, y, y_bd_dims, out);
     } else if (fuse_relu) {
-      ExecuteMatMulV2<T, uint8_t>(ctx,
-                                  onednn_engine,
-                                  x,
-                                  x_bd_dims,
-                                  trans_x,
-                                  y,
-                                  y_bd_dims,
-                                  trans_y,
-                                  out);
+      ExecuteMatMul<T, uint8_t>(ctx, x, x_bd_dims, y, y_bd_dims, out);
     } else {
-      ExecuteMatMulV2<T, int8_t>(ctx,
-                                 onednn_engine,
-                                 x,
-                                 x_bd_dims,
-                                 trans_x,
-                                 y,
-                                 y_bd_dims,
-                                 trans_y,
-                                 out);
+      ExecuteMatMul<T, int8_t>(ctx, x, x_bd_dims, y, y_bd_dims, out);
     }
   }
 
  private:
-  void CalculateMatrixDims(const ExecutionContext &ctx,
-                           const std::vector<int64_t> &x_dims,
+  void CalculateMatrixDims(const std::vector<int64_t> &x_dims,
                            const std::vector<int64_t> &y_dims,
                            std::vector<int64_t> *x_bd_dims,
                            std::vector<int64_t> *y_bd_dims,
@@ -494,7 +383,7 @@ class MatMulMKLDNNKernel : public paddle::framework::OpKernel<T> {
       }
     }
 
-    if (!IsOutputFused(ctx) && x_dims.size() > 2 && y_dims.size() > 2) {
+    if (x_dims.size() > 2 && y_dims.size() > 2) {
       auto out_dims = vectorize(out->dims());
       for (size_t i = 0; i < (*x_bd_dims).size() - 2; ++i) {
         PADDLE_ENFORCE_EQ(

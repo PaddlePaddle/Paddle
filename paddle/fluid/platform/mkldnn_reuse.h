@@ -152,19 +152,14 @@ static void SetOutMemDescWithLogicalLayoutFusesSupport(
 }
 
 template <typename XT, typename YT, typename OT>
-class MatMulV2MKLDNNHandler
+class MatMulMKLDNNHandler
     : public phi::funcs::OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
  public:
-  MatMulV2MKLDNNHandler(const framework::ExecutionContext& ctx,
-                        const dnnl::engine engine,
-                        paddle::platform::Place cpu_place,
-                        const std::vector<int64_t>& x_org_dims,
-                        bool trans_x,
-                        const std::vector<int64_t>& y_org_dims,
-                        bool trans_y,
-                        bool is_output_fused,
-                        const std::vector<int64_t>& x_strides_override,
-                        const std::vector<int64_t>& y_strides_override)
+  MatMulMKLDNNHandler(const framework::ExecutionContext& ctx,
+                      const dnnl::engine engine,
+                      paddle::platform::Place cpu_place,
+                      const std::vector<int64_t>& x_org_dims,
+                      const std::vector<int64_t>& y_org_dims)
       : phi::funcs::OneDNNHandlerNoCachingT<XT, dnnl::matmul>(engine,
                                                               cpu_place) {
     // M X K * K X N
@@ -175,6 +170,8 @@ class MatMulV2MKLDNNHandler
     const int H_idx = x_dims.size() - 2;
     const int W_idx = x_dims.size() - 1;
 
+    auto trans_x = ctx.Attr<bool>("transpose_X");
+    auto trans_y = ctx.Attr<bool>("transpose_Y");
     if (trans_x) std::swap(x_dims[H_idx], x_dims[W_idx]);
     if (trans_y) std::swap(y_dims[H_idx], y_dims[W_idx]);
 
@@ -191,44 +188,26 @@ class MatMulV2MKLDNNHandler
     y_strides.reserve(x_dims.size());
     out_strides.reserve(x_dims.size());
 
-    if (!x_strides_override.empty()) {
-      x_strides = x_strides_override;
+    if (trans_x) {
+      x_strides.insert(x_strides.end(), {M * K, 1, M});
     } else {
-      if (!trans_x) {
-        x_strides.insert(x_strides.end(), {M * K, K, 1});
-      } else {
-        x_strides.insert(x_strides.end(), {M * K, 1, M});
-      }
+      x_strides.insert(x_strides.end(), {M * K, K, 1});
     }
 
-    if (!y_strides_override.empty()) {
-      y_strides = y_strides_override;
+    if (trans_y) {
+      y_strides.insert(y_strides.end(), {N * K, 1, K});
     } else {
-      if (!trans_y) {
-        y_strides.insert(y_strides.end(), {N * K, N, 1});
-      } else {
-        y_strides.insert(y_strides.end(), {N * K, 1, K});
-      }
+      y_strides.insert(y_strides.end(), {N * K, N, 1});
     }
-
     out_strides.insert(out_strides.end(), {M * N, N, 1});
     out_ddims.insert(out_ddims.end(),
                      {std::max(x_dims[MB_idx], y_dims[MB_idx]), M, N});
 
     for (int i = x_dims.size() - 4; i >= 0; --i) {
       out_ddims[i] = std::max(x_dims[i], y_dims[i]);
-      if (x_strides_override.empty()) {
-        x_strides[i] = x_dims[i + 1] * x_strides[i + 1];
-      }
-      if (y_strides_override.empty()) {
-        y_strides[i] = y_dims[i + 1] * y_strides[i + 1];
-      }
+      x_strides[i] = x_dims[i + 1] * x_strides[i + 1];
+      y_strides[i] = y_dims[i + 1] * y_strides[i + 1];
       out_strides[i] = out_ddims[i + 1] * out_strides[i + 1];
-    }
-
-    // TODO(jczaja): Why not for int8??
-    if (!phi::funcs::is_int8<OT>() && is_output_fused) {
-      out_strides = FakeTransposeStrides(out_ddims);
     }
 
     auto x_md =
@@ -244,7 +223,7 @@ class MatMulV2MKLDNNHandler
   }
 
   float ComputeOutputScale(const framework::ExecutionContext& ctx) {
-    float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 1.0f;
+    float alpha = ctx.Attr<float>("alpha");
     if (ctx.HasAttr("Scale_x") && ctx.HasAttr("Scale_y") &&
         ctx.HasAttr("Scale_out")) {
       float scale_x = ctx.Attr<float>("Scale_x");
@@ -268,48 +247,8 @@ class MatMulV2MKLDNNHandler
       matmul_attrs.set_output_scales(0, {scale_out});
     }
 
-    if (ctx.HasInput("ResidualData")) {
-      auto* residual_data = ctx.Input<phi::DenseTensor>("ResidualData");
-      auto residual_data_tz = phi::vectorize(residual_data->dims());
-      auto residual_data_md = memory::desc(residual_data_tz,
-                                           phi::funcs::OneDNNGetDataType<OT>(),
-                                           dnnl::memory::format_tag::any);
-      post_operations.append_binary(dnnl::algorithm::binary_add,
-                                    residual_data_md);
-      if (ctx.HasAttr("Scale_in_eltwise")) {
-        float sum_scale = scale_out / ctx.Attr<float>("Scale_in_eltwise");
-        post_operations.append_sum(sum_scale);
-      }
-    }
-
-    AppendActivation(ctx, post_operations);
-
-    if (ctx.HasAttr("fused_output_scale")) {
-      float scale_alpha = ctx.Attr<float>("fused_output_scale");
-      post_operations.append_eltwise(
-          1.0, dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
-    }
-
     matmul_attrs.set_post_ops(post_operations);
     return matmul_attrs;
-  }
-
-  std::vector<int64_t> FakeTransposeStrides(
-      const std::vector<int64_t>& matmul_out_dims) const {
-    // fuse matmul_v2 + transpose + reshape guarantees that output is 4D and
-    // transpose axis are: {0, 2, 1, 3}
-    std::vector<int64_t> transpose_axis = {0, 2, 1, 3};
-    std::vector<int64_t> fake_strides(transpose_axis.size());
-    int ndims = static_cast<int>(transpose_axis.size());
-
-    int total_stride = 1;
-
-    for (int i = ndims - 1; i >= 0; --i) {
-      fake_strides[transpose_axis[i]] = total_stride;
-      total_stride *= matmul_out_dims[transpose_axis[i]];
-    }
-
-    return fake_strides;
   }
 
   std::shared_ptr<memory> AcquireWeightsMemory(const phi::DenseTensor* input) {
@@ -321,12 +260,13 @@ class MatMulV2MKLDNNHandler
 
   std::shared_ptr<dnnl::memory> AcquireDstMemory(phi::DenseTensor* output) {
     // We cannot use base AcquireDstMemory as it makes an allocation request
-    // base on DST memory primitive size. This is fine in general, but in MatMul
-    // we have primitive that covers only one batch of Data and then shift
-    // pointer for every new batch. Hence phi::DenseTensor size is bigger that
-    // dst memory primitive size. So would we request less memory that is there
-    // and it triggers an assertion.  So as there is no 'any' format here we can
-    // leave default size of phi::DenseTensor as computed in ComputeInferShape
+    // base on DST memory primitive size. This is fine in general, but in
+    // MatMul we have primitive that covers only one batch of Data and then
+    // shift pointer for every new batch. Hence phi::DenseTensor size is
+    // bigger that dst memory primitive size. So would we request less memory
+    // that is there and it triggers an assertion.  So as there is no 'any'
+    // format here we can leave default size of phi::DenseTensor as computed
+    // in ComputeInferShape
     OT* ptr = output->mutable_data<OT>(this->place_);
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
   }
