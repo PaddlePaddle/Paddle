@@ -3664,7 +3664,7 @@ function main() {
     init
     case $CMD in
       build_only)
-        run_setup ${PYTHON_ABI:-""} install
+        run_setup ${PYTHON_ABI:-""} bdist_wheel
         ;;
       build_pr_dev)
         build_pr_and_develop
