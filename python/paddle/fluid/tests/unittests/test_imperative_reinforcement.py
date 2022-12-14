@@ -38,7 +38,7 @@ class Policy(fluid.dygraph.Layer):
     def forward(self, inputs):
         x = paddle.reshape(inputs, shape=[-1, 4])
         x = self.affine1(x)
-        x = fluid.layers.dropout(x, self.dropout_ratio)
+        x = paddle.nn.functional.dropout(x, self.dropout_ratio)
         x = F.relu(x)
         action_scores = self.affine2(x)
         return paddle.nn.functional.softmax(action_scores, axis=1)

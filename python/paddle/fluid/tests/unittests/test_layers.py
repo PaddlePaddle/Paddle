@@ -118,6 +118,44 @@ class TestLayer(LayerTest):
             ret = custom(x, do_linear2=True)
             np.testing.assert_array_equal(ret.numpy().shape, [3, 1])
 
+    def test_dropout(self):
+        inp = np.ones([3, 32, 32], dtype='float32')
+        with self.static_graph():
+            t = layers.data(
+                name='data',
+                shape=[3, 32, 32],
+                dtype='float32',
+                append_batch_size=False,
+            )
+            dropout = paddle.nn.Dropout(p=0.35)
+            ret = dropout(t)
+            ret2 = paddle.nn.functional.dropout(t, p=0.35)
+            static_ret, static_ret2 = self.get_static_graph_result(
+                feed={'data': inp}, fetch_list=[ret, ret2]
+            )
+        with self.dynamic_graph():
+            with _test_eager_guard():
+                t = base.to_variable(inp)
+                dropout = paddle.nn.Dropout(p=0.35)
+                dy_eager_ret = dropout(t)
+                dy_eager_ret2 = paddle.nn.functional.dropout(t, p=0.35)
+                dy_eager_ret_value = dy_eager_ret.numpy()
+                dy_eager_ret2_value = dy_eager_ret2.numpy()
+
+            t = base.to_variable(inp)
+            dropout = paddle.nn.Dropout(p=0.35)
+            dy_ret = dropout(t)
+            dy_ret2 = paddle.nn.functional.dropout(t, p=0.35)
+            dy_ret_value = dy_ret.numpy()
+            dy_ret2_value = dy_ret2.numpy()
+
+        np.testing.assert_array_equal(dy_eager_ret_value, dy_eager_ret2_value)
+        np.testing.assert_array_equal(static_ret, dy_eager_ret_value)
+
+        np.testing.assert_array_equal(static_ret, static_ret2)
+        np.testing.assert_array_equal(dy_ret_value, dy_ret2_value)
+        np.testing.assert_array_equal(static_ret, dy_ret_value)
+
     def test_linear(self):
         inp = np.ones([3, 32, 32], dtype='float32')
         with self.static_graph():
@@ -2062,7 +2100,9 @@ class TestBook(LayerTest):
                 act='softmax',
                 param_attr=["sftmax.w1", "sftmax.w2"],
             )
-            cost = layers.cross_entropy(input=predict, label=label)
+            cost = paddle.nn.functional.cross_entropy(
+                input=predict, label=label, reduction='none', use_softmax=False
+            )
             avg_cost = paddle.mean(cost)
             return avg_cost
 
@@ -2101,7 +2141,9 @@ class TestBook(LayerTest):
             )
 
             predict = layers.fc(input=conv_pool_2, size=10, act="softmax")
-            cost = layers.cross_entropy(input=predict, label=label)
+            cost = paddle.nn.functional.cross_entropy(
+                input=predict, label=label, reduction='none', use_softmax=False
+            )
             avg_cost = paddle.mean(cost)
             return avg_cost
 
@@ -2154,7 +2196,12 @@ class TestBook(LayerTest):
             predict_word = layers.fc(
                 input=hidden1, size=dict_size, act='softmax'
             )
-            cost = layers.cross_entropy(input=predict_word, label=next_word)
+            cost = paddle.nn.functional.cross_entropy(
+                input=predict_word,
+                label=next_word,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_cost = paddle.mean(cost)
             return avg_cost
 
@@ -2366,7 +2413,14 @@ class TestBook(LayerTest):
             x = self._get_data(name="x", shape=[30, 10], dtype="float32")
             label = self._get_data(name="label", shape=[30, 1], dtype="int64")
             mode = 'channel'
-            out = layers.cross_entropy(x, label, False, 4)
+            out = paddle.nn.functional.cross_entropy(
+                x,
+                label,
+                soft_label=False,
+                ignore_index=4,
+                reduction='none',
+                use_softmax=False,
+            )
             return out
 
     def make_uniform_random_batch_size_like(self):
