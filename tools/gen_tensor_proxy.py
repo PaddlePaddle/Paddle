@@ -35,12 +35,14 @@ class Location:
 
 class TensorGen:
     _future_features: list[str]
+    _import_stmts: list[str]
     _attributes: dict[str, str]
     _methods: list[str]
     _aliases: dict[str, str]
 
     def __init__(self):
         self._future_features: list[str] = []
+        self._import_stmts: list[str] = []
         self._attributes: dict[str, str] = {}
         self._methods: list[str] = []
         self._aliases: dict[str, str] = {}
@@ -48,6 +50,9 @@ class TensorGen:
 
     def add_future(self, feature: str):
         self._future_features.append(feature)
+
+    def add_import(self, import_stmt: str):
+        self._import_stmts.append(import_stmt)
 
     def add_attribute(self, name: str, type: str):
         self._attributes[name] = type
@@ -62,6 +67,12 @@ class TensorGen:
     def future_imports(self):
         futures = ", ".join(self._future_features)
         return f"from __future__ import {futures}"
+
+    @property
+    def imports(self):
+        # TODO: sort import like the isort
+        imports = "\n".join(self._import_stmts)
+        return imports
 
     @property
     def tensor_spec(self) -> str:
@@ -94,6 +105,7 @@ class TensorGen:
 
 {self.future_imports}
 
+{self.imports}
 
 {self.tensor_spec}
 
@@ -292,6 +304,7 @@ def main():
 
     # Generate the proxy Tensor class
     tensor_gen = TensorGen()
+    tensor_gen.add_import("import numpy as np")
     for attr, type in tensor_attributes.items():
         tensor_gen.add_attribute(attr, type)
     for method in tensor_monkey_patched_methods:
