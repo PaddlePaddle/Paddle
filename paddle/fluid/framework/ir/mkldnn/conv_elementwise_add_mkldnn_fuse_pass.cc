@@ -84,7 +84,7 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConv(
   auto pattern = gpd.mutable_pattern();
 
   patterns::Conv conv_pattern{pattern, name_scope};
-  auto conv_output = conv_pattern();
+  auto conv_output = conv_pattern("conv2d");
 
   patterns::ResidualElementwise elementwise_pattern{pattern, name_scope, as_x};
   elementwise_pattern(
@@ -160,10 +160,10 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseProjectionConv(
   auto pattern = gpd.mutable_pattern();
 
   patterns::Conv conv_x_pattern{pattern, name_scope};
-  auto conv_x_output = conv_x_pattern();
+  auto conv_x_output = conv_x_pattern("conv2d");
 
   patterns::Conv conv_y_pattern{pattern, name_scope};
-  auto conv_y_output = conv_y_pattern();
+  auto conv_y_output = conv_y_pattern("conv2d");
 
   patterns::Elementwise elementwise_pattern{pattern, name_scope};
   elementwise_pattern(conv_x_output, conv_y_output, "elementwise_add");

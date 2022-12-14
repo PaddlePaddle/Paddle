@@ -1044,7 +1044,7 @@ struct Conv : public PatternBase {
   Conv(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "convolution") {}
 
-  PDNode* operator()();
+  PDNode* operator()(const std::string& conv_type);
 
   PATTERN_DECL_NODE(conv_op);
   PATTERN_DECL_NODE(conv_input);

@@ -1826,20 +1826,20 @@ PDNode *patterns::ConvBias::operator()(
   return eltwise_out_var;
 }
 
-PDNode *patterns::Conv::operator()() {
-  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
+PDNode *patterns::Conv::operator()(const std::string &conv_type) {
+  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op(conv_type);
 
   auto input_var = pattern->NewNode(conv_input_repr())
                        ->AsInput()
-                       ->assert_is_op_input("conv2d", "Input");
+                       ->assert_is_op_input(conv_type, "Input");
 
   auto filter_var = pattern->NewNode(conv_filter_repr())
                         ->AsInput()
-                        ->assert_is_op_input("conv2d", "Filter");
+                        ->assert_is_op_input(conv_type, "Filter");
 
   auto output_var = pattern->NewNode(conv_output_repr())
                         ->AsOutput()
-                        ->assert_is_op_output("conv2d", "Output");
+                        ->assert_is_op_output(conv_type, "Output");
 
   conv_op->LinksFrom({input_var, filter_var}).LinksTo({output_var});
   return output_var;

@@ -114,13 +114,51 @@ ParamsQuantizationMkldnnPass::ParamsQuantizationMkldnnPass() {
       .AddAttr("data_format")
       .IsStringIn({"NCHW", "AnyLayout"})
       .End();
+  AddOpCompat(OpCompat("fused_conv2d"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddInput("ResidualData")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("strides")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("paddings")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsOptional()
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("groups")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("dilations")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("data_format")
+      .IsStringIn({"NCHW", "AnyLayout"})
+      .End();
 }
 
 void ParamsQuantizationMkldnnPass::QuantizeConv(ir::Graph* graph,
+                                                const std::string& conv_type,
                                                 bool with_residual_data) const {
   GraphPatternDetector gpd;
   patterns::ConvResidual conv_pattern(gpd.mutable_pattern(), name_scope_);
-  conv_pattern("conv2d", with_residual_data);
+  conv_pattern(conv_type, with_residual_data);
 
   int params_to_int8_conv_found = 0;
 
@@ -146,6 +184,10 @@ void ParamsQuantizationMkldnnPass::QuantizeConv(ir::Graph* graph,
       return;
     }
 
+    if (conv_op->Op()->Type() == "conv2d") {
+      conv_op->Op()->SetType("fused_conv2d");
+    }
+
     QuantizeConvInput<int8_t>(
         scope, g, conv_op, conv_filter->Name(), "Scale_weights");
 
@@ -159,8 +201,8 @@ void ParamsQuantizationMkldnnPass::QuantizeConv(ir::Graph* graph,
   AddStatis(params_to_int8_conv_found);
 
   std::stringstream msg_ss;
-  msg_ss << "Quantized params of " << params_to_int8_conv_found
-         << " conv2d ops";
+  msg_ss << "Quantized params of " << params_to_int8_conv_found << " "
+         << conv_type << " ops";
   if (with_residual_data) msg_ss << " with residual connection";
   paddle::string::PrettyLogDetail(msg_ss.str().c_str());
 }
@@ -170,8 +212,10 @@ void ParamsQuantizationMkldnnPass::ApplyImpl(ir::Graph* graph) const {
                           platform::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
   FusePassBase::Init(name_scope_, graph);
-  QuantizeConv(graph, true /*with_residual_data*/);
-  QuantizeConv(graph, false /*with_residual_data*/);
+  QuantizeConv(graph, "conv2d", true /*with_residual_data*/);
+  QuantizeConv(graph, "conv2d", false /*with_residual_data*/);
+  QuantizeConv(graph, "fused_conv2d", true /*with_residual_data*/);
+  QuantizeConv(graph, "fused_conv2d", false /*with_residual_data*/);
 }
 
 }  // namespace ir
