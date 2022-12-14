@@ -80,13 +80,16 @@ class SkipLayerNormOpConverter : public OpConverter {
            static_cast<int32_t>(scale_weight.count)}};
       nvinfer1::PluginFieldCollection* pluginPtr =
           static_cast<nvinfer1::PluginFieldCollection*>(
-              malloc(sizeof(*pluginPtr) +
+              malloc(sizeof(nvinfer1::PluginFieldCollection) +
                      fields.size() * sizeof(nvinfer1::PluginField)));
       pluginPtr->nbFields = static_cast<int32_t>(fields.size());
       pluginPtr->fields = fields.data();
 
       auto pluginObj =
           creator->createPlugin("CustomSkipLayerNormPluginDynamic", pluginPtr);
+
+      free(pluginPtr);
+
       auto plugin_layer = engine_->network()->addPluginV2(
           inputs.data(), inputs.size(), *pluginObj);
 
@@ -110,8 +113,9 @@ class SkipLayerNormOpConverter : public OpConverter {
       if (enable_int8) {
         type = static_cast<int32_t>(nvinfer1::DataType::kHALF);
       }
-      int32_t ld = PADDLE_GET_CONST(int32_t, op_desc.GetAttr("ld"));
-      PADDLE_ENFORCE_GT(ld,
+      int32_t hidden_size =
+          PADDLE_GET_CONST(int32_t, op_desc.GetAttr("hidden_size"));
+      PADDLE_ENFORCE_GT(hidden_size,
                         0,
                         platform::errors::InvalidArgument(
                             "in CustomSkipLayerNormPluginDynamic hidden "
@@ -119,7 +123,7 @@ class SkipLayerNormOpConverter : public OpConverter {
 
       const std::vector<nvinfer1::PluginField> fields{
           {"type_id", &type, nvinfer1::PluginFieldType::kINT32, 1},
-          {"ld", &ld, nvinfer1::PluginFieldType::kINT32, 1},
+          {"ld", &hidden_size, nvinfer1::PluginFieldType::kINT32, 1},
           {"beta",
            bias_weight.values,
            GetPluginFieldType(bias_weight.type),
@@ -131,7 +135,7 @@ class SkipLayerNormOpConverter : public OpConverter {
       };
       nvinfer1::PluginFieldCollection* pluginPtr =
           static_cast<nvinfer1::PluginFieldCollection*>(
-              malloc(sizeof(*pluginPtr) +
+              malloc(sizeof(nvinfer1::PluginFieldCollection) +
                      fields.size() *
                          sizeof(nvinfer1::PluginField)));  // remember to free
       pluginPtr->nbFields = static_cast<int32_t>(fields.size());
@@ -139,6 +143,9 @@ class SkipLayerNormOpConverter : public OpConverter {
 
       auto pluginObj =
           creator->createPlugin("CustomSkipLayerNormPluginDynamic", pluginPtr);
+
+      free(pluginPtr);
+
       auto plugin_layer = engine_->network()->addPluginV2(
           inputs.data(), inputs.size(), *pluginObj);
 

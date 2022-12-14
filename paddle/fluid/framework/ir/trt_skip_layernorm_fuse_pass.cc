@@ -182,8 +182,8 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
       }
       new_desc.SetAttr("begin_norm_axis", begin_norm_axis);
     }
-    int32_t ld = layer_norm_scale->Var()->GetShape()[0];
-    new_desc.SetAttr("ld", ld);
+    int32_t hidden_size = layer_norm_scale->Var()->GetShape()[0];
+    new_desc.SetAttr("hidden_size", hidden_size);
 
     auto fused_node = graph->CreateOpNode(&new_desc);  // OpDesc will be copied.
 
