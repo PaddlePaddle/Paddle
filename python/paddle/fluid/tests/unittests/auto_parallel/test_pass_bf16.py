@@ -22,7 +22,7 @@ import unittest
 class TestBF16Pass(unittest.TestCase):
     def test_mp2(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
-        launch_model_path = os.path.join(file_dir, "bf16_pass_unittest_mp.py")
+        launch_model_path = os.path.join(file_dir, "bf16_pass_unittest.py")
 
         if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
             coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
