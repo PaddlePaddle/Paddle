@@ -103,7 +103,7 @@ pass_library(delete_c_identity_op_pass inference)
 pass_library(preln_residual_bias_fuse_pass inference)
 pass_library(delete_fill_constant_op_pass inference)
 pass_library(constant_folding_pass inference)
-pass_library(float_to_half_pass inference)
+pass_library(auto_mixed_precision_pass inference)
 pass_library(conv2d_fusion_layout_transfer_pass inference)
 pass_library(simplify_with_basic_ops_pass base)
 pass_library(fc_elementwise_layernorm_fuse_pass base)
@@ -151,19 +151,6 @@ endif()
 
 if(WITH_MKLDNN)
   pass_library(mkldnn_placement_pass base DEPS placement_pass_base DIR mkldnn)
-  pass_library(
-    mkldnn_inplace_pass
-    inference
-    DEPS
-    mkldnn_placement_pass
-    op_registry
-    elementwise_add_op
-    generated_op
-    activation_op
-    softmax_op
-    softmax
-    DIR
-    mkldnn)
   pass_library(depthwise_conv_mkldnn_pass base DIR mkldnn)
   pass_library(conv_affine_channel_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(conv_bias_mkldnn_fuse_pass inference DIR mkldnn)
@@ -450,10 +437,6 @@ if(WITH_MKLDNN)
     test_mkldnn_placement_pass
     SRCS mkldnn/mkldnn_placement_pass_tester.cc
     DEPS mkldnn_placement_pass)
-  cc_test(
-    test_mkldnn_inplace_pass
-    SRCS mkldnn/mkldnn_inplace_pass_tester.cc
-    DEPS mkldnn_inplace_pass)
   cc_test(
     test_compute_propagate_scales_mkldnn_pass
     SRCS mkldnn/compute_propagate_scales_mkldnn_pass_tester.cc

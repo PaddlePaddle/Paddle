@@ -311,6 +311,8 @@ class SeResNeXt(fluid.dygraph.Layer):
 
         self.pool2d_avg_output = num_filters[len(num_filters) - 1] * 2 * 1 * 1
 
+        self.dropout = paddle.nn.Dropout(p=0.5, mode="downscale_in_infer")
+
         self.out = Linear(
             self.pool2d_avg_output,
             class_dim,
@@ -334,7 +336,7 @@ class SeResNeXt(fluid.dygraph.Layer):
             y = bottleneck_block(y)
 
         y = self.pool2d_avg(y)
-        y = fluid.layers.dropout(y, dropout_prob=0.5, seed=100)
+        y = self.dropout(y)
         y = paddle.reshape(y, shape=[-1, self.pool2d_avg_output])
         out = self.out(y)
 
