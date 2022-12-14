@@ -34,10 +34,3 @@ from .ptq_quantizer import (
 
 from . import ptq_registry
 from .ptq_registry import PTQRegistry
-
-__all__ = []
-__all__ += qat.__all__
-__all__ += ptq.__all__
-__all__ += ptq_config.__all__
-__all__ += ptq_quantizer.__all__
-__all__ += ptq_registry.__all__
