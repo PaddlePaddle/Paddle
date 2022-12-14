@@ -761,7 +761,9 @@ bool BuildOpFuncList(const platform::Place& place,
                 dev_ctx->template Alloc(
                     out_tensor,
                     out_tensor->dtype(),
-                    /*requested_size=*/phi::backends::gpu::GpuMinChunkSize());
+                    /*requested_size=*/phi::backends::gpu::GpuMinChunkSize(),
+                    /*pinned=*/false,
+                    /*check_size=*/true);
               } else if (phi::SparseCooTensor::classof(out_tensor)) {
                 VLOG(4) << "SparseCooTensor";
               } else if (phi::SparseCsrTensor::classof(out_tensor)) {

@@ -149,7 +149,8 @@ class PADDLE_API DeviceContext {
   void* Alloc(TensorBase*,
               DataType dtype,
               size_t requested_size = 0,
-              bool pinned = false) const;
+              bool pinned = false,
+              bool check_size = true) const;
 
   template <typename T>
   T* Alloc(TensorBase* tensor,

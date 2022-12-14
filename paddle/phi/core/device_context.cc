@@ -134,7 +134,8 @@ struct DeviceContext::Impl {
               const Place& place,
               DataType dtype = DataType::UNDEFINED,
               size_t requested_size = 0,
-              bool pinned = false) const {
+              bool pinned = false,
+              bool check_size = true) const {
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
         phi::errors::InvalidArgument(
@@ -164,7 +165,7 @@ struct DeviceContext::Impl {
     }
 #endif
     return tensor->AllocateFrom(
-        const_cast<Allocator*>(allocator), dtype, requested_size);
+        const_cast<Allocator*>(allocator), dtype, requested_size, check_size);
   }
 
   template <typename T>
@@ -342,12 +343,18 @@ const Allocator& DeviceContext::GetPinnedAllocator() const {
 void* DeviceContext::Alloc(TensorBase* tensor,
                            DataType dtype,
                            size_t requested_size,
-                           bool pinned) const {
+                           bool pinned,
+                           bool check_size) const {
   if (pinned) {
-    return impl_->Alloc(
-        tensor, GetPinnedPlace(GetPlace()), dtype, requested_size, pinned);
+    return impl_->Alloc(tensor,
+                        GetPinnedPlace(GetPlace()),
+                        dtype,
+                        requested_size,
+                        pinned,
+                        check_size);
   }
-  return impl_->Alloc(tensor, GetPlace(), dtype, requested_size, pinned);
+  return impl_->Alloc(
+      tensor, GetPlace(), dtype, requested_size, pinned, check_size);
 }
 
 template <typename T>
