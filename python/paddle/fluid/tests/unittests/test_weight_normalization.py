@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import collections
+import unittest
+
+import numpy as np
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.initializer import ConstantInitializer
@@ -46,7 +49,7 @@ class TestWeightNormalization(unittest.TestCase):
             bias_attr=False,
             act=None,
         )
-        loss = fluid.layers.reduce_sum(out)
+        loss = paddle.sum(out)
         fluid.backward.append_backward(loss=loss)
         cls.fetch_list = [
             'weight_norm_param_g',
@@ -83,7 +86,9 @@ class TestWeightNormalization(unittest.TestCase):
                 lod_level_i = np.random.randint(
                     low=1,
                     high=5,
-                    size=self.batch_size if i == 0 else sum(lod_level_i),
+                    size=self.batch_size
+                    if i == 0
+                    else sum(lod_level_i),  # noqa: F821
                 ).tolist()
                 data_lod.append(lod_level_i)
             data_value = np.random.random(

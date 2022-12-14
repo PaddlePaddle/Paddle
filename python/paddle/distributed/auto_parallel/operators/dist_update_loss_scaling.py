@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .common import DistributedOperatorImplContainer
-from .common import DistributedOperatorImpl
-from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl
 from ..utils import set_dist_op_desc_original_id
+from .common import (
+    DistributedOperatorImpl,
+    DistributedOperatorImplContainer,
+    register_distributed_operator_impl,
+    register_distributed_operator_impl_container,
+)
 
 
 class DistributedUpdateLossScaling(DistributedOperatorImplContainer):
@@ -151,7 +153,7 @@ class DistributedUpdateLossScalingImpl(DistributedOperatorImpl):
             if (
                 rank_id
                 in ctx.get_tensor_dist_attr_for_program(
-                    main_block.var(varname)
+                    main_block._var_recursive(varname)
                 ).process_mesh.processes
             ):
                 filter_vars.append(varname)

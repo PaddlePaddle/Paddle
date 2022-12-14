@@ -13,14 +13,14 @@
 # limitations under the License.
 
 import unittest
+from argparse import REMAINDER, ArgumentParser
 
-from argparse import ArgumentParser, REMAINDER
+from paddle.distributed.fleet.launch_utils import find_free_ports
 from paddle.distributed.utils.launch_utils import (
     _print_arguments,
-    get_gpus,
     get_cluster_from_args,
+    get_gpus,
 )
-from paddle.distributed.fleet.launch_utils import find_free_ports
 
 
 def _parse_args():

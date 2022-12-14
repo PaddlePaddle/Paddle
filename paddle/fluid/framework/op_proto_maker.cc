@@ -77,44 +77,43 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
   }
   op_checker_->InitDefaultAttributeMap(extra_attrs_ptr);
 
-  // AddAttr<int>(OpRoleAttrName(), "The role of this operator")
-  //     .InEnum(
-  //         {static_cast<int>(OpRole::kForward),
-  //          static_cast<int>(OpRole::kBackward),
-  //          static_cast<int>(OpRole::kOptimize),
-  //          static_cast<int>(OpRole::kRPC),
-  //          static_cast<int>(OpRole::kDist),
-  //          static_cast<int>(OpRole::kLRSched),
-  //          static_cast<int>(OpRole::kLoss) |
-  //          static_cast<int>(OpRole::kForward),
-  //          static_cast<int>(OpRole::kLoss) |
-  //              static_cast<int>(OpRole::kBackward),
-  //          static_cast<int>(OpRole::kOptimize) |
-  //              static_cast<int>(OpRole::kLRSched),
-  //          static_cast<int>(OpRole::kNotSpecified)})
-  //     .SetDefault(static_cast<int>(OpRole::kNotSpecified))
-  //     .AsExtra();
-  // AddAttr<std::vector<std::string>>(OpRoleVarAttrName(),
-  //                                   "Optimized for variable")
-  //     .SetDefault({})
-  //     .AsExtra();
+  AddAttr<int>(OpRoleAttrName(), "The role of this operator")
+      .InEnum(
+          {static_cast<int>(OpRole::kForward),
+           static_cast<int>(OpRole::kBackward),
+           static_cast<int>(OpRole::kOptimize),
+           static_cast<int>(OpRole::kRPC),
+           static_cast<int>(OpRole::kDist),
+           static_cast<int>(OpRole::kLRSched),
+           static_cast<int>(OpRole::kLoss) | static_cast<int>(OpRole::kForward),
+           static_cast<int>(OpRole::kLoss) |
+               static_cast<int>(OpRole::kBackward),
+           static_cast<int>(OpRole::kOptimize) |
+               static_cast<int>(OpRole::kLRSched),
+           static_cast<int>(OpRole::kNotSpecified)})
+      .SetDefault(static_cast<int>(OpRole::kNotSpecified))
+      .AsExtra();
+  AddAttr<std::vector<std::string>>(OpRoleVarAttrName(),
+                                    "Optimized for variable")
+      .SetDefault({})
+      .AsExtra();
 
-  // AddAttr<std::string>(OpNamescopeAttrName(), "Operator name with namesope.")
-  //     .SetDefault("")
-  //     .AsExtra();
+  AddAttr<std::string>(OpNamescopeAttrName(), "Operator name with namescope.")
+      .SetDefault("")
+      .AsExtra();
 
-  // AddAttr<std::vector<std::string>>(OpCreationCallstackAttrName(),
-  //                                   "Callstack for Op Creatation.")
-  //     .SetDefault({})
-  //     .AsExtra();
-  // AddAttr<std::string>(OpDeviceAttrName(), "Device type of this operator.")
-  //     .SetDefault("")
-  //     .AsExtra();
+  AddAttr<std::vector<std::string>>(OpCreationCallstackAttrName(),
+                                    "Callstack for Op Creation.")
+      .SetDefault({})
+      .AsExtra();
+  AddAttr<std::string>(OpDeviceAttrName(), "Device type of this operator.")
+      .SetDefault("")
+      .AsExtra();
 
-  // AddAttr<bool>(OpWithQuantAttrName(),
-  //               "Whether the operator has attributes used by quantization. ")
-  //     .SetDefault(false)
-  //     .AsExtra();
+  AddAttr<bool>(OpWithQuantAttrName(),
+                "Whether the operator has attributes used by quantization. ")
+      .SetDefault(false)
+      .AsExtra();
 
   Validate();
 }

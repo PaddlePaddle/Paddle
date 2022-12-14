@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
-from paddle.fluid.wrapped_decorator import wrap_decorator
 import unittest
 from unittest import TestCase
+
 import numpy as np
+
 import paddle
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+import paddle.fluid as fluid
+from paddle.fluid.framework import _in_legacy_dygraph
+from paddle.fluid.wrapped_decorator import wrap_decorator
 
 
 def _dygraph_guard_(func):
@@ -66,7 +68,7 @@ class TestDygraphDoubleGrad(TestCase):
         )
 
     @dygraph_guard
-    def func_exception(self):
+    def test_exception(self):
         with self.assertRaises(AssertionError):
             self.grad(None, None)
 
@@ -99,13 +101,8 @@ class TestDygraphDoubleGrad(TestCase):
         with self.assertRaises(AssertionError):
             self.grad([random_var(shape)], [random_var(shape)], no_grad_vars=1)
 
-    def test_exception(self):
-        with _test_eager_guard():
-            self.func_exception()
-        self.func_exception()
-
     @dygraph_guard
-    def func_simple_example(self):
+    def test_simple_example(self):
         x = random_var(self.shape)
         x.stop_gradient = False
         y = x + 1
@@ -139,13 +136,8 @@ class TestDygraphDoubleGrad(TestCase):
                 grad_with_none_and_not_none.stop_gradient, create_graph
             )
 
-    def test_simple_example(self):
-        with _test_eager_guard():
-            self.func_simple_example()
-        self.func_simple_example()
-
     @dygraph_guard
-    def func_none_one_initial_gradient(self):
+    def test_none_one_initial_gradient(self):
         numel = 1
         for s in self.shape:
             numel *= s
@@ -164,7 +156,7 @@ class TestDygraphDoubleGrad(TestCase):
         x.stop_gradient = False
 
         alpha = 0.2
-        y = fluid.layers.leaky_relu(x, alpha=alpha)
+        y = paddle.nn.functional.leaky_relu(x, alpha)
         y = y * y
         z = y * y
 
@@ -221,11 +213,6 @@ class TestDygraphDoubleGrad(TestCase):
                             grad_z.numpy(), original_random_grad_z
                         )
 
-    def test_none_one_initial_gradient(self):
-        with _test_eager_guard():
-            self.func_none_one_initial_gradient()
-        self.func_none_one_initial_gradient()
-
     @dygraph_guard
     def func_example_with_gradient_accumulation_and_create_graph(self):
         x = random_var(self.shape)
@@ -237,7 +224,7 @@ class TestDygraphDoubleGrad(TestCase):
         z = y + 1
         w = z * z
 
-        w_mean = fluid.layers.reduce_mean(w)
+        w_mean = paddle.mean(w)
         del y, z, w
 
         (dx_actual,) = self.grad([w_mean], [x], create_graph=True)
@@ -254,7 +241,7 @@ class TestDygraphDoubleGrad(TestCase):
         if not _in_legacy_dygraph():
             pass
         else:
-            loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
+            loss = paddle.mean(dx_actual * dx_actual + x * x)
             loss.backward()
 
             x_grad_actual = x.gradient()
@@ -267,13 +254,8 @@ class TestDygraphDoubleGrad(TestCase):
                 x_grad_actual, x_grad_expected, rtol=1e-05
             )
 
-    def test_example_with_gradient_accumulation_and_create_graph(self):
-        with _test_eager_guard():
-            self.func_example_with_gradient_accumulation_and_create_graph()
-        self.func_example_with_gradient_accumulation_and_create_graph()
-
     @dygraph_guard
-    def func_example_with_gradient_accumulation_and_no_grad_vars(self):
+    def test_example_with_gradient_accumulation_and_no_grad_vars(self):
         x = random_var(self.shape)
         x_np = x.numpy()
         numel = x_np.size
@@ -284,7 +266,7 @@ class TestDygraphDoubleGrad(TestCase):
         z = y1 + y2
         w = z * z
 
-        w_mean = fluid.layers.reduce_mean(w)
+        w_mean = paddle.mean(w)
         del y1, z, w
 
         (dx_actual,) = self.grad(
@@ -306,7 +288,7 @@ class TestDygraphDoubleGrad(TestCase):
         if not _in_legacy_dygraph():
             pass
         else:
-            loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
+            loss = paddle.mean(dx_actual * dx_actual + x * x)
             loss.backward()
 
             x_grad_actual = x.gradient()
@@ -319,13 +301,8 @@ class TestDygraphDoubleGrad(TestCase):
                 x_grad_actual, x_grad_expected, rtol=1e-05
             )
 
-    def test_example_with_gradient_accumulation_and_no_grad_vars(self):
-        with _test_eager_guard():
-            self.func_example_with_gradient_accumulation_and_no_grad_vars()
-        self.func_example_with_gradient_accumulation_and_no_grad_vars()
-
     @dygraph_guard
-    def func_example_with_gradient_accumulation_and_not_create_graph(self):
+    def test_example_with_gradient_accumulation_and_not_create_graph(self):
         x = random_var(self.shape)
         x_np = x.numpy()
         numel = x_np.size
@@ -335,7 +312,7 @@ class TestDygraphDoubleGrad(TestCase):
         z = y + 1
         w = z * z
 
-        w_mean = fluid.layers.reduce_mean(w)
+        w_mean = paddle.mean(w)
         del y, z, w
 
         (dx_actual,) = self.grad([w_mean], [x], create_graph=False)
@@ -352,7 +329,7 @@ class TestDygraphDoubleGrad(TestCase):
         if not _in_legacy_dygraph():
             pass
         else:
-            loss = fluid.layers.reduce_mean(dx_actual * dx_actual + x * x)
+            loss = paddle.mean(dx_actual * dx_actual + x * x)
             loss.backward()
 
             x_grad_actual = x.gradient()
@@ -360,11 +337,6 @@ class TestDygraphDoubleGrad(TestCase):
             np.testing.assert_allclose(
                 x_grad_actual, x_grad_expected, rtol=1e-05
             )
-
-    def test_example_with_gradient_accumulation_and_not_create_graph(self):
-        with _test_eager_guard():
-            self.func_example_with_gradient_accumulation_and_not_create_graph()
-        self.func_example_with_gradient_accumulation_and_not_create_graph()
 
 
 class TestDygraphDoubleGradSortGradient(TestDygraphDoubleGrad):

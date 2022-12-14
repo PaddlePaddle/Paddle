@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from op_test import OpTest
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from op_test import OpTest
-import paddle
 import paddle.nn.functional as F
 from paddle.fluid import dygraph
 
@@ -315,9 +317,9 @@ class RReluTest(OpTest):
         self.lower = 0.1
         self.upper = 0.3
         self.is_test = True
-        self.init_prams()
+        self.init_params()
 
-    def init_prams(self):
+    def init_params(self):
         self.dtype = "float64"
         self.x_shape = [2, 3, 4, 5]
 
@@ -341,22 +343,13 @@ class RReluTest(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-class RReluTrainingTest(OpTest):
+class RReluTrainingTest(RReluTest):
     def setUp(self):
         self.op_type = "rrelu"
         self.lower = 0.3
-        self.upper = 0.3000009
+        self.upper = 0.300000009
         self.is_test = False
-        self.init_prams()
-
-
-class RReluTrainingTest(OpTest):
-    def setUp(self):
-        self.op_type = "rrelu"
-        self.lower = 0.3
-        self.upper = 0.3000009
-        self.is_test = False
-        self.init_prams()
+        self.init_params()
 
 
 if __name__ == "__main__":

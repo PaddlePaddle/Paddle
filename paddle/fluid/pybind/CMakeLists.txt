@@ -137,6 +137,7 @@ set(PYBIND_SRCS
     generator_py.cc
     communication.cc
     cuda_streams_py.cc
+    xpu_streams_py.cc
     jit.cc
     auto_parallel_py.cc
     op_function1.cc
@@ -157,21 +158,15 @@ if(WITH_PYTHON)
   set(PYBIND_DEPS ${PYBIND_DEPS} processgroup eager_reducer)
   if(WITH_NCCL OR WITH_RCCL)
     set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_nccl)
-    if(WITH_PSCORE)
-      set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_heter)
-    endif()
+  endif()
+  if(WITH_XPU_BKCL)
+    set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_bkcl)
   endif()
   if(WITH_GLOO)
     set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_gloo)
   endif()
   if(WITH_MPI)
     set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_mpi)
-  endif()
-  if(WITH_ASCEND_CL)
-    set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_hccl)
-    if(WITH_PSCORE)
-      set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_heter)
-    endif()
   endif()
   if(WITH_CUSTOM_DEVICE)
     set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_custom)
@@ -610,7 +605,6 @@ if(WITH_PYTHON)
     list(APPEND PYBIND_DEPS python)
     list(APPEND PYBIND_DEPS custom_operator)
     list(APPEND PYBIND_DEPS custom_operator_node)
-    list(APPEND PYBIND_DEPS saved_tensors_hooks)
   endif()
 
   # On Linux, cc_library(paddle SHARED ..) will generate the libpaddle.so,
@@ -656,5 +650,4 @@ if(WITH_PYTHON)
   target_link_libraries(${SHARD_LIB_NAME} ${os_dependency_modules})
   add_dependencies(${SHARD_LIB_NAME} op_function_generator_cmd)
 
-  target_link_libraries(${SHARD_LIB_NAME} ${PYTHON_LIBRARIES})
 endif()

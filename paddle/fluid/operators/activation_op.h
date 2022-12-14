@@ -27,7 +27,6 @@ limitations under the License. */
 #include <type_traits>
 
 #include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/enforce.h"

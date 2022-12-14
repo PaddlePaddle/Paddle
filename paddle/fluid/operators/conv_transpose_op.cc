@@ -21,7 +21,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/platform/cudnn_workspace_helper.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/binary.h"
@@ -48,8 +47,8 @@ framework::OpKernelType ConvTransposeOp::GetKernelTypeForVar(
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
   if ((var_name == "Input") &&
-      (expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
-      (tensor.layout() != phi::DataLayout::kMKLDNN)) {
+      (expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
+      (tensor.layout() != phi::DataLayout::ONEDNN)) {
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_format = ar.Get<std::string>("data_format");

@@ -40,7 +40,7 @@ class CastOpProtoMaker : public framework::OpProtoAndCheckerMaker {
 Cast Operator.
 
 This Operator casts the input tensor to another data type and
-returns the Output Tensor. It's meaningless if the output dtype equals
+returns the Output phi::DenseTensor. It's meaningless if the output dtype equals
 the input dtype, but it's fine if you do so.
 
 )DOC");

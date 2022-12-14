@@ -21,24 +21,6 @@ KernelSignature GatherNdGradArgumentMapping(const ArgumentMappingContext& ctx) {
       "gather_nd_grad", {"X", "Index", "Out@GRAD"}, {}, {"X@GRAD"});
 }
 
-KernelSignature ScatterGradArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("scatter_grad",
-                         {"Ids", "Updates", "Out@GRAD"},
-                         {"overwrite"},
-                         {"X@GRAD", "Updates@GRAD"});
-}
-
-KernelSignature ScatterNdAddGradArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature("scatter_nd_add_grad",
-                         {"Index", "Updates", "Out@GRAD"},
-                         {},
-                         {"X@GRAD", "Updates@GRAD"});
-}
-
 }  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(gather_nd_grad, phi::GatherNdGradArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(scatter_grad, phi::ScatterGradArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(scatter_nd_add_grad,
-                           phi::ScatterNdAddGradArgumentMapping);

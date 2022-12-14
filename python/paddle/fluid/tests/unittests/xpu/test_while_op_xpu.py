@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import unittest
-import paddle
-import paddle.fluid.layers as layers
-from paddle.fluid.executor import Executor
-import paddle.fluid as fluid
-from paddle.fluid.backward import append_backward
+
 import numpy
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.layers as layers
+from paddle.fluid.backward import append_backward
+from paddle.fluid.executor import Executor
 
 paddle.enable_static()
 
@@ -39,39 +41,39 @@ class TestWhileOp(unittest.TestCase):
         init = layers.zeros(shape=[10], dtype='float32')
         mem_array = layers.array_write(x=init, i=i)
         data_array = layers.array_write(x=d0, i=i)
-        i = layers.increment(i)
+        i = paddle.increment(i)
         layers.array_write(d1, i, array=data_array)
-        i = layers.increment(i)
+        i = paddle.increment(i)
         layers.array_write(d2, i, array=data_array)
         i = layers.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True
         array_len = layers.fill_constant(shape=[1], dtype='int64', value=1)
         array_len.stop_gradient = True
-        cond = layers.less_than(x=i, y=array_len)
+        cond = paddle.less_than(x=i, y=array_len)
         j = layers.fill_constant(shape=[1], dtype='int64', value=1)
         j.stop_gradient = True
         array_len2 = layers.fill_constant(shape=[1], dtype='int64', value=3)
         array_len2.stop_gradient = True
-        cond2 = layers.less_than(x=j, y=array_len2)
-        while_op = layers.While(cond=cond)
-        while_op2 = layers.While(cond=cond2)
+        cond2 = paddle.less_than(x=j, y=array_len2)
+        while_op = paddle.static.nn.control_flow.While(cond=cond)
+        while_op2 = paddle.static.nn.control_flow.While(cond=cond2)
         with while_op.block():
             d = layers.array_read(array=data_array, i=i)
             prev = layers.array_read(array=mem_array, i=i)
             result = layers.sums(input=[d, prev])
 
-            i = layers.increment(x=i, in_place=True)
+            i = paddle.increment(x=i)
             layers.array_write(result, i=i, array=mem_array)
-            layers.less_than(x=i, y=array_len, cond=cond)
+            paddle.assign(paddle.less_than(x=i, y=array_len), cond)
 
             with while_op2.block():
                 d2 = layers.array_read(array=data_array, i=j)
                 prev2 = layers.array_read(array=mem_array, i=j)
                 result2 = layers.sums(input=[d2, prev2])
 
-                j = layers.increment(x=j, in_place=True)
+                j = paddle.increment(x=j)
                 layers.array_write(result2, i=j, array=mem_array)
-                layers.less_than(x=j, y=array_len2, cond=cond2)
+                paddle.assign(paddle.less_than(x=j, y=array_len2), cond2)
         sum_result = layers.array_read(array=mem_array, i=j)
         loss = paddle.mean(sum_result)
         return loss, sum_result
@@ -117,12 +119,12 @@ class TestWhileOp(unittest.TestCase):
     def test_exceptions(self):
         i = layers.zeros(shape=[2], dtype='int64')
         array_len = layers.fill_constant(shape=[2], dtype='int64', value=1)
-        cond = layers.less_than(x=i, y=array_len)
+        cond = paddle.less_than(x=i, y=array_len)
         with self.assertRaises(TypeError):
-            layers.While(cond=cond)
+            paddle.static.nn.control_flow.While(cond=cond)
         cond = layers.cast(cond, dtype='float64')
         with self.assertRaises(TypeError):
-            layers.While(cond=cond)
+            paddle.static.nn.control_flow.While(cond=cond)
 
 
 if __name__ == '__main__':

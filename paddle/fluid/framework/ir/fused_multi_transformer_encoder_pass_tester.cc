@@ -188,6 +188,7 @@ TEST(FusedMultiTransformerEncoderPass, basic) {
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   graph->Set("__param_scope__", CreateParamScope());
+  graph->Set("enable_int8", new bool(false));
 
   auto pass =
       PassRegistry::Instance().Get("fused_multi_transformer_encoder_pass");
@@ -233,11 +234,11 @@ TEST(FusedMultiTransformerEncoderFuseQKVPass, basic) {
   // (eltadd_0)                       reshape2         -> reshape_0
   // (reshape_0)                      transpose2       -> transpose_0
   // (transpose_0)                    split            -> split_q, split_k,
-  // split_v (split_k)                        assign           -> assign_k
+  // split_v (split_k)                assign           -> assign_k
   // (split_v)                        assign           -> assign_v
-  // (split_q, split_k)               matmul           -> matmul_qk
-  // (matmul_qk, bias_qk)             elementwise_add  -> eltadd_qk
-  // (eltadd_qk)                      softmax          -> softmax_qk
+  // (split_q, split_k)               matmul_v2        -> matmul_qk
+  // (matmul_qk)                      scale            -> scale_qk
+  // (scale_qk, eltadd_qk)            softmax          -> softmax_qk
   // (softmax_qk, transpose_2)        matmul_v2        -> matmul_qkv
   // (matmul_qkv)                     transpose        -> transpose_qkv
   // (transpose_qkv)                  reshape          -> reshape_qkv
@@ -288,10 +289,11 @@ TEST(FusedMultiTransformerEncoderFuseQKVPass, basic) {
   layers.while_loop({split_k, split_v});
 
   // MHA: QK matmul
-  auto* matmul_qk = layers.matmul(split_q, split_k, nullptr, false, true);
+  auto* matmul_qk = layers.matmul_v2(split_q, split_k, nullptr, false, true);
+  auto* scale_qk = layers.scale(matmul_qk, 0.125, 0, false);
 
   auto* bqk = layers.data("biasqk", {1, 12, 128, 128}, true);
-  auto* elementwise_qk = layers.elementwise_add(matmul_qk, bqk);
+  auto* elementwise_qk = layers.elementwise_add(scale_qk, bqk);
   auto* softmax_qk = layers.softmax(elementwise_qk, -1);
 
   // MHA: QKV matmul
@@ -334,6 +336,7 @@ TEST(FusedMultiTransformerEncoderFuseQKVPass, basic) {
   layers.elementwise_add(attention_out, ffn_eltadd1_out);
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
+  graph->Set("enable_int8", new bool(false));
   graph->Set("__param_scope__", CreateParamScope());
 
   auto pass = PassRegistry::Instance().Get(
@@ -350,11 +353,11 @@ TEST(FusedMultiTransformerEncoderFuseQKVPass, basic) {
 
   PADDLE_ENFORCE_EQ(
       num_nodes_before,
-      num_nodes_after + 44,
+      num_nodes_after + 46,
       platform::errors::InvalidArgument(
           "After the fused_multi_transformer_encoder_fuse_qkv_pass, "
           "The node num in graph should be %d, but the result is %d",
-          num_nodes_before - 44,
+          num_nodes_before - 46,
           num_nodes_after));
   PADDLE_ENFORCE_EQ(num_fused_nodes_after,
                     1,
@@ -381,10 +384,11 @@ TEST(MultiDevicesFusedMultiTransformerEncoderFuseQKVPass, basic) {
   // (eltadd_0)                       reshape2         -> reshape_0
   // (reshape_0)                      transpose2       -> transpose_0
   // (transpose_0)                    split            -> split_q, split_k,
-  // split_v (split_k)                        assign           -> assign_k
+  // split_v (split_k)                assign           -> assign_k
   // (split_v)                        assign           -> assign_v
-  // (split_q, split_k)               matmul           -> matmul_qk
-  // (matmul_qk, bias_qk)             elementwise_add  -> eltadd_qk
+  // (split_q, split_k)               matmul_v2        -> matmul_qk
+  // (matmul_qk)                      scale            -> scale_qk
+  // (scale_qk, bias_qk)              elementwise_add  -> eltadd_qk
   // (eltadd_qk)                      softmax          -> softmax_qk
   // (softmax_qk, transpose_2)        matmul_v2        -> matmul_qkv
   // (matmul_qkv)                     transpose        -> transpose_qkv
@@ -440,10 +444,11 @@ TEST(MultiDevicesFusedMultiTransformerEncoderFuseQKVPass, basic) {
   layers.while_loop({split_k, split_v});
 
   // MHA: QK matmul
-  auto* matmul_qk = layers.matmul(split_q, split_k, nullptr, false, true);
+  auto* matmul_qk = layers.matmul_v2(split_q, split_k, nullptr, false, true);
+  auto* scale_qk = layers.scale(matmul_qk, 0.125, 0, false);
 
   auto* bqk = layers.data("biasqk", {1, 12, 128, 128}, true);
-  auto* elementwise_qk = layers.elementwise_add(matmul_qk, bqk);
+  auto* elementwise_qk = layers.elementwise_add(scale_qk, bqk);
   auto* softmax_qk = layers.softmax(elementwise_qk, -1);
 
   // MHA: QKV matmul
@@ -489,6 +494,7 @@ TEST(MultiDevicesFusedMultiTransformerEncoderFuseQKVPass, basic) {
   layers.elementwise_add(attention_out, ffn_eltadd1_out);
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
+  graph->Set("enable_int8", new bool(false));
   graph->Set("__param_scope__", CreateParamScope());
 
   auto pass = PassRegistry::Instance().Get(
@@ -507,11 +513,11 @@ TEST(MultiDevicesFusedMultiTransformerEncoderFuseQKVPass, basic) {
 
   PADDLE_ENFORCE_EQ(
       num_nodes_before,
-      num_nodes_after + 52,
+      num_nodes_after + 54,
       platform::errors::InvalidArgument(
           "After the fused_multi_transformer_encoder_fuse_qkv_pass, "
           "The node num in graph should be %d, but the result is %d",
-          num_nodes_before - 52,
+          num_nodes_before - 54,
           num_nodes_after));
   PADDLE_ENFORCE_EQ(num_fused_nodes_after,
                     1,

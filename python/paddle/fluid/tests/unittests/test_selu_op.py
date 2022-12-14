@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle.fluid.core as core
 from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle.nn.functional as F
 
 
@@ -118,7 +120,7 @@ class TestSeluAPI(unittest.TestCase):
     def test_fluid_api(self):
         with fluid.program_guard(fluid.Program()):
             x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
-            out = fluid.layers.selu(x, self.scale, self.alpha)
+            out = F.selu(x, self.scale, self.alpha)
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_selu(self.x_np, self.scale, self.alpha)

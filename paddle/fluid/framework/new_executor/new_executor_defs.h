@@ -245,39 +245,20 @@ class VariableScope {
   std::vector<std::pair<std::string, int>> data_transfer_added_vars_;
 };
 
-class NextInstructionList {
- public:
-  void AddDirectRun(size_t id) { direct_run_.push_back(id); }
-
-  void ADDEventRun(size_t id) { event_wait_run_.push_back(id); }
-
-  void AddSyncRun(size_t id) { synchronize_run_.push_back(id); }
-
-  const std::vector<size_t>& DirectRunIds() const { return direct_run_; }
-
-  const std::vector<size_t>& EventRunIds() const { return event_wait_run_; }
-
-  const std::vector<size_t>& SyncRunIds() const { return synchronize_run_; }
-
- private:
-  std::vector<size_t> direct_run_;
-  std::vector<size_t> event_wait_run_;
-  std::vector<size_t> synchronize_run_;
-};
-
 struct EventInter {
-  explicit EventInter(size_t var_id,
+  explicit EventInter(size_t instr_id,
                       std::shared_ptr<platform::DeviceEvent> event,
                       platform::DeviceType waiter_type)
-      : var_id_(var_id), event_(event), waiter_type_(waiter_type) {}
-  size_t var_id_;
+      : instr_id_(instr_id), event_(event), waiter_type_(waiter_type) {}
+  size_t instr_id_;
   std::shared_ptr<platform::DeviceEvent> event_;
   platform::DeviceType waiter_type_;
 };
 
 enum class OpFuncType {
-  kQueueSync = 0,   // CPU kernel, block host
-  kQueueAsync = 1,  // GPU、XPU Kernel or d2h, h2d, send, recv, broadcast
+  kCpuSync,  // CPU kernel, block host
+  kGpuSync,  // GPU or other device kernel without asynchronous operation
+  kGpuAsync  // GPU or other device kernel with asynchronous operation
 };
 class RuntimeInferShapeContext;
 
@@ -287,7 +268,6 @@ struct OpFuncNode {
   std::string execution_stream_{kDefaultStream};
   std::map<std::string, std::vector<int>> input_index;
   std::map<std::string, std::vector<int>> output_index;
-  std::unordered_set<int> no_data_transform_index;
 
   std::map<int, int> inplace_back_map;
 
@@ -309,7 +289,42 @@ class Instruction {
 
   bool IsArtificial() const { return is_artificial_; }
 
-  size_t Id() const;
+  const std::vector<size_t>& NextInstrsInDifferenceThread() const {
+    return next_instrs_in_different_thread;
+  }
+
+  const std::vector<size_t>& NextInstrsInSameThread() const {
+    return next_instrs_in_same_thread;
+  }
+
+  size_t Id() const { return id_; }
+
+  void AddEventToRecord(std::shared_ptr<platform::DeviceEvent> event,
+                        platform::DeviceType waiter_type) {
+    event_to_record_ = std::make_shared<EventInter>(id_, event, waiter_type);
+  }
+
+  void AddEventToWait(size_t instr_id,
+                      std::shared_ptr<platform::DeviceEvent> event,
+                      platform::DeviceType waiter_type) {
+    events_to_wait_.emplace_back(instr_id, event, waiter_type);
+  }
+
+  const std::vector<EventInter>& EventsToWait() const {
+    return events_to_wait_;
+  }
+
+  void AddNextInstrInDifferentThread(size_t id) {
+    next_instrs_in_different_thread.push_back(id);
+  }
+
+  void AddNextInstrInSameThread(size_t id) {
+    next_instrs_in_same_thread.push_back(id);
+  }
+
+  void RecordEvent(const Place& place) const;
+
+  void WaitEvent(const Place& place) const;
 
   const std::map<std::string, std::vector<int>>& Inputs() const;
 
@@ -326,10 +341,6 @@ class Instruction {
   const std::map<int, int>& InplaceBackMap() const;
 
   OperatorBase* OpBase() const;
-
-  NextInstructionList& NextInstructions();
-
-  const NextInstructionList& NextInstructions() const;
 
   void AddGCCheckVar(size_t id);
 
@@ -357,18 +368,6 @@ class Instruction {
 
   void ClearInplace();
 
-  const std::vector<EventInter>& InputEvents() const;
-
-  const std::vector<EventInter>& OutputEvents() const;
-
-  void AddInputEvent(size_t var_id,
-                     std::shared_ptr<platform::DeviceEvent> event,
-                     platform::DeviceType waiter_type);
-
-  void AddOutputEvent(size_t var_id,
-                      std::shared_ptr<platform::DeviceEvent> event,
-                      platform::DeviceType waiter_type);
-
   Priority GetPriority() const { return priority_; }
 
  private:
@@ -376,6 +375,13 @@ class Instruction {
                         // to assist scheduling and no need to be executed.
 
   size_t id_;
+
+  std::vector<size_t> next_instrs_in_different_thread;
+  std::vector<size_t> next_instrs_in_same_thread;
+
+  std::shared_ptr<EventInter> event_to_record_;
+  std::vector<EventInter> events_to_wait_;
+
   OpFuncNode op_func_node_;
   const platform::DeviceContext& dev_ctx_;  // not owned
   const Priority priority_;
@@ -385,11 +391,6 @@ class Instruction {
   std::shared_ptr<ExecutionContext> execution_ctx_;
 
   std::vector<size_t> gc_check_vars_;
-
-  NextInstructionList next_instruction_;
-
-  std::vector<EventInter> intput_events_;
-  std::vector<EventInter> output_events_;
 
   std::vector<std::pair<Variable*, Variable*>> vec_inplace_in_to_out_;
 };

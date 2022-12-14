@@ -13,11 +13,14 @@
 # limitations under the License.
 
 from collections import defaultdict
-from paddle.fluid.framework import Block, Program
-from paddle.fluid.framework import _non_static_mode
-import paddle.fluid.core as core
-import paddle.distributed.fleet as fleet
+
 import numpy as np
+
+import paddle.distributed.fleet as fleet
+
+# (TODO: GhostScreaming) It will be removed later.
+import paddle.fluid.core as core
+from paddle.framework import Block, Program, _non_static_mode
 
 
 class HybridParallelInferenceHelper:
@@ -61,7 +64,7 @@ class HybridParallelInferenceHelper:
                 element_in_arr = layers.array_read(array=arr, i=step_idx)
                 # write placehold data to global lod_tensor_array,
                 # it need for send_v2 of lod_tensor_array
-                layers.increment(x=step_idx, value=1.0, in_place=True)
+                paddle.increment(x=step_idx, value=1.0)
                 layers.array_write(element_in_arr, i=step_idx, array=arr)
 
             with paddle.fluid.device_guard(f'{device}:0'):
@@ -128,13 +131,13 @@ class HybridParallelInferenceHelper:
                 data = layers.array_write(X, step_idx)
 
                 cond_int = layers.fill_constant(shape=[1], dtype="int64", value=0, force_cpu=False, name="cond_int")
-                cond = layers.less_than(x=step_idx, y=max_len)
+                cond = paddle.less_than(x=step_idx, y=max_len)
                 while_op = layers.While(cond, is_test=True)
 
             with while_op.block():
                 with paddle.fluid.device_guard(f'{device}:all'):
                     input = layers.array_read(array=data, i=step_idx)
-                    layers.increment(x=step_idx, value=1.0, in_place=True)
+                    paddle.increment(x=step_idx, value=1.0)
                     layers.array_write(input, i=step_idx, array=data)
 
                 with paddle.fluid.device_guard(f'{device}:0'):
@@ -152,7 +155,7 @@ class HybridParallelInferenceHelper:
                     layers.array_write(hidden2, i=step_idx, array=data)
 
                     # update cond and assign to cond_int, we will sync cond_int
-                    layers.less_than(x=step_idx, y=max_len, cond=cond)
+                    paddle.assign(paddle.less_than(x=step_idx, y=max_len), cond)
                     layers.assign(layers.cast(cond, dtype="int32"), cond_int)
 
                 with paddle.fluid.device_guard(f'{device}:all'):

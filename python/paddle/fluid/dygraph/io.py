@@ -25,12 +25,12 @@ from paddle.fluid.dygraph import layers
 from paddle.fluid.layers import nn
 from paddle.fluid.layers.utils import _hash_with_id
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.framework import _non_static_mode, OpProtoHolder
 from paddle.fluid.executor import (
     _is_enable_standalone_executor,
     _is_dy2st_enable_standalone_executor,
 )
-from paddle.fluid.dygraph.dygraph_to_static.partial_program import (
+from paddle.jit.dy2static.partial_program import (
     add_build_strategy_for,
     LazyInitialized,
 )
@@ -522,7 +522,7 @@ class _ProgramHolder:
         with framework.program_guard(program):
             for i, out in enumerate(self._output_descs):
                 var = program.global_block().var(out.name())
-                var = nn.scale(
+                var = paddle.scale(
                     var, 1.0, name="translated_layer/scale_{}".format(i)
                 )
                 scale_output_vars.append(var)
@@ -563,6 +563,35 @@ class _ProgramHolder:
                             stop_gradient=True,
                         )
                         op.desc.set_output("ReserveSpace", [reserve_space.name])
+                    continue
+
+                proto = OpProtoHolder.instance().get_op_proto(op.type)
+                has_create_intermediate_out = False
+                for output_proto in proto.outputs:
+                    if output_proto.intermediate:
+                        intermediate_name = output_proto.name
+                        if intermediate_name not in op.output_names:
+                            has_create_intermediate_out = True
+                            intermediate_var = block.create_var(
+                                name=unique_name.generate_with_ignorable_key(
+                                    ".".join(
+                                        [
+                                            op.type + '_' + intermediate_name,
+                                            'tmp',
+                                        ]
+                                    )
+                                ),
+                                type=core.VarDesc.VarType.LOD_TENSOR,
+                                persistable=False,
+                                stop_gradient=True,
+                            )
+                            op.desc.set_output(
+                                intermediate_name, [intermediate_var.name]
+                            )
+                if has_create_intermediate_out:
+                    op.desc.infer_var_type(block.desc)
+                    op.desc.infer_shape(block.desc)
+
         return program
 
     @switch_to_static_graph

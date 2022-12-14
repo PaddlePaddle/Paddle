@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
+import os
 import unittest
+
+import numpy as np
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-import numpy as np
-import os
-import contextlib
 
 
 class TestPrune(unittest.TestCase):
@@ -27,7 +28,9 @@ class TestPrune(unittest.TestCase):
         x = fluid.layers.data(name='x', shape=[2], dtype='float32')
         label = fluid.layers.data(name="label", shape=[1], dtype="int64")
         y = fluid.layers.fc(input=[x], size=2, act="softmax")
-        loss = fluid.layers.cross_entropy(input=y, label=label)
+        loss = paddle.nn.functional.cross_entropy(
+            input=y, label=label, reduction='none', use_softmax=False
+        )
         loss = paddle.mean(x=loss)
         return x, y, label, loss
 
@@ -44,7 +47,7 @@ class TestPrune(unittest.TestCase):
                 "mul",
                 "elementwise_add",
                 "softmax",
-                "cross_entropy2",
+                "softmax_with_cross_entropy",
                 "reduce_mean",
             ],
         )
@@ -54,7 +57,7 @@ class TestPrune(unittest.TestCase):
         self.assertEqual(len(pruned_program.global_block().ops), 2)
         self.assertEqual(
             [op.type for op in pruned_program.global_block().ops],
-            ["cross_entropy2", "reduce_mean"],
+            ["softmax_with_cross_entropy", "reduce_mean"],
         )
 
     def test_prune(self):
@@ -70,7 +73,7 @@ class TestPrune(unittest.TestCase):
                 "mul",
                 "elementwise_add",
                 "softmax",
-                "cross_entropy2",
+                "softmax_with_cross_entropy",
                 "reduce_mean",
             ],
         )
@@ -82,7 +85,7 @@ class TestPrune(unittest.TestCase):
                 "mul",
                 "elementwise_add",
                 "softmax",
-                "cross_entropy2",
+                "softmax_with_cross_entropy",
                 "reduce_mean",
             ],
         )
@@ -100,7 +103,7 @@ class TestPrune(unittest.TestCase):
                 "mul",
                 "elementwise_add",
                 "softmax",
-                "cross_entropy2",
+                "softmax_with_cross_entropy",
                 "reduce_mean",
             ],
         )
@@ -112,7 +115,7 @@ class TestPrune(unittest.TestCase):
                 "mul",
                 "elementwise_add",
                 "softmax",
-                "cross_entropy2",
+                "softmax_with_cross_entropy",
                 "reduce_mean",
             ],
         )
@@ -130,7 +133,7 @@ class TestPrune(unittest.TestCase):
                 "mul",
                 "elementwise_add",
                 "softmax",
-                "cross_entropy2",
+                "softmax_with_cross_entropy",
                 "reduce_mean",
             ],
         )
@@ -169,9 +172,13 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         y = fluid.layers.fc(
             input=[x], size=2, act="softmax", param_attr=w_param_attrs
         )
-        loss1 = fluid.layers.cross_entropy(input=y, label=label)
+        loss1 = paddle.nn.functional.cross_entropy(
+            input=y, label=label, reduction='none', use_softmax=False
+        )
         loss1 = paddle.mean(x=loss1)
-        loss2 = fluid.layers.cross_entropy(input=y, label=label)
+        loss2 = paddle.nn.functional.cross_entropy(
+            input=y, label=label, reduction='none', use_softmax=False
+        )
         loss2 = paddle.mean(x=loss2)
         loss1.persistable = True
         loss2.persistable = True
@@ -199,9 +206,13 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         y2 = fluid.layers.fc(
             input=[x2], size=2, act="softmax", param_attr=w2_param_attrs
         )
-        loss1 = fluid.layers.cross_entropy(input=y1, label=label)
+        loss1 = paddle.nn.functional.cross_entropy(
+            input=y1, label=label, reduction='none', use_softmax=False
+        )
         loss1 = paddle.mean(x=loss1)
-        loss2 = fluid.layers.cross_entropy(input=y2, label=label)
+        loss2 = paddle.nn.functional.cross_entropy(
+            input=y2, label=label, reduction='none', use_softmax=False
+        )
         loss2 = paddle.mean(x=loss2)
         return (
             x1,

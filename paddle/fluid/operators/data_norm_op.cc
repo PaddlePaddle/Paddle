@@ -23,8 +23,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
 using DataLayout = phi::DataLayout;
 
 template <typename T>
@@ -484,11 +482,11 @@ class DataNormGradOp : public framework::OperatorWithKernel {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Y@GRAD can not be found for computation"));
     }
-    const Tensor *t = nullptr;
-    if (var->IsType<Tensor>()) {
-      t = &var->Get<Tensor>();
-    } else if (var->IsType<LoDTensor>()) {
-      t = &var->Get<LoDTensor>();
+    const phi::DenseTensor *t = nullptr;
+    if (var->IsType<phi::DenseTensor>()) {
+      t = &var->Get<phi::DenseTensor>();
+    } else if (var->IsType<phi::DenseTensor>()) {
+      t = &var->Get<phi::DenseTensor>();
     }
     if (t == nullptr) {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -524,7 +522,7 @@ class DataNormGradKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
         (data_layout == DataLayout::kNCHW ? x_dims[1]
                                           : x_dims[x_dims.size() - 1]);
     // init output
-    Tensor *d_x = nullptr;
+    phi::DenseTensor *d_x = nullptr;
     if (ctx.HasOutput(framework::GradVarName("X"))) {
       d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     }
@@ -588,12 +586,12 @@ class DataNormGradKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
 
             EigenVectorArrayMap<T> d_bias_arr(d_bias_data, C);
             EigenVectorArrayMap<T> d_scale_arr(d_scale_data, C);
-            Tensor dy_sum;
+            phi::DenseTensor dy_sum;
             dy_sum.Resize({C});
             dy_sum.mutable_data<T>(ctx.GetPlace());
             EigenVectorArrayMap<T> dy_sum_arr(
                 dy_sum.mutable_data<T>(ctx.GetPlace()), C);
-            Tensor dy_mul_x_sub_mean_mul_invstd_sum;
+            phi::DenseTensor dy_mul_x_sub_mean_mul_invstd_sum;
             dy_mul_x_sub_mean_mul_invstd_sum.Resize({C});
             dy_mul_x_sub_mean_mul_invstd_sum.mutable_data<T>(ctx.GetPlace());
             EigenVectorArrayMap<T> dy_mul_x_sub_mean_mul_invstd_sum_arr(

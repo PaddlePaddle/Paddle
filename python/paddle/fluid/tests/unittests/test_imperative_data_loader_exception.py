@@ -14,7 +14,9 @@
 
 import time
 import unittest
+
 import numpy as np
+
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.framework import _test_eager_guard

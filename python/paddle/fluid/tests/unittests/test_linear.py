@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle.fluid.core as core
+
 import paddle
-from paddle import fluid
+import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle import fluid
 
 
 class LinearTestCase(unittest.TestCase):

@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/transpose_op.h"
-
 #include <memory>
 #include <string>
 #include <vector>
@@ -21,6 +19,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -82,8 +81,8 @@ class TransposeOp : public framework::OperatorWithKernel {
     // Here we need to match dims to paddle layout
     // as we are producing non-oneDNN result
     if (ctx->IsRunMKLDNNKernel() && (x_dims.size() >= 3) &&
-        (paddle::platform::MKLDNNDeviceContext::tls()
-             .get_cur_paddle_data_layout() == phi::DataLayout::kNHWC)) {
+        (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
+         phi::DataLayout::kNHWC)) {
       auto dims = phi::vectorize<int>(x_dims);
       std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
       x_dims = x_dims.reshape(dims);

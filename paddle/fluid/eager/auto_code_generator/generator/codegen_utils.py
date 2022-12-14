@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import yaml
 import re
+
+import yaml
 
 ####################
 # Global Variables #
@@ -34,10 +35,13 @@ ops_to_fill_zero_for_empty_grads = set(
         "multiply_triple_grad",
         "conv2d_grad_grad",
         "batch_norm_double_grad",
+        "tanh_grad",
         "tanh_double_grad",
         "tanh_triple_grad",
         "sin_double_grad",
         "sin_triple_grad",
+        "cos_double_grad",
+        "cos_triple_grad",
         "subtract_double_grad",
         "divide_double_grad",
         "log_double_grad",
@@ -77,6 +81,7 @@ yaml_types_mapping = {
     'str': 'std::string',
     'str[]': 'std::vector<std::string>',
     'float[]': 'std::vector<float>',
+    'bool[]': 'std::vector<bool>',
     'Place': 'paddle::Place',
     'DataLayout': 'phi::DataLayout',
     'DataType': 'paddle::experimental::DataType',

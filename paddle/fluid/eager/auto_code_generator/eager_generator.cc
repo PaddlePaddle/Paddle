@@ -51,13 +51,15 @@ static std::unordered_set<std::string> ops_to_fill_zero_for_empty_grads = {
     "split", "rnn"};
 
 /* --- Black Ops list that's NO NEED to apply code generation --- */
-static std::unordered_set<std::string> black_ops_list = {"run_program",
-                                                         "fused_gate_attention",
-                                                         "fused_feedforward",
-                                                         "fused_attention",
-                                                         "fused_gemm_epilogue",
-                                                         "sparse_divide_scalar",
-                                                         "sparse_scale"};
+static std::unordered_set<std::string> black_ops_list = {
+    "run_program",
+    "fused_gate_attention",
+    "fused_feedforward",
+    "fused_attention",
+    "fused_gemm_epilogue",
+    "fused_bias_dropout_residual_layer_norm",
+    "sparse_divide_scalar",
+    "sparse_scale"};
 
 static std::string LegalizeVariableName(const std::string& var_name) {
   std::string ret = var_name;
@@ -592,7 +594,7 @@ static bool CheckOpProto(proto::OpProto* op_proto) {
   }
 
   // Only handle matmul_v2 for now
-  VLOG(1) << "------ Analyzing Op ------: " << op_type;
+  VLOG(3) << "------ Analyzing Op ------: " << op_type;
 
   return true;
 }

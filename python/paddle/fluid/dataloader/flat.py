@@ -16,10 +16,8 @@ import paddle
 import numbers
 import numpy as np
 
-try:
-    from collections.abc import Sequence, Mapping
-except:
-    from collections import Sequence, Mapping
+from collections.abc import Sequence, Mapping
+
 
 FIELD_PREFIX = "_paddle_field_"
 

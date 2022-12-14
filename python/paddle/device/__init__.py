@@ -22,6 +22,7 @@ from paddle.fluid.framework import is_compiled_with_cinn  # noqa: F401
 from paddle.fluid.framework import is_compiled_with_cuda  # noqa: F401
 from paddle.fluid.framework import is_compiled_with_rocm  # noqa: F401
 from . import cuda
+from . import xpu
 
 __all__ = [  # noqa
     'get_cudnn_version',

@@ -115,7 +115,6 @@ class PD_INFER_DECL PaddlePassBuilder {
   /// \cond Protected
   std::vector<std::string> analysis_passes_{
       {"ir_graph_build_pass",
-       "ir_graph_clean_pass",
        "ir_analysis_pass",
        "ir_params_sync_among_devices_pass",
        "adjust_cudnn_workspace_size_pass",
@@ -349,6 +348,9 @@ PD_INFER_DECL extern const std::vector<std::string> kDlnneSubgraphPasses;
 
 /// \brief List of lite subgraph passes.
 PD_INFER_DECL extern const std::vector<std::string> kLiteSubgraphPasses;
+
+/// \brief List of cinn compiler passes.
+PD_INFER_DECL extern const std::vector<std::string> kCINNCompilerPasses;
 
 /// \brief TODO(inference): Most of the existing pass fusion operators do not
 /// support fp16/bf16 precision, temporarily use low precision pass to prevent

@@ -272,6 +272,30 @@ if [ "${HAS_MODIFIED_API_COMPAT_YAML}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 chenwhql zyfncg
 fi
 
+HAS_MODIFIED_API_GENE=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/api/yaml/generator" || true`
+if [ "${HAS_MODIFIED_API_GENE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must have one RD (zyfncg, chenwhql, YuanRisheng, phlrain) approval for file changes in paddle/phi/api/yaml/generator, which manages the generated code for C++ API in paddle/phi/api/lib/api.cc.\n"
+    check_approval 1 zyfncg chenwhql YuanRisheng phlrain
+fi
+
+HAS_MODIFIED_EAGER_GENE=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/eager/auto_code_generator" || true`
+if [ "${HAS_MODIFIED_EAGER_GENE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must have one RD (JiabinYang, chenwhql, zyfncg, phlrain) approval for file changes in paddle/fluid/eager/auto_code_generator, which manages the generated code for dygraph functions in paddle/fluid/eager/api/generated.\n"
+    check_approval 1 JiabinYang chenwhql zyfncg phlrain
+fi
+
+HAS_MODIFIED_OPERATOR_GENE=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/operators/generator" || true`
+if [ "${HAS_MODIFIED_OPERATOR_GENE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must have one RD (zyfncg, chenwhql, iclementine, phlrain) approval for file changes in paddle/fluid/operators/generator, which manages the generated code for OpMaker in paddle/fluid/operators/(generated_op.cc | sparse_generated_op.cc)\n"
+    check_approval 1 zyfncg chenwhql iclementine phlrain
+fi
+
+HAS_MODIFIED_SETUP_IN=`git diff --name-only upstream/$BRANCH | grep "python/setup.py.in" || true`
+if [ "${HAS_MODIFIED_SETUP_IN}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must have one RD (chenwhql, zyfncg, YuanRisheng, phlrain) approval for file changes in python/setup.py.in, which manages the header files that can be used from outside of framework.\n"
+    check_approval 1 chenwhql zyfncg YuanRisheng phlrain
+fi
+
 ALL_PADDLE_ENFORCE=`git diff -U0 upstream/$BRANCH |grep "^+" |grep -zoE "PADDLE_ENFORCE\(.[^,\);]+.[^;]*\);\s" || true`
 if [ "${ALL_PADDLE_ENFORCE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="PADDLE_ENFORCE is not recommended. Please use PADDLE_ENFORCE_EQ/NE/GT/GE/LT/LE or PADDLE_ENFORCE_NOT_NULL or PADDLE_ENFORCE_GPU_SUCCESS instead, see [ https://github.com/PaddlePaddle/Paddle/wiki/PADDLE_ENFORCE-Rewriting-Specification ] for details.\nYou must have one RD (chenwhql (Recommend), luotao1 (Recommend) or lanxianghit) approval for the usage (either add or delete) of PADDLE_ENFORCE.\n${ALL_PADDLE_ENFORCE}\n"
@@ -318,17 +342,17 @@ if [ "${PHI_INCLUDE_FLUID_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 chenwhql YuanRisheng zyfncg
 fi
 
-HAS_MODIFIED_PHI_KERNEL_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/kernels" || true`
-PHI_USE_MUTABLE_DATA_FILES=""
-for CHANGE_FILE in ${HAS_MODIFIED_PHI_KERNEL_FILES}; do
-    PHI_DIR_ADDED_LINES=`git diff -U0 upstream/$BRANCH -- ${PADDLE_ROOT}/${CHANGE_FILE} | grep "^+" | grep -w "mutable_data" || true`
-    if [ "${PHI_DIR_ADDED_LINES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-        PHI_USE_MUTABLE_DATA_FILES="${PHI_USE_MUTABLE_DATA_FILES} ${CHANGE_FILE}"
+HAS_MODIFIED_PHI_OR_FLUID_FILES=`git diff --name-only upstream/$BRANCH | grep -E "paddle/phi|paddle/fluid" || true`
+USE_MUTABLE_DATA_FILES=""
+for CHANGE_FILE in ${HAS_MODIFIED_PHI_OR_FLUID_FILES}; do
+    ADDED_LINES=`git diff -U0 upstream/$BRANCH -- ${PADDLE_ROOT}/${CHANGE_FILE} | grep "^+" | grep -w "mutable_data" || true`
+    if [ "${ADDED_LINES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+        USE_MUTABLE_DATA_FILES="${USE_MUTABLE_DATA_FILES} ${CHANGE_FILE}"
     fi
 done
-if [ "${PHI_USE_MUTABLE_DATA_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You can not use the DenseTensor::mutable_data() method in paddle/phi/kernels files(${PHI_USE_MUTABLE_DATA_FILES}). If you want to alloc memory, use phi::DeviceContext::Alloc() or phi::DeviceContext::HostAlloc() instead and if you want to get mutable data, use DenseTensor::data(). If you have any questions, you can have one RD (chenwhql, Shixiaowei02, YuanRisheng or zyfncg) review and approve.\n"
-    check_approval 1 chenwhql Shixiaowei02 YuanRisheng zyfncg
+if [ "${USE_MUTABLE_DATA_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You can not use the DenseTensor::mutable_data() method in files(${USE_MUTABLE_DATA_FILES}). If you want to alloc memory, use phi::DeviceContext::Alloc() or phi::DeviceContext::HostAlloc() instead and if you want to get mutable data, use DenseTensor::data(). If you have any questions, you can have one RD (chenwhql, Shixiaowei02, YuanRisheng, zyfncg or From00) review and approve.\n"
+    check_approval 1 chenwhql Shixiaowei02 YuanRisheng zyfncg From00
 fi
 
 ALL_CHANGE_FILES=`git diff --numstat upstream/$BRANCH | awk '{print $3}' | grep ".py"`

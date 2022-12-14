@@ -1,6 +1,6 @@
 if(WITH_CUSTOM_DEVICE AND NOT WITH_GPU)
   set(PLUGIN_URL https://github.com/PaddlePaddle/PaddleCustomDevice.git)
-  set(PLUGIN_TAG 0698428ddba21e6baecb690579f37c48896f7d56)
+  set(PLUGIN_TAG develop)
 
   file(
     GLOB TEST_OPS

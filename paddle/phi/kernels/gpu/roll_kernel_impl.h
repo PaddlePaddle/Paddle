@@ -14,13 +14,13 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/utils/array.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 namespace phi {
 
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T, size_t Rank>
 __global__ void RollCudaKernel(const T* input,

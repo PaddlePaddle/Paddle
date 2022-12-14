@@ -123,28 +123,9 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
         dev_ctx, x, key, tmp_rulebook, h_counter, out, rulebook, counter);
   }
 
-  if (subm) {
-    auto config =
-        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
-    unique_value.ResizeAndAllocate(
-        {static_cast<int>(out->nnz() * kernel_size)});
-    out_index.ResizeAndAllocate({static_cast<int>(rulebook_len)});
-    int* out_index_ptr = out_index.data<int>();
-    int* unique_value_ptr = unique_value.data<int>();
-    phi::backends::gpu::GpuMemsetAsync(
-        out_index_ptr, 0, sizeof(int) * rulebook_len, dev_ctx.stream());
-    GroupIndexs<<<config.block_per_grid,
-                  config.thread_per_block,
-                  0,
-                  dev_ctx.stream()>>>(rulebook_len,
-                                      kernel_size,
-                                      rulebook_ptr + rulebook_len,
-                                      out_index_ptr,
-                                      unique_value_ptr);
-  }
 #ifdef PADDLE_WITH_CUTLASS
   bool cutlass = true;
-  if (dev_ctx.GetComputeCapability() < 80) cutlass = false;
+  if (dev_ctx.GetComputeCapability() < 75) cutlass = false;
   if (in_channels % 4 != 0 || out_channels % 4 != 0) {
     if (std::is_same<T, phi::dtype::float16>::value) cutlass = false;
     if (std::is_same<T, float>::value) cutlass = false;
@@ -192,7 +173,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
       if constexpr (std::is_same<T, float>::value &&
                     std::is_same<IntT, int32_t>::value) {
         fp32_gather_gemm_scatter gather_gemm_scatter =
-            getBestFp32Kernel(M, N, K);
+            getBestFp32Kernel(M, N, K, dev_ctx.GetComputeCapability());
         gather_gemm_scatter(dev_ctx,
                             x.non_zero_elements().data<T>(),
                             tmp_kernel_ptr,
@@ -226,6 +207,25 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
     }
   } else {
 #endif
+    if (subm) {
+      auto config =
+          phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
+      unique_value.ResizeAndAllocate(
+          {static_cast<int>(out->nnz() * kernel_size)});
+      out_index.ResizeAndAllocate({static_cast<int>(rulebook_len)});
+      int* out_index_ptr = out_index.data<int>();
+      int* unique_value_ptr = unique_value.data<int>();
+      phi::backends::gpu::GpuMemsetAsync(
+          out_index_ptr, 0, sizeof(int) * rulebook_len, dev_ctx.stream());
+      GroupIndexs<<<config.block_per_grid,
+                    config.thread_per_block,
+                    0,
+                    dev_ctx.stream()>>>(rulebook_len,
+                                        kernel_size,
+                                        rulebook_ptr + rulebook_len,
+                                        out_index_ptr,
+                                        unique_value_ptr);
+    }
     // 2. gather
     phi::DenseTensor in_features =
         phi::Empty<T>(dev_ctx, {rulebook_len, in_channels});

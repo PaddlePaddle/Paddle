@@ -251,7 +251,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
 
   bool IsRunMKLDNNKernel() const override {
     return (op_kernel_type_ &&
-            (op_kernel_type_->data_layout_ == phi::DataLayout::kMKLDNN));
+            (op_kernel_type_->data_layout_ == phi::DataLayout::ONEDNN));
   }
 
   paddle::small_vector<framework::InferShapeVarPtr, phi::kInputSmallVectorSize>
