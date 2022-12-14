@@ -296,7 +296,7 @@ def Print(
     tensor `t`.
 
     Args:
-        input (Variable): A Tensor to print.
+        input (Tensor): A Tensor to print.
         first_n (int, optional): Only log `first_n` number of times. Default: -1.
         message (str, optional): A string message to print as a prefix. Default: None.
         summarize (int, optional): Number of elements in the tensor to be print. If
@@ -306,17 +306,17 @@ def Print(
         print_tensor_shape (bool, optional): Print the tensor shape. Default: True.
         print_tensor_layout (bool, optional): Print the tensor layout. Default: True.
         print_tensor_lod (bool, optional): Print the tensor lod. Default: True.
-        print_phase (str): Which phase to displace, including 'forward',
+        print_phase (str, optional): Which phase to displace, including 'forward',
                 'backward' and 'both'. Default: 'both'. If set to 'backward', will
                 only print the gradients of input tensor; If set to 'both', will
                 both print the input tensor itself and the gradients of input tensor.
 
     Returns:
-        Variable: Output tensor.
+        Tensor: Output tensor.
 
     NOTES:
-        The input and output are two different variables, and in the
-        following process, you should use the output variable but not the input,
+        The input and output are two different Tensor, and in the
+        following process, you should use the output Tensor but not the input,
         otherwise, the print layer doesn't have backward.
 
     Examples:

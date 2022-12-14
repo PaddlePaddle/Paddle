@@ -47,7 +47,7 @@ __all__ = []
 def cast(x, dtype):
     """
 
-    This function takes in the Tensor :attr:`x` with :attr:`x.dtype` and casts it
+    Takes in the Tensor :attr:`x` with :attr:`x.dtype` and casts it
     to the output with :attr:`dtype`. It's meaningless if the output dtype
     equals the input dtype, but it's fine if you do so.
 
