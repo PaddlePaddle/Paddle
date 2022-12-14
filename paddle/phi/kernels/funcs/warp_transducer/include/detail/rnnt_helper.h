@@ -18,7 +18,7 @@
 #include <cmath>
 #include <limits>
 
-#include "hostdevice.h"
+#include "paddle/phi/core/hostdevice.h"
 
 namespace rnnt_helper {
 

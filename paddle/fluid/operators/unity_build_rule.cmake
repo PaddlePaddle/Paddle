@@ -354,8 +354,7 @@ register_unity_group(
   recurrent_op.cc
   run_program_op.cc
   softmax_with_cross_entropy_op.cc
-  warpctc_op.cc
-  warprnnt_op.cc)
+  warpctc_op.cc)
 register_unity_group(
   cc
   conv_op.cu.cc
