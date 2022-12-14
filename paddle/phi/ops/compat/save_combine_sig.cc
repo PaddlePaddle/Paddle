@@ -1,4 +1,3 @@
-
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,10 +16,23 @@
 
 namespace phi {
 
-KernelSignature SeluGradGradOpArgumentMapping(
+KernelSignature SaveCombineOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "selu_grad", {"Out", "Out@GRAD"}, {"scale", "alpha"}, {"X@GRAD"});
+  if (ctx.IsDenseTensorInputs("X")) {
+    return KernelSignature(
+        "save_combine_tensor",
+        {"X"},
+        {"file_path", "overwrite", "save_as_fp16", "save_to_memory"},
+        {"Y"});
+  } else {
+    return KernelSignature(
+        "save_combine_vocab",
+        {"X"},
+        {"file_path", "overwrite", "save_as_fp16", "save_to_memory"},
+        {"Y"});
+  }
 }
+
 }  // namespace phi
-PD_REGISTER_ARG_MAPPING_FN(selu_grad, phi::SeluGradGradOpArgumentMapping);
+
+PD_REGISTER_ARG_MAPPING_FN(save_combine, phi::SaveCombineOpArgumentMapping);
