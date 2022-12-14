@@ -21,6 +21,9 @@
 
 namespace phi {
 
+constexpr int kWarpSize = 32;
+constexpr int kMaxOut = 16;
+
 template <typename T, typename IntType>
 __global__ void UnStackHelperCUDAKernel(const T* __restrict__ input,
                                         int pre_dim_size,
@@ -52,25 +55,43 @@ __global__ void UnStackHelperCUDAKernel(const T* __restrict__ input,
   }
 }
 
+template <typename T, typename IndexT, typename PointT>
+__global__ void StackGradKernelForLastDim(const T* __restrict__ in_data,
+                                          const int split_num,
+                                          const int num_per_block,
+                                          const int num_tile_x,
+                                          const IndexT col,
+                                          const IndexT row,
+                                          PointT out_datas) {
+  constexpr int buffer_size = 512;
+  __shared__ T s_buffer[buffer_size];
+  for (int tile_y = blockIdx.y; tile_y < row; tile_y += gridDim.y) {
+    int col_range = (blockIdx.x < num_tile_x)
+                        ? kMaxOut
+                        : split_num - (kMaxOut * num_tile_x);
+    int read_size = kWarpSize * num_per_block;
+    if (threadIdx.y < col_range) {
+      IndexT row_idx = tile_y * read_size * split_num;
+      IndexT col_idx = threadIdx.x + threadIdx.y * blockDim.x;
+      T data = in_data[row_idx + col_idx + blockIdx.x * full_stride];
+      int s_idx = col_idx s_buffer[s_idx] = data;
+    }
+    __syncthreads();
+
+    for () {
+      out_datas.val[] = s_buffer;
+    }
+  }
+}
+
 template <typename T, typename Context>
 void StackGradKernel(const Context& dev_ctx,
                      const DenseTensor& out,
                      int axis,
                      std::vector<DenseTensor*> x_grad) {
-  if (axis < 0) axis += out.dims().size();
-  std::cout << "Axis : " << axis << std::endl;
-  std::cout << "out.dims().size() : " << out.dims().size() << " [ ";
-  for (int i = 0; i < out.dims().size(); ++i) {
-    std::cout << out.dims()[i] << " , ";
-  }
-  std::cout << " ]" << std::endl;
-  std::cout << "x_grad[0]->dims() : [";
-  for (int i = 0; i < x_grad[0]->dims().size(); ++i) {
-    std::cout << x_grad[0]->dims()[i] << " , ";
-  }
-  std::cout << " ]" << std::endl << std::endl;
-
-  int n = out.dims()[axis];
+  auto& dy_dims = out.dims();
+  if (axis < 0) axis += dy_dims.size();
+  int n = dy_dims[axis];
   PADDLE_ENFORCE_EQ(n,
                     x_grad.size(),
                     phi::errors::InvalidArgument(
@@ -78,6 +99,8 @@ void StackGradKernel(const Context& dev_ctx,
                         " received n is:%d x_grad size is:%d.",
                         n,
                         x_grad.size()));
+  auto dy_data = out.data<T>();
+  bool use_int32 = out->numel() < std::numeric_limits<int32_t>::max();
 
   // x_grad is output, so save each data address, then copy each dy into dx_data
   std::vector<T*> outputs(n);
@@ -93,10 +116,33 @@ void StackGradKernel(const Context& dev_ctx,
       outputs[j] = nullptr;
     }
   }
-  auto dy_data = out.data<T>();
+
+  int64_t dy_pre = 1;
+  for (int i = 0; i < n; ++i) {
+    dy_pre *= dy_dims[i];
+  }
+
+  if (axis == (dy_dims.size() - 1)) {
+    int tid_y = std::min(kMaxOut, GetLastPow2(n));
+    int bid_x = n > kMaxOut ? (n + kMaxOut - 1) / kMaxOut : 1;
+    int num_per_block = n <= (kMaxOut >> 1) ? kMaxOut / tid_y : 1;
+    int tid_x = num_per_block * kWarpSize;
+    int bid_y = (dy_pre + tid_x - 1) / tid_x;
+    dim3 blocks(tid_x, tid_y, 1);
+    dim3 grids(bid_x, bid_y, 1);
+    if (use_int32) {
+      StackGradKernelForLastDim<T, int32_t, decltype()>
+          <<<blocks, grids, 0, ctx.stream()>>>(dy_data, n, num_per_block,
+
+          )
+    } else {
+    }
+  } else {
+    int64_t dy_rest = out.numel() / (n * dy_pre);
+  }
+
   // each x_grad should have same shape
   int dy_pre = 1, dy_suf = 1;
-  auto dy_dims = out.dims();
   int split_dim = n;
   for (int i = 0; i < axis; ++i) {
     dy_pre *= dy_dims[i];

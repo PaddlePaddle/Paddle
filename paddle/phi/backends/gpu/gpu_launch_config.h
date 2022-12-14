@@ -61,11 +61,7 @@ inline int64_t RoundToPowerOfTwo(int64_t n) {
   n |= (n >> 8);
   n |= (n >> 16);
   int64_t min_val = 32;
-#ifdef __HIPCC__
-  int64_t max_val = 256;
-#else
-  int64_t max_val = 1024;
-#endif
+  int64_t max_val = PREDEFINED_BLOCK_SIZE;
   return std::min(max_val, std::max(min_val, (n + 1)));
 }
 
