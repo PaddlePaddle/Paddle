@@ -45,8 +45,10 @@ IRPassManager::IRPassManager(Argument *argument) {
 
 void IRPassManager::CreatePasses(Argument *argument,
                                  const std::vector<std::string> &passes) {
+  // For graph_viz_pass
   std::string pre_pass;
   int pass_num = 0;
+
   for (const std::string &pass_name : passes) {
     auto pass = framework::ir::PassRegistry::Instance().Get(pass_name);
     pass->Set("use_varseqlen", new bool(argument->tensorrt_use_varseqlen()));
@@ -87,14 +89,14 @@ void IRPassManager::CreatePasses(Argument *argument,
                               argument->tensorrt_tuned_dynamic_shape();
     pass->Set("with_dynamic_shape", new bool(with_dynamic_shape));
 
-    // mixed precision related
-    pass->Set("model_precision", new int(argument->model_precision()));
+    // Mixed precision related.
     pass->Set(
         "mixed_black_list",
         new std::unordered_set<std::string>(argument->mixed_black_list()));
-    pass->Set("enable_gpu_half", new bool(argument->enable_gpu_half()));
+    pass->Set("enable_gpu_mixed", new bool(argument->enable_gpu_mixed()));
     pass->Set("mixed_precision_mode",
               new int(argument->mixed_precision_mode()));
+    pass->Set("model_precision", new int(argument->model_precision()));
 
     if (pass_name == "graph_viz_pass") {
       std::string optim_cache_dir = argument->optim_cache_dir();
@@ -210,6 +212,7 @@ void IRPassManager::CreatePasses(Argument *argument,
           new std::vector<std::string>(argument->tensorrt_disabled_ops()));
       pass->Set("trt_use_dla", new bool(argument->tensorrt_use_dla()));
       pass->Set("trt_dla_core", new int(argument->tensorrt_dla_core()));
+
       // Setting the disable_trt_plugin_fp16 to true means that TRT plugin will
       // not run fp16.
       pass->Set("disable_trt_plugin_fp16",
@@ -238,8 +241,7 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("root_predictor_id", new int(argument->root_predictor_id()));
     } else if (pass_name == "build_cinn_pass") {
       pass->Set("is_inference_stage", new bool(argument->use_cinn_compiler()));
-    }
-    if (pass_name == "lite_subgraph_pass") {
+    } else if (pass_name == "lite_subgraph_pass") {
       bool lite_enable_int8 =
           argument->lite_precision_mode() == AnalysisConfig::Precision::kInt8;
       pass->Set("program",
@@ -287,8 +289,7 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("nnadapter_model_cache_token",
                 new std::vector<std::string>(
                     argument->nnadapter_model_cache_token()));
-    }
-    if (pass_name == "fc_fuse_pass") {
+    } else if (pass_name == "fc_fuse_pass") {
       pass->Set("use_gpu", new bool(argument->use_gpu()));
       bool fc_mkldnn_pass = 0;
       for (const std::string &pass_n : passes) {

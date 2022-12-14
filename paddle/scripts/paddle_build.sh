@@ -757,8 +757,11 @@ EOF
         echo "ipipe_log_param_Mac_TestCases_Time: $[ $ut_endTime_s - $ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         paddle version
         # Recovery proxy to avoid failure in later steps
+        set +x
         export http_proxy=$my_proxy
         export https_proxy=$my_proxy
+        set -x
+
         if [ "$mactest_error" != 0 ];then
             show_ut_retry_result
         fi
