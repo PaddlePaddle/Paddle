@@ -378,9 +378,9 @@ def basic_gru(
 
                 step_input = new_hidden
                 if dropout_prob is not None and dropout_prob > 0.0:
-                    step_input = layers.dropout(
+                    step_input = paddle.nn.functional.dropout(
                         step_input,
-                        dropout_prob=dropout_prob,
+                        p=dropout_prob,
                     )
 
             rnn.step_output(step_input)
@@ -680,10 +680,10 @@ def basic_lstm(
 
                 step_input = new_hidden
                 if dropout_prob is not None and dropout_prob > 0.0:
-                    step_input = layers.dropout(
+                    step_input = paddle.nn.functional.dropout(
                         step_input,
-                        dropout_prob=dropout_prob,
-                        dropout_implementation='upscale_in_train',
+                        p=dropout_prob,
+                        mode='upscale_in_train',
                     )
 
             rnn.step_output(step_input)

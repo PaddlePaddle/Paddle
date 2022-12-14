@@ -91,7 +91,6 @@ class TestDirectory(unittest.TestCase):
             'paddle.static.nn.conv3d',
             'paddle.static.nn.conv3d_transpose',
             'paddle.static.nn.create_parameter',
-            'paddle.static.nn.crf_decoding',
             'paddle.static.nn.data_norm',
             'paddle.static.nn.deform_conv2d',
             'paddle.static.nn.group_norm',

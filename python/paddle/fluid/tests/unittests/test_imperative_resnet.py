@@ -22,7 +22,6 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.nn import BatchNorm
 
@@ -253,7 +252,7 @@ class TestDygraphResnet(unittest.TestCase):
 
         return _reader_imple
 
-    def func_test_resnet_float32(self):
+    def test_resnet_float32(self):
         seed = 90
 
         batch_size = train_parameters["batch_size"]
@@ -461,11 +460,6 @@ class TestDygraphResnet(unittest.TestCase):
             np.testing.assert_allclose(value, dy_param_value[key], rtol=1e-05)
             self.assertTrue(np.isfinite(value.all()))
             self.assertFalse(np.isnan(value.any()))
-
-    def test_resnet_float32(self):
-        with _test_eager_guard():
-            self.func_test_resnet_float32()
-        self.func_test_resnet_float32()
 
 
 if __name__ == '__main__':

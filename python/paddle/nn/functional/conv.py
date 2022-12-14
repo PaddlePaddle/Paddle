@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
 from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode
 from paddle.device import (
     get_all_custom_device_type,
@@ -152,8 +150,7 @@ def _conv_nd(
             bias = bias.reshape(new_shape)
             # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
             if (
-                os.environ.get('FLAGS_npu_storage_format', None)
-                in [1, '1', True, 'True', 'true']
+                _global_flags()['FLAGS_npu_storage_format']
                 and 'npu' in get_all_custom_device_type()
             ):
                 with no_grad():
@@ -753,8 +750,7 @@ def conv2d(
                     )
                 # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
                 if (
-                    os.environ.get('FLAGS_npu_storage_format', None)
-                    in [1, '1', True, 'True', 'true']
+                    _global_flags()['FLAGS_npu_storage_format']
                     and 'npu' in get_all_custom_device_type()
                 ):
                     with no_grad():

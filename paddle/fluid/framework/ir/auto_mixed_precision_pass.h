@@ -27,13 +27,13 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class FloatToHalfPass : public FusePassBase {
+class AutoMixedPrecisionPass : public FusePassBase {
  public:
   using VarType = framework::proto::VarType;
 
  public:
-  FloatToHalfPass() = default;
-  ~FloatToHalfPass() = default;
+  AutoMixedPrecisionPass() = default;
+  ~AutoMixedPrecisionPass() = default;
 
  protected:
   void ApplyImpl(Graph* graph) const override;
@@ -42,10 +42,6 @@ class FloatToHalfPass : public FusePassBase {
   void Init(Graph* graph) const;
 
   void SetDefaultBlacklist() const;
-
-  bool OpSupportPrecision(const std::string& op_type,
-                          phi::DataType precision,
-                          phi::Backend backend = phi::Backend::GPU) const;
 
   void SetOpUniqueType() const;
 
@@ -70,9 +66,13 @@ class FloatToHalfPass : public FusePassBase {
   void ConvertWeightsData() const;
 
  private:
-  mutable bool keep_io_types_;
+  mutable bool skip_pass_{false};
+
+  mutable bool keep_io_types_{false};
   // float16 or bfloat16 now
-  mutable phi::DataType half_precision_;
+  mutable phi::DataType low_precision_{phi::DataType::FLOAT16};
+
+  mutable phi::Backend backend_{phi::Backend::GPU};
 
   mutable std::unordered_set<std::string> black_list_;
 
@@ -84,11 +84,25 @@ class FloatToHalfPass : public FusePassBase {
   mutable std::vector<std::vector<Node*>> all_op_nodes_;
   // op's unique type -> the op's origin type
   mutable std::unordered_map<std::string, std::string> op_original_type_;
-  // op's unique type -> whether the op run at half precision
-  mutable std::unordered_set<std::string> op_run_half_;
+  // op's unique type -> whether the op run at low precision
+  mutable std::unordered_set<std::string> op_run_low_precision_;
 
-  mutable std::unordered_set<std::string> vars_convert_to_half_;
+  mutable std::unordered_set<std::string> vars_convert_to_low_precision_;
 };
+
+bool OpSupportPrecision(const std::string& op_type,
+                        phi::Backend backend,
+                        phi::DataType precision,
+                        const std::unordered_set<std::string>& black_list);
+
+void DoInsertCastOp(Graph* graph,
+                    Node* var_node,
+                    Node* op_node,
+                    proto::VarType::Type from_type,
+                    proto::VarType::Type to_type,
+                    framework::BlockDesc* block_desc,
+                    int* suffix,
+                    std::unordered_map<Node*, Node*>* cache);
 
 }  // namespace ir
 }  // namespace framework
