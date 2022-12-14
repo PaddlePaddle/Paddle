@@ -166,10 +166,9 @@ def multi_head_attention(
         product = paddle.matmul(x=scaled_q, y=k, transpose_y=True)
         weights = __softmax(paddle.add(x=product, y=attn_bias))
         if dropout_rate:
-            weights = layers.dropout(
-                weights, dropout_prob=dropout_rate, is_test=False
-            )
+            weights = paddle.nn.functional.dropout(weights, p=dropout_rate)
         out = paddle.matmul(weights, v)
+
         return out
 
     q, k, v = __compute_qkv(queries, keys, values, n_head, d_key, d_value)
@@ -241,7 +240,7 @@ def pre_post_process_layer(prev_out, out, process_cmd, dropout=0.0):
             )
         elif cmd == "d":  # add dropout
             if dropout:
-                out = layers.dropout(out, dropout_prob=dropout, is_test=False)
+                out = paddle.nn.functional.dropout(out, p=dropout)
     return out
 
 
@@ -284,7 +283,7 @@ def prepare_encoder(
     # FIXME(guosheng): Decouple the program desc with batch_size.
     enc_input = paddle.reshape(x=enc_input, shape=[batch_size, -1, src_emb_dim])
     return (
-        layers.dropout(enc_input, dropout_prob=dropout, is_test=False)
+        paddle.nn.functional.dropout(enc_input, p=dropout)
         if dropout
         else enc_input
     )
