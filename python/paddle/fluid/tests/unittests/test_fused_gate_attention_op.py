@@ -339,8 +339,10 @@ class TestMergeQKVLargeBatchSizeFp16Case(TestMergeQKVFp16Case):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11000,
-    "core is not compiled with CUDA and cuda version need larger than or equal to 11.3"
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11000
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.3",
 )
 class TestMergeQKVBF16Case(TestFusedGateAttentionOp):
 
