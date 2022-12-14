@@ -65,6 +65,7 @@ class AutoParalSupplementDepPass(PassBase):
             return
 
         self._dist_context = self.get_attr("dist_context", None)
+        self.flags_sync_stream = "flags_sync_stream"
         main_block = main_program.global_block()
         startup_block = startup_program.global_block()
 
@@ -91,6 +92,23 @@ class AutoParalSupplementDepPass(PassBase):
                     op_namescope = "global_norm_sync_dep"
                 deps_map[idx] = (prior_varname, op.input("X")[0], op_namescope)
                 prior_varname = op.output("Out")[0]
+
+        # analyze deps for check_finite_and_unscale
+        # ensure it is performed after last backward computation, therefore reduce the
+        # straggling of the amp-flag-sync
+        first_check_op = True
+        for idx, op in enumerate(main_block.ops):
+            if op.type == "check_finite_and_unscale":
+                if first_check_op:
+                    last_backward_op = main_block.ops[idx - 1]
+                    prior_varname = last_backward_op.output_arg_names[0]
+                    first_check_op = False
+                deps_map[idx] = (
+                    prior_varname,
+                    op.input("Scale")[0],
+                    "check_finite_dep",
+                )
+                op.dist_attr.execution_stream = self.flags_sync_stream
 
         # insert deps
         indice = sorted(list(deps_map.keys()), reverse=True)
