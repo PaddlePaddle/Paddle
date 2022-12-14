@@ -119,6 +119,23 @@ for each_diff in api_diffs:
     if each_diff[0] == '-':
         api_delete.append(each_diff)
 
+# remove api that doesn't modify name and args
+add_exclude = []
+delete_exclude = []
+for each_add_diff in api_add:
+    for each_delete_diff in api_delete:
+        if get_api_name(each_add_diff) == get_api_name(
+            each_delete_diff
+        ) and get_api_args(each_add_diff) == get_api_args(each_delete_diff):
+            add_exclude.append(each_add_diff)
+            delete_exclude.append(each_delete_diff)
+
+for exclude_item in add_exclude:
+    api_add.remove(exclude_item)
+for exclude_item in delete_exclude:
+    api_delete.remove(exclude_item)
+
+
 yaml_add = []
 yaml_delete = []
 

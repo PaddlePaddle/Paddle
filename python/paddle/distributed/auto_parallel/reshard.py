@@ -2497,6 +2497,8 @@ class Resharder:
             "read",
             "write_to_array",
             "read_from_array",
+            "nop",
+            "depend",
         ]
         global _g_special_ops
         skip_ops += _g_special_ops

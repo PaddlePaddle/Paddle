@@ -25,8 +25,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename DeviceContext, typename T>
 inline void ReorderInitState(const DeviceContext& ctx,
                              const phi::DenseTensor& src,
@@ -79,7 +77,7 @@ class GRUGradKernel : public framework::OpKernel<T> {
     zero(dev_ctx, &batch_gate_grad, static_cast<T>(0.0));
     zero(dev_ctx, &batch_reset_hidden_prev_grad, static_cast<T>(0.0));
 
-    Tensor ordered_h0, ordered_h0_grad;
+    phi::DenseTensor ordered_h0, ordered_h0_grad;
 
     framework::Vector<size_t> order(batch_gate->lod()[2]);
 
@@ -126,16 +124,17 @@ class GRUGradKernel : public framework::OpKernel<T> {
       int bend = static_cast<int>(batch_starts[n + 1]);
       int cur_batch_size = bend - bstart;
 
-      Tensor gate_t = batch_gate->Slice(bstart, bend);
+      phi::DenseTensor gate_t = batch_gate->Slice(bstart, bend);
       gru_value.gate_value = gate_t.data<T>();
-      Tensor reset_hidden_prev_t = batch_reset_hidden_prev->Slice(bstart, bend);
+      phi::DenseTensor reset_hidden_prev_t =
+          batch_reset_hidden_prev->Slice(bstart, bend);
       gru_value.reset_output_value = reset_hidden_prev_t.data<T>();
 
-      Tensor hidden_grad_t = batch_hidden_grad.Slice(bstart, bend);
+      phi::DenseTensor hidden_grad_t = batch_hidden_grad.Slice(bstart, bend);
       gru_grad.output_grad = hidden_grad_t.data<T>();
-      Tensor gate_grad_t = batch_gate_grad.Slice(bstart, bend);
+      phi::DenseTensor gate_grad_t = batch_gate_grad.Slice(bstart, bend);
       gru_grad.gate_grad = gate_grad_t.data<T>();
-      Tensor reset_hidden_prev_grad_t =
+      phi::DenseTensor reset_hidden_prev_grad_t =
           batch_reset_hidden_prev_grad.Slice(bstart, bend);
       gru_grad.reset_output_grad = reset_hidden_prev_grad_t.data<T>();
       if (n == 0) {
@@ -144,9 +143,11 @@ class GRUGradKernel : public framework::OpKernel<T> {
             h0 && h0_grad ? ordered_h0_grad.data<T>() : nullptr;
       } else {
         int bstart_pre = static_cast<int>(batch_starts[n - 1]);
-        Tensor hidden_prev_t = batch_hidden->Slice(bstart_pre, bstart);
+        phi::DenseTensor hidden_prev_t =
+            batch_hidden->Slice(bstart_pre, bstart);
         gru_value.prev_out_value = hidden_prev_t.data<T>();
-        Tensor hidden_prev_grad_t = batch_hidden_grad.Slice(bstart_pre, bstart);
+        phi::DenseTensor hidden_prev_grad_t =
+            batch_hidden_grad.Slice(bstart_pre, bstart);
         gru_grad.prev_out_grad = hidden_prev_grad_t.data<T>();
       }
       gru_value.output_value = nullptr;
