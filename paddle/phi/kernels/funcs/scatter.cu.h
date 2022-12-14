@@ -83,7 +83,7 @@ __global__ void ScatterNdCUDAKernel(const T* update,
                                     size_t remain_size,
                                     size_t slice_size,
                                     size_t end_size,
-                                    bool zero_d_update) {
+                                    int zero_d_update) {
   CUDA_KERNEL_LOOP_TYPE(i, remain_size * slice_size, int64_t) {
     int64_t indices_i = i / slice_size;
     int64_t slice_i = i - indices_i * slice_size;  // offset inside the slice
@@ -105,8 +105,7 @@ __global__ void ScatterNdCUDAKernel(const T* update,
       temp *= output_dims[j];
     }
     int64_t output_i = gather_i + slice_i;
-    phi::CudaAtomicAdd(output + output_i,
-                       zero_d_update ? *(update) : *(update + i));
+    phi::CudaAtomicAdd(output + output_i, *(update + i * zero_d_update));
   }
 }
 
@@ -241,15 +240,15 @@ void GPUScatterNdAdd(const phi::GPUContext& ctx,
   dim3 grid = dim3((n + block - 1) / block);
   phi::backends::gpu::LimitGridDim(ctx, &grid);
 
-  ScatterNdCUDAKernel<T, IndexT>
-      <<<grid, block, 0, ctx.stream()>>>(p_update,
-                                         p_index,
-                                         p_output,
-                                         g_output_dims,
-                                         remain_numel,
-                                         slice_size,
-                                         end_size,
-                                         update.dims().size() == 0);
+  ScatterNdCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
+      p_update,
+      p_index,
+      p_output,
+      g_output_dims,
+      remain_numel,
+      slice_size,
+      end_size,
+      static_cast<int>(update.dims().size() != 0));
 }
 
 }  // namespace funcs

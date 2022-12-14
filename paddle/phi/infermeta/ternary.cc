@@ -1063,25 +1063,12 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
 
   if (updates_dims_size == 0) {
     // check for 0d updates
-    PADDLE_ENFORCE_EQ(index_dims_size,
-                      ref_dims_size,
-                      phi::errors::InvalidArgument(
-                          "The index should have the same shape size with "
-                          "output shape size if the updates is a 0d tensor."));
-    for (int64_t i = 0; i < index_dims_size - 1; ++i) {
-      PADDLE_ENFORCE_EQ(
-          index_dims[i],
-          ref_dims[i],
-          phi::errors::InvalidArgument(
-              "For 0D updates, the index.shape[:-1] should be same with "
-              "output.shape[:-1]. "
-              "But received Index's %d-th dimension is %d, Output's %d-th "
-              "dimension is %d.",
-              i,
-              index_dims[i],
-              i,
-              ref_dims[i]));
-    }
+    PADDLE_ENFORCE_EQ(
+        index_dims[index_dims_size - 1],
+        ref_dims_size,
+        phi::errors::InvalidArgument(
+            "When the update is a 0d tensor, The last dimension of "
+            "Input(Index)'s shape should be equal with the rank of Input(X)."));
   } else {
     for (int64_t i = index_dims[index_dims_size - 1]; i < ref_dims_size; ++i) {
       r_updates_dims.emplace_back(ref_dims[i]);
