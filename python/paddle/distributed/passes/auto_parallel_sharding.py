@@ -1121,7 +1121,6 @@ class ShardingPass(PassBase):
                     op_namescope="sharding_grad_comm_dep",
                 )
                 depend_op.dist_attr.execution_stream = self.gradient_sync_stream
-                print("grad comm insert dep: {}".format(str(depend_op)))
 
         block._sync_with_cpp()
 
