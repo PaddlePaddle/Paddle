@@ -53,7 +53,7 @@ def is_compiled_with_npu():
     """
     Whether paddle was built with WITH_ASCEND_CL=ON to support Ascend NPU.
 
-    Returns
+    Return:
     (bool): `True` if NPU is supported, otherwise `False`.
 
     Examples:
