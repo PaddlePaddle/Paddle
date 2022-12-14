@@ -43,6 +43,7 @@ from ifelse_simple_func import (
 
 import paddle
 import paddle.fluid.core as core
+import paddle.nn.functional as F
 from paddle.jit.api import declarative
 from paddle.jit.dy2static.program_translator import ProgramTranslator
 from paddle.jit.dy2static.utils import Dygraph2StaticException
@@ -269,7 +270,7 @@ class TestDygraphIfElseNet(unittest.TestCase):
 
 # Test to call function ahead caller.
 def relu(x):
-    return fluid.layers.relu(x)
+    return F.relu(x)
 
 
 def call_external_func(x, label=None):
