@@ -170,9 +170,14 @@ bool IsBlockContainsOnlyPhiKernel(const framework::BlockDesc& block) {
   bool res = true;
   for (auto& op : block.AllOps()) {
     auto op_type = op->Type();
-    auto has_phi_kernel = !phi::KernelFactory::Instance().SelectKernelMap(
-        phi::TransToPhiKernelName(op_type)).empty();
-    
+    if (op_type == "feed" || op_type == "fetch_v2") {
+      continue;
+    }
+    auto has_phi_kernel =
+        !phi::KernelFactory::Instance()
+             .SelectKernelMap(phi::TransToPhiKernelName(op_type))
+             .empty();
+
     if (!has_phi_kernel) {
       auto kernel_iter = OperatorWithKernel::AllOpKernels().find(op_type);
       if (kernel_iter != OperatorWithKernel::AllOpKernels().end()) {
@@ -693,6 +698,7 @@ bool BuildOpFuncList(const platform::Place& place,
             }
           }
         }
+
         VLOG(4) << "if run phi kernel? : " << run_phi_kernel;
         if (!run_phi_kernel) {
           op_with_kernel->ChooseKernel(exec_ctx);
@@ -741,12 +747,40 @@ bool BuildOpFuncList(const platform::Place& place,
               runtime_context, dev_ctx, &phi_kernel_context);
           if (!skip_run) {
             (*op_func_node.phi_kernel_)(&phi_kernel_context);
+          } else {
+            size_t out_size = phi_kernel_context.OutputsSize();
+            auto output_defs =
+                op_func_node.phi_kernel_->args_def().output_defs();
+            for (size_t i = 0; i < out_size; ++i) {
+              // calcute the start and end index of the output tensors
+              auto* out_tensor = phi_kernel_context.MutableOutputAt(i);
+              if (phi::DenseTensor::classof(out_tensor)) {
+                VLOG(4) << "DenseTensor alloc "
+                        << phi::backends::gpu::GpuMinChunkSize()
+                        << " bytes of type " << out_tensor->dtype();
+                dev_ctx->template Alloc(
+                    out_tensor,
+                    out_tensor->dtype(),
+                    /*requested_size=*/phi::backends::gpu::GpuMinChunkSize());
+              } else if (phi::SparseCooTensor::classof(out_tensor)) {
+                VLOG(4) << "SparseCooTensor";
+              } else if (phi::SparseCsrTensor::classof(out_tensor)) {
+                VLOG(4) << "SparseCsrTensor";
+              } else {
+                PADDLE_THROW(phi::errors::Unimplemented(
+                    "Only support DenseTensor/SparseCooTensor/SparseCsrTensor "
+                    "now"));
+                VLOG(4) << "SparseCooTensor";
+              }
+            }
           }
         } else {
           // the place of exec_ctx maybe has changed.
           if (!skip_run) {
             op_func_node.kernel_func_(ExecutionContext(
                 *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context));
+          } else {
+            // fake alloc
           }
         }
 
