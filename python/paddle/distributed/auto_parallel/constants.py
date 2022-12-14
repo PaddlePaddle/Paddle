@@ -76,6 +76,13 @@ set_field_default_config(AMP, "use_pure_fp16", False)
 set_field_default_config(AMP, "use_fp16_guard", True)
 set_field_default_config(AMP, "use_optimizer_fp16", False)
 
+set_field_default_config(AMP, "enable_bf16", False)
+set_field_default_config(AMP, "custom_bf16_list", [])
+set_field_default_config(AMP, "custom_fp32_list", [])
+set_field_default_config(AMP, "custom_fp32_varnames", [])
+set_field_default_config(AMP, "use_pure_bf16", False)
+set_field_default_config(AMP, "use_bf16_guard", False)
+
 #########################################
 # sharding configuration
 #########################################

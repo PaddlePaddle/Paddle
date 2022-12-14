@@ -23,4 +23,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::CAllReduceOpCUDAKernel<ops::kRedProd, double>,
     ops::CAllReduceOpCUDAKernel<ops::kRedProd, int>,
     ops::CAllReduceOpCUDAKernel<ops::kRedProd, int64_t>,
+#if NCCL_VERSION_CODE >= 21000
+    ops::CAllReduceOpCUDAKernel<ops::kRedProd, plat::bfloat16>,
+#endif
     ops::CAllReduceOpCUDAKernel<ops::kRedProd, plat::float16>)

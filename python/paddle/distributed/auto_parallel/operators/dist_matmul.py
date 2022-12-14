@@ -376,7 +376,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
             check_variable_and_dtype(
                 Out_grad,
                 'tensor',
-                ['float16', 'float32', 'float64', 'int32', 'int64'],
+                ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
                 '_c_identity',
             )
 
@@ -417,13 +417,13 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
             check_variable_and_dtype(
                 intermediate_var_0,
                 'x',
-                ['float16', 'float32', 'float64'],
+                ['float16', 'float32', 'float64', 'uint16'],
                 'linear',
             )
             check_dtype(
                 intermediate_var_0.dtype,
                 'dtype',
-                ['float16', 'float32', 'float64'],
+                ['float16', 'float32', 'float64', 'uint16'],
                 'linear',
             )
             set_comm_op_dist_attr_for_program(
@@ -835,7 +835,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         check_variable_and_dtype(
             X_var,
             'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             '_c_identity',
         )
 
@@ -854,12 +854,15 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
             intermediate_var_0.desc.set_shape(ref_shape_x)
 
         check_variable_and_dtype(
-            intermediate_var_0, 'x', ['float16', 'float32', 'float64'], 'linear'
+            intermediate_var_0,
+            'x',
+            ['float16', 'float32', 'float64', 'uint16'],
+            'linear',
         )
         check_dtype(
             intermediate_var_0.dtype,
             'dtype',
-            ['float16', 'float32', 'float64'],
+            ['float16', 'float32', 'float64', 'uint16'],
             'linear',
         )
         attrs = {
@@ -1183,10 +1186,13 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         group = new_process_group(group_ranks)
 
         check_variable_and_dtype(
-            X_var, 'x', ['float16', 'float32', 'float64'], 'linear'
+            X_var, 'x', ['float16', 'float32', 'float64', 'uint16'], 'linear'
         )
         check_dtype(
-            X_var.dtype, 'dtype', ['float16', 'float32', 'float64'], 'linear'
+            X_var.dtype,
+            'dtype',
+            ['float16', 'float32', 'float64', 'uint16'],
+            'linear',
         )
         attrs = {
             'transpose_X': trans_x,
@@ -1731,7 +1737,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         check_variable_and_dtype(
             X_var,
             'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             '_c_identity',
         )
         c_identity_op = main_block.append_op(
@@ -1749,12 +1755,15 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
             intermediate_var_0.desc.set_shape(ref_shape_x)
 
         check_variable_and_dtype(
-            intermediate_var_0, 'x', ['float16', 'float32', 'float64'], 'linear'
+            intermediate_var_0,
+            'x',
+            ['float16', 'float32', 'float64', 'uint16'],
+            'linear',
         )
         check_dtype(
             intermediate_var_0.dtype,
             'dtype',
-            ['float16', 'float32', 'float64'],
+            ['float16', 'float32', 'float64', 'uint16'],
             'linear',
         )
         attrs = {
@@ -2077,10 +2086,13 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         group = new_process_group(group_ranks)
 
         check_variable_and_dtype(
-            X_var, 'x', ['float16', 'float32', 'float64'], 'linear'
+            X_var, 'x', ['float16', 'float32', 'float64', 'uint16'], 'linear'
         )
         check_dtype(
-            X_var.dtype, 'dtype', ['float16', 'float32', 'float64'], 'linear'
+            X_var.dtype,
+            'dtype',
+            ['float16', 'float32', 'float64', 'uint16'],
+            'linear',
         )
         attrs = {
             'trans_x': trans_x,
@@ -2610,7 +2622,7 @@ class DistributedMulImpl0(DistributedOperatorImpl):
         check_variable_and_dtype(
             X_var,
             'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             '_c_identity',
         )
         c_identity_op = main_block.append_op(
@@ -2628,12 +2640,15 @@ class DistributedMulImpl0(DistributedOperatorImpl):
             intermediate_var_0.desc.set_shape(ref_shape_x)
 
         check_variable_and_dtype(
-            intermediate_var_0, 'x', ['float16', 'float32', 'float64'], 'linear'
+            intermediate_var_0,
+            'x',
+            ['float16', 'float32', 'float64', 'uint16'],
+            'linear',
         )
         check_dtype(
             intermediate_var_0.dtype,
             'dtype',
-            ['float16', 'float32', 'float64'],
+            ['float16', 'float32', 'float64', 'uint16'],
             'linear',
         )
         # attrs = {'trans_x': False, 'trans_y': False}
@@ -2965,10 +2980,13 @@ class DistributedMulImpl1(DistributedOperatorImpl):
         group = new_process_group(group_ranks)
 
         check_variable_and_dtype(
-            X_var, 'x', ['float16', 'float32', 'float64'], 'linear'
+            X_var, 'x', ['float16', 'float32', 'float64', 'uint16'], 'linear'
         )
         check_dtype(
-            X_var.dtype, 'dtype', ['float16', 'float32', 'float64'], 'linear'
+            X_var.dtype,
+            'dtype',
+            ['float16', 'float32', 'float64', 'uint16'],
+            'linear',
         )
         # attrs = {'trans_x': False, 'trans_y': False}
         attrs = {

@@ -33,7 +33,7 @@ np.random.seed(SEED)
 random.seed(SEED)
 
 paddle.enable_static()
-set_device('cpu')
+set_device('gpu')
 
 
 def parse_args():
@@ -42,7 +42,7 @@ def parse_args():
         '-bf16',
         '--bf16',
         type=ast.literal_eval,
-        default=False,
+        default=True,
         help="whether use bf16",
     )
     args = parser.parse_args()
@@ -97,15 +97,16 @@ def main(args):
             amp_lists=amp.bf16.AutoMixedPrecisionListsBF16(
                 custom_bf16_list={
                     'matmul_v2',
-                    'pool2d',
+                    # 'pool2d',
                     'relu',
                     'scale',
                     'elementwise_add',
                     'reshape2',
                     'slice',
-                    'reduce_mean',
+                    # 'reduce_mean',
                     'conv2d',
                 },
+                custom_fp32_list={'pool2d', 'reduce_mean'},
             ),
         )
 
