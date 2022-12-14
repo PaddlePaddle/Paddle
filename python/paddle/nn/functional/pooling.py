@@ -887,27 +887,27 @@ def max_unpool1d(
     or as given by :attr:`output_size` in the call operator.
 
 
-    Args:
-        x (Tensor): The input tensor of unpooling operator which is a 3-D tensor with
+    Parameters:
+        x (Tensor) - The input tensor of unpooling operator which is a 3-D tensor with
                           shape [N, C, L]. The format of input tensor is `"NCL"`,
                           where `N` is batch size, `C` is the number of channels, `L` is
                           the length of the feature. The data type is float32 or float64.
-        indices (Tensor): The indices given out by maxpooling1d which is a 3-D tensor with
+        indices (Tensor) - The indices given out by maxpooling1d which is a 3-D tensor with
                           shape [N, C, L]. The format of input tensor is `"NCL"` ,
                           where `N` is batch size, `C` is the number of channels, `L` is
                           the length of the featuree. The data type is float32 or float64.
-        kernel_size (int|list|tuple): The unpool kernel size. If unpool kernel size is a tuple or list,
+        kernel_size (int|list|tuple) - The unpool kernel size. If unpool kernel size is a tuple or list,
             it must contain an integer.
-        stride (int|list|tuple): The unpool stride size. If unpool stride size is a tuple or list,
+        stride (int|list|tuple, optional) - The unpool stride size. If unpool stride size is a tuple or list,
             it must contain an integer.
-        padding (int | tuple): Padding that was added to the input.
-        output_size(list|tuple, optional): The target output size. If output_size is not specified,
+        padding (int | tuple, optional) - Padding that was added to the input.
+        output_size(list|tuple, optional) - The target output size. If output_size is not specified,
                            the actual output shape will be automatically calculated by (input_shape,
                            kernel_size, stride, padding).
-        data_format (string): The data format of the input and output data.
+        data_format (str, optional) - The data format of the input and output data.
                         The default is `"NCL"`. When it is `"NCL"`, the data is stored in the order of:
                         `[batch_size, input_channels, input_length]`.
-        name(str, optional): For detailed information, please refer
+        name(str, optional) - For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
 
@@ -1006,42 +1006,43 @@ def max_unpool2d(
     r"""
     This API implements max unpooling 2d opereation.
     See more details in :ref:`api_nn_pooling_MaxUnPool2D` .
+    
+    - Input: :math:`(N, C, H_{in}, W_{in})`
+    - Output: :math:`(N, C, H_{out}, W_{out})`, where
 
+    .. math::
+        H_{out} = (H_{in} - 1) \times \text{stride[0]} - 2 \times \text{padding[0]} + \text{kernel\_size[0]}
 
-    Args:
-        x (Tensor): The input tensor of unpooling operator which is a 4-D tensor with
+    .. math::
+        W_{out} = (W_{in} - 1) \times \text{stride[1]} - 2 \times \text{padding[1]} + \text{kernel\_size[1]}
+
+    or as given by :attr:`output_size` in the call operator
+
+    Parameters:
+        x (Tensor) - The input tensor of unpooling operator which is a 4-D tensor with
                           shape [N, C, H, W]. The format of input tensor is `"NCHW"`,
                           where `N` is batch size, `C` is the number of channels,
                           `H` is the height of the feature, and `W` is the width of the
                           feature. The data type if float32 or float64.
-        indices (Tensor): The indices given out by maxpooling2d which is a 4-D tensor with
+        indices (Tensor) - The indices given out by maxpooling2d which is a 4-D tensor with
                           shape [N, C, H, W]. The format of input tensor is `"NCHW"` ,
                           where `N` is batch size, `C` is the number of channels,
                           `H` is the height of the feature, and `W` is the width of the
                           feature. The data type if float32 or float64.
-        kernel_size (int|list|tuple): The unpool kernel size. If unpool kernel size is a tuple or list,
+        kernel_size (int|list|tuple) - The unpool kernel size. If unpool kernel size is a tuple or list,
             it must contain an integer.
-        stride (int|list|tuple): The unpool stride size. If unpool stride size is a tuple or list,
+        stride (int|list|tuple, optional) - The unpool stride size. If unpool stride size is a tuple or list,
             it must contain an integer.
-        padding (int | tuple): Padding that was added to the input.
-        output_size(list|tuple, optional): The target output size. If output_size is not specified,
+        padding (int | tuple, optional) - Padding that was added to the input.
+        data_format (str, optional) - The data format of the input and output data.
+                        The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+                        `[batch_size, input_channels, input_height, input_width]`.
+        output_size(list|tuple, optional) - The target output size. If output_size is not specified,
                            the actual output shape will be automatically calculated by (input_shape,
                            kernel_size, padding).
-        name(str, optional): For detailed information, please refer
+        name(str, optional) - For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
-
-
-        - Input: :math:`(N, C, H_{in}, W_{in})`
-        - Output: :math:`(N, C, H_{out}, W_{out})`, where
-
-          .. math::
-            H_{out} = (H_{in} - 1) \times \text{stride[0]} - 2 \times \text{padding[0]} + \text{kernel\_size[0]}
-
-          .. math::
-            W_{out} = (W_{in} - 1) \times \text{stride[1]} - 2 \times \text{padding[1]} + \text{kernel\_size[1]}
-
-          or as given by :attr:`output_size` in the call operator
 
         Returns:
             Tensor: The output tensor of unpooling result.
@@ -1160,29 +1161,29 @@ def max_unpool3d(
     or as given by :attr:`output_size` in the call operator
 
 
-    Args:
-        x (Tensor): The input tensor of unpooling operator which is a 5-D tensor with
+    Parameters:
+        x (Tensor) - The input tensor of unpooling operator which is a 5-D tensor with
                           shape [N, C, D, H, W]. The format of input tensor is `"NCDHW"`,
                           where `N` is batch size, `C` is the number of channels, `D` is
                           the depth of the feature, `H` is the height of the feature,
                           and `W` is the width of the feature. The data type is float32 or float64.
-        indices (Tensor): The indices given out by maxpooling3d which is a 5-D tensor with
+        indices (Tensor) - The indices given out by maxpooling3d which is a 5-D tensor with
                           shape [N, C, D, H, W]. The format of input tensor is `"NCDHW"` ,
                           where `N` is batch size, `C` is the number of channels, `D` is
                           the depth of the feature, `H` is the height of the feature,
                           and `W` is the width of the feature. The data type is float32 or float64.
-        kernel_size (int|list|tuple): The unpool kernel size. If unpool kernel size is a tuple or list,
+        kernel_size (int|list|tuple) - The unpool kernel size. If unpool kernel size is a tuple or list,
             it must contain an integer.
-        stride (int|list|tuple): The unpool stride size. If unpool stride size is a tuple or list,
+        stride (int|list|tuple, optional) - The unpool stride size. If unpool stride size is a tuple or list,
             it must contain an integer.
-        padding (int | tuple): Padding that was added to the input.
-        output_size(list|tuple, optional): The target output size. If output_size is not specified,
+        padding (int | tuple, optional) - Padding that was added to the input.
+        output_size(list|tuple, optional) - The target output size. If output_size is not specified,
                            the actual output shape will be automatically calculated by (input_shape,
                            kernel_size, stride, padding).
-        data_format (string): The data format of the input and output data.
+        data_format (str, optional) - The data format of the input and output data.
                         The default is `"NCDHW"`. When it is `"NCDHW"`, the data is stored in the order of:
                         `[batch_size, input_channels, input_depth, input_height, input_width]`.
-        name(str, optional): For detailed information, please refer
+        name(str, optional) - For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
 
