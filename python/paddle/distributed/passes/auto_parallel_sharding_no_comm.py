@@ -920,6 +920,9 @@ class ShardingPass(PassBase):
                 cur_group = VarGroup(max_fuse_numel)
 
             i += 1
+        # some grad not in this rank may not be used after dp reduced
+        if len(cur_group.vars) >= 1:
+            grad_groups.append(cur_group)
 
         _logger.info("Sharding Gradient Communication Optimization:")
         _logger.info(
