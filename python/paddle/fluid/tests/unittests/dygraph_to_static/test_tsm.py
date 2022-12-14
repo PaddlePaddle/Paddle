@@ -208,7 +208,7 @@ class TSM_ResNet(fluid.dygraph.Layer):
         for bottleneck_block in self.bottleneck_block_list:
             y = bottleneck_block(y)
         y = self.pool2d_avg(y)
-        y = fluid.layers.dropout(y, dropout_prob=0.5)
+        y = paddle.nn.functional.dropout(y, p=0.5)
         y = paddle.reshape(y, [-1, self.seg_num, y.shape[1]])
         y = paddle.mean(y, axis=1)
         y = paddle.reshape(y, shape=[-1, 2048])
@@ -329,8 +329,12 @@ def train(args, fake_data_reader, to_static):
                 labels = to_variable(y_data)
                 labels.stop_gradient = True
                 outputs = video_model(imgs)
-                loss = fluid.layers.cross_entropy(
-                    input=outputs, label=labels, ignore_index=-1
+                loss = paddle.nn.functional.cross_entropy(
+                    input=outputs,
+                    label=labels,
+                    ignore_index=-1,
+                    reduction='none',
+                    use_softmax=False,
                 )
                 avg_loss = paddle.mean(loss)
                 acc_top1 = paddle.static.accuracy(
