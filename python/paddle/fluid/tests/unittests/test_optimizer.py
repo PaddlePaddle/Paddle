@@ -1161,8 +1161,8 @@ class TestRecomputeOptimizer(unittest.TestCase):
             }
 
         def mlp(input_x, input_y):
-            drop_res = fluid.layers.dropout(
-                input_x, dropout_prob=0.5, name="dropout_with_seed_cpu"
+            drop_res = paddle.nn.functional.dropout(
+                input_x, p=0.5, name="dropout_with_seed_cpu"
             )
             prediction = fluid.layers.fc(
                 input=[drop_res], size=2, act='softmax'
@@ -1223,8 +1223,8 @@ class TestRecomputeOptimizerCUDA(unittest.TestCase):
             }
 
         def mlp(input_x, input_y):
-            drop_res = fluid.layers.dropout(
-                input_x, dropout_prob=0.5, name="dropout_with_seed_gpu"
+            drop_res = paddle.nn.functional.dropout(
+                input_x, p=0.5, name="dropout_with_seed_gpu"
             )
             prediction = fluid.layers.fc(
                 input=[drop_res], size=2, act='softmax'
