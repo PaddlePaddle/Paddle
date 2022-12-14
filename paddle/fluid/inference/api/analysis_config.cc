@@ -326,9 +326,7 @@ void AnalysisConfig::LoadIpuConfig(const std::string &config_path) {
       case ipu_config_code::ipu_custom_patterns:
         ipu_custom_patterns_ = string2vector(value);
         break;
-      case ipu_config_code::ipu_enable_model_runtime_executor:
-        ipu_enable_model_runtime_executor_ = string2bool(value);
-        break;
+
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
             "invalid key %s in IPU config", key));
