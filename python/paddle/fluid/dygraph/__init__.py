@@ -52,5 +52,4 @@ __all__ += nn.__all__
 __all__ += parallel.__all__
 __all__ += checkpoint.__all__
 __all__ += learning_rate_scheduler.__all__
-__all__ += io.__all__
 __all__ += amp.__all__
