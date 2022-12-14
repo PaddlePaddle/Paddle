@@ -68,6 +68,9 @@ void SqueezeWithXShapeKernel(const Context& dev_ctx,
                              const IntArray& axes,
                              DenseTensor* out,
                              DenseTensor* xshape) {
+  if (xshape == nullptr) {
+    return SqueezeKernel<T, Context>(dev_ctx, x, axes, out);
+  }
   auto x_dims = slice_ddim(xshape->dims(), 1, xshape->dims().size());
   auto out_dims = out->dims();
   ExecuteSqueeze<T, Context>(dev_ctx, x, x_dims, out_dims, out);
