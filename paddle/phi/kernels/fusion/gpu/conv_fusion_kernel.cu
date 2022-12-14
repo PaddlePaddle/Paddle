@@ -33,8 +33,6 @@
 #include "paddle/phi/kernels/impl/conv_cudnn_impl.h"
 #include "paddle/utils/optional.h"
 
-#include "paddle/phi/backends/dynload/nvtx.h"
-
 namespace phi {
 namespace fusion {
 
@@ -344,8 +342,6 @@ void ConvFusionKernel(const Context& ctx,
                       int user_workspace_size,
                       DenseTensor* output,
                       std::vector<DenseTensor*> outs) {
-  phi::dynload::nvtxRangePushA("In ConvFusionKernel");
-
   auto handle = ctx.cudnn_handle();
   ctx.template Alloc<T>(output);
   auto workspace_handle = ctx.cudnn_workspace_handle();
@@ -538,7 +534,6 @@ void ConvFusionKernel(const Context& ctx,
     // cudnnConvolutionForward and cudnnAddTensor
     // ------------- cudnn conv forward and bias add ---------------------
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
-    phi::dynload::nvtxRangePushA("cudnnConvolutionForward");
     auto cudnn_func = [&](void* cudnn_workspace) {
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::cudnnConvolutionForward(handle,
@@ -556,7 +551,6 @@ void ConvFusionKernel(const Context& ctx,
                                                 output->data()));
     };
     workspace_handle.RunFunc(cudnn_func, workspace_size);
-    phi::dynload::nvtxRangePop();
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnAddTensor(
         handle, &alpha, b_desc, bias.data(), &alpha, o_desc, output->data()));
   } else {
@@ -568,7 +562,6 @@ void ConvFusionKernel(const Context& ctx,
 
     ScalingParamType<T> alpha = 1.0f;
     ScalingParamType<T> beta = residual.get_ptr() ? 1.0f : 0.0f;
-    phi::dynload::nvtxRangePushA("cudnnConvolutionBiasActivationForward");
     auto cudnn_func = [&](void* cudnn_workspace) {
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::cudnnConvolutionBiasActivationForward(
@@ -592,7 +585,6 @@ void ConvFusionKernel(const Context& ctx,
               output->data()));
     };
     workspace_handle.RunFunc(cudnn_func, workspace_size);
-    phi::dynload::nvtxRangePop();
   }
 
   if (!channels.empty()) {
@@ -620,8 +612,6 @@ void ConvFusionKernel(const Context& ctx,
           transformed_input.dims()));
     }
   }
-
-  phi::dynload::nvtxRangePop();
 }
 }  // namespace fusion
 }  // namespace phi
