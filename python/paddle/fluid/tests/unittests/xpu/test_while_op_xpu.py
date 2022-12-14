@@ -41,9 +41,9 @@ class TestWhileOp(unittest.TestCase):
         init = layers.zeros(shape=[10], dtype='float32')
         mem_array = layers.array_write(x=init, i=i)
         data_array = layers.array_write(x=d0, i=i)
-        i = layers.increment(i)
+        i = paddle.increment(i)
         layers.array_write(d1, i, array=data_array)
-        i = layers.increment(i)
+        i = paddle.increment(i)
         layers.array_write(d2, i, array=data_array)
         i = layers.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True
@@ -55,14 +55,14 @@ class TestWhileOp(unittest.TestCase):
         array_len2 = layers.fill_constant(shape=[1], dtype='int64', value=3)
         array_len2.stop_gradient = True
         cond2 = paddle.less_than(x=j, y=array_len2)
-        while_op = layers.While(cond=cond)
-        while_op2 = layers.While(cond=cond2)
+        while_op = paddle.static.nn.control_flow.While(cond=cond)
+        while_op2 = paddle.static.nn.control_flow.While(cond=cond2)
         with while_op.block():
             d = layers.array_read(array=data_array, i=i)
             prev = layers.array_read(array=mem_array, i=i)
             result = layers.sums(input=[d, prev])
 
-            i = layers.increment(x=i, in_place=True)
+            i = paddle.increment(x=i)
             layers.array_write(result, i=i, array=mem_array)
             paddle.assign(paddle.less_than(x=i, y=array_len), cond)
 
@@ -71,7 +71,7 @@ class TestWhileOp(unittest.TestCase):
                 prev2 = layers.array_read(array=mem_array, i=j)
                 result2 = layers.sums(input=[d2, prev2])
 
-                j = layers.increment(x=j, in_place=True)
+                j = paddle.increment(x=j)
                 layers.array_write(result2, i=j, array=mem_array)
                 paddle.assign(paddle.less_than(x=j, y=array_len2), cond2)
         sum_result = layers.array_read(array=mem_array, i=j)
@@ -121,10 +121,10 @@ class TestWhileOp(unittest.TestCase):
         array_len = layers.fill_constant(shape=[2], dtype='int64', value=1)
         cond = paddle.less_than(x=i, y=array_len)
         with self.assertRaises(TypeError):
-            layers.While(cond=cond)
+            paddle.static.nn.control_flow.While(cond=cond)
         cond = layers.cast(cond, dtype='float64')
         with self.assertRaises(TypeError):
-            layers.While(cond=cond)
+            paddle.static.nn.control_flow.While(cond=cond)
 
 
 if __name__ == '__main__':

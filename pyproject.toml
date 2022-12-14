@@ -17,8 +17,4 @@ extend_skip_glob = [
     "python/paddle/utils/gast/**",
     "python/paddle/fluid/tests/unittests/npu/**",
     "python/paddle/fluid/tests/unittests/mlu/**",
-
-    # These files will be fixed in the future
-    "python/paddle/fluid/tests/unittests/dygraph_to_static/test_error.py",
-    "python/paddle/jit/**",
 ]

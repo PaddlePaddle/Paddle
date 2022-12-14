@@ -33,7 +33,6 @@ namespace cub = hipcub;
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 template <typename T>
@@ -502,7 +501,8 @@ __inline__ __device__ void cuLoadAddStridedInputs(const int64_t i1_block,
 }
 
 #ifdef PADDLE_WITH_CUDA
-template <bool isFusedDropoutResidualLn,
+template <bool IsFusedDropoutResidualLn,
+          bool NeedDDropoutSrcPtr,
           typename T,
           typename U,
           typename ScaleT = U,
@@ -532,6 +532,10 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_fast_kernel(
     const MaskType *mask_ptr = nullptr,
     T factor = static_cast<T>(0),
     T *d_dropout_src_ptr = nullptr) {
+  static_assert(
+      !IsFusedDropoutResidualLn || NeedDDropoutSrcPtr,
+      "When IsFusedDropoutResidualLn = true, NeedDDropoutSrcPtr must be true.");
+
   using Vec = phi::AlignedVector<T, VecSize>;
   using Vec_scale = phi::AlignedVector<ScaleT, VecSize>;
   using MaskLoadT = phi::AlignedVector<MaskType, VecSize>;
@@ -586,7 +590,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_fast_kernel(
       phi::Load<T, VecSize>(dout_ptr + row * ELTS_PER_ROW + col * VecSize,
                             &dout[it]);
       phi::Load<T, VecSize>(x_ptr + row * ELTS_PER_ROW + col * VecSize, &x[it]);
-      if (isFusedDropoutResidualLn) {
+      if (IsFusedDropoutResidualLn) {
         phi::Load<MaskType, VecSize>(
             mask_ptr + row * ELTS_PER_ROW + col * VecSize, &mask_vec[it]);
       }
@@ -672,7 +676,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_fast_kernel(
         U dx_tmp = var_cur_row * (dy_tmp - sum_loss2 * y_tmp - sum_loss1);
         // Note: reuse x and dout vec register to store dx and d_dropout_src.
         x[it][jt] = static_cast<T>(dx_tmp);
-        if (isFusedDropoutResidualLn) {
+        if (IsFusedDropoutResidualLn) {
           dout[it][jt] = x[it][jt] * static_cast<T>(mask_vec[it][jt]) * factor;
         }
       }
@@ -684,9 +688,12 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_ln_bwd_fast_kernel(
     for (int it = 0; it < LDGS; it++) {
       phi::Store<T, VecSize>(x[it],
                              dx_ptr + row * ELTS_PER_ROW + col * VecSize);
-      if (isFusedDropoutResidualLn) {
+      if (IsFusedDropoutResidualLn) {
         phi::Store<T, VecSize>(
             dout[it], d_dropout_src_ptr + row * ELTS_PER_ROW + col * VecSize);
+      } else if (NeedDDropoutSrcPtr) {
+        phi::Store<T, VecSize>(
+            x[it], d_dropout_src_ptr + row * ELTS_PER_ROW + col * VecSize);
       }
       col += THREADS_PER_ROW;
     }
@@ -956,6 +963,7 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
       }
 #define LAUNCH_MASK_FUSED_LN_BWD_FAST_KERNEL(vec_size, ele_per_row) \
   fused_ln_bwd_fast_kernel<true,                                    \
+                           true,                                    \
                            T,                                       \
                            U,                                       \
                            ScaleT,                                  \
@@ -994,8 +1002,10 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
 #undef LAUNCH_MASK_FUSED_LN_BWD_FAST_KERNEL
 
     } else {
-#define LAUNCH_FUSED_LN_BWD_FAST_KERNEL(vec_size, ele_per_row) \
+#define LAUNCH_FUSED_LN_BWD_FAST_KERNEL_BASE(                  \
+    vec_size, ele_per_row, need_d_dropout_src_ptr)             \
   fused_ln_bwd_fast_kernel<false,                              \
+                           need_d_dropout_src_ptr,             \
                            T,                                  \
                            U,                                  \
                            ScaleT,                             \
@@ -1014,7 +1024,19 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
                                               dout_ptr,        \
                                               dscale_temp_ptr, \
                                               dbias_temp_ptr,  \
-                                              dx_ptr);
+                                              dx_ptr,          \
+                                              nullptr,         \
+                                              factor,          \
+                                              d_dropout_src_ptr);
+
+#define LAUNCH_FUSED_LN_BWD_FAST_KERNEL(vec_size, ele_per_row)            \
+  do {                                                                    \
+    if (d_dropout_src_ptr != nullptr) {                                   \
+      LAUNCH_FUSED_LN_BWD_FAST_KERNEL_BASE(vec_size, ele_per_row, true);  \
+    } else {                                                              \
+      LAUNCH_FUSED_LN_BWD_FAST_KERNEL_BASE(vec_size, ele_per_row, false); \
+    }                                                                     \
+  } while (0)
 
       if (cols == 1024) {
         LAUNCH_FUSED_LN_BWD_FAST_KERNEL(VecSize, 1024);

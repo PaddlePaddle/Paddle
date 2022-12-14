@@ -18,8 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename DeviceContext, typename T>
 class ElementwiseModNPUKernel : public framework::OpKernel<T> {
  public:
@@ -43,7 +41,7 @@ class ElementwiseModNPUKernel : public framework::OpKernel<T> {
       direct_compute = x_dims == phi::slice_ddim(y_dims, axis, y_dims.size());
     }
 
-    Tensor transformed_x, transformed_y;
+    phi::DenseTensor transformed_x, transformed_y;
     if (direct_compute) {
       transformed_x.ShareDataWith(*x);
       transformed_y.ShareDataWith(*y);
