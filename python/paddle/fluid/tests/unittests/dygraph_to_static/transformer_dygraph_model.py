@@ -18,7 +18,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.nn.functional as F
-from paddle.fluid.dygraph import Embedding, Layer, to_variable
+from paddle.fluid.dygraph import Layer, to_variable
 from paddle.fluid.layers.utils import map_structure
 from paddle.jit.api import dygraph_to_static_func
 from paddle.nn import Linear
@@ -72,9 +72,11 @@ class PrePostProcessLayer(Layer):
                 )
             elif cmd == "d":  # add dropout
                 if dropout_rate:
-                    self.functors.append(
-                        lambda x: layers.dropout(x, dropout_prob=dropout_rate)
+                    # TODO(zhangliujie) fix dropout error
+                    self.dropout = paddle.nn.Dropout(
+                        p=dropout_rate, mode="downscale_in_infer"
                     )
+                    self.functors.append(lambda x: self.dropout(x))
 
     def forward(self, x, residual=None):
         for i, cmd in enumerate(self.process_cmd):
@@ -154,8 +156,15 @@ class MultiHeadAttention(Layer):
             product += attn_bias
         weights = paddle.nn.functional.softmax(product)
         if self.dropout_rate:
-            weights = layers.dropout(weights, dropout_prob=self.dropout_rate)
+            # TODO(zhangliujie) fix dropout error
+            weights = paddle.nn.functional.dropout(
+                weights,
+                p=self.dropout_rate,
+                training=self.training,
+                mode="downscale_in_infer",
+            )
             out = paddle.matmul(weights, v)
+
         out = paddle.transpose(out, perm=[0, 2, 1, 3])
         out = paddle.reshape(x=out, shape=[0, 0, out.shape[2] * out.shape[3]])
 
@@ -174,7 +183,13 @@ class FFN(Layer):
         hidden = self.fc1(x)
         hidden = paddle.nn.functional.relu(hidden)
         if self.dropout_rate:
-            hidden = layers.dropout(hidden, dropout_prob=self.dropout_rate)
+            # TODO(zhangliujie) fix dropout error
+            hidden = paddle.nn.functional.dropout(
+                hidden,
+                p=self.dropout_rate,
+                training=self.training,
+                mode="downscale_in_infer",
+            )
         out = self.fc2(hidden)
         return out
 
@@ -276,10 +291,10 @@ class Encoder(Layer):
 class Embedder(Layer):
     def __init__(self, vocab_size, emb_dim, bos_idx=0):
         super().__init__()
-        self.word_embedder = Embedding(
-            size=[vocab_size, emb_dim],
-            padding_idx=bos_idx,
-            param_attr=fluid.ParamAttr(
+        self.word_embedder = paddle.nn.Embedding(
+            vocab_size,
+            emb_dim,
+            weight_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Normal(0.0, emb_dim**-0.5)
             ),
         )
@@ -311,9 +326,10 @@ class WrapEncoder(Layer):
         self.emb_dropout = prepostprocess_dropout
         self.emb_dim = d_model
         self.word_embedder = word_embedder
-        self.pos_encoder = Embedding(
-            size=[max_length, self.emb_dim],
-            param_attr=fluid.ParamAttr(
+        self.pos_encoder = paddle.nn.Embedding(
+            max_length,
+            self.emb_dim,
+            weight_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.NumpyArrayInitializer(
                     position_encoding_init(max_length, self.emb_dim)
                 ),
@@ -340,10 +356,13 @@ class WrapEncoder(Layer):
         pos_enc = self.pos_encoder(src_pos)
         pos_enc.stop_gradient = True
         emb = word_emb + pos_enc
+        # TODO(zhangliujie) fix dropout error
         enc_input = (
-            layers.dropout(
+            paddle.nn.functional.dropout(
                 emb,
-                dropout_prob=self.emb_dropout,
+                p=self.emb_dropout,
+                training=self.training,
+                mode="downscale_in_infer",
             )
             if self.emb_dropout
             else emb
@@ -499,9 +518,10 @@ class WrapDecoder(Layer):
         self.emb_dropout = prepostprocess_dropout
         self.emb_dim = d_model
         self.word_embedder = word_embedder
-        self.pos_encoder = Embedding(
-            size=[max_length, self.emb_dim],
-            param_attr=fluid.ParamAttr(
+        self.pos_encoder = paddle.nn.Embedding(
+            max_length,
+            self.emb_dim,
+            weight_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.NumpyArrayInitializer(
                     position_encoding_init(max_length, self.emb_dim)
                 ),
@@ -544,10 +564,13 @@ class WrapDecoder(Layer):
         pos_enc = self.pos_encoder(trg_pos)
         pos_enc.stop_gradient = True
         emb = word_emb + pos_enc
+        # TODO(zhangliujie) fix dropout error
         dec_input = (
-            layers.dropout(
+            paddle.nn.functional.dropout(
                 emb,
-                dropout_prob=self.emb_dropout,
+                p=self.emb_dropout,
+                training=self.training,
+                mode="downscale_in_infer",
             )
             if self.emb_dropout
             else emb
@@ -756,7 +779,9 @@ class Transformer(Layer):
                     [-1, -1, self.trg_vocab_size],
                 ),
                 noend_mask_tensor,
-            ) - layers.elementwise_mul(probs, (finished - 1), axis=0)
+            ) - paddle.tensor.math._multiply_with_axis(
+                probs, (finished - 1), axis=0
+            )
             return probs
 
         def gather(input, indices, batch_pos):
@@ -844,7 +869,7 @@ class Transformer(Layer):
             step_log_probs = mask_probs(
                 step_log_probs, finished, noend_mask_tensor
             )
-            log_probs = layers.elementwise_add(
+            log_probs = paddle.tensor.math._add_with_axis(
                 x=step_log_probs, y=log_probs, axis=0
             )
             log_probs = paddle.reshape(

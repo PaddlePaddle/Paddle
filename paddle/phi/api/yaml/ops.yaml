@@ -628,6 +628,15 @@
     func : log2
   backward: log2_grad
 
+- op : log_loss
+  args : (Tensor input, Tensor label, float epsilon)
+  output : Tensor
+  infer_meta :
+    func : LogLossInferMeta
+  kernel :
+    func : log_loss
+  backward : log_loss_grad
+
 - op : logit
   args : (Tensor x, float eps = 1e-6f)
   output : Tensor
@@ -741,6 +750,18 @@
     func : poisson
   backward : poisson_grad
 
+- op : put_along_axis
+  args : (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign")
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [arr]
+  kernel :
+    func : put_along_axis
+    data_type : arr
+  inplace : (arr -> out)
+  backward : put_along_axis_grad
+
 - op : qr
   args : (Tensor x, str mode = "reduced")
   output : Tensor(q), Tensor(r)
@@ -800,6 +821,46 @@
   inplace : (x -> out)
   backward : rsqrt_grad
 
+- op : scatter
+  args : (Tensor x, Tensor index, Tensor updates, bool overwrite=true)
+  output : Tensor(out)
+  infer_meta :
+    func : ScatterInferMeta
+  kernel :
+    func : scatter
+    data_type : x
+  inplace : (x -> out)
+  backward : scatter_grad
+
+- op : scatter_nd_add
+  args : (Tensor x, Tensor index, Tensor updates)
+  output : Tensor
+  infer_meta :
+    func : ScatterNdAddInferMeta
+  kernel :
+    func : scatter_nd_add
+    data_type : x
+  backward : scatter_nd_add_grad
+
+- op : searchsorted
+  args : (Tensor sorted_sequence, Tensor values, bool out_int32 = false, bool right = false)
+  output : Tensor(out)
+  infer_meta :
+    func : SearchsortedInferMeta
+  kernel :
+    func : searchsorted
+    data_type : sorted_sequence
+
+- op : selu
+  args : (Tensor x, float scale=1.0507009873554804934193349852946, float alpha=1.6732632423543772848170429916717)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : selu
+  backward : selu_grad
+
 - op : send_uv
   args : (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str message_op = "ADD")
   output : Tensor(out)
@@ -809,6 +870,14 @@
     func : send_uv
     data_type : x
   backward : send_uv_grad
+
+- op : shard_index
+  args : (Tensor input, int index_num, int nshards, int shard_id, int ignore_value=-1)
+  output : Tensor(out)
+  infer_meta :
+    func : ShardIndexInferMeta
+  kernel :
+    func : shard_index
 
 - op : sigmoid
   args : (Tensor x)
@@ -907,6 +976,26 @@
            square_sr {selected_rows -> selected_rows}
   backward : square_grad
 
+- op : svd
+  args : (Tensor x, bool full_matrices = false)
+  output : Tensor(u), Tensor(s), Tensor(vh)
+  infer_meta :
+    func : SvdInferMeta
+  kernel :
+    func : svd
+  backward : svd_grad
+
+- op : take_along_axis
+  args : (Tensor arr, Tensor indices, int axis)
+  output : Tensor
+  infer_meta :
+    func : TakeAlongAxisInferMeta
+    param : [arr, indices, axis]
+  kernel :
+    func : take_along_axis
+    data_type : arr
+  backward : take_along_axis_grad
+
 - op : tan
   args : (Tensor x)
   output : Tensor
@@ -982,10 +1071,20 @@
     func : unfold
   backward : unfold_grad
 
-- op: share_buffer
-  args : (Tensor[] x, bool[] share_dims_and_dtype={})
-  output : Tensor[](out){x.size()}, Tensor[](xout){x.size()}
+- op : viterbi_decode
+  args : (Tensor potentials, Tensor transition_params, Tensor lengths, bool include_bos_eos_tag = true)
+  output : Tensor(scores), Tensor(path)
   infer_meta :
-    func : ShareBufferInferMeta
+    func : ViterbiDecodeInferMeta
   kernel :
-    func : share_buffer
+    func : viterbi_decode
+    data_type : potentials
+
+- op : where
+  args : (Tensor condition, Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : WhereInferMeta
+  kernel :
+    func : where
+  backward : where_grad

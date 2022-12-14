@@ -14,9 +14,7 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"
-
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
-#include "paddle/phi/kernels/funcs/transpose_functor.h"
 
 namespace paddle {
 namespace operators {

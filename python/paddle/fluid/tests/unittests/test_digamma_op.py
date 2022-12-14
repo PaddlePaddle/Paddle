@@ -21,7 +21,6 @@ from scipy.special import psi
 import paddle
 import paddle.fluid as fluid
 import paddle.static as static
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestDigammaOp(OpTest):
@@ -95,10 +94,6 @@ class TestDigammaAPI(unittest.TestCase):
                     res = paddle.digamma(input_t).numpy()
                     np.testing.assert_allclose(res, sc_res, rtol=1e-05)
 
-    def test_in_eager_dynamic_mode(self):
-        with _test_eager_guard():
-            self.test_in_dynamic_mode()
-
     def test_name_argument(self):
         with static.program_guard(static.Program()):
             x = static.data(name="x", shape=self._shape, dtype=self.dtypes[0])
@@ -118,13 +113,6 @@ class TestDigammaAPI(unittest.TestCase):
                 input = np.random.random(self._shape).astype("int32")
                 input_t = paddle.to_tensor(input)
                 res = paddle.digamma(input_t)
-
-        with self.assertRaises(RuntimeError):
-            with fluid.dygraph.guard():
-                with _test_eager_guard():
-                    input = np.random.random(self._shape).astype("int32")
-                    input_t = paddle.to_tensor(input)
-                    res = paddle.digamma(input_t)
 
 
 if __name__ == "__main__":
