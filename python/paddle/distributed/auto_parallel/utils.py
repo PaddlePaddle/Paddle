@@ -2171,6 +2171,10 @@ def insert_dependencies_for_two_ops(
 
     def _select_best_depend_var(vars):
 
+        # parameter should not be dep var since it maybe partition in sharding pass
+        vars = [var for var in vars if not var.is_parameter]
+        assert len(vars) > 0
+
         vars_with_numels = [(var, get_var_numel(var)) for var in vars]
         vars_with_numels.sort(key=lambda x: x[1])
 
@@ -2230,6 +2234,7 @@ def insert_dependencies_for_vars(
         ).process_mesh
     assert process_mesh is not None
 
+    use_nop = True
     if use_nop:
         depend_op = block._insert_op_without_sync(
             idx,
