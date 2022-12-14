@@ -93,10 +93,10 @@ def vgg16_bn_drop(input):
     conv4 = conv_block(conv3, 512, 3, [0.4, 0.4, 0])
     conv5 = conv_block(conv4, 512, 3, [0.4, 0.4, 0])
 
-    drop = fluid.layers.dropout(x=conv5, dropout_prob=0.5)
+    drop = paddle.nn.functional.dropout(x=conv5, p=0.5)
     fc1 = fluid.layers.fc(input=drop, size=4096, act=None)
     bn = paddle.static.nn.batch_norm(input=fc1, act='relu')
-    drop2 = fluid.layers.dropout(x=bn, dropout_prob=0.5)
+    drop2 = paddle.nn.functional.dropout(x=bn, p=0.5)
     fc2 = fluid.layers.fc(input=drop2, size=4096, act=None)
     return fc2
 
