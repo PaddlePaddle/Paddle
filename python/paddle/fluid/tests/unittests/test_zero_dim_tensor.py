@@ -703,11 +703,16 @@ class TestSundryAPI(unittest.TestCase):
         index = paddle.to_tensor(
             [[1, 1], [0, 1], [1, 3]], dtype="int64", stop_gradient=False
         )
-        updates = paddle.full([], 1, dtype='float32')
+        updates = paddle.full([], 2, dtype='float32')
         shape = [3, 5]
 
         output = paddle.scatter_nd(index, updates, shape)
         output.backward()
+
+        self.assertEqual(output.shape, [3, 5])
+        self.assertEqual(output.numpy()[1][1], 2)
+        self.assertEqual(output.numpy()[0][1], 2)
+        self.assertEqual(output.numpy()[1][3], 2)
 
 
 class TestSundryAPIStatic(unittest.TestCase):
