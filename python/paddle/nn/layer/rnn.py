@@ -275,7 +275,7 @@ def _rnn_static_graph(
     )
 
     map_structure(
-        lambda x, y: control_flow.array_write(x, start_i, y),
+        lambda x, y: paddle.tensor.array_write(x, start_i, y),
         initial_states,
         init_array,
     )
