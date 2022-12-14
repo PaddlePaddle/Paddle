@@ -1060,33 +1060,57 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
   for (int64_t i = 0; i < index_dims_size - 1; ++i) {
     r_updates_dims.emplace_back(index_dims[i]);
   }
-  for (int64_t i = index_dims[index_dims_size - 1]; i < ref_dims_size; ++i) {
-    r_updates_dims.emplace_back(ref_dims[i]);
-  }
 
-  PADDLE_ENFORCE_EQ(
-      r_updates_dims.size(),
-      updates_dims_size,
-      phi::errors::InvalidArgument(
-          "Updates has wrong shape. The shape of Updates and Input(Updates) "
-          "should be same, but received the shape of Updates is %d, "
-          "the shape of Input(Updates) is %d.",
-          r_updates_dims.size(),
-          updates_dims_size));
-
-  for (int64_t i = 0; i < updates_dims_size; ++i) {
+  if (updates_dims_size == 0) {
+    // check for 0d updates
+    PADDLE_ENFORCE_EQ(index_dims_size,
+                      ref_dims_size,
+                      phi::errors::InvalidArgument(
+                          "The index should have the same shape size with "
+                          "output shape size if the updates is a 0d tensor."));
+    for (int64_t i = 0; i < index_dims_size - 1; ++i) {
+      PADDLE_ENFORCE_EQ(
+          index_dims[i],
+          ref_dims[i],
+          phi::errors::InvalidArgument(
+              "For 0D updates, the index.shape[:-1] should be same with "
+              "output.shape[:-1]. "
+              "But received Index's %d-th dimension is %d, Output's %d-th "
+              "dimension is %d.",
+              i,
+              index_dims[i],
+              i,
+              ref_dims[i]));
+    }
+  } else {
+    for (int64_t i = index_dims[index_dims_size - 1]; i < ref_dims_size; ++i) {
+      r_updates_dims.emplace_back(ref_dims[i]);
+    }
+    // check for non-0d updates
     PADDLE_ENFORCE_EQ(
-        r_updates_dims[i],
-        updates_dims[i],
+        r_updates_dims.size(),
+        updates_dims_size,
         phi::errors::InvalidArgument(
-            "Updates has wrong shape. The dimensions of Updates and "
-            "Input(Updates) should match, but received Updates's"
-            "%d-th dimension is %d, Input(Updates)'s %d-th "
-            "dimension is %d.",
-            i,
-            r_updates_dims[i],
-            i,
-            updates_dims[i]));
+            "Updates has wrong shape. The shape of Updates and Input(Updates) "
+            "should be same, but received the shape of Updates is %d, "
+            "the shape of Input(Updates) is %d.",
+            r_updates_dims.size(),
+            updates_dims_size));
+
+    for (int64_t i = 0; i < updates_dims_size; ++i) {
+      PADDLE_ENFORCE_EQ(
+          r_updates_dims[i],
+          updates_dims[i],
+          phi::errors::InvalidArgument(
+              "Updates has wrong shape. The dimensions of Updates and "
+              "Input(Updates) should match, but received Updates's"
+              "%d-th dimension is %d, Input(Updates)'s %d-th "
+              "dimension is %d.",
+              i,
+              r_updates_dims[i],
+              i,
+              updates_dims[i]));
+    }
   }
   out->set_dims(ref_dims);
   out->share_lod(x);
