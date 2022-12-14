@@ -413,7 +413,7 @@ def data_norm(
 
     Args:
         input (Tensor): The input Tensor.
-        act (string, optional): Activation type, linear|relu|prelu|... Default: None.
+        act (str, optional): Activation type, linear|relu|prelu|... Default: None.
         epsilon(float, optional): Whether to add small values ​in​to the variance during calculations
             to prevent division by zero. Default: 1e-05.
         param_attr (ParamAttr, optional): The parameter attribute for Parameter `scale`. Default: None.
@@ -422,10 +422,10 @@ def data_norm(
             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
             `[batch_size, input_channels, input_height, input_width]`. Default: `"NCHW"`.
         in_place (bool, optional): Make the input and output of batch norm reuse memory. Default: False.
-        name (string, optional): A name for this layer (optional). If set None, the layer
+        name (str, optional): A name for this layer (optional). If set None, the layer
             will be named automatically. Default: None.
-        moving_mean_name (string, optional): The name of moving_mean which store the global Mean. Default: None.
-        moving_variance_name (string, optional): The name of the moving_variance which store the global Variance. Default: None.
+        moving_mean_name (str, optional): The name of moving_mean which store the global Mean. Default: None.
+        moving_variance_name (str, optional): The name of the moving_variance which store the global Variance. Default: None.
         do_model_average_for_mean_and_var (bool, optional): Whether parameter mean and variance
             should do model average when model average is enabled. Default: True.
         slot_dim (int, optional): The embedding dimension of one slot. Slot is a set of one specific feature. In pslib mode,
