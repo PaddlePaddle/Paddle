@@ -73,6 +73,8 @@ bool StreamSafeCUDAAllocation::CanBeFreed() {
     gpuError_t err = cudaEventQuery(event);
     if (err == cudaErrorNotReady) {
       VLOG(9) << "Event " << event << " for " << ptr() << " is not completed";
+      // ignore the error
+      cudaGetLastError();
       // Erase the completded event before "it"
       outstanding_event_map_.erase(outstanding_event_map_.begin(), it);
       return false;
@@ -83,6 +85,8 @@ bool StreamSafeCUDAAllocation::CanBeFreed() {
     gpuError_t err = hipEventQuery(event);
     if (err == hipErrorNotReady) {
       VLOG(9) << "Event " << event << " for " << ptr() << " is not completed";
+      // ignore the error
+      hipGetLastError();
       // Erase the completded event before "it"
       outstanding_event_map_.erase(outstanding_event_map_.begin(), it);
       return false;
