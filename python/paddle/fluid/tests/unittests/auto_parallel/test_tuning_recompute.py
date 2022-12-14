@@ -98,9 +98,11 @@ class TestRecomputePassTuning(unittest.TestCase):
         engine._tune(self.dataset, 3, batch_size=self.batch_size)
 
         assert (
-            engine._dist_contexts[
-                'train'
-            ].strategy.recompute.no_recompute_segments
+            len(
+                engine._dist_contexts[
+                    'train'
+                ].strategy.recompute.no_recompute_segments
+            )
             > 0
         )
 
