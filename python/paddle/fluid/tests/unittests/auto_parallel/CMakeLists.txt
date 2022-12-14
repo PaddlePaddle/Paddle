@@ -77,6 +77,8 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_pass_quantization MODULES test_pass_quantization ENVS
                   ${dist_ENVS})
   set_tests_properties(test_pass_quantization PROPERTIES TIMEOUT 60)
+  py_test_modules(test_tuning_recompute MODULES test_tuning_recompute)
+  set_tests_properties(test_tuning_recompute PROPERTIES TIMEOUT 240)
 
   py_test_modules(test_while_op_completion MODULES test_while_op_completion
                   ENVS ${dist_ENVS})
