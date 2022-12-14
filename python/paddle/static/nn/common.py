@@ -412,32 +412,33 @@ def data_norm(
         y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
     Args:
-        input(Tensor): The input Tensor.
-        act(string, Default None): Activation type, linear|relu|prelu|...
-        epsilon(float, Default 1e-05):
-        param_attr(ParamAttr): The parameter attribute for Parameter `scale`.
+        input (Tensor): The input Tensor.
+        act (string, optional): Activation type, linear|relu|prelu|... Default: None.
+        epsilon(float, optional): Whether to add small values ​in​to the variance during calculations
+            to prevent division by zero. Default: 1e-05.
+        param_attr (ParamAttr, optional): The parameter attribute for Parameter `scale`. Default: None.
         data_layout (str, optional): Specify the data format of the input, and the data format of the output
             will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`.
-        in_place(bool, Default False): Make the input and output of batch norm reuse memory.
-        name(string, Default None): A name for this layer(optional). If set None, the layer
-            will be named automatically.
-        moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
-        moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
-        do_model_average_for_mean_and_var(bool, Default True): Whether parameter mean and variance
-            should do model average when model average is enabled.
-        slot_dim(int): The embedding dimension of one slot. Slot is a set of one specific feature. In pslib mode, we
-            distinguish feature ids by slot and pull their embeddings from parameter server (pslib). The first
+            `[batch_size, input_channels, input_height, input_width]`. Default: `"NCHW"`.
+        in_place (bool, optional): Make the input and output of batch norm reuse memory. Default: False.
+        name (string, optional): A name for this layer (optional). If set None, the layer
+            will be named automatically. Default: None.
+        moving_mean_name (string, optional): The name of moving_mean which store the global Mean. Default: None.
+        moving_variance_name (string, optional): The name of the moving_variance which store the global Variance. Default: None.
+        do_model_average_for_mean_and_var (bool, optional): Whether parameter mean and variance
+            should do model average when model average is enabled. Default: True.
+        slot_dim (int, optional): The embedding dimension of one slot. Slot is a set of one specific feature. In pslib mode,
+            we distinguish feature ids by slot and pull their embeddings from parameter server (pslib). The first
             place of the embedding is the historical show number (occurence time of this feature id with a label 0).
             If the input of this op is concated by slot-wise embeddings, and the show number is zero when this slot
             is new or empty, the normalization result may be impractical. To avoid this, we add slot_dim to locate
             the show number and judge if the show number is zero. If so, we choose to skip normalization on this
-            embedding.
-        sync_stats(bool, Default False): When running with multiple GPU cards, using allreduce to sync the
-            summary messages.
-        summary_decay_rate(float, Default 0.9999999): The decay rate when updating summary.
-        enable_scale_and_shift(bool, Default False): do scale&shift after normalization.
+            embedding. Default: -1.
+        sync_stats (bool, optional): When running with multiple GPU cards, using allreduce to sync the
+            summary messages. Default: False.
+        summary_decay_rate (float, optional): The decay rate when updating summary. Default: 0.9999999.
+        enable_scale_and_shift (bool, optional): do scale&shift after normalization. Default: False.
 
     Returns:
         Tensor: A tensor which is the result after applying data normalization on the input.
