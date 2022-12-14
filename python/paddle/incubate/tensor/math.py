@@ -31,9 +31,14 @@ def segment_sum(data, segment_ids, name=None):
     r"""
     Segment Sum Operator.
 
-    This operator sums the elements of input `data` which with
+    Sum the elements of input `data` which with
     the same index in `segment_ids`.
-    It computes a tensor such that $out_i = \\sum_{j} data_{j}$
+    It computes a tensor such that
+
+    .. math::
+
+        out_i = \sum_{j \in \{segment\_ids_j == i \} } data_{j}
+
     where sum is over j such that `segment_ids[j] == i`.
 
     Args:
@@ -45,7 +50,7 @@ def segment_sum(data, segment_ids, name=None):
                             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-       output (Tensor): the reduced result.
+       Tensor, the Segment Sum result.
 
     Examples:
 
@@ -93,11 +98,16 @@ def segment_sum(data, segment_ids, name=None):
 )
 def segment_mean(data, segment_ids, name=None):
     r"""
-    Segment mean Operator.
+    Segment Mean Operator.
 
     Ihis operator calculate the mean value of input `data` which
     with the same index in `segment_ids`.
-    It computes a tensor such that $out_i = \\frac{1}{n_i}  \\sum_{j} data[j]$
+    It computes a tensor such that
+
+    .. math::
+
+        out_i = \mathop{mean}_{j \in \{segment\_ids_j == i \} } data_{j}
+
     where sum is over j such that 'segment_ids[j] == i' and $n_i$ is the number
     of all index 'segment_ids[j] == i'.
 
@@ -110,7 +120,7 @@ def segment_mean(data, segment_ids, name=None):
                             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-       output (Tensor): the reduced result.
+       Tensor, the Segment Mean result.
 
     Examples:
 
@@ -161,9 +171,14 @@ def segment_min(data, segment_ids, name=None):
     r"""
     Segment min operator.
 
-    This operator calculate the minimum elements of input `data` which with
+    Calculate the minimum elements of input `data` which with
     the same index in `segment_ids`.
-    It computes a tensor such that $out_i = \\min_{j} data_{j}$
+    It computes a tensor such that
+
+    .. math::
+
+        out_i = \min_{j \in \{segment\_ids_j == i \} } data_{j}
+
     where min is over j such that `segment_ids[j] == i`.
 
     Args:
@@ -175,7 +190,7 @@ def segment_min(data, segment_ids, name=None):
                             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-       output (Tensor): the reduced result.
+       Tensor, the minimum result.
 
     Examples:
 
@@ -227,9 +242,14 @@ def segment_max(data, segment_ids, name=None):
     r"""
     Segment max operator.
 
-    This operator calculate the maximum elements of input `data` which with
+    Calculate the maximum elements of input `data` which with
     the same index in `segment_ids`.
-    It computes a tensor such that $out_i = \\max_{j} data_{j}$
+    It computes a tensor such that
+
+    .. math::
+
+        out_i = \max_{j \in \{segment\_ids_j == i \} } data_{j}
+
     where max is over j such that `segment_ids[j] == i`.
 
     Args:
@@ -241,7 +261,7 @@ def segment_max(data, segment_ids, name=None):
                             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-       output (Tensor): the reduced result.
+       Tensor, the maximum result.
 
     Examples:
 

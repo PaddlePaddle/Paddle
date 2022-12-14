@@ -18,7 +18,7 @@ from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 import paddle
 import paddle.fluid as fluid
 import paddle.nn.functional as F
-from paddle.fluid.dygraph import Embedding, Layer, Linear, to_variable
+from paddle.fluid.dygraph import Layer, to_variable
 from paddle.optimizer.lr import NoamDecay
 
 """
@@ -269,8 +269,8 @@ class PrePostProcessLayer(Layer):
 class PositionwiseFeedForwardLayer(Layer):
     def __init__(self, d_inner_hid, d_hid, dropout_rate):
         super().__init__()
-        self._i2h = Linear(d_hid, d_inner_hid, act="relu")
-        self._h2o = Linear(d_inner_hid, d_hid)
+        self._i2h = paddle.nn.Linear(d_hid, d_inner_hid)
+        self._h2o = paddle.nn.Linear(d_inner_hid, d_hid)
         self._dropout_rate = dropout_rate
 
     def forward(self, x):
@@ -304,10 +304,18 @@ class MultiHeadAttentionLayer(Layer):
         self._d_value = d_value
         self._d_model = d_model
         self._dropout_rate = dropout_rate
-        self._q_fc = Linear(self._d_model, d_key * n_head, bias_attr=False)
-        self._k_fc = Linear(self._d_model, d_key * n_head, bias_attr=False)
-        self._v_fc = Linear(self._d_model, d_value * n_head, bias_attr=False)
-        self._proj_fc = Linear(d_value * n_head, self._d_model, bias_attr=False)
+        self._q_fc = paddle.nn.Linear(
+            self._d_model, d_key * n_head, bias_attr=False
+        )
+        self._k_fc = paddle.nn.Linear(
+            self._d_model, d_key * n_head, bias_attr=False
+        )
+        self._v_fc = paddle.nn.Linear(
+            self._d_model, d_value * n_head, bias_attr=False
+        )
+        self._proj_fc = paddle.nn.Linear(
+            d_value * n_head, self._d_model, bias_attr=False
+        )
 
     def forward(self, queries, keys, values, attn_bias):
         # compute q ,k ,v
@@ -334,12 +342,12 @@ class MultiHeadAttentionLayer(Layer):
         transpose_v = paddle.transpose(x=reshaped_v, perm=[0, 2, 1, 3])
 
         # scale dot product attention
-        product = fluid.layers.matmul(
+        product = paddle.matmul(
             x=transpose_q,
             y=transpose_k,
             transpose_y=True,
-            alpha=self._d_model**-0.5,
         )
+        product = paddle.scale(product, scale=self._d_model**-0.5)
         if attn_bias is not None:
             product += attn_bias
         weights = paddle.nn.functional.softmax(product)
@@ -350,9 +358,9 @@ class MultiHeadAttentionLayer(Layer):
                 seed=ModelHyperParams.dropout_seed,
                 is_test=False,
             )
-            out = fluid.layers.matmul(weights_droped, transpose_v)
+            out = paddle.matmul(weights_droped, transpose_v)
         else:
-            out = fluid.layers.matmul(weights, transpose_v)
+            out = paddle.matmul(weights, transpose_v)
 
         # combine heads
         if len(out.shape) != 4:
@@ -505,11 +513,11 @@ class PrepareEncoderDecoderLayer(Layer):
         self._src_emb_dim = src_emb_dim
         self._src_vocab_size = src_vocab_size
         self._dropout_rate = dropout_rate
-        self._input_emb = Embedding(
-            size=[src_vocab_size, src_emb_dim],
-            is_sparse=is_sparse,
-            padding_idx=0,
-            param_attr=fluid.ParamAttr(
+        self._input_emb = paddle.nn.Embedding(
+            src_vocab_size,
+            src_emb_dim,
+            sparse=is_sparse,
+            weight_attr=fluid.ParamAttr(
                 name=word_emb_param_name,
                 initializer=fluid.initializer.Normal(0.0, src_emb_dim**-0.5),
             ),
@@ -519,10 +527,11 @@ class PrepareEncoderDecoderLayer(Layer):
             pos_inp = pos_inp1
         else:
             pos_inp = pos_inp2
-        self._pos_emb = Embedding(
-            size=[self._src_max_len, src_emb_dim],
-            is_sparse=is_sparse,
-            param_attr=fluid.ParamAttr(
+        self._pos_emb = paddle.nn.Embedding(
+            self._src_max_len,
+            src_emb_dim,
+            sparse=is_sparse,
+            weight_attr=fluid.ParamAttr(
                 name=pos_enc_param_name,
                 initializer=fluid.initializer.NumpyArrayInitializer(pos_inp),
                 trainable=False,
@@ -825,7 +834,9 @@ class WrapDecoderLayer(Layer):
         )
         self._weight_sharing = weight_sharing
         if not weight_sharing:
-            self._fc = Linear(d_model, trg_vocab_size, bias_attr=False)
+            self._fc = paddle.nn.Linear(
+                d_model, trg_vocab_size, bias_attr=False
+            )
 
     def forward(self, dec_inputs=None, enc_output=None):
         trg_word, trg_pos, trg_slf_attn_bias, trg_src_attn_bias = dec_inputs
@@ -839,7 +850,7 @@ class WrapDecoderLayer(Layer):
         )
 
         if self._weight_sharing:
-            predict = fluid.layers.matmul(
+            predict = paddle.matmul(
                 x=dec_output_reshape,
                 y=self._prepare_decoder_layer._input_emb.weight,
                 transpose_y=True,

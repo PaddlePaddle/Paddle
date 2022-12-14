@@ -732,7 +732,7 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
     for (int i = 0; i < weight_tensor.numel(); i++) {
       int32_data[i] = int64_data[i];
     }
-    weight.SetDataType(phi::DataType::FLOAT32);
+    weight.SetDataType(phi::DataType::INT32);
     weight.SetValues(int32_data);
   } else {
     paddle::framework::TensorCopySync(

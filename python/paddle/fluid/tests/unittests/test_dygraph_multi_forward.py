@@ -61,13 +61,10 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
             bias_attr=None,
         )
 
-        self._pool2d = paddle.fluid.dygraph.nn.Pool2D(
-            pool_size=pool_size,
-            pool_type=pool_type,
-            pool_stride=pool_stride,
-            pool_padding=pool_padding,
-            global_pooling=global_pooling,
-            use_cudnn=use_cudnn,
+        self._pool2d = paddle.nn.MaxPool2D(
+            kernel_size=pool_size,
+            stride=pool_stride,
+            padding=pool_padding,
         )
 
     def forward(self, inputs):
@@ -141,7 +138,9 @@ class TestDygraphMultiForward(unittest.TestCase):
                     label.stop_gradient = True
 
                     cost = mnist(img)
-                    loss = fluid.layers.cross_entropy(cost, label)
+                    loss = paddle.nn.functional.cross_entropy(
+                        cost, label, reduction='none', use_softmax=False
+                    )
                     avg_loss = paddle.mean(loss)
 
                     dy_out = avg_loss.numpy()
@@ -170,7 +169,9 @@ class TestDygraphMultiForward(unittest.TestCase):
             )
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             cost = mnist(img)
-            loss = fluid.layers.cross_entropy(cost, label)
+            loss = paddle.nn.functional.cross_entropy(
+                cost, label, reduction='none', use_softmax=False
+            )
             avg_loss = paddle.mean(loss)
 
             # initialize params and fetch them

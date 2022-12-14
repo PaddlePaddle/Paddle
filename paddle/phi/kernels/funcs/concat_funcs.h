@@ -21,13 +21,14 @@ namespace funcs {
 
 static inline int64_t ComputeAxis(int64_t axis, int64_t rank) {
   PADDLE_ENFORCE_EQ(
-      axis >= -rank && axis < rank,
+      !rank || (axis >= -rank && axis < rank),
       true,
       phi::errors::InvalidArgument(
           "The axis is expected to be in range of [%d, %d), but got %d",
           -rank,
           rank,
           axis));
+  axis = rank ? axis : 0;
   if (axis < 0) {
     axis = axis + rank;
   }

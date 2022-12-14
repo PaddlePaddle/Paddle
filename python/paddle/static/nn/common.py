@@ -322,6 +322,55 @@ def instance_norm(
 
 
 @static_only
+def continuous_value_model(input, cvm, use_cvm=True):
+    r"""
+    **continuous_value_model layers**
+    Now, this OP is used in CTR project to remove or dispose show and click value in :attr:`input`.
+    :attr:`input` is an embedding vector including show and click value, whose shape is :math:`[N, D]` (N is batch size. D is `2 + embedding dim` ).
+    Show and click at first two dims of embedding vector D.
+    If :attr:`use_cvm` is True, it will calculate :math:`log(show)` and :math:`log(click)` , and output shape is :math:`[N, D]` .
+    If :attr:`use_cvm` is False, it will remove show and click from :attr:`input` , and output shape is :math:`[N, D - 2]` .
+    :attr:`cvm` is show_click info, whose shape is :math:`[N, 2]` .
+    Args:
+        input (Variable): The input variable. A 2-D LoDTensor with shape :math:`[N, D]` , where N is the batch size, D is `2 + the embedding dim` . `lod level = 1` .
+        A Tensor with type float32, float64.
+        cvm (Variable): Show and click variable. A 2-D Tensor with shape :math:`[N, 2]` , where N is the batch size, 2 is show and click.
+        A Tensor with type float32, float64.
+        use_cvm  (bool):  Use show_click or not. if use, the output dim is the same as input.
+                          if not use, the output dim is `input dim - 2` (remove show and click)
+    Returns:
+        Variable: A 2-D LodTensor with shape :math:`[N, M]` . if :attr:`use_cvm` = True, M is equal to input dim D. if False, M is equal to `D - 2`. \
+        A Tensor with same type as input.
+    Examples:
+        .. code-block:: python
+          import paddle.fluid as fluid
+          import paddle
+          input = paddle.static.data(name="input", shape=[64, 1], dtype="int64")
+          label = paddle.static.data(name="label", shape=[64, 1], dtype="int64")
+          w0 = paddle.full(shape=(100, 1), fill_value=2).astype(paddle.float32)
+          embed = paddle.nn.functional.embedding(
+                            input,
+                            w0)
+          ones = paddle.full_like(label, 1, dtype="int64")
+          show_clk = paddle.cast(paddle.concat([ones, label], axis=1), dtype='float32')
+          show_clk.stop_gradient = True
+          input_with_cvm = paddle.static.nn.continuous_value_model(embed, show_clk, True)
+    """
+    helper = LayerHelper('cvm', **locals())
+    out = helper.create_variable(dtype=input.dtype)
+    check_variable_and_dtype(
+        input, 'input', ['float16', 'float32', 'float64'], 'cvm'
+    )
+    helper.append_op(
+        type='cvm',
+        inputs={'X': [input], 'CVM': [cvm]},
+        outputs={'Y': [out]},
+        attrs={"use_cvm": use_cvm},
+    )
+    return out
+
+
+@static_only
 def data_norm(
     input,
     act=None,
@@ -2158,6 +2207,328 @@ def bilinear_tensor_product(
 
     # add activation
     return helper.append_activation(out)
+
+
+def batch_norm(
+    input,
+    act=None,
+    is_test=False,
+    momentum=0.9,
+    epsilon=1e-05,
+    param_attr=None,
+    bias_attr=None,
+    data_layout='NCHW',
+    in_place=False,
+    name=None,
+    moving_mean_name=None,
+    moving_variance_name=None,
+    do_model_average_for_mean_and_var=True,
+    use_global_stats=False,
+):
+    r"""
+
+    **Batch Normalization Layer**
+
+    Can be used as a normalizer function for convolution or fully_connected operations.
+    The required data format for this layer is one of the following:
+
+    1. NHWC `[batch, in_height, in_width, in_channels]`
+
+    2. NCHW `[batch, in_channels, in_height, in_width]`
+
+    Refer to `Batch Normalization: Accelerating Deep Network Training by Reducing
+    Internal Covariate Shift <https://arxiv.org/pdf/1502.03167.pdf>`_
+    for more details.
+
+    :math:input is the input features over a mini-batch.
+
+    ..  math::
+
+        \\mu_{\\beta} &\\gets \\frac{1}{m} \\sum_{i=1}^{m} x_i \\qquad &//\\
+        \ mini-batch\ mean \\\\
+        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
+        \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+
+        moving\_mean = moving\_mean * momentum + mini-batch\_mean * (1. - momentum) \\\\
+        moving\_var = moving\_var * momentum + mini-batch\_var * (1. - momentum)
+
+
+    moving_mean is global mean and moving_var is global variance.
+
+    When use_global_stats = True, the :math:`\\mu_{\\beta}`
+    and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
+    They are global (or running) statistics. (It usually got from the
+    pre-trained model.)
+    The training and testing (or inference) have the same behavior:
+
+    ..  math::
+
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}}  \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta
+
+    Note:
+        if build_strategy.sync_batch_norm=True, the batch_norm in network will use
+        sync_batch_norm automatically.
+        `is_test = True` can only be used in test program and inference program, `is_test` CANNOT be set to True in train program, if you want to use global status from pre_train model in train program, please set `use_global_stats = True`.
+
+    Args:
+        input(Tensor): The rank of input Tensor can be 2, 3, 4, 5. The data type
+            is float16 or float32 or float64.
+        act(string, Default None): Activation type, linear|relu|prelu|...
+        is_test (bool, Default False): A flag indicating whether it is in
+            test phrase or not.
+        momentum(float|Tensor, Default 0.9): The value used for the moving_mean and
+            moving_var computation. This should be a float number or a Tensor with
+            shape [1] and data type as float32. The updated formula is:
+            :math:`moving\_mean = moving\_mean * momentum + new\_mean * (1. - momentum)`
+            :math:`moving\_var = moving\_var * momentum + new\_var * (1. - momentum)`
+            Default is 0.9.
+        epsilon(float, Default 1e-05): A value added to the denominator for
+            numerical stability. Default is 1e-5.
+        param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
+             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
+         will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
+         If the Initializer of the param_attr is not set, the parameter is initialized
+         with Xavier. Default: None.
+        bias_attr(ParamAttr|None): The parameter attribute for the bias of batch_norm.
+             If it is set to None or one attribute of ParamAttr, batch_norm
+         will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
+         If the Initializer of the bias_attr is not set, the bias is initialized zero.
+         Default: None.
+        data_layout (str, optional): Specify the data format of the input, and the data format of the output
+             will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+             `[batch_size, input_channels, input_height, input_width]`.
+        in_place(bool, Default False): Make the input and output of batch norm reuse memory.
+        name(str|None): For detailed information, please refer to :ref:`api_guide_Name`.
+            Usually name is no need to set and None by default.
+        moving_mean_name(str, Default None): The name of moving_mean which store the global Mean. If it
+            is set to None, batch_norm will save global mean with a random name, otherwise, batch_norm
+            will save global mean with the string.
+        moving_variance_name(str, Default None): The name of the moving_variance which store the global Variance.
+            If it is set to None, batch_norm will save global variance with a random name, otherwise, batch_norm
+            will save global variance with the string.
+        do_model_average_for_mean_and_var(bool, Default True): Whether parameter mean and variance should do model
+            average when model average is enabled.
+        use_global_stats(bool, Default False): Whether to use global mean and
+            variance. In inference or test mode, set use_global_stats to true
+            or is_test to true, and the behavior is equivalent.
+            In train mode, when setting use_global_stats True, the global mean
+            and variance are also used during train period.
+
+    Returns:
+        A Tensor which is the result after applying batch normalization on the input,
+        has same shape and data type with input.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+
+            paddle.enable_static()
+            x = paddle.static.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
+            hidden1 = paddle.static.nn.fc(x=x, size=200)
+            print(hidden1.shape)
+            # [3, 200]
+            hidden2 = paddle.static.nn.batch_norm(input=hidden1)
+            print(hidden2.shape)
+            # [3, 200]
+    """
+    assert (
+        bias_attr is not False
+    ), "bias_attr should not be False in batch_norm."
+    helper = LayerHelper('batch_norm', **locals())
+
+    check_variable_and_dtype(
+        input, 'input', ['float16', 'float32', 'float64'], 'batch_norm'
+    )
+    dtype = helper.input_dtype()
+
+    # use fp32 for bn parameter
+    if dtype == core.VarDesc.VarType.FP16:
+        dtype = core.VarDesc.VarType.FP32
+
+    input_shape = input.shape
+    if data_layout == 'NCHW':
+        channel_num = input_shape[1]
+    else:
+        if data_layout == 'NHWC':
+            channel_num = input_shape[-1]
+        else:
+            raise ValueError("unsupported data layout:" + data_layout)
+
+    param_shape = [channel_num]
+
+    # create parameter
+    scale = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=param_shape,
+        dtype=dtype,
+        default_initializer=paddle.fluid.initializer.Constant(1.0),
+    )
+    bias = helper.create_parameter(
+        attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True
+    )
+
+    mean = helper.create_parameter(
+        attr=paddle.ParamAttr(
+            name=moving_mean_name,
+            initializer=paddle.fluid.initializer.Constant(0.0),
+            trainable=False,
+            do_model_average=do_model_average_for_mean_and_var,
+        ),
+        shape=param_shape,
+        dtype=dtype,
+    )
+    mean.stop_gradient = True
+
+    variance = helper.create_parameter(
+        attr=paddle.ParamAttr(
+            name=moving_variance_name,
+            initializer=paddle.fluid.initializer.Constant(1.0),
+            trainable=False,
+            do_model_average=do_model_average_for_mean_and_var,
+        ),
+        shape=param_shape,
+        dtype=dtype,
+    )
+    variance.stop_gradient = True
+
+    # create output
+    # mean and mean_out share the same memory
+    mean_out = mean
+    # variance and variance_out share the same memory
+    variance_out = variance
+
+    if _non_static_mode():
+        inputs_has_MomemtumTensor = False
+        attrs_has_momentum = False
+        tmp_tensor_type = core.eager.Tensor
+        if isinstance(momentum, tmp_tensor_type):
+            inputs_has_MomemtumTensor = True
+        else:
+            attrs_has_momentum = True
+
+        attrs_ = ()
+        if attrs_has_momentum:
+            attrs_ = (
+                'momentum',
+                momentum,
+                'epsilon',
+                epsilon,
+                'is_test',
+                is_test,
+                'data_layout',
+                data_layout,
+                'use_mkldnn',
+                False,
+                'fuse_with_relu',
+                False,
+                'use_global_stats',
+                use_global_stats,
+            )
+        else:
+            attrs_ = (
+                'epsilon',
+                epsilon,
+                'is_test',
+                is_test,
+                'data_layout',
+                data_layout,
+                'use_mkldnn',
+                False,
+                'fuse_with_relu',
+                False,
+                'use_global_stats',
+                use_global_stats,
+            )
+        if inputs_has_MomemtumTensor:
+            batch_norm_out, _, _, _, _, _ = paddle._legacy_C_ops.batch_norm(
+                input,
+                scale,
+                bias,
+                mean,
+                variance,
+                momentum,
+                mean_out,
+                variance_out,
+                *attrs_,
+            )
+        else:
+            batch_norm_out, _, _, _, _, _ = paddle._legacy_C_ops.batch_norm(
+                input,
+                scale,
+                bias,
+                mean,
+                variance,
+                None,
+                mean_out,
+                variance_out,
+                *attrs_,
+            )
+
+        return paddle.fluid.dygraph_utils._append_activation_in_dygraph(
+            batch_norm_out, act=act, use_mkldnn=False
+        )
+
+    saved_mean = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True
+    )
+    saved_variance = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True
+    )
+    reserve_space = None
+    if not is_test:
+        reserve_space = helper.create_variable_for_type_inference(
+            dtype=helper.input_dtype(), stop_gradient=True
+        )
+
+    batch_norm_out = (
+        input if in_place else helper.create_variable_for_type_inference(dtype)
+    )
+
+    inputs = {
+        "X": input,
+        "Scale": scale,
+        "Bias": bias,
+        "Mean": mean,
+        "Variance": variance,
+        "MeanOut": mean_out,
+        "VarianceOut": variance_out,
+    }
+    attrs = {
+        "epsilon": epsilon,
+        "is_test": is_test,
+        "data_layout": data_layout,
+        "use_mkldnn": False,
+        "fuse_with_relu": False,
+        "use_global_stats": use_global_stats,
+    }
+    if isinstance(momentum, paddle.static.Variable):
+        inputs['MomemtumTensor'] = momentum
+    else:
+        attrs['momentum'] = momentum
+
+    outputs = {
+        "Y": batch_norm_out,
+        "MeanOut": mean_out,
+        "VarianceOut": variance_out,
+        "SavedMean": saved_mean,
+        "SavedVariance": saved_variance,
+    }
+    if reserve_space is not None:
+        outputs["ReserveSpace"] = reserve_space
+
+    helper.append_op(
+        type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs
+    )
+
+    return helper.append_activation(batch_norm_out)
 
 
 @static_only

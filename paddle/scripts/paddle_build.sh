@@ -24,6 +24,7 @@ if [ -z ${BRANCH} ]; then
     BRANCH="develop"
 fi
 
+
 function print_usage() {
     echo -e "\n${RED}Usage${NONE}:
     ${BOLD}${SCRIPT_NAME}${NONE} [OPTION]"
@@ -1008,9 +1009,8 @@ function generate_upstream_develop_api_spec() {
     cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
 
     cd ${PADDLE_ROOT}
-    git fetch upstream $BRANCH
     git checkout -b develop_base_pr -t upstream/$BRANCH
-    echo "upstream develop git log: "
+    echo "develop git log: "
     git log --pretty=oneline -10
 
     dev_commit=`git log -1|head -1|awk '{print $2}'`
@@ -3647,6 +3647,7 @@ function run_setup(){
 
     # reset ccache zero stats for collect PR's actual hit rate
     ccache -z
+
     python setup.py $2;build_error=$?
     
     # ci will collect ccache hit rate

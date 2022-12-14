@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 import paddle.optimizer as optimizer
-from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
+from paddle.fluid.framework import _in_legacy_dygraph
 
 
 class TestOptimizerForVarBase(unittest.TestCase):
@@ -59,104 +59,64 @@ class TestOptimizerForVarBase(unittest.TestCase):
             x.numpy(), np.full([2, 3], -self.lr), rtol=1e-05
         )
 
-    def func_test_adam_with_varbase_list_input(self):
+    def test_adam_with_varbase_list_input(self):
         self.run_optimizer_step_with_varbase_list_input(optimizer.Adam)
         self.run_optimizer_minimize_with_varbase_list_input(optimizer.Adam)
 
-    def test_adam_with_varbase_list_input(self):
-        with _test_eager_guard():
-            self.func_test_adam_with_varbase_list_input()
-        self.func_test_adam_with_varbase_list_input()
-
-    def func_test_sgd_with_varbase_list_input(self):
+    def test_sgd_with_varbase_list_input(self):
         self.run_optimizer_step_with_varbase_list_input(optimizer.SGD)
         self.run_optimizer_minimize_with_varbase_list_input(optimizer.SGD)
 
-    def test_sgd_with_varbase_list_input(self):
-        with _test_eager_guard():
-            self.func_test_sgd_with_varbase_list_input()
-        self.func_test_sgd_with_varbase_list_input()
-
-    def func_test_adagrad_with_varbase_list_input(self):
+    def test_adagrad_with_varbase_list_input(self):
         self.run_optimizer_step_with_varbase_list_input(optimizer.Adagrad)
         self.run_optimizer_minimize_with_varbase_list_input(optimizer.Adagrad)
 
-    def test_adagrad_with_varbase_list_input(self):
-        with _test_eager_guard():
-            self.func_test_adagrad_with_varbase_list_input()
-        self.func_test_adagrad_with_varbase_list_input()
-
-    def func_test_adamw_with_varbase_list_input(self):
+    def test_adamw_with_varbase_list_input(self):
         self.run_optimizer_step_with_varbase_list_input(optimizer.AdamW)
         self.run_optimizer_minimize_with_varbase_list_input(optimizer.AdamW)
 
-    def test_adamw_with_varbase_list_input(self):
-        with _test_eager_guard():
-            self.func_test_adamw_with_varbase_list_input()
-        self.func_test_adamw_with_varbase_list_input()
-
-    def func_test_adamax_with_varbase_list_input(self):
+    def test_adamax_with_varbase_list_input(self):
         self.run_optimizer_step_with_varbase_list_input(optimizer.Adamax)
         self.run_optimizer_minimize_with_varbase_list_input(optimizer.Adamax)
 
-    def test_adamax_with_varbase_list_input(self):
-        with _test_eager_guard():
-            self.func_test_adamax_with_varbase_list_input()
-        self.func_test_adamax_with_varbase_list_input()
-
-    def func_test_momentum_with_varbase_list_input(self):
+    def test_momentum_with_varbase_list_input(self):
         self.run_optimizer_step_with_varbase_list_input(optimizer.Momentum)
         self.run_optimizer_minimize_with_varbase_list_input(optimizer.Momentum)
 
-    def test_momentum_with_varbase_list_input(self):
-        with _test_eager_guard():
-            self.func_test_momentum_with_varbase_list_input()
-        self.func_test_momentum_with_varbase_list_input()
-
-    def func_test_optimizer_with_varbase_input(self):
+    def test_optimizer_with_varbase_input(self):
         x = paddle.zeros([2, 3])
         with self.assertRaises(TypeError):
             optimizer.Adam(learning_rate=self.lr, parameters=x)
 
-    def test_optimizer_with_varbase_input(self):
-        with _test_eager_guard():
-            self.func_test_optimizer_with_varbase_input()
-        self.func_test_optimizer_with_varbase_input()
-
-    def func_test_create_param_lr_with_1_for_coverage(self):
-        if _in_legacy_dygraph():
-            x = paddle.fluid.framework.ParamBase(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="x",
-                optimize_attr={'learning_rate': 1.0},
-            )
-        else:
-            x = paddle.fluid.framework.EagerParamBase(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="x",
-                optimize_attr={'learning_rate': 1.0},
-            )
-        x.value().get_tensor().set(
-            np.random.random((5, 10)).astype('float32'),
-            paddle.fluid.framework._current_expected_place(),
-        )
-
-        y = paddle.ones([5, 10])
-        z = x + y
-        opt = optimizer.Adam(learning_rate=self.lr, parameters=[x])
-        z.backward()
-        opt.step()
-
     def test_create_param_lr_with_1_for_coverage(self):
-        with _test_eager_guard():
-            self.func_test_create_param_lr_with_1_for_coverage()
-        self.func_test_create_param_lr_with_1_for_coverage()
+        if _in_legacy_dygraph():
+            x = paddle.fluid.framework.ParamBase(
+                dtype="float32",
+                shape=[5, 10],
+                lod_level=0,
+                name="x",
+                optimize_attr={'learning_rate': 1.0},
+            )
+        else:
+            x = paddle.fluid.framework.EagerParamBase(
+                dtype="float32",
+                shape=[5, 10],
+                lod_level=0,
+                name="x",
+                optimize_attr={'learning_rate': 1.0},
+            )
+        x.value().get_tensor().set(
+            np.random.random((5, 10)).astype('float32'),
+            paddle.fluid.framework._current_expected_place(),
+        )
 
-    def func_test_create_param_lr_with_no_1_value_for_coverage(self):
+        y = paddle.ones([5, 10])
+        z = x + y
+        opt = optimizer.Adam(learning_rate=self.lr, parameters=[x])
+        z.backward()
+        opt.step()
+
+    def test_create_param_lr_with_no_1_value_for_coverage(self):
         if _in_legacy_dygraph():
             x = paddle.fluid.framework.ParamBase(
                 dtype="float32",
@@ -183,11 +143,6 @@ class TestOptimizerForVarBase(unittest.TestCase):
         opt = optimizer.Adam(learning_rate=self.lr, parameters=[x])
         z.backward()
         opt.step()
-
-    def func_test_create_param_lr_with_no_1_value_for_coverage(self):
-        with _test_eager_guard():
-            self.func_test_create_param_lr_with_1_for_coverage()
-        self.func_test_create_param_lr_with_1_for_coverage()
 
 
 if __name__ == "__main__":
