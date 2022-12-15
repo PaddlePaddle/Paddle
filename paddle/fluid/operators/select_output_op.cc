@@ -64,7 +64,9 @@ class SelectOutputOp : public framework::OperatorBase {
 
     const framework::Variable *x = scope.FindVar(Input("X"));
     framework::Variable *selected_out = scope.FindVar(out_names[output_branch]);
-    framework::VisitVarType(*x, AssignFunctor(selected_out, dev_ctx));
+    if (nullptr != selected_out) {
+      framework::VisitVarType(*x, AssignFunctor(selected_out, dev_ctx));
+    }
   }
 };
 
