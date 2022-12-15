@@ -199,6 +199,9 @@ __global__ void InplaceAddReluKernel(const int N,
   }
 }
 
+/**
+ * brief: Launch BiasAddReluKernel with relu or not. 
+**/
 template<int Half2VecSize>
 void LaunchBiasAddReluHalf2Kernel(cudaStream_t stream,
                                   const int32_t rows, 
@@ -210,6 +213,7 @@ void LaunchBiasAddReluHalf2Kernel(cudaStream_t stream,
   const int vec_num = rows * cols / (Half2VecSize * 2);
   const int half2_num = rows * cols / 2; 
   const int blocks = (vec_num + threads - 1) / threads;
+  // Here reinterpret_cast to half2 type. 
   typedef typename FcTypeTraits<float16>::Type trans_type;
   auto* bias_half2_ptr = reinterpret_cast<const trans_type*>(B);
   auto* data_half2_ptr = reinterpret_cast<trans_type*>(Y);
@@ -222,12 +226,16 @@ void LaunchBiasAddReluHalf2Kernel(cudaStream_t stream,
   }
 }
 
+/**
+ * brief: Dispatch BiasAddReluKernel half2 type with 8 / 4 / 2 vecsize. 
+ **/
 void DispatchBiasAddReluKernelHalf2VecSize(cudaStream_t stream,
                                             const int32_t rows, 
                                             const int32_t cols, 
                                             float16* Y,
                                             const float16* B,
                                             bool relu){
+  // Half Max Vecsize is 128 / 16 = 8, since we use half2 type, here Half2VecSize need divide 2. 
   if(cols % 8 == 0) {
     LaunchBiasAddReluHalf2Kernel<4>(stream, rows, cols, Y, B, relu); 
   } else if(cols % 4 == 0) {
