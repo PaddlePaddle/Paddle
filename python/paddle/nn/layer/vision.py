@@ -156,7 +156,7 @@ class PixelUnshuffle(Layer):
 
 class ChannelShuffle(Layer):
     """
-    This operator divides channels in a tensor of shape [N, C, H, W] or [N, H, W, C] into g groups,
+    Can divide channels in a tensor of shape [N, C, H, W] or [N, H, W, C] into g groups,
     getting a tensor with the shape of [N, g, C/g, H, W] or [N, H, W, g, C/g], and transposes them
     as [N, C/g, g, H, W] or [N, H, W, g, C/g], then rearranges them to original tensor shape. This
     operation can improve the interaction between channels, using features efficiently. Please
@@ -166,7 +166,7 @@ class ChannelShuffle(Layer):
 
     Parameters:
         groups (int): Number of groups to divide channels in.
-        data_format (str): The data format of the input and output data. An optional string of NCHW or NHWC. The default is NCHW. When it is NCHW, the data is stored in the order of [batch_size, input_channels, input_height, input_width].
+        data_format (str, optional): The data format of the input and output data. An optional string of NCHW or NHWC. The default is NCHW. When it is NCHW, the data is stored in the order of [batch_size, input_channels, input_height, input_width].
         name (str, optional): Name for the operation (optional, default is None). Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
