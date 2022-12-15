@@ -192,7 +192,7 @@ class TestWarpRNNTOp(OpTest):
                     ],
                 ],
             ],
-            dtype=np.float64,
+            dtype=np.float32,
         )
 
     def config(self):
@@ -229,7 +229,7 @@ class TestWarpRNNTOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True, check_dygraph=False)
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         self.outputs["warprnntgrad"] = self.gradient
@@ -237,16 +237,14 @@ class TestWarpRNNTOp(OpTest):
             self.check_grad(
                 ["input"],
                 "loss",
-                max_relative_error=0.01,
-                check_dygraph=False,
+                numeric_grad_delta=0.007,
                 check_eager=True,
             )
         else:
             self.check_grad(
                 ["input"],
                 "loss",
-                max_relative_error=0.01,
-                check_dygraph=False,
+                numeric_grad_delta=0.007,
                 check_eager=True,
             )
 
@@ -254,7 +252,7 @@ class TestWarpRNNTOp(OpTest):
 class TestWarpRNNTFP64Op(TestWarpRNNTOp):
     def test_check_output(self):
         self.acts.astype(np.float64)
-        self.check_output(check_eager=True, check_dygraph=False)
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
         self.acts.astype(np.float64)
@@ -263,16 +261,14 @@ class TestWarpRNNTFP64Op(TestWarpRNNTOp):
             self.check_grad(
                 ["input"],
                 "loss",
-                max_relative_error=0.01,
-                check_dygraph=False,
+                numeric_grad_delta=0.007,
                 check_eager=True,
             )
         else:
             self.check_grad(
                 ["input"],
                 "loss",
-                max_relative_error=0.01,
-                check_dygraph=False,
+                numeric_grad_delta=0.007,
                 check_eager=True,
             )
 
@@ -443,79 +439,6 @@ class TestRNNTLossAPICase(unittest.TestCase):
             dtype=np.float32,
         )
 
-    def set_gradient(self):
-        self.gradient = np.array(
-            [
-                [
-                    [
-                        [-0.43222645, -0.56777355, 0.0],
-                        [-0.3656501, 0.0, -0.20212345],
-                        [-0.20212345, 0.0, 0.0],
-                    ],
-                    [
-                        [-0.16521672, -0.26700973, 0.0],
-                        [-0.39436539, 0.0, -0.23829444],
-                        [-0.44041789, 0.0, 0.0],
-                    ],
-                    [
-                        [-0.05212979, -0.11308693, 0.0],
-                        [-0.18313787, 0.0, -0.32431445],
-                        [-0.76473234, 0.0, 0.0],
-                    ],
-                    [
-                        [0.0, -0.05212979, 0.0],
-                        [0.0, 0.0, -0.23526766],
-                        [-1.0, 0.0, 0.0],
-                    ],
-                ],
-                [
-                    [
-                        [-0.71614241, -0.28385759, 0.0],
-                        [-0.18382932, -0.10002826, 0.0],
-                        [-0.10002826, 0.0, 0.0],
-                    ],
-                    [
-                        [-0.41121795, -0.30492447, 0.0],
-                        [-0.32957594, -0.15917785, 0.0],
-                        [-0.25920611, 0.0, 0.0],
-                    ],
-                    [
-                        [-0.11607642, -0.29514153, 0.0],
-                        [-0.28653336, -0.3381841, 0.0],
-                        [-0.59739022, 0.0, 0.0],
-                    ],
-                    [
-                        [0.0, -0.11607642, 0.0],
-                        [0.0, -0.40260978, 0.0],
-                        [-1.0, 0.0, 0.0],
-                    ],
-                ],
-                [
-                    [
-                        [-0.71614241, -0.28385759, 0.0],
-                        [-0.18382932, -0.10002826, 0.0],
-                        [-0.10002826, 0.0, 0.0],
-                    ],
-                    [
-                        [-0.41121795, -0.30492447, 0.0],
-                        [-0.32957594, -0.15917785, 0.0],
-                        [-0.25920611, 0.0, 0.0],
-                    ],
-                    [
-                        [-0.11607642, -0.29514153, 0.0],
-                        [-0.28653336, -0.3381841, 0.0],
-                        [-0.59739022, 0.0, 0.0],
-                    ],
-                    [
-                        [0.0, -0.11607642, 0.0],
-                        [0.0, -0.40260978, 0.0],
-                        [-1.0, 0.0, 0.0],
-                    ],
-                ],
-            ],
-            dtype=np.float64,
-        )
-
     def config(self):
         self.blank = 0
         self.fastemit_lambda = 0.0
@@ -528,7 +451,6 @@ class TestRNNTLossAPICase(unittest.TestCase):
             [4.2806528590890736, 3.9384369822503591, 3.9384369822503591],
             dtype=np.float64,
         )
-        self.set_gradient()
 
     def test_functinal_api(self):
         self.config()
