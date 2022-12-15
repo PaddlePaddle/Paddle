@@ -641,6 +641,7 @@ void BindAnalysisConfig(py::module *m) {
       .def("model_dir", &AnalysisConfig::model_dir)
       .def("prog_file", &AnalysisConfig::prog_file)
       .def("params_file", &AnalysisConfig::params_file)
+      .def("exp_disable_mixed_precision_ops", &AnalysisConfig::Exp_DisableMixedPrecisionOps)
       .def("enable_use_gpu",
            &AnalysisConfig::EnableUseGpu,
            py::arg("memory_pool_init_size_mb"),

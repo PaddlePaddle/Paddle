@@ -235,15 +235,6 @@ nvinfer1::DimsExprs UnchangedInferMeta(
   return inputs[0];
 }
 
-nvinfer1::DimsExprs MoeInferMeta(
-    int output_index,
-    const nvinfer1::DimsExprs* inputs,
-    int nb_inputs,
-    nvinfer1::IExprBuilder& expr_builder,  // NOLINT
-    const framework::OpDesc& op_desc) {
-  return inputs[0];
-}
-
 nvinfer1::DimsExprs Pad3dInferMeta(
     int output_index,
     const nvinfer1::DimsExprs* inputs,
@@ -322,9 +313,8 @@ nvinfer1::DimsExprs PNormInferMeta(
     int nb_inputs,
     nvinfer1::IExprBuilder& expr_builder,  // NOLINT
     const framework::OpDesc& op_desc) {
-  const nvinfer1::DimsExprs x_dim = inputs[0];
+  nvinfer1::DimsExprs x_dim = inputs[0];
   std::vector<const nvinfer1::IDimensionExpr*> reduce_dims;
-  std::vector<const nvinfer1::IDimensionExpr*> keep_dims;
 
   bool asvector = PADDLE_GET_CONST(bool, op_desc.GetAttr("asvector"));
   bool keepdim = PADDLE_GET_CONST(bool, op_desc.GetAttr("keepdim"));
@@ -332,11 +322,13 @@ nvinfer1::DimsExprs PNormInferMeta(
 
   if (asvector) {
     reduce_dims.emplace_back(expr_builder.constant(1));
-    keep_dims.emplace_back(expr_builder.constant(1));
     if (keepdim) {
       for (int i = 1; i < x_dim.nbDims; ++i) {
-        keep_dims.emplace_back(expr_builder.constant(1));
+        reduce_dims.emplace_back(expr_builder.constant(1));
       }
+      x_dim.nbDims = reduce_dims.size();
+      for (size_t i = 0; i < reduce_dims.size(); i++)
+        x_dim.d[i] = reduce_dims[i];
     }
   } else {
     if (axis < 0) axis = x_dim.nbDims + axis;
@@ -347,12 +339,11 @@ nvinfer1::DimsExprs PNormInferMeta(
       reduce_dims.emplace_back(expr_builder.constant(1));
     }
   }
-  keep_dims[axis] = expr_builder.constant(1);
+  x_dim.d[axis] = expr_builder.constant(1);
 
   nvinfer1::DimsExprs output;
   if (keepdim) {
-    output.nbDims = keep_dims.size();
-    for (int i = 0; i < output.nbDims; i++) output.d[i] = keep_dims[i];
+    output = x_dim;
   } else {
     output.nbDims = reduce_dims.size();
     for (int i = 0; i < output.nbDims; i++) output.d[i] = reduce_dims[i];
@@ -393,9 +384,9 @@ PD_REGISTER_DYNAMIC_INFER_META_FN(instance_norm, InstanceNormInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(unfold, UnflodInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(scatter_nd_add, ScatterNdAddInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(inverse, UnchangedInferMeta);
-PD_REGISTER_DYNAMIC_INFER_META_FN(moe, MoeInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(pad3d, Pad3dInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(grid_sampler, GridSamplerInferMeta);
+PD_REGISTER_DYNAMIC_INFER_META_FN(p_norm, PNormInferMeta);
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
