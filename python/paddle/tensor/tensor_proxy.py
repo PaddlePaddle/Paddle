@@ -12,7 +12,7 @@ class Tensor:
     def cast(self, dtype: np.dtype | str):
         """
 
-        This OP takes in the Tensor :attr:`x` with :attr:`x.dtype` and casts it
+        Take in the Tensor :attr:`x` with :attr:`x.dtype` and cast it
         to the output with :attr:`dtype`. It's meaningless if the output dtype
         equals the input dtype, but it's fine if you do so.
 
@@ -2286,7 +2286,7 @@ class Tensor:
     def logical_and(self, y, out=None, name=None):
         r"""
 
-        ``logical_and`` operator computes element-wise logical AND on ``x`` and ``y``, and returns ``out``. ``out`` is N-dim boolean ``Tensor``.
+        Compute element-wise logical AND on ``x`` and ``y``, and return ``out``. ``out`` is N-dim boolean ``Tensor``.
         Each element of ``out`` is calculated by
 
         .. math::
@@ -2300,7 +2300,7 @@ class Tensor:
 
         Args:
             y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
-            out(Tensor): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
+            out(Tensor, optional): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
             name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
         Returns:
@@ -8699,6 +8699,14 @@ class Tensor:
     def __neg__(self) -> Tensor:
         """
         Negate the tensor elementwise.
+
+        """
+        ...
+
+
+    def __add__(self, other: Tensor) -> Tensor:
+        """
+        Add two tensors elementwise.
 
         """
         ...

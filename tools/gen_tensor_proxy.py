@@ -249,6 +249,13 @@ def get_other_methods() -> list[str]:
     # TODO: more methods
     methods = [
         ("__neg__", "(self)", "Tensor", None, "Negate the tensor elementwise."),
+        (
+            "__add__",
+            "(self, other: Tensor)",
+            "Tensor",
+            None,
+            "Add two tensors elementwise.",
+        ),
         ("T", "(self)", "Tensor", "property", "The transpose of the tensor."),
     ]
     methods_code: list[str] = []

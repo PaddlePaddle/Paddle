@@ -676,3 +676,8 @@ __all__ = [  # noqa
     'take',
     'frexp',
 ]
+
+import typing
+
+if typing.TYPE_CHECKING:
+    from .tensor.tensor_proxy import Tensor

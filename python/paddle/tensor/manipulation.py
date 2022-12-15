@@ -16,8 +16,8 @@
 
 from __future__ import annotations
 
+import typing
 from collections import Counter
-from typing import Any
 
 import numpy as np
 
@@ -44,12 +44,10 @@ from ..framework import (
 from ..static import Variable
 from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
 
-__all__ = []
-
-import typing
-
 if typing.TYPE_CHECKING:
-    Tensor = Any
+    from .tensor_proxy import Tensor
+
+__all__ = []
 
 
 def cast(x: Tensor, dtype: np.dtype | str):

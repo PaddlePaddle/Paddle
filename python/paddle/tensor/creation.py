@@ -16,6 +16,7 @@
 
 import math
 import re
+import typing
 import warnings
 
 import numpy as np
@@ -48,6 +49,9 @@ from ..framework import (
     core,
     in_dygraph_mode,
 )
+
+if typing.TYPE_CHECKING:
+    from .tensor_proxy import Tensor
 
 __all__ = []
 
@@ -684,7 +688,7 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
     return output
 
 
-def to_tensor(data, dtype=None, place=None, stop_gradient=True):
+def to_tensor(data, dtype=None, place=None, stop_gradient=True) -> Tensor:
     r"""
     Constructs a ``paddle.Tensor`` from ``data`` ,
     which can be scalar, tuple, list, numpy\.ndarray, paddle\.Tensor.
@@ -901,7 +905,7 @@ def ones_like(x, dtype=None, name=None):
     return full_like(x=x, fill_value=1, dtype=dtype, name=name)
 
 
-def zeros(shape, dtype=None, name=None):
+def zeros(shape, dtype=None, name=None) -> Tensor:
     """
     Creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 0.
 

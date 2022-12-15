@@ -8,7 +8,8 @@ exclude: |
         .+_py2\.py|
         .+tensor_proxy\.py|
         python/paddle/fluid/tests/unittests/npu/.+|
-        python/paddle/fluid/tests/unittests/mlu/.+
+        python/paddle/fluid/tests/unittests/mlu/.+|
+        demo.py
     )$
 repos:
 # Common hooks
