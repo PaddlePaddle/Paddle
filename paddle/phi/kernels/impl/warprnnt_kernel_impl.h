@@ -30,7 +30,7 @@ class ComputeRnntLossFunctor {
  public:
   rnntStatus_t operator()(const T* const activations,
                           T* gradients,
-                          const int* const labels,
+                          const int* const label,
                           const int* const label_lengths,
                           const int* const input_lengths,
                           int alphabet_size,
@@ -47,7 +47,7 @@ class ComputeRnntLossFunctor<Context, float> {
  public:
   rnntStatus_t operator()(const float* const activations,
                           float* gradients,
-                          const int* const labels,
+                          const int* const label,
                           const int* const label_lengths,
                           const int* const input_lengths,
                           int alphabet_size,
@@ -57,7 +57,7 @@ class ComputeRnntLossFunctor<Context, float> {
                           rnntOptions options) {
     return compute_rnnt_loss(activations,
                              gradients,
-                             labels,
+                             label,
                              label_lengths,
                              input_lengths,
                              static_cast<int>(alphabet_size),
@@ -73,7 +73,7 @@ class ComputeRnntLossFunctor<Context, double> {
  public:
   rnntStatus_t operator()(const double* const activations,
                           double* gradients,
-                          const int* const labels,
+                          const int* const label,
                           const int* const label_lengths,
                           const int* const input_lengths,
                           int alphabet_size,
@@ -83,7 +83,7 @@ class ComputeRnntLossFunctor<Context, double> {
                           rnntOptions options) {
     return compute_rnnt_loss_fp64(activations,
                                   gradients,
-                                  labels,
+                                  label,
                                   label_lengths,
                                   input_lengths,
                                   static_cast<int>(alphabet_size),
@@ -109,8 +109,8 @@ class WarpRNNTFunctor {
    *                          (B, Tmax, Umax, D), (row-major) format
    * \param gradient          batch matrix of gradient, with the same shape as
    *                          input,  (B, Tmax, Umax, D)
-   * \param labels            labels, (B, Umax)
-   * \param label_lengths     length of all labels, (B,).
+   * \param label            label, (B, Umax)
+   * \param label_lengths     length of all label, (B,).
    * \param input_lengths     length of all sequences, (B,).
    * \param D                 number of vocab symbols, w/ blank.
    * \param B                 number of example.
@@ -120,7 +120,7 @@ class WarpRNNTFunctor {
   void operator()(const Context& dev_ctx,
                   const T* input,
                   T* gradient,
-                  const int* labels,
+                  const int* label,
                   const int* label_lengths,
                   const int* input_lengths,
                   const size_t D,
@@ -174,7 +174,7 @@ class WarpRNNTFunctor {
     // compute loss and gradient
     status = ComputeRnntLossFunctor<Context, T>()(input,
                                                   gradient,
-                                                  labels,
+                                                  label,
                                                   label_lengths,
                                                   input_lengths,
                                                   static_cast<int>(D),
@@ -233,48 +233,48 @@ class WarpRNNTFunctor {
 
 template <typename T, typename Context>
 void WarprnntKernel(const Context& dev_ctx,
-                    const DenseTensor& acts,
-                    const DenseTensor& labels,
-                    const DenseTensor& acts_length,
-                    const DenseTensor& labels_length,
+                    const DenseTensor& input,
+                    const DenseTensor& label,
+                    const DenseTensor& input_lengths,
+                    const DenseTensor& label_lengths,
                     int blank,
                     float fastemit_lambda,
                     int num_threads,
                     DenseTensor* loss,
                     DenseTensor* warprnntgrad) {
   PADDLE_ENFORCE_EQ(
-      acts.dims().size(),
+      input.dims().size(),
       4,
       phi::errors::InvalidArgument("The rank of Input(Logits) should be 4 "
                                    "but received %d. ",
-                                   acts.dims().size()));
+                                   input.dims().size()));
 
   PADDLE_ENFORCE_EQ(
-      labels.dims().size(),
+      label.dims().size(),
       2,
       phi::errors::InvalidArgument("The rank of Input(Label) should be 2 "
                                    "but received %d. ",
-                                   labels.dims().size()));
+                                   label.dims().size()));
 
-  PADDLE_ENFORCE_EQ(acts_length.dims().size(),
+  PADDLE_ENFORCE_EQ(input_lengths.dims().size(),
                     1,
                     phi::errors::InvalidArgument(
                         "The rank of Input(LogitsLength) should be 1 "
                         "but received %d. ",
-                        acts_length.dims().size()));
+                        input_lengths.dims().size()));
 
   PADDLE_ENFORCE_EQ(
-      labels_length.dims().size(),
+      label_lengths.dims().size(),
       1,
       phi::errors::InvalidArgument("The rank of Input(LabelLength) should be 1 "
                                    "but received %d. ",
-                                   labels_length.dims().size()));
+                                   label_lengths.dims().size()));
 
   size_t B, Tmax, Umax, D;
-  B = acts.dims()[0];
-  Tmax = acts.dims()[1];
-  Umax = acts.dims()[2];
-  D = acts.dims()[3];
+  B = input.dims()[0];
+  Tmax = input.dims()[1];
+  Umax = input.dims()[2];
+  D = input.dims()[3];
 
   PADDLE_ENFORCE_GT(B,
                     0,
@@ -308,7 +308,7 @@ void WarprnntKernel(const Context& dev_ctx,
                         "but received %d. ",
                         D));
 
-  warprnntgrad->Resize(acts.dims());
+  warprnntgrad->Resize(input.dims());
   T* warprnntgrad_data = dev_ctx.template Alloc<T>(warprnntgrad);
   phi::funcs::SetConstant<Context, T>()(
       dev_ctx, warprnntgrad, static_cast<T>(0));
@@ -320,11 +320,11 @@ void WarprnntKernel(const Context& dev_ctx,
   T* warprnnt_loss_data = dev_ctx.template HostAlloc<T>(&warprnnt_loss);
 
   WarpRNNTFunctor<Context, T>()(dev_ctx,
-                                acts.data<T>(),
+                                input.data<T>(),
                                 warprnntgrad_data,
-                                labels.data<int>(),
-                                labels_length.data<int>(),
-                                acts_length.data<int>(),
+                                label.data<int>(),
+                                label_lengths.data<int>(),
+                                input_lengths.data<int>(),
                                 D,
                                 B,
                                 Tmax,

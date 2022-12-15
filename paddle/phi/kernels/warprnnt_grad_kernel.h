@@ -21,13 +21,13 @@ namespace phi {
 
 template <typename T, typename Context>
 void WarprnntGradKernel(const Context& dev_ctx,
-                        const DenseTensor& acts,
-                        const DenseTensor& acts_length,
+                        const DenseTensor& input,
+                        const DenseTensor& input_lengths,
                         const DenseTensor& warprnntgrad,
                         const DenseTensor& loss_grad,
                         int blank,
                         float fastemit_lambda,
                         int num_threads,
-                        DenseTensor* acts_grad);
+                        DenseTensor* input_grad);
 
 }  // namespace phi

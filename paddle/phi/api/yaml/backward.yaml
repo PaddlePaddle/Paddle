@@ -1251,15 +1251,15 @@
   no_need_buffer : x
 
 - backward_op : warprnnt_grad
-  forward : warprnnt (Tensor acts, Tensor labels, Tensor acts_length, Tensor labels_length, int blank = 0, float fastemit_lambda = 0.0, int num_threads = 1) -> Tensor(loss), Tensor(warprnntgrad)
-  args : (Tensor acts, Tensor acts_length, Tensor warprnntgrad, Tensor loss_grad, int blank = 0, float fastemit_lambda = 0.0, int num_threads = 1)
-  output : Tensor(acts_grad)
+  forward : warprnnt (Tensor input, Tensor label, Tensor input_lengths, Tensor label_lengths, int blank = 0, float fastemit_lambda = 0.0, int num_threads = 1) -> Tensor(loss), Tensor(warprnntgrad)
+  args : (Tensor input, Tensor input_lengths, Tensor warprnntgrad, Tensor loss_grad, int blank = 0, float fastemit_lambda = 0.0, int num_threads = 1)
+  output : Tensor(input_grad)
   infer_meta :
     func : UnchangedInferMeta
-    param : [acts]
+    param : [input]
   kernel :
     func : warprnnt_grad
-  no_need_buffer : acts
+  no_need_buffer : input
 
 - backward_op : where_grad
   forward : where (Tensor condition, Tensor x, Tensor y) -> Tensor(out)

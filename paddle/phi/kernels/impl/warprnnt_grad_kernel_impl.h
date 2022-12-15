@@ -26,15 +26,15 @@ namespace phi {
 
 template <typename T, typename Context>
 void WarprnntGradKernel(const Context& dev_ctx,
-                        const DenseTensor& acts,
-                        const DenseTensor& acts_length,
+                        const DenseTensor& input,
+                        const DenseTensor& input_lengths,
                         const DenseTensor& warprnntgrad,
                         const DenseTensor& loss_grad,
                         int blank,
                         float fastemit_lambda,
                         int num_threads,
-                        DenseTensor* acts_grad) {
-  dev_ctx.template Alloc<T>(acts_grad);
+                        DenseTensor* input_grad) {
+  dev_ctx.template Alloc<T>(input_grad);
 
   int B = warprnntgrad.dims()[0];     // B
   int Tmax = warprnntgrad.dims()[1];  // Tmax
@@ -46,7 +46,7 @@ void WarprnntGradKernel(const Context& dev_ctx,
 
   // (B, T, U, D)
   auto warprnntgrad_e = EigenTensor<T, 4>::From(warprnntgrad);
-  auto acts_grad_e = EigenTensor<T, 4>::From(*acts_grad);
+  auto acts_grad_e = EigenTensor<T, 4>::From(*input_grad);
 
   Eigen::DSizes<int, 4> grad_shape(B, 1, 1, 1);
   Eigen::DSizes<int, 4> bcast(1, Tmax, Umax, D);

@@ -2759,16 +2759,16 @@ void WarpctcInferMeta(const MetaTensor& logits,
   loss->set_dtype(logits.dtype());
 }
 
-void WarprnntInferMeta(const MetaTensor& acts,
-                       const MetaTensor& labels,
-                       const MetaTensor& acts_length,
-                       const MetaTensor& labels_length,
+void WarprnntInferMeta(const MetaTensor& input,
+                       const MetaTensor& label,
+                       const MetaTensor& input_lengths,
+                       const MetaTensor& label_lengths,
                        int blank,
                        float fastemit_lambda,
                        int num_threads,
                        MetaTensor* loss,
                        MetaTensor* warpctcgrad) {
-  auto acts_dims = acts.dims();
+  auto acts_dims = input.dims();
   int D = acts_dims[3];
 
   PADDLE_ENFORCE_GE(
@@ -2787,7 +2787,7 @@ void WarprnntInferMeta(const MetaTensor& acts,
           blank));
 
   loss->set_dims({-1});
-  loss->set_dtype(acts.dtype());
+  loss->set_dtype(input.dtype());
 }
 
 void WhereInferMeta(const MetaTensor& condition,

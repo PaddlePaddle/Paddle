@@ -1901,26 +1901,28 @@ def ctc_loss(
 
 
 def rnnt_loss(
-    acts,
-    labels,
-    act_lengths,
+    input,
+    label,
+    input_lengths,
     label_lengths,
     blank=0,
     reduction='mean',
     fastemit_lambda=0.001,
+    name=None,
 ):
     """
     An operator integrating the open source Warp-Transducer library (https://github.com/b-flo/warp-transducer.git)
     to compute Sequence Transduction with Recurrent Neural Networks (RNN-T) loss.
 
     Parameters:
-        acts (Tensor): The logprobs sequence with padding, which is a 4-D Tensor. The tensor shape is [B, Tmax， Umax, D], where Tmax， is the longest length of input logit sequence. The data type should be float32 or float64.
-        labels (Tensor): The ground truth sequence with padding, which must be a 2-D Tensor. The tensor shape is [B, Umax], where Umax is the longest length of label sequence. The data type must be int32.
-        act_lengths (Tensor): The length for each input sequence, it should have shape [batch_size] and dtype int64.
+        input (Tensor): The logprobs sequence with padding, which is a 4-D Tensor. The tensor shape is [B, Tmax， Umax, D], where Tmax， is the longest length of input logit sequence. The data type should be float32 or float64.
+        label (Tensor): The ground truth sequence with padding, which must be a 2-D Tensor. The tensor shape is [B, Umax], where Umax is the longest length of label sequence. The data type must be int32.
+        input_lengths (Tensor): The length for each input sequence, it should have shape [batch_size] and dtype int64.
         label_lengths (Tensor): The length for each label sequence, it should have shape [batch_size] and dtype int64.
         blank (int, optional): The blank label index of RNN-T loss, which is in the half-opened interval [0, B). The data type must be int32. Default is 0.
-        reduction (string, optional): Indicate how to average the loss, the candicates are ``'none'`` | ``'mean'`` | ``'sum'``. If :attr:`reduction` is ``'mean'``, the output loss will be divided by the batch_size, and then return the mean of quotient; If :attr:`reduction` is ``'sum'``, return the sum of loss; If :attr:`reduction` is ``'none'``, no reduction will be applied. Default is ``'mean'``.
+        reduction (string, optional): Indicate how to average the loss, the candicates are ``'none'`` | ``'mean'`` | ``'sum'``. If :attr:`reduction` is ``'mean'``, the output will be sum of loss and be divided by the batch_size; If :attr:`reduction` is ``'sum'``, return the sum of loss; If :attr:`reduction` is ``'none'``, no reduction will be applied. Default is ``'mean'``.
         fastemit_lambda (float, default 0.001): Regularization parameter for FastEmit (https://arxiv.org/pdf/2010.11148.pdf)
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, The RNN-T loss between ``logprobs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is [1]. Data type is the same as ``logprobs``.
@@ -1976,20 +1978,20 @@ def rnnt_loss(
             return loss_out
         helper = LayerHelper('warprnnt', **locals())
         check_variable_and_dtype(
-            input, 'acts', ['float32', 'float64'], "warprnnt"
+            input, 'input', ['float32', 'float64'], "warprnnt"
         )
-        check_variable_and_dtype(label, 'labels', ['int32'], "warprnnt")
+        check_variable_and_dtype(label, 'label', ['int32'], "warprnnt")
         check_variable_and_dtype(
-            input_length, 'acts_length', ['int32'], "warprnnt"
+            input_length, 'input_lengths', ['int32'], "warprnnt"
         )
         check_variable_and_dtype(
-            label_length, 'labels_length', ['int32'], "warprnnt"
+            label_length, 'label_lengths', ['int32'], "warprnnt"
         )
         this_inputs = {
-            'acts': [input],
-            'labels': [label],
-            'acts_length': [input_length],
-            'labels_length': [label_length],
+            'input': [input],
+            'label': [label],
+            'input_lengths': [input_length],
+            'label_lengths': [label_length],
         }
 
         loss_out = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -2007,21 +2009,21 @@ def rnnt_loss(
         )
         return loss_out
 
-    B = acts.shape[0]
+    B = input.shape[0]
 
     # NOTE manually done log_softmax for CPU version,
     # log_softmax is computed within GPU version.
 
     # (B,)
     loss_out = warprnnt(
-        acts, labels, act_lengths, label_lengths, blank, fastemit_lambda
+        input, label, input_lengths, label_lengths, blank, fastemit_lambda
     )
 
     assert reduction in ['mean', 'sum', 'none']
     if reduction == 'mean':
-        loss_out = paddle.sum(loss_out) / B
+        loss_out = paddle.sum(loss_out, name=name) / B
     elif reduction == 'sum':
-        loss_out = paddle.sum(loss_out)
+        loss_out = paddle.sum(loss_out, name=name)
     return loss_out
 
 

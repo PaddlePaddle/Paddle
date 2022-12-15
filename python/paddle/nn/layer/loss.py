@@ -1127,10 +1127,10 @@ class RNNTLoss(Layer):
             then the mean over the batch is taken. Default: 'mean'
 
     Shape:
-        acts: logprob Tensor of (batch x seqLength x labelLength x outputDim) containing output from network
-        labels: 2 dimensional (batch, labelLength) Tensor containing all the targets of the batch with zero padded
-        act_lens: Tensor of size (batch) containing size of each output sequence from the network
-        label_lens: Tensor of (batch) containing label length of each example
+        input: logprob Tensor of (batch x seqLength x labelLength x outputDim) containing output from network
+        label: 2 dimensional (batch, labelLength) Tensor containing all the targets of the batch with zero padded
+        input_lengths: Tensor of size (batch) containing size of each output sequence from the network
+        label_lengths: Tensor of (batch) containing label length of each example
 
     Returns:
      Tensor, The RNN-T loss between ``logprobs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is [1]. Data type is the same as ``logprobs``.
@@ -1167,21 +1167,25 @@ class RNNTLoss(Layer):
             #        [4.49566677])
     """
 
-    def __init__(self, blank=0, fastemit_lambda=0.001, reduction='mean'):
+    def __init__(
+        self, blank=0, fastemit_lambda=0.001, reduction='mean', name=None
+    ):
         super().__init__()
         self.blank = blank
         self.reduction = reduction
         self.fastemit_lambda = fastemit_lambda
+        self.name = name
 
-    def forward(self, acts, labels, act_lens, label_lens):
+    def forward(self, input, label, input_lengths, label_lengths):
         return paddle.nn.functional.rnnt_loss(
-            acts,
-            labels,
-            act_lens,
-            label_lens,
+            input,
+            label,
+            input_lengths,
+            label_lengths,
             self.blank,
             self.reduction,
             self.fastemit_lambda,
+            name=self.name,
         )
 
 

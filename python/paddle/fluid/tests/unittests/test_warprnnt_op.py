@@ -216,10 +216,10 @@ class TestWarpRNNTOp(OpTest):
         self.python_out_sig = ["loss"]
 
         self.inputs = {
-            "acts": self.acts,
-            "labels": self.labels,
-            "acts_length": self.logit_lens,
-            "labels_length": self.label_lens,
+            "input": self.acts,
+            "label": self.labels,
+            "input_lengths": self.logit_lens,
+            "label_lengths": self.label_lens,
         }
         self.outputs = {"loss": self.loss}
         self.attrs = {
@@ -235,7 +235,7 @@ class TestWarpRNNTOp(OpTest):
         self.outputs["warprnntgrad"] = self.gradient
         if core.is_compiled_with_rocm():
             self.check_grad(
-                ["acts"],
+                ["input"],
                 "loss",
                 max_relative_error=0.01,
                 check_dygraph=False,
@@ -243,7 +243,7 @@ class TestWarpRNNTOp(OpTest):
             )
         else:
             self.check_grad(
-                ["acts"],
+                ["input"],
                 "loss",
                 max_relative_error=0.01,
                 check_dygraph=False,
@@ -261,7 +261,7 @@ class TestWarpRNNTFP64Op(TestWarpRNNTOp):
         self.outputs["warprnntgrad"] = self.gradient
         if core.is_compiled_with_rocm():
             self.check_grad(
-                ["acts"],
+                ["input"],
                 "loss",
                 max_relative_error=0.01,
                 check_dygraph=False,
@@ -269,7 +269,7 @@ class TestWarpRNNTFP64Op(TestWarpRNNTOp):
             )
         else:
             self.check_grad(
-                ["acts"],
+                ["input"],
                 "loss",
                 max_relative_error=0.01,
                 check_dygraph=False,
@@ -281,7 +281,7 @@ class TestWarpRNNTOpError(unittest.TestCase):
     def test_errors(self):
         print("test_errors")
         with program_guard(Program(), Program()):
-            logits = fluid.data(name='acts', shape=[5, 16, 6], dtype='float32')
+            logits = fluid.data(name='input', shape=[5, 16, 6], dtype='float32')
             logits_length = fluid.data(
                 name='logit_lengths', shape=[None], dtype='int32'
             )
@@ -295,9 +295,9 @@ class TestWarpRNNTOpError(unittest.TestCase):
                     name='logits_data', shape=[5, 16, 6], dtype='int32'
                 )
                 paddle.nn.functional.rnnt_loss(
-                    acts=logits_data,
-                    labels=label,
-                    act_lengths=logits_length,
+                    input=logits_data,
+                    label=label,
+                    input_lengths=logits_length,
                     label_lengths=label_length,
                 )
 
@@ -308,9 +308,9 @@ class TestWarpRNNTOpError(unittest.TestCase):
                     name='label_data', shape=[16, 3], dtype='int64'
                 )
                 paddle.nn.functional.rnnt_loss(
-                    acts=logits,
-                    labels=label_data,
-                    act_lengths=logits_length,
+                    input=logits,
+                    label=label_data,
+                    input_lengths=logits_length,
                     label_lengths=label_length,
                 )
 
@@ -321,9 +321,9 @@ class TestWarpRNNTOpError(unittest.TestCase):
                     name='logits_length_data', shape=[None], dtype='int64'
                 )
                 paddle.nn.functional.rnnt_loss(
-                    acts=logits,
-                    labels=label,
-                    act_lengths=logits_length_data,
+                    input=logits,
+                    label=label,
+                    input_lengths=logits_length_data,
                     label_lengths=label_length,
                 )
 
@@ -334,9 +334,9 @@ class TestWarpRNNTOpError(unittest.TestCase):
                     name='label_length_data', shape=[None], dtype='int64'
                 )
                 paddle.nn.functional.rnnt_loss(
-                    acts=logits,
-                    labels=label,
-                    act_lengths=logits_length,
+                    input=logits,
+                    label=label,
+                    input_lengths=logits_length,
                     label_lengths=label_length_data,
                 )
 
@@ -357,9 +357,9 @@ class TestWarpRNNTOpError(unittest.TestCase):
             labels_len = paddle.to_tensor(labels_len)
 
             paddle.nn.functional.rnnt_loss(
-                acts=softmax,
-                labels=labels,
-                act_lengths=logits_len,
+                input=softmax,
+                label=labels,
+                input_lengths=logits_len,
                 label_lengths=labels_len,
             )
 

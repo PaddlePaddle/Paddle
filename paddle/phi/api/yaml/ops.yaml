@@ -1081,13 +1081,13 @@
     data_type : potentials
 
 - op : warprnnt
-  args : (Tensor acts, Tensor labels, Tensor acts_length, Tensor labels_length, int blank = 0, float fastemit_lambda = 0.0, int num_threads = 1)
+  args : (Tensor input, Tensor label, Tensor input_lengths, Tensor label_lengths, int blank = 0, float fastemit_lambda = 0.0, int num_threads = 1)
   output :  Tensor(loss), Tensor(warprnntgrad)
   infer_meta :
     func : WarprnntInferMeta
   kernel :
     func : warprnnt
-    data_type: acts
+    data_type: input
   intermediate: warprnntgrad
   backward : warprnnt_grad
 
