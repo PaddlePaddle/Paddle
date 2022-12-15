@@ -509,7 +509,6 @@ void WarprnntInferMeta(const MetaTensor& input,
                        const MetaTensor& label_lengths,
                        int blank,
                        float fastemit_lambda,
-                       int num_threads,
                        MetaTensor* loss,
                        MetaTensor* warpctcgrad);
 

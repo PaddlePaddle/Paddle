@@ -239,7 +239,6 @@ void WarprnntKernel(const Context& dev_ctx,
                     const DenseTensor& label_lengths,
                     int blank,
                     float fastemit_lambda,
-                    int num_threads,
                     DenseTensor* loss,
                     DenseTensor* warprnntgrad) {
   PADDLE_ENFORCE_EQ(
@@ -331,7 +330,7 @@ void WarprnntKernel(const Context& dev_ctx,
                                 Umax,
                                 blank,
                                 fastemit_lambda,
-                                num_threads,
+                                1 /*num_threads*/,
                                 warprnnt_loss_data);
 
   phi::Copy(dev_ctx, warprnnt_loss, dev_ctx.GetPlace(), true, loss);

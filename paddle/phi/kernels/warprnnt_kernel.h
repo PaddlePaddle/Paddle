@@ -27,7 +27,6 @@ void WarprnntKernel(const Context& dev_ctx,
                     const DenseTensor& label_lengths,
                     int blank,
                     float fastemit_lambda,
-                    int num_threads,
                     DenseTensor* loss,
                     DenseTensor* warprnntgrad);
 

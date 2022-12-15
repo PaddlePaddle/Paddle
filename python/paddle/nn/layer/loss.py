@@ -1182,9 +1182,9 @@ class RNNTLoss(Layer):
             label,
             input_lengths,
             label_lengths,
-            self.blank,
-            self.reduction,
-            self.fastemit_lambda,
+            blank=self.blank,
+            fastemit_lambda=self.fastemit_lambda,
+            reduction=self.reduction,
             name=self.name,
         )
 

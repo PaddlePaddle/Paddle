@@ -1964,7 +1964,6 @@ def rnnt_loss(
     def warprnnt(
         input, label, input_length, label_length, blank=0, fastemit_lambda=0.001
     ):
-        num_threads = 1
         if in_dygraph_mode():
             loss_out = _C_ops.warprnnt(
                 input,
@@ -1973,7 +1972,6 @@ def rnnt_loss(
                 label_length,
                 blank,
                 fastemit_lambda,
-                num_threads,
             )
             return loss_out
         helper = LayerHelper('warprnnt', **locals())
@@ -2004,7 +2002,6 @@ def rnnt_loss(
             attrs={
                 'blank': blank,
                 'fastemit_lambda': fastemit_lambda,
-                'num_threads': num_threads,
             },
         )
         return loss_out

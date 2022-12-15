@@ -32,7 +32,6 @@ void WarprnntGradKernel(const Context& dev_ctx,
                         const DenseTensor& loss_grad,
                         int blank,
                         float fastemit_lambda,
-                        int num_threads,
                         DenseTensor* input_grad) {
   dev_ctx.template Alloc<T>(input_grad);
 
