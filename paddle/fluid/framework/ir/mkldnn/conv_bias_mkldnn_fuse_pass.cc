@@ -19,8 +19,8 @@
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -263,7 +263,7 @@ phi::DenseTensor tensor_apply_eltwise(const phi::DenseTensor& vec_a,
   vec_y.Resize(vec_a.dims());
   const float* a = vec_a.data<float>();
   const float* b = vec_b.data<float>();
-  float* y = vec_y.mutable_data<float>(platform::CPUPlace());
+  float* y = vec_y.mutable_data<float>(phi::CPUPlace());
   for (int i = 0; i < vec_a.numel(); i++) {
     y[i] = f(a[i], b[i]);
   }

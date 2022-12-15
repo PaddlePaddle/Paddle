@@ -42,10 +42,6 @@ from .dy2static.convert_call_func import (
     ConversionOptions,
     CONVERSION_OPTIONS,
 )
-from .dy2static.logging_utils import (
-    set_code_level,
-    set_verbosity,
-)
 from .dy2static.program_translator import (
     ProgramTranslator,
     StaticFunction,
@@ -76,14 +72,7 @@ from paddle.fluid.framework import (
 from paddle.fluid.framework import dygraph_only, _non_static_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
 
-__all__ = [
-    'declarative',
-    'set_code_level',
-    'set_verbosity',
-    'save',
-    'load',
-    'not_to_static',
-]
+__all__ = []
 
 
 def create_program_from_desc(program_desc):

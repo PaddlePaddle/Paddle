@@ -19,6 +19,7 @@ from darknet import ConvBNLayer, DarkNet53_conv_body
 
 import paddle
 import paddle.fluid as fluid
+from paddle import _legacy_C_ops
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
 from paddle.jit.api import declarative
@@ -351,7 +352,7 @@ class YOLOv3(fluid.dygraph.Layer):
             yolo_boxes = fluid.layers.concat(self.boxes, axis=1)
             yolo_scores = fluid.layers.concat(self.scores, axis=2)
 
-            pred = fluid.layers.multiclass_nms(
+            pred = _legacy_C_ops.multiclass_nms(
                 bboxes=yolo_boxes,
                 scores=yolo_scores,
                 score_threshold=cfg.valid_thresh,
