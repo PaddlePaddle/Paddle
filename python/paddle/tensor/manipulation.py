@@ -161,7 +161,7 @@ def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
 def cast(x, dtype):
     """
 
-    This OP takes in the Tensor :attr:`x` with :attr:`x.dtype` and casts it
+    Take in the Tensor :attr:`x` with :attr:`x.dtype` and cast it
     to the output with :attr:`dtype`. It's meaningless if the output dtype
     equals the input dtype, but it's fine if you do so.
 
