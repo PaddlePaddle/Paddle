@@ -15,10 +15,12 @@
 from collections import OrderedDict
 
 import paddle
-import paddle.fluid.core as core
 from paddle import _legacy_C_ops
 
-from ...fluid.framework import _non_static_mode
+# from ...fluid.framework import _non_static_mode
+# import paddle.fluid.core as core
+from paddle.framework import _non_static_mode, core
+
 from ...fluid.layers.tensor import fill_constant
 from ..collective import _get_global_env, _new_ring_id
 

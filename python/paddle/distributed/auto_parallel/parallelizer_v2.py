@@ -17,9 +17,13 @@ import logging
 import time
 
 from paddle.distributed.passes import new_pass
-from paddle.fluid import program_guard
-from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import unique_name
+
+# from paddle.fluid.framework import unique_name
+from paddle.framework import unique_name
+
+# from paddle.fluid.backward import append_backward
+# from paddle.fluid import program_guard
+from paddle.static import append_backward, program_guard
 
 from ..utils.log_utils import get_logger
 from .partitioner import Partitioner

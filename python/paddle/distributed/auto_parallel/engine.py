@@ -24,17 +24,25 @@ import numpy as np
 import paddle
 import paddle.distributed.auto_parallel.utils as auto_utils
 import paddle.utils as utils
-from paddle import fluid, static
+
+# from paddle import fluid, static
+from paddle import static
 from paddle.distributed import fleet
-from paddle.fluid import Variable, core
 from paddle.fluid.dygraph.parallel import ParallelEnv
-from paddle.fluid.executor import _to_name_str, global_scope
-from paddle.fluid.framework import Operator
-from paddle.fluid.framework import _current_expected_place as _get_device
-from paddle.fluid.framework import _non_static_mode
+
+# from paddle.fluid.executor import _to_name_str, global_scope
+from paddle.fluid.executor import _to_name_str
 from paddle.fluid.layers.utils import flatten
+
+# from paddle.fluid.framework import _non_static_mode
+# from paddle.fluid.framework import _current_expected_place as _get_device
+# from paddle.fluid import Variable, core
+from paddle.framework import _current_expected_place as _get_device
+from paddle.framework import _non_static_mode, core
 from paddle.metric import Metric
-from paddle.static import InputSpec
+
+# from paddle.fluid.framework import Operator
+from paddle.static import InputSpec, Operator, Variable, global_scope
 
 from ..utils.log_utils import get_logger
 from .callbacks import config_callbacks
@@ -151,11 +159,12 @@ class Engine:
 
         if optimizer and not isinstance(
             optimizer,
-            (paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer),
+            # (paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer),
+            (paddle.optimizer.Optimizer, paddle.static.Optimizer),
         ):
             raise TypeError(
                 "'optimizer' must be object of class `paddle.optimizer.Optimizer`"
-                " or `paddle.fluid.optimizer.Optimizer`."
+                " or `paddle.static.Optimizer`."
             )
         self._optimizer = auto_utils.validate_opt(optimizer)
         self._orig_optimizer = copy.deepcopy(self._optimizer)
@@ -764,8 +773,10 @@ class Engine:
                     process_group.instantiate()
 
         place = _get_device()
-        if isinstance(place, fluid.CUDAPlace):
-            place = fluid.CUDAPlace(ParallelEnv().dev_id)
+        # if isinstance(place, fluid.CUDAPlace):
+        #     place = fluid.CUDAPlace(ParallelEnv().dev_id)
+        if isinstance(place, paddle.framework.CUDAPlace):
+            place = paddle.framework.CUDAPlace(ParallelEnv().dev_id)
 
         if self._strategy.seed:
             paddle.seed(self._strategy.seed + self._dp_ranks[0])

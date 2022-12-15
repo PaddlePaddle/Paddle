@@ -33,9 +33,12 @@ from paddle.distributed.fleet.meta_optimizers.common import (
     is_optimizer_op,
 )
 from paddle.distributed.fleet.meta_optimizers.sharding.utils import get_var_size
-from paddle.fluid import unique_name
-from paddle.fluid.framework import default_main_program, default_startup_program
-from paddle.framework import core
+
+# from paddle.fluid import unique_name
+from paddle.framework import core, unique_name
+
+# from paddle.fluid.framework import default_main_program, default_startup_program
+from paddle.static import default_main_program, default_startup_program
 
 from .pass_base import PassBase, register_pass
 

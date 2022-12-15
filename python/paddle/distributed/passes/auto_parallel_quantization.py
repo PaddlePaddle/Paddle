@@ -17,7 +17,6 @@ from paddle.distributed.auto_parallel.dist_attribute import (
     OperatorDistributedAttribute,
     TensorDistributedAttribute,
 )
-from paddle.fluid import core, framework
 from paddle.fluid.contrib.slim.quantization import (
     AddQuantDequantPassV2,
     OutScaleForTrainingPass,
@@ -25,6 +24,9 @@ from paddle.fluid.contrib.slim.quantization import (
     utils,
 )
 from paddle.fluid.dygraph.parallel import ParallelEnv
+
+# from paddle.fluid import core, framework
+from paddle.framework import IrGraph, core
 
 from .pass_base import PassBase, register_pass
 
@@ -61,12 +63,11 @@ class QuantizationPass(PassBase):
         # TODO: scope and place will be removed,
         # cause params should be initialized by engine module.
         scope = paddle.static.global_scope()
-        place = paddle.fluid.CUDAPlace(ParallelEnv().dev_id)
+        # place = paddle.fluid.CUDAPlace(ParallelEnv().dev_id)
+        place = paddle.framework.CUDAPlace(ParallelEnv().dev_id)
 
         # 1. Program convert to Graph, and this pass is only for train mode
-        main_graph = framework.IrGraph(
-            core.Graph(main_program.desc), for_test=False
-        )
+        main_graph = IrGraph(core.Graph(main_program.desc), for_test=False)
 
         # 2. Prepare inputs
         transform_pass_ops = []

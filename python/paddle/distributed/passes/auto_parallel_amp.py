@@ -25,7 +25,6 @@ from paddle.distributed.auto_parallel.utils import (
     set_var_dist_attr,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
-from paddle.fluid import unique_name
 from paddle.fluid.contrib.mixed_precision.fp16_utils import (
     AutoMixedPrecisionLists,
     _dtype_to_str,
@@ -39,7 +38,9 @@ from paddle.fluid.contrib.mixed_precision.fp16_utils import (
     find_true_prev_op,
 )
 from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
-from paddle.framework import core
+
+# from paddle.fluid import unique_name
+from paddle.framework import core, unique_name
 
 from ..auto_parallel.utils import is_backward_op, is_forward_op, is_loss_op
 from .pass_base import PassBase, register_pass
@@ -524,7 +525,8 @@ def _update_backward_cast_ops(params_grads, dist_context):
             # add new op in the python and cpp at the same time
             new_op_desc = main_block.desc.append_op()
             new_op_desc.copy_from(op.desc)
-            new_op = paddle.fluid.framework.Operator(
+            # new_op = paddle.fluid.framework.Operator(
+            new_op = paddle.static.Operator(
                 block=main_block,
                 desc=new_op_desc,
                 type=None,
@@ -890,7 +892,8 @@ class AMPPass(PassBase):
                 OP_ROLE_KEY, core.op_proto_and_checker_maker.OpRole.Backward
             )
             elementwise_mul_grad_op_desc._set_attr('axis', -1)
-            elementwise_mul_grad_op = paddle.fluid.framework.Operator(
+            # elementwise_mul_grad_op = paddle.fluid.framework.Operator(
+            elementwise_mul_grad_op = paddle.static.Operator(
                 main_block, elementwise_mul_grad_op_desc
             )
             main_block.ops.insert(loss_op_idx + 3, elementwise_mul_grad_op)

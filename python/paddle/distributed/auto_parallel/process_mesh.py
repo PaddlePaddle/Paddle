@@ -184,7 +184,8 @@ class ProcessMesh:
 
     def __enter__(self):
         set_current_process_mesh(self)
-        default_prog = paddle.fluid.default_main_program()
+        # default_prog = paddle.fluid.default_main_program()
+        default_prog = paddle.static.default_main_program()
         cur_block = default_prog.current_block()
         self._old_var_names = list(cur_block.vars.keys())
         self._old_op_size = len(cur_block.ops)
@@ -193,7 +194,8 @@ class ProcessMesh:
         from .dist_op import DistributedOperator
         from .dist_tensor import DistributedTensor
 
-        default_prog = paddle.fluid.default_main_program()
+        # default_prog = paddle.fluid.default_main_program()
+        default_prog = paddle.static.default_main_program()
         cur_block = default_prog.current_block()
         new_var_names = list(cur_block.vars.keys())
         new_op_size = len(cur_block.ops)
