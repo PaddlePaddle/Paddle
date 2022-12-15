@@ -105,7 +105,7 @@ void Conv2dFusionKernel(const Context& ctx,
                           dilation_w,
                           oh,
                           ow,
-                          ctx.stream()};
+                          &ctx};
 
   if (residual) {
     if (activation == "relu") {

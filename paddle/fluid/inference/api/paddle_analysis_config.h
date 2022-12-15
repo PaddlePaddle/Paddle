@@ -395,6 +395,8 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool use_gpu() const { return use_gpu_; }
   ///
+  /// \brief When running the fp16 model on Nvidia GPU, you can also try running
+  /// your model on cutlass.
   ///
   void Exp_EnableUseCutlass();
   ///

@@ -169,9 +169,8 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
   constexpr int CUTLASS_NHWC_ALIGNMENT = 8;
   if (is_fp16_precision) {
 #ifdef PADDLE_WITH_CUTLASS
-    cudaDeviceProp props;
-    cudaGetDeviceProperties(&props, Get<int>("gpu_device_id"));
-    int sm_version = props.major * 10 + props.minor;
+    const auto& prop = platform::GetDeviceProperties(Get<int>("gpu_device_id"));
+    int sm_version = prop.major * 10 + prop.minor;
     // Now we only implement cutlass kernel on SM75.
     if (sm_version == 75) {
       // Cutlass now support these cba activations.

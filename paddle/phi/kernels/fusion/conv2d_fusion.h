@@ -17,6 +17,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
+namespace fusion {
 
 template <typename T, typename Context>
 void Conv2dFusionKernel(const Context& ctx,
@@ -33,5 +34,5 @@ void Conv2dFusionKernel(const Context& ctx,
                         const std::string& activation,
                         float fuse_alpha,
                         DenseTensor* output);
-
+}  // namespace fusion
 }  // namespace phi

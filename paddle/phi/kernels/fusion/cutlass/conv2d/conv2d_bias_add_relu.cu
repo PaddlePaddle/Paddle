@@ -106,16 +106,22 @@ cutlass::Status cutlass_nhwc_conv2d_bias_add_relu(ConvAllParams params) {
 
   ImplicitGemm implicit_gemm_op;
   size_t bytes = implicit_gemm_op.get_workspace_size(arguments);
-  void *workspace;
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(&workspace, bytes));
+
+  auto ctx = params.ctx;
+  auto stream = ctx->stream();
+  paddle::memory::allocation::AllocationPtr tmp_gpu_ptrs_data =
+      paddle::memory::Alloc(
+          ctx->GetPlace(),
+          bytes,
+          phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+  void *workspace = tmp_gpu_ptrs_data->ptr();
 
   cutlass::Status status = implicit_gemm_op.can_implement(arguments);
   CUTLASS_CHECK(status);
   status = implicit_gemm_op.initialize(arguments, workspace);
   CUTLASS_CHECK(status);
-  status = implicit_gemm_op(params.stream);
+  status = implicit_gemm_op(stream);
   CUTLASS_CHECK(status);
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaFree(workspace));
   return status;
 }
 

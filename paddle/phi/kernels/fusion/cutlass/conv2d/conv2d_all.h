@@ -14,7 +14,6 @@
 #pragma once
 #include <cuda_fp16.h>
 #include <glog/logging.h>
-#include <iostream>
 #include <map>
 #include <vector>
 
@@ -23,7 +22,10 @@
 
 #include "cutlass/conv/device/implicit_gemm_convolution.h"
 
+#include "paddle/fluid/memory/allocation/allocator.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace phi {
@@ -36,8 +38,8 @@ namespace fusion {
     return status;                                                           \
   }
 
-#define WARMUP 10
-#define REPEAT 100
+constexpr int WARMUP = 10;
+constexpr int REPEAT = 100;
 
 typedef struct {
   const half *input;
@@ -62,7 +64,7 @@ typedef struct {
   int dilation_w;
   int oh;
   int ow;
-  cudaStream_t stream;
+  const phi::GPUContext *ctx;
   float alpha;  // for leaky_relu use
 } ConvAllParams;
 
