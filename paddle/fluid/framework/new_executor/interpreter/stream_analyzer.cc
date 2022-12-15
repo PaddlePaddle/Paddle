@@ -157,7 +157,9 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
           .get();
     }
 
-    if (op_type == interpreter::kMemcpyD2H) {
+    if (op_type == interpreter::kMemcpyD2H ||
+        (op->Type() == "memcpy" &&
+         op->Attr<int>("dst_place_type") == 0 /*CPUPlace*/)) {
       return ctx_manager.Get(std::string(kD2HStream), place_).get().get();
     } else if (op_type == interpreter::kMemcpyH2D) {
       return ctx_manager.Get(std::string(kH2DStream), place_).get().get();
