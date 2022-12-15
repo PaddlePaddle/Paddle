@@ -22,8 +22,8 @@ from seq2seq_dygraph_model import AttentionModel, BaseModel
 from seq2seq_utils import Seq2SeqModelHyperParams, get_data_iter
 
 import paddle.fluid as fluid
-from paddle.fluid.clip import GradientClipByGlobalNorm
 from paddle.jit import ProgramTranslator
+from paddle.nn.clip import GradientClipByGlobalNorm
 
 place = (
     fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()

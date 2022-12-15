@@ -64,7 +64,9 @@ class TestFleetExecutor(unittest.TestCase):
             )
             opt = paddle.optimizer.AdamW(
                 learning_rate=lr_val,
-                grad_clip=fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0),
+                grad_clip=paddle.nn.clip.GradientClipByGlobalNorm(
+                    clip_norm=1.0
+                ),
             )
             opt.minimize(loss)
         # TODO: section_program will be removed in the future

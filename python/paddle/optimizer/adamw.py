@@ -20,10 +20,10 @@ import paddle
 
 from .. import _C_ops, _legacy_C_ops
 from ..fluid import core, framework, unique_name
-from ..fluid.clip import GradientClipBase
 from ..fluid.dygraph import base as imperative_base
 from ..fluid.framework import Parameter, Variable
 from ..fluid.layer_helper import LayerHelper
+from ..paddle.nn.clip import GradientClipBase
 from .lr import LRScheduler
 from .optimizer import Optimizer
 

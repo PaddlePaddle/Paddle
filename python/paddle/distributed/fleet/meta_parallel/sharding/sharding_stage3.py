@@ -25,8 +25,8 @@ from paddle import nn
 from paddle.autograd import PyLayer
 from paddle.distributed import collective
 from paddle.distributed.collective import _get_global_group
-from paddle.fluid.clip import ClipGradByGlobalNorm
 from paddle.fluid.framework import ParamBase
+from paddle.nn.clip import ClipGradByGlobalNorm
 
 from ...utils.internal_storage import GradStorage
 from ..pp_utils.utils import _all_gather

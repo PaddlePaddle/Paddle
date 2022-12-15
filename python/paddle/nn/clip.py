@@ -54,10 +54,10 @@ def clip_by_norm(x, max_norm, name=None):
         .. code-block:: python
 
             import paddle
-            import paddle.nn as nn
+            from paddle.nn import clip
 
             input = paddle.to_tensor([[2.0, 2.0], [2.0, 2.0]], dtype='float32')
-            reward = nn.clip_by_norm(x=input, max_norm=1.0)
+            reward = clip.clip_by_norm(x=input, max_norm=1.0)
             # [[0.5, 0.5], [0.5, 0.5]]
     """
 
@@ -159,7 +159,7 @@ def get_tensor_from_selected_rows(x, name=None):
     Examples:
         .. code-block:: python
 
-            from paddle import nn
+            from paddle import nnp.py
             b = fluid.default_main_program().global_block()
             input = b.create_var(name="X", dtype="float32", persistable=True, type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
             out = nn.get_tensor_from_selected_rows(input)
@@ -282,7 +282,7 @@ class ErrorClipByValue(BaseErrorClipAttr):
                 avg_cost = paddle.mean(cost)
             prog_clip = prog.clone()
             prog_clip.block(0).var(hidden1.name)._set_error_clip(
-                fluid.clip.ErrorClipByValue(
+                paddle.nn.clip.ErrorClipByValue(
                     max=CLIP_MAX, min=CLIP_MIN)
                     )
     """
@@ -942,16 +942,16 @@ def set_gradient_clip(clip, param_list=None, program=None):
             # network 1: clip all parameter gradient
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 loss = network()
-                fluid.clip.set_gradient_clip(
-                    fluid.clip.GradientClipByGlobalNorm(clip_norm=2.0))
+                paddle.nn.clip.set_gradient_clip(
+                    paddle.nn.clip.GradientClipByGlobalNorm(clip_norm=2.0))
                 sgd = fluid.optimizer.SGD(learning_rate=1e-3)
                 sgd.minimize(loss)
 
             # network 2: clip parameter gradient by name
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 loss = network()
-                fluid.clip.set_gradient_clip(
-                    fluid.clip.GradientClipByValue(min=-1.0, max=1.0),
+                paddle.nn.clip.set_gradient_clip(
+                    paddle.nn.clip.GradientClipByValue(min=-1.0, max=1.0),
                     param_list=["fc1_param", "fc2_param"])
                 sgd = fluid.optimizer.SGD(learning_rate=1e-3)
                 sgd.minimize(loss)
@@ -961,8 +961,8 @@ def set_gradient_clip(clip, param_list=None, program=None):
                 loss = network()
                 param_var1 = fluid.default_main_program().global_block().var("fc1_param")
                 param_var2 = fluid.default_main_program().global_block().var("fc2_param")
-                fluid.clip.set_gradient_clip(
-                    fluid.clip.GradientClipByValue(min=-1.0, max=1.0),
+                paddle.nn.clip.set_gradient_clip(
+                    paddle.nn.clip.GradientClipByValue(min=-1.0, max=1.0),
                     param_list=[param_var1, param_var2])
                 sgd = fluid.optimizer.SGD(learning_rate=1e-3)
                 sgd.minimize(loss)
@@ -970,10 +970,10 @@ def set_gradient_clip(clip, param_list=None, program=None):
             # network 4: use 'set_gradient_clip' and 'optimize(grad_clip=clip)' together
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 loss = network()
-                clip1 = fluid.clip.GradientClipByValue(min=-1.0, max=1.0)
-                clip2 = fluid.clip.GradientClipByNorm(clip_norm=1.0)
+                clip1 = paddle.nn.clip.GradientClipByValue(min=-1.0, max=1.0)
+                clip2 = paddle.nn.clip.GradientClipByNorm(clip_norm=1.0)
                 # Set the gradient clipping strategy: clip1
-                fluid.clip.set_gradient_clip(clip1)
+                paddle.nn.clip.set_gradient_clip(clip1)
                 # Set the gradient clipping strategy: clip2
                 sgd = fluid.optimizer.SGD(learning_rate=1e-3, grad_clip=clip2)
                 sgd.minimize(loss)

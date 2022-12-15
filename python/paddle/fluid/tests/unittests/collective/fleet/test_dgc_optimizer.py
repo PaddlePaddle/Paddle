@@ -15,10 +15,10 @@
 import unittest
 
 import paddle
-import paddle.fluid.clip as clip
 import paddle.fluid.framework as framework
 import paddle.fluid.optimizer as optimizer
 import paddle.fluid.regularizer as regularizer
+import paddle.nn.clip as clip
 
 paddle.enable_static()
 

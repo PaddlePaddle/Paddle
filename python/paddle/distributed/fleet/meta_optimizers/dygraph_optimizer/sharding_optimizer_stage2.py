@@ -30,8 +30,8 @@ import numpy as np
 import paddle
 import paddle.distributed as dist
 from paddle.distributed.collective import _get_global_group, new_group
-from paddle.fluid.clip import ClipGradByGlobalNorm
 from paddle.framework import core
+from paddle.nn.clip import ClipGradByGlobalNorm
 from paddle.optimizer import Optimizer
 
 from ...meta_parallel.sharding.sharding_utils import (

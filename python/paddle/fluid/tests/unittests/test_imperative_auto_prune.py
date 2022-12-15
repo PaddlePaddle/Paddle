@@ -363,7 +363,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
         place = fluid.CPUPlace()
         with fluid.dygraph.guard(place):
             model = MyLayer(size, vocab_size, size)
-            grad_clip = fluid.clip.GradientClipByGlobalNorm(0.001)
+            grad_clip = paddle.nn.clip.GradientClipByGlobalNorm(0.001)
             optimizer = fluid.optimizer.AdamOptimizer(
                 0.001, parameter_list=model.parameters(), grad_clip=grad_clip
             )
@@ -382,7 +382,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
 
         with fluid.dygraph.guard(place):
             model = MyLayer2(size, vocab_size, size)
-            grad_clip = fluid.clip.GradientClipByGlobalNorm(0.001)
+            grad_clip = paddle.nn.clip.GradientClipByGlobalNorm(0.001)
             optimizer = fluid.optimizer.AdamOptimizer(
                 0.001, parameter_list=model.parameters(), grad_clip=grad_clip
             )

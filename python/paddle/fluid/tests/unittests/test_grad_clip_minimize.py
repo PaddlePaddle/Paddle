@@ -17,12 +17,12 @@ import unittest
 import numpy as np
 
 import paddle.fluid as fluid
-from paddle.fluid.clip import (
+from paddle.fluid.dygraph.base import to_variable
+from paddle.nn.clip import (
     GradientClipByGlobalNorm,
     GradientClipByNorm,
     GradientClipByValue,
 )
-from paddle.fluid.dygraph.base import to_variable
 
 
 class TestGradClipByGlobalNorm(unittest.TestCase):

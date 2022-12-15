@@ -33,15 +33,15 @@ from paddle.fluid.framework import (
 
 from ..fluid import framework, unique_name
 from ..fluid.backward import _get_no_grad_set_name, append_backward
-from ..fluid.clip import (
-    GradientClipBase,
-    append_gradient_clip_ops,
-    error_clip_callback,
-)
 from ..fluid.dygraph import base as imperative_base
 from ..fluid.framework import Parameter, program_guard
 from ..fluid.initializer import Constant
 from ..fluid.layer_helper import LayerHelper
+from ..paddle.nn.clip import (
+    GradientClipBase,
+    append_gradient_clip_ops,
+    error_clip_callback,
+)
 from .lr import LRScheduler
 
 __all__ = []
