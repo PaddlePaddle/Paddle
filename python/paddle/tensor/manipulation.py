@@ -114,10 +114,10 @@ def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
     Examples:
         .. code-block:: python
 
+            import numpy
             import paddle
-            import numpy as np
-            x0 = paddle.assign(np.random.rand(2, 2).astype("float32"))
-            x1 = paddle.assign(np.random.rand(2, 2).astype("float32"))
+            x0 = paddle.assign(numpy.random.rand(2, 2).astype("float32"))
+            x1 = paddle.assign(numpy.random.rand(2, 2).astype("float32"))
             i = paddle.full(shape=[1], dtype="int64", fill_value=0)
             array = paddle.tensor.array.create_array(dtype='float32')
             paddle.tensor.array.array_write(x0, i, array)
