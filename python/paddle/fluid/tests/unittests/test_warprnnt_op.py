@@ -261,14 +261,14 @@ class TestWarpRNNTFP64Op(TestWarpRNNTOp):
             self.check_grad(
                 ["input"],
                 "loss",
-                numeric_grad_delta=0.007,
+                numeric_grad_delta=0.009,
                 check_eager=True,
             )
         else:
             self.check_grad(
                 ["input"],
                 "loss",
-                numeric_grad_delta=0.007,
+                numeric_grad_delta=0.009,
                 check_eager=True,
             )
 
