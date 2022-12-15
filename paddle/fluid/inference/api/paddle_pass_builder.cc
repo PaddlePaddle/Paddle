@@ -99,15 +99,11 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "trt_embedding_eltwise_layernorm_fuse_pass",    //
       "preln_embedding_eltwise_layernorm_fuse_pass",  //
       "delete_c_identity_op_pass",                    //
-#ifdef PADDLE_WITH_TENSORRT
-#if IS_TRT_VERSION_GE(7200)
-      "trt_multihead_matmul_fuse_pass_v2",    //
-      "trt_multihead_matmul_fuse_pass_v3",    //
-      "multihead_matmul_roformer_fuse_pass",  //
-#endif
-#endif
-      "constant_folding_pass",    //
-      "vit_attention_fuse_pass",  //
+      "trt_multihead_matmul_fuse_pass_v2",            //
+      "trt_multihead_matmul_fuse_pass_v3",            //
+      "multihead_matmul_roformer_fuse_pass",          //
+      "constant_folding_pass",                        //
+      "vit_attention_fuse_pass",                      //
 #ifdef PADDLE_WITH_TENSORRT
 #if IS_TRT_VERSION_GE(7200)
       "trt_skip_layernorm_fuse_pass",    //
