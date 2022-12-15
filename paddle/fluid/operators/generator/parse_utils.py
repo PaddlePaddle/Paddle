@@ -296,7 +296,6 @@ def check_op_config(op_entry, op_name):
     )
     infer_meta_key_set = ('func', 'param')
     kernel_key_set = ('func', 'param', 'data_type', 'layout', 'backend')
-    # print('##### ', op_name)
     for key in op_entry.keys():
         assert (
             key in base_key_set
