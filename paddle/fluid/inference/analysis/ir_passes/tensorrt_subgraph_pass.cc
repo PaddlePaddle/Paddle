@@ -75,7 +75,7 @@ void OutputProcess(framework::ir::Graph *graph,
     for (auto *var_node : op_node->outputs) {
       if (!trt_outputs.count(var_node)) continue;
       if (!var_node->Var()->Persistable() &&
-          tensorrt::IsFloatVar(var_node->Var()->GetDataType()) &&
+          IsFloatVar(var_node->Var()->GetDataType()) &&
           var_node->Var()->GetDataType() != framework::proto::VarType::FP32) {
         for (auto *next_op : var_node->outputs) {
           // if next_op support mixed_precision, we need to add cast op.
