@@ -21,8 +21,6 @@ from paddle.nn import Layer
 
 from .base_quanter import BaseQuanter
 
-__all__ = ["QuanterFactory", "quanter"]
-
 
 class ClassWithArguments(metaclass=abc.ABCMeta):
     def __init__(self, *args, **kwargs):

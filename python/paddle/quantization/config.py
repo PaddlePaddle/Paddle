@@ -21,8 +21,6 @@ from paddle.nn import Layer
 
 from .factory import QuanterFactory
 
-__all__ = ["QuantConfig"]
-
 # TODO: Implement quanted layer and fill the mapping dict
 DEFAULT_QAT_LAYER_MAPPINGS: Dict[Layer, Layer] = {}
 

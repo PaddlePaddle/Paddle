@@ -14,5 +14,4 @@
 
 from .abs_max import FakeQuanterWithAbsMaxObserver
 
-__all__ = []
-__all__ += ["FakeQuanterWithAbsMaxObserver"]
+__all__ = ["FakeQuanterWithAbsMaxObserver"]

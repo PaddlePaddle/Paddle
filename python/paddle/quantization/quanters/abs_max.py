@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 from paddle import _legacy_C_ops
 from paddle.fluid.framework import _varbase_creator
 from paddle.framework import ParamAttr
@@ -20,43 +19,92 @@ from paddle.nn.initializer import Constant
 from paddle.utils import unique_name
 
 from ..base_quanter import BaseQuanter
-from ..factory import quanter
+from ..factory import QuanterFactory
 
-__all__ = []
+__all__ = ["FakeQuanterWithAbsMaxObserver"]
 
 
-@quanter("FakeQuanterWithAbsMaxObserver")
-class FakeQuanterWithAbsMaxObserverLayer(BaseQuanter):
+class FakeQuanterWithAbsMaxObserver(QuanterFactory):
     r"""
-    FakeQuantMovingAverageAbsMax layer does the moving_average_abs_max quant and then dequant.
-    Its computational formula is described as below:
+    Compute quantization parameters and simulate quantization.
 
-    :math:`scale = (moving\_rate*accum+max(abs(x)))/(moving\_rate*state+1)`
-    :math:`range = 2^{bit\_length - 1} - 1`
-    :math:`Out = round(X / scale * range) * scale / range`
+    It collects maximum absolute values of target tensor with moving average.
+    The average value will be used as quantization scale to quantize and
+    dequantize the tensor.
+
+    And it is symmetric uniform quantization which means the zero point is always 0.
+
+    The computational formula of moving average is described as below:
+
+    .. math::
+            state = rate * state + 1
+            accum = rate * accum + max(abs(x))
+            scale = accum / state
+
+    Where:
+
+    - :math:`x` is the input tensor.
+    - :math:`state` and :math:`accum` are zero-initialized accumulators.
+    - :math:`rate` is moving average rate.
+    - :math:`scale` is quantization scale
+
+    And the computational formula of simulate quantization is:
+
+    .. math::
+            range = 2^{bit\_length - 1} - 1
+            out = round(x / scale * range) * scale / range
+
+    Where:
+
+    - :math:`{bit\_length}` is the length of bits.
+    - :math:`x` is the input tensor and :math:`out` is the output of simulate quantization.
+
+    Args:
+        moving_rate(float, optional): The rate of moving average.
+        bit_length(int, optional): Number of bits to represent an quantized integer in binary.
+        dtype(str, optional): The data type of input tensor.
+        name (str, optional): This parameter is used by developers to print debugging information. \
+            For details, please refer to :ref:`api_guide_Name`. Default is None.
 
     Examples:
        .. code-block:: python
 
             from paddle.quantization import QuantConfig
             from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
-            quanter = FakeQuanterWithAbsMaxObserver(name="test", moving_rate=0.99)
+            quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.99)
             q_config = QuantConfig(activation=quanter, weight=quanter)
     """
 
     def __init__(
         self,
+        moving_rate=0.9,
+        bit_length=8,
+        dtype='float32',
+        name=None,
+    ):
+        super(FakeQuanterWithAbsMaxObserver, self).__init__(
+            name=name,
+            moving_rate=moving_rate,
+            bit_length=bit_length,
+            dtype=dtype,
+        )
+
+    def _get_class(self):
+        return FakeQuanterWithAbsMaxObserverLayer
+
+
+class FakeQuanterWithAbsMaxObserverLayer(BaseQuanter):
+    def __init__(
+        self,
         layer,
         name=None,
         moving_rate=0.9,
-        quant_bits=8,
+        bit_length=8,
         dtype='float32',
-        reduce_type=None,
     ):
         super(FakeQuanterWithAbsMaxObserverLayer, self).__init__()
         self._moving_rate = moving_rate
-        self._quant_bits = quant_bits
-        self._reduce_type = reduce_type
+        self._bit_length = bit_length
         scale_prefix = (
             "{}.scale".format(name) if name else 'quant_dequant.scale'
         )
@@ -101,7 +149,7 @@ class FakeQuanterWithAbsMaxObserverLayer(BaseQuanter):
             'moving_rate',
             self._moving_rate,
             'bit_length',
-            self._quant_bits,
+            self._bit_length,
             'is_test',
             not self.training,
         )
@@ -112,10 +160,6 @@ class FakeQuanterWithAbsMaxObserverLayer(BaseQuanter):
             dtype=input.dtype,
             persistable=False,
         )
-        if self._reduce_type == "max":
-            paddle.distributed.all_reduce(
-                self._scale, op=paddle.distributed.ReduceOp.MAX
-            )
 
         state = self._state if self.training else None
         accum = self._accum if self.training else None

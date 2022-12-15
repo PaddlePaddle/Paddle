@@ -21,8 +21,6 @@ import numpy as np
 import paddle
 from paddle.nn import Layer
 
-__all__ = ["BaseQuanter"]
-
 
 class BaseQuanter(Layer, metaclass=abc.ABCMeta):
     r"""
