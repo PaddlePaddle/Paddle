@@ -1,0 +1,7 @@
+- op : share_buffer
+  args : (Tensor[] x, bool[] share_dims_and_dtype={})
+  output : Tensor[](out){x.size()}, Tensor[](xout){x.size()}
+  infer_meta :
+    func : ShareBufferInferMeta
+  kernel :
+    func : share_buffer

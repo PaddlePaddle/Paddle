@@ -212,10 +212,10 @@ class TestAdamWOp(unittest.TestCase):
                 conv = fluid.layers.conv2d(data, 8, 3)
                 loss = paddle.mean(conv)
 
-                beta1 = fluid.layers.create_global_var(
+                beta1 = paddle.static.create_global_var(
                     shape=[1], value=0.85, dtype='float32', persistable=True
                 )
-                beta2 = fluid.layers.create_global_var(
+                beta2 = paddle.static.create_global_var(
                     shape=[1], value=0.95, dtype='float32', persistable=True
                 )
                 betas = [beta1, beta2]

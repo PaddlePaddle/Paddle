@@ -12,15 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle.jit.dy2static.static_analysis import AstNodeWrapper
+from paddle.jit.dy2static.utils import ast_to_source_code
 from paddle.utils import gast
 
-from paddle.jit.dy2static.static_analysis import (
-    AstNodeWrapper,
-)
-from paddle.jit.dy2static.utils import ast_to_source_code
-from .base_transformer import (
-    BaseTransformer,
-)
+from .base_transformer import BaseTransformer
 
 __all__ = []
 

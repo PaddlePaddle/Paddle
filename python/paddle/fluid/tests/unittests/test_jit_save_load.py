@@ -94,7 +94,9 @@ class LinerNetWithLabel(paddle.nn.Layer):
     )
     def forward(self, x, label):
         out = self._linear(x)
-        loss = fluid.layers.cross_entropy(out, label)
+        loss = paddle.nn.functional.cross_entropy(
+            out, label, reduction='none', use_softmax=False
+        )
         avg_loss = paddle.mean(loss)
         return out, avg_loss
 
@@ -112,7 +114,9 @@ class LinerNetWithPruneInput(paddle.nn.Layer):
     )
     def forward(self, x, label):
         out = self._linear(x)
-        loss = fluid.layers.cross_entropy(out, label)
+        loss = paddle.nn.functional.cross_entropy(
+            out, label, reduction='none', use_softmax=False
+        )
         avg_loss = paddle.mean(loss)
         return out
 
@@ -312,7 +316,9 @@ def train(layer, input_size=784, label_size=1):
 
         cost = layer(img)
 
-        loss = fluid.layers.cross_entropy(cost, label)
+        loss = paddle.nn.functional.cross_entropy(
+            cost, label, reduction='none', use_softmax=False
+        )
         avg_loss = paddle.mean(loss)
 
         avg_loss.backward()
@@ -1831,5 +1837,4 @@ class TestNotJitForward(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

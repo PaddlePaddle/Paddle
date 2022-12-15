@@ -84,16 +84,16 @@ void PaddlePassBuilder::AppendAnalysisPass(const std::string &pass) {
 void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
 
 const std::vector<std::string> kTRTSubgraphPasses({
-  "adaptive_pool2d_convert_global_pass",       //
-      "shuffle_channel_detect_pass",           //
-      "quant_conv2d_dequant_fuse_pass",        //
-      "delete_fill_constant_op_pass",          //
-      "delete_quant_dequant_op_pass",          //
-      "delete_quant_dequant_filter_op_pass",   //
-      "delete_weight_dequant_linear_op_pass",  //
-      "delete_quant_dequant_linear_op_pass",   //
-      "identity_scale_op_clean_pass",          //
-      "add_support_int8_pass",                 //
+  "adaptive_pool2d_convert_global_pass",           //
+      "shuffle_channel_detect_pass",               //
+      "quant_conv2d_dequant_fuse_pass",            //
+      "delete_fill_constant_op_pass",              //
+      "delete_quant_dequant_op_pass",              //
+      "delete_quant_dequant_filter_op_pass",       //
+      "trt_delete_weight_dequant_linear_op_pass",  //
+      "delete_quant_dequant_linear_op_pass",       //
+      "identity_scale_op_clean_pass",              //
+      "add_support_int8_pass",                     //
       // "fc_fuse_pass",                        //
       "simplify_with_basic_ops_pass",                 //
       "trt_embedding_eltwise_layernorm_fuse_pass",    //
@@ -161,8 +161,7 @@ const std::vector<std::string> kLiteSubgraphPasses({
 const std::vector<std::string> kGpuLowerPrecisionPasses{
     "simplify_with_basic_ops_pass",
     "delete_quant_dequant_linear_op_pass",
-    "delete_weight_dequant_linear_op_encoder_pass",
-    "delete_weight_dequant_linear_op_decoder_pass",
+    "delete_weight_dequant_linear_op_pass",
     "map_depthwise_conv_to_conv_pass",
     "conv_bn_fuse_pass",
     "conv_eltwiseadd_bn_fuse_pass",
@@ -210,9 +209,9 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
     "is_test_pass",                                                     //
         "simplify_with_basic_ops_pass",                                 //
         "delete_quant_dequant_linear_op_pass",                          //
-        "delete_weight_dequant_linear_op_encoder_pass",                 //
-        "delete_weight_dequant_linear_op_decoder_pass",                 //
+        "delete_weight_dequant_linear_op_pass",                         //
         "map_depthwise_conv_to_conv_pass",                              //
+        "constant_folding_pass",                                        //
         "conv_bn_fuse_pass",                                            //
         "conv_eltwiseadd_bn_fuse_pass",                                 //
         "embedding_eltwise_layernorm_fuse_pass",                        //
@@ -247,7 +246,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
 #endif                                         //
         "transpose_flatten_concat_fuse_pass",  //
         "constant_folding_pass",               //
-        "float_to_half_pass",                  //
+        "auto_mixed_precision_pass",           //
   });
 
   use_gpu_ = true;
@@ -357,11 +356,6 @@ void CpuPassStrategy::EnableMKLDNN() {
              "operator_scale_onednn_fuse_pass",       //
              "operator_unsqueeze2_onednn_fuse_pass",  //
              "operator_reshape2_onednn_fuse_pass",    //
-             // TODO(intel): Please fix the bug on windows.
-             // https://github.com/PaddlePaddle/Paddle/issues/29710
-             // "mkldnn_inplace_pass",  // This pass should be activated after
-             // fuses. Disabled by default due to
-             // little gain and lots of problems
          })) {
       passes_.push_back(pass);
     }
@@ -461,7 +455,6 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("cpu_quantize_squash_pass");
     passes_.push_back("int8_scale_calculation_mkldnn_pass");
     passes_.push_back("params_quantization_mkldnn_pass");
-    passes_.push_back("mkldnn_inplace_pass");
   }
   use_mkldnn_int8_ = true;
 #else

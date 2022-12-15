@@ -138,21 +138,21 @@ class BCEWithLogitsLoss(Layer):
 class CrossEntropyLoss(Layer):
     r"""
 
-    By default, this operator implements the cross entropy loss function with softmax. This function
+    By default, the cross entropy loss function is implemented using softmax. This function
     combines the calculation of the softmax operation and the cross entropy loss function
     to provide a more numerically stable computing.
 
-    This operator will calculate the cross entropy loss function without softmax when use_softmax=False.
+    Calculate the cross entropy loss function without softmax when use_softmax=False.
 
-    By default, this operator will calculate the mean of the result, and you can also affect
+    By default, calculate the mean of the result, and you can also affect
     the default behavior by using the reduction parameter. Please refer to the part of
     parameters for details.
 
-    This operator can be used to calculate the softmax cross entropy loss with soft and hard labels.
+    Can be used to calculate the softmax cross entropy loss with soft and hard labels.
     Where, the hard labels mean the actual label value, 0, 1, 2, etc.  And the soft labels
     mean the probability of the actual label, 0.6, 0.8, 0.2, etc.
 
-    The calculation of this operator includes the following two steps.
+    The calculation includes the following two steps.
 
     -  **I.softmax cross entropy**
 
@@ -277,8 +277,8 @@ class CrossEntropyLoss(Layer):
 
 
     Shape:
-        - **input** (Tensor), the data type is float32, float64. Shape is
-          :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes ,  ``k >= 1`` .
+        - **input** (Tensor), the data type is float32, float64. Shape is :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes, ``k >= 1`` .
+
             Note:
 
                 1. when use_softmax=True, it expects unscaled logits. This operator should not be used with the
@@ -539,7 +539,7 @@ class MSELoss(Layer):
         Out = \operatorname{sum}((input - label)^2)
     where `input` and `label` are `float32` tensors of same shape.
     Parameters:
-        reduction (string, optional): The reduction method for the output,
+        reduction (str, optional): The reduction method for the output,
             could be 'none' | 'mean' | 'sum'.
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned.
             If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned.
@@ -891,19 +891,32 @@ class KLDivLoss(Layer):
 
     $$l(x, y) = y * (\log(y) - x)$$
 
+    Here :math:`x` is input and :math:`y` is label.
+
+    If `reduction` is ``'none'``, the output loss is the same shape as the input, and the loss at each point is calculated separately. There is no reduction to the result.
+
+    If `reduction` is ``'mean'``, the output loss is the shape of [1], and the output is the average of all losses.
+
+    If `reduction` is ``'sum'``, the output loss is the shape of [1], and the output is the sum of all losses.
+
+    If `reduction` is ``'batchmean'``, the output loss is the shape of [N], N is the batch size, and the output is the sum of all losses divided by the batch size.
+
     Parameters:
-        reduction (Tensor): Indicate how to average the loss,
-             the candicates are ``'none'`` | ``'batchmean'`` | ``'mean'`` | ``'sum'``.
-             If `reduction` is ``'mean'``, the reduced mean loss is returned;
-             If `reduction` is ``'batchmean'``, the sum loss divided by batch size is returned;
-             if `reduction` is ``'sum'``, the reduced sum loss is returned;
-             if `reduction` is ``'none'``, no reduction will be apllied.
-             Default is ``'mean'``.
+        reduction (str, optional): Indicate how to average the loss,
+            the candicates are ``'none'`` | ``'batchmean'`` | ``'mean'`` | ``'sum'``.
+            If `reduction` is ``'mean'``, the reduced mean loss is returned;
+            If `reduction` is ``'batchmean'``, the sum loss divided by batch size is returned;
+            if `reduction` is ``'sum'``, the reduced sum loss is returned;
+            if `reduction` is ``'none'``, no reduction will be apllied.
+            Default is ``'mean'``.
 
     Shape:
-        - input (Tensor): ``(N, *)``, where ``*`` means, any number of additional dimensions.
-        - label (Tensor): ``(N, *)``, same shape as input.
-        - output (Tensor): tensor with shape: [1] by default.
+
+        input (Tensor): ``(N, *)``, where ``*`` means, any number of additional dimensions.
+
+        label (Tensor): ``(N, *)``, same shape as input.
+
+        output (Tensor): tensor with shape: [1] by default.
 
     Examples:
         .. code-block:: python
@@ -1400,11 +1413,11 @@ class CosineEmbeddingLoss(Layer):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
-        input1 (Tensor): tensor with shape: [N, M] or [M], 'N' means batch size, 'M' means the length of input array.
+        input1 (Tensor): tensor with shape: [N, M] or [M], 'N' means batch size, which can be 0, 'M' means the length of input array.
                          Available dtypes are float32, float64.
-        input2 (Tensor): tensor with shape: [N, M] or [M], 'N' means batch size, 'M' means the length of input array.
+        input2 (Tensor): tensor with shape: [N, M] or [M], 'N' means batch size, which can be 0, 'M' means the length of input array.
                          Available dtypes are float32, float64.
-        label (Tensor): tensor with shape: [N] or [1]. The target labels values should be -1 or 1.
+        label (Tensor): tensor with shape: [N] or [1], 'N' means the length of input array. The target labels values should be -1 or 1.
                          Available dtypes are int32, int64, float32, float64.
         output (Tensor): Tensor, the cosine embedding Loss of Tensor ``input1`` ``input2`` and ``label``.
                          If `reduction` is ``'none'``, the shape of output loss is [N], the same as ``input`` .
