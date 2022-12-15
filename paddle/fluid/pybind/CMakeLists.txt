@@ -635,7 +635,7 @@ if(WITH_PYTHON)
   endif()
 
   if(NOT APPLE AND NOT WIN32)
-    target_link_libraries(${SHARD_LIB_NAME} rt -static-libgcc -static-libstdc++)
+    target_link_libraries(${SHARD_LIB_NAME} rt)
   endif()
 
   if(WITH_ROCM)

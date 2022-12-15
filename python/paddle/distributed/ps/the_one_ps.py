@@ -1090,9 +1090,8 @@ class TheOnePSRuntime(RuntimeBase):
         self.string_hosts = []
         for idx, ep in enumerate(self.endpoints):
             host, port = ep.split(":")
-            #pshost = core.PSHost(host, int(port), idx)
-            #self.string_hosts.append(pshost.serialize_to_string())
-            self.string_hosts.append(":".join([host, port, str(idx)]))
+            pshost = core.PSHost(host, int(port), idx)
+            self.string_hosts.append(pshost.serialize_to_string())
 
         self.with_coordinator = self.role_maker._with_coordinator
         self.coordinator_hosts = []
@@ -1638,6 +1637,11 @@ class TheOnePSRuntime(RuntimeBase):
                 table_id, pass_id, mem_cache_key_threshold
             )
         fleet.util.barrier()
+
+    def _check_save_pre_patch_done(self):
+        fleet.util.barrier()
+        if self.role_maker._is_first_worker():
+            self._worker.check_save_pre_patch_done()
 
     def _load_sparse_params(self, dirname, context, main_program, mode):
         distributed_varnames = get_sparse_tablenames(
