@@ -515,18 +515,22 @@ class TestQuantizationFreezePass(unittest.TestCase):
         server_program_int8 = test_graph.to_program()
         # Save the 8-bit parameter and model file.
         with paddle.static.scope_guard(scope):
-            fluid.io.save_inference_model(
+            feed_list = ['image', 'label']
+            feed_vars = [
+                server_program_int8.global_block().var(name)
+                for name in feed_list
+            ]
+            paddle.static.save_inference_model(
                 'server_int8'
                 + dev_name
                 + activation_quant_type
                 + '_'
-                + weight_quant_type,
-                ['image', 'label'],
+                + weight_quant_type
+                + '/model',
+                feed_vars,
                 [loss],
                 exe,
-                server_program_int8,
-                model_filename='model.pdmodel',
-                params_filename='model.iparams',
+                program=server_program_int8,
             )
             # Test whether the 8-bit parameter and model file can be loaded successfully.
             [infer, feed, fetch] = paddle.static.load_inference_model(
@@ -583,16 +587,21 @@ class TestQuantizationFreezePass(unittest.TestCase):
 
         mobile_program = test_graph.to_program()
         with paddle.static.scope_guard(scope):
-            fluid.io.save_inference_model(
+            feed_list = ['image', 'label']
+            feed_vars = [
+                mobile_program.global_block().var(name) for name in feed_list
+            ]
+            paddle.static.save_inference_model(
                 'mobile_int8'
                 + dev_name
                 + activation_quant_type
                 + '_'
-                + weight_quant_type,
-                ['image', 'label'],
+                + weight_quant_type
+                + '/model',
+                feed_vars,
                 [loss],
                 exe,
-                mobile_program,
+                program=mobile_program,
             )
 
     def test_freeze_graph_cuda_dynamic(self):

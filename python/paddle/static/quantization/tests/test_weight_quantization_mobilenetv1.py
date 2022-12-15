@@ -75,6 +75,8 @@ class TestWeightQuantization(unittest.TestCase):
     def quantize_to_int(
         self,
         model_name,
+        model_filename,
+        params_filename,
         model_data_url,
         model_data_md5,
         weight_bits,
@@ -95,7 +97,11 @@ class TestWeightQuantization(unittest.TestCase):
             model_name + "_wq_" + str(weight_bits) + "_" + timestamp,
         )
 
-        weight_quant = WeightQuantization(model_dir=load_model_dir)
+        weight_quant = WeightQuantization(
+            model_dir=load_model_dir,
+            model_filename=model_filename,
+            params_filename=params_filename,
+        )
         weight_quant.quantize_weight_to_int(
             save_model_dir=save_model_dir,
             weight_bits=weight_bits,
@@ -185,7 +191,7 @@ class TestWeightQuantization(unittest.TestCase):
                 inference_program,
                 feed_target_names,
                 fetch_targets,
-            ] = paddle.fluid.io.load_inference_model(
+            ] = paddle.static.load_inference_model(
                 model_dir,
                 exe,
                 model_filename=model_filename,
@@ -230,9 +236,11 @@ class TestWeightQuantizationMobilenetv1(TestWeightQuantization):
         generate_test_model = True
         threshold_rate = 0.0
         self.quantize_to_int(
-            self.nocomb_model_name,
-            self.nocomb_model_data_url,
-            self.nocomb_model_data_md5,
+            self.comb_model_name,
+            '__model__',
+            '__params__',
+            self.comb_model_data_url,
+            self.comb_model_data_md5,
             weight_bits,
             quantizable_op_type,
             weight_quantize_type,
@@ -247,9 +255,11 @@ class TestWeightQuantizationMobilenetv1(TestWeightQuantization):
         generate_test_model = True
         threshold_rate = 0.0
         self.quantize_to_int(
-            self.nocomb_model_name,
-            self.nocomb_model_data_url,
-            self.nocomb_model_data_md5,
+            self.comb_model_name,
+            '__model__',
+            '__params__',
+            self.comb_model_data_url,
+            self.comb_model_data_md5,
             weight_bits,
             quantizable_op_type,
             weight_quantize_type,
@@ -264,9 +274,11 @@ class TestWeightQuantizationMobilenetv1(TestWeightQuantization):
         generate_test_model = False
         threshold_rate = 0
         self.quantize_to_int(
-            self.nocomb_model_name,
-            self.nocomb_model_data_url,
-            self.nocomb_model_data_md5,
+            self.comb_model_name,
+            '__model__',
+            '__params__',
+            self.comb_model_data_url,
+            self.comb_model_data_md5,
             weight_bits,
             quantizable_op_type,
             weight_quantize_type,
@@ -281,9 +293,11 @@ class TestWeightQuantizationMobilenetv1(TestWeightQuantization):
         generate_test_model = False
         threshold_rate = 1e-9
         self.quantize_to_int(
-            self.nocomb_model_name,
-            self.nocomb_model_data_url,
-            self.nocomb_model_data_md5,
+            self.comb_model_name,
+            '__model__',
+            '__params__',
+            self.comb_model_data_url,
+            self.comb_model_data_md5,
             weight_bits,
             quantizable_op_type,
             weight_quantize_type,
@@ -298,17 +312,6 @@ class TestWeightQuantizationMobilenetv1(TestWeightQuantization):
             self.comb_model_name,
             self.comb_model_data_url,
             self.comb_model_data_md5,
-            model_filename,
-            params_filename,
-        )
-
-    def test_mobilenetv1_fp16_nocombined(self):
-        model_filename = None
-        params_filename = None
-        self.convert_to_fp16(
-            self.nocomb_model_name,
-            self.nocomb_model_data_url,
-            self.nocomb_model_data_md5,
             model_filename,
             params_filename,
         )

@@ -113,7 +113,14 @@ def val(data_dir=DATA_DIR):
 
 
 class TestPostTrainingQuantizationProgram(TestPostTrainingQuantization):
-    def run_program(self, model_path, batch_size, infer_iterations):
+    def run_program(
+        self,
+        model_path,
+        model_filename,
+        params_filename,
+        batch_size,
+        infer_iterations,
+    ):
         image_shape = [3, 224, 224]
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
@@ -121,7 +128,12 @@ class TestPostTrainingQuantizationProgram(TestPostTrainingQuantization):
             infer_program,
             feed_dict,
             fetch_targets,
-        ] = paddle.fluid.io.load_inference_model(model_path, exe)
+        ] = paddle.static.load_inference_model(
+            model_path,
+            exe,
+            model_filename=model_filename,
+            params_filename=params_filename,
+        )
         val_reader = paddle.batch(val(), batch_size)
         iterations = infer_iterations
         test_info = []
@@ -160,7 +172,12 @@ class TestPostTrainingQuantizationProgram(TestPostTrainingQuantization):
             infer_program,
             feed_dict,
             fetch_targets,
-        ] = paddle.fluid.io.load_inference_model(model_path, exe)
+        ] = paddle.static.load_inference_model(
+            model_path,
+            exe,
+            model_filename=model_filename,
+            params_filename=params_filename,
+        )
         return (
             throughput,
             latency,
@@ -228,6 +245,8 @@ class TestPostTrainingQuantizationProgram(TestPostTrainingQuantization):
     def run_test(
         self,
         model,
+        model_filename,
+        params_filename,
         algo,
         round_type,
         data_urls,
@@ -258,6 +277,8 @@ class TestPostTrainingQuantizationProgram(TestPostTrainingQuantization):
             fetch_targets,
         ) = self.run_program(
             os.path.join(model_cache_folder, "model"),
+            model_filename,
+            params_filename,
             batch_size,
             infer_iterations,
         )
@@ -281,7 +302,11 @@ class TestPostTrainingQuantizationProgram(TestPostTrainingQuantization):
             )
         )
         (int8_throughput, int8_latency, int8_acc1, _, _, _) = self.run_program(
-            self.int8_model, batch_size, infer_iterations
+            self.int8_model,
+            model_filename,
+            params_filename,
+            batch_size,
+            infer_iterations,
         )
 
         print("---Post training quantization of {} method---".format(algo))
@@ -309,9 +334,9 @@ class TestPostTrainingProgramAbsMaxForResnet50(
         algo = "abs_max"
         round_type = "round"
         data_urls = [
-            'http://paddle-inference-dist.bj.bcebos.com/int8/resnet50_int8_model.tar.gz'
+            'http://paddle-inference-dist.bj.bcebos.com/int8/resnet50_int8_model_combined.tar.gz'
         ]
-        data_md5s = ['4a5194524823d9b76da6e738e1367881']
+        data_md5s = ['db212fd4e9edc83381aef4533107e60c']
         quantizable_op_type = ["conv2d", "mul"]
         is_full_quantize = False
         is_use_cache_file = False
@@ -319,6 +344,8 @@ class TestPostTrainingProgramAbsMaxForResnet50(
         diff_threshold = 0.025
         self.run_test(
             model,
+            'model.pdmodel',
+            'model.pdiparams',
             algo,
             round_type,
             data_urls,

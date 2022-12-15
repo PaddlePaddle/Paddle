@@ -32,7 +32,7 @@ from paddle.nn import (
     Softmax,
 )
 from paddle.nn.layer import LeakyReLU, PReLU, ReLU, Sigmoid
-from paddle.static.quantization import ImperativeQuantAware
+from paddle.quantization import ImperativeQuantAware
 
 paddle.enable_static()
 

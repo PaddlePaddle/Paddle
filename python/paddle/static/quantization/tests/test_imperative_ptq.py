@@ -29,8 +29,7 @@ import paddle
 import paddle.nn as nn
 from paddle.dataset.common import download
 from paddle.fluid.framework import _test_eager_guard
-from paddle.static.log_helper import get_logger
-from paddle.static.quantization import (
+from paddle.quantization import (
     AbsmaxQuantizer,
     HistQuantizer,
     ImperativePTQ,
@@ -38,6 +37,7 @@ from paddle.static.quantization import (
     PerChannelAbsmaxQuantizer,
     PTQConfig,
 )
+from paddle.static.log_helper import get_logger
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'

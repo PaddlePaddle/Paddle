@@ -93,7 +93,7 @@ def transform_and_save_int8_model(
     debug=False,
     quant_model_filename='',
     quant_params_filename='',
-    save_model_filename="__model__",
+    save_model_filename="model",
     save_params_filename=None,
 ):
     place = paddle.CPUPlace()
@@ -154,14 +154,17 @@ def transform_and_save_int8_model(
         graph = transform_to_mkldnn_int8_pass.apply(graph)
         inference_program = graph.to_program()
         with paddle.static.scope_guard(inference_scope):
-            paddle.fluid.io.save_inference_model(
-                save_path,
-                feed_target_names,
+            path_prefix = os.path.join(save_path, save_model_filename)
+            feed_vars = [
+                inference_program.global_block().var(name)
+                for name in feed_target_names
+            ]
+            paddle.static.save_inference_model(
+                path_prefix,
+                feed_vars,
                 fetch_targets,
-                exe,
-                inference_program,
-                model_filename=save_model_filename,
-                params_filename=save_params_filename,
+                executor=exe,
+                program=inference_program,
             )
         print(
             "Success! INT8 model obtained from the Quant model can be found at {}\n".format(

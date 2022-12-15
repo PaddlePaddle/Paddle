@@ -64,38 +64,3 @@ from .post_training_quantization import (
 from .post_training_quantization import (
     WeightQuantization,
 )
-
-from .imperative.ptq_config import (
-    PTQConfig,
-    default_ptq_config,
-)
-from .imperative.ptq_quantizer import (
-    BaseQuantizer,
-)
-from .imperative.ptq_quantizer import (
-    AbsmaxQuantizer,
-)
-from .imperative.ptq_quantizer import (
-    PerChannelAbsmaxQuantizer,
-)
-from .imperative.ptq_quantizer import (
-    KLQuantizer,
-)
-from .imperative.ptq_quantizer import (
-    HistQuantizer,
-)
-from .imperative.ptq_quantizer import (
-    SUPPORT_ACT_QUANTIZERS,
-)
-from .imperative.ptq_quantizer import (
-    SUPPORT_WT_QUANTIZERS,
-)
-from .imperative.ptq_registry import (
-    PTQRegistry,
-)
-from .imperative.ptq import (
-    ImperativePTQ,
-)
-from .imperative.qat import (
-    ImperativeQuantAware,
-)

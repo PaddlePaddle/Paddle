@@ -21,8 +21,8 @@ import numpy as np
 import paddle
 import paddle.nn.quant.quant_layers as quant_layers
 
-from ...log_helper import get_logger
-from ..utils import (
+from ...static.log_helper import get_logger
+from ...static.quantization.utils import (
     _get_input_name_index,
     _get_op_input_var_names,
     _get_op_output_var_names,
@@ -181,14 +181,23 @@ class ImperativePTQ:
         self._remove_scale_op(infer_program)
 
         # Save final program
-        paddle.fluid.io.save_inference_model(
-            dirname=dirname,
-            feeded_var_names=feed_target_names,
-            target_vars=fetch_targets,
+        model_name = None
+        if model_filename is None:
+            model_name = "model"
+        elif model_filename.endswith(".pdmodel"):
+            model_name = model_filename.rsplit(".", 1)[0]
+        else:
+            model_name = model_filename
+        path_prefix = os.path.join(dirname, model_name)
+        feed_vars = [
+            infer_program.global_block().var(name) for name in feed_target_names
+        ]
+        paddle.static.save_inference_model(
+            path_prefix,
+            feed_vars,
+            fetch_targets,
             executor=exe,
-            main_program=infer_program.clone(),
-            model_filename=model_filename,
-            params_filename=params_filename,
+            program=infer_program.clone(),
         )
 
         if is_dynamic_mode:

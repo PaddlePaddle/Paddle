@@ -20,7 +20,6 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 from paddle.fluid.framework import IrGraph
 from paddle.framework import core
 from paddle.static.quantization import (
@@ -189,12 +188,16 @@ class TestQuantizationScalePass(unittest.TestCase):
             f.write(str(server_program))
 
         with paddle.static.scope_guard(scope):
-            fluid.io.save_inference_model(
+            feed_list = ['image', 'label']
+            feed_vars = [
+                server_program.global_block().var(name) for name in feed_list
+            ]
+            paddle.static.save_inference_model(
                 save_path,
-                ['image', 'label'],
+                feed_vars,
                 [loss],
                 exe,
-                server_program,
+                program=server_program,
                 clip_extra=True,
             )
         tempdir.cleanup()

@@ -33,8 +33,8 @@ from paddle.nn import (
     Sigmoid,
     Softmax,
 )
+from paddle.quantization import ImperativeQuantAware
 from paddle.static.log_helper import get_logger
-from paddle.static.quantization import ImperativeQuantAware
 
 paddle.enable_static()
 

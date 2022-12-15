@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 
-from ..cal_kl_threshold import cal_kl_threshold
+from ...static.quantization.cal_kl_threshold import cal_kl_threshold
 from . import utils
 
 

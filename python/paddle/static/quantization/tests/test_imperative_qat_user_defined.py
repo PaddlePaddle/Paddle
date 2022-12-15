@@ -23,8 +23,8 @@ import paddle.nn as nn
 from paddle.fluid.framework import _test_eager_guard
 from paddle.nn import Sequential
 from paddle.optimizer import Adam
+from paddle.quantization import ImperativeQuantAware
 from paddle.static.log_helper import get_logger
-from paddle.static.quantization import ImperativeQuantAware
 
 os.environ["CPU_NUM"] = "1"
 

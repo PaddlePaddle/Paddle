@@ -132,7 +132,14 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
         return reader
 
-    def run_program(self, model_path, data_path, infer_iterations):
+    def run_program(
+        self,
+        model_path,
+        model_filename,
+        params_filename,
+        data_path,
+        infer_iterations,
+    ):
         print("test model path:" + model_path)
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
@@ -140,7 +147,12 @@ class TestPostTrainingQuantization(unittest.TestCase):
             infer_program,
             feed_dict,
             fetch_targets,
-        ] = fluid.io.load_inference_model(model_path, exe)
+        ] = paddle.static.load_inference_model(
+            model_path,
+            exe,
+            model_filename=model_filename,
+            params_filename=params_filename,
+        )
 
         val_reader = self.get_simple_reader(data_path, place)
 
@@ -175,6 +187,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
     def generate_quantized_model(
         self,
         model_path,
+        model_filename,
+        params_filename,
         data_path,
         algo="KL",
         round_type="round",
@@ -195,6 +209,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
         ptq = PostTrainingQuantization(
             executor=exe,
             model_dir=model_path,
+            model_filename=model_filename,
+            params_filename=params_filename,
             batch_generator=batch_generator,
             batch_nums=batch_nums,
             algo=algo,
@@ -213,6 +229,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
     def run_test(
         self,
         model_name,
+        model_filename,
+        params_filename,
         model_url,
         model_md5,
         data_name,
@@ -241,7 +259,11 @@ class TestPostTrainingQuantization(unittest.TestCase):
             )
         )
         (fp32_latency, fp32_acc) = self.run_program(
-            fp32_model_path, data_path, infer_iterations
+            fp32_model_path,
+            model_filename,
+            params_filename,
+            data_path,
+            infer_iterations,
         )
 
         print(
@@ -251,6 +273,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
         )
         self.generate_quantized_model(
             fp32_model_path,
+            model_filename,
+            params_filename,
             data_path,
             algo,
             round_type,
@@ -269,7 +293,11 @@ class TestPostTrainingQuantization(unittest.TestCase):
             )
         )
         (int8_latency, int8_acc) = self.run_program(
-            self.int8_model_path, data_path, infer_iterations
+            self.int8_model_path,
+            'model.pdmodel',
+            'model.pdiparams',
+            data_path,
+            infer_iterations,
         )
 
         print("---Post training quantization of {} method---".format(algo))
@@ -292,8 +320,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
 class TestPostTrainingAvgForLSTM(TestPostTrainingQuantization):
     def test_post_training_avg(self):
         model_name = "nlp_lstm_fp32_model"
-        model_url = "https://paddle-inference-dist.cdn.bcebos.com/int8/unittest_model_data/nlp_lstm_fp32_model.tar.gz"
-        model_md5 = "519b8eeac756e7b4b7bcb2868e880452"
+        model_url = "https://paddle-inference-dist.cdn.bcebos.com/int8/unittest_model_data/nlp_lstm_fp32_model_combined.tar.gz"
+        model_md5 = "5b47cd7ba2afcf24120d9727ed3f05a7"
         data_name = "quant_lstm_input_data"
         data_url = "https://paddle-inference-dist.cdn.bcebos.com/int8/unittest_model_data/quant_lstm_input_data.tar.gz"
         data_md5 = "add84c754e9b792fea1fbd728d134ab7"
@@ -308,6 +336,8 @@ class TestPostTrainingAvgForLSTM(TestPostTrainingQuantization):
         quant_iterations = 10
         self.run_test(
             model_name,
+            'model.pdmodel',
+            'model.pdiparams',
             model_url,
             model_md5,
             data_name,
@@ -328,8 +358,8 @@ class TestPostTrainingAvgForLSTM(TestPostTrainingQuantization):
 class TestPostTrainingAvgForLSTMONNXFormat(TestPostTrainingQuantization):
     def not_test_post_training_avg_onnx_format(self):
         model_name = "nlp_lstm_fp32_model"
-        model_url = "https://paddle-inference-dist.cdn.bcebos.com/int8/unittest_model_data/nlp_lstm_fp32_model.tar.gz"
-        model_md5 = "519b8eeac756e7b4b7bcb2868e880452"
+        model_url = "https://paddle-inference-dist.cdn.bcebos.com/int8/unittest_model_data/nlp_lstm_fp32_model_combined.tar.gz"
+        model_md5 = "5b47cd7ba2afcf24120d9727ed3f05a7"
         data_name = "quant_lstm_input_data"
         data_url = "https://paddle-inference-dist.cdn.bcebos.com/int8/unittest_model_data/quant_lstm_input_data.tar.gz"
         data_md5 = "add84c754e9b792fea1fbd728d134ab7"
@@ -345,6 +375,8 @@ class TestPostTrainingAvgForLSTMONNXFormat(TestPostTrainingQuantization):
         onnx_format = True
         self.run_test(
             model_name,
+            'model.pdmodel',
+            'model.pdiparams',
             model_url,
             model_md5,
             data_name,

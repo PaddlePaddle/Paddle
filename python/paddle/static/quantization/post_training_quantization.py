@@ -29,7 +29,6 @@ from paddle.fluid.framework import IrGraph, _get_var
 
 from ... import io, static
 from ...fluid import reader
-from ...fluid.io import load_inference_model, save_inference_model
 from ...framework import core
 from ...utils import unique_name
 from ..log_helper import get_logger
@@ -532,22 +531,29 @@ class PostTrainingQuantization:
         Args:
             save_model_path(str): The path to save the quantized model.
             model_filename(str, optional): If the model_filename is None,
-                save the model to '__model__'. Otherwise, save the model
-                to the specified filename. Default: None.
-            params_filename(str, optional): If the params_filename is None,
-                save params to separted files. Otherwise, save all params
-                to the specified filename.
+                save the model to 'model.pdmodel' and 'model.pdiparams'. Otherwise, save the model to 'model_name.pdmodel' and
+                'model_name.pdiparams". Default: None.
         Returns:
             None
         '''
-        save_inference_model(
-            dirname=save_model_path,
-            model_filename=model_filename,
-            params_filename=params_filename,
-            feeded_var_names=self._feed_list,
-            target_vars=self._fetch_list,
+        model_name = None
+        if model_filename is None:
+            model_name = "model"
+        elif model_filename.endswith(".pdmodel"):
+            model_name = model_filename.rsplit(".", 1)[0]
+        else:
+            model_name = model_filename
+
+        path_prefix = os.path.join(save_model_path, model_name)
+        feed_vars = [
+            self._program.global_block().var(name) for name in self._feed_list
+        ]
+        static.save_inference_model(
+            path_prefix,
+            feed_vars,
+            self._fetch_list,
             executor=self._executor,
-            main_program=self._program,
+            program=self._program,
             clip_extra=self._clip_extra,
         )
         _logger.info("The quantized model is saved in " + save_model_path)
@@ -562,7 +568,7 @@ class PostTrainingQuantization:
                 self._program,
                 self._feed_list,
                 self._fetch_list,
-            ] = load_inference_model(
+            ] = static.load_inference_model(
                 self._model_dir,
                 executor=self._executor,
                 model_filename=self._model_filename,
@@ -1629,7 +1635,7 @@ class WeightQuantization:
         place = core.CPUPlace()
         exe = static.Executor(place)
         scope = static.global_scope()
-        [infer_program, feed_list, fetch_list] = load_inference_model(
+        [infer_program, feed_list, fetch_list] = static.load_inference_model(
             self._model_dir,
             executor=exe,
             model_filename=self._model_filename,
@@ -1720,7 +1726,7 @@ class WeightQuantization:
         place = core.CPUPlace()
         exe = static.Executor(place)
         scope = static.global_scope()
-        [program, feed_list, fetch_list] = load_inference_model(
+        [program, feed_list, fetch_list] = static.load_inference_model(
             self._model_dir,
             executor=exe,
             model_filename=self._model_filename,
@@ -1753,15 +1759,22 @@ class WeightQuantization:
                         self._weight_channel_wise_abs_max_quantization(
                             scope, place, weight_bits, op, var_name, for_test
                         )
+        model_name = None
+        if save_model_filename is None:
+            model_name = "model"
+        elif save_model_filename.endswith(".pdmodel"):
+            model_name = save_model_filename.rsplit(".", 1)[0]
+        else:
+            model_name = save_model_filename
 
-        save_inference_model(
-            dirname=save_model_dir,
-            feeded_var_names=feed_list,
-            target_vars=fetch_list,
+        path_prefix = os.path.join(save_model_dir, model_name)
+        feed_vars = [program.global_block().var(name) for name in feed_list]
+        static.save_inference_model(
+            path_prefix,
+            feed_vars,
+            fetch_list,
             executor=exe,
-            main_program=program,
-            model_filename=save_model_filename,
-            params_filename=save_params_filename,
+            program=program,
         )
 
     def _weight_abs_max_quantization(

@@ -26,7 +26,7 @@ import paddle
 from paddle.fluid.framework import _test_eager_guard
 from paddle.framework import core, set_flags
 from paddle.optimizer import Adam
-from paddle.static.quantization import ImperativeQuantAware
+from paddle.quantization import ImperativeQuantAware
 
 INFER_MODEL_SUFFIX = ".pdmodel"
 INFER_PARAMS_SUFFIX = ".pdiparams"

@@ -12,37 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..static.quantization.imperative.ptq_config import (
+from .imperative.ptq_config import (
     PTQConfig,
     default_ptq_config,
 )
-from ..static.quantization.imperative.ptq_quantizer import (
+from .imperative.ptq_quantizer import (
     BaseQuantizer,
 )
-from ..static.quantization.imperative.ptq_quantizer import (
+from .imperative.ptq_quantizer import (
     AbsmaxQuantizer,
 )
-from ..static.quantization.imperative.ptq_quantizer import (
+from .imperative.ptq_quantizer import (
     PerChannelAbsmaxQuantizer,
 )
-from ..static.quantization.imperative.ptq_quantizer import (
+from .imperative.ptq_quantizer import (
     KLQuantizer,
 )
-from ..static.quantization.imperative.ptq_quantizer import (
+from .imperative.ptq_quantizer import (
     HistQuantizer,
 )
-from ..static.quantization.imperative.ptq_quantizer import (
+from .imperative.ptq_quantizer import (
     SUPPORT_ACT_QUANTIZERS,
 )
-from ..static.quantization.imperative.ptq_quantizer import (
+from .imperative.ptq_quantizer import (
     SUPPORT_WT_QUANTIZERS,
 )
-from ..static.quantization.imperative.ptq_registry import (
+from .imperative.ptq_registry import (
     PTQRegistry,
 )
-from ..static.quantization.imperative.ptq import (
+from .imperative.ptq import (
     ImperativePTQ,
 )
-from ..static.quantization.imperative.qat import (
+from .imperative.qat import (
     ImperativeQuantAware,
 )

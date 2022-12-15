@@ -17,11 +17,13 @@ import os
 import paddle
 import paddle.nn.quant.quant_layers as quant_layers
 from paddle.fluid.framework import IrGraph
-from paddle.fluid.io import save_inference_model
 from paddle.framework import core
 
-from ..quantization_pass import QuantWeightPass, ReplaceFakeQuantDequantPass
-from ..utils import (
+from ...static.quantization.quantization_pass import (
+    QuantWeightPass,
+    ReplaceFakeQuantDequantPass,
+)
+from ...static.quantization.utils import (
     _get_input_name_index,
     _get_op_input_var_names,
     _get_output_name_index,
@@ -590,14 +592,23 @@ class ImperativeQuantizeOutputs:
 
         move_persistable_var_to_global_block(infer_program)
 
-        save_inference_model(
-            dirname=dirname,
-            feeded_var_names=feed_target_names,
-            target_vars=fetch_targets,
+        model_name = None
+        if model_filename is None:
+            model_name = "model"
+        elif model_filename.endswith(".pdmodel"):
+            model_name = model_filename.rsplit(".", 1)[0]
+        else:
+            model_name = model_filename
+        path_prefix = os.path.join(dirname, model_name)
+        feed_vars = [
+            infer_program.global_block().var(name) for name in feed_target_names
+        ]
+        paddle.static.save_inference_model(
+            path_prefix,
+            feed_vars,
+            fetch_targets,
             executor=exe,
-            main_program=infer_program.clone(),
-            model_filename=model_filename,
-            params_filename=params_filename,
+            program=infer_program.clone(),
             clip_extra=clip_extra,
         )
 

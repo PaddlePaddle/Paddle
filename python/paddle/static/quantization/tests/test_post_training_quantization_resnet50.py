@@ -29,9 +29,9 @@ class TestPostTrainingForResnet50(TestPostTrainingQuantization):
         algo = "min_max"
         round_type = "round"
         data_urls = [
-            'http://paddle-inference-dist.bj.bcebos.com/int8/resnet50_int8_model.tar.gz'
+            'http://paddle-inference-dist.bj.bcebos.com/int8/resnet50_int8_model_combined.tar.gz'
         ]
-        data_md5s = ['4a5194524823d9b76da6e738e1367881']
+        data_md5s = ['db212fd4e9edc83381aef4533107e60c']
         quantizable_op_type = ["conv2d", "mul"]
         is_full_quantize = False
         is_use_cache_file = False
@@ -39,6 +39,8 @@ class TestPostTrainingForResnet50(TestPostTrainingQuantization):
         diff_threshold = 0.025
         self.run_test(
             model,
+            'model.pdmodel',
+            'model.pdiparams',
             algo,
             round_type,
             data_urls,
@@ -57,9 +59,9 @@ class TestPostTrainingForResnet50ONNXFormat(TestPostTrainingQuantization):
         algo = "min_max"
         round_type = "round"
         data_urls = [
-            'http://paddle-inference-dist.bj.bcebos.com/int8/resnet50_int8_model.tar.gz'
+            'http://paddle-inference-dist.bj.bcebos.com/int8/resnet50_int8_model_combined.tar.gz'
         ]
-        data_md5s = ['4a5194524823d9b76da6e738e1367881']
+        data_md5s = ['db212fd4e9edc83381aef4533107e60c']
         quantizable_op_type = ["conv2d", "mul"]
         is_full_quantize = False
         is_use_cache_file = False
@@ -68,6 +70,8 @@ class TestPostTrainingForResnet50ONNXFormat(TestPostTrainingQuantization):
         onnx_format = True
         self.run_test(
             model,
+            'model.pdmodel',
+            'model.pdiparams',
             algo,
             round_type,
             data_urls,
