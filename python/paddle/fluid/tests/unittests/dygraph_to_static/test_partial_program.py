@@ -188,7 +188,7 @@ class GPT2LMHeadModel(fluid.dygraph.Layer):
     @declarative
     def forward(self, x):
         x = paddle.reshape(x, shape=[-1, 6])
-        x1, x2, x3 = fluid.layers.split(input=x, dim=1, num_or_sections=3)
+        x1, x2, x3 = paddle.split(x=x, axis=1, num_or_sections=3)
         return x1
 
 
