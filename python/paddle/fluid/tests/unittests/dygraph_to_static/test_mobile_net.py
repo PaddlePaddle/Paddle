@@ -23,12 +23,11 @@ from predictor_utils import PredictorTools
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-from paddle.fluid.dygraph.nn import BatchNorm
 from paddle.fluid.initializer import MSRA
 from paddle.fluid.param_attr import ParamAttr
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
-from paddle.nn import Linear
+from paddle.nn import BatchNorm, Linear
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
@@ -532,8 +531,11 @@ def train_mobilenet(args, to_static):
 
                 t_end = time.time()
                 softmax_out = paddle.nn.functional.softmax(out)
-                loss = fluid.layers.cross_entropy(
-                    input=softmax_out, label=label
+                loss = paddle.nn.functional.cross_entropy(
+                    input=softmax_out,
+                    label=label,
+                    reduction='none',
+                    use_softmax=False,
                 )
                 avg_loss = paddle.mean(x=loss)
                 acc_top1 = paddle.static.accuracy(input=out, label=label, k=1)

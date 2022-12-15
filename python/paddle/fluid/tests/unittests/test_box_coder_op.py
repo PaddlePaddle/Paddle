@@ -18,7 +18,6 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-import paddle.fluid.core as core
 
 
 def box_decoder(t_box, p_box, pb_v, output_box, norm, axis=0):
@@ -114,7 +113,7 @@ class TestBoxCoderOp(OpTest):
 
     def setUp(self):
         self.op_type = "box_coder"
-        self.python_api = paddle.fluid.layers.box_coder
+        self.python_api = paddle.vision.ops.box_coder
         lod = [[1, 1, 1, 1, 1]]
         prior_box = np.random.random((81, 4)).astype('float32')
         prior_box_var = np.random.random((81, 4)).astype('float32')
@@ -146,7 +145,7 @@ class TestBoxCoderOpWithoutBoxVar(OpTest):
         self.check_output(check_eager=True)
 
     def setUp(self):
-        self.python_api = paddle.fluid.layers.box_coder
+        self.python_api = paddle.vision.ops.box_coder
         self.op_type = "box_coder"
         lod = [[0, 1, 2, 3, 4, 5]]
         prior_box = np.random.random((81, 4)).astype('float32')
@@ -180,7 +179,7 @@ class TestBoxCoderOpWithLoD(OpTest):
         self.check_output(check_eager=True)
 
     def setUp(self):
-        self.python_api = paddle.fluid.layers.box_coder
+        self.python_api = paddle.vision.ops.box_coder
         self.op_type = "box_coder"
         lod = [[10, 20, 20]]
         prior_box = np.random.random((20, 4)).astype('float32')
@@ -211,7 +210,7 @@ class TestBoxCoderOpWithAxis(OpTest):
         self.check_output(check_eager=True)
 
     def setUp(self):
-        self.python_api = paddle.fluid.layers.box_coder
+        self.python_api = paddle.vision.ops.box_coder
         self.op_type = "box_coder"
         lod = [[1, 1, 1, 1, 1]]
         prior_box = np.random.random((30, 4)).astype('float32')
@@ -298,13 +297,13 @@ class TestBoxCoderOpWithVarianceDygraphAPI(unittest.TestCase):
             self.axis,
         )
         self.place = [paddle.CPUPlace()]
-        if core.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
     def test_dygraph_api(self):
         def run(place):
             paddle.disable_static(place)
-            output_box = paddle.fluid.layers.box_coder(
+            output_box = paddle.vision.ops.box_coder(
                 paddle.to_tensor(self.prior_box),
                 self.prior_box_var.tolist(),
                 paddle.to_tensor(self.target_box),

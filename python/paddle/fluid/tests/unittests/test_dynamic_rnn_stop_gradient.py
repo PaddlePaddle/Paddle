@@ -40,7 +40,7 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
     )
     cond = paddle.less_than(x=step_idx, y=max_len)
     while_op = paddle.static.nn.control_flow.While(cond)
-    scores = layers.array_write(x, step_idx)
+    scores = paddle.tensor.array_write(x, step_idx)
     with while_op.block():
         bs = layers.cast(paddle.shape(x)[0], "int64")
         for _ in range(20):
@@ -53,8 +53,8 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
         topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
         topk_coordinates.stop_gradient = stop_gradient
         score = paddle.gather_nd(x, topk_coordinates)
-        layers.increment(x=step_idx, value=1.0, in_place=True)
-        layers.array_write(score, i=step_idx, array=scores)
+        paddle.increment(x=step_idx, value=1.0)
+        paddle.tensor.array_write(score, i=step_idx, array=scores)
         length_cond = paddle.less_than(x=step_idx, y=max_len)
         layers.assign(length_cond, cond)
 

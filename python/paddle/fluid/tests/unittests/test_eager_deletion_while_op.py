@@ -80,14 +80,14 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
         i.stop_gradient = True
 
         init = layers.zeros(shape=[10], dtype='float32')
-        mem_array = layers.array_write(x=init, i=i)
-        data_array = layers.array_write(x=d0, i=i)
+        mem_array = paddle.tensor.array_write(x=init, i=i)
+        data_array = paddle.tensor.array_write(x=d0, i=i)
 
-        i = layers.increment(i)
-        layers.array_write(d1, i, array=data_array)
+        i = paddle.increment(i)
+        paddle.tensor.array_write(d1, i, array=data_array)
 
-        i = layers.increment(i)
-        layers.array_write(d2, i, array=data_array)
+        i = paddle.increment(i)
+        paddle.tensor.array_write(d2, i, array=data_array)
 
         i = layers.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True
@@ -106,27 +106,27 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
         while_op = paddle.static.nn.control_flow.While(cond=cond)
         while_op2 = paddle.static.nn.control_flow.While(cond=cond2)
         with while_op.block():
-            d = layers.array_read(array=data_array, i=i)
-            prev = layers.array_read(array=mem_array, i=i)
+            d = paddle.tensor.array_read(array=data_array, i=i)
+            prev = paddle.tensor.array_read(array=mem_array, i=i)
             d = paddle.reshape(d, shape=[10])
             prev = paddle.reshape(prev, shape=[10])
             result = layers.sums(input=[d, prev])
 
-            i = layers.increment(x=i, in_place=True)
-            layers.array_write(result, i=i, array=mem_array)
+            i = paddle.increment(x=i)
+            paddle.tensor.array_write(result, i=i, array=mem_array)
             paddle.assign(paddle.less_than(x=i, y=array_len), cond)
             with while_op2.block():
-                d2 = layers.array_read(array=data_array, i=j)
-                prev2 = layers.array_read(array=mem_array, i=j)
+                d2 = paddle.tensor.array_read(array=data_array, i=j)
+                prev2 = paddle.tensor.array_read(array=mem_array, i=j)
                 d2 = paddle.reshape(d2, shape=[10])
                 prev2 = paddle.reshape(prev2, shape=[10])
                 result2 = layers.sums(input=[d2, prev2])
 
-                j = layers.increment(x=j, in_place=True)
-                layers.array_write(result2, i=j, array=mem_array)
+                j = paddle.increment(x=j)
+                paddle.tensor.array_write(result2, i=j, array=mem_array)
                 paddle.assign(paddle.less_than(x=j, y=array_len2), cond2)
 
-        sum_result = layers.array_read(array=mem_array, i=j)
+        sum_result = paddle.tensor.array_read(array=mem_array, i=j)
         sum_result.persistable = True
         tmp = layers.unsqueeze(sum_result, axes=[0])
         tmp = paddle.expand(tmp, [10, -1])

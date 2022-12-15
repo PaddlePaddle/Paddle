@@ -53,13 +53,8 @@ from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
     'Switch',
-    'increment',
-    'array_write',
-    'array_read',
-    'cond',
     'StaticRNN',
     'Print',
-    'Assert',
     'while_loop',
 ]
 
@@ -100,7 +95,7 @@ def _select_input_infer_shape(first_shape, second_shape):
     2. compare axis one by one:
         if a == b: we set axis to a
         if a != b: we set axis to -1
-    for compatibility，non declarative mode, we just return second_shape.
+    for compatibility, non declarative mode, we just return second_shape.
     """
     if len(first_shape) != len(second_shape):
         warnings.warn(
@@ -134,6 +129,7 @@ def select_input(inputs, mask):
 
     # Select input should expand the shape. If it is - 1 and valid number, use - 1 first. If the dim is different, an error will be reported directly
     # assert inputs[0].dtype == inputs[1].dtype, f"Expect the inputs should have the same dtype, but get {inputs[0].dtype} and {inputs[1].dtype}"
+
     output_shape = _select_input_infer_shape(inputs[0].shape, inputs[1].shape)
     output_dtype = inputs[1].dtype
     output_type = inputs[1].type
@@ -147,84 +143,6 @@ def select_input(inputs, mask):
         outputs={'Out': out},
     )
     return out
-
-
-def select_input_with_buildin_type(inputs, mask, name):
-    from paddle.jit.dy2static.variable_trans_func import (
-        to_static_variable,
-    )
-    from paddle.jit.dy2static.utils import UndefinedVar
-
-    false_var, true_var = inputs
-
-    if isinstance(false_var, UndefinedVar) and isinstance(
-        true_var, UndefinedVar
-    ):
-        """None -> UndefinedVar, so the real value is a [None, UndefinedVar] or [None, None], we just return None."""
-        return None
-
-    if isinstance(false_var, Variable) and isinstance(true_var, Variable):
-        try:
-            return select_input(inputs, mask)
-        except Exception as e:
-            raise RuntimeError(
-                f"Exceptions throwed while doing select_input on {name}:\n{e}"
-            )
-
-    elif isinstance(false_var, support_ret_buildin_type) and isinstance(
-        false_var, type(true_var)
-    ):
-        if false_var == true_var:
-            return false_var
-        else:
-            inputs = [
-                to_static_variable(false_var),
-                to_static_variable(true_var),
-            ]
-    # Deal with the situations like this: false_var is int and true_var is Variable
-    elif (
-        isinstance(false_var, support_ret_buildin_type)
-        and isinstance(true_var, Variable)
-    ) or (
-        isinstance(true_var, support_ret_buildin_type)
-        and isinstance(false_var, Variable)
-    ):
-        inputs = [to_static_variable(false_var), to_static_variable(true_var)]
-        warnings.warn(
-            "Return results from different branches in cond are not same type: "
-            "false_var returned by false_fn is '{}' and true_var of true_fn is "
-            "'{}'".format(type(false_var), type(true_var))
-        )
-    elif (
-        isinstance(false_var, UndefinedVar)
-        and isinstance(true_var, (Variable,) + support_ret_buildin_type)
-    ) or (
-        isinstance(true_var, UndefinedVar)
-        and isinstance(false_var, (Variable,) + support_ret_buildin_type)
-    ):
-
-        def create_var_if_not_undefined_var(a):
-            if isinstance(a, UndefinedVar):
-                return a
-            return to_static_variable(a)
-
-        true_var, false_var = to_static_variable(true_var), to_static_variable(
-            false_var
-        )
-        inputs = [false_var, true_var]
-    else:
-        raise TypeError(
-            "Unsupported return type of true_fn and false_fn in cond: false_var "
-            "returned by false_fn is '{}' and true_var of true_fn is '{}'".format(
-                type(false_var), type(true_var)
-            )
-        )
-    try:
-        return select_input(inputs, mask)
-    except Exception as e:
-        raise RuntimeError(
-            f"Exceptions throwed while doing select_input on {name}:\n{e}"
-        )
 
 
 def split_lod_tensor(input, mask, level=0):
@@ -447,78 +365,6 @@ def Print(
         },
     )
     return output
-
-
-def Assert(cond, data=None, summarize=20, name=None):
-    '''
-    This API creates an op that asserts the given condition is true. If the
-    condition is false, prints the tensors in data. ``summarize`` specifies the
-    number of the elements in the tensors to print.
-
-    Args:
-        cond (Variable): The boolean condition tensor whose numel should be 1.
-        data (list|tuple, optional): list or tuple of tensors to print when
-            condition is not true. If it's ``None``, no tensor will be printed.
-            The default value is ``None``.
-        summarize (int, optional): Number of elements in the tensor to be
-            printed. If its value is -1, then all elements in the tensor will
-            be printed. The default value is 20.
-        name (str, optional): The default value is ``None`` . Normally users
-            don't have to set this parameter. For more information, please
-            refer to :ref:`api_guide_Name` .
-
-    Returns:
-        Operator: the created operation.
-
-    Raises:
-        TypeError: If ``cond`` is not boolean Variable.
-        TypeError: If ``data`` is not a list or tuple or ``None``.
-        TypeError: If ``summarize`` is not int.
-        TypeError: If ``name`` is not a string or ``None`` .
-        fluid.core.EnforceNotMet: If the condition is False in running time.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
-
-            x = layers.fill_constant(shape=[2, 3], dtype='float32', value=2.0)
-            condition = layers.reduce_max(x) < 1.0 # False
-            layers.Assert(condition, [x], 10, "example_assert_layer")
-
-            exe = fluid.Executor()
-            try:
-                exe.run(fluid.default_main_program())
-                # Print x and throws paddle.fluid.core.EnforceNotMet exception
-                # Example printed message for x:
-                #
-                # Variable: fill_constant_0.tmp_0
-                #   - lod: {}
-                #   - place: CPUPlace()
-                #   - shape: [2, 3]
-                #   - layout: NCHW
-                #   - dtype: float
-                #   - data: [2 2 2 2 2 2]
-            except fluid.core.EnforceNotMet as e:
-                print("Assert Exception Example")
-
-    '''
-    check_variable_and_dtype(cond, "cond", ["bool"], "fluid.layers.Assert")
-    check_type(data, "data", (list, tuple, type(None)), "fluid.layers.Assert")
-    check_type(summarize, "summarize", int, "fluid.layers.Assert")
-    check_type(name, "name", (str, type(None)), "fluid.layers.Assert")
-
-    layer_name = name if name else ('assert_' + cond.name)
-    helper = LayerHelper(layer_name, **locals())
-
-    op = helper.append_op(
-        type="assert",
-        inputs={"Cond": cond, "Data": [] if data is None else list(data)},
-        attrs={"summarize": summarize},
-    )
-
-    return op
 
 
 # (TODO: Mine) There exists dependency. It will be removed later.
@@ -1215,7 +1061,7 @@ class While:
             cond = paddle.less_than(x=i, y=loop_len)
             while_op = fluid.layers.While(cond=cond)
             with while_op.block():
-                i = fluid.layers.increment(x=i, value=1, in_place=True)
+                i = paddle.increment(x=i, value=1)
                 paddle.assign(paddle.less_than(x=i, y=loop_len), cond)
 
             exe = fluid.Executor(fluid.CPUPlace())
@@ -1232,6 +1078,7 @@ class While:
             import paddle.fluid as fluid
             import numpy as np
 
+            paddle.enable_static()
             i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
             loop_len = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
             one = fluid.layers.fill_constant(shape=[1], dtype='float32', value=1)
@@ -1243,7 +1090,7 @@ class While:
             with while_op.block():
                 sums_tensor = fluid.layers.elementwise_add(x=data, y=data)
                 fluid.layers.assign(sums_tensor, sums)  # Update the value of sums_tensor defined in While to the sums which defined outside of While through layers.assign
-                i = fluid.layers.increment(x=i, value=1, in_place=True)
+                i = paddle.increment(x=i, value=1)
                 data = fluid.layers.elementwise_add(x=data, y=one)
                 paddle.assign(paddle.less_than(x=i, y=loop_len), cond)
 
@@ -1513,237 +1360,6 @@ def _deal_with_undefined_var(output_vars, loop_vars):
     return results
 
 
-def increment(x, value=1.0, in_place=True):
-    """
-    The OP is usually used for control flow to increment the data of :attr:`x` by an amount :attr:`value`.
-    Notice that the number of elements in :attr:`x` must be equal to 1.
-
-    Parameters:
-        x (Variable): A tensor that must always contain only one element, its data type supports
-            float32, float64, int32 and int64.
-        value (float, optional): The amount to increment the data of :attr:`x`. Default: 1.0.
-        in_place (bool, optional): Whether the OP should be performed in-place. Default: True.
-
-    Returns:
-        Variable: The elementwise-incremented tensor with the same shape and data type as :attr:`x`.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          counter = fluid.layers.zeros(shape=[1], dtype='float32') # [0.]
-          fluid.layers.increment(counter) # [1.]
-    """
-    if in_dygraph_mode():
-        return _C_ops.increment_(x, value)
-
-    check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'increment'
-    )
-    helper = LayerHelper("increment", **locals())
-    if not in_place:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        out = x
-    helper.append_op(
-        type='increment',
-        inputs={'X': [x]},
-        outputs={'Out': [out]},
-        attrs={'step': float(value)},
-    )
-    return out
-
-
-def array_write(x, i, array=None):
-    """
-    This OP writes the input ``x`` into the i-th position of the ``array``
-    :ref:`api_fluid_LoDTensorArray` and returns the modified array.
-    If ``array`` is none, a new LoDTensorArray will be created and returned.
-    This OP is often used together with :ref:`api_fluid_layers_array_read` OP.
-
-    Args:
-        x (Variable): The input data to be written into array. It's multi-dimensional
-            Tensor or LoDTensor. Data type: float32, float64, int32, int64.
-        i (Variable): 1-D Tensor with shape [1], which represents the position into which
-            ``x`` is written. Data type: int64.
-        array (LoDTensorArray, optional): The LoDTensorArray into which ``x`` is written.
-            The default value is None, when a new LoDTensorArray will be created and returned
-            as a result.
-
-    Returns:
-        Variable: The input ``array`` after ``x`` is written into.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            tmp = fluid.layers.fill_constant(shape=[3, 2], dtype='int64', value=5)
-            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
-            # Write tmp into the position of arr with subscript 10 and return arr.
-            arr = fluid.layers.array_write(tmp, i=i)
-
-            # Now, arr is a LoDTensorArray with length 11. We can use array_read OP to read
-            # the data at subscript 10 and print it out.
-            item = fluid.layers.array_read(arr, i=i)
-            input = fluid.layers.Print(item, message="The content of i-th LoDTensor:")
-            main_program = fluid.default_main_program()
-            exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(main_program)
-
-            # The printed result is:
-            # 1570533133    The content of i-th LoDTensor:  The place is:CPUPlace
-            # Tensor[array_read_0.tmp_0]
-            #    shape: [3,2,]
-            #    dtype: l
-            #    data: 5,5,5,5,5,5,
-
-            # the output is 2-D Tensor with shape [3,2], which is tmp above.
-            # dtype is the corresponding C++ data type, which may vary in different environments.
-            # Eg: if the data type of tensor is int64, then the corresponding C++ data type is int64_t,
-            #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux,
-            #       and '__int64' on Windows. They both represent 64-bit integer variables.
-
-    """
-    if _non_static_mode():
-        assert isinstance(
-            x, Variable
-        ), "The input data 'x' in array_write must be Variable in dygraph mode"
-        assert isinstance(
-            i, Variable
-        ), "The index 'i' in array_write must be Variable in dygraph mode"
-        assert i.shape == [
-            1
-        ], "The shape of index 'i' should be [1] in dygraph mode"
-        i = i.numpy().item(0)
-        if array is None:
-            array = paddle.tensor.create_array(x.dtype)
-        assert isinstance(
-            array, list
-        ), "The 'array' in array_write must be a list in dygraph mode"
-        assert i <= len(
-            array
-        ), "The index 'i' should not be greater than the length of 'array' in dygraph mode"
-        if i < len(array):
-            array[i] = x
-        else:
-            array.append(x)
-        return array
-
-    check_variable_and_dtype(i, 'i', ['int64'], 'array_write')
-    check_type(x, 'x', (Variable), 'array_write')
-    helper = LayerHelper('array_write', **locals())
-    if array is not None:
-        if (
-            not isinstance(array, Variable)
-            or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY
-        ):
-            raise TypeError(
-                "array should be tensor array vairable in array_write Op"
-            )
-    if array is None:
-        array = helper.create_variable(
-            name="{0}.out".format(helper.name),
-            type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
-            dtype=x.dtype,
-        )
-    helper.append_op(
-        type='write_to_array',
-        inputs={'X': [x], 'I': [i]},
-        outputs={'Out': [array]},
-    )
-    return array
-
-
-def array_read(array, i):
-    """
-    This OP is used to read data at the specified position from the input array
-    :ref:`api_fluid_LoDTensorArray` . ``array`` is the input array and ``i``
-    is the specified read position. This OP is often used together with
-    :ref:`api_fluid_layers_array_write` OP.
-
-    Case 1:
-    ::
-        Input:
-            The shape of first three tensors are [1], and that of the last one is [1,2]:
-                array = ([0.6], [0.1], [0.3], [0.4, 0.2])
-            And:
-                i = [3]
-
-        Output:
-            output = [0.4, 0.2]
-
-    Args:
-        array (LoDTensorArray): The input LoDTensorArray.
-        i (Variable): 1-D Tensor, whose shape is [1] and dtype is int64. It represents the
-            specified read position of ``array``.
-
-    Returns:
-        Variable: The LoDTensor or Tensor that is read at the specified position of ``array``.
-
-    Examples:
-        .. code-block:: python
-
-            # First we're going to create a LoDTensorArray, then we're going to write the Tensor into
-            # the specified position, and finally we're going to read the Tensor at that position.
-            import paddle.fluid as fluid
-            arr = fluid.layers.create_array(dtype='float32')
-            tmp = fluid.layers.fill_constant(shape=[3, 2], dtype='int64', value=5)
-            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
-            # tmp is the Tensor with shape [3,2], and if we write it into the position with subscript 10
-            # of the empty-array: arr, then the length of arr becomes 11.
-            arr = fluid.layers.array_write(tmp, i, array=arr)
-            # Read the data of the position with subscript 10.
-            item = fluid.layers.array_read(arr, i)
-
-            # You can print out the data via executor.
-            input = fluid.layers.Print(item, message="The LoDTensor of the i-th position:")
-            main_program = fluid.default_main_program()
-            exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(main_program)
-
-            # The printed result is:
-
-            # 1569588169  The LoDTensor of the i-th position: The place is:CPUPlace
-            # Tensor[array_read_0.tmp_0]
-            #    shape: [3,2,]
-            #    dtype: l
-            #    data: 5,5,5,5,5,5,
-
-            # the output is 2-D Tensor with shape [3,2].
-            # dtype is the corresponding C++ data type, which may vary in different environments.
-            # Eg: if the data type of tensor is int64, then the corresponding C++ data type is int64_t,
-            #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux,
-            #       and '__int64' on Windows. They both represent 64-bit integer variables.
-    """
-    if _non_static_mode():
-        assert isinstance(
-            array, list
-        ), "The 'array' in array_read must be list in dygraph mode"
-        assert isinstance(
-            i, Variable
-        ), "The index 'i' in array_read must be Variable in dygraph mode"
-        assert i.shape == [
-            1
-        ], "The shape of index 'i' should be [1] in dygraph mode"
-        i = i.numpy().item(0)
-        return array[i]
-
-    check_variable_and_dtype(i, 'i', ['int64'], 'array_read')
-    helper = LayerHelper('array_read', **locals())
-    if (
-        not isinstance(array, Variable)
-        or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY
-    ):
-        raise TypeError("array should be tensor array vairable")
-    out = helper.create_variable_for_type_inference(dtype=array.dtype)
-    helper.append_op(
-        type='read_from_array',
-        inputs={'X': [array], 'I': [i]},
-        outputs={'Out': [out]},
-    )
-    return out
-
-
 class ConditionalBlockGuard(BlockGuard):
     """
     ConditionalBlockGuard is derived from BlockGuard. It is dedicated for
@@ -1936,315 +1552,6 @@ class ConditionalBlock:
         self.helper.main_program._sync_with_cpp()
 
 
-def copy_var_to_parent_block(var, layer_helper):
-    if not isinstance(var, Variable):
-        return var
-    prog = layer_helper.main_program
-    parent_idx = prog.current_block().parent_idx
-    assert (
-        parent_idx >= 0
-    ), "Got wrong parent block index when assigning var to parent scope in control_flow"
-    parent_block = prog.block(parent_idx)
-
-    if (
-        var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY
-        and parent_block._find_var_recursive(var.name)
-    ):
-        parent_block_var = var
-    else:
-        parent_block_var = parent_block.create_var(
-            dtype=var.dtype, shape=var.shape, type=var.type
-        )
-        assign(var, parent_block_var)
-    return parent_block_var
-
-
-def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
-    """
-    This API returns ``true_fn()`` if the predicate ``pred`` is true else
-    ``false_fn()`` . Users could also set ``true_fn`` or ``false_fn`` to
-    ``None`` if do nothing and this API will treat the callable simply returns
-    ``None`` in this case.
-
-    ``true_fn`` and ``false_fn`` should return same nest structure of tensors
-    or both return ``None`` if user doens't like to return anything. A nest
-    structure of tensors in PaddlePaddle is tensor(s), or tuple of tensors, or
-    list of tensors.
-
-    Note:
-        1. The tuples or lists returned by ``true_fn`` and ``false_fn`` must have
-        the same shape because of dataflow model of PaddlePaddle while the
-        tensors in the tuples or the lists can have different shapes.
-
-        2. This API could be used under both static mode or dygraph mode. If it
-        is in dygraph mode, the API only runs one branch based on condition.
-
-        3. If it is in static mode, any tensors or operations created outside
-        or inside of ``true_fn`` and ``false_fn`` will be in net building
-        regardless of which branch is selected at runtime. This has frequently
-        surprised users who expected a lazy semantics. For example:
-
-        .. code-block:: python
-
-            import paddle
-
-            a = paddle.zeros((1, 1))
-            b = paddle.zeros((1, 1))
-            c = a * b
-            out = paddle.static.nn.cond(a < b, lambda: a + c, lambda: b * b)
-
-        No matter whether ``a < b`` , ``c = a * b`` will be in net building and
-        run. ``a + c`` and ``b * b`` will be in net building, but only one
-        branch will be executed during runtime.
-
-    Args:
-        pred(Tensor): A boolean tensor whose numel should be 1. The boolean
-            value determines whether to return the result of ``true_fn`` or
-            ``false_fn`` .
-        true_fn(callable, optional): A callable to be performed if ``pred`` is
-            true. The default value is ``None`` .
-        false_fn(callable, optional): A callable to be performed if ``pred`` is
-            false. The default value is ``None`` .
-        name(str, optional): The default value is ``None`` . Normally users
-             don't have to set this parameter. For more information, please
-             refer to :ref:`api_guide_Name` .
-        return_names(sequence of string, optional): The default value is ``None`` .
-             Normally users don't have to set this parameters.  A sequence of strings
-             to represents the name of returned vars.  The structure of sequence must
-             be same with return values of true_fn and false_fn.
-
-    Returns:
-        Tensor|list(Tensor)|tuple(Tensor): returns ``true_fn()`` if the
-        predicate ``pred`` is true else ``false_fn()`` .
-
-    Raises:
-        TypeError: if ``true_fn`` or ``false_fn`` is not callable.
-        ValueError: if ``true_fn`` and ``false_fn`` don't return the same nest
-            structure of tensors.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            #
-            # pseudocode:
-            # if 0.1 < 0.23:
-            #     return 1, True
-            # else:
-            #     return 3, 2
-            #
-
-            def true_func():
-                return paddle.full(shape=[1, 2], dtype='int32',
-                                   fill_value=1), paddle.full(shape=[2, 3],
-                                                              dtype='bool',
-                                                              fill_value=True)
-
-
-            def false_func():
-                return paddle.full(shape=[3, 4], dtype='float32',
-                                   fill_value=3), paddle.full(shape=[4, 5],
-                                                              dtype='int64',
-                                                              fill_value=2)
-
-
-            x = paddle.full(shape=[1], dtype='float32', fill_value=0.1)
-            y = paddle.full(shape=[1], dtype='float32', fill_value=0.23)
-            pred = paddle.less_than(x=x, y=y, name=None)
-            ret = paddle.static.nn.cond(pred, true_func, false_func)
-            # ret is a tuple containing 2 tensors
-            # ret[0] = [[1 1]]
-            # ret[1] = [[ True  True  True]
-            #           [ True  True  True]]
-
-    """
-    if _non_static_mode():
-        assert isinstance(pred, Variable), "The pred in cond must be Variable"
-        assert pred.size == 1, "condition input's numel should be 1"
-        pred = pred.numpy()[0]
-        if pred:
-            if true_fn is not None:
-                if not callable(true_fn):
-                    raise TypeError(
-                        "The true_fn in cond must be callable, but received {}".format(
-                            type(true_fn).__name__
-                        )
-                    )
-                return true_fn()
-        else:
-            if false_fn is not None:
-                if not callable(false_fn):
-                    raise TypeError(
-                        "The false_fn in cond must be callable, but received {}".format(
-                            type(false_fn).__name__
-                        )
-                    )
-                return false_fn()
-        return None
-
-    check_variable_and_dtype(pred, "pred", ['bool'], "fluid.layers.cond")
-    check_type(name, "name", (str, type(None)), "fluid.layers.cond")
-    helper = LayerHelper('cond', **locals())
-    true_output = None
-    false_output = None
-    copy_to_parent_func = lambda var: copy_var_to_parent_block(var, helper)
-    if true_fn is not None:
-        if not callable(true_fn):
-            raise TypeError(
-                "The true_fn in cond must be callable, but received {}".format(
-                    type(true_fn).__name__
-                )
-            )
-        true_cond_block = ConditionalBlock([pred], is_scalar_condition=True)
-        with true_cond_block.block():
-            origin_true_output = true_fn()
-            if origin_true_output is not None:
-                true_output = map_structure(
-                    copy_to_parent_func, origin_true_output
-                )
-    if false_fn is not None:
-        if not callable(false_fn):
-            raise TypeError(
-                "The false_fn in cond must be callable, but received {}".format(
-                    type(false_fn).__name__
-                )
-            )
-        false_cond_block = ConditionalBlock(
-            [paddle.logical_not(pred)], is_scalar_condition=True
-        )
-        with false_cond_block.block():
-            origin_false_output = false_fn()
-            if origin_false_output is not None:
-                false_output = map_structure(
-                    copy_to_parent_func, origin_false_output
-                )
-
-    if true_output is None and false_output is None:
-        return None
-
-    if true_output is None:
-        raise ValueError(
-            "Incompatible return values of true_fn and false_fn in cond: "
-            "true_fn returns None while false_fn returns non-None"
-        )
-    if false_output is None:
-        raise ValueError(
-            "Incompatible return values of true_fn and false_fn in cond: "
-            "true_fn returns non-None while false_fn returns None"
-        )
-
-    # Merge true and false output if they are not None
-    if return_names is None:
-        is_dy2staic = False
-        return_names = ["no name"] * len(_to_sequence_except_dict(true_output))
-    else:
-        """
-        dy2static will set the return_names and expand the return values to UndefinedVar.
-        """
-        is_dy2staic = True
-
-        # TODO:  expand_undefined_var will replace None to Undefinedvar(), to fix cases like:
-        #       a = None
-        #       if condition:
-        #           a = 1
-        # Because we can not use variable to express 'None'
-        true_output, false_output = expand_undefined_var(
-            true_output, false_output, return_names
-        )
-
-    if len(_to_sequence_except_dict(true_output)) != len(
-        _to_sequence_except_dict(false_output)
-    ):
-        raise ValueError(
-            "true fn returns {} vars, but false fn returns {} vars, which is not equals".format(
-                len(_to_sequence_except_dict(true_output)),
-                len(_to_sequence_except_dict(false_output)),
-            )
-        )
-    for true_out, false_out, return_name in zip(
-        _to_sequence_except_dict(true_output),
-        _to_sequence_except_dict(false_output),
-        _to_sequence_except_dict(return_names),
-    ):
-        try:
-            assert_same_structure(true_out, false_out, check_types=False)
-        except ValueError as e:
-            raise ValueError(
-                "Incompatible return values of `{}` in true_fn and false_fn in cond: {}".format(
-                    return_name, e
-                )
-            )
-
-    def check_ret_none(seq_true, seq_false, seq_names):
-        for f_true, f_false, f_name in zip(seq_true, seq_false, seq_names):
-            f_true = flatten(f_true)
-            f_false = flatten(f_false)
-            for idx in range(len(f_true)):
-                if (
-                    f_true[idx] is None
-                    and f_false[idx] is not None
-                    or f_false[idx] is None
-                    and f_true[idx] is not None
-                ):
-                    warnings.warn(
-                        "In cond : Var '{}' or part of it is set differently in ifelse branchs, "
-                        "<{}, {}> in true branch and <{}, {}> in false branch. Set var to "
-                        "'None' in ifelse block might lead to error.".format(
-                            f_name,
-                            type(f_true[idx]),
-                            f_true[idx],
-                            type(f_false[idx]),
-                            f_false[idx],
-                        )
-                    )
-
-    check_ret_none(
-        _to_sequence_except_dict(true_output),
-        _to_sequence_except_dict(false_output),
-        _to_sequence_except_dict(return_names),
-    )
-
-    if is_dy2staic:
-        true_output, false_output = change_none_to_undefinedvar(
-            true_output, false_output
-        )
-
-    mask = cast(pred, dtype='int32')
-    merge_func = (
-        lambda name, false_var, true_var: select_input_with_buildin_type(
-            [false_var, true_var], mask, name
-        )
-    )
-
-    def merge_every_var_list(false_vars, true_vars, name):
-        return map_structure(partial(merge_func, name), false_vars, true_vars)
-
-    merged_output = list(
-        map(
-            merge_every_var_list,
-            _to_sequence_except_dict(false_output),
-            _to_sequence_except_dict(true_output),
-            _to_sequence_except_dict(return_names),
-        )
-    )
-    merged_output = pack_sequence_as(false_output, flatten(merged_output))
-    return merged_output
-
-
-def change_none_to_undefinedvar(nest1, nest2):
-    from paddle.jit.dy2static.utils import UndefinedVar
-
-    def map_fn(x):
-        if x is None:
-            return UndefinedVar("padding")
-        return x
-
-    nest1_out = pack_sequence_as(nest1, list(map(map_fn, flatten(nest1))))
-    nest2_out = pack_sequence_as(nest2, list(map(map_fn, flatten(nest2))))
-    return nest1_out, nest2_out
-
-
 def _to_sequence_except_dict(x):
     """
     In this function, dict is not viewed as sequence.
@@ -2368,9 +1675,10 @@ class Switch:
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
 
-            lr = fluid.layers.create_global_var(
+            lr = paddle.static.create_global_var(
                 shape=[1],
                 value=0.0,
                 dtype='float32',
