@@ -20,7 +20,7 @@
 namespace phi {
 namespace fusion {
 
-template <typename TShape, typename WShape, int Alignment = 4>
+template <typename TShape, typename WShape, int Alignment = 8>
 cutlass::Status cutlass_nhwc_conv2d_bias_leaky_relu(ConvAllParams params) {
   using ElementAccumulator = float;
   using ElementComputeEpilogue = float;

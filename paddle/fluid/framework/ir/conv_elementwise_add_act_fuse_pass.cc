@@ -172,7 +172,7 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
     cudaDeviceProp props;
     cudaGetDeviceProperties(&props, Get<int>("gpu_device_id"));
     int sm_version = props.major * 10 + props.minor;
-    // Cutlass now only support SM75
+    // Now we only implement cutlass kernel on SM75.
     if (sm_version == 75) {
       // Cutlass now support these cba activations.
       cutlass_act_set.insert("swish");

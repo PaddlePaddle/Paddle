@@ -81,7 +81,8 @@ void IRPassManager::CreatePasses(Argument *argument,
     pass->Set("optim_shape_tensor",
               new std::map<std::string, std::vector<int>>());
 
-    // this is used by some fp16 precision passes, so move it here.
+    // This gpu_device_id is used by some fp16 precision passes, so move it
+    // here.
     pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
 
     // tuned trt dynamic_shape
