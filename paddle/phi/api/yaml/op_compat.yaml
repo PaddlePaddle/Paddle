@@ -931,19 +931,6 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
-- op : pow
-  backward : pow_grad, pow_double_grad, pow_triple_grad
-  inputs :
-    x : X
-  outputs :
-    out : Out
-  attrs :
-    y : factor
-  scalar :
-    y :
-      data_type : float
-      tensor_name : FactorTensor
-
 - op : prelu
   backward : prelu_grad
   extra :

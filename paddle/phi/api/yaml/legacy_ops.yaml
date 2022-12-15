@@ -1481,6 +1481,17 @@
     param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
   backward : pool3d_grad
 
+- op : pow
+  args : (Tensor x, Scalar y)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : pow
+    data_type : x
+  backward : pow_grad
+
 - op : prelu
   args : (Tensor x, Tensor alpha, str data_format, str mode)
   output : Tensor(out)

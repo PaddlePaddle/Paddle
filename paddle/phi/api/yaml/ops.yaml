@@ -770,17 +770,6 @@
     func : poisson
   backward : poisson_grad
 
-- op : pow
-  args : (Tensor x, Scalar y=1.0)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-    param: [x]
-  kernel :
-    func : pow
-    data_type : x
-  backward : pow_grad
-
 - op : put_along_axis
   args : (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign")
   output : Tensor(out)
