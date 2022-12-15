@@ -23,6 +23,7 @@ from paddle.distributed.auto_parallel.utils import (
     use_standalone_executor,
 )
 
+from .auto_parallel_sharding import _supported_optimizer_type
 from .pass_base import PassBase, register_pass
 
 
@@ -110,6 +111,21 @@ class AutoParalSupplementDepPass(PassBase):
                     op.input("Scale")[0],
                     "check_finite_dep",
                 )
+
+        # analyze deps for optimizer
+        # optimizers order should be fixed to allow broadcast to overlap with optimizer
+        first_optimizer_op = True
+        for idx, op in enumerate(main_block.ops):
+            if op.type in _supported_optimizer_type:
+                if first_optimizer_op:
+                    first_optimizer_op = False
+                else:
+                    deps_map[idx] = (
+                        prior_varname,
+                        op.input("Param")[0],
+                        "optimizer_order_dep",
+                    )
+                prior_varname = op.output("ParamOut")[0]
 
         # insert deps
         indice = sorted(list(deps_map.keys()), reverse=True)
