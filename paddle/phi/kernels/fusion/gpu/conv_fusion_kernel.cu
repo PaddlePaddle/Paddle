@@ -28,8 +28,6 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/autotune/cache_base.h"
 #include "paddle/phi/kernels/impl/conv_cudnn_impl.h"
 #include "paddle/utils/optional.h"
 
@@ -174,16 +172,30 @@ class CudnnConvDescManager {
     if (!conv_attr_cache_.count(hash_key)) {
       std::lock_guard<std::mutex> lock(attr_mutex_);
       if (!conv_attr_cache_.count(hash_key)) {
+        auto printVec = [](const std::vector<int>& vec) {
+          std::ostringstream os;
+          for (size_t i = 0; i < vec.size(); ++i) os << vec[i] << ", ";
+          return os.str();
+        };
         ConvAttrCacheInfo cache;
         auto paddings = paddings_t;
         auto dilations = dilations_t;
         std::vector<int> in_data_dims(input_dims.size() - 2);
-        for (size_t i = 1; i < input_dims.size() - 1; ++i) {
-          in_data_dims[i - 1] = input_dims[i];
-        }
         std::vector<int> ksize(filter_dims.size() - 2);
-        for (size_t i = 1; i < filter_dims.size() - 1; ++i) {
-          ksize[i - 1] = filter_dims[i];
+        if (format == CUDNN_TENSOR_NHWC) {
+          for (size_t i = 1; i < input_dims.size() - 1; ++i) {
+            in_data_dims[i - 1] = input_dims[i];
+          }
+          for (size_t i = 1; i < filter_dims.size() - 1; ++i) {
+            ksize[i - 1] = filter_dims[i];
+          }
+        } else {
+          for (size_t i = 2; i < input_dims.size(); ++i) {
+            in_data_dims[i - 2] = input_dims[i];
+          }
+          for (size_t i = 2; i < filter_dims.size(); ++i) {
+            ksize[i - 2] = filter_dims[i];
+          }
         }
         phi::UpdatePaddingAndDilation(&paddings,
                                       &dilations,
