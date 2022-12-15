@@ -38,7 +38,7 @@ from .backward import (
     _append_grad_suffix_,
     _get_no_grad_set_name,
 )
-from .clip import (
+from paddle.nn.clip import (
     GradientClipBase,
     GradientClipByNorm,
     error_clip_callback,
