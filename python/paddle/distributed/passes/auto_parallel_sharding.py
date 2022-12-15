@@ -164,7 +164,7 @@ class ShardingPass(PassBase):
             self._shard_parameter(block, startup_block)
 
         context.set_attr("params_grads", self.shared_params_grads)
-        self._optimization_pass(main_program, startup_program)
+        # self._optimization_pass(main_program, startup_program)
 
     def _build_sharding_groups(self, main_block, params_grads):
         self._collective_data_parallel_groups(main_block)
