@@ -361,6 +361,9 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
     // with MKL-DNN fuse conv+bn into conv with bias
     // without MKL-DNN fuse conv+bn into conv+elementwise_add
     if (fuse_option == FUSE_MKLDNN) {
+      if (conv->Op()->Type() == "conv2d") {
+        conv->Op()->SetType("fused_conv2d");
+      }
       auto input_names = conv->Op()->InputNames();
       bool has_bias =
           std::find(input_names.begin(), input_names.end(), "Bias") !=
