@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/float_to_half_pass.h"
+#include "paddle/fluid/framework/ir/auto_mixed_precision_pass.h"
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/operator.h"
@@ -29,7 +29,7 @@ namespace ir {
 
 namespace {
 
-using VarType = FloatToHalfPass::VarType;
+using VarType = AutoMixedPrecisionPass::VarType;
 
 bool PhiKernelSupportPrecision(
     const std::string& op_type,
@@ -70,6 +70,23 @@ bool GpuKernelSupportPrecision(
   }
   return support;
 }
+
+inline bool VarNodeHasDtype(Node* var_node) {
+  auto type = var_node->Var()->GetType();
+  return (type == VarType::SELECTED_ROWS) || (type == VarType::LOD_TENSOR) ||
+         (type == VarType::LOD_TENSOR_ARRAY) || (type == VarType::STRINGS) ||
+         (type == VarType::VOCAB);
+}
+
+inline bool IsFloatType(VarType::Type type) {
+  return (type == VarType::FP64) || (type == VarType::FP32);
+}
+
+inline bool IsHalfType(VarType::Type type) {
+  return (type == VarType::FP16) || (type == VarType::BF16);
+}
+
+};  // namespace
 
 void DoInsertCastOp(Graph* graph,
                     Node* var_node,
@@ -123,27 +140,26 @@ void DoInsertCastOp(Graph* graph,
   IR_NODE_UNLINK(var_node, op_node);
 }
 
-inline bool VarNodeHasDtype(Node* var_node) {
-  auto type = var_node->Var()->GetType();
-  return (type == VarType::SELECTED_ROWS) || (type == VarType::LOD_TENSOR) ||
-         (type == VarType::LOD_TENSOR_ARRAY) || (type == VarType::STRINGS) ||
-         (type == VarType::VOCAB);
+bool OpSupportPrecision(const std::string& op_type,
+                        phi::Backend backend,
+                        phi::DataType precision,
+                        const std::unordered_set<std::string>& black_list) {
+  bool support = false;
+  if (black_list.count(op_type) == 0) {
+    if (backend == phi::Backend::GPU) {
+      support = GpuKernelSupportPrecision(op_type, precision);
+    } else {
+      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+          "Now, only support backend of GPU."));
+    }
+  }
+  return support;
 }
-
-inline bool IsFloatType(VarType::Type type) {
-  return (type == VarType::FP64) || (type == VarType::FP32);
-}
-
-inline bool IsHalfType(VarType::Type type) {
-  return (type == VarType::FP16) || (type == VarType::BF16);
-}
-
-};  // namespace
 
 // The set of ops that support fp16 calculation and are considered
 // numerically-dangerous, slower and whose effects may also be observed in
 // downstream ops.
-void FloatToHalfPass::SetDefaultBlacklist() const {
+void AutoMixedPrecisionPass::SetDefaultBlacklist() const {
   black_list_.insert({
       // numerically-dangerous
       "acos",
@@ -175,12 +191,27 @@ void FloatToHalfPass::SetDefaultBlacklist() const {
   });
 }
 
-void FloatToHalfPass::Init(Graph* graph) const {
-  keep_io_types_ = true;
-  half_precision_ =
-      static_cast<phi::DataType>(Get<int>("mixed_precision_mode"));
+void AutoMixedPrecisionPass::Init(Graph* graph) const {
+  bool enable_gpu_mixed = Get<bool>("enable_gpu_mixed");
+  if (enable_gpu_mixed) {
+    backend_ = phi::Backend::GPU;
+  }
+
+  skip_pass_ = !enable_gpu_mixed;
+
+  low_precision_ = static_cast<phi::DataType>(Get<int>("mixed_precision_mode"));
+
   black_list_ = Get<std::unordered_set<std::string>>("mixed_black_list");
   SetDefaultBlacklist();
+  VLOG(4) << "black_list has ";
+  for (const auto& name : black_list_) {
+    VLOG(4) << " - " << name;
+  }
+
+  keep_io_types_ = true;
+  if (Has("keep_io_types")) {
+    keep_io_types_ = Get<bool>("keep_io_types");
+  }
 
   auto graph_size = graph->SubGraphsSize();
   VLOG(4) << "graph size: " << graph_size;
@@ -204,24 +235,27 @@ void FloatToHalfPass::Init(Graph* graph) const {
   }
 }
 
-void FloatToHalfPass::ApplyImpl(Graph* graph) const {
-  auto enable_gpu_half = Get<bool>("enable_gpu_half");
-  if (!enable_gpu_half) return;
+void AutoMixedPrecisionPass::ApplyImpl(Graph* graph) const {
+  PADDLE_ENFORCE_NOT_NULL(graph,
+                          platform::errors::PreconditionNotMet(
+                              "During the auto_mixed_precision_pass, the graph "
+                              "should not be nullptr."));
+  PADDLE_ENFORCE_EQ(graph->IsMainGraph(),
+                    true,
+                    platform::errors::PreconditionNotMet(
+                        "During the auto_mixed_precision_pass, the graph "
+                        "should be main graph."));
 
-  PADDLE_ENFORCE_NOT_NULL(
-      graph,
-      platform::errors::PreconditionNotMet(
-          "During the float to half pass, the graph should not be nullptr."));
-  PADDLE_ENFORCE_EQ(
-      graph->IsMainGraph(),
-      true,
-      platform::errors::PreconditionNotMet(
-          "During the float to half pass, the graph should be main graph."));
-
-  FusePassBase::Init("float_to_half", graph);
+  FusePassBase::Init("auto_mixed_precision", graph);
 
   Init(graph);
   VLOG(4) << "Init done";
+
+  if (skip_pass_) {
+    VLOG(3) << "Skip auto_mixed_precision_pass.";
+    return;
+  }
+
   SetOpUniqueType();
   VLOG(4) << "SetOpUniqueType done";
   GetOpPrecision();
@@ -240,19 +274,7 @@ void FloatToHalfPass::ApplyImpl(Graph* graph) const {
   VLOG(4) << "RestoreOpOriginType done";
 }
 
-bool FloatToHalfPass::OpSupportPrecision(const std::string& op_type,
-                                         phi::DataType precision,
-                                         phi::Backend backend) const {
-  bool support = false;
-  if (black_list_.count(op_type) == 0) {
-    if (backend == phi::Backend::GPU) {
-      support = GpuKernelSupportPrecision(op_type, precision);
-    }
-  }
-  return support;
-}
-
-void FloatToHalfPass::SetOpUniqueType() const {
+void AutoMixedPrecisionPass::SetOpUniqueType() const {
   int suffix = 0;
   for (const auto& nodes : all_op_nodes_) {
     for (auto* op_node : nodes) {
@@ -269,7 +291,7 @@ void FloatToHalfPass::SetOpUniqueType() const {
   }
 }
 
-void FloatToHalfPass::RestoreOpOriginType() const {
+void AutoMixedPrecisionPass::RestoreOpOriginType() const {
   for (const auto& nodes : all_op_nodes_) {
     for (auto* op_node : nodes) {
       auto op_type = op_node->Op()->Type();
@@ -281,7 +303,7 @@ void FloatToHalfPass::RestoreOpOriginType() const {
   }
 }
 
-inline std::string FloatToHalfPass::GetOpOriginalType(
+inline std::string AutoMixedPrecisionPass::GetOpOriginalType(
     const std::string& op_type) const {
   if (op_original_type_.count(op_type)) {
     return op_original_type_.at(op_type);
@@ -289,22 +311,21 @@ inline std::string FloatToHalfPass::GetOpOriginalType(
   return op_type;
 }
 
-void FloatToHalfPass::ProcessOpWithDtypeAttr() const {
+void AutoMixedPrecisionPass::ProcessOpWithDtypeAttr() const {
   for (const auto& nodes : all_op_nodes_) {
     for (auto* op_node : nodes) {
       auto op_type = op_node->Op()->Type();
-      if (op_run_half_.count(op_type) == 0) continue;
+      if (op_run_low_precision_.count(op_type) == 0) continue;
 
       if (op_node->Op()->HasAttr("dtype")) {
         auto dtype = op_node->Op()->GetAttrIfExists<int>("dtype");
         if (IsFloatType(static_cast<VarType::Type>(dtype))) {
           op_node->Op()->SetAttr(
               "dtype",
-              static_cast<int>(
-                  framework::TransToProtoVarType(half_precision_)));
+              static_cast<int>(framework::TransToProtoVarType(low_precision_)));
           op_node->Op()->Flush();
           VLOG(4) << "process op with dtype attr: " << op_type << " ( " << dtype
-                  << " --->" << static_cast<int>(half_precision_) << " )";
+                  << " --->" << static_cast<int>(low_precision_) << " )";
         }
       }
       if (op_node->Op()->HasAttr("out_dtype")) {
@@ -312,11 +333,10 @@ void FloatToHalfPass::ProcessOpWithDtypeAttr() const {
         if (IsFloatType(static_cast<VarType::Type>(out_dtype))) {
           op_node->Op()->SetAttr(
               "out_dtype",
-              static_cast<int>(
-                  framework::TransToProtoVarType(half_precision_)));
+              static_cast<int>(framework::TransToProtoVarType(low_precision_)));
           op_node->Op()->Flush();
           VLOG(4) << "process op with out_dtype attr: " << op_type << " ( "
-                  << out_dtype << " --->" << static_cast<int>(half_precision_)
+                  << out_dtype << " --->" << static_cast<int>(low_precision_)
                   << " )";
         }
       }
@@ -324,37 +344,39 @@ void FloatToHalfPass::ProcessOpWithDtypeAttr() const {
   }
 }
 
-void FloatToHalfPass::GetOpPrecision() const {
+void AutoMixedPrecisionPass::GetOpPrecision() const {
   for (const auto& nodes : all_op_nodes_) {
     for (auto* op_node : nodes) {
       auto op_type = op_node->Op()->Type();
-      bool support_half = true;
+      bool support_low_precision = true;
       if (GetOpOriginalType(op_type) == "feed" ||
           GetOpOriginalType(op_type) == "fetch") {
-        support_half = !keep_io_types_;
+        support_low_precision = !keep_io_types_;
       } else {
-        support_half =
-            OpSupportPrecision(GetOpOriginalType(op_type), half_precision_);
+        support_low_precision = OpSupportPrecision(
+            GetOpOriginalType(op_type), backend_, low_precision_, black_list_);
       }
 
       if (op_node->Op()->HasAttr("dtype")) {
         auto dtype = op_node->Op()->GetAttrIfExists<int>("dtype");
-        support_half =
-            support_half && IsFloatType(static_cast<VarType::Type>(dtype));
+        support_low_precision = support_low_precision &&
+                                IsFloatType(static_cast<VarType::Type>(dtype));
       } else if (op_node->Op()->HasAttr("out_dtype")) {
         auto out_dtype = op_node->Op()->GetAttrIfExists<int>("out_dtype");
-        support_half =
-            support_half && IsFloatType(static_cast<VarType::Type>(out_dtype));
+        support_low_precision =
+            support_low_precision &&
+            IsFloatType(static_cast<VarType::Type>(out_dtype));
       } else {
         // if op's input var and output var is not dense tensor, the op should
-        // not run half.
+        // not run at low precision.
         for (auto* in_var_node : op_node->inputs) {
           CHECK_EQ(in_var_node->IsVar(), true);
           auto* real_in_var_node = real_vars_[in_var_node->Var()->Name()];
           if (real_in_var_node->Var()->Persistable()) continue;
 
-          support_half = support_half && (real_in_var_node->Var()->GetType() ==
-                                          VarType::LOD_TENSOR);
+          support_low_precision =
+              support_low_precision &&
+              (real_in_var_node->Var()->GetType() == VarType::LOD_TENSOR);
         }
 
         for (auto* out_var_node : op_node->outputs) {
@@ -362,23 +384,25 @@ void FloatToHalfPass::GetOpPrecision() const {
           auto* real_out_var_node = real_vars_[out_var_node->Var()->Name()];
           if (real_out_var_node->Var()->Persistable()) continue;
 
-          support_half = support_half && (real_out_var_node->Var()->GetType() ==
-                                          VarType::LOD_TENSOR);
+          support_low_precision =
+              support_low_precision &&
+              (real_out_var_node->Var()->GetType() == VarType::LOD_TENSOR);
         }
       }
 
-      if (support_half) {
-        op_run_half_.insert(op_type);
-        VLOG(4) << "support precision: " << op_type << " run at half";
+      if (support_low_precision) {
+        op_run_low_precision_.insert(op_type);
+        VLOG(4) << "support precision: " << op_type << " run at low precision";
       } else {
-        VLOG(4) << "support precision: " << op_type << " not run at half";
+        VLOG(4) << "support precision: " << op_type
+                << " not run at low precision";
       }
     }
   }
 }
 
-void FloatToHalfPass::UpdateOpPrecision() const {
-  std::unordered_set<std::string> vars_should_not_half;
+void AutoMixedPrecisionPass::UpdateOpPrecision() const {
+  std::unordered_set<std::string> vars_should_not_low_precision;
 
   // var -> the var's all input op
   std::unordered_map<std::string, std::vector<Node*>> var_input_ops;
@@ -401,30 +425,16 @@ void FloatToHalfPass::UpdateOpPrecision() const {
                   << " is output of " << op_type;
         }
 
-        // the select_input op's input var should not convert to half. when
-        // op's output var is select_input op's input var, the op should not run
-        // half.
+        // the select_input op's input var should not convert to low precision.
+        // when op's output var is select_input op's input var, the op should
+        // not run at low precision.
         if (GetOpOriginalType(op_node->Op()->Type()) == "select_input") {
           for (auto* in_var_node : op_node->inputs) {
             CHECK_EQ(in_var_node->IsVar(), true);
             if (in_var_node->Var()->Persistable()) continue;
             if (!VarNodeHasDtype(in_var_node)) continue;
 
-            vars_should_not_half.insert(in_var_node->Var()->Name());
-          }
-        }
-
-        // when op_1 only support cpu kernel. if op_2's intput var is op_1's
-        // output var, then op_2 should not run half.
-        if (GetOpOriginalType(op_type) != "feed" &&
-            !GpuKernelSupportPrecision(GetOpOriginalType(op_type),
-                                       phi::DataType::FLOAT32)) {
-          for (auto* out_var_node : op_node->outputs) {
-            CHECK_EQ(out_var_node->IsVar(), true);
-            if (out_var_node->Var()->Persistable()) continue;
-            if (!VarNodeHasDtype(out_var_node)) continue;
-
-            vars_should_not_half.insert(out_var_node->Var()->Name());
+            vars_should_not_low_precision.insert(in_var_node->Var()->Name());
           }
         }
       }
@@ -437,25 +447,7 @@ void FloatToHalfPass::UpdateOpPrecision() const {
     precision_updated = false;
     for (const auto& nodes : all_op_nodes_) {
       for (auto* op_node : nodes) {
-        if (op_run_half_.count(op_node->Op()->Type()) == 0) continue;
-
-        for (auto* in_var_node : op_node->inputs) {
-          CHECK_EQ(in_var_node->IsVar(), true);
-          if (!VarNodeHasDtype(in_var_node)) continue;
-
-          auto* real_in_var_node = real_vars_[in_var_node->Var()->Name()];
-          if (real_in_var_node->Var()->Persistable()) continue;
-
-          if (vars_should_not_half.count(real_in_var_node->Var()->Name())) {
-            op_run_half_.erase(op_node->Op()->Type());
-            precision_updated = true;
-            VLOG(4) << op_node->Op()->Type()
-                    << " should not support half precision.";
-            break;
-          }
-        }
-
-        if (op_run_half_.count(op_node->Op()->Type()) == 0) continue;
+        if (op_run_low_precision_.count(op_node->Op()->Type()) == 0) continue;
 
         for (auto* out_var_node : op_node->outputs) {
           CHECK_EQ(out_var_node->IsVar(), true);
@@ -464,24 +456,25 @@ void FloatToHalfPass::UpdateOpPrecision() const {
           auto* real_out_var_node = real_vars_[out_var_node->Var()->Name()];
           if (real_out_var_node->Var()->Persistable()) continue;
 
-          bool not_run_half = false;
+          bool not_run_low_precision = false;
           const auto& input_op_nodes =
               var_input_ops[real_out_var_node->Var()->Name()];
-          if (vars_should_not_half.count(real_out_var_node->Var()->Name())) {
-            not_run_half = true;
+          if (vars_should_not_low_precision.count(
+                  real_out_var_node->Var()->Name())) {
+            not_run_low_precision = true;
           } else {
             for (auto* node : input_op_nodes) {
-              if (op_run_half_.count(node->Op()->Type()) == 0) {
-                not_run_half = true;
+              if (op_run_low_precision_.count(node->Op()->Type()) == 0) {
+                not_run_low_precision = true;
                 break;
               }
             }
           }
-          if (not_run_half) {
-            op_run_half_.erase(op_node->Op()->Type());
+          if (not_run_low_precision) {
+            op_run_low_precision_.erase(op_node->Op()->Type());
             precision_updated = true;
             VLOG(4) << op_node->Op()->Type()
-                    << " should not support half precision.";
+                    << " should not run at low precision.";
             break;
           }
         }
@@ -491,8 +484,8 @@ void FloatToHalfPass::UpdateOpPrecision() const {
 }
 
 // special ops, its weights should not be low precision.
-bool FloatToHalfPass::InputVarsNotConvert(Node* op_node,
-                                          const std::string& var_name) const {
+bool AutoMixedPrecisionPass::InputVarsNotConvert(
+    Node* op_node, const std::string& var_name) const {
   auto* op_desc = op_node->Op();
   if (GetOpOriginalType(op_desc->Type()) == "batch_norm") {
     auto vecs = op_desc->Input("Bias");
@@ -532,8 +525,8 @@ bool FloatToHalfPass::InputVarsNotConvert(Node* op_node,
   return false;
 }
 
-bool FloatToHalfPass::OutputVarsNotConvert(Node* op_node,
-                                           const std::string& var_name) const {
+bool AutoMixedPrecisionPass::OutputVarsNotConvert(
+    Node* op_node, const std::string& var_name) const {
   auto* op_desc = op_node->Op();
   // batch_norm's input and output (variance and mean) are the same.
   if (GetOpOriginalType(op_desc->Type()) == "batch_norm") {
@@ -557,10 +550,14 @@ bool FloatToHalfPass::OutputVarsNotConvert(Node* op_node,
   return false;
 }
 
-void FloatToHalfPass::SetVarPrecision() const {
+void AutoMixedPrecisionPass::SetVarPrecision() const {
   for (const auto& nodes : all_op_nodes_) {
     for (auto* op_node : nodes) {
-      if (op_run_half_.count(op_node->Op()->Type())) {
+      if (op_run_low_precision_.count(op_node->Op()->Type()) == 0) {
+        continue;
+      }
+
+      if (GetOpOriginalType(op_node->Op()->Type()) != "feed") {
         for (auto* in_var_node : op_node->inputs) {
           CHECK_EQ(in_var_node->IsVar(), true);
 
@@ -573,11 +570,13 @@ void FloatToHalfPass::SetVarPrecision() const {
 
           if (real_in_var_node->Var()->Persistable()) {
             real_in_var_node->Var()->SetDataType(
-                framework::TransToProtoVarType(half_precision_));
-            vars_convert_to_half_.insert(in_var_name);
+                framework::TransToProtoVarType(low_precision_));
+            vars_convert_to_low_precision_.insert(in_var_name);
           }
         }
+      }
 
+      if (GetOpOriginalType(op_node->Op()->Type()) != "fetch") {
         for (auto* out_var_node : op_node->outputs) {
           CHECK_EQ(out_var_node->IsVar(), true);
 
@@ -589,9 +588,9 @@ void FloatToHalfPass::SetVarPrecision() const {
           if (OutputVarsNotConvert(op_node, out_var_name)) continue;
 
           real_out_var_node->Var()->SetDataType(
-              framework::TransToProtoVarType(half_precision_));
+              framework::TransToProtoVarType(low_precision_));
           if (real_out_var_node->Var()->Persistable()) {
-            vars_convert_to_half_.insert(out_var_name);
+            vars_convert_to_low_precision_.insert(out_var_name);
           }
         }
       }
@@ -606,24 +605,24 @@ void FloatToHalfPass::SetVarPrecision() const {
       if (!VarNodeHasDtype(var_node)) continue;
 
       auto var_name = var_node->Var()->Name();
-      if (vars_convert_to_half_.count(var_name)) {
+      if (vars_convert_to_low_precision_.count(var_name)) {
         var_node->Var()->SetDataType(
-            framework::TransToProtoVarType(half_precision_));
+            framework::TransToProtoVarType(low_precision_));
       }
     }
   }
 }
 
-void FloatToHalfPass::ConvertWeightsData() const {
+void AutoMixedPrecisionPass::ConvertWeightsData() const {
   auto* scope = param_scope();
-  PADDLE_ENFORCE_NOT_NULL(
-      scope,
-      platform::errors::PreconditionNotMet(
-          "During the float to half pass, the scope should not be null."));
+  PADDLE_ENFORCE_NOT_NULL(scope,
+                          platform::errors::PreconditionNotMet(
+                              "During the auto_mixed_precision_pass, the scope "
+                              "should not be null."));
 
   auto var_names = scope->LocalVarNames();
   for (const auto& var_name : var_names) {
-    if (vars_convert_to_half_.count(var_name)) {
+    if (vars_convert_to_low_precision_.count(var_name)) {
       VLOG(4) << var_name << "'s data type was convert to half";
 
       auto* var = scope->FindLocalVar(var_name);
@@ -631,25 +630,29 @@ void FloatToHalfPass::ConvertWeightsData() const {
 
       auto* origin_tensor = var->GetMutable<phi::DenseTensor>();
 
-      phi::DenseTensor half_tensor;
-      half_tensor.Resize(origin_tensor->dims());
-      half_tensor.set_type(half_precision_);
+      phi::DenseTensor low_precision_tensor;
+      low_precision_tensor.Resize(origin_tensor->dims());
+      low_precision_tensor.set_type(low_precision_);
 
-      if (half_precision_ == phi::DataType::FLOAT16) {
-        auto* half_data =
-            half_tensor.mutable_data<phi::dtype::float16>(phi::CPUPlace{});
+      if (low_precision_ == phi::DataType::FLOAT16) {
+        auto* low_precision_data =
+            low_precision_tensor.mutable_data<phi::dtype::float16>(
+                phi::CPUPlace{});
         for (int64_t i = 0; i < origin_tensor->numel(); i++) {
           if (origin_tensor->dtype() == phi::DataType::FLOAT64) {
             auto* origin_data = origin_tensor->data<double>();
-            half_data[i] = static_cast<phi::dtype::float16>(origin_data[i]);
+            low_precision_data[i] =
+                static_cast<phi::dtype::float16>(origin_data[i]);
           } else if (origin_tensor->dtype() == phi::DataType::FLOAT32) {
             auto* origin_data = origin_tensor->data<float>();
-            half_data[i] = static_cast<phi::dtype::float16>(origin_data[i]);
+            low_precision_data[i] =
+                static_cast<phi::dtype::float16>(origin_data[i]);
           }
         }
-      } else if (half_precision_ == phi::DataType::BFLOAT16) {
+      } else if (low_precision_ == phi::DataType::BFLOAT16) {
         auto* half_data =
-            half_tensor.mutable_data<phi::dtype::bfloat16>(phi::CPUPlace{});
+            low_precision_tensor.mutable_data<phi::dtype::bfloat16>(
+                phi::CPUPlace{});
         for (int64_t i = 0; i < origin_tensor->numel(); i++) {
           if (origin_tensor->dtype() == phi::DataType::FLOAT64) {
             auto* origin_data = origin_tensor->data<double>();
@@ -662,12 +665,12 @@ void FloatToHalfPass::ConvertWeightsData() const {
       }
       origin_tensor->clear();
       paddle::framework::TensorCopySync(
-          half_tensor, phi::CPUPlace{}, origin_tensor);
+          low_precision_tensor, phi::CPUPlace{}, origin_tensor);
     }
   }
 }
 
-void FloatToHalfPass::InsertCastOp() const {
+void AutoMixedPrecisionPass::InsertCastOp() const {
   int suffix = 0;
   std::unordered_map<Node*, Node*> cache;
 
@@ -681,7 +684,7 @@ void FloatToHalfPass::InsertCastOp() const {
       if (op_node->Op()->HasAttr("sub_block")) continue;
 
       VLOG(4) << "process op: " << op_type
-              << " run half: " << op_run_half_.count(op_type);
+              << " run low precision: " << op_run_low_precision_.count(op_type);
 
       auto inputs = op_node->inputs;
       for (auto* in_var_node : inputs) {
@@ -696,17 +699,17 @@ void FloatToHalfPass::InsertCastOp() const {
         VLOG(4) << "process var: " << real_in_var_node->Var()->Name()
                 << " with type " << in_var_type;
 
-        if (IsFloatType(in_var_type) && op_run_half_.count(op_type)) {
+        if (IsFloatType(in_var_type) && op_run_low_precision_.count(op_type)) {
           DoInsertCastOp(subgraphes_[i],
                          in_var_node,
                          op_node,
                          in_var_type,
-                         framework::TransToProtoVarType(half_precision_),
+                         framework::TransToProtoVarType(low_precision_),
                          block_desc,
                          &suffix,
                          &cache);
         } else if (IsHalfType(in_var_type) &&
-                   op_run_half_.count(op_type) == 0) {
+                   op_run_low_precision_.count(op_type) == 0) {
           DoInsertCastOp(subgraphes_[i],
                          in_var_node,
                          op_node,
@@ -738,4 +741,5 @@ void FloatToHalfPass::InsertCastOp() const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(float_to_half_pass, paddle::framework::ir::FloatToHalfPass);
+REGISTER_PASS(auto_mixed_precision_pass,
+              paddle::framework::ir::AutoMixedPrecisionPass);

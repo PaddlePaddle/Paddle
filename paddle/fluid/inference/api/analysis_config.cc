@@ -99,7 +99,7 @@ void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
     // default
   } else if (precision_mode == Precision::kHalf ||
              precision_mode == Precision::kBf16) {
-    enable_gpu_half_ = true;
+    enable_gpu_mixed_ = true;
   } else {
     LOG(ERROR)
         << "The Paddle-GPU inference currently only supports "
@@ -396,7 +396,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   // Mixed precision related.
   CP_MEMBER(mixed_black_list_);
-  CP_MEMBER(enable_gpu_half_);
+  CP_MEMBER(enable_gpu_mixed_);
   CP_MEMBER(mixed_precision_mode_);
 
   CP_MEMBER(enable_memory_optim_);
@@ -948,8 +948,22 @@ void AnalysisConfig::Update() {
 #endif
   }
 
+  // TODO(inference): When we enable memory_optimize and mkldnn, PaddleSeg model
+  // fail.
   if (enable_memory_optim_) {
+#ifdef PADDLE_WITH_MKLDNN
+    if (use_mkldnn_) {
+      enable_memory_optim_ = false;
+      LOG_FIRST_N(WARNING, 1)
+          << "It is detected that mkldnn and memory_optimize_pass are enabled "
+             "at the same time, but they are not supported yet. Currently, "
+             "memory_optimize_pass is explicitly disabled";
+    } else {
+      pass_builder()->AppendAnalysisPass("memory_optimize_pass");
+    }
+#else
     pass_builder()->AppendAnalysisPass("memory_optimize_pass");
+#endif
   }
 
   if (use_lite_) {
@@ -1017,7 +1031,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << params_file_;
 
   ss << use_gpu_;
-  ss << enable_gpu_half_;
+  ss << enable_gpu_mixed_;
   ss << use_external_stream_;
   ss << exec_stream_;
   ss << use_fc_padding_;
@@ -1234,7 +1248,7 @@ std::string AnalysisConfig::Summary() {
   os.InsertRow({"use_gpu", use_gpu_ ? "true" : "false"});
   if (use_gpu_) {
     os.InsertRow({"gpu_device_id", std::to_string(gpu_device_id_)});
-    os.InsertRow({"enable_gpu_half_", std::to_string(enable_gpu_half_)});
+    os.InsertRow({"enable_gpu_mixed_", std::to_string(enable_gpu_mixed_)});
     os.InsertRow({"memory_pool_init_size",
                   std::to_string(memory_pool_init_size_mb_) + "MB"});
     os.InsertRow(
