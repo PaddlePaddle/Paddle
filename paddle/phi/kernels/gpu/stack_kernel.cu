@@ -25,7 +25,7 @@ namespace phi {
 template <typename IndexT>
 struct DivmodWarpper {
  public:
-  void SetDivden(IndexT dividen) { divmoder = phi::funcs::FastDivMod(dividen); }
+  void SetDivden(IndexT divisor) { divmoder = phi::funcs::FastDivMod(divisor); }
   __device__ inline phi::funcs::FastDivMod::DivModT div_mod(IndexT val) {
     return divmoder.Divmod(val);
   }
@@ -39,7 +39,7 @@ struct DivmodWarpper<int64_t> {
  public:
   using DivModT = phi::AlignedVector<int64_t, 2>;
 
-  void SetDivden(int64_t dividen) { dividen_ = dividen; }
+  void SetDivden(int64_t divisor) { dividen_ = divisor; }
   __device__ inline DivModT div_mod(int64_t val) {
     DivModT data;
     data[0] = val / dividen_;
@@ -51,15 +51,14 @@ struct DivmodWarpper<int64_t> {
   int64_t dividen_;
 };
 
-constexpr int kWarpperSize = 64;
-template <typename T, typename IndexT>
+template <typename T, typename IndexT, int Size>
 struct PointerArray : public DivmodWarpper<IndexT> {
  public:
-  const T* data[kWarpperSize];
+  const T* data[Size];
   PointerArray(const std::vector<const DenseTensor*>& x,
                int num,
-               int64_t dividen) {
-    this->SetDivden(dividen);
+               IndexT divisor) {
+    this->SetDivden(divisor);
     for (auto i = 0; i < num; ++i) {
       data[i] = x[i]->data<T>();
     }
@@ -72,25 +71,22 @@ struct PointerToPointer : public DivmodWarpper<IndexT> {
   T** data;
   PointerToPointer(const Context& ctx,
                    const std::vector<const DenseTensor*>& x,
-                   int num,
-                   int64_t dividen) {
-    this->SetDivden(dividen);
+                   IndexT num,
+                   IndexT divisor,
+                   const paddle::memory::AllocationPtr& ins_gpu_ptr) {
+    this->SetDivden(divisor);
     auto byte_len = num * sizeof(T*);
     std::vector<const T*> x_datas(num);
     for (int i = 0; i < num; ++i) {
       x_datas[i] = x[i]->data<T>();
     }
-    auto tmp_x_data = paddle::memory::Alloc(
-        ctx.GetPlace(),
-        byte_len,
-        phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
     paddle::memory::Copy(ctx.GetPlace(),
-                         tmp_x_data->ptr(),
+                         ins_gpu_ptr->ptr(),
                          phi::CPUPlace(),
                          reinterpret_cast<void*>(x_datas.data()),
                          x_datas.size() * sizeof(T*),
                          ctx.stream());
-    data = reinterpret_cast<T**>(tmp_x_data->ptr());
+    data = reinterpret_cast<T**>(ins_gpu_ptr->ptr());
   }
 };
 
@@ -147,24 +143,53 @@ void StackKernel(const Context& dev_ctx,
                              static_cast<index_t>(out_col), \
                              y_data);
 
-  bool use_int32 = out->numel() < std::numeric_limits<int32_t>::max();
-  if (n <= kWarpperSize) {
-    if (use_int32) {
-      PointerArray<T, int32_t> ptr_array(x, n, x_col);
-      IMPL_STACK_CUDA_KERNEL(int32_t, ptr_array);
+#define IMPL_STACK_CUDA_KERNEL_WITHOUT_ALLOCATOR(index_t, size) \
+  PointerArray<T, index_t, size> ptr_array(x, n, x_col);        \
+  IMPL_STACK_CUDA_KERNEL(index_t, ptr_array);
+
+  if (out->numel() < std::numeric_limits<int32_t>::max()) {
+    if (n <= 8) {
+      IMPL_STACK_CUDA_KERNEL_WITHOUT_ALLOCATOR(int32_t, 8);
+    } else if (n <= 16) {
+      IMPL_STACK_CUDA_KERNEL_WITHOUT_ALLOCATOR(int32_t, 16);
+    } else if (n <= 32) {
+      IMPL_STACK_CUDA_KERNEL_WITHOUT_ALLOCATOR(int32_t, 32);
+    } else if (n <= 64) {
+      IMPL_STACK_CUDA_KERNEL_WITHOUT_ALLOCATOR(int32_t, 64);
+    } else if (n <= 128) {
+      IMPL_STACK_CUDA_KERNEL_WITHOUT_ALLOCATOR(int32_t, 128);
     } else {
-      PointerArray<T, int64_t> ptr_array(x, n, x_col);
-      IMPL_STACK_CUDA_KERNEL(int64_t, ptr_array);
+      auto tmp_ins_data = paddle::memory::Alloc(
+          dev_ctx.GetPlace(),
+          n * sizeof(T*),
+          phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+      PointerToPointer<Context, T, int32_t> ptr_array(
+          dev_ctx, x, n, x_col, tmp_ins_data);
+      IMPL_STACK_CUDA_KERNEL(int32_t, ptr_array);
     }
   } else {
-    if (use_int32) {
-      PointerToPointer<Context, T, int32_t> ptr_array(dev_ctx, x, n, x_col);
-      IMPL_STACK_CUDA_KERNEL(int32_t, ptr_array);
+    if (n <= 8) {
+      IMPL_STACK_CUDA_KERNEL_WITHOUT_ALLOCATOR(int64_t, 8);
+    } else if (n <= 16) {
+      IMPL_STACK_CUDA_KERNEL_WITHOUT_ALLOCATOR(int64_t, 16);
+    } else if (n <= 32) {
+      IMPL_STACK_CUDA_KERNEL_WITHOUT_ALLOCATOR(int64_t, 32);
+    } else if (n <= 64) {
+      IMPL_STACK_CUDA_KERNEL_WITHOUT_ALLOCATOR(int64_t, 64);
+    } else if (n <= 128) {
+      IMPL_STACK_CUDA_KERNEL_WITHOUT_ALLOCATOR(int64_t, 128);
     } else {
-      PointerToPointer<Context, T, int64_t> ptr_array(dev_ctx, x, n, x_col);
+      auto tmp_ins_data = paddle::memory::Alloc(
+          dev_ctx.GetPlace(),
+          n * sizeof(T*),
+          phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+      PointerToPointer<Context, T, int64_t> ptr_array(
+          dev_ctx, x, n, x_col, tmp_ins_data);
       IMPL_STACK_CUDA_KERNEL(int64_t, ptr_array);
     }
   }
+
+#undef IMPL_STACK_CUDA_KERNEL_WITHOUT_ALLOCATOR
 #undef IMPL_STACK_CUDA_KERNEL
 }
 }  // namespace phi
