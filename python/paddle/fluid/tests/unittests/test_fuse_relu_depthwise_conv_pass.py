@@ -20,6 +20,7 @@ from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.nn.functional as F
 
 
 def norm(*args, **kargs):
@@ -59,7 +60,7 @@ def simple_depthwise_net(use_feed):
     hidden = paddle.reshape(img, (-1, 1, 28, 28))
     for _ in range(4):
         hidden = sep_conv(hidden, channel=200, stride=2, filter=5)
-        hidden = fluid.layers.relu(hidden)
+        hidden = F.relu(hidden)
     prediction = fluid.layers.fc(hidden, size=10, act='softmax')
     loss = paddle.nn.functional.cross_entropy(
         input=prediction, label=label, reduction='none', use_softmax=False

@@ -32,7 +32,6 @@ from .common import bilinear_tensor_product  # noqa: F401
 from .common import py_func  # noqa: F401
 from ...tensor.creation import create_parameter  # noqa: F401
 from ...fluid.layers import layer_norm  # noqa: F401
-from ...fluid.layers import multi_box_head  # noqa: F401
 from .loss import nce  # noqa: F401
 from .common import prelu  # noqa: F401
 from ...fluid.layers import row_conv  # noqa: F401
@@ -76,8 +75,8 @@ __all__ = [  # noqa
     'group_norm',
     'instance_norm',
     'layer_norm',
-    'multi_box_head',
     'nce',
+    'prelu',
     'py_func',
     'row_conv',
     'spectral_norm',

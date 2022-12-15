@@ -40,7 +40,7 @@ class ConvOneDNNHandlerT
                                    dnnl::convolution_backward_weights> {
  public:
   ConvOneDNNHandlerT(const OneDNNContext& dev_ctx,
-                     const dnnl::engine mkldnn_engine,
+                     const dnnl::engine onednn_engine,
                      Place cpu_place,
                      const phi::DenseTensor* input,
                      const phi::DenseTensor* filter,
@@ -63,7 +63,7 @@ class ConvOneDNNHandlerT
                               dnnl::convolution_backward_data,
                               dnnl::convolution_backward_weights>(
             dev_ctx,
-            mkldnn_engine,
+            onednn_engine,
             cpu_place,
             funcs::CreateKey(
                 dev_ctx, phi::vectorize(input->dims()), unique_name)) {

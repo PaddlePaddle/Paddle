@@ -30,14 +30,14 @@
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
-#include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 
 using framework::Variable;
 using framework::ir::Graph;
-using platform::CPUPlace;
+using phi::CPUPlace;
 using ConstEigenVectorArrayMap =
     Eigen::Map<const Eigen::Array<float, Eigen::Dynamic, 1>>;
 using EigenMatrixDoubleArray =

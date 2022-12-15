@@ -513,7 +513,10 @@ def save_params(executor, dirname, main_program=None, filename=None):
             feeder = fluid.DataFeeder(feed_list=[image, label], place=fluid.CPUPlace())
             predict = fluid.layers.fc(input=image, size=10, act='softmax')
 
-            loss = fluid.layers.cross_entropy(input=predict, label=label)
+            loss = paddle.nn.functional.cross_entropy(
+                input=predict, label=label,
+                reduction='none', use_softmax=False
+            )
             avg_loss = paddle.mean(loss)
 
             exe = fluid.Executor(fluid.CPUPlace())
@@ -748,7 +751,10 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
             feeder = fluid.DataFeeder(feed_list=[image, label], place=fluid.CPUPlace())
 
             predict = fluid.layers.fc(input=image, size=10, act='softmax')
-            loss = fluid.layers.cross_entropy(input=predict, label=label)
+            loss = paddle.nn.functional.cross_entropy(
+                input=predict, label=label,
+                reduction='none', use_softmax=False
+            )
             avg_loss = paddle.mean(loss)
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(fluid.default_startup_program())
@@ -1380,7 +1386,10 @@ def save_inference_model(
             feeder = fluid.DataFeeder(feed_list=[image, label], place=fluid.CPUPlace())
             predict = fluid.layers.fc(input=image, size=10, act='softmax')
 
-            loss = fluid.layers.cross_entropy(input=predict, label=label)
+            loss = paddle.nn.functional.cross_entropy(
+                input=predict, label=label,
+                reduction='none', use_softmax=False
+            )
             avg_loss = paddle.mean(loss)
 
             exe = fluid.Executor(fluid.CPUPlace())
