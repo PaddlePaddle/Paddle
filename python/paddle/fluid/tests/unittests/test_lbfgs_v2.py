@@ -18,6 +18,10 @@ import numpy as np
 
 import paddle
 from paddle.incubate.optimizer.functional.lbfgs_v2 import LBFGS
+from paddle.incubate.optimizer.functional.line_search_dygraph import (
+    _strong_wolfe,
+    _cubic_interpolate,
+)
 
 np.random.seed(123)
 
@@ -200,6 +204,31 @@ class TestLbfgs(unittest.TestCase):
                 n_iter = opt2.state_dict()["state"]["func_evals"]
 
         self.assertRaises(RuntimeError, error_func)
+
+    def test_line_search(self):
+        def func(x, alpha, d):
+            return paddle.to_tensor(x + alpha * d), paddle.to_tensor(0)
+
+        _strong_wolfe(
+            func,
+            paddle.to_tensor(1),
+            paddle.to_tensor(0.001),
+            paddle.to_tensor(0),
+            paddle.to_tensor(1),
+            paddle.to_tensor(0),
+            paddle.to_tensor(0),
+            max_ls=0,
+        )
+
+        _cubic_interpolate(
+            paddle.to_tensor(2.0),
+            paddle.to_tensor(1.0),
+            paddle.to_tensor(0.0),
+            paddle.to_tensor(1.0),
+            paddle.to_tensor(2.0),
+            paddle.to_tensor(0.0),
+            [0.1, 0.5],
+        )
 
 
 if __name__ == '__main__':
