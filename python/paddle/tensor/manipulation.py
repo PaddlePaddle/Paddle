@@ -44,7 +44,7 @@ from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
 __all__ = []
 
 
-def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
+def tensor_array_to_tensor(input, axis=1, use_stack=False, name=None):
     r"""
     This function concatenates or stacks all tensors in the input LoDTensorArray
     along the axis mentioned and returns that as the output.
@@ -101,10 +101,10 @@ def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
         input(TensorArray): A TensorArray variable.
         axis(int): The axis along which the tensors in attr::`input` will be
             concatenated or stacked.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                       will be named automatically.
         use_stack(bool): Act as concat_op or stack_op. For stack mode, all
             tensors in the tensor array must have the same shape.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                       will be named automatically.
 
     Returns:
         Tensor: The concatenated or stacked tensor variable.
