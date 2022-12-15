@@ -82,22 +82,23 @@ cutlass::Status cutlass_nhwc_conv2d_bias_relu_few_channels(
   int kh = params.kh;
   int kw = params.kw;
   int oc = params.oc;
-  int pad_h = params.pad_h;
-  int pad_w = params.pad_w;
+  int pad_h0 = params.pad_h0;
+  int pad_w0 = params.pad_w1;
+
   int stride_h = params.stride_h;
   int stride_w = params.stride_w;
 
-  int oh = (ih + pad_h * 2 - kh) / stride_h + 1;
-  int ow = (iw + pad_w * 2 - kw) / stride_w + 1;
-  const int dilationh = 1;
-  const int dilationw = 1;
+  int oh = params.oh;
+  int ow = params.ow;
+  int dilation_h = params.dilation_h;
+  int dilation_w = params.dilation_w;
 
   cutlass::conv::Mode mode = cutlass::conv::Mode::kCrossCorrelation;
   cutlass::conv::Conv2dProblemSize problem_size({batch, ih, iw, ic},
                                                 {oc, kh, kw, ic},
-                                                {pad_h, pad_h, pad_w, pad_w},
+                                                {pad_h0, 0, pad_w0, 0},
                                                 {stride_h, stride_w},
-                                                {dilationh, dilationw},
+                                                {dilation_h, dilation_w},
                                                 {batch, oh, ow, oc},
                                                 mode,
                                                 1);
@@ -113,51 +114,51 @@ cutlass::Status cutlass_nhwc_conv2d_bias_relu_few_channels(
   ImplicitGemm implicit_gemm_op;
   size_t bytes = implicit_gemm_op.get_workspace_size(arguments);
   void *workspace;
-  cudaMalloc(&workspace, bytes);
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(&workspace, bytes));
 
   cutlass::Status status = implicit_gemm_op.can_implement(arguments);
   CUTLASS_CHECK(status);
   status = implicit_gemm_op.initialize(arguments, workspace);
   CUTLASS_CHECK(status);
-  status = implicit_gemm_op();
+  status = implicit_gemm_op(params.stream);
   CUTLASS_CHECK(status);
-  cudaFree(workspace);
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaFree(workspace));
   return status;
 }
 
-// config 1
+// config 0
 template cutlass::Status cutlass_nhwc_conv2d_bias_relu_few_channels<
     cutlass::gemm::GemmShape<64, 64, 64>,
     cutlass::gemm::GemmShape<32, 32, 64>>(ConvAllParams);
-// config 2
+// config 1
 template cutlass::Status cutlass_nhwc_conv2d_bias_relu_few_channels<
     cutlass::gemm::GemmShape<64, 32, 64>,
     cutlass::gemm::GemmShape<32, 32, 64>>(ConvAllParams);
-// config 3
+// config 2
 template cutlass::Status cutlass_nhwc_conv2d_bias_relu_few_channels<
     cutlass::gemm::GemmShape<128, 32, 64>,
     cutlass::gemm::GemmShape<32, 32, 64>>(ConvAllParams);
-// config 4
+// config 3
 template cutlass::Status cutlass_nhwc_conv2d_bias_relu_few_channels<
     cutlass::gemm::GemmShape<128, 64, 64>,
     cutlass::gemm::GemmShape<32, 32, 64>>(ConvAllParams);
-// config 5
+// config 4
 template cutlass::Status cutlass_nhwc_conv2d_bias_relu_few_channels<
     cutlass::gemm::GemmShape<64, 64, 32>,
     cutlass::gemm::GemmShape<32, 32, 32>>(ConvAllParams);
-// config6
+// config 5
 template cutlass::Status cutlass_nhwc_conv2d_bias_relu_few_channels<
     cutlass::gemm::GemmShape<64, 128, 32>,
     cutlass::gemm::GemmShape<32, 64, 32>>(ConvAllParams);
-// config 7
+// config 6
 template cutlass::Status cutlass_nhwc_conv2d_bias_relu_few_channels<
     cutlass::gemm::GemmShape<64, 128, 64>,
     cutlass::gemm::GemmShape<64, 64, 32>>(ConvAllParams);
-// config 8
+// config 7
 template cutlass::Status cutlass_nhwc_conv2d_bias_relu_few_channels<
     cutlass::gemm::GemmShape<64, 256, 32>,
     cutlass::gemm::GemmShape<64, 64, 32>>(ConvAllParams);
-// config 9
+// config 8
 template cutlass::Status cutlass_nhwc_conv2d_bias_relu_few_channels<
     cutlass::gemm::GemmShape<128, 64, 32>,
     cutlass::gemm::GemmShape<64, 32, 32>>(ConvAllParams);
@@ -201,20 +202,18 @@ void cutlass_conv2d_bias_relu_few_channels(ConvAllParams params) {
   int kh = params.kh;
   int kw = params.kw;
   int oc = params.oc;
-  int pad_h = params.pad_h;
-  int pad_w = params.pad_w;
+  int pad_h0 = params.pad_h0;
+  int pad_w0 = params.pad_w1;
   int stride_h = params.stride_h;
   int stride_w = params.stride_w;
 
   std::vector<int> problem_size = {
-      batch, ic, ih, iw, kh, kw, oc, pad_h, pad_w, stride_h, stride_w};
+      batch, ic, ih, iw, kh, kw, oc, pad_h0, pad_w0, stride_h, stride_w};
 
   if (map_problem_conv2d_bias_relu_few_channels.count(problem_size)) {
     cutlass_conv2d_bias_relu_few_channels_all_func
         [map_problem_conv2d_bias_relu_few_channels.at(problem_size)](params);
     return;
-  } else {
-    map_problem_conv2d_bias_relu_few_channels[problem_size] = -1;
   }
 
   float min_time = 100000.f;
@@ -227,17 +226,17 @@ void cutlass_conv2d_bias_relu_few_channels(ConvAllParams params) {
     }
 
     cudaEvent_t beg, end;
-    cudaEventCreate(&beg);
-    cudaEventCreate(&end);
-    cudaEventRecord(beg);
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&beg));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&end));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(beg));
     for (int ii = 0; ii < REPEAT; ii++) {
       status = func(params);
     }
 
-    cudaEventRecord(end);
-    cudaEventSynchronize(end);
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(end));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventSynchronize(end));
     float elapsed_time;
-    cudaEventElapsedTime(&elapsed_time, beg, end);
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventElapsedTime(&elapsed_time, beg, end));
     if (elapsed_time < min_time && status == cutlass::Status::kSuccess) {
       min_time = elapsed_time;
       map_problem_conv2d_bias_relu_few_channels[problem_size] = i;

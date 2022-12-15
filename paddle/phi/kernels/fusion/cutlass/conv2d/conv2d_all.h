@@ -20,9 +20,11 @@
 
 #include "cutlass/cutlass.h"
 #include "cutlass/gemm/device/gemm.h"
-#include "paddle/fluid/platform/enforce.h"
 
 #include "cutlass/conv/device/implicit_gemm_convolution.h"
+
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace phi {
 namespace fusion {
@@ -50,10 +52,16 @@ typedef struct {
   int kh;
   int kw;
   int oc;
-  int pad_h;
-  int pad_w;
+  int pad_h0;
+  int pad_h1;
+  int pad_w0;
+  int pad_w1;
   int stride_h;
   int stride_w;
+  int dilation_h;
+  int dilation_w;
+  int oh;
+  int ow;
   cudaStream_t stream;
   float alpha;  // for leaky_relu use
 } ConvAllParams;

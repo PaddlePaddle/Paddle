@@ -41,20 +41,47 @@ void Conv2dFusionKernel(const Context& ctx,
   ctx.template Alloc<T>(output);
   auto in_dims = x.dims();
   auto filter_dims = filter.dims();
-  int batch = in_dims[0];
-  int ic = in_dims[3];
-  int ih = in_dims[1];
-  int iw = in_dims[2];
-  int pad_h = paddings[0];
-  int pad_w = paddings[1];
-  int stride_h = strides[0];
-  int stride_w = strides[1];
-  int oc = filter_dims[0];
-  int kh = filter_dims[1];
-  int kw = filter_dims[2];
+  auto out_dims = output->dims();
+  CHECK_EQ(in_dims.size() == 4UL, true);
+  CHECK_EQ(filter_dims.size() == 4UL, true);
+  CHECK_EQ(strides.size() == 2UL, true);
+  CHECK_EQ(dilations.size() == 2UL, true);
+  const int batch = in_dims[0];
+  const int ic = in_dims[3];
+  const int ih = in_dims[1];
+  const int iw = in_dims[2];
+  int pad_h0 = 0;
+  int pad_h1 = 0;
+  int pad_w0 = 0;
+  int pad_w1 = 0;
+  if (paddings.size() == 2UL) {
+    pad_h0 = paddings[0];
+    pad_h1 = paddings[0];
+    pad_w0 = paddings[1];
+    pad_w1 = paddings[1];
+  } else if (paddings.size() == 4UL) {
+    pad_h0 = paddings[0];
+    pad_h1 = paddings[1];
+    pad_w0 = paddings[2];
+    pad_w1 = paddings[3];
+  } else {
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+        "Attr paddins in conv2d_fusion must have 2 or 4 elements, but now have "
+        "%u elements.",
+        paddings.size()));
+  }
 
-  int oh = (ih + pad_h * 2 - kh) / stride_h + 1;
-  int ow = (iw + pad_w * 2 - kw) / stride_w + 1;
+  const int stride_h = strides[0];
+  const int stride_w = strides[1];
+  const int dilation_h = dilations[0];
+  const int dilation_w = dilations[1];
+  const int oc = filter_dims[0];
+  const int kh = filter_dims[1];
+  const int kw = filter_dims[2];
+
+  CHECK_EQ(out_dims.size() == 4UL, true);
+  const int oh = out_dims[1];
+  const int ow = out_dims[2];
 
   ConvAllParams params = {reinterpret_cast<const half*>(x.data<T>()),
                           reinterpret_cast<const half*>(filter.data<T>()),
@@ -68,10 +95,16 @@ void Conv2dFusionKernel(const Context& ctx,
                           kh,
                           kw,
                           oc,
-                          pad_h,
-                          pad_w,
+                          pad_h0,
+                          pad_h1,
+                          pad_w0,
+                          pad_w1,
                           stride_h,
                           stride_w,
+                          dilation_h,
+                          dilation_w,
+                          oh,
+                          ow,
                           ctx.stream()};
 
   if (residual) {

@@ -20,22 +20,12 @@
 namespace phi {
 namespace fusion {
 
-struct logical_struct {
+struct logical_coord {
   int n;
   int c;
   int h;
   int w;
 };
-
-int nchw(struct logical_struct shape, struct logical_struct index) {
-  return index.n * shape.c * shape.h * shape.w + index.c * shape.h * shape.w +
-         index.h * shape.w + index.w;
-}
-
-int nhwc(struct logical_struct shape, struct logical_struct index) {
-  return index.n * shape.h * shape.w * shape.c + index.h * shape.w * shape.c +
-         index.w * shape.c + index.c;
-}
 
 float diff(const half *c, const float *c_baseline, int n) {
   float max_diff = -1.;
@@ -48,8 +38,8 @@ float diff(const half *c, const float *c_baseline, int n) {
   return max_diff;
 }
 
-__device__ int gpu_nhwc(struct logical_struct shape,
-                        struct logical_struct index) {
+__device__ int gpu_nhwc(struct logical_coord shape,
+                        struct logical_coord index) {
   return index.n * shape.h * shape.w * shape.c + index.h * shape.w * shape.c +
          index.w * shape.c + index.c;
 }
@@ -69,6 +59,8 @@ __global__ void naive_conv2d_kernel(const half *input,
                                     int pad_w,
                                     int stride_h,
                                     int stride_w,
+                                    int dilation_h,
+                                    int dilation_w,
                                     int oh,
                                     int ow,
                                     const half *residual,
@@ -86,8 +78,8 @@ __global__ void naive_conv2d_kernel(const half *input,
   int ow_i = (m_i % (oh * ow)) % ow;
   int oc_i = n_i;
 
-  struct logical_struct weight_shape = {oc, ic, kh, kw};
-  struct logical_struct input_shape = {batch, ic, ih, iw};
+  struct logical_coord weight_shape = {oc, ic, kh, kw};
+  struct logical_coord input_shape = {batch, ic, ih, iw};
   int out_offset = m_i * N + n_i;
   float *out_ptr = output + out_offset;
   float sum = 0.f;
@@ -97,15 +89,15 @@ __global__ void naive_conv2d_kernel(const half *input,
     int kh_i = (k_i % (kh * kw)) / kw;
     int kw_i = (k_i % (kh * kw)) % kw;
 
-    struct logical_struct weight_index = {oc_i, ic_i, kh_i, kw_i};
+    struct logical_coord weight_index = {oc_i, ic_i, kh_i, kw_i};
 
-    int ih_i = oh_i * stride_h - pad_h + kh_i;
-    int iw_i = ow_i * stride_w - pad_w + kw_i;
+    int ih_i = oh_i * stride_h - pad_h + kh_i * dilation_h;
+    int iw_i = ow_i * stride_w - pad_w + kw_i * dilation_w;
 
     if (ih_i < 0 || ih_i >= ih) continue;
     if (iw_i < 0 || iw_i >= iw) continue;
 
-    struct logical_struct input_index = {batch_i, ic_i, ih_i, iw_i};
+    struct logical_coord input_index = {batch_i, ic_i, ih_i, iw_i};
     const half *weight_ptr = weight + gpu_nhwc(weight_shape, weight_index);
     const half *in_ptr = input + gpu_nhwc(input_shape, input_index);
     sum += __half2float(*in_ptr) * __half2float(*weight_ptr);
@@ -148,14 +140,16 @@ float conv2d_diff_gpu(ConvAllParams params, OpType op_type) {
   int kh = params.kh;
   int kw = params.kw;
   int oc = params.oc;
-  int pad_h = params.pad_h;
-  int pad_w = params.pad_w;
+  int pad_h = params.pad_h0;
+  int pad_w = params.pad_w0;
   int stride_h = params.stride_h;
   int stride_w = params.stride_w;
+  int dilation_h = params.dilation_h;
+  int dilation_w = params.dilation_w;
   const half *residual = params.residual;
 
-  int oh = (ih + pad_h * 2 - kh) / stride_h + 1;
-  int ow = (iw + pad_w * 2 - kw) / stride_w + 1;
+  int oh = params.oh;
+  int ow = params.ow;
   int M = batch * oh * ow;
   int N = oc;
 
@@ -189,6 +183,8 @@ float conv2d_diff_gpu(ConvAllParams params, OpType op_type) {
                                        pad_w,
                                        stride_h,
                                        stride_w,
+                                       dilation_h,
+                                       dilation_w,
                                        oh,
                                        ow,
                                        residual,
