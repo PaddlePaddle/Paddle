@@ -71,30 +71,15 @@ static phi::DenseTensor FoldFirstAndLastDims(const OneDNNContext &dev_ctx,
   return output;
 }
 
-phi::DDim GetDimForInput(const ExecutionContext &ctx, std::string input_name) {
-  auto shape = ctx.Attr<std::vector<int>>("fused_reshape_" + input_name);
-  auto axis = ctx.Attr<std::vector<int>>("fused_transpose_" + input_name);
-  auto input_dims = ctx.Input<phi::DenseTensor>(input_name)->dims();
-  if (!shape.empty() && !axis.empty()) {
-    return input_dims.reshape(shape).transpose(axis);
-  }
-  return input_dims;
-}
-
 template <typename XT, typename YT, typename OT>
-class MatMulV2MKLDNNHandler
+class MatMulMKLDNNHandler
     : public phi::funcs::OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
  public:
-  MatMulV2MKLDNNHandler(const ExecutionContext &ctx,
-                        const dnnl::engine engine,
-                        paddle::platform::Place cpu_place,
-                        const std::vector<int64_t> &x_org_dims,
-                        bool trans_x,
-                        const std::vector<int64_t> &y_org_dims,
-                        bool trans_y,
-                        bool is_output_fused,
-                        const std::vector<int64_t> &x_strides_override,
-                        const std::vector<int64_t> &y_strides_override)
+  MatMulMKLDNNHandler(const ExecutionContext &ctx,
+                      const dnnl::engine engine,
+                      paddle::platform::Place cpu_place,
+                      const std::vector<int64_t> &x_org_dims,
+                      const std::vector<int64_t> &y_org_dims)
       : phi::funcs::OneDNNHandlerNoCachingT<XT, dnnl::matmul>(engine,
                                                               cpu_place) {
     // M X K * K X N
@@ -105,6 +90,8 @@ class MatMulV2MKLDNNHandler
     const int H_idx = x_dims.size() - 2;
     const int W_idx = x_dims.size() - 1;
 
+    auto trans_x = ctx.Attr<bool>("transpose_X");
+    auto trans_y = ctx.Attr<bool>("transpose_Y");
     if (trans_x) std::swap(x_dims[H_idx], x_dims[W_idx]);
     if (trans_y) std::swap(y_dims[H_idx], y_dims[W_idx]);
 
@@ -121,24 +108,16 @@ class MatMulV2MKLDNNHandler
     y_strides.reserve(x_dims.size());
     out_strides.reserve(x_dims.size());
 
-    if (!x_strides_override.empty()) {
-      x_strides = x_strides_override;
+    if (trans_x) {
+      x_strides.insert(x_strides.end(), {M * K, 1, M});
     } else {
-      if (!trans_x) {
-        x_strides.insert(x_strides.end(), {M * K, K, 1});
-      } else {
-        x_strides.insert(x_strides.end(), {M * K, 1, M});
-      }
+      x_strides.insert(x_strides.end(), {M * K, K, 1});
     }
 
-    if (!y_strides_override.empty()) {
-      y_strides = y_strides_override;
+    if (trans_y) {
+      y_strides.insert(y_strides.end(), {N * K, 1, K});
     } else {
-      if (!trans_y) {
-        y_strides.insert(y_strides.end(), {N * K, N, 1});
-      } else {
-        y_strides.insert(y_strides.end(), {N * K, 1, K});
-      }
+      y_strides.insert(y_strides.end(), {N * K, N, 1});
     }
 
     out_strides.insert(out_strides.end(), {M * N, N, 1});
@@ -147,18 +126,9 @@ class MatMulV2MKLDNNHandler
 
     for (int i = x_dims.size() - 4; i >= 0; --i) {
       out_ddims[i] = std::max(x_dims[i], y_dims[i]);
-      if (x_strides_override.empty()) {
-        x_strides[i] = x_dims[i + 1] * x_strides[i + 1];
-      }
-      if (y_strides_override.empty()) {
-        y_strides[i] = y_dims[i + 1] * y_strides[i + 1];
-      }
+      x_strides[i] = x_dims[i + 1] * x_strides[i + 1];
+      y_strides[i] = y_dims[i + 1] * y_strides[i + 1];
       out_strides[i] = out_ddims[i + 1] * out_strides[i + 1];
-    }
-
-    // TODO(jczaja): Why not for int8??
-    if (!phi::funcs::is_int8<OT>() && is_output_fused) {
-      out_strides = FakeTransposeStrides(out_ddims);
     }
 
     auto x_md =
@@ -168,156 +138,17 @@ class MatMulV2MKLDNNHandler
     auto out_md = memory::desc(
         out_ddims, phi::funcs::OneDNNGetDataType<OT>(), out_strides);
 
-    const dnnl::primitive_attr matmul_attrs = CreateMatmulAttrs(ctx);
-
-    this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
-  }
-
-  void AppendActivation(const ExecutionContext &ctx,
-                        dnnl::post_ops &post_ops,  // NOLINT
-                        float activation_scale = 1.0f) {
-    const auto invalid_attribute =
-        ctx.HasAttr("fuse_activation")
-            ? ctx.Attr<std::string>("fuse_activation").empty()
-            : true;
-    if (invalid_attribute) return;
-
-    const auto fuse_activation = ctx.Attr<std::string>("fuse_activation");
-    const auto fuse_alpha =
-        ctx.HasAttr("fuse_alpha") ? ctx.Attr<float>("fuse_alpha") : 0.0f;
-    const auto fuse_beta =
-        ctx.HasAttr("fuse_beta") ? ctx.Attr<float>("fuse_beta") : 0.0f;
-
-    if (fuse_activation == "hard_sigmoid") {
-      post_ops.append_eltwise(activation_scale,
-                              dnnl::algorithm::eltwise_linear,
-                              fuse_alpha,
-                              fuse_beta);
-      post_ops.append_eltwise(
-          activation_scale, dnnl::algorithm::eltwise_clip, 0.0f, 1.0f);
-    } else {
-      const std::unordered_map<std::string, dnnl::algorithm> activation_map = {
-          {"abs", dnnl::algorithm::eltwise_abs},
-          {"clip", dnnl::algorithm::eltwise_clip},
-          {"gelu", dnnl::algorithm::eltwise_gelu_erf},
-          {"gelu_erf", dnnl::algorithm::eltwise_gelu_erf},
-          {"gelu_tanh", dnnl::algorithm::eltwise_gelu_tanh},
-          {"hard_swish", dnnl::algorithm::eltwise_hardswish},
-          {"leaky_relu", dnnl::algorithm::eltwise_relu},
-          {"mish", dnnl::algorithm::eltwise_mish},
-          {"relu", dnnl::algorithm::eltwise_relu},
-          {"relu6", dnnl::algorithm::eltwise_bounded_relu},
-          {"sigmoid", dnnl::algorithm::eltwise_logistic},
-          {"sqrt", dnnl::algorithm::eltwise_sqrt},
-          {"swish", dnnl::algorithm::eltwise_swish},
-          {"tanh", dnnl::algorithm::eltwise_tanh}};
-
-      const auto &activation_type = activation_map.find(fuse_activation);
-
-      PADDLE_ENFORCE_NE(
-          activation_type,
-          activation_map.end(),
-          phi::errors::InvalidArgument(
-              "Activation '%s' not found in oneDNN algorithms mapper",
-              fuse_activation));
-
-      post_ops.append_eltwise(
-          activation_scale, activation_type->second, fuse_alpha, fuse_beta);
-    }
-  }
-
-  float ComputeOutputScale(const ExecutionContext &ctx) {
-    float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 1.0f;
-    if (ctx.HasAttr("Scale_x") && ctx.HasAttr("Scale_y") &&
-        ctx.HasAttr("Scale_out")) {
-      float scale_x = ctx.Attr<float>("Scale_x");
-      float scale_y = ctx.Attr<float>("Scale_y");
-      bool force_fp32_out = ctx.HasAttr("force_fp32_output")
-                                ? ctx.Attr<bool>("force_fp32_output")
-                                : false;
-      float scale_out = force_fp32_out ? 1.f : ctx.Attr<float>("Scale_out");
-      alpha *= scale_out / (scale_x * scale_y);
-    }
-    return alpha;
-  }
-
-  dnnl::primitive_attr CreateMatmulAttrs(const ExecutionContext &ctx) {
     dnnl::primitive_attr matmul_attrs;
     dnnl::post_ops post_operations;
-
     float scale_out = ComputeOutputScale(ctx);
     if (scale_out != 1.0f) {
       matmul_attrs.set_output_scales(0, {scale_out});
     }
-
-    if (ctx.HasInput("ResidualData")) {
-      auto *residual_data = ctx.Input<phi::DenseTensor>("ResidualData");
-      auto residual_data_tz = phi::vectorize(residual_data->dims());
-      auto residual_data_md = memory::desc(residual_data_tz,
-                                           phi::funcs::OneDNNGetDataType<OT>(),
-                                           dnnl::memory::format_tag::any);
-      post_operations.append_binary(dnnl::algorithm::binary_add,
-                                    residual_data_md);
-      if (ctx.HasAttr("Scale_in_eltwise")) {
-        float sum_scale = scale_out / ctx.Attr<float>("Scale_in_eltwise");
-        post_operations.append_sum(sum_scale);
-      }
-    }
-
-    AppendActivation(ctx, post_operations);
-
-    if (ctx.HasAttr("fused_output_scale")) {
-      float scale_alpha = ctx.Attr<float>("fused_output_scale");
-      post_operations.append_eltwise(
-          1.0, dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
-    }
-
     matmul_attrs.set_post_ops(post_operations);
-    return matmul_attrs;
+
+    this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
   }
 
-  std::vector<int64_t> FakeTransposeStrides(
-      const std::vector<int64_t> &matmul_out_dims) const {
-    // fuse matmul_v2 + transpose + reshape guarantees that output is 4D and
-    // transpose axis are: {0, 2, 1, 3}
-    std::vector<int64_t> transpose_axis = {0, 2, 1, 3};
-    std::vector<int64_t> fake_strides(transpose_axis.size());
-    int ndims = static_cast<int>(transpose_axis.size());
-
-    int total_stride = 1;
-
-    for (int i = ndims - 1; i >= 0; --i) {
-      fake_strides[transpose_axis[i]] = total_stride;
-      total_stride *= matmul_out_dims[transpose_axis[i]];
-    }
-
-    return fake_strides;
-  }
-
-  std::shared_ptr<memory> AcquireWeightsMemory(const phi::DenseTensor *input) {
-    const YT *input_data = input->data<YT>();
-    return this->AcquireMemoryFromPrimitive(
-        this->fwd_pd_->weights_desc(),
-        phi::funcs::to_void_cast<YT>(input_data));
-  }
-
-  std::shared_ptr<dnnl::memory> AcquireDstMemory(phi::DenseTensor *output) {
-    // We cannot use base AcquireDstMemory as it makes an allocation request
-    // base on DST memory primitive size. This is fine in general, but in MatMul
-    // we have primitive that covers only one batch of Data and then shift
-    // pointer for every new batch. Hence phi::DenseTensor size is bigger that
-    // dst memory primitive size. So would we request less memory that is there
-    // and it triggers an assertion.  So as there is no 'any' format here we can
-    // leave default size of phi::DenseTensor as computed in ComputeInferShape
-    OT *ptr = output->mutable_data<OT>(this->place_);
-    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
-  }
-};
-
-template <typename XT, typename YT, typename OT>
-class MatMulMKLDNNHandler
-    : public phi::funcs::OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
- public:
   MatMulMKLDNNHandler(const dnnl::engine engine,
                       paddle::platform::Place cpu_place,
                       phi::DenseTensor *x,
@@ -344,10 +175,10 @@ class MatMulMKLDNNHandler
     memory::dims out_dims = {out_bs, M, N};
 
     memory::dims x_strides =
-        !trans_x ? memory::dims{M * K, K, 1} : memory::dims{M * K, 1, M};
+        trans_x ? memory::dims{M * K, 1, M} : memory::dims{M * K, K, 1};
 
     memory::dims y_strides =
-        !trans_y ? memory::dims{N * K, N, 1} : memory::dims{N * K, 1, K};
+        trans_y ? memory::dims{N * K, 1, K} : memory::dims{N * K, N, 1};
     memory::dims out_strides = memory::dims{M * N, N, 1};
 
     auto x_md = memory::desc(x_dims, OneDNNGetDataType<XT>(), x_strides);
@@ -360,47 +191,26 @@ class MatMulMKLDNNHandler
     this->AcquireForwardPrimitiveDescriptor(attrs, x_md, y_md, out_md);
   }
 
+  float ComputeOutputScale(const ExecutionContext &ctx) {
+    float alpha = ctx.Attr<float>("alpha");
+    if (ctx.HasAttr("Scale_x") && ctx.HasAttr("Scale_y") &&
+        ctx.HasAttr("Scale_out")) {
+      float scale_x = ctx.Attr<float>("Scale_x");
+      float scale_y = ctx.Attr<float>("Scale_y");
+      bool force_fp32_out = ctx.HasAttr("force_fp32_output")
+                                ? ctx.Attr<bool>("force_fp32_output")
+                                : false;
+      float scale_out = force_fp32_out ? 1.f : ctx.Attr<float>("Scale_out");
+      alpha *= scale_out / (scale_x * scale_y);
+    }
+    return alpha;
+  }
+
   std::shared_ptr<memory> AcquireWeightsMemory(const phi::DenseTensor *input) {
     const YT *input_data = input->data<YT>();
     return this->AcquireMemoryFromPrimitive(
         this->fwd_pd_->weights_desc(),
         phi::funcs::to_void_cast<YT>(input_data));
-  }
-
- public:
-  void Execute(const phi::DenseTensor *x,
-               const phi::DenseTensor *y,
-               phi::DenseTensor *out) {
-    const auto src_memory_p = this->AcquireSrcMemory(x);
-    const auto weights_memory_p = this->AcquireWeightsMemory(y);
-    const auto dst_memory_p = this->AcquireDstMemory(out);
-
-    auto matmul_p = this->AcquireForwardPrimitive();
-
-    std::unordered_map<int, dnnl::memory> matmul_args = {
-        {DNNL_ARG_SRC, *src_memory_p},
-        {DNNL_ARG_WEIGHTS, *weights_memory_p},
-        {DNNL_ARG_DST, *dst_memory_p}};
-
-    auto &astream = OneDNNContext::tls().get_stream();
-
-    // Simulate batch matmul by processing in loop
-    void *x_ptr = src_memory_p->get_data_handle();
-    void *y_ptr = weights_memory_p->get_data_handle();
-    void *out_ptr = dst_memory_p->get_data_handle();
-    auto offsets = std::make_tuple(x_offset_, y_offset_, out_offset_);
-    for (uint16_t i = 0; i < batch_size_; ++i) {
-      src_memory_p->set_data_handle(x_ptr);
-      weights_memory_p->set_data_handle(y_ptr);
-      dst_memory_p->set_data_handle(out_ptr);
-      matmul_p->execute(astream, matmul_args);
-      x_ptr = static_cast<char *>(x_ptr) + std::get<0>(offsets);
-      y_ptr = static_cast<char *>(y_ptr) + std::get<1>(offsets);
-      out_ptr = static_cast<char *>(out_ptr) + std::get<2>(offsets);
-    }
-    astream.wait();
-
-    out->set_mem_desc(dst_memory_p->get_desc().reshape(out->dims()));
   }
 
   std::shared_ptr<dnnl::memory> AcquireDstMemory(phi::DenseTensor *output) {
@@ -416,9 +226,6 @@ class MatMulMKLDNNHandler
   }
 
  private:
-  uint32_t x_offset_;
-  uint32_t y_offset_;
-  uint32_t out_offset_;
   uint16_t batch_size_;
 };
 
@@ -672,7 +479,7 @@ class MatMulGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
 
     ReshapeXYOutToMatrixSequence(&x, &y, &dout, transpose_x, transpose_y);
 
-    paddle::framework::DDim dx_dims;
+    phi::DDim dx_dims;
     if (dx) {
       dx_dims = dx->dims();
       if (dx_dims != x.dims()) {
@@ -680,7 +487,7 @@ class MatMulGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
       }
     }
 
-    paddle::framework::DDim dy_dims;
+    phi::DDim dy_dims;
     if (dy) {
       dy_dims = dy->dims();
       if (dy_dims != y.dims()) {
@@ -772,17 +579,17 @@ class MatMulGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
                         out->dims().size() == 2;
 
     phi::DenseTensor x_combined, y_combined;
-    if (!need_combine) {
-      x_combined = *x;
-      y_combined = *y;
-    } else {
+    if (need_combine) {
       x_combined = is_fold_init_dims_x ? FoldOuterDims(*x)
                                        : FoldFirstAndLastDims<T>(dev_ctx, x);
       y_combined = is_fold_init_dims_y ? FoldOuterDims(*y)
                                        : FoldFirstAndLastDims<T>(dev_ctx, y);
+    } else {
+      x_combined = *x;
+      y_combined = *y;
     }
 
-    float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 1.0f;
+    float alpha = ctx.Attr<float>("alpha");
 
     MatMulMKLDNNHandler<T, T, T> handler(engine,
                                          ctx.GetPlace(),
