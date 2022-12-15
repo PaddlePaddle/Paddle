@@ -20,13 +20,13 @@ namespace phi {
 namespace funcs {
 
 template <typename T, int Size>
-struct PointerWarpper {
+struct PointerWrapper {
  public:
   const T* data[Size];
   __device__ inline const T* operator[](int i) const { return data[i]; }
 
-  PointerWarpper() {}
-  PointerWarpper(const phi::GPUContext& ctx,
+  PointerWrapper() {}
+  PointerWrapper(const phi::GPUContext& ctx,
                  const std::vector<phi::DenseTensor>& ins,
                  const int64_t& in_num,
                  const T** inputs_data) {
@@ -37,13 +37,13 @@ struct PointerWarpper {
 };
 
 template <typename T>
-struct PointerWarpper<T, 0> {
+struct PointerWrapper<T, 0> {
  public:
   T** data{nullptr};
   __device__ inline const T* operator[](int i) const { return data[i]; }
 
-  PointerWarpper() {}
-  PointerWarpper(const phi::GPUContext& ctx,
+  PointerWrapper() {}
+  PointerWrapper(const phi::GPUContext& ctx,
                  const std::vector<phi::DenseTensor>& ins,
                  const int64_t& in_num,
                  const T** inputs_data) {
@@ -68,10 +68,10 @@ struct PointerWarpper<T, 0> {
 };
 
 template <typename T, typename IndexT, int Size>
-struct PointerAndColWarpper {
+struct PointerAndColWrapper {
  public:
   IndexT col_data[Size];
-  PointerAndColWarpper(const phi::GPUContext& ctx,
+  PointerAndColWrapper(const phi::GPUContext& ctx,
                        const std::vector<phi::DenseTensor>& ins,
                        const IndexT& in_num,
                        const IndexT& inputs_col_num,
@@ -80,21 +80,21 @@ struct PointerAndColWarpper {
     for (auto i = 0; i < inputs_col_num; ++i) {
       col_data[i] = inputs_col[i];
     }
-    data_warpper = PointerWarpper<T, Size>(
+    data_warpper = PointerWrapper<T, Size>(
         ctx, ins, static_cast<int64_t>(in_num), inputs_data);
   }
 
   __device__ inline const T* operator[](int i) const { return data_warpper[i]; }
 
  private:
-  PointerWarpper<T, Size> data_warpper;
+  PointerWrapper<T, Size> data_warpper;
 };
 
 template <typename T, typename IndexT>
-struct PointerAndColWarpper<T, IndexT, 0> {
+struct PointerAndColWrapper<T, IndexT, 0> {
  public:
   IndexT* col_data;
-  PointerAndColWarpper(const phi::GPUContext& ctx,
+  PointerAndColWrapper(const phi::GPUContext& ctx,
                        const std::vector<phi::DenseTensor>& ins,
                        const IndexT& in_num,
                        const IndexT& inputs_col_num,
@@ -113,18 +113,18 @@ struct PointerAndColWarpper<T, IndexT, 0> {
                          inputs_col_num * sizeof(IndexT),
                          ctx.stream());
     col_data = static_cast<IndexT*>(tmp_dev_ins_col_data->ptr());
-    data_warpper = PointerWarpper<T, 0>(
+    data_warpper = PointerWrapper<T, 0>(
         ctx, ins, static_cast<int64_t>(in_num), inputs_data);
   }
 
   __device__ inline const T* operator[](int i) const { return data_warpper[i]; }
 
  private:
-  PointerWarpper<T, 0> data_warpper;
+  PointerWrapper<T, 0> data_warpper;
 };
 
-template <typename T, typename IndexT, typename WarpperT>
-__global__ void ConcatKernel_(WarpperT ins_datas,
+template <typename T, typename IndexT, typename WrapperT>
+__global__ void ConcatKernel_(WrapperT ins_datas,
                               int col_size,
                               const IndexT output_rows,
                               const IndexT output_cols,
@@ -150,14 +150,14 @@ __global__ void ConcatKernel_(WarpperT ins_datas,
   }
 }
 
-template <typename T, typename IndexT, typename WarpperT>
-__global__ void ConcatKernel(WarpperT ins_data,
+template <typename T, typename IndexT, typename WrapperT>
+__global__ void ConcatKernel(WrapperT ins_data,
                              const IndexT fixed_in_col,
                              const IndexT out_rows,
                              const IndexT out_cols,
                              T* output_data) {
   CUDA_KERNEL_LOOP_TYPE(tid_x, out_cols, IndexT) {
-    IndexT split = tid_x * 1.0 / fixed_in_col;
+    IndexT split = tid_x * fixed_in_col;
     IndexT in_offset = tid_x - split * fixed_in_col;
     const T* input_ptr = ins_data[split];
     IndexT tid_y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -329,8 +329,8 @@ void ConcatFunctorWithIndexType(const phi::GPUContext& context,
   // 3.2.6.1. Concurrent Execution between Host and Device
   // Memory copies from host to device of a memory block of 64 KB or less
   // TODO(chentianyu03): try to find a method to remove the Alloc function
-  paddle::memory::AllocationPtr data_alloc{nullptr};
-  paddle::memory::AllocationPtr col_alloc{nullptr};
+  paddle::memory::AllocationPtr data_alloc;
+  paddle::memory::AllocationPtr col_alloc;
   // TODO(chentianyu03): try to find a method to remove the Alloc function
   data_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
                                      in_num * sizeof(T*));
@@ -357,12 +357,16 @@ void ConcatFunctorWithIndexType(const phi::GPUContext& context,
   IndexT limit_num = has_same_shape ? in_num : inputs_col_num;
   if (has_same_shape) {
 #define IMPL_CONCAT_WITH_WARPPER(size)                                    \
-  PointerWarpper<T, size> ptr_array(context, input, in_num, inputs_data); \
+  PointerWrapper<T, size> ptr_array(context, input, in_num, inputs_data); \
   ConcatKernel<T, IndexT, decltype(ptr_array)>                            \
       <<<grid_dims, block_dims, 0, context.stream()>>>(                   \
           ptr_array, in_col, out_row, out_col, output->data<T>());
 
-    if (limit_num < 32) {
+    if (limit_num < 8) {
+      IMPL_CONCAT_WITH_WARPPER(8);
+    } else if (limit_num < 16) {
+      IMPL_CONCAT_WITH_WARPPER(16);
+    } else if (limit_num < 32) {
       IMPL_CONCAT_WITH_WARPPER(32);
     } else if (limit_num < 64) {
       IMPL_CONCAT_WITH_WARPPER(64);
@@ -374,7 +378,7 @@ void ConcatFunctorWithIndexType(const phi::GPUContext& context,
 #undef IMPL_CONCAT_WITH_WARPPER
   } else {
 #define IMPL_CONCAT_WITH_COMPLEX_WARPPER(size)                          \
-  PointerAndColWarpper<T, IndexT, size> ptr_col_array(                  \
+  PointerAndColWrapper<T, IndexT, size> ptr_col_array(                  \
       context, input, in_num, inputs_col_num, inputs_data, inputs_col); \
   ConcatKernel_<T, IndexT, decltype(ptr_col_array)>                     \
       <<<grid_dims, block_dims, 0, context.stream()>>>(ptr_col_array,   \
@@ -383,7 +387,11 @@ void ConcatFunctorWithIndexType(const phi::GPUContext& context,
                                                        (out_col),       \
                                                        output->data<T>());
 
-    if (limit_num < 32) {
+    if (limit_num < 8) {
+      IMPL_CONCAT_WITH_COMPLEX_WARPPER(8);
+    } else if (limit_num < 16) {
+      IMPL_CONCAT_WITH_COMPLEX_WARPPER(16);
+    } else if (limit_num < 32) {
       IMPL_CONCAT_WITH_COMPLEX_WARPPER(32);
     } else if (limit_num < 64) {
       IMPL_CONCAT_WITH_COMPLEX_WARPPER(64);
