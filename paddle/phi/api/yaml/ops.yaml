@@ -771,7 +771,7 @@
   backward : poisson_grad
 
 - op : pow
-  args : (Tensor x, Scalar y)
+  args : (Tensor x, Scalar y=1.0)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -1113,7 +1113,7 @@
   backward : unfold_grad
 
 - op : unstack
-  args : (Tensor x, int axis=0, int num=1)
+  args : (Tensor x, int axis=0, int num=0)
   output : Tensor[](out){num}
   infer_meta :
     func : UnStackInferMeta
