@@ -104,11 +104,10 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "multihead_matmul_roformer_fuse_pass",          //
       "constant_folding_pass",                        //
       "vit_attention_fuse_pass",                      //
-#ifdef PADDLE_WITH_TENSORRT
-#if IS_TRT_VERSION_GE(7200)
+#if defined _WIN32  // Windows CI is TensorRT7.0. Remove this after upgrading.
+#else
       "trt_skip_layernorm_fuse_pass",    //
       "preln_skip_layernorm_fuse_pass",  //
-#endif
 #endif
       "layernorm_shift_partition_fuse_pass",         //
       "merge_layernorm_fuse_pass",                   //
