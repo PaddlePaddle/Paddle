@@ -277,8 +277,8 @@ def lm_model(
             cell_array.append(pre_cell)
 
         res = []
-        sliced_inputs = layers.split(
-            input_embedding, num_or_sections=len, dim=1
+        sliced_inputs = paddle.split(
+            input_embedding, num_or_sections=len, axis=1
         )
 
         for index in range(len):
@@ -294,7 +294,9 @@ def lm_model(
                 gate_input = paddle.matmul(x=nn, y=weight_1)
 
                 gate_input = paddle.add(gate_input, bias)
-                i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
+                i, j, f, o = paddle.split(
+                    gate_input, num_or_sections=4, axis=-1
+                )
 
                 c = pre_cell * paddle.nn.functional.sigmoid(
                     f

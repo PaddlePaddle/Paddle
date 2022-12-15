@@ -922,21 +922,21 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             with _test_eager_guard():
                 input = fluid.dygraph.to_variable(np.random.random((3, 8, 5)))
-                x0, x1 = fluid.layers.split(input, num_or_sections=2, dim=1)
-                x00, x11 = fluid.layers.split(
+                x0, x1 = paddle.split(input, num_or_sections=2, axis=1)
+                x00, x11 = paddle.split(
                     input,
                     num_or_sections=2,
-                    dim=fluid.dygraph.to_variable(np.array([1])),
+                    axis=fluid.dygraph.to_variable(np.array([1])),
                 )
                 np.testing.assert_array_equal(x0.numpy(), x00.numpy())
                 np.testing.assert_array_equal(x1.numpy(), x11.numpy())
 
             input = fluid.dygraph.to_variable(np.random.random((3, 8, 5)))
-            x0, x1 = fluid.layers.split(input, num_or_sections=2, dim=1)
-            x00, x11 = fluid.layers.split(
+            x0, x1 = paddle.split(input, num_or_sections=2, axis=1)
+            x00, x11 = paddle.split(
                 input,
                 num_or_sections=2,
-                dim=fluid.dygraph.to_variable(np.array([1])),
+                axis=fluid.dygraph.to_variable(np.array([1])),
             )
             np.testing.assert_array_equal(x0.numpy(), x00.numpy())
             np.testing.assert_array_equal(x1.numpy(), x11.numpy())
@@ -2368,7 +2368,7 @@ class TestBook(LayerTest):
             fluid.default_main_program(), fluid.default_startup_program()
         ):
             x = self._get_data(name='x', shape=[8, 7, 10], dtype="float32")
-            output = layers.l2_normalize(x, axis=1)
+            output = paddle.nn.functional.normalize(x, axis=1)
             return output
 
     def make_shape(self):

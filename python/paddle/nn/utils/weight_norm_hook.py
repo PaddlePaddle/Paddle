@@ -14,7 +14,6 @@
 import paddle
 from paddle import _C_ops
 
-from ...fluid import layers as F
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.layer_helper import LayerHelper
 from ...framework import in_dygraph_mode
@@ -74,11 +73,11 @@ def _weight_norm(v, g, dim):
         v_normalized = v / (paddle.sqrt(paddle.sum(paddle.square(v))) + 1e-12)
     elif dim == 0:
         p_matrix = paddle.reshape(v, (shape[0], -1))
-        v_normalized = F.l2_normalize(p_matrix, axis=1)
+        v_normalized = paddle.nn.functional.normalize(p_matrix, axis=1)
         v_normalized = paddle.reshape(v_normalized, shape)
     elif dim == ndims - 1:
         p_matrix = paddle.reshape(v, (-1, shape[-1]))
-        v_normalized = F.l2_normalize(p_matrix, axis=0)
+        v_normalized = paddle.nn.functional.normalize(p_matrix, axis=0)
         v_normalized = paddle.reshape(v_normalized, shape)
     else:
         perm = list(range(ndims))
@@ -87,7 +86,7 @@ def _weight_norm(v, g, dim):
         p_transposed = paddle.transpose(v, perm)
         transposed_shape = p_transposed.shape
         p_matrix = paddle.reshape(p_transposed, (p_transposed.shape[0], -1))
-        v_normalized = F.l2_normalize(p_matrix, axis=1)
+        v_normalized = paddle.nn.functional.normalize(p_matrix, axis=1)
         v_normalized = paddle.reshape(v_normalized, transposed_shape)
         v_normalized = paddle.transpose(v_normalized, perm)
     weight = paddle.tensor.math._multiply_with_axis(
