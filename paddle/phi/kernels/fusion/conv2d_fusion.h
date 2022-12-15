@@ -31,6 +31,7 @@ void Conv2dFusionKernel(const Context& ctx,
                         const std::vector<int>& dilations,
                         const std::string& data_format,
                         const std::string& activation,
+                        float fuse_alpha,
                         DenseTensor* output);
 
 }  // namespace phi

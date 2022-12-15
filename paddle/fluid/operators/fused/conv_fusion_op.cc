@@ -331,8 +331,8 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-// this op is used by cutlass, conv2d_fusion_cutlass is a intermediate op
-// produced by conv2d_fusion_layout_transfer_pass
+// This op is used by cutlass, conv2d_fusion_cutlass is a intermediate op
+// produced by conv2d_fusion_layout_transfer_pass.
 REGISTER_OPERATOR(
     conv2d_fusion_cutlass,
     ops::Conv2DFusionOp,
