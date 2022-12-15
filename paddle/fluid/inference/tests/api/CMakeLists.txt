@@ -319,6 +319,9 @@ if(NOT APPLE AND WITH_MKLML)
     test_analyzer_seq_pool1_fuse_compare_zero_copy ${SEQ_POOL1_INSTALL_DIR}
     analyzer_seq_pool1_fuse_compare_zero_copy_tester.cc)
   inference_analysis_api_test(
+    test_analyzer_seq_pool1_fuse_statis ${SEQ_POOL1_INSTALL_DIR}
+    analyzer_seq_pool1_fuse_statis_tester.cc)
+  inference_analysis_api_test(
     test_analyzer_seq_pool1_profile ${SEQ_POOL1_INSTALL_DIR}
     analyzer_seq_pool1_profile_tester.cc)
   if(NOT WIN32)
@@ -327,6 +330,8 @@ if(NOT APPLE AND WITH_MKLML)
     set_tests_properties(test_analyzer_seq_pool1 PROPERTIES TIMEOUT 120)
     set_tests_properties(test_analyzer_seq_pool1_fuse_compare_zero_copy
                          PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_analyzer_seq_pool1_fuse_statis PROPERTIES TIMEOUT
+                                                                        120)
     set_tests_properties(test_analyzer_seq_pool1_profile PROPERTIES TIMEOUT 120)
   endif()
 else()
@@ -474,6 +479,17 @@ inference_analysis_test(
   test_analyzer_transformer
   SRCS
   analyzer_transformer_compare_tester.cc
+  EXTRA_DEPS
+  paddle_inference_shared
+  ARGS
+  --infer_model=${TRANSFORMER_INSTALL_DIR}/model
+  --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt
+  --batch_size=8
+  --cpu_num_threads=${CPU_NUM_THREADS_ON_CI})
+inference_analysis_test(
+  test_analyzer_transformer_fuse
+  SRCS
+  analyzer_transformer_fuse_tester.cc
   EXTRA_DEPS
   paddle_inference_shared
   ARGS
