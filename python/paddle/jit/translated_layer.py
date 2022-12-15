@@ -55,7 +55,6 @@ def _load_program_desc(model_file_path):
         raise ValueError(
             "Unsupported program version: %d\n" % program_desc._version()
         )
-
     return program_desc
 
 
