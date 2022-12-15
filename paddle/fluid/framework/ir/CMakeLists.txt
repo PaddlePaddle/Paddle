@@ -430,10 +430,6 @@ if(WITH_MKLDNN)
     SRCS mkldnn/mkldnn_conv_bn_fuse_pass_tester.cc
     DEPS ${TEST_CONV_BN_PASS_DEPS})
   cc_test(
-    test_scale_matmul_fuse_pass
-    SRCS mkldnn/scale_matmul_fuse_pass_tester.cc
-    DEPS scale_matmul_fuse_pass)
-  cc_test(
     test_mkldnn_placement_pass
     SRCS mkldnn/mkldnn_placement_pass_tester.cc
     DEPS mkldnn_placement_pass)
