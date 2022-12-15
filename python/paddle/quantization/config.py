@@ -127,7 +127,7 @@ class QuantConfig(object):
                     _element, activation=activation, weight=weight
                 )
         else:
-            self.add_prefix_config(
+            self.add_name_config(
                 layer.full_name(), activation=activation, weight=weight
             )
 
@@ -170,7 +170,7 @@ class QuantConfig(object):
             self._prefix2config[layer_name] = config
         if isinstance(layer_name, list):
             for _element in layer_name:
-                self.add_prefix_config(
+                self.add_name_config(
                     _element, activation=activation, weight=weight
                 )
 

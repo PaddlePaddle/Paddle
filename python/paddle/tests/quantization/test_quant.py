@@ -18,8 +18,8 @@ import paddle
 import paddle.nn.functional as F
 from paddle.nn import Conv2D, Linear, ReLU, Sequential
 from paddle.quantization import QuantConfig
+from paddle.quantization.base_quanter import BaseQuanter
 from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
-from python.paddle.quantization.base_quanter import BaseQuanter
 
 
 class LeNetDygraph(paddle.nn.Layer):
@@ -86,9 +86,9 @@ class TestQuantConfig(unittest.TestCase):
         self.q_config._specify(self.model)
         self.assert_just_linear_weight_configure(self.model, self.q_config)
 
-    def test_add_prefix_config(self):
+    def test_add_name_config(self):
         self.q_config = QuantConfig(activation=None, weight=None)
-        self.q_config.add_prefix_config(
+        self.q_config.add_name_config(
             [self.model.fc.full_name()], activation=None, weight=self.quanter
         )
         self.q_config._specify(self.model)
@@ -110,11 +110,11 @@ class TestQuantConfig(unittest.TestCase):
             Sequential not in self.q_config.default_qat_layer_mapping
         )
 
-    def test_add_custom_leaf(self):
+    def test_add_customized_leaf(self):
         self.q_config = QuantConfig(activation=None, weight=None)
-        self.q_config.add_custom_leaf(Sequential)
-        self.assertTrue(Sequential in self.q_config.custom_leaves)
-        self.assertTrue(self.q_config._is_custom_leaf(self.model.fc))
+        self.q_config.add_customized_leaf(Sequential)
+        self.assertTrue(Sequential in self.q_config.customized_leaves)
+        self.assertTrue(self.q_config._is_customized_leaf(self.model.fc))
         self.assertTrue(self.q_config._is_leaf(self.model.fc))
         self.assertFalse(self.q_config._is_default_leaf(self.model.fc))
         self.assertFalse(self.q_config._is_real_leaf(self.model.fc))
@@ -124,7 +124,7 @@ class TestQuantConfig(unittest.TestCase):
         self.q_config.add_layer_config(
             [self.model.fc], activation=self.quanter, weight=self.quanter
         )
-        self.q_config.add_custom_leaf(Sequential)
+        self.q_config.add_customized_leaf(Sequential)
         self.q_config._specify(self.model)
         self.assertTrue(self.q_config._has_observer_config(self.model.fc))
         self.assertTrue(self.q_config._need_observe(self.model.fc))
