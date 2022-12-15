@@ -799,7 +799,7 @@ def conv3d(
             `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
-        A Variable holding Tensor representing the conv3d, whose data type is
+        A Tensor representing the conv3d, whose data type is
         the same with input. If act is None, the tensor variable storing the
         convolution result, and if act is not None, the tensor variable storing
         convolution and non-linearity activation result.
@@ -1190,7 +1190,7 @@ def conv2d_transpose(
 
     helper = LayerHelper(op_type, **locals())
     if not isinstance(input, Variable):
-        raise TypeError("Input of conv2d_transpose must be Variable")
+        raise TypeError("Input of conv2d_transpose must be Tensor")
 
     stride = utils.convert_to_list(stride, 2, 'stride')
     dilation = utils.convert_to_list(dilation, 2, 'dilation')
@@ -1280,7 +1280,7 @@ def conv2d_transpose(
                 output_size
             ):
                 raise ValueError(
-                    "filter_size should not be None when output_size is Variable or contain Variable in static mode."
+                    "filter_size should not be None when output_size is Tensor or contain Tensor in static mode."
                 )
         else:
             output_size = utils.convert_shape_to_list(output_size)
@@ -1497,7 +1497,7 @@ def conv3d_transpose(
             `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
-        A Variable holding Tensor representing the conv3d_transpose, whose data
+        A Tensor representing the conv3d_transpose, whose data
         type is the same with input and shape is (num_batches, channels, out_d, out_h,
         out_w) or (num_batches, out_d, out_h, out_w, channels). If act is None, the tensor
         variable storing the transposed convolution result, and if act is not None, the tensor
@@ -1546,7 +1546,7 @@ def conv3d_transpose(
     l_type = "conv3d_transpose"
     helper = LayerHelper(l_type, **locals())
     if not isinstance(input, Variable):
-        raise TypeError("Input of conv3d_transpose must be Variable")
+        raise TypeError("Input of conv3d_transpose must be Tensor")
     if len(input.shape) != 5:
         raise ValueError(
             "Input should be 5D tensor, but received input with the shape of {}".format(
@@ -1785,7 +1785,7 @@ def deformable_conv(
             float32, float64.
         offset (Tensor): The input coordinate offset of deformable convolution layer.
             A Tensor with type float32, float64.
-        Mask (Variable, Optional): The input mask of deformable convolution layer.
+        Mask (Tensor, Optional): The input mask of deformable convolution layer.
             A Tensor with type float32, float64. It should be None when you use
             deformable convolution v1.
         num_filters(int): The number of filter. It is as same as the output
@@ -1876,9 +1876,9 @@ def deformable_conv(
     dtype = helper.input_dtype()
 
     if not isinstance(input, paddle.static.Variable):
-        raise TypeError("Input of deformable_conv must be Variable")
+        raise TypeError("Input of deformable_conv must be Tensor")
     if not isinstance(offset, paddle.static.Variable):
-        raise TypeError("Input Offset of deformable_conv must be Variable")
+        raise TypeError("Input Offset of deformable_conv must be Tensor")
 
     if groups is None:
         num_filter_channels = num_channels
@@ -2155,9 +2155,9 @@ def bilinear_tensor_product(
       - :math:`y^\mathrm{T}`: the transpose of :math:`y_{2}`.
 
     Args:
-        x (Variable): 2-D input tensor with shape [batch_size, M]. Data type
+        x (Tensor): 2-D input tensor with shape [batch_size, M]. Data type
             is float32 or float64.
-        y (Variable): 2-D input tensor with shape [batch_size, N]. Data type
+        y (Tensor): 2-D input tensor with shape [batch_size, N]. Data type
             should be same as **x**.
         size (int): The dimension of this layer.
         act (str|None): Activation to be applied to the output of this layer. Default None.
@@ -2832,7 +2832,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
                 y = paddle.static.data(name='y', shape=[2,3], dtype='int32')
                 # Output of the forward function, name/dtype/shape must be specified
                 output = create_tmp_var('output','int32', [3,1])
-                # Multiple Variable should be passed in the form of tuple(Variale) or list[Variale]
+                # Multiple Tensor should be passed in the form of tuple(Tensor) or list[Tensor]
                 paddle.static.py_func(func=element_wise_add, x=[x,y], out=output)
                 exe=paddle.static.Executor(paddle.CPUPlace())
                 exe.run(start_program)
@@ -2857,7 +2857,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     elif isinstance(x, tuple):
         x = list(x)
     elif not isinstance(x, (list, tuple, Variable)):
-        raise TypeError('Input must be Variable/list(Variable)/tuple(Variable)')
+        raise TypeError('Input must be Tensor/list(Tensor)/tuple(Tensor)')
     check_type(out, 'Out', (list, tuple, Variable, type(None)), 'py_func')
     if out is None:
         out_list = []
@@ -2868,9 +2868,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     elif isinstance(out, list):
         out_list = out
     else:
-        raise TypeError(
-            'Output must be Variable/list(Variable)/tuple(Variable)'
-        )
+        raise TypeError('Output must be Tensor/list(Tensor)/tuple(Tensor)')
 
     fwd_func_id = PyFuncRegistry(func).id
     bwd_func_id = (
@@ -2895,7 +2893,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
         for v in skip_vars_in_backward_input:
             if v.name not in fwd_in_out:
                 raise ValueError(
-                    'Variable {} is not found in forward inputs and outputs'.format(
+                    'Tensor {} is not found in forward inputs and outputs'.format(
                         v.name
                     )
                 )
