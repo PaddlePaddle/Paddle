@@ -72,14 +72,14 @@ static phi::DenseTensor FoldFirstAndLastDims(const OneDNNContext &dev_ctx,
 }
 
 template <typename XT, typename YT, typename OT>
-class MatMulMKLDNNHandler
+class MatMulV1OneDNNHandler
     : public phi::funcs::OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
  public:
-  MatMulMKLDNNHandler(const ExecutionContext &ctx,
-                      const dnnl::engine engine,
-                      paddle::platform::Place cpu_place,
-                      const std::vector<int64_t> &x_org_dims,
-                      const std::vector<int64_t> &y_org_dims)
+  MatMulV1OneDNNHandler(const ExecutionContext &ctx,
+                        const dnnl::engine engine,
+                        paddle::platform::Place cpu_place,
+                        const std::vector<int64_t> &x_org_dims,
+                        const std::vector<int64_t> &y_org_dims)
       : phi::funcs::OneDNNHandlerNoCachingT<XT, dnnl::matmul>(engine,
                                                               cpu_place) {
     // M X K * K X N
@@ -149,14 +149,14 @@ class MatMulMKLDNNHandler
     this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
   }
 
-  MatMulMKLDNNHandler(const dnnl::engine engine,
-                      paddle::platform::Place cpu_place,
-                      phi::DenseTensor *x,
-                      bool trans_x,
-                      phi::DenseTensor *y,
-                      bool trans_y,
-                      phi::DenseTensor *out,
-                      float scale)
+  MatMulV1OneDNNHandler(const dnnl::engine engine,
+                        paddle::platform::Place cpu_place,
+                        phi::DenseTensor *x,
+                        bool trans_x,
+                        phi::DenseTensor *y,
+                        bool trans_y,
+                        phi::DenseTensor *out,
+                        float scale)
       : phi::funcs::OneDNNHandlerNoCachingT<XT, dnnl::matmul>(engine,
                                                               cpu_place) {
     auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(x->dims(), 0, trans_x);
@@ -326,7 +326,7 @@ void ExecuteMatMul(const ExecutionContext &ctx,
                    const std::vector<int64_t> &y_dims,
                    phi::DenseTensor *out) {
   const auto &dev_ctx = ctx.template device_context<OneDNNContext>();
-  MatMulMKLDNNHandler<T, T, T_out> handler(
+  MatMulV1OneDNNHandler<T, T, T_out> handler(
       ctx, dev_ctx.GetEngine(), ctx.GetPlace(), x_dims, y_dims);
 
   const auto src_memory_p = handler.AcquireSrcMemory(x);
@@ -349,7 +349,7 @@ void ExecuteMatMul(const ExecutionContext &ctx,
 }
 
 template <typename T>
-class MatMulMKLDNNKernel : public paddle::framework::OpKernel<T> {
+class MatMulV1OneDNNKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const ExecutionContext &ctx) const override {
     if (ctx.HasAttr("head_number")) {
@@ -445,7 +445,7 @@ class MatMulMKLDNNKernel : public paddle::framework::OpKernel<T> {
 };
 
 template <typename T>
-class MatMulGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
+class MatMulV1GradOneDNNKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const ExecutionContext &ctx) const override {
     if (ctx.HasAttr("head_number")) {
@@ -470,12 +470,8 @@ class MatMulGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
     auto *dy =
         ctx.Output<phi::DenseTensor>(paddle::framework::GradVarName("Y"));
 
-    bool transpose_x = ctx.HasAttr("transpose_X")
-                           ? ctx.Attr<bool>("transpose_X")
-                           : ctx.Attr<bool>("trans_x");
-    bool transpose_y = ctx.HasAttr("transpose_Y")
-                           ? ctx.Attr<bool>("transpose_Y")
-                           : ctx.Attr<bool>("trans_y");
+    bool transpose_x = ctx.Attr<bool>("transpose_X");
+    bool transpose_y = ctx.Attr<bool>("transpose_Y");
 
     ReshapeXYOutToMatrixSequence(&x, &y, &dout, transpose_x, transpose_y);
 
@@ -591,14 +587,14 @@ class MatMulGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
 
     float alpha = ctx.Attr<float>("alpha");
 
-    MatMulMKLDNNHandler<T, T, T> handler(engine,
-                                         ctx.GetPlace(),
-                                         &x_combined,
-                                         trans_x,
-                                         &y_combined,
-                                         trans_y,
-                                         out,
-                                         alpha);
+    MatMulV1OneDNNHandler<T, T, T> handler(engine,
+                                           ctx.GetPlace(),
+                                           &x_combined,
+                                           trans_x,
+                                           &y_combined,
+                                           trans_y,
+                                           out,
+                                           alpha);
 
     const auto src_memory_p = handler.AcquireSrcMemory(&x_combined);
     const auto weights_memory_p = handler.AcquireWeightsMemory(&y_combined);
@@ -625,13 +621,13 @@ class MatMulGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
 REGISTER_OP_KERNEL(matmul,
                    MKLDNN,
                    ::phi::CPUPlace,
-                   MatMulMKLDNNKernel<float>,
-                   MatMulMKLDNNKernel<paddle::platform::bfloat16>,
-                   MatMulMKLDNNKernel<int8_t>,
-                   MatMulMKLDNNKernel<uint8_t>);
+                   MatMulV1OneDNNKernel<float>,
+                   MatMulV1OneDNNKernel<paddle::platform::bfloat16>,
+                   MatMulV1OneDNNKernel<int8_t>,
+                   MatMulV1OneDNNKernel<uint8_t>);
 
 REGISTER_OP_KERNEL(matmul_grad,
                    MKLDNN,
                    ::phi::CPUPlace,
-                   MatMulGradMKLDNNKernel<float>,
-                   MatMulGradMKLDNNKernel<paddle::platform::bfloat16>);
+                   MatMulV1GradOneDNNKernel<float>,
+                   MatMulV1GradOneDNNKernel<paddle::platform::bfloat16>);
