@@ -132,8 +132,8 @@ nvinfer1::DimsExprs FusedTokenPrunePluginDynamic::getOutputDimensions(
     const nvinfer1::DimsExprs* inputs,
     int nb_inputs,
     nvinfer1::IExprBuilder& expr_builder) TRT_NOEXCEPT {
+  auto x_dims = inputs[1], new_mask_dims = inputs[3];
   if (flag_varseqlen_) {
-    auto x_dims = inputs[1], new_mask_dims = inputs[3];
     // max sum of seqlen: ceil(sum / scale) + n -1 >= for(i=0;i<n;i++) {sum +=
     // floor(num(i) / scale)} auto
     // pruned_sum_length=std::ceil(inputs[4].d[0]*new_mask_dims.d[2]/inputs[6].d[1])+
@@ -183,7 +183,6 @@ nvinfer1::DimsExprs FusedTokenPrunePluginDynamic::getOutputDimensions(
       return ret;
     }
   } else {
-    auto x_dims = inputs[1], new_mask_dims = inputs[2];
     if (output_index == 0) {
       nvinfer1::DimsExprs ret = x_dims;
       ret.d[1] = new_mask_dims.d[2];
@@ -243,7 +242,7 @@ bool FusedTokenPrunePluginDynamic::supportsFormatCombination(
         return (in.type == nvinfer1::DataType::kFLOAT) &&
                (in.format == nvinfer1::TensorFormat::kLINEAR);
       }
-    } else if (pos <= 3) {
+    } else if (pos <= 4) {
       const nvinfer1::PluginTensorDesc& prev = in_out[0];
       return in.type == prev.type && in.format == prev.format;
     } else {
@@ -306,14 +305,14 @@ int FusedTokenPrunePluginDynamic::enqueue(
     void* const* outputs,
     void* workspace,
     cudaStream_t stream) TRT_NOEXCEPT {
-  if (!(input_desc[0].type == nvinfer1::DataType::kHALF &&
-        input_desc[1].type == nvinfer1::DataType::kHALF)) {
-    PADDLE_THROW(
-        platform::errors::InvalidArgument("Token_prune'type must half"));
-  }
-  float scale =
-      static_cast<float>(input_desc[3].dims.d[2]) / input_desc[2].dims.d[2];
   if (flag_varseqlen_) {
+    if (!(input_desc[0].type == nvinfer1::DataType::kHALF &&
+          input_desc[1].type == nvinfer1::DataType::kHALF)) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Token_prune'type must half for varseqlen"));
+    }
+    float scale =
+        static_cast<float>(input_desc[3].dims.d[2]) / input_desc[2].dims.d[2];
     const int32_t* input5 =
         static_cast<const int32_t*>(inputs[5]);            // pre pos id
     int32_t* output3 = static_cast<int32_t*>(outputs[3]);  // new pos id
@@ -418,7 +417,7 @@ int FusedTokenPrunePluginDynamic::enqueue(
     auto input_type = input_desc[0].type;
     const int32_t B = input_desc[1].dims.d[0];  // batchs
     const int32_t pre_sequnce_length = input_desc[1].dims.d[1];
-    const int32_t new_sequnce_length = input_desc[2].dims.d[2];  // new mask
+    const int32_t new_sequnce_length = input_desc[3].dims.d[2];  // new mask
     const int32_t length = input_desc[1].dims.d[2];              // hidden size
     if (input_type == nvinfer1::DataType::kFLOAT) {
       VLOG(1) << "TRT Plugin DataType selected. FusedTokenPrune-->fp32";
