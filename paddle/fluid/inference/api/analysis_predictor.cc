@@ -1361,10 +1361,18 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   // The config and argument take a lot of storage,
   // when the predictor settings are complete, we release these stores.
 
-#if defined(PADDLE_WITH_MKLDNN) || defined(_WIN32)
+#if defined(_WIN32)
   argument_->PartiallyRelease();
 #else
+#if defined(PADDLE_WITH_MKLDNN)
+  if (argument_->use_mkldnn_int8()) {
+    argument_->PartiallyRelease();
+  } else {
+    argument_.reset(nullptr);
+  }
+#else
   argument_.reset(nullptr);
+#endif
 #endif
 
   config_.PartiallyRelease();
