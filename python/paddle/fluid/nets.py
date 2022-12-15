@@ -397,7 +397,7 @@ def glu(input, dim=-1):
     check_variable_and_dtype(
         input, 'input', ['float16', 'float32', 'float64'], "glu"
     )
-    a, b = layers.split(input, num_or_sections=2, dim=dim)
+    a, b = paddle.split(input, num_or_sections=2, axis=dim)
     act_b = paddle.nn.functional.sigmoid(x=b)
     out = paddle.multiply(x=a, y=act_b)
     return out
