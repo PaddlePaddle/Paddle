@@ -1027,15 +1027,15 @@ def conv2d_transpose(
 
     .. math::
 
-        Out = \sigma (W \\ast X + b)
+        Out = \sigma (W \ast X + b)
 
     Where:
 
     * :math:`X`: Input value, a 4-D Tensor with NCHW or NHWC format.
     * :math:`W`: Filter value, a 4-D Tensor with MCHW format.
-    * :math:`\\ast`: Convolution operation.
+    * :math:`\ast`: Convolution operation.
     * :math:`b`: Bias value, a 2-D Tensor with shape [M, 1].
-    * :math:`\\sigma`: Activation function.
+    * :math:`\sigma`: Activation function.
     * :math:`Out`: Output value, a 4-D Tensor with data format 'NCHW' or 'NHWC', the shape of :math:`Out` and :math:`X` may be different.
 
     Example:
@@ -1059,19 +1059,33 @@ def conv2d_transpose(
            H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[0] ] \\\\
            W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] ]
 
-    Note:
-          The conv2d_transpose can be seen as the backward of the conv2d. For conv2d,
-          when stride > 1, conv2d maps multiple input shape to the same output shape,
-          so for conv2d_transpose, when stride > 1, input shape maps multiple output shape.
-          If output_size is None, :math:`H_{out} = H^\prime_{out}, W_{out} = W^\prime_{out}`;
-          else, the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}`
-          and :math:`H^\prime_{out} + strides[0]`, and the :math:`W_{out}` of the output size must
-          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[1]`,
-          conv2d_transpose can compute the kernel size automatically.
+        If `padding` = `"SAME"`:
+
+        .. math::
+            H^\prime_{out} &= \frac{(H_{in} + stride[0] - 1)}{stride[0]} \\\\
+            W^\prime_{out} &= \frac{(H_{in} + stride[1] - 1)}{stride[1]}
+
+        If `padding` = `"VALID"`:
+
+        .. math::
+            H^\prime_{out} &= (H_{in} - 1) * stride[0]} + dilations[0] * (H_f - 1) + 1 \\\\
+            W^\prime_{out} &= (W_{in} − 1) * strides[1] + dilations[1] * (W_f − 1) + 1
+
+        If output_size is None, :math:`H_{out} = H^\prime_{out}, W_{out} = W^\prime_{out}`;
+        else, the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}`
+        and :math:`H^\prime_{out} + strides[0]`, and the :math:`W_{out}` of the output size must
+        between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[1]`,
+
+        Since transposed convolution can be treated as the inverse of convolution, and according to the input-output formula for convolution,
+        different sized input feature layers may correspond to the same sized output feature layer,
+        the size of the output feature layer for a fixed sized input feature layer is not unique to transposed convolution
+
+        If `output_size` is specified, `conv2d_transpose` can compute the kernel size automatically.
 
     Args:
-        input(Tensor): 4-D Tensor with [N, C, H, W] or [N, H, W, C] format,
-                         its data type is float32 or float64.
+        input(Tensor): 4-D Tensor with [N, C, H, W] or [N, H, W, C] format where N is the batch_size,
+            C is the input_channels, H is the input_height and W is the input_width.
+            Its data type is float32 or float64.
         num_filters(int): The number of the filter. It is as same as the output
             image channel.
         output_size(int|tuple, optional): The output image size. If output size is a
@@ -1085,26 +1099,23 @@ def conv2d_transpose(
             Otherwise, filter_size_height = filter_size_width = filter_size. None if
             use output size to calculate filter_size. Default: None. filter_size and
             output_size should not be None at the same time.
-        stride(int|tuple, optional): The stride size. It means the stride in transposed convolution.
-            If stride is a tuple, it must contain two integers, (stride_height, stride_width).
-            Otherwise, stride_height = stride_width = stride. Default: stride = 1.
         padding(str|int|list|tuple, optional): The padding size. It means the number of zero-paddings
             on both sides for each dimension. If `padding` is a string, either 'VALID' or
             'SAME' which is the padding algorithm. If `padding` is a tuple or list,
-            it could be in three forms: `[pad_height, pad_width]` or
-            `[pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`,
-            and when `data_format` is `"NCHW"`, `padding` can be in the form
+            it could be in three forms:
+            (1) Contains 4 binary groups: when `data_format` is `"NCHW"`, `padding` can be in the form
             `[[0,0], [0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
             when `data_format` is `"NHWC"`, `padding` can be in the form
             `[[0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
-            Default: padding = 0.
+            (2) Contains 4 integer values：`[pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`
+            (3) Contains 2 integer values：`[pad_height, pad_width]`, in this case, `padding_height_top = padding_height_bottom = padding_height`，
+            `padding_width_left = padding_width_right = padding_width`. If an integer, `padding_height = padding_width = padding`. Default: padding = 0.
+        stride(int|tuple, optional): The stride size. It means the stride in transposed convolution.
+            If stride is a tuple, it must contain two integers, (stride_height, stride_width).
+            Otherwise, stride_height = stride_width = stride. Default: stride = 1.
         dilation(int|tuple, optional): The dilation size. It means the spacing between the kernel points.
             If dilation is a tuple, it must contain two integers, (dilation_height, dilation_width).
             Otherwise, dilation_height = dilation_width = dilation. Default: dilation = 1.
-        filter_size(int|tuple, optional): The filter size. If filter_size is a tuple,
-            it must contain two integers, (filter_size_height, filter_size_width).
-            Otherwise, filter_size_height = filter_size_width = filter_size. None if
-            use output size to calculate filter_size. Default: None.
         groups(int, optional): The groups number of the Conv2d transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
@@ -1115,11 +1126,10 @@ def conv2d_transpose(
             of conv2d_transpose. If it is set to None or one attribute of ParamAttr, conv2d_transpose
             will create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with Xavier. Default: None.
-        bias_attr (ParamAttr|bool, optional): The parameter attribute for the bias of conv2d_transpose.
-            If it is set to False, no bias will be added to the output units.
-            If it is set to None or one attribute of ParamAttr, conv2d_transpose
-            will create ParamAttr as bias_attr. If the Initializer of the bias_attr
-            is not set, the bias is initialized zero. Default: None.
+        bias_attr (ParamAttr|bool, optional): Specifies the object for the bias parameter attribute.
+            The default value is None, which means that the default bias parameter attribute is used.
+            For detailed information, please refer to :ref:`paramattr`.
+            The default bias initialisation for the conv2d_transpose operator is 0.0.
         use_cudnn(bool, optional): Use cudnn kernel or not, it is valid only when the cudnn
             library is installed. Default: True.
         act (str, optional): Activation type, if it is set to None, activation is not appended.
