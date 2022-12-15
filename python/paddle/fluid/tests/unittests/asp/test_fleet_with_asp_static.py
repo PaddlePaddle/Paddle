@@ -21,8 +21,8 @@ import numpy as np
 import paddle
 import paddle.distributed.fleet as fleet
 import paddle.fluid as fluid
+from paddle.incubate.asp import sparsity
 from paddle.incubate.asp.sparsity.asp import ASPHelper
-from paddle.static import sparsity
 
 cuda_visible_devices = os.getenv('CUDA_VISIBLE_DEVICES')
 if cuda_visible_devices is None or cuda_visible_devices == "":
