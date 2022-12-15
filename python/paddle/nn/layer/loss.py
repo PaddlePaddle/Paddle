@@ -891,19 +891,32 @@ class KLDivLoss(Layer):
 
     $$l(x, y) = y * (\log(y) - x)$$
 
+    Here :math:`x` is input and :math:`y` is label.
+
+    If `reduction` is ``'none'``, the output loss is the same shape as the input, and the loss at each point is calculated separately. There is no reduction to the result.
+
+    If `reduction` is ``'mean'``, the output loss is the shape of [1], and the output is the average of all losses.
+
+    If `reduction` is ``'sum'``, the output loss is the shape of [1], and the output is the sum of all losses.
+
+    If `reduction` is ``'batchmean'``, the output loss is the shape of [N], N is the batch size, and the output is the sum of all losses divided by the batch size.
+
     Parameters:
-        reduction (Tensor): Indicate how to average the loss,
-             the candicates are ``'none'`` | ``'batchmean'`` | ``'mean'`` | ``'sum'``.
-             If `reduction` is ``'mean'``, the reduced mean loss is returned;
-             If `reduction` is ``'batchmean'``, the sum loss divided by batch size is returned;
-             if `reduction` is ``'sum'``, the reduced sum loss is returned;
-             if `reduction` is ``'none'``, no reduction will be apllied.
-             Default is ``'mean'``.
+        reduction (str, optional): Indicate how to average the loss,
+            the candicates are ``'none'`` | ``'batchmean'`` | ``'mean'`` | ``'sum'``.
+            If `reduction` is ``'mean'``, the reduced mean loss is returned;
+            If `reduction` is ``'batchmean'``, the sum loss divided by batch size is returned;
+            if `reduction` is ``'sum'``, the reduced sum loss is returned;
+            if `reduction` is ``'none'``, no reduction will be apllied.
+            Default is ``'mean'``.
 
     Shape:
-        - input (Tensor): ``(N, *)``, where ``*`` means, any number of additional dimensions.
-        - label (Tensor): ``(N, *)``, same shape as input.
-        - output (Tensor): tensor with shape: [1] by default.
+
+        input (Tensor): ``(N, *)``, where ``*`` means, any number of additional dimensions.
+
+        label (Tensor): ``(N, *)``, same shape as input.
+
+        output (Tensor): tensor with shape: [1] by default.
 
     Examples:
         .. code-block:: python
