@@ -15,9 +15,9 @@ limitations under the License. */
 #include <algorithm>
 
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/fc_functor.h"
-#include "paddle/phi/kernels/funcs/aligned_vector.h"
 
 namespace phi {
 namespace funcs {
@@ -136,36 +136,43 @@ __global__ void bias_relu_v4_half2(const int num,
   using LoadT = phi::AlignedVector<half2, Half2VecSize>;
   LoadT data_vec;
   LoadT bias_vec;
-  const int32_t global_thread_idx = blockIdx.x * blockDim.x + threadIdx.x; 
-  const int32_t grid_stride = gridDim.x * blockDim.x; 
+  const int32_t global_thread_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  const int32_t grid_stride = gridDim.x * blockDim.x;
 
-  for(int32_t linear_idx = global_thread_idx * Half2VecSize; linear_idx < num; linear_idx += grid_stride * Half2VecSize){
+  for (int32_t linear_idx = global_thread_idx * Half2VecSize; linear_idx < num;
+       linear_idx += grid_stride * Half2VecSize) {
     phi::Load<half2, Half2VecSize>(&data[linear_idx], &data_vec);
-    const int bias_idx = linear_idx % K; 
+    const int bias_idx = linear_idx % K;
     phi::Load<half2, Half2VecSize>(&bias[bias_idx], &bias_vec);
-    
-    #pragma unroll
-    for(int unroll_idx = 0; unroll_idx < Half2VecSize; unroll_idx++){
-      // Do biasAdd
-      #if __CUDA_ARCH__ >= 530
-        data_vec[unroll_idx] = __hadd2(data_vec[unroll_idx], bias_vec[unroll_idx]);
-      #else
-        data_vec[unroll_idx].x = __hadd(data_vec[unroll_idx].x, bias_vec[unroll_idx].x);
-        data_vec[unroll_idx].y = __hadd(data_vec[unroll_idx].y, bias_vec[unroll_idx].y);
-      #endif
+
+#pragma unroll
+    for (int unroll_idx = 0; unroll_idx < Half2VecSize; unroll_idx++) {
+// Do biasAdd
+#if __CUDA_ARCH__ >= 530
+      data_vec[unroll_idx] =
+          __hadd2(data_vec[unroll_idx], bias_vec[unroll_idx]);
+#else
+      data_vec[unroll_idx].x =
+          __hadd(data_vec[unroll_idx].x, bias_vec[unroll_idx].x);
+      data_vec[unroll_idx].y =
+          __hadd(data_vec[unroll_idx].y, bias_vec[unroll_idx].y);
+#endif
 
       // Do relu
       if (DoRelu) {
-        #if __CUDA_ARCH__ >= 800
-          data_vec[unroll_idx] = __hmax2(__half2(0, 0), data_vec[unroll_idx]);
-        #elif __CUDA_ARCH__ >= 530
-          data_vec[unroll_idx] = __hmul2(__hgt2(__half2(0, 0), data_vec[unroll_idx]), data_vec[unroll_idx]);
-        #else
-          data_vec[unroll_idx].x = static_cast<int>(static_cast<float>(data_vec[unroll_idx].x) > 0) *
-                        static_cast<float>(data_vec[unroll_idx].x);
-          data_vec[unroll_idx].y = static_cast<int>(static_cast<float>(data_vec[unroll_idx].y) > 0) *
-                        static_cast<float>(data_vec[unroll_idx].y);
-        #endif
+#if __CUDA_ARCH__ >= 800
+        data_vec[unroll_idx] = __hmax2(__half2(0, 0), data_vec[unroll_idx]);
+#elif __CUDA_ARCH__ >= 530
+        data_vec[unroll_idx] = __hmul2(
+            __hgt2(__half2(0, 0), data_vec[unroll_idx]), data_vec[unroll_idx]);
+#else
+        data_vec[unroll_idx].x =
+            static_cast<int>(static_cast<float>(data_vec[unroll_idx].x) > 0) *
+            static_cast<float>(data_vec[unroll_idx].x);
+        data_vec[unroll_idx].y =
+            static_cast<int>(static_cast<float>(data_vec[unroll_idx].y) > 0) *
+            static_cast<float>(data_vec[unroll_idx].y);
+#endif
       }
     }
     phi::Store<half2, Half2VecSize>(data_vec, &data[linear_idx]);
@@ -200,20 +207,20 @@ __global__ void InplaceAddReluKernel(const int N,
 }
 
 /**
- * brief: Launch BiasAddReluKernel with relu or not. 
-**/
-template<int Half2VecSize>
+ * brief: Launch BiasAddReluKernel with relu or not.
+ **/
+template <int Half2VecSize>
 void LaunchBiasAddReluHalf2Kernel(cudaStream_t stream,
-                                  const int32_t rows, 
-                                  const int32_t cols, 
+                                  const int32_t rows,
+                                  const int32_t cols,
                                   float16* Y,
                                   const float16* B,
-                                  bool relu){
+                                  bool relu) {
   const int threads = 256;
   const int vec_num = rows * cols / (Half2VecSize * 2);
-  const int half2_num = rows * cols / 2; 
+  const int half2_num = rows * cols / 2;
   const int blocks = (vec_num + threads - 1) / threads;
-  // Here reinterpret_cast to half2 type. 
+  // Here reinterpret_cast to half2 type.
   typedef typename FcTypeTraits<float16>::Type trans_type;
   auto* bias_half2_ptr = reinterpret_cast<const trans_type*>(B);
   auto* data_half2_ptr = reinterpret_cast<trans_type*>(Y);
@@ -227,21 +234,22 @@ void LaunchBiasAddReluHalf2Kernel(cudaStream_t stream,
 }
 
 /**
- * brief: Dispatch BiasAddReluKernel half2 type with 8 / 4 / 2 vecsize. 
+ * brief: Dispatch BiasAddReluKernel half2 type with 8 / 4 / 2 vecsize.
  **/
 void DispatchBiasAddReluKernelHalf2VecSize(cudaStream_t stream,
-                                            const int32_t rows, 
-                                            const int32_t cols, 
-                                            float16* Y,
-                                            const float16* B,
-                                            bool relu){
-  // Half Max Vecsize is 128 / 16 = 8, since we use half2 type, here Half2VecSize need divide 2. 
-  if(cols % 8 == 0) {
-    LaunchBiasAddReluHalf2Kernel<4>(stream, rows, cols, Y, B, relu); 
-  } else if(cols % 4 == 0) {
-    LaunchBiasAddReluHalf2Kernel<2>(stream, rows, cols, Y, B, relu); 
+                                           const int32_t rows,
+                                           const int32_t cols,
+                                           float16* Y,
+                                           const float16* B,
+                                           bool relu) {
+  // Half Max Vecsize is 128 / 16 = 8, since we use half2 type, here
+  // Half2VecSize need divide 2.
+  if (cols % 8 == 0) {
+    LaunchBiasAddReluHalf2Kernel<4>(stream, rows, cols, Y, B, relu);
+  } else if (cols % 4 == 0) {
+    LaunchBiasAddReluHalf2Kernel<2>(stream, rows, cols, Y, B, relu);
   } else {
-    LaunchBiasAddReluHalf2Kernel<1>(stream, rows, cols, Y, B, relu); 
+    LaunchBiasAddReluHalf2Kernel<1>(stream, rows, cols, Y, B, relu);
   }
 }
 
@@ -253,12 +261,7 @@ void AddReluKernel(cudaStream_t stream,
                    const float16* B,
                    bool relu) {
   if (N % 2 == 0) {
-    DispatchBiasAddReluKernelHalf2VecSize(stream,
-                                          M, 
-                                          N, 
-                                          Y,
-                                          B,
-                                          relu); 
+    DispatchBiasAddReluKernelHalf2VecSize(stream, M, N, Y, B, relu);
   } else {
     const int threads = 256;
     const int blocks = M;
