@@ -212,10 +212,10 @@ void ParamsQuantizationMkldnnPass::ApplyImpl(ir::Graph* graph) const {
                           platform::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
   FusePassBase::Init(name_scope_, graph);
-  QuantizeConv(graph, "conv2d", true /*with_residual_data*/);
-  QuantizeConv(graph, "conv2d", false /*with_residual_data*/);
   QuantizeConv(graph, "fused_conv2d", true /*with_residual_data*/);
   QuantizeConv(graph, "fused_conv2d", false /*with_residual_data*/);
+  QuantizeConv(graph, "conv2d", true /*with_residual_data*/);
+  QuantizeConv(graph, "conv2d", false /*with_residual_data*/);
 }
 
 }  // namespace ir

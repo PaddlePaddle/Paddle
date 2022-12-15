@@ -174,7 +174,7 @@ void PreparePass(std::unique_ptr<ir::Graph>* graph,
 void CheckScales(const OpDesc* op, float scale, float shift) {
   std::string type = op->Type();
   std::vector<std::string> scale_names;
-  if (type == "conv2d" || type == "fc") {
+  if (type == "conv2d" || type == "fused_conv2d" || type == "fc") {
     EXPECT_EQ(op->GetAttrIfExists<std::vector<float>>("Scale_weights")[0],
               scale);
     scale_names.push_back("Scale_in");

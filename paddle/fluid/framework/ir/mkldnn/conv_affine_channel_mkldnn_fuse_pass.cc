@@ -234,7 +234,7 @@ void ConvAffineChannelFusePass::FuseConvAffineChannel(
       gpd.mutable_pattern()
           ->NewNode(patterns::PDNodeName(name_scope_, "conv_input"))
           ->AsInput()
-          ->assert_is_op_input("conv2d", "Input");
+          ->assert_is_op_input(conv_type, "Input");
   patterns::ConvAffineChannel conv_ac_pattern(gpd.mutable_pattern(),
                                               name_scope_);
   conv_ac_pattern(conv_input, conv_type, false /*with_eltwise_add*/);
