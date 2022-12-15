@@ -3078,11 +3078,11 @@ def scatter_nd(index, updates, shape, name=None):
     seen :code:`scatter_nd_add` . This op is the inverse of the :code:`gather_nd` op.
 
     Args:
-        index (Tensor): The index input with ndim > 1 and index.shape[-1] <= len(shape).
+        index (Tensor): The index input with ndim >= 1 and index.shape[-1] <= len(shape).
                           Its dtype should be int32 or int64 as it is used as indexes.
         updates (Tensor): The updated value of scatter_nd op. Its dtype should be float32, float64.
-                            It can be an 0D tensor, or else it must have the shape index.shape[:-1] + shape[index.shape[-1]:]
-        shape(tuple|list): Shape of output tensor. If the update is a 0d tensor, the index.shape[-1] has to be euqal with len(shape).
+                            It must have the shape index.shape[:-1] + shape[index.shape[-1]:]
+        shape(tuple|list): Shape of output tensor.
         name (str|None): The output Tensor name. If set None, the layer will be named automatically.
 
     Returns:
