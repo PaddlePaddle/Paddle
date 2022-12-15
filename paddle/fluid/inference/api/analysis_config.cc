@@ -1175,7 +1175,7 @@ std::string AnalysisConfig::Summary() {
   os.InsertRow({"use_gpu", use_gpu_ ? "true" : "false"});
   if (use_gpu_) {
     os.InsertRow({"gpu_device_id", std::to_string(gpu_device_id_)});
-    os.InsertRow({"enable_gpu_mixed_", std::to_string(enable_gpu_mixed_)});
+    os.InsertRow({"enable_gpu_mixed", std::to_string(enable_gpu_mixed_)});
     os.InsertRow({"memory_pool_init_size",
                   std::to_string(memory_pool_init_size_mb_) + "MB"});
     os.InsertRow(
