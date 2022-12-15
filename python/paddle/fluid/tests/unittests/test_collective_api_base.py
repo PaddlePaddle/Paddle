@@ -327,11 +327,6 @@ class TestDistBase(unittest.TestCase):
                 'NVIDIA_TF32_OVERRIDE', ''
             )
 
-        if eager_mode:
-            required_envs["FLAGS_enable_eager_mode"] = "%d" % 1
-        else:
-            required_envs["FLAGS_enable_eager_mode"] = "%d" % 0
-
         tr0_out, tr1_out, pid0, pid1 = self._run_cluster(
             model_file, required_envs
         )
