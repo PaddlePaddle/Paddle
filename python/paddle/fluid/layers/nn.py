@@ -76,10 +76,7 @@ __all__ = [
     'unsqueeze',
     'lod_reset',
     'relu',
-    'clip_by_norm',
     'mul',
-    'merge_selected_rows',
-    'get_tensor_from_selected_rows',
 ]
 
 OP_NAMEMAPPING = {
@@ -2162,45 +2159,6 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
     return out
 
 
-@templatedoc()
-def merge_selected_rows(x, name=None):
-    """
-    ${comment}
-
-    Args:
-        x(${x_type}): ${x_comment}
-        name(basestring|None): Name of the output.
-
-    Returns:
-        out(${out_type}): ${out_comment}
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            b = fluid.default_main_program().global_block()
-            var = b.create_var(
-                name="X", dtype="float32", persistable=True,
-                type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
-            y = fluid.layers.merge_selected_rows(var)
-    """
-    if in_dygraph_mode():
-        return _C_ops.merge_selected_rows(x)
-
-    if _non_static_mode():
-        return _legacy_C_ops.merge_selected_rows(x)
-
-    helper = LayerHelper("merge_selected_rows", **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type="merge_selected_rows",
-        inputs={"X": x},
-        attrs={},
-        outputs={"Out": out},
-    )
-    return out
-
-
 def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
     """
     Mul Operator.
@@ -2255,58 +2213,5 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
 
     helper.append_op(
         type="mul", inputs={"X": x, "Y": y}, attrs=attrs, outputs={"Out": out}
-    )
-    return out
-
-
-@templatedoc()
-def get_tensor_from_selected_rows(x, name=None):
-    """
-    This operator gets tensor data from input with SelectedRows type, and outputs a LoDTensor.
-
-    .. code-block:: text
-
-        input x is SelectedRows:
-           x.rows = [0, 5, 5, 4, 19]
-           x.height = 20
-           x.value = [[1, 1] [2, 2] [2, 2] [3, 3] [6, 6]]
-
-        Output is LoDTensor:
-           out.shape = [5, 2]
-           out.data = [[1, 1],
-                       [2, 2],
-                       [2, 2],
-                       [3, 3],
-                       [6, 6]]
-
-    Args:
-        x(SelectedRows): Input with SelectedRows type. The data type is float32, float64, int32 or int64.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name` .
-
-    Returns:
-        Variable: LoDTensor transformed from SelectedRows. The data type is same with input.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            b = fluid.default_main_program().global_block()
-            input = b.create_var(name="X", dtype="float32", persistable=True, type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
-            out = fluid.layers.get_tensor_from_selected_rows(input)
-    """
-
-    check_type(x, 'x', Variable, 'get_tensor_from_selected_rows')
-    if x.type != core.VarDesc.VarType.SELECTED_ROWS:
-        raise TypeError(
-            "The type of 'x' in get_tensor_from_selected_rows must be SELECTED_ROWS."
-        )
-    helper = LayerHelper('get_tensor_from_selected_rows', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='get_tensor_from_selected_rows',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={},
     )
     return out

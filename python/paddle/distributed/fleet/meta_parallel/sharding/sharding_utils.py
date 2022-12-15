@@ -24,6 +24,7 @@ from paddle.fluid import core, layers
 from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import dygraph_only
+from paddle.nn import clip
 
 
 class Taskflow:
@@ -66,8 +67,8 @@ class ShardingClipGrad:
 
             merge_grad = g
             if g.type == core.VarDesc.VarType.SELECTED_ROWS:
-                merge_grad = layers.get_tensor_from_selected_rows(
-                    layers.merge_selected_rows(g)
+                merge_grad = clip.get_tensor_from_selected_rows(
+                    clip.merge_selected_rows(g)
                 )
             square = paddle.square(merge_grad)
             sum_square = paddle.sum(square)

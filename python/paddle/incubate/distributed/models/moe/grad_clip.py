@@ -17,6 +17,7 @@ import paddle.distributed as dist
 from paddle.fluid import core, layers
 from paddle.fluid.clip import ClipGradBase, _squared_l2_norm
 from paddle.fluid.dygraph import base as imperative_base
+from paddle.nn import clip
 
 
 class ClipGradForMOEByGlobalNorm(ClipGradBase):
@@ -113,8 +114,8 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
                 continue
             merge_grad = g
             if g.type == core.VarDesc.VarType.SELECTED_ROWS:
-                merge_grad = layers.merge_selected_rows(g)
-                merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
+                merge_grad = clip.merge_selected_rows(g)
+                merge_grad = clip.get_tensor_from_selected_rows(merge_grad)
             sum_square = _squared_l2_norm(merge_grad)
             if sum_square.dtype == core.VarDesc.VarType.FP16:
                 sum_square_list_fp16.append(sum_square)

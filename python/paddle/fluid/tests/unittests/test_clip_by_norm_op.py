@@ -20,12 +20,13 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle.nn import clip
 
 
 class TestClipByNormOp(OpTest):
     def setUp(self):
         self.max_relative_error = 0.006
-        self.python_api = fluid.layers.clip_by_norm
+        self.python_api = clip.clip_by_norm
         self.init_dtype()
         self.initTestCase()
         input = np.random.random(self.shape).astype(self.dtype)
