@@ -37,11 +37,10 @@ elementwise_inner_add(const phi::CPUContext& ctx,
                       T* dst_pointer,
                       size_t src_index,
                       IndexT dst_index,
-                      size_t slice_size,
-                      int zero_d_updates = 1) {
+                      size_t slice_size) {
   auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(ctx);
   blas.VADD(slice_size,
-            src_pointer + src_index * slice_size * zero_d_updates,
+            src_pointer + src_index * slice_size,
             dst_pointer + dst_index * slice_size,
             dst_pointer + dst_index * slice_size);
 }
@@ -53,16 +52,14 @@ elementwise_inner_add(const phi::CPUContext& ctx,
                       T* dst_pointer,
                       size_t src_index,
                       IndexT dst_index,
-                      size_t slice_size,
-                      int zero_d_updates = 1) {
+                      size_t slice_size) {
   using EigenVector = typename phi::EigenTensor<T, 1>::Type;
   using ConstEigenVector = typename phi::EigenTensor<T, 1>::ConstType;
 
   phi::EigenDim<1>::Type dim;
   dim[0] = slice_size;
 
-  ConstEigenVector eigen_src(
-      src_pointer + src_index * slice_size * zero_d_updates, dim);
+  ConstEigenVector eigen_src(src_pointer + src_index * slice_size, dim);
   EigenVector eigen_dst(dst_pointer + dst_index * slice_size, dim);
   eigen_dst += eigen_src;
 }
@@ -295,13 +292,7 @@ void ScatterNdAdd(const phi::CPUContext& ctx,
       temp *= output_dims[j];
     }
     elementwise_inner_add<T, IndexT>(
-        ctx,
-        p_update,
-        p_output,
-        i,
-        index_val,
-        slice_size,
-        static_cast<int>(update.dims().size() != 0));
+        ctx, p_update, p_output, i, index_val, slice_size);
   }
 }
 

@@ -902,22 +902,17 @@ class TestSundryAPIStatic(unittest.TestCase):
 
     @prog_scope()
     def test_scatter_nd(self):
-        index = paddle.static.data(name='index', shape=[4, 2], dtype='int64')
+        index = paddle.static.data(name='index', shape=[1], dtype='int64')
         updates = paddle.full([], 2, 'float32')
-        shape = [3, 5]
-        index_data = np.array(
-            [[1, 1], [0, 1], [1, 3], [2, 4]], dtype=np.longlong
-        )
+        shape = [5]
+        index_data = np.array([3], dtype=np.longlong)
         out = paddle.scatter_nd(index, updates, shape)
         paddle.static.append_backward(out)
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, feed={'index': index_data}, fetch_list=[out])
-        self.assertEqual(res[0].shape, (3, 5))
-        self.assertEqual(res[0][1][1], 2)
-        self.assertEqual(res[0][0][1], 2)
-        self.assertEqual(res[0][1][3], 2)
-        self.assertEqual(res[0][2][4], 2)
+        self.assertEqual(res[0].shape, (5,))
+        self.assertEqual(res[0][3], 2)
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
