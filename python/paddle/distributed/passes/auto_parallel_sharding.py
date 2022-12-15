@@ -762,6 +762,10 @@ class ShardingPass(PassBase):
                 'op_namescope', str('/') + ParallelMode.DataParallel
             )
 
+            if self.enable_overlap:
+                self.param_comm_stream = "sharding_param_comm_stream"
+                new_op.dist_attr.execution_stream = self.param_comm_stream
+
             # NOTE the current dist context lack the presentation for bucket tensor which
             # composes many tensor with different dims_mapping. we DO NOT assign dist attr
             # for it currently.
@@ -815,6 +819,10 @@ class ShardingPass(PassBase):
                     sync=False,
                     op_namescope="sharding_stage2_broadcast_dep",
                 )
+                if self.enable_overlap:
+                    depend_op.dist_attr.execution_stream = (
+                        self.param_comm_stream
+                    )
 
         main_block._sync_with_cpp()
 
