@@ -19,7 +19,7 @@
 #include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_pass.h"  // NOLINT
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/imperative/type_defs.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace framework {
@@ -146,7 +146,7 @@ void PreparePass(std::unique_ptr<ir::Graph>* graph,
                  int* current_nodes_num,
                  std::string var_without_scale = "",
                  std::string var_signed = "") {
-  auto place = paddle::platform::CPUPlace();
+  auto place = phi::CPUPlace();
   NaiveExecutor exe{place};
   Scope scope;
   exe.CreateVariables(prog, 0, true, &scope);
