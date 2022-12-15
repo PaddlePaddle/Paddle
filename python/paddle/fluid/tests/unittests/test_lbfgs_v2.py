@@ -19,8 +19,8 @@ import numpy as np
 import paddle
 from paddle.incubate.optimizer.functional.lbfgs_v2 import LBFGS
 from paddle.incubate.optimizer.functional.line_search_dygraph import (
-    _strong_wolfe,
     _cubic_interpolate,
+    _strong_wolfe,
 )
 
 np.random.seed(123)
