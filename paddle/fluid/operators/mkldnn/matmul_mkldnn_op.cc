@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/tensor.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
@@ -21,13 +20,14 @@ namespace {
 using dnnl::memory;
 using paddle::framework::ExecutionContext;
 using paddle::framework::GradVarName;
+using phi::DenseTensor;
 using phi::OneDNNContext;
 using phi::vectorize;
 using phi::funcs::OneDNNGetDataType;
 
 // Reshape a rank-3 tensor from P x M x N to (P * M) x N.
 // Identity op if the tensor is not of rank 3.
-static phi::DenseTensor FoldOuterDims(const phi::DenseTensor &input) {
+static DenseTensor FoldOuterDims(const DenseTensor &input) {
   auto output = input;
   auto in_dims = input.dims();
   if (in_dims.size() == 3) {
@@ -40,14 +40,14 @@ static phi::DenseTensor FoldOuterDims(const phi::DenseTensor &input) {
 // (Warning: This requires transposing data and writes into new memory.)
 // Identity op if the tensor is not of rank 3.
 template <typename T>
-static phi::DenseTensor FoldFirstAndLastDims(const OneDNNContext &dev_ctx,
-                                             const phi::DenseTensor *input) {
+static DenseTensor FoldFirstAndLastDims(const OneDNNContext &dev_ctx,
+                                        const DenseTensor *input) {
   auto input_dims = vectorize(input->dims());
   if (input_dims.size() != 3) {
     return *input;
   }
 
-  phi::DenseTensor output;
+  DenseTensor output;
   output.Resize({input_dims[1], input_dims[0], input_dims[2]});
 
   auto output_dims = vectorize(output.dims());
@@ -77,7 +77,7 @@ class MatMulV1OneDNNHandler
  public:
   MatMulV1OneDNNHandler(const ExecutionContext &ctx,
                         const dnnl::engine engine,
-                        paddle::platform::Place cpu_place,
+                        phi::Place cpu_place,
                         const std::vector<int64_t> &x_org_dims,
                         const std::vector<int64_t> &y_org_dims)
       : phi::funcs::OneDNNHandlerNoCachingT<XT, dnnl::matmul>(engine,
@@ -150,12 +150,12 @@ class MatMulV1OneDNNHandler
   }
 
   MatMulV1OneDNNHandler(const dnnl::engine engine,
-                        paddle::platform::Place cpu_place,
-                        phi::DenseTensor *x,
+                        phi::Place cpu_place,
+                        DenseTensor *x,
                         bool trans_x,
-                        phi::DenseTensor *y,
+                        DenseTensor *y,
                         bool trans_y,
-                        phi::DenseTensor *out,
+                        DenseTensor *out,
                         float scale)
       : phi::funcs::OneDNNHandlerNoCachingT<XT, dnnl::matmul>(engine,
                                                               cpu_place) {
@@ -206,21 +206,21 @@ class MatMulV1OneDNNHandler
     return alpha;
   }
 
-  std::shared_ptr<memory> AcquireWeightsMemory(const phi::DenseTensor *input) {
+  std::shared_ptr<memory> AcquireWeightsMemory(const DenseTensor *input) {
     const YT *input_data = input->data<YT>();
     return this->AcquireMemoryFromPrimitive(
         this->fwd_pd_->weights_desc(),
         phi::funcs::to_void_cast<YT>(input_data));
   }
 
-  std::shared_ptr<dnnl::memory> AcquireDstMemory(phi::DenseTensor *output) {
+  std::shared_ptr<memory> AcquireDstMemory(DenseTensor *output) {
     // We cannot use base AcquireDstMemory as it makes an allocation request
     // base on DST memory primitive size. This is fine in general, but in MatMul
     // we have primitive that covers only one batch of Data and then shift
-    // pointer for every new batch. Hence phi::DenseTensor size is bigger that
+    // pointer for every new batch. Hence DenseTensor size is bigger that
     // dst memory primitive size. So would we request less memory that is there
     // and it triggers an assertion.  So as there is no 'any' format here we can
-    // leave default size of phi::DenseTensor as computed in ComputeInferShape
+    // leave default size of DenseTensor as computed in ComputeInferShape
     OT *ptr = output->mutable_data<OT>(this->place_);
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
   }
@@ -236,7 +236,7 @@ class MatMulV1OneDNNHandler
  * If transposed, `H,W` will be swapped.
  */
 static void ReshapeTensorToMatrixSequence(
-    phi::DenseTensor *x, const phi::funcs::MatDescriptor &descriptor) {
+    DenseTensor *x, const phi::funcs::MatDescriptor &descriptor) {
   int64_t h, w;
   h = descriptor.height_;
   w = descriptor.width_;
@@ -264,9 +264,9 @@ static void ReshapeTensorToMatrixSequence(
  * If any of `X` and `Y` has batch size BatchSize, the out will have the
  * BatchSize.
  */
-static void ReshapeXYOutToMatrixSequence(phi::DenseTensor *x,
-                                         phi::DenseTensor *y,
-                                         phi::DenseTensor *out,
+static void ReshapeXYOutToMatrixSequence(DenseTensor *x,
+                                         DenseTensor *y,
+                                         DenseTensor *out,
                                          bool trans_x,
                                          bool trans_y) {
   auto x_dim = phi::funcs::RowMatrixDimsFromVector(x->dims());
@@ -293,22 +293,22 @@ std::vector<int64_t> Transpose(const std::vector<int64_t> &x,
   auto axis_set = std::set<int>(axis.begin(), axis.end());
   PADDLE_ENFORCE_EQ(axis_set.size(),
                     axis_size,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "In an axis array, elements must be unique."));
 
-  PADDLE_ENFORCE_EQ(in_rank,
-                    axis_size,
-                    paddle::platform::errors::InvalidArgument(
-                        "The input dimension's size "
-                        "should be equal to the axis's size. "
-                        "But received dimension is %d, "
-                        "axis's size is %d",
-                        in_rank,
-                        axis_size));
+  PADDLE_ENFORCE_EQ(
+      in_rank,
+      axis_size,
+      phi::errors::InvalidArgument("The input dimension's size "
+                                   "should be equal to the axis's size. "
+                                   "But received dimension is %d, "
+                                   "axis's size is %d",
+                                   in_rank,
+                                   axis_size));
 
   PADDLE_ENFORCE_LT(*std::max_element(axis.begin(), axis.end()),
                     axis_size,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Axis values must be ranging from 0 to (dims - 1)."));
 
   std::vector<int64_t> new_x(x.size());
@@ -320,11 +320,11 @@ std::vector<int64_t> Transpose(const std::vector<int64_t> &x,
 
 template <typename T, typename T_out>
 void ExecuteMatMul(const ExecutionContext &ctx,
-                   const phi::DenseTensor *x,
+                   const DenseTensor *x,
                    const std::vector<int64_t> &x_dims,
-                   const phi::DenseTensor *y,
+                   const DenseTensor *y,
                    const std::vector<int64_t> &y_dims,
-                   phi::DenseTensor *out) {
+                   DenseTensor *out) {
   const auto &dev_ctx = ctx.template device_context<OneDNNContext>();
   MatMulV1OneDNNHandler<T, T, T_out> handler(
       ctx, dev_ctx.GetEngine(), ctx.GetPlace(), x_dims, y_dims);
@@ -356,7 +356,7 @@ class MatMulV1OneDNNKernel : public paddle::framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           ctx.Attr<int>("head_number"),
           1,
-          paddle::platform::errors::Unimplemented(
+          phi::errors::Unimplemented(
               "oneDNN matmul doesn't support multiple heads. Expected "
               "head_number=1. But received `head_number` is %d",
               ctx.Attr<int>("head_number")));
@@ -368,9 +368,9 @@ class MatMulV1OneDNNKernel : public paddle::framework::OpKernel<T> {
                                        : false;
     constexpr bool fuse_relu = false;  // TODO(intel): Enable eltwise fuses
 
-    auto *x = ctx.Input<phi::DenseTensor>("X");
-    auto *y = ctx.Input<phi::DenseTensor>("Y");
-    auto *out = ctx.Output<phi::DenseTensor>("Out");
+    auto *x = ctx.Input<DenseTensor>("X");
+    auto *y = ctx.Input<DenseTensor>("Y");
+    auto *out = ctx.Output<DenseTensor>("Out");
 
     auto x_dims = vectorize(x->dims());
     auto y_dims = vectorize(y->dims());
@@ -386,7 +386,7 @@ class MatMulV1OneDNNKernel : public paddle::framework::OpKernel<T> {
     if (force_fp32_output || ((!is_int8) && (!is_bfloat16))) {
       ExecuteMatMul<T, float>(ctx, x, x_bd_dims, y, y_bd_dims, out);
     } else if (is_bfloat16) {
-      ExecuteMatMul<T, paddle::platform::bfloat16>(
+      ExecuteMatMul<T, phi::dtype::bfloat16>(
           ctx, x, x_bd_dims, y, y_bd_dims, out);
     } else if (fuse_relu) {
       ExecuteMatMul<T, uint8_t>(ctx, x, x_bd_dims, y, y_bd_dims, out);
@@ -400,7 +400,7 @@ class MatMulV1OneDNNKernel : public paddle::framework::OpKernel<T> {
                            const std::vector<int64_t> &y_dims,
                            std::vector<int64_t> *x_bd_dims,
                            std::vector<int64_t> *y_bd_dims,
-                           phi::DenseTensor *out) const {
+                           DenseTensor *out) const {
     if (x_dims.size() == 1) {
       (*x_bd_dims)[(*x_bd_dims).size() - 1] = x_dims[0];
     } else if (x_dims.size() == 2) {
@@ -429,8 +429,8 @@ class MatMulV1OneDNNKernel : public paddle::framework::OpKernel<T> {
             (*x_bd_dims)[i] == (*y_bd_dims)[i] || (*x_bd_dims)[i] == 1 ||
                 (*y_bd_dims)[i] == 1,
             true,
-            paddle::platform::errors::InvalidArgument(
-                "phi::DenseTensor dimensions are incorrect for broadcasting."
+            phi::errors::InvalidArgument(
+                "DenseTensor dimensions are incorrect for broadcasting."
                 "Dimensions in X and Y must be same or equal to 1, but "
                 "received x_dim[%d]=%d and y_dims[%d]= %d",
                 i,
@@ -452,7 +452,7 @@ class MatMulV1GradOneDNNKernel : public paddle::framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           ctx.Attr<int>("head_number"),
           1,
-          paddle::platform::errors::Unimplemented(
+          phi::errors::Unimplemented(
               "oneDNN matmul doesn't support multiple heads. Expected "
               "head_number=1. But received `head_number` is %d",
               ctx.Attr<int>("head_number")));
@@ -461,14 +461,11 @@ class MatMulV1GradOneDNNKernel : public paddle::framework::OpKernel<T> {
     const auto &dev_ctx = ctx.template device_context<OneDNNContext>();
     const auto &onednn_engine = dev_ctx.GetEngine();
 
-    auto x = *ctx.Input<phi::DenseTensor>("X");
-    auto y = *ctx.Input<phi::DenseTensor>("Y");
-    auto dout =
-        *ctx.Input<phi::DenseTensor>(paddle::framework::GradVarName("Out"));
-    auto *dx =
-        ctx.Output<phi::DenseTensor>(paddle::framework::GradVarName("X"));
-    auto *dy =
-        ctx.Output<phi::DenseTensor>(paddle::framework::GradVarName("Y"));
+    auto x = *ctx.Input<DenseTensor>("X");
+    auto y = *ctx.Input<DenseTensor>("Y");
+    auto dout = *ctx.Input<DenseTensor>(paddle::framework::GradVarName("Out"));
+    auto *dx = ctx.Output<DenseTensor>(paddle::framework::GradVarName("X"));
+    auto *dy = ctx.Output<DenseTensor>(paddle::framework::GradVarName("Y"));
 
     bool transpose_x = ctx.Attr<bool>("transpose_X");
     bool transpose_y = ctx.Attr<bool>("transpose_Y");
@@ -563,18 +560,18 @@ class MatMulV1GradOneDNNKernel : public paddle::framework::OpKernel<T> {
   void ExecuteMatMulGrad(const ExecutionContext &ctx,
                          const OneDNNContext &dev_ctx,
                          const dnnl::engine &engine,
-                         phi::DenseTensor *x,
+                         DenseTensor *x,
                          bool trans_x,
                          bool is_fold_init_dims_x,
-                         phi::DenseTensor *y,
+                         DenseTensor *y,
                          bool trans_y,
                          bool is_fold_init_dims_y,
-                         phi::DenseTensor *out) const {
+                         DenseTensor *out) const {
     // gradient is calculated in a different way when broadcasting is used
     bool need_combine = (x->dims().size() == 3 || y->dims().size() == 3) &&
                         out->dims().size() == 2;
 
-    phi::DenseTensor x_combined, y_combined;
+    DenseTensor x_combined, y_combined;
     if (need_combine) {
       x_combined = is_fold_init_dims_x ? FoldOuterDims(*x)
                                        : FoldFirstAndLastDims<T>(dev_ctx, x);
@@ -602,7 +599,7 @@ class MatMulV1GradOneDNNKernel : public paddle::framework::OpKernel<T> {
 
     auto matmul_p = handler.AcquireForwardPrimitive();
 
-    std::unordered_map<int, dnnl::memory> matmul_args = {
+    std::unordered_map<int, memory> matmul_args = {
         {DNNL_ARG_SRC, *src_memory_p},
         {DNNL_ARG_WEIGHTS, *weights_memory_p},
         {DNNL_ARG_DST, *dst_memory_p}};
@@ -622,7 +619,7 @@ REGISTER_OP_KERNEL(matmul,
                    MKLDNN,
                    ::phi::CPUPlace,
                    MatMulV1OneDNNKernel<float>,
-                   MatMulV1OneDNNKernel<paddle::platform::bfloat16>,
+                   MatMulV1OneDNNKernel<phi::dtype::bfloat16>,
                    MatMulV1OneDNNKernel<int8_t>,
                    MatMulV1OneDNNKernel<uint8_t>);
 
@@ -630,4 +627,4 @@ REGISTER_OP_KERNEL(matmul_grad,
                    MKLDNN,
                    ::phi::CPUPlace,
                    MatMulV1GradOneDNNKernel<float>,
-                   MatMulV1GradOneDNNKernel<paddle::platform::bfloat16>);
+                   MatMulV1GradOneDNNKernel<phi::dtype::bfloat16>);
