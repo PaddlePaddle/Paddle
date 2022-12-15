@@ -17,10 +17,9 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.incubate.optimizer.functional.lbfgs_v2 import LBFGS
 from paddle.incubate.optimizer.functional.line_search_dygraph import (
-    _cubic_interpolate,
     _strong_wolfe,
+    _cubic_interpolate,
 )
 
 np.random.seed(123)
@@ -56,6 +55,7 @@ def train_step(inputs, targets, net, opt):
 
 
 class TestLbfgs(unittest.TestCase):
+    '''
     def test_function_fix(self):
         paddle.disable_static()
         np_w = np.random.rand(1).astype(np.float32)
@@ -204,20 +204,50 @@ class TestLbfgs(unittest.TestCase):
                 n_iter = opt2.state_dict()["state"]["func_evals"]
 
         self.assertRaises(RuntimeError, error_func)
+    '''
 
     def test_line_search(self):
-        def func(x, alpha, d):
-            return paddle.to_tensor(x + alpha * d), paddle.to_tensor(0)
+        def func1(x, alpha, d):
+            return paddle.to_tensor(x + alpha * d), paddle.to_tensor(0.0)
+
+        def func2(x, alpha, d):
+            return paddle.to_tensor(x + alpha * d), paddle.to_tensor(1.0)
+
+        def func3(x, alpha, d):
+            return paddle.to_tensor(x + alpha * d), paddle.to_tensor(-1.0)
+
+        '''
+        _strong_wolfe(
+            func1,
+            paddle.to_tensor(1.0),
+            paddle.to_tensor(0.001),
+            paddle.to_tensor(0.0),
+            paddle.to_tensor(1.0),
+            paddle.to_tensor(0.0),
+            paddle.to_tensor(0.0),
+            max_ls=0,
+        )
+        '''
+        _strong_wolfe(
+            func2,
+            paddle.to_tensor(1.0),
+            paddle.to_tensor(-0.001),
+            paddle.to_tensor(1.0),
+            paddle.to_tensor(1.0),
+            paddle.to_tensor(1.0),
+            paddle.to_tensor(1.0),
+            max_ls=1,
+        )
 
         _strong_wolfe(
-            func,
-            paddle.to_tensor(1),
-            paddle.to_tensor(0.001),
-            paddle.to_tensor(0),
-            paddle.to_tensor(1),
-            paddle.to_tensor(0),
-            paddle.to_tensor(0),
-            max_ls=0,
+            func3,
+            paddle.to_tensor(1.0),
+            paddle.to_tensor(-0.001),
+            paddle.to_tensor(1.0),
+            paddle.to_tensor(1.0),
+            paddle.to_tensor(1.0),
+            paddle.to_tensor(1.0),
+            max_ls=1,
         )
 
         _cubic_interpolate(
@@ -227,6 +257,16 @@ class TestLbfgs(unittest.TestCase):
             paddle.to_tensor(1.0),
             paddle.to_tensor(2.0),
             paddle.to_tensor(0.0),
+            [0.1, 0.5],
+        )
+
+        _cubic_interpolate(
+            paddle.to_tensor(2.0),
+            paddle.to_tensor(0.0),
+            paddle.to_tensor(-3.0),
+            paddle.to_tensor(1.0),
+            paddle.to_tensor(1.0),
+            paddle.to_tensor(-0.1),
             [0.1, 0.5],
         )
 
