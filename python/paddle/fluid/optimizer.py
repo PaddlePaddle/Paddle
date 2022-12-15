@@ -4174,7 +4174,6 @@ class ModelAverage(Optimizer):
 
 class ExponentialMovingAverage:
     r"""
-        :api_attr: Static Graph
 
     Compute the moving average of parameters with exponential decay.
     Given a parameter :math:`\\theta`, its exponential moving average (EMA)
@@ -4182,9 +4181,9 @@ class ExponentialMovingAverage:
 
     ..  math::
 
-        \\text{EMA}_0 & = 0
+        \text{EMA}_0 & = 0
 
-        \\text{EMA}_t & = \\text{decay} * \\text{EMA}_{t-1} + (1 - \\text{decay}) * \\theta_t
+        \text{EMA}_t & = \text{decay} * \text{EMA}_{t-1} + (1 - \text{decay}) * \theta_t
 
     The average results calculated by **update()** method will be saved in
     temporary variables which are created and maintained by the object, and can
@@ -4193,12 +4192,12 @@ class ExponentialMovingAverage:
 
     **Bias correction**. All EMAs are initialized to :math:`0` and hence they will be
     zero biased, which can be corrected by divided by a factor
-    :math:`(1 - \\text{decay}^t)` , i.e., the actual EMAs applied to parameters
+    :math:`(1 - \text{decay}^t)` , i.e., the actual EMAs applied to parameters
     when calling **apply()** method would be
 
     ..  math::
 
-        \\widehat{\\text{EMA}}_t = \\frac{\\text{EMA}_t}{1 - \\text{decay}^t}
+        \widehat{\text{EMA}}_t = \frac{\text{EMA}_t}{1 - \text{decay}^t}
 
     **Decay rate scheduling**. A large decay rate very close to 1 would result
     in that the averages move very slowly. And a better strategy is to set a
@@ -4208,7 +4207,7 @@ class ExponentialMovingAverage:
 
     ..  math::
 
-        \\min(\\text{decay}, \\frac{1 + \\text{thres_steps}}{10 + \\text{thres_steps}})
+        \min(\text{decay}, \frac{1 + \text{thres_steps}}{10 + \text{thres_steps}})
 
     Usually **thres_steps** can be the global training steps.
 
