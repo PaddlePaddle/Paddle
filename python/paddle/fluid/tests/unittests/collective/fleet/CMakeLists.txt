@@ -387,19 +387,6 @@ if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
     test_fleet_amp_init MODULES test_fleet_amp_init ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-  bash_test_modules(
-    test_dygraph_sharding_optimizer_stage2
-    START_BASH
-    ../../dist_test.sh
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21238;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_dygraph_sharding_optimizer_stage2 PROPERTIES TIMEOUT
-                                                                         "120")
-endif()
 if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
   py_test_modules(
     test_fleet_meta_optimizer_base MODULES test_fleet_meta_optimizer_base ENVS
