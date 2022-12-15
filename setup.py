@@ -1263,6 +1263,7 @@ def get_setup_parameters():
         'paddle.static.amp',
         'paddle.static.sparsity',
         'paddle.static.quantization',
+        'paddle.quantization',
         'paddle.quantization.imperative',
         'paddle.tensor',
         'paddle.onnx',
