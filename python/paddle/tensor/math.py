@@ -31,7 +31,7 @@ from ..fluid.data_feeder import (
     check_variable_and_dtype,
     convert_dtype,
 )
-from ..fluid.layers import elementwise_sub, utils
+from ..fluid.layers import utils
 from ..framework import (
     LayerHelper,
     _in_legacy_dygraph,
@@ -982,6 +982,115 @@ def multiply(x, y, name=None):
                     % (x.dtype, y.dtype)
                 )
 
+            return _elementwise_op(LayerHelper(op_type, **locals()))
+
+
+@dygraph_only
+def _elementwise_op_with_axis_in_dygraph(
+    x, y, axis=-1, name=None, op_type="Undifined"
+):
+    assert (
+        in_dygraph_mode()
+    ), "You can only call `_elementwise_op_with_axis_in_dygraph` function within in_dygraph_mode"
+    assert op_type in ["add", "subtract", "multiply", "divide"], (
+        "op_name input error! _elementwise_op_with_axis is an inner function to replace elementwise_add/sub/mul/div. Input op_name=%s, Expect op_name=[add|subtract|multiply|divide]\n"
+        % op_type
+    )
+    op = getattr(_C_ops, op_type)
+    x_shape = list(x.shape)
+    y_shape = list(y.shape)
+    if axis == -1 or len(x_shape) == len(y_shape):
+        return op(x, y)
+    if len(x_shape) > len(y_shape):
+        padding = len(x_shape) - len(y_shape) - axis
+        y = paddle.reshape(y, [1] * axis + y_shape + [1] * padding)
+    else:
+        padding = len(y_shape) - len(x_shape) - axis
+        x = paddle.reshape(x, [1] * axis + y_shape + [1] * padding)
+    return op(x, y)
+
+
+def _add_with_axis(x, y, axis=-1, name=None):
+    # opt performance, only dynamic mode needs reshape
+    if in_dygraph_mode():
+        return _elementwise_op_with_axis_in_dygraph(x, y, axis, name, "add")
+    else:
+        op_type = 'elementwise_add'
+        act = None
+        if _in_legacy_dygraph():
+            return _elementwise_op_in_dygraph(
+                x, y, axis=axis, act=act, op_name=op_type
+            )
+        else:
+            if x.dtype != y.dtype:
+                raise TypeError(
+                    'Input tensors must be same type, but received type of x: %s, type of y: %s '
+                    % (x.dtype, y.dtype)
+                )
+            return _elementwise_op(LayerHelper(op_type, **locals()))
+
+
+def _subtract_with_axis(x, y, axis=-1, name=None):
+    # opt performance, only dynamic mode needs reshape
+    if in_dygraph_mode():
+        return _elementwise_op_with_axis_in_dygraph(
+            x, y, axis, name, "subtract"
+        )
+    else:
+        op_type = 'elementwise_sub'
+        act = None
+        if _in_legacy_dygraph():
+            return _elementwise_op_in_dygraph(
+                x, y, axis=axis, act=act, op_name=op_type
+            )
+        else:
+            if x.dtype != y.dtype:
+                raise TypeError(
+                    'Input tensors must be same type, but received type of x: %s, type of y: %s '
+                    % (x.dtype, y.dtype)
+                )
+            return _elementwise_op(LayerHelper(op_type, **locals()))
+
+
+def _multiply_with_axis(x, y, axis=-1, name=None):
+    # opt performance, only dynamic mode needs reshape
+    if in_dygraph_mode():
+        return _elementwise_op_with_axis_in_dygraph(
+            x, y, axis, name, "multiply"
+        )
+    else:
+        op_type = 'elementwise_mul'
+        act = None
+        if _in_legacy_dygraph():
+            return _elementwise_op_in_dygraph(
+                x, y, axis=axis, act=act, op_name=op_type
+            )
+        else:
+            if x.dtype != y.dtype:
+                raise TypeError(
+                    'Input tensors must be same type, but received type of x: %s, type of y: %s '
+                    % (x.dtype, y.dtype)
+                )
+            return _elementwise_op(LayerHelper(op_type, **locals()))
+
+
+def _divide_with_axis(x, y, axis=-1, name=None):
+    # opt performance, only dynamic mode needs reshape
+    if in_dygraph_mode():
+        return _elementwise_op_with_axis_in_dygraph(x, y, axis, name, "divide")
+    else:
+        op_type = 'elementwise_div'
+        act = None
+        if _in_legacy_dygraph():
+            return _elementwise_op_in_dygraph(
+                x, y, axis=axis, act=act, op_name=op_type
+            )
+        else:
+            if x.dtype != y.dtype:
+                raise TypeError(
+                    'Input tensors must be same type, but received type of x: %s, type of y: %s '
+                    % (x.dtype, y.dtype)
+                )
             return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
@@ -4877,7 +4986,9 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
         if x.dtype == paddle.bool:
             return _legacy_C_ops.logical_xor(input_back, input_front)
         else:
-            return elementwise_sub(input_back, input_front, axis=axis)
+            return paddle.tensor.math._subtract_with_axis(
+                input_back, input_front, axis=axis
+            )
     else:
         check_variable_and_dtype(
             x, 'x', ['float32', 'float64', 'bool', 'int32', 'int64'], 'diff'
@@ -4941,7 +5052,9 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
                 outputs={"Out": out},
             )
         else:
-            out = elementwise_sub(input_back, input_front, axis=axis)
+            out = paddle.tensor.math._subtract_with_axis(
+                input_back, input_front, axis=axis
+            )
 
         return out
 

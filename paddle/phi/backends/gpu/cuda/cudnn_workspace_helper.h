@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/share_buffer_op.h"
+#pragma once
 
-namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(share_buffer, ops::ShareBufferOpKernel<float>);
+namespace phi {
+namespace backends {
+namespace gpu {
+
+static constexpr int kDefaultConvWorkspaceSizeLimitMB = 512;
+
+int GetDefaultConvWorkspaceSizeLimitMB();
+}  // namespace gpu
+}  // namespace backends
+}  // namespace phi

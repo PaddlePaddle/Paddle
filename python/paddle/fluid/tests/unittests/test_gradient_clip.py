@@ -41,7 +41,9 @@ def bow_net(
     fc_1 = fluid.layers.fc(input=bow_tanh, size=hid_dim, act="tanh")
     fc_2 = fluid.layers.fc(input=fc_1, size=hid_dim2, act="tanh")
     prediction = fluid.layers.fc(input=[fc_2], size=class_dim, act="softmax")
-    cost = fluid.layers.cross_entropy(input=prediction, label=label)
+    cost = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     avg_cost = paddle.mean(x=cost)
 
     return avg_cost
@@ -83,7 +85,9 @@ class TestGradientClip(unittest.TestCase):
                 hidden = fluid.layers.fc(input=image, size=32, act='relu')
             predict = fluid.layers.fc(input=hidden, size=10, act='softmax')
 
-            cost = fluid.layers.cross_entropy(input=predict, label=label)
+            cost = paddle.nn.functional.cross_entropy(
+                input=predict, label=label, reduction='none', use_softmax=False
+            )
             avg_cost = paddle.mean(cost)
 
         prog_clip = prog.clone()

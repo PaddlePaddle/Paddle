@@ -27,19 +27,19 @@ class EmbEltwiseLayerNormFusePassTest(PassTest):
         with fluid.program_guard(self.main_program, self.startup_program):
             word_id = fluid.layers.data(
                 name="word_id",
-                shape=[1, 128, 1],
+                shape=[1, 128],
                 dtype="int64",
                 append_batch_size=False,
             )
             pos_id = fluid.layers.data(
                 name="pos_id",
-                shape=[1, 128, 1],
+                shape=[1, 128],
                 dtype="int64",
                 append_batch_size=False,
             )
             sent_id = fluid.layers.data(
                 name="sent_id",
-                shape=[1, 128, 1],
+                shape=[1, 128],
                 dtype="int64",
                 append_batch_size=False,
             )
@@ -58,25 +58,25 @@ class EmbEltwiseLayerNormFusePassTest(PassTest):
 
             id1 = fluid.layers.data(
                 name="id1",
-                shape=[1, 128, 1],
+                shape=[1, 128],
                 dtype="int64",
                 append_batch_size=False,
             )
             id2 = fluid.layers.data(
                 name="id2",
-                shape=[1, 128, 1],
+                shape=[1, 128],
                 dtype="int64",
                 append_batch_size=False,
             )
             id3 = fluid.layers.data(
                 name="id3",
-                shape=[1, 128, 1],
+                shape=[1, 128],
                 dtype="int64",
                 append_batch_size=False,
             )
             id4 = fluid.layers.data(
                 name="id4",
-                shape=[1, 128, 1],
+                shape=[1, 128],
                 dtype="int64",
                 append_batch_size=False,
             )
@@ -98,25 +98,25 @@ class EmbEltwiseLayerNormFusePassTest(PassTest):
             hidden_1 = fluid.layers.layer_norm(input=add_3, begin_norm_axis=2)
 
         self.feeds = {
-            "word_id": np.random.randint(
-                low=0, high=128, size=(1, 128, 1)
-            ).astype("int64"),
-            "pos_id": np.random.randint(
-                low=0, high=128, size=(1, 128, 1)
-            ).astype("int64"),
-            "sent_id": np.random.randint(
-                low=0, high=128, size=(1, 128, 1)
-            ).astype("int64"),
-            "id1": np.random.randint(low=0, high=128, size=(1, 128, 1)).astype(
+            "word_id": np.random.randint(low=0, high=128, size=(1, 128)).astype(
                 "int64"
             ),
-            "id2": np.random.randint(low=0, high=128, size=(1, 128, 1)).astype(
+            "pos_id": np.random.randint(low=0, high=128, size=(1, 128)).astype(
                 "int64"
             ),
-            "id3": np.random.randint(low=0, high=128, size=(1, 128, 1)).astype(
+            "sent_id": np.random.randint(low=0, high=128, size=(1, 128)).astype(
                 "int64"
             ),
-            "id4": np.random.randint(low=0, high=128, size=(1, 128, 1)).astype(
+            "id1": np.random.randint(low=0, high=128, size=(1, 128)).astype(
+                "int64"
+            ),
+            "id2": np.random.randint(low=0, high=128, size=(1, 128)).astype(
+                "int64"
+            ),
+            "id3": np.random.randint(low=0, high=128, size=(1, 128)).astype(
+                "int64"
+            ),
+            "id4": np.random.randint(low=0, high=128, size=(1, 128)).astype(
                 "int64"
             ),
         }
@@ -137,4 +137,5 @@ class EmbEltwiseLayerNormFusePassTest(PassTest):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

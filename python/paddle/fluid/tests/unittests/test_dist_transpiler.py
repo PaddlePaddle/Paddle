@@ -747,7 +747,9 @@ class TestDistLookupTableBase(TranspilerTest):
         )
 
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-        cost = fluid.layers.cross_entropy(input=predict, label=label)
+        cost = paddle.nn.functional.cross_entropy(
+            input=predict, label=label, reduction='none', use_softmax=False
+        )
         avg_cost = paddle.mean(cost)
         optimizer = fluid.optimizer.Adam(learning_rate=0.003)
         optimizer.minimize(avg_cost)

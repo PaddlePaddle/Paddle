@@ -1,4 +1,3 @@
-
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,14 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
+
+#include <vector>
+
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
-KernelSignature SeluGradGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "selu_grad", {"Out", "Out@GRAD"}, {"scale", "alpha"}, {"X@GRAD"});
-}
+template <typename Context>
+void ShareBufferKernel(const Context &dev_ctx,
+                       const std::vector<const DenseTensor *> &x,
+                       const std::vector<bool> &share_dims_and_dtype,
+                       std::vector<DenseTensor *> out,
+                       std::vector<DenseTensor *> xout);
+
 }  // namespace phi
-PD_REGISTER_ARG_MAPPING_FN(selu_grad, phi::SeluGradGradOpArgumentMapping);

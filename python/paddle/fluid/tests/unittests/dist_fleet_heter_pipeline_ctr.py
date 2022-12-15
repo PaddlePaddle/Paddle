@@ -123,7 +123,9 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
             label = fluid.layers.cast(label, dtype="int64")
             predict = fluid.layers.fc(input=merge_layer, size=2, act='softmax')
 
-            cost = fluid.layers.cross_entropy(input=predict, label=label)
+            cost = paddle.nn.functional.cross_entropy(
+                input=predict, label=label, reduction='none', use_softmax=False
+            )
             avg_cost = paddle.mean(x=cost)
             fluid.layers.Print(avg_cost, message="avg_cost")
 

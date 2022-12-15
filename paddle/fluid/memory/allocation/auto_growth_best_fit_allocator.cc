@@ -18,8 +18,8 @@
 #include <mutex>  // NOLINT
 
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/core/flags.h"
 
 PADDLE_DEFINE_EXPORTED_READONLY_bool(
     free_idle_chunk,
@@ -31,7 +31,7 @@ PADDLE_DEFINE_EXPORTED_READONLY_bool(
 
 PADDLE_DEFINE_EXPORTED_READONLY_bool(
     free_when_no_cache_hit,
-    true,
+    false,
     "Whether to free idle chunks when no cache hit. If true, idle "
     "chunk would be freed when no cache hit; if false, idle "
     "chunk would be freed when out of memory occurs. This flag "

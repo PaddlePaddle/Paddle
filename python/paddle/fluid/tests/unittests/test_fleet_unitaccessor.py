@@ -16,8 +16,6 @@
 import os
 import unittest
 
-import paddle
-
 
 class TestFleet1(unittest.TestCase):
     """
