@@ -88,6 +88,8 @@ class AutoParalSupplementDepPass(PassBase):
                 op_namescope = None
                 if is_amp_flag_sync_op(op):
                     op_namescope = "amp_flag_sync_dep"
+                    op.dist_attr.execution_stream = self.flags_sync_stream
+
                 elif is_global_norm_sync_op(op):
                     op_namescope = "global_norm_sync_dep"
                 deps_map[idx] = (prior_varname, op.input("X")[0], op_namescope)
@@ -108,7 +110,6 @@ class AutoParalSupplementDepPass(PassBase):
                     op.input("Scale")[0],
                     "check_finite_dep",
                 )
-                op.dist_attr.execution_stream = self.flags_sync_stream
 
         # insert deps
         indice = sorted(list(deps_map.keys()), reverse=True)
