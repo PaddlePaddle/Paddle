@@ -62,7 +62,7 @@ def dyfunc_with_if_else2(x, col=100):
         # col = -1
         col = fluid.layers.fill_constant(shape=[1], value=-1, dtype="int64")
     if paddle.mean(x).numpy()[0] > x.numpy()[row][col]:
-        y = fluid.layers.relu(x)
+        y = paddle.nn.functional.relu(x)
     else:
         x_pow = paddle.pow(x, 2)
         y = paddle.tanh(x_pow)
@@ -163,7 +163,7 @@ def nested_if_else(x_v):
         w = fluid.layers.fill_constant([feat_size], dtype='float32', value=10)
         if y.numpy()[0] < 10:
             tmp = y * w
-            y = fluid.layers.relu(tmp)
+            y = paddle.nn.functional.relu(tmp)
             if paddle.mean(y).numpy()[0] < batch_size:
                 y = paddle.abs(y)
             else:
@@ -273,7 +273,7 @@ class NetWithControlFlowIf(fluid.dygraph.Layer):
                 # Create new var, but is not used.
                 x = 10
                 tmp = y * self.constant_vars['w']
-                y = fluid.layers.relu(tmp)
+                y = paddle.nn.functional.relu(tmp)
                 # Nested `if/else`
                 if y.numpy()[-1] < self.alpha:
                     # Modify variable of class

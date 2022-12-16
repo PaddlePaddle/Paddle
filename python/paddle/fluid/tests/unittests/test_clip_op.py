@@ -20,7 +20,6 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestClipOp(OpTest):
@@ -231,7 +230,7 @@ class TestClipAPI(unittest.TestCase):
         )
         paddle.disable_static()
 
-    def func_clip_dygraph(self):
+    def test_clip_dygraph(self):
         paddle.disable_static()
         place = (
             fluid.CUDAPlace(0)
@@ -279,20 +278,14 @@ class TestClipAPI(unittest.TestCase):
             out_6.numpy(), data.clip(0.2, 0.8), rtol=1e-05
         )
 
-    def test_clip_dygraph(self):
-        with _test_eager_guard():
-            self.func_clip_dygraph()
-        self.func_clip_dygraph()
-
     def test_clip_dygraph_default_max(self):
         paddle.disable_static()
-        with _test_eager_guard():
-            x_int32 = paddle.to_tensor([1, 2, 3], dtype="int32")
-            x_int64 = paddle.to_tensor([1, 2, 3], dtype="int64")
-            x_f32 = paddle.to_tensor([1, 2, 3], dtype="float32")
-            egr_out1 = paddle.clip(x_int32, min=1)
-            egr_out2 = paddle.clip(x_int64, min=1)
-            egr_out3 = paddle.clip(x_f32, min=1)
+        x_int32 = paddle.to_tensor([1, 2, 3], dtype="int32")
+        x_int64 = paddle.to_tensor([1, 2, 3], dtype="int64")
+        x_f32 = paddle.to_tensor([1, 2, 3], dtype="float32")
+        egr_out1 = paddle.clip(x_int32, min=1)
+        egr_out2 = paddle.clip(x_int64, min=1)
+        egr_out3 = paddle.clip(x_f32, min=1)
         x_int32 = paddle.to_tensor([1, 2, 3], dtype="int32")
         x_int64 = paddle.to_tensor([1, 2, 3], dtype="int64")
         x_f32 = paddle.to_tensor([1, 2, 3], dtype="float32")

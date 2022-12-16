@@ -72,9 +72,11 @@ class PrePostProcessLayer(Layer):
                 )
             elif cmd == "d":  # add dropout
                 if dropout_rate:
-                    self.functors.append(
-                        lambda x: layers.dropout(x, dropout_prob=dropout_rate)
+                    # TODO(zhangliujie) fix dropout error
+                    self.dropout = paddle.nn.Dropout(
+                        p=dropout_rate, mode="downscale_in_infer"
                     )
+                    self.functors.append(lambda x: self.dropout(x))
 
     def forward(self, x, residual=None):
         for i, cmd in enumerate(self.process_cmd):
@@ -154,8 +156,15 @@ class MultiHeadAttention(Layer):
             product += attn_bias
         weights = paddle.nn.functional.softmax(product)
         if self.dropout_rate:
-            weights = layers.dropout(weights, dropout_prob=self.dropout_rate)
+            # TODO(zhangliujie) fix dropout error
+            weights = paddle.nn.functional.dropout(
+                weights,
+                p=self.dropout_rate,
+                training=self.training,
+                mode="downscale_in_infer",
+            )
             out = paddle.matmul(weights, v)
+
         out = paddle.transpose(out, perm=[0, 2, 1, 3])
         out = paddle.reshape(x=out, shape=[0, 0, out.shape[2] * out.shape[3]])
 
@@ -174,7 +183,13 @@ class FFN(Layer):
         hidden = self.fc1(x)
         hidden = paddle.nn.functional.relu(hidden)
         if self.dropout_rate:
-            hidden = layers.dropout(hidden, dropout_prob=self.dropout_rate)
+            # TODO(zhangliujie) fix dropout error
+            hidden = paddle.nn.functional.dropout(
+                hidden,
+                p=self.dropout_rate,
+                training=self.training,
+                mode="downscale_in_infer",
+            )
         out = self.fc2(hidden)
         return out
 
@@ -341,10 +356,13 @@ class WrapEncoder(Layer):
         pos_enc = self.pos_encoder(src_pos)
         pos_enc.stop_gradient = True
         emb = word_emb + pos_enc
+        # TODO(zhangliujie) fix dropout error
         enc_input = (
-            layers.dropout(
+            paddle.nn.functional.dropout(
                 emb,
-                dropout_prob=self.emb_dropout,
+                p=self.emb_dropout,
+                training=self.training,
+                mode="downscale_in_infer",
             )
             if self.emb_dropout
             else emb
@@ -546,10 +564,13 @@ class WrapDecoder(Layer):
         pos_enc = self.pos_encoder(trg_pos)
         pos_enc.stop_gradient = True
         emb = word_emb + pos_enc
+        # TODO(zhangliujie) fix dropout error
         dec_input = (
-            layers.dropout(
+            paddle.nn.functional.dropout(
                 emb,
-                dropout_prob=self.emb_dropout,
+                p=self.emb_dropout,
+                training=self.training,
+                mode="downscale_in_infer",
             )
             if self.emb_dropout
             else emb
@@ -754,7 +775,7 @@ class Transformer(Layer):
             finished = layers.cast(finished, dtype=probs.dtype)
             probs = paddle.multiply(
                 paddle.expand(
-                    layers.unsqueeze(finished, [2]),
+                    paddle.unsqueeze(finished, [2]),
                     [-1, -1, self.trg_vocab_size],
                 ),
                 noend_mask_tensor,
@@ -784,7 +805,7 @@ class Transformer(Layer):
         noend_array[eos_id] = 0
         noend_mask_tensor = to_variable(np.array(noend_array, dtype="float32"))
         batch_pos = paddle.expand(
-            layers.unsqueeze(
+            paddle.unsqueeze(
                 to_variable(np.arange(0, batch_size, 1, dtype="int64")), [1]
             ),
             [-1, beam_size],

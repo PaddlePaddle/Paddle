@@ -19,7 +19,6 @@ from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestMeshgridOp(OpTest):
@@ -200,10 +199,6 @@ class TestMeshgridOp6(unittest.TestCase):
             assert np.array_equal(res_3.shape, [100, 200])
             assert np.array_equal(res_4.shape, [100, 200])
 
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_api_with_dygraph()
-
 
 class TestMeshgridOp7(unittest.TestCase):
     def test_api_with_dygraph_list_input(self):
@@ -229,10 +224,6 @@ class TestMeshgridOp7(unittest.TestCase):
 
             assert np.array_equal(res_3.shape, [100, 200])
             assert np.array_equal(res_4.shape, [100, 200])
-
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_api_with_dygraph_list_input()
 
 
 class TestMeshgridOp8(unittest.TestCase):
@@ -260,10 +251,6 @@ class TestMeshgridOp8(unittest.TestCase):
             assert np.array_equal(res_3.shape, [100, 200])
             assert np.array_equal(res_4.shape, [100, 200])
 
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_api_with_dygraph_tuple_input()
-
 
 class TestMeshgridEager(unittest.TestCase):
     def test_dygraph_api(self):
@@ -290,28 +277,23 @@ class TestMeshgridEager(unittest.TestCase):
             res_1, res_2 = paddle.tensor.meshgrid((tensor_1, tensor_2))
             sum = paddle.add_n([res_1, res_2])
             sum.backward()
-            with _test_eager_guard():
-                tensor_eager_1 = fluid.dygraph.to_variable(input_1)
-                tensor_eager_2 = fluid.dygraph.to_variable(input_2)
-                tensor_eager_1.stop_gradient = False
-                tensor_eager_2.stop_gradient = False
-                res_eager_1, res_eager_2 = paddle.tensor.meshgrid(
-                    (tensor_eager_1, tensor_eager_2)
-                )
-                sum_eager = paddle.add_n([res_eager_1, res_eager_2])
-                sum_eager.backward()
-                self.assertEqual(
-                    (
-                        tensor_1.grad.numpy() == tensor_eager_1.grad.numpy()
-                    ).all(),
-                    True,
-                )
-                self.assertEqual(
-                    (
-                        tensor_2.grad.numpy() == tensor_eager_2.grad.numpy()
-                    ).all(),
-                    True,
-                )
+            tensor_eager_1 = fluid.dygraph.to_variable(input_1)
+            tensor_eager_2 = fluid.dygraph.to_variable(input_2)
+            tensor_eager_1.stop_gradient = False
+            tensor_eager_2.stop_gradient = False
+            res_eager_1, res_eager_2 = paddle.tensor.meshgrid(
+                (tensor_eager_1, tensor_eager_2)
+            )
+            sum_eager = paddle.add_n([res_eager_1, res_eager_2])
+            sum_eager.backward()
+            self.assertEqual(
+                (tensor_1.grad.numpy() == tensor_eager_1.grad.numpy()).all(),
+                True,
+            )
+            self.assertEqual(
+                (tensor_2.grad.numpy() == tensor_eager_2.grad.numpy()).all(),
+                True,
+            )
 
 
 if __name__ == '__main__':
