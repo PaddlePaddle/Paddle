@@ -27,7 +27,7 @@
           comment : Dims along which to roll. It must have the same size with shifts, or size = 0
     - checkpoint : Upgrade roll add a dispensable input "ShiftsTensor"
       action :
-        - add_input : ShiftsTensorcd
+        - add_input : ShiftsTensor
           comment : The number of places by which the elements of the tensor are shifted.
 
 - op : trace

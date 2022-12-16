@@ -1283,12 +1283,11 @@
   no_need_buffer : x
 
 - backward_op : unstack_grad
-  forward : unstack (Tensor x, int axis=0, int num=1) -> Tensor[](out)
+  forward : unstack (Tensor x, int axis=0, int num=0) -> Tensor[](out)
   args : (Tensor[] out_grad, int axis)
   output : Tensor(x_grad)
   infer_meta :
     func : UnStackGradInferMeta
-    param : [out_grad, axis]
   kernel :
     func : unstack_grad
 
