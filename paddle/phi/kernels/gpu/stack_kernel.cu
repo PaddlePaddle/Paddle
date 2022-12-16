@@ -132,64 +132,61 @@ void StackKernel(const Context& dev_ctx,
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig2D(dev_ctx, out_col, x_row);
 
-#define IMPL_STACK_CUDA_KERNEL(index_t, input_warpper)      \
-  StackCUDAKernel<T, index_t, decltype(input_warpper)>      \
+  // Impl stack kernel with macro.
+#define IMPL_STACK_CUDA_KERNEL_CASE(size_, index_t, ...)    \
+  case size_: {                                             \
+    PointerArray<T, index_t, size_> ptr_array(x, n, x_col); \
+    __VA_ARGS__;                                            \
+  } break;
+
+#define IMPL_STACK_CUDA_KERNEL_HELPER(index_t, ...)        \
+  IMPL_STACK_CUDA_KERNEL_CASE(4, index_t, ##__VA_ARGS__);  \
+  IMPL_STACK_CUDA_KERNEL_CASE(8, index_t, ##__VA_ARGS__);  \
+  IMPL_STACK_CUDA_KERNEL_CASE(16, index_t, ##__VA_ARGS__); \
+  IMPL_STACK_CUDA_KERNEL_CASE(32, index_t, ##__VA_ARGS__); \
+  IMPL_STACK_CUDA_KERNEL_CASE(64, index_t, ##__VA_ARGS__);
+
+#define IMPL_STACK_CUDA_KERNEL(index_t)                     \
+  StackCUDAKernel<T, index_t, decltype(ptr_array)>          \
       <<<config.block_per_grid,                             \
          config.thread_per_block,                           \
          0,                                                 \
-         dev_ctx.stream()>>>(input_warpper,                 \
+         dev_ctx.stream()>>>(ptr_array,                     \
                              static_cast<index_t>(x_col),   \
                              static_cast<index_t>(x_row),   \
                              static_cast<index_t>(out_col), \
                              y_data);
 
-#define IMPL_STACK_CUDA_KERNEL_WITHOUT_ALLOCATOR(index_t, size) \
-  PointerArray<T, index_t, size> ptr_array(x, n, x_col);        \
-  IMPL_STACK_CUDA_KERNEL(index_t, ptr_array);
-
   if (out->numel() < std::numeric_limits<int32_t>::max()) {
-    if (n <= 8) {
-      IMPL_STACK_CUDA_KERNEL_WITHOUT_ALLOCATOR(int32_t, 8);
-    } else if (n <= 16) {
-      IMPL_STACK_CUDA_KERNEL_WITHOUT_ALLOCATOR(int32_t, 16);
-    } else if (n <= 32) {
-      IMPL_STACK_CUDA_KERNEL_WITHOUT_ALLOCATOR(int32_t, 32);
-    } else if (n <= 64) {
-      IMPL_STACK_CUDA_KERNEL_WITHOUT_ALLOCATOR(int32_t, 64);
-    } else if (n <= 128) {
-      IMPL_STACK_CUDA_KERNEL_WITHOUT_ALLOCATOR(int32_t, 128);
-    } else {
-      auto tmp_ins_data = paddle::memory::Alloc(
-          dev_ctx.GetPlace(),
-          n * sizeof(T*),
-          phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-      PointerToPointer<Context, T, int32_t> ptr_array(
-          dev_ctx, x, n, x_col, tmp_ins_data);
-      IMPL_STACK_CUDA_KERNEL(int32_t, ptr_array);
+    switch (phi::backends::gpu::RoundToNextHighPowOfTwo(n, 4)) {
+      IMPL_STACK_CUDA_KERNEL_HELPER(int32_t, IMPL_STACK_CUDA_KERNEL(int32_t));
+      default: {
+        auto tmp_ins_ptr = paddle::memory::Alloc(
+            dev_ctx.GetPlace(),
+            n * sizeof(T*),
+            phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+        PointerToPointer<Context, T, int32_t> ptr_array(
+            dev_ctx, x, n, x_col, tmp_ins_ptr);
+        IMPL_STACK_CUDA_KERNEL(int32_t);
+      }
     }
   } else {
-    if (n <= 8) {
-      IMPL_STACK_CUDA_KERNEL_WITHOUT_ALLOCATOR(int64_t, 8);
-    } else if (n <= 16) {
-      IMPL_STACK_CUDA_KERNEL_WITHOUT_ALLOCATOR(int64_t, 16);
-    } else if (n <= 32) {
-      IMPL_STACK_CUDA_KERNEL_WITHOUT_ALLOCATOR(int64_t, 32);
-    } else if (n <= 64) {
-      IMPL_STACK_CUDA_KERNEL_WITHOUT_ALLOCATOR(int64_t, 64);
-    } else if (n <= 128) {
-      IMPL_STACK_CUDA_KERNEL_WITHOUT_ALLOCATOR(int64_t, 128);
-    } else {
-      auto tmp_ins_data = paddle::memory::Alloc(
-          dev_ctx.GetPlace(),
-          n * sizeof(T*),
-          phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-      PointerToPointer<Context, T, int64_t> ptr_array(
-          dev_ctx, x, n, x_col, tmp_ins_data);
-      IMPL_STACK_CUDA_KERNEL(int64_t, ptr_array);
+    switch (phi::backends::gpu::RoundToNextHighPowOfTwo(n, 4)) {
+      IMPL_STACK_CUDA_KERNEL_HELPER(int64_t, IMPL_STACK_CUDA_KERNEL(int64_t));
+      default: {
+        auto tmp_ins_ptr = paddle::memory::Alloc(
+            dev_ctx.GetPlace(),
+            n * sizeof(T*),
+            phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+        PointerToPointer<Context, T, int64_t> ptr_array(
+            dev_ctx, x, n, x_col, tmp_ins_ptr);
+        IMPL_STACK_CUDA_KERNEL(int64_t);
+      }
     }
   }
 
-#undef IMPL_STACK_CUDA_KERNEL_WITHOUT_ALLOCATOR
+#undef IMPL_STACK_CUDA_KERNEL_HELPER
+#undef IMPL_STACK_CUDA_KERNEL_CASE
 #undef IMPL_STACK_CUDA_KERNEL
 }
 }  // namespace phi

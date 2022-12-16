@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 
 namespace phi {
 namespace funcs {
@@ -346,84 +347,87 @@ void ConcatFunctorWithIndexType(const phi::GPUContext& context,
   dim3 block_dims;
   dim3 grid_dims;
   GetBlockDims(context, out_row, out_col, &block_dims, &grid_dims);
-
   IndexT limit_num = has_same_shape ? in_num : inputs_col_num;
+
+#define IMPL_CONCATE_CUDA_KERNEL_HELPER(func_impl, ...) \
+  func_impl(4, ##__VA_ARGS__);                          \
+  func_impl(8, ##__VA_ARGS__);                          \
+  func_impl(16, ##__VA_ARGS__);                         \
+  func_impl(32, ##__VA_ARGS__);                         \
+  func_impl(64, ##__VA_ARGS__);
+
   if (has_same_shape) {
-#define IMPL_CONCAT_WITH_WRAPPER(ptr_array_)            \
-  ConcatKernel<T, IndexT, decltype(ptr_array_)>         \
-      <<<grid_dims, block_dims, 0, context.stream()>>>( \
-          ptr_array_, in_col, out_row, out_col, output->data<T>());
+#define IMPL_CONCAT_CUDA_KERNEL_CASE(size_, ...)                     \
+  case size_: {                                                      \
+    PointerWrapper<T, size_> ptr_array(context, input, inputs_data); \
+    __VA_ARGS__;                                                     \
+  } break;
 
-#define IMPL_CONCAT_WITHOUT_ALLOCATOR(size_)                       \
-  PointerWrapper<T, size_> ptr_array(context, input, inputs_data); \
-  IMPL_CONCAT_WITH_WRAPPER(ptr_array)
-
-    if (limit_num <= 8) {
-      IMPL_CONCAT_WITHOUT_ALLOCATOR(8);
-    } else if (limit_num <= 16) {
-      IMPL_CONCAT_WITHOUT_ALLOCATOR(16);
-    } else if (limit_num <= 32) {
-      IMPL_CONCAT_WITHOUT_ALLOCATOR(32);
-    } else if (limit_num <= 64) {
-      IMPL_CONCAT_WITHOUT_ALLOCATOR(64);
-    } else if (limit_num <= 128) {
-      IMPL_CONCAT_WITHOUT_ALLOCATOR(128);
-    } else {
-      AllocatT tmp_dev_ins_ptr = paddle::memory::Alloc(
-          context.GetPlace(),
-          in_num * sizeof(T*),
-          phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
-      PointerWrapper<T, 0> ptr_array(
-          context, input, inputs_data, tmp_dev_ins_ptr);
-      IMPL_CONCAT_WITH_WRAPPER(ptr_array);
+    // Imple int32_t type concat kernel.
+    switch (phi::backends::gpu::RoundToNextHighPowOfTwo(limit_num, 4)) {
+      IMPL_CONCATE_CUDA_KERNEL_HELPER(
+          IMPL_CONCAT_CUDA_KERNEL_CASE,
+          ConcatKernel<T, IndexT, decltype(ptr_array)>
+          <<<grid_dims, block_dims, 0, context.stream()>>>(
+              ptr_array, in_col, out_row, out_col, output->data<T>()));
+      default: {
+        AllocatT tmp_dev_ins_ptr = paddle::memory::Alloc(
+            context.GetPlace(),
+            in_num * sizeof(T*),
+            phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
+        PointerWrapper<T, 0> ptr_array(
+            context, input, inputs_data, tmp_dev_ins_ptr);
+        ConcatKernel<T, IndexT, decltype(ptr_array)>
+            <<<grid_dims, block_dims, 0, context.stream()>>>(
+                ptr_array, in_col, out_row, out_col, output->data<T>());
+      }
     }
-#undef IMPL_CONCAT_WITHOUT_ALLOCATOR
-#undef IMPL_CONCAT_WITH_WRAPPER
+#undef IMPL_CONCAT_CUDA_KERNEL_CASE
   } else {
-#define IMPL_COMPLEX_CONCAT_WITH_WRAPPER(ptr_col_array_)               \
-  ConcatKernel_<T, IndexT, decltype(ptr_col_array_)>                   \
-      <<<grid_dims, block_dims, 0, context.stream()>>>(ptr_col_array_, \
-                                                       inputs_col_num, \
-                                                       (out_row),      \
-                                                       (out_col),      \
-                                                       output->data<T>());
+#define IMPL_COMPLEX_CONCAT_CUDA_KERNEL_CASE(size_, ...)          \
+  case size_: {                                                   \
+    PointerAndColWrapper<T, IndexT, size_> ptr_col_array(         \
+        context, input, inputs_col_num, inputs_data, inputs_col); \
+    __VA_ARGS__;                                                  \
+  } break;
 
-#define IMPL_COMPLEX_CONCAT_WITHOUT_ALLOCATOR(size_)            \
-  PointerAndColWrapper<T, IndexT, size_> ptr_col_array(         \
-      context, input, inputs_col_num, inputs_data, inputs_col); \
-  IMPL_COMPLEX_CONCAT_WITH_WRAPPER(ptr_col_array)
-
-    if (limit_num <= 8) {
-      IMPL_COMPLEX_CONCAT_WITHOUT_ALLOCATOR(8);
-    } else if (limit_num <= 16) {
-      IMPL_COMPLEX_CONCAT_WITHOUT_ALLOCATOR(16);
-    } else if (limit_num <= 32) {
-      IMPL_COMPLEX_CONCAT_WITHOUT_ALLOCATOR(32);
-    } else if (limit_num <= 64) {
-      IMPL_COMPLEX_CONCAT_WITHOUT_ALLOCATOR(64);
-    } else if (limit_num <= 128) {
-      IMPL_COMPLEX_CONCAT_WITHOUT_ALLOCATOR(128);
-    } else {
-      AllocatT tmp_dev_col_ptr = paddle::memory::Alloc(
-          context.GetPlace(),
-          inputs_col_num * sizeof(IndexT),
-          phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
-      AllocatT tmp_dev_ins_ptr = paddle::memory::Alloc(
-          context.GetPlace(),
-          in_num * sizeof(T*),
-          phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
-      PointerAndColWrapper<T, IndexT, 0> ptr_col_array(context,
-                                                       input,
-                                                       inputs_col_num,
-                                                       inputs_data,
-                                                       inputs_col,
-                                                       tmp_dev_ins_ptr,
-                                                       tmp_dev_col_ptr);
-      IMPL_COMPLEX_CONCAT_WITH_WRAPPER(ptr_col_array);
+    // Imple int64_t type concat kernel.
+    switch (phi::backends::gpu::RoundToNextHighPowOfTwo(limit_num, 4)) {
+      IMPL_CONCATE_CUDA_KERNEL_HELPER(
+          IMPL_COMPLEX_CONCAT_CUDA_KERNEL_CASE,
+          ConcatKernel_<T, IndexT, decltype(ptr_col_array)>
+          <<<grid_dims, block_dims, 0, context.stream()>>>(ptr_col_array,
+                                                           inputs_col_num,
+                                                           (out_row),
+                                                           (out_col),
+                                                           output->data<T>()));
+      default: {
+        AllocatT tmp_dev_col_ptr = paddle::memory::Alloc(
+            context.GetPlace(),
+            inputs_col_num * sizeof(IndexT),
+            phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
+        AllocatT tmp_dev_ins_ptr = paddle::memory::Alloc(
+            context.GetPlace(),
+            in_num * sizeof(T*),
+            phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
+        PointerAndColWrapper<T, IndexT, 0> ptr_col_array(context,
+                                                         input,
+                                                         inputs_col_num,
+                                                         inputs_data,
+                                                         inputs_col,
+                                                         tmp_dev_ins_ptr,
+                                                         tmp_dev_col_ptr);
+        ConcatKernel_<T, IndexT, decltype(ptr_col_array)>
+            <<<grid_dims, block_dims, 0, context.stream()>>>(ptr_col_array,
+                                                             inputs_col_num,
+                                                             (out_row),
+                                                             (out_col),
+                                                             output->data<T>());
+      }
     }
 #undef IMPL_COMPLEX_CONCAT_WITHOUT_ALLOCATOR
-#undef IMPL_COMPLEX_CONCAT_WITH_WRAPPER
   }
+#undef IMPL_CONCATE_CUDA_KERNEL_HELPER
 
 #ifdef PADDLE_WITH_HIP
   // Prevent the pinned memory value from being covered and release the memory
