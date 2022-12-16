@@ -38,7 +38,6 @@ elseif(WITH_XPU)
 else()
   math_library(beam_search DEPS math_function)
 endif()
-math_library(matrix_bit_code)
 
 math_library(unpooling)
 math_library(prelu)
