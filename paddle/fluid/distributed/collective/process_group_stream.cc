@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/collective/ProcessGroupStream.h"
+#include "paddle/fluid/distributed/collective/process_group_stream.h"
 
 namespace paddle {
 namespace distributed {
@@ -38,6 +38,19 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::AllGather(
                    numel,
                    sync_op,
                    /*use_calc_stream*/ false);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::AllGather(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    bool sync_op,
+    bool use_calc_stream) {
+  return AllGather(out_tensor,
+                   in_tensor,
+                   /*offset*/ 0,
+                   /*numel*/ -1,  // -1 indicates the whole tensor
+                   sync_op,
+                   use_calc_stream);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::AllGather(
@@ -203,6 +216,19 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Recv(
 std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Recv(
     phi::DenseTensor* tensor,
     int src_rank,
+    bool sync_op,
+    bool use_calc_stream) {
+  return Recv(tensor,
+              src_rank,
+              /*offset*/ 0,
+              /*numel*/ -1,  // -1 indicates sending the whole tensor
+              sync_op,
+              use_calc_stream);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Recv(
+    phi::DenseTensor* tensor,
+    int src_rank,
     int64_t offset,
     int64_t numel,
     bool sync_op,
@@ -223,6 +249,19 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Send(
               numel,
               sync_op,
               /*use_calc_stream*/ false);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Send(
+    const phi::DenseTensor& tensor,
+    int dst_rank,
+    bool sync_op,
+    bool use_calc_stream) {
+  return Send(tensor,
+              dst_rank,
+              /*offset*/ 0,
+              /*numel*/ -1,  // -1 indicates receiving the whole tensor
+              sync_op,
+              use_calc_stream);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Send(

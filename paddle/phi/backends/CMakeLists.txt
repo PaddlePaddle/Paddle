@@ -67,7 +67,7 @@ endif()
 
 set(COMM_UTILS_DEPS processgroup)
 if(WITH_NCCL OR WITH_RCCL)
-  set(COMM_UTILS_DEPS ${PROCESS_GROUP_UTILS_DEPS} processgroup_nccl)
+  set(COMM_UTILS_DEPS ${PROCESS_GROUP_UTILS_DEPS} process_group_nccl)
 endif()
 if(WITH_CUSTOM_DEVICE)
   set(COMM_UTILS_DEPS ${PROCESS_GROUP_UTILS_DEPS} processgroup_custom)
