@@ -144,7 +144,8 @@ void StackKernel(const Context& dev_ctx,
   IMPL_STACK_CUDA_KERNEL_CASE(8, index_t, ##__VA_ARGS__);  \
   IMPL_STACK_CUDA_KERNEL_CASE(16, index_t, ##__VA_ARGS__); \
   IMPL_STACK_CUDA_KERNEL_CASE(32, index_t, ##__VA_ARGS__); \
-  IMPL_STACK_CUDA_KERNEL_CASE(64, index_t, ##__VA_ARGS__);
+  IMPL_STACK_CUDA_KERNEL_CASE(64, index_t, ##__VA_ARGS__); \
+  IMPL_STACK_CUDA_KERNEL_CASE(128, index_t, ##__VA_ARGS__);
 
 #define IMPL_STACK_CUDA_KERNEL(index_t)                     \
   StackCUDAKernel<T, index_t, decltype(ptr_array)>          \

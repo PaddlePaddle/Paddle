@@ -354,7 +354,8 @@ void ConcatFunctorWithIndexType(const phi::GPUContext& context,
   func_impl(8, ##__VA_ARGS__);                          \
   func_impl(16, ##__VA_ARGS__);                         \
   func_impl(32, ##__VA_ARGS__);                         \
-  func_impl(64, ##__VA_ARGS__);
+  func_impl(64, ##__VA_ARGS__);                         \
+  func_impl(128, ##__VA_ARGS__);
 
   if (has_same_shape) {
 #define IMPL_CONCAT_CUDA_KERNEL_CASE(size_, ...)                     \
@@ -425,7 +426,7 @@ void ConcatFunctorWithIndexType(const phi::GPUContext& context,
                                                              output->data<T>());
       }
     }
-#undef IMPL_COMPLEX_CONCAT_WITHOUT_ALLOCATOR
+#undef IMPL_COMPLEX_CONCAT_CUDA_KERNEL_CASE
   }
 #undef IMPL_CONCATE_CUDA_KERNEL_HELPER
 
