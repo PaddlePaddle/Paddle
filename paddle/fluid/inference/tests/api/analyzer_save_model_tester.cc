@@ -41,6 +41,18 @@ TEST(Analyzer, save_model) {
   std::string optimModelPath = FLAGS_infer_model + "/only_for_save_model_test";
   MKDIR(optimModelPath.c_str());
   SaveOptimModel(&cfg, optimModelPath);
+
+  // Each config can only be applied to one predictor.
+  AnalysisConfig cfg2;
+  SetConfig(&cfg2);
+  cfg2.pass_builder()->ClearPasses();
+  cfg2.SetModel(optimModelPath + "/model", optimModelPath + "/params");
+
+  AnalysisConfig cfg3;
+  SetConfig(&cfg3);
+  auto pass_builder3 = cfg3.pass_builder();
+  pass_builder3->DeletePass("constant_folding_pass");
+  cfg3.SetModel(optimModelPath + "/model", optimModelPath + "/params");
 }
 
 }  // namespace inference
