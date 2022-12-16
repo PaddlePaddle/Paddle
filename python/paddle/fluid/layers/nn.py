@@ -71,9 +71,7 @@ __all__ = [
     'spectral_norm',
     'one_hot',
     'autoincreased_step_counter',
-    'unsqueeze',
     'lod_reset',
-    'relu',
     'clip',
     'clip_by_norm',
     'mul',
@@ -1823,51 +1821,6 @@ def lod_reset(x, y=None, target_lod=None):
         )
     else:
         raise ValueError("y and target_lod should not be both none.")
-    return out
-
-
-@deprecated(since="2.0.0", update_to="paddle.nn.functional.relu")
-def relu(x, name=None):
-    """
-    ${comment}
-
-    Args:
-        x(Variable): ${x_comment}
-        name(str, optional): The default value is None. Normally there is no
-            need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Variable: ${out_comment}
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-            in1 = np.array([[-1,0],[1,2.6]])
-            with fluid.dygraph.guard():
-                x1 = fluid.dygraph.to_variable(in1)
-                out1 = fluid.layers.relu(x1)
-                print(out1.numpy())
-                # [[0.  0. ]
-                #  [1.  2.6]]"""
-
-    if in_dygraph_mode():
-        return _C_ops.relu(x)
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.relu(x)
-
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'relu')
-
-    inputs = {'X': [x]}
-    helper = LayerHelper('relu', **locals())
-    dtype = helper.input_dtype(input_param_name='x')
-    out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type="relu", inputs={"X": helper.input('x')}, outputs={"Out": out}
-    )
     return out
 
 
