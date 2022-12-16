@@ -1751,14 +1751,18 @@ void KthvalueInferMeta(const MetaTensor& x,
                         dim_size,
                         dim_size,
                         axis));
-  PADDLE_ENFORCE_GE(axis,
-                    -dim_size,
-                    phi::errors::InvalidArgument(
-                        "the axis must be [-%d, %d), but received %d .",
-                        dim_size,
-                        dim_size,
-                        axis));
-  if (axis < 0) axis += dim_size;
+  if (dim_size > 0) {
+    PADDLE_ENFORCE_GE(axis,
+                      -dim_size,
+                      phi::errors::InvalidArgument(
+                          "the axis must be [-%d, %d), but received %d .",
+                          dim_size,
+                          dim_size,
+                          axis));
+  }
+  if (axis < 0) {
+    axis = (dim_size > 0) ? axis + dim_size : 0;
+  }
   PADDLE_ENFORCE_GE(
       k,
       1,
@@ -1766,8 +1770,8 @@ void KthvalueInferMeta(const MetaTensor& x,
           "the k in the kthvalue must >= 1, but received %d .", k));
   PADDLE_ENFORCE_GE(
       input_dims.size(),
-      1,
-      phi::errors::InvalidArgument("input of kthvalue must have >= 1d shape"));
+      0,
+      phi::errors::InvalidArgument("input of kthvalue must have >= 0d shape"));
   if (config.is_runtime) {
     PADDLE_ENFORCE_GE(
         input_dims[axis],
@@ -1781,7 +1785,7 @@ void KthvalueInferMeta(const MetaTensor& x,
   for (int64_t i = 0; i < axis; i++) {
     dimvec.emplace_back(input_dims[i]);
   }
-  if (keepdim) {
+  if (keepdim && dim_size > 0) {
     dimvec.emplace_back(static_cast<int64_t>(1));
   }
   for (int64_t i = axis + 1; i < dim_size; i++) {
