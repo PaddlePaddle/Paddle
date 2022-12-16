@@ -33,7 +33,7 @@ np.random.seed(SEED)
 random.seed(SEED)
 
 paddle.enable_static()
-set_device('gpu')
+set_device('cpu')
 
 
 def parse_args():
@@ -42,7 +42,7 @@ def parse_args():
         '-bf16',
         '--bf16',
         type=ast.literal_eval,
-        default=True,
+        default=False,
         help="whether use bf16",
     )
     args = parser.parse_args()
