@@ -1,23 +1,26 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
-from program_config import TensorConfig, ProgramConfig
-import numpy as np
-import paddle.inference as paddle_infer
+import unittest
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
+from typing import Any, Dict, List
+
+import numpy as np
+from program_config import ProgramConfig, TensorConfig
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
+
+import paddle.inference as paddle_infer
 
 
 class TrtConvertTransposeTest(TrtLayerAutoScanTest):
@@ -27,11 +30,10 @@ class TrtConvertTransposeTest(TrtLayerAutoScanTest):
         outputs = program_config.outputs
 
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
-        #The shape of input and axis should be equal.
+        # The shape of input and axis should be equal.
         if len(inputs['transpose_input'].shape) != len(attrs[0]['axis']):
             return False
 
@@ -48,35 +50,43 @@ class TrtConvertTransposeTest(TrtLayerAutoScanTest):
 
         for dims in [2, 3, 4]:
             for batch in [1, 2, 4]:
-                for axis in [[0, 1, 3, 2], [0, 3, 2, 1], [3, 2, 0, 1],
-                             [0, 1, 2, 3], [0, 1, 2], [2, 0, 1], [1, 0],
-                             [0, 1]]:
+                for axis in [
+                    [0, 1, 3, 2],
+                    [0, 3, 2, 1],
+                    [3, 2, 0, 1],
+                    [0, 1, 2, 3],
+                    [0, 1, 2],
+                    [2, 0, 1],
+                    [1, 0],
+                    [0, 1],
+                ]:
                     self.dims = dims
                     dics = [{"axis": axis}, {}]
-                    ops_config = [{
-                        "op_type": "transpose",
-                        "op_inputs": {
-                            "X": ["transpose_input"]
-                        },
-                        "op_outputs": {
-                            "Out": ["transpose_out"]
-                        },
-                        "op_attrs": dics[0]
-                    }]
+                    ops_config = [
+                        {
+                            "op_type": "transpose",
+                            "op_inputs": {"X": ["transpose_input"]},
+                            "op_outputs": {"Out": ["transpose_out"]},
+                            "op_attrs": dics[0],
+                        }
+                    ]
                     ops = self.generate_op_config(ops_config)
                     program_config = ProgramConfig(
                         ops=ops,
                         weights={},
                         inputs={
-                            "transpose_input": TensorConfig(data_gen=partial(
-                                generate_input1, dics, batch))
+                            "transpose_input": TensorConfig(
+                                data_gen=partial(generate_input1, dics, batch)
+                            )
                         },
-                        outputs=["transpose_out"])
+                        outputs=["transpose_out"],
+                    )
 
                     yield program_config
 
     def sample_predictor_configs(
-            self, program_config) -> (paddle_infer.Config, List[int], float):
+        self, program_config
+    ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             if self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
@@ -115,7 +125,7 @@ class TrtConvertTransposeTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if dynamic_shape == True:
+            if dynamic_shape:
                 return 1, 2
             else:
                 if attrs[0]['axis'][0] == 0:
@@ -124,40 +134,31 @@ class TrtConvertTransposeTest(TrtLayerAutoScanTest):
                     return 0, 3
 
         attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
         # for static_shape
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False
+        ), 1e-3
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-5
-
-    def add_skip_trt_case(self):
-        def teller1(program_config, predictor_config):
-            if program_config.ops[0].attrs['axis'] == [0, 1]:
-                return True
-            return False
-
-        self.add_skip_case(
-            teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
-            "INPUT AXIS [0, 1] NOT SUPPORT: we need to add support in the future"
-        )
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True
+        ), 1e-3
 
     def test(self):
-        self.add_skip_trt_case()
         self.run_test()
 
 

@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -38,12 +37,13 @@ class TestNPUIndexSelect(OpTest):
             low=0,
             high=self.x_shape[self.dim],
             size=self.index_size,
-            dtype=self.index_type)
+            dtype=self.index_type,
+        )
 
         # compute real output as baseline.
-        outer_loop = np.prod(self.x_shape[:self.dim])
+        outer_loop = np.prod(self.x_shape[: self.dim])
         outer_loop = outer_loop.astype(self.index_type)
-        x_reshape = [outer_loop] + list(self.x_shape[self.dim:])
+        x_reshape = [outer_loop] + list(self.x_shape[self.dim :])
         x_np_reshape = np.reshape(x_np, tuple(x_reshape))
 
         out_list = []
@@ -105,8 +105,13 @@ class TestNPUIndexSelectCase4(TestNPUIndexSelect):
 
 class TestNPUIndexSelectAPI(unittest.TestCase):
     def input_data(self):
-        self.data_x = np.array([[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0],
-                                [9.0, 10.0, 11.0, 12.0]]).astype('float32')
+        self.data_x = np.array(
+            [
+                [1.0, 2.0, 3.0, 4.0],
+                [5.0, 6.0, 7.0, 8.0],
+                [9.0, 10.0, 11.0, 12.0],
+            ]
+        ).astype('float32')
         self.data_index = np.array([0, 1, 1]).astype('int32')
 
     def test_index_select_api(self):
@@ -120,13 +125,15 @@ class TestNPUIndexSelectAPI(unittest.TestCase):
             index = paddle.static.data(name='index', shape=[3], dtype='int32')
             z = paddle.index_select(x, index, axis=1)
             exe = paddle.static.Executor(paddle.NPUPlace(0))
-            res, = exe.run(feed={'x': self.data_x,
-                                 'index': self.data_index},
-                           fetch_list=[z.name],
-                           return_numpy=False)
-        expect_out = np.array([[1.0, 2.0, 2.0], [5.0, 6.0, 6.0],
-                               [9.0, 10.0, 10.0]]).astype('float32')
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+            (res,) = exe.run(
+                feed={'x': self.data_x, 'index': self.data_index},
+                fetch_list=[z.name],
+                return_numpy=False,
+            )
+        expect_out = np.array(
+            [[1.0, 2.0, 2.0], [5.0, 6.0, 6.0], [9.0, 10.0, 10.0]]
+        ).astype('float32')
+        np.testing.assert_allclose(expect_out, np.array(res))
 
         # case 2:
         with program_guard(Program(), Program()):
@@ -134,13 +141,15 @@ class TestNPUIndexSelectAPI(unittest.TestCase):
             index = paddle.static.data(name='index', shape=[3], dtype='int32')
             z = paddle.index_select(x, index)
             exe = paddle.static.Executor(paddle.NPUPlace(0))
-            res, = exe.run(feed={'x': self.data_x,
-                                 'index': self.data_index},
-                           fetch_list=[z.name],
-                           return_numpy=False)
-        expect_out = np.array([[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0],
-                               [5.0, 6.0, 7.0, 8.0]]).astype('float32')
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+            (res,) = exe.run(
+                feed={'x': self.data_x, 'index': self.data_index},
+                fetch_list=[z.name],
+                return_numpy=False,
+            )
+        expect_out = np.array(
+            [[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0], [5.0, 6.0, 7.0, 8.0]]
+        ).astype('float32')
+        np.testing.assert_allclose(expect_out, np.array(res))
 
     def test_dygraph_index_select_api(self):
         paddle.set_device("npu:0")
@@ -152,18 +161,20 @@ class TestNPUIndexSelectAPI(unittest.TestCase):
         index = paddle.to_tensor(self.data_index)
         z = paddle.index_select(x, index)
         np_z = z.numpy()
-        expect_out = np.array([[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0],
-                               [5.0, 6.0, 7.0, 8.0]]).astype('float32')
-        self.assertTrue(np.allclose(expect_out, np_z))
+        expect_out = np.array(
+            [[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0], [5.0, 6.0, 7.0, 8.0]]
+        ).astype('float32')
+        np.testing.assert_allclose(expect_out, np_z)
 
         # case 2:
         x = paddle.to_tensor(self.data_x)
         index = paddle.to_tensor(self.data_index)
         z = paddle.index_select(x, index, axis=1)
         np_z = z.numpy()
-        expect_out = np.array([[1.0, 2.0, 2.0], [5.0, 6.0, 6.0],
-                               [9.0, 10.0, 10.0]]).astype('float32')
-        self.assertTrue(np.allclose(expect_out, np_z))
+        expect_out = np.array(
+            [[1.0, 2.0, 2.0], [5.0, 6.0, 6.0], [9.0, 10.0, 10.0]]
+        ).astype('float32')
+        np.testing.assert_allclose(expect_out, np_z)
 
 
 if __name__ == '__main__':

@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 
@@ -25,11 +24,14 @@ class TestProgramToReadableCode(unittest.TestCase):
         self.program = fluid.Program()
         self.block = self.program.current_block()
         self.var = self.block.create_var(
-            name="X", shape=[-1, 23, 48], dtype='float32')
+            name="X", shape=[-1, 23, 48], dtype='float32'
+        )
         self.param = self.block.create_parameter(
-            name="W", shape=[23, 48], dtype='float32', trainable=True)
+            name="W", shape=[23, 48], dtype='float32', trainable=True
+        )
         self.op = self.block.append_op(
-            type="abs", inputs={"X": [self.var]}, outputs={"Out": [self.var]})
+            type="abs", inputs={"X": [self.var]}, outputs={"Out": [self.var]}
+        )
         # add control flow op and sub block
         self.append_cond_op(self.program)
 
@@ -43,8 +45,8 @@ class TestProgramToReadableCode(unittest.TestCase):
         with fluid.program_guard(program):
             x = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
             y = layers.fill_constant(shape=[1], dtype='float32', value=0.23)
-            pred = layers.less_than(y, x)
-            out = layers.cond(pred, true_func, false_func)
+            pred = paddle.less_than(y, x)
+            out = paddle.static.nn.cond(pred, true_func, false_func)
 
     def test_program_code(self):
         self.var._to_readable_code()

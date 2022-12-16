@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <fstream>
 #include <iostream>
+
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 DEFINE_bool(disable_mkldnn_fc, false, "Disable usage of MKL-DNN's FC op");
@@ -50,9 +51,8 @@ void profile(bool use_mkldnn = false) {
 
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
-    if (!FLAGS_disable_mkldnn_fc) {
-      cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
-      cfg.pass_builder()->AppendPass("fc_act_mkldnn_fuse_pass");
+    if (FLAGS_disable_mkldnn_fc) {
+      cfg.DisableMkldnnFcPasses();
     }
   }
   std::vector<std::vector<PaddleTensor>> outputs;
@@ -60,13 +60,10 @@ void profile(bool use_mkldnn = false) {
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
   TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-                 input_slots_all, &outputs, FLAGS_num_threads);
+                 input_slots_all,
+                 &outputs,
+                 FLAGS_num_threads);
 }
-
-TEST(Analyzer_resnet50, profile) { profile(); }
-#ifdef PADDLE_WITH_MKLDNN
-TEST(Analyzer_resnet50, profile_mkldnn) { profile(true /* use_mkldnn */); }
-#endif
 
 // Check the fuse status
 TEST(Analyzer_resnet50, fuse_statis) {
@@ -79,15 +76,19 @@ TEST(Analyzer_resnet50, fuse_statis) {
   LOG(INFO) << "num_ops: " << num_ops;
 }
 
+TEST(Analyzer_resnet50, profile) { profile(); }
+#ifdef PADDLE_WITH_MKLDNN
+TEST(Analyzer_resnet50, profile_mkldnn) { profile(true /* use_mkldnn */); }
+#endif
+
 // Compare result of NativeConfig and AnalysisConfig
 void compare(bool use_mkldnn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
-    if (!FLAGS_disable_mkldnn_fc) {
-      cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
-      cfg.pass_builder()->AppendPass("fc_act_mkldnn_fuse_pass");
+    if (FLAGS_disable_mkldnn_fc) {
+      cfg.DisableMkldnnFcPasses();
     }
   }
 

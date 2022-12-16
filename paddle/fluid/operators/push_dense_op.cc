@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/push_dense_op.h"
+
 #include <string>
 
 namespace paddle {
@@ -22,7 +23,8 @@ class PushDenseOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_GE(ctx->Inputs("Ids").size(), 1UL,
+    PADDLE_ENFORCE_GE(ctx->Inputs("Ids").size(),
+                      1UL,
                       platform::errors::InvalidArgument(
                           "Input(Ids) of PushDenseOp can not be null."));
   }
@@ -63,7 +65,9 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(PushDenseNoNeedBufferVarsInferer, "Ids");
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    push_dense, ops::PushDenseOp, ops::PushDenseOpMaker,
+    push_dense,
+    ops::PushDenseOp,
+    ops::PushDenseOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::PushDenseNoNeedBufferVarsInferer);

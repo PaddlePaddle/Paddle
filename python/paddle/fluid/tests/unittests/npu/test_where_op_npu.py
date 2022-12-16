@@ -1,22 +1,21 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function, division
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -91,7 +90,8 @@ class TestNPUWhereAPI(unittest.TestCase):
                 startup = fluid.Program()
                 with fluid.program_guard(train_prog, startup):
                     cond = fluid.data(
-                        name='cond', shape=self.shape, dtype='bool')
+                        name='cond', shape=self.shape, dtype='bool'
+                    )
                     x = fluid.data(name='x', shape=self.shape, dtype='float32')
                     y = fluid.data(name='y', shape=self.shape, dtype='float32')
 
@@ -99,7 +99,7 @@ class TestNPUWhereAPI(unittest.TestCase):
                     y.stop_gradient = y_stop_gradient
 
                     result = paddle.where(cond, x, y)
-                    append_backward(fluid.layers.mean(result))
+                    append_backward(paddle.mean(result))
 
                     exe = fluid.Executor(self.place)
                     exe.run(startup)
@@ -111,21 +111,23 @@ class TestNPUWhereAPI(unittest.TestCase):
                         fetch_list.append(y.grad_name)
                     out = exe.run(
                         train_prog,
-                        feed={'cond': self.cond,
-                              'x': self.x,
-                              'y': self.y},
-                        fetch_list=fetch_list)
+                        feed={'cond': self.cond, 'x': self.x, 'y': self.y},
+                        fetch_list=fetch_list,
+                    )
                     assert np.array_equal(out[0], self.out)
 
                     if x_stop_gradient is False:
-                        assert np.array_equal(out[2],
-                                              self.ref_x_backward(out[1]))
+                        assert np.array_equal(
+                            out[2], self.ref_x_backward(out[1])
+                        )
                         if y.stop_gradient is False:
-                            assert np.array_equal(out[3],
-                                                  self.ref_y_backward(out[1]))
+                            assert np.array_equal(
+                                out[3], self.ref_y_backward(out[1])
+                            )
                     elif y.stop_gradient is False:
-                        assert np.array_equal(out[2],
-                                              self.ref_y_backward(out[1]))
+                        assert np.array_equal(
+                            out[2], self.ref_y_backward(out[1])
+                        )
 
     def test_api_broadcast(self, use_cuda=False):
         train_prog = fluid.Program()
@@ -134,17 +136,17 @@ class TestNPUWhereAPI(unittest.TestCase):
             x = fluid.layers.data(name='x', shape=[4, 1], dtype='float32')
             y = fluid.layers.data(name='y', shape=[4, 2], dtype='float32')
             x_i = np.array([[0.9383, 0.1983, 3.2, 1.2]]).astype("float32")
-            y_i = np.array([[1.0, 1.0, 1.0, 1.0],
-                            [1.0, 1.0, 1.0, 1.0]]).astype("float32")
+            y_i = np.array([[1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0]]).astype(
+                "float32"
+            )
             result = paddle.where(x > 1, x=x, y=y)
 
             exe = fluid.Executor(self.place)
             exe.run(startup)
 
-            out = exe.run(train_prog,
-                          feed={'x': x_i,
-                                'y': y_i},
-                          fetch_list=[result])
+            out = exe.run(
+                train_prog, feed={'x': x_i, 'y': y_i}, fetch_list=[result]
+            )
             assert np.array_equal(out[0], np.where(x_i > 1, x_i, y_i))
 
 

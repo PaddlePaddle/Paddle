@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import sys
 import numpy as np
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle.fluid as fluid
@@ -108,8 +108,9 @@ class TestExpandV2OpNPURank1_tensor_attr(OpTest):
         self.dtype = np.float32
         expand_shapes_tensor = []
         for index, ele in enumerate(self.expand_shape):
-            expand_shapes_tensor.append(("x" + str(index), np.ones(
-                (1)).astype('int32') * ele))
+            expand_shapes_tensor.append(
+                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+            )
 
         self.inputs = {
             'X': np.random.random(self.ori_shape).astype(self.dtype),
@@ -136,7 +137,8 @@ class TestExpandV2OpNPURank1_tensor_attr(OpTest):
 
 
 class TestExpandV2OpRank2_Corner_tensor_attr(
-        TestExpandV2OpNPURank1_tensor_attr):
+    TestExpandV2OpNPURank1_tensor_attr
+):
     def init_data(self):
         self.ori_shape = [12, 14]
         self.expand_times = [1, 1]
@@ -201,13 +203,15 @@ class TestExpandV2OpFloat(OpTest):
 # Situation 5: input x is int32
 # skip grad check for int32
 class TestExpandV2OpInteger(OpTest):
+    def init_dtype(self):
+        self.dtype = 'int32'
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
         self.op_type = "expand_v2"
         self.inputs = {
-            'X': np.random.randint(
-                10, size=(2, 4, 20)).astype("int32")
+            'X': np.random.randint(10, size=(2, 4, 20)).astype(self.dtype)
         }
         self.attrs = {'shape': [2, 4, 20]}
         output = np.tile(self.inputs['X'], (1, 1, 1))
@@ -221,11 +225,31 @@ class TestExpandV2OpInteger(OpTest):
         self.check_output_with_place(self.place)
 
 
+class TesstExpandV2OpInt64(TestExpandV2OpInteger):
+    def init_dtype(self):
+        self.dtype = 'int64'
+
+
+class TesstExpandV2OpBool(TestExpandV2OpInteger):
+    def init_dtype(self):
+        self.dtype = 'bool'
+
+    def setUp(self):
+        self.set_npu()
+        self.place = paddle.NPUPlace(0)
+        self.op_type = "expand_v2"
+        self.inputs = {'X': np.random.randint(10, size=(2, 4, 20)) > 5}
+        self.attrs = {'shape': [2, 4, 20]}
+        output = np.tile(self.inputs['X'], (1, 1, 1))
+        self.outputs = {'Out': output}
+
+
 class TestExpandV2Error(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], paddle.NPUPlace(0))
+                np.array([[-1]]), [[1]], paddle.NPUPlace(0)
+            )
             shape = [2, 2]
             self.assertRaises(TypeError, paddle.tensor.expand, x1, shape)
             x2 = fluid.layers.data(name='x2', shape=[2], dtype="uint8")
@@ -244,14 +268,16 @@ class TestExpandV2API(unittest.TestCase):
                 name='x',
                 shape=[12, 14],
                 append_batch_size=False,
-                dtype="float32")
+                dtype="float32",
+            )
 
             positive_2 = fluid.layers.fill_constant([1], "int32", 12)
             expand_shape = fluid.layers.data(
                 name="expand_shape",
                 shape=[2],
                 append_batch_size=False,
-                dtype="int32")
+                dtype="int32",
+            )
 
             out_1 = paddle.expand(x, shape=[12, 14])
             out_2 = paddle.expand(x, shape=[positive_2, 14])
@@ -260,13 +286,14 @@ class TestExpandV2API(unittest.TestCase):
             g0 = fluid.backward.calc_gradient(out_2, x)
 
             exe = fluid.Executor(place=paddle.NPUPlace(0))
-            res_1, res_2, res_3 = exe.run(fluid.default_main_program(),
-                                          feed={
-                                              "x": input,
-                                              "expand_shape":
-                                              np.array([12, 14]).astype("int32")
-                                          },
-                                          fetch_list=[out_1, out_2, out_3])
+            res_1, res_2, res_3 = exe.run(
+                fluid.default_main_program(),
+                feed={
+                    "x": input,
+                    "expand_shape": np.array([12, 14]).astype("int32"),
+                },
+                fetch_list=[out_1, out_2, out_3],
+            )
 
             assert np.array_equal(res_1, np.tile(input, (1, 1)))
             assert np.array_equal(res_2, np.tile(input, (1, 1)))

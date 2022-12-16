@@ -12,13 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/eye_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
-
-using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
 class EyeNPUKernel : public framework::OpKernel<T> {
@@ -36,7 +34,7 @@ class EyeNPUKernel : public framework::OpKernel<T> {
     framework::NPUAttributeMap attr_input = {
         {"num_rows", num_rows}, {"num_columns", num_columns}, {"dtype", dtype}};
 
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
     const auto& runner = NpuOpRunner("Eye", {}, {*out}, attr_input);
@@ -53,7 +51,8 @@ class EyeNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    eye, ops::EyeNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    eye,
+    ops::EyeNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::EyeNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::EyeNPUKernel<paddle::platform::NPUDeviceContext,
                       paddle::platform::float16>);

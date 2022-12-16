@@ -32,8 +32,8 @@ struct DataRecord {
     // NOTE skip the final batch, if no enough data is provided.
     if (batch_end <= word.size()) {
       GetInputPerBatch(word, &data.word, &data.lod, batch_iter, batch_end);
-      GetInputPerBatch(mention, &data.mention, &data.lod, batch_iter,
-                       batch_end);
+      GetInputPerBatch(
+          mention, &data.mention, &data.lod, batch_iter, batch_end);
     }
     batch_iter += batch_size;
     return data;
@@ -66,8 +66,8 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data) {
   auto one_batch = data->NextBatch();
   // assign data
   TensorAssignData<int64_t>(&lod_word_tensor, one_batch.word, one_batch.lod);
-  TensorAssignData<int64_t>(&lod_mention_tensor, one_batch.mention,
-                            one_batch.lod);
+  TensorAssignData<int64_t>(
+      &lod_mention_tensor, one_batch.mention, one_batch.lod);
   // Set inputs.
   input_slots->assign({lod_word_tensor, lod_mention_tensor});
   for (auto &tensor : *input_slots) {
@@ -80,7 +80,9 @@ void SetConfig(AnalysisConfig *cfg, bool memory_load = false) {
     std::string buffer_prog, buffer_param;
     ReadBinaryFile(FLAGS_infer_model + "/__model__", &buffer_prog);
     ReadBinaryFile(FLAGS_infer_model + "/param", &buffer_param);
-    cfg->SetModelBuffer(&buffer_prog[0], buffer_prog.size(), &buffer_param[0],
+    cfg->SetModelBuffer(&buffer_prog[0],
+                        buffer_prog.size(),
+                        &buffer_param[0],
                         buffer_param.size());
   } else {
     cfg->SetModel(FLAGS_infer_model + "/__model__",
@@ -111,21 +113,26 @@ void profile(bool memory_load = false) {
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
   TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-                 input_slots_all, &outputs, FLAGS_num_threads);
+                 input_slots_all,
+                 &outputs,
+                 FLAGS_num_threads);
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
     // the first inference result
-    const int chinese_ner_result_data[] = {30, 45, 41, 48, 17, 26,
-                                           48, 39, 38, 16, 25};
-    PADDLE_ENFORCE_GT(outputs.size(), 0,
+    const int chinese_ner_result_data[] = {
+        30, 45, 41, 48, 17, 26, 48, 39, 38, 16, 25};
+    PADDLE_ENFORCE_GT(outputs.size(),
+                      0,
                       paddle::platform::errors::Fatal(
                           "The size of output should be greater than 0."));
     auto output = outputs.back();
-    PADDLE_ENFORCE_EQ(output.size(), 1UL,
+    PADDLE_ENFORCE_EQ(output.size(),
+                      1UL,
                       paddle::platform::errors::Fatal(
                           "The size of output should be equal to 1."));
     size_t size = GetSize(output[0]);
-    PADDLE_ENFORCE_GT(size, 0,
+    PADDLE_ENFORCE_GT(size,
+                      0,
                       paddle::platform::errors::Fatal(
                           "The size of output should be greater than 0."));
     int64_t *result = static_cast<int64_t *>(output[0].data.data());

@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
-import numpy as np
 import unittest
-import six
+
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+import paddle.nn.functional as F
 
 
 class TestInferencePartialFeed(unittest.TestCase):
@@ -36,25 +39,30 @@ class TestInferencePartialFeed(unittest.TestCase):
             else:
                 lr = fluid.data(name='lr', shape=[None], dtype='float32')
 
-            relu_x = fluid.layers.relu(x)
-            relu_y = fluid.layers.relu(y)
-            relu_lr = fluid.layers.relu(lr)
+            relu_x = F.relu(x)
+            relu_y = F.relu(y)
+            relu_lr = F.relu(lr)
 
         exe = fluid.Executor(places[0])
         exe.run(startup_prog)
 
         prog = fluid.CompiledProgram(main_prog).with_data_parallel(
-            places=places)
+            places=places
+        )
 
-        gen_random = lambda shape:np.random.uniform(low=-1.0, high=1.0, size=shape).astype('float32')
-        assert_result = lambda feed, result: self.assertTrue(np.array_equal(np.maximum(0, feed), result))
+        gen_random = lambda shape: np.random.uniform(
+            low=-1.0, high=1.0, size=shape
+        ).astype('float32')
+        assert_result = lambda feed, result: np.testing.assert_array_equal(
+            np.maximum(0, feed), result
+        )
 
         def assert_merged_unmerged(merged, unmerged):
             unmerged = np.concatenate(unmerged, axis=0)
-            self.assertTrue(np.array_equal(merged, unmerged))
+            np.testing.assert_array_equal(merged, unmerged)
 
         def feed_split_test():
-            for place_num in six.moves.range(1, len(places) * 3):
+            for place_num in range(1, len(places) * 3):
                 x_np = gen_random([place_num, self.size])
                 y_np = gen_random([place_num, self.size])
                 if not lr.persistable or place_num <= len(places):
@@ -66,10 +74,16 @@ class TestInferencePartialFeed(unittest.TestCase):
                 fetch_list = [relu_x, relu_y, relu_lr]
 
                 relu_x_np, relu_y_np, relu_lr_np = exe.run(
-                    prog, feed=feed, fetch_list=fetch_list, return_merged=True)
+                    prog, feed=feed, fetch_list=fetch_list, return_merged=True
+                )
 
-                relu_x_np_unmerged, relu_y_np_unmerged, relu_lr_np_unmerged = exe.run(
-                    prog, feed=feed, fetch_list=fetch_list, return_merged=False)
+                (
+                    relu_x_np_unmerged,
+                    relu_y_np_unmerged,
+                    relu_lr_np_unmerged,
+                ) = exe.run(
+                    prog, feed=feed, fetch_list=fetch_list, return_merged=False
+                )
 
                 assert_merged_unmerged(relu_x_np, relu_x_np_unmerged)
                 assert_merged_unmerged(relu_y_np, relu_y_np_unmerged)
@@ -84,12 +98,12 @@ class TestInferencePartialFeed(unittest.TestCase):
                     self.assertTrue(np.all(expected_relu_lr_np == relu_lr_np))
 
         def feed_list_test():
-            for place_num in six.moves.range(1, len(places) + 1):
+            for place_num in range(1, len(places) + 1):
                 x_np_list = []
                 y_np_list = []
                 lr_np_list = []
                 feed_list = []
-                for _ in six.moves.range(place_num):
+                for _ in range(place_num):
                     x_np = gen_random([1, self.size])
                     y_np = gen_random([1, self.size])
                     lr_np = gen_random([1])
@@ -97,24 +111,28 @@ class TestInferencePartialFeed(unittest.TestCase):
                     y_np_list.append(y_np)
                     lr_np_list.append(lr_np)
 
-                    feed_list.append({
-                        x.name: x_np,
-                        y.name: y_np,
-                        lr.name: lr_np
-                    })
+                    feed_list.append(
+                        {x.name: x_np, y.name: y_np, lr.name: lr_np}
+                    )
 
                 fetch_list = [relu_x, relu_y, relu_lr]
                 relu_x_np, relu_y_np, relu_lr_np = exe.run(
                     prog,
                     feed=feed_list,
                     fetch_list=fetch_list,
-                    return_merged=True)
+                    return_merged=True,
+                )
 
-                relu_x_np_unmerged, relu_y_np_unmerged, relu_lr_np_unmerged = exe.run(
+                (
+                    relu_x_np_unmerged,
+                    relu_y_np_unmerged,
+                    relu_lr_np_unmerged,
+                ) = exe.run(
                     prog,
                     feed=feed_list,
                     fetch_list=fetch_list,
-                    return_merged=False)
+                    return_merged=False,
+                )
 
                 assert_merged_unmerged(relu_x_np, relu_x_np_unmerged)
                 assert_merged_unmerged(relu_y_np, relu_y_np_unmerged)
@@ -128,7 +146,7 @@ class TestInferencePartialFeed(unittest.TestCase):
                 assert_result(y_np, relu_y_np)
                 assert_result(lr_np, relu_lr_np)
 
-        for _ in six.moves.range(self.iterations):
+        for _ in range(self.iterations):
             if use_split:
                 feed_split_test()
             else:
@@ -143,7 +161,8 @@ class TestInferencePartialFeed(unittest.TestCase):
             for has_persistable in [False, True]:
                 for use_split in [False, True]:
                     self.run_network(
-                        p, use_split=use_split, has_persistable=has_persistable)
+                        p, use_split=use_split, has_persistable=has_persistable
+                    )
 
 
 class TestInferencePartialFeedUsingDataLoader(unittest.TestCase):
@@ -154,7 +173,7 @@ class TestInferencePartialFeedUsingDataLoader(unittest.TestCase):
 
     def create_reader(self):
         def __impl__():
-            for _ in six.moves.range(self.batch_num):
+            for _ in range(self.batch_num):
                 yield np.random.random([self.batch_size, 1]).astype('float32'),
 
         return __impl__
@@ -163,25 +182,27 @@ class TestInferencePartialFeedUsingDataLoader(unittest.TestCase):
         x = fluid.data(shape=[None, 1], name='x', dtype='float32')
         places = fluid.cuda_places() if use_cuda else fluid.cpu_places(4)
         loader = fluid.io.DataLoader.from_generator(
-            feed_list=[x], capacity=16, iterable=iterable, drop_last=drop_last)
+            feed_list=[x], capacity=16, iterable=iterable, drop_last=drop_last
+        )
         y = fluid.layers.fc(x, size=10)
-        loss = fluid.layers.reduce_mean(y)
+        loss = paddle.mean(y)
 
         exe = fluid.Executor(places[0])
         exe.run(fluid.default_startup_program())
 
-        prog = fluid.CompiledProgram(fluid.default_main_program(
-        )).with_data_parallel(
-            places=places, loss_name=loss.name)
+        prog = fluid.CompiledProgram(
+            fluid.default_main_program()
+        ).with_data_parallel(places=places, loss_name=loss.name)
 
         loader.set_batch_generator(
-            self.create_reader(), places=places if iterable else None)
+            self.create_reader(), places=places if iterable else None
+        )
 
-        for _ in six.moves.range(self.epoch_num):
+        for _ in range(self.epoch_num):
             actual_batch_num = 0
             if loader.iterable:
                 for feed_data in loader():
-                    x_data, = exe.run(prog, feed=feed_data, fetch_list=[x])
+                    (x_data,) = exe.run(prog, feed=feed_data, fetch_list=[x])
                     self.assertEqual(x_data.shape[0] % self.batch_size, 0)
                     self.assertTrue(x_data.shape[0] != 0)
                     actual_batch_num += int(x_data.shape[0] / self.batch_size)
@@ -189,11 +210,12 @@ class TestInferencePartialFeedUsingDataLoader(unittest.TestCase):
                 loader.start()
                 try:
                     while True:
-                        x_data, = exe.run(prog, fetch_list=[x])
+                        (x_data,) = exe.run(prog, fetch_list=[x])
                         self.assertEqual(x_data.shape[0] % self.batch_size, 0)
                         self.assertTrue(x_data.shape[0] != 0)
-                        actual_batch_num += int(x_data.shape[0] /
-                                                self.batch_size)
+                        actual_batch_num += int(
+                            x_data.shape[0] / self.batch_size
+                        )
                 except fluid.core.EOFException:
                     loader.reset()
 
@@ -203,8 +225,9 @@ class TestInferencePartialFeedUsingDataLoader(unittest.TestCase):
                 self.assertGreater(self.batch_num, actual_batch_num)
 
     def test_main(self):
-        use_cuda_list = [False, True] if fluid.is_compiled_with_cuda(
-        ) else [False]
+        use_cuda_list = (
+            [False, True] if fluid.is_compiled_with_cuda() else [False]
+        )
         iterable_list = [False, True]
         drop_last_list = [False, True]
         for iterable in iterable_list:

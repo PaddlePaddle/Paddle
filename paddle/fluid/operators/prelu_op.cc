@@ -9,102 +9,31 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/prelu_op.h"
-
 #include <memory>
 #include <string>
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
 
 class PReluOp : public framework::OperatorWithKernel {
  public:
-  PReluOp(const std::string &type, const framework::VariableNameMap &inputs,
+  PReluOp(const std::string &type,
+          const framework::VariableNameMap &inputs,
           const framework::VariableNameMap &outputs,
           const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "prelu");
-    OP_INOUT_CHECK(ctx->HasInput("Alpha"), "Input", "Alpha", "prelu");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "prelu");
-
-    auto x_dim = ctx->GetInputDim("X");
-    std::string mode = ctx->Attrs().Get<std::string>("mode");
-    if (mode == "all") {
-      PADDLE_ENFORCE_EQ(product(ctx->GetInputDim("Alpha")), 1,
-                        platform::errors::InvalidArgument(
-                            "For mode 'all', size of weight Alpha must be one. "
-                            "But recevied alpha's size: %d.",
-                            product(ctx->GetInputDim("Alpha"))));
-    } else if (mode == "channel") {
-      PADDLE_ENFORCE_EQ(product(ctx->GetInputDim("Alpha")), x_dim[1],
-                        platform::errors::InvalidArgument(
-                            "For mode 'channel', size of weight Alpha must be "
-                            "equal to the number of channels of input(x). But "
-                            "recevied alpha's size: %d, x_dim[1]: %d",
-                            product(ctx->GetInputDim("Alpha")), x_dim[1]));
-      auto x_rank = x_dim.size();
-      PADDLE_ENFORCE_GE(x_rank, 2,
-                        platform::errors::InvalidArgument(
-                            "For mode 'channel', rank of input X must be "
-                            "equal or larger than 2. But recevied X's "
-                            "rank: %d",
-                            x_rank));
-    } else if (mode == "element") {
-      auto alpha_dim = ctx->GetInputDim("Alpha");
-      auto alpha_rank = alpha_dim.size();
-      auto x_rank = x_dim.size();
-      PADDLE_ENFORCE_GE(x_rank, 1,
-                        platform::errors::InvalidArgument(
-                            "For mode 'element', rank of input X must be "
-                            "equal or larger than 2. But recevied X's "
-                            "rank: %d",
-                            x_rank));
-      PADDLE_ENFORCE_EQ(
-          alpha_rank, x_rank,
-          platform::errors::InvalidArgument(
-              "For mode 'element', rank of weight Alpha must be ",
-              "equal to the rank of input(x). But recevied alpha's rank: %d, "
-              "x's rank: %d.",
-              alpha_rank, x_rank));
-      size_t x_product = 1;
-      size_t alpha_product = 1;
-      for (int64_t i = x_rank - 1; i > 0; i--) {
-        x_product *= x_dim[i];
-        alpha_product *= alpha_dim[i];
-      }
-      PADDLE_ENFORCE_EQ(
-          alpha_product, x_product,
-          platform::errors::InvalidArgument(
-              "For mode 'element', the size of weight Alpha must be "
-              "equal to the size of input(x). But recevied alpha's size: %d, "
-              "x's size: %d.",
-              alpha_product, x_product));
-    } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Attr(mode) of prelu must be one of 'all', 'channel', or 'element'. "
-          "But recevied "
-          "mode: '%s'.",
-          mode));
-    }
-    ctx->ShareDim("X", /*->*/ "Out");
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
@@ -134,21 +63,9 @@ There are modes:
 )DOC");
     AddAttr<std::string>("mode", "The mode for inputs to share weights.")
         .SetDefault("all");
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "bfloat16"})
-        .AsExtra();
-    AddAttr<bool>("is_test",
-                  "(bool, default false) Set to true for inference only, false "
-                  "for training. Some layers may run faster when this is true.")
-        .SetDefault(false)
-        .AsExtra();
+    AddAttr<std::string>("data_format",
+                         "Data format that specifies the layout of input")
+        .SetDefault("NCHW");
   }
 };
 
@@ -159,8 +76,10 @@ class PReluGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "prelu");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "prelu");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "prelu");
 
     auto x_grad_name = framework::GradVarName("X");
     auto alpha_grad_name = framework::GradVarName("Alpha");
@@ -178,14 +97,6 @@ class PReluGradOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
@@ -212,13 +123,13 @@ class PReluGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(prelu, ops::PReluOp, ops::PReluOpMaker,
+DECLARE_INFER_SHAPE_FUNCTOR(prelu,
+                            PReluInferShapeFunctor,
+                            PD_INFER_META(phi::PReluInferMeta));
+REGISTER_OPERATOR(prelu,
+                  ops::PReluOp,
+                  ops::PReluOpMaker,
                   ops::PReluGradOpMaker<paddle::framework::OpDesc>,
-                  ops::PReluGradOpMaker<paddle::imperative::OpBase>);
+                  ops::PReluGradOpMaker<paddle::imperative::OpBase>,
+                  PReluInferShapeFunctor);
 REGISTER_OPERATOR(prelu_grad, ops::PReluGradOp);
-REGISTER_OP_CPU_KERNEL(
-    prelu, ops::PReluKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::PReluKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    prelu_grad, ops::PReluGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::PReluGradKernel<paddle::platform::CPUDeviceContext, double>);

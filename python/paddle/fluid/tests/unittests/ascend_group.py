@@ -13,16 +13,15 @@
 # limitations under the License.
 
 import os
-import sys
-import time
-import paddle.fluid as fluid
-from paddle.fluid import unique_name
-import paddle.fluid.core as core
-import paddle
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.distributed import fleet
-from paddle.distributed.fleet.meta_optimizers.ascend import ascend_parser, ascend_optimizer
 from collections import namedtuple
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.distributed import fleet
+from paddle.distributed.fleet.meta_optimizers.ascend import ascend_optimizer
+from paddle.fluid import unique_name
+from paddle.fluid.layer_helper import LayerHelper
 
 Block = namedtuple('Block', ['program'])
 Loss = namedtuple('Loss', ['block'])
@@ -37,8 +36,9 @@ role = fleet.PaddleCloudRoleMaker(is_collective=True)
 fleet.init(role)
 
 
-def init_communicator(startup_program, main_program, current_endpoint,
-                      endpoints, ring_id):
+def init_communicator(
+    startup_program, main_program, current_endpoint, endpoints, ring_id
+):
     nranks = len(endpoints)
     other_endpoints = endpoints[:]
     other_endpoints.remove(current_endpoint)
@@ -49,7 +49,8 @@ def init_communicator(startup_program, main_program, current_endpoint,
     nccl_id_var = block.create_var(
         name=unique_name.generate('nccl_id'),
         persistable=True,
-        type=core.VarDesc.VarType.RAW)
+        type=core.VarDesc.VarType.RAW,
+    )
     block.append_op(
         type='c_gen_nccl_id',
         inputs={},
@@ -59,7 +60,8 @@ def init_communicator(startup_program, main_program, current_endpoint,
             'endpoint': current_endpoint,
             'other_endpoints': other_endpoints,
             OP_ROLE_KEY: OpRole.Forward,
-        })
+        },
+    )
     block.append_op(
         type='c_comm_init',
         inputs={'X': nccl_id_var},
@@ -69,7 +71,8 @@ def init_communicator(startup_program, main_program, current_endpoint,
             'rank': group_rank,
             'ring_id': ring_id,
             OP_ROLE_KEY: OpRole.Forward,
-        })
+        },
+    )
 
     # add input op for test
     fill_var_name = "tensor@Filled"
@@ -78,7 +81,8 @@ def init_communicator(startup_program, main_program, current_endpoint,
         shape=[10, 10],
         dtype='float32',
         persistable=False,
-        stop_gradient=True)
+        stop_gradient=True,
+    )
     block.append_op(
         type="fill_constant",
         outputs={"Out": fill_var_name},
@@ -86,8 +90,9 @@ def init_communicator(startup_program, main_program, current_endpoint,
             "shape": [10, 10],
             "dtype": fill_var.dtype,
             "value": 1.0,
-            "place_type": 1
-        })
+            "place_type": 1,
+        },
+    )
 
     with fluid.program_guard(main_program):
         op_type = "c_allreduce_sum"
@@ -97,8 +102,8 @@ def init_communicator(startup_program, main_program, current_endpoint,
             type=op_type,
             inputs={'X': [data]},
             outputs={'Out': [data]},
-            attrs={'ring_id': ring_id,
-                   'use_calc_stream': True})
+            attrs={'ring_id': ring_id, 'use_calc_stream': True},
+        )
 
     print("startup program:", startup_program)
     print("main program:", main_program)
@@ -108,7 +113,7 @@ def train(world_endpoints, world_device_ids, local_device_ids, local_rank):
     startup_programs = []
     main_programs = []
 
-    #trainer_endpoints=["127.0.0.1:6071","127.0.0.1:6072","127.0.0.1:6073","127.0.0.1:6074"]
+    # trainer_endpoints=["127.0.0.1:6071","127.0.0.1:6072","127.0.0.1:6073","127.0.0.1:6074"]
     trainer_endpoints = world_endpoints
     groups = [[], [], []]
     groups[0] = [trainer_endpoints[0], trainer_endpoints[1]]
@@ -142,7 +147,8 @@ def train(world_endpoints, world_device_ids, local_device_ids, local_rank):
         loss,
         startup_program,
         auto_dp=True,
-        rank_table_file=os.getenv("RANK_TABLE_FILE", None))
+        rank_table_file=os.getenv("RANK_TABLE_FILE", None),
+    )
 
     exe = paddle.static.Executor(paddle.CPUPlace())
     exe.run(startup_program)

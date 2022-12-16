@@ -12,13 +12,14 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/operators/npu_op_runner.h"
 #include "paddle/fluid/operators/top_k_op.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
 
-void gen_assist_seq(framework::Tensor* assit_tensor, int64_t dim,
+void gen_assist_seq(phi::DenseTensor* assit_tensor,
+                    int64_t dim,
                     const framework::ExecutionContext& ctx) {
   const int64_t dimx2 = dim;
   std::vector<paddle::platform::float16> assit;
@@ -41,9 +42,9 @@ class TopkNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // read input
-    auto* input = ctx.Input<framework::LoDTensor>("X");
-    auto* output = ctx.Output<framework::LoDTensor>("Out");
-    auto* indices = ctx.Output<framework::LoDTensor>("Indices");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* output = ctx.Output<phi::DenseTensor>("Out");
+    auto* indices = ctx.Output<phi::DenseTensor>("Indices");
 
     size_t k = static_cast<int>(ctx.Attr<int>("k"));
 
@@ -51,8 +52,10 @@ class TopkNPUKernel : public framework::OpKernel<T> {
     indices->mutable_data<int64_t>(ctx.GetPlace());
 
     // prepare assit
-    auto dim = input->dims().size();
-    framework::Tensor assist_seq_tensor;
+    auto size = input->dims().size();
+    // dim is the last dimension of input
+    auto dim = input->dims()[size - 1];
+    phi::DenseTensor assist_seq_tensor;
     assist_seq_tensor.Resize({2 * dim});
     assist_seq_tensor.mutable_data<T>(ctx.GetPlace());
     gen_assist_seq(&assist_seq_tensor, dim, ctx);
@@ -62,22 +65,27 @@ class TopkNPUKernel : public framework::OpKernel<T> {
                                              {"dim", -1},
                                              {"largest", true}};
 
-    Tensor tmp_indices(framework::proto::VarType::INT32);
+    phi::DenseTensor tmp_indices(experimental::DataType::INT32);
     tmp_indices.Resize(indices->dims());
     tmp_indices.mutable_data<int>(ctx.GetPlace());
 
     // run ascend
-    const auto& runner = NpuOpRunner("TopKD", {*input, assist_seq_tensor},
-                                     {*output, tmp_indices}, attr_input);
+    const auto& runner = NpuOpRunner("TopKD",
+                                     {*input, assist_seq_tensor},
+                                     {*output, tmp_indices},
+                                     attr_input);
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
     runner.Run(stream);
 
     // cast indices from INT32 to INT64
-    auto dst_dtype = ConvertToNpuDtype(indices->type());
+    auto dst_dtype =
+        ConvertToNpuDtype(framework::TransToProtoVarType(indices->dtype()));
     const auto& runner_cast_indices =
-        NpuOpRunner("Cast", {tmp_indices}, {*indices},
+        NpuOpRunner("Cast",
+                    {tmp_indices},
+                    {*indices},
                     {{"dst_type", static_cast<int>(dst_dtype)}});
     runner_cast_indices.Run(stream);
   }

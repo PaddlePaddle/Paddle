@@ -17,7 +17,7 @@
 #include <stddef.h>  // offsetof
 
 #include "paddle/fluid/operators/jit/registry.h"
-#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 
 namespace paddle {
 namespace operators {
@@ -109,26 +109,31 @@ void SgdJitCode::genCode() {
 class SgdCreator : public JitCodeCreator<sgd_attr_t> {
  public:
   bool CanBeUsed(const sgd_attr_t& attr) const override {
-    return platform::MayIUse(platform::avx) &&
+    return phi::backends::cpu::MayIUse(phi::backends::cpu::avx) &&
            attr.grad_width % YMM_FLOAT_BLOCK == 0;
   }
   size_t CodeSize(const sgd_attr_t& attr) const override { return 96 + 32 * 8; }
   std::unique_ptr<GenBase> CreateJitCode(
       const sgd_attr_t& attr) const override {
-    PADDLE_ENFORCE_EQ(attr.param_width, attr.grad_width,
+    PADDLE_ENFORCE_EQ(attr.param_width,
+                      attr.grad_width,
                       platform::errors::InvalidArgument(
                           "The attribute param_width of Sgd should be "
                           "equal to the attribute grad_width. But param_width "
                           "is %d and grad_width is %d.",
-                          attr.param_width, attr.grad_width));
-    PADDLE_ENFORCE_LE(attr.selected_rows_size, attr.grad_height,
+                          attr.param_width,
+                          attr.grad_width));
+    PADDLE_ENFORCE_LE(attr.selected_rows_size,
+                      attr.grad_height,
                       platform::errors::InvalidArgument(
                           "The attribute selected_rows_size of Sgd should be "
                           "equal to or less than the attribute grad_height. "
                           "But selected_rows_size is %d and grad_height is %d.",
-                          attr.selected_rows_size, attr.grad_height));
+                          attr.selected_rows_size,
+                          attr.grad_height));
     PADDLE_ENFORCE_GE(
-        attr.selected_rows_size, 0,
+        attr.selected_rows_size,
+        0,
         platform::errors::InvalidArgument(
             "The attribute selected_rows_size of Sgd should be "
             "equal to or larger than 0. But selected_rows_size is %d.",

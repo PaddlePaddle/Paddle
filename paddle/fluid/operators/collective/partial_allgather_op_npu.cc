@@ -12,11 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/collective/partial_allgather_op.h"
 #include <memory>
 
+#include "paddle/fluid/operators/collective/partial_allgather_op.h"
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/hccl_helper.h"
+#include "paddle/fluid/platform/device/npu/hccl_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -26,10 +26,11 @@ class CallPartialGatherOpASCENDKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
 #if defined(PADDLE_WITH_ASCEND_CL)
-    auto in = ctx.Input<framework::Tensor>("X");
-    auto out = ctx.Output<framework::Tensor>("Out");
+    auto in = ctx.Input<phi::DenseTensor>("X");
+    auto out = ctx.Output<phi::DenseTensor>("Out");
     int64_t numel = in->numel();
-    HcclDataType dtype = platform::ToHCCLDataType(in->type());
+    HcclDataType dtype =
+        platform::ToHCCLDataType(framework::TransToProtoVarType(in->dtype()));
 
     int rank = ctx.Attr<int>("rank");
     int ring_id = ctx.Attr<int>("ring_id");
@@ -39,13 +40,16 @@ class CallPartialGatherOpASCENDKernel : public framework::OpKernel<T> {
     auto comm = platform::HCCLCommContext::Instance().Get(ring_id, place);
     int nranks = comm->nranks();
 
-    PADDLE_ENFORCE_EQ(rank, comm->rank(),
+    PADDLE_ENFORCE_EQ(rank,
+                      comm->rank(),
                       platform::errors::InvalidArgument(
                           "rank: %s should equal to %s", rank, comm->rank()));
     PADDLE_ENFORCE_EQ(
-        (numel % nranks), 0,
+        (numel % nranks),
+        0,
         platform::errors::InvalidArgument(
-            "The input numel (%d) must be divisible by nranks(%d)", numel,
+            "The input numel (%d) must be divisible by nranks(%d)",
+            numel,
             nranks));
 
     framework::DDim dims = in->dims();
@@ -70,9 +74,13 @@ class CallPartialGatherOpASCENDKernel : public framework::OpKernel<T> {
             << ", group is " << group << ", ring_id is " << ring_id
             << ", nranks is " << nranks << ", rankid is " << rank;
 
-    PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllGather(
-        send_buff, recv_buff, send_numel, dtype, comm->comm(),
-        reinterpret_cast<void *>(stream)));
+    PADDLE_ENFORCE_NPU_SUCCESS(
+        platform::dynload::HcclAllGather(send_buff,
+                                         recv_buff,
+                                         send_numel,
+                                         dtype,
+                                         comm->comm(),
+                                         reinterpret_cast<void *>(stream)));
 
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(

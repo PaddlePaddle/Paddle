@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle.fluid as fluid
 
 
@@ -38,24 +40,27 @@ class TestPyramidHashOpApi(unittest.TestCase):
             lr=0.002,
             param_attr=fluid.ParamAttr(
                 name="PyramidHash_emb_0",
-                learning_rate=0, ),
+                learning_rate=0,
+            ),
             param_attr_wl=fluid.ParamAttr(
                 name="Filter",
-                learning_rate=0, ),
+                learning_rate=0,
+            ),
             param_attr_bl=None,
             distribute_update_vars=["PyramidHash_emb_0"],
-            name=None, )
+            name=None,
+        )
 
         place = fluid.CPUPlace()
         x_tensor = fluid.create_lod_tensor(
-            np.random.randint(0, num_voc, x_shape).astype('int32'), x_lod,
-            place)
+            np.random.randint(0, num_voc, x_shape).astype('int32'), x_lod, place
+        )
 
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
-        ret = exe.run(feed={'x': x_tensor},
-                      fetch_list=[hash_embd],
-                      return_numpy=False)
+        ret = exe.run(
+            feed={'x': x_tensor}, fetch_list=[hash_embd], return_numpy=False
+        )
 
 
 if __name__ == "__main__":

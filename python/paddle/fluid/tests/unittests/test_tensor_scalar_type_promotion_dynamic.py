@@ -12,18 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function, division
-
 import unittest
+
 import numpy as np
 
 import paddle
+from paddle.fluid.framework import _test_eager_guard
 
 # Support types are ref from `paddle.tensor.math`
 # - Related paddle dtypes:
 #  - int type: int64, (no test here: uint8, int8, int16, int32)
 #  - float type: float32, (no test here: float64)
-# - Python scalar dtypes: 
+# - Python scalar dtypes:
 #  - int(64)
 #  - float(64)
 
@@ -48,9 +48,9 @@ class TestTensorScalarTypePromotionDynamic(unittest.TestCase):
             raise ValueError("Unsupported operation.")
 
         self.assertEqual(c_rlt.dtype, c.dtype)
-        self.assertTrue(np.array_equal(c_rlt.numpy(), c.numpy()))
+        np.testing.assert_array_equal(c_rlt.numpy(), c.numpy())
 
-    def test_tensor_add_scalar(self):
+    def func_tensor_add_scalar(self):
         # tensor(int64) + scalar(int)
         a = paddle.ones([2, 2, 2], dtype='int64')
         b = 1
@@ -81,7 +81,12 @@ class TestTensorScalarTypePromotionDynamic(unittest.TestCase):
         c = paddle.full([2, 2, 2], 2.5, dtype="float32")
         self.check_operation(a, b, c, '+')
 
-    def test_tensor_sub_scalar(self):
+    def test_tensor_add_scalar(self):
+        with _test_eager_guard():
+            self.func_tensor_add_scalar()
+        self.func_tensor_add_scalar()
+
+    def func_tensor_sub_scalar(self):
         # tensor(int64) - scalar(int)
         a = paddle.ones([2, 2, 2], dtype='int64')
         b = 1
@@ -112,7 +117,12 @@ class TestTensorScalarTypePromotionDynamic(unittest.TestCase):
         c = paddle.full([2, 2, 2], 0.5, dtype="float32")
         self.check_operation(a, b, c, '-')
 
-    def test_scalar_sub_tensor(self):
+    def test_tensor_sub_scalar(self):
+        with _test_eager_guard():
+            self.func_tensor_sub_scalar()
+        self.func_tensor_sub_scalar()
+
+    def func_scalar_sub_tensor(self):
         # scalar(int) - tensor(int64)
         a = 1
         b = paddle.ones([2, 2, 2], dtype='int64')
@@ -143,7 +153,12 @@ class TestTensorScalarTypePromotionDynamic(unittest.TestCase):
         c = paddle.full([2, 2, 2], -0.5, dtype="float32")
         self.check_operation(a, b, c, '-')
 
-    def test_tensor_mul_tensor(self):
+    def test_scalar_sub_tensor(self):
+        with _test_eager_guard():
+            self.func_scalar_sub_tensor()
+        self.func_scalar_sub_tensor()
+
+    def func_tensor_mul_tensor(self):
         # tensor(int64) * scalar(int)
         a = paddle.ones([2, 2, 2], dtype='int64')
         b = 1
@@ -174,7 +189,12 @@ class TestTensorScalarTypePromotionDynamic(unittest.TestCase):
         c = paddle.full([2, 2, 2], 1.5, dtype="float32")
         self.check_operation(a, b, c, '*')
 
-    def test_tensor_div_scalar(self):
+    def test_tensor_mul_tensor(self):
+        with _test_eager_guard():
+            self.func_tensor_mul_tensor()
+        self.func_tensor_mul_tensor()
+
+    def func_tensor_div_scalar(self):
         # tensor(int64) / scalar(int)
         a = paddle.ones([2, 2, 2], dtype='int64')
         b = 2
@@ -205,7 +225,12 @@ class TestTensorScalarTypePromotionDynamic(unittest.TestCase):
         c = paddle.full([2, 2, 2], 2, dtype="float32")
         self.check_operation(a, b, c, '/')
 
-    def test_scalar_div_tensor(self):
+    def test_tensor_div_scalar(self):
+        with _test_eager_guard():
+            self.func_tensor_div_scalar()
+        self.func_tensor_div_scalar()
+
+    def func_scalar_div_tensor(self):
         # scalar(int) / tensor(int64)
         a = 1
         b = paddle.full([2, 2, 2], 2, dtype='int64')
@@ -230,7 +255,12 @@ class TestTensorScalarTypePromotionDynamic(unittest.TestCase):
         c = paddle.full([2, 2, 2], 2, dtype="float32")
         self.check_operation(a, b, c, '/')
 
-    def test_tensor_pow_scalar(self):
+    def test_scalar_div_tensor(self):
+        with _test_eager_guard():
+            self.func_scalar_div_tensor()
+        self.func_scalar_div_tensor()
+
+    def func_tensor_pow_scalar(self):
         # tensor(int64) ** scalar(int)
         a = paddle.full([2, 2, 2], 2, dtype='int64')
         b = 3
@@ -255,7 +285,12 @@ class TestTensorScalarTypePromotionDynamic(unittest.TestCase):
         c = paddle.full([2, 2, 2], 8, dtype="float32")
         self.check_operation(a, b, c, '**')
 
-    def test_scalar_pow_tensor(self):
+    def test_tensor_pow_scalar(self):
+        with _test_eager_guard():
+            self.func_tensor_pow_scalar()
+        self.func_tensor_pow_scalar()
+
+    def func_scalar_pow_tensor(self):
         # scalar(int) ** tensor(int64)
         a = 3
         b = paddle.full([2, 2, 2], 2, dtype='int64')
@@ -280,15 +315,25 @@ class TestTensorScalarTypePromotionDynamic(unittest.TestCase):
         c = paddle.full([2, 2, 2], 9, dtype="float32")
         self.check_operation(a, b, c, '**')
 
-    ## TODO: floordiv op kernel doesn't support float
-    def test_tensor_floordiv_scalar(self):
+    def test_scalar_pow_tensor(self):
+        with _test_eager_guard():
+            self.func_scalar_pow_tensor()
+        self.func_scalar_pow_tensor()
+
+    # TODO: floordiv op kernel doesn't support float
+    def func_tensor_floordiv_scalar(self):
         # tensor(int64) // scalar(int)
         a = paddle.full([2, 2, 2], 3, dtype='int64')
         b = 2
         c = paddle.full([2, 2, 2], 1, dtype="int64")
         self.check_operation(a, b, c, '//')
 
-    def test_tensor_mod_scalar(self):
+    def test_tensor_floordiv_scalar(self):
+        with _test_eager_guard():
+            self.func_tensor_floordiv_scalar()
+        self.func_tensor_floordiv_scalar()
+
+    def func_tensor_mod_scalar(self):
         # tensor(int64) % scalar(int)
         a = paddle.full([2, 2, 2], 3, dtype='int64')
         b = 2
@@ -312,6 +357,11 @@ class TestTensorScalarTypePromotionDynamic(unittest.TestCase):
         b = 2.0
         c = paddle.full([2, 2, 2], 1, dtype="float32")
         self.check_operation(a, b, c, '%')
+
+    def test_tensor_mod_scalar(self):
+        with _test_eager_guard():
+            self.func_tensor_mod_scalar()
+        self.func_tensor_mod_scalar()
 
 
 if __name__ == '__main__':

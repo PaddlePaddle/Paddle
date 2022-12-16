@@ -38,17 +38,18 @@ template <typename T>
 class CIdentityOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto x = ctx.Input<framework::LoDTensor>("X");
-    auto out = ctx.Output<framework::LoDTensor>("Out");
+    auto x = ctx.Input<phi::DenseTensor>("X");
+    auto out = ctx.Output<phi::DenseTensor>("Out");
 
     int rid = ctx.Attr<int>("ring_id");
     PADDLE_ENFORCE_GE(
-        rid, 0,
+        rid,
+        0,
         platform::errors::InvalidArgument(
             "The ring_id (%d) for c_identity op must be non-negative.", rid));
     out->mutable_data<T>(ctx.GetPlace());
 
-    TensorCopy(*x, out->place(), out);
+    paddle::framework::TensorCopy(*x, out->place(), out);
   }
 };
 

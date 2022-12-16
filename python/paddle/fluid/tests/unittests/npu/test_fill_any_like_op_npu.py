@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -54,6 +53,12 @@ class TestFillAnyLikeNPUOp(OpTest):
 class TestFillAnyLikeNPUOpInt32(TestFillAnyLikeNPUOp):
     def init(self):
         self.dtype = np.int32
+        self.value = -1
+
+
+class TestFillAnyLikeNPUOpInt64(TestFillAnyLikeNPUOp):
+    def init(self):
+        self.dtype = np.int64
         self.value = -1
 
 

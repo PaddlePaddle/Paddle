@@ -11,12 +11,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-
-import paddle
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
+import paddle
+from paddle.nn.functional import kl_div
 
 
 def kldiv_loss(x, target, reduction):
@@ -40,6 +41,7 @@ class TestKLDivLossOp(OpTest):
     def setUp(self):
         self.initTestCase()
         self.op_type = 'kldiv_loss'
+        self.python_api = kl_div
         x = np.random.uniform(-10, 10, self.x_shape).astype('float64')
         target = np.random.uniform(-10, 10, self.x_shape).astype('float64')
 
@@ -53,10 +55,12 @@ class TestKLDivLossOp(OpTest):
         self.outputs = {'Loss': loss.astype('float64')}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Loss', no_grad_set=set(["Target"]))
+        self.check_grad(
+            ['X'], 'Loss', no_grad_set=set(["Target"]), check_eager=True
+        )
 
     def initTestCase(self):
         self.x_shape = (4, 5, 5)
@@ -90,8 +94,9 @@ class TestKLDivLossDygraph(unittest.TestCase):
         with paddle.fluid.dygraph.guard():
             kldiv_criterion = paddle.nn.KLDivLoss(reduction)
             pred_loss = kldiv_criterion(
-                paddle.to_tensor(x), paddle.to_tensor(target))
-            self.assertTrue(np.allclose(pred_loss.numpy(), gt_loss))
+                paddle.to_tensor(x), paddle.to_tensor(target)
+            )
+            np.testing.assert_allclose(pred_loss.numpy(), gt_loss, rtol=1e-05)
 
     def test_kl_loss_batchmean(self):
         self.run_kl_loss('batchmean')
@@ -112,7 +117,9 @@ class TestKLDivLossDygraph(unittest.TestCase):
         input = paddle.fluid.data(name='input', shape=[5, 20])
         label = paddle.fluid.data(name='label', shape=[5, 20])
 
-        pred_loss = paddle.nn.functional.kl_div(input, label)
+        paddle.nn.functional.kl_div(input, label)
+        paddle.nn.functional.kl_div(input, label, 'sum')
+        paddle.nn.functional.kl_div(input, label, 'batchmean')
 
 
 class TestKLDivLossTypePromotion(unittest.TestCase):

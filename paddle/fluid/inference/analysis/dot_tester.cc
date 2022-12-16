@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/dot.h"
-
 #include <gtest/gtest.h>
+
 #include <memory>
+
+#include "paddle/fluid/inference/analysis/dot.h"
 
 namespace paddle {
 namespace inference {

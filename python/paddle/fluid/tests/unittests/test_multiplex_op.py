@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
 
@@ -34,7 +34,7 @@ class TestMultiplexOp(OpTest):
         ins4 = np.random.random((rows, 25)).astype("float64")
         self.inputs = {
             'Ids': index,
-            'X': [('x1', ins1), ('x2', ins2), ('x3', ins3), ('x4', ins4)]
+            'X': [('x1', ins1), ('x2', ins2), ('x3', ins3), ('x4', ins4)],
         }
         # multiplex output
         output = np.zeros_like(ins1)
@@ -68,26 +68,27 @@ class TestMultiplexOpError(unittest.TestCase):
 
             def test_list():
                 # the inputs type must be list
-                fluid.layers.multiplex(inputs=x1, index=index)
+                paddle.multiplex(inputs=x1, index=index)
 
             self.assertRaises(TypeError, test_list)
 
             def test_len():
-                fluid.layers.multiplex(inputs=[x1], index=index)
+                paddle.multiplex(inputs=[x1], index=index)
 
             self.assertRaises(ValueError, test_len)
 
             def test_type():
                 y1 = fluid.data(name='y1', shape=[None, 2], dtype='int16')
                 y2 = fluid.data(name='y2', shape=[None, 2], dtype='int16')
-                fluid.layers.multiplex(inputs=[y1, y2], index=index)
+                paddle.multiplex(inputs=[y1, y2], index=index)
 
             self.assertRaises(TypeError, test_type)
 
             def test_type2():
                 index2 = fluid.data(
-                    name='index2', shape=[None, 1], dtype='int16')
-                fluid.layers.multiplex(inputs=[x1, x2], index=index2)
+                    name='index2', shape=[None, 1], dtype='int16'
+                )
+                paddle.multiplex(inputs=[x1, x2], index=index2)
 
             self.assertRaises(TypeError, test_type2)
 
@@ -101,6 +102,34 @@ class TestMultiplexODygrap(unittest.TestCase):
         index = paddle.to_tensor(np.array([[1], [0]]).astype(np.int32))
         res = paddle.multiplex(inputs, index)
         paddle.enable_static()
+
+    def test_dygraph_api(self):
+        with fluid.dygraph.guard():
+            img1 = np.array([[1, 2], [3, 4]]).astype(np.float32)
+            img2 = np.array([[5, 6], [7, 8]]).astype(np.float32)
+            inputs = [paddle.to_tensor(img1), paddle.to_tensor(img2)]
+            index = paddle.to_tensor(np.array([[1], [0]]).astype(np.int32))
+            inputs[0].stop_gradient = False
+            inputs[1].stop_gradient = False
+            res = paddle.multiplex(inputs, index)
+            res.backward()
+            inputs_eager = [paddle.to_tensor(img1), paddle.to_tensor(img2)]
+            index_eager = paddle.to_tensor(
+                np.array([[1], [0]]).astype(np.int32)
+            )
+            inputs_eager[0].stop_gradient = False
+            inputs_eager[1].stop_gradient = False
+            res_eager = paddle.multiplex(inputs_eager, index_eager)
+            res_eager.backward()
+            self.assertEqual((res.numpy() == res_eager.numpy()).all(), True)
+            self.assertEqual(
+                (inputs[0].grad.numpy() == inputs_eager[0].grad.numpy()).all(),
+                True,
+            )
+            self.assertEqual(
+                (inputs[1].grad.numpy() == inputs_eager[1].grad.numpy()).all(),
+                True,
+            )
 
 
 if __name__ == '__main__':

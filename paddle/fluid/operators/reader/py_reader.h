@@ -35,7 +35,7 @@ class PyReader : public framework::FileReader {
       const std::vector<framework::proto::VarType::Type>& var_types,
       const std::vector<bool>& need_check_feed);
 
-  void ReadNext(std::vector<framework::LoDTensor>* out) override;
+  void ReadNext(paddle::framework::LoDTensorArray* out) override;
 
   ~PyReader();
 

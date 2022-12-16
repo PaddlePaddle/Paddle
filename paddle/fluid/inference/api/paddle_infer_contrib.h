@@ -25,14 +25,19 @@ class TensorUtils {
   static void CudaFreePinnedMemory(void* mem);
 
   static void CopyTensor(Tensor* p_dst, const Tensor& src);
-  static void CopyTensorAsync(Tensor* p_dst, const Tensor& src,
+  static void CopyTensorAsync(Tensor* p_dst,
+                              const Tensor& src,
                               void* exec_stream);
-  static void CopyTensorAsync(Tensor* p_dst, const Tensor& src, CallbackFunc cb,
+  static void CopyTensorAsync(Tensor* p_dst,
+                              const Tensor& src,
+                              CallbackFunc cb,
                               void* cb_params);
 
  private:
-  static void CopyTensorImpl(Tensor* p_dst, const Tensor& src,
-                             void* exec_stream, CallbackFunc cb,
+  static void CopyTensorImpl(Tensor* p_dst,
+                             const Tensor& src,
+                             void* exec_stream,
+                             CallbackFunc cb,
                              void* cb_params);
 };
 
@@ -43,10 +48,10 @@ class Status {
   using Code = int;
   struct Impl;
 
-  Status() noexcept;
-  explicit Status(std::exception_ptr e) noexcept;
+  Status();
+  explicit Status(std::exception_ptr e);
 
-  Status(const Status&) noexcept;
+  Status(const Status&);
   Status& operator=(const Status&) noexcept;
   Status& operator=(Status&&) = default;
   Status(Status&&) = default;
@@ -56,7 +61,7 @@ class Status {
   ///
   /// \return A status which indicate ok.
   ///
-  static Status OK() noexcept;
+  static Status OK();
 
   ///
   /// \brief Determine whether the status is ok.

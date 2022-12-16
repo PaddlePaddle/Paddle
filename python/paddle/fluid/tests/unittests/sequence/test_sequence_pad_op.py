@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
+
 sys.path.append("../")
 from op_test import OpTest
 
@@ -35,7 +37,7 @@ class TestSequencePadOp(OpTest):
         pad_value_data = np.array(self.pad_value).astype(self.dtype)
         self.inputs = {
             'X': (x_data, self.x_len_lod),
-            'PadValue': pad_value_data
+            'PadValue': pad_value_data,
         }
         self.attrs = {'padded_length': self.padded_length}
 
@@ -52,9 +54,10 @@ class TestSequencePadOp(OpTest):
         # do padding
         x_data = self.inputs['X'][0]
         pad_value_data = self.inputs['PadValue']
-        if pad_value_data.shape == (1, ):
+        if pad_value_data.shape == (1,):
             pad_value_data = np.broadcast_to(
-                pad_value_data, shape=x_data.shape[1:])
+                pad_value_data, shape=x_data.shape[1:]
+            )
         padded_sequences = []
         start_idx = 0
         for l in x_len_lod_0:
@@ -151,15 +154,17 @@ class TestSequencePadOpError(unittest.TestCase):
         def test_x_variable():
             # the input x type must be Variable
             x = np.random.random((2, 4)).astype("float32")
-            pad_value = fluid.layers.assign(input=np.array(
-                [0.0], dtype=np.float32))
+            pad_value = fluid.layers.assign(
+                input=np.array([0.0], dtype=np.float32)
+            )
             fluid.layers.sequence_pad(x=x, pad_value=pad_value)
 
         self.assertRaises(TypeError, test_x_variable)
 
         def test_pad_value_variable():
             x1 = fluid.layers.data(
-                name='x1', shape=[10, 5], dtype='float32', lod_level=1)
+                name='x1', shape=[10, 5], dtype='float32', lod_level=1
+            )
             pad_value1 = np.array([0.0], dtype=np.float32)
             fluid.layers.sequence_pad(x=x1, pad_value=pad_value1)
 
@@ -167,9 +172,11 @@ class TestSequencePadOpError(unittest.TestCase):
 
         def test_dtype():
             x2 = fluid.layers.data(
-                name='x2', shape=[10, 5], dtype='int16', lod_level=1)
-            pad_value2 = fluid.layers.assign(input=np.array(
-                [0.0], dtype=np.int32))
+                name='x2', shape=[10, 5], dtype='int16', lod_level=1
+            )
+            pad_value2 = fluid.layers.assign(
+                input=np.array([0.0], dtype=np.int32)
+            )
             fluid.layers.sequence_pad(x=x2, pad_value=pad_value2)
 
         self.assertRaises(TypeError, test_dtype)

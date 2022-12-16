@@ -15,12 +15,13 @@ limitations under the License. */
 #include <future>  // NOLINT
 #include <ostream>
 
-#include "paddle/fluid/distributed/service/heter_client.h"
+#include "paddle/fluid/distributed/ps/service/heter_client.h"
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace operators {
@@ -34,17 +35,22 @@ class SendAndRecvKernel : public framework::OpKernel<T> {
     auto message_name = ctx.Attr<std::string>("message_name");
     auto send_var_name = ctx.Attr<std::vector<std::string>>("send_var_name");
     auto recv_var_name = ctx.Attr<std::vector<std::string>>("recv_var_name");
-    auto epmap = ctx.Attr<std::vector<std::string>>("endpoints");
+    auto next_epmap = ctx.Attr<std::vector<std::string>>("next_endpoints");
+    auto previous_epmap =
+        ctx.Attr<std::vector<std::string>>("previous_endpoints");
     auto trainer_id = ctx.Attr<int>("trainer_id");
+    auto mode = ctx.Attr<std::string>("mode");
 
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& context = *pool.Get(place);
 
     distributed::HeterClient* rpc_client =
-        distributed::HeterClient::GetInstance(epmap, trainer_id).get();
+        distributed::HeterClient::GetInstance(
+            next_epmap, previous_epmap, trainer_id)
+            .get();
     VLOG(3) << "SendAndRecvOp message_name: " << message_name;
-    rpc_client->SendAndRecvAsync(epmap, context, scope, message_name,
-                                 send_var_name, recv_var_name);
+    rpc_client->SendAndRecvAsync(
+        context, scope, message_name, send_var_name, recv_var_name, mode);
   }
 };
 
@@ -67,10 +73,16 @@ class SendAndRecvOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Tensor Input variable to be sent").AsDuplicable();
     AddOutput("Out", "Tensor Output varibale to be recv").AsDuplicable();
     AddAttr<std::string>("message_name", "");
+    AddAttr<std::string>("mode", "forward or backward").SetDefault("forward");
     AddAttr<std::vector<std::string>>("send_var_name", "Send Tensor's name");
     AddAttr<std::vector<std::string>>("recv_var_name", "Recv Tensor's name");
     AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
     AddAttr<std::vector<std::string>>("endpoints", "Server endpoint")
+        .SetDefault({"127.0.0.1:6164"});
+    AddAttr<std::vector<std::string>>("next_endpoints", "Server endpoint")
+        .SetDefault({"127.0.0.1:6164"});
+    AddAttr<std::vector<std::string>>("previous_endpoints",
+                                      "Previous Server endpoint")
         .SetDefault({"127.0.0.1:6164"});
     AddComment(R"DOC(
     SendAndRecv operator
@@ -86,7 +98,25 @@ class SendAndRecvOpMaker : public framework::OpProtoAndCheckerMaker {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(send_and_recv, ops::SendAndRecvOp, ops::SendAndRecvOpMaker);
+REGISTER_OP_CUDA_KERNEL(send_and_recv,
+                        ops::SendAndRecvKernel<phi::GPUContext, float>,
+                        ops::SendAndRecvKernel<phi::GPUContext, double>,
+                        ops::SendAndRecvKernel<phi::GPUContext, int>,
+                        ops::SendAndRecvKernel<phi::GPUContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(send_and_recv,
+                       ops::SendAndRecvKernel<phi::CPUContext, float>,
+                       ops::SendAndRecvKernel<phi::CPUContext, double>,
+                       ops::SendAndRecvKernel<phi::CPUContext, int>,
+                       ops::SendAndRecvKernel<phi::CPUContext, int64_t>);
 
-REGISTER_OP_CPU_KERNEL(
-    send_and_recv,
-    ops::SendAndRecvKernel<paddle::platform::CPUDeviceContext, float>)
+REGISTER_OP_VERSION(send_and_recv)
+    .AddCheckpoint(
+        R"ROC(add new attributes [next_endpoints] [previous_endpoints] and [mode])ROC",
+        paddle::framework::compatible::OpVersionDesc()
+            .NewAttr("next_endpoints",
+                     "Server endpoint",
+                     std::vector<std::string>({"127.0.0.1:6164"}))
+            .NewAttr("previous_endpoints",
+                     "Server endpoint",
+                     std::vector<std::string>({"127.0.0.1:6164"}))
+            .NewAttr("mode", "forward or backward", "forward"));

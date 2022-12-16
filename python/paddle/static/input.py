@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
-
 import paddle
-from paddle.fluid import core, Variable
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid import Variable, core
 from paddle.fluid.data_feeder import check_type
-from paddle.fluid.framework import convert_np_dtype_to_dtype_
-from paddle.fluid.framework import static_only
+from paddle.fluid.framework import convert_np_dtype_to_dtype_, static_only
+from paddle.fluid.layer_helper import LayerHelper
 
 __all__ = []
 
@@ -90,11 +87,11 @@ def data(name, shape, dtype=None, lod_level=0):
 
     """
     helper = LayerHelper('data', **locals())
-    check_type(name, 'name', (six.binary_type, six.text_type), 'data')
+    check_type(name, 'name', (bytes, str), 'data')
     check_type(shape, 'shape', (list, tuple), 'data')
 
     shape = list(shape)
-    for i in six.moves.range(len(shape)):
+    for i in range(len(shape)):
         if shape[i] is None:
             shape[i] = -1
 
@@ -107,7 +104,8 @@ def data(name, shape, dtype=None, lod_level=0):
             stop_gradient=True,
             lod_level=lod_level,
             is_data=True,
-            need_check_feed=True)
+            need_check_feed=True,
+        )
     else:
         return helper.create_global_variable(
             name=name,
@@ -117,10 +115,11 @@ def data(name, shape, dtype=None, lod_level=0):
             stop_gradient=True,
             lod_level=lod_level,
             is_data=True,
-            need_check_feed=True)
+            need_check_feed=True,
+        )
 
 
-class InputSpec(object):
+class InputSpec:
     """
     InputSpec describes the signature information of the model input, such as ``shape`` , ``dtype`` , ``name`` .
 
@@ -147,8 +146,8 @@ class InputSpec(object):
             input = InputSpec([None, 784], 'float32', 'x')
             label = InputSpec([None, 1], 'int64', 'label')
 
-            print(input)  # InputSpec(shape=(-1, 784), dtype=VarType.FP32, name=x)
-            print(label)  # InputSpec(shape=(-1, 1), dtype=VarType.INT64, name=label)
+            print(input)  # InputSpec(shape=(-1, 784), dtype=paddle.float32, name=x)
+            print(label)  # InputSpec(shape=(-1, 1), dtype=paddle.int64, name=label)
     """
 
     def __init__(self, shape, dtype='float32', name=None):
@@ -166,7 +165,8 @@ class InputSpec(object):
 
     def __repr__(self):
         return '{}(shape={}, dtype={}, name={})'.format(
-            type(self).__name__, self.shape, self.dtype, self.name)
+            type(self).__name__, self.shape, self.dtype, self.name
+        )
 
     @classmethod
     def from_tensor(cls, tensor, name=None):
@@ -182,23 +182,24 @@ class InputSpec(object):
         Examples:
             .. code-block:: python
 
-                import numpy as np
                 import paddle
                 from paddle.static import InputSpec
 
                 paddle.disable_static()
 
-                x = paddle.to_tensor(np.ones([2, 2], np.float32))
+                x = paddle.ones([2, 2], dtype="float32")
                 x_spec = InputSpec.from_tensor(x, name='x')
-                print(x_spec)  # InputSpec(shape=(2, 2), dtype=VarType.FP32, name=x)
+                print(x_spec)  # InputSpec(shape=(2, 2), dtype=paddle.float32, name=x)
 
         """
-        if isinstance(tensor, (Variable, core.VarBase)):
+        if isinstance(tensor, (Variable, core.VarBase, core.eager.Tensor)):
             return cls(tensor.shape, tensor.dtype, name or tensor.name)
         else:
             raise ValueError(
                 "Input `tensor` should be a Tensor, but received {}.".format(
-                    type(tensor).__name__))
+                    type(tensor).__name__
+                )
+            )
 
     @classmethod
     def from_numpy(cls, ndarray, name=None):
@@ -219,7 +220,7 @@ class InputSpec(object):
 
                 x = np.ones([2, 2], np.float32)
                 x_spec = InputSpec.from_numpy(x, name='x')
-                print(x_spec)  # InputSpec(shape=(2, 2), dtype=VarType.FP32, name=x)
+                print(x_spec)  # InputSpec(shape=(2, 2), dtype=paddle.float32, name=x)
 
         """
         return cls(ndarray.shape, ndarray.dtype, name)
@@ -241,18 +242,23 @@ class InputSpec(object):
 
                 x_spec = InputSpec(shape=[64], dtype='float32', name='x')
                 x_spec.batch(4)
-                print(x_spec) # InputSpec(shape=(4, 64), dtype=VarType.FP32, name=x)
+                print(x_spec) # InputSpec(shape=(4, 64), dtype=paddle.float32, name=x)
 
         """
         if isinstance(batch_size, (list, tuple)):
             if len(batch_size) != 1:
                 raise ValueError(
-                    "Length of batch_size: {} shall be 1, but received {}.".
-                    format(batch_size, len(batch_size)))
+                    "Length of batch_size: {} shall be 1, but received {}.".format(
+                        batch_size, len(batch_size)
+                    )
+                )
             batch_size = batch_size[1]
-        elif not isinstance(batch_size, six.integer_types):
-            raise TypeError("type(batch_size) shall be `int`, but received {}.".
-                            format(type(batch_size).__name__))
+        elif not isinstance(batch_size, int):
+            raise TypeError(
+                "type(batch_size) shall be `int`, but received {}.".format(
+                    type(batch_size).__name__
+                )
+            )
 
         new_shape = [batch_size] + list(self.shape)
         self.shape = tuple(new_shape)
@@ -273,12 +279,13 @@ class InputSpec(object):
 
                 x_spec = InputSpec(shape=[4, 64], dtype='float32', name='x')
                 x_spec.unbatch()
-                print(x_spec) # InputSpec(shape=(64,), dtype=VarType.FP32, name=x)
+                print(x_spec) # InputSpec(shape=(64,), dtype=paddle.float32, name=x)
 
         """
         if len(self.shape) == 0:
             raise ValueError(
-                "Not support to unbatch a InputSpec when len(shape) == 0.")
+                "Not support to unbatch a InputSpec when len(shape) == 0."
+            )
 
         self.shape = self._verify(self.shape[1:])
         return self
@@ -289,19 +296,25 @@ class InputSpec(object):
         """
         if not isinstance(shape, (list, tuple)):
             raise TypeError(
-                "Type of `shape` in InputSpec should be one of (tuple, list), but received {}.".
-                format(type(shape).__name__))
+                "Type of `shape` in InputSpec should be one of (tuple, list), but received {}.".format(
+                    type(shape).__name__
+                )
+            )
         if len(shape) == 0:
             raise ValueError(
-                "`shape` in InputSpec should contain at least 1 element, but received {}.".
-                format(shape))
+                "`shape` in InputSpec should contain at least 1 element, but received {}.".format(
+                    shape
+                )
+            )
 
         for i, ele in enumerate(shape):
             if ele is not None:
-                if not isinstance(ele, six.integer_types):
+                if not isinstance(ele, int):
                     raise ValueError(
-                        "shape[{}] should be an `int`, but received `{}`:{}.".
-                        format(i, type(ele).__name__, ele))
+                        "shape[{}] should be an `int`, but received `{}`:{}.".format(
+                            i, type(ele).__name__, ele
+                        )
+                    )
             if ele is None or ele < -1:
                 shape[i] = -1
 
@@ -326,8 +339,9 @@ class InputSpec(object):
 
     def __eq__(self, other):
         slots = ['shape', 'dtype', 'name']
-        return (type(self) is type(other) and all(
-            getattr(self, attr) == getattr(other, attr) for attr in slots))
+        return type(self) is type(other) and all(
+            getattr(self, attr) == getattr(other, attr) for attr in slots
+        )
 
     def __ne__(self, other):
         return not self == other

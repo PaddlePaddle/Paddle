@@ -26,7 +26,8 @@ class AllToAllOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "AllToAll");
     int ring_id = ctx->Attrs().Get<int>("ring_id");
     PADDLE_ENFORCE_GE(
-        ring_id, 0,
+        ring_id,
+        0,
         platform::errors::InvalidArgument(
             "The ring_id (%d) for alltoall op must be non-negative.", ring_id));
     framework::DDim dim = ctx->GetInputDim("X");
@@ -60,34 +61,16 @@ Scatter tensors from all participators to all participators.
   }
 };
 
-template <typename T>
-class AllToAllOpGradMaker : public framework::SingleGradOpMaker<T> {
- public:
-  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
- protected:
-  void Apply(GradOpPtr<T> retv) const override {
-    retv->SetType("alltoall");
-    retv->SetInput("X", this->OutputGrad("Out"));
-    retv->SetOutput("Out", this->InputGrad("X"));
-    retv->SetAttrMap(this->Attrs());
-  }
-};
-
-DECLARE_INPLACE_OP_INFERER(AllToAllInplaceInferer, {"X", "Out"});
-
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OPERATOR(alltoall, ops::AllToAllOp, ops::AllToAllOpMaker,
-                  ops::AllToAllOpGradMaker<paddle::framework::OpDesc>,
-                  ops::AllToAllOpGradMaker<paddle::imperative::OpBase>,
-                  ops::AllToAllInplaceInferer)
+REGISTER_OP_WITHOUT_GRADIENT(alltoall, ops::AllToAllOp, ops::AllToAllOpMaker)
 
-REGISTER_OP_CPU_KERNEL(alltoall, ops::AllToAllOpCPUKernel<float>,
+REGISTER_OP_CPU_KERNEL(alltoall,
+                       ops::AllToAllOpCPUKernel<float>,
                        ops::AllToAllOpCPUKernel<double>,
                        ops::AllToAllOpCPUKernel<int>,
                        ops::AllToAllOpCPUKernel<int64_t>,

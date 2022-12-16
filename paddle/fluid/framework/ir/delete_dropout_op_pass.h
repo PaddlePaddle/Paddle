@@ -13,10 +13,13 @@
 // limitations under the License.
 
 #pragma once
+#include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/ir/op_compat_sensible_pass.h"
 
 namespace paddle {
 namespace framework {
@@ -30,6 +33,24 @@ class DeleteDropoutOpPass : public FusePassBase {
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
+};
+
+class DeleteDropoutOpXPass : public OpCompatSensiblePass {
+ public:
+  DeleteDropoutOpXPass();
+  virtual ~DeleteDropoutOpXPass() {}
+
+ protected:
+  void ApplyImpl(ir::Graph* graph) const override;
+
+ private:
+  bool DelDropout(Graph* graph,
+                  Node* n,
+                  std::unordered_set<const Node*>* del_node_set) const;
+  Node* GetInputVar(Node* n, const std::string& name) const;
+  Node* GetOutputVar(Node* n, const std::string& name) const;
+  void ReplaceInputVar(Node* op, Node* old_var, Node* new_var) const;
+  void ReplaceOutputVar(Node* op, Node* old_var, Node* new_var) const;
 };
 
 }  // namespace ir

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/operators/flatten_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -21,8 +21,8 @@ template <typename T>
 class Flatten2NPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *in = context.Input<framework::LoDTensor>("X");
-    auto *out = context.Output<framework::LoDTensor>("Out");
+    auto *in = context.Input<phi::DenseTensor>("X");
+    auto *out = context.Output<phi::DenseTensor>("Out");
     auto &axis = context.Attr<int>("axis");
     out->mutable_data(context.GetPlace(), in->type());
     framework::NPUAttributeMap attr_input = {{"axis", axis}};
@@ -39,36 +39,37 @@ template <typename T>
 class Flatten2GradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *d_x = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    auto *d_out =
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+    auto *d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto *d_out = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
-    auto xshape_dims = ctx.Input<framework::LoDTensor>("XShape")->dims();
-    auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
+    auto xshape_dims = ctx.Input<phi::DenseTensor>("XShape")->dims();
+    auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopy(
-        *d_out, ctx.GetPlace(),
-        ctx.template device_context<paddle::platform::NPUDeviceContext>(), d_x);
+        *d_out,
+        ctx.GetPlace(),
+        ctx.template device_context<paddle::platform::NPUDeviceContext>(),
+        d_x);
     d_x->Resize(x_dims);
   }
 };
-
-using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
 class FlattenContiguousRangeNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *X = ctx.Input<Tensor>("X");
-    auto *Out = ctx.Output<Tensor>("Out");
+    auto *X = ctx.Input<phi::DenseTensor>("X");
+    auto *Out = ctx.Output<phi::DenseTensor>("Out");
     int start_axis = ctx.Attr<int>("start_axis");
     int stop_axis = ctx.Attr<int>("stop_axis");
 
     Out->mutable_data<T>(ctx.GetPlace());
 
     const auto &runner =
-        NpuOpRunner("FlattenV2", {*X}, {*Out},
+        NpuOpRunner("FlattenV2",
+                    {*X},
+                    {*Out},
                     {{"axis", static_cast<int32_t>(start_axis)},
                      {"end_axis", static_cast<int32_t>(stop_axis)}});
     auto stream =
@@ -82,17 +83,18 @@ template <typename DeviceContext, typename T>
 class FlattenContiguousRangeGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *d_x = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    auto *d_out =
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+    auto *d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto *d_out = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
-    auto xshape_dims = ctx.Input<framework::LoDTensor>("XShape")->dims();
-    auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
+    auto xshape_dims = ctx.Input<phi::DenseTensor>("XShape")->dims();
+    auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopy(
-        *d_out, ctx.GetPlace(),
-        ctx.template device_context<paddle::platform::NPUDeviceContext>(), d_x);
+        *d_out,
+        ctx.GetPlace(),
+        ctx.template device_context<paddle::platform::NPUDeviceContext>(),
+        d_x);
     d_x->Resize(x_dims);
   }
 };
@@ -102,13 +104,15 @@ class FlattenContiguousRangeGradNPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_NPU_KERNEL(flatten2, ops::Flatten2NPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(flatten2,
+                       ops::Flatten2NPUKernel<float>,
                        ops::Flatten2NPUKernel<double>,
                        ops::Flatten2NPUKernel<uint8_t>,
                        ops::Flatten2NPUKernel<int>,
                        ops::Flatten2NPUKernel<int8_t>,
                        ops::Flatten2NPUKernel<int64_t>);
-REGISTER_OP_NPU_KERNEL(flatten2_grad, ops::Flatten2GradNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(flatten2_grad,
+                       ops::Flatten2GradNPUKernel<float>,
                        ops::Flatten2GradNPUKernel<double>,
                        ops::Flatten2GradNPUKernel<uint8_t>,
                        ops::Flatten2GradNPUKernel<int>,

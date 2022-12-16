@@ -12,18 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
 import unittest
+
 import numpy as np
-import six
+
 import paddle
+import paddle.fluid as fluid
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TensorFill_Test(unittest.TestCase):
     def setUp(self):
         self.shape = [32, 32]
 
-    def test_tensor_fill_true(self):
+    def func_test_tensor_fill_true(self):
         typelist = ['float32', 'float64', 'int32', 'int64', 'float16']
         places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
@@ -32,7 +34,8 @@ class TensorFill_Test(unittest.TestCase):
 
         for p in places:
             np_arr = np.reshape(
-                np.array(six.moves.range(np.prod(self.shape))), self.shape)
+                np.array(range(np.prod(self.shape))), self.shape
+            )
             for dtype in typelist:
                 tensor = paddle.to_tensor(np_arr, place=p, dtype=dtype)
                 target = tensor.numpy()
@@ -40,6 +43,11 @@ class TensorFill_Test(unittest.TestCase):
 
                 tensor.zero_()
                 self.assertEqual((tensor.numpy() == target).all().item(), True)
+
+    def test_tensor_fill_true(self):
+        with _test_eager_guard():
+            self.func_test_tensor_fill_true()
+        self.func_test_tensor_fill_true()
 
 
 if __name__ == '__main__':

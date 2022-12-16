@@ -34,7 +34,8 @@ class SimplifyWithBasicOpsPass : public OpCompatSensiblePass {
   void ApplyImpl(Graph* graph) const override;
 
  private:
-  bool SimplifyDropout(Graph* graph, Node* n,
+  bool SimplifyDropout(Graph* graph,
+                       Node* n,
                        std::unordered_set<const Node*>* del_node_set) const;
 
   Node* GetInputVar(Node* n, const std::string& name) const;

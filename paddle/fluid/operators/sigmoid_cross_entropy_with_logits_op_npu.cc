@@ -10,29 +10,32 @@ Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
-limitations under the Licnse. */
+limitations under the License. */
 
-#include "paddle/fluid/operators/sigmoid_cross_entropy_with_logits_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+const int kIgnoreIndex = -100;
 
 void CheckAttrs(const framework::ExecutionContext& ctx) {
-  // Add this check is is due to Ascend SigmoidCrossEntropyWithLogits
+  // Add this check is due to Ascend SigmoidCrossEntropyWithLogits
   // and SigmoidCrossEntropyWithLogitsGrad does't supoort
   // attr normalize and ignore_index
   bool normalize = ctx.Attr<bool>("normalize");
   int ignore_index = ctx.Attr<int>("ignore_index");
-  PADDLE_ENFORCE_EQ(normalize, false,
+  PADDLE_ENFORCE_EQ(normalize,
+                    false,
                     platform::errors::InvalidArgument(
                         "attr normalize must be false, but got true"));
-  PADDLE_ENFORCE_EQ(ignore_index, kIgnoreIndex,
+  PADDLE_ENFORCE_EQ(ignore_index,
+                    kIgnoreIndex,
                     platform::errors::InvalidArgument(
                         "attr ignore_index must be default %d, but got %d",
-                        kIgnoreIndex, ignore_index));
+                        kIgnoreIndex,
+                        ignore_index));
 }
 
 template <typename DeviceContext, typename T>
@@ -41,10 +44,10 @@ class SigmoidCrossEntropyWithLogitsNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     CheckAttrs(ctx);
 
-    auto* x = ctx.Input<Tensor>("X");
-    auto* label = ctx.Input<Tensor>("Label");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* label = ctx.Input<phi::DenseTensor>("Label");
 
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     auto place = ctx.GetPlace();
 
@@ -67,11 +70,11 @@ class SigmoidCrossEntropyWithLogitsNPUGradKernel
   void Compute(const framework::ExecutionContext& ctx) const override {
     CheckAttrs(ctx);
 
-    auto* x = ctx.Input<Tensor>("X");
-    auto* label = ctx.Input<Tensor>("Label");
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* label = ctx.Input<phi::DenseTensor>("Label");
+    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     auto place = ctx.GetPlace();
 
@@ -81,8 +84,8 @@ class SigmoidCrossEntropyWithLogitsNPUGradKernel
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    const auto& runner_dx = NpuOpRunner("SigmoidCrossEntropyWithLogitsGrad",
-                                        {*x, *label, *dout}, {*dx}, {});
+    const auto& runner_dx = NpuOpRunner(
+        "SigmoidCrossEntropyWithLogitsGrad", {*x, *label, *dout}, {*dx}, {});
     runner_dx.Run(stream);
   }
 };

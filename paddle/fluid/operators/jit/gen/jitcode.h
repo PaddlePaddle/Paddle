@@ -16,8 +16,9 @@
 
 #include <string>
 #include <type_traits>
+
 #include "paddle/fluid/operators/jit/gen_base.h"
-#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 
 #define XBYAK_USE_MMAP_ALLOCATOR
 #include "xbyak/xbyak.h"
@@ -34,9 +35,12 @@ constexpr Xbyak::Operand::Code abi_param1(Xbyak::Operand::RDI),
     abi_param4(Xbyak::Operand::RCX), abi_param5(Xbyak::Operand::R8),
     abi_param6(Xbyak::Operand::R9);
 
-constexpr Xbyak::Operand::Code g_abi_regs[] = {
-    Xbyak::Operand::RBX, Xbyak::Operand::RBP, Xbyak::Operand::R12,
-    Xbyak::Operand::R13, Xbyak::Operand::R14, Xbyak::Operand::R15};
+constexpr Xbyak::Operand::Code g_abi_regs[] = {Xbyak::Operand::RBX,
+                                               Xbyak::Operand::RBP,
+                                               Xbyak::Operand::R12,
+                                               Xbyak::Operand::R13,
+                                               Xbyak::Operand::R14,
+                                               Xbyak::Operand::R15};
 
 constexpr int num_g_abi_regs = sizeof(g_abi_regs) / sizeof(g_abi_regs[0]);
 
@@ -45,6 +49,7 @@ using reg32_t = const Xbyak::Reg32;
 using xmm_t = const Xbyak::Xmm;
 using ymm_t = const Xbyak::Ymm;
 using zmm_t = const Xbyak::Zmm;
+using opmask_t = const Xbyak::Opmask;
 using Label = Xbyak::Label;
 
 typedef enum {
@@ -87,7 +92,7 @@ class JitCode : public GenBase, public Xbyak::CodeGenerator {
     for (int i = 0; i < num_g_abi_regs; ++i) {
       push(Xbyak::Reg64(g_abi_regs[i]));
     }
-    if (platform::MayIUse(platform::avx512f)) {
+    if (phi::backends::cpu::MayIUse(phi::backends::cpu::avx512f)) {
       mov(reg_EVEX_max_8b_offt, 2 * EVEX_max_8b_offt);
     }
   }
@@ -100,7 +105,8 @@ class JitCode : public GenBase, public Xbyak::CodeGenerator {
   void L(const char* label) { Xbyak::CodeGenerator::L(label); }
   void L(Xbyak::Label& label) { Xbyak::CodeGenerator::L(label); }  // NOLINT
   // Enhanced vector extension
-  Xbyak::Address EVEX_compress_addr(Xbyak::Reg64 base, int offt,
+  Xbyak::Address EVEX_compress_addr(Xbyak::Reg64 base,
+                                    int offt,
                                     bool bcast = false) {
     int scale = 0;
     // Learn from https://github.com/intel/mkl-dnn

@@ -12,6 +12,7 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 #include <gtest/gtest.h>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/inference/tensorrt/convert/ut_helper.h"
 
@@ -57,4 +58,4 @@ TEST(DropoutOpConverter, main) {
 }  // namespace inference
 }  // namespace paddle
 
-USE_OP(dropout);
+USE_OP_ITSELF(dropout);

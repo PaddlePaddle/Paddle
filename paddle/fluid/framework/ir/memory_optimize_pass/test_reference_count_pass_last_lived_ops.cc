@@ -20,11 +20,14 @@
 #include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-USE_OP(scale);
-USE_OP(elementwise_mul);
-USE_OP(elementwise_add);
-USE_OP(elementwise_add_grad);
+USE_OP_ITSELF(scale);
+USE_OP_ITSELF(elementwise_mul);
+USE_OP_ITSELF(elementwise_add);
+USE_OP_ITSELF(elementwise_add_grad);
+
+PD_DECLARE_KERNEL(scale, CPU, ALL_LAYOUT);
 
 DECLARE_double(eager_delete_tensor_gb);
 
@@ -45,14 +48,17 @@ static std::vector<platform::Place> CreatePlaces(size_t num, bool use_cuda) {
   return result;
 }
 
-static void NewVar(BlockDesc *block, const std::string &name,
+static void NewVar(BlockDesc *block,
+                   const std::string &name,
                    const std::vector<int64_t> &shape) {
   auto *var_desc = block->Var(name);
   var_desc->SetShape(shape);
 }
 
-static void AppendOp(BlockDesc *block, const std::string &type,
-                     VariableNameMap inputs, VariableNameMap outputs,
+static void AppendOp(BlockDesc *block,
+                     const std::string &type,
+                     VariableNameMap inputs,
+                     VariableNameMap outputs,
                      AttributeMap attrs) {
   auto &op_info = OpInfoMap::Instance().Get(type);
   if (op_info.Checker()) {
@@ -91,9 +97,14 @@ class ReferenceCountPassTestHelper {
     details::ExecutionStrategy exec_strategy;
     exec_strategy.use_device_ = use_cuda ? p::kCUDA : p::kCPU;
 
-    executor_.reset(new ParallelExecutor(CreatePlaces(1, use_cuda), {}, "",
-                                         &scope_, {}, exec_strategy,
-                                         build_strategy, &graph_));
+    executor_.reset(new ParallelExecutor(CreatePlaces(1, use_cuda),
+                                         {},
+                                         "",
+                                         &scope_,
+                                         {},
+                                         exec_strategy,
+                                         build_strategy,
+                                         &graph_));
 
     auto ref_cnt_pass =
         ir::PassRegistry::Instance().Get("reference_count_pass");
@@ -168,16 +179,27 @@ TEST(test_reference_count_pass, test_no_need_buffer_var_shrink) {
   NewVar(block, x0, shape);
   AppendOp(block, "scale", {{"X", {x0}}}, {{"Out", {x1}}}, {{"scale", 1.0f}});
   AppendOp(block, "scale", {{"X", {x1}}}, {{"Out", {x2}}}, {{"scale", 2.0f}});
-  AppendOp(block, "elementwise_mul", {{"X", {x1}}, {"Y", {x2}}},
-           {{"Out", {x3}}}, {});
+  AppendOp(block,
+           "elementwise_mul",
+           {{"X", {x1}}, {"Y", {x2}}},
+           {{"Out", {x3}}},
+           {});
   AppendOp(block, "scale", {{"X", {x3}}}, {{"Out", {x1}}}, {{"scale", 3.0f}});
-  AppendOp(block, "elementwise_add_grad",
+  AppendOp(block,
+           "elementwise_add_grad",
            {{GradVarName("Out"), {x3}}, {"X", {x2}}, {"Y", {x1}}},
-           {{GradVarName("X"), {x4}}, {GradVarName("Y"), {x5}}}, {});
-  AppendOp(block, "elementwise_mul", {{"X", {x4}}, {"Y", {x5}}},
-           {{"Out", {x6}}}, {});
-  AppendOp(block, "elementwise_add", {{"X", {x5}}, {"Y", {x5}}},
-           {{"Out", {x7}}}, {});
+           {{GradVarName("X"), {x4}}, {GradVarName("Y"), {x5}}},
+           {});
+  AppendOp(block,
+           "elementwise_mul",
+           {{"X", {x4}}, {"Y", {x5}}},
+           {{"Out", {x6}}},
+           {});
+  AppendOp(block,
+           "elementwise_add",
+           {{"X", {x5}}, {"Y", {x5}}},
+           {{"Out", {x7}}},
+           {});
 
   std::vector<bool> use_cuda_list{false};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -186,14 +208,14 @@ TEST(test_reference_count_pass, test_no_need_buffer_var_shrink) {
   for (auto use_cuda : use_cuda_list) {
     ReferenceCountPassTestHelper helper(program, use_cuda);
     ASSERT_TRUE(helper.IsLastLivedOps(x0, {"scale"}));
-    ASSERT_EQ(
-        BOOST_GET_CONST(float, helper.LastLivedOps(x0)[0]->Attrs().at("scale")),
-        1.0f);
+    ASSERT_EQ(PADDLE_GET_CONST(float,
+                               helper.LastLivedOps(x0)[0]->Attrs().at("scale")),
+              1.0f);
 
     ASSERT_TRUE(helper.IsLastLivedOps(x1, {"scale"}));
-    ASSERT_EQ(
-        BOOST_GET_CONST(float, helper.LastLivedOps(x1)[0]->Attrs().at("scale")),
-        3.0f);
+    ASSERT_EQ(PADDLE_GET_CONST(float,
+                               helper.LastLivedOps(x1)[0]->Attrs().at("scale")),
+              3.0f);
 
     ASSERT_TRUE(helper.IsLastLivedOps(x2, {"elementwise_mul"}));
     ASSERT_TRUE(helper.IsLastLivedOps(x3, {"elementwise_add_grad"}));

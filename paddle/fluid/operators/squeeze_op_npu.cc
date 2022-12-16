@@ -18,7 +18,8 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(
-    squeeze, ops::SqueezeKernel<plat::NPUDeviceContext, float>,
+    squeeze,
+    ops::SqueezeKernel<plat::NPUDeviceContext, float>,
     ops::SqueezeKernel<plat::NPUDeviceContext, double>,
     ops::SqueezeKernel<plat::NPUDeviceContext, plat::float16>,
     ops::SqueezeKernel<plat::NPUDeviceContext, bool>,
@@ -27,7 +28,8 @@ REGISTER_OP_NPU_KERNEL(
     ops::SqueezeKernel<plat::NPUDeviceContext, int8_t>,
     ops::SqueezeKernel<plat::NPUDeviceContext, int64_t>);
 REGISTER_OP_NPU_KERNEL(
-    squeeze2, ops::SqueezeKernel<plat::NPUDeviceContext, float>,
+    squeeze2,
+    ops::SqueezeKernel<plat::NPUDeviceContext, float>,
     ops::SqueezeKernel<plat::NPUDeviceContext, double>,
     ops::SqueezeKernel<plat::NPUDeviceContext, plat::float16>,
     ops::SqueezeKernel<plat::NPUDeviceContext, bool>,
@@ -36,7 +38,8 @@ REGISTER_OP_NPU_KERNEL(
     ops::SqueezeKernel<plat::NPUDeviceContext, int8_t>,
     ops::SqueezeKernel<plat::NPUDeviceContext, int64_t>);
 REGISTER_OP_NPU_KERNEL(
-    squeeze_grad, ops::SqueezeGradKernel<plat::NPUDeviceContext, float>,
+    squeeze_grad,
+    ops::SqueezeGradKernel<plat::NPUDeviceContext, float>,
     ops::SqueezeGradKernel<plat::NPUDeviceContext, double>,
     ops::SqueezeGradKernel<plat::NPUDeviceContext, plat::float16>,
     ops::SqueezeGradKernel<plat::NPUDeviceContext, bool>,
@@ -45,7 +48,8 @@ REGISTER_OP_NPU_KERNEL(
     ops::SqueezeGradKernel<plat::NPUDeviceContext, int8_t>,
     ops::SqueezeGradKernel<plat::NPUDeviceContext, int64_t>);
 REGISTER_OP_NPU_KERNEL(
-    squeeze2_grad, ops::Squeeze2GradKernel<plat::NPUDeviceContext, float>,
+    squeeze2_grad,
+    ops::Squeeze2GradKernel<plat::NPUDeviceContext, float>,
     ops::Squeeze2GradKernel<plat::NPUDeviceContext, double>,
     ops::Squeeze2GradKernel<plat::NPUDeviceContext, plat::float16>,
     ops::Squeeze2GradKernel<plat::NPUDeviceContext, bool>,

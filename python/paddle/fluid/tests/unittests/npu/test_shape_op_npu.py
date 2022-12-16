@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -49,6 +48,26 @@ class TestShape(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(self.place)
+
+
+class TestShape_fp16(TestShape):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestShape_double(TestShape):
+    def init_dtype(self):
+        self.dtype = np.float64
+
+
+class TestShape_int32(TestShape):
+    def init_dtype(self):
+        self.dtype = np.int32
+
+
+class TestShape_int64(TestShape):
+    def init_dtype(self):
+        self.dtype = np.int64
 
 
 if __name__ == '__main__':

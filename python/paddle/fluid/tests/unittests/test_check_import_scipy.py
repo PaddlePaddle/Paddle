@@ -11,9 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import six.moves.builtins as builtins
-from paddle.check_import_scipy import check_import_scipy
+import builtins
 import unittest
+
+from paddle.check_import_scipy import check_import_scipy
 
 
 def my_import(name, globals=None, locals=None, fromlist=(), level=0):

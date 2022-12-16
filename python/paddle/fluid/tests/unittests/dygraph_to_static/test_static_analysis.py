@@ -12,16 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-from paddle.utils import gast
 import inspect
-import numpy as np
-import paddle
-import paddle.fluid as fluid
 import unittest
 
-from paddle.fluid.dygraph.dygraph_to_static import NodeVarType, StaticAnalysisVisitor
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+from paddle.jit.dy2static import NodeVarType, StaticAnalysisVisitor
+from paddle.utils import gast
 
 
 def func_to_test1(a, b):
@@ -57,6 +56,8 @@ def func_to_test3():
     h = None
     i = False
     j = None + 1
+    k: float = 1.0
+    l: paddle.Tensor = paddle.to_tensor([1, 2])
 
 
 result_var_type3 = {
@@ -69,7 +70,9 @@ result_var_type3 = {
     'g': {NodeVarType.STRING},
     'h': {NodeVarType.NONE},
     'i': {NodeVarType.BOOLEAN},
-    'j': {NodeVarType.UNKNOWN}
+    'j': {NodeVarType.UNKNOWN},
+    'k': {NodeVarType.FLOAT},
+    'l': {NodeVarType.PADDLE_RETURN_TYPES},
 }
 
 
@@ -85,7 +88,7 @@ result_var_type4 = {
     'a': {NodeVarType.NUMPY_NDARRAY},
     'b': {NodeVarType.NUMPY_NDARRAY},
     'c': {NodeVarType.TENSOR},
-    'd': {NodeVarType.TENSOR}
+    'd': {NodeVarType.TENSOR},
 }
 
 
@@ -136,16 +139,43 @@ result_var_type6 = {
     'i': {NodeVarType.INT},
     'x': {NodeVarType.INT},
     'y': {NodeVarType.INT},
-    'add': {NodeVarType.INT}
+    'add': {NodeVarType.INT},
+}
+
+
+def func_to_test7(a: int, b: float, c: paddle.Tensor, d: float = 'diff'):
+    a = True
+    e, f = paddle.shape(c)
+    g: paddle.Tensor = len(c)
+
+
+result_var_type7 = {
+    'a': {NodeVarType.BOOLEAN},
+    'b': {NodeVarType.FLOAT},
+    'c': {NodeVarType.TENSOR},
+    'd': {NodeVarType.STRING},
+    'e': {NodeVarType.PADDLE_RETURN_TYPES},
+    'f': {NodeVarType.PADDLE_RETURN_TYPES},
+    'g': {NodeVarType.TENSOR},
 }
 
 test_funcs = [
-    func_to_test1, func_to_test2, func_to_test3, func_to_test4, func_to_test5,
-    func_to_test6
+    func_to_test1,
+    func_to_test2,
+    func_to_test3,
+    func_to_test4,
+    func_to_test5,
+    func_to_test6,
+    func_to_test7,
 ]
 result_var_type = [
-    result_var_type1, result_var_type2, result_var_type3, result_var_type4,
-    result_var_type5, result_var_type6
+    result_var_type1,
+    result_var_type2,
+    result_var_type3,
+    result_var_type4,
+    result_var_type5,
+    result_var_type6,
+    result_var_type7,
 ]
 
 

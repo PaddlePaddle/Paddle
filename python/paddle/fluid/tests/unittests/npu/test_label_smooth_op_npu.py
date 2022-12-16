@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -26,8 +25,9 @@ paddle.enable_static()
 SEED = 2021
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
+@unittest.skipIf(
+    not paddle.is_compiled_with_npu(), "core is not compiled with NPU"
+)
 class TestLabelSmoothOp(OpTest):
     def setUp(self):
         self.set_npu()
@@ -62,8 +62,9 @@ class TestLabelSmoothOp(OpTest):
         self.attrs = {"epsilon": epsilon}
 
     def set_outputs(self):
-        dist = None if 'PriorDist' not in self.inputs else self.inputs[
-            'PriorDist']
+        dist = (
+            None if 'PriorDist' not in self.inputs else self.inputs['PriorDist']
+        )
         out = self.calc_out(self.inputs['X'], self.attrs['epsilon'], dist)
         self.outputs = {'Out': out}
 
@@ -78,13 +79,16 @@ class TestLabelSmoothOp(OpTest):
 
     def test_check_grad(self):
         if self.dtype == np.float16:
-            return
-        self.check_grad_with_place(self.place, ['X'], 'Out')
+            self.check_grad_with_place(
+                self.place, ['X'], 'Out', max_relative_error=0.5
+            )
+        else:
+            self.check_grad_with_place(self.place, ['X'], 'Out')
 
 
 class TestLabelSmoothOpWithPriorDist(TestLabelSmoothOp):
     def set_inputs(self):
-        super(TestLabelSmoothOpWithPriorDist, self).set_inputs()
+        super().set_inputs()
         label_dim = self.inputs['X'].shape[-1]
         dist = np.random.random((1, label_dim)).astype(self.dtype)
         self.inputs['PriorDist'] = dist
@@ -92,13 +96,13 @@ class TestLabelSmoothOpWithPriorDist(TestLabelSmoothOp):
 
 class TestLabelSmoothOp3D(TestLabelSmoothOp):
     def set_inputs(self):
-        super(TestLabelSmoothOp3D, self).set_inputs()
+        super().set_inputs()
         self.inputs['X'].reshape([2, -1, self.inputs['X'].shape[-1]])
 
 
 class TestLabelSmoothOpWithPriorDist3D(TestLabelSmoothOpWithPriorDist):
     def set_inputs(self):
-        super(TestLabelSmoothOpWithPriorDist3D, self).set_inputs()
+        super().set_inputs()
         self.inputs['X'].reshape([2, -1, self.inputs['X'].shape[-1]])
 
 

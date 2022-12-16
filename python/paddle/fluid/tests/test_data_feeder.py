@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import paddle.fluid as fluid
 import unittest
+
 import paddle
+import paddle.fluid as fluid
 
 paddle.enable_static()
 
@@ -43,7 +42,8 @@ class TestDataFeeder(unittest.TestCase):
         # lod_level = 1
         # each sentence has a different number of words
         sentences = fluid.layers.data(
-            name='sentences', shape=[1], dtype='int64', lod_level=1)
+            name='sentences', shape=[1], dtype='int64', lod_level=1
+        )
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
         feeder = fluid.DataFeeder([sentences, label], fluid.CPUPlace())
 
@@ -51,19 +51,22 @@ class TestDataFeeder(unittest.TestCase):
         # data = [[1, 2, 3], [4, 5], [6, 7, 8, 9]]
         # label = [1] * len(data)
         result = feeder.feed(
-            [([1, 2, 3], [1]), ([4, 5], [1]), ([6, 7, 8, 9], [1])])
+            [([1, 2, 3], [1]), ([4, 5], [1]), ([6, 7, 8, 9], [1])]
+        )
 
         self.assertEqual(result['sentences'].shape(), [9, 1])
         self.assertEqual(result['label'].shape(), [3, 1])
-        self.assertEqual(result['sentences'].recursive_sequence_lengths(),
-                         [[3, 2, 4]])
+        self.assertEqual(
+            result['sentences'].recursive_sequence_lengths(), [[3, 2, 4]]
+        )
         self.assertEqual(result['label'].recursive_sequence_lengths(), [])
 
     def test_lod_level_2_converter(self):
         # lod_level = 2
         # paragraphs -> sentences -> words
         paragraphs = fluid.layers.data(
-            name='paragraphs', shape=[1], dtype='int64', lod_level=2)
+            name='paragraphs', shape=[1], dtype='int64', lod_level=2
+        )
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
         feeder = fluid.DataFeeder([paragraphs, label], fluid.CPUPlace())
 
@@ -71,12 +74,15 @@ class TestDataFeeder(unittest.TestCase):
         # data = [[[1, 2, 3], [4, 5]], [[6, 7, 8, 9]]]
         # label = [1] * len(data)
         result = feeder.feed(
-            [([[1, 2, 3], [4, 5]], [1]), ([[6, 7, 8, 9]], [1])])
+            [([[1, 2, 3], [4, 5]], [1]), ([[6, 7, 8, 9]], [1])]
+        )
 
         self.assertEqual(result['paragraphs'].shape(), [9, 1])
         self.assertEqual(result['label'].shape(), [2, 1])
-        self.assertEqual(result['paragraphs'].recursive_sequence_lengths(),
-                         [[2, 1], [3, 2, 4]])
+        self.assertEqual(
+            result['paragraphs'].recursive_sequence_lengths(),
+            [[2, 1], [3, 2, 4]],
+        )
         self.assertEqual(result['label'].recursive_sequence_lengths(), [])
 
 

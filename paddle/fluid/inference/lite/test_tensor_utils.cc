@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/lite/tensor_utils.h"
 
@@ -21,9 +22,9 @@ namespace inference {
 namespace lite {
 namespace utils {
 
-using paddle::lite_api::TargetType;
-using paddle::lite_api::PrecisionType;
 using paddle::lite_api::DataLayoutType;
+using paddle::lite_api::PrecisionType;
+using paddle::lite_api::TargetType;
 
 TEST(LiteEngineOp, GetNativePlace) {
   ::testing::FLAGS_gtest_death_test_style = "threadsafe";
@@ -67,9 +68,8 @@ TEST(LiteEngineOp, GetNativePrecisionType) {
 
 TEST(LiteEngineOp, GetNativeLayoutType) {
   ::testing::FLAGS_gtest_death_test_style = "threadsafe";
-  framework::DataLayout GetNativeLayoutType(const DataLayoutType& type);
-  ASSERT_EQ(GetNativeLayoutType(DataLayoutType::kNCHW),
-            framework::DataLayout::kNCHW);
+  phi::DataLayout GetNativeLayoutType(const DataLayoutType& type);
+  ASSERT_EQ(GetNativeLayoutType(DataLayoutType::kNCHW), phi::DataLayout::kNCHW);
   EXPECT_ANY_THROW(GetNativeLayoutType(DataLayoutType::kNHWC));
 }
 
@@ -103,7 +103,7 @@ TEST(LiteEngineOp, GetLiteTensorDataPtr) {
 void test_tensor_copy(const platform::DeviceContext& ctx) {
   // Create LoDTensor.
   std::vector<float> vector({1, 2, 3, 4});
-  framework::LoDTensor lod_tensor;
+  phi::DenseTensor lod_tensor;
   framework::TensorFromVector(vector, ctx, &lod_tensor);
   framework::LoD lod({{0, 2, 4}});
   lod_tensor.Resize({4, 1});
@@ -113,23 +113,22 @@ void test_tensor_copy(const platform::DeviceContext& ctx) {
   paddle::lite_api::Tensor lite_api_tensor(&lite_tensor);
   TensorCopyAsync(&lite_api_tensor, lod_tensor, ctx);
   // Copy to LoDTensor.
-  framework::LoDTensor lod_tensor_n;
+  phi::DenseTensor lod_tensor_n;
   TensorCopyAsync(&lod_tensor_n, lite_api_tensor, ctx);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(ctx.GetPlace())) {
-    platform::GpuStreamSync(
-        static_cast<const platform::CUDADeviceContext&>(ctx).stream());
+    platform::GpuStreamSync(static_cast<const phi::GPUContext&>(ctx).stream());
   }
 #endif
   std::vector<float> result;
-  TensorToVector(lod_tensor_n, ctx, &result);
+  paddle::framework::TensorToVector(lod_tensor_n, ctx, &result);
   ASSERT_EQ(result, vector);
   ASSERT_EQ(lod_tensor_n.lod(), lod_tensor.lod());
 }
 
 void test_tensor_share(const platform::DeviceContext& ctx) {
   std::vector<float> vector({1, 2, 3, 4});
-  framework::LoDTensor lod_tensor;
+  phi::DenseTensor lod_tensor;
   framework::TensorFromVector(vector, ctx, &lod_tensor);
   framework::LoD lod({{0, 2, 4}});
   lod_tensor.Resize({4, 1});
@@ -139,10 +138,10 @@ void test_tensor_share(const platform::DeviceContext& ctx) {
   paddle::lite_api::Tensor lite_api_tensor(&lite_tensor);
   TensorDataShare(&lite_api_tensor, &lod_tensor);
   // Copy to LoDTensor.
-  framework::LoDTensor lod_tensor_n;
+  phi::DenseTensor lod_tensor_n;
   TensorCopyAsync(&lod_tensor_n, lite_api_tensor, ctx);
   std::vector<float> result;
-  TensorToVector(lod_tensor_n, ctx, &result);
+  paddle::framework::TensorToVector(lod_tensor_n, ctx, &result);
   ASSERT_EQ(result, vector);
   ASSERT_EQ(lod_tensor_n.lod(), lod_tensor.lod());
 }
@@ -151,22 +150,12 @@ TEST(LiteEngineOp, TensorCopyAsync) {
   auto* ctx_cpu =
       platform::DeviceContextPool::Instance().Get(platform::CPUPlace());
   test_tensor_copy(*ctx_cpu);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  auto* ctx_gpu =
-      platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0));
-  test_tensor_copy(*ctx_gpu);
-#endif
 }
 
 TEST(LiteEngineOp, TensorShare) {
   auto* ctx_cpu =
       platform::DeviceContextPool::Instance().Get(platform::CPUPlace());
   test_tensor_share(*ctx_cpu);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  auto* ctx_gpu =
-      platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0));
-  test_tensor_share(*ctx_gpu);
-#endif
 }
 
 }  // namespace utils

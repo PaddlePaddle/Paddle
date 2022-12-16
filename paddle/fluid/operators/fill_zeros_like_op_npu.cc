@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fill_zeros_like_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -22,8 +22,8 @@ template <typename DeviceContext, typename T>
 class FillZerosLikeNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<framework::Tensor>("X");
-    auto* out = context.Output<framework::Tensor>("Out");
+    auto* x = context.Input<phi::DenseTensor>("X");
+    auto* out = context.Output<phi::DenseTensor>("Out");
 
     out->mutable_data<T>(context.GetPlace());
     auto stream =

@@ -73,20 +73,22 @@ TEST(tensorrt_tester_ppyolov2_r50vd, multi_thread2_trt_fp32_bz1) {
                   FLAGS_modeldir + "/model.pdiparams");
   config.EnableUseGpu(100, 0);
   config.EnableTensorRtEngine(
-      1 << 20, 2, 10, paddle_infer::PrecisionType::kFloat32, false, false);
+      1 << 28, 2, 10, paddle_infer::PrecisionType::kFloat32, false, false);
   LOG(INFO) << config.Summary();
   // get groudtruth by disbale ir
   paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);
-  SingleThreadPrediction(pred_pool_no_ir.Retrive(0), &input_data_map,
-                         &truth_output_data, 1);
+  SingleThreadPrediction(
+      pred_pool_no_ir.Retrive(0), &input_data_map, &truth_output_data, 1);
 
   // get infer results from multi threads
   std::vector<std::thread> threads;
   services::PredictorPool pred_pool(config, thread_num);
   for (int i = 0; i < thread_num; ++i) {
     threads.emplace_back(paddle::test::SingleThreadPrediction,
-                         pred_pool.Retrive(i), &input_data_map,
-                         &infer_output_data, 2);
+                         pred_pool.Retrive(i),
+                         &input_data_map,
+                         &infer_output_data,
+                         2);
   }
 
   // thread join & check outputs
@@ -123,16 +125,18 @@ TEST(mkldnn_tester_ppyolov2_r50vd, multi_thread2_mkl_bz2) {
   LOG(INFO) << config.Summary();
   // get groudtruth by disbale ir
   paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);
-  SingleThreadPrediction(pred_pool_no_ir.Retrive(0), &input_data_map,
-                         &truth_output_data, 1);
+  SingleThreadPrediction(
+      pred_pool_no_ir.Retrive(0), &input_data_map, &truth_output_data, 1);
 
   // get infer results from multi threads
   std::vector<std::thread> threads;
   services::PredictorPool pred_pool(config, thread_num);
   for (int i = 0; i < thread_num; ++i) {
     threads.emplace_back(paddle::test::SingleThreadPrediction,
-                         pred_pool.Retrive(i), &input_data_map,
-                         &infer_output_data, 2);
+                         pred_pool.Retrive(i),
+                         &input_data_map,
+                         &infer_output_data,
+                         2);
   }
 
   // thread join & check outputs
@@ -150,6 +154,6 @@ TEST(mkldnn_tester_ppyolov2_r50vd, multi_thread2_mkl_bz2) {
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
-  ::google::ParseCommandLineFlags(&argc, &argv, true);
+  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
   return RUN_ALL_TESTS();
 }

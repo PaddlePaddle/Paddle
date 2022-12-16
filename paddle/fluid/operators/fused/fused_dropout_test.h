@@ -24,15 +24,17 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/layer_norm_kernel.cu.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/layer_norm_kernel.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 namespace memory = paddle::memory;
 
-USE_OP(dropout);
-USE_OP(layer_norm);
+USE_OP_ITSELF(dropout);
+USE_OP_ITSELF(layer_norm);
 
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
@@ -43,21 +45,26 @@ using LayerNormParamType = typename CudnnDataType<T>::BatchNormParamType;
  * @brief call paddle dropout op
  */
 template <typename T>
-void Dropout(const std::vector<T> &x, const framework::DDim &x_dim,
-             std::vector<T> *out, std::vector<uint8_t> *mask,
-             const platform::CUDADeviceContext &ctx, uint64_t seed,
-             float dropout_prob, bool is_upscale_in_train, bool is_test) {
+void Dropout(const std::vector<T> &x,
+             const framework::DDim &x_dim,
+             std::vector<T> *out,
+             std::vector<uint8_t> *mask,
+             const phi::GPUContext &ctx,
+             uint64_t seed,
+             float dropout_prob,
+             bool is_upscale_in_train,
+             bool is_test) {
   framework::Scope scope;
   auto var_x = scope.Var("X");
-  auto tensor_x = var_x->GetMutable<framework::LoDTensor>();
+  auto tensor_x = var_x->GetMutable<phi::DenseTensor>();
   framework::TensorFromVector(x, ctx, tensor_x);
   tensor_x->Resize(x_dim);
 
   auto var_out = scope.Var("Out");
-  auto tensor_out = var_out->GetMutable<framework::LoDTensor>();
+  auto tensor_out = var_out->GetMutable<phi::DenseTensor>();
 
   auto var_mask = scope.Var("Mask");
-  auto tensor_mask = var_mask->GetMutable<framework::LoDTensor>();
+  auto tensor_mask = var_mask->GetMutable<phi::DenseTensor>();
 
   framework::AttributeMap attrs;
   attrs.insert({"fix_seed", 1});
@@ -86,24 +93,27 @@ void Dropout(const std::vector<T> &x, const framework::DDim &x_dim,
  * @brief call paddle dropout_grad op
  */
 template <typename T>
-void DropoutGrad(std::vector<T> *dx, const framework::DDim &x_dim,
-                 const std::vector<T> &dout, const std::vector<uint8_t> &mask,
-                 const platform::CUDADeviceContext &ctx, float dropout_prob,
+void DropoutGrad(std::vector<T> *dx,
+                 const framework::DDim &x_dim,
+                 const std::vector<T> &dout,
+                 const std::vector<uint8_t> &mask,
+                 const phi::GPUContext &ctx,
+                 float dropout_prob,
                  bool is_upscale_in_train) {
   framework::Scope scope;
   const size_t n = x_dim[0] * x_dim[1];
   auto var_out = scope.Var("DOut");
-  auto tensor_out = var_out->GetMutable<framework::LoDTensor>();
+  auto tensor_out = var_out->GetMutable<phi::DenseTensor>();
   framework::TensorFromVector(dout, ctx, tensor_out);
   tensor_out->Resize(x_dim);
 
   auto var_mask = scope.Var("Mask");
-  auto tensor_mask = var_mask->GetMutable<framework::LoDTensor>();
+  auto tensor_mask = var_mask->GetMutable<phi::DenseTensor>();
   framework::TensorFromVector(mask, ctx, tensor_mask);
   tensor_mask->Resize(x_dim);
 
   auto var_dx = scope.Var("DX");
-  auto tensor_dx = var_dx->GetMutable<framework::LoDTensor>();
+  auto tensor_dx = var_dx->GetMutable<phi::DenseTensor>();
 
   framework::AttributeMap attrs;
   attrs.insert({"dropout_prob", dropout_prob});
@@ -115,8 +125,10 @@ void DropoutGrad(std::vector<T> *dx, const framework::DDim &x_dim,
   }
 
   auto op = framework::OpRegistry::CreateOp(
-      "dropout_grad", {{"Out@GRAD", {"DOut"}}, {"Mask", {"Mask"}}},
-      {{"X@GRAD", {"DX"}}}, attrs);
+      "dropout_grad",
+      {{"Out@GRAD", {"DOut"}}, {"Mask", {"Mask"}}},
+      {{"X@GRAD", {"DX"}}},
+      attrs);
   op->Run(scope, ctx.GetPlace());
 
   framework::TensorToVector(*tensor_dx, ctx, dx);
@@ -131,46 +143,59 @@ void LayerNorm(const std::vector<LayerNormParamType<T>> &scale,
                const std::vector<LayerNormParamType<T>> &bias,
                const std::vector<T> &x,
                std::vector<LayerNormParamType<T>> *means,
-               std::vector<LayerNormParamType<T>> *vars, std::vector<T> *y,
-               const float epsilon, const int rows, const int cols,
-               const platform::CUDADeviceContext &ctx) {
+               std::vector<LayerNormParamType<T>> *vars,
+               std::vector<T> *y,
+               const float epsilon,
+               const int rows,
+               const int cols,
+               const phi::GPUContext &ctx) {
   framework::Scope scope;
   auto place = ctx.GetPlace();
+  paddle::optional<phi::DenseTensor> scale_opt;
   if (scale.size() > 0) {
     auto var_scale = scope.Var("Scale");
-    auto tensor_scale = var_scale->GetMutable<framework::LoDTensor>();
+    auto tensor_scale = var_scale->GetMutable<phi::DenseTensor>();
     framework::TensorFromVector(scale, ctx, tensor_scale);
     tensor_scale->Resize({cols});
+    scale_opt = *tensor_scale;
   }
 
+  paddle::optional<phi::DenseTensor> bias_opt;
   if (bias.size() > 0) {
     auto var_bias = scope.Var("Bias");
-    auto tensor_bias = var_bias->GetMutable<framework::LoDTensor>();
+    auto tensor_bias = var_bias->GetMutable<phi::DenseTensor>();
     framework::TensorFromVector(bias, ctx, tensor_bias);
     tensor_bias->Resize({cols});
+
+    bias_opt = *tensor_bias;
   }
 
   auto var_x = scope.Var("X");
-  auto tensor_x = var_x->GetMutable<framework::LoDTensor>();
+  auto tensor_x = var_x->GetMutable<phi::DenseTensor>();
   framework::TensorFromVector(x, ctx, tensor_x);
   tensor_x->Resize({rows, cols});
 
   auto var_y = scope.Var("Y");
-  auto tensor_y = var_y->GetMutable<framework::LoDTensor>();
+  auto tensor_y = var_y->GetMutable<phi::DenseTensor>();
+  tensor_y->Resize({rows, cols});
 
   auto var_mean = scope.Var("Mean");
-  auto tensor_mean = var_mean->GetMutable<framework::LoDTensor>();
+  auto tensor_mean = var_mean->GetMutable<phi::DenseTensor>();
+  tensor_mean->Resize({rows});
 
   auto var_variance = scope.Var("Variance");
-  auto tensor_variance = var_variance->GetMutable<framework::LoDTensor>();
-
-  framework::AttributeMap attrs;
-  attrs.insert({"epsilon", epsilon});
-
-  auto op = framework::OpRegistry::CreateOp(
-      "layer_norm", {{"X", {"X"}}, {"Scale", {"Scale"}}, {"Bias", {"Bias"}}},
-      {{"Y", {"Y"}}, {"Mean", {"Mean"}}, {"Variance", {"Variance"}}}, attrs);
-  op->Run(scope, place);
+  auto tensor_variance = var_variance->GetMutable<phi::DenseTensor>();
+  tensor_variance->Resize({rows});
+  ctx.Wait();
+  phi::LayerNormKernel<T>(static_cast<const phi::GPUContext &>(ctx),
+                          *tensor_x,
+                          scale_opt,
+                          bias_opt,
+                          1e-5,
+                          1,
+                          tensor_y,
+                          tensor_mean,
+                          tensor_variance);
   framework::TensorToVector(*tensor_y, ctx, y);
   framework::TensorToVector(*tensor_mean, ctx, means);
   framework::TensorToVector(*tensor_variance, ctx, vars);
@@ -178,8 +203,10 @@ void LayerNorm(const std::vector<LayerNormParamType<T>> &scale,
 }
 
 template <typename T>
-inline void ReduceSum(const std::vector<T> &dout, std::vector<T> *dbias,
-                      const int rows, const int cols) {
+inline void ReduceSum(const std::vector<T> &dout,
+                      std::vector<T> *dbias,
+                      const int rows,
+                      const int cols) {
   for (int j = 0; j < cols; j++) {
     std::vector<T> tmp_dbias(rows);
     for (int i = 0; i < rows; i++) {

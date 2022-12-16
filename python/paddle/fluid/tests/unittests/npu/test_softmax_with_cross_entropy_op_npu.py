@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -51,8 +50,10 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
         self.initParams()
 
         logits = getattr(
-            self, "logits",
-            np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype))
+            self,
+            "logits",
+            np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype),
+        )
         softmax = np.apply_along_axis(stable_softmax, self.axis, logits)
 
         if self.soft_label:
@@ -63,8 +64,9 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
             self.shape[self.axis] = 1
             labels = np.random.randint(0, axis_dim, self.shape, dtype="int64")
 
-        loss = cross_entropy(softmax, labels, self.soft_label, self.axis,
-                             self.ignore_index)
+        loss = cross_entropy(
+            softmax, labels, self.soft_label, self.axis, self.ignore_index
+        )
 
         one_hot_label = np.eye(axis_dim)[labels.reshape(-1)]
 
@@ -72,7 +74,7 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
         self.outputs = {
             "Backprop": (softmax - one_hot_label).astype(self.dtype),
             "Softmax": softmax.astype(self.dtype),
-            "Loss": loss.astype(self.dtype)
+            "Loss": loss.astype(self.dtype),
         }
         self.attrs = {
             "numeric_stable_mode": self.numeric_stable_mode,
@@ -87,14 +89,14 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
         # fp32 has low precision, cpu and npu both need to relax the max_relative_error if using fp32
         self.check_grad_with_place(
-            self.place, ['Logits'],
+            self.place,
+            ['Logits'],
             'Loss',
             numeric_grad_delta=0.001,
-            max_relative_error=0.5)
+            max_relative_error=0.5,
+        )
 
 
 class TestPowNet(unittest.TestCase):
@@ -113,7 +115,8 @@ class TestPowNet(unittest.TestCase):
             a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
             b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
             label = paddle.static.data(
-                name="label", shape=[32, 1], dtype='int64')
+                name="label", shape=[32, 1], dtype='int64'
+            )
 
             sum = paddle.add(a, b)
             z = paddle.pow(sum, 2.0)
@@ -121,8 +124,8 @@ class TestPowNet(unittest.TestCase):
             fc_1 = fluid.layers.fc(input=z, size=128)
             prediction = fluid.layers.fc(input=fc_1, size=2)
 
-            cost = fluid.layers.softmax_with_cross_entropy(prediction, label)
-            loss = fluid.layers.reduce_mean(cost)
+            cost = paddle.nn.functional.softmax_with_cross_entropy(prediction, label)
+            loss = paddle.mean(cost)
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
 
@@ -139,13 +142,15 @@ class TestPowNet(unittest.TestCase):
 
             pred_res, loss_res = exe.run(
                 main_prog,
-                feed={"a": a_np,
-                      "b": b_np,
-                      "label": label_np},
-                fetch_list=[prediction, loss])
+                feed={"a": a_np, "b": b_np, "label": label_np},
+                fetch_list=[prediction, loss],
+            )
             if epoch % 10 == 0:
-                print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
-                    epoch, pred_res[0], loss_res))
+                print(
+                    "Epoch {} | Prediction[0]: {}, Loss: {}".format(
+                        epoch, pred_res[0], loss_res
+                    )
+                )
 
         return pred_res, loss_res
 
@@ -153,8 +158,8 @@ class TestPowNet(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         npu_pred, npu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(npu_pred, cpu_pred))
-        self.assertTrue(np.allclose(npu_loss, cpu_loss))
+        np.testing.assert_allclose(npu_pred, cpu_pred, rtol=1e-5)
+        np.testing.assert_allclose(npu_loss, cpu_loss, rtol=1e-5)
 
 
 if __name__ == '__main__':

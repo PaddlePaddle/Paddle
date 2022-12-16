@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_div_op.h"
+
 #include <memory>
 #include <string>
 
@@ -22,46 +23,23 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
-struct SameDimsElemwiseDiv<
-    platform::CPUDeviceContext, T,
-    typename std::enable_if<std::is_floating_point<T>::value>::type> {
-  void operator()(const framework::ExecutionContext &ctx,
-                  const framework::Tensor *x, const framework::Tensor *y,
-                  framework::Tensor *z) {
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
-    blas.VDIV(x->numel(), x->data<T>(), y->data<T>(), z->data<T>());
-  }
-};
-
-// use default div function for int32/int64 type because of divison zero
-// checking.
-template <typename T>
-struct SameDimsElemwiseDiv<
-    platform::CPUDeviceContext, T,
-    typename std::enable_if<!std::is_floating_point<T>::value>::type> {
-  void operator()(const framework::ExecutionContext &ctx,
-                  const framework::Tensor *x, const framework::Tensor *y,
-                  framework::Tensor *z) {
-    default_elementwise_div<platform::CPUDeviceContext, T>(ctx, x, y, z);
-  }
-};
-
 class ElementwiseDivOpMaker : public ElementwiseOpMaker {
  protected:
   std::string GetName() const override { return "Div"; }
   std::string GetEquation() const override { return "Out = X / Y"; }
 
   void AddInputX() override {
-    AddInput("X",
-             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
-             "should be int32, int64, float32, float64.");
+    AddInput(
+        "X",
+        "(Variable), Tensor or phi::DenseTensor of any dimensions. Its dtype "
+        "should be int32, int64, float32, float64.");
   }
 
   void AddInputY() override {
-    AddInput("Y",
-             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
-             "should be int32, int64, float32, float64.");
+    AddInput(
+        "Y",
+        "(Variable), Tensor or phi::DenseTensor of any dimensions. Its dtype "
+        "should be int32, int64, float32, float64.");
   }
 
   std::string GetOpFuntionality() const override {
@@ -114,54 +92,22 @@ class ElementwiseDivDoubleGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(elementwise_div, ops::ElementwiseOp,
-                  ops::ElementwiseDivOpMaker, ops::ElementwiseOpInferVarType,
+REGISTER_OPERATOR(elementwise_div,
+                  ops::ElementwiseOp,
+                  ops::ElementwiseDivOpMaker,
+                  ops::ElementwiseOpInferVarType,
                   ops::ElementwiseDivGradOpMaker<paddle::framework::OpDesc>,
                   ops::ElementwiseDivGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(
-    elementwise_div_grad, ops::ElementwiseOpGrad,
+    elementwise_div_grad,
+    ops::ElementwiseOpGrad,
     ops::ElementwiseDivDoubleGradMaker<paddle::framework::OpDesc>,
     ops::ElementwiseDivDoubleGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(elementwise_div_grad_grad, ops::ElementwiseDivOpDoubleGrad,
+REGISTER_OPERATOR(elementwise_div_grad_grad,
+                  ops::ElementwiseDivOpDoubleGrad,
                   ops::ElementwiseDoubleGradOpInplaceInferer);
-
-REGISTER_OP_CPU_KERNEL(
-    elementwise_div,
-    ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex<float>>,
-    ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex<double>>);
-REGISTER_OP_CPU_KERNEL(
-    elementwise_div_grad,
-    ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex<float>>,
-    ops::ElementwiseDivGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex<double>>);
-
-REGISTER_OP_CPU_KERNEL(
-    elementwise_div_grad_grad,
-    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        float>,
-    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        double>,
-    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        int>,
-    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        int64_t>,
-    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        paddle::platform::complex<float>>,
-    ops::ElementwiseDivDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        paddle::platform::complex<double>>);
 
 REGISTER_OP_VERSION(elementwise_div)
     .AddCheckpoint(

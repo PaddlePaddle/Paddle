@@ -15,7 +15,7 @@
 #include "paddle/fluid/operators/jit/gen/vbroadcast.h"
 
 #include "paddle/fluid/operators/jit/registry.h"
-#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 
 namespace paddle {
 namespace operators {
@@ -69,14 +69,16 @@ void VBroadcastJitCode::genCode() {
 class VBroadcastCreator : public JitCodeCreator<int64_t> {
  public:
   bool CanBeUsed(const int64_t& w) const override {
-    return platform::MayIUse(platform::avx) && w % YMM_FLOAT_BLOCK == 0;
+    return phi::backends::cpu::MayIUse(phi::backends::cpu::avx) &&
+           w % YMM_FLOAT_BLOCK == 0;
   }
   size_t CodeSize(const int64_t& w) const override {
     return 96 + (w / YMM_FLOAT_BLOCK) * 16 * 8;
   }
   std::unique_ptr<GenBase> CreateJitCode(const int64_t& w) const override {
     PADDLE_ENFORCE_GT(
-        w, 0,
+        w,
+        0,
         platform::errors::InvalidArgument(
             "The width of VBroadcast should be larger than 0. But w is %d.",
             w));

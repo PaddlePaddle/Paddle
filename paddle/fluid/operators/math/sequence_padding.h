@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <vector>
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/device_context.h"
 
@@ -50,32 +51,39 @@ inline static size_t TotalSequenceLength(
 inline static void CheckDims(const framework::DDim& seq_tensor_dims,
                              const framework::DDim& pad_tensor_dims,
                              const framework::Vector<size_t>& seq_offset,
-                             int64_t padded_seq_len, int64_t step_width,
+                             int64_t padded_seq_len,
+                             int64_t step_width,
                              const PadLayout& layout) {
   PADDLE_ENFORCE_EQ(
-      static_cast<size_t>(seq_tensor_dims[0]), seq_offset.back(),
+      static_cast<size_t>(seq_tensor_dims[0]),
+      seq_offset.back(),
       platform::errors::InvalidArgument(
           "Value of 1st dimension of the sequence tensor should be "
           "equal to sum of lengths of all sequences. Expected %ld == %ld, but "
           "got %ld != %ld. Please check the input value.",
-          static_cast<size_t>(seq_tensor_dims[0]), seq_offset.back(),
-          static_cast<size_t>(seq_tensor_dims[0]), seq_offset.back()));
+          static_cast<size_t>(seq_tensor_dims[0]),
+          seq_offset.back(),
+          static_cast<size_t>(seq_tensor_dims[0]),
+          seq_offset.back()));
 
   PADDLE_ENFORCE_EQ(
       seq_tensor_dims.size() + 1 == pad_tensor_dims.size() ||
           seq_tensor_dims.size() == pad_tensor_dims.size(),
-      true, platform::errors::InvalidArgument(
-                "pad_tensor's rank should be 1 greater than seq_tensor's "
-                "rank, or be equal with it. The pad_tensor's rank is %ld, "
-                "expected the seq_tensor's rank is %ld or %ld, but got %ld. "
-                "Please check the input value.",
-                pad_tensor_dims.size(), pad_tensor_dims.size(),
-                pad_tensor_dims.size() - 1, seq_tensor_dims.size()));
+      true,
+      platform::errors::InvalidArgument(
+          "pad_tensor's rank should be 1 greater than seq_tensor's "
+          "rank, or be equal with it. The pad_tensor's rank is %ld, "
+          "expected the seq_tensor's rank is %ld or %ld, but got %ld. "
+          "Please check the input value.",
+          pad_tensor_dims.size(),
+          pad_tensor_dims.size(),
+          pad_tensor_dims.size() - 1,
+          seq_tensor_dims.size()));
 }
 
 /*
- * \brief   Padding/Unpadding LoDTensor to/from normal Tensor of the shape
- *          [max_sequence_length, num_sequences, sequence_width].
+ * \brief   Padding/Unpadding phi::DenseTensor to/from normal Tensor of the
+ * shape [max_sequence_length, num_sequences, sequence_width].
  *
  *  Padding sequence:
  *        padding[i] = seq[lod[level][i]]
@@ -89,13 +97,11 @@ inline static void CheckDims(const framework::DDim& seq_tensor_dims,
  *    padding (s0, s1, s2, s3; s0, s1, s2, 0; s0, 0, s2, 0; s0, 0, 0, 0)
  *
  * \param context       device context of this functor.
- * \param seq           LoDTensor which is stored in sequence format, the shape
- *                      is [total_sequence_length, sequence_width] where
- *                      total_sequence_length is the sum of all sequences'
- *                      length.
- * \param padding       Tensor which is padded to the same length, the shape is
- *                      [max_sequence_length, num_sequences, sequence_width].
- * \param norm_by_times whether dividing sequence's length.
+ * \param seq           phi::DenseTensor which is stored in sequence format, the
+ * shape is [total_sequence_length, sequence_width] where total_sequence_length
+ * is the sum of all sequences' length. \param padding       Tensor which is
+ * padded to the same length, the shape is [max_sequence_length, num_sequences,
+ * sequence_width]. \param norm_by_times whether dividing sequence's length.
  *
  * \note  transposition is also done in this functor.
  */
@@ -103,12 +109,12 @@ template <typename DeviceContext, typename T>
 class PaddingLoDTensorFunctor {
  public:
   void operator()(const DeviceContext& context,
-                  const framework::LoDTensor& seq_tensor,
-                  framework::LoDTensor* pad_tensor,
-                  const framework::LoDTensor& pad_value, int pad_seq_len = -1,
-                  int lod_level = 0, bool norm_by_times = false,
-                  bool norm_by_batchsize = false,
-                  bool norm_by_total_logits_len = false,
+                  const phi::DenseTensor& seq_tensor,
+                  phi::DenseTensor* pad_tensor,
+                  const phi::DenseTensor& pad_value,
+                  int pad_seq_len = -1,
+                  int lod_level = 0,
+                  bool norm_by_times = false,
                   const PadLayout layout = kBatchLengthWidth);
 };
 
@@ -116,11 +122,11 @@ template <typename DeviceContext, typename T>
 class UnpaddingLoDTensorFunctor {
  public:
   void operator()(const DeviceContext& context,
-                  const framework::LoDTensor& pad_tensor,
-                  framework::LoDTensor* seq_tensor, int pad_seq_len = -1,
-                  int lod_level = 0, bool norm_by_times = false,
-                  bool norm_by_batchsize = false,
-                  bool norm_by_total_logits_len = false,
+                  const phi::DenseTensor& pad_tensor,
+                  phi::DenseTensor* seq_tensor,
+                  int pad_seq_len = -1,
+                  int lod_level = 0,
+                  bool norm_by_times = false,
                   const PadLayout layout = kBatchLengthWidth);
 };
 

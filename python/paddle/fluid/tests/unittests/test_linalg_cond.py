@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
+
 import paddle
 import paddle.static as static
+from paddle.fluid.framework import _test_eager_guard
 
 p_list_n_n = ("fro", "nuc", 1, -1, np.inf, -np.inf)
 p_list_m_n = (None, 2, -2)
@@ -28,23 +29,28 @@ def test_static_assert_true(self, x_list, p_list):
         for x in x_list:
             with static.program_guard(static.Program(), static.Program()):
                 input_data = static.data("X", shape=x.shape, dtype=x.dtype)
-                output = paddle.cond(input_data, p)
+                output = paddle.linalg.cond(input_data, p)
                 exe = static.Executor()
                 result = exe.run(feed={"X": x}, fetch_list=[output])
                 expected_output = np.linalg.cond(x, p)
-                self.assertTrue(np.allclose(result, expected_output))
+                np.testing.assert_allclose(
+                    result[0], expected_output, rtol=5e-5
+                )
 
 
 def test_dygraph_assert_true(self, x_list, p_list):
     for p in p_list:
         for x in x_list:
             input_tensor = paddle.to_tensor(x)
-            output = paddle.cond(input_tensor, p)
+            output = paddle.linalg.cond(input_tensor, p)
             expected_output = np.linalg.cond(x, p)
-            self.assertTrue(np.allclose(output, expected_output))
+            np.testing.assert_allclose(
+                output.numpy(), expected_output, rtol=5e-5
+            )
 
 
 def gen_input():
+    np.random.seed(2021)
     # generate square matrix or batches of square matrices
     input_1 = np.random.rand(5, 5).astype('float32')
     input_2 = np.random.rand(3, 6, 6).astype('float64')
@@ -86,29 +92,39 @@ class API_TestStaticCond(unittest.TestCase):
 
 
 class API_TestDygraphCond(unittest.TestCase):
-    def test_out(self):
+    def func_out(self):
         paddle.disable_static()
         # test calling results of 'cond' in dynamic mode
         x_list_n_n, x_list_m_n = gen_input()
         test_dygraph_assert_true(self, x_list_n_n, p_list_n_n + p_list_m_n)
         test_dygraph_assert_true(self, x_list_m_n, p_list_m_n)
 
+    def test_out(self):
+        with _test_eager_guard():
+            self.func_out()
+        self.func_out()
+
 
 class TestCondAPIError(unittest.TestCase):
-    def test_dygraph_api_error(self):
+    def func_dygraph_api_error(self):
         paddle.disable_static()
         # test raising errors when 'cond' is called in dygraph mode
         p_list_error = ('fro_', '_nuc', -0.7, 0, 1.5, 3)
         x_list_n_n, x_list_m_n = gen_input()
         for p in p_list_error:
-            for x in (x_list_n_n + x_list_m_n):
+            for x in x_list_n_n + x_list_m_n:
                 x_tensor = paddle.to_tensor(x)
-                self.assertRaises(ValueError, paddle.cond, x_tensor, p)
+                self.assertRaises(ValueError, paddle.linalg.cond, x_tensor, p)
 
         for p in p_list_n_n:
             for x in x_list_m_n:
                 x_tensor = paddle.to_tensor(x)
-                self.assertRaises(ValueError, paddle.cond, x_tensor, p)
+                self.assertRaises(ValueError, paddle.linalg.cond, x_tensor, p)
+
+    def test_dygraph_api_error(self):
+        with _test_eager_guard():
+            self.func_dygraph_api_error()
+        self.func_dygraph_api_error()
 
     def test_static_api_error(self):
         paddle.enable_static()
@@ -116,45 +132,49 @@ class TestCondAPIError(unittest.TestCase):
         p_list_error = ('f ro', 'fre', 'NUC', -1.6, 0, 5)
         x_list_n_n, x_list_m_n = gen_input()
         for p in p_list_error:
-            for x in (x_list_n_n + x_list_m_n):
+            for x in x_list_n_n + x_list_m_n:
                 with static.program_guard(static.Program(), static.Program()):
                     x_data = static.data("X", shape=x.shape, dtype=x.dtype)
-                    self.assertRaises(ValueError, paddle.cond, x_data, p)
+                    self.assertRaises(ValueError, paddle.linalg.cond, x_data, p)
 
         for p in p_list_n_n:
             for x in x_list_m_n:
                 with static.program_guard(static.Program(), static.Program()):
                     x_data = static.data("X", shape=x.shape, dtype=x.dtype)
-                    self.assertRaises(ValueError, paddle.cond, x_data, p)
+                    self.assertRaises(ValueError, paddle.linalg.cond, x_data, p)
 
     # it's not supported when input is an empty tensor in static mode
     def test_static_empty_input_error(self):
         paddle.enable_static()
 
         x_list_n_n, x_list_m_n = gen_empty_input()
-        for p in (p_list_n_n + p_list_m_n):
+        for p in p_list_n_n + p_list_m_n:
             for x in x_list_n_n:
                 with static.program_guard(static.Program(), static.Program()):
                     x_data = static.data("X", shape=x.shape, dtype=x.dtype)
-                    self.assertRaises(ValueError, paddle.cond, x_data, p)
+                    self.assertRaises(ValueError, paddle.linalg.cond, x_data, p)
 
-        for p in (p_list_n_n + p_list_m_n):
+        for p in p_list_n_n + p_list_m_n:
             for x in x_list_n_n:
                 with static.program_guard(static.Program(), static.Program()):
                     x_data = static.data("X", shape=x.shape, dtype=x.dtype)
-                    self.assertRaises(ValueError, paddle.cond, x_data, p)
+                    self.assertRaises(ValueError, paddle.linalg.cond, x_data, p)
 
 
 class TestCondEmptyTensorInput(unittest.TestCase):
-    def test_dygraph_empty_tensor_input(self):
+    def func_dygraph_empty_tensor_input(self):
         paddle.disable_static()
         # test calling results of 'cond' when input is an empty tensor in dynamic mode
         x_list_n_n, x_list_m_n = gen_empty_input()
         test_dygraph_assert_true(self, x_list_n_n, p_list_n_n + p_list_m_n)
         test_dygraph_assert_true(self, x_list_m_n, p_list_m_n)
 
+    def test_dygraph_empty_tensor_input(self):
+        with _test_eager_guard():
+            self.func_dygraph_empty_tensor_input()
+        self.func_dygraph_empty_tensor_input()
+
 
 if __name__ == "__main__":
     paddle.enable_static()
-    # paddle.device.set_device("cpu")
     unittest.main()

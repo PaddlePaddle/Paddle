@@ -12,17 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-from __future__ import print_function
-
-import unittest
-import paddle
-import numpy as np
 import random
+import unittest
+
+import numpy as np
+from hybrid_parallel_pp_layer import AlexNet, AlexNetPipeDesc
+
 import paddle
 import paddle.distributed as dist
 import paddle.distributed.fleet as fleet
-from hybrid_parallel_pp_layer import AlexNetPipeDesc, AlexNet
 
 
 def set_random_seed(seed, dp_id, rank_id):
@@ -49,9 +47,18 @@ class TestDistPPTraning(unittest.TestCase):
         }
         strategy.pipeline_configs = {
             "accumulate_steps": batch_size // micro_batch_size,
-            "micro_batch_size": micro_batch_size
+            "micro_batch_size": micro_batch_size,
         }
         fleet.init(is_collective=True, strategy=strategy)
+
+    def build_optimizer(self, model):
+        scheduler = paddle.optimizer.lr.PiecewiseDecay(
+            boundaries=[2], values=[0.001, 0.002], verbose=True
+        )
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=scheduler, parameters=model.parameters()
+        )
+        return scheduler, optimizer
 
     def test_pp_model(self):
         hcg = fleet.get_hybrid_communicate_group()
@@ -61,12 +68,9 @@ class TestDistPPTraning(unittest.TestCase):
         rank_id = dist.get_rank()
         set_random_seed(1024, dp_id, rank_id)
 
-        #construct model a
+        # construct model a
         model_a = AlexNet(10)
-        scheduler_a = paddle.optimizer.lr.PiecewiseDecay(
-            boundaries=[2], values=[0.001, 0.002], verbose=True)
-        optimizer_a = paddle.optimizer.SGD(learning_rate=scheduler_a,
-                                           parameters=model_a.parameters())
+        scheduler_a, optimizer_a = self.build_optimizer(model_a)
 
         param_len = len(model_a.parameters())
 
@@ -76,10 +80,7 @@ class TestDistPPTraning(unittest.TestCase):
 
         # construct model b
         model_b = AlexNetPipeDesc(num_stages=self.pipeline_parallel_size)
-        scheduler_b = paddle.optimizer.lr.PiecewiseDecay(
-            boundaries=[2], values=[0.001, 0.002], verbose=True)
-        optimizer_b = paddle.optimizer.SGD(learning_rate=scheduler_b,
-                                           parameters=model_b.parameters())
+        scheduler_b, optimizer_b = self.build_optimizer(model_b)
         model_b = fleet.distributed_model(model_b)
         optimizer_b = fleet.distributed_optimizer(optimizer_b)
 
@@ -88,13 +89,20 @@ class TestDistPPTraning(unittest.TestCase):
 
         # construct reader
         train_reader = paddle.batch(
-            paddle.dataset.mnist.train(), batch_size=batch_size, drop_last=True)
+            paddle.dataset.mnist.train(), batch_size=batch_size, drop_last=True
+        )
 
         for step_id, data in enumerate(train_reader()):
-            x_data = np.array([x[0] for x in data]).astype('float32').reshape(
-                batch_size, 1, 28, 28)
-            y_data = np.array([x[1] for x in data]).astype('int64').reshape(
-                batch_size, 1)
+            x_data = (
+                np.array([x[0] for x in data])
+                .astype('float32')
+                .reshape(batch_size, 1, 28, 28)
+            )
+            y_data = (
+                np.array([x[1] for x in data])
+                .astype('int64')
+                .reshape(batch_size, 1)
+            )
             img = paddle.to_tensor(x_data)
             label = paddle.to_tensor(y_data)
             img.stop_gradient = True
@@ -113,7 +121,8 @@ class TestDistPPTraning(unittest.TestCase):
 
             print("loss: ", loss_a.numpy(), loss_b.numpy())
             np.testing.assert_allclose(
-                loss_a.numpy(), loss_b.numpy(), rtol=5e-5)
+                loss_a.numpy(), loss_b.numpy(), rtol=5e-5
+            )
 
 
 if __name__ == "__main__":

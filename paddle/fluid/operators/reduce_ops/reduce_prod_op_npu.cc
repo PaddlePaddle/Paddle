@@ -10,21 +10,20 @@ Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
-limitations under the Licnse. */
+limitations under the License. */
 
 #include "paddle/fluid/operators/reduce_ops/reduce_prod_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 template <typename DeviceContext, typename T>
 class ReduceProdNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     auto dims = ctx.Attr<std::vector<int>>("dim");
     bool keep_dim = ctx.Attr<bool>("keep_dim");
     bool reduce_all = ctx.Attr<bool>("reduce_all");
@@ -32,16 +31,16 @@ class ReduceProdNPUKernel : public framework::OpKernel<T> {
 
     auto place = ctx.GetPlace();
 
-    framework::Tensor cast_out(x->type());
+    phi::DenseTensor cast_out(x->type());
     cast_out.Resize(out->dims());
     cast_out.mutable_data<T>(place);
 
-    auto cast_out_dtype = x->type();
+    auto cast_out_dtype = framework::TransToProtoVarType(x->dtype());
     if (out_dtype != -1) {
       cast_out_dtype = static_cast<framework::proto::VarType::Type>(out_dtype);
     }
 
-    if (x->type() != cast_out_dtype) {
+    if (framework::TransToProtoVarType(x->dtype()) != cast_out_dtype) {
       if (cast_out_dtype == framework::proto::VarType::FP32) {
         out->mutable_data<float>(place);
       } else if (cast_out_dtype == framework::proto::VarType::FP16) {
@@ -81,10 +80,12 @@ class ReduceProdNPUKernel : public framework::OpKernel<T> {
         NpuOpRunner("ReduceProdD", {*x}, {cast_out}, attr_input);
     runner.Run(stream);
 
-    if (x->type() != cast_out_dtype) {
+    if (framework::TransToProtoVarType(x->dtype()) != cast_out_dtype) {
       auto dst_dtype = ConvertToNpuDtype(cast_out_dtype);
       const auto& runner_cast =
-          NpuOpRunner("Cast", {cast_out}, {*out},
+          NpuOpRunner("Cast",
+                      {cast_out},
+                      {*out},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast.Run(stream);
     }
@@ -97,5 +98,6 @@ class ReduceProdNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_NPU_KERNEL(
-    reduce_prod, ops::ReduceProdNPUKernel<plat::NPUDeviceContext, float>,
+    reduce_prod,
+    ops::ReduceProdNPUKernel<plat::NPUDeviceContext, float>,
     ops::ReduceProdNPUKernel<plat::NPUDeviceContext, plat::float16>);

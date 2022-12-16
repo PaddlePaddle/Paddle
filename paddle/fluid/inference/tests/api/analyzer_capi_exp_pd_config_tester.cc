@@ -15,8 +15,10 @@ limitations under the License. */
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/inference/capi_exp/pd_inference_api.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
@@ -53,9 +55,13 @@ TEST(PD_Config, interface) {
   bool ir_optim = PD_ConfigIrOptim(config);
   EXPECT_TRUE(ir_optim);
 
+  PD_ConfigEnableMemoryOptim(config, true);
+  bool memory_enabled = PD_ConfigMemoryOptimEnabled(config);
+  EXPECT_TRUE(memory_enabled);
+
 #ifndef PADDLE_WITH_LITE
-  PD_ConfigEnableLiteEngine(config, PD_PRECISION_FLOAT32, TRUE, 0, nullptr, 0,
-                            nullptr);
+  PD_ConfigEnableLiteEngine(
+      config, PD_PRECISION_FLOAT32, TRUE, 0, nullptr, 0, nullptr);
   bool lite_enabled = PD_ConfigLiteEngineEnabled(config);
   EXPECT_TRUE(lite_enabled);
 #endif
@@ -79,13 +85,19 @@ TEST(PD_Config, interface) {
 
   PD_ConfigEnableMkldnnBfloat16(config);
   PD_ConfigSetBfloat16Op(config, 1, &ops_name);
-  bool mkldnn_bf16_enabled = PD_ConfigMkldnnBfloat16Enabled(config);
-  EXPECT_TRUE(mkldnn_bf16_enabled);
 #endif
 
-  PD_ConfigEnableMemoryOptim(config, true);
-  bool memory_enabled = PD_ConfigMemoryOptimEnabled(config);
-  EXPECT_TRUE(memory_enabled);
+  PD_ConfigEnableONNXRuntime(config);
+  bool onnxruntime_enabled = PD_ConfigONNXRuntimeEnabled(config);
+#ifdef PADDLE_WITH_ONNXRUNTIME
+  EXPECT_TRUE(onnxruntime_enabled);
+#else
+  EXPECT_FALSE(onnxruntime_enabled);
+#endif
+  PD_ConfigDisableONNXRuntime(config);
+  bool onnxruntime_disabled = PD_ConfigONNXRuntimeEnabled(config);
+  EXPECT_FALSE(onnxruntime_disabled);
+  PD_ConfigEnableORTOptimization(config);
 
   PD_ConfigEnableProfile(config);
   bool profile_enabled = PD_ConfigProfileEnabled(config);

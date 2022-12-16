@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -51,8 +50,6 @@ class TestSquare(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
         self.check_grad_with_place(self.place, ['X'], 'Out')
 
 
@@ -98,7 +95,8 @@ class TestSquareNet(unittest.TestCase):
             a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
             b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
             label = paddle.static.data(
-                name="label", shape=[32, 1], dtype='int64')
+                name="label", shape=[32, 1], dtype='int64'
+            )
 
             c = paddle.multiply(a, b)
             d = paddle.square(c)
@@ -106,8 +104,8 @@ class TestSquareNet(unittest.TestCase):
             fc_1 = fluid.layers.fc(input=d, size=128)
             prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
 
-            cost = fluid.layers.cross_entropy(input=prediction, label=label)
-            loss = fluid.layers.reduce_mean(cost)
+            cost = paddle.nn.functional.cross_entropy(input=prediction, label=label, reduction='none', use_softmax=False)
+            loss = paddle.mean(cost)
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
 
@@ -124,13 +122,15 @@ class TestSquareNet(unittest.TestCase):
 
             pred_res, loss_res = exe.run(
                 main_prog,
-                feed={"a": a_np,
-                      "b": b_np,
-                      "label": label_np},
-                fetch_list=[prediction, loss])
+                feed={"a": a_np, "b": b_np, "label": label_np},
+                fetch_list=[prediction, loss],
+            )
             if epoch % 10 == 0:
-                print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
-                    epoch, pred_res[0], loss_res))
+                print(
+                    "Epoch {} | Prediction[0]: {}, Loss: {}".format(
+                        epoch, pred_res[0], loss_res
+                    )
+                )
 
         return pred_res, loss_res
 
@@ -138,8 +138,8 @@ class TestSquareNet(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         npu_pred, npu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(npu_pred, cpu_pred))
-        self.assertTrue(np.allclose(npu_loss, cpu_loss))
+        np.testing.assert_allclose(npu_pred, cpu_pred, rtol=1e-6)
+        np.testing.assert_allclose(npu_loss, cpu_loss, rtol=1e-6)
 
 
 if __name__ == '__main__':

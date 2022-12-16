@@ -16,7 +16,7 @@ import os
 import unittest
 import random
 import numpy as np
-import six
+import tempfile
 import paddle.fluid as fluid
 import paddle
 from paddle.fluid.framework import IrGraph
@@ -41,8 +41,9 @@ def conv_net(img, label):
         pool_size=2,
         pool_stride=2,
         pool_type='max',
-        act="relu")
-    conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
+        act="relu",
+    )
+    conv_pool_1 = paddle.static.nn.batch_norm(conv_pool_1)
     conv_pool_2 = fluid.nets.simple_img_conv_pool(
         input=conv_pool_1,
         filter_size=5,
@@ -50,30 +51,37 @@ def conv_net(img, label):
         pool_size=2,
         pool_stride=2,
         pool_type='avg',
-        act="relu")
+        act="relu",
+    )
     hidden = fluid.layers.fc(input=conv_pool_2, size=100, act='relu')
     prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
-    loss = fluid.layers.cross_entropy(input=prediction, label=label)
-    avg_loss = fluid.layers.mean(loss)
+    loss = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
+    avg_loss = paddle.mean(loss)
     return avg_loss
 
 
 class TestQuantizationScalePass(unittest.TestCase):
-    def quantization_scale(self,
-                           use_cuda,
-                           seed,
-                           activation_quant_type,
-                           weight_quant_type='abs_max',
-                           for_ci=False):
+    def quantization_scale(
+        self,
+        use_cuda,
+        seed,
+        activation_quant_type,
+        weight_quant_type='abs_max',
+        for_ci=False,
+    ):
         def build_program(main, startup, is_test):
             main.random_seed = seed
             startup.random_seed = seed
             with fluid.unique_name.guard():
                 with fluid.program_guard(main, startup):
                     img = fluid.layers.data(
-                        name='image', shape=[1, 28, 28], dtype='float32')
+                        name='image', shape=[1, 28, 28], dtype='float32'
+                    )
                     label = fluid.layers.data(
-                        name='label', shape=[1], dtype='int64')
+                        name='label', shape=[1], dtype='int64'
+                    )
                     loss = conv_net(img, label)
                     if not is_test:
                         opt = fluid.optimizer.Adam(learning_rate=0.0001)
@@ -102,7 +110,8 @@ class TestQuantizationScalePass(unittest.TestCase):
             scope=scope,
             place=place,
             activation_quantize_type=activation_quant_type,
-            weight_quantize_type=weight_quant_type)
+            weight_quantize_type=weight_quant_type,
+        )
         transform_pass.apply(main_graph)
         transform_pass.apply(test_graph)
 
@@ -131,21 +140,22 @@ class TestQuantizationScalePass(unittest.TestCase):
         build_strategy.enable_inplace = False
         build_strategy.fuse_all_reduce_ops = False
         binary = fluid.CompiledProgram(main_graph.graph).with_data_parallel(
-            loss_name=loss.name, build_strategy=build_strategy)
+            loss_name=loss.name, build_strategy=build_strategy
+        )
         iters = 5
         batch_size = 8
 
         train_reader = paddle.batch(
-            paddle.reader.shuffle(
-                paddle.dataset.mnist.train(), buf_size=500),
-            batch_size=batch_size)
+            paddle.reader.shuffle(paddle.dataset.mnist.train(), buf_size=500),
+            batch_size=batch_size,
+        )
         feeder = fluid.DataFeeder(feed_list=feeds, place=place)
         with fluid.scope_guard(scope):
             for _ in range(iters):
                 data = next(train_reader())
-                loss_v = exe.run(binary,
-                                 feed=feeder.feed(data),
-                                 fetch_list=[loss])
+                loss_v = exe.run(
+                    binary, feed=feeder.feed(data), fetch_list=[loss]
+                )
                 if not for_ci:
                     print('{}: {}'.format('loss' + dev_name, loss_v))
 
@@ -154,7 +164,8 @@ class TestQuantizationScalePass(unittest.TestCase):
 
         # Freeze graph for inference, but the weight of fc/conv is still float type.
         freeze_pass = QuantizationFreezePass(
-            scope=scope, place=place, weight_quantize_type=weight_quant_type)
+            scope=scope, place=place, weight_quantize_type=weight_quant_type
+        )
         freeze_pass.apply(test_graph)
         server_program = test_graph.to_program()
 
@@ -165,15 +176,24 @@ class TestQuantizationScalePass(unittest.TestCase):
                     marked_nodes.add(op)
             test_graph.draw('.', 'quant_scale' + dev_name, marked_nodes)
 
-        with open('quant_scale_model' + dev_name + '.txt', 'w') as f:
+        tempdir = tempfile.TemporaryDirectory()
+        mapping_table_path = os.path.join(
+            tempdir.name, 'quant_scale_model' + dev_name + '.txt'
+        )
+        save_path = os.path.join(tempdir.name, 'quant_scale_model' + dev_name)
+        with open(mapping_table_path, 'w') as f:
             f.write(str(server_program))
 
         with fluid.scope_guard(scope):
             fluid.io.save_inference_model(
-                'quant_scale_model' + dev_name, ['image', 'label'], [loss],
+                save_path,
+                ['image', 'label'],
+                [loss],
                 exe,
                 server_program,
-                clip_extra=True)
+                clip_extra=True,
+            )
+        tempdir.cleanup()
 
     def test_quant_scale_cuda(self):
         if fluid.core.is_compiled_with_cuda():
@@ -183,7 +203,8 @@ class TestQuantizationScalePass(unittest.TestCase):
                     seed=1,
                     activation_quant_type='moving_average_abs_max',
                     weight_quant_type='channel_wise_abs_max',
-                    for_ci=True)
+                    for_ci=True,
+                )
 
     def test_quant_scale_cpu(self):
         with fluid.unique_name.guard():
@@ -192,7 +213,8 @@ class TestQuantizationScalePass(unittest.TestCase):
                 seed=2,
                 activation_quant_type='moving_average_abs_max',
                 weight_quant_type='channel_wise_abs_max',
-                for_ci=True)
+                for_ci=True,
+            )
 
 
 if __name__ == '__main__':

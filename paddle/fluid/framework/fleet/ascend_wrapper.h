@@ -22,16 +22,16 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/platform/gpu_info.h"
-#include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/timer.h"
-
 #include "ge/ge_api.h"
 #include "graph/attr_value.h"
 #include "graph/tensor.h"
 #include "graph/types.h"
+#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/timer.h"
 
 namespace paddle {
 namespace framework {
@@ -92,7 +92,8 @@ class AscendInstance {
 
   void AddAscendSubgraph(int graph_idx, const AscendGraphDesc &graph) {
     ge::Status status = session_->AddGraph(graph_idx, graph);
-    PADDLE_ENFORCE_EQ(status, ge::SUCCESS,
+    PADDLE_ENFORCE_EQ(status,
+                      ge::SUCCESS,
                       paddle::platform::errors::PreconditionNotMet(
                           "Calling addGraph of graph engine failed, please "
                           "check Ascend Log."));
@@ -131,7 +132,7 @@ class AscendInstance {
           "Not support %s as tensor type.", DataTypeToString(type)));
     }
   }
-  ge::Tensor ConvertToGeTensor(const Tensor *tensor) {
+  ge::Tensor ConvertToGeTensor(const phi::DenseTensor *tensor) {
     auto numel = tensor->numel();
     std::vector<int64_t> vec_dim;
     auto dimen = arity(tensor->dims());
@@ -146,23 +147,27 @@ class AscendInstance {
     // }
 
     ge::Shape shape(vec_dim);
-    ge::TensorDesc tensor_desc(shape, ge::Format::FORMAT_ND,
-                               VarTypeToGeType(tensor->type()));
+    ge::TensorDesc tensor_desc(
+        shape,
+        ge::Format::FORMAT_ND,
+        VarTypeToGeType(framework::TransToProtoVarType(tensor->dtype())));
     tensor_desc.SetRealDimCnt(vec_dim.size());
 
-    const uint8_t *data =
-        reinterpret_cast<const uint8_t *>(tensor->data<void>());
-    std::vector<uint8_t> dst(numel * GeTypeSize(tensor->type()));
-    memcpy(dst.data(), data, GeTypeSize(tensor->type()) * numel);
+    const uint8_t *data = reinterpret_cast<const uint8_t *>(tensor->data());
+    std::vector<uint8_t> dst(
+        numel * GeTypeSize(framework::TransToProtoVarType(tensor->dtype())));
+    memcpy(dst.data(),
+           data,
+           GeTypeSize(framework::TransToProtoVarType(tensor->dtype())) * numel);
     ge::Tensor ge_tensor(tensor_desc, dst);
     return ge_tensor;
   }
 
   void RunAscendSubgraph(int graph_idx,
-                         const std::vector<const Tensor *> &inputs,
-                         std::vector<Tensor *> *outputs) {
+                         const std::vector<const phi::DenseTensor *> &inputs,
+                         std::vector<phi::DenseTensor *> *outputs) {
     VLOG(1) << "Ascend Graph[" << graph_idx << "] is about to run.";
-    // Convert paddle Tensor to GE Tensor
+    // Convert paddle phi::DenseTensor to GE phi::DenseTensor
     std::vector<ge::Tensor> ge_inputs;
     for (const auto &e : inputs) {
       ge_inputs.push_back(ConvertToGeTensor(e));
@@ -171,7 +176,8 @@ class AscendInstance {
     // Run Graph
     std::vector<ge::Tensor> ge_outputs;
     ge::Status status = session_->RunGraph(graph_idx, ge_inputs, ge_outputs);
-    PADDLE_ENFORCE_EQ(status, ge::SUCCESS,
+    PADDLE_ENFORCE_EQ(status,
+                      ge::SUCCESS,
                       paddle::platform::errors::PreconditionNotMet(
                           "Calling RunGraph of graph engine failed, please "
                           "check Ascend Log."));
@@ -181,7 +187,8 @@ class AscendInstance {
     for (size_t i = 0; i < ge_outputs.size(); ++i) {
       const uint8_t *ret_data = ge_outputs[i].GetData();
       size_t size = ge_outputs[i].GetSize();
-      VLOG(1) << "GE Tensor size of the " << i << "th output var is " << size;
+      VLOG(1) << "GE phi::DenseTensor size of the " << i << "th output var is "
+              << size;
       auto *dst = (*outputs)[i]->mutable_data<uint8_t>({(int64_t)size},
                                                        platform::CPUPlace());
       memcpy(dst, ret_data, size);

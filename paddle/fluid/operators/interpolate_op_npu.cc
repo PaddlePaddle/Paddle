@@ -12,32 +12,39 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/interpolate_op.h"
 #include <string>
 #include <vector>
-#include "paddle/fluid/operators/npu_op_runner.h"
+
+#include "paddle/fluid/operators/interpolate_op.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 inline static void CheckArgument(const framework::ExecutionContext& ctx) {
   const std::string interp_method = ctx.Attr<std::string>("interp_method");
+#if (CANN_VERSION_CODE < 512000)
   bool align_corners = ctx.Attr<bool>("align_corners");
   PADDLE_ENFORCE_EQ(
-      align_corners, false,
+      align_corners,
+      false,
       platform::errors::InvalidArgument(
           "NPU Interpolate Kernel has diff when align_corners is true."));
+#endif
   PADDLE_ENFORCE_EQ(
-      interp_method, "nearest",
+      interp_method,
+      "nearest",
       platform::errors::InvalidArgument(
           "NPU Interpolate Kernel only support nearest interpolotion."));
 }
 
 inline static void ExtractNCHW(const framework::DDim& dims,
-                               const DataLayout& data_layout, int32_t* n,
-                               int32_t* c, int32_t* h, int32_t* w) {
+                               const DataLayout& data_layout,
+                               int32_t* n,
+                               int32_t* c,
+                               int32_t* h,
+                               int32_t* w) {
   *n = dims[0];
   if (data_layout == DataLayout::kNCHW) {
     *c = dims[1];
@@ -50,14 +57,17 @@ inline static void ExtractNCHW(const framework::DDim& dims,
   }
 }
 
-static void CalcOutSize(const framework::ExecutionContext& ctx, int32_t in_h,
-                        int32_t in_w, int32_t* out_h, int32_t* out_w) {
+static void CalcOutSize(const framework::ExecutionContext& ctx,
+                        int32_t in_h,
+                        int32_t in_w,
+                        int32_t* out_h,
+                        int32_t* out_w) {
   // Priority: SizeTensor > OutSize > Scale > scale > out_h & out_w
   *out_h = ctx.Attr<int>("out_h");
   *out_w = ctx.Attr<int>("out_w");
 
   auto dev_ctx = platform::DeviceContextPool::Instance().Get(ctx.GetPlace());
-  auto list_new_size_tensor = ctx.MultiInput<Tensor>("SizeTensor");
+  auto list_new_size_tensor = ctx.MultiInput<phi::DenseTensor>("SizeTensor");
 
   if (list_new_size_tensor.size() > 0) {
     std::vector<int32_t> new_size_h(1);
@@ -68,7 +78,7 @@ static void CalcOutSize(const framework::ExecutionContext& ctx, int32_t in_h,
     *out_w = new_size_w[0];
   } else {
     float scale;
-    auto scale_tensor = ctx.Input<Tensor>("Scale");
+    auto scale_tensor = ctx.Input<phi::DenseTensor>("Scale");
     if (scale_tensor != nullptr) {
       std::vector<float> scale_data;
       framework::TensorToVector(*scale_tensor, *dev_ctx, &scale_data);
@@ -82,7 +92,7 @@ static void CalcOutSize(const framework::ExecutionContext& ctx, int32_t in_h,
       *out_w = static_cast<int32_t>(in_w * scale);
     }
 
-    auto out_size = ctx.Input<Tensor>("OutSize");
+    auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
     if (out_size != nullptr) {
       std::vector<int> out_size_data;
       framework::TensorToVector(*out_size, *dev_ctx, &out_size_data);
@@ -91,11 +101,13 @@ static void CalcOutSize(const framework::ExecutionContext& ctx, int32_t in_h,
     }
   }
 
-  PADDLE_ENFORCE_GT(*out_h, 0,
+  PADDLE_ENFORCE_GT(*out_h,
+                    0,
                     platform::errors::InvalidArgument(
                         "out_h in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
-  PADDLE_ENFORCE_GT(*out_w, 0,
+  PADDLE_ENFORCE_GT(*out_w,
+                    0,
                     platform::errors::InvalidArgument(
                         "out_w in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
@@ -111,24 +123,23 @@ class InterpolateNPUKernel : public framework::OpKernel<T> {
     // when 'align_corners' is 'true' or data type is 'double'
     CheckArgument(ctx);
 
-    auto* input = ctx.Input<Tensor>("X");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
     framework::DDim input_dims = input->dims();
 
     const std::string data_layout_str =
         ctx.Attr<std::string>("data_layout");  // kNCHW or kNHWC
-    const DataLayout data_layout =
-        framework::StringToDataLayout(data_layout_str);
+    const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
 
     int32_t n, c, h, w, out_h, out_w;
     ExtractNCHW(input_dims, data_layout, &n, &c, &h, &w);
     CalcOutSize(ctx, h, w, &out_h, &out_w);
 
     // the 'input' tensor may has no set (or wrong set) of the layout
-    Tensor input_x(input->type());
+    phi::DenseTensor input_x(input->type());
     input_x.ShareDataWith(*input);
     input_x.set_layout(data_layout);
 
-    auto* output = ctx.Output<Tensor>("Out");
+    auto* output = ctx.Output<phi::DenseTensor>("Out");
     framework::DDim output_dims;
     if (data_layout == DataLayout::kNCHW) {
       output_dims = {n, c, out_h, out_w};
@@ -162,25 +173,26 @@ class InterpolateGradNPUKernel : public framework::OpKernel<T> {
     // when 'align_corners' is 'true' or data type is 'double'
     CheckArgument(ctx);
 
-    auto* input = ctx.Input<Tensor>("X");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
     framework::DDim input_dims = input->dims();
 
     const std::string data_layout_str =
         ctx.Attr<std::string>("data_layout");  // kNCHW or kNHWC
-    const DataLayout data_layout =
-        framework::StringToDataLayout(data_layout_str);
+    const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
 
     int32_t n, c, h, w, out_h, out_w;
     ExtractNCHW(input_dims, data_layout, &n, &c, &h, &w);
     CalcOutSize(ctx, h, w, &out_h, &out_w);
 
     // the 'output_grad' tensor may has no set (or wrong set) of the layout
-    auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    Tensor output_grad_tmp(output_grad->type());
+    auto* output_grad =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    phi::DenseTensor output_grad_tmp(output_grad->type());
     output_grad_tmp.ShareDataWith(*output_grad);
     output_grad_tmp.set_layout(data_layout);
 
-    auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* input_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     input_grad->set_layout(data_layout);
     framework::DDim input_grad_dims;
     if (data_layout == DataLayout::kNCHW) {
@@ -208,7 +220,8 @@ class InterpolateGradNPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_NPU_KERNEL(nearest_interp, ops::InterpolateNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(nearest_interp,
+                       ops::InterpolateNPUKernel<float>,
                        ops::InterpolateNPUKernel<uint8_t>);
 REGISTER_OP_NPU_KERNEL(nearest_interp_grad,
                        ops::InterpolateGradNPUKernel<float>);

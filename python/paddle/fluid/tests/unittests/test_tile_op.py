@@ -12,14 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
+import gradient_checker
 import numpy as np
+from decorator_helper import prog_scope
 from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
+import paddle.fluid.layers as layers
+from paddle.fluid import Program, core, program_guard
 
 
 # Situation 1: repeat_times is a list (without tensor)
@@ -42,6 +45,24 @@ class TestTileOpRank1(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
+
+class TestTileOpRank_ZeroDim1(TestTileOpRank1):
+    def init_data(self):
+        self.ori_shape = []
+        self.repeat_times = []
+
+
+class TestTileOpRank_ZeroDim2(TestTileOpRank1):
+    def init_data(self):
+        self.ori_shape = []
+        self.repeat_times = [2]
+
+
+class TestTileOpRank_ZeroDim3(TestTileOpRank1):
+    def init_data(self):
+        self.ori_shape = []
+        self.repeat_times = [2, 3]
 
 
 # with dimension expanding
@@ -88,8 +109,9 @@ class TestTileOpRank1_tensor_attr(OpTest):
         self.init_data()
         repeat_times_tensor = []
         for index, ele in enumerate(self.repeat_times):
-            repeat_times_tensor.append(("x" + str(index), np.ones(
-                (1)).astype('int32') * ele))
+            repeat_times_tensor.append(
+                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+            )
 
         self.inputs = {
             'X': np.random.random(self.ori_shape).astype("float64"),
@@ -161,8 +183,7 @@ class TestTileOpInteger(OpTest):
     def setUp(self):
         self.op_type = "tile"
         self.inputs = {
-            'X': np.random.randint(
-                10, size=(4, 4, 5)).astype("int32")
+            'X': np.random.randint(10, size=(4, 4, 5)).astype("int32")
         }
         self.attrs = {'repeat_times': [2, 1, 4]}
         output = np.tile(self.inputs['X'], (2, 1, 4))
@@ -190,8 +211,7 @@ class TestTileOpInt64_t(OpTest):
     def setUp(self):
         self.op_type = "tile"
         self.inputs = {
-            'X': np.random.randint(
-                10, size=(2, 4, 5)).astype("int64")
+            'X': np.random.randint(10, size=(2, 4, 5)).astype("int64")
         }
         self.attrs = {'repeat_times': [2, 1, 4]}
         output = np.tile(self.inputs['X'], (2, 1, 4))
@@ -205,7 +225,8 @@ class TestTileError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace())
+                np.array([[-1]]), [[1]], fluid.CPUPlace()
+            )
             repeat_times = [2, 2]
             self.assertRaises(TypeError, paddle.tile, x1, repeat_times)
             x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
@@ -247,5 +268,99 @@ class TestTileAPI(unittest.TestCase):
             assert np.array_equal(out_3.numpy(), np.tile(np_x, (2, 3)))
 
 
+class TestTileDoubleGradCheck(unittest.TestCase):
+    def tile_wrapper(self, x):
+        return paddle.tile(x[0], [2, 1])
+
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        eps = 0.005
+        dtype = np.float32
+
+        data = layers.data('data', [1, 2], False, dtype)
+        data.persistable = True
+        out = paddle.tile(data, [2, 1])
+        data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [data], out, x_init=[data_arr], place=place, eps=eps
+        )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.double_grad_check_for_dygraph(
+            self.tile_wrapper, [data], out, x_init=[data_arr], place=place
+        )
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestTileTripleGradCheck(unittest.TestCase):
+    def tile_wrapper(self, x):
+        return paddle.tile(x[0], [2, 1])
+
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        eps = 0.005
+        dtype = np.float32
+
+        data = layers.data('data', [1, 2], False, dtype)
+        data.persistable = True
+        out = paddle.tile(data, [2, 1])
+        data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
+
+        gradient_checker.triple_grad_check(
+            [data], out, x_init=[data_arr], place=place, eps=eps
+        )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.triple_grad_check_for_dygraph(
+            self.tile_wrapper, [data], out, x_init=[data_arr], place=place
+        )
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestTileAPI_ZeroDim(unittest.TestCase):
+    def test_dygraph(self):
+        paddle.disable_static()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+
+        x = paddle.rand([])
+        x.stop_gradient = False
+
+        out = paddle.tile(x, [])
+        out.backward()
+        self.assertEqual(out.shape, [])
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(out.grad.shape, [])
+
+        out = paddle.tile(x, [3])
+        out.backward()
+        self.assertEqual(out.shape, [3])
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(out.grad.shape, [3])
+
+        out = paddle.tile(x, [2, 3])
+        out.backward()
+        self.assertEqual(out.shape, [2, 3])
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(out.grad.shape, [2, 3])
+
+        paddle.enable_static()
+
+
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

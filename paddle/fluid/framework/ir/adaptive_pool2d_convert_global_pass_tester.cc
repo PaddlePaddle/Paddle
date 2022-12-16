@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/ir/adaptive_pool2d_convert_global_pass.h"
-
 #include <gtest/gtest.h>
+
+#include "paddle/fluid/framework/ir/adaptive_pool2d_convert_global_pass.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -29,6 +29,8 @@ TEST(AdaptivePool2dConvertGlobalPass, basic) {
   AttributeMap attrs;
   attrs["adaptive"] = true;
   attrs["ksize"] = std::vector<int>{1, 1};
+  attrs["pooling_type"] =
+      std::string("avg");  // adaptive has no effect on max pooling
   layers.pool2d(x, false, &attrs);
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
@@ -44,12 +46,13 @@ TEST(AdaptivePool2dConvertGlobalPass, basic) {
     if (node->IsOp() && node->Op()->Type() == "pool2d") {
       if (node->Op()->HasAttr("global_pooling")) {
         global_pooling =
-            BOOST_GET_CONST(bool, node->Op()->GetAttr("global_pooling"));
+            PADDLE_GET_CONST(bool, node->Op()->GetAttr("global_pooling"));
       }
     }
   }
   PADDLE_ENFORCE_EQ(
-      global_pooling, true,
+      global_pooling,
+      true,
       platform::errors::PreconditionNotMet(
           "The attribute of pool2d global_pooling should be true after fuse"));
 }

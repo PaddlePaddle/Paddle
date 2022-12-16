@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import unittest
@@ -35,19 +34,19 @@ class TestBeamSearchNPUOp(OpTest):
             'pre_ids': (self.pre_ids, self.lod),
             'pre_scores': (self.pre_score, self.lod),
             'ids': (self.ids, self.lod),
-            'scores': (self.score, self.lod)
+            'scores': (self.score, self.lod),
         }
         # The `target_lod` attribute is still based on offset
         self.attrs = {
             'level': 0,
             'beam_size': self.beam_size,
             'end_id': 0,
-            'is_accumulated': self.is_accumulated
+            'is_accumulated': self.is_accumulated,
         }
         self.outputs = {
             'selected_ids': (self.selected_ids, self.out_lod),
             'selected_scores': (self.selected_scores, self.out_lod),
-            'parent_idx': self.parent_idx
+            'parent_idx': self.parent_idx,
         }
 
     def set_npu(self):
@@ -58,7 +57,8 @@ class TestBeamSearchNPUOp(OpTest):
         self.is_accumulated = True
         self.pre_ids = np.array([[1], [2], [3], [4]], dtype='int64')
         self.ids = np.array(
-            [[4, 2, 5], [2, 1, 3], [3, 5, 2], [8, 2, 1]], dtype='int64')
+            [[4, 2, 5], [2, 1, 3], [3, 5, 2], [8, 2, 1]], dtype='int64'
+        )
         self.lod = [[2, 2], [1, 1, 1, 1]]
         self.out_lod = [[2, 2], [1, 1, 1, 1]]
         self.offset_lod = [[0, 2, 4], [0, 1, 2, 3, 4]]
@@ -69,7 +69,8 @@ class TestBeamSearchNPUOp(OpTest):
                 [0.9, 0.5, 0.1],
                 [0.7, 0.5, 0.1],
             ],
-            dtype='float32')
+            dtype='float32',
+        )
         self.pre_score = np.array([[0.1], [0.2], [0.3], [0.4]], dtype='float32')
         self.selected_ids = np.array([4, 2, 3, 8])[:, np.newaxis]
         self.selected_scores = np.array([0.5, 0.6, 0.9, 0.7])[:, np.newaxis]
@@ -94,7 +95,9 @@ class TestBeamSearchNPUOp2(TestBeamSearchNPUOp):
                 [0.5, 0.3],
                 [0.9, 0.5],
                 [0.1, 0.7],
-            ], dtype='float32')
+            ],
+            dtype='float32',
+        )
         self.pre_score = np.array([[0.1], [0.2], [0.3], [0.4]], dtype='float32')
         self.selected_ids = np.array([4, 2, 3, 1])[:, np.newaxis]
         self.selected_scores = np.array([0.6, 0.9, 0.9, 0.7])[:, np.newaxis]
@@ -117,7 +120,9 @@ class TestBeamSearchNPUOp3(TestBeamSearchNPUOp):
                 [0.5, 0.3],
                 [0.9, 0.5],
                 [0.6, 0.7],
-            ], dtype='float32')
+            ],
+            dtype='float32',
+        )
         self.pre_score = np.array([[0.1], [1.2], [0.5], [0.4]], dtype='float32')
         self.selected_ids = np.array([2, 0, 8, 1])[:, np.newaxis]
         self.selected_scores = np.array([0.9, 1.2, 0.6, 0.7])[:, np.newaxis]
@@ -140,11 +145,14 @@ class TestBeamSearchNPUOp4(TestBeamSearchNPUOp):
                 [0.5, 0.3],
                 [0.9, 0.5],
                 [0.1, 0.7],
-            ], dtype='float32')
+            ],
+            dtype='float32',
+        )
         self.pre_score = np.array([[0.1], [2.2], [0.3], [0.4]], dtype='float32')
         self.selected_ids = np.array([7, 3, 3, 1])[:, np.newaxis]
         self.selected_scores = np.array(
-            [1.50685, 0.996027, 0.194639, 0.043325])[:, np.newaxis]
+            [1.50685, 0.996027, 0.194639, 0.043325]
+        )[:, np.newaxis]
         self.parent_idx = np.array([1, 1, 2, 3])
 
 
@@ -164,7 +172,9 @@ class TestBeamSearchNPUOp5(TestBeamSearchNPUOp):
                 [0.5, 0.3],
                 [0.9, 0.5],
                 [0.1, 0.7],
-            ], dtype='float32')
+            ],
+            dtype='float32',
+        )
         self.pre_score = np.array([[0.1], [0.2], [0.3], [0.4]], dtype='float32')
         self.selected_ids = np.array([2, 7, 3, 1])[:, np.newaxis]
         self.selected_scores = np.array([0.9, 0.5, 0.9, 0.7])[:, np.newaxis]

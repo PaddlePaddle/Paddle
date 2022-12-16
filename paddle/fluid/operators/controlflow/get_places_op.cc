@@ -27,7 +27,7 @@ class OpBase;
 }  // namespace imperative
 }  // namespace paddle
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 
 namespace paddle {
@@ -35,7 +35,7 @@ namespace operators {
 
 static size_t CUDADevCount() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  return platform::GetCUDADeviceCount();
+  return platform::GetGPUDeviceCount();
 #else
   return 0UL;
 #endif
@@ -43,7 +43,8 @@ static size_t CUDADevCount() {
 
 class GetPlacesOp : public framework::OperatorBase {
  public:
-  GetPlacesOp(const std::string &type, const framework::VariableNameMap &inputs,
+  GetPlacesOp(const std::string &type,
+              const framework::VariableNameMap &inputs,
               const framework::VariableNameMap &outputs,
               const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
@@ -62,20 +63,25 @@ class GetPlacesOp : public framework::OperatorBase {
       device_count =
           is_gpu ? CUDADevCount() : std::thread::hardware_concurrency();
     }
-    PADDLE_ENFORCE_NE(device_count, 0UL, platform::errors::InvalidArgument(
-                                             "Cannot indicate %s device count",
-                                             is_gpu ? "GPU" : "CPU"));
+    PADDLE_ENFORCE_NE(
+        device_count,
+        0UL,
+        platform::errors::InvalidArgument("Cannot indicate %s device count",
+                                          is_gpu ? "GPU" : "CPU"));
 
     auto out_var_name = Output("Out");
-    auto &places = *(GET_DATA_SAFELY(scope.FindVar(out_var_name), "Output",
-                                     "Out", "GetPlaces")
-                         .GetMutable<platform::PlaceList>());
+    auto &places =
+        *(GET_DATA_SAFELY(
+              scope.FindVar(out_var_name), "Output", "Out", "GetPlaces")
+              .GetMutable<platform::PlaceList>());
     places.reserve(device_count);
     if (is_gpu) {
-      PADDLE_ENFORCE_LE(device_count, CUDADevCount(),
+      PADDLE_ENFORCE_LE(device_count,
+                        CUDADevCount(),
                         platform::errors::InvalidArgument(
                             "Only %d CUDA devices found, cannot set to %d",
-                            CUDADevCount(), device_count));
+                            CUDADevCount(),
+                            device_count));
       for (size_t i = 0; i < device_count; ++i) {
         places.emplace_back(platform::CUDAPlace(static_cast<int>(i)));
       }
@@ -105,8 +111,8 @@ execution.
 class GetPlacesInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    ctx->SetOutputType("Out", framework::proto::VarType::PLACE_LIST,
-                       framework::ALL_ELEMENTS);
+    ctx->SetOutputType(
+        "Out", framework::proto::VarType::PLACE_LIST, framework::ALL_ELEMENTS);
   }
 };
 
@@ -122,7 +128,10 @@ class GetPlacesInferShape : public framework::InferShapeBase {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(
-    get_places, ops::GetPlacesOp, ops::GetPlacesOpProtoMaker,
-    ops::GetPlacesInferVarType, ops::GetPlacesInferShape,
+    get_places,
+    ops::GetPlacesOp,
+    ops::GetPlacesOpProtoMaker,
+    ops::GetPlacesInferVarType,
+    ops::GetPlacesInferShape,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

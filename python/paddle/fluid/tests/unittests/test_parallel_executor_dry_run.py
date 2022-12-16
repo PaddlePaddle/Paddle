@@ -12,25 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
+import os
+import unittest
+
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler
-import unittest
-import logging
-import six
-import os
+
 os.environ['CPU_NUM'] = str(4)
 
 
 class TestBase(unittest.TestCase):
-    def main(self,
-             network_func,
-             iter=10,
-             iter_per_pe=10,
-             use_gpu=True,
-             use_experimental_executor=False):
+    def main(
+        self,
+        network_func,
+        iter=10,
+        iter_per_pe=10,
+        use_gpu=True,
+        use_experimental_executor=False,
+    ):
         if use_gpu and not fluid.core.is_compiled_with_cuda():
             logging.warning(
-                "Paddle is not compiled with CUDA, skip GPU unittests")
+                "Paddle is not compiled with CUDA, skip GPU unittests"
+            )
             return
 
         main_prog = fluid.Program()
@@ -40,17 +45,22 @@ class TestBase(unittest.TestCase):
             with fluid.scope_guard(scope):
                 loss = network_func()
                 exe = fluid.Executor(
-                    fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace())
+                    fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
+                )
                 exe.run(startup_prog)
 
                 exe_strategy = fluid.ExecutionStrategy()
                 exe_strategy._dry_run = True
-                exe_strategy.use_experimental_executor = use_experimental_executor
+                exe_strategy.use_experimental_executor = (
+                    use_experimental_executor
+                )
                 train_cp = compiler.CompiledProgram(
-                    main_prog).with_data_parallel(
-                        loss_name=loss.name, exec_strategy=exe_strategy)
-                for _ in six.moves.xrange(iter):
-                    for _ in six.moves.xrange(iter_per_pe):
+                    main_prog
+                ).with_data_parallel(
+                    loss_name=loss.name, exec_strategy=exe_strategy
+                )
+                for _ in range(iter):
+                    for _ in range(iter_per_pe):
                         exe.run(train_cp)
 
 
@@ -61,18 +71,21 @@ class TestMNISTDryRun(TestBase):
                 self.main(
                     network_func=TestMNISTDryRun.network_func,
                     use_gpu=use_gpu,
-                    use_experimental_executor=use_experimental_executor)
+                    use_experimental_executor=use_experimental_executor,
+                )
 
     @staticmethod
     def network_func():
         img = fluid.layers.data(name='img', shape=[784], dtype='float32')
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
         hidden = img
-        for _ in six.moves.xrange(10):
+        for _ in range(10):
             hidden = fluid.layers.fc(input=img, size=200, act='tanh')
         prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
-        loss = fluid.layers.cross_entropy(input=prediction, label=label)
-        avg_loss = fluid.layers.mean(loss)
+        loss = paddle.nn.functional.cross_entropy(
+            input=prediction, label=label, reduction='none', use_softmax=False
+        )
+        avg_loss = paddle.mean(loss)
         fluid.optimizer.Adam().minimize(avg_loss)
         return avg_loss
 

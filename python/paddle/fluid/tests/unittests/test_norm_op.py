@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
+from op_test import OpTest, skip_check_grad_ci
+
 import paddle
 import paddle.fluid as fluid
-from op_test import OpTest, skip_check_grad_ci
 
 
 def l2_norm(x, axis, epsilon):
@@ -32,6 +32,7 @@ def l2_norm(x, axis, epsilon):
 class TestNormOp(OpTest):
     def setUp(self):
         self.op_type = "norm"
+        self.python_api = paddle.nn.functional.normalize
         self.init_test_case()
         self.init_dtype()
         x = np.random.random(self.shape).astype(self.dtype)
@@ -69,8 +70,10 @@ class TestNormOp3(TestNormOp):
         self.epsilon = 1e-8
 
 
-@skip_check_grad_ci(reason="'check_grad' on large inputs is too slow, " +
-                    "however it is desirable to cover the forward pass")
+@skip_check_grad_ci(
+    reason="'check_grad' on large inputs is too slow, "
+    + "however it is desirable to cover the forward pass"
+)
 class TestNormOp4(TestNormOp):
     def init_test_case(self):
         self.shape = [128, 1024, 14, 14]
@@ -81,8 +84,10 @@ class TestNormOp4(TestNormOp):
         pass
 
 
-@skip_check_grad_ci(reason="'check_grad' on large inputs is too slow, " +
-                    "however it is desirable to cover the forward pass")
+@skip_check_grad_ci(
+    reason="'check_grad' on large inputs is too slow, "
+    + "however it is desirable to cover the forward pass"
+)
 class TestNormOp5(TestNormOp):
     def init_test_case(self):
         self.shape = [2048, 2048]
@@ -101,8 +106,9 @@ class TestNormOp6(TestNormOp):
         self.check_grad(['X'], 'Out', max_relative_error=0.008)
 
 
-@unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not fluid.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestNormOp7(TestNormOp):
     def init_dtype(self):
         self.dtype = "float16"
@@ -112,7 +118,8 @@ class TestNormOp7(TestNormOp):
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            fluid.core.CUDAPlace(0), ['X'], 'Out', max_relative_error=0.05)
+            fluid.core.CUDAPlace(0), ['X'], 'Out', max_relative_error=0.05
+        )
 
 
 @skip_check_grad_ci(reason="skip check grad for test mode.")
@@ -126,7 +133,7 @@ class TestNormTestOp(OpTest):
         self.attrs = {
             'epsilon': self.epsilon,
             'axis': self.axis,
-            'is_test': True
+            'is_test': True,
         }
         self.outputs = {'Out': y}
 
@@ -148,10 +155,11 @@ class API_NormTest(unittest.TestCase):
 
             def test_norm_x_type():
                 data = fluid.data(name="x", shape=[3, 3], dtype="int64")
-                out = fluid.layers.l2_normalize(data)
+                out = paddle.nn.functional.normalize(data)
 
             self.assertRaises(TypeError, test_norm_x_type)
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

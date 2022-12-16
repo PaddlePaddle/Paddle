@@ -161,6 +161,36 @@ func (config *Config) EnableUseGpu(memorySize uint64, deviceId int32) {
 }
 
 ///
+/// \brief Turn on ONNXRuntime.
+///
+func (config *Config) EnableONNXRuntime() {
+	C.PD_ConfigEnableONNXRuntime(config.c)
+}
+
+///
+/// \brief Turn off ONNXRuntime.
+///
+func (config *Config) DisableONNXRuntime() {
+	C.PD_ConfigDisableONNXRuntime(config.c)
+}
+
+///
+/// \brief A boolean state telling whether the ONNXRuntime is turned on.
+///
+/// \return bool Whether the ONNXRuntime is turned on.
+///
+func (config *Config) ONNXRuntimeEnabled() bool {
+	return cvtPDBoolToGo(C.PD_ConfigONNXRuntimeEnabled(config.c))
+}
+
+///
+/// \brief Turn on ONNXRuntime Optimization.
+///
+func (config *Config) EnableORTOptimization() {
+	C.PD_ConfigEnableORTOptimization(config.c)
+}
+
+///
 /// \brief Turn on XPU.
 ///
 /// \param l3_workspace_size The size of the video memory allocated by the l3 cache, the maximum is 16M.
@@ -169,8 +199,9 @@ func (config *Config) EnableUseGpu(memorySize uint64, deviceId int32) {
 /// \param autotune_file Specify the path of the autotune file. If autotune_file is specified, the algorithm specified in the file will be used and autotune will not be performed again.
 /// \param precision Calculation accuracy of multi_encoder
 /// \param adaptive_seqlen Is the input of multi_encoder variable length
+/// \param enable_multi_stream Whether to enable the multi stream of xpu
 ///
-func (config *Config) EnableXpu(l3WorkspaceSize int32, locked bool, autotune bool, autotuneFile string, precision string, adaptiveSeqlen bool) {
+func (config *Config) EnableXpu(l3WorkspaceSize int32, locked bool, autotune bool, autotuneFile string, precision string, adaptiveSeqlen bool, enableMultiStream bool) {
 	cAutotuneFile := C.CString(autotuneFile)
 	cPrecision := C.CString(precision)
 	defer func() {
@@ -178,7 +209,7 @@ func (config *Config) EnableXpu(l3WorkspaceSize int32, locked bool, autotune boo
 		C.free(unsafe.Pointer(cPrecision))
 	}()
 	C.PD_ConfigEnableXpu(config.c, C.int32_t(l3WorkspaceSize), cvtGoBoolToPD(locked), cvtGoBoolToPD(autotune),
-		cAutotuneFile, cPrecision, cvtGoBoolToPD(adaptiveSeqlen))
+		cAutotuneFile, cPrecision, cvtGoBoolToPD(adaptiveSeqlen), cvtGoBoolToPD(enableMultiStream))
 }
 
 ///
@@ -302,9 +333,9 @@ func (config *Config) IrOptim() bool {
 /// \param useCalibMode Use TRT int8 calibration(post training
 /// quantization).
 ///
-func (config *Config) EnableTensorRtEngine(workspaceSize int32, maxBatchSize int32, minSubgraphSize int32,
+func (config *Config) EnableTensorRtEngine(workspaceSize int64, maxBatchSize int32, minSubgraphSize int32,
 	precision Precision, useStatic bool, useCalibMode bool) {
-	C.PD_ConfigEnableTensorRtEngine(config.c, C.int32_t(workspaceSize), C.int32_t(maxBatchSize), C.int32_t(minSubgraphSize), C.int32_t(precision), cvtGoBoolToPD(useStatic), cvtGoBoolToPD(useCalibMode))
+	C.PD_ConfigEnableTensorRtEngine(config.c, C.int64_t(workspaceSize), C.int32_t(maxBatchSize), C.int32_t(minSubgraphSize), C.int32_t(precision), cvtGoBoolToPD(useStatic), cvtGoBoolToPD(useCalibMode))
 }
 
 ///
@@ -470,8 +501,8 @@ func (config *Config) DisableTensorRtOPs(ops []string) {
 /// may be more high-performance. Libnvinfer_plugin.so greater than
 /// V7.2.1 is needed.
 ///
-func (config *Config) EnableTensorRtOSS() {
-	C.PD_ConfigEnableTensorRtOSS(config.c)
+func (config *Config) EnableVarseqlen() {
+	C.PD_ConfigEnableVarseqlen(config.c)
 }
 
 ///
@@ -833,7 +864,7 @@ func (config *Config) AllPasses() []string {
 ///
 func (config *Config) Summary() string {
 	cSummary := C.PD_ConfigSummary(config.c)
-	summary := C.GoString(cSummary)
-	C.free(unsafe.Pointer(cSummary))
+	summary := C.GoString(cSummary.data)
+	C.PD_CstrDestroy(cSummary)
 	return summary
 }

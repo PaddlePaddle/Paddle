@@ -13,23 +13,22 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/crop_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
-
-using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
 class CropNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
 
     std::vector<int> offset_list;
     if (ctx.HasInput("Offsets")) {
-      auto* offsets_tensor = ctx.Input<framework::Tensor>("Offsets");
-      TensorToVector(*offsets_tensor, ctx.device_context(), &offset_list);
+      auto* offsets_tensor = ctx.Input<phi::DenseTensor>("Offsets");
+      paddle::framework::TensorToVector(
+          *offsets_tensor, ctx.device_context(), &offset_list);
       if (offset_list.empty()) {
         offset_list.resize(x->dims().size(), 0);
       }
@@ -43,44 +42,54 @@ class CropNPUKernel : public framework::OpKernel<T> {
     }
 
     PADDLE_ENFORCE_EQ(
-        static_cast<int64_t>(offset_list.size()), x->dims().size(),
+        static_cast<int64_t>(offset_list.size()),
+        x->dims().size(),
         platform::errors::InvalidArgument(
             "The shape (%d) of CropOp's "
             "'offset' attribute should be equal to the shape of dims "
             "(%d) of the Input(X).",
-            offset_list.size(), x->dims().size()));
+            offset_list.size(),
+            x->dims().size()));
 
     int axis_int = 0;
     framework::NPUAttributeMap attr_input = {{"offsets", offset_list},
                                              {"axis", axis_int}};
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
     if (ctx.HasInput("Y")) {
-      auto* shape = ctx.Input<framework::Tensor>("Y");
-      PADDLE_ENFORCE_EQ(shape->dims().size(), x->dims().size(),
+      auto* shape = ctx.Input<phi::DenseTensor>("Y");
+      PADDLE_ENFORCE_EQ(shape->dims().size(),
+                        x->dims().size(),
                         platform::errors::InvalidArgument(
                             "The shape of dims of (%d) of CropOp's "
                             "Input(shape) should be equal to the shape of dims "
                             "(%d) of the Input(X).",
-                            shape->dims().size(), x->dims().size()));
+                            shape->dims().size(),
+                            x->dims().size()));
+
+      // shape memory maybe have gc.
+      phi::DenseTensor tmp_shape(*shape);
+      tmp_shape.mutable_data<T>(ctx.GetPlace());
 
       const auto& runner =
-          NpuOpRunner("Crop", {*x, *shape}, {*out}, attr_input);
+          NpuOpRunner("Crop", {*x, tmp_shape}, {*out}, attr_input);
       auto stream =
           ctx.template device_context<paddle::platform::NPUDeviceContext>()
               .stream();
       runner.Run(stream);
     } else {
       auto shape_size = ctx.Attr<std::vector<int>>("shape");
-      PADDLE_ENFORCE_EQ(shape_size.size(), x->dims().size(),
+      PADDLE_ENFORCE_EQ(shape_size.size(),
+                        x->dims().size(),
                         platform::errors::InvalidArgument(
                             "The shape of dims of (%d) of CropOp's "
                             "Input(shape) should be equal to the shape of dims "
                             "(%d) of the Input(X).",
-                            shape_size.size(), x->dims().size()));
-      Tensor tmp_shape(x->type());
-      tmp_shape.Resize(framework::make_ddim(shape_size));
+                            shape_size.size(),
+                            x->dims().size()));
+      phi::DenseTensor tmp_shape(x->dtype());
+      tmp_shape.Resize(phi::make_ddim(shape_size));
       tmp_shape.mutable_data<T>(ctx.GetPlace());
       const auto& runner =
           NpuOpRunner("Crop", {*x, tmp_shape}, {*out}, attr_input);
@@ -98,7 +107,8 @@ class CropNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    crop, ops::CropNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    crop,
+    ops::CropNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::CropNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::CropNPUKernel<paddle::platform::NPUDeviceContext,
                        paddle::platform::float16>);

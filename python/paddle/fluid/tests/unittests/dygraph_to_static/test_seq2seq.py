@@ -13,18 +13,20 @@
 # limitations under the License.
 
 import os
+import tempfile
 import time
 import unittest
 
 import numpy as np
+from seq2seq_dygraph_model import AttentionModel, BaseModel
+from seq2seq_utils import Seq2SeqModelHyperParams, get_data_iter
+
 import paddle.fluid as fluid
 from paddle.fluid.clip import GradientClipByGlobalNorm
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
+from paddle.jit import ProgramTranslator
 
-from seq2seq_dygraph_model import BaseModel, AttentionModel
-from seq2seq_utils import Seq2SeqModelHyperParams as args
-from seq2seq_utils import get_data_iter
-place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace(
+place = (
+    fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
 )
 program_translator = ProgramTranslator()
 STEP_NUM = 10
@@ -43,7 +45,7 @@ def prepare_input(batch):
     return inputs, np.sum(tar_mask)
 
 
-def train(attn_model=False):
+def train(args, attn_model=False):
     with fluid.dygraph.guard(place):
         fluid.default_startup_program().random_seed = 2020
         fluid.default_main_program().random_seed = 2020
@@ -56,7 +58,8 @@ def train(attn_model=False):
                 args.batch_size,
                 num_layers=args.num_layers,
                 init_scale=args.init_scale,
-                dropout=args.dropout)
+                dropout=args.dropout,
+            )
         else:
             model = BaseModel(
                 args.hidden_size,
@@ -65,12 +68,15 @@ def train(attn_model=False):
                 args.batch_size,
                 num_layers=args.num_layers,
                 init_scale=args.init_scale,
-                dropout=args.dropout)
+                dropout=args.dropout,
+            )
 
         gloabl_norm_clip = GradientClipByGlobalNorm(args.max_grad_norm)
-        optimizer = fluid.optimizer.SGD(args.learning_rate,
-                                        parameter_list=model.parameters(),
-                                        grad_clip=gloabl_norm_clip)
+        optimizer = fluid.optimizer.SGD(
+            args.learning_rate,
+            parameter_list=model.parameters(),
+            grad_clip=gloabl_norm_clip,
+        )
 
         model.train()
         train_data_iter = get_data_iter(args.batch_size)
@@ -96,8 +102,15 @@ def train(attn_model=False):
             if batch_id % PRINT_STEP == 0:
                 print(
                     "Batch:[%d]; Time: %.5f s; loss: %.5f; total_loss: %.5f; word num: %.5f; ppl: %.5f"
-                    % (batch_id, batch_time, loss.numpy(), total_loss.numpy(),
-                       word_count, np.exp(total_loss.numpy() / word_count)))
+                    % (
+                        batch_id,
+                        batch_time,
+                        loss.numpy(),
+                        total_loss.numpy(),
+                        word_count,
+                        np.exp(total_loss.numpy() / word_count),
+                    )
+                )
 
             if attn_model:
                 # NOTE: Please see code of AttentionModel.
@@ -108,7 +121,9 @@ def train(attn_model=False):
                 if batch_id + 1 >= STEP_NUM:
                     break
 
-        model_path = args.attn_model_path if attn_model else args.base_model_path
+        model_path = (
+            args.attn_model_path if attn_model else args.base_model_path
+        )
         model_dir = os.path.join(model_path)
 
         if not os.path.exists(model_dir):
@@ -117,7 +132,7 @@ def train(attn_model=False):
         return loss.numpy()
 
 
-def infer(attn_model=False):
+def infer(args, attn_model=False):
     with fluid.dygraph.guard(place):
 
         if attn_model:
@@ -130,7 +145,8 @@ def infer(attn_model=False):
                 num_layers=args.num_layers,
                 init_scale=args.init_scale,
                 dropout=0.0,
-                mode='beam_search')
+                mode='beam_search',
+            )
         else:
             model = BaseModel(
                 args.hidden_size,
@@ -141,9 +157,12 @@ def infer(attn_model=False):
                 num_layers=args.num_layers,
                 init_scale=args.init_scale,
                 dropout=0.0,
-                mode='beam_search')
+                mode='beam_search',
+            )
 
-        model_path = args.attn_model_path if attn_model else args.base_model_path
+        model_path = (
+            args.attn_model_path if attn_model else args.base_model_path
+        )
         state_dict, _ = fluid.dygraph.load_dygraph(model_path)
         model.set_dict(state_dict)
         model.eval()
@@ -160,19 +179,35 @@ def infer(attn_model=False):
 
 
 class TestSeq2seq(unittest.TestCase):
+    def setUp(self):
+        self.args = Seq2SeqModelHyperParams
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.args.base_model_path = os.path.join(
+            self.temp_dir.name, self.args.base_model_path
+        )
+        self.args.attn_model_path = os.path.join(
+            self.temp_dir.name, self.args.attn_model_path
+        )
+        self.args.reload_model = os.path.join(
+            self.temp_dir.name, self.args.reload_model
+        )
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
     def run_dygraph(self, mode="train", attn_model=False):
         program_translator.enable(False)
         if mode == "train":
-            return train(attn_model)
+            return train(self.args, attn_model)
         else:
-            return infer(attn_model)
+            return infer(self.args, attn_model)
 
     def run_static(self, mode="train", attn_model=False):
         program_translator.enable(True)
         if mode == "train":
-            return train(attn_model)
+            return train(self.args, attn_model)
         else:
-            return infer(attn_model)
+            return infer(self.args, attn_model)
 
     def _test_train(self, attn_model=False):
         dygraph_loss = self.run_dygraph(mode="train", attn_model=attn_model)
@@ -180,8 +215,10 @@ class TestSeq2seq(unittest.TestCase):
         result = np.allclose(dygraph_loss, static_loss)
         self.assertTrue(
             result,
-            msg="\ndygraph_loss = {} \nstatic_loss = {}".format(dygraph_loss,
-                                                                static_loss))
+            msg="\ndygraph_loss = {} \nstatic_loss = {}".format(
+                dygraph_loss, static_loss
+            ),
+        )
 
     def _test_predict(self, attn_model=False):
         pred_dygraph = self.run_dygraph(mode="test", attn_model=attn_model)
@@ -189,8 +226,10 @@ class TestSeq2seq(unittest.TestCase):
         result = np.allclose(pred_static, pred_dygraph)
         self.assertTrue(
             result,
-            msg="\npred_dygraph = {} \npred_static = {}".format(pred_dygraph,
-                                                                pred_static))
+            msg="\npred_dygraph = {} \npred_static = {}".format(
+                pred_dygraph, pred_static
+            ),
+        )
 
     def test_base_model(self):
         self._test_train(attn_model=False)

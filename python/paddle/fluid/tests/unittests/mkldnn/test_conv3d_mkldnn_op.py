@@ -12,11 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-from paddle.fluid.tests.unittests.test_conv3d_op import TestConv3DOp, TestCase1, TestWithGroup1, TestWithGroup2, TestWith1x1, TestWithInput1x1Filter1x1, TestConv3DOp_2
+
+from paddle.fluid.tests.unittests.test_conv3d_op import (
+    TestCase1,
+    TestConv3DOp,
+    TestWith1x1,
+    TestWithGroup1,
+    TestWithGroup2,
+    TestWithInput1x1Filter1x1,
+)
 
 
 class TestMKLDNN(TestConv3DOp):
@@ -95,4 +102,7 @@ class TestConv3DOp_Valid_MKLDNN(TestConv3DOp_AsyPadding_MKLDNN):
 
 
 if __name__ == '__main__':
+    from paddle import enable_static
+
+    enable_static()
     unittest.main()

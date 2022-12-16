@@ -15,6 +15,7 @@ limitations under the License. */
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+
 #include "paddle/fluid/inference/tests/api/analyzer_seq_pool1_tester_helper.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 

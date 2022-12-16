@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -57,7 +56,7 @@ class TestAtan(OpTest):
             out = paddle.atan(data, name='Y')
             place = paddle.NPUPlace(0)
             exe = fluid.Executor(place)
-            result, = exe.run(feed={"X": np_x}, fetch_list=[out])
+            (result,) = exe.run(feed={"X": np_x}, fetch_list=[out])
             expected = np.arctan(np_x)
             self.assertEqual(result, expected)
 

@@ -16,12 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator_kernel_configs.h"
-
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/miopen_helper.h"
-#else
-#include "paddle/fluid/platform/cudnn_helper.h"
-#endif
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace framework {
@@ -60,7 +55,8 @@ class ConvSearchCache {
   AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>* GetBackwardFilter() {
     return &backward_filter_cache_;
   }
-  AlgorithmsCache<cudnnConvolutionFwdAlgo_t>* GetConvFusion() {
+  AlgorithmsCache<SearchFuseResult<cudnnConvolutionFwdAlgo_t>>*
+  GetConvFusion() {
     return &fusion_forward_cache_;
   }
 #endif
@@ -80,7 +76,8 @@ class ConvSearchCache {
   AlgorithmsCache<cudnnConvolutionFwdAlgo_t> forward_cache_;
   AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t> backward_data_cache_;
   AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t> backward_filter_cache_;
-  AlgorithmsCache<cudnnConvolutionFwdAlgo_t> fusion_forward_cache_;
+  AlgorithmsCache<SearchFuseResult<cudnnConvolutionFwdAlgo_t>>
+      fusion_forward_cache_;
 #endif
 };
 

@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/load_combine_op.h"
+
 #include <string>
 #include <vector>
-
-#include "paddle/fluid/operators/load_combine_op.h"
 
 namespace paddle {
 namespace operators {
@@ -62,7 +62,7 @@ class LoadCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 LoadCombine Operator.
 
-LoadCombine operator loads LoDTensor variables from a file, which could be
+LoadCombine operator loads phi::DenseTensor variables from a file, which could be
 loaded in memory already. The file should contain one or more LoDTensors
 serialized using the SaveCombine operator. The
 LoadCombine operator applies a deserialization strategy to appropriately load
@@ -80,15 +80,15 @@ that were saved using the SaveCombine operator.
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(load_combine, ops::LoadCombineOp,
+REGISTER_OPERATOR(load_combine,
+                  ops::LoadCombineOp,
                   ops::LoadCombineOpProtoMaker);
 
 REGISTER_OP_CPU_KERNEL(
     load_combine,
-    ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::bfloat16>,
-    ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::LoadCombineOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::LoadCombineOpKernel<phi::CPUContext, float>,
+    ops::LoadCombineOpKernel<phi::CPUContext, double>,
+    ops::LoadCombineOpKernel<phi::CPUContext, paddle::platform::bfloat16>,
+    ops::LoadCombineOpKernel<phi::CPUContext, int>,
+    ops::LoadCombineOpKernel<phi::CPUContext, int8_t>,
+    ops::LoadCombineOpKernel<phi::CPUContext, int64_t>);

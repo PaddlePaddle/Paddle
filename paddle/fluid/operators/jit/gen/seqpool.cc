@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/operators/jit/gen/act.h"  // for exp_float_consts ones
 #include "paddle/fluid/operators/jit/registry.h"
-#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 
 namespace paddle {
 namespace operators {
@@ -59,25 +59,28 @@ void SeqPoolJitCode::genCode() {
 class SeqPoolCreator : public JitCodeCreator<seq_pool_attr_t> {
  public:
   bool CanBeUsed(const seq_pool_attr_t& attr) const override {
-    return platform::MayIUse(platform::avx);
+    return phi::backends::cpu::MayIUse(phi::backends::cpu::avx);
   }
   size_t CodeSize(const seq_pool_attr_t& attr) const override {
-    return 96 +
-           ((attr.w / YMM_FLOAT_BLOCK + 4 /* for rest */) *
-                4 /* load, mul and save */ +
-            256) *
-               16;
+    return 96 + ((attr.w / YMM_FLOAT_BLOCK + 4 /* for rest */) *
+                     4 /* load, mul and save */
+                 + 256) *
+                    16;
   }
   std::unique_ptr<GenBase> CreateJitCode(
       const seq_pool_attr_t& attr) const override {
-    PADDLE_ENFORCE_GT(attr.w, 0, platform::errors::InvalidArgument(
-                                     "The attribute width of SeqPool should "
-                                     "be larger than 0. But it is %d.",
-                                     attr.w));
-    PADDLE_ENFORCE_GT(attr.h, 0, platform::errors::InvalidArgument(
-                                     "The attribute height of SeqPool should "
-                                     "be larger than 0. But it is %d.",
-                                     attr.h));
+    PADDLE_ENFORCE_GT(attr.w,
+                      0,
+                      platform::errors::InvalidArgument(
+                          "The attribute width of SeqPool should "
+                          "be larger than 0. But it is %d.",
+                          attr.w));
+    PADDLE_ENFORCE_GT(attr.h,
+                      0,
+                      platform::errors::InvalidArgument(
+                          "The attribute height of SeqPool should "
+                          "be larger than 0. But it is %d.",
+                          attr.h));
     return make_unique<SeqPoolJitCode>(attr, CodeSize(attr));
   }
 };

@@ -27,7 +27,7 @@ class XPUUniformRandomInplaceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto out_var = ctx.OutputVar("Out");
-    auto *tensor = out_var->GetMutable<framework::LoDTensor>();
+    auto *tensor = out_var->GetMutable<phi::DenseTensor>();
     T *data = tensor->mutable_data<T>(ctx.GetPlace());
 
     int64_t size = tensor->numel();
@@ -48,19 +48,25 @@ class XPUUniformRandomInplaceKernel : public framework::OpKernel<T> {
     auto diag_val = static_cast<T>(ctx.Attr<float>("diag_val"));
     if (diag_num > 0) {
       PADDLE_ENFORCE_GT(
-          size, (diag_num - 1) * (diag_step + 1),
+          size,
+          (diag_num - 1) * (diag_step + 1),
           platform::errors::InvalidArgument(
               "ShapeInvalid: the diagonal's elements is equal (num-1) "
               "* (step-1) with num %d, step %d,"
               "It should be smaller than %d, but received %d",
-              diag_num, diag_step, (diag_num - 1) * (diag_step + 1), size));
+              diag_num,
+              diag_step,
+              (diag_num - 1) * (diag_step + 1),
+              size));
       for (int64_t i = 0; i < diag_num; ++i) {
         int64_t pos = i * diag_step + i;
         data_cpu[pos] = diag_val;
       }
     }
-    memory::Copy(BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()), data,
-                 platform::CPUPlace(), reinterpret_cast<void *>(data_cpu.get()),
+    memory::Copy(ctx.GetPlace(),
+                 data,
+                 platform::CPUPlace(),
+                 reinterpret_cast<void *>(data_cpu.get()),
                  size * sizeof(T));
   }
 };
@@ -69,7 +75,7 @@ template <typename T>
 class XPUUniformRandomInplaceGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext &ctx) const override {
-    auto *dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto *dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     if (dx) {
       T *data = dx->mutable_data<T>(ctx.GetPlace());
       int64_t size = dx->numel();
@@ -77,9 +83,11 @@ class XPUUniformRandomInplaceGradKernel : public framework::OpKernel<T> {
       for (int64_t i = 0; i < size; ++i) {
         data_cpu[i] = T(0);
       }
-      memory::Copy(BOOST_GET_CONST(platform::XPUPlace, ctx.GetPlace()), data,
+      memory::Copy(ctx.GetPlace(),
+                   data,
                    platform::CPUPlace(),
-                   reinterpret_cast<void *>(data_cpu.get()), size * sizeof(T));
+                   reinterpret_cast<void *>(data_cpu.get()),
+                   size * sizeof(T));
     }
   }
 };

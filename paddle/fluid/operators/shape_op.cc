@@ -12,10 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/shape_op.h"
 #include <string>
+
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/complex.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -24,20 +26,17 @@ class ShapeOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
-                      platform::errors::InvalidArgument(
-                          "Input (Input) of get_shape op should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      platform::errors::InvalidArgument(
-                          "Output (Out) of get_shape op should not be null."));
-    auto in_dim = ctx->GetInputDim("Input");
-    ctx->SetOutputDim("Out", {in_dim.size()});
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "Input");
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
  protected:
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
+      const std::string &var_name,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    expected_kernel_type.place_,
@@ -48,11 +47,11 @@ class ShapeOp : public framework::OperatorWithKernel {
 class ShapeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Input", "(LoDTensor), The input tensor.");
-    AddOutput(
-        "Out",
-        "(LoDTensor), The shape of input tensor, the data type of the shape"
-        " is int32_t, will be on the same device with the input Tensor.");
+    AddInput("Input", "(phi::DenseTensor), The input tensor.");
+    AddOutput("Out",
+              "(phi::DenseTensor), The shape of input tensor, the data type of "
+              "the shape"
+              " is int32_t, will be on the same device with the input Tensor.");
     AddComment(R"DOC(
 Shape Operator.
 
@@ -61,18 +60,23 @@ Return the shape of the input.
   }
 };
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ShapeNoNeedBufferVarsInferer, "Input");
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
+
+DECLARE_INFER_SHAPE_FUNCTOR(shape,
+                            ShapeInferShapeFunctor,
+                            PD_INFER_META(phi::ShapeInferMeta));
+
 REGISTER_OPERATOR(
-    shape, ops::ShapeOp, ops::ShapeOpMaker,
+    shape,
+    ops::ShapeOp,
+    ops::ShapeOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(shape, ops::ShapeKernel<bool>, ops::ShapeKernel<int>,
-                       ops::ShapeKernel<int8_t>, ops::ShapeKernel<uint8_t>,
-                       ops::ShapeKernel<int64_t>, ops::ShapeKernel<float>,
-                       ops::ShapeKernel<double>,
-                       ops::ShapeKernel<plat::complex<float>>,
-                       ops::ShapeKernel<plat::complex<double>>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::ShapeNoNeedBufferVarsInferer,
+    ShapeInferShapeFunctor);

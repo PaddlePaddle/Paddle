@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/interpolate_mkldnn_pass.h"
+
 #include <string>
 #include <vector>
-#include "paddle/fluid/platform/enforce.h"
+
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -29,7 +31,7 @@ namespace ir {
 
 class Graph;
 
-void InterpolateMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
+void InterpolateOneDNNPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
                           platform::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
@@ -42,15 +44,18 @@ void InterpolateMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
   Init("interpolate_mkldnn_pass", graph);
 
   int found_count = 0;
-  const std::vector<std::string> interpolate_op_types = {
-      "bilinear_interp",  "nearest_interp", "trilinear_interp",
-      "bicubic_interp",   "linear_interp",  "bilinear_interp_v2",
-      "nearest_interp_v2"};
+  const std::vector<std::string> interpolate_op_types = {"bilinear_interp",
+                                                         "nearest_interp",
+                                                         "trilinear_interp",
+                                                         "bicubic_interp",
+                                                         "linear_interp",
+                                                         "bilinear_interp_v2",
+                                                         "nearest_interp_v2"};
 
   for (const Node* node : graph->Nodes()) {
-    if (node->IsOp() &&
-        std::find(interpolate_op_types.begin(), interpolate_op_types.end(),
-                  node->Name()) != interpolate_op_types.end()) {
+    if (node->IsOp() && std::find(interpolate_op_types.begin(),
+                                  interpolate_op_types.end(),
+                                  node->Name()) != interpolate_op_types.end()) {
       auto* op_desc = node->Op();
       op_desc->SetAttr("use_mkldnn", true);
       ++found_count;
@@ -65,4 +70,4 @@ void InterpolateMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
 }  // namespace paddle
 
 REGISTER_PASS(interpolate_mkldnn_pass,
-              paddle::framework::ir::InterpolateMKLDNNPass);
+              paddle::framework::ir::InterpolateOneDNNPass);

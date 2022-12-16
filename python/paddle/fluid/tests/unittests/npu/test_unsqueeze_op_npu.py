@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest
 import paddle
@@ -37,7 +36,9 @@ class TestUnsqueezeOp(OpTest):
         self.x = np.random.random(self.ori_shape).astype("float32")
         self.inputs = {"X": OpTest.np_dtype_to_fluid_dtype(self.x)}
         self.init_attrs()
-        self.outputs = {"Out": self.x.reshape(self.new_shape), }
+        self.outputs = {
+            "Out": self.x.reshape(self.new_shape),
+        }
 
     def set_npu(self):
         self.__class__.use_npu = True
@@ -72,7 +73,7 @@ class TestUnsqueezeOp2(TestUnsqueezeOp):
         self.new_shape = (1, 20, 5)
 
 
-# Just part of axes be squeezed. 
+# Just part of axes be squeezed.
 class TestUnsqueezeOp3(TestUnsqueezeOp):
     def init_test_case(self):
         self.ori_shape = (6, 5, 1, 4)
@@ -80,7 +81,7 @@ class TestUnsqueezeOp3(TestUnsqueezeOp):
         self.new_shape = (6, 1, 5, 1, 4, 1)
 
 
-# unsqueeze 2        
+# unsqueeze 2
 class TestUnsqueeze2Op(OpTest):
     def setUp(self):
         self.set_npu()
@@ -92,7 +93,7 @@ class TestUnsqueeze2Op(OpTest):
         self.init_attrs()
         self.outputs = {
             "Out": self.x.reshape(self.new_shape),
-            "XShape": np.random.random(self.ori_shape).astype("float32")
+            "XShape": np.random.random(self.ori_shape).astype("float32"),
         }
 
     def set_npu(self):
@@ -129,7 +130,7 @@ class TestUnsqueeze2Op2(TestUnsqueeze2Op):
         self.new_shape = (1, 20, 5)
 
 
-# Correct: Just part of axes be squeezed. 
+# Correct: Just part of axes be squeezed.
 class TestUnsqueeze2Op3(TestUnsqueeze2Op):
     def init_test_case(self):
         self.ori_shape = (6, 5, 1, 4)

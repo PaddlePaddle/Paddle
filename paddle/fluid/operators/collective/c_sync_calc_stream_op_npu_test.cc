@@ -26,14 +26,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
-namespace m = paddle::operators::math;
 
-USE_OP(elementwise_add);
+USE_OP_ITSELF(elementwise_add);
 USE_OP_DEVICE_KERNEL(elementwise_add, NPU);
 USE_OP_DEVICE_KERNEL(c_sync_calc_stream, NPU);
 
@@ -41,10 +40,10 @@ template <typename T>
 void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   // init
   auto x = scope->Var("X");
-  auto tensor_x = x->GetMutable<f::LoDTensor>();
+  auto tensor_x = x->GetMutable<phi::DenseTensor>();
 
   auto y = scope->Var("Y");
-  auto tensor_y = y->GetMutable<f::LoDTensor>();
+  auto tensor_y = y->GetMutable<phi::DenseTensor>();
 
   std::vector<T> init_x;
   for (int64_t i = 0; i < 10 * 10; ++i) {
@@ -56,40 +55,41 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
     init_y.push_back(static_cast<T>(2.0));
   }
 
-  TensorFromVector(init_x, ctx, tensor_x);
+  paddle::framework::TensorFromVector(init_x, ctx, tensor_x);
   tensor_x->Resize({10, 10});
-  TensorFromVector(init_y, ctx, tensor_y);
+  paddle::framework::TensorFromVector(init_y, ctx, tensor_y);
   tensor_y->Resize({10, 10});
 
   f::AttributeMap attrs;
   auto place = ctx.GetPlace();
   auto out = scope->Var("Out");
-  auto tensor_out = out->GetMutable<f::LoDTensor>();
+  auto tensor_out = out->GetMutable<phi::DenseTensor>();
 
   // sync data
-  auto sync_op0 = f::OpRegistry::CreateOp("c_sync_calc_stream", {{"X", {"X"}}},
-                                          {{"Out", {"Out"}}}, attrs);
+  auto sync_op0 = f::OpRegistry::CreateOp(
+      "c_sync_calc_stream", {{"X", {"X"}}}, {{"Out", {"Out"}}}, attrs);
   sync_op0->Run(*scope, place);
 
   // run
 
-  auto op =
-      f::OpRegistry::CreateOp("elementwise_add", {{"X", {"X"}}, {"Y", {"Y"}}},
-                              {{"Out", {"Out"}}}, attrs);
+  auto op = f::OpRegistry::CreateOp("elementwise_add",
+                                    {{"X", {"X"}}, {"Y", {"Y"}}},
+                                    {{"Out", {"Out"}}},
+                                    attrs);
 
   op->Run(*scope, place);
 
   // sync op run
-  auto sync_op = f::OpRegistry::CreateOp("c_sync_calc_stream", {{"X", {"X"}}},
-                                         {{"Out", {"Out"}}}, attrs);
+  auto sync_op = f::OpRegistry::CreateOp(
+      "c_sync_calc_stream", {{"X", {"X"}}}, {{"Out", {"Out"}}}, attrs);
   sync_op->Run(*scope, place);
 
   std::vector<T> out_vec;
-  TensorToVector(*tensor_out, ctx, &out_vec);
+  paddle::framework::TensorToVector(*tensor_out, ctx, &out_vec);
 
   // sync op copy
-  auto sync_op2 = f::OpRegistry::CreateOp("c_sync_calc_stream", {{"X", {"X"}}},
-                                          {{"Out", {"Out"}}}, attrs);
+  auto sync_op2 = f::OpRegistry::CreateOp(
+      "c_sync_calc_stream", {{"X", {"X"}}}, {{"Out", {"Out"}}}, attrs);
   sync_op2->Run(*scope, place);
 
   float expected = 3.0;

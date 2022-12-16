@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
 from op_test import OpTest, skip_check_grad_ci
 import paddle
@@ -37,7 +36,7 @@ class TestElementwiseMinOp(OpTest):
         self.init_input_output()
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
         }
         self.outputs = {'Out': self.out}
         self.attrs = {'axis': self.axis}
@@ -51,8 +50,9 @@ class TestElementwiseMinOp(OpTest):
         # to avoid them being too close to each other.
         self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
         self.sgn = np.random.choice([-1, 1], [13, 17]).astype(self.dtype)
-        self.y = self.x + self.sgn * np.random.uniform(
-            0.1, 1, [13, 17]).astype(self.dtype)
+        self.y = self.x + self.sgn * np.random.uniform(0.1, 1, [13, 17]).astype(
+            self.dtype
+        )
         self.out = np.minimum(self.x, self.y)
         self.axis = -1
 
@@ -64,32 +64,49 @@ class TestElementwiseMinOp(OpTest):
 
     def test_check_grad_normal(self):
         if self.dtype == np.float16:
-            return
-
-        self.check_grad_with_place(
-            self.place,
-            ['X', 'Y'],
-            'Out', )
+            self.check_grad_with_place(
+                self.place, ['X', 'Y'], 'Out', max_relative_error=0.5
+            )
+        else:
+            self.check_grad_with_place(
+                self.place,
+                ['X', 'Y'],
+                'Out',
+            )
 
     def test_check_grad_ingore_x(self):
         if self.dtype == np.float16:
-            return
-
-        self.check_grad_with_place(
-            self.place,
-            ['Y'],
-            'Out',
-            no_grad_set=set("X"), )
+            self.check_grad_with_place(
+                self.place,
+                ['Y'],
+                'Out',
+                no_grad_set=set("X"),
+                max_relative_error=0.9,
+            )
+        else:
+            self.check_grad_with_place(
+                self.place,
+                ['Y'],
+                'Out',
+                no_grad_set=set("X"),
+            )
 
     def test_check_grad_ingore_y(self):
         if self.dtype == np.float16:
-            return
-
-        self.check_grad_with_place(
-            self.place,
-            ['X'],
-            'Out',
-            no_grad_set=set("Y"), )
+            self.check_grad_with_place(
+                self.place,
+                ['X'],
+                'Out',
+                no_grad_set=set("Y"),
+                max_relative_error=0.1,
+            )
+        else:
+            self.check_grad_with_place(
+                self.place,
+                ['X'],
+                'Out',
+                no_grad_set=set("Y"),
+            )
 
 
 class TestElementwiseMinOpFp16(TestElementwiseMinOp):
@@ -99,10 +116,11 @@ class TestElementwiseMinOpFp16(TestElementwiseMinOp):
 
 class TestElementwiseMinOp_Vector(TestElementwiseMinOp):
     def init_input_output(self):
-        self.x = np.random.uniform(1, 2, (100, )).astype(self.dtype)
-        self.sgn = np.random.choice([-1, 1], (100, )).astype(self.dtype)
-        self.y = self.x + self.sgn * np.random.uniform(0.1, 1, (
-            100, )).astype(self.dtype)
+        self.x = np.random.uniform(1, 2, (100,)).astype(self.dtype)
+        self.sgn = np.random.choice([-1, 1], (100,)).astype(self.dtype)
+        self.y = self.x + self.sgn * np.random.uniform(0.1, 1, (100,)).astype(
+            self.dtype
+        )
         self.out = np.minimum(self.x, self.y)
         self.axis = -1
 
@@ -113,7 +131,8 @@ class TestElementwiseMinOpFp16_Vector(TestElementwiseMinOp_Vector):
 
 
 @skip_check_grad_ci(
-    reason="[skip shape check] Use y_shape(1) to test broadcast.")
+    reason="[skip shape check] Use y_shape(1) to test broadcast."
+)
 class TestElementwiseMinOp_scalar(TestElementwiseMinOp):
     def init_input_output(self):
         self.x = np.random.random_integers(-5, 5, [10, 3, 4]).astype(self.dtype)
@@ -123,7 +142,8 @@ class TestElementwiseMinOp_scalar(TestElementwiseMinOp):
 
 
 @skip_check_grad_ci(
-    reason="[skip shape check] Use y_shape(1) to test broadcast.")
+    reason="[skip shape check] Use y_shape(1) to test broadcast."
+)
 class TestElementwiseMinOpFp16_scalar(TestElementwiseMinOp_scalar):
     def init_dtype(self):
         self.dtype = np.float16
@@ -132,9 +152,10 @@ class TestElementwiseMinOpFp16_scalar(TestElementwiseMinOp_scalar):
 class TestElementwiseMinOp_broadcast(TestElementwiseMinOp):
     def init_input_output(self):
         self.x = np.random.uniform(0.5, 1, (2, 3, 100)).astype(self.dtype)
-        self.sgn = np.random.choice([-1, 1], (100, )).astype(self.dtype)
-        self.y = self.x[0, 0, :] + self.sgn * \
-            np.random.uniform(1, 2, (100, )).astype(self.dtype)
+        self.sgn = np.random.choice([-1, 1], (100,)).astype(self.dtype)
+        self.y = self.x[0, 0, :] + self.sgn * np.random.uniform(
+            1, 2, (100,)
+        ).astype(self.dtype)
         self.out = np.minimum(self.x, self.y.reshape(1, 1, 100))
         self.axis = -1
 
@@ -160,15 +181,16 @@ class TestElementwiseMinOpNet(unittest.TestCase):
             a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
             b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
             label = paddle.static.data(
-                name="label", shape=[32, 1], dtype='int64')
+                name="label", shape=[32, 1], dtype='int64'
+            )
 
             c = paddle.minimum(a, b)
 
             fc_1 = fluid.layers.fc(input=c, size=128)
             prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
 
-            cost = fluid.layers.cross_entropy(input=prediction, label=label)
-            loss = fluid.layers.reduce_mean(cost)
+            cost = paddle.nn.functional.cross_entropy(input=prediction, label=label, reduction='none', use_softmax=False)
+            loss = paddle.mean(cost)
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
 
@@ -185,13 +207,15 @@ class TestElementwiseMinOpNet(unittest.TestCase):
 
             pred_res, loss_res = exe.run(
                 main_prog,
-                feed={"a": a_np,
-                      "b": b_np,
-                      "label": label_np},
-                fetch_list=[prediction, loss])
+                feed={"a": a_np, "b": b_np, "label": label_np},
+                fetch_list=[prediction, loss],
+            )
             if epoch % 10 == 0:
-                print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
-                    epoch, pred_res[0], loss_res))
+                print(
+                    "Epoch {} | Prediction[0]: {}, Loss: {}".format(
+                        epoch, pred_res[0], loss_res
+                    )
+                )
 
         return pred_res, loss_res
 
@@ -199,8 +223,8 @@ class TestElementwiseMinOpNet(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         npu_pred, npu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(npu_pred, cpu_pred))
-        self.assertTrue(np.allclose(npu_loss, cpu_loss))
+        np.testing.assert_allclose(npu_pred, cpu_pred, rtol=1e-6)
+        np.testing.assert_allclose(npu_loss, cpu_loss, rtol=1e-6)
 
 
 if __name__ == '__main__':

@@ -12,17 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-from __future__ import print_function
-
 import unittest
 
-import paddle
 import numpy as np
+
+import paddle
 import paddle.distributed as dist
-from paddle.fluid.dygraph.nn import Linear
 from paddle.autograd import PyLayer
-from paddle.distributed.fleet.utils.hybrid_parallel_util import fused_allreduce_gradients
+from paddle.distributed.fleet.utils.hybrid_parallel_util import (
+    fused_allreduce_gradients,
+)
 
 batch = 5
 in_dim = 20
@@ -38,14 +37,14 @@ class cus_tanh(PyLayer):
 
     @staticmethod
     def backward(ctx, dy):
-        y, = ctx.saved_tensor()
+        (y,) = ctx.saved_tensor()
         grad = dy * (1 - paddle.square(y))
         return grad
 
 
 class SimpleNet(paddle.nn.Layer):
     def __init__(self, train_id, model_id):
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.w = self.create_parameter(shape=[in_dim, batch], dtype="float32")
         self.linear = paddle.nn.Linear(in_dim, out_dim)
         self.tanh = paddle.tanh
