@@ -98,9 +98,9 @@ class FusedTokenPrunePluginDynamic : public DynamicPluginTensorRT {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(
         &token_index_, max_batchs_ * max_token_length_ * sizeof(int32_t)));
     int32_t type_size = 4;
-    if(in[0].desc.type == nvinfer1::DataType::kHALF){
+    if (in[0].desc.type == nvinfer1::DataType::kHALF) {
       type_size = 2;
-    }else{
+    } else {
       type_size = 4;
     }
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(
