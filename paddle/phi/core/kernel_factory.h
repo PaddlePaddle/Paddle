@@ -53,9 +53,21 @@ class KernelKey {
   KernelKey(Backend backend, DataLayout layout, DataType dtype)
       : backend_(backend), layout_(layout), dtype_(dtype) {}
 
+  // explicit KernelKey(Place place, DataLayout layout, DataType dtype)
+  //     : backend_(TransToPhiBackend(place)), layout_(layout), dtype_(dtype) {}
+
+  explicit KernelKey(Place place)
+      : backend_(TransToPhiBackend(place)),
+        layout_(phi::DataLayout::ALL_LAYOUT),
+        dtype_(phi::DataType::ALL_DTYPE) {}
+
   Backend backend() const { return backend_; }
   DataLayout layout() const { return layout_; }
   DataType dtype() const { return dtype_; }
+
+  void set_backend(const Backend& backend) { backend_ = backend; }
+  void set_layout(const DataLayout& layout) { layout_ = layout; }
+  void set_dtype(const DataType& dtype) { dtype_ = dtype; }
 
   struct Hash {
     // Note: Now the number of bits we need does not exceed 32 bits, so there is

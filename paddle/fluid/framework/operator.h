@@ -638,18 +638,18 @@ class OperatorWithKernel : public OperatorBase {
 
   bool SupportXPU() const override;
 
-  bool SupportsMKLDNN(proto::VarType::Type data_type) const;
+  bool SupportsMKLDNN(phi::DataType data_type) const;
 
-  bool SupportsCUDNN(proto::VarType::Type data_type) const;
+  bool SupportsCUDNN(phi::DataType data_type) const;
 
   bool SupportsKernelType(const OpKernelType& kernel_type,
                           const ExecutionContext& exe_ctx) const;
 
   bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
-                       proto::VarType::Type data_type) const;
+                       phi::DataType data_type) const;
 
   bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
-                      proto::VarType::Type data_type) const;
+                      phi::DataType data_type) const;
 
   virtual void InferShape(InferShapeContext* ctx) const;
 
@@ -665,14 +665,15 @@ class OperatorWithKernel : public OperatorBase {
       const std::string& name1,
       const std::string& name2) const;
 
-  virtual OpKernelType GetExpectedKernelType(const ExecutionContext& ctx) const;
+  virtual phi::KernelKey GetExpectedKernelType(
+      const ExecutionContext& ctx) const;
 
   // change this to public so that in dygraph mode we can call it to check if we
   // need transform data
-  virtual OpKernelType GetKernelTypeForVar(
+  virtual phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const OpKernelType& expected_kernel_type) const;
+      const phi::KernelKey& expected_kernel_type) const;
 
   platform::Place GetExecutionPlace(
       const platform::Place& platform) const override {
@@ -734,7 +735,7 @@ class OperatorWithKernel : public OperatorBase {
    * transfered_inplace_vars is a output vector.
    */
   Scope* PrepareData(const Scope& scope,
-                     const OpKernelType& expected_kernel_key,
+                     const phi::KernelKey& expected_kernel_key,
                      std::vector<std::string>* transfered_inplace_vars,
                      RuntimeContext* ctx) const;
 

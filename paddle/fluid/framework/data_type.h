@@ -226,6 +226,10 @@ extern inline bool IsComplexType(const proto::VarType::Type& type) {
           type == proto::VarType::COMPLEX128);
 }
 
+extern inline bool IsComplexType(const phi::DataType& type) {
+  return (type == DataType::COMPLEX64 || type == DataType::COMPLEX128);
+}
+
 extern proto::VarType::Type PromoteTypesIfComplexExists(
     const proto::VarType::Type type_a, const proto::VarType::Type type_b);
 

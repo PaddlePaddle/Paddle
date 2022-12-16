@@ -28,8 +28,8 @@ class OpKernelType;
 
 using KernelTypePair = std::pair<OpKernelType, OpKernelType>;
 
-void TransDataType(const OpKernelType& kernel_type_for_var,
-                   const OpKernelType& expected_kernel_type,
+void TransDataType(const phi::KernelKey& kernel_type_for_var,
+                   const phi::KernelKey& expected_kernel_type,
                    const phi::DenseTensor& in,
                    phi::DenseTensor* out);
 void TransDataType(const phi::DenseTensor& in,

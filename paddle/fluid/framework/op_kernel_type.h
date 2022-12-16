@@ -108,15 +108,15 @@ inline bool NeedTransformLayout(const DataLayout& l, const DataLayout& r) {
   return ret;
 }
 
-inline bool NeedTransformDataType(const OpKernelType& l,
-                                  const OpKernelType& r) {
-  return (l.data_type_ != r.data_type_);
+inline bool NeedTransformDataType(const phi::KernelKey& l,
+                                  const phi::KernelKey& r) {
+  return (l.dtype() != r.dtype());
 }
 
-inline bool NeedTransform(const OpKernelType& l, const OpKernelType& r) {
-  return (!platform::places_are_same_class(l.place_, r.place_)) ||
-         (l.data_type_ != r.data_type_) ||
-         NeedTransformLayout(l.data_layout_, r.data_layout_);
+inline bool NeedTransform(const phi::KernelKey& l, const phi::KernelKey& r) {
+  return (!platform::backends_are_same_class(l.backend(), r.backend())) ||
+         (l.dtype() != r.dtype()) ||
+         NeedTransformLayout(l.layout(), r.layout());
 }
 
 }  // namespace framework

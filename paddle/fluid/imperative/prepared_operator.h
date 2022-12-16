@@ -75,7 +75,7 @@ template <typename VarType>
 std::shared_ptr<NameVarMap<VarType>> PrepareData(
     const framework::OperatorWithKernel& op,
     const NameVarMap<VarType>& ins,
-    const framework::OpKernelType& expected_kernel_key) {
+    const phi::KernelKey& expected_kernel_key) {
   std::shared_ptr<NameVarMap<VarType>> tmp_ins_ptr = nullptr;
   for (const auto& name_pair : ins) {
     for (size_t i = 0; i < name_pair.second.size(); ++i) {
@@ -149,7 +149,7 @@ class PreparedOp {
  public:
   PreparedOp(const framework::OperatorBase& op,
              const framework::RuntimeContext& ctx,
-             const framework::OpKernelType& kernel_type,
+             const phi::KernelKey& kernel_key,
              const framework::OperatorWithKernel::OpKernelFunc& func,
              const phi::ArgumentMappingFn* arg_map_fn,
              const phi::KernelSignature* default_kernel_signature,
@@ -157,7 +157,7 @@ class PreparedOp {
 
   PreparedOp(const framework::OperatorBase& op,
              const framework::RuntimeContext& ctx,
-             const framework::OpKernelType& kernel_type,
+             const phi::KernelKey& kernel_key,
              const phi::ArgumentMappingFn* arg_map_fn,
              const phi::KernelSignature* default_kernel_signature,
              phi::KernelSignature&& kernel_signature,
@@ -200,12 +200,12 @@ class PreparedOp {
            const framework::AttributeMap& attrs,
            const framework::AttributeMap& default_attrs);
 
-  const framework::OpKernelType& kernel_type() const { return kernel_type_; }
+  const phi::KernelKey& kernel_key() const { return kernel_key_; }
 
  private:
   const framework::OperatorBase& op_;
   const framework::RuntimeContext& ctx_;
-  framework::OpKernelType kernel_type_;
+  phi::KernelKey kernel_key_;
   framework::OperatorWithKernel::OpKernelFunc func_;
   platform::DeviceContext* dev_ctx_;
   // NOTE(chenweihang): Similar op members are used to adapt to

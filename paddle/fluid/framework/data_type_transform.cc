@@ -129,19 +129,18 @@ struct CastDataType {
   }
 };
 
-void TransDataType(const OpKernelType& kernel_type_for_var,
-                   const OpKernelType& expected_kernel_type,
+void TransDataType(const phi::KernelKey& kernel_type_for_var,
+                   const phi::KernelKey& expected_kernel_type,
                    const phi::DenseTensor& in,
                    phi::DenseTensor* out) {
-  PADDLE_ENFORCE_EQ(
-      framework::TransToProtoVarType(in.dtype()),
-      kernel_type_for_var.data_type_,
-      platform::errors::InvalidArgument(
-          "The src dtype(%s) of input tensor and kernel_type(%s) "
-          "are not conststent.",
-          DataTypeToString(framework::TransToProtoVarType(in.dtype())),
-          DataTypeToString(kernel_type_for_var.data_type_)));
-  auto dst_type = expected_kernel_type.data_type_;
+  PADDLE_ENFORCE_EQ(in.dtype(),
+                    kernel_type_for_var.dtype(),
+                    platform::errors::InvalidArgument(
+                        "The src dtype(%s) of input tensor and kernel_type(%s) "
+                        "are not conststent.",
+                        DataTypeToString(in.dtype()),
+                        DataTypeToString(kernel_type_for_var.dtype())));
+  auto dst_type = framework::TransToProtoVarType(expected_kernel_type.dtype());
   TransDataType(in, dst_type, out);
 }
 
