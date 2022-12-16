@@ -80,7 +80,7 @@ inline std::string str_join(std::map<std::string, bool> const& elements,
                             const std::string& delimiter = ",") {
   std::string str;
   for (const auto& item : elements) {
-    str += item.first + ": " + std::to_string(item.second) + ",";
+    str += item.first + ": " + std::to_string(item.second) + delimiter;
   }
   return str.substr(0, str.size() - 1);
 }

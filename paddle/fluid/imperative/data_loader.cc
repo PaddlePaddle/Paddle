@@ -73,19 +73,21 @@ void EraseLoadProcessPIDs(int64_t key) {
   } while (0)
 
 #define REGISTER_SIGNAL_HANDLER(SIGNAL, HANDLER_NAME, ERROR_MSG)           \
-  static void HANDLER_NAME(int sig, siginfo_t *info, void *ctx) {          \
+  static void HANDLER_NAME(                                                \
+      int UNUSED sig, siginfo_t UNUSED *info, void UNUSED *ctx) {          \
     auto _w =                                                              \
         write(STDERR_FILENO, ERROR_MSG, sizeof(ERROR_MSG) / sizeof(char)); \
     (void)_w;                                                              \
     SIGNAL_HANDLE(SIGNAL);                                                 \
   }
 
-#define REGISTER_SPEC_SIGNAL_HANDLER(SIGNAL, HANDLER_NAME)        \
-  static void HANDLER_NAME(int sig, siginfo_t *info, void *ctx) { \
-    if (info->si_pid == getppid()) {                              \
-      _exit(EXIT_SUCCESS);                                        \
-    }                                                             \
-    SIGNAL_HANDLE(SIGNAL);                                        \
+#define REGISTER_SPEC_SIGNAL_HANDLER(SIGNAL, HANDLER_NAME) \
+  static void HANDLER_NAME(                                \
+      int UNUSED sig, siginfo_t *info, void UNUSED *ctx) { \
+    if (info->si_pid == getppid()) {                       \
+      _exit(EXIT_SUCCESS);                                 \
+    }                                                      \
+    SIGNAL_HANDLE(SIGNAL);                                 \
   }
 
 REGISTER_SIGNAL_HANDLER(SIGSEGV,

@@ -77,14 +77,7 @@ inline std::ostream& operator<<(std::ostream& os, const Dim<D>& d) {
     for (int i = 1; i < D; ++i) {
       os << ", " << d[i];
     }
-  } else {
-    os << "";
   }
-
-  return os;
-}
-
-inline std::ostream& operator<<(std::ostream& os, const Dim<0>& d) {
   return os;
 }
 

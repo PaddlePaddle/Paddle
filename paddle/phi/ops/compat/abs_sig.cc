@@ -16,16 +16,17 @@
 
 namespace phi {
 
-KernelSignature AbsOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature AbsOpArgumentMapping(const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("abs", {"X"}, {}, {"Out"});
 }
 
-KernelSignature AbsGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature AbsGradOpArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("abs_grad", {"X", "Out@GRAD"}, {}, {"X@GRAD"});
 }
 
 KernelSignature AbsDoubleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("abs_double_grad", {"X", "DDX"}, {}, {"DDOut"});
 }
 

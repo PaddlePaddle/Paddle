@@ -16,12 +16,13 @@
 
 namespace phi {
 
-KernelSignature AddmmOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature AddmmOpArgumentMapping(const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "addmm", {"Input", "X", "Y"}, {"Beta", "Alpha"}, {"Out"});
 }
 
-KernelSignature AddmmGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature AddmmGradOpArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("addmm_grad",
                          {"Input", "X", "Y", "Out@GRAD"},
                          {"Alpha", "Beta"},

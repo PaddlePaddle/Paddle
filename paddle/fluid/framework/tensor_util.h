@@ -462,7 +462,7 @@ void TensorToVector(const phi::DenseTensor& src,
 
 template <>
 inline void TensorToVector(const phi::DenseTensor& src,
-                           const platform::DeviceContext& ctx,
+                           UNUSED const platform::DeviceContext& ctx,
                            std::vector<bool>* dst) {
   auto src_ptr = static_cast<const void*>(src.data<bool>());
   auto size = src.numel() * sizeof(bool);

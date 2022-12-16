@@ -6,7 +6,7 @@
 // 4. wrap the call to max and min with parenthesis to prevent the macro
 // expansion to fix the build error on windows platform
 // 5. change SmallVector to small_vector to unify naming style of utils
-
+// 6. remove getNewCapacity unused parameter
 //===- llvm/ADT/SmallVector.h - 'Normally small' vectors --------*- C++ -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
@@ -216,8 +216,9 @@ class small_vector_template_common
   }
 
   /// Check whether Elt will be invalidated by resizing the vector to NewSize.
-  void assertSafeToReferenceAfterResize(const void *Elt, size_t NewSize) {
-    assert(isSafeToReferenceAfterResize(Elt, NewSize) &&
+  void assertSafeToReferenceAfterResize(const void UNUSED *Elt,
+                                        size_t UNUSED NewSize) {
+    assert(isSafeToReferenceAfterResize(Elt, NewSize); &&
            "Attempting to reference an element of the vector in an operation "
            "that invalidates it");
   }
@@ -1399,7 +1400,7 @@ static void report_at_maximum_capacity(size_t MaxSize) {
 
 // Note: Moving this function into the header may cause performance regression.
 template <class Size_T>
-static size_t getNewCapacity(size_t MinSize, size_t TSize, size_t OldCapacity) {
+static size_t getNewCapacity(size_t MinSize, size_t OldCapacity) {
   constexpr size_t MaxSize = (std::numeric_limits<Size_T>::max)();
 
   // Ensure we can fit the new capacity.
@@ -1423,7 +1424,7 @@ template <class Size_T>
 void *small_vector_base<Size_T>::mallocForGrow(size_t MinSize,
                                                size_t TSize,
                                                size_t &NewCapacity) {
-  NewCapacity = getNewCapacity<Size_T>(MinSize, TSize, this->capacity());
+  NewCapacity = getNewCapacity<Size_T>(MinSize, this->capacity());
   return safe_malloc(NewCapacity * TSize);
 }
 
@@ -1432,7 +1433,7 @@ template <class Size_T>
 void small_vector_base<Size_T>::grow_pod(void *FirstEl,
                                          size_t MinSize,
                                          size_t TSize) {
-  size_t NewCapacity = getNewCapacity<Size_T>(MinSize, TSize, this->capacity());
+  size_t NewCapacity = getNewCapacity<Size_T>(MinSize, this->capacity());
   void *NewElts;
   if (BeginX == FirstEl) {
     NewElts = safe_malloc(NewCapacity * TSize);

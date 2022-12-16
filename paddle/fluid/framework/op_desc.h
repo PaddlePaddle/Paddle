@@ -148,9 +148,7 @@ class OpDesc {
 
   const AttributeMap &GetRuntimeAttrMap() const;
 
-  std::vector<std::string> InputNames(bool with_attr_var = false) const {
-    return MapKeys(inputs_);
-  }
+  std::vector<std::string> InputNames() const { return MapKeys(inputs_); }
   std::vector<std::string> OutputNames() const { return MapKeys(outputs_); }
 
   const VariableNameMap &Inputs() const { return inputs_; }

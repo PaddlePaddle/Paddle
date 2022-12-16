@@ -192,7 +192,7 @@ class ThreadPoolTempl {
     *start = val;
   }
 
-  void AssertBounds(int start, int end) {
+  void AssertBounds(int UNUSED start, int UNUSED end) {
     assert(start >= 0);
     assert(start < end);  // non-zero sized partition
     assert(end <= num_threads_);

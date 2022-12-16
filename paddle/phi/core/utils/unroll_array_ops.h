@@ -20,6 +20,7 @@
 
 namespace phi {
 namespace detail {
+
 template <size_t kStart, size_t kEnd, bool kStop>
 struct UnrollFillConstant {
   template <typename T>
@@ -32,7 +33,7 @@ struct UnrollFillConstant {
 template <size_t kStart, size_t kEnd>
 struct UnrollFillConstant<kStart, kEnd, true> {
   template <typename T>
-  HOSTDEVICE inline static void Run(T *data, T val) {}
+  HOSTDEVICE inline static void Run(T * /*data*/, T /*val*/) {}
 };
 
 template <size_t kStart, size_t kEnd, bool kStop>
@@ -47,7 +48,7 @@ struct UnrollAssign {
 template <size_t kStart, size_t kEnd>
 struct UnrollAssign<kStart, kEnd, true> {
   template <typename Tin, typename Tout>
-  HOSTDEVICE inline static void Run(const Tin *d1, Tout *d2) {}
+  HOSTDEVICE inline static void Run(const Tin * /*d1*/, Tout * /*d2*/) {}
 };
 
 template <typename T, size_t kStart, size_t kEnd, bool kStop>
@@ -63,7 +64,7 @@ struct UnrollVarArgsAssignImpl {
 
 template <typename T, size_t kStart, size_t kEnd>
 struct UnrollVarArgsAssignImpl<T, kStart, kEnd, true> {
-  HOSTDEVICE inline static void Run(T *d) {}
+  HOSTDEVICE inline static void Run(T * /*d*/) {}
 };
 
 template <typename T>
@@ -87,7 +88,8 @@ struct UnrollCompare {
 template <size_t kStart, size_t kEnd>
 struct UnrollCompare<kStart, kEnd, true> {
   template <typename T>
-  HOSTDEVICE inline constexpr static bool Run(const T *d1, const T *d2) {
+  HOSTDEVICE inline constexpr static bool Run(const T * /*d1*/,
+                                              const T * /*d2*/) {
     return true;
   }
 };
@@ -104,7 +106,7 @@ struct UnrollProduct {
 template <size_t kStart, size_t kEnd>
 struct UnrollProduct<kStart, kEnd, true> {
   template <typename T>
-  HOSTDEVICE inline constexpr static T Run(const T *d) {
+  HOSTDEVICE inline constexpr static T Run(const T * /*d*/) {
     return 1;
   }
 };

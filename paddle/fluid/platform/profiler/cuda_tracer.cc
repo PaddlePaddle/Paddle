@@ -85,7 +85,7 @@ void CudaTracer::CollectTraceData(TraceEventCollector* collector) {
   ProcessCuptiActivity(collector);
 }
 
-int CudaTracer::ProcessCuptiActivity(TraceEventCollector* collector) {
+int CudaTracer::ProcessCuptiActivity(TraceEventCollector UNUSED* collector) {
   int record_cnt = 0;
 #ifdef PADDLE_WITH_CUPTI
   CUPTI_CALL(dynload::cuptiActivityFlushAll(CUPTI_ACTIVITY_FLAG_FLUSH_FORCED));
