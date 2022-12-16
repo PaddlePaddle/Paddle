@@ -412,21 +412,22 @@ void GraphGpuWrapper::load_edge_file(std::string etype2files,
           etype2files, graph_data_local_path, part_num, reverse);
 }
 
-void GraphGpuWrapper::load_node_file(std::string name, std::string filepath) {
+int GraphGpuWrapper::load_node_file(std::string name, std::string filepath) {
   // 'n' means load nodes and 'node_type' follows
 
   std::string params = "n" + name;
 
   if (node_to_id.find(name) != node_to_id.end()) {
-    reinterpret_cast<GpuPsGraphTable *>(graph_table)
+    return reinterpret_cast<GpuPsGraphTable *>(graph_table)
         ->cpu_graph_table_->Load(std::string(filepath), params);
   }
+  return 0;
 }
 
-void GraphGpuWrapper::load_node_file(std::string ntype2files,
+int GraphGpuWrapper::load_node_file(std::string ntype2files,
                                      std::string graph_data_local_path,
                                      int part_num) {
-  reinterpret_cast<GpuPsGraphTable *>(graph_table)
+  return reinterpret_cast<GpuPsGraphTable *>(graph_table)
       ->cpu_graph_table_->parse_node_and_load(
           ntype2files, graph_data_local_path, part_num);
 }

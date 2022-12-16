@@ -789,6 +789,7 @@ class GraphTable : public Table {
   std::string slot_feature_separator_ = std::string(" ");
   std::string feature_separator_ = std::string(" ");
   std::vector<int> slot_feature_num_map_;
+  bool is_parse_node_fail_ = false;
 };
 
 /*

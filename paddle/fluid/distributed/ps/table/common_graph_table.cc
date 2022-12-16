@@ -1211,11 +1211,19 @@ int32_t GraphTable::Load(const std::string &path, const std::string &param) {
   if (load_edge) {
     bool reverse_edge = (param[1] == '<');
     std::string edge_type = param.substr(2);
-    return this->load_edges(path, reverse_edge, edge_type);
+    int ret = this->load_edges(path, reverse_edge, edge_type);
+    if (ret != 0) {
+      VLOG(0) << "Fail to load edges, path[" << path << "] edge_type[" << edge_type << "]";
+      return -1;
+    }
   }
   if (load_node) {
     std::string node_type = param.substr(1);
-    return this->load_nodes(path, node_type);
+    int ret = this->load_nodes(path, node_type);
+    if (ret != 0) {
+      VLOG(0) << "Fail to load nodes, path[" << path << "] node_type[" << node_type << "]";
+      return -1;
+    }
   }
   return 0;
 }
@@ -1327,10 +1335,18 @@ int32_t GraphTable::parse_node_and_load(std::string ntype2files,
     return 0;
   }
   if (FLAGS_graph_load_in_parallel) {
-    this->load_nodes(npath_str, "");
+    int ret = this->load_nodes(npath_str, "");
+    if (ret != 0) {
+      VLOG(0) << "Fail to load nodes, path[" << npath << "]";
+      return -1;
+    }
   } else {
     for (size_t j = 0; j < ntypes.size(); j++) {
-      this->load_nodes(npath_str, ntypes[j]);
+      int ret = this->load_nodes(npath_str, ntypes[j]);
+      if (ret != 0) {
+        VLOG(0) << "Fail to load nodes, path[" << npath << "], ntypes[" << ntypes[j] << "]";
+        return -1;
+      }
     }
   }
   return 0;
@@ -1405,10 +1421,18 @@ int32_t GraphTable::load_node_and_edge_file(std::string etype2files,
               return 0;
             }
             if (FLAGS_graph_load_in_parallel) {
-              this->load_nodes(npath_str, "");
+              int ret = this->load_nodes(npath_str, "");
+              if (ret != 0) {
+                VLOG(0) << "Fail to load nodes, path[" << npath_str << "]";
+                return -1;
+              }
             } else {
               for (size_t j = 0; j < ntypes.size(); j++) {
-                this->load_nodes(npath_str, ntypes[j]);
+                int ret = this->load_nodes(npath_str, ntypes[j]);
+                if (ret != 0) {
+                  VLOG(0) << "Fail to load nodes, path[" << npath_str << "], ntypes[" << ntypes[j] << "]";
+                  return -1;
+                }
               }
             }
           }
@@ -1416,6 +1440,10 @@ int32_t GraphTable::load_node_and_edge_file(std::string etype2files,
         }));
   }
   for (size_t i = 0; i < tasks.size(); i++) tasks[i].get();
+  if (is_parse_node_fail_) {
+    VLOG(0) << "Fail to load node_and_edge_file";
+    return -1;
+  }
   return 0;
 }
 
@@ -1507,7 +1535,12 @@ std::pair<uint64_t, uint64_t> GraphTable::parse_node_file(
       node->set_feature_size(feat_name[idx].size());
       for (int i = 1; i < num; ++i) {
         auto &v = vals[i];
-        parse_feature(idx, v.ptr, v.len, node);
+        int ret = parse_feature(idx, v.ptr, v.len, node);
+        if (ret != 0) {
+          VLOG(0) << "Fail to parse feature, node_id[" << id << "]";
+          is_parse_node_fail_ = true;
+          return {0, 0};
+        }
       }
     }
     local_valid_count++;
@@ -1559,7 +1592,12 @@ std::pair<uint64_t, uint64_t> GraphTable::parse_node_file(
     if (node != NULL) {
       for (int i = 2; i < num; ++i) {
         auto &v = vals[i];
-        parse_feature(idx, v.ptr, v.len, node);
+        int ret = parse_feature(idx, v.ptr, v.len, node);
+        if (ret != 0) {
+          VLOG(0) << "Fail to parse feature, node_id[" << id << "]";
+          is_parse_node_fail_ = true;
+          return {0, 0};
+        }
       }
     }
     local_valid_count++;
@@ -1610,6 +1648,11 @@ int32_t GraphTable::load_nodes(const std::string &path, std::string node_type) {
       count += res.first;
       valid_count += res.second;
     }
+  }
+  if (is_parse_node_fail_) {
+    VLOG(0) << "Fail to load nodes, path[" << paths[0] << ".."
+        << paths[paths.size() -1] << "] node_type[" << node_type << "]";
+    return -1;
   }
 
   VLOG(0) << valid_count << "/" << count << " nodes in node_type[ " << node_type
@@ -2111,28 +2154,48 @@ int GraphTable::parse_feature(int idx,
     if (dtype == "feasign") {
       //      string_vector_2_string(fields.begin() + 1, fields.end(), ' ',
       //      fea_ptr);
-      FeatureNode::parse_value_to_bytes<uint64_t>(
+      int ret = FeatureNode::parse_value_to_bytes<uint64_t>(
           fea_fields.begin(), fea_fields.end(), fea_ptr);
+      if (ret != 0) {
+        VLOG(0) << "Fail to parse value";
+        return -1;
+      }
       return 0;
     } else if (dtype == "string") {
       string_vector_2_string(
           fea_fields.begin(), fea_fields.end(), ' ', fea_ptr);
       return 0;
     } else if (dtype == "float32") {
-      FeatureNode::parse_value_to_bytes<float>(
+      int ret = FeatureNode::parse_value_to_bytes<float>(
           fea_fields.begin(), fea_fields.end(), fea_ptr);
+      if (ret != 0) {
+        VLOG(0) << "Fail to parse value";
+        return -1;
+      }
       return 0;
     } else if (dtype == "float64") {
-      FeatureNode::parse_value_to_bytes<double>(
+      int ret = FeatureNode::parse_value_to_bytes<double>(
           fea_fields.begin(), fea_fields.end(), fea_ptr);
+      if (ret != 0) {
+        VLOG(0) << "Fail to parse value";
+        return -1;
+      }
       return 0;
     } else if (dtype == "int32") {
-      FeatureNode::parse_value_to_bytes<int32_t>(
+      int ret = FeatureNode::parse_value_to_bytes<int32_t>(
           fea_fields.begin(), fea_fields.end(), fea_ptr);
+      if (ret != 0) {
+        VLOG(0) << "Fail to parse value";
+        return -1;
+      }
       return 0;
     } else if (dtype == "int64") {
-      FeatureNode::parse_value_to_bytes<uint64_t>(
+      int ret = FeatureNode::parse_value_to_bytes<uint64_t>(
           fea_fields.begin(), fea_fields.end(), fea_ptr);
+      if (ret != 0) {
+        VLOG(0) << "Fail to parse value";
+        return -1;
+      }
       return 0;
     }
   } else {
@@ -2140,7 +2203,7 @@ int GraphTable::parse_feature(int idx,
             << idx << "] feat_id_map_size[" << feat_id_map.size() << "]";
   }
 
-  return -1;
+  return 0;
 }
 // thread safe shard vector merge
 class MergeShardVector {

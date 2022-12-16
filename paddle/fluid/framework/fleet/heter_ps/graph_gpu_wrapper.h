@@ -67,8 +67,8 @@ class GraphGpuWrapper {
                       int part_num,
                       bool reverse);
 
-  void load_node_file(std::string name, std::string filepath);
-  void load_node_file(std::string ntype2files,
+  int load_node_file(std::string name, std::string filepath);
+  int load_node_file(std::string ntype2files,
                       std::string graph_data_local_path,
                       int part_num);
   void load_node_and_edge(std::string etype2files,

@@ -1424,6 +1424,9 @@ void PSGPUWrapper::EndPass() {
   if (FLAGS_gpugraph_storage_mode == GpuGraphStorageMode::WHOLE_HBM) {
     return;
   }
+  if (current_task_ == nullptr) {
+    return;
+  }
   platform::Timer stagetime;
   stagetime.Start();
   HbmToSparseTable();
