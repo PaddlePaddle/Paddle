@@ -253,6 +253,7 @@ paddle::framework::FetchList InterpreterCore::Run(
     // convert vec func_list to graph
     Convert(&op_func_nodes);
     is_build_ = true;
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
     UpdateSyncOpNum();
   } else {
     // For the program that only run once, it is no need to
@@ -1190,6 +1191,7 @@ void InterpreterCore::Prepare(const std::vector<std::string>& feed_names,
     Convert(&op_func_nodes);
     UpdateSyncOpNum();
     is_build_ = true;
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
   }
   // NOTE: Because feed_tensor will be GC after
   // paddle::framework::BuildOpFuncList, so we should
