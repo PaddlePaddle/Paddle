@@ -105,7 +105,7 @@ def main(args):
                     'slice',
                     'reduce_mean',
                     'conv2d',
-                }
+                },
             ),
         )
 
