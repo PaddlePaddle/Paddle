@@ -127,6 +127,8 @@ class ShardingPass(PassBase):
             return False
         if self.get_attr("enable_overlap") is None:
             return False
+        if self.get_attr("enable_multi_comm_stream") is None:
+            return False
         if self.get_attr("bucket_size_numel") is None:
             return False
         if self.get_attr("partition_algor") is None:
@@ -145,6 +147,9 @@ class ShardingPass(PassBase):
         self.stage = int(self.get_attr("stage"))
         self.global_rank = int(self.get_attr("global_rank"))
         self.enable_overlap = self.get_attr("enable_overlap")
+        self.enable_multi_comm_stream = self.get_attr(
+            "enable_multi_comm_stream"
+        )
         self.bucket_size_numel = int(self.get_attr("bucket_size_numel"))
         self.partition_algor = self.get_attr("partition_algor")
         params_grads = self.get_attr("params_grads")
