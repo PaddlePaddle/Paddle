@@ -1810,7 +1810,7 @@ class PyReader(DataLoaderBase):
                    paddle.batch(user_defined_reader, batch_size=BATCH_SIZE),
                    place)
                for image, label in py_reader():
-                   relu = fluid.layers.relu(image)
+                   relu = paddle.nn.functional.relu(image)
     """
 
     def __init__(
