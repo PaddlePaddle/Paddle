@@ -717,7 +717,16 @@ class TestSundryAPI(unittest.TestCase):
         x.stop_gradient = False
 
         out = paddle.kthvalue(x, 1)
-        out.backward()
+        out[0].backward()
+        self.assertEqual(out[0].shape, [])
+        self.assertEqual(out[1].shape, [])
+
+    def test_mode(self):
+        x = paddle.randn(())
+        x.stop_gradient = False
+
+        out = paddle.mode(x)
+        out[0].backward()
         self.assertEqual(out[0].shape, [])
         self.assertEqual(out[1].shape, [])
 
@@ -927,6 +936,17 @@ class TestSundryAPIStatic(unittest.TestCase):
     def test_kthvalue(self):
         x = paddle.full([], 1, 'float32')
         out = paddle.kthvalue(x, 1)
+        paddle.static.append_backward(out[0])
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+        self.assertEqual(len(res[0].shape), 0)
+        self.assertEqual(len(res[0].shape), 0)
+
+    @prog_scope()
+    def test_mode(self):
+        x = paddle.full([], 1, 'float32')
+        out = paddle.mode(x)
         paddle.static.append_backward(out[0])
 
         prog = paddle.static.default_main_program()

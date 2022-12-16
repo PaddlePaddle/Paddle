@@ -81,9 +81,8 @@ void KthvalueKernel(const Context& dev_ctx,
                     DenseTensor* output,
                     DenseTensor* indices) {
   const auto& in_dims = x.dims();
-  if (axis < 0) {
-    axis += in_dims.size();
-  }
+  if (axis < 0) axis += in_dims.size();
+
   T* output_data = dev_ctx.template Alloc<T>(output);
   int64_t* indices_data = dev_ctx.template Alloc<int64_t>(indices);
   // For 0D Tensor
