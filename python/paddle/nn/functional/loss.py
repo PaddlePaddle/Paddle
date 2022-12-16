@@ -592,7 +592,7 @@ def binary_cross_entropy(
     input, label, weight=None, reduction='mean', name=None
 ):
     """
-    This op measures the binary_cross_entropy loss between input predictions ``input``
+    Measure the binary_cross_entropy loss between input predictions ``input``
     and target labels ``label`` . The binary_cross_entropy loss can be described as:
 
     If :attr:`weight` is set, the loss is:
@@ -641,7 +641,7 @@ def binary_cross_entropy(
 
 
     Returns:
-        output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
+        Tensor. If ``reduction`` is ``'none'``, the shape of output is
             same as ``input`` , else the shape of output is scalar.
 
     Examples:
@@ -728,7 +728,7 @@ def binary_cross_entropy_with_logits(
     logit, label, weight=None, reduction='mean', pos_weight=None, name=None
 ):
     r"""
-    This operator combines the sigmoid layer and the :ref:`api_nn_loss_BCELoss` layer.
+    Combine the sigmoid layer and the :ref:`api_nn_loss_BCELoss` layer.
 
     This measures the element-wise probability error in classification tasks
     in which each class is independent.
@@ -736,7 +736,7 @@ def binary_cross_entropy_with_logits(
     are not mutually exclusive. For example, a news article can be about
     politics, technology or sports at the same time or none of these.
 
-    First this operator calculate loss function as follows:
+    Firstly, calculate loss function as follows:
 
     .. math::
            Out = -Labels * \log(\sigma(Logit)) - (1 - Labels) * \log(1 - \sigma(Logit))
@@ -752,13 +752,13 @@ def binary_cross_entropy_with_logits(
     .. math::
            Out = \max(Logit, 0) - Logit * Labels + \log(1 + e^{-\|Logit\|})
 
-    Then, if ``weight`` or ``pos_weight`` is not None, this operator multiply the
+    Then, if ``weight`` or ``pos_weight`` is not None, then multiply the
     weight tensor on the loss `Out`. The ``weight`` tensor will attach different
     weight on every items in the batch. The ``pos_weight`` will attach different
     weight on the positive label of each class.
 
-    Finally, this operator applies reduce operation on the loss.
-    If :attr:`reduction` set to ``'none'``, the operator will return the original loss `Out`.
+    Finally, apply reduce operation on the loss.
+    If :attr:`reduction` set to ``'none'``, will return the original loss `Out`.
     If :attr:`reduction` set to ``'mean'``, the reduced mean loss is :math:`Out = MEAN(Out)`.
     If :attr:`reduction` set to ``'sum'``, the reduced sum loss is :math:`Out = SUM(Out)`.
 
@@ -787,7 +787,7 @@ def binary_cross_entropy_with_logits(
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
+        Tensor. If ``reduction`` is ``'none'``, the shape of output is
             same as ``logit`` , else the shape of output is scalar.
 
     Examples:
