@@ -239,7 +239,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
   int filter_offset = filter.numel() / groups;
   ScalingParamType<T> alpha = 1.0f;
   ScalingParamType<T> beta = 0.0f;
-  auto workspace_handle = ctx.cudnn_workspace_handle();
+  auto& workspace_handle = ctx.cudnn_workspace_handle();
 #ifdef PADDLE_WITH_HIP
   for (int g = 0; g < groups; g++) {
     auto cudnn_func = [&](void* cudnn_workspace) {

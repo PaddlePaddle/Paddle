@@ -127,7 +127,7 @@ class CudnnScaleBiasAddRelu {
                Tensor *bitmask) {
     ForwardInit(ctx);
     auto handle = ctx.cudnn_handle();
-    auto workspace_handle = ctx.cudnn_workspace_handle();
+    auto &workspace_handle = ctx.cudnn_workspace_handle();
     fwd_workspace_byte_ = fwd_op_.GetWorkspaceSizeInBytes(handle);
     // Set variant_param
     // input ptr
@@ -186,7 +186,7 @@ class CudnnScaleBiasAddRelu {
                 double eps) {
     BackwardInit(ctx);
     auto handle = ctx.cudnn_handle();
-    auto workspace_handle = ctx.cudnn_workspace_handle();
+    auto &workspace_handle = ctx.cudnn_workspace_handle();
     bwd_workspace_byte_ = bwd_op_.GetWorkspaceSizeInBytes(handle);
     // Set variant_param
     // input ptr

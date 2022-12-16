@@ -223,7 +223,7 @@ struct SearchAlgorithmBase<ConvKind::kForward> {
               max_workspace_size));
     };
 
-    auto workspace_handle = ctx.cudnn_workspace_handle();
+    auto& workspace_handle = ctx.cudnn_workspace_handle();
     workspace_handle.RunFuncSync(
         cudnn_find_func, max_workspace_size, UseFixedWorkspace());
 
@@ -407,7 +407,7 @@ struct SearchAlgorithmBase<ConvKind::kBackwardData> {
               max_workspace_size));
     };
 
-    auto workspace_handle = ctx.cudnn_workspace_handle();
+    auto& workspace_handle = ctx.cudnn_workspace_handle();
     workspace_handle.RunFuncSync(
         cudnn_find_func, max_workspace_size, UseFixedWorkspace());
 
@@ -558,7 +558,7 @@ struct SearchAlgorithmBase<ConvKind::kBackwardFilter> {
     std::vector<PerfT> perf_results(kNUM_CUDNN_BWD_FILTER_ALGS);
     size_t workspace_size_limit =
         CalcWorkspaceLimitInBytes(UseFixedWorkspace());
-    auto workspace_handle = ctx.cudnn_workspace_handle();
+    auto& workspace_handle = ctx.cudnn_workspace_handle();
     if (phi::backends::gpu::CudnnDataType<T>::type != CUDNN_DATA_HALF) {
       size_t max_workspace_size =
           GetMaxWorkspaceSize(args, workspace_size_limit);

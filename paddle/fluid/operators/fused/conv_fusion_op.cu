@@ -198,7 +198,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
 
     miopenConvFwdAlgorithm_t algo;
     auto handle = dev_ctx.cudnn_handle();
-    auto workspace_handle = dev_ctx.cudnn_workspace_handle();
+    auto& workspace_handle = dev_ctx.cudnn_workspace_handle();
 
     auto x_dims = phi::vectorize(transformed_input.dims());
     auto f_dims = phi::vectorize(filter->dims());
@@ -322,7 +322,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
     // ------------------- cudnn conv algorithm ---------------------
     cudnnConvolutionFwdAlgo_t algo;
     auto handle = dev_ctx.cudnn_handle();
-    auto workspace_handle = dev_ctx.cudnn_workspace_handle();
+    auto& workspace_handle = dev_ctx.cudnn_workspace_handle();
     auto dtype = platform::CudnnDataType<T>::type;
 
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetConvolutionMathType(
