@@ -73,7 +73,7 @@ class BasicLSTMUnit(Layer):
         gate_input = paddle.matmul(x=concat_input_hidden, y=self._weight)
 
         gate_input = paddle.add(gate_input, self._bias)
-        i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
+        i, j, f, o = paddle.split(gate_input, num_or_sections=4, axis=-1)
         new_cell = paddle.add(
             paddle.multiply(
                 pre_cell, paddle.nn.functional.sigmoid(f + self._forget_bias)
@@ -228,10 +228,10 @@ class BaseModel(fluid.dygraph.Layer):
         enc_cell = paddle.tensor.create_array(dtype="float32")
         for i in range(self.num_layers):
             index = zero + i
-            enc_hidden = fluid.layers.array_write(
+            enc_hidden = paddle.tensor.array_write(
                 enc_hidden_0, index, array=enc_hidden
             )
-            enc_cell = fluid.layers.array_write(
+            enc_cell = paddle.tensor.array_write(
                 enc_cell_0, index, array=enc_cell
             )
 
@@ -330,10 +330,10 @@ class BaseModel(fluid.dygraph.Layer):
         enc_cell = paddle.tensor.create_array(dtype="float32")
         for j in range(self.num_layers):
             index = zero + j
-            enc_hidden = fluid.layers.array_write(
+            enc_hidden = paddle.tensor.array_write(
                 enc_hidden_0, index, array=enc_hidden
             )
-            enc_cell = fluid.layers.array_write(
+            enc_cell = paddle.tensor.array_write(
                 enc_cell_0, index, array=enc_cell
             )
 
@@ -720,7 +720,7 @@ class AttentionModel(fluid.dygraph.Layer):
         print(" ^" * 10, "_change_size_for_array")
         print("array : ", array)
         for i, state in enumerate(array):
-            fluid.layers.array_write(func(state), i, array)
+            paddle.tensor.array_write(func(state), i, array)
 
         return array
 
@@ -747,10 +747,10 @@ class AttentionModel(fluid.dygraph.Layer):
         enc_cell = paddle.tensor.create_array(dtype="float32")
         for i in range(self.num_layers):
             index = zero + i
-            enc_hidden = fluid.layers.array_write(
+            enc_hidden = paddle.tensor.array_write(
                 enc_hidden_0, index, array=enc_hidden
             )
-            enc_cell = fluid.layers.array_write(
+            enc_cell = paddle.tensor.array_write(
                 enc_cell_0, index, array=enc_cell
             )
 
