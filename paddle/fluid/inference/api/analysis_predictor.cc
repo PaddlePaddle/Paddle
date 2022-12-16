@@ -1364,7 +1364,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 #if defined(_WIN32)
   argument_->PartiallyRelease();
 #else
-  if (config_.mkldnn_enabled()) {
+  if (config_.mkldnn_enabled() || config_.tensorrt_engine_enabled()) {
     argument_->PartiallyRelease();
   } else {
     fusion_statis_ = *argument_->fusion_statis_ptr();

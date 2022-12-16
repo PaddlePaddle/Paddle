@@ -32,7 +32,7 @@ TEST(TensorRT, split_converter) {
   config.SetModel(model_dir);
   config.SwitchUseFeedFetchOps(false);
   config.EnableTensorRtEngine(
-      1 << 20, batch_size, 1, AnalysisConfig::Precision::kHalf, false, false);
+      1 << 20, batch_size, 1, AnalysisConfig::Precision::kInt8, false, true);
 
   auto predictor = CreatePaddlePredictor(config);
 
