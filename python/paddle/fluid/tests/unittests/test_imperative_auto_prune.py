@@ -45,7 +45,7 @@ class AutoPruneLayer0(fluid.Layer):
     def forward(self, x, y):
         a = self.linear1(x)
         b = self.linear2(y)
-        c = fluid.layers.mul(a, b)
+        c = paddle.matmul(a, b)
         d = paddle.mean(c)
         return d
 
@@ -74,7 +74,7 @@ class AutoPruneLayer1(fluid.Layer):
         a = self.linear1(x)
         b = self.linear2(y)
         b.stop_gradient = True
-        c = fluid.layers.mul(a, b)
+        c = paddle.matmul(a, b)
         d = paddle.mean(c)
         return d
 
