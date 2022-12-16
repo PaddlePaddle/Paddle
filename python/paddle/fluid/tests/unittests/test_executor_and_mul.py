@@ -18,7 +18,8 @@ import numpy as np
 
 import paddle
 from paddle.fluid.executor import Executor
-from paddle.fluid.layers import array_write, data, mul, zeros
+from paddle.fluid.layers import data, mul, zeros
+from paddle.tensor import array_write
 
 
 class TestExecutor(unittest.TestCase):

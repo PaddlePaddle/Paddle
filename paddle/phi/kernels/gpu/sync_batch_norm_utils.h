@@ -28,7 +28,7 @@ namespace cub = hipcub;
 #endif
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
+#include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #endif
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
