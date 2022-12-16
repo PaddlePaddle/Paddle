@@ -701,8 +701,6 @@ def conv2d(
     data_format="NCHW",
 ):
     r"""
-    :api_attr: Static Graph
-
     The convolution2D layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input and
     Output are in NCHW or NHWC format, where N is batch size, C is the number of
@@ -761,10 +759,10 @@ def conv2d(
             is a tuple, it must contain two integers, (filter_size_height,
             filter_size_width). Otherwise, filter_size_height = filter_size_width =\
             filter_size.
-        stride (int|tuple): The stride size. It means the stride in convolution.
+        stride (int|tuple, optional): The stride size. It means the stride in convolution.
             If stride is a tuple, it must contain two integers, (stride_height, stride_width).
             Otherwise, stride_height = stride_width = stride. Default: stride = 1.
-        padding (string|int|list|tuple): The padding size. It means the number of zero-paddings
+        padding (string|int|list|tuple, optional): The padding size. It means the number of zero-paddings
             on both sides for each dimension.If `padding` is a string, either 'VALID' or
             'SAME' which is the padding algorithm. If padding size is a tuple or list,
             it could be in three forms: `[pad_height, pad_width]` or
@@ -774,30 +772,30 @@ def conv2d(
             when `data_format` is `"NHWC"`, `pool_padding` can be in the form
             `[[0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
             Default: padding = 0.
-        dilation (int|tuple): The dilation size. It means the spacing between the kernel
+        dilation (int|tuple, optional): The dilation size. It means the spacing between the kernel
             points. If dilation is a tuple, it must contain two integers, (dilation_height,
             dilation_width). Otherwise, dilation_height = dilation_width = dilation.
             Default: dilation = 1.
-        groups (int): The groups number of the Conv2d Layer. According to grouped
+        groups (int, optional): The groups number of the Conv2d Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
             connected to the second half of the input channels. Default: groups=1.
-        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
+        param_attr (ParamAttr|None, optional): The parameter attribute for learnable parameters/weights
             of conv2d. If it is set to None or one attribute of ParamAttr, conv2d
             will create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with :math:`Normal(0.0, std)`,
             and the :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
-        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of conv2d.
+        bias_attr (ParamAttr|bool|None, optional): The parameter attribute for the bias of conv2d.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, conv2d
             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized zero. Default: None.
-        use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn
+        use_cudnn (bool, optional): Use cudnn kernel or not, it is valid only when the cudnn
             library is installed. Default: True
-        act (str): Activation type, if it is set to None, activation is not appended.
+        act (str, optional): Activation type, if it is set to None, activation is not appended.
             Default: None
-        name(str|None): For detailed information, please refer
+        name(str|None, optional): For detailed information, please refer
            to :ref:`api_guide_Name`. Usually name is no need to set and
            None by default.
         data_format (str, optional): Specify the data format of the input, and the data format of the output
@@ -810,19 +808,6 @@ def conv2d(
         same with input. If act is None, the tensor storing the convolution
         result, and if act is not None, the tensor storing convolution
         and non-linearity activation result.
-
-    Raises:
-        ValueError: If the type of `use_cudnn` is not bool.
-        ValueError: If `data_format` is not "NCHW" or "NHWC".
-        ValueError: If the channel dimmention of the input is less than or equal to zero.
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0
-            or the element corresponding to the input's channel is not 0.
-        ShapeError: If the input is not 4-D Tensor.
-        ShapeError: If the input's dimension size and filter's dimension size not equal.
-        ShapeError: If the dimension size of input minus the size of `stride` is not 2.
-        ShapeError: If the number of input channels is not equal to filter's channels * groups.
-        ShapeError: If the number of output channels is not be divided by groups.
 
     Examples:
         .. code-block:: python
