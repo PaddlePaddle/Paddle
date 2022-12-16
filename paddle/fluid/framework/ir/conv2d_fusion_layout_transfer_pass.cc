@@ -143,14 +143,14 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
       static_cast<phi::DataType>(Get<int>("model_precision")) ==
           phi::DataType::FLOAT16 ||
       Get<bool>("enable_gpu_mixed");
-  bool cutlass_enable = false;
+  bool cutlass_enable = Get<bool>("use_cutlass");
 
 #ifdef PADDLE_WITH_CUTLASS
   const auto &prop = platform::GetDeviceProperties(Get<int>("gpu_device_id"));
   int sm_version = prop.major * 10 + prop.minor;
   // Now we only implement cutlass kernel on SM75.
   if (sm_version == 75) {
-    cutlass_enable = true;
+    cutlass_enable = (cutlass_enable && true);
   }
 #endif
 
