@@ -19,15 +19,16 @@ import numpy as np
 import paddle
 from paddle.incubate.optimizer.functional.lbfgs_v2 import LBFGS
 from paddle.incubate.optimizer.functional.line_search_dygraph import (
-    _strong_wolfe,
     _cubic_interpolate,
+    _strong_wolfe,
 )
 
 np.random.seed(123)
 
-
 # func()should be func(w, x)where w is parameter to be optimize ,x is input of optimizer func
 # np_w is the init parameter of w
+
+
 class Net(paddle.nn.Layer):
     def __init__(self, np_w, func):
         super(Net, self).__init__()
