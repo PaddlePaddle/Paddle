@@ -398,7 +398,8 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
     // with MKL-DNN fuse conv+bn into conv with bias
     // without MKL-DNN fuse conv+bn into conv+elementwise_add
     if (fuse_option == FUSE_MKLDNN) {
-      if (conv->Op()->Type() == "conv2d") {
+      if (conv->Op()->Type() == "conv2d" ||
+          conv->Op()->Type() == "depthwise_conv2d") {
         conv->Op()->SetType("fused_conv2d");
       }
       auto input_names = conv->Op()->InputNames();
@@ -822,6 +823,43 @@ ConvTransposeEltwiseAddBNFusePass::ConvTransposeEltwiseAddBNFusePass() {
 
 DepthwiseConvBNFusePass::DepthwiseConvBNFusePass() {
   AddOpCompat(OpCompat("depthwise_conv2d"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddInput("ResidualData")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("strides")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("paddings")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsOptional()
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("groups")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("dilations")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("data_format")
+      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
+      .End();
+  AddOpCompat(OpCompat("fused_conv2d"))
       .AddInput("Input")
       .IsTensor()
       .End()
