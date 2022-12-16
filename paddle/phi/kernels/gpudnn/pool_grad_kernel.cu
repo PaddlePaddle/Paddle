@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
@@ -403,7 +402,6 @@ void Pool3dGradGPUDNNKernel(const Context& ctx,
 
 }  // namespace phi
 
-using phi::dtype::bfloat16;
 using phi::dtype::float16;
 
 #ifdef PADDLE_WITH_HIP
@@ -427,32 +425,6 @@ PD_REGISTER_KERNEL(pool3d_grad,
                    float,
                    float16) {}
 #else
-#if CUDNN_VERSION_MIN(8, 1, 0)
-PD_REGISTER_KERNEL(pool2d_grad,
-                   GPUDNN,
-                   ALL_LAYOUT,
-                   phi::Pool2dGradGPUDNNKernel,
-                   float,
-                   double,
-                   float16,
-                   bfloat16) {}
-PD_REGISTER_KERNEL(pool2d_double_grad,
-                   GPUDNN,
-                   ALL_LAYOUT,
-                   phi::Pool2dDoubleGradGPUDNNKernel,
-                   float,
-                   double,
-                   float16,
-                   bfloat16) {}
-PD_REGISTER_KERNEL(pool3d_grad,
-                   GPUDNN,
-                   ALL_LAYOUT,
-                   phi::Pool3dGradGPUDNNKernel,
-                   float,
-                   double,
-                   float16,
-                   bfloat16) {}
-#else
 PD_REGISTER_KERNEL(pool2d_grad,
                    GPUDNN,
                    ALL_LAYOUT,
@@ -474,5 +446,4 @@ PD_REGISTER_KERNEL(pool3d_grad,
                    float,
                    double,
                    float16) {}
-#endif
 #endif
