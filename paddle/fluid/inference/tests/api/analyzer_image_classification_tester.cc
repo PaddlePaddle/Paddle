@@ -65,6 +65,17 @@ void profile(bool use_mkldnn = false) {
                  FLAGS_num_threads);
 }
 
+// Check the fuse status
+TEST(Analyzer_resnet50, fuse_statis) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+  int num_ops;
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
+  auto fuse_statis = GetFuseStatis(
+      static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
+  LOG(INFO) << "num_ops: " << num_ops;
+}
+
 TEST(Analyzer_resnet50, profile) { profile(); }
 #ifdef PADDLE_WITH_MKLDNN
 TEST(Analyzer_resnet50, profile_mkldnn) { profile(true /* use_mkldnn */); }

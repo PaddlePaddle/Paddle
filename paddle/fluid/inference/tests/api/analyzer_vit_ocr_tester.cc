@@ -92,6 +92,22 @@ TEST(Analyzer_vit_ocr, compare) { compare(); }
 TEST(Analyzer_vit_ocr, compare_mkldnn) { compare(true /* use_mkldnn */); }
 #endif
 
+#ifdef PADDLE_WITH_MKLDNN
+// Check the fuse status
+TEST(Analyzer_vit_ocr, fuse_status) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg, true);
+  int num_ops;
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
+  auto fuse_statis = GetFuseStatis(
+      static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
+
+  CHECK_EQ(fuse_statis.at("fc_mkldnn_pass"), 33);
+  CHECK_EQ(fuse_statis.at("conv2d_gelu_mkldnn_fuse_pass"), 2);
+  CHECK_EQ(fuse_statis.at("fc_elementwise_add_mkldnn_fuse"), 16);
+}
+#endif
+
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle

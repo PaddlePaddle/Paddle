@@ -1367,6 +1367,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   if (config_.mkldnn_enabled()) {
     argument_->PartiallyRelease();
   } else {
+    fusion_statis_ = *argument_->fusion_statis_ptr();
     argument_.reset(nullptr);
   }
 #endif

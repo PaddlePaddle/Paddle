@@ -277,6 +277,13 @@ class AnalysisPredictor : public PaddlePredictor {
   std::string GetSerializedProgram() const override;
 
   ///
+  /// \brief Get the fusion_statis_t
+  ///
+  /// \return the fusion_statis_t
+  ///
+  Argument::fusion_statis_t fusion_statis() { return fusion_statis_; }
+
+  ///
   /// \brief Register a output hook function to operate the intermediate tensor
   /// of op output. when using this function, memory reuse should be tured off.
   /// The hook function signature is void(const std::string&, const
@@ -485,6 +492,7 @@ class AnalysisPredictor : public PaddlePredictor {
  private:
   AnalysisConfig config_;
   std::unique_ptr<Argument> argument_;
+  Argument::fusion_statis_t fusion_statis_;
   std::unique_ptr<NaiveExecutor> executor_;
   platform::Place place_;
   std::shared_ptr<framework::Scope> scope_;

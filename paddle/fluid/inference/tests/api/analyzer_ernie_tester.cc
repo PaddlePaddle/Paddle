@@ -59,6 +59,30 @@ TEST(Analyzer_ernie, profile_gpu) {
 }
 #endif
 
+// Check the fuse status
+TEST(Analyzer_Ernie, fuse_statis) {
+#if !defined(_WIN32)
+  setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
+#endif
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  auto pass_builder = cfg.pass_builder();
+  pass_builder->DeletePass("constant_folding_pass");
+
+  int num_ops;
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
+  auto fuse_statis = GetFuseStatis(
+      static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
+  ASSERT_TRUE(fuse_statis.count("fc_fuse"));
+  LOG(INFO) << "num_ops: " << num_ops;
+  if (FLAGS_ernie_large) {
+    ASSERT_EQ(fuse_statis.at("fc_fuse"), 146);
+  } else {
+    ASSERT_EQ(fuse_statis.at("fc_fuse"), 74);
+  }
+}
+
 // Compare result of NativeConfig and AnalysisConfig
 void compare(bool use_mkldnn = false) {
   std::vector<std::vector<PaddleTensor>> inputs;

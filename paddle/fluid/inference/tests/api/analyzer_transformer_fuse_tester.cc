@@ -17,7 +17,20 @@
 namespace paddle {
 namespace inference {
 namespace analysis {
-namespace transformer_tester {}  // namespace transformer_tester
+namespace transformer_tester {
+
+// Check the fuse status
+TEST(Analyzer_Transformer, fuse_statis) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  int num_ops;
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
+  auto fuse_statis = GetFuseStatis(
+      static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
+}
+
+}  // namespace transformer_tester
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle
