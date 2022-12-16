@@ -268,6 +268,8 @@ class TestDataset(unittest.TestCase):
         )
         dataset._init_distributed_settings(fea_eval=True, candidate_size=1)
         dataset.set_filelist([filename1, filename2])
+        dataset.set_pass_id(0)
+        dataset.get_pass_id()
         dataset.load_into_memory()
         dataset.slots_shuffle(["slot1"])
         dataset.local_shuffle()
@@ -292,6 +294,23 @@ class TestDataset(unittest.TestCase):
                     self.assertTrue(False)
 
         temp_dir.cleanup()
+    
+    def test_in_memory_dataset_gpugraph_mode(self):
+        """
+        Testcase for InMemoryDataset in gpugraph mode.
+        """
+        dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+        dataset.set_feed_type("SlotRecordInMemoryDataFeed")
+        graph_config = {"walk_len": 24,
+                        "walk_degree": 10,
+                        "once_sample_startid_len": 80000,
+                        "sample_times_one_chunk": 5,
+                        "window": 3,
+                        "debug_mode": 0,
+                        "batch_size": 800,
+                        "meta_path": "cuid2clk-clk2cuid;cuid2conv-conv2cuid;clk2cuid-cuid2clk;clk2cuid-cuid2conv",
+                        "gpu_graph_training": 1}
+        dataset.set_graph_config(graph_config)
 
     def test_in_memory_dataset_masterpatch(self):
         """
