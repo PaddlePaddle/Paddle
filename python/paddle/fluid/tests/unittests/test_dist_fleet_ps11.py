@@ -239,7 +239,7 @@ class TestPSPassWithBow(unittest.TestCase):
         t = SingleProcessMultiThread()
         env = self.get_dist_env()
         t.transpile(
-            startup_program=_startup_program,
+            startup_program=startup_program,
             main_program=main_program,
             rank=env["trainer_id"],
             endpoints=env["trainer_endpoints"],
