@@ -969,6 +969,8 @@ class Fleet:
     def check_save_pre_patch_done(self):
         return self._runtime_handle._check_save_pre_patch_done()
 
+    @is_non_distributed_check
+    @inited_runtime_handler
     def save_cache_table(
         self, table_id, pass_id, mem_cache_key_threshold=4000000000
     ):
@@ -976,6 +978,8 @@ class Fleet:
             table_id, pass_id, mem_cache_key_threshold
         )
 
+    @is_non_distributed_check
+    @inited_runtime_handler
     def shrink(self, threshold=None):
         self._runtime_handle._shrink(threshold)
 
