@@ -89,6 +89,7 @@ class ShardingPass(PassBase):
         self.set_attr("sharding_degree", None)  # for parallelizer
         self.set_attr("degree", None)  # for parallelizer_v2
         self.set_attr("enable_overlap", None)
+        self.set_attr("enable_multi_comm_stream", None)
         self.set_attr("bucket_size_numel", None)
         self.set_attr("partition_algor", None)
         self.set_attr("params_grads", [])
@@ -702,6 +703,19 @@ class ShardingPass(PassBase):
             )
         )
         broadcast_var_to_group_map = {}
+
+        if self.enable_overlap:
+            # if the communication is cross node, comm will be slow and calc will therefore
+            # wait for comm. enable multi-comm-stream
+            # TODO revise me in future
+            # 1. manager the comm and corresponding stream
+            # 2. allow more than two streams and open to be config
+            self.param_comm_stream0 = "sharding_param_comm_stream0"
+            stream_count = 1
+            if self.enable_multi_comm_stream:
+                self.param_comm_stream1 = "sharding_param_comm_stream1"
+                stream_count = 2
+
         for i, group in enumerate(group_to_param_map.keys()):
 
             assert len(group) >= 1
@@ -763,9 +777,17 @@ class ShardingPass(PassBase):
             )
 
             if self.enable_overlap:
-                self.param_comm_stream = "sharding_param_comm_stream"
-                new_op.dist_attr.execution_stream = self.param_comm_stream
-
+                if self.enable_multi_comm_stream:
+                    if i % 2 == 0:
+                        new_op.dist_attr.execution_stream = (
+                            self.param_comm_stream0
+                        )
+                    else:
+                        new_op.dist_attr.execution_stream = (
+                            self.param_comm_stream1
+                        )
+                else:
+                    new_op.dist_attr.execution_stream = self.param_comm_stream0
             # NOTE the current dist context lack the presentation for bucket tensor which
             # composes many tensor with different dims_mapping. we DO NOT assign dist attr
             # for it currently.
@@ -779,32 +801,39 @@ class ShardingPass(PassBase):
                 broadcast_varname = op.output("Out")[0]
                 broadcast_var = main_block.vars[broadcast_varname]
                 group = broadcast_var_to_group_map[broadcast_varname]
+                comm_stream = None
+                if self.enable_overlap:
+                    comm_stream = op.dist_attr.execution_stream
 
                 # FIXME remove me when upgrade to multi-comm version
-                if len(dep_map.keys()) == 0:
+                if len(dep_map.keys()) < stream_count:
                     op = _get_broadcast_first_depend_op(main_block)
                     prior_var = main_block.vars[op.output("ParamOut")[0]]
                 else:
-                    pre_op = main_block.ops[i - 1]
+                    pre_op = main_block.ops[i - stream_count]
                     assert is_sharding_param_broadcast_op(
                         pre_op
                     ), "Unexpected: sharding broadcast pre op should be broadcast."
                     prior_var = main_block.vars[pre_op.output("Out")[0]]
                 # broadcast order dependencies
-                dep_map[i] = [(i, [prior_var], [broadcast_var])]
+                dep_map[i] = [(i, [prior_var], [broadcast_var], comm_stream)]
 
                 if len(group.vars) > 1:
                     # in shard coalesce depend to optimizer
                     if group.is_in_local_shard:
                         last_grad = group.vars[-1]
-                        dep_map[i].append((i, [last_grad], [broadcast_var]))
+                        dep_map[i].append(
+                            (i, [last_grad], [broadcast_var], comm_stream)
+                        )
                     # coalesce resolution post deps
-                    dep_map[i].append((i + 1, [broadcast_var], group.vars))
+                    dep_map[i].append(
+                        (i + 1, [broadcast_var], group.vars, comm_stream)
+                    )
 
         # insert deps
         indice = sorted(list(dep_map.keys()), reverse=True)
         for i in indice:
-            for idx, prior_vars, post_vars in dep_map[i][::-1]:
+            for idx, prior_vars, post_vars, comm_stream in dep_map[i][::-1]:
                 depend_op = insert_dependencies_for_vars(
                     main_block,
                     idx,
@@ -820,9 +849,7 @@ class ShardingPass(PassBase):
                     op_namescope="sharding_stage2_broadcast_dep",
                 )
                 if self.enable_overlap:
-                    depend_op.dist_attr.execution_stream = (
-                        self.param_comm_stream
-                    )
+                    depend_op.dist_attr.execution_stream = comm_stream
 
         main_block._sync_with_cpp()
 
