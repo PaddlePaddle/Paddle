@@ -105,9 +105,7 @@ class AutoPruneLayer3(fluid.Layer):
 
     def forward(self, x, label, test_num):
         feature = self.linear(x)
-        part1, part2 = fluid.layers.split(
-            feature, num_or_sections=[10, 10], dim=1
-        )
+        part1, part2 = paddle.split(feature, num_or_sections=[10, 10], axis=1)
         # Note that: part2 is not used.
         loss = paddle.nn.functional.cross_entropy(
             input=part1, label=label, reduction='none', use_softmax=False
