@@ -185,6 +185,68 @@ class TestPSPassWithBow(unittest.TestCase):
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(loss)
 
+
+    def get_dist_env(self):
+        trainer_id = int(os.getenv('PADDLE_TRAINER_ID', '0'))
+        trainer_endpoints = ''
+        current_endpoint = ''
+        num_trainers = 0
+        if os.getenv('PADDLE_TRAINER_ENDPOINTS'):
+            trainer_endpoints = os.getenv('PADDLE_TRAINER_ENDPOINTS')
+            current_endpoint = trainer_endpoints.split(',')[trainer_id]
+            num_trainers = len(trainer_endpoints.split(','))
+
+        return {
+            'trainer_id': trainer_id,
+            'num_trainers': num_trainers,
+            'current_endpoint': current_endpoint,
+            'trainer_endpoints': trainer_endpoints,
+        }
+
+    def test_SingleProcessMultiThread(self):
+        """
+        Testcase for SingleProcessMultiThread
+        """
+        os.environ["PADDLE_PSERVER_NUMS"] = "2"
+        os.environ["PADDLE_TRAINERS_NUM"] = "2"
+        os.environ["POD_IP"] = "127.0.0.1"
+        os.environ["PADDLE_PORT"] = "36001"
+        os.environ["PADDLE_TRAINER_ID"] = "0"
+        os.environ["PADDLE_TRAINERS_NUM"] = "2"
+        os.environ[
+            "PADDLE_TRAINER_ENDPOINTS"
+        ] = "127.0.0.1:36001,127.0.0.2:36001"
+        os.environ[
+            "PADDLE_PSERVERS_IP_PORT_LIST"
+        ] = "127.0.0.1:36002,127.0.0.2:36002"
+        os.environ["TRAINING_ROLE"] = "TRAINER"
+        os.environ["FLAGS_selected_gpus"] = "0"
+        os.environ["PADDLE_FUSE_ALLREDUCE"] = "1"
+        os.environ["PADDLE_LOSS_SCALE"] = "1"
+       
+        startup_program = fluid.Program()
+        main_program = fluid.Program()
+        with fluid.program_guard(startup_program, main_program):
+          loss, acc, _ = self.net()
+        optimizer = paddle.fluid.optimizer.Adam(learning_rate=0.01)
+        optimizer.minimize(loss)
+        #_startup = worker.fake_init_ops_pass(_startup, compiled_config)
+        #_main = worker.ps_gpu_pass(_main)
+        from paddle.fluid.transpiler.collective import (
+            SingleProcessMultiThread,
+        )
+
+        t = SingleProcessMultiThread()
+        env = self.get_dist_env()
+        t.transpile(
+            startup_program=_startup_program,
+            main_program=main_program,
+            rank=env["trainer_id"],
+            endpoints=env["trainer_endpoints"],
+            current_endpoint=env['current_endpoint'],
+            wait_port=False,
+        )
+
     def test_gpups_dataset(self):
         """
         Testcase for GPUPS InMemoryDataset .
