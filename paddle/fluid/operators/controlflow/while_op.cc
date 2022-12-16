@@ -321,7 +321,7 @@ class WhileOp : public framework::OperatorBase {
   mutable std::shared_ptr<framework::Executor> executor_{nullptr};
   mutable std::unique_ptr<framework::ExecutorPrepareContext> ctx_{nullptr};
   mutable std::shared_ptr<framework::InterpreterCore> core_{nullptr};
-  mutable framework::Scope *inference_cache_scope_ = nullptr;
+  mutable framework::Scope *inference_cache_scope_{nullptr};
 };
 
 class WhileOpMaker : public framework::OpProtoAndCheckerMaker {
