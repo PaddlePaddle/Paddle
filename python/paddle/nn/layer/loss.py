@@ -29,7 +29,7 @@ __all__ = []
 class BCEWithLogitsLoss(Layer):
     r"""
 
-    This operator combines the sigmoid layer and the :ref:`api_paddle_nn_BCELoss` layer.
+    Combine the sigmoid layer and the :ref:`api_paddle_nn_BCELoss` layer.
 
     This measures the element-wise probability error in classification tasks
     in which each class is independent.
@@ -37,7 +37,7 @@ class BCEWithLogitsLoss(Layer):
     are not mutually exclusive. For example, a news article can be about
     politics, technology or sports at the same time or none of these.
 
-    First this operator calculate loss function as follows:
+    Firstly, calculate loss function as follows:
 
     .. math::
            Out = -Labels * \log(\sigma(Logit)) - (1 - Labels) * \log(1 - \sigma(Logit))
@@ -53,13 +53,13 @@ class BCEWithLogitsLoss(Layer):
         .. math::
            Out = \max(Logit, 0) - Logit * Labels + \log(1 + e^{-\|Logit\|})
 
-    Then, if ``weight`` or ``pos_weight`` is not None, this operator multiply the
+    Then, if ``weight`` or ``pos_weight`` is not None, then multiply the
     weight tensor on the loss `Out`. The ``weight`` tensor will attach different
     weight on every items in the batch. The ``pos_weight`` will attach different
     weight on the positive label of each class.
 
-    Finally, this operator applies reduce operation on the loss.
-    If :attr:`reduction` set to ``'none'``, the operator will return the original loss `Out`.
+    Finally, apply reduce operation on the loss.
+    If :attr:`reduction` set to ``'none'``, will return the original loss `Out`.
     If :attr:`reduction` set to ``'mean'``, the reduced mean loss is :math:`Out = MEAN(Out)`.
     If :attr:`reduction` set to ``'sum'``, the reduced sum loss is :math:`Out = SUM(Out)`.
 
