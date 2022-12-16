@@ -222,15 +222,11 @@ template <bool kCanToString /* = true */>
 struct BinaryCompareMessageConverter {
   template <typename T>
   static std::string Convert(const char* expression, const T& value) {
-    return expression + std::string(":") + paddle::string::to_string(value);
-  }
-};
-
-template <>
-struct BinaryCompareMessageConverter<false> {
-  template <typename T>
-  static const char* Convert(const char* expression, const T& value) {
-    return expression;
+    if constexpr (kCanToString) {
+      return expression + std::string(":") + paddle::string::to_string(value);
+    } else {
+      return expression;
+    }
   }
 };
 }  // namespace details
