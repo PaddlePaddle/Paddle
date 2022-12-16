@@ -17,29 +17,11 @@
 #include <map>
 #include <vector>
 
-#include "cutlass/cutlass.h"
-#include "cutlass/gemm/device/gemm.h"
-
-#include "cutlass/conv/device/implicit_gemm_convolution.h"
-
-#include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/enforce.h"
 
 namespace phi {
 namespace fusion {
-
-#define CUTLASS_CHECK(status)                                                \
-  if (status != cutlass::Status::kSuccess) {                                 \
-    VLOG(3)                                                                  \
-        << "Cutlass can not deal with this problem size, skip this kernel!"; \
-    return status;                                                           \
-  }
-
-constexpr int WARMUP = 10;
-constexpr int REPEAT = 100;
+namespace cutlass_internal {
 
 typedef struct {
   const half *input;
@@ -69,12 +51,12 @@ typedef struct {
 } ConvAllParams;
 
 // Below functions are provided by cutlass, these are called by phi.
-void cutlass_conv2d_bias_add_relu(ConvAllParams params);
-void cutlass_conv2d_bias_relu_few_channels(ConvAllParams params);
-void cutlass_conv2d_bias_relu(ConvAllParams params);
-void cutlass_conv2d_bias_leaky_relu(ConvAllParams params);
-void cutlass_conv2d_bias_silu(ConvAllParams params);
-void cutlass_conv2d_bias(ConvAllParams params);
-
+void conv2d_bias_add_relu(ConvAllParams params);
+void conv2d_bias_relu_few_channels(ConvAllParams params);
+void conv2d_bias_relu(ConvAllParams params);
+void conv2d_bias_leaky_relu(ConvAllParams params);
+void conv2d_bias_silu(ConvAllParams params);
+void conv2d_bias(ConvAllParams params);
+}  // namespace cutlass_internal
 }  // namespace fusion
 }  // namespace phi

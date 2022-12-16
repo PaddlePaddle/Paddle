@@ -14,14 +14,13 @@
 #pragma once
 #include "cutlass/conv/kernel/default_conv2d_fprop.h"
 #include "cutlass/epilogue/thread/linear_combination_silu.h"
-#include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_all.h"
 #include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_util.h"
 
 namespace phi {
 namespace fusion {
-
+namespace cutlass_internal {
 template <typename TShape, typename WShape, int Alignment = 8>
-cutlass::Status cutlass_nhwc_conv2d_bias_silu(ConvAllParams params) {
+cutlass::Status nhwc_conv2d_bias_silu(ConvAllParams params) {
   using ElementAccumulator = float;
   using ElementComputeEpilogue = float;
   using ElementInputA = cutlass::half_t;
@@ -131,66 +130,66 @@ cutlass::Status cutlass_nhwc_conv2d_bias_silu(ConvAllParams params) {
 }
 
 // config 0
-template cutlass::Status cutlass_nhwc_conv2d_bias_silu<
-    cutlass::gemm::GemmShape<64, 64, 64>,
-    cutlass::gemm::GemmShape<32, 32, 64>>(ConvAllParams);
+template cutlass::Status
+    nhwc_conv2d_bias_silu<cutlass::gemm::GemmShape<64, 64, 64>,
+                          cutlass::gemm::GemmShape<32, 32, 64>>(ConvAllParams);
 // config 1
-template cutlass::Status cutlass_nhwc_conv2d_bias_silu<
-    cutlass::gemm::GemmShape<64, 32, 64>,
-    cutlass::gemm::GemmShape<32, 32, 64>>(ConvAllParams);
+template cutlass::Status
+    nhwc_conv2d_bias_silu<cutlass::gemm::GemmShape<64, 32, 64>,
+                          cutlass::gemm::GemmShape<32, 32, 64>>(ConvAllParams);
 // config 2
-template cutlass::Status cutlass_nhwc_conv2d_bias_silu<
-    cutlass::gemm::GemmShape<128, 32, 64>,
-    cutlass::gemm::GemmShape<32, 32, 64>>(ConvAllParams);
+template cutlass::Status
+    nhwc_conv2d_bias_silu<cutlass::gemm::GemmShape<128, 32, 64>,
+                          cutlass::gemm::GemmShape<32, 32, 64>>(ConvAllParams);
 // config 3
-template cutlass::Status cutlass_nhwc_conv2d_bias_silu<
-    cutlass::gemm::GemmShape<128, 64, 64>,
-    cutlass::gemm::GemmShape<32, 32, 64>>(ConvAllParams);
+template cutlass::Status
+    nhwc_conv2d_bias_silu<cutlass::gemm::GemmShape<128, 64, 64>,
+                          cutlass::gemm::GemmShape<32, 32, 64>>(ConvAllParams);
 // config 4
-template cutlass::Status cutlass_nhwc_conv2d_bias_silu<
-    cutlass::gemm::GemmShape<64, 64, 32>,
-    cutlass::gemm::GemmShape<32, 32, 32>>(ConvAllParams);
+template cutlass::Status
+    nhwc_conv2d_bias_silu<cutlass::gemm::GemmShape<64, 64, 32>,
+                          cutlass::gemm::GemmShape<32, 32, 32>>(ConvAllParams);
 // config 5
-template cutlass::Status cutlass_nhwc_conv2d_bias_silu<
-    cutlass::gemm::GemmShape<64, 128, 32>,
-    cutlass::gemm::GemmShape<32, 64, 32>>(ConvAllParams);
+template cutlass::Status
+    nhwc_conv2d_bias_silu<cutlass::gemm::GemmShape<64, 128, 32>,
+                          cutlass::gemm::GemmShape<32, 64, 32>>(ConvAllParams);
 // config 6
-template cutlass::Status cutlass_nhwc_conv2d_bias_silu<
-    cutlass::gemm::GemmShape<64, 128, 64>,
-    cutlass::gemm::GemmShape<64, 64, 32>>(ConvAllParams);
+template cutlass::Status
+    nhwc_conv2d_bias_silu<cutlass::gemm::GemmShape<64, 128, 64>,
+                          cutlass::gemm::GemmShape<64, 64, 32>>(ConvAllParams);
 // config 7
-template cutlass::Status cutlass_nhwc_conv2d_bias_silu<
-    cutlass::gemm::GemmShape<64, 256, 32>,
-    cutlass::gemm::GemmShape<64, 64, 32>>(ConvAllParams);
+template cutlass::Status
+    nhwc_conv2d_bias_silu<cutlass::gemm::GemmShape<64, 256, 32>,
+                          cutlass::gemm::GemmShape<64, 64, 32>>(ConvAllParams);
 // config 8
-template cutlass::Status cutlass_nhwc_conv2d_bias_silu<
-    cutlass::gemm::GemmShape<128, 64, 32>,
-    cutlass::gemm::GemmShape<64, 32, 32>>(ConvAllParams);
+template cutlass::Status
+    nhwc_conv2d_bias_silu<cutlass::gemm::GemmShape<128, 64, 32>,
+                          cutlass::gemm::GemmShape<64, 32, 32>>(ConvAllParams);
 
 std::vector<std::function<cutlass::Status(ConvAllParams)>>
-    cutlass_conv2d_bias_silu_all_func = {
-        cutlass_nhwc_conv2d_bias_silu<cutlass::gemm::GemmShape<64, 64, 64>,
-                                      cutlass::gemm::GemmShape<32, 32, 64>>,
-        cutlass_nhwc_conv2d_bias_silu<cutlass::gemm::GemmShape<64, 32, 64>,
-                                      cutlass::gemm::GemmShape<32, 32, 64>>,
-        cutlass_nhwc_conv2d_bias_silu<cutlass::gemm::GemmShape<128, 32, 64>,
-                                      cutlass::gemm::GemmShape<32, 32, 64>>,
-        cutlass_nhwc_conv2d_bias_silu<cutlass::gemm::GemmShape<128, 64, 64>,
-                                      cutlass::gemm::GemmShape<32, 32, 64>>,
-        cutlass_nhwc_conv2d_bias_silu<cutlass::gemm::GemmShape<64, 64, 32>,
-                                      cutlass::gemm::GemmShape<32, 32, 32>>,
-        cutlass_nhwc_conv2d_bias_silu<cutlass::gemm::GemmShape<64, 128, 32>,
-                                      cutlass::gemm::GemmShape<32, 64, 32>>,
-        cutlass_nhwc_conv2d_bias_silu<cutlass::gemm::GemmShape<64, 128, 64>,
-                                      cutlass::gemm::GemmShape<64, 64, 32>>,
-        cutlass_nhwc_conv2d_bias_silu<cutlass::gemm::GemmShape<64, 256, 32>,
-                                      cutlass::gemm::GemmShape<64, 64, 32>>,
-        cutlass_nhwc_conv2d_bias_silu<cutlass::gemm::GemmShape<128, 64, 32>,
-                                      cutlass::gemm::GemmShape<64, 32, 32>>};
+    conv2d_bias_silu_all_func = {
+        nhwc_conv2d_bias_silu<cutlass::gemm::GemmShape<64, 64, 64>,
+                              cutlass::gemm::GemmShape<32, 32, 64>>,
+        nhwc_conv2d_bias_silu<cutlass::gemm::GemmShape<64, 32, 64>,
+                              cutlass::gemm::GemmShape<32, 32, 64>>,
+        nhwc_conv2d_bias_silu<cutlass::gemm::GemmShape<128, 32, 64>,
+                              cutlass::gemm::GemmShape<32, 32, 64>>,
+        nhwc_conv2d_bias_silu<cutlass::gemm::GemmShape<128, 64, 64>,
+                              cutlass::gemm::GemmShape<32, 32, 64>>,
+        nhwc_conv2d_bias_silu<cutlass::gemm::GemmShape<64, 64, 32>,
+                              cutlass::gemm::GemmShape<32, 32, 32>>,
+        nhwc_conv2d_bias_silu<cutlass::gemm::GemmShape<64, 128, 32>,
+                              cutlass::gemm::GemmShape<32, 64, 32>>,
+        nhwc_conv2d_bias_silu<cutlass::gemm::GemmShape<64, 128, 64>,
+                              cutlass::gemm::GemmShape<64, 64, 32>>,
+        nhwc_conv2d_bias_silu<cutlass::gemm::GemmShape<64, 256, 32>,
+                              cutlass::gemm::GemmShape<64, 64, 32>>,
+        nhwc_conv2d_bias_silu<cutlass::gemm::GemmShape<128, 64, 32>,
+                              cutlass::gemm::GemmShape<64, 32, 32>>};
 
 std::map<std::vector<int>, int> map_problem_conv2d_bias_silu;
 
-void cutlass_conv2d_bias_silu(ConvAllParams params) {
+void conv2d_bias_silu(ConvAllParams params) {
   int batch = params.batch;
   int ic = params.ic;
   int ih = params.ih;
@@ -207,15 +206,15 @@ void cutlass_conv2d_bias_silu(ConvAllParams params) {
       batch, ic, ih, iw, kh, kw, oc, pad_h0, pad_w0, stride_h, stride_w};
 
   if (map_problem_conv2d_bias_silu.count(problem_size)) {
-    cutlass_conv2d_bias_silu_all_func[map_problem_conv2d_bias_silu.at(
-        problem_size)](params);
+    conv2d_bias_silu_all_func[map_problem_conv2d_bias_silu.at(problem_size)](
+        params);
     return;
   }
 
   float min_time = 100000.f;
-  for (int i = 0; i < cutlass_conv2d_bias_silu_all_func.size(); i++) {
+  for (int i = 0; i < conv2d_bias_silu_all_func.size(); i++) {
     cutlass::Status status;
-    auto func = cutlass_conv2d_bias_silu_all_func[i];
+    auto func = conv2d_bias_silu_all_func[i];
     for (int ii = 0; ii < WARMUP; ii++) {
       status = func(params);
     }
@@ -248,6 +247,6 @@ void cutlass_conv2d_bias_silu(ConvAllParams params) {
       phi::errors::PreconditionNotMet("Can't find any cutlass kernel "
                                       "for this conv2d_bias_silu op."));
 }
-
+}  // namespace cutlass_internal
 }  // namespace fusion
 }  // namespace phi

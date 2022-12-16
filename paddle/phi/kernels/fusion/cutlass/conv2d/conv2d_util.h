@@ -15,10 +15,31 @@
 #pragma once
 #include <cuda_fp16.h>
 #include <vector>
-#include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_all.h"
+#include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_decl.h"
+
+#include "cutlass/cutlass.h"
+#include "cutlass/gemm/device/gemm.h"
+
+#include "cutlass/conv/device/implicit_gemm_convolution.h"
+
+#include "paddle/fluid/memory/allocation/allocator.h"
+#include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace phi {
 namespace fusion {
+namespace cutlass_internal {
+#define CUTLASS_CHECK(status)                                                \
+  if (status != cutlass::Status::kSuccess) {                                 \
+    VLOG(3)                                                                  \
+        << "Cutlass can not deal with this problem size, skip this kernel!"; \
+    return status;                                                           \
+  }
+
+constexpr int WARMUP = 10;
+constexpr int REPEAT = 100;
 
 typedef enum {
   CONV2D_BIAS,
@@ -31,6 +52,6 @@ typedef enum {
 // conv2d_diff_gpu calculate diff of cutlass output and baseline output, you can
 // use them to debug. return value is the max diff between cutlass and baseline
 float conv2d_diff_gpu(ConvAllParams params, OpType op_type);
-
+}  // namespace cutlass_internal
 }  // namespace fusion
 }  // namespace phi

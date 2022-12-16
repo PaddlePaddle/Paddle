@@ -11,15 +11,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #pragma once
 
 #include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_util.h"
-#include <iostream>
-#include <vector>
 
 namespace phi {
 namespace fusion {
-
+namespace cutlass_internal {
 struct logical_coord {
   int n;
   int c;
@@ -203,5 +202,6 @@ float conv2d_diff_gpu(ConvAllParams params, OpType op_type) {
   cudaFree(gpu_output);
   return max_diff;
 }
+}  // namespace cutlass_internal
 }  // namespace fusion
 }  // namespace phi
