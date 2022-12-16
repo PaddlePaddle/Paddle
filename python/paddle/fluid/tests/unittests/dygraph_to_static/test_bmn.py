@@ -135,7 +135,7 @@ class Conv1D(fluid.dygraph.Layer):
         )
 
     def forward(self, x):
-        x = fluid.layers.unsqueeze(input=x, axes=[2])
+        x = paddle.unsqueeze(x, axis=[2])
         x = self._conv2d(x)
         x = paddle.squeeze(x, axis=[2])
         return x

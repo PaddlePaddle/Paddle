@@ -71,7 +71,6 @@ __all__ = [
     'spectral_norm',
     'one_hot',
     'autoincreased_step_counter',
-    'unsqueeze',
     'lod_reset',
     'clip',
     'clip_by_norm',
