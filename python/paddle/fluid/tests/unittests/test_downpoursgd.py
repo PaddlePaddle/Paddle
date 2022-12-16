@@ -217,6 +217,7 @@ class TestListenAndServOp(unittest.TestCase):
             opt_info["use_cvm"] = False
             opt_info["scale_datanorm"] = -1
             opt_info["dump_slot"] = False
+            opt_info["user_define_dump_filename"] ="./dump_filename/dump.txt" 
             opt_info["stat_var_names"] = []
             worker = DownpourWorker(None)
             worker.get_desc().CopyFrom(ps_param.trainer_param[0])
