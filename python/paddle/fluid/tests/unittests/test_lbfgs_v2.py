@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.incubate.optimizer.functional.lbfgs_v2 import LBFGS
 from paddle.incubate.optimizer.functional.line_search_dygraph import (
     _strong_wolfe,
     _cubic_interpolate,
@@ -55,7 +56,6 @@ def train_step(inputs, targets, net, opt):
 
 
 class TestLbfgs(unittest.TestCase):
-    '''
     def test_function_fix(self):
         paddle.disable_static()
         np_w = np.random.rand(1).astype(np.float32)
@@ -204,7 +204,6 @@ class TestLbfgs(unittest.TestCase):
                 n_iter = opt2.state_dict()["state"]["func_evals"]
 
         self.assertRaises(RuntimeError, error_func)
-    '''
 
     def test_line_search(self):
         def func1(x, alpha, d):
@@ -216,7 +215,6 @@ class TestLbfgs(unittest.TestCase):
         def func3(x, alpha, d):
             return paddle.to_tensor(x + alpha * d), paddle.to_tensor(-1.0)
 
-        '''
         _strong_wolfe(
             func1,
             paddle.to_tensor(1.0),
@@ -227,7 +225,7 @@ class TestLbfgs(unittest.TestCase):
             paddle.to_tensor(0.0),
             max_ls=0,
         )
-        '''
+
         _strong_wolfe(
             func2,
             paddle.to_tensor(1.0),
