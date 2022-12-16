@@ -119,7 +119,7 @@ void MaxOutFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
   const int output_channels = output->dims()[axis];
 
   const T* input_data = input.data<T>();
-  T* output_data = output->mutable_data<T>(context.GetPlace());
+  T* output_data = context.template Alloc<T>(output);
   int nthreads = output->numel();
   int blocks = (nthreads + 1024 - 1) / 1024;
   dim3 threads(1024, 1);
@@ -156,7 +156,7 @@ void MaxOutGradFunctor<DeviceContext, T>::operator()(
   const T* input_data = input.data<T>();
   const T* output_data = output.data<T>();
   const T* output_grad_data = output_grad.data<T>();
-  T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
+  T* input_grad_data = context.template Alloc<T>(input_grad);
   int nthreads = output.numel();
   int blocks = (nthreads + 1024 - 1) / 1024;
   dim3 threads(1024, 1);
