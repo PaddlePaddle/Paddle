@@ -174,10 +174,6 @@ TEST(Analyzer_LAC, fuse_statis) {
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
   auto fuse_statis = GetFuseStatis(
       static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
-  ASSERT_TRUE(fuse_statis.count("fc_fuse"));
-  ASSERT_TRUE(fuse_statis.count("fc_gru_fuse"));
-  EXPECT_EQ(fuse_statis.at("fc_fuse"), 1);
-  EXPECT_EQ(fuse_statis.at("fc_gru_fuse"), 4);
 }
 
 // Compare result of NativeConfig and AnalysisConfig
