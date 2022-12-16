@@ -719,6 +719,10 @@ class ShardingPass(PassBase):
             stream_count = 1
             if self.enable_multi_comm_stream:
                 self.param_comm_stream1 = "sharding_param_comm_stream1"
+                ranks = sharding_info.group.ranks
+                self.param_comm_group1 = new_process_group(
+                    ranks, force_new_group=True
+                )
                 stream_count = 2
 
         for i, group in enumerate(group_to_param_map.keys()):
@@ -765,13 +769,21 @@ class ShardingPass(PassBase):
             )
             broadcast_var_to_group_map[group.coalesce_var.name] = group
 
-            # TODO Overlap broadcast with opt and next forward
+            # TODO revise me to manager stream and comm
+            ring_id = sharding_info.group.id
+            if (
+                self.enable_overlap
+                and self.enable_multi_comm_stream
+                and i % 2 == 0
+            ):
+                ring_id = self.param_comm_group1.id
+
             new_op = main_block.append_op(
                 type='c_broadcast',
                 inputs={'X': group.coalesce_var},
                 outputs={'Out': group.coalesce_var},
                 attrs={
-                    'ring_id': sharding_info.group.id,
+                    'ring_id': ring_id,
                     'root': group.rank,
                     'use_calc_stream': True,
                     OP_ROLE_KEY: OpRole.Optimize,
