@@ -1427,24 +1427,40 @@ def conv3d_transpose(
 
         .. math::
 
-           D^\prime_{out} &= (D_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (D_f - 1) + 1 \\
-           H^\prime_{out} &= (H_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (H_f - 1) + 1 \\
-           W^\prime_{out} &= (W_{in} - 1) * strides[2] - 2 * paddings[2] + dilations[2] * (W_f - 1) + 1 \\
+           D^\prime_{out} &= (D_{in} - 1) * strides[0] - pad_depth_front - pad_depth_back + dilations[0] * (D_f - 1) + 1 \\
+           H^\prime_{out} &= (H_{in} - 1) * strides[1] - pad_depth_top - pad_depth_bottom + dilations[1] * (H_f - 1) + 1 \\
+           W^\prime_{out} &= (W_{in} - 1) * strides[2] - pad_with_left - pad_width_right + dilations[2] * (W_f - 1) + 1 \\
            D_{out} &\in [ D^\prime_{out}, D^\prime_{out} + strides[0] ] \\
            H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[1] ] \\
            W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[2] ]
 
-    Note:
-          The conv3d_transpose can be seen as the backward of the conv3d. For conv3d,
-          when stride > 1, conv3d maps multiple input shape to the same output shape,
-          so for conv3d_transpose, when stride > 1, input shape maps multiple output shape.
-          If output_size is None, :math:`H_{out} = H^\prime_{out}, :math:`H_{out} = \
-          H^\prime_{out}, W_{out} = W^\prime_{out}`; else, the :math:`D_{out}` of the output
-          size must between :math:`D^\prime_{out}` and :math:`D^\prime_{out} + strides[0]`,
-          the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}`
-          and :math:`H^\prime_{out} + strides[1]`, and the :math:`W_{out}` of the output size must
-          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[2]`,
-          conv3d_transpose can compute the kernel size automatically.
+    If `padding` = `"SAME"`:
+
+        .. math::
+            D^\prime_{out} &= \frac{(D_{in} + stride[0] - 1)}{stride[0]} \\\\
+            H^\prime_{out} &= \frac{(H_{in} + stride[1] - 1)}{stride[1]} \\\\
+            W^\prime_{out} &= \frac{(H_{in} + stride[2] - 1)}{stride[2]}
+
+    If `padding` = `"VALID"`:
+
+    .. math::
+        D^\prime_{out} &= (D_{in} - 1) * stride[0]} + dilations[0] * (D_f - 1) + 1 \\\\
+        H^\prime_{out} &= (H_{in} - 1) * stride[1]} + dilations[1] * (H_f - 1) + 1 \\\\
+        W^\prime_{out} &= (W_{in} − 1) * strides[2] + dilations[2] * (W_f − 1) + 1
+
+    If `output_size` is None, :math:`D_{out} = D^\prime_{out}, :math:`H_{out} = \
+    H^\prime_{out}, W_{out} = W^\prime_{out}`; else, the specified `output_size_depth` (the depth of the ouput feature layer) :math:`D_{out}`
+    must between :math:`D^\prime_{out}` and :math:`D^\prime_{out} + strides[0]`(not including :math:`D^\prime_{out} + strides[0]`),
+    the specified `output_size_height` (the height of the ouput feature layer) :math:`H_{out}` must between :math:`H^\prime_{out}`
+    and :math:`H^\prime_{out} + strides[1]`(not including :math:`H^\prime_{out} + strides[1]`),
+    and the the specified `output_size_width` (the width of the ouput feature layer) :math:`W_{out}` must
+    between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[2]`(not including :math:`W^\prime_{out} + strides[2]`).
+
+    Since transposed convolution can be treated as the inverse of convolution,
+    and since different sized input feature layers may correspond to the same sized output feature layer according to the input-output formula for convolution,
+    the size of the output feature layer for a fixed sized input feature layer is not unique to transposed convolution.
+
+    If `output_size` is specified, `conv3d_transpose` can compute the kernel size automatically.
 
     Args:
         input(Tensor): The input is 5-D Tensor with shape [N, C, D, H, W] or [N, D, H, W, C], the data type
