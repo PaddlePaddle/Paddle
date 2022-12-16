@@ -37,6 +37,7 @@ from ..data_feeder import (
     check_type,
     check_dtype,
 )
+
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 from .. import unique_name

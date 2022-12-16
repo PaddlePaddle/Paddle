@@ -113,7 +113,6 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_3)
   list(REMOVE_ITEM TEST_OPS test_fleet_unitaccessor)
   list(REMOVE_ITEM TEST_OPS test_ps_dispatcher)
-  list(REMOVE_ITEM TEST_OPS test_ir_memory_optimize_nlp)
   list(REMOVE_ITEM TEST_OPS test_nvprof)
 
   # TODO: Fix these unittests failed on Windows
@@ -422,7 +421,6 @@ endfunction()
 list(REMOVE_ITEM TEST_OPS test_feed_data_check_shape_type)
 list(REMOVE_ITEM TEST_OPS test_fetch_lod_tensor_array)
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
-list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_profiler)
 list(REMOVE_ITEM TEST_OPS test_data_norm_op)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_fetch_feed)
@@ -748,7 +746,6 @@ if(WITH_DISTRIBUTE)
   endif()
 endif()
 
-py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf)
 # profiler will random hang in linux cuda 10.1 or 10.2
 # see https://github.com/PaddlePaddle/Paddle/issues/29082 for details.
 # We guess there are some bugs in linux cuda 10.1 or 10.2,
@@ -916,7 +913,6 @@ set_tests_properties(
   test_buffer_shared_memory_reuse_pass
   PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(
-  test_parallel_executor_crf
   test_sync_batch_norm_op
   test_inplace_abn_op
   test_parallel_executor_seresnext_base_gpu
@@ -1000,13 +996,6 @@ set_tests_properties(test_parallel_executor_transformer PROPERTIES TIMEOUT 120)
 set_tests_properties(test_elementwise_div_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_regularizer_api PROPERTIES TIMEOUT 150)
 set_tests_properties(test_multiclass_nms_op PROPERTIES TIMEOUT 120)
-if(NOT WIN32)
-  if(WITH_NV_JETSON)
-    set_tests_properties(test_ir_memory_optimize_nlp PROPERTIES TIMEOUT 1200)
-  else()
-    set_tests_properties(test_ir_memory_optimize_nlp PROPERTIES TIMEOUT 120)
-  endif()
-endif()
 set_tests_properties(test_add_reader_dependency PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bilateral_slice_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_buffer_shared_memory_reuse_pass PROPERTIES TIMEOUT
@@ -1053,7 +1042,6 @@ set_tests_properties(test_index_select_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_index_add_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_ssa_graph_inference_feed_partial_data
                      PROPERTIES TIMEOUT 120)
-set_tests_properties(test_parallel_executor_crf PROPERTIES TIMEOUT 120)
 set_tests_properties(test_tensordot PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_save_load PROPERTIES TIMEOUT 120)
 set_tests_properties(test_partial_eager_deletion_transformer PROPERTIES TIMEOUT
@@ -1084,7 +1072,6 @@ set_tests_properties(test_weight_decay PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_ptb_rnn_sorted_gradient PROPERTIES TIMEOUT
                                                                         120)
 set_tests_properties(test_crop_tensor_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_eager_deletion_lstm_net PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_executor_mnist PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_ptb_rnn PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_save_load_v2 PROPERTIES TIMEOUT 120)
@@ -1128,7 +1115,6 @@ set_tests_properties(test_imperative_optimizer PROPERTIES TIMEOUT 250)
 set_tests_properties(test_imperative_optimizer_v2 PROPERTIES TIMEOUT 250)
 set_tests_properties(test_pool2d_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_transpose_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_eager_deletion_gru_net PROPERTIES TIMEOUT 120)
 set_tests_properties(test_activation_op PROPERTIES TIMEOUT 270)
 set_tests_properties(test_normal PROPERTIES TIMEOUT 120)
 set_tests_properties(test_lstmp_op PROPERTIES TIMEOUT 120)
