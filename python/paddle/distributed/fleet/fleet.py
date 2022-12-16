@@ -980,11 +980,6 @@ class Fleet:
 
     @is_non_distributed_check
     @inited_runtime_handler
-    def shrink(self, threshold=None):
-        self._runtime_handle._shrink(threshold)
-
-    @is_non_distributed_check
-    @inited_runtime_handler
     def save_one_table(self, table_id, path, mode):
         """
         save fleet one table from path
@@ -1040,6 +1035,8 @@ class Fleet:
             executor, dirname, scope, program, var_names
         )
 
+    @is_non_distributed_check
+    @inited_runtime_handler
     def shrink(self, threshold=None):
         self._runtime_handle._shrink(threshold)
 
