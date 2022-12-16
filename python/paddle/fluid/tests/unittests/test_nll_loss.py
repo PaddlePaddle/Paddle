@@ -19,7 +19,6 @@ from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.framework import _test_eager_guard
 
 
 def nll_loss_1d(
@@ -112,12 +111,11 @@ class TestNLLLoss(unittest.TestCase):
             dy_result = dy_res.numpy()
 
         with fluid.dygraph.guard():
-            with _test_eager_guard():
-                nll_loss = paddle.nn.loss.NLLLoss()
-                eager_res = nll_loss(
-                    paddle.to_tensor(input_np), paddle.to_tensor(label_np)
-                )
-                eager_result = eager_res.numpy()
+            nll_loss = paddle.nn.loss.NLLLoss()
+            eager_res = nll_loss(
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np)
+            )
+            eager_result = eager_res.numpy()
 
         expected = nll_loss_1d(input_np, label_np)[0]
         np.testing.assert_allclose(static_result, expected, rtol=1e-05)
@@ -158,15 +156,14 @@ class TestNLLLoss(unittest.TestCase):
             )
             dy_result = dy_res.numpy()
 
-            with _test_eager_guard():
-                nll_loss = paddle.nn.loss.NLLLoss(reduction='sum')
-                in_t = paddle.to_tensor(input_np)
-                label = paddle.to_tensor(label_np)
-                in_t.stop_gradient = False
-                eager_res = nll_loss(in_t, label)
-                eager_result = eager_res.numpy()
-                loss = eager_res.sum()
-                loss.backward()
+            nll_loss = paddle.nn.loss.NLLLoss(reduction='sum')
+            in_t = paddle.to_tensor(input_np)
+            label = paddle.to_tensor(label_np)
+            in_t.stop_gradient = False
+            eager_res = nll_loss(in_t, label)
+            eager_result = eager_res.numpy()
+            loss = eager_res.sum()
+            loss.backward()
 
         expected = nll_loss_1d(input_np, label_np, reduction='sum')[0]
         np.testing.assert_allclose(static_result, expected, rtol=1e-05)
@@ -215,16 +212,15 @@ class TestNLLLoss(unittest.TestCase):
             )
             dy_result = dy_res.numpy()
 
-            with _test_eager_guard():
-                nll_loss = paddle.nn.loss.NLLLoss(
-                    weight=paddle.to_tensor(weight_np)
-                )
-                eager_res = nll_loss(
-                    paddle.to_tensor(input_np), paddle.to_tensor(label_np)
-                )
-                loss = eager_res.sum()
-                loss.backward()
-                eager_result = eager_res.numpy()
+            nll_loss = paddle.nn.loss.NLLLoss(
+                weight=paddle.to_tensor(weight_np)
+            )
+            eager_res = nll_loss(
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np)
+            )
+            loss = eager_res.sum()
+            loss.backward()
+            eager_result = eager_res.numpy()
 
         expected = nll_loss_1d(input_np, label_np, weight=weight_np)[0]
 
