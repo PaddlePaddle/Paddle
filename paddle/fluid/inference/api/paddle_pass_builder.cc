@@ -208,12 +208,13 @@ const std::vector<std::string> kCINNCompilerPasses{
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
     //   "identity_scale_op_clean_pass",             //
-    "is_test_pass",                                                     //
-        "simplify_with_basic_ops_pass",                                 //
-        "delete_quant_dequant_linear_op_pass",                          //
-        "delete_weight_dequant_linear_op_pass",                         //
-        "map_depthwise_conv_to_conv_pass",                              //
-        "constant_folding_pass",                                        //
+    "is_test_pass",                              //
+        "simplify_with_basic_ops_pass",          //
+        "delete_quant_dequant_linear_op_pass",   //
+        "delete_weight_dequant_linear_op_pass",  //
+        "map_depthwise_conv_to_conv_pass",       //
+        "constant_folding_pass",                 //
+        "silu_fuse_pass",
         "conv_bn_fuse_pass",                                            //
         "conv_eltwiseadd_bn_fuse_pass",                                 //
         "embedding_eltwise_layernorm_fuse_pass",                        //
