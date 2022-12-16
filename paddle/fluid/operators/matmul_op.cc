@@ -983,13 +983,11 @@ REGISTER_OP_CUDA_KERNEL(
     matmul,
     ops::MatMulKernel<phi::GPUContext, float>,
     ops::MatMulKernel<phi::GPUContext, double>,
-    ops::MatMulKernel<phi::GPUContext, paddle::platform::bfloat16>,
     ops::MatMulKernel<phi::GPUContext, paddle::platform::float16>);
 REGISTER_OP_CUDA_KERNEL(
     matmul_grad,
     ops::MatMulGradKernel<phi::GPUContext, float>,
     ops::MatMulGradKernel<phi::GPUContext, double>,
-    ops::MatMulGradKernel<phi::GPUContext, paddle::platform::bfloat16>,
     ops::MatMulGradKernel<phi::GPUContext, paddle::platform::float16>);
 REGISTER_OP_CUDA_KERNEL(matmul_grad_grad,
                         ops::MatMulDoubleGradKernel<phi::GPUContext, float>,
