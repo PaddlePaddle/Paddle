@@ -30,8 +30,6 @@ class Quanter {
   void AddQuantOps() {
     if (IsNotPermittedOpType()) return;
 
-    std::vector<std::string> linked_xputs;
-
     for (const auto& logical_xput : op_xputs) {
       std::vector<std::string> quant_xput_names;
       quant_xput_names.reserve(xputs_map.size());
@@ -41,8 +39,6 @@ class Quanter {
 
       const auto& physical_xputs_names = logical_xput.second;
       for (const auto& physical_xput_name : physical_xputs_names) {
-        if (IsAlreadyLinked(linked_xputs, physical_xput_name)) continue;
-
         VarDesc quant_x_desc(
             patterns::PDNodeName(get_op_type(), get_op_edge()));
         auto quant_x_node = graph->CreateVarNode(&quant_x_desc);
@@ -54,7 +50,6 @@ class Quanter {
         auto physical_xput_node = xputs_map[physical_xput_name];
         link_nodes(physical_xput_node, quant_op, quant_x_node);
         counter++;
-        linked_xputs.push_back(physical_xput_name);
       }
 
       set_edge(logical_xput_name, quant_xput_names);
@@ -62,8 +57,6 @@ class Quanter {
   }
 
   int get_counter() const { return counter; }
-
-  int get_xputs_map_size() const { return xputs_map.size(); }
 
   virtual ~Quanter() = default;
 
@@ -255,11 +248,6 @@ void CPUBFloat16Pass::ApplyImpl(ir::Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(op, op, Bloat16Ops);
 
     Quantizer quantizer(graph, op);
-    if (quantizer.get_xputs_map_size() != static_cast<int>(op->inputs.size())) {
-      VLOG(4) << "Skip because the number of OP input is inconsistent with the "
-                 "number of conversions.";
-      return;
-    }
     quantizer.AddQuantOps();
     quantize_counter += quantizer.get_counter();
 

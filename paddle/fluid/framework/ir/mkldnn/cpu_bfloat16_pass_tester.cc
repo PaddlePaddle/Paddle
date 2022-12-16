@@ -206,18 +206,6 @@ ProgramDesc BuildProgramDescDuplicated2Input(bool use_mkldnn) {
   return prog;
 }
 
-TEST(CpuBfloat16Pass, duplicated_2input_ops) {
-  bool use_mkldnn = true;
-  int quant_op = 3;
-  int dequant_op = 2;
-  // each added op consists of 2 nodes
-  int added_nodes = quant_op * 2 + dequant_op * 2;
-  MainTest(BuildProgramDescDuplicated2Input(use_mkldnn),
-           quant_op,
-           dequant_op,
-           added_nodes);
-}
-
 ProgramDesc BuildProgramDescDuplicatedOutput(bool use_mkldnn) {
   ProgramDesc prog;
   for (auto& v : variable_names) {
