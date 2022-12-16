@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/phi_utils.h"
-#include "paddle/fluid/framework/raw_tensor.h"
+#include "paddle/fluid/framework/raw.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/unused_var_check.h"
@@ -2968,7 +2968,6 @@ void OperatorWithKernel::BuildPhiKernelContext(
                         "to the size of kernel attribute_defs (%d).",
                         attr_names.size(),
                         attr_defs.size()));
-
   for (size_t i = 0; i < input_names.size(); ++i) {
     auto it = ctx.inputs.find(input_names[i]);
 
@@ -3012,6 +3011,9 @@ void OperatorWithKernel::BuildPhiKernelContext(
       } else if (var->IsType<framework::Vocab>()) {
         tensor_in = &(var->Get<framework::Vocab>());
         phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
+      } else if (var->IsType<framework::FeedList>()) {
+        tensor_in = &(var->Get<framework::FeedList>());
+        phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported input `%s` type when call pt kernel.",
@@ -3022,7 +3024,6 @@ void OperatorWithKernel::BuildPhiKernelContext(
     phi_kernel_context->AssignInputRange(std::make_pair(start_idx, end_idx), i);
   }
   VLOG(4) << "Done inputs";
-
   for (size_t i = 0; i < output_names.size(); ++i) {
     auto it = ctx.outputs.find(output_names[i]);
     size_t start_idx =
@@ -3061,12 +3062,12 @@ void OperatorWithKernel::BuildPhiKernelContext(
           // Note: If the input LoDTensorArray size is 0, the output
           // LoDTensorArray is also 0
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
-        } else if (var->template IsType<paddle::framework::RawTensor>()) {
-          tensor_out = var->template GetMutable<paddle::framework::RawTensor>();
+        } else if (var->template IsType<paddle::framework::Raw>()) {
+          tensor_out = var->template GetMutable<paddle::framework::Raw>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else if (!var->IsInitialized()) {
           // The following is for RAW type of var
-          tensor_out = var->template GetMutable<paddle::framework::RawTensor>();
+          tensor_out = var->template GetMutable<paddle::framework::Raw>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
@@ -3081,7 +3082,6 @@ void OperatorWithKernel::BuildPhiKernelContext(
                                           i);
   }
   VLOG(4) << "Done outputs";
-
   for (size_t i = 0; i < attr_names.size(); ++i) {
     VLOG(6) << "BuildPhiKernelContext: " << attr_names[i] << ": "
             << attr_defs[i].type_index;

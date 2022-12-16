@@ -23,7 +23,7 @@
 
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
-#include "paddle/fluid/framework/raw_tensor.h"
+#include "paddle/fluid/framework/raw.h"
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_CUDA
@@ -221,7 +221,7 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
     Vocab,
     std::vector<int>,
     std::vector<float>,
-    RawTensor>;
+    Raw>;
 template <typename T>
 struct VarTypeTrait {
   static_assert(VarTypeRegistry::IsRegistered<T>(), "Must be registered type");

@@ -38,7 +38,7 @@
 #if defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #endif
-#include "paddle/fluid/framework/raw_tensor.h"
+#include "paddle/fluid/framework/raw.h"
 
 namespace paddle {
 namespace framework {

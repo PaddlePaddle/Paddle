@@ -407,8 +407,8 @@ int BertTokenizer::Encode(
 
 void BertTokenizer::BatchEncode(
     vector<unordered_map<string, vector<int64_t>>>* batch_encode_inputs,
-    const vector<string>& batch_text,
-    const vector<string>& batch_text_pair /* = vector<string>() */,
+    const framework::Strings& batch_text,
+    const framework::Strings& batch_text_pair /* = vector<string>() */,
     bool is_split_into_words /* = false */,
     const size_t max_seq_len /* = 0 */,
     bool pad_to_max_seq_len /* = false */) const {

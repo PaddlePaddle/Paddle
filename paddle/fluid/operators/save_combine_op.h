@@ -27,7 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/raw_tensor.h"
+#include "paddle/fluid/framework/raw.h"
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/dynload/port.h"
@@ -69,7 +69,7 @@ void SaveCombineTensorKernel(const Context& dev_ctx,
                              phi::ExtendedTensor* out) {
   std::string* y = nullptr;
   if (out != nullptr) {
-    auto raw_out = static_cast<paddle::framework::RawTensor*>(out);
+    auto raw_out = static_cast<paddle::framework::Raw*>(out);
     y = raw_out->GetMutable<std::string>();
   }
 
@@ -129,7 +129,7 @@ void SaveCombineVocabKernel(
     phi::ExtendedTensor* out) {
   std::string* y = nullptr;
   if (out != nullptr) {
-    auto raw_out = static_cast<paddle::framework::RawTensor*>(out);
+    auto raw_out = static_cast<paddle::framework::Raw*>(out);
     y = raw_out->GetMutable<std::string>();
   }
 
@@ -178,7 +178,7 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
     auto overwrite = ctx.Attr<bool>("overwrite");
     auto save_as_fp16 = ctx.Attr<bool>("save_as_fp16");
     auto save_to_memory = ctx.Attr<bool>("save_to_memory");
-    auto output = ctx.Output<framework::RawTensor>("Y");
+    auto output = ctx.Output<framework::Raw>("Y");
     auto inp_var_names = ctx.InputNames("X");
     auto& inp_vars = ctx.MultiInputVar("X");
 

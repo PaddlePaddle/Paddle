@@ -106,7 +106,7 @@ std::unordered_map<std::string, std::shared_ptr<Variable>> Property::Values() {
           *var->GetMutable<std::vector<int>>() = GetInt64s(n);
           break;
         case ValueProto::STRINGS:
-          *var->GetMutable<std::vector<std::string>>() = GetStrings(n);
+          *var->GetMutable<paddle::framework::Strings>() = GetStrings(n);
           break;
         default:
           break;

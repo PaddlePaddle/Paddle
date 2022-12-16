@@ -101,6 +101,12 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
                               default_tensor_layout,
                               default_key.dtype(),
                               arg_type);
+      } else if (arg_type ==
+                 std::type_index(typeid(const phi::ExtendedTensor&))) {
+        args_def->AppendInput(default_key.backend(),
+                              default_tensor_layout,
+                              default_key.dtype(),
+                              arg_type);
       } else if (arg_type == std::type_index(typeid(
                                  const std::vector<const ExtendedTensor*>&))) {
         args_def->AppendInput(default_key.backend(),

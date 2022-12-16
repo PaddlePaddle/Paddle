@@ -94,8 +94,65 @@ class Vocab : public phi::ExtendedTensor,
   std::unordered_map<std::wstring, std::int32_t> data_;
 };
 
+template <typename T>
+class PHIVector : public phi::ExtendedTensor,
+                  public phi::TypeInfoTraits<phi::TensorBase, PHIVector<T>> {
+ public:
+  PHIVector() = default;
+
+  PHIVector(PHIVector&& other) = default;
+
+  PHIVector(const PHIVector& other) = default;
+
+  PHIVector& operator=(const PHIVector& other) = default;
+
+  PHIVector& operator=(const std::vector<T>& other) {
+    data_ = other;
+    return *this;
+  }
+
+  PHIVector& operator=(PHIVector&& other) = default;
+
+  /// \brief Destroy the Vocab and release exclusive resources.
+  virtual ~PHIVector() = default;
+
+ public:
+  /// \brief Returns the name of the class for type traits.
+  /// \return The name of the class.
+  static const char* name() { return "PHIVector"; }
+
+  size_t size() const { return data_.size(); }
+
+  void resize(size_t size) { data_.resize(size); }
+
+  void clear() { data_.clear(); }
+
+  void emplace_back(const T& feed_data) { data_.emplace_back(feed_data); }
+
+  const T& operator[](size_t index) const { return data_[index]; }
+
+  T& operator[](size_t index) { return data_[index]; }
+
+  T& at(size_t index) { return data_.at(index); }
+
+  const T& at(size_t index) const { return data_.at(index); }
+
+  typename std::vector<T>::iterator begin() { return data_.begin(); }
+
+  typename std::vector<T>::const_iterator begin() const {
+    return data_.begin();
+  }
+
+  typename std::vector<T>::iterator end() { return data_.end(); }
+
+  typename std::vector<T>::const_iterator end() const { return data_.end(); }
+
+ private:
+  std::vector<T> data_;
+};
+
 using String = std::string;
-using Strings = std::vector<std::string>;
+using Strings = PHIVector<std::string>;
 
 // Convert the std::string type to the std::string type.
 bool ConvertStrToWstr(const std::string& src, std::wstring* res);

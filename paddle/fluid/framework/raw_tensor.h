@@ -23,26 +23,44 @@ namespace paddle {
 namespace framework {
 
 /// \brief Fluid Kernel and PHI Kernel will be unified in the future.
-/// So, we need a class in PHI that can represent the RAW type in Fluid.
-/// The RawTensor is for PHI Kernel that has RAW type arguments.
-class RawTensor : public phi::ExtendedTensor,
-                  public phi::TypeInfoTraits<phi::TensorBase, RawTensor> {
+/// So, we need a class in PHI that can represent the Raw type in Fluid.
+/// The Raw is for PHI Kernel that has Raw type arguments.
+class Raw : public phi::ExtendedTensor,
+            public phi::TypeInfoTraits<phi::TensorBase, Raw> {
  public:
-  RawTensor() = default;
+  Raw() = default;
 
-  RawTensor(RawTensor&& other) = default;
+  Raw(Raw&& other) = default;
 
-  RawTensor(const RawTensor& other) = default;
+  Raw(const Raw& other) = default;
 
-  RawTensor& operator=(RawTensor&& other) = default;
+  Raw& operator=(Raw&& other) = default;
 
-  /// \brief Destroy the RawTensor and release exclusive resources.
-  virtual ~RawTensor() = default;
+  /// \brief Destroy the Raw and release exclusive resources.
+  virtual ~Raw() = default;
 
  public:
   /// \brief Returns the name of the class for type traits.
   /// \return The name of the class.
-  static const char* name() { return "RawTensor"; }
+  static const char* name() { return "Raw"; }
+
+  template <typename T>
+  T& Get() const {
+    PADDLE_ENFORCE_EQ(
+        data_.empty(),
+        false,
+        platform::errors::PreconditionNotMet(
+            "The data in Raw is empty. Please set data before using it."));
+
+    try {
+      return *(paddle::any_cast<T*>(data_));
+    } catch (paddle::bad_any_cast&) {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Invalid data type error, expected %s, actual %s.",
+          typeid(T).name(),
+          data_type_.name()));
+    }
+  }
 
   template <typename T>
   T* GetMutable() {
@@ -61,6 +79,16 @@ class RawTensor : public phi::ExtendedTensor,
     data_deleter_ = [created_data]() { delete created_data; };
     data_type_ = std::type_index(typeid(T));
     return created_data;
+  }
+
+  template <typename T>
+  void SetData(T* data) {
+    if (!data_.empty()) {
+      data_deleter_();
+    }
+    data_ = data;
+    data_deleter_ = [data]() { delete data; };
+    data_type_ = std::type_index(typeid(T));
   }
 
   template <typename T>

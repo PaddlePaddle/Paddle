@@ -550,6 +550,13 @@ class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
     return var->IsType<phi::SparseCooTensor>();
   }
 
+  bool IsSparseCooTensorOutput(const std::string& name) const override {
+    auto vars = ctx_.MultiOutputVar(name);
+    return std::all_of(vars.begin(), vars.end(), [](const Variable* var) {
+      return var->IsType<phi::SparseCooTensor>();
+    });
+  }
+
   bool IsSparseCsrTensorInput(const std::string& name) const override {
     const auto* var = ctx_.InputVar(name);
     return var->IsType<phi::SparseCsrTensor>();

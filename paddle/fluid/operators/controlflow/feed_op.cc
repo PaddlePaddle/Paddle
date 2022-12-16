@@ -11,6 +11,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/raw.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 
 namespace paddle {
@@ -30,14 +32,16 @@ namespace operators {
 
 // FeedVariableVisitor is to feed the variable data
 // according to data type (phi::DenseTensor or  Strings).
+template <typename T>
 class FeedVariableVisitor {
  public:
-  explicit FeedVariableVisitor(framework::Variable *out_var,
-                               const platform::Place &place)
-      : out_var_(out_var), place_(place) {}
+  explicit FeedVariableVisitor(T* out_var, const platform::Place& place)
+      : place_(place) {
+    out_var_.SetData(out_var);
+  }
 
-  void operator()(const phi::DenseTensor &in_tensor) const {
-    phi::DenseTensor *out_tensor = out_var_->GetMutable<phi::DenseTensor>();
+  void operator()(const phi::DenseTensor& in_tensor) const {
+    phi::DenseTensor* out_tensor = &(out_var_.Get<phi::DenseTensor>());
     if (platform::is_same_place(in_tensor.place(), place_)) {
       out_tensor->ShareDataWith(in_tensor);
 #ifdef PADDLE_WITH_IPU
@@ -48,26 +52,25 @@ class FeedVariableVisitor {
       out_tensor->ShareDataWith(in_tensor);
 #endif
     } else {
-      platform::DeviceContext *context =
+      platform::DeviceContext* context =
           platform::DeviceContextPool::Instance().Get(place_);
       framework::TensorCopy(in_tensor, place_, *context, out_tensor);
     }
     out_tensor->set_lod(in_tensor.lod());
   }
 
-  void operator()(const framework::Strings &in_str) const {
-    framework::Strings *out_str = out_var_->GetMutable<framework::Strings>();
+  void operator()(const framework::Strings& in_str) const {
+    framework::Strings* out_str = &(out_var_.Get<framework::Strings>());
     out_str->resize(in_str.size());
     *out_str = in_str;
   }
 
-  void operator()(const phi::SparseCooTensor &in_tensor) const {
-    phi::SparseCooTensor *out_tensor =
-        out_var_->GetMutable<phi::SparseCooTensor>();
+  void operator()(const phi::SparseCooTensor& in_tensor) const {
+    phi::SparseCooTensor* out_tensor = &(out_var_.Get<phi::SparseCooTensor>());
     if (platform::is_same_place(in_tensor.place(), place_)) {
       *out_tensor = in_tensor;
     } else {
-      platform::DeviceContext *context =
+      platform::DeviceContext* context =
           platform::DeviceContextPool::Instance().Get(place_);
 
       phi::DenseTensor indices, values;
@@ -78,67 +81,86 @@ class FeedVariableVisitor {
   }
 
  private:
-  framework::Variable *out_var_;
-  const platform::Place &place_;
+  framework::Raw out_var_;
+  const platform::Place& place_;
 };
 
-class FeedOp : public framework::OperatorBase {
- public:
-  FeedOp(const std::string &type,
-         const framework::VariableNameMap &inputs,
-         const framework::VariableNameMap &outputs,
-         const framework::AttributeMap &attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
+const framework::FeedType& CheckAndGetFeedItem(const phi::ExtendedTensor& x,
+                                               int col) {
+  PADDLE_ENFORCE_GE(col,
+                    0,
+                    platform::errors::InvalidArgument(
+                        "Expected the column index (the attribute 'col' of "
+                        "operator 'Feed') of current feeding variable to be "
+                        "no less than 0. But received column index = %d.",
+                        col));
+  auto feed_list = static_cast<const paddle::framework::FeedList*>(&x);
+  PADDLE_ENFORCE_LT(
+      static_cast<size_t>(col),
+      feed_list->size(),
+      platform::errors::InvalidArgument(
+          "The column index of current feeding variable is expected to be "
+          "less than the length of feeding list. But received column index = "
+          "%d, the length of feeding list = %d",
+          col,
+          feed_list->size()));
 
- private:
-  void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
-    OP_INOUT_CHECK(HasInputs("X"), "Input", "X", "Feed");
-    OP_INOUT_CHECK(HasOutputs("Out"), "Output", "Out", "Feed");
+  return feed_list->at(static_cast<size_t>(col));
+}
 
-    auto feed_var_name = Input("X");
-    auto *feed_var = scope.FindVar(feed_var_name);
-    PADDLE_ENFORCE_NOT_NULL(
-        feed_var,
-        platform::errors::NotFound(
-            "Input varibale(%s) cannot be found in scope for operator 'Feed'.",
-            feed_var_name));
+template <typename T, typename Context>
+void FeedDenseTensorKernel(const Context& dev_ctx,
+                           const phi::ExtendedTensor& x,
+                           int col,
+                           phi::DenseTensor* out) {
+  PADDLE_ENFORCE_NOT_NULL(
+      out,
+      platform::errors::NotFound(
+          "Output cannot be found in scope for operator 'Feed'"));
+  const auto& feed_item = CheckAndGetFeedItem(x, col);
+  FeedVariableVisitor<phi::DenseTensor> visitor(out, dev_ctx.GetPlace());
+  paddle::visit(visitor, feed_item);
+}
 
-    auto out_name = this->Output("Out");
-    auto *out_var = scope.FindVar(out_name);
-    PADDLE_ENFORCE_NOT_NULL(
-        out_var,
-        platform::errors::NotFound(
-            "Output variable(%s) cannot be found in scope for operator 'Feed'",
-            out_name));
+template <typename T, typename Context>
+void FeedSparseCooTensorKernel(const Context& dev_ctx,
+                               const phi::ExtendedTensor& x,
+                               int col,
+                               phi::SparseCooTensor* out) {
+  PADDLE_ENFORCE_NOT_NULL(
+      out,
+      platform::errors::NotFound(
+          "Output cannot be found in scope for operator 'Feed'"));
+  const auto& feed_item = CheckAndGetFeedItem(x, col);
+  FeedVariableVisitor<phi::SparseCooTensor> visitor(out, dev_ctx.GetPlace());
+  paddle::visit(visitor, feed_item);
+}
 
-    auto col = Attr<int>("col");
-    PADDLE_ENFORCE_GE(col,
-                      0,
-                      platform::errors::InvalidArgument(
-                          "Expected the column index (the attribute 'col' of "
-                          "operator 'Feed') of current feeding variable to be "
-                          "no less than 0. But received column index = %d.",
-                          col));
+template <typename T, typename Context>
+void FeedStringsKernel(const Context& dev_ctx,
+                       const phi::ExtendedTensor& x,
+                       int col,
+                       phi::ExtendedTensor* out) {
+  PADDLE_ENFORCE_NOT_NULL(
+      out,
+      platform::errors::NotFound(
+          "Output cannot be found in scope for operator 'Feed'"));
+  const auto& feed_item = CheckAndGetFeedItem(x, col);
+  auto strs_out = static_cast<framework::Strings*>(out);
+  FeedVariableVisitor<framework::Strings> visitor(strs_out, dev_ctx.GetPlace());
+  paddle::visit(visitor, feed_item);
+}
 
-    VLOG(3) << "Feed variable " << feed_var_name << "'s " << col
-            << " column to variable " << out_name;
+class FeedOp : public framework::OperatorWithKernel {
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
-    auto &feed_list = feed_var->Get<framework::FeedList>();
-    PADDLE_ENFORCE_LT(
-        static_cast<size_t>(col),
-        feed_list.size(),
-        platform::errors::InvalidArgument(
-            "The column index of current feeding variable is expected to be "
-            "less than the length of feeding list. But received column index = "
-            "%d, the length of feeding list = %d",
-            col,
-            feed_list.size()));
+  void InferShape(framework::InferShapeContext* ctx) const override {}
 
-    auto &feed_item = feed_list.at(static_cast<size_t>(col));
-
-    FeedVariableVisitor visitor(out_var, place);
-    paddle::visit(visitor, feed_item);
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   ctx.GetPlace());
   }
 };
 
@@ -170,3 +192,52 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     paddle::operators::FeedOpInfoMaker);
+
+PD_REGISTER_KERNEL(feed_dense_tensor,
+                   CPU,
+                   ALL_LAYOUT,
+                   paddle::operators::FeedDenseTensorKernel,
+                   float,
+                   double,
+                   int8_t,
+                   uint8_t,
+                   int,
+                   int64_t,
+                   bool,
+                   paddle::platform::bfloat16,
+                   paddle::platform::complex<float>,
+                   paddle::platform::complex<double>,
+                   paddle::platform::float16,
+                   int16_t) {}
+PD_REGISTER_KERNEL(feed_sparse_coo_tensor,
+                   CPU,
+                   ALL_LAYOUT,
+                   paddle::operators::FeedSparseCooTensorKernel,
+                   float,
+                   double,
+                   int8_t,
+                   uint8_t,
+                   int,
+                   int64_t,
+                   bool,
+                   paddle::platform::bfloat16,
+                   paddle::platform::complex<float>,
+                   paddle::platform::complex<double>,
+                   paddle::platform::float16,
+                   int16_t) {}
+PD_REGISTER_KERNEL(feed_strings,
+                   CPU,
+                   ALL_LAYOUT,
+                   paddle::operators::FeedStringsKernel,
+                   float,
+                   double,
+                   int8_t,
+                   uint8_t,
+                   int,
+                   int64_t,
+                   bool,
+                   paddle::platform::bfloat16,
+                   paddle::platform::complex<float>,
+                   paddle::platform::complex<double>,
+                   paddle::platform::float16,
+                   int16_t) {}

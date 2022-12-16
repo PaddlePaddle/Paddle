@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/string_array.h"
 #include "paddle_infer_declare.h"  // NOLINT
 
 #ifdef PADDLE_WITH_ONNXRUNTIME
@@ -30,7 +31,7 @@ namespace paddle_infer {
 
 /// \brief  Experimental.
 /// Strings for text data.
-using Strings = std::vector<std::string>;
+using Strings = paddle::framework::Strings;
 
 class Tensor;
 using Exp_OutputHookFunc =
