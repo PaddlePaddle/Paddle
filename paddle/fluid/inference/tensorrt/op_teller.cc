@@ -695,6 +695,13 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
 
+    if (op_type == "arg_min") {
+      if (!desc.HasAttr("axis", /*with_attr_var=*/false)) {
+        VLOG(3) << "Skip to convert into TRT while found Attribute('axis') is "
+                   "Variable type in arg_min.";
+        return false;
+      }
+
       int axis = desc.HasAttr("axis")
                      ? PADDLE_GET_CONST(int64_t, desc.GetAttr("axis"))
                      : -1;
@@ -2524,6 +2531,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "yolo_box",
       "yolo_box_head",
       "arg_max",
+      "arg_min",
       "roi_align",
       "affine_channel",
       "nearest_interp",
@@ -2669,6 +2677,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "yolo_box",
       "yolo_box_head",
       "arg_max",
+      "arg_min",
       "roi_align",
       "affine_channel",
       "nearest_interp",
