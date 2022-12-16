@@ -75,7 +75,6 @@ __all__ = [
     'lod_reset',
     'clip',
     'clip_by_norm',
-    'mul',
     'merge_selected_rows',
     'get_tensor_from_selected_rows',
 ]
