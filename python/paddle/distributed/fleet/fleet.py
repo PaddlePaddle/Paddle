@@ -976,9 +976,6 @@ class Fleet:
             table_id, pass_id, mem_cache_key_threshold
         )
 
-    def shrink(self, threshold=None):
-        self._runtime_handle._shrink(threshold)
-
     @is_non_distributed_check
     @inited_runtime_handler
     def save_one_table(self, table_id, path, mode):
