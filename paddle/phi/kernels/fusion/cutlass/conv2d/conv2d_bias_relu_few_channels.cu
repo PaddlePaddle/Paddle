@@ -219,34 +219,7 @@ void conv2d_bias_relu_few_channels(ConvAllParams params) {
         [map_problem_conv2d_bias_relu_few_channels.at(problem_size)](params);
     return;
   }
-
-  float min_time = 100000.f;
-  for (int i = 0; i < conv2d_bias_relu_few_channels_all_func.size(); i++) {
-    cutlass::Status status;
-    auto func = conv2d_bias_relu_few_channels_all_func[i];
-    for (int ii = 0; ii < WARMUP; ii++) {
-      status = func(params);
-    }
-
-    cudaEvent_t beg, end;
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&beg));
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&end));
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(beg));
-    for (int ii = 0; ii < REPEAT; ii++) {
-      status = func(params);
-    }
-
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(end));
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventSynchronize(end));
-    float elapsed_time;
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventElapsedTime(&elapsed_time, beg, end));
-    if (elapsed_time < min_time && status == cutlass::Status::kSuccess) {
-      min_time = elapsed_time;
-      map_problem_conv2d_bias_relu_few_channels[problem_size] = i;
-    }
-
-    // debug code
-  }
+  //
 }
 }  // namespace cutlass_internal
 }  // namespace fusion

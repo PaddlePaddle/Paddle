@@ -231,44 +231,12 @@ void conv2d_bias_add_relu(ConvAllParams params) {
     return;
   }
   // config 6's diff is large.
-  std::vector<int> blacklist = {6};
-  float min_time = 100000.f;
-  for (int i = 0; i < conv2d_bias_add_relu_all_func.size(); i++) {
-    if (std::find(blacklist.begin(), blacklist.end(), i) != blacklist.end())
-      continue;
-    cutlass::Status status;
-    auto func = conv2d_bias_add_relu_all_func[i];
-    for (int ii = 0; ii < WARMUP; ii++) {
-      status = func(params);
-    }
+  conv2d_bias_add_relu_all_func[6] = nullptr;
 
-    cudaEvent_t beg, end;
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&beg));
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&end));
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(beg));
-    for (int ii = 0; ii < REPEAT; ii++) {
-      status = func(params);
-    }
-
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(end));
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventSynchronize(end));
-    float elapsed_time;
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventElapsedTime(&elapsed_time, beg, end));
-    if (elapsed_time < min_time && status == cutlass::Status::kSuccess) {
-      min_time = elapsed_time;
-      map_problem_conv2d_bias_add_relu[problem_size] = i;
-    }
-
-    // debug code
-    VLOG(3) << "conv2d_bias_add_relu: tactic " << i << " has max diff "
-            << conv2d_diff_gpu(params, CONV2D_BIAS_ADD_RELU)
-            << " compared with baseline";
-  }
-  PADDLE_ENFORCE_EQ(
-      map_problem_conv2d_bias_add_relu.count(problem_size),
-      true,
-      phi::errors::PreconditionNotMet("Can't find any cutlass kernel "
-                                      "for this conv2d_bias_add_relu op."));
+  int best_config_index = ProfileToGetBestConfig(
+      conv2d_bias_add_relu_all_func, params, CONV2D_BIAS_ADD_RELU);
+  map_problem_conv2d_bias_add_relu[problem_size] = best_config_index;
+  conv2d_bias_add_relu_all_func[best_config_index](params);
 }
 }  // namespace cutlass_internal
 }  // namespace fusion

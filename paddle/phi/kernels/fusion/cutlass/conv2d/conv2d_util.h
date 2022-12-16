@@ -52,6 +52,14 @@ typedef enum {
 // conv2d_diff_gpu calculate diff of cutlass output and baseline output, you can
 // use them to debug. return value is the max diff between cutlass and baseline
 float conv2d_diff_gpu(ConvAllParams params, OpType op_type);
+
+// Profile is
+
+int ProfileToGetBestConfig(
+    const std::vector<std::function<cutlass::Status(ConvAllParams)>>& all_func,
+    ConvAllParams params,
+    OpType op_type);
+
 }  // namespace cutlass_internal
 }  // namespace fusion
 }  // namespace phi

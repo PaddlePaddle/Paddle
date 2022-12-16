@@ -202,6 +202,74 @@ float conv2d_diff_gpu(ConvAllParams params, OpType op_type) {
   cudaFree(gpu_output);
   return max_diff;
 }
+
+std::string OpType2String(OpType op_type) {
+  switch (op_type) {
+    case CONV2D_BIAS:
+      return "conv2d_bias";
+      break;
+    case CONV2D_BIAS_RELU:
+      return "conv2d_bias_relu";
+      break;
+    case CONV2D_BIAS_SILU:
+      return "conv2d_bias_add_silu";
+      break;
+    case CONV2D_BIAS_ADD_RELU:
+      return "conv2d_bias_add_relu";
+      break;
+    case CONV2D_BIAS_LEAKY_RELU:
+      return "conv2d_bias_leaky_relu";
+    default:
+      break;
+  }
+  return "unnamed_op";
+}
+
+int ProfileToGetBestConfig(
+    const std::vector<std::function<cutlass::Status(ConvAllParams)>> &all_func,
+    ConvAllParams params,
+    OpType op_type) {
+  float min_time = 100000.f;
+  int min_time_index = -1;
+  for (int i = 0; i < all_func.size(); i++) {
+    cutlass::Status status;
+    auto func = all_func[i];
+    // when func may be large diff, we will make it nullptr
+    if (!func) continue;
+
+    for (int ii = 0; ii < WARMUP; ii++) {
+      status = func(params);
+    }
+
+    cudaEvent_t beg, end;
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&beg));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&end));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(beg));
+    for (int ii = 0; ii < REPEAT; ii++) {
+      status = func(params);
+    }
+
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventRecord(end));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventSynchronize(end));
+    float elapsed_time;
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventElapsedTime(&elapsed_time, beg, end));
+    if (elapsed_time < min_time && status == cutlass::Status::kSuccess) {
+      min_time = elapsed_time;
+      min_time_index = i;
+    }
+    // debug code
+    VLOG(3) << OpType2String(op_type) << ": tactic " << i << " has max diff "
+            << conv2d_diff_gpu(params, op_type) << " compared with baseline";
+  }
+
+  if (min_time_index < 0) {
+    PADDLE_THROW(
+        phi::errors::NotFound("Can't find any cutlass config for this %s op.",
+                              OpType2String(op_type).c_str()));
+  }
+  return min_time_index;
+}
+
 }  // namespace cutlass_internal
 }  // namespace fusion
 }  // namespace phi

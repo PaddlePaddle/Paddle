@@ -50,7 +50,6 @@ void SiluFusePass::ApplyImpl(ir::Graph* graph) const {
                      Graph* g) {
     Node* sigmoid_in_node = subgraph.at(sigmoid_in);
     Node* sigmoid_op_node = subgraph.at(sigmoid_op);
-    // Node* sigmoid_out_node = subgraph.at(sigmoid_out);
     Node* elementwise_mul_op_node = subgraph.at(elementwise_mul_op);
     Node* elementwise_mul_out_node = subgraph.at(elementwise_mul_out);
 
