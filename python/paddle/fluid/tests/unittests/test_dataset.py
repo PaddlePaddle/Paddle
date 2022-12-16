@@ -268,8 +268,6 @@ class TestDataset(unittest.TestCase):
         )
         dataset._init_distributed_settings(fea_eval=True, candidate_size=1)
         dataset.set_filelist([filename1, filename2])
-        dataset.set_pass_id(0)
-        dataset.get_pass_id()
         dataset.load_into_memory()
         dataset.slots_shuffle(["slot1"])
         dataset.local_shuffle()
@@ -311,6 +309,8 @@ class TestDataset(unittest.TestCase):
                         "meta_path": "cuid2clk-clk2cuid;cuid2conv-conv2cuid;clk2cuid-cuid2clk;clk2cuid-cuid2conv",
                         "gpu_graph_training": 1}
         dataset.set_graph_config(graph_config)
+        dataset.set_pass_id(0)
+        dataset.get_pass_id()
 
     def test_in_memory_dataset_masterpatch(self):
         """
