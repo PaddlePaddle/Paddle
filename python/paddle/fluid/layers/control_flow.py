@@ -294,27 +294,27 @@ def Print(
     tensor `t`.
 
     Args:
-        input (Variable): A Tensor to print.
-        summarize (int): Number of elements in the tensor to be print. If it's
-                value is -1, then all elements in the tensor will be print.
-        message (str): A string message to print as a prefix.
-        first_n (int): Only log `first_n` number of times.
+        input (Tensor): A Tensor to print.
+        first_n (int, optional): Only log `first_n` number of times. Default: -1.
+        message (str, optional): A string message to print as a prefix. Default: None.
+        summarize (int, optional): Number of elements in the tensor to be print. If
+                it's value is -1, then all elements in the tensor will be print.
         print_tensor_name (bool, optional): Print the tensor name. Default: True.
         print_tensor_type (bool, optional): Print the tensor type. Defaultt: True.
         print_tensor_shape (bool, optional): Print the tensor shape. Default: True.
         print_tensor_layout (bool, optional): Print the tensor layout. Default: True.
         print_tensor_lod (bool, optional): Print the tensor lod. Default: True.
-        print_phase (str): Which phase to displace, including 'forward',
+        print_phase (str, optional): Which phase to displace, including 'forward',
                 'backward' and 'both'. Default: 'both'. If set to 'backward', will
                 only print the gradients of input tensor; If set to 'both', will
                 both print the input tensor itself and the gradients of input tensor.
 
     Returns:
-        Variable: Output tensor.
+        Tensor: Output tensor.
 
     NOTES:
-        The input and output are two different variables, and in the
-        following process, you should use the output variable but not the input,
+        The input and output are two different Tensor, and in the
+        following process, you should use the output Tensor but not the input,
         otherwise, the print layer doesn't have backward.
 
     Examples:
@@ -1088,10 +1088,10 @@ class While:
             cond = paddle.less_than(x=i, y=loop_len)
             while_op = fluid.layers.While(cond=cond)
             with while_op.block():
-                sums_tensor = fluid.layers.elementwise_add(x=data, y=data)
+                sums_tensor = paddle.add(x=data, y=data)
                 fluid.layers.assign(sums_tensor, sums)  # Update the value of sums_tensor defined in While to the sums which defined outside of While through layers.assign
                 i = paddle.increment(x=i, value=1)
-                data = fluid.layers.elementwise_add(x=data, y=one)
+                data = paddle.add(x=data, y=one)
                 paddle.assign(paddle.less_than(x=i, y=loop_len), cond)
 
             feed_data = np.ones(1).astype('float32')
