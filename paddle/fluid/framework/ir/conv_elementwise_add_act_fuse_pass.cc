@@ -168,12 +168,12 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
       Get<bool>("enable_gpu_mixed");
   constexpr int CUTLASS_NHWC_ALIGNMENT = 8;
   bool cutlass_enable = Get<bool>("use_cutlass");
-  if (is_fp16_precision) {
+  if (is_fp16_precision && cutlass_enable) {
 #ifdef PADDLE_WITH_CUTLASS
     const auto& prop = platform::GetDeviceProperties(Get<int>("gpu_device_id"));
     int sm_version = prop.major * 10 + prop.minor;
     // Now we only implement cutlass kernel on SM75.
-    if (sm_version == 75 && cutlass_enable) {
+    if (sm_version == 75) {
       // Cutlass now support these cba activations.
       cutlass_act_set.insert("swish");
       cutlass_act_set.insert("relu");
