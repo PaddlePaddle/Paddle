@@ -20,7 +20,6 @@
 #include <cstdint>
 #include <limits>
 #include <memory>
-#include <sstream>
 #include <unordered_map>
 
 #include "paddle/phi/backends/dynload/cudnn.h"
@@ -92,7 +91,8 @@ class CudnnConvDescManager {
     XXH64_update(state, input_dims.data(), input_dims.size() * sizeof(int));
     XXH64_update(state, filter_dims.data(), filter_dims.size() * sizeof(int));
     XXH64_update(state, bias_dims.data(), bias_dims.size() * sizeof(int));
-    XXH64_update(state, output_dims.data(), output_dims.size() * sizeof(int));
+    // XXH64_update(state, output_dims.data(), output_dims.size() *
+    // sizeof(int));
     XXH64_update(state, paddings.data(), paddings.size() * sizeof(int));
     XXH64_update(state, strides.data(), strides.size() * sizeof(int));
     XXH64_update(state, dilations.data(), dilations.size() * sizeof(int));
@@ -101,7 +101,7 @@ class CudnnConvDescManager {
     XXH64_update(state, &dtype, sizeof(int));
     XXH64_update(state, &format, sizeof(int));
     XXH64_update(state, &act, act.size() * sizeof(char));
-    XXH64_update(state, &value_max, sizeof(double));
+    // XXH64_update(state, &value_max, sizeof(double));
     XXH64_hash_t hash_key = XXH64_digest(state);
     XXH64_freeState(state);
 

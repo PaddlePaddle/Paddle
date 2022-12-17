@@ -61,7 +61,8 @@ def create_test_cudnn_channel_last_class(parent):
             print(self.attrs)
             if self.has_cuda():
                 place = core.CUDAPlace(0)
-                self.check_output_with_place(place, atol=5e-2)
+                if core.is_float16_supported(place):
+                    self.check_output_with_place(place, atol=2e-2)
 
     cls_name = "{0}_{1}".format(parent.__name__, "CudnnChannelLast")
     TestCudnnChannelLastCase.__name__ = cls_name
