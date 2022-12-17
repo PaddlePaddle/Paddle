@@ -550,10 +550,12 @@ class GroupShardedStage3(nn.Layer):
             # Gradient average
             if self._dp_group is not None and self._dp_group.nranks > 1:
                 if self._offload:
-                    with device_guard():
-                        param.bw_storage.scale_(scale=self._dp_group.nranks)
-                else:
-                    param.bw_storage.scale_(scale=self._dp_group.nranks)
+                    param.bw_storage = _cpu2device(param.bw_storage)
+                param.bw_storage.scale_(scale=self._dp_group.nranks)
+                dist.all_reduce(tensor=param.bw_storage, group=self._dp_group)
+                if self._offload:
+                    param.bw_storage = _device2cpu(param.bw_storage, True)
+
             param.fw_storage = _VarBaseWrapper(param)
             assert param.fw_storage.grad is None
             param.fw_storage._copy_gradient_from(param.bw_storage)
