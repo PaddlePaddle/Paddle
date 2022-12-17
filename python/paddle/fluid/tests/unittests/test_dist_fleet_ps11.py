@@ -226,10 +226,17 @@ class TestPSPassWithBow(unittest.TestCase):
        
         startup_program = fluid.Program()
         main_program = fluid.Program()
-        with fluid.program_guard(startup_program, main_program):
-          loss, acc, _ = self.net()
+        with fluid.program_guard(main_program, startup_program):
+            with fluid.unique_name.guard():
+                loss, acc, _ = self.net()
+        #print("===main_program====")
+        #print(main_program)
+        #print("===main_program====")
         optimizer = paddle.fluid.optimizer.Adam(learning_rate=0.01)
         optimizer.minimize(loss)
+        print("===main_program====")
+        print(main_program)
+        print("===main_program====")
         #_startup = worker.fake_init_ops_pass(_startup, compiled_config)
         #_main = worker.ps_gpu_pass(_main)
         from paddle.fluid.transpiler.collective import (
@@ -246,6 +253,8 @@ class TestPSPassWithBow(unittest.TestCase):
             current_endpoint=env['current_endpoint'],
             wait_port=False,
         )
+        param_cnt = t._get_update_param_count()
+        print("param_cnt:", param_cnt)
 
     def test_gpups_dataset(self):
         """
