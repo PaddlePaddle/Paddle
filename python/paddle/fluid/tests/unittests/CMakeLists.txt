@@ -635,6 +635,10 @@ if(WITH_DISTRIBUTE)
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_word2vec")
 
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_gloo")
+ 
+  if(NOT WITH_GPU)
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_spmt")
+  endif()
 
   if(NOT WITH_HETERPS)
     list(REMOVE_ITEM DIST_TEST_OPS "test_communicator_ps_gpu")
