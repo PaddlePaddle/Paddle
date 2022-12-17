@@ -713,22 +713,34 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.grad.shape, [5])
 
     def test_kthvalue(self):
-        x = paddle.randn(())
-        x.stop_gradient = False
+        places = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            places.append('gpu')
+        for place in places:
+            paddle.set_device(place)
 
-        out = paddle.kthvalue(x, 1)
-        out[0].backward()
-        self.assertEqual(out[0].shape, [])
-        self.assertEqual(out[1].shape, [])
+            x = paddle.randn(())
+            x.stop_gradient = False
+
+            out = paddle.kthvalue(x, 1)
+            out[0].backward()
+            self.assertEqual(out[0].shape, [])
+            self.assertEqual(out[1].shape, [])
 
     def test_mode(self):
-        x = paddle.randn(())
-        x.stop_gradient = False
+        places = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            places.append('gpu')
+        for place in places:
+            paddle.set_device(place)
 
-        out = paddle.mode(x)
-        out[0].backward()
-        self.assertEqual(out[0].shape, [])
-        self.assertEqual(out[1].shape, [])
+            x = paddle.randn(())
+            x.stop_gradient = False
+
+            out = paddle.mode(x)
+            out[0].backward()
+            self.assertEqual(out[0].shape, [])
+            self.assertEqual(out[1].shape, [])
 
 
 class TestSundryAPIStatic(unittest.TestCase):
