@@ -24,6 +24,13 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->SwitchIrDebug();
 }
 
+int GetNumOps(const AnalysisConfig &cfg) {
+  int num_ops;
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
+  GetFuseStatis(static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
+  return num_ops;
+}
+
 /*
  * this model is unreasonable, it set a output tensor persistable, so
  * ridiculous! so I disable constant_folding_pass
@@ -47,12 +54,15 @@ TEST(Analyzer, save_model) {
   SetConfig(&cfg2);
   cfg2.pass_builder()->ClearPasses();
   cfg2.SetModel(optimModelPath + "/model", optimModelPath + "/params");
+  int origin_num_ops = GetNumOps(cfg2);
 
   AnalysisConfig cfg3;
   SetConfig(&cfg3);
   auto pass_builder3 = cfg3.pass_builder();
   pass_builder3->DeletePass("constant_folding_pass");
   cfg3.SetModel(optimModelPath + "/model", optimModelPath + "/params");
+  int fused_num_ops = GetNumOps(cfg3);
+  CHECK_LE(fused_num_ops, origin_num_ops);
 }
 
 }  // namespace inference
