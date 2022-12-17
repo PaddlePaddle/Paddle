@@ -434,7 +434,7 @@ class TestSeqConvApi(unittest.TestCase):
         import paddle.fluid as fluid
 
         x = fluid.layers.data('x', shape=[32], lod_level=1)
-        y = fluid.layers.sequence_conv(
+        y = paddle.static.nn.sequence_lod.sequence_conv(
             input=x, num_filters=2, filter_size=3, padding_start=None
         )
 
