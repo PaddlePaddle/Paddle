@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <utility>
+
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
