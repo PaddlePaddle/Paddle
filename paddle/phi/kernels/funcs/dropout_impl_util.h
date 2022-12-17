@@ -14,8 +14,10 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/framework/generator.h"
-#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/generator.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -27,13 +29,11 @@ inline void GetSeedDataAndIncrement(const phi::GPUContext& dev_ctx,
                                     const int offset,
                                     uint64_t* seed_data,
                                     uint64_t* increment) {
-  int device_id = dev_ctx.GetPlace().GetDeviceId();
-  auto gen_cuda = framework::DefaultCUDAGenerator(device_id);
+  auto gen_cuda = dev_ctx.GetGenerator();
 
   if (seed) {
     phi::DenseTensor seed_cpu_tensor;
-    paddle::framework::TensorCopySync(
-        *seed, platform::CPUPlace(), &seed_cpu_tensor);
+    phi::Copy(dev_ctx, *seed, phi::CPUPlace(), false, &seed_cpu_tensor);
     *seed_data = static_cast<uint64_t>(seed_cpu_tensor.data<int>()[0]);
     *increment = offset;
   } else if (!is_fix_seed) {
