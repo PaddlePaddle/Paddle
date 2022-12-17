@@ -181,7 +181,7 @@ const std::vector<std::string> kGpuLowerPrecisionPasses{
     "fc_fuse_pass",
     "fc_elementwise_layernorm_fuse_pass",
     "embedding_eltwise_layernorm_fuse_pass",
-};
+    "transpose_reshape_fuse_pass"};
 
 const std::vector<std::string> kTrtLowerPrecisionPasses{
     "simplify_with_basic_ops_pass",
@@ -245,6 +245,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_elementwise_add_fuse_pass",      //
 #endif                                         //
         "transpose_flatten_concat_fuse_pass",  //
+        "transpose_reshape_fuse_pass",         //
         "constant_folding_pass",               //
         "auto_mixed_precision_pass",           //
   });

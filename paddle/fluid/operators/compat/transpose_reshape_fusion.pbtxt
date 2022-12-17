@@ -1,0 +1,21 @@
+type: "transpose_reshape_fusion"
+def {
+  inputs {
+    name: "X"
+  }
+  outputs {
+    name: "Out"
+  }
+  attrs {
+    name: "trans_first"
+    type: BOOLEAN
+  }
+  attrs {
+    name: "axis"
+    type: INTS
+  }
+  attrs {
+    name: "shape"
+    type: INTS
+  }
+}
