@@ -89,7 +89,7 @@ class TensorRTSubgraphPassSplitTest(InferencePassTest):
             data = fluid.data(
                 name="data", shape=[-1, 3, 64, 64], dtype="float32"
             )
-            split_out = fluid.layers.split(data, dim=-1, num_or_sections=2)
+            split_out = paddle.split(data, axis=-1, num_or_sections=2)
             out = nn.batch_norm(split_out[0], is_test=True)
         self.feeds = {
             "data": np.random.random([1, 3, 64, 64]).astype("float32"),
@@ -115,7 +115,7 @@ class TensorRTSubgraphPassSplitSerializeTest(InferencePassTest):
             data = fluid.data(
                 name="data", shape=[-1, 3, 64, 64], dtype="float32"
             )
-            split_out = fluid.layers.split(data, dim=-1, num_or_sections=2)
+            split_out = paddle.split(data, axis=-1, num_or_sections=2)
             out = nn.batch_norm(split_out[0], is_test=True)
         self.feeds = {
             "data": np.random.random([1, 3, 64, 64]).astype("float32"),
@@ -143,7 +143,11 @@ class TensorRTSubgraphPassDynamicSplitFp16SerializeTest(InferencePassTest):
             data = fluid.data(
                 name="data", shape=[-1, 3, 64, 64], dtype="float32"
             )
+<<<<<<< HEAD
             split_out = fluid.layers.split(data, dim=-1, num_or_sections=2)
+=======
+            split_out = paddle.split(data, axis=-1, num_or_sections=2)
+>>>>>>> develop/develop
             out = nn.batch_norm(split_out[0], is_test=True)
         self.feeds = {
             "data": np.random.random([1, 3, 64, 64]).astype("float32"),

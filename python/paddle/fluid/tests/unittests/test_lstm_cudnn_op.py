@@ -20,9 +20,7 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 
 random.seed(2)
 np.set_printoptions(threshold=np.inf)
@@ -539,6 +537,7 @@ class TestCUDNNLstmOp(OpTest):
             )
 
 
+<<<<<<< HEAD
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
@@ -624,5 +623,7 @@ class TestCUDNNlstmAPI(unittest.TestCase):  # noqa: F811
         )
 
 
+=======
+>>>>>>> develop/develop
 if __name__ == '__main__':
     unittest.main()

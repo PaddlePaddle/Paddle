@@ -47,7 +47,7 @@ class TestAssignOpWithLoDTensorArray(unittest.TestCase):
             x.stop_gradient = False
             y = fluid.layers.fill_constant(
                 shape=[100, 10], dtype='float32', value=1)
-            z = fluid.layers.elementwise_add(x=x, y=y)
+            z = paddle.add(x=x, y=y)
             i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
             init_array = paddle.tensor.array_write(x=z, i=i)
             array = fluid.layers.assign(init_array)

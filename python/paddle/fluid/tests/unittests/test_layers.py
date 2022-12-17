@@ -922,21 +922,21 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             with _test_eager_guard():
                 input = fluid.dygraph.to_variable(np.random.random((3, 8, 5)))
-                x0, x1 = fluid.layers.split(input, num_or_sections=2, dim=1)
-                x00, x11 = fluid.layers.split(
+                x0, x1 = paddle.split(input, num_or_sections=2, axis=1)
+                x00, x11 = paddle.split(
                     input,
                     num_or_sections=2,
-                    dim=fluid.dygraph.to_variable(np.array([1])),
+                    axis=fluid.dygraph.to_variable(np.array([1])),
                 )
                 np.testing.assert_array_equal(x0.numpy(), x00.numpy())
                 np.testing.assert_array_equal(x1.numpy(), x11.numpy())
 
             input = fluid.dygraph.to_variable(np.random.random((3, 8, 5)))
-            x0, x1 = fluid.layers.split(input, num_or_sections=2, dim=1)
-            x00, x11 = fluid.layers.split(
+            x0, x1 = paddle.split(input, num_or_sections=2, axis=1)
+            x00, x11 = paddle.split(
                 input,
                 num_or_sections=2,
-                dim=fluid.dygraph.to_variable(np.array([1])),
+                axis=fluid.dygraph.to_variable(np.array([1])),
             )
             np.testing.assert_array_equal(x0.numpy(), x00.numpy())
             np.testing.assert_array_equal(x1.numpy(), x11.numpy())
@@ -2368,7 +2368,7 @@ class TestBook(LayerTest):
             fluid.default_main_program(), fluid.default_startup_program()
         ):
             x = self._get_data(name='x', shape=[8, 7, 10], dtype="float32")
-            output = layers.l2_normalize(x, axis=1)
+            output = paddle.nn.functional.normalize(x, axis=1)
             return output
 
     def make_shape(self):
@@ -2593,20 +2593,6 @@ class TestBook(LayerTest):
             out = paddle.nn.functional.square_error_cost(input=x, label=y)
             return out
 
-    def test_dynamic_lstmp(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            hidden_dim, proj_dim = 16, 8
-            seq_data = layers.data(
-                name='seq_data', shape=[10, 10], dtype='float32', lod_level=1
-            )
-            fc_out = layers.fc(input=seq_data, size=4 * hidden_dim)
-            self.assertIsNotNone(
-                layers.dynamic_lstmp(
-                    input=fc_out, size=4 * hidden_dim, proj_size=proj_dim
-                )
-            )
-
     def test_lod_reset(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
@@ -2697,7 +2683,7 @@ class TestBook(LayerTest):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
             x = layers.data(name='x', shape=[8, 2], dtype='float32')
-            out = layers.unsqueeze(input=x, axes=[1])
+            out = paddle.unsqueeze(x, axis=[1])
             return out
 
     def test_sequence_scatter(self):
