@@ -51,7 +51,7 @@ namespace gpu {
         }                                                                      \
         auto &KERNEL_PARAMS = *__params;                                       \
         uint64_t __seed, __offset;                                             \
-        ::paddle::operators::GetSeedDataAndIncrement(                          \
+        phi::funcs::GetSeedDataAndIncrement(                                   \
             *dev_ctx, nullptr, false, 0, __seed_inc, &__seed, &__offset);      \
         __seed_expr = static_cast<decltype(__seed_expr)>(__seed);              \
         __offset_expr = static_cast<decltype(__offset_expr)>(__offset);        \

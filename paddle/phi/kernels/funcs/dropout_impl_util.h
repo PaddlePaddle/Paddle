@@ -19,8 +19,8 @@ limitations under the License. */
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/tensor_utils.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
+namespace funcs {
 
 inline void GetSeedDataAndIncrement(const phi::GPUContext& dev_ctx,
                                     const phi::DenseTensor* seed,
@@ -46,5 +46,5 @@ inline void GetSeedDataAndIncrement(const phi::GPUContext& dev_ctx,
   }
 }
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi

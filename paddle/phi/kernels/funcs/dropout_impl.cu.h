@@ -33,8 +33,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/primitive/compute_primitives.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
+namespace funcs {
 
 template <typename T1, typename T2 = T1, typename OutT = T1>
 struct DstMaskFunctor {
@@ -458,5 +458,5 @@ void DropoutGradGPUKernelDriver(const phi::GPUContext& dev_ctx,
   }
 }
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi
