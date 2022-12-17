@@ -27,7 +27,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/dropout_impl_util.h"
 
-#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
