@@ -38,7 +38,7 @@ limitations under the License. */
 #endif
 
 #if defined(PADDLE_WITH_MPI)
-#include "paddle/fluid/distributed/collective/ProcessGroupMPI.h"
+#include "paddle/fluid/distributed/collective/process_group_mpi.h"
 #endif
 
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
@@ -46,7 +46,7 @@ limitations under the License. */
 #endif
 
 #if defined(PADDLE_WITH_GLOO)
-#include "paddle/fluid/distributed/collective/ProcessGroupGloo.h"
+#include "paddle/fluid/distributed/collective/process_group_gloo.h"
 #include "paddle/fluid/distributed/store/tcp_store.h"
 #endif
 
