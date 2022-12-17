@@ -43,8 +43,10 @@ inline phi::GPUPlace CUDAGraphCapturingPlace() {
 #endif
 }
 
-using phi::backends::gpu::AddResetCallbackIfCapturingCUDAGraph;
 using phi::backends::gpu::IsCUDAGraphCapturing;
+
+using phi::backends::gpu::AddResetCallbackIfCapturingCUDAGraph;
+
 using phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph;
 
 class SkipCUDAGraphCaptureGuard {
