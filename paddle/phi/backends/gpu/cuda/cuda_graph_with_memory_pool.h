@@ -15,7 +15,7 @@
 #pragma once
 
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/phi/api/include/context_pool.h"
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
 #include "paddle/phi/kernels/funcs/dropout_impl_util.h"
 #endif
@@ -36,14 +36,14 @@ namespace gpu {
                                            __offset_expr,                      \
                                            ...)                                \
   do {                                                                         \
-    if (CUDAGraph::IsThisThreadCapturing() && (__cond)) {                      \
+    if (::phi::backends::gpu::CUDAGraph::IsThisThreadCapturing() && (__cond)) {                      \
       using __Helper =                                                         \
-          phi::backends::gpu::IsSameKernelHelper<decltype(&__kernel_func),     \
+          ::phi::backends::gpu::IsSameKernelHelper<decltype(&__kernel_func),     \
                                                  &__kernel_func>;              \
-      auto *dev_ctx = paddle::experimental::DeviceContextPool::Instance().Get( \
-          CUDAGraph::CapturingPlace());                                        \
+      auto *dev_ctx = ::phi::DeviceContextPool::Instance().GetByPlace(           \
+          ::phi::backends::gpu::CUDAGraph::CapturingPlace());                                        \
       auto __set_seed_func =                                                   \
-          [=](phi::backends::gpu::CUDAKernelParams *__params,                  \
+          [=](::phi::backends::gpu::CUDAKernelParams *__params,                  \
               bool __check_only) -> bool {                                     \
         if (__check_only) {                                                    \
           return __params->func() == &__kernel_func &&                         \
@@ -51,13 +51,13 @@ namespace gpu {
         }                                                                      \
         auto &KERNEL_PARAMS = *__params;                                       \
         uint64_t __seed, __offset;                                             \
-        phi::funcs::GetSeedDataAndIncrement(                                   \
+        ::phi::funcs::GetSeedDataAndIncrement(                                   \
             *dev_ctx, nullptr, false, 0, __seed_inc, &__seed, &__offset);      \
         __seed_expr = static_cast<decltype(__seed_expr)>(__seed);              \
         __offset_expr = static_cast<decltype(__offset_expr)>(__offset);        \
         return true;                                                           \
       };                                                                       \
-      CUDAGraph::RecordRandomKernelInfo(__set_seed_func);                      \
+      ::phi::backends::gpu::CUDAGraph::RecordRandomKernelInfo(__set_seed_func);                      \
     }                                                                          \
     __kernel_func<<<__grid, __block, __sm_size, __stream>>>(__VA_ARGS__);      \
   } while (0)

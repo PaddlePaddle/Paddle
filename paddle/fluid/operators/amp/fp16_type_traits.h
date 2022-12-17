@@ -14,14 +14,30 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/kernels/primitive/compute_primitives.h"
+#include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
 namespace details {
 
 template <typename T>
-using MPTypeTrait = phi::kps::details::MPTypeTrait<T>;
+class MPTypeTrait {
+ public:
+  using Type = T;
+};
+
+template <>
+class MPTypeTrait<platform::float16> {
+ public:
+  using Type = float;
+};
+
+template <>
+class MPTypeTrait<platform::bfloat16> {
+ public:
+  using Type = float;
+};
 
 }  // namespace details
 }  // namespace operators

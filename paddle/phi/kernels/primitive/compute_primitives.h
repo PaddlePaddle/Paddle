@@ -22,7 +22,6 @@
 #endif
 
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 
 namespace phi {
@@ -49,12 +48,6 @@ class MPTypeTrait {
 
 template <>
 class MPTypeTrait<phi::dtype::float16> {
- public:
-  using Type = float;
-};
-
-template <>
-class MPTypeTrait<phi::dtype::bfloat16> {
  public:
   using Type = float;
 };
