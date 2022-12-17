@@ -21,6 +21,7 @@ from test_imperative_base import new_program_scope
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.nn.functional as F
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.optimizer import AdamOptimizer
@@ -58,7 +59,7 @@ class GCN(fluid.Layer):
         self.gc2 = GraphConv(self.full_name(), 32, 10)
 
     def forward(self, x, adj):
-        x = fluid.layers.relu(self.gc(x, adj))
+        x = F.relu(self.gc(x, adj))
         return self.gc2(x, adj)
 
 

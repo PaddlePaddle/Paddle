@@ -133,6 +133,8 @@ void trt_ernie(bool with_fp16,
   config.EnableTensorRtEngine(1 << 30, 1, 5, precision, false, false);
   config.SetTRTDynamicShapeInfo(
       min_input_shape, max_input_shape, opt_input_shape);
+  paddle_infer::experimental::InternalUtils::SetTransformerMaskid(
+      &config, "read_file_0.tmp_4");
   std::vector<float> out_data;
   run(config, &out_data, batch_size);
 
@@ -423,7 +425,7 @@ void run(paddle_infer::Predictor* predictor, std::vector<float>* out_data) {
 
 TEST(AnalysisPredictor, ernie_varlen) {
 #if IS_TRT_VERSION_GE(7234)
-  if (platform::GetGPUComputeCapability(0) >= 75) {
+  if (platform::GetGPUComputeCapability(platform::GetCurrentDeviceId()) >= 75) {
     auto predictor = InitPredictor();
     std::vector<float> out_data;
     run(predictor.get(), &out_data);
