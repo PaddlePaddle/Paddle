@@ -2726,12 +2726,6 @@ class TestBook(LayerTest):
             output = layers.roi_perspective_transform(x, rois, 7, 7, 0.6)
             return output
 
-    def test_sequence_enumerate(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            x = layers.data(name="input", shape=[1], dtype='int32', lod_level=1)
-            out = layers.sequence_enumerate(input=x, win_size=2, pad_value=0)
-
     def test_row_conv(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
