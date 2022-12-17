@@ -2647,13 +2647,6 @@ class TestBook(LayerTest):
             )
             return out
 
-    def test_sequence_unsqueeze(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            x = layers.data(name='x', shape=[8, 2], dtype='float32')
-            out = paddle.unsqueeze(x, axis=[1])
-            return out
-
     def test_shuffle_batch(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
@@ -2715,16 +2708,6 @@ class TestBook(LayerTest):
                 max_rank=3,
             )
             return out
-
-    def test_roi_perspective_transform(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            x = layers.data(name="x", shape=[256, 30, 30], dtype="float32")
-            rois = layers.data(
-                name="rois", shape=[8], dtype="float32", lod_level=1
-            )
-            output = layers.roi_perspective_transform(x, rois, 7, 7, 0.6)
-            return output
 
     def test_row_conv(self):
         # TODO(minqiyang): dygraph do not support lod now
