@@ -14,12 +14,12 @@
 
 #include "paddle/phi/kernels/put_along_axis_kernel.h"
 
+#include "paddle/fluid/operators/gather_scatter_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/utils/data_type.h"
-#include "paddle/phi/kernels/gather_scatter_kernel.h"
 
 namespace phi {
 
@@ -41,26 +41,26 @@ void PutAlongAxisKernel(const Context& dev_ctx,
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   if (reduce == "add") {
     if (index_type == DataType::INT32) {
-      phi::gpu_scatter_add_kernel<T, int32_t>(
+      paddle::operators::gpu_scatter_add_kernel<T, int32_t>(
           *out, axis, index, value, dev_ctx);
     } else if (index_type == DataType::INT64) {
-      phi::gpu_scatter_add_kernel<T, int64_t>(
+      paddle::operators::gpu_scatter_add_kernel<T, int64_t>(
           *out, axis, index, value, dev_ctx);
     }
   } else if (reduce == "multiply" || reduce == "mul") {
     if (index_type == DataType::INT32) {
-      phi::gpu_scatter_mul_kernel<T, int32_t>(
+      paddle::operators::gpu_scatter_mul_kernel<T, int32_t>(
           *out, axis, index, value, dev_ctx);
     } else if (index_type == DataType::INT64) {
-      phi::gpu_scatter_mul_kernel<T, int64_t>(
+      paddle::operators::gpu_scatter_mul_kernel<T, int64_t>(
           *out, axis, index, value, dev_ctx);
     }
   } else if (reduce == "assign") {
     if (index_type == DataType::INT32) {
-      phi::gpu_scatter_assign_kernel<T, int32_t>(
+      paddle::operators::gpu_scatter_assign_kernel<T, int32_t>(
           *out, axis, index, value, dev_ctx);
     } else if (index_type == DataType::INT64) {
-      phi::gpu_scatter_assign_kernel<T, int64_t>(
+      paddle::operators::gpu_scatter_assign_kernel<T, int64_t>(
           *out, axis, index, value, dev_ctx);
     }
   } else {

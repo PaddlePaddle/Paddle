@@ -65,6 +65,7 @@ set(COMMON_KERNEL_DEPS
     deformable_conv_functor
     matrix_reduce
     segment_pooling
+    gather_scatter_kernel
     pooling
     maxouting
     matrix_inverse

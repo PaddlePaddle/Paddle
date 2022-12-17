@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/gather_scatter_kernel.h"
-
-namespace phi {
+#include "paddle/fluid/operators/gather_scatter_kernel.h"
+namespace paddle {
+namespace operators {
 
 class TensorAssign {
  public:
@@ -54,7 +54,7 @@ struct cpu_gather_scatter_functor {
                   const phi::DenseTensor& src,
                   const std::string& method_name,
                   const func_t& reduce_op,
-                  const phi::DeviceContext& ctx) {
+                  const platform::DeviceContext& ctx) {
     if (index.numel() == 0) {
       return;
     }
@@ -69,7 +69,7 @@ struct cpu_gather_scatter_functor {
     auto src_dims = src.dims();
     if (self_size == 0 || src_size == 0 || index_size == 0) {
       VLOG(3) << "zero size input found";
-      phi::errors::InvalidArgument(
+      platform::errors::InvalidArgument(
           "self_size, src_size, index_size cannot be 0");
       return;
     }
@@ -132,7 +132,7 @@ void cpu_gather_kernel(phi::DenseTensor self,
                        int dim,
                        const phi::DenseTensor& index,
                        phi::DenseTensor result,
-                       const phi::DeviceContext& ctx) {
+                       const platform::DeviceContext& ctx) {
   cpu_gather_scatter_functor<tensor_t,
                              index_t,
                              /*is_scatter_like=*/false>()(
@@ -144,7 +144,7 @@ void cpu_scatter_assign_kernel(phi::DenseTensor self,
                                int dim,
                                const phi::DenseTensor& index,
                                phi::DenseTensor src,
-                               const phi::DeviceContext& ctx) {
+                               const platform::DeviceContext& ctx) {
   cpu_gather_scatter_functor<tensor_t,
                              index_t,
                              /*is_scatter_like=*/true>()(
@@ -156,7 +156,7 @@ void cpu_scatter_add_kernel(phi::DenseTensor self,
                             int dim,
                             const phi::DenseTensor& index,
                             phi::DenseTensor src,
-                            const phi::DeviceContext& ctx) {
+                            const platform::DeviceContext& ctx) {
   cpu_gather_scatter_functor<tensor_t,
                              index_t,
                              /*is_scatter_like=*/true>()(
@@ -168,7 +168,7 @@ void cpu_scatter_mul_kernel(phi::DenseTensor self,
                             int dim,
                             const phi::DenseTensor& index,
                             phi::DenseTensor src,
-                            const phi::DeviceContext& ctx) {
+                            const platform::DeviceContext& ctx) {
   cpu_gather_scatter_functor<tensor_t,
                              index_t,
                              /*is_scatter_like=*/true>()(
@@ -180,7 +180,7 @@ void cpu_scatter_input_grad_kernel(phi::DenseTensor self,
                                    int dim,
                                    const phi::DenseTensor& index,
                                    phi::DenseTensor output,
-                                   const phi::DeviceContext& ctx) {
+                                   const platform::DeviceContext& ctx) {
   auto* index_data = index.data<index_t>();
   auto* output_data = output.data<tensor_t>();
 
@@ -219,4 +219,5 @@ Instantiate_Template_Function(cpu_gather_kernel)
             Instantiate_Template_Function(cpu_scatter_mul_kernel)
                 Instantiate_Template_Function(cpu_scatter_input_grad_kernel)
 
-}  // namespace phi
+}  // namespace operators
+}  // namespace paddle
