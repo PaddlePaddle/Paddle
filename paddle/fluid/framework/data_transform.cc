@@ -89,7 +89,7 @@ void TransformData(const phi::KernelKey &expected_kernel_type,
             phi::OneDNNContext::tls().get_cur_paddle_data_layout(),
             in,
             &out,
-            expected_kernel_type.place_);
+            phi::TransToPhiPlace(expected_kernel_type.backend()));
       }
     } else {
       // Case3 - transfrom between Non-ONEDNN OPKernels

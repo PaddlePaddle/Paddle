@@ -31,15 +31,11 @@ class TruncatedGaussianRandomOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    framework::LibraryType library{framework::LibraryType::kPlain};
-    phi::DataLayout layout{phi::DataLayout::kAnyLayout};
-    return framework::OpKernelType(
+    return phi::KernelKey(
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype")),
-        ctx.device_context(),
-        layout,
-        library);
+        ctx.GetPlace());
   }
 };
 

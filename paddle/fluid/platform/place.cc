@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/compat/convert_utils.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
     benchmark,

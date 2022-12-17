@@ -85,7 +85,8 @@ std::shared_ptr<NameVarMap<VarType>> PrepareData(
       if (tensor && tensor->IsInitialized() && (tensor->memory_size() != 0)) {
         auto kernel_type_for_var = op.GetKernelTypeForVar(
             name_pair.first, *tensor, expected_kernel_key);
-        if (!NeedTransform(kernel_type_for_var, expected_kernel_key)) {
+        if (!framework::NeedTransform(kernel_type_for_var,
+                                      expected_kernel_key)) {
           continue;
         } else {
           VLOG(3) << "Transform Variable " << GetNameFromVar(template_var)
@@ -111,10 +112,10 @@ std::shared_ptr<NameVarMap<VarType>> PrepareData(
             (*tmp_ins_ptr)[name_pair.first][i] = tmp_var;
           } else {
             phi::DenseTensor out;
-            TransformData(
+            framework::TransformData(
                 expected_kernel_key, kernel_type_for_var, *tensor, &out);
-            if (NeedTransformDataType(kernel_type_for_var,
-                                      expected_kernel_key)) {
+            if (framework::NeedTransformDataType(kernel_type_for_var,
+                                                 expected_kernel_key)) {
               // To avoid NameVarMap copy construction overhead in general
               // scenarios, if inplace transformed, return original input
               // directly

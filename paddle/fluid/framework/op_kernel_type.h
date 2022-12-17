@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/library_type.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/kernel_factory.h"
 
 namespace paddle {
 namespace framework {

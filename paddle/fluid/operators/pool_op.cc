@@ -42,7 +42,7 @@ bool CanMKLDNNSupportPool(const framework::ExecutionContext& ctx) {
           (src_tz[src_tz.size() - 2] % ksize[0] == 0));
 }
 
-framework::OpKernelType PoolOp::GetExpectedKernelType(
+phi::KernelKey PoolOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
@@ -50,15 +50,15 @@ framework::OpKernelType PoolOp::GetExpectedKernelType(
   this->SetDnnFallback(!CanMKLDNNSupportPool(ctx));
   // NOTE(jiahongyu) END: Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
-  return framework::OpKernelType(data_type, ctx.GetPlace());
+  return phi::KernelKey(data_type, ctx.GetPlace());
 }
 
-framework::OpKernelType PoolOp::GetKernelTypeForVar(
+phi::KernelKey PoolOp::GetKernelTypeForVar(
     const std::string& var_name,
     const phi::DenseTensor& tensor,
-    const framework::OpKernelType& expected_kernel_type) const {
+    const phi::KernelKey& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
-  if ((expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
+  if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
       (tensor.layout() != phi::DataLayout::ONEDNN)) {
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
@@ -67,16 +67,15 @@ framework::OpKernelType PoolOp::GetKernelTypeForVar(
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
     if (dl != phi::DataLayout::kAnyLayout) {
-      return framework::OpKernelType(
-          expected_kernel_type.data_type_, tensor.place(), dl);
+      return phi::KernelKey(tensor.place(), dl, expected_kernel_type.dtype());
     }
   }
 #endif
-  return framework::OpKernelType(
-      expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+  return phi::KernelKey(
+      tensor.place(), tensor.layout(), expected_kernel_type.dtype());
 }
 
-framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
+phi::KernelKey PoolOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
@@ -84,26 +83,26 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
   this->SetDnnFallback(!CanMKLDNNSupportPool(ctx));
   // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
-  return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  return phi::KernelKey(input_data_type, ctx.GetPlace());
 }
 
-framework::OpKernelType PoolOpGrad::GetKernelTypeForVar(
+phi::KernelKey PoolOpGrad::GetKernelTypeForVar(
     const std::string& var_name,
     const phi::DenseTensor& tensor,
-    const framework::OpKernelType& expected_kernel_type) const {
+    const phi::KernelKey& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
-  if ((expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
+  if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
       (tensor.layout() != phi::DataLayout::ONEDNN)) {
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_format = ar.Get<std::string>("data_format");
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(),
-                                   phi::StringToDataLayout(data_format));
+    return phi::KernelKey(tensor.place(),
+                          phi::StringToDataLayout(data_format),
+                          expected_kernel_type.dtype());
   }
 #endif
-  return framework::OpKernelType(
-      expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+  return phi::KernelKey(
+      tensor.place(), tensor.layout(), expected_kernel_type.dtype());
 }
 
 void Pool2dOpMaker::Make() {

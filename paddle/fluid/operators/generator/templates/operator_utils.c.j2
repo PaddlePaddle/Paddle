@@ -248,7 +248,7 @@ paddle::small_vector<const char*> outputs {
 
 {% macro get_expected_kernel(op) %}
 {% set kernel = op["kernel"] %}
-framework::OpKernelType GetExpectedKernelType(
+phi::KernelKey GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const override {
 {%if kernel["data_type"] is not none %}{# data type ---------------------------------#}
   {% if kernel["data_type"]["candidates"] | length == 1 %}
@@ -267,7 +267,7 @@ framework::OpKernelType GetExpectedKernelType(
   }
   {% endif %}
 {% endif %}
-  return framework::OpKernelType(data_type, ctx.GetPlace());
+  return phi::KernelKey(data_type, ctx.GetPlace());
 }
 {% endmacro %}
 

@@ -116,14 +116,15 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
         // Get data from fin to tensor
         paddle::framework::DeserializeFromStream(*buffer, tensor, dev_ctx);
 
-        auto in_dtype = framework::TransToProtoVarType(tensor->dtype());
-        auto out_dtype =
-            load_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
+        auto in_dtype = tensor->dtype();
+        auto out_dtype = load_as_fp16 ? phi::DataType::FLOAT16 : in_dtype;
 
         if (in_dtype != out_dtype) {
           // convert to float16 tensor
-          auto in_kernel_type = framework::OpKernelType(in_dtype, place);
-          auto out_kernel_type = framework::OpKernelType(out_dtype, place);
+          auto in_kernel_type =
+              phi::KernelKey(place, phi::DataLayout::ALL_LAYOUT, in_dtype);
+          auto out_kernel_type =
+              phi::KernelKey(place, phi::DataLayout::ALL_LAYOUT, out_dtype);
           phi::DenseTensor fp16_tensor;
           // copy LoD info to the new tensor
           fp16_tensor.set_lod(tensor->lod());

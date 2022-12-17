@@ -67,10 +67,10 @@ void FusionSeqPoolCVMConcatOp::InferShape(
   ctx->SetOutputDim("Out", {-1, ins_dims[0][axis] * static_cast<int>(n)});
 }
 
-framework::OpKernelType FusionSeqPoolCVMConcatOp::GetExpectedKernelType(
+phi::KernelKey FusionSeqPoolCVMConcatOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+  return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                        ctx.GetPlace());
 }
 
 void FusionSeqPoolCVMConcatOpMaker::Make() {

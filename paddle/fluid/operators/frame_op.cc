@@ -28,10 +28,10 @@ class FrameOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     const auto in_dtype = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(in_dtype, ctx.GetPlace());
+    return phi::KernelKey(in_dtype, ctx.GetPlace());
   }
 };
 
@@ -61,10 +61,10 @@ class FrameOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     const auto in_dtype = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(in_dtype, ctx.GetPlace());
+    return phi::KernelKey(in_dtype, ctx.GetPlace());
   }
 };
 

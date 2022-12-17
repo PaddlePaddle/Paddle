@@ -26,10 +26,10 @@ class OverlapAddOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     const auto in_dtype = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(in_dtype, ctx.GetPlace());
+    return phi::KernelKey(in_dtype, ctx.GetPlace());
   }
 };
 
@@ -56,10 +56,10 @@ class OverlapAddOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     const auto in_dtype = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(in_dtype, ctx.GetPlace());
+    return phi::KernelKey(in_dtype, ctx.GetPlace());
   }
 };
 

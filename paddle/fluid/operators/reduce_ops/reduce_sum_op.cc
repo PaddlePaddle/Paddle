@@ -49,18 +49,17 @@ class ReduceSumOpGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const {
     int in_dtype = ctx.Attr<int>("out_dtype");
     if (in_dtype >= 0) {
-      return framework::OpKernelType(
+      return phi::KernelKey(
           static_cast<framework::proto::VarType::Type>(in_dtype),
           ctx.GetPlace());
     }
-    return framework::OpKernelType(
-        framework::OperatorWithKernel::IndicateVarDataType(
-            ctx, framework::GradVarName("Out")),
-        ctx.GetPlace());
+    return phi::KernelKey(framework::OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.GetPlace());
   }
 };
 

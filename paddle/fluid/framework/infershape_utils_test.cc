@@ -84,9 +84,9 @@ class InferShapeUtilsTestOp : public OperatorWithKernel {
  public:
   using OperatorWithKernel::OperatorWithKernel;
 
-  OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const ExecutionContext& ctx) const override {
-    return OpKernelType(proto::VarType::FP32, ctx.GetPlace());
+    return phi::KernelKey(proto::VarType::FP32, ctx.GetPlace());
   }
 };
 

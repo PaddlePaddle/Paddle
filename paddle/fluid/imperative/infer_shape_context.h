@@ -498,7 +498,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   const framework::AttributeMap* attrs_;
   const framework::AttributeMap* default_attrs_;
   const std::string op_type_;
-  const framework::OpKernelType* op_kernel_key_;
+  const phi::KernelKey* op_kernel_key_;
   // arg_map_fn_ and default_kernel_signature_ may be nullptr
   const phi::ArgumentMappingFn* arg_map_fn_;
   const phi::KernelSignature* default_kernel_signature_;

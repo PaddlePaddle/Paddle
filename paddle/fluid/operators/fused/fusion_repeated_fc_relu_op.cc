@@ -99,10 +99,10 @@ void FusionRepeatedFCReluOp::InferShape(
   ctx->ShareLoD("X", /*->*/ "Out");
 }
 
-framework::OpKernelType FusionRepeatedFCReluOp::GetExpectedKernelType(
+phi::KernelKey FusionRepeatedFCReluOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+  return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                        ctx.GetPlace());
 }
 
 void FusionRepeatedFCReluOpMaker::Make() {

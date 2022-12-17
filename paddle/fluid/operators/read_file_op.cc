@@ -61,10 +61,10 @@ class ReadFileOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(framework::proto::VarType::UINT8,
-                                   platform::CPUPlace());
+    return phi::KernelKey(framework::proto::VarType::UINT8,
+                          platform::CPUPlace());
   }
 };
 

@@ -35,7 +35,7 @@ class LimitByCapacityOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     // the dtype of the expert_count and capacity should be same as int64
     auto expert_count_dtype =
@@ -54,7 +54,7 @@ class LimitByCapacityOp : public framework::OperatorWithKernel {
         framework::proto::VarType::INT64,
         platform::errors::InvalidArgument("The dtype of the expert_count and "
                                           "capacity should be same as int64"));
-    return framework::OpKernelType(expert_count_dtype, ctx.GetPlace());
+    return phi::KernelKey(expert_count_dtype, ctx.GetPlace());
   }
 };
 

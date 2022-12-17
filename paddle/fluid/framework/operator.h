@@ -648,8 +648,14 @@ class OperatorWithKernel : public OperatorBase {
   bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                        phi::DataType data_type) const;
 
+  bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
+                       proto::VarType::Type data_type) const;
+
   bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
                       phi::DataType data_type) const;
+
+  bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
+                      proto::VarType::Type data_type) const;
 
   virtual void InferShape(InferShapeContext* ctx) const;
 

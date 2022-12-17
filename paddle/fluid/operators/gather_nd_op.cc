@@ -25,11 +25,11 @@ class GatherNdOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<phi::DenseTensor>("X");
     const auto& x_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(
+    return phi::KernelKey(
         x_type,
         x_type == framework::proto::VarType::BOOL
             ? x->place()  // to be consistent with compare and logical ops
@@ -42,11 +42,11 @@ class GatherNdGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.device_context().GetPlace());
   }
 };
 

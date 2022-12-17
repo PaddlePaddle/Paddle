@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/phi/core/kernel_factory.h"
 
 TEST(DataTypeTransform, GPUTransform) {
   auto cpu_place = paddle::platform::CPUPlace();
@@ -24,41 +25,24 @@ TEST(DataTypeTransform, GPUTransform) {
                            .GetAllocator(gpu_place, context.stream())
                            .get());
   context.PartialInitWithAllocator();
-  auto kernel_fp16 =
-      paddle::framework::OpKernelType(paddle::framework::proto::VarType::FP16,
-                                      gpu_place,
-                                      phi::DataLayout::kAnyLayout,
-                                      paddle::framework::LibraryType::kPlain);
 
-  auto kernel_fp32 =
-      paddle::framework::OpKernelType(paddle::framework::proto::VarType::FP32,
-                                      gpu_place,
-                                      phi::DataLayout::kAnyLayout,
-                                      paddle::framework::LibraryType::kPlain);
+  auto kernel_fp16 = phi::KernelKey(
+      gpu_place, phi::DataLayout::ALL_LAYOUT, phi::DataType::FLOAT16);
 
-  auto kernel_fp64 =
-      paddle::framework::OpKernelType(paddle::framework::proto::VarType::FP64,
-                                      gpu_place,
-                                      phi::DataLayout::kAnyLayout,
-                                      paddle::framework::LibraryType::kPlain);
+  auto kernel_fp32 = phi::KernelKey(
+      gpu_place, phi::DataLayout::ALL_LAYOUT, phi::DataType::FLOAT32);
 
-  auto kernel_int32 =
-      paddle::framework::OpKernelType(paddle::framework::proto::VarType::INT32,
-                                      gpu_place,
-                                      phi::DataLayout::kAnyLayout,
-                                      paddle::framework::LibraryType::kPlain);
+  auto kernel_fp64 = phi::KernelKey(
+      gpu_place, phi::DataLayout::ALL_LAYOUT, phi::DataType::FLOAT64);
 
-  auto kernel_int64 =
-      paddle::framework::OpKernelType(paddle::framework::proto::VarType::INT64,
-                                      gpu_place,
-                                      phi::DataLayout::kAnyLayout,
-                                      paddle::framework::LibraryType::kPlain);
+  auto kernel_int32 = phi::KernelKey(
+      gpu_place, phi::DataLayout::ALL_LAYOUT, phi::DataType::INT32);
 
-  auto kernel_bool =
-      paddle::framework::OpKernelType(paddle::framework::proto::VarType::BOOL,
-                                      gpu_place,
-                                      phi::DataLayout::kAnyLayout,
-                                      paddle::framework::LibraryType::kPlain);
+  auto kernel_int64 = phi::KernelKey(
+      gpu_place, phi::DataLayout::ALL_LAYOUT, phi::DataType::INT64);
+
+  auto kernel_bool = phi::KernelKey(
+      gpu_place, phi::DataLayout::ALL_LAYOUT, phi::DataType::BOOL);
 
   // data type transform from float32
   {

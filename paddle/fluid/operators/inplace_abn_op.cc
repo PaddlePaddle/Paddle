@@ -30,7 +30,7 @@ class InplaceABNOp : public paddle::operators::BatchNormOp {
   using paddle::operators::BatchNormOp::BatchNormOp;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     // By default, the type of the scale, bias, mean,
@@ -61,11 +61,7 @@ class InplaceABNOp : public paddle::operators::BatchNormOp {
                       platform::errors::InvalidArgument(
                           "Variance input should be of float type"));
 
-    framework::LibraryType library = framework::LibraryType::kPlain;
-    phi::DataLayout layout = phi::DataLayout::kAnyLayout;
-
-    return framework::OpKernelType(
-        input_data_type, ctx.GetPlace(), layout, library);
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -135,7 +131,7 @@ class InplaceABNGradOp : public paddle::operators::BatchNormGradOp {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     const auto* var = ctx.InputVar(framework::GradVarName("Y"));
     auto input_data_type = framework::TransToProtoVarType(
@@ -154,11 +150,8 @@ class InplaceABNGradOp : public paddle::operators::BatchNormGradOp {
       PADDLE_THROW(
           platform::errors::InvalidArgument("gradient variable of Y is empty"));
     }
-    framework::LibraryType library = framework::LibraryType::kPlain;
-    phi::DataLayout layout = phi::DataLayout::kAnyLayout;
 
-    return framework::OpKernelType(
-        input_data_type, ctx.GetPlace(), layout, library);
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 

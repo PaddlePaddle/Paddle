@@ -80,9 +80,9 @@ class ActivationGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
-                                      const framework::OperatorWithKernel& oper,
-                                      const std::string& name) {
+phi::KernelKey GetKernelType(const framework::ExecutionContext& ctx,
+                             const framework::OperatorWithKernel& oper,
+                             const std::string& name) {
   auto data_type = oper.IndicateVarDataType(ctx, name);
   // FIXME(liuwei1031) temporarily disable the code to unblock users
   // TODO(liuwei1031) figure out the reason behind
@@ -94,7 +94,7 @@ framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
   //     library = framework::LibraryType::kCUDNN;
   //   }
   // #endif
-  return framework::OpKernelType(data_type, ctx.GetPlace());
+  return phi::KernelKey(data_type, ctx.GetPlace());
 }
 
 class ActivationOp : public framework::OperatorWithKernel {
@@ -107,7 +107,7 @@ class ActivationOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return GetKernelType(ctx, *this, "X");
   }
@@ -134,7 +134,7 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return GetKernelType(ctx, *this, framework::GradVarName("Out"));
   }
@@ -341,7 +341,7 @@ class ActivationOpDoubleGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return GetKernelType(ctx, *this, "DDX");
   }
@@ -370,7 +370,7 @@ class ActivationOpDoubleGrad2 : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return GetKernelType(ctx, *this, "DDX");
   }
@@ -411,7 +411,7 @@ class ActivationOpTripleGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return GetKernelType(ctx, *this, "DDX");
   }
@@ -487,20 +487,20 @@ class PowOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return GetKernelType(ctx, *this, "X");
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
+      const phi::KernelKey& expected_kernel_type) const override {
     if (var_name == "FactorTensor") {
       return expected_kernel_type;
     }
-    return framework::OpKernelType(
-        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
   }
 };
 
@@ -515,20 +515,20 @@ class PowOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return GetKernelType(ctx, *this, framework::GradVarName("Out"));
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
+      const phi::KernelKey& expected_kernel_type) const override {
     if (var_name == "FactorTensor") {
       return expected_kernel_type;
     }
-    return framework::OpKernelType(
-        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
   }
 };
 
@@ -537,7 +537,7 @@ class PowOpDoubleGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return GetKernelType(ctx, *this, "X");
   }
@@ -548,7 +548,7 @@ class PowOpTripleGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return GetKernelType(ctx, *this, "X");
   }

@@ -88,8 +88,9 @@ inline bool need_device_transform(const OpKernelType& kernel_type_for_var,
 
 inline bool need_dtype_transform(const OpKernelType& kernel_type_for_var,
                                  const OpKernelType& expected_kernel_key) {
-  return framework::NeedTransformDataType(kernel_type_for_var,
-                                          expected_kernel_key);
+  return framework::NeedTransformDataType(
+      framework::TransOpKernelTypeToPhiKernelKey(kernel_type_for_var),
+      framework::TransOpKernelTypeToPhiKernelKey(expected_kernel_key));
 }
 
 inline bool need_layout_transform(const OpKernelType& kernel_type_for_var,

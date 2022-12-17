@@ -1512,6 +1512,11 @@ bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
          this->SupportsMKLDNN(data_type);
 }
 
+bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
+                                         proto::VarType::Type data_type) const {
+  return this->CanMKLDNNBeUsed(ctx, phi::TransToPhiDataType(data_type));
+}
+
 bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
                                         phi::DataType data_type) const {
   bool use_cudnn = ctx.HasAttr("use_cudnn") && ctx.Attr<bool>("use_cudnn") &&
@@ -1525,7 +1530,7 @@ bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
 
 #if defined(PADDLE_WITH_CUDA)
-  if (use_cudnn && data_type == phi::Datatype::BFLOAT16) {
+  if (use_cudnn && data_type == phi::DataType::BFLOAT16) {
     PADDLE_ENFORCE_GE(
         platform::DnnVersion(),
         8100,
@@ -1535,6 +1540,11 @@ bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
 #endif  // PADDLE_WITH_CUDA
 
   return use_cudnn && this->SupportsCUDNN(data_type);
+}
+
+bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
+                                        proto::VarType::Type data_type) const {
+  return this->CanCUDNNBeUsed(ctx, phi::TransToPhiDataType(data_type));
 }
 
 void OperatorWithKernel::InferShape(InferShapeContext* ctx) const {
@@ -2821,30 +2831,29 @@ proto::VarType::Type OperatorWithKernel::IndicateOrPromoteVarDataTypes(
   return target_type;
 }
 
-OpKernelType OperatorWithKernel::GetExpectedKernelType(
+phi::KernelKey OperatorWithKernel::GetExpectedKernelType(
     const ExecutionContext& ctx) const {
-  return OpKernelType(IndicateDataType(ctx), ctx.GetPlace());
+  return phi::KernelKey(IndicateDataType(ctx), ctx.GetPlace());
 }
 
-OpKernelType OperatorWithKernel::GetKernelTypeForVar(
+phi::KernelKey OperatorWithKernel::GetKernelTypeForVar(
     const std::string& var_name,
     const phi::DenseTensor& tensor,
-    const OpKernelType& expected_kernel_type) const {
+    const phi::KernelKey& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
   // When the op is first oneDNN op (there was some non oneDNN op
   // previously)
   // then we also need to rotate shape NHWC -> NCWH
-  if ((expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
+  if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
       (tensor.layout() != phi::DataLayout::ONEDNN) &&
       phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
           phi::DataLayout::kNHWC) {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(),
-                                   phi::DataLayout::kNHWC);
+    return phi::KernelKey(
+        tensor.place(), phi::DataLayout::kNHWC, expected_kernel_type.dtype());
   }
 #endif
-  return OpKernelType(
-      expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+  return phi::KernelKey(
+      tensor.place(), tensor.layout(), expected_kernel_type.dtype());
 }
 
 phi::KernelSignature OperatorWithKernel::GetExpectedPhiKernelArgs(

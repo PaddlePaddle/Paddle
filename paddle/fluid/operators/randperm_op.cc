@@ -44,11 +44,11 @@ class RandpermOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto data_type =
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
-    return framework::OpKernelType(data_type, ctx.GetPlace());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 

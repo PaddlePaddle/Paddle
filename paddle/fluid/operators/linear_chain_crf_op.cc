@@ -298,9 +298,9 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
  protected:
   // Explicitly set that the data type of computation kernel of linear_chain_crf
   // is determined by its input "Emission".
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
+    return phi::KernelKey(
         OperatorWithKernel::IndicateVarDataType(ctx, "Emission"),
         platform::CPUPlace());
   }
@@ -343,12 +343,11 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
  protected:
   // Explicitly set that the data type of output of the linear_chain_crf_grad
   // operator is determined by its input: gradients of LogLikelihood.
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(
-            ctx, framework::GradVarName("LogLikelihood")),
-        platform::CPUPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("LogLikelihood")),
+                          platform::CPUPlace());
   }
 };
 

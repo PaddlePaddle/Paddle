@@ -63,10 +63,10 @@ void FusionSquaredMatSubOp::InferShape(
   ctx->SetOutputDim("Out", {x_dims[0], y_dims[1]});
 }
 
-framework::OpKernelType FusionSquaredMatSubOp::GetExpectedKernelType(
+phi::KernelKey FusionSquaredMatSubOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+  return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                        ctx.GetPlace());
 }
 
 void FusionSquaredMatSubOpMaker::Make() {

@@ -515,16 +515,19 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
         auto kernel_type_for_var =
             static_cast<const framework::OperatorWithKernel*>(op_base)
                 ->GetKernelTypeForVar(
-                    var_name_item.first, *tensor_in, expected_kernel_key);
+                    var_name_item.first,
+                    *tensor_in,
+                    framework::TransOpKernelTypeToPhiKernelKey(
+                        expected_kernel_key));
         // apply data transform
-        is_transferred =
-            data_transfer_helper.apply(kernel_type_for_var,
-                                       expected_kernel_key,
-                                       var_name,
-                                       &new_var_name,
-                                       new_op_func_nodes,
-                                       use_local_scope,
-                                       op_base->Type() == "fetch_v2");
+        is_transferred = data_transfer_helper.apply(
+            framework::TransPhiKernelKeyToOpKernelType(kernel_type_for_var),
+            expected_kernel_key,
+            var_name,
+            &new_var_name,
+            new_op_func_nodes,
+            use_local_scope,
+            op_base->Type() == "fetch_v2");
       }
 
       if (is_transferred) {

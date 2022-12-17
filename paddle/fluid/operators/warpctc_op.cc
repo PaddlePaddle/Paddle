@@ -28,15 +28,10 @@ class WarpCTCOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    framework::LibraryType library_{framework::LibraryType::kPlain};
-    phi::DataLayout layout_ = phi::DataLayout::kAnyLayout;
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Logits"),
-        ctx.GetPlace(),
-        layout_,
-        library_);
+    return phi::KernelKey(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Logits"), ctx.GetPlace());
   }
 };
 
@@ -146,11 +141,11 @@ class WarpCTCGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Loss")),
-                                   ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Loss")),
+                          ctx.GetPlace());
   }
 };
 

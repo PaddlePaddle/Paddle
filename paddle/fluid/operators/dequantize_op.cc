@@ -19,15 +19,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-framework::OpKernelType DeQuantOp::GetExpectedKernelType(
+phi::KernelKey DeQuantOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   auto input_data_type =
       framework::OperatorWithKernel::IndicateVarDataType(ctx, "Input");
 
-  return framework::OpKernelType(input_data_type,
-                                 ctx.GetPlace(),
-                                 phi::DataLayout::ONEDNN,
-                                 framework::LibraryType::kMKLDNN);
+  return phi::KernelKey(phi::Backend::ONEDNN,
+                        phi::DataLayout::ONEDNN,
+                        phi::TransToPhiDataType(input_data_type));
 }
 
 void DeQuantOpMaker::Make() {
