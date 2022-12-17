@@ -32,7 +32,7 @@ import warnings
 from .. import core
 from .base import guard
 from paddle.jit.api import _SaveLoadConfig
-from paddle.fluid.dygraph.io import (
+from paddle.jit.translated_layer import (
     _construct_program_holders,
     _construct_params_and_buffers,
 )

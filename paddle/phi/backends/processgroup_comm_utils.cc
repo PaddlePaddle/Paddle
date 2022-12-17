@@ -15,7 +15,7 @@
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/phi/backends/c_comm_lib.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
+#include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #endif
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
 #include "paddle/fluid/distributed/collective/ProcessGroupCustom.h"

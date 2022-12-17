@@ -3784,7 +3784,7 @@ function main() {
         ;;
       cicheck_coverage)
         check_diff_file_for_coverage
-        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        run_setup ${PYTHON_ABI:-""} install
         enable_unused_var_check
         parallel_test
         check_coverage
