@@ -114,8 +114,21 @@ inline bool NeedTransformDataType(const phi::KernelKey& l,
   return (l.dtype() != r.dtype());
 }
 
+inline bool backends_are_same_class(const phi::Backend& l,
+                                    const phi::Backend& r) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  size_t num_backends = static_cast<size_t>(phi::Backend::NUM_BACKENDS);
+  if (static_cast<size_t>(l) > num_backends &&
+      static_cast<size_t>(r) > num_backends) {
+    return phi::TransToPhiPlace(l).GetDeviceType() ==
+           phi::TransToPhiPlace(r).GetDeviceType();
+  }
+#endif
+  return l == r;
+}
+
 inline bool NeedTransform(const phi::KernelKey& l, const phi::KernelKey& r) {
-  return (!platform::backends_are_same_class(l.backend(), r.backend())) ||
+  return (!backends_are_same_class(l.backend(), r.backend())) ||
          (l.dtype() != r.dtype()) ||
          NeedTransformLayout(l.layout(), r.layout());
 }

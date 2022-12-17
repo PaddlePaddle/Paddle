@@ -2428,8 +2428,8 @@ Scope* OperatorWithKernel::PrepareData(
           kernel_type_for_var.layout(), expected_kernel_key.layout());
       if (!need_trans_dtype && !need_trans_layout) {
         if (!run_phi_kernel_ &&
-            platform::backends_are_same_class(kernel_type_for_var.backend(),
-                                              expected_kernel_key.backend())) {
+            backends_are_same_class(kernel_type_for_var.backend(),
+                                    expected_kernel_key.backend())) {
           continue;
         }
       }

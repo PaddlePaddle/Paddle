@@ -27,7 +27,6 @@
 #include "paddle/fluid/imperative/var_helper.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/phi/core/kernel_factory.h"
 
 namespace paddle {
 namespace imperative {

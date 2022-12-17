@@ -20,7 +20,6 @@
 
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/phi/core/kernel_factory.h"
 
 namespace paddle {
 namespace framework {

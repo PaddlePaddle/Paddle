@@ -23,7 +23,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/npu/enforce_npu.h"
 #endif
 
-#include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/place.h"
 namespace paddle {
 namespace platform {
@@ -60,7 +59,6 @@ bool is_cuda_pinned_place(const Place &);
 bool is_npu_pinned_place(const Place &);
 bool is_custom_place(const Place &p);
 bool places_are_same_class(const Place &, const Place &);
-bool backends_are_same_class(const phi::Backend &l, const phi::Backend &r);
 bool is_same_place(const Place &, const Place &);
 
 template <typename Visitor>

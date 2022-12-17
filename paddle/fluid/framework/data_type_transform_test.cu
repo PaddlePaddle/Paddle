@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/phi/core/kernel_factory.h"
 
 TEST(DataTypeTransform, GPUTransform) {
   auto cpu_place = paddle::platform::CPUPlace();

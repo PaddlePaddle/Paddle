@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/core/compat/convert_utils.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
     benchmark,
@@ -69,18 +68,6 @@ bool places_are_same_class(const Place &p1, const Place &p2) {
   }
 #endif
   return p1.GetType() == p2.GetType();
-}
-
-bool backends_are_same_class(const phi::Backend &l, const phi::Backend &r) {
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-  size_t num_backends = static_cast<size_t>(phi::Backend::NUM_BACKENDS);
-  if (static_cast<size_t>(l) > num_backends &&
-      static_cast<size_t>(r) > num_backends) {
-    return phi::TransToPhiPlace(l).GetDeviceType() ==
-           phi::TransToPhiPlace(r).GetDeviceType();
-  }
-#endif
-  return l == r;
 }
 
 bool is_same_place(const Place &p1, const Place &p2) {

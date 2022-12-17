@@ -55,8 +55,8 @@ void TransDataLayout(const phi::KernelKey& kernel_type_for_var,
                      const phi::DenseTensor& in,
                      phi::DenseTensor* out) {
   PADDLE_ENFORCE(
-      platform::backends_are_same_class(kernel_type_for_var.backend(),
-                                        expected_kernel_type.backend()),
+      backends_are_same_class(kernel_type_for_var.backend(),
+                              expected_kernel_type.backend()),
       platform::errors::PreconditionNotMet(
           "TransDataLayout only support DataLayout transform on same place."));
 

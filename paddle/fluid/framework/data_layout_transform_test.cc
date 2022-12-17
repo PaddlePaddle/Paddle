@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/data_layout_transform.h"
-#include "paddle/phi/core/kernel_factory.h"
 
 #include "gtest/gtest.h"
 
