@@ -3590,7 +3590,6 @@ function run_setup(){
     distibuted_flag=${WITH_DISTRIBUTE:-OFF}
     gloo_flag=${distibuted_flag}
 
->>>>>>> develop/develop
     if [ "$CMD" != "assert_file_approvals" ];then
       which python
       python -V

@@ -30,11 +30,6 @@ def custom_relu_dynamic(func, device, dtype, np_x, use_func=True):
     paddle.set_device(device)
 
     t = paddle.to_tensor(np_x, dtype=dtype)
-<<<<<<< HEAD
-    out = func(t) if use_func else paddle.nn.functional.relu(t)
-
-    return out.numpy()
-=======
     t.stop_gradient = False
 
     out = func(t) if use_func else paddle.nn.functional.relu(t)
@@ -46,7 +41,6 @@ def custom_relu_dynamic(func, device, dtype, np_x, use_func=True):
         return out.numpy(), t.grad
     else:
         return out.numpy(), t.grad.numpy()
->>>>>>> develop/develop
 
 
 def custom_relu_static(
@@ -58,13 +52,9 @@ def custom_relu_static(
     with static.scope_guard(static.Scope()):
         with static.program_guard(static.Program()):
             x = static.data(name='X', shape=[None, 8], dtype=dtype)
-<<<<<<< HEAD
-            out = func(x) if use_func else paddle.nn.functional.relu(x)
-=======
             x.stop_gradient = False
             out = func(x) if use_func else paddle.nn.functional.relu(x)
             static.append_backward(out)
->>>>>>> develop/develop
 
             exe = static.Executor()
             exe.run(static.default_startup_program())
@@ -79,8 +69,6 @@ def custom_relu_static(
     return out_v
 
 
-<<<<<<< HEAD
-=======
 def custom_relu_static_pe(func, device, dtype, np_x, use_func=True):
     paddle.enable_static()
     paddle.set_device(device)
@@ -172,7 +160,6 @@ def custom_relu_double_grad_dynamic(func, device, dtype, np_x, use_func=True):
     return dx[0].numpy(), dx[0].grad.numpy()
 
 
->>>>>>> develop/develop
 class TestNewCustomOpSetUpInstall(unittest.TestCase):
     def setUp(self):
         cur_dir = os.path.dirname(os.path.abspath(__file__))
@@ -225,8 +212,6 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                     ),
                 )
 
-<<<<<<< HEAD
-=======
     def test_static_pe(self):
         for device in self.devices:
             for dtype in self.dtypes:
@@ -243,20 +228,14 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                     ),
                 )
 
->>>>>>> develop/develop
     def func_dynamic(self):
         for device in self.devices:
             for dtype in self.dtypes:
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
-<<<<<<< HEAD
-                out = custom_relu_dynamic(self.custom_op, device, dtype, x)
-                pd_out = custom_relu_dynamic(
-=======
                 out, x_grad = custom_relu_dynamic(
                     self.custom_op, device, dtype, x
                 )
                 pd_out, pd_x_grad = custom_relu_dynamic(
->>>>>>> develop/develop
                     self.custom_op, device, dtype, x, False
                 )
                 np.testing.assert_array_equal(
@@ -266,8 +245,6 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                         out, pd_out
                     ),
                 )
-<<<<<<< HEAD
-=======
                 np.testing.assert_array_equal(
                     x_grad,
                     pd_x_grad,
@@ -275,15 +252,12 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                         x_grad, pd_x_grad
                     ),
                 )
->>>>>>> develop/develop
 
     def test_dynamic(self):
         with _test_eager_guard():
             self.func_dynamic()
         self.func_dynamic()
 
-<<<<<<< HEAD
-=======
     def test_static_save_and_load_inference_model(self):
         paddle.enable_static()
         np_data = np.random.random((1, 1, 28, 28)).astype("float32")
@@ -406,7 +380,6 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                 if batch_id == 5:
                     break
 
->>>>>>> develop/develop
 
 if __name__ == '__main__':
     unittest.main()
