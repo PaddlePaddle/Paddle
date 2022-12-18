@@ -1341,7 +1341,7 @@ class Fleet:
             and len(self._user_defined_strategy.sparse_table_configs) > 0
         ):
             context["use_fleet_ps"] = True
-            from ..meta_optimizers import ParameterServerOptimizer
+            from .meta_optimizers import ParameterServerOptimizer
 
             meta_optimizer = ParameterServerOptimizer(
                 self.user_defined_optimizer
@@ -1353,7 +1353,7 @@ class Fleet:
                 copy_user_defined_strategy,
             )
             can_not_apply_optimizer_list.append(meta_optimizer)
-            from ..meta_optimizers import ParameterServerGraphOptimizer
+            from .meta_optimizers import ParameterServerGraphOptimizer
 
             graph_optimizer = ParameterServerGraphOptimizer(
                 self.user_defined_optimizer
@@ -1447,6 +1447,7 @@ class Fleet:
                 loss, startup_program, parameter_list, no_grad_set=no_grad_set
             )
 
+
         if meta_optimizer:
             logger.debug(
                 "before minimize program id: " + str(id(loss.block.program))
@@ -1473,7 +1474,7 @@ class Fleet:
 
         context["program_optimize_ops"] = optimize_ops
         context["program_params_grads"] = params_grads
-
+ 
         if graph_optimizer:
             logger.debug(
                 "before graph minimize program id: "

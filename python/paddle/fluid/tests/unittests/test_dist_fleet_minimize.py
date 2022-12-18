@@ -158,6 +158,50 @@ class TestPSMinimize(unittest.TestCase):
         acc = get_acc(cos_q_nt, cos_q_pt, batch_size)
         return [avg_cost, acc, cos_q_pt]
 
+    def gen_sparse_config(self):
+        """
+        gen sparse config
+        """
+        sparse_config = dict()
+        #sparse_config['sparse_table_class'] = "DownpourSparseSSDTable"
+        sparse_config['sparse_table_class'] = "DownpourSparseTable"
+        sparse_config['sparse_compress_in_save'] = True
+        sparse_config['sparse_shard_num'] = 67
+        # sparse_config['sparse_accessor_class'] = "DownpourCtrAccessor"
+        sparse_config['sparse_accessor_class'] = "DownpourCtrDymfAccessor" # for variable embedding
+        sparse_config['sparse_learning_rate'] = 0.05 #sparse_lr
+        sparse_config['sparse_initial_g2sum'] = 3
+        sparse_config['sparse_initial_range'] = 0.02 #init_range
+        sparse_config['sparse_weight_bounds'] = [-10.0, 10.0]
+        sparse_config['sparse_embedx_dim'] = 8 #emb_size
+        sparse_config['sparse_embedx_threshold'] = 10
+        sparse_config['sparse_nonclk_coeff'] = 0.1
+        sparse_config['sparse_click_coeff'] = 1.0
+        sparse_config['sparse_base_threshold'] = 0
+        sparse_config['sparse_delta_threshold'] = 0.25
+        sparse_config['sparse_delta_keep_days'] = 16.0
+        sparse_config['sparse_show_click_decay_rate'] = 0.98
+        sparse_config['sparse_delete_threshold'] = 0.8
+        sparse_config['sparse_delete_after_unseen_days'] = 30
+
+        sparse_config['embed_sparse_optimizer'] = "adagrad" #op_type 
+        sparse_config['embed_sparse_learning_rate'] = 0.05 #sparse_lr
+        sparse_config['embed_sparse_initial_range'] = 0
+        sparse_config['embed_sparse_beta1_decay_rate'] = 0.9 #args.beta1_decay_rate
+        sparse_config['embed_sparse_beta2_decay_rate'] = 0.999 #args.beta2_decay_rate
+        sparse_config['embed_sparse_weight_bounds'] = [-10.0, 10.0]
+
+        sparse_config['embedx_sparse_optimizer'] = "adagrad" #op_type 
+        sparse_config['embedx_sparse_learning_rate'] = 0.05 #sparse_lr
+        sparse_config['embedx_sparse_initial_range'] = 0.02 #init_range
+        sparse_config['embedx_sparse_beta1_decay_rate'] = 0.9 #args.beta1_decay_rate
+        sparse_config['embedx_sparse_beta2_decay_rate'] = 0.999 #args.beta2_decay_rate
+        sparse_config['embedx_sparse_weight_bounds'] = [-10.0, 10.0]
+        #sparse_config['nodeid_slot'] = nodeid_slot
+        #sparse_config['feature_learning_rate'] = feature_lr
+        return sparse_config
+
+
     def test(self):
         os.environ["PADDLE_PSERVER_NUMS"] = "2"
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
@@ -182,6 +226,11 @@ class TestPSMinimize(unittest.TestCase):
         configs = {"use_ps_gpu": 1, "launch_barrier": False}
         strategy.a_sync_configs = configs
         strategy.a_sync = True
+
+        sparse_config = dict()
+        sparse_config['embedding'] = self.gen_sparse_config()
+        strategy.fleet_desc_configs = sparse_config
+
         optimizer = paddle.fluid.optimizer.Adam(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(loss)
