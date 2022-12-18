@@ -389,5 +389,10 @@ class DeviceContextPool {
   DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
 };
 
+template <typename DevCtx>
+std::unique_ptr<DeviceContext> CreateDeviceContext(
+    const platform::Place& p,
+    bool disable_setting_default_stream_for_allocator = false);
+
 }  // namespace platform
 }  // namespace paddle

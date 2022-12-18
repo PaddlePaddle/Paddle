@@ -1195,6 +1195,9 @@ void BindEager(pybind11::module* module) {
 
   BindFunctions(m.ptr());
   BindEagerPyLayer(m.ptr());
+  BindEagerDeviceStream(m.ptr());
+  BindEagerDeviceEvent(m.ptr());
+  BindEagerOpFunctions(&m);
   BindEagerOpFunctions(&m);
 }
 

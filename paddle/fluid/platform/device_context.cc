@@ -148,7 +148,7 @@ void DeviceContextPool::SetDeviceContexts(
 template <typename DevCtx>
 std::unique_ptr<DeviceContext> CreateDeviceContext(
     const platform::Place& p,
-    bool disable_setting_default_stream_for_allocator = false) {
+    bool disable_setting_default_stream_for_allocator) {
   using PtrType = std::unique_ptr<DeviceContext>;
   auto* dev_ctx = new DevCtx(p);
   if (is_gpu_place(p)) {
