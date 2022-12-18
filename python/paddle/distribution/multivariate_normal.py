@@ -73,7 +73,7 @@ class MultivariateNormal(distribution.Distribution):
             Tensor: variance value.
         """
         matrix_decompos = paddle.linalg.cholesky(self.covariance_matrix).pow(2).sum(-1)
-        return paddle.broadcast_to(matrix_decompos, self._batch_shape + self._event_shape)
+        return paddle.expand(matrix_decompos, self._batch_shape + self._event_shape)
 
     @property
     def stddev(self):
@@ -93,23 +93,17 @@ class MultivariateNormal(distribution.Distribution):
         Returns:
             Tensor: probability of value.
         """
-        x = paddle.pow(2 * math.pi, -value.shape.pop(1) * 0.5) * paddle.pow(paddle.linalg.det(self.covariance_matrix),
-                                                                          -0.5)
-        y = paddle.exp(
-            -0.5 * paddle.t(value - self.loc) * paddle.inverse(self.covariance_matrix) * (value - self.loc))
-
-        return x * y
+        return paddle.exp(self.log_prob(value))
 
     def log_prob(self, value):
-        """probability mass function evaluated of logarithm at value
+        # if self._validate_args:
+        #     self._validate_sample(value)
+        diff = value - self.loc
+        M = self._batch_mahalanobis(self._unbroadcasted_scale_tril, diff)
 
-        Args:
-            value (Tensor): value to be evaluated.
+        half_log_det = paddle.diagonal(self._unbroadcasted_scale_tril,axis1=-2, axis2=-1).log().sum(-1)
 
-        Returns:
-            Tensor: probability of value.
-        """
-        return paddle.log(self.prob(value))
+        return -0.5 * (self.event_shape[0] * math.log(2 * math.pi) + M) - half_log_det
 
     def entropy(self):
         """entropy of multivariate_normal distribution
@@ -117,8 +111,15 @@ class MultivariateNormal(distribution.Distribution):
         Returns:
             Tensor: entropy value
         """
-        sigma = paddle.linalg.det(self.covariance_matrix)
-        return 0.5 * paddle.log(paddle.pow(2 * math.pi * math.e, self.loc.dim()) * sigma)
+        # sigma = paddle.linalg.det(self.covariance_matrix)
+        # return 0.5 * paddle.log(paddle.pow(paddle.to_tensor([2 * math.pi * math.e],dtype=paddle.float32), self.loc.dim()) * sigma)
+
+        half_log_det = self._unbroadcasted_scale_tril.diagonal(axois=-2, dim2=-1).log().sum(-1)
+        H = 0.5 * self._event_shape[0] * (1.0 + math.log(2 * math.pi)) + half_log_det
+        if len(self._batch_shape) == 0:
+            return H
+        else:
+            return H.expand(self._batch_shape)
 
     def sample(self, shape=()):
         """draw sample data from multivariate_normal distribution
@@ -162,3 +163,46 @@ class MultivariateNormal(distribution.Distribution):
         bvec_unsqueeze = paddle.unsqueeze(bvec, 1)
         bvec = paddle.squeeze(bvec_unsqueeze)
         return paddle.matmul(bmat, bvec)
+
+    def _batch_mahalanobis(self, bL, bx):
+        n = bx.shape[-1]
+        bx_batch_shape = bx.shape[:-1]
+        bx_batch_dims = len(bx_batch_shape)
+        bL_batch_dims = bL.ndim - 2
+
+        outer_batch_dims = bx_batch_dims - bL_batch_dims
+        old_batch_dims = outer_batch_dims + bL_batch_dims
+        new_batch_dims = outer_batch_dims + 2 * bL_batch_dims
+        bx_new_shape = bx.shape[:outer_batch_dims]
+
+        for (sL, sx) in zip(bL.shape[:-2], bx.shape[outer_batch_dims:-1]):
+            bx_new_shape += (sx // sL, sL)
+
+        bx_new_shape += (n,)
+        bx = paddle.reshape(bx, bx_new_shape)
+
+        permute_dims = (list(range(outer_batch_dims)) +
+                        list(range(outer_batch_dims, new_batch_dims, 2)) +
+                        list(range(outer_batch_dims + 1, new_batch_dims, 2)) +
+                        [new_batch_dims])
+
+        bx = paddle.transpose(bx, perm=permute_dims)
+        # shape = [b, n, n]
+        flat_L = paddle.reshape(bL, [1, n, n])
+        # shape = [c, b, n]
+        flat_x = paddle.reshape(bx, [n, flat_L.shape[0], n])
+
+        # shape = [b, n, c]
+        flat_x_swap = paddle.transpose(flat_x, perm=[1, 2, 0])
+        # shape = [b, c]
+        M_swap = paddle.linalg.triangular_solve(flat_L, flat_x_swap, upper=False).pow(2).sum(-2)
+        M = M_swap.t()
+        # shape = [..., 1, j, i, 1]
+        permuted_M = paddle.reshape(M, bx.shape[:-1])
+        permute_inv_dims = list(range(outer_batch_dims))
+
+        for i in range(bL_batch_dims):
+            permute_inv_dims += [outer_batch_dims + i, old_batch_dims + i]
+        # shape = [..., 1, i, j, 1]
+        reshaped_M = paddle.transpose(permuted_M, perm=permute_inv_dims)
+        return paddle.reshape(reshaped_M, bx_batch_shape)
