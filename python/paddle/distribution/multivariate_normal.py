@@ -114,27 +114,27 @@ class MultivariateNormal(distribution.Distribution):
         # sigma = paddle.linalg.det(self.covariance_matrix)
         # return 0.5 * paddle.log(paddle.pow(paddle.to_tensor([2 * math.pi * math.e],dtype=paddle.float32), self.loc.dim()) * sigma)
 
-        half_log_det = self._unbroadcasted_scale_tril.diagonal(axois=-2, dim2=-1).log().sum(-1)
+        half_log_det = paddle.diagonal(self._unbroadcasted_scale_tril,axis1=-2, axis2=-1).log().sum(-1)
         H = 0.5 * self._event_shape[0] * (1.0 + math.log(2 * math.pi)) + half_log_det
         if len(self._batch_shape) == 0:
             return H
         else:
             return H.expand(self._batch_shape)
 
-    def sample(self, shape=()):
+    def sample(self, shape=[]):
         """draw sample data from multivariate_normal distribution
 
         Args:
-            shape (tuple, optional): [description]. Defaults to ().
+            shape (list, optional): [description]. Defaults to [].
         """
-        with paddle.no_grad:
-            self.rsample(shape)
+        with paddle.no_grad():
+            return self.rsample(shape)
 
-    def rsample(self, shape=()):
+    def rsample(self, shape=[]):
         """draw sample data from multivariate_normal distribution
 
         Args:
-            shape (tuple, optional): [description]. Defaults to ().
+            shape (list, optional): [description]. Defaults to [].
         """
         shape = self._extend_shape(shape)
         eps = paddle.standard_normal(shape, dtype=None, name=None)
@@ -187,15 +187,17 @@ class MultivariateNormal(distribution.Distribution):
                         [new_batch_dims])
 
         bx = paddle.transpose(bx, perm=permute_dims)
-        # shape = [b, n, n]
+        # shape = [a, n, n]
         flat_L = paddle.reshape(bL, [1, n, n])
-        # shape = [c, b, n]
+        # shape = [b, a, n]
         flat_x = paddle.reshape(bx, [n, flat_L.shape[0], n])
 
-        # shape = [b, n, c]
+        # shape = [a, n, b]
         flat_x_swap = paddle.transpose(flat_x, perm=[1, 2, 0])
-        # shape = [b, c]
+
+        # shape = [a, b]
         M_swap = paddle.linalg.triangular_solve(flat_L, flat_x_swap, upper=False).pow(2).sum(-2)
+        # shape = [b, a]
         M = M_swap.t()
         # shape = [..., 1, j, i, 1]
         permuted_M = paddle.reshape(M, bx.shape[:-1])
@@ -203,6 +205,18 @@ class MultivariateNormal(distribution.Distribution):
 
         for i in range(bL_batch_dims):
             permute_inv_dims += [outer_batch_dims + i, old_batch_dims + i]
+
         # shape = [..., 1, i, j, 1]
         reshaped_M = paddle.transpose(permuted_M, perm=permute_inv_dims)
         return paddle.reshape(reshaped_M, bx_batch_shape)
+
+    def _extend_shape(self, sample_shape):
+        """compute shape of the sample
+
+        Args:
+            sample_shape (Tensor): sample shape
+
+        Returns:
+            Tensor: generated sample data shape
+        """
+        return sample_shape + list(self.batch_shape) + list(self.event_shape)
