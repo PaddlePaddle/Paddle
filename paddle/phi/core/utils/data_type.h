@@ -125,6 +125,7 @@ enum ProtoDataType {
   FP16 = 4,
   FP32 = 5,
   FP64 = 6,
+  RAW = 17,
   UINT8 = 20,
   INT8 = 21,
   BF16 = 22,
@@ -163,6 +164,8 @@ inline DataType TransToPhiDataType(const int& dtype) {
       return DataType::BOOL;
     case ProtoDataType::PSTRING:
       return DataType::PSTRING;
+    case ProtoDataType::RAW:
+      return DataType::ALL_DTYPE;
     default:
       return DataType::UNDEFINED;
   }
@@ -198,6 +201,8 @@ inline int TransToProtoVarType(const DataType& dtype) {
       return ProtoDataType::BOOL;
     case DataType::PSTRING:
       return ProtoDataType::PSTRING;
+    case DataType::UNDEFINED:
+      return ProtoDataType::RAW;
     default:
       PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported data type `%s` when casting it into "
