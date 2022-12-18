@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <utility>
 
 #ifdef PADDLE_WITH_CUDA
