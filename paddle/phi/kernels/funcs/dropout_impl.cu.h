@@ -265,7 +265,7 @@ inline void CalcBroadcastedMask(const phi::GPUContext& dev_ctx,
                                 phi::DenseTensor* broadcasted_mask) {
   // The broadcast of mask can be combined to the following ElementwiseKernel
   // when the BroadcastKernel supports different input types.
-  broadcasted_mask->mutable_data<uint8_t>(dev_ctx.GetPlace());
+  dev_ctx.template Alloc<uint8_t>(broadcasted_mask);
 
   std::vector<const phi::DenseTensor*> ins = {&mask};
   std::vector<phi::DenseTensor*> outs = {broadcasted_mask};

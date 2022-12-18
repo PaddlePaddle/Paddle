@@ -22,10 +22,10 @@
 namespace paddle {
 namespace platform {
 
-using CUDAGraph = phi::backends::gpu::CUDAGraph;
-
 // NOTE: These APIs are not thread-safe.
 #ifdef PADDLE_WITH_CUDA
+using CUDAGraph = phi::backends::gpu::CUDAGraph;
+
 void BeginCUDAGraphCapture(phi::GPUPlace place,
                            cudaStreamCaptureMode mode,
                            int64_t pool_id = CUDAGraph::kInvalidPoolID);
