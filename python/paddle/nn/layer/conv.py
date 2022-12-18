@@ -237,9 +237,9 @@ class Conv1D(_ConvNd):
 
     * :math:`X`: Input value, a ``Tensor`` with 'NCL' format or 'NLC' format.
     * :math:`W`: Filter value, a ``Tensor`` with shape [MCK] .
-    * :math:`\\ast`: Convolution operation.
+    * :math:`\ast`: Convolution operation.
     * :math:`b`: Bias value, a 1-D ``Tensor`` with shape [M].
-    * :math:`\\sigma`: Activation function.
+    * :math:`\sigma`: Activation function.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
     Example:
@@ -258,7 +258,7 @@ class Conv1D(_ConvNd):
 
         .. math::
 
-            L_{out}&= \frac{(L_{in} + 2 * padding - (dilation * (L_f - 1) + 1))}{stride} + 1 \\
+            L_{out}&= \frac{(L_{in} + 2 * padding - (dilation * (L_f - 1) + 1))}{stride} + 1
 
     Parameters:
         in_channels(int): The number of channels in the input image.
@@ -413,9 +413,9 @@ class Conv1DTranspose(_ConvNd):
 
     * :math:`X`: Input value, a 3-D Tensor with 'NCL' format or 'NLC' format.
     * :math:`W`: Kernel value, a 3-D Tensor with 'MCK' format.
-    * :math:`\\ast`: Convolution operation.
+    * :math:`\ast`: Convolution operation.
     * :math:`b`: Bias value, a 2-D Tensor with shape [M, 1].
-    * :math:`\\sigma`: Activation function.
+    * :math:`\sigma`: Activation function.
     * :math:`Out`: Output value, a 3-D Tensor with data format 'NCL' of 'NLC', the shape of :math:`Out` and :math:`X` may be different.
 
     Example:
@@ -434,7 +434,7 @@ class Conv1DTranspose(_ConvNd):
 
         .. math::
 
-           L^\prime_{out} &= (L_{in} - 1) * stride - pad_top - pad_bottom + dilation * (L_f - 1) + 1 \\\\
+           L^\prime_{out} &= (L_{in} - 1) * stride - pad_top - pad_bottom + dilation * (L_f - 1) + 1 \\
            L_{out} &\in [ L^\prime_{out}, L^\prime_{out} + stride ]
 
     Note:
@@ -590,9 +590,9 @@ class Conv2D(_ConvNd):
 
     * :math:`X`: Input value, a ``Tensor`` with NCHW format.
     * :math:`W`: Filter value, a ``Tensor`` with shape [MCHW] .
-    * :math:`\\ast`: Convolution operation.
+    * :math:`\ast`: Convolution operation.
     * :math:`b`: Bias value, a 1-D ``Tensor`` with shape [M].
-    * :math:`\\sigma`: Activation function.
+    * :math:`\sigma`: Activation function.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
     Parameters:
@@ -755,9 +755,9 @@ class Conv2DTranspose(_ConvNd):
 
     * :math:`X`: Input value, a ``Tensor`` with NCHW format.
     * :math:`W`: Filter value, a ``Tensor`` with shape [CMHW] .
-    * :math:`\\ast`: Convolution operation.
+    * :math:`\ast`: Convolution operation.
     * :math:`b`: Bias value, a 1-D ``Tensor`` with shape [M].
-    * :math:`\\sigma`: Activation function.
+    * :math:`\sigma`: Activation function.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
     Parameters:
@@ -917,9 +917,9 @@ class Conv3D(_ConvNd):
 
     * :math:`X`: Input value, a tensor with NCDHW or NDHWC format.
     * :math:`W`: Filter value, a tensor with MCDHW format.
-    * :math:`\\ast`: Convolution operation.
+    * :math:`\ast`: Convolution operation.
     * :math:`b`: Bias value, a 1-D tensor with shape [M].
-    * :math:`\\sigma`: Activation function.
+    * :math:`\sigma`: Activation function.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
     Parameters:
@@ -1081,23 +1081,21 @@ class Conv3DTranspose(_ConvNd):
 
     * :math:`X`: Input value, a tensor with NCDHW format.
     * :math:`W`: Filter value, a tensor with CMDHW format.
-    * :math:`\\ast`: Convolution operation.
+    * :math:`\ast`: Convolution operation.
     * :math:`b`: Bias value, a 1-D tensor with shape [M].
-    * :math:`\\sigma`: Activation function.
+    * :math:`\sigma`: Activation function.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
-    **Note**:
-
-          The conv3d_transpose can be seen as the backward of the conv3d. For conv3d,
-          when stride > 1, conv3d maps multiple input shape to the same output shape,
-          so for conv3d_transpose, when stride > 1, input shape maps multiple output shape.
-          If output_size is None, :math:`H_{out} = H^\prime_{out}, :math:`H_{out} = \
-          H^\prime_{out}, W_{out} = W^\prime_{out}`; else, the :math:`D_{out}` of the output
-          size must between :math:`D^\prime_{out}` and :math:`D^\prime_{out} + strides[0]`,
-          the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}`
-          and :math:`H^\prime_{out} + strides[1]`, and the :math:`W_{out}` of the output size must
-          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[2]`,
-          conv3d_transpose can compute the kernel size automatically.
+    .. note::
+        The conv3d_transpose can be seen as the backward of the conv3d. For conv3d,
+        when stride > 1, conv3d maps multiple input shape to the same output shape,
+        so for conv3d_transpose, when stride > 1, input shape maps multiple output shape.
+        If output_size is None, :math:`H_{out} = H^\prime_{out}, W_{out} = W^\prime_{out}`;
+        else, the :math:`D_{out}` of the output size must between :math:`D^\prime_{out}`
+        and :math:`D^\prime_{out} + strides[0]`, the :math:`H_{out}` of the output size must
+        between :math:`H^\prime_{out}` and :math:`H^\prime_{out} + strides[1]`, and the
+        :math:`W_{out}` of the output size must between :math:`W^\prime_{out}` and
+        :math:`W^\prime_{out} + strides[2]`, conv3d_transpose can compute the kernel size automatically.
 
     Parameters:
         in_channels(int): The number of channels in the input image.

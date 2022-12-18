@@ -710,20 +710,20 @@ class Dropout(Layer):
     In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 
     Parameters:
-        p (float|int): Probability of setting units to zero. Default: 0.5
-        axis (int|list|tuple): The axis along which the dropout is performed. Default None.
+        p (float|int, optional): Probability of setting units to zero. Default: 0.5
+        axis (int|list|tuple, optional): The axis along which the dropout is performed. Default: None.
         mode(str, optional): ['upscale_in_train'(default) | 'downscale_in_infer']
 
-                               1. upscale_in_train(default), upscale the output at training time
+                               1. upscale_in_train (default), upscale the output at training time
 
-                                  - train: out = input * mask / ( 1.0 - p )
-                                  - inference: out = input
+                                  - train: :math:`out = input * mask / ( 1.0 - p )`
+                                  - inference: :math:`out = input`
 
                                2. downscale_in_infer, downscale the output at inference
 
-                                  - train: out = input * mask
-                                  - inference: out = input * (1.0 - p)
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+                                  - train: :math:`out = input * mask`
+                                  - inference: :math:`out = input * (1.0 - p)`
+        name (str, optional): Name for the operation, Default: None. For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
         - input: N-D tensor.
@@ -791,9 +791,9 @@ class Dropout2D(Layer):
     In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 
     Parameters:
-        p (float, optional): Probability of setting units to zero. Default: 0.5
-        data_format (str, optional): Specify the data format of the input, and the data format of the output will be consistent with that of the input. An optional string from `NCHW` or `NHWC`. The default is `NCHW`. When it is `NCHW`, the data is stored in the order of: [batch_size, input_channels, input_height, input_width].
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        p (float, optional): Probability of setting units to zero. Default: 0.5.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output will be consistent with that of the input. An optional string from `NCHW` or `NHWC`. When it is `NCHW`, the data is stored in the order of: [batch_size, input_channels, input_height, input_width]. Default: `NCHW`.
+        name (str, optional): Name for the operation, Default: None. For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
         - input: 4-D tensor.
@@ -872,9 +872,9 @@ class Dropout3D(Layer):
     In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 
     Parameters:
-        p (float | int): Probability of setting units to zero. Default: 0.5
-        data_format (str, optional): Specify the data format of the input, and the data format of the output will be consistent with that of the input. An optional string from `NCDHW` or `NDHWC`. The default is `NCDHW`. When it is `NCDHW`, the data is stored in the order of: [batch_size, input_channels, input_depth, input_height, input_width].
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        p (float | int, optional): Probability of setting units to zero. Default: 0.5.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output will be consistent with that of the input. An optional string from `NCDHW` or `NDHWC`. When it is `NCDHW`, the data is stored in the order of: [batch_size, input_channels, input_depth, input_height, input_width]. Default: `NCDHW`.
+        name (str, optional): Name for the operation, Default: None. For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
         - input: 5-D tensor.
