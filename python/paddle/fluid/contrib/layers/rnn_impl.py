@@ -151,16 +151,16 @@ class BasicGRUUnit(Layer):
     def forward(self, input, pre_hidden):
         concat_input_hidden = layers.concat([input, pre_hidden], 1)
 
-        gate_input = layers.matmul(x=concat_input_hidden, y=self._gate_weight)
+        gate_input = paddle.matmul(x=concat_input_hidden, y=self._gate_weight)
 
         gate_input = paddle.add(gate_input, self._gate_bias)
 
         gate_input = self._gate_activation(gate_input)
-        r, u = layers.split(gate_input, num_or_sections=2, dim=1)
+        r, u = paddle.split(gate_input, num_or_sections=2, axis=1)
 
         r_hidden = r * pre_hidden
 
-        candidate = layers.matmul(
+        candidate = paddle.matmul(
             layers.concat([input, r_hidden], 1), self._candidate_weight
         )
         candidate = paddle.add(candidate, self._candidate_bias)
@@ -330,7 +330,7 @@ def basic_gru(
 
     mask = None
     if sequence_length:
-        max_seq_len = layers.shape(input)[0]
+        max_seq_len = paddle.shape(input)[0]
         mask = layers.sequence_mask(
             sequence_length, maxlen=max_seq_len, dtype='float32'
         )
@@ -367,9 +367,9 @@ def basic_gru(
                 new_hidden = unit_list[i](step_input, pre_hidden)
 
                 if mask:
-                    new_hidden = layers.elementwise_mul(
+                    new_hidden = paddle.tensor.math._multiply_with_axis(
                         new_hidden, step_mask, axis=0
-                    ) - layers.elementwise_mul(
+                    ) - paddle.tensor.math._multiply_with_axis(
                         pre_hidden, (step_mask - 1), axis=0
                     )
                 rnn.update_memory(pre_hidden, new_hidden)
@@ -378,9 +378,9 @@ def basic_gru(
 
                 step_input = new_hidden
                 if dropout_prob is not None and dropout_prob > 0.0:
-                    step_input = layers.dropout(
+                    step_input = paddle.nn.functional.dropout(
                         step_input,
-                        dropout_prob=dropout_prob,
+                        p=dropout_prob,
                     )
 
             rnn.step_output(step_input)
@@ -614,7 +614,7 @@ def basic_lstm(
 
     mask = None
     if sequence_length:
-        max_seq_len = layers.shape(input)[0]
+        max_seq_len = paddle.shape(input)[0]
         mask = layers.sequence_mask(
             sequence_length, maxlen=max_seq_len, dtype='float32'
         )
@@ -661,14 +661,14 @@ def basic_lstm(
                 )
 
                 if mask:
-                    new_hidden = layers.elementwise_mul(
+                    new_hidden = paddle.tensor.math._multiply_with_axis(
                         new_hidden, step_mask, axis=0
-                    ) - layers.elementwise_mul(
+                    ) - paddle.tensor.math._multiply_with_axis(
                         pre_hidden, (step_mask - 1), axis=0
                     )
-                    new_cell = layers.elementwise_mul(
+                    new_cell = paddle.tensor.math._multiply_with_axis(
                         new_cell, step_mask, axis=0
-                    ) - layers.elementwise_mul(
+                    ) - paddle.tensor.math._multiply_with_axis(
                         pre_cell, (step_mask - 1), axis=0
                     )
 
@@ -680,10 +680,10 @@ def basic_lstm(
 
                 step_input = new_hidden
                 if dropout_prob is not None and dropout_prob > 0.0:
-                    step_input = layers.dropout(
+                    step_input = paddle.nn.functional.dropout(
                         step_input,
-                        dropout_prob=dropout_prob,
-                        dropout_implementation='upscale_in_train',
+                        p=dropout_prob,
+                        mode='upscale_in_train',
                     )
 
             rnn.step_output(step_input)
@@ -874,10 +874,10 @@ class BasicLSTMUnit(Layer):
 
     def forward(self, input, pre_hidden, pre_cell):
         concat_input_hidden = layers.concat([input, pre_hidden], 1)
-        gate_input = layers.matmul(x=concat_input_hidden, y=self._weight)
+        gate_input = paddle.matmul(x=concat_input_hidden, y=self._weight)
 
         gate_input = paddle.add(gate_input, self._bias)
-        i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
+        i, j, f, o = paddle.split(gate_input, num_or_sections=4, axis=-1)
         new_cell = paddle.add(
             paddle.multiply(
                 pre_cell,

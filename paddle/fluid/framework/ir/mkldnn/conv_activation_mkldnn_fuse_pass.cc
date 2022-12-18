@@ -15,8 +15,8 @@
 #include "paddle/fluid/framework/ir/mkldnn/conv_activation_mkldnn_fuse_pass.h"
 
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/platform/mkldnn_reuse.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/phi/backends/onednn/onednn_reuse.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -26,7 +26,7 @@ using string::PrettyLogDetail;
 
 void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
   auto act_types = phi::funcs::GetSupportedActivations();
-  std::vector<std::string> conv_types = {"conv2d"};
+  std::vector<std::string> conv_types = {"conv2d", "fused_conv2d"};
 
   for (auto& act_type : act_types) {
     FuseConvConcatAct(graph, act_type);
@@ -180,6 +180,45 @@ void ConvActivationMkldnnFusePass::FuseConvConcatAct(
 
 ConvActivationMkldnnFusePass::ConvActivationMkldnnFusePass() {
   AddOpCompat(OpCompat("conv2d"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsOptional()
+      .IsTensor()
+      .End()
+      .AddInput("ResidualData")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("strides")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("paddings")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsOptional()
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("groups")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("dilations")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("data_format")
+      .IsOptional()
+      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
+      .End();
+
+  AddOpCompat(OpCompat("fused_conv2d"))
       .AddInput("Input")
       .IsTensor()
       .End()

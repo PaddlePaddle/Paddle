@@ -18,17 +18,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 class HuberLossMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx = GetDevCtxFromCTX(ctx);
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* residual = ctx.Output<Tensor>("Residual");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* residual = ctx.Output<phi::DenseTensor>("Residual");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     auto delta = ctx.Attr<float>("delta");
 
     auto place = ctx.GetPlace();
@@ -65,7 +63,7 @@ class HuberLossMLUKernel : public framework::OpKernel<T> {
                                  GetBasePtr(out));
 
     // compute multiply by delta
-    Tensor scale_tensor, bias_tensor;
+    phi::DenseTensor scale_tensor, bias_tensor;
     scale_tensor = ctx.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
     bias_tensor = ctx.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
     FillMLUTensorWithHostValue(ctx, static_cast<T>(delta), &scale_tensor);
@@ -93,20 +91,20 @@ class HuberLossGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx = GetDevCtxFromCTX(ctx);
-    auto* residual = ctx.Input<Tensor>("Residual");
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    auto* residual = ctx.Input<phi::DenseTensor>("Residual");
+    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
     auto delta = ctx.Attr<float>("delta");
 
     auto place = ctx.GetPlace();
 
-    Tensor t_grad_rd;
+    phi::DenseTensor t_grad_rd;
     t_grad_rd =
         ctx.AllocateTmpTensor<T, MLUDeviceContext>(residual->dims(), dev_ctx);
     MLUCnnlTensorDesc t_grad_rd_desc(t_grad_rd);
     if (dx || dy) {
-      Tensor t_zero;
+      phi::DenseTensor t_zero;
       t_zero =
           ctx.AllocateTmpTensor<T, MLUDeviceContext>(residual->dims(), dev_ctx);
       FillMLUTensorWithHostValue(ctx, static_cast<T>(0.f), &t_zero);
@@ -130,7 +128,7 @@ class HuberLossGradMLUKernel : public framework::OpKernel<T> {
                                     GetBasePtr(&t_grad_rd));
     }
     // compute multiply by delta
-    Tensor scale_tensor, bias_tensor;
+    phi::DenseTensor scale_tensor, bias_tensor;
     scale_tensor = ctx.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
     bias_tensor = ctx.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
 

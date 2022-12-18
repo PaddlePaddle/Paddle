@@ -203,13 +203,13 @@ def instance_norm(
 
     ..  math::
 
-        \\mu_{\\beta} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW} x_i \\qquad &//\\
-        \\ mean\ of\ one\  feature\ map\ in\ mini-batch \\\\
-        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW}(x_i - \\
-        \\mu_{\\beta})^2 \\qquad &//\ variance\ of\ one\ feature\ map\ in\ mini-batch \\\\
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+        \mu_{\beta} &\gets \frac{1}{HW} \sum_{i=1}^{HW} x_i \qquad &//
+        \ mean\ of\ one\ feature\ map\ in\ mini-batch \\
+        \sigma_{\beta}^{2} &\gets \frac{1}{HW} \sum_{i=1}^{HW}(x_i -
+        \mu_{\beta})^2 \qquad &//\ variance\ of\ one\ feature\ map\ in\ mini-batch \\
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{
+        \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
+        y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
     Note:
         `H` means height of feature map, `W` means width of feature map.
@@ -322,6 +322,55 @@ def instance_norm(
 
 
 @static_only
+def continuous_value_model(input, cvm, use_cvm=True):
+    r"""
+    **continuous_value_model layers**
+    Now, this OP is used in CTR project to remove or dispose show and click value in :attr:`input`.
+    :attr:`input` is an embedding vector including show and click value, whose shape is :math:`[N, D]` (N is batch size. D is `2 + embedding dim` ).
+    Show and click at first two dims of embedding vector D.
+    If :attr:`use_cvm` is True, it will calculate :math:`log(show)` and :math:`log(click)` , and output shape is :math:`[N, D]` .
+    If :attr:`use_cvm` is False, it will remove show and click from :attr:`input` , and output shape is :math:`[N, D - 2]` .
+    :attr:`cvm` is show_click info, whose shape is :math:`[N, 2]` .
+    Args:
+        input (Variable): The input variable. A 2-D LoDTensor with shape :math:`[N, D]` , where N is the batch size, D is `2 + the embedding dim` . `lod level = 1` .
+        A Tensor with type float32, float64.
+        cvm (Variable): Show and click variable. A 2-D Tensor with shape :math:`[N, 2]` , where N is the batch size, 2 is show and click.
+        A Tensor with type float32, float64.
+        use_cvm  (bool):  Use show_click or not. if use, the output dim is the same as input.
+                          if not use, the output dim is `input dim - 2` (remove show and click)
+    Returns:
+        Variable: A 2-D LodTensor with shape :math:`[N, M]` . if :attr:`use_cvm` = True, M is equal to input dim D. if False, M is equal to `D - 2`. \
+        A Tensor with same type as input.
+    Examples:
+        .. code-block:: python
+          import paddle.fluid as fluid
+          import paddle
+          input = paddle.static.data(name="input", shape=[64, 1], dtype="int64")
+          label = paddle.static.data(name="label", shape=[64, 1], dtype="int64")
+          w0 = paddle.full(shape=(100, 1), fill_value=2).astype(paddle.float32)
+          embed = paddle.nn.functional.embedding(
+                            input,
+                            w0)
+          ones = paddle.full_like(label, 1, dtype="int64")
+          show_clk = paddle.cast(paddle.concat([ones, label], axis=1), dtype='float32')
+          show_clk.stop_gradient = True
+          input_with_cvm = paddle.static.nn.continuous_value_model(embed, show_clk, True)
+    """
+    helper = LayerHelper('cvm', **locals())
+    out = helper.create_variable(dtype=input.dtype)
+    check_variable_and_dtype(
+        input, 'input', ['float16', 'float32', 'float64'], 'cvm'
+    )
+    helper.append_op(
+        type='cvm',
+        inputs={'X': [input], 'CVM': [cvm]},
+        outputs={'Y': [out]},
+        attrs={"use_cvm": use_cvm},
+    )
+    return out
+
+
+@static_only
 def data_norm(
     input,
     act=None,
@@ -354,41 +403,42 @@ def data_norm(
 
     ..  math::
 
-        \\mu_{\\beta} &\\gets \\frac{1}{m} \\sum_{i=1}^{m} x_i \\qquad &//\\
-        \ mini-batch\ mean \\\\
-        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
-        \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+        \mu_{\beta} &\gets \frac{1}{m} \sum_{i=1}^{m} x_i \qquad &//
+        \ mini-batch\ mean \\
+        \sigma_{\beta}^{2} &\gets \frac{1}{m} \sum_{i=1}^{m}(x_i -
+        \mu_{\beta})^2 \qquad &//\ mini-batch\ variance \\
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{
+        \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
+        y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
     Args:
-        input(Tensor): The input Tensor.
-        act(string, Default None): Activation type, linear|relu|prelu|...
-        epsilon(float, Default 1e-05):
-        param_attr(ParamAttr): The parameter attribute for Parameter `scale`.
+        input (Tensor): The input Tensor.
+        act (str, optional): Activation type, linear|relu|prelu|... Default: None.
+        epsilon(float, optional): Whether to add small values ​in​to the variance during calculations
+            to prevent division by zero. Default: 1e-05.
+        param_attr (ParamAttr, optional): The parameter attribute for Parameter `scale`. Default: None.
         data_layout (str, optional): Specify the data format of the input, and the data format of the output
             will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`.
-        in_place(bool, Default False): Make the input and output of batch norm reuse memory.
-        name(string, Default None): A name for this layer(optional). If set None, the layer
-            will be named automatically.
-        moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
-        moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
-        do_model_average_for_mean_and_var(bool, Default True): Whether parameter mean and variance
-            should do model average when model average is enabled.
-        slot_dim(int): The embedding dimension of one slot. Slot is a set of one specific feature. In pslib mode, we
-            distinguish feature ids by slot and pull their embeddings from parameter server (pslib). The first
+            `[batch_size, input_channels, input_height, input_width]`. Default: `"NCHW"`.
+        in_place (bool, optional): Make the input and output of batch norm reuse memory. Default: False.
+        name (str, optional): A name for this layer (optional). If set None, the layer
+            will be named automatically. Default: None.
+        moving_mean_name (str, optional): The name of moving_mean which store the global Mean. Default: None.
+        moving_variance_name (str, optional): The name of the moving_variance which store the global Variance. Default: None.
+        do_model_average_for_mean_and_var (bool, optional): Whether parameter mean and variance
+            should do model average when model average is enabled. Default: True.
+        slot_dim (int, optional): The embedding dimension of one slot. Slot is a set of one specific feature. In pslib mode,
+            we distinguish feature ids by slot and pull their embeddings from parameter server (pslib). The first
             place of the embedding is the historical show number (occurence time of this feature id with a label 0).
             If the input of this op is concated by slot-wise embeddings, and the show number is zero when this slot
             is new or empty, the normalization result may be impractical. To avoid this, we add slot_dim to locate
             the show number and judge if the show number is zero. If so, we choose to skip normalization on this
-            embedding.
-        sync_stats(bool, Default False): When running with multiple GPU cards, using allreduce to sync the
-            summary messages.
-        summary_decay_rate(float, Default 0.9999999): The decay rate when updating summary.
-        enable_scale_and_shift(bool, Default False): do scale&shift after normalization.
+            embedding. Default: -1.
+        sync_stats (bool, optional): When running with multiple GPU cards, using allreduce to sync the
+            summary messages. Default: False.
+        summary_decay_rate (float, optional): The decay rate when updating summary. Default: 0.9999999.
+        enable_scale_and_shift (bool, optional): do scale&shift after normalization. Default: False.
 
     Returns:
         Tensor: A tensor which is the result after applying data normalization on the input.
@@ -666,15 +716,15 @@ def conv3d(
 
     .. math::
 
-        Out = \sigma (W \\ast X + b)
+        Out = \sigma (W \ast X + b)
 
     In the above equation:
 
     * :math:`X`: Input value, a tensor with NCDHW or NDHWC format.
     * :math:`W`: Filter value, a tensor with MCDHW format.
-    * :math:`\\ast`: Convolution operation.
+    * :math:`\ast`: Convolution operation.
     * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
-    * :math:`\\sigma`: Activation function.
+    * :math:`\sigma`: Activation function.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
     Example:
@@ -692,9 +742,9 @@ def conv3d(
 
         .. math::
 
-            D_{out}&= \\frac{(D_{in} + 2 * paddings[0] - (dilations[0] * (D_f - 1) + 1))}{strides[0]} + 1 \\\\
-            H_{out}&= \\frac{(H_{in} + 2 * paddings[1] - (dilations[1] * (H_f - 1) + 1))}{strides[1]} + 1 \\\\
-            W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
+            D_{out}&= \frac{(D_{in} + 2 * paddings[0] - (dilations[0] * (D_f - 1) + 1))}{strides[0]} + 1 \\
+            H_{out}&= \frac{(H_{in} + 2 * paddings[1] - (dilations[1] * (H_f - 1) + 1))}{strides[1]} + 1 \\
+            W_{out}&= \frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
 
     Args:
         input (Tensor): The input is 5-D Tensor with shape [N, C, D, H, W], the data
@@ -750,7 +800,7 @@ def conv3d(
             `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
-        A Variable holding Tensor representing the conv3d, whose data type is
+        A Tensor representing the conv3d, whose data type is
         the same with input. If act is None, the tensor variable storing the
         convolution result, and if act is not None, the tensor variable storing
         convolution and non-linearity activation result.
@@ -978,15 +1028,15 @@ def conv2d_transpose(
 
     .. math::
 
-        Out = \sigma (W \\ast X + b)
+        Out = \sigma (W \ast X + b)
 
     Where:
 
     * :math:`X`: Input value, a 4-D Tensor with NCHW or NHWC format.
     * :math:`W`: Filter value, a 4-D Tensor with MCHW format.
-    * :math:`\\ast`: Convolution operation.
+    * :math:`\ast`: Convolution operation.
     * :math:`b`: Bias value, a 2-D Tensor with shape [M, 1].
-    * :math:`\\sigma`: Activation function.
+    * :math:`\sigma`: Activation function.
     * :math:`Out`: Output value, a 4-D Tensor with data format 'NCHW' or 'NHWC', the shape of :math:`Out` and :math:`X` may be different.
 
     Example:
@@ -1005,9 +1055,9 @@ def conv2d_transpose(
 
         .. math::
 
-           H^\prime_{out} &= (H_{in} - 1) * strides[0] - pad_height_top - pad_height_bottom + dilations[0] * (H_f - 1) + 1 \\\\
-           W^\prime_{out} &= (W_{in} - 1) * strides[1] - pad_width_left - pad_width_right + dilations[1] * (W_f - 1) + 1 \\\\
-           H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[0] ] \\\\
+           H^\prime_{out} &= (H_{in} - 1) * strides[0] - pad_height_top - pad_height_bottom + dilations[0] * (H_f - 1) + 1 \\
+           W^\prime_{out} &= (W_{in} - 1) * strides[1] - pad_width_left - pad_width_right + dilations[1] * (W_f - 1) + 1 \\
+           H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[0] ] \\
            W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] ]
 
     Note:
@@ -1141,7 +1191,7 @@ def conv2d_transpose(
 
     helper = LayerHelper(op_type, **locals())
     if not isinstance(input, Variable):
-        raise TypeError("Input of conv2d_transpose must be Variable")
+        raise TypeError("Input of conv2d_transpose must be Tensor")
 
     stride = utils.convert_to_list(stride, 2, 'stride')
     dilation = utils.convert_to_list(dilation, 2, 'dilation')
@@ -1231,7 +1281,7 @@ def conv2d_transpose(
                 output_size
             ):
                 raise ValueError(
-                    "filter_size should not be None when output_size is Variable or contain Variable in static mode."
+                    "filter_size should not be None when output_size is Tensor or contain Tensor in static mode."
                 )
         else:
             output_size = utils.convert_shape_to_list(output_size)
@@ -1367,11 +1417,11 @@ def conv3d_transpose(
 
         .. math::
 
-           D^\prime_{out} &= (D_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (D_f - 1) + 1 \\\\
-           H^\prime_{out} &= (H_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (H_f - 1) + 1 \\\\
-           W^\prime_{out} &= (W_{in} - 1) * strides[2] - 2 * paddings[2] + dilations[2] * (W_f - 1) + 1 \\\\
-           D_{out} &\in [ D^\prime_{out}, D^\prime_{out} + strides[0] ] \\\\
-           H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[1] ] \\\\
+           D^\prime_{out} &= (D_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (D_f - 1) + 1 \\
+           H^\prime_{out} &= (H_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (H_f - 1) + 1 \\
+           W^\prime_{out} &= (W_{in} - 1) * strides[2] - 2 * paddings[2] + dilations[2] * (W_f - 1) + 1 \\
+           D_{out} &\in [ D^\prime_{out}, D^\prime_{out} + strides[0] ] \\
+           H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[1] ] \\
            W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[2] ]
 
     Note:
@@ -1448,7 +1498,7 @@ def conv3d_transpose(
             `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
-        A Variable holding Tensor representing the conv3d_transpose, whose data
+        A Tensor representing the conv3d_transpose, whose data
         type is the same with input and shape is (num_batches, channels, out_d, out_h,
         out_w) or (num_batches, out_d, out_h, out_w, channels). If act is None, the tensor
         variable storing the transposed convolution result, and if act is not None, the tensor
@@ -1497,7 +1547,7 @@ def conv3d_transpose(
     l_type = "conv3d_transpose"
     helper = LayerHelper(l_type, **locals())
     if not isinstance(input, Variable):
-        raise TypeError("Input of conv3d_transpose must be Variable")
+        raise TypeError("Input of conv3d_transpose must be Tensor")
     if len(input.shape) != 5:
         raise ValueError(
             "Input should be 5D tensor, but received input with the shape of {}".format(
@@ -1728,15 +1778,15 @@ def deformable_conv(
 
         .. math::
 
-            H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
-            W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
+            H_{out}&= \frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\
+            W_{out}&= \frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
     Args:
         input (Tensor): The input image with [N, C, H, W] format. A Tensor with type
             float32, float64.
         offset (Tensor): The input coordinate offset of deformable convolution layer.
             A Tensor with type float32, float64.
-        Mask (Variable, Optional): The input mask of deformable convolution layer.
+        Mask (Tensor, Optional): The input mask of deformable convolution layer.
             A Tensor with type float32, float64. It should be None when you use
             deformable convolution v1.
         num_filters(int): The number of filter. It is as same as the output
@@ -1827,9 +1877,9 @@ def deformable_conv(
     dtype = helper.input_dtype()
 
     if not isinstance(input, paddle.static.Variable):
-        raise TypeError("Input of deformable_conv must be Variable")
+        raise TypeError("Input of deformable_conv must be Tensor")
     if not isinstance(offset, paddle.static.Variable):
-        raise TypeError("Input Offset of deformable_conv must be Variable")
+        raise TypeError("Input Offset of deformable_conv must be Tensor")
 
     if groups is None:
         num_filter_channels = num_channels
@@ -1967,8 +2017,8 @@ def deform_conv2d(
 
         .. math::
 
-            H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
-            W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
+            H_{out}&= \frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\
+            W_{out}&= \frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
     Args:
         x (Tensor): The input image with [N, C, H, W] format. A Tensor with type
@@ -2088,323 +2138,398 @@ def deform_conv2d(
         )
 
 
-class PyFuncRegistry:
-    _register_funcs = []
+def bilinear_tensor_product(
+    x, y, size, act=None, name=None, param_attr=None, bias_attr=None
+):
+    r"""
+    This layer performs bilinear tensor product on two inputs.
 
-    def __init__(self, func):
-        if func is None or not callable(func):
-            raise TypeError('func must be a Python function')
+    .. math::
 
-        self._func = func
-        # find named args using reflection
-        args = inspect.getfullargspec(self._func)
-        if len(args[0]) == 0 and args[1] is None and args[2] is None:
-            # Function with no inputs
-            self._named_args = None
-        else:
-            self._named_args = args[0]
-        self._id = core._append_python_callable_object_and_return_id(self)
-        '''
-        Why record self here?
+       out_{i} = x * W_{i} * {y^\mathrm{T}}, i=0,1,...,size-1
 
-        1. For debug usage. Users can call
-           :code:`py_func.registered_func(idx)` method
-           to find the registered function corresponding
-           to :code:`idx`.
-
-        2. For increasing reference count of self.
-           It seems that to release Python object
-           whose reference count is 1 would cause
-           segmentation fault error in C++ side.
-           May be lack of Python GC in C++ side?
-        '''
-        PyFuncRegistry._register_funcs.append(self)
-
-    @classmethod
-    def registered_func(cls, idx):
-        return cls._register_funcs[idx]._func
-
-    @classmethod
-    def registered_func_num(cls):
-        return len(cls._register_funcs)
-
-    @property
-    def id(self):
-        return self._id
-
-    def __call__(self, *args):
-        if self._named_args is None:
-            func_ret = self._func()
-        else:
-            kwargs = dict()
-            idx = 0
-            for arg in self._named_args:
-                kwargs[arg] = args[idx]
-                idx += 1
-            func_ret = self._func(*args[idx:], **kwargs)
-
-        if not isinstance(func_ret, (list, tuple)):
-            func_ret = (func_ret,)
-
-        ret = []
-        for each_ret in func_ret:
-            if each_ret is None or isinstance(each_ret, core.LoDTensor):
-                ret.append(each_ret)
-                continue
-
-            if not isinstance(each_ret, np.ndarray):
-                each_ret = np.array(each_ret)
-
-            tensor = core.LoDTensor()
-            tensor.set(each_ret, core.CPUPlace())
-            ret.append(tensor)
-
-        return tuple(ret)
-
-
-@static_only
-@templatedoc()
-def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
-    """
-    This is used to register customized Python OP to Paddle. The design
-    principe of py_func is that Tensor and numpy array can be converted to each
-    other easily. So you can use Python and numpy API to register a python OP.
-
-    The forward function of the registered OP is ``func`` and the backward function
-    of that is ``backward_func``. Paddle will call ``func`` at forward runtime and
-    call ``backward_func`` at backward runtime(if ``backward_func`` is not  None).
-    ``x`` is the input of ``func``, whose type must be Tensor; ``out`` is
-    the output of ``func``, whose type can be either Tensor or numpy array.
-
-    The input of the backward function ``backward_func`` is ``x``, ``out`` and
-    the gradient of ``out``. If ``out`` have no gradient, the relevant input of
-    ``backward_func`` is None. If ``x`` do not have a gradient, the user should
-    return None in ``backward_func``.
-
-    The data type and shape of ``out`` should also be set correctly before this
-    API is called, and the data type and shape of the gradient of ``out`` and
-    ``x`` will be inferred automatically.
-
-    This API can also be used to debug the neural network by setting the ``func``
-    as a function that only print variables.
+    In this formula:
+      - :math:`x`: the first input contains M elements, shape is [batch_size, M].
+      - :math:`y`: the second input contains N elements, shape is [batch_size, N].
+      - :math:`W_{i}`: the i-th learned weight, shape is [M, N].
+      - :math:`out_{i}`: the i-th element of out, shape is [batch_size, size].
+      - :math:`y^\mathrm{T}`: the transpose of :math:`y_{2}`.
 
     Args:
-        func (callable): The forward function of the registered OP. When the network
-            is running, the forward output ``out`` will be calculated according to this
-            function and the forward input ``x``. In ``func`` , it's suggested that we
-            actively convert Tensor into a numpy array, so that we can use Python and
-            numpy API arbitrarily. If not, some operations of numpy may not be compatible.
-        x (Tensor|tuple(Tensor)|list[Tensor]): The input of the forward function ``func``.
-            It can be Tensor|tuple(Tensor)|list[Tensor]. In addition, Multiple Tensor
-            should be passed in the form of tuple(Tensor) or list[Tensor].
-        out (T|tuple(T)|list[T]): The output of the forward function ``func``, it can be
-            T|tuple(T)|list[T], where T can be either Tensor or numpy array. Since Paddle
-            cannot automatically infer the shape and type of ``out``, you must create
-            ``out`` in advance.
-        backward_func (callable, optional): The backward function of the registered OP.
-            Its default value is None, which means there is no reverse calculation. If
-            it is not None, ``backward_func`` is called to calculate the gradient of
-            ``x`` when the network is at backward runtime.
-        skip_vars_in_backward_input (Tensor, optional): It's used to limit the input
-            list of ``backward_func``, and it can be Tensor|tuple(Tensor)|list[Tensor].
-            It must belong to either ``x`` or ``out``. The default  value is None, which means
-            that no tensors need to be removed from ``x`` and ``out``. If it is not None,
-            these tensors will not be the input of ``backward_func``. This parameter is only
-            useful when ``backward_func`` is not None.
+        x (Tensor): 2-D input tensor with shape [batch_size, M]. Data type
+            is float32 or float64.
+        y (Tensor): 2-D input tensor with shape [batch_size, N]. Data type
+            should be same as **x**.
+        size (int): The dimension of this layer.
+        act (str|None): Activation to be applied to the output of this layer. Default None.
+        name(str|None): For detailed information, please refer to
+            :ref:`api_guide_Name` . Usually name is no need to set and None by default.
+        param_attr (ParamAttr|None): To specify the weight parameter attribute.
+            Default: None, which means the default weight parameter property is
+            used. See usage for details in :ref:`api_fluid_ParamAttr` .
+        bias_attr (ParamAttr|None): To specify the bias parameter attribute.
+            Default: None, which means the default bias parameter property is
+            used. See usage for details in :ref:`api_fluid_ParamAttr` .
 
     Returns:
-        Tensor|tuple(Tensor)|list[Tensor]: The output ``out`` of the forward function ``func``.
+        Tensor, A 2-D Tensor of shape [batch_size, size]. Data type is the same as input **x**.
 
     Examples:
         .. code-block:: python
 
-            # example 1:
             import paddle
-            import numpy as np
-
             paddle.enable_static()
 
-            # Creates a forward function, Tensor can be input directly without
-            # being converted into numpy array.
-            def tanh(x):
-                return np.tanh(x)
+            x = paddle.static.data("t1", shape=[-1, 5], dtype="float32")
+            y = paddle.static.data("t2", shape=[-1, 4], dtype="float32")
+            tensor = paddle.static.nn.bilinear_tensor_product(x, y, size=1000)
 
-            # Skip x in backward function and return the gradient of x
-            # Tensor must be actively converted to numpy array, otherwise,
-            # operations such as +/- can't be used.
-            def tanh_grad(y, dy):
-                return np.array(dy) * (1 - np.square(np.array(y)))
+    """
+    helper = LayerHelper('bilinear_tensor_product', **locals())
+    dtype = helper.input_dtype('x')
 
-            # Creates a forward function for debugging running networks(print value)
-            def debug_func(x):
-                print(x)
+    param_shape = [size, x.shape[1], y.shape[1]]
 
-            def create_tmp_var(name, dtype, shape):
-                return paddle.static.default_main_program().current_block().create_var(
-                    name=name, dtype=dtype, shape=shape)
+    w = helper.create_parameter(
+        attr=helper.param_attr, shape=param_shape, dtype=dtype, is_bias=False
+    )
+    out = helper.create_variable_for_type_inference(dtype=dtype)
 
-            def simple_net(img, label):
-                hidden = img
-                for idx in range(4):
-                    hidden = paddle.static.nn.fc(hidden, size=200)
-                    new_hidden = create_tmp_var(name='hidden_{}'.format(idx),
-                        dtype=hidden.dtype, shape=hidden.shape)
+    inputs = {"X": x, "Y": y, "Weight": w}
+    if helper.bias_attr:
+        bias_size = [1, size]
+        bias = helper.create_parameter(
+            attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True
+        )
+        inputs["Bias"] = bias
+    helper.append_op(
+        type="bilinear_tensor_product", inputs=inputs, outputs={"Out": out}
+    )
 
-                    # User-defined forward and backward
-                    hidden = paddle.static.py_func(func=tanh, x=hidden,
-                        out=new_hidden, backward_func=tanh_grad,
-                        skip_vars_in_backward_input=hidden)
+    # add activation
+    return helper.append_activation(out)
 
-                    # User-defined debug functions that print out the input Tensor
-                    paddle.static.py_func(func=debug_func, x=hidden, out=None)
 
-                prediction = paddle.static.nn.fc(hidden, size=10, activation='softmax')
-                ce_loss = paddle.nn.loss.CrossEntropyLoss()
-                return ce_loss(prediction, label)
+def batch_norm(
+    input,
+    act=None,
+    is_test=False,
+    momentum=0.9,
+    epsilon=1e-05,
+    param_attr=None,
+    bias_attr=None,
+    data_layout='NCHW',
+    in_place=False,
+    name=None,
+    moving_mean_name=None,
+    moving_variance_name=None,
+    do_model_average_for_mean_and_var=True,
+    use_global_stats=False,
+):
+    r"""
 
-            x = paddle.static.data(name='x', shape=[1,4], dtype='float32')
-            y = paddle.static.data(name='y', shape=[1], dtype='int64')
-            res = simple_net(x, y)
+    **Batch Normalization Layer**
 
-            exe = paddle.static.Executor(paddle.CPUPlace())
-            exe.run(paddle.static.default_startup_program())
-            input1 = np.random.random(size=[1,4]).astype('float32')
-            input2 = np.random.randint(1, 10, size=[1], dtype='int64')
-            out = exe.run(paddle.static.default_main_program(),
-                          feed={'x':input1, 'y':input2},
-                          fetch_list=[res.name])
-            print(out)
+    Can be used as a normalizer function for convolution or fully_connected operations.
+    The required data format for this layer is one of the following:
+
+    1. NHWC `[batch, in_height, in_width, in_channels]`
+
+    2. NCHW `[batch, in_channels, in_height, in_width]`
+
+    Refer to `Batch Normalization: Accelerating Deep Network Training by Reducing
+    Internal Covariate Shift <https://arxiv.org/pdf/1502.03167.pdf>`_
+    for more details.
+
+    :math:input is the input features over a mini-batch.
+
+    ..  math::
+
+        \\mu_{\\beta} &\\gets \\frac{1}{m} \\sum_{i=1}^{m} x_i \\qquad &//\\
+        \ mini-batch\ mean \\\\
+        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
+        \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+
+        moving\_mean = moving\_mean * momentum + mini-batch\_mean * (1. - momentum) \\\\
+        moving\_var = moving\_var * momentum + mini-batch\_var * (1. - momentum)
+
+
+    moving_mean is global mean and moving_var is global variance.
+
+    When use_global_stats = True, the :math:`\\mu_{\\beta}`
+    and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
+    They are global (or running) statistics. (It usually got from the
+    pre-trained model.)
+    The training and testing (or inference) have the same behavior:
+
+    ..  math::
+
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}}  \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta
+
+    Note:
+        if build_strategy.sync_batch_norm=True, the batch_norm in network will use
+        sync_batch_norm automatically.
+        `is_test = True` can only be used in test program and inference program, `is_test` CANNOT be set to True in train program, if you want to use global status from pre_train model in train program, please set `use_global_stats = True`.
+
+    Args:
+        input(Tensor): The rank of input Tensor can be 2, 3, 4, 5. The data type
+            is float16 or float32 or float64.
+        act(string, Default None): Activation type, linear|relu|prelu|...
+        is_test (bool, Default False): A flag indicating whether it is in
+            test phrase or not.
+        momentum(float|Tensor, Default 0.9): The value used for the moving_mean and
+            moving_var computation. This should be a float number or a Tensor with
+            shape [1] and data type as float32. The updated formula is:
+            :math:`moving\_mean = moving\_mean * momentum + new\_mean * (1. - momentum)`
+            :math:`moving\_var = moving\_var * momentum + new\_var * (1. - momentum)`
+            Default is 0.9.
+        epsilon(float, Default 1e-05): A value added to the denominator for
+            numerical stability. Default is 1e-5.
+        param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
+             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
+         will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
+         If the Initializer of the param_attr is not set, the parameter is initialized
+         with Xavier. Default: None.
+        bias_attr(ParamAttr|None): The parameter attribute for the bias of batch_norm.
+             If it is set to None or one attribute of ParamAttr, batch_norm
+         will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
+         If the Initializer of the bias_attr is not set, the bias is initialized zero.
+         Default: None.
+        data_layout (str, optional): Specify the data format of the input, and the data format of the output
+             will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+             `[batch_size, input_channels, input_height, input_width]`.
+        in_place(bool, Default False): Make the input and output of batch norm reuse memory.
+        name(str|None): For detailed information, please refer to :ref:`api_guide_Name`.
+            Usually name is no need to set and None by default.
+        moving_mean_name(str, Default None): The name of moving_mean which store the global Mean. If it
+            is set to None, batch_norm will save global mean with a random name, otherwise, batch_norm
+            will save global mean with the string.
+        moving_variance_name(str, Default None): The name of the moving_variance which store the global Variance.
+            If it is set to None, batch_norm will save global variance with a random name, otherwise, batch_norm
+            will save global variance with the string.
+        do_model_average_for_mean_and_var(bool, Default True): Whether parameter mean and variance should do model
+            average when model average is enabled.
+        use_global_stats(bool, Default False): Whether to use global mean and
+            variance. In inference or test mode, set use_global_stats to true
+            or is_test to true, and the behavior is equivalent.
+            In train mode, when setting use_global_stats True, the global mean
+            and variance are also used during train period.
+
+    Returns:
+        A Tensor which is the result after applying batch normalization on the input,
+        has same shape and data type with input.
+
+    Examples:
 
         .. code-block:: python
 
-            # example 2:
-            # This example shows how to turn Tensor into numpy array and
-            # use numpy API to register an Python OP
             import paddle
-            import numpy as np
 
             paddle.enable_static()
-
-            def element_wise_add(x, y):
-                # Tensor must be actively converted to numpy array, otherwise,
-                # numpy.shape can't be used.
-                x = np.array(x)
-                y = np.array(y)
-
-                if x.shape != y.shape:
-                    raise AssertionError("the shape of inputs must be the same!")
-
-                result = np.zeros(x.shape, dtype='int32')
-                for i in range(len(x)):
-                    for j in range(len(x[0])):
-                        result[i][j] = x[i][j] + y[i][j]
-
-                return result
-
-            def create_tmp_var(name, dtype, shape):
-                return paddle.static.default_main_program().current_block().create_var(
-                            name=name, dtype=dtype, shape=shape)
-
-            def py_func_demo():
-                start_program = paddle.static.default_startup_program()
-                main_program = paddle.static.default_main_program()
-
-                # Input of the forward function
-                x = paddle.static.data(name='x', shape=[2,3], dtype='int32')
-                y = paddle.static.data(name='y', shape=[2,3], dtype='int32')
-
-                # Output of the forward function, name/dtype/shape must be specified
-                output = create_tmp_var('output','int32', [3,1])
-
-                # Multiple Variable should be passed in the form of tuple(Variale) or list[Variale]
-                paddle.static.py_func(func=element_wise_add, x=[x,y], out=output)
-
-                exe=paddle.static.Executor(paddle.CPUPlace())
-                exe.run(start_program)
-
-                # Feed numpy array to main_program
-                input1 = np.random.randint(1, 10, size=[2,3], dtype='int32')
-                input2 = np.random.randint(1, 10, size=[2,3], dtype='int32')
-                out = exe.run(main_program,
-                            feed={'x':input1, 'y':input2},
-                            fetch_list=[output.name])
-                print("{0} + {1} = {2}".format(input1, input2, out))
-
-            py_func_demo()
-
-            # Reference output:
-            # [[5, 9, 9]   + [[7, 8, 4]  =  [array([[12, 17, 13]
-            #  [7, 5, 2]]     [1, 3, 3]]            [8, 8, 5]], dtype=int32)]
+            x = paddle.static.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
+            hidden1 = paddle.static.nn.fc(x=x, size=200)
+            print(hidden1.shape)
+            # [3, 200]
+            hidden2 = paddle.static.nn.batch_norm(input=hidden1)
+            print(hidden2.shape)
+            # [3, 200]
     """
-    helper = LayerHelper('py_func', **locals())
-    check_type(x, 'X', (list, tuple, Variable, type(None)), 'py_func')
-    if x is None:
-        x = []
-    elif isinstance(x, Variable):
-        x = [x]
-    elif isinstance(x, tuple):
-        x = list(x)
-    elif not isinstance(x, (list, tuple, Variable)):
-        raise TypeError('Input must be Variable/list(Variable)/tuple(Variable)')
-    check_type(out, 'Out', (list, tuple, Variable, type(None)), 'py_func')
-    if out is None:
-        out_list = []
-    elif isinstance(out, Variable):
-        out_list = [out]
-    elif isinstance(out, tuple):
-        out_list = list(out)
-    elif isinstance(out, list):
-        out_list = out
-    else:
-        raise TypeError(
-            'Output must be Variable/list(Variable)/tuple(Variable)'
-        )
+    assert (
+        bias_attr is not False
+    ), "bias_attr should not be False in batch_norm."
+    helper = LayerHelper('batch_norm', **locals())
 
-    fwd_func_id = PyFuncRegistry(func).id
-    bwd_func_id = (
-        PyFuncRegistry(backward_func).id if backward_func is not None else -1
+    check_variable_and_dtype(
+        input, 'input', ['float16', 'float32', 'float64'], 'batch_norm'
+    )
+    dtype = helper.input_dtype()
+
+    # use fp32 for bn parameter
+    if dtype == core.VarDesc.VarType.FP16:
+        dtype = core.VarDesc.VarType.FP32
+
+    input_shape = input.shape
+    if data_layout == 'NCHW':
+        channel_num = input_shape[1]
+    else:
+        if data_layout == 'NHWC':
+            channel_num = input_shape[-1]
+        else:
+            raise ValueError("unsupported data layout:" + data_layout)
+
+    param_shape = [channel_num]
+
+    # create parameter
+    scale = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=param_shape,
+        dtype=dtype,
+        default_initializer=paddle.fluid.initializer.Constant(1.0),
+    )
+    bias = helper.create_parameter(
+        attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True
     )
 
-    for each_out in out_list:
-        if len(each_out.shape) == 0:
-            raise ValueError(
-                'Output shapes of py_func should be provided by users manually'
+    mean = helper.create_parameter(
+        attr=paddle.ParamAttr(
+            name=moving_mean_name,
+            initializer=paddle.fluid.initializer.Constant(0.0),
+            trainable=False,
+            do_model_average=do_model_average_for_mean_and_var,
+        ),
+        shape=param_shape,
+        dtype=dtype,
+    )
+    mean.stop_gradient = True
+
+    variance = helper.create_parameter(
+        attr=paddle.ParamAttr(
+            name=moving_variance_name,
+            initializer=paddle.fluid.initializer.Constant(1.0),
+            trainable=False,
+            do_model_average=do_model_average_for_mean_and_var,
+        ),
+        shape=param_shape,
+        dtype=dtype,
+    )
+    variance.stop_gradient = True
+
+    # create output
+    # mean and mean_out share the same memory
+    mean_out = mean
+    # variance and variance_out share the same memory
+    variance_out = variance
+
+    if _non_static_mode():
+        inputs_has_MomemtumTensor = False
+        attrs_has_momentum = False
+        tmp_tensor_type = core.eager.Tensor
+        if isinstance(momentum, tmp_tensor_type):
+            inputs_has_MomemtumTensor = True
+        else:
+            attrs_has_momentum = True
+
+        attrs_ = ()
+        if attrs_has_momentum:
+            attrs_ = (
+                'momentum',
+                momentum,
+                'epsilon',
+                epsilon,
+                'is_test',
+                is_test,
+                'data_layout',
+                data_layout,
+                'use_mkldnn',
+                False,
+                'fuse_with_relu',
+                False,
+                'use_global_stats',
+                use_global_stats,
+            )
+        else:
+            attrs_ = (
+                'epsilon',
+                epsilon,
+                'is_test',
+                is_test,
+                'data_layout',
+                data_layout,
+                'use_mkldnn',
+                False,
+                'fuse_with_relu',
+                False,
+                'use_global_stats',
+                use_global_stats,
+            )
+        if inputs_has_MomemtumTensor:
+            batch_norm_out, _, _, _, _, _ = paddle._legacy_C_ops.batch_norm(
+                input,
+                scale,
+                bias,
+                mean,
+                variance,
+                momentum,
+                mean_out,
+                variance_out,
+                *attrs_,
+            )
+        else:
+            batch_norm_out, _, _, _, _, _ = paddle._legacy_C_ops.batch_norm(
+                input,
+                scale,
+                bias,
+                mean,
+                variance,
+                None,
+                mean_out,
+                variance_out,
+                *attrs_,
             )
 
-    backward_skip_vars = set()
-    if backward_func is not None and skip_vars_in_backward_input is not None:
-        if isinstance(skip_vars_in_backward_input, Variable):
-            skip_vars_in_backward_input = [skip_vars_in_backward_input]
+        return paddle.fluid.dygraph_utils._append_activation_in_dygraph(
+            batch_norm_out, act=act, use_mkldnn=False
+        )
 
-        fwd_in_out = [v.name for v in x]
-        fwd_in_out.extend([v.name for v in out_list])
-        fwd_in_out = set(fwd_in_out)
-        backward_skip_vars = set()
-        for v in skip_vars_in_backward_input:
-            if v.name not in fwd_in_out:
-                raise ValueError(
-                    'Variable {} is not found in forward inputs and outputs'.format(
-                        v.name
-                    )
-                )
-            backward_skip_vars.add(v.name)
+    saved_mean = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True
+    )
+    saved_variance = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True
+    )
+    reserve_space = None
+    if not is_test:
+        reserve_space = helper.create_variable_for_type_inference(
+            dtype=helper.input_dtype(), stop_gradient=True
+        )
+
+    batch_norm_out = (
+        input if in_place else helper.create_variable_for_type_inference(dtype)
+    )
+
+    inputs = {
+        "X": input,
+        "Scale": scale,
+        "Bias": bias,
+        "Mean": mean,
+        "Variance": variance,
+        "MeanOut": mean_out,
+        "VarianceOut": variance_out,
+    }
+    attrs = {
+        "epsilon": epsilon,
+        "is_test": is_test,
+        "data_layout": data_layout,
+        "use_mkldnn": False,
+        "fuse_with_relu": False,
+        "use_global_stats": use_global_stats,
+    }
+    if isinstance(momentum, paddle.static.Variable):
+        inputs['MomemtumTensor'] = momentum
+    else:
+        attrs['momentum'] = momentum
+
+    outputs = {
+        "Y": batch_norm_out,
+        "MeanOut": mean_out,
+        "VarianceOut": variance_out,
+        "SavedMean": saved_mean,
+        "SavedVariance": saved_variance,
+    }
+    if reserve_space is not None:
+        outputs["ReserveSpace"] = reserve_space
 
     helper.append_op(
-        type='py_func',
-        inputs={'X': x},
-        outputs={'Out': out_list},
-        attrs={
-            'forward_callable_id': fwd_func_id,
-            'backward_callable_id': bwd_func_id,
-            'backward_skip_vars': list(backward_skip_vars),
-        },
+        type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs
     )
-    return out
 
-
-# For debug usage
-py_func.registered_func = PyFuncRegistry.registered_func
-py_func.registered_func_num = PyFuncRegistry.registered_func_num
+    return helper.append_activation(batch_norm_out)
 
 
 @static_only
@@ -2511,3 +2636,283 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
         outputs={"Out": out},
     )
     return out
+
+
+class PyFuncRegistry:
+    _register_funcs = []
+
+    def __init__(self, func):
+        if func is None or not callable(func):
+            raise TypeError('func must be a Python function')
+
+        self._func = func
+        # find named args using reflection
+        args = inspect.getfullargspec(self._func)
+        if len(args[0]) == 0 and args[1] is None and args[2] is None:
+            # Function with no inputs
+            self._named_args = None
+        else:
+            self._named_args = args[0]
+        self._id = core._append_python_callable_object_and_return_id(self)
+        '''
+        Why record self here?
+        1. For debug usage. Users can call
+           :code:`py_func.registered_func(idx)` method
+           to find the registered function corresponding
+           to :code:`idx`.
+        2. For increasing reference count of self.
+           It seems that to release Python object
+           whose reference count is 1 would cause
+           segmentation fault error in C++ side.
+           May be lack of Python GC in C++ side?
+        '''
+        PyFuncRegistry._register_funcs.append(self)
+
+    @classmethod
+    def registered_func(cls, idx):
+        return cls._register_funcs[idx]._func
+
+    @classmethod
+    def registered_func_num(cls):
+        return len(cls._register_funcs)
+
+    @property
+    def id(self):
+        return self._id
+
+    def __call__(self, *args):
+        if self._named_args is None:
+            func_ret = self._func()
+        else:
+            kwargs = dict()
+            idx = 0
+            for arg in self._named_args:
+                kwargs[arg] = args[idx]
+                idx += 1
+            func_ret = self._func(*args[idx:], **kwargs)
+
+        if not isinstance(func_ret, (list, tuple)):
+            func_ret = (func_ret,)
+
+        ret = []
+        for each_ret in func_ret:
+            if each_ret is None or isinstance(each_ret, core.LoDTensor):
+                ret.append(each_ret)
+                continue
+
+            if not isinstance(each_ret, np.ndarray):
+                each_ret = np.array(each_ret)
+
+            tensor = core.LoDTensor()
+            tensor.set(each_ret, core.CPUPlace())
+            ret.append(tensor)
+
+        return tuple(ret)
+
+
+@static_only
+@templatedoc()
+def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
+    """
+    This is used to register customized Python OP to Paddle. The design
+    principe of py_func is that Tensor and numpy array can be converted to each
+    other easily. So you can use Python and numpy API to register a python OP.
+    The forward function of the registered OP is ``func`` and the backward function
+    of that is ``backward_func``. Paddle will call ``func`` at forward runtime and
+    call ``backward_func`` at backward runtime(if ``backward_func`` is not  None).
+    ``x`` is the input of ``func``, whose type must be Tensor; ``out`` is
+    the output of ``func``, whose type can be either Tensor or numpy array.
+    The input of the backward function ``backward_func`` is ``x``, ``out`` and
+    the gradient of ``out``. If ``out`` have no gradient, the relevant input of
+    ``backward_func`` is None. If ``x`` do not have a gradient, the user should
+    return None in ``backward_func``.
+    The data type and shape of ``out`` should also be set correctly before this
+    API is called, and the data type and shape of the gradient of ``out`` and
+    ``x`` will be inferred automatically.
+    This API can also be used to debug the neural network by setting the ``func``
+    as a function that only print variables.
+    Args:
+        func (callable): The forward function of the registered OP. When the network
+            is running, the forward output ``out`` will be calculated according to this
+            function and the forward input ``x``. In ``func`` , it's suggested that we
+            actively convert Tensor into a numpy array, so that we can use Python and
+            numpy API arbitrarily. If not, some operations of numpy may not be compatible.
+        x (Tensor|tuple(Tensor)|list[Tensor]): The input of the forward function ``func``.
+            It can be Tensor|tuple(Tensor)|list[Tensor]. In addition, Multiple Tensor
+            should be passed in the form of tuple(Tensor) or list[Tensor].
+        out (T|tuple(T)|list[T]): The output of the forward function ``func``, it can be
+            T|tuple(T)|list[T], where T can be either Tensor or numpy array. Since Paddle
+            cannot automatically infer the shape and type of ``out``, you must create
+            ``out`` in advance.
+        backward_func (callable, optional): The backward function of the registered OP.
+            Its default value is None, which means there is no reverse calculation. If
+            it is not None, ``backward_func`` is called to calculate the gradient of
+            ``x`` when the network is at backward runtime.
+        skip_vars_in_backward_input (Tensor, optional): It's used to limit the input
+            list of ``backward_func``, and it can be Tensor|tuple(Tensor)|list[Tensor].
+            It must belong to either ``x`` or ``out``. The default  value is None, which means
+            that no tensors need to be removed from ``x`` and ``out``. If it is not None,
+            these tensors will not be the input of ``backward_func``. This parameter is only
+            useful when ``backward_func`` is not None.
+    Returns:
+        Tensor|tuple(Tensor)|list[Tensor]: The output ``out`` of the forward function ``func``.
+    Examples:
+        .. code-block:: python
+            # example 1:
+            import paddle
+            import numpy as np
+            paddle.enable_static()
+            # Creates a forward function, Tensor can be input directly without
+            # being converted into numpy array.
+            def tanh(x):
+                return np.tanh(x)
+            # Skip x in backward function and return the gradient of x
+            # Tensor must be actively converted to numpy array, otherwise,
+            # operations such as +/- can't be used.
+            def tanh_grad(y, dy):
+                return np.array(dy) * (1 - np.square(np.array(y)))
+            # Creates a forward function for debugging running networks(print value)
+            def debug_func(x):
+                print(x)
+            def create_tmp_var(name, dtype, shape):
+                return paddle.static.default_main_program().current_block().create_var(
+                    name=name, dtype=dtype, shape=shape)
+            def simple_net(img, label):
+                hidden = img
+                for idx in range(4):
+                    hidden = paddle.static.nn.fc(hidden, size=200)
+                    new_hidden = create_tmp_var(name='hidden_{}'.format(idx),
+                        dtype=hidden.dtype, shape=hidden.shape)
+                    # User-defined forward and backward
+                    hidden = paddle.static.py_func(func=tanh, x=hidden,
+                        out=new_hidden, backward_func=tanh_grad,
+                        skip_vars_in_backward_input=hidden)
+                    # User-defined debug functions that print out the input Tensor
+                    paddle.static.py_func(func=debug_func, x=hidden, out=None)
+                prediction = paddle.static.nn.fc(hidden, size=10, activation='softmax')
+                ce_loss = paddle.nn.loss.CrossEntropyLoss()
+                return ce_loss(prediction, label)
+            x = paddle.static.data(name='x', shape=[1,4], dtype='float32')
+            y = paddle.static.data(name='y', shape=[1], dtype='int64')
+            res = simple_net(x, y)
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            exe.run(paddle.static.default_startup_program())
+            input1 = np.random.random(size=[1,4]).astype('float32')
+            input2 = np.random.randint(1, 10, size=[1], dtype='int64')
+            out = exe.run(paddle.static.default_main_program(),
+                          feed={'x':input1, 'y':input2},
+                          fetch_list=[res.name])
+            print(out)
+        .. code-block:: python
+            # example 2:
+            # This example shows how to turn Tensor into numpy array and
+            # use numpy API to register an Python OP
+            import paddle
+            import numpy as np
+            paddle.enable_static()
+            def element_wise_add(x, y):
+                # Tensor must be actively converted to numpy array, otherwise,
+                # numpy.shape can't be used.
+                x = np.array(x)
+                y = np.array(y)
+                if x.shape != y.shape:
+                    raise AssertionError("the shape of inputs must be the same!")
+                result = np.zeros(x.shape, dtype='int32')
+                for i in range(len(x)):
+                    for j in range(len(x[0])):
+                        result[i][j] = x[i][j] + y[i][j]
+                return result
+            def create_tmp_var(name, dtype, shape):
+                return paddle.static.default_main_program().current_block().create_var(
+                            name=name, dtype=dtype, shape=shape)
+            def py_func_demo():
+                start_program = paddle.static.default_startup_program()
+                main_program = paddle.static.default_main_program()
+                # Input of the forward function
+                x = paddle.static.data(name='x', shape=[2,3], dtype='int32')
+                y = paddle.static.data(name='y', shape=[2,3], dtype='int32')
+                # Output of the forward function, name/dtype/shape must be specified
+                output = create_tmp_var('output','int32', [3,1])
+                # Multiple Tensor should be passed in the form of tuple(Tensor) or list[Tensor]
+                paddle.static.py_func(func=element_wise_add, x=[x,y], out=output)
+                exe=paddle.static.Executor(paddle.CPUPlace())
+                exe.run(start_program)
+                # Feed numpy array to main_program
+                input1 = np.random.randint(1, 10, size=[2,3], dtype='int32')
+                input2 = np.random.randint(1, 10, size=[2,3], dtype='int32')
+                out = exe.run(main_program,
+                            feed={'x':input1, 'y':input2},
+                            fetch_list=[output.name])
+                print("{0} + {1} = {2}".format(input1, input2, out))
+            py_func_demo()
+            # Reference output:
+            # [[5, 9, 9]   + [[7, 8, 4]  =  [array([[12, 17, 13]
+            #  [7, 5, 2]]     [1, 3, 3]]            [8, 8, 5]], dtype=int32)]
+    """
+    helper = LayerHelper('py_func', **locals())
+    check_type(x, 'X', (list, tuple, Variable, type(None)), 'py_func')
+    if x is None:
+        x = []
+    elif isinstance(x, Variable):
+        x = [x]
+    elif isinstance(x, tuple):
+        x = list(x)
+    elif not isinstance(x, (list, tuple, Variable)):
+        raise TypeError('Input must be Tensor/list(Tensor)/tuple(Tensor)')
+    check_type(out, 'Out', (list, tuple, Variable, type(None)), 'py_func')
+    if out is None:
+        out_list = []
+    elif isinstance(out, Variable):
+        out_list = [out]
+    elif isinstance(out, tuple):
+        out_list = list(out)
+    elif isinstance(out, list):
+        out_list = out
+    else:
+        raise TypeError('Output must be Tensor/list(Tensor)/tuple(Tensor)')
+
+    fwd_func_id = PyFuncRegistry(func).id
+    bwd_func_id = (
+        PyFuncRegistry(backward_func).id if backward_func is not None else -1
+    )
+
+    for each_out in out_list:
+        if len(each_out.shape) == 0:
+            raise ValueError(
+                'Output shapes of py_func should be provided by users manually'
+            )
+
+    backward_skip_vars = set()
+    if backward_func is not None and skip_vars_in_backward_input is not None:
+        if isinstance(skip_vars_in_backward_input, Variable):
+            skip_vars_in_backward_input = [skip_vars_in_backward_input]
+
+        fwd_in_out = [v.name for v in x]
+        fwd_in_out.extend([v.name for v in out_list])
+        fwd_in_out = set(fwd_in_out)
+        backward_skip_vars = set()
+        for v in skip_vars_in_backward_input:
+            if v.name not in fwd_in_out:
+                raise ValueError(
+                    'Tensor {} is not found in forward inputs and outputs'.format(
+                        v.name
+                    )
+                )
+            backward_skip_vars.add(v.name)
+
+    helper.append_op(
+        type='py_func',
+        inputs={'X': x},
+        outputs={'Out': out_list},
+        attrs={
+            'forward_callable_id': fwd_func_id,
+            'backward_callable_id': bwd_func_id,
+            'backward_skip_vars': list(backward_skip_vars),
+        },
+    )
+    return out
+
+
+# For debug usage
+py_func.registered_func = PyFuncRegistry.registered_func
+py_func.registered_func_num = PyFuncRegistry.registered_func_num

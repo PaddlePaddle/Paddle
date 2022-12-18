@@ -21,7 +21,6 @@ import paddle
 from paddle import fluid
 from paddle.distribution import Uniform
 from paddle.fluid import layers
-from paddle.fluid.framework import _test_eager_guard
 
 np.random.seed(2022)
 
@@ -146,9 +145,6 @@ class UniformTest(unittest.TestCase):
         self.compare_with_numpy(fetch_list)
 
     def test_uniform_distribution_dygraph(self):
-        with _test_eager_guard():
-            self.setUp()
-            self.func_uniform_distribution_dygraph()
         self.setUp()
         self.func_uniform_distribution_dygraph()
 

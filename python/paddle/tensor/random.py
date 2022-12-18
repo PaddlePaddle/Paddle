@@ -314,7 +314,7 @@ def uniform_random_batch_size_like(
     return out
 
 
-def gaussian(shape, mean=0.0, std=1.0, dtype=None, name=None):
+def gaussian(shape, mean=0.0, std=1.0, seed=0, dtype=None, name=None):
     """
     Returns a Tensor filled with random values sampled from a Gaussian
     distribution, with ``shape`` and ``dtype``.
@@ -338,7 +338,6 @@ def gaussian(shape, mean=0.0, std=1.0, dtype=None, name=None):
         distribution, with ``shape`` and ``dtype``.
     """
     op_type_for_check = 'gaussian/standard_normal/randn/normal'
-    seed = 0
 
     if dtype is None:
         dtype = paddle.framework.get_default_dtype()
@@ -879,14 +878,14 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
     If ``high`` is None (the default), the range is [0, ``low``).
 
     Args:
-        x (Tensor): The input tensor which specifies shape. The dtype of ``x``
+        x (Tensor): The input multi-dimensional tensor which specifies shape. The dtype of ``x``
             can be bool, int32, int64, float16, float32, float64.
-        low (int): The lower bound on the range of random values to generate.
+        low (int, optional): The lower bound on the range of random values to generate.
             The ``low`` is included in the range. If ``high`` is None, the
             range is [0, ``low``). Default is 0.
         high (int, optional): The upper bound on the range of random values to
-            generate, the ``high`` is excluded in the range. Default is None
-            (see above for behavior if high = None). Default is None.
+            generate, the ``high`` is excluded in the range. Default is None.
+            If ``high`` is None, the range is [0, ``low``).
         dtype (str|np.dtype, optional): The data type of the
             output tensor. Supported data types: bool, int32, int64, float16,
             float32, float64. If ``dytpe`` is None, the data type is the

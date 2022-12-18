@@ -21,6 +21,12 @@ if(WITH_GPU OR APPLE)
   endif()
 endif()
 
+if(WITH_XPU)
+  set(CUSTOM_XPU_ENVS FLAGS_init_allocated_mem=0)
+  py_test(test_custom_relu_op_xpu_setup SRCS test_custom_relu_op_xpu_setup.py
+                                             ENVS ${CUSTOM_XPU_ENVS})
+endif()
+
 py_test(test_custom_raw_op_kernel_op SRCS test_custom_raw_op_kernel_op.py)
 set_tests_properties(test_custom_raw_op_kernel_op PROPERTIES TIMEOUT 180)
 

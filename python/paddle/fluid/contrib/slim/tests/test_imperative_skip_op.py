@@ -23,10 +23,9 @@ import paddle.fluid.layers as layers
 from paddle.fluid import core
 from paddle.fluid.optimizer import AdamOptimizer
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn.layer import ReLU, LeakyReLU, Sigmoid, Softmax, ReLU6
 from paddle.nn import Linear, Conv2D, Softmax, BatchNorm
-from paddle.fluid.dygraph.nn import Pool2D
 from paddle.fluid.log_helper import get_logger
 
 from imperative_test_utils import (

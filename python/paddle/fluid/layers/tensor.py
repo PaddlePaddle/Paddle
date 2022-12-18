@@ -12,25 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import math
 import numpy
 import warnings
 
 from ..layer_helper import LayerHelper
-from ..param_attr import ParamAttr
-from ..initializer import Initializer
 from ..framework import (
     _current_expected_place,
     convert_np_dtype_to_dtype_,
     _non_static_mode,
     _varbase_creator,
-    device_guard,
     _in_legacy_dygraph,
     in_dygraph_mode,
-    _get_paddle_place,
 )
 from ..framework import Variable
-from ..initializer import Constant
 from ..core import VarDesc
 from .. import core
 from .layer_function_generator import templatedoc
@@ -47,8 +41,6 @@ from .utils import check_shape
 from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
-    'create_tensor',
-    'create_global_var',
     'cast',
     'tensor_array_to_tensor',
     'concat',
@@ -60,128 +52,6 @@ __all__ = [
     'argmax',
     'zeros',
 ]
-
-
-def create_tensor(dtype, name=None, persistable=False):
-    """
-    Create a variable, which will hold a Tensor with data type dtype.
-
-    Args:
-        dtype(string|numpy.dtype): the data type of Tensor to be created, the
-            data type is bool, float16, float32, float64, int8, int16, int32 and int64.
-        name(string, optional): The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
-        persistable(bool): Set the persistable flag of the create tensor.
-            default value is False.
-
-    Returns:
-        Variable: The tensor to be created according to dtype.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          tensor = fluid.layers.create_tensor(dtype='float32')
-    """
-    check_dtype(
-        dtype,
-        'dtype',
-        [
-            'bool',
-            'float16',
-            'float32',
-            'float64',
-            'int8',
-            'int32',
-            'int32',
-            'int64',
-        ],
-        'create_tensor',
-    )
-    helper = LayerHelper("create_tensor", **locals())
-    return helper.create_variable(
-        name=helper.name, dtype=dtype, persistable=persistable
-    )
-
-
-def create_global_var(
-    shape, value, dtype, persistable=False, force_cpu=False, name=None
-):
-    """
-    This function creates a new tensor variable with value in the global block(block 0).
-
-    Parameters:
-        shape (list[int]|tuple[int]): Shape of the variable
-        value (float): The value of the variable. The new created
-                      variable will be filled with it.
-        dtype (str): Data type of the variable
-        persistable (bool, optional): If this variable is persistable.
-                           Default: False
-        force_cpu (bool, optional): Force this variable to be on CPU.
-                         Default: False
-        name (str, optional): For detailed information, please refer to
-           :ref:`api_guide_Name` . Usually name is no need to set and None by default.
-
-    Returns:
-        Variable: The created Variable
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            paddle.enable_static()
-            var = paddle.static.create_global_var(shape=[2,3], value=1.0, dtype='float32',
-                                           persistable=True, force_cpu=True, name='new_var')
-    """
-    check_type(
-        shape, 'shape', (list, tuple, numpy.ndarray), 'create_global_var'
-    )
-    for item in shape:
-        check_type(
-            item,
-            'item of shape',
-            (
-                int,
-                numpy.uint8,
-                numpy.int8,
-                numpy.int16,
-                numpy.int32,
-                numpy.int64,
-            ),
-            'create_global_var',
-        )
-
-    check_dtype(
-        dtype,
-        'dtype',
-        [
-            'bool',
-            'float16',
-            'float32',
-            'float64',
-            'int8',
-            'int16',
-            'int32',
-            'int64',
-            'uint8',
-            'uint16',
-        ],
-        'create_global_var',
-    )
-
-    helper = LayerHelper("global_var", **locals())
-    var = helper.create_global_variable(
-        dtype=dtype,
-        shape=shape,
-        persistable=persistable,
-        name=name,
-        stop_gradient=True,
-    )
-    helper.set_variable_initializer(
-        var, initializer=Constant(value=float(value), force_cpu=force_cpu)
-    )
-
-    return var
 
 
 def cast(x, dtype):
@@ -461,14 +331,15 @@ def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             import numpy as np
             x0 = fluid.layers.assign(np.random.rand(2, 2).astype("float32"))
             x1 = fluid.layers.assign(np.random.rand(2, 2).astype("float32"))
             i = fluid.layers.fill_constant(shape=[1], dtype="int64", value=0)
-            array = fluid.layers.create_array(dtype='float32')
-            fluid.layers.array_write(x0, i, array)
-            fluid.layers.array_write(x1, i + 1, array)
+            array = paddle.tensor.create_array(dtype='float32')
+            paddle.tensor.array_write(x0, i, array)
+            paddle.tensor.array_write(x1, i + 1, array)
             output, output_index = fluid.layers.tensor_array_to_tensor(input=array)
     """
     if _non_static_mode():

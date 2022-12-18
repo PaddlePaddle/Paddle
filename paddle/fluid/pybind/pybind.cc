@@ -55,6 +55,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/prune.h"
+#include "paddle/fluid/framework/raw_tensor.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
@@ -74,7 +75,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
-#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
@@ -93,6 +93,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/io.h"
 #include "paddle/fluid/pybind/jit.h"
 #include "paddle/fluid/pybind/xpu_streams_py.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/utils/none.h"
@@ -326,7 +327,7 @@ bool SupportsBfloat16() {
 #ifndef PADDLE_WITH_MKLDNN
   return false;
 #else
-  if (platform::MayIUse(platform::cpu_isa_t::avx512_core))
+  if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_core))
     return true;
   else
     return false;
@@ -337,7 +338,7 @@ bool SupportsBfloat16FastPerformance() {
 #ifndef PADDLE_WITH_MKLDNN
   return false;
 #else
-  if (platform::MayIUse(platform::cpu_isa_t::avx512_bf16))
+  if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_bf16))
     return true;
   else
     return false;
@@ -348,8 +349,8 @@ bool SupportsInt8() {
 #ifndef PADDLE_WITH_MKLDNN
   return false;
 #else
-  return (platform::MayIUse(platform::cpu_isa_t::avx2) ||
-          platform::MayIUse(platform::cpu_isa_t::avx512f));
+  return (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx2) ||
+          phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512f));
 #endif
 }
 
@@ -357,7 +358,8 @@ bool SupportsVNNI() {
 #ifndef PADDLE_WITH_MKLDNN
   return false;
 #else
-  return platform::MayIUse(platform::cpu_isa_t::avx512_core_vnni);
+  return phi::backends::cpu::MayIUse(
+      phi::backends::cpu::cpu_isa_t::avx512_core_vnni);
 #endif
 }
 
@@ -614,7 +616,7 @@ PYBIND11_MODULE(libpaddle, m) {
   BindJit(&m);
 
   // Not used, just make sure cpu_info.cc is linked.
-  paddle::platform::CpuTotalPhysicalMemory();
+  phi::backends::cpu::CpuTotalPhysicalMemory();
 
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
 
@@ -942,14 +944,20 @@ All parameter, weight, gradient are variables in Paddle.
           py::return_value_policy::reference)
       .def("get_bytes",
            [](Variable &self) {
-             return py::bytes(*self.GetMutable<std::string>());
+             if (self.IsType<String>()) {
+               return py::bytes(*(self.GetMutable<String>()));
+             } else {
+               return py::bytes(
+                   *(self.GetMutable<RawTensor>()->GetMutable<std::string>()));
+             }
            })
       .def("set_string_list",
            [](Variable &self, Strings str_list) {
              *self.GetMutable<Strings>() = str_list;
            })
       .def("set_vocab",
-           [](Variable &self, Vocab vocab) {
+           [](Variable &self,
+              const std::unordered_map<std::wstring, std::int32_t> &vocab) {
              *self.GetMutable<Vocab>() = vocab;
            })
       .def(
@@ -1197,7 +1205,6 @@ All parameter, weight, gradient are variables in Paddle.
           -> const paddle::framework::AttributeMap & {
         return operators::ExtraInfoUtils::Instance().GetExtraAttrsMap(op_type);
       });
-
   m.def(
       "get_attrtibute_type",
       [](const std::string &op_type,

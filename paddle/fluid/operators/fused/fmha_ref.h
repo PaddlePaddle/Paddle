@@ -21,13 +21,11 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/functors.h"
-#include "paddle/phi/kernels/funcs/transpose_functor.cu.h"
+#include "paddle/phi/kernels/funcs/transpose_function.cu.h"
 #include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
 
 namespace paddle {
 namespace operators {
-
-using Tensor = phi::DenseTensor;
 
 class AttnDropoutParam {
  public:
@@ -104,7 +102,6 @@ class FMHARef {
     T* qk_out_data = qk_out_tensor->data<T>();
     T* qktv_out_data = qktv_out_tensor->data<T>();
     T* softmax_out_data = softmax_out_tensor->data<T>();
-    T* dropout_out_data = dropout_out_tensor->data<T>();
     T* fmha_out_data = fmha_out_tensor->data<T>();
 
     auto out_seq_len = seq_len_;
@@ -221,6 +218,7 @@ class FMHARef {
           dropout_mask_out_tensor,
           dropout_out_tensor,
           false);
+      T* dropout_out_data = dropout_out_tensor->data<T>();
       blas.BatchedGEMM(transA,
                        transB,
                        gemm_m,
@@ -464,8 +462,6 @@ class FMHARef {
 
     const T* softmax_out_data = softmax_out_tensor.data<T>();
     T* softmax_out_grad_data = softmax_out_grad_tensor->data<T>();
-    const T* dropout_out_data = dropout_out_tensor.data<T>();
-    T* dropout_out_grad_data = dropout_out_grad_tensor->data<T>();
     T* qktv_out_grad_data = qktv_out_grad_tensor->data<T>();
 
     // transpose bw
@@ -487,6 +483,7 @@ class FMHARef {
     int64_t stride_b = gemm_k * gemm_n;
     // bw: dy = x^t * dout
     if (dropout_param_.dropout_prob_) {
+      const T* dropout_out_data = dropout_out_tensor.data<T>();
       blas.BatchedGEMM(transA,
                        transB,
                        gemm_m,
@@ -524,6 +521,7 @@ class FMHARef {
     stride_a = gemm_m * gemm_k;
     stride_b = gemm_k * gemm_n;
     if (dropout_param_.dropout_prob_) {
+      T* dropout_out_grad_data = dropout_out_grad_tensor->data<T>();
       blas.BatchedGEMM(transA,
                        transB,
                        gemm_m,

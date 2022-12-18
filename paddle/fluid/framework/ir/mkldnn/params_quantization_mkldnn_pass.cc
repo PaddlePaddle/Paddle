@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -120,7 +120,7 @@ void ParamsQuantizationMkldnnPass::QuantizeConv(ir::Graph* graph,
                                                 bool with_residual_data) const {
   GraphPatternDetector gpd;
   patterns::ConvResidual conv_pattern(gpd.mutable_pattern(), name_scope_);
-  conv_pattern(with_residual_data);
+  conv_pattern("conv2d", with_residual_data);
 
   int params_to_int8_conv_found = 0;
 

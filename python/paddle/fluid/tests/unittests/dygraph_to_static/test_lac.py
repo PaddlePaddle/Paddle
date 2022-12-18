@@ -25,11 +25,11 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 import paddle
 import paddle.fluid as fluid
 from paddle import _legacy_C_ops
-from paddle.fluid.dygraph import Embedding, GRUUnit, to_variable
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import _non_static_mode
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
+from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 SEED = 2020
 
@@ -57,13 +57,9 @@ class DynamicGRU(fluid.dygraph.Layer):
     ):
         super().__init__()
 
-        self.gru_unit = GRUUnit(
+        self.gru_unit = paddle.nn.GRUCell(
             size * 3,
-            param_attr=param_attr,
-            bias_attr=bias_attr,
-            activation=candidate_activation,
-            gate_activation=gate_activation,
-            origin_mode=origin_mode,
+            size,
         )
 
         self.size = size
@@ -79,7 +75,7 @@ class DynamicGRU(fluid.dygraph.Layer):
         res = []
         for i in range(inputs.shape[1]):
             if self.is_reverse:
-                j = fluid.layers.shape(inputs)[1] - 1 - i
+                j = paddle.shape(inputs)[1] - 1 - i
             else:
                 j = i
 
@@ -375,10 +371,10 @@ class LexNet(fluid.dygraph.Layer):
         self.bigru_num = args.bigru_num
         self.init_bound = 0.1
 
-        self.word_embedding = Embedding(
-            size=[self.vocab_size, self.word_emb_dim],
-            dtype='float32',
-            param_attr=fluid.ParamAttr(
+        self.word_embedding = paddle.nn.Embedding(
+            self.vocab_size,
+            self.word_emb_dim,
+            weight_attr=fluid.ParamAttr(
                 learning_rate=self.emb_lr,
                 name="word_emb",
                 initializer=fluid.initializer.Uniform(
@@ -713,5 +709,4 @@ class TestLACModel(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

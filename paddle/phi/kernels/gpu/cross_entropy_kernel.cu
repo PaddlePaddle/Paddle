@@ -22,7 +22,6 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 
-#include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/common/amp_type_traits.h"
@@ -33,6 +32,7 @@ namespace cub = hipcub;
 #include "paddle/phi/kernels/funcs/cross_entropy.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/softmax.h"
 #include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
 
 namespace phi {
@@ -1386,7 +1386,7 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
       labels_2d.Resize({n, label.numel() / n});
       DenseTensor loss_2d(*loss);
       loss_2d.Resize({n, 1});
-      paddle::operators::math::SoftmaxCUDNNFunctor<T, GPUContext>()(
+      phi::funcs::SoftmaxCUDNNFunctor<T, GPUContext>()(
           dev_ctx, &logits_2d, &softmax_2d);
       phi::funcs::CrossEntropyFunctor<GPUContext, T>()(dev_ctx,
                                                        &loss_2d,

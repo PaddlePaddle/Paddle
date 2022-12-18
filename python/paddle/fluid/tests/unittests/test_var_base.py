@@ -20,6 +20,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.nn.functional as F
 from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 
 
@@ -653,7 +654,7 @@ class TestVarBase(unittest.TestCase):
         with fluid.dygraph.guard():
             var = fluid.dygraph.to_variable(self.array)
             var.stop_gradient = False
-            loss = fluid.layers.relu(var)
+            loss = F.relu(var)
             loss.backward()
             grad_var = var._grad_ivar()
             self.assertEqual(grad_var.shape, self.shape)
@@ -667,7 +668,7 @@ class TestVarBase(unittest.TestCase):
         with fluid.dygraph.guard():
             var = fluid.dygraph.to_variable(self.array)
             var.stop_gradient = False
-            loss = fluid.layers.relu(var)
+            loss = F.relu(var)
             loss.backward()
             grad_var = var.gradient()
             self.assertEqual(grad_var.shape, self.array.shape)
@@ -1374,11 +1375,6 @@ class TestVarBase(unittest.TestCase):
         [0.    , 0.    ]])'''
 
         self.assertEqual(a_str, expected)
-
-    def test_tensor_str_bf16(self):
-        with _test_eager_guard():
-            self.func_tensor_str_bf16()
-        self.func_tensor_str_bf16()
 
     def test_tensor_str_bf16(self):
         with _test_eager_guard():

@@ -21,6 +21,7 @@ from test_imperative_base import new_program_scope
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.nn.functional as F
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.optimizer import AdamOptimizer
@@ -46,9 +47,9 @@ class GraphConv(fluid.Layer):
         )
 
     def forward(self, features, adj):
-        support = fluid.layers.matmul(features, self.weight)
+        support = paddle.matmul(features, self.weight)
         # TODO(panyx0718): sparse matmul?
-        return fluid.layers.matmul(adj, support) + self.bias
+        return paddle.matmul(adj, support) + self.bias
 
 
 class GCN(fluid.Layer):
@@ -58,7 +59,7 @@ class GCN(fluid.Layer):
         self.gc2 = GraphConv(self.full_name(), 32, 10)
 
     def forward(self, x, adj):
-        x = fluid.layers.relu(self.gc(x, adj))
+        x = F.relu(self.gc(x, adj))
         return self.gc2(x, adj)
 
 

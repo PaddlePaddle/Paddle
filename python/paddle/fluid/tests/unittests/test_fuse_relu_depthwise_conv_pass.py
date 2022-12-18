@@ -20,10 +20,11 @@ from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.nn.functional as F
 
 
 def norm(*args, **kargs):
-    return fluid.layers.batch_norm(*args, **kargs)
+    return paddle.static.nn.batch_norm(*args, **kargs)
 
 
 def sep_conv(input, channel, stride, filter, dilation=1, act=None):
@@ -59,9 +60,11 @@ def simple_depthwise_net(use_feed):
     hidden = paddle.reshape(img, (-1, 1, 28, 28))
     for _ in range(4):
         hidden = sep_conv(hidden, channel=200, stride=2, filter=5)
-        hidden = fluid.layers.relu(hidden)
+        hidden = F.relu(hidden)
     prediction = fluid.layers.fc(hidden, size=10, act='softmax')
-    loss = fluid.layers.cross_entropy(input=prediction, label=label)
+    loss = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     loss = paddle.mean(loss)
     return loss
 
@@ -89,7 +92,7 @@ class TestMNIST(TestParallelExecutorBase):
             return optimizer
 
         if only_forward:
-            _optimizer = None
+            _optimizer = None  # noqa: F811
 
         (
             fuse_op_first_loss,

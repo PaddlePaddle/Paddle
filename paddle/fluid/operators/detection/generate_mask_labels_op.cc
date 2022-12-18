@@ -25,7 +25,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 const int kBoxDim = 4;
 
 template <typename T>
@@ -151,16 +150,17 @@ static inline void ExpandMaskTarget(const phi::CPUContext& ctx,
 }
 
 template <typename T>
-std::vector<Tensor> SampleMaskForOneImage(const phi::CPUContext& ctx,
-                                          const phi::DenseTensor& im_info,
-                                          const phi::DenseTensor& gt_classes,
-                                          const phi::DenseTensor& is_crowd,
-                                          const phi::DenseTensor& gt_segms,
-                                          const phi::DenseTensor& rois,
-                                          const phi::DenseTensor& label_int32,
-                                          const int num_classes,
-                                          const int resolution,
-                                          const framework::LoD& segm_length) {
+std::vector<phi::DenseTensor> SampleMaskForOneImage(
+    const phi::CPUContext& ctx,
+    const phi::DenseTensor& im_info,
+    const phi::DenseTensor& gt_classes,
+    const phi::DenseTensor& is_crowd,
+    const phi::DenseTensor& gt_segms,
+    const phi::DenseTensor& rois,
+    const phi::DenseTensor& label_int32,
+    const int num_classes,
+    const int resolution,
+    const framework::LoD& segm_length) {
   // Prepare the mask targets by associating one gt mask to each training roi
   // that has a fg (non-bg) class label.
   const int64_t gt_size = static_cast<int64_t>(gt_classes.dims()[0]);
@@ -218,15 +218,15 @@ std::vector<Tensor> SampleMaskForOneImage(const phi::CPUContext& ctx,
   int gt_num = mask_gt_inds.size();
   int fg_num = fg_inds.size();
 
-  Tensor boxes_from_polys;
+  phi::DenseTensor boxes_from_polys;
   boxes_from_polys.mutable_data<T>({gt_num, 4}, platform::CPUPlace());
   Poly2Boxes(gt_polys, boxes_from_polys.data<T>());
 
   std::vector<int> roi_has_mask =
       std::vector<int>(fg_inds.begin(), fg_inds.end());
-  Tensor mask_class_labels;
-  Tensor masks;
-  Tensor rois_fg;
+  phi::DenseTensor mask_class_labels;
+  phi::DenseTensor masks;
+  phi::DenseTensor rois_fg;
 
   auto im_scale = im_info.data<T>()[2];
   if (fg_num > 0) {
@@ -251,7 +251,7 @@ std::vector<Tensor> SampleMaskForOneImage(const phi::CPUContext& ctx,
       rois_fg_data[k] = rois_fg_data[k] / im_scale;
     }
 
-    Tensor overlaps_bbfg_bbpolys;
+    phi::DenseTensor overlaps_bbfg_bbpolys;
     overlaps_bbfg_bbpolys.mutable_data<T>({fg_num, gt_num}, ctx.GetPlace());
     BboxOverlaps<T>(rois_fg, boxes_from_polys, &overlaps_bbfg_bbpolys);
 
@@ -306,7 +306,7 @@ std::vector<Tensor> SampleMaskForOneImage(const phi::CPUContext& ctx,
     roi_has_mask = std::vector<int>(bg_inds.begin(), bg_inds.end());
   }
 
-  Tensor masks_expand;
+  phi::DenseTensor masks_expand;
   ExpandMaskTarget<T>(
       ctx, masks, mask_class_labels, resolution, num_classes, &masks_expand);
 
@@ -315,13 +315,13 @@ std::vector<Tensor> SampleMaskForOneImage(const phi::CPUContext& ctx,
     rois_fg_data[k] = rois_fg_data[k] * im_scale;
   }
 
-  Tensor roi_has_mask_t;
+  phi::DenseTensor roi_has_mask_t;
   int roi_has_mask_size = roi_has_mask.size();
   int* roi_has_mask_data =
       roi_has_mask_t.mutable_data<int>({roi_has_mask_size, 1}, ctx.GetPlace());
   std::copy(roi_has_mask.begin(), roi_has_mask.end(), roi_has_mask_data);
 
-  std::vector<Tensor> res;
+  std::vector<phi::DenseTensor> res;
   res.emplace_back(rois_fg);
   res.emplace_back(roi_has_mask_t);
   res.emplace_back(masks_expand);
@@ -405,23 +405,23 @@ class GenerateMaskLabelsKernel : public framework::OpKernel<T> {
         lod0.emplace_back(num_mask);
         continue;
       }
-      Tensor im_info_slice = im_info->Slice(i, i + 1);
-      Tensor gt_classes_slice =
+      phi::DenseTensor im_info_slice = im_info->Slice(i, i + 1);
+      phi::DenseTensor gt_classes_slice =
           gt_classes->Slice(gt_classes_lod[i], gt_classes_lod[i + 1]);
-      Tensor is_crowd_slice =
+      phi::DenseTensor is_crowd_slice =
           is_crowd->Slice(is_crowd_lod[i], is_crowd_lod[i + 1]);
-      Tensor label_int32_slice =
+      phi::DenseTensor label_int32_slice =
           label_int32->Slice(label_int32_lod[i], label_int32_lod[i + 1]);
-      Tensor rois_slice = rois->Slice(rois_lod[i], rois_lod[i + 1]);
+      phi::DenseTensor rois_slice = rois->Slice(rois_lod[i], rois_lod[i + 1]);
 
       auto sub_lod_and_offset =
           framework::GetSubLoDAndAbsoluteOffset(gt_segms_lod, i, i + 1, 0);
       auto lod_length = sub_lod_and_offset.first;
       size_t s = sub_lod_and_offset.second.first;
       size_t e = sub_lod_and_offset.second.second;
-      Tensor gt_segms_slice = gt_segms->Slice(s, e);
+      phi::DenseTensor gt_segms_slice = gt_segms->Slice(s, e);
 
-      std::vector<Tensor> tensor_output =
+      std::vector<phi::DenseTensor> tensor_output =
           SampleMaskForOneImage<T>(dev_ctx,
                                    im_info_slice,
                                    gt_classes_slice,
@@ -433,9 +433,9 @@ class GenerateMaskLabelsKernel : public framework::OpKernel<T> {
                                    resolution,
                                    lod_length);
 
-      Tensor sampled_mask_rois = tensor_output[0];
-      Tensor sampled_roi_has_mask_int32 = tensor_output[1];
-      Tensor sampled_mask_int32 = tensor_output[2];
+      phi::DenseTensor sampled_mask_rois = tensor_output[0];
+      phi::DenseTensor sampled_roi_has_mask_int32 = tensor_output[1];
+      phi::DenseTensor sampled_mask_int32 = tensor_output[2];
 
       AppendMask<T>(mask_rois, kBoxDim * num_mask, &sampled_mask_rois);
       AppendMask<int>(

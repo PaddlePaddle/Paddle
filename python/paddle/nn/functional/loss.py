@@ -17,7 +17,7 @@
 import paddle
 import paddle.fluid as fluid
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
-from paddle.framework import _non_static_mode, core
+from paddle.framework import core
 from paddle.utils import deprecated
 
 from ...fluid.data_feeder import check_variable_and_dtype
@@ -592,7 +592,7 @@ def binary_cross_entropy(
     input, label, weight=None, reduction='mean', name=None
 ):
     """
-    This op measures the binary_cross_entropy loss between input predictions ``input``
+    Measure the binary_cross_entropy loss between input predictions ``input``
     and target labels ``label`` . The binary_cross_entropy loss can be described as:
 
     If :attr:`weight` is set, the loss is:
@@ -641,7 +641,7 @@ def binary_cross_entropy(
 
 
     Returns:
-        output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
+        Tensor. If ``reduction`` is ``'none'``, the shape of output is
             same as ``input`` , else the shape of output is scalar.
 
     Examples:
@@ -728,7 +728,7 @@ def binary_cross_entropy_with_logits(
     logit, label, weight=None, reduction='mean', pos_weight=None, name=None
 ):
     r"""
-    This operator combines the sigmoid layer and the :ref:`api_nn_loss_BCELoss` layer.
+    Combine the sigmoid layer and the :ref:`api_nn_loss_BCELoss` layer.
 
     This measures the element-wise probability error in classification tasks
     in which each class is independent.
@@ -736,7 +736,7 @@ def binary_cross_entropy_with_logits(
     are not mutually exclusive. For example, a news article can be about
     politics, technology or sports at the same time or none of these.
 
-    First this operator calculate loss function as follows:
+    Firstly, calculate loss function as follows:
 
     .. math::
            Out = -Labels * \log(\sigma(Logit)) - (1 - Labels) * \log(1 - \sigma(Logit))
@@ -752,13 +752,13 @@ def binary_cross_entropy_with_logits(
     .. math::
            Out = \max(Logit, 0) - Logit * Labels + \log(1 + e^{-\|Logit\|})
 
-    Then, if ``weight`` or ``pos_weight`` is not None, this operator multiply the
+    Then, if ``weight`` or ``pos_weight`` is not None, then multiply the
     weight tensor on the loss `Out`. The ``weight`` tensor will attach different
     weight on every items in the batch. The ``pos_weight`` will attach different
     weight on the positive label of each class.
 
-    Finally, this operator applies reduce operation on the loss.
-    If :attr:`reduction` set to ``'none'``, the operator will return the original loss `Out`.
+    Finally, apply reduce operation on the loss.
+    If :attr:`reduction` set to ``'none'``, will return the original loss `Out`.
     If :attr:`reduction` set to ``'mean'``, the reduced mean loss is :math:`Out = MEAN(Out)`.
     If :attr:`reduction` set to ``'sum'``, the reduced sum loss is :math:`Out = SUM(Out)`.
 
@@ -787,7 +787,7 @@ def binary_cross_entropy_with_logits(
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
+        Tensor. If ``reduction`` is ``'none'``, the shape of output is
             same as ``logit`` , else the shape of output is scalar.
 
     Examples:
@@ -1353,17 +1353,20 @@ def l1_loss(input, label, reduction='mean', name=None):
             label = paddle.to_tensor([[1.7, 1], [0.4, 0.5]])
 
             l1_loss = paddle.nn.functional.l1_loss(input, label)
-            print(l1_loss.numpy())
-            # [0.35]
+            print(l1_loss)
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [0.34999999])
 
             l1_loss = paddle.nn.functional.l1_loss(input, label, reduction='none')
-            print(l1_loss.numpy())
-            # [[0.20000005 0.19999999]
-            # [0.2        0.79999995]]
+            print(l1_loss)
+            # Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[0.20000005, 0.19999999],
+            #         [0.20000000, 0.79999995]])
 
             l1_loss = paddle.nn.functional.l1_loss(input, label, reduction='sum')
-            print(l1_loss.numpy())
-            # [1.4]
+            print(l1_loss)
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [1.39999998])
 
     """
     if reduction not in ['sum', 'mean', 'none']:
@@ -1402,15 +1405,13 @@ def l1_loss(input, label, reduction='mean', name=None):
     )
 
     if reduction == 'sum':
-        unreduced = paddle.fluid.layers.elementwise_sub(input, label, act='abs')
+        unreduced = paddle.abs(paddle.subtract(x=input, y=label))
         return paddle.sum(unreduced, name=name)
     elif reduction == 'mean':
-        unreduced = paddle.fluid.layers.elementwise_sub(input, label, act='abs')
+        unreduced = paddle.abs(paddle.subtract(x=input, y=label))
         return paddle.mean(unreduced, name=name)
     else:
-        return paddle.fluid.layers.elementwise_sub(
-            input, label, act='abs', name=name
-        )
+        return paddle.abs(paddle.subtract(x=input, y=label, name=name))
 
 
 def nll_loss(
@@ -1418,7 +1419,8 @@ def nll_loss(
 ):
     """
     This api returns negative log likelihood.
-    See more detail in :ref:`api_nn_loss_NLLLoss` .
+    See more detail in :ref:`NLLLoss <api_paddle_nn_NLLLoss>` .
+
 
     Parameters:
          input (Tensor): Input tensor, the shape is :math:`[N, C]`, `C` is the number of classes.
@@ -1545,33 +1547,27 @@ def kl_div(input, label, reduction='mean', name=None):
 
     $$l(x, y) = y * (\log(y) - x)$$
 
-    While :math:`x` is input and :math:`y` is label.
+    Here :math:`x` is input and :math:`y` is label.
 
-    While :attr:`reduction` is :attr:`none`, output loss is in
-    the same shape as input, loss in each point is calculated
-    separately and no reduction is applied.
+    If `reduction` is ``'none'``, the output loss is the same shape as the input, and the loss at each point is calculated separately. There is no reduction to the result.
 
-    While :attr:`reduction` is :attr:`mean`, output loss is in
-    shape of [1] and loss value is the mean value of all losses.
+    If `reduction` is ``'mean'``, the output loss is the shape of [1], and the output is the average of all losses.
 
-    While :attr:`reduction` is :attr:`sum`, output loss is in
-    shape of [1] and loss value is the sum value of all losses.
+    If `reduction` is ``'sum'``, the output loss is the shape of [1], and the output is the sum of all losses.
 
-    While :attr:`reduction` is :attr:`batchmean`, output loss is
-    in shape of [1] and loss value is the sum value of all losses
-    divided by batch size.
+    If `reduction` is ``'batchmean'``, the output loss is the shape of [N], N is the batch size, and the output is the sum of all losses divided by the batch size.
 
     Args:
         input (Tensor): The input tensor. The shapes is [N, *], where N is batch size and `*` means
-             any number of additional dimensions. It's data type should be float32, float64.
+            any number of additional dimensions. It's data type should be float32, float64.
         label (Tensor): label. The shapes is [N, *], same shape as ``input`` . It's data type should be float32, float64.
-        reduction (Tensor): Indicate how to average the loss,
-             the candicates are ``'none'`` | ``'batchmean'`` | ``'mean'`` | ``'sum'``.
-             If `reduction` is ``'mean'``, the reduced mean loss is returned;
-             If `reduction` is ``'batchmean'``, the sum loss divided by batch size is returned;
-             if `reduction` is ``'sum'``, the reduced sum loss is returned;
-             if `reduction` is ``'none'``, no reduction will be apllied.
-             Default is ``'mean'``.
+        reduction (str, optional): Indicate how to average the loss,
+            the candicates are ``'none'`` | ``'batchmean'`` | ``'mean'`` | ``'sum'``.
+            If `reduction` is ``'mean'``, the reduced mean loss is returned;
+            If `reduction` is ``'batchmean'``, the sum loss divided by batch size is returned;
+            if `reduction` is ``'sum'``, the reduced sum loss is returned;
+            if `reduction` is ``'none'``, no reduction will be apllied.
+            Default is ``'mean'``.
         name(str, optional): Name for the operation (optional, default is None). For more information,
             please refer to :ref:`api_guide_Name`.
 
@@ -2351,21 +2347,21 @@ def cross_entropy(
 ):
     r"""
 
-    By default, this operator implements the cross entropy loss function with softmax. This function
+    By default, the cross entropy loss function is implemented using softmax. This function
     combines the calculation of the softmax operation and the cross entropy loss function
     to provide a more numerically stable computing.
 
-    This operator will calculate the cross entropy loss function without softmax when use_softmax=False.
+    Calculate the cross entropy loss function without softmax when use_softmax=False.
 
-    By default, this operator will calculate the mean of the result, and you can also affect
+    By default, calculate the mean of the result, and you can also affect
     the default behavior by using the reduction parameter. Please refer to the part of
     parameters for details.
 
-    This operator can be used to calculate the softmax cross entropy loss with soft and hard labels.
+    Can be used to calculate the softmax cross entropy loss with soft and hard labels.
     Where, the hard labels mean the actual label value, 0, 1, 2, etc.  And the soft labels
     mean the probability of the actual label, 0.6, 0.8, 0.2, etc.
 
-    The calculation of this operator includes the following two steps.
+    The calculation includes the following two steps.
 
     - **1.softmax cross entropy**
 
@@ -2530,9 +2526,11 @@ def cross_entropy(
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
                 weight=weight, reduction=reduction)
             dy_ret = cross_entropy_loss(
-                                       input,
-                                       label)
-            print(dy_ret.numpy()) #[5.41993642]
+                                        input,
+                                        label)
+            print(dy_ret)
+            # Tensor(shape=[1], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+            #        [5.34043430])
 
         .. code-block:: python
 
@@ -2550,13 +2548,15 @@ def cross_entropy(
             labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
             labels /= paddle.sum(labels, axis=axis, keepdim=True)
             paddle_loss_mean = paddle.nn.functional.cross_entropy(
-                                                                  logits,
-                                                                  labels,
-                                                                  soft_label=True,
-                                                                  axis=axis,
-                                                                  weight=weight,
-                                                                  reduction=reduction)
-            print(paddle_loss_mean.numpy()) #[1.12908343]
+                                                                    logits,
+                                                                    labels,
+                                                                    soft_label=True,
+                                                                    axis=axis,
+                                                                    weight=weight,
+                                                                    reduction=reduction)
+            print(paddle_loss_mean)
+            # Tensor(shape=[1], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+            #        [1.11043464])
 
     """
 
@@ -3481,7 +3481,7 @@ def cosine_embedding_loss(
     input1, input2, label, margin=0, reduction='mean', name=None
 ):
     r"""
-    This operator computes the cosine embedding loss of Tensor ``input1``, ``input2`` and ``label`` as follows.
+    Compute the cosine embedding loss of Tensor ``input1``, ``input2`` and ``label`` as follows.
 
     If label = 1, then the loss value can be calculated as follow:
 
@@ -3497,12 +3497,12 @@ def cosine_embedding_loss(
      .. math::
         cos(x1, x2) = \frac{x1 \cdot{} x2}{\Vert x1 \Vert_2 * \Vert x2 \Vert_2}
 
-     Parameters:
-        input1 (Tensor): tensor with shape: [N, M] or [M], 'N' means batch size, 'M' means the length of input array.
+    Parameters:
+        input1 (Tensor): tensor with shape: [N, M] or [M], 'N' means batch size, which can be 0, 'M' means the length of input array.
                          Available dtypes are float32, float64.
-        input2 (Tensor): tensor with shape: [N, M] or [M], 'N' means batch size, 'M' means the length of input array.
+        input2 (Tensor): tensor with shape: [N, M] or [M], 'N' means batch size, which can be 0, 'M' means the length of input array.
                          Available dtypes are float32, float64.
-        label (Tensor): tensor with shape: [N] or [1]. The target labels values should be -1 or 1.
+        label (Tensor): tensor with shape: [N] or [1], 'N' means the length of input array. The target labels values should be -1 or 1.
                          Available dtypes are int32, int64, float32, float64.
         margin (float, optional): Should be a number from :math:`-1` to :math:`1`,
                          :math:`0` to :math:`0.5` is suggested. If :attr:`margin` is missing, the

@@ -62,7 +62,7 @@ class PnormNPUKernel : public framework::OpKernel<T> {
                                         {"keep_dims", keepdim}});
       runner.Run(stream);
     } else {
-      Tensor tmp_x;
+      phi::DenseTensor tmp_x;
       tmp_x.mutable_data<T>(xdim, ctx.GetPlace());
 
       const auto& power_runner1 =
@@ -93,7 +93,6 @@ template <typename DeviceContext, typename T>
 class PnormGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    using Tensor = phi::DenseTensor;
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* y = ctx.Input<phi::DenseTensor>("Out");
     auto* dy = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
@@ -113,8 +112,8 @@ class PnormGradNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    Tensor y_share(y->type());
-    Tensor dy_share(dy->type());
+    phi::DenseTensor y_share(y->type());
+    phi::DenseTensor dy_share(dy->type());
     y_share.ShareDataWith(*y);
     dy_share.ShareDataWith(*dy);
     auto ydim = xdim;
@@ -130,22 +129,22 @@ class PnormGradNPUKernel : public framework::OpKernel<T> {
       FillNpuTensorWithConstant(dx, static_cast<T>(0));
       dx->Resize(xdim);
     } else if (porder == INFINITY || porder == -INFINITY) {
-      Tensor x_abs;
+      phi::DenseTensor x_abs;
       x_abs.mutable_data<T>(xdim, place);
       const auto& r_abs = NpuOpRunner("Abs", {*x}, {x_abs}, {});
       r_abs.Run(stream);
 
-      Tensor t_cond;
+      phi::DenseTensor t_cond;
       t_cond.mutable_data<bool>(xdim, place);
       const auto& r_equal =
           NpuOpRunner("Equal", {x_abs, y_share}, {t_cond}, {});
       r_equal.Run(stream);
 
-      Tensor t_zero;
+      phi::DenseTensor t_zero;
       t_zero.mutable_data<T>({1}, place);
       FillNpuTensorWithConstant(&t_zero, static_cast<T>(0));
 
-      Tensor x_sign;
+      phi::DenseTensor x_sign;
       x_sign.mutable_data<T>(xdim, place);
       const auto& r_sign = NpuOpRunner("Sign", {*x}, {x_sign}, {});
       r_sign.Run(stream);
@@ -157,17 +156,17 @@ class PnormGradNPUKernel : public framework::OpKernel<T> {
           NpuOpRunner("SelectV2", {t_cond, *dx, t_zero}, {*dx}, {});
       r_sel.Run(stream);
     } else {
-      Tensor x_abs;
+      phi::DenseTensor x_abs;
       x_abs.mutable_data<T>(xdim, place);
       const auto& r_abs = NpuOpRunner("Abs", {*x}, {x_abs}, {});
       r_abs.Run(stream);
 
-      Tensor x_sign;
+      phi::DenseTensor x_sign;
       x_sign.mutable_data<T>(xdim, place);
       const auto& r_sign = NpuOpRunner("Sign", {*x}, {x_sign}, {});
       r_sign.Run(stream);
 
-      Tensor y_pow;
+      phi::DenseTensor y_pow;
       y_pow.mutable_data<T>(ydim, place);
       if (porder >= 1) {
         const auto& r_pow1 = NpuOpRunner(

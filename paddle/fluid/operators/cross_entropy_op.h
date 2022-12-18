@@ -23,8 +23,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename DeviceContext, typename T>
 class CrossEntropyOpKernel : public framework::OpKernel<T> {
  public:
@@ -36,8 +34,8 @@ class CrossEntropyOpKernel : public framework::OpKernel<T> {
 
     int rank = x->dims().size();
     auto label_dims = labels->dims();
-    Tensor x_2d = framework::ReshapeToMatrix(*x, rank - 1);
-    Tensor labels_2d, y_2d;
+    phi::DenseTensor x_2d = framework::ReshapeToMatrix(*x, rank - 1);
+    phi::DenseTensor labels_2d, y_2d;
     if (label_dims.size() < rank) {
       labels_2d.ShareDataWith(*labels);
       labels_2d.Resize({phi::product(label_dims), 1});

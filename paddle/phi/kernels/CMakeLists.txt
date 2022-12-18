@@ -76,12 +76,11 @@ set(COMMON_KERNEL_DEPS
     fft
     phi_data_layout_transform
     gpc
-    utf8proc
-    device_memory_aligment)
+    utf8proc)
 
-set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup)
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group)
 if(WITH_NCCL OR WITH_RCCL)
-  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup_nccl)
+  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group_nccl)
 endif()
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup_comm_utils)
 if(WITH_CUDNN_FRONTEND)
@@ -119,6 +118,7 @@ if(WITH_MKLDNN)
     "strings/cpu/*.cc"
     "onednn/*.cc"
     "fusion/*.cc"
+    "fusion/onednn/*.cc"
     "fusion/cpu/*.cc")
 else()
   file(

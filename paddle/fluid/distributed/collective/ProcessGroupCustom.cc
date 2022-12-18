@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/distributed/collective/ProcessGroupCustom.h"
 
-#include "paddle/fluid/distributed/collective/Common.h"
 #include "paddle/fluid/distributed/collective/CustomCCLTools.h"
+#include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"

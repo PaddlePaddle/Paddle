@@ -25,8 +25,6 @@ from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage3 import (
 from paddle.distributed.fleet.meta_parallel.sharding.sharding_utils import (
     ShardingScaler,
 )
-from paddle.fluid.dygraph.nn import Linear
-from paddle.fluid.framework import _test_eager_guard
 from paddle.nn import Linear
 
 epoch = 10
@@ -217,7 +215,5 @@ def test_stage3_offload():
 
 
 if __name__ == '__main__':
-    with _test_eager_guard():
-        pass
     fleet.init(is_collective=True)
     test_stage3_offload()
