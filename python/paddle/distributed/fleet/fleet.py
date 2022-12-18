@@ -1447,7 +1447,6 @@ class Fleet:
                 loss, startup_program, parameter_list, no_grad_set=no_grad_set
             )
 
-
         if meta_optimizer:
             logger.debug(
                 "before minimize program id: " + str(id(loss.block.program))
@@ -1474,7 +1473,6 @@ class Fleet:
 
         context["program_optimize_ops"] = optimize_ops
         context["program_params_grads"] = params_grads
- 
         if graph_optimizer:
             logger.debug(
                 "before graph minimize program id: "

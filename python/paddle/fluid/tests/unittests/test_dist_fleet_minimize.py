@@ -223,7 +223,7 @@ class TestPSMinimize(unittest.TestCase):
         loss, acc, _ = self.net()
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
-        configs = {"use_ps_gpu": 1, "launch_barrier": False}
+        configs = {"use_ps_gpu": 0, "launch_barrier": False}
         strategy.a_sync_configs = configs
         strategy.a_sync = True
 
