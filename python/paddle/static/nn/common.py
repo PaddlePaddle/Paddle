@@ -2024,7 +2024,7 @@ def deform_conv2d(
             float32, float64.
         offset (Tensor): The input coordinate offset of deformable convolution layer.
             A Tensor with type float32, float64.
-        mask (Tensor, Optional): The input mask of deformable convolution layer.
+        mask (Tensor): The input mask of deformable convolution layer.
             A Tensor with type float32, float64. It should be None when you use
             deformable convolution v1.
         num_filters(int): The number of filter. It is as same as the output

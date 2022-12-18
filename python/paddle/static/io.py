@@ -133,8 +133,8 @@ def normalize_program(program, feed_vars, fetch_vars):
 
     Args:
         program(Program): Specify a program you want to optimize.
-        feed_vars(Variable | list[Variable]): Variables needed by inference.
-        fetch_vars(Variable | list[Variable]): Variables returned by inference.
+        feed_vars(Tensor | list[Tensor]): Variables needed by inference.
+        fetch_vars(Tensor | list[Tensor]): Variables returned by inference.
 
     Returns:
         Program: Normalized/Optimized program.
@@ -268,8 +268,8 @@ def serialize_program(feed_vars, fetch_vars, **kwargs):
     Serialize default main program according to feed_vars and fetch_vars.
 
     Args:
-        feed_vars(Variable | list[Variable]): Variables needed by inference.
-        fetch_vars(Variable | list[Variable]): Variables returned by inference.
+        feed_vars(Tensor | list[Tensor]): Tensor needed by inference.
+        fetch_vars(Tensor | list[Tensor]): Tensor returned by inference.
         kwargs: Supported keys including ``program``. Attention please, kwargs is used for backward compatibility mainly.
 
             - program(Program): specify a program if you don't want to use default main program.
@@ -327,8 +327,8 @@ def serialize_persistables(feed_vars, fetch_vars, executor, **kwargs):
     Serialize parameters using given executor and default main program according to feed_vars and fetch_vars.
 
     Args:
-        feed_vars(Variable | list[Variable]): Variables needed by inference.
-        fetch_vars(Variable | list[Variable]): Variables returned by inference.
+        feed_vars(Tensor | list[Tensor]): Tensor needed by inference.
+        fetch_vars(Tensor | list[Tensor]): Tensor returned by inference.
         kwargs: Supported keys including ``program``. Attention please, kwargs is used for backward compatibility mainly.
 
             - program(Program): specify a program if you don't want to use default main program.
@@ -470,8 +470,8 @@ def save_inference_model(
 
     Args:
         path_prefix(str): Directory path to save model + model name without suffix.
-        feed_vars(Variable | list[Variable]): Variables needed by inference.
-        fetch_vars(Variable | list[Variable]): Variables returned by inference.
+        feed_vars(Tensor | list[Tensor]): Variables needed by inference.
+        fetch_vars(Tensor | list[Tensor]): Variables returned by inference.
         executor(Executor): The executor that saves the inference model. You can refer
                             to :ref:`api_guide_executor_en` for more details.
         kwargs: Supported keys including 'program' and "clip_extra". Attention please, kwargs is used for backward compatibility mainly.
