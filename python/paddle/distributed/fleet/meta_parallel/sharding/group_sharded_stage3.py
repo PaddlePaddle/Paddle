@@ -183,9 +183,6 @@ class GroupShardedStage3(nn.Layer):
         # Register task flow
         self._task_flow = TaskFlow()
 
-        # Register grad hooks
-        self._register_grad_hooks()
-
         # Register forward hooks
         self._register_forward_hooks(self._layer)
 
@@ -547,14 +544,6 @@ class GroupShardedStage3(nn.Layer):
             assert hasattr(
                 param, "fw_storage"
             ), "Find {} don't have fw_storage attribute".format(param.name)
-            # Gradient average
-            if self._dp_group is not None and self._dp_group.nranks > 1:
-                if self._offload:
-                    param.bw_storage = _cpu2device(param.bw_storage)
-                param.bw_storage.scale_(scale=self._dp_group.nranks)
-                dist.all_reduce(tensor=param.bw_storage, group=self._dp_group)
-                if self._offload:
-                    param.bw_storage = _device2cpu(param.bw_storage, True)
 
             param.fw_storage = _VarBaseWrapper(param)
             assert param.fw_storage.grad is None
@@ -563,6 +552,7 @@ class GroupShardedStage3(nn.Layer):
 
         # 2.Handle unslice param
         for grad_storage in self._grad_storages.values():
+            grad_storage.buffer.scale_(scale=self._world_size_scaling)
             dist.all_reduce(tensor=grad_storage.buffer, group=self._group)
             if self._dp_group is not None and self._dp_group.nranks > 1:
                 grad_storage.buffer.scale_(scale=(1.0 / self._dp_group.nranks))
@@ -627,18 +617,6 @@ class GroupShardedStage3(nn.Layer):
             allreduce_function = self._get_allreduce_fn(param)
             param._register_backward_hook(allreduce_function)
 
-    def _register_grad_hooks(self):
-        for param in self._layer.parameters(include_sublayers=True):
-            if param.trainable:
-                param._register_grad_hook(self._get_scaled_grad_fn())
-
-    def _get_scaled_grad_fn(self):
-        @paddle.autograd.no_grad()
-        def scale(grad):
-            grad.scale_(self._world_size_scaling)
-
-        return scale
-
     def _get_allreduce_fn(self, param):
         @paddle.autograd.no_grad()
         def allreduce_(*_):
@@ -648,7 +626,11 @@ class GroupShardedStage3(nn.Layer):
             if param.name in self._task_flow.full_grad.keys():
                 full_grad = self._task_flow.full_grad[param.name]
                 # Only support sync allreduce current rank's layer now
+                full_grad.scale_(scale=self._world_size_scaling)
                 dist.all_reduce(tensor=full_grad, group=self._group)
+                if self._dp_group is not None and self._dp_group.nranks > 1:
+                    full_grad.scale_(scale=1.0 / self._dp_group.nranks)
+                    dist.all_reduce(tensor=full_grad, group=self._dp_group)
 
                 start, end = self._param2buffer[param.name][self._rank]
                 if param.bw_storage is None:
