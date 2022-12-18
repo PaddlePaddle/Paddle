@@ -43,7 +43,6 @@ class SimpleNet(Layer):
         y = self.inner_function(x)
         return y
 
-    # `declarative` is not essential, add it to test for robustness.
     @to_static
     def inner_function(self, x):
         y = self.linear(x)

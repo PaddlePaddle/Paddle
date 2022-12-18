@@ -78,7 +78,7 @@ class TestWithNestedInput(unittest.TestCase):
                 self.fake_input()
 
             if to_static:
-                out = to_static(nested_input)(self.x, self.y)
+                out = paddle.jit.to_static(nested_input)(self.x, self.y)
             else:
                 out = nested_input(self.x, self.y)
 
@@ -102,7 +102,7 @@ class TestWithNestedOutput(unittest.TestCase):
                 self.y = fake_data([10, 16])
 
             if to_static:
-                out = to_static(nested_output)(self.x, self.y)
+                out = paddle.jit.to_static(nested_output)(self.x, self.y)
             else:
                 out = nested_output(self.x, self.y)
 
