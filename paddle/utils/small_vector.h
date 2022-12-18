@@ -216,11 +216,12 @@ class small_vector_template_common
   }
 
   /// Check whether Elt will be invalidated by resizing the vector to NewSize.
-  void assertSafeToReferenceAfterResize(const void UNUSED *Elt,
-                                        size_t UNUSED NewSize) {
-    assert(isSafeToReferenceAfterResize(Elt, NewSize); &&
+  void assertSafeToReferenceAfterResize(const void *Elt, size_t NewSize) {
+    assert(isSafeToReferenceAfterResize(Elt, NewSize) &&
            "Attempting to reference an element of the vector in an operation "
            "that invalidates it");
+    (void)Elt;
+    (void)NewSize;
   }
 
   /// Check whether Elt will be invalidated by increasing the size of the

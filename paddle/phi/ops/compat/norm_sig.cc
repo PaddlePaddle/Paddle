@@ -16,12 +16,13 @@
 
 namespace phi {
 
-KernelSignature NormOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature NormOpArgumentMapping(const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "norm", {"X"}, {"axis", "epsilon", "is_test"}, {"Out", "Norm"});
 }
 
-KernelSignature NormGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature NormGradOpArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("norm_grad",
                          {"X", "Norm", "Out@GRAD"},
                          {"axis", "epsilon", "is_test"},

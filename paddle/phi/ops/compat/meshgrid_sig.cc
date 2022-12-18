@@ -16,12 +16,13 @@
 
 namespace phi {
 
-KernelSignature MeshgridOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature MeshgridOpArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("meshgrid", {"X"}, {}, {"Out"});
 }
 
 KernelSignature MeshgridGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("meshgrid_grad", {"X", "Out@GRAD"}, {}, {"X@GRAD"});
 }
 

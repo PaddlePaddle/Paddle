@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature SlogDeterminantGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "slogdet_grad", {"Input", "Out", "Out@GRAD"}, {}, {"Input@GRAD"});
 }

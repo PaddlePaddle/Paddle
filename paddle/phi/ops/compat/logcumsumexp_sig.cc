@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature LogcumsumexpOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("logcumsumexp",
                          {"X"},
                          {"axis", "flatten", "exclusive", "reverse"},
@@ -25,7 +25,7 @@ KernelSignature LogcumsumexpOpArgumentMapping(
 }
 
 KernelSignature LogcumsumexpGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("logcumsumexp_grad",
                          {"X", "Out", "Out@GRAD"},
                          {"axis", "flatten", "exclusive", "reverse"},

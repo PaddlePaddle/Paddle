@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature ClassCenterSampleOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("class_center_sample",
                          {"Label"},
                          {"num_classes",

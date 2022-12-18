@@ -17,12 +17,12 @@
 namespace phi {
 
 KernelSignature SquaredL2NormOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("squared_l2_norm", {"X"}, {}, {"Out"});
 }
 
 KernelSignature SquaredL2NormGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "squared_l2_norm_grad", {"X", "Out@GRAD"}, {}, {"X@GRAD"});
 }

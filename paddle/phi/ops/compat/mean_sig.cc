@@ -16,12 +16,12 @@
 
 namespace phi {
 
-KernelSignature MeanOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature MeanOpArgumentMapping(const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("mean_all", {"X"}, {}, {"Out"});
 }
 
 KernelSignature MeanGradOpGradArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("mean_all_grad", {"X", "Out@GRAD"}, {}, {"X@GRAD"});
 }
 

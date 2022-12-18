@@ -146,8 +146,8 @@ if(NOT WIN32)
       -Wextra
       -Wnon-virtual-dtor
       -Wdelete-non-virtual-dtor
+      -Wno-unused-parameter
       -Wno-unused-function
-      -Wno-error=unused-parameter
       -Wno-error=literal-suffix
       -Wno-error=ignored-attributes # Warnings in Eigen, gcc 6.3
       -Wno-error=terminate # Warning in PADDLE_ENFORCE

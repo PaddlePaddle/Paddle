@@ -63,7 +63,10 @@ void* GenBase::operator new(size_t size) {
 
 void GenBase::operator delete(void* ptr) { posix_memalign_free(ptr); }
 
-std::vector<int> packed_groups(int n, int k, int* block_out, int* rest_out) {
+std::vector<int> packed_groups(int n,
+                               int /*k*/,
+                               int* block_out,
+                               int* rest_out) {
   int block;
   int max_num_regs;
   if (platform::MayIUse(platform::avx512f)) {

@@ -112,7 +112,9 @@ class SgdCreator : public JitCodeCreator<sgd_attr_t> {
     return platform::MayIUse(platform::avx) &&
            attr.grad_width % YMM_FLOAT_BLOCK == 0;
   }
-  size_t CodeSize(const sgd_attr_t& attr) const override { return 96 + 32 * 8; }
+  size_t CodeSize(const sgd_attr_t& /*attr*/) const override {
+    return 96 + 32 * 8;
+  }
   std::unique_ptr<GenBase> CreateJitCode(
       const sgd_attr_t& attr) const override {
     PADDLE_ENFORCE_EQ(attr.param_width,

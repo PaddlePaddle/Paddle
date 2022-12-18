@@ -16,7 +16,7 @@
 
 namespace phi {
 
-KernelSignature RnnOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature RnnOpArgumentMapping(const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("rnn",
                          {"Input", "PreState", "WeightList", "SequenceLength"},
                          {"dropout_prob",
@@ -30,7 +30,8 @@ KernelSignature RnnOpArgumentMapping(const ArgumentMappingContext& ctx) {
                          {"Out", "DropoutState", "State", "Reserve"});
 }
 
-KernelSignature RnnGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature RnnGradOpArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("rnn_grad",
                          {"Input",
                           "PreState",

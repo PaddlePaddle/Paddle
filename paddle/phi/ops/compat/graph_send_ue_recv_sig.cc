@@ -32,7 +32,7 @@ KernelSignature GraphSendUERecvOpArgumentMapping(
 }
 
 KernelSignature GraphSendUERecvGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "send_ue_recv_grad",
       {"X", "Y", "Src_index", "Dst_index", "Out", "Dst_count", "Out@GRAD"},

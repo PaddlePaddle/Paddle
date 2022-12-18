@@ -16,7 +16,8 @@
 
 namespace phi {
 
-KernelSignature Yolov3LossOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature Yolov3LossOpArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("yolo_loss",
                          {"X", "GTBox", "GTLabel", "GTScore"},
                          {"anchors",
@@ -30,7 +31,7 @@ KernelSignature Yolov3LossOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 KernelSignature Yolov3LossGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "yolo_loss_grad",
       {"X",

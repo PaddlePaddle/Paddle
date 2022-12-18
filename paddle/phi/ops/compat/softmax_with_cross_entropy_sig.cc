@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature SoftmaxWithCrossEntropyOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("cross_entropy_with_softmax",
                          {"Logits", "Label"},
                          {"soft_label",
@@ -29,7 +29,7 @@ KernelSignature SoftmaxWithCrossEntropyOpArgumentMapping(
 }
 
 KernelSignature SoftmaxWithCrossEntropyGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("cross_entropy_with_softmax_grad",
                          {"Label", "Softmax", "Loss@GRAD"},
                          {"soft_label",

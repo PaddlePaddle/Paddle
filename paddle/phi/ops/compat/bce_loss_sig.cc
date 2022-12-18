@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature BCELossGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "bce_loss_grad", {"X", "Label", "Out@GRAD"}, {}, {"X@GRAD"});
 }

@@ -16,12 +16,13 @@ limitations under the License. */
 
 namespace phi {
 
-KernelSignature MultiplexOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature MultiplexOpArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("multiplex", {"X", "Ids"}, {}, {"Out"});
 }
 
 KernelSignature MultiplexGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("multiplex_grad", {"Ids", "Out@GRAD"}, {}, {"X@GRAD"});
 }
 

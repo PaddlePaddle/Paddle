@@ -14,7 +14,7 @@ limitations under the License. */
 namespace phi {
 
 KernelSignature UnStackGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("unstack_grad", {"Y@GRAD"}, {"axis"}, {"X@GRAD"});
 }
 

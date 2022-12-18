@@ -23,7 +23,8 @@ KernelSignature RollOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("roll", {"X"}, {"shifts", "axis"}, {"Out"});
 }
 
-KernelSignature RollGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature RollGradOpArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "roll_grad", {"X", "Out@GRAD"}, {"shifts", "axis"}, {"X@GRAD"});
 }

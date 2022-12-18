@@ -17,13 +17,13 @@
 namespace phi {
 
 KernelSignature FillDiagonalOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "fill_diagonal", {"X"}, {"value", "offset", "wrap"}, {"Out"});
 }
 
 KernelSignature FillDiagonalGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("fill_diagonal_grad",
                          {"Out@GRAD"},
                          {"value", "offset", "wrap"},

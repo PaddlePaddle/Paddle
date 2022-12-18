@@ -17,7 +17,7 @@ limitations under the License. */
 namespace phi {
 
 // we have to return every specific KernelSignature for infrt now
-KernelSignature AucOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature AucOpArgumentMapping(const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "auc",
       {"Predict", "Label", "StatPos", "StatNeg", "InsTagWeight"},

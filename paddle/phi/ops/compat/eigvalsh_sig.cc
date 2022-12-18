@@ -16,13 +16,14 @@ limitations under the License. */
 
 namespace phi {
 
-KernelSignature EigvalshOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature EigvalshOpArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "eigvalsh", {"X"}, {"UPLO", "is_test"}, {"Eigenvalues", "Eigenvectors"});
 }
 
 KernelSignature EigvalshGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("eigvalsh_grad",
                          {"Eigenvectors", "Eigenvalues@GRAD"},
                          {"UPLO", "is_test"},

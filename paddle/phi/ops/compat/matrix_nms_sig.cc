@@ -16,7 +16,8 @@
 
 namespace phi {
 
-KernelSignature MatrixNMSOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature MatrixNMSOpArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("matrix_nms",
                          {"BBoxes", "Scores"},
                          {"score_threshold",

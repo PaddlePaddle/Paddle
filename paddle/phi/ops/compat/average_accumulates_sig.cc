@@ -16,7 +16,7 @@ limitations under the License. */
 
 namespace phi {
 KernelSignature AverageAccumulatesOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "average_accumulates",
       {"param",

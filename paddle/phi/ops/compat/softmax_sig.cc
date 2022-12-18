@@ -16,12 +16,13 @@ limitations under the License. */
 
 namespace phi {
 
-KernelSignature SoftmaxOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature SoftmaxOpArgumentMapping(
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature("softmax", {"X"}, {"axis"}, {"Out"});
 }
 
 KernelSignature SoftmaxGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& /*ctx*/) {
   return KernelSignature(
       "softmax_grad", {"Out", "Out@GRAD"}, {"axis"}, {"X@GRAD"});
 }
