@@ -29,18 +29,20 @@ class MultiheadMatMulCrossMemEffOpConverter : public OpConverter {
     auto* input_q = engine_->GetITensor(op_desc.Input("Input_q").front());
     auto* input_kv = engine_->GetITensor(op_desc.Input("Input_kv").front());
     // auto input_dims = input->getDimensions();
+    auto output_name = op_desc.Output("Out")[0];
+
     auto weight_q_name = op_desc.Input("W_q").front();
     auto* weight_q_v=scope.FindVar(weight_q_name);
     auto* weight_q_t=weight_q_v->GetMutable<phi::DenseTensor>();
     float* weight_q_data = nullptr;
-    weight_q_data== const_cast<float*>(static_cast<const float*>(
+    weight_q_data = const_cast<float*>(static_cast<const float*>(
         engine_->GetFp32TrtWeight(weight_q_name, *weight_q_t).get().values));
     const auto& weight_q_dims = weight_q_t->dims();
     int hidden_in_q = weight_q_dims[0];
     int hidden_out_q = weight_q_dims[1];
     int head_number_q = PADDLE_GET_CONST(int, op_desc.GetAttr("head_number"));
-    int head_size_q = hidden_out / head_number;
-
+    int head_size_q = hidden_out_q / head_number_q;
+    int n_q = hidden_out_q;
     auto transpose_weight_q = [](const float* src,
                                float* dst,
                                int head_number,
@@ -63,7 +65,6 @@ class MultiheadMatMulCrossMemEffOpConverter : public OpConverter {
                   }
                 }
               }
-            }
           };
     std::vector<float> weight_q_data_tmp;
     weight_q_data_tmp.reserve(weight_q_t->numel());
@@ -94,7 +95,7 @@ class MultiheadMatMulCrossMemEffOpConverter : public OpConverter {
     }
     // VLOG(0)<<"@@ pin 3.5";
     auto* reshape_before_fc_q_layer =
-        TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
+        TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input_q);
     reshape_before_fc_q_layer->setInput(
         1, *Concat(reshape_before_fc_q_shape_tensor));
     reshape_before_fc_q_layer->setName(
@@ -120,11 +121,11 @@ class MultiheadMatMulCrossMemEffOpConverter : public OpConverter {
       mha_input_q_tensor_shape.push_back(Add1DConstantLayer(1));
     }
     mha_input_q_tensor_shape[0] =
-          GetEleTensorOfShape(input_shape_tensor, 0);
+          GetEleTensorOfShape(input_q_shape_tensor, 0);
     mha_input_q_tensor_shape[1] =
-          GetEleTensorOfShape(input_shape_tensor, 1);
-    mha_input_q_tensor_shape[2] = Add1DConstantLayer(head_number);
-    mha_input_q_tensor_shape[3] = Add1DConstantLayer(head_size);
+          GetEleTensorOfShape(input_q_shape_tensor, 1);
+    mha_input_q_tensor_shape[2] = Add1DConstantLayer(head_number_q);
+    mha_input_q_tensor_shape[3] = Add1DConstantLayer(head_size_q);
     reshape_after_fc_q_layer->setInput(1, *Concat(mha_input_q_tensor_shape));
     reshape_after_fc_q_layer->setName(
         ("shuffle_after_fc_q_multihead_matmul(Output: " + output_name + ")")
@@ -153,9 +154,9 @@ class MultiheadMatMulCrossMemEffOpConverter : public OpConverter {
 
     // float scale = PADDLE_GET_CONST(float, op_desc.GetAttr("alpha"));
     // int m = hidden_in;
-    int n = three * hidden_out;
+    int n = two * hidden_out;
     nvinfer1::ILayer* layer = nullptr;
-    auto output_name = op_desc.Output("Out")[0];
+    // auto output_name = op_desc.Output("Out")[0];
     // [hidden_in, 3, head_number, head_size] 
     // -> [head_number, 3, head_size, hidden_in]
 
@@ -228,7 +229,7 @@ class MultiheadMatMulCrossMemEffOpConverter : public OpConverter {
     }
     // VLOG(0)<<"@@ pin 3.5";
     auto* reshape_before_fc_layer =
-        TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
+        TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input_kv);
     reshape_before_fc_layer->setInput(
         1, *Concat(reshape_before_fc_shape_tensor));
     reshape_before_fc_layer->setName(
@@ -241,8 +242,8 @@ class MultiheadMatMulCrossMemEffOpConverter : public OpConverter {
     fc_layer = TRT_ENGINE_ADD_LAYER(
                 engine_, FullyConnected, *reshape_before_fc_layer->getOutput(0),
                 n,
-                weight, 
-                bias);
+                weight_kv, 
+                bias_kv);
     fc_layer->setName(
             ("multihead_mamul_fc(Output: " + output_name + ")").c_str());
 
@@ -288,9 +289,9 @@ class MultiheadMatMulCrossMemEffOpConverter : public OpConverter {
     
     // add shuffle
     nvinfer1::ITensor* batch_tensor =
-      GetEleTensorOfShape(input_shape_tensor, 0);
+      GetEleTensorOfShape(input_q_shape_tensor, 0);
     nvinfer1::ITensor* length_tensor =
-      GetEleTensorOfShape(input_shape_tensor, 1);
+      GetEleTensorOfShape(input_q_shape_tensor, 1);
     auto* reshape_after_mha_layer = TRT_ENGINE_ADD_LAYER(
         engine_, Shuffle, *plugin_layer->getOutput(0));
     std::vector<nvinfer1::ITensor*> reshape_tensor;
@@ -312,4 +313,4 @@ class MultiheadMatMulCrossMemEffOpConverter : public OpConverter {
 }
 }
 
-REGISTER_TRT_OP_CONVERTER(multihead_matmul_v4_cross, MultiheadMatMulMemEffOpConverter);
+REGISTER_TRT_OP_CONVERTER(multihead_matmul_v4_cross, MultiheadMatMulCrossMemEffOpConverter);

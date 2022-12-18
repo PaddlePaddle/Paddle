@@ -776,7 +776,6 @@ PDNode* TrtMultiHeadMatmulV4Pattern::operator()() {
 }
 
 
-
 PDNode* TrtMultiHeadMatmulV4CrossPattern::operator()() {
   std::unordered_set<std::string> mul_ops{"mul", "matmul_v2"};
   std::unordered_set<std::string> matmul_ops{"matmul", "matmul_v2"};
@@ -2443,15 +2442,19 @@ int TrtMultiHeadMatmulV4CrossFusePass::BuildFusionV4Cross(Graph* graph,
         auto* wv_tensor =
             scope->FindVar(mul2_w->Name())->GetMutable<phi::DenseTensor>();
 
+        VLOG(0)<<"@@ wq_tensor name = "<<mul0_w->Name()
+               <<"@@ wk_tensor name = "<<mul1_w->Name()
+               <<"@@ wv_tensor name = "<<mul2_w->Name();
 
         // auto* wq_data = wq_tensor->mutable_data<float>(platform::CPUPlace());
         auto* wk_data = wk_tensor->mutable_data<float>(platform::CPUPlace());
         auto* wv_data = wv_tensor->mutable_data<float>(platform::CPUPlace());
         // combined_w_dims =
-        // [in,3,out]
+        // [in,2,out]
         auto combined_w_kv_dims =
             phi::make_ddim({wk_tensor->dims()[0], 2, wk_tensor->dims()[1]});
-
+        VLOG(0)<<"@@@ in_k_dim:"<<wk_tensor->dims()[0]
+               <<"@@@ in_k_dim:"<<wk_tensor->dims()[1];
         auto* combined_w_kv_desc = mul1_w->Var();
         combined_w_kv_desc->SetShape({wk_tensor->dims()[0], 2, wk_tensor->dims()[1]});
         combined_w_kv_desc->SetPersistable(true);
@@ -2484,7 +2487,7 @@ int TrtMultiHeadMatmulV4CrossFusePass::BuildFusionV4Cross(Graph* graph,
         for (int i = 0; i < dims_h; i++) {
             for (int j = 0; j < 2; j++) {
                 for (int k = 0; k < dims_w; k++) {
-                    int out_index = i * (3 * dims_w) + j * dims_w + k;
+                    int out_index = i * (2 * dims_w) + j * dims_w + k;
                     int in_index = i * dims_w + k;
                     tmp_combined_w_kv_data[out_index] = w_vec[j][in_index];
                 }
@@ -2651,7 +2654,7 @@ REGISTER_PASS(trt_multihead_matmul_fuse_pass_v3,
 REGISTER_PASS(trt_multihead_matmul_fuse_pass_v4,
               paddle::framework::ir::TrtMultiHeadMatmulV4FusePass);
 
-REGISTER_PASS(trt_multihead_matmul_fuse_pass_v4_Cross,
+REGISTER_PASS(trt_multihead_matmul_fuse_pass_v4_cross,
               paddle::framework::ir::TrtMultiHeadMatmulV4CrossFusePass);
 
 
