@@ -682,6 +682,36 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x2.grad.shape, [])
         self.assertEqual(x3.grad.shape, [])
 
+    def test_scatter__1D(self):
+        x = paddle.to_tensor([1.0, 3.0, 5.0, 7.0, 9.0])
+        index = paddle.full([], 2, 'int64')
+        updates = paddle.full([], 4.0)
+        out = paddle.scatter_(x, index, updates)
+
+        self.assertEqual(out.numpy()[2], 4)
+
+    def test_scatter__XD(self):
+        x = paddle.to_tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+        index = paddle.full([], 1, 'int64')
+        updates = paddle.to_tensor([1.0, 2.0, 3.0])
+        out = paddle.scatter_(x, index, updates)
+
+        for i in range(3):
+            self.assertEqual(out.numpy()[1][i], updates.numpy()[i])
+
+    def test_scatter_nd(self):
+        index = paddle.to_tensor([3], dtype="int64", stop_gradient=False)
+        updates = paddle.full([], 2, dtype='float32')
+        updates.stop_gradient = False
+        shape = [5]
+
+        out = paddle.scatter_nd(index, updates, shape)
+        out.backward()
+
+        self.assertEqual(out.shape, [5])
+        self.assertEqual(out.numpy()[3], 2)
+        self.assertEqual(out.grad.shape, [5])
+
 
 class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
@@ -844,6 +874,45 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res1.shape, (2, 2))
         self.assertEqual(res2.shape, (2, 2))
         self.assertEqual(res3.shape, (1, 1))
+
+    @prog_scope()
+    def test_scatter__1D(self):
+        x = paddle.full([10], 1.0, 'float32')
+        index = paddle.full([], 2, 'int64')
+        updates = paddle.full([], 4, 'float32')
+        out = paddle.scatter_(x, index, updates)
+        paddle.static.append_backward(out)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+        self.assertEqual(res[0][2], 4)
+
+    @prog_scope()
+    def test_scatter__XD(self):
+        x = paddle.full([2, 3], 1.0, 'float32')
+        index = paddle.full([], 1, 'int64')
+        updates = paddle.full([3], 4, 'float32')
+        out = paddle.scatter_(x, index, updates)
+        paddle.static.append_backward(out)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out])
+        for i in range(3):
+            self.assertEqual(res[0][1][i], 4)
+
+    @prog_scope()
+    def test_scatter_nd(self):
+        index = paddle.static.data(name='index', shape=[1], dtype='int64')
+        updates = paddle.full([], 2, 'float32')
+        shape = [5]
+        index_data = np.array([3], dtype=np.longlong)
+        out = paddle.scatter_nd(index, updates, shape)
+        paddle.static.append_backward(out)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, feed={'index': index_data}, fetch_list=[out])
+        self.assertEqual(res[0].shape, (5,))
+        self.assertEqual(res[0][3], 2)
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.

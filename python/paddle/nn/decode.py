@@ -153,6 +153,19 @@ class BeamSearchDecoder(Decoder):
         :code:`BeamSearchDecoder.tile_beam_merge_with_batch` . The most common case
         for this is the encoder output in attention mechanism.
 
+    Parameters:
+        cell (RNNCellBase): An instance of `RNNCellBase` or object with the same interface.
+        start_token (int): The start token id.
+        end_token (int): The end token id.
+        beam_size (int): The beam width used in beam search.
+        embedding_fn (optional): A callable to apply to selected candidate ids.
+            Mostly it is an embedding layer to transform ids to embeddings,
+            and the returned value acts as the `input` argument for `cell.call`.
+            If not provided, the id to embedding transformation must be built into
+            `cell.call`. Default None.
+        output_fn (optional): A callable to apply to the cell's output prior to
+            calculate scores and select candidate token ids. Default None.
+
     Returns:
         BeamSearchDecoder: An instance of decoder which can be used in \
             `paddle.nn.dynamic_decode` to implement decoding.

@@ -19,7 +19,6 @@ from op_test import OpTest
 
 import paddle
 import paddle.fluid.dygraph as dg
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestComplexAbsOp(OpTest):
@@ -108,10 +107,6 @@ class TestAbs(unittest.TestCase):
                 with dg.guard(place):
                     y = paddle.abs(paddle.to_tensor(x))
                     np.testing.assert_allclose(np.abs(x), y.numpy(), rtol=1e-05)
-
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_all_positive()
 
 
 class TestRealAbsOp(OpTest):
