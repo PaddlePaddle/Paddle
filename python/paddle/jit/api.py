@@ -191,7 +191,11 @@ def copy_decorator_attrs(original_func, decorated_obj):
 
 
 def to_static(
-    function=None, input_spec=None, build_strategy=None, property=False, **kwargs,
+    function=None,
+    input_spec=None,
+    build_strategy=None,
+    property=False,
+    **kwargs,
 ):
     """
     Converts imperative dygraph APIs into declarative function APIs. Decorator
