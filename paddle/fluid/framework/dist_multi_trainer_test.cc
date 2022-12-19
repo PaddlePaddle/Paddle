@@ -53,5 +53,35 @@ TEST(DisMultiTrainerTest, test1) {
   tmp1->Finalize();
 #endif
 }
+
+TEST(DisMultiTrainerTest, test2) {
+#ifdef _LINUX
+  std::shared_ptr<DistMultiTrainer> tmp1 = std::make_shared<DistMultiTrainer>();
+  TrainerDesc t;
+  t.set_class_name("DistMultiTrainer");
+  t.set_device_worker_name("DownpourWorker");
+  t.set_thread_num(1);
+  auto* m = t.mutable_downpour_param()->add_program_config();
+  m->set_program_id("123");
+  std::string str;
+  str += "name: \"MultiSlotDataFeed\"\nbatch_size: 2\nmulti_slot_desc {\n";
+  str += "slots {\nname: \"words\"\ntype: \"uint64\"\nis_dense: false\n";
+  str += "is_used: true\n}\nslots {\nname: \"label\"\ntype: \"uint64\"\n";
+  str += "is_dense: false\nis_used: true\n}\n}\n";
+  std::shared_ptr<MultiSlotDataset> dataset =
+      std::make_shared<MultiSlotDataset>();
+  dataset->SetFileList(std::vector<std::string>());
+  dataset->SetThreadNum(1);
+  dataset->SetTrainerNum(1);
+  dataset->SetDataFeedDesc(str);
+  dataset->CreateReaders();
+  Scope root_scope;
+  tmp1->SetScope(&root_scope);
+  tmp1->Initialize(t, dataset.get());
+  ProgramDesc p;
+  tmp1->InitOtherEnv(p);
+  tmp1->Finalize();
+#endif
+}
 }  // namespace framework
 }  // namespace paddle
