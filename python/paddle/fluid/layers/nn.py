@@ -70,7 +70,6 @@ __all__ = [
     'spectral_norm',
     'one_hot',
     'autoincreased_step_counter',
-    'lod_reset',
     'clip',
     'clip_by_norm',
     'merge_selected_rows',
@@ -1382,110 +1381,6 @@ def unsqueeze(input, axes, name=None):
         outputs={"Out": out, "XShape": x_shape},
     )
 
-    return out
-
-
-def lod_reset(x, y=None, target_lod=None):
-    """
-    Set LoD of :attr:`x` to a new one specified by :attr:`y` or
-    :attr:`target_lod`. When :attr:`y` provided, :attr:`y.lod` would be
-    considered as target LoD first, otherwise :attr:`y.data` would be
-    considered as target LoD. If :attr:`y` is not provided, target LoD should
-    be specified by :attr:`target_lod`. If target LoD is specified by
-    :attr:`y.data` or :attr:`target_lod`, only one level LoD is supported.
-
-    .. code-block:: text
-
-        * Example 1:
-
-            Given a 1-level LoDTensor x:
-                x.lod =  [[ 2,           3,                   1 ]]
-                x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
-                x.dims = [6, 1]
-
-            target_lod: [4, 2]
-
-            then we get a 1-level LoDTensor:
-                out.lod =  [[4,                          2]]
-                out.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
-                out.dims = [6, 1]
-
-        * Example 2:
-
-            Given a 1-level LoDTensor x:
-                x.lod =  [[2,            3,                   1]]
-                x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
-                x.dims = [6, 1]
-
-            y is a Tensor:
-                y.data = [[2, 4]]
-                y.dims = [1, 3]
-
-            then we get a 1-level LoDTensor:
-                out.lod =  [[2,            4]]
-                out.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
-                out.dims = [6, 1]
-
-        * Example 3:
-
-            Given a 1-level LoDTensor x:
-                x.lod =  [[2,            3,                   1]]
-                x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
-                x.dims = [6, 1]
-
-            y is a 2-level LoDTensor:
-                y.lod =  [[2, 2], [2, 2, 1, 1]]
-                y.data = [[1.1], [2.1], [3.1], [4.1], [5.1], [6.1]]
-                y.dims = [6, 1]
-
-            then we get a 2-level LoDTensor:
-                out.lod =  [[2, 2], [2, 2, 1, 1]]
-                out.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
-                out.dims = [6, 1]
-
-    Args:
-        x (Variable): Input variable which could be a Tensor or LoDTensor.
-                      The data type should be int32, int64, float32 or float64.
-        y (Variable, optional): If provided, output's LoD would be derived from :attr:`y`.
-                                If y's lod level>0, the data type can be any type.
-                                If y's lod level=0, the data type should be int32.
-        target_lod (list|tuple, optional): One level LoD which should be considered
-                                      as target LoD when :attr:`y` not provided.
-
-    Returns:
-        Variable: Output variable with LoD specified by this layer.
-
-    Raises:
-        ValueError: If :attr:`y` and :attr:`target_lod` are both None.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[10])
-            y = fluid.layers.data(name='y', shape=[10, 20], lod_level=2)
-            out = fluid.layers.lod_reset(x=x, y=y)
-    """
-    check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'lod_reset'
-    )
-    helper = LayerHelper("lod_reset", **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    if y is not None:
-        check_type(y, 'y', (Variable), 'lod_reset')
-        # TODO: check y.lod_level = 0 dtype
-        helper.append_op(
-            type="lod_reset", inputs={'X': x, 'Y': y}, outputs={'Out': out}
-        )
-    elif target_lod is not None:
-        helper.append_op(
-            type="lod_reset",
-            inputs={'X': x},
-            attrs={'target_lod': target_lod},
-            outputs={'Out': out},
-        )
-    else:
-        raise ValueError("y and target_lod should not be both none.")
     return out
 
 
