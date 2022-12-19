@@ -837,8 +837,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto out_h = PADDLE_GET_CONST(int, desc.GetAttr("out_h"));
       auto out_w = PADDLE_GET_CONST(int, desc.GetAttr("out_w"));
       if (!(out_h > 0 && out_w > 0)) {
-        if (scale.size() < 2) return false;
-        if (scale[0] <= 0.f || scale[1] <= 0.f) {
+        if (scale.size() < 2) {
           auto resize_inputs = desc.Inputs();
           if (resize_inputs.find("SizeTensor") != resize_inputs.end()) {
             if (desc.Input("SizeTensor").size() < 1) {
@@ -848,7 +847,7 @@ struct SimpleOpTypeSetTeller : public Teller {
               return false;
             }
           }
-
+        } else if (scale[0] <= 0.f || scale[1] <= 0.f) {
           VLOG(3) << "scale factor must be greater than 0 if out_h or out_w is "
                      "not set.";
           return false;
