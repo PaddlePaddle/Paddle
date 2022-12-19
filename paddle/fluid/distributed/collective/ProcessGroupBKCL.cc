@@ -15,7 +15,7 @@
 #include "paddle/fluid/distributed/collective/ProcessGroupBKCL.h"
 
 #include "paddle/fluid/distributed/collective/BKCLTools.h"
-#include "paddle/fluid/distributed/collective/Common.h"
+#include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -154,7 +154,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Collective(
   const auto& place = in_tensor.place();
   const auto& key = GetKeyFromPlace(place);
 
-  if (!calc_event_) {
+  if (!calc_event_ ||
+      (place_to_comm_ctx_.find(key) == place_to_comm_ctx_.end())) {
     CreateBKCLEnvCache(place, key);
   }
 
@@ -170,6 +171,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Collective(
   fn(out_tensor, in_tensor, comm_ctx->bkcl_context(), bkcl_stream);
 
   if (!use_calc_stream) {
+    PADDLE_ENFORCE_NOT_NULL(
+        comm_ctx.get(), platform::errors::Fatal("comm context is nullptr."));
     task->comm_event_->Record(*comm_ctx.get());
   }
 
@@ -369,6 +372,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllReduce(
       1,
       platform::errors::InvalidArgument(
           "BKCL only support single tensor collective communication."));
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInXPUPlace(in_tensors),
+      true,
+      platform::errors::InvalidArgument("All inputs should be in XPUPlace."));
   return Collective(
       &out_tensors[0],
       in_tensors[0],
@@ -406,6 +413,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllReduce(
       1,
       platform::errors::InvalidArgument(
           "BKCL only support single tensor collective communication."));
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInXPUPlace(in_tensors),
+      true,
+      platform::errors::InvalidArgument("All inputs should be in XPUPlace."));
   return Collective(
       &out_tensors[0],
       in_tensors[0],
@@ -442,6 +453,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Broadcast(
       1,
       platform::errors::InvalidArgument(
           "BKCL only support single tensor collective communication."));
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInXPUPlace(in_tensors),
+      true,
+      platform::errors::InvalidArgument("All inputs should be in XPUPlace."));
 
   return Collective(
       &out_tensors[0],
@@ -481,6 +496,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Broadcast(
       1,
       platform::errors::InvalidArgument(
           "BKCL only support single tensor collective communication."));
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInXPUPlace(in_tensors),
+      true,
+      platform::errors::InvalidArgument("All inputs should be in XPUPlace."));
 
   return Collective(
       &out_tensors[0],
@@ -518,6 +537,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllGather(
       1,
       platform::errors::InvalidArgument(
           "BKCL only support single tensor collective communication."));
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInXPUPlace(in_tensors),
+      true,
+      platform::errors::InvalidArgument("All inputs should be in XPUPlace."));
   PADDLE_ENFORCE_EQ(
       CheckTensorsInXPUPlace(out_tensors),
       true,

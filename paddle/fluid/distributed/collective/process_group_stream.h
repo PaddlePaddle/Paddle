@@ -72,6 +72,12 @@ class ProcessGroupStream : public ProcessGroup {
   virtual std::shared_ptr<ProcessGroup::Task> AllGather(
       phi::DenseTensor* out_tensor,
       const phi::DenseTensor& in_tensor,
+      bool sync_op,
+      bool use_calc_stream);
+
+  virtual std::shared_ptr<ProcessGroup::Task> AllGather(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
       int64_t offset,
       int64_t numel,
       bool sync_op,
@@ -163,6 +169,11 @@ class ProcessGroupStream : public ProcessGroup {
 
   virtual std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
                                                    int src_rank,
+                                                   bool sync_op,
+                                                   bool use_calc_stream);
+
+  virtual std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
+                                                   int src_rank,
                                                    int64_t offset,
                                                    int64_t numel,
                                                    bool sync_op,
@@ -173,6 +184,11 @@ class ProcessGroupStream : public ProcessGroup {
                                            int64_t offset,
                                            int64_t numel,
                                            bool sync_op) override;
+
+  std::shared_ptr<ProcessGroup::Task> Send(const phi::DenseTensor& tensor,
+                                           int dst_rank,
+                                           bool sync_op,
+                                           bool use_calc_stream);
 
   virtual std::shared_ptr<ProcessGroup::Task> Send(
       const phi::DenseTensor& tensor,

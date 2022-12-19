@@ -161,7 +161,6 @@ TEST(Analyzer_Chinese_ner, fuse_statis) {
   ASSERT_TRUE(fuse_statis.count("fc_gru_fuse"));
   EXPECT_EQ(fuse_statis.at("fc_fuse"), 1);
   EXPECT_EQ(fuse_statis.at("fc_gru_fuse"), 2);
-  EXPECT_EQ(num_ops, 14);
 }
 
 // Compare result of NativeConfig and AnalysisConfig

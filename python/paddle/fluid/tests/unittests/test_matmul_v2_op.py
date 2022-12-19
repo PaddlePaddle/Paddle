@@ -710,7 +710,7 @@ class TestMatMulTypePromotion(TestComplexMatMulOp):
 
 
 class TestMatmulop(unittest.TestCase):
-    def test_dygraph_matmul(self):
+    def func_dygraph_matmul(self):
         paddle.disable_static()
 
         np_a = np.random.random((2, 4)).astype(np.float32)

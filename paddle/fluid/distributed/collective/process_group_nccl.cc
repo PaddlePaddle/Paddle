@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
+#include "paddle/fluid/distributed/collective/process_group_nccl.h"
 
-#include "paddle/fluid/distributed/collective/Common.h"
-#include "paddle/fluid/distributed/collective/NCCLTools.h"
 #include "paddle/fluid/distributed/collective/check.h"
+#include "paddle/fluid/distributed/collective/common.h"
+#include "paddle/fluid/distributed/collective/nccl_tools.h"
 #include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/fluid/platform/place.h"

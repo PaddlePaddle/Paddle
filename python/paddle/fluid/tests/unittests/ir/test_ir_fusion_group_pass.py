@@ -35,7 +35,7 @@ class FusionGroupPassTest(PassTest):
             tmp_0 = self.feed_vars[0] * self.feed_vars[1]
             tmp_1 = layers.mul(tmp_0, self.feed_vars[2])
             # subgraph with 2 op nodes
-            tmp_2 = layers.relu(tmp_0 + tmp_1)
+            tmp_2 = paddle.nn.functional.relu(tmp_0 + tmp_1)
 
         self.append_gradients(tmp_2)
 
@@ -146,7 +146,7 @@ class FusionGroupPassTestCastAndFP16(FusionGroupPassTest):
             tmp_3 = layers.mul(tmp_0, self.feed_vars[2])
             # subgraph with 4 op nodes
             tmp_3 = layers.cast(tmp_2, dtype="float16")
-            tmp_4 = layers.relu(tmp_1 + tmp_3)
+            tmp_4 = paddle.nn.functional.relu(tmp_1 + tmp_3)
             tmp_5 = layers.cast(tmp_4, dtype=dtype)
             tmp_3 = layers.cast(tmp_2, dtype=dtype)
 

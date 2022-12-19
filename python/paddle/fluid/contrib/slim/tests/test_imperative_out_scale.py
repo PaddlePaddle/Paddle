@@ -28,7 +28,7 @@ from paddle.fluid.optimizer import AdamOptimizer
 from paddle.fluid.framework import IrGraph, _test_eager_guard
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
 from paddle.nn import Sequential
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn.layer import ReLU, LeakyReLU, Sigmoid, Softmax, PReLU
 from paddle.nn import Linear, Conv2D, Softmax, BatchNorm2D, MaxPool2D
 from paddle.fluid.log_helper import get_logger

@@ -12,19 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .static_analysis import (
-    AstNodeWrapper,
-)
-from .utils import (
-    FunctionNameLivenessAnalysis,
-)
-from .variable_trans_func import (
-    create_undefined_var,
-)
-from .base_transformer import (
-    BaseTransformer,
-)
-
+from .base_transformer import BaseTransformer
+from .static_analysis import AstNodeWrapper
+from .utils import FunctionNameLivenessAnalysis
+from .variable_trans_func import create_undefined_var
 
 __all__ = []
 

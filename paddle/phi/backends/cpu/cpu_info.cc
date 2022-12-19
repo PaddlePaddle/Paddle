@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,11 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/cpu_info.h"
-
-#ifdef PADDLE_WITH_XBYAK
-#include "xbyak/xbyak_util.h"
-#endif
+#include "paddle/phi/backends/cpu/cpu_info.h"
 
 #ifdef __APPLE__
 #include <sys/sysctl.h>
@@ -29,6 +25,10 @@ limitations under the License. */
 #else
 #include <unistd.h>
 #endif  // _WIN32
+
+#ifdef PADDLE_WITH_XBYAK
+#include "xbyak/xbyak_util.h"
+#endif
 
 #include <algorithm>
 
@@ -47,8 +47,9 @@ PADDLE_DEFINE_EXPORTED_bool(use_pinned_memory,
                             true,
                             "If set, allocate cpu pinned memory.");
 
-namespace paddle {
-namespace platform {
+namespace phi {
+namespace backends {
+namespace cpu {
 
 size_t CpuTotalPhysicalMemory() {
 #ifdef __APPLE__
@@ -85,6 +86,11 @@ size_t CpuMaxChunkSize() {
   return std::min(
       static_cast<size_t>(CpuMaxAllocSize() / 32),
       static_cast<size_t>(FLAGS_initial_cpu_memory_in_mb * 1 << 20));
+}
+
+size_t CpuMinChunkSize() {
+  // Allow to allocate the minimum chunk size is 4 KB.
+  return 1 << 12;
 }
 
 size_t CUDAPinnedMaxAllocSize() {
@@ -206,5 +212,6 @@ bool MayIUse(const cpu_isa_t cpu_isa) {
 }
 #endif
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace cpu
+}  // namespace backends
+}  // namespace phi
