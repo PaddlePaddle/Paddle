@@ -147,7 +147,8 @@ function(select_nvcc_arch_flags out_variable)
     set(cuda_arch_bin "30 35")
   elseif(${CUDA_ARCH_NAME} STREQUAL "Maxwell")
     if(WITH_NV_JETSON)
-      set(cuda_arch_bin "53")
+      set(
+         "53")
     else()
       set(cuda_arch_bin "50")
     endif()
@@ -203,7 +204,6 @@ function(select_nvcc_arch_flags out_variable)
 
   set(nvcc_flags "")
   set(nvcc_archs_readable "")
-  # set(CUDA_REAL_ARCHS_LIST "")
 
   # Tell NVCC to add binaries for the specified GPUs
   foreach(arch ${cuda_arch_bin})
@@ -218,8 +218,6 @@ function(select_nvcc_arch_flags out_variable)
       string(APPEND nvcc_archs_readable " sm_${arch}")
     endif()
   endforeach()
-
-  # add_definitions("-DCUDA_REAL_ARCHS=\"${CUDA_REAL_ARCHS}\"")
 
   # Tell NVCC to add PTX intermediate code for the specified architectures
   foreach(arch ${cuda_arch_ptx})
