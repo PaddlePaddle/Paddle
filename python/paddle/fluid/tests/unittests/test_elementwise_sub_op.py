@@ -19,7 +19,6 @@ from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestElementwiseOp(OpTest):
@@ -414,7 +413,7 @@ class TestSubtractInplaceBroadcastError3(TestSubtractInplaceBroadcastError):
 
 
 class TestFloatElementwiseSubop(unittest.TestCase):
-    def func_dygraph_sub(self):
+    def test_dygraph_sub(self):
         paddle.disable_static()
 
         np_a = np.random.random((2, 3, 4)).astype(np.float64)
@@ -446,14 +445,9 @@ class TestFloatElementwiseSubop(unittest.TestCase):
 
         paddle.enable_static()
 
-    def test_dygraph_sub(self):
-        with _test_eager_guard():
-            self.func_dygraph_sub()
-        self.func_dygraph_sub()
-
 
 class TestFloatElementwiseSubop1(unittest.TestCase):
-    def func_dygraph_sub(self):
+    def test_dygraph_sub(self):
         paddle.disable_static()
 
         np_a = np.random.random((2, 3, 4)).astype(np.float32)
@@ -476,10 +470,6 @@ class TestFloatElementwiseSubop1(unittest.TestCase):
         )
 
         paddle.enable_static()
-
-    def test_dygraph_sub(self):
-        with _test_eager_guard():
-            self.func_dygraph_sub()
 
 
 if __name__ == '__main__':

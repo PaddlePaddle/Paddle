@@ -20,7 +20,7 @@
 #include <string>
 #include <unordered_map>
 
-#include "paddle/fluid/distributed/collective/ProcessGroupStream.h"
+#include "paddle/fluid/distributed/collective/process_group_stream.h"
 #include "paddle/fluid/distributed/store/store.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/fluid/platform/enforce.h"

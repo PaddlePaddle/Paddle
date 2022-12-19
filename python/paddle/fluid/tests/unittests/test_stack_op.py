@@ -172,7 +172,7 @@ class TestStackAPIWithLoDTensorArray(unittest.TestCase):
             zero = fluid.layers.fill_constant(shape=[1], value=0, dtype="int64")
 
             for i in range(self.iter_num):
-                fluid.layers.array_write(input, zero + i, tensor_array)
+                paddle.tensor.array_write(input, zero + i, tensor_array)
 
             self.out_var = paddle.stack(tensor_array, axis=self.axis)
 
@@ -210,7 +210,7 @@ class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
             zero = fluid.layers.fill_constant(shape=[1], value=0, dtype="int64")
 
             for i in range(self.iter_num):
-                fluid.layers.array_write(input, zero + i, tensor_array)
+                paddle.tensor.array_write(input, zero + i, tensor_array)
 
             self.out_var = paddle.stack(tensor_array, axis=self.axis)
 

@@ -177,6 +177,12 @@ class TestKthvalueOpErrors(unittest.TestCase):
 
         self.assertRaises(ValueError, test_dim_range_error)
 
+        def test_k_error_0_dim_input():
+            x_0d = paddle.full([], 1)
+            x_0d.kthvalue(k=8)
+
+        self.assertRaises(ValueError, test_k_error_0_dim_input)
+
 
 class TestModeOpInStatic(unittest.TestCase):
     def setUp(self):

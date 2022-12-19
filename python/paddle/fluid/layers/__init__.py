@@ -24,23 +24,15 @@ from . import math_op_patch
 from .math_op_patch import *
 from . import loss
 from .loss import *
-from . import detection
-from .detection import *
 from .learning_rate_scheduler import *
 from .collective import *
 from .sequence_lod import *
-from . import rnn
-from .nn import reduce_sum
 
 __all__ = []
 __all__ += nn.__all__
 __all__ += io.__all__
 __all__ += tensor.__all__
 __all__ += control_flow.__all__
-__all__ += detection.__all__
 __all__ += learning_rate_scheduler.__all__
 __all__ += sequence_lod.__all__
 __all__ += loss.__all__
-__all__ += rnn.__all__
-
-from .rnn import *
