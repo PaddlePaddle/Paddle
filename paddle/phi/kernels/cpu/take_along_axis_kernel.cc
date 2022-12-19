@@ -18,7 +18,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/gather_scatter_kernel.h"
+#include "paddle/phi/kernels/funcs/gather_scatter_functor.h"
 
 namespace phi {
 
@@ -38,9 +38,9 @@ void TakeAlongAxisKernel(const Context& dev_ctx,
 
   const auto& index_type = index.dtype();
   if (index_type == DataType::INT32) {
-    phi::cpu_gather_kernel<T, int32_t>(x, axis, index, *out, dev_ctx);
+    phi::funcs::cpu_gather_kernel<T, int32_t>(x, axis, index, *out, dev_ctx);
   } else if (index_type == DataType::INT64) {
-    phi::cpu_gather_kernel<T, int64_t>(x, axis, index, *out, dev_ctx);
+    phi::funcs::cpu_gather_kernel<T, int64_t>(x, axis, index, *out, dev_ctx);
   }
 }
 

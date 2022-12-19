@@ -12,11 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/gather_scatter_kernel.h"
+#include "paddle/phi/kernels/funcs/gather_scatter_functor.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace phi {
+namespace funcs {
 
 class TensorAssign {
  public:
@@ -273,4 +274,5 @@ Instantiate_Template_Function(gpu_gather_kernel)
             Instantiate_Template_Function(gpu_scatter_mul_kernel)
                 Instantiate_Template_Function(gpu_scatter_input_grad_kernel)
 
+}  // namespace funcs
 }  // namespace phi

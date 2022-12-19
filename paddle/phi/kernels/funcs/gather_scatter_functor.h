@@ -19,6 +19,7 @@ limitations under the License. */
 #pragma once
 
 namespace phi {
+namespace funcs {
 
 #define Instantiate_Template_Function(func)                                    \
   Instantiate_Template_Function_index_t(                                       \
@@ -110,4 +111,5 @@ void gpu_scatter_input_grad_kernel(phi::DenseTensor self,
                                    phi::DenseTensor result,
                                    const phi::DeviceContext& ctx);
 
+}  // namespace funcs
 }  // namespace phi

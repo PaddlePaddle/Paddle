@@ -18,8 +18,8 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
+#include "paddle/phi/kernels/funcs/gather_scatter_functor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/gather_scatter_kernel.h"
 
 namespace phi {
 
@@ -46,14 +46,14 @@ void TakeAlongAxisGradKernel(const Context& dev_ctx,
   const auto& index_type = index.dtype();
 
   if (index_type == DataType::INT32) {
-    phi::gpu_scatter_add_kernel<T, int32_t>(
+    phi::funcs::gpu_scatter_add_kernel<T, int32_t>(
         *x_grad,
         axis,
         index,
         out_grad,
         dev_ctx);  // the gradient of gather is scatter
   } else if (index_type == DataType::INT64) {
-    phi::gpu_scatter_add_kernel<T, int64_t>(
+    phi::funcs::gpu_scatter_add_kernel<T, int64_t>(
         *x_grad, axis, index, out_grad, dev_ctx);
   }
 }
