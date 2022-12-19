@@ -73,7 +73,6 @@ __all__ = [
     'lod_reset',
     'clip',
     'clip_by_norm',
-    'mul',
     'merge_selected_rows',
     'get_tensor_from_selected_rows',
 ]
@@ -1678,64 +1677,6 @@ def merge_selected_rows(x, name=None):
         inputs={"X": x},
         attrs={},
         outputs={"Out": out},
-    )
-    return out
-
-
-def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
-    """
-    Mul Operator.
-    This operator is used to perform matrix multiplication for input $x$ and $y$.
-    The equation is:
-
-    ..  math::
-        Out = x * y
-
-    Both the input $x$ and $y$ can carry the LoD (Level of Details) information, or not. But the output only shares the LoD information with input $x$.
-
-    Args:
-        x (Variable): The first input Tensor/LoDTensor of mul_op.
-        y (Variable): The second input Tensor/LoDTensor of mul_op.
-        x_num_col_dims (int, optional): The mul_op can take tensors with more than two dimensions as its inputs. If the input $x$ is a tensor with more than two dimensions, $x$ will be flattened into a two-dimensional matrix first. The flattening rule is: the first `num_col_dims` will be flattened to form the first dimension of the final matrix (the height of the matrix), and the rest `rank(x) - num_col_dims` dimensions are flattened to form the second dimension of the final matrix (the width of the matrix). As a result, height of the flattened matrix is equal to the product of $x$'s first `x_num_col_dims` dimensions' sizes, and width of the flattened matrix is equal to the product of $x$'s last `rank(x) - num_col_dims` dimensions' size. For example, suppose $x$ is a 6-dimensional tensor with the shape [2, 3, 4, 5, 6], and `x_num_col_dims` = 3. Thus, the flattened matrix will have a shape [2 x 3 x 4, 5 x 6] = [24, 30]. Default is 1.
-        y_num_col_dims (int, optional): The mul_op can take tensors with more than two dimensions as its inputs. If the input $y$ is a tensor with more than two dimensions, $y$ will be flattened into a two-dimensional matrix first. The attribute `y_num_col_dims` determines how $y$ is flattened. See comments of `x_num_col_dims` for more details. Default is 1.
-        name (str, optional): Name of the output. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default is None.
-
-    Returns:
-        Variable(Tensor/LoDTensor): The output Tensor/LoDTensor of mul op.
-
-    Examples:
-        ..  code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle
-            paddle.enable_static()
-            dataX = fluid.layers.data(name="dataX", append_batch_size = False, shape=[2, 5], dtype="float32")
-            dataY = fluid.layers.data(name="dataY", append_batch_size = False, shape=[5, 3], dtype="float32")
-            output = fluid.layers.mul(dataX, dataY,
-                                      x_num_col_dims = 1,
-                                      y_num_col_dims = 1)
-
-
-    """
-    if _non_static_mode():
-        return _legacy_C_ops.mul(
-            x,
-            y,
-            'x_num_col_dims',
-            x_num_col_dims,
-            'y_num_col_dims',
-            y_num_col_dims,
-        )
-
-    inputs = {"X": [x], "Y": [y]}
-    attrs = {"x_num_col_dims": x_num_col_dims, "y_num_col_dims": y_num_col_dims}
-    helper = LayerHelper("mul", **locals())
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'mul')
-    check_variable_and_dtype(y, 'y', ['float16', 'float32', 'float64'], 'mul')
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    helper.append_op(
-        type="mul", inputs={"X": x, "Y": y}, attrs=attrs, outputs={"Out": out}
     )
     return out
 
