@@ -20,7 +20,7 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -1204,8 +1204,7 @@ void CPUQuantizePass::QuantizeMultiGru(Graph* graph) const {
       auto* w_scale_tensor_dst =
           scope->Var(w_scale_node->Name())->GetMutable<phi::DenseTensor>();
       w_scale_tensor_dst->Resize(scale_tensor_src.dims());
-      auto* dst_data =
-          w_scale_tensor_dst->mutable_data<float>(platform::CPUPlace());
+      auto* dst_data = w_scale_tensor_dst->mutable_data<float>(phi::CPUPlace());
       EigenVectorArrayMapFloat eigen_tensor_dst{dst_data,
                                                 w_scale_tensor_dst->numel()};
       eigen_tensor_dst =
