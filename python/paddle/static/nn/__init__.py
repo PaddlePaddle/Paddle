@@ -31,7 +31,6 @@ from .control_flow import (
 from .common import bilinear_tensor_product  # noqa: F401
 from .common import py_func  # noqa: F401
 from ...tensor.creation import create_parameter  # noqa: F401
-from ...fluid.layers import layer_norm  # noqa: F401
 from .loss import nce  # noqa: F401
 from .common import prelu  # noqa: F401
 from ...fluid.layers import row_conv  # noqa: F401
