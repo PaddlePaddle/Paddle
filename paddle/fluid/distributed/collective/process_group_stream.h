@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/collective/process_group.h"
 
 namespace paddle {
 namespace distributed {
