@@ -79,7 +79,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
 endif()
 
-list(REMOVE_ITEM TEST_OPS test_fused_ec_moe)
+list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
