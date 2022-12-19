@@ -19,8 +19,6 @@ import numpy as np
 from get_gpt_model import FakeDataset, generate_model
 
 import paddle
-
-# import paddle.distributed as distributed
 from paddle.distributed.fleet import auto
 from paddle.fluid.dygraph.parallel import ParallelEnv
 

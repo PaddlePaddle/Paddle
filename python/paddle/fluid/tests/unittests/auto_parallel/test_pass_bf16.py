@@ -18,7 +18,12 @@ import sys
 import tempfile
 import unittest
 
+import paddle.fluid.core as core
 
+
+@unittest.skipIf(
+    not core.supports_bfloat16(), 'place does not support BF16 evaluation'
+)
 class TestBF16Pass(unittest.TestCase):
     def test_mp2(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
