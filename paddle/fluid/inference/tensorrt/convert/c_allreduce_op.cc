@@ -1,3 +1,11 @@
+/*
+ * @Author: physico
+ * @Date: 2022-12-19 16:59:04
+ * @LastEditTime: 2022-12-19 17:02:33
+ * @FilePath: /Paddle/paddle/fluid/inference/tensorrt/convert/c_allreduce_op.cc
+ * @Description: 
+ * @Function List: 
+ */
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,7 +41,7 @@ class CAllReduceOpConverter : public OpConverter {
     VLOG(4) << "convert fluid callreduce op to tensorrt layer";
     if (!engine_->with_dynamic_shape()) {
       PADDLE_THROW(platform::errors::Fatal(
-          "Unsupported static mode. Please set dynamic shape of inputs."));
+          "Unsupported static graph mode. Please set dynamic shape of inputs."));
     }
     ReduceType red_type = op_to_reduce_type[op.type()];
     std::string name = op.type();

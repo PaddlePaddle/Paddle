@@ -888,10 +888,10 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         the same shape because of dataflow model of PaddlePaddle while the
         tensors in the tuples or the lists can have different shapes.
 
-        2. This API could be used under both static mode or dygraph mode. If it
+        2. This API could be used under both static graph mode or dygraph mode. If it
         is in dygraph mode, the API only runs one branch based on condition.
 
-        3. If it is in static mode, any tensors or operations created outside
+        3. If it is in static graph mode, any tensors or operations created outside
         or inside of ``true_fn`` and ``false_fn`` will be in net building
         regardless of which branch is selected at runtime. This has frequently
         surprised users who expected a lazy semantics. For example:

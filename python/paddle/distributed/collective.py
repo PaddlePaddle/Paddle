@@ -162,7 +162,7 @@ def _new_process_group_impl(
 
 # _custom_gid provides a way for users to
 # set the group id, which is usually useful
-# to be compatible with the static mode.
+# to be compatible with the static graph mode.
 _custom_gid = None
 
 

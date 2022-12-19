@@ -407,7 +407,7 @@ class TestSGDMultiPrecision2_0(unittest.TestCase):
                 rtol=1e-05,
                 atol=0.1,
             )
-        "Test static mode"
+        "Test static graph mode"
         output1_st = self.static_sgd_mp(mp=True)
         output2_st = self.static_sgd_mp(mp=False)
         for idx in range(len(output1_st)):
@@ -517,7 +517,7 @@ class TestSGDMultiPrecision1_0(unittest.TestCase):
                 rtol=1e-05,
                 atol=0.1,
             )
-        "Test static mode"
+        "Test static graph mode"
         output1_st = self.static_sgd_mp(mp=True)
         output2_st = self.static_sgd_mp(mp=False)
         for idx in range(len(output1_st)):

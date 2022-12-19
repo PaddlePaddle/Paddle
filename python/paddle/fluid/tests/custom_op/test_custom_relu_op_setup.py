@@ -58,7 +58,7 @@ def custom_relu_static(
 
             exe = static.Executor()
             exe.run(static.default_startup_program())
-            # in static mode, x data has been covered by out
+            # in static graph mode, x data has been covered by out
             out_v = exe.run(
                 static.default_main_program(),
                 feed={'X': np_x},
@@ -84,7 +84,7 @@ def custom_relu_static_pe(func, device, dtype, np_x, use_func=True):
             exe = static.Executor()
             exe.run(static.default_startup_program())
 
-            # in static mode, x data has been covered by out
+            # in static graph mode, x data has been covered by out
             compiled_prog = static.CompiledProgram(
                 static.default_main_program()
             ).with_data_parallel(loss_name=out.name, places=places)

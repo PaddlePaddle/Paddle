@@ -132,7 +132,7 @@ def _random_routing(topk_idx, topk_value, prob, topk=2):
         elif _in_legacy_dygraph():
             return core.ops.random_routing(prob, topk_value, topk_idx)
         else:
-            raise RuntimeError("Not supporting static mode now")
+            raise RuntimeError("Not supporting static graph mode now")
     else:
         raise RuntimeError("only topk=2 is supported now")
 

@@ -86,7 +86,7 @@ class RunProgramOpTest(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for place in places:
-            # TODO: RunProgramOp is not recommended for use in static mode now
+            # TODO: RunProgramOp is not recommended for use in static graph mode now
             self.expect_outs = self.run_static_model(place, is_test=True)
             self.check_output_with_place(place)
 
@@ -95,7 +95,7 @@ class RunProgramOpTest(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for place in places:
-            # TODO: RunProgramOp is not recommended for use in static mode now
+            # TODO: RunProgramOp is not recommended for use in static graph mode now
             self.expect_grads = self.run_static_model(place, is_test=False)
             self.check_grad_with_place(place)
 
@@ -437,7 +437,7 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for place in places:
-            # TODO: RunProgramOp is not recommended for use in static mode now
+            # TODO: RunProgramOp is not recommended for use in static graph mode now
             self.calc_dygraph_grad(place)
 
     def build_model(self):

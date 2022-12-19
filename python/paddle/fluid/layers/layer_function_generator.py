@@ -331,7 +331,7 @@ def generate_inplace_fn(inplace_op_type):
             op = getattr(_legacy_C_ops, inplace_op_type)
             return op(x)
         warnings.warn(
-            "In static mode, {}() is the same as {}() and does not perform inplace operation.".format(
+            "In static graph mode, {}() is the same as {}() and does not perform inplace operation.".format(
                 inplace_op_type, origin_op_type
             )
         )

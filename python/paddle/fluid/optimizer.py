@@ -1426,7 +1426,7 @@ class SGDOptimizer(Optimizer):
             Can be a float value or a Variable with one float value as data element.
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
              :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
@@ -1627,7 +1627,7 @@ class MomentumOptimizer(Optimizer):
         momentum (float): Momentum factor
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         use_nesterov (bool, optional): Enables Nesterov momentum, default is false.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
              :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
@@ -1774,7 +1774,7 @@ class LarsMomentumOptimizer(Optimizer):
         lars_weight_decay (float): Weight decay coefficient for decaying using LARS.
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
              :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
@@ -2036,7 +2036,7 @@ class AdagradOptimizer(Optimizer):
             The default value is 1e-06.
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
              :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
@@ -2194,7 +2194,7 @@ class AdamOptimizer(Optimizer):
             The default value is 1e-08.
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
              :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
@@ -2621,7 +2621,7 @@ class AdamaxOptimizer(Optimizer):
             The default value is 1e-08.
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
              :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
@@ -2852,7 +2852,7 @@ class DpsgdOptimizer(Optimizer):
         sigma (float): for gaussian noise.
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
     Notes:
        Currently, DpsgdOptimizer doesn't support sparse parameter optimization.
     """
@@ -2955,7 +2955,7 @@ class DecayedAdagradOptimizer(Optimizer):
             The default value is 1e-06.
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
              :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
@@ -3080,7 +3080,7 @@ class AdadeltaOptimizer(Optimizer):
         rho (float): a floating point value indicating the decay rate. Default 0.95.
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
              :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
@@ -3266,7 +3266,7 @@ class RMSPropOptimizer(Optimizer):
             computation and memory. Defaults to False.
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
              :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
@@ -3484,7 +3484,7 @@ class FtrlOptimizer(Optimizer):
         lr_power (float): Learning Rate Power, default is -0.5.
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
              :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
@@ -3665,7 +3665,7 @@ class LambOptimizer(AdamOptimizer):
         epsilon (float, optional): A small float value for numerical stability. Default 1e-6.
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
              :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \

@@ -751,7 +751,7 @@ class IpuDynamicPatcher:
     def patch_lr_scheduler(ipu_strategy):
         from paddle.optimizer.lr import LRScheduler
 
-        # For IPU dynamic graph usage, lr_var is not synced in executor as static mode do.
+        # For IPU dynamic graph usage, lr_var is not synced in executor as static graph mode do.
         # Manually set lr to ipu_strategy to update the lr.
         old_step = LRScheduler.step
 

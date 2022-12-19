@@ -902,7 +902,7 @@ def load(path, **configs):
         directory, such as ``model`` and model is a directory.
 
     Note:
-        If you load ``state_dict`` from the saved result of static mode API such as
+        If you load ``state_dict`` from the saved result of static graph mode API such as
         ``paddle.static.save`` or ``paddle.static.save_inference_model`` ,
         the structured variable name in dynamic mode will cannot be restored.
         You need to set the argument ``use_structured_name=False`` when using

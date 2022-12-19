@@ -1300,7 +1300,7 @@ def concat(x, axis=0, name=None):
     if input[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
         # NOTE(liym27): Don't remove this if branch!
         # This feature is supported for Dynamic-to-Static, because after transformed, the type of inputs[0]
-        # is LOD_TENSOR_ARRAY in some scenarios. And this feature can be used in static mode.
+        # is LOD_TENSOR_ARRAY in some scenarios. And this feature can be used in static graph mode.
 
         assert len(input) == 1, (
             "If the elements of 'input' in concat are Variable(LoDTensorArray), "

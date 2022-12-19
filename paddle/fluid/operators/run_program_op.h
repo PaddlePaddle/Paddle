@@ -288,8 +288,8 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     auto *out_scope_vec = ctx.Output<StepScopeVar>("OutScope");
     std::unique_ptr<framework::Scope> inner_scope{nullptr};
     if (out_scope_vec->size() == 0) {
-      // For cuda graph under static mode usage.
-      // For static mode, we cannot set value of a tensor before any run,
+      // For cuda graph under static graph mode usage.
+      // For static graph mode, we cannot set value of a tensor before any run,
       // the OutScope variable passed to the op actually contains nothing.
       // Just create a tmp scope to run the program.
       PADDLE_ENFORCE_EQ(

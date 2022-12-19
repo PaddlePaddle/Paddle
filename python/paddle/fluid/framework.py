@@ -228,7 +228,7 @@ def in_dygraph_mode():
             print(paddle.in_dynamic_mode())  # True, dynamic mode is turn ON by default since paddle 2.0.0
 
             paddle.enable_static()
-            print(paddle.in_dynamic_mode())  # False, Now we are in static mode
+            print(paddle.in_dynamic_mode())  # False, Now we are in static graph mode
 
             paddle.disable_static()
             print(paddle.in_dynamic_mode())  # True, Now we are in dynamic mode
@@ -2843,7 +2843,7 @@ class Operator:
                 op_attrs = dict()
             del attrs
 
-            # attr for static mode cuda graph
+            # attr for static graph mode cuda graph
             self._cuda_graph_attr = _current_cuda_graph_mode
 
             op_maker = core.op_proto_and_checker_maker
@@ -2992,7 +2992,7 @@ class Operator:
                             out_arg_names.append(arg)
                         else:
                             out_arg_names.append(arg.name)
-                        # TODO(minqiyang): could we remove variable's op in static mode?
+                        # TODO(minqiyang): could we remove variable's op in static graph mode?
                         if not _non_static_mode():
                             if isinstance(arg, str):
                                 block.var(arg).op = self
@@ -4019,7 +4019,7 @@ class Block:
 
             # record ops in tracer rather than blocks
             #
-            # TODO(minqiyang): add op stop_gradient support in static mode too.
+            # TODO(minqiyang): add op stop_gradient support in static graph mode too.
             # currently, we only support stop_gradient in dygraph mode.
 
             _dygraph_tracer().trace_op(
@@ -7516,7 +7516,7 @@ def device_guard(device=None):
     """
 
     Note:
-        The API only supports static mode.
+        The API only supports static graph mode.
 
     A context manager that specifies the device on which the OP will be placed.
 
@@ -7590,9 +7590,9 @@ def _cuda_graph_guard(cuda_graph_attr=None):
     """
 
     Note:
-        The API only supports static mode.
+        The API only supports static graph mode.
 
-    A context manager that specifies the cuda_graph_mode which indicating the cuda graph capture under static mode.
+    A context manager that specifies the cuda_graph_mode which indicating the cuda graph capture under static graph mode.
 
     Args:
         cuda_graph_attr(str|None): The cuda graph attr with the format of:
@@ -7600,7 +7600,7 @@ def _cuda_graph_guard(cuda_graph_attr=None):
     """
     assert (
         not _non_static_mode()
-    ), "cuda_graph_guard only works under static mode"
+    ), "cuda_graph_guard only works under static graph mode"
     assert (
         core.is_compiled_with_cuda()
     ), "cuda_graph_guard context can be only used when Paddle is compiled with cuda"

@@ -155,12 +155,12 @@ def monkey_patch_variable():
     @static_only
     def place(self):
         """
-        Variable don't have 'place' interface in static mode
+        Variable don't have 'place' interface in static graph mode
         But this interface can greatly facilitate dy2static.
         So we give a warnning here and return None.
         """
         warnings.warn(
-            "Variable do not have 'place' interface for static mode, try not to use it. None will be returned."
+            "Variable do not have 'place' interface for static graph mode, try not to use it. None will be returned."
         )
         return None
 

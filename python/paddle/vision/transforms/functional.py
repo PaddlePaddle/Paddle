@@ -34,7 +34,7 @@ def _is_pil_image(img):
 
 def _is_tensor_image(img):
     """
-    Return True if img is a Tensor for dynamic mode or Variable for static mode.
+    Return True if img is a Tensor for dynamic mode or Variable for static graph mode.
     """
     return isinstance(img, (paddle.Tensor, Variable))
 

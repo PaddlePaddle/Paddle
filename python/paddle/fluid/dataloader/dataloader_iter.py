@@ -307,7 +307,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                 if _in_legacy_dygraph():
                     data = self._reader.read_next_var_list()
                     data = _restore_batch(data, self._structure_infos.pop(0))
-                else:  # in static mode
+                else:  # in static graph mode
                     if self._return_list:
                         data = self._reader.read_next_list()
                         for i in range(len(data)):

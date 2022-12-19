@@ -59,7 +59,7 @@ class ModelAverage(Optimizer):
         average_window_rate (float): The calculate ratio of the window length relative to ``Parameter`` update times.
         parameters (list, optional): List of ``Tensor`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         min_average_window (int, optional): the minimum size of average window length. The default value is 10000.
         max_average_window (int, optional): The maximum size of average window length. The default value is 10000.
         name (str, optional): Normally there is no need for user to set this property.

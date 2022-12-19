@@ -1679,11 +1679,11 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
               phi_kernel_name, phi_kernel_key)));
 
       if (phi_kernel_->IsValid()) {
-        VLOG(6) << "Static mode ChoosePhiKernel - kernel name: "
+        VLOG(6) << "Static graph mode ChoosePhiKernel - kernel name: "
                 << phi_kernel_name << " | kernel key: " << phi_kernel_key
                 << " | kernel: " << *phi_kernel_;
       } else {
-        VLOG(6) << "Static mode ChoosePhiKernel - kernel `" << phi_kernel_name
+        VLOG(6) << "Static graph mode ChoosePhiKernel - kernel `" << phi_kernel_name
                 << "` not found.";
       }
     } else {
@@ -1816,7 +1816,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
         dev_ctx = pool.Get(platform::CPUPlace());
         if (phi_kernel_->IsValid()) {
-          VLOG(6) << "Static mode PrepareImpl - kernel name: "
+          VLOG(6) << "Static graph mode PrepareImpl - kernel name: "
                   << phi_kernel_name << " | kernel key: " << phi_cpu_kernel_key
                   << " | kernel: " << *phi_kernel_;
           run_phi_kernel_ = true;
@@ -2084,11 +2084,11 @@ phi::KernelKey OperatorWithKernel::ChoosePhiKernel(
       phi_kernel_name, phi_kernel_key)));
 
   if (phi_kernel_->IsValid()) {
-    VLOG(6) << "Static mode ChoosePhiKernel - kernel name: " << phi_kernel_name
+    VLOG(6) << "Static graph mode ChoosePhiKernel - kernel name: " << phi_kernel_name
             << " | kernel key: " << phi_kernel_key
             << " | kernel: " << *phi_kernel_;
   } else {
-    VLOG(6) << "Static mode ChoosePhiKernel - kernel `" << phi_kernel_name
+    VLOG(6) << "Static graph mode ChoosePhiKernel - kernel `" << phi_kernel_name
             << "` not found.";
   }
   return phi_kernel_key;

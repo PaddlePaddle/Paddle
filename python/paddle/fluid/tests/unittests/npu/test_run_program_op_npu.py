@@ -58,14 +58,14 @@ class RunProgramNPUOpTest(unittest.TestCase):
     def check_output(self):
         places = [fluid.NPUPlace(0)]
         for place in places:
-            # TODO: RunProgramOp is not recommended for use in static mode now
+            # TODO: RunProgramOp is not recommended for use in static graph mode now
             self.expect_outs = self.run_static_model(place, is_test=True)
             self.check_output_with_place(place)
 
     def check_grad(self):
         places = [fluid.NPUPlace(0)]
         for place in places:
-            # TODO: RunProgramOp is not recommended for use in static mode now
+            # TODO: RunProgramOp is not recommended for use in static graph mode now
             self.expect_grads = self.run_static_model(place, is_test=False)
             self.check_grad_with_place(place)
 

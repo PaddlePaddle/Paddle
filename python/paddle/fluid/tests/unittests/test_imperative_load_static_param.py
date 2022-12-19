@@ -26,7 +26,7 @@ from paddle.nn import BatchNorm, Linear
 
 class TestDygraphLoadStatic(unittest.TestCase):
     def testLoadStaticModel(self):
-        # static mode
+        # static graph mode
         temp_dir = tempfile.TemporaryDirectory()
         a = fluid.data(name="a", shape=[10, 10])
         conv_in = fluid.data(name="conv_in", shape=[None, 10, 10, 10])

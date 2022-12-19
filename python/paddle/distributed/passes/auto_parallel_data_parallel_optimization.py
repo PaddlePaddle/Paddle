@@ -279,7 +279,7 @@ class DataParallelOptimizationPass(PassBase):
         # NOTE current different nccl comm will use different cuda stream
         # so if there too many dp group there will be too many stream need to be
         # created and sync.
-        # revise here when framework support custom stream in static mode.
+        # revise here when framework support custom stream in static graph mode.
         num_dp_comm_stream = len(set(self._group_to_grad_name_map.keys()))
         if num_dp_comm_stream > __max_stream_num_allow__:
             return False

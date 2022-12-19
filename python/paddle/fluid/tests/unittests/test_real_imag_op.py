@@ -145,7 +145,7 @@ class TestRealAPI(unittest.TestCase):
             self.assertTrue("real_res" in out.name)
 
     def test_dtype_error(self):
-        # in static mode
+        # in static graph mode
         with self.assertRaises(TypeError):
             with static.program_guard(static.Program()):
                 x = static.data(name="x", shape=self._shape, dtype="float32")

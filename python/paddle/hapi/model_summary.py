@@ -180,7 +180,7 @@ def summary(net, input_size=None, dtypes=None, input=None):
 
     if not paddle.in_dynamic_mode():
         warnings.warn(
-            "Your model was created in static mode, this may not get correct summary information!"
+            "Your model was created in static graph mode, this may not get correct summary information!"
         )
         in_train_mode = False
     else:
