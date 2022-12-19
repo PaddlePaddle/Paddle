@@ -12,13 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/maxouting.h"
+#include "paddle/phi/kernels/funcs/maxouting.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace phi {
+namespace funcs {
 
 // All tensors are in NCHW or NHWC format, and the groups must be greater than 1
 template <typename DeviceContext, typename T>
@@ -35,7 +34,7 @@ void MaxOutFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
   // c_size means the output size of each sample
   int c_size = fea_size * output_channels;
   const T* input_data = input.data<T>();
-  T* output_data = output->mutable_data<T>(context.GetPlace());
+  T* output_data = context.template Alloc<T>(output);
   for (int i = 0; i < batch_size; ++i) {
     int new_bindex = c_size * i;
     for (int c = 0; c < output_channels; ++c) {
@@ -80,8 +79,7 @@ void MaxOutGradFunctor<DeviceContext, T>::operator()(
   const T* input_data = input.data<T>();
   const T* output_data = output.data<T>();
   const T* output_grad_data = output_grad.data<T>();
-  T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
-
+  T* input_grad_data = context.template Alloc<T>(input_grad);
   for (int i = 0; i < batch_size; ++i) {
     int blen = fea_size * output_channels * i;
     for (int c = 0; c < output_channels; ++c) {
@@ -114,6 +112,5 @@ template class MaxOutGradFunctor<phi::CPUContext, double>;
 template class MaxOutFunctor<phi::CPUContext, float>;
 template class MaxOutFunctor<phi::CPUContext, double>;
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi

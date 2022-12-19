@@ -28,8 +28,8 @@
 #include <gloo/reduce.h>
 #include <gloo/scatter.h>
 
-#include "paddle/fluid/distributed/collective/Common.h"
-#include "paddle/fluid/distributed/collective/ProcessGroupGloo.h"
+#include "paddle/fluid/distributed/collective/common.h"
+#include "paddle/fluid/distributed/collective/process_group_gloo.h"
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -399,6 +399,15 @@ class AllgatherGlooTask : public ProcessGroupGloo::GlooTask {
     gloo::allgather(opts);
   }
 };
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllGather(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    bool sync_op) {
+  std::vector<phi::DenseTensor> in_wrapper{in_tensor};
+  std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
+  return AllGather(in_wrapper, out_wrapper, true);
+}
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllGather(
     phi::DenseTensor* out_tensor,
