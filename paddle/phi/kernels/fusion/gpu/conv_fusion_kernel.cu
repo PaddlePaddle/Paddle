@@ -629,7 +629,7 @@ void ConvFusionKernel(const Context& ctx,
 }  // namespace fusion
 }  // namespace phi
 
-PD_REGISTER_KERNEL(conv2d_fusion,
+PD_REGISTER_KERNEL(conv2d_fusion,  // cuda_only
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::fusion::ConvFusionKernel,

@@ -55,14 +55,12 @@ def create_test_cudnn_channel_last_class(parent):
             self.input_size = [N, H, W, C]
             K1, K2, R, S = self.filter_size
             self.filter_size = [K1, R, S, K2]
-            self.dtype = np.float16
 
         def test_check_output(self):
             print(self.attrs)
             if self.has_cuda():
                 place = core.CUDAPlace(0)
-                if core.is_float16_supported(place):
-                    self.check_output_with_place(place, atol=2e-2)
+                self.check_output_with_place(place, atol=1e-5)
 
     cls_name = "{0}_{1}".format(parent.__name__, "CudnnChannelLast")
     TestCudnnChannelLastCase.__name__ = cls_name
