@@ -817,6 +817,88 @@ class TestGrad(unittest.TestCase):
         for i, j in zip(actual, expected):
             np.testing.assert_allclose(i, j, rtol=self._rtol, atol=self._atol)
 
+    def test_grad_aux(self):
+        input1 = np.random.rand(2, 3).astype("float32")
+        input2 = np.random.rand(2, 3).astype("float32")
+        xv1 = np.ones((2, 3)).astype("float32")
+        xv2 = np.zeros((2, 3)).astype("float32")
+
+        def multi_outputs(x, y):
+            m = x * y
+            n = x + y
+            return m, n
+
+        def expected():
+            paddle.incubate.autograd.disable_prim()
+            sp = paddle.static.Program()
+            mp = paddle.static.Program()
+            with paddle.static.program_guard(mp, sp):
+                static_input1 = paddle.static.data(
+                    name="input1", shape=[2, 3], dtype="float32"
+                )
+                static_input2 = paddle.static.data(
+                    name="input2", shape=[2, 3], dtype="float32"
+                )
+                v1 = paddle.static.data(
+                    name="v1", shape=[2, 3], dtype="float32"
+                )
+                v2 = paddle.static.data(
+                    name="v2", shape=[2, 3], dtype="float32"
+                )
+                res, ys_grad = paddle.incubate.autograd.vjp(
+                    multi_outputs, (static_input1, static_input2), (v1, v2)
+                )
+            feed = {'input1': input1, 'input2': input2, 'v1': xv1, 'v2': xv2}
+            exe = paddle.static.Executor()
+            exe.run(sp)
+            res = exe.run(mp, feed=feed, fetch_list=[res, ys_grad])
+            paddle.incubate.autograd.enable_prim()
+            return res
+
+        def actual():
+            paddle_grad = paddle.incubate.autograd.grad
+            paddle.incubate.autograd.enable_prim()
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                static_input1 = paddle.static.data(
+                    name="input1", shape=[2, 3], dtype="float32"
+                )
+                static_input2 = paddle.static.data(
+                    name="input2", shape=[2, 3], dtype="float32"
+                )
+                ys = multi_outputs(static_input1, static_input2)
+
+                res = paddle_grad(
+                    ys, (static_input1, static_input2), has_aux=True
+                )
+                paddle.incubate.autograd.prim2orig()
+
+            place = paddle.CPUPlace()
+            if paddle.device.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+            exe = paddle.static.Executor(place)
+            exe.run(startup)
+            outs = exe.run(
+                main, feed={'input1': input1, 'input2': input2}, fetch_list=res
+            )
+            paddle.incubate.autograd.disable_prim()
+            return outs
+
+        expected = expected()
+        expected_gradients = expected[2:]
+        expected_aux = expected[1]
+        actual = actual()
+        actual_gradients = actual[:1]
+        actual_aux = actual[2]
+
+        self.assertEqual(type(expected_gradients), type(actual_gradients))
+        for i, j in zip(expected_gradients, actual_gradients):
+            np.testing.assert_allclose(i, j, rtol=self._rtol, atol=self._atol)
+        np.testing.assert_allclose(
+            expected_aux, actual_aux, rtol=self._rtol, atol=self._atol
+        )
+
     def test_illegal_param(self):
         paddle.incubate.autograd.enable_prim()
         with self.assertRaises(TypeError):

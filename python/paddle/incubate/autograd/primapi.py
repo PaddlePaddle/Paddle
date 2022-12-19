@@ -102,7 +102,7 @@ def forward_grad(outputs, inputs, grad_inputs=None):
 
 
 @framework.static_only
-def grad(outputs, inputs, grad_outputs=None):
+def grad(outputs, inputs, grad_outputs=None, has_aux=False):
     """Reverse mode of automatic differentiation.
 
     Note:
@@ -114,6 +114,9 @@ def grad(outputs, inputs, grad_outputs=None):
         grad_outputs(Tensor|Sequence[Tensor]): Optional, the gradient Tensor or
             Tensors of outputs which has the same shape with outputs, Defaults
             to None, in this case is equivalent to all ones.
+        has_aux(bool): Optional, indicates whether this function returns auxiliary outputs. If True,
+            the number of outputs must be not less than 2. Only first output Tensor contributes to
+            the differention, while the other will be returned straightly. Default: False.
 
     Returns:
         grad_inputs(Tensor|Tensors): The gradients for inputs.
@@ -146,29 +149,49 @@ def grad(outputs, inputs, grad_outputs=None):
             paddle.incubate.autograd.disable_prim()
             paddle.disable_static()
     """
+    if has_aux:
+        if not isinstance(outputs, (typing.Sequence)) or len(outputs) < 2:
+            raise TypeError(
+                f'When set has_aux=True, expected outputs is Sequence of Tensors, '
+                f'but got {type(outputs)}.'
+            )
+        for item in outputs:
+            if not isinstance(item, framework.Variable):
+                raise ValueError(
+                    "When set has_aux=True, each element of outputs must be Tensor."
+                )
+        aux_var = outputs[1:]
+        outputs = outputs[0]
+
     if not utils.prim_enabled():
         grad_inputs = backward.gradients(outputs, inputs, grad_outputs)
-        # backward.gradients returns a list though the inputs is a signle Tensor.
+        # Note: backward.gradients returns a list even if the inputs is a single Tensor.
         # The follow code snippet fixes the problem by return the first element
-        # of grad_inputs when the inputs is a signle Tensor.
+        # of grad_inputs when the inputs is a single Tensor.
         if (
             isinstance(inputs, framework.Variable)
             and isinstance(grad_inputs, typing.Sequence)
             and len(grad_inputs) > 0
         ):
-            return grad_inputs[0]
+            res = [grad_inputs[0], aux_var] if has_aux else grad_inputs[0]
+            return res
         else:
-            return grad_inputs
+            res = (
+                list(grad_inputs) + list(aux_var)
+                if has_aux
+                else grad_inputs
+            )
+            return res
 
     if not isinstance(outputs, (framework.Variable, typing.Sequence)):
         raise TypeError(
-            f'Expected outputs is Tensor|Sequence[Tesnor], '
+            f'Expected outputs is Tensor|Sequence[Tensor], '
             f'but got {type(outputs)}.'
         )
 
     if not isinstance(inputs, (framework.Variable, typing.Sequence)):
         raise TypeError(
-            f'Expected inputs is Tensor|Sequence[Tesnor], '
+            f'Expected inputs is Tensor|Sequence[Tensor], '
             f'but got {type(inputs)}.'
         )
 
@@ -210,4 +233,8 @@ def grad(outputs, inputs, grad_outputs=None):
     ad.erase_ops(sorted(op_indexes))
     ad.erase_dots(xs_dot)
 
-    return xs_bar[0] if isinstance(inputs, framework.Variable) else xs_bar
+    gradients = (
+        xs_bar[0] if isinstance(inputs, framework.Variable) else xs_bar
+    )
+    res = list(gradients) + list(aux_var) if has_aux else gradients
+    return res
