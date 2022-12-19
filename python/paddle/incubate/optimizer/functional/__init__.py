@@ -14,6 +14,5 @@
 
 from .bfgs import minimize_bfgs  # noqa: F401
 from .lbfgs import minimize_lbfgs  # noqa: F401
-from .lbfgs_v2 import LBFGS  # noqa: F401
 
-__all__ = ['minimize_bfgs', 'minimize_lbfgs', 'LBFGS']
+__all__ = ['minimize_bfgs', 'minimize_lbfgs']

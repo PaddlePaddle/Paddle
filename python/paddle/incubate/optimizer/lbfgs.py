@@ -23,15 +23,24 @@ from .line_search_dygraph import _strong_wolfe
 
 
 class LBFGS(Optimizer):
-    r"""Implements L-BFGS algorithm, heavily inspired by `minFunc
-    <https://www.cs.ubc.ca/~schmidtm/Software/minFunc.html>`_.
+    r"""
+    The L-BFGS is a quasi-Newton method for solving an unconstrained optimization problem over a differentiable function.
+    Closely related is the Newton method for minimization. Consider the iterate update formula:
 
-    .. note::
-        This is a very memory intensive optimizer (it requires additional
-        ``param_bytes * (history_size + 1)`` bytes). If it doesn't fit in memory
-        try reducing the history size, or use a different algorithm.
+    .. math::
+        x_{k+1} = x_{k} + H_k \nabla{f_k}
+
+    If :math:`H_k` is the inverse Hessian of :math:`f` at :math:`x_k`, then it's the Newton method.
+    If :math:`H_k` is symmetric and positive definite, used as an approximation of the inverse Hessian, then
+    it's a quasi-Newton. In practice, the approximated Hessians are obtained
+    by only using the gradients, over either whole or part of the search
+    history, the former is BFGS, the latter is L-BFGS.
+
+    Reference:
+        Jorge Nocedal, Stephen J. Wright, Numerical Optimization, Second Edition, 2006. pp179: Algorithm 7.5 (L-BFGS).
+
     Args:
-        lr (float, optional): learning rate .The default value is 1
+        lr (float, optional): learning rate .The default value is 1.
         max_iter (int, optional): maximal number of iterations per optimization step.
             The default value is 20.
         max_eval (int, optional): maximal number of function evaluations per optimization
@@ -43,11 +52,7 @@ class LBFGS(Optimizer):
         history_size (int, optional): update history size. The default value is 100.
         line_search_fn (string, optional): either 'strong_wolfe' or None. The default value is strong_wolfe.
         parameters (list|tuple, optional): List/Tuple of ``Tensor`` names to update to minimize ``loss``. \
-            This parameter is required in dygraph mode. And you can specify different options for \
-            different parameter groups such as the learning rate, weight decay, etc, \
-            then the parameters are list of dict. Note that the learning_rate in paramter groups \
-            represents the scale of base learning_rate. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            This parameter is required in dygraph mode. The default value is None
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
             It canbe a float value as coeff of L2 regularization or \
             :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
@@ -64,14 +69,14 @@ class LBFGS(Optimizer):
             The default value is None.
 
     Return:
-        loss: the final loss of closure
+        loss (Tensor): the final loss of closure.
 
     Examples:
     .. code-block:: python
 
     import paddle
     import numpy as np
-    from paddle.incubate.optimizer.functional import LBFGS
+    from paddle.incubate.optimizer import LBFGS
 
     paddle.disable_static()
     np.random.seed(0)
