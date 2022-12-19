@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.incubate.optimizer.functional.lbfgs_v2 import LBFGS
-from paddle.incubate.optimizer.functional.line_search_dygraph import (
+from paddle.incubate.optimizer import LBFGS
+from paddle.incubate.optimizer.line_search_dygraph import (
     _cubic_interpolate,
     _strong_wolfe,
 )
