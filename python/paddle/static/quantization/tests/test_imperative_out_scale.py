@@ -21,7 +21,6 @@ from imperative_test_utils import fix_model_dict, train_lenet
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.framework import _test_eager_guard
 from paddle.framework import core, set_flags
 from paddle.nn import (
     BatchNorm2D,
@@ -133,7 +132,7 @@ class TestImperativeOutSclae(unittest.TestCase):
     def tearDown(self):
         self.root_path.cleanup()
 
-    def func_out_scale_acc(self):
+    def test_out_scale_acc(self):
         seed = 1000
         lr = 0.001
 
@@ -201,11 +200,6 @@ class TestImperativeOutSclae(unittest.TestCase):
                 loss_list[i] > loss_list[i + 1],
                 msg='Failed to do the imperative qat.',
             )
-
-    def test_out_scale_acc(self):
-        with _test_eager_guard():
-            self.func_out_scale_acc()
-        self.func_out_scale_acc()
 
 
 if __name__ == '__main__':
