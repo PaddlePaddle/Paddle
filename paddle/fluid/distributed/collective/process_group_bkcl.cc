@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/collective/ProcessGroupBKCL.h"
+#include "paddle/fluid/distributed/collective/process_group_bkcl.h"
 
-#include "paddle/fluid/distributed/collective/BKCLTools.h"
+#include "paddle/fluid/distributed/collective/bkcl_tools.h"
 #include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"

@@ -21,7 +21,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.jit import ProgramTranslator
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
 from paddle.nn import Embedding
 
 
@@ -250,7 +250,7 @@ class SkipGram(fluid.dygraph.Layer):
             ),
         )
 
-    @declarative
+    @to_static
     def forward(self, center_words, target_words, label):
         center_words_emb = self.embedding(center_words)
         target_words_emb = self.embedding_out(target_words)
