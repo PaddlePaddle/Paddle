@@ -88,9 +88,9 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
   }
 
   // Convert the CINN runtime program to a Paddle graph
-  runtime_program_ = BuildCompiledProgram(graph, compiled_obj);
+  runtime_program_desc_ = BuildCompiledProgram(graph, compiled_obj);
   runtime_graph_ =
-      std::make_unique<framework::ir::Graph>(*runtime_program_.get());
+      std::make_unique<framework::ir::Graph>(*runtime_program_desc_.get());
   auto& outer_varinfo = graph.Get<Name2VarInfoMap>(kMemOptVarInfoFromMainGraph);
   runtime_graph_->SetNotOwned<Name2VarInfoMap>(kMemOptVarInfoFromMainGraph,
                                                &outer_varinfo);
@@ -467,7 +467,7 @@ framework::InterpreterCore* CinnLaunchContext::InitializeInterpreterCore(
     if (!interpreter_core_) {
       interpreter_core_ = std::make_unique<framework::InterpreterCore>(
           place,
-          runtime_program_->Block(0),
+          runtime_program_desc_->Block(0),
           skip_gc_vars_,
           scope,
           /*used_for_jit*/ false,

@@ -159,7 +159,7 @@ class CinnLaunchContext {
   // the variable scope compiled from cinn
   const std::shared_ptr<CinnScope> cinn_scope_;
 
-  std::unique_ptr<framework::ProgramDesc> runtime_program_;
+  std::unique_ptr<framework::ProgramDesc> runtime_program_desc_;
   std::unique_ptr<framework::InterpreterCore> interpreter_core_;
   std::set<std::string> skip_gc_vars_;
 
