@@ -792,7 +792,7 @@ def index_sample(x, index):
             check_variable_and_dtype(
                 x,
                 'x',
-                ['float32', 'float64', 'int32', 'int64'],
+                ['float16', 'float32', 'float64', 'int32', 'int64'],
                 'paddle.tensor.search.index_sample',
             )
             check_variable_and_dtype(

@@ -178,7 +178,7 @@ void ComputeINT8(const OneDNNContext& dev_ctx,
   const std::string& unique_name =
       dev_ctx.GetInputsName("Input")[0] + dev_ctx.GetInputsName("Filter")[0];
   PD_VISIT_FLOAT_AND_INT8_TYPES(
-      filter->dtype(), "ConvMKLDNNHandlerT", ([&] {
+      filter->dtype(), "ConvOneDNNHandlerT", ([&] {
         onednn::ConvOneDNNHandlerT<T, data_t, T_out> handler(dev_ctx,
                                                              onednn_engine,
                                                              dev_ctx.GetPlace(),
