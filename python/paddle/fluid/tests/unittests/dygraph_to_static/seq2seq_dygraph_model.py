@@ -189,7 +189,7 @@ class BaseModel(fluid.dygraph.Layer):
         return paddle.reshape(x, shape=(-1, self.beam_size, x.shape[1]))
 
     def _expand_to_beam_size(self, x):
-        x = fluid.layers.unsqueeze(x, [1])
+        x = paddle.unsqueeze(x, [1])
         expand_shape = [-1] * len(x.shape)
         expand_shape[1] = self.beam_size * x.shape[1]
         x = paddle.expand(x, expand_shape)
@@ -401,7 +401,7 @@ class BaseModel(fluid.dygraph.Layer):
         dec_cell = [self._expand_to_beam_size(ele) for ele in dec_cell]
 
         batch_pos = paddle.expand(
-            fluid.layers.unsqueeze(
+            paddle.unsqueeze(
                 to_variable(np.arange(0, self.batch_size, 1, dtype="int64")),
                 [1],
             ),
@@ -450,7 +450,7 @@ class BaseModel(fluid.dygraph.Layer):
 
             step_log_probs = paddle.multiply(
                 paddle.expand(
-                    fluid.layers.unsqueeze(beam_finished, [2]),
+                    paddle.unsqueeze(beam_finished, [2]),
                     [-1, -1, self.tar_vocab_size],
                 ),
                 noend_mask_tensor,
@@ -664,7 +664,7 @@ class AttentionModel(fluid.dygraph.Layer):
         return paddle.reshape(x, shape=(-1, x.shape[2]))
 
     def tile_beam_merge_with_batch(self, x):
-        x = fluid.layers.unsqueeze(x, [1])  # [batch_size, 1, ...]
+        x = paddle.unsqueeze(x, [1])  # [batch_size, 1, ...]
         expand_shape = [-1] * len(x.shape)
         expand_shape[1] = self.beam_size * x.shape[1]
         x = paddle.expand(x, expand_shape)  # [batch_size, beam_size, ...]
@@ -684,7 +684,7 @@ class AttentionModel(fluid.dygraph.Layer):
         return paddle.reshape(x, shape=(-1, self.beam_size, x.shape[1]))
 
     def _expand_to_beam_size(self, x):
-        x = fluid.layers.unsqueeze(x, [1])
+        x = paddle.unsqueeze(x, [1])
         expand_shape = [-1] * len(x.shape)
         expand_shape[1] = self.beam_size * x.shape[1]
         x = paddle.expand(x, expand_shape)
@@ -703,7 +703,7 @@ class AttentionModel(fluid.dygraph.Layer):
         return paddle.gather_nd(x, topk_coordinates)
 
     def attention(self, query, enc_output, mask=None):
-        query = fluid.layers.unsqueeze(query, [1])
+        query = paddle.unsqueeze(query, [1])
         memory = self.attn_fc(enc_output)
         attn = paddle.matmul(query, memory, transpose_y=True)
 

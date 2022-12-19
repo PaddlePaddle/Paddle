@@ -2685,7 +2685,7 @@ class TestBook(LayerTest):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
             x = layers.data(name='x', shape=[8, 2], dtype='float32')
-            out = layers.unsqueeze(input=x, axes=[1])
+            out = paddle.unsqueeze(x, axis=[1])
             return out
 
     def test_sequence_scatter(self):
@@ -2807,7 +2807,7 @@ class TestBook(LayerTest):
             images = layers.data(
                 name='pixel', shape=[3, 48, 48], dtype='float32'
             )
-            return layers.conv2d(
+            return paddle.static.nn.conv2d(
                 input=images, num_filters=3, filter_size=[4, 4]
             )
 
