@@ -56,10 +56,9 @@ TEST(DisMultiTrainerTest, test1) {
 
 TEST(DisMultiTrainerTest, test2) {
 #ifdef _LINUX
-  std::shared_ptr<DistMultiTrainer> tmp1 = std::make_shared<DistMultiTrainer>();
   TrainerDesc t;
-  t.set_class_name("DistMultiTrainer");
-  t.set_device_worker_name("DownpourWorker");
+  t.set_class_name("MultiTrainer");
+  t.set_device_worker_name("HogwildWorker");
   t.set_thread_num(1);
   auto* m = t.mutable_downpour_param()->add_program_config();
   m->set_program_id("123");
@@ -75,12 +74,10 @@ TEST(DisMultiTrainerTest, test2) {
   dataset->SetTrainerNum(1);
   dataset->SetDataFeedDesc(str);
   dataset->CreateReaders();
-  Scope root_scope;
-  tmp1->SetScope(&root_scope);
-  tmp1->Initialize(t, dataset.get());
-  ProgramDesc p;
-  tmp1->InitOtherEnv(p);
-  tmp1->Finalize();
+
+  dataset->SetGpuGraphMode(true);
+  dataset->GetMemoryDataSize();
+  dataset->GetEpochFinish();
 #endif
 }
 }  // namespace framework
