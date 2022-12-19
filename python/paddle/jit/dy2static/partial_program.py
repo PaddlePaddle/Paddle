@@ -427,7 +427,7 @@ class PartialProgramLayer:
         Verify that the program parameter is initialized, prune some unused params,
         and remove redundant op callstack.
         """
-        if self._extra_param is not None:
+        if self._extra_param is None:
             # 1. Check all params from main program can be found in self._params
             self._check_params_all_inited(main_program)
         # 2. Prune the parameters not used anywhere in the program.
