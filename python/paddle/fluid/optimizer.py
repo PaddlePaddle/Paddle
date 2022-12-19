@@ -214,9 +214,10 @@ class Optimizer:
             .. code-block:: python
 
                 import paddle.fluid as fluid
+                import paddle
 
                 with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding([10, 10])
+                    emb = paddle.nn.Embedding(10, 10)
 
                     adam = fluid.optimizer.Adam(0.001, parameter_list=emb.parameters())
                     state_dict = adam.state_dict()
@@ -582,7 +583,7 @@ class Optimizer:
 
                 # example1: LearningRateDecay is not used, return value is all the same
                 with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding([10, 10])
+                    emb = paddle.nn.Embedding(10, 10)
                     adam = fluid.optimizer.Adam(0.001, parameter_list = emb.parameters())
                     lr = adam.current_step_lr()
                     print(lr) # 0.001
@@ -4173,7 +4174,6 @@ class ModelAverage(Optimizer):
 
 class ExponentialMovingAverage:
     r"""
-        :api_attr: Static Graph
 
     Compute the moving average of parameters with exponential decay.
     Given a parameter :math:`\\theta`, its exponential moving average (EMA)
@@ -4181,9 +4181,9 @@ class ExponentialMovingAverage:
 
     ..  math::
 
-        \\text{EMA}_0 & = 0
+        \text{EMA}_0 & = 0
 
-        \\text{EMA}_t & = \\text{decay} * \\text{EMA}_{t-1} + (1 - \\text{decay}) * \\theta_t
+        \text{EMA}_t & = \text{decay} * \text{EMA}_{t-1} + (1 - \text{decay}) * \theta_t
 
     The average results calculated by **update()** method will be saved in
     temporary variables which are created and maintained by the object, and can
@@ -4192,12 +4192,12 @@ class ExponentialMovingAverage:
 
     **Bias correction**. All EMAs are initialized to :math:`0` and hence they will be
     zero biased, which can be corrected by divided by a factor
-    :math:`(1 - \\text{decay}^t)` , i.e., the actual EMAs applied to parameters
+    :math:`(1 - \text{decay}^t)` , i.e., the actual EMAs applied to parameters
     when calling **apply()** method would be
 
     ..  math::
 
-        \\widehat{\\text{EMA}}_t = \\frac{\\text{EMA}_t}{1 - \\text{decay}^t}
+        \widehat{\text{EMA}}_t = \frac{\text{EMA}_t}{1 - \text{decay}^t}
 
     **Decay rate scheduling**. A large decay rate very close to 1 would result
     in that the averages move very slowly. And a better strategy is to set a
@@ -4207,7 +4207,7 @@ class ExponentialMovingAverage:
 
     ..  math::
 
-        \\min(\\text{decay}, \\frac{1 + \\text{thres_steps}}{10 + \\text{thres_steps}})
+        \min(\text{decay}, \frac{1 + \text{thres_steps}}{10 + \text{thres_steps}})
 
     Usually **thres_steps** can be the global training steps.
 
@@ -6408,8 +6408,12 @@ class RecomputeOptimizer(Optimizer):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             import numpy as np
+
+            paddle.enable_static()
+
             def gen_data():
                 return {"x": np.random.random(size=(32, 32)).astype('float32'),
                 "y": np.random.randint(2, size=(32, 1)).astype('int64')}
@@ -6417,8 +6421,11 @@ class RecomputeOptimizer(Optimizer):
                 print(input_x)
                 fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
                 prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
-                cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
-                sum_cost = fluid.layers.reduce_mean(cost)
+                cost = paddle.nn.functional.cross_entropy(
+                    input=prediction, label=input_y,
+                    reduction='none', use_softmax=False
+                )
+                sum_cost = paddle.mean(cost)
                 return sum_cost, fc_1, prediction
             input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
             input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
@@ -6491,8 +6498,11 @@ class RecomputeOptimizer(Optimizer):
                 def mlp(input_x, input_y, hid_dim=128, label_dim=2):
                     fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
                     prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
-                    cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
-                    sum_cost = fluid.layers.reduce_mean(cost)
+                    cost = paddle.nn.functional.cross_entropy(
+                        input=prediction, label=input_y,
+                        reduction='none', use_softmax=False
+                    )
+                    sum_cost = paddle.mean(cost)
                     return sum_cost, fc_1, prediction
 
                 input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
@@ -6526,14 +6536,20 @@ class RecomputeOptimizer(Optimizer):
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import paddle.fluid.framework as framework
+
+                paddle.enable_static()
 
                 def mlp(input_x, input_y, hid_dim=128, label_dim=2):
                     fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
                     prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
-                    cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
-                    sum_cost = fluid.layers.reduce_mean(cost)
+                    cost = paddle.nn.functional.cross_entropy(
+                        input=prediction, label=input_y,
+                        reduction='none', use_softmax=False
+                    )
+                    sum_cost = paddle.mean(cost)
                     return sum_cost, fc_1, prediction
 
 
@@ -7015,13 +7031,19 @@ class RecomputeOptimizer(Optimizer):
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
+
+                paddle.enable_static()
 
                 def mlp(input_x, input_y, hid_dim=128, label_dim=2):
                     fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
                     prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
-                    cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
-                    sum_cost = fluid.layers.reduce_mean(cost)
+                    cost = paddle.nn.functional.cross_entropy(
+                        input=prediction, label=input_y,
+                        reduction='none', use_softmax=False
+                    )
+                    sum_cost = paddle.mean(cost)
                     return sum_cost, fc_1, prediction
 
 
@@ -7091,13 +7113,19 @@ class RecomputeOptimizer(Optimizer):
             params_grads (list): list of (param, grad) pair to do optimization.
         Examples:
             .. code-block:: python
+                import paddle
                 import paddle.fluid as fluid
+
+                paddle.enable_static()
 
                 def mlp(input_x, input_y, hid_dim=128, label_dim=2):
                     fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
                     prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
-                    cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
-                    sum_cost = fluid.layers.reduce_mean(cost)
+                    cost = paddle.nn.functional.cross_entropy(
+                        input=prediction, label=input_y,
+                        reduction='none', use_softmax=False
+                    )
+                    sum_cost = paddle.mean(cost)
                     return sum_cost, fc_1, prediction
 
                 input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
@@ -7190,7 +7218,10 @@ class LookaheadOptimizer:
             x = fluid.layers.data(name='x', shape=[2], dtype='float32')
             label = fluid.layers.data(name="label", shape=[1], dtype="int64")
             y = fluid.layers.fc(input=[x], size=2, act="softmax")
-            loss = fluid.layers.cross_entropy(input=y, label=label)
+            loss = paddle.nn.functional.cross_entropy(
+                input=y, label=label,
+                reduction='none', use_softmax=False
+            )
             loss = paddle.mean(x=loss)
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             optimizer = fluid.optimizer.LookaheadOptimizer(sgd,
@@ -7299,7 +7330,7 @@ class LookaheadOptimizer:
                 dtype='int32',
                 persistable=True,
             )
-            layers.increment(x=step, value=1.0, in_place=True)
+            paddle.increment(x=step, value=1.0)
 
             # lookahead
             zero_var = layers.fill_constant(
@@ -7357,6 +7388,7 @@ class GradientMergeOptimizer:
     Examples:
         .. code-block:: python
 
+        import paddle
         import paddle.fluid as fluid
         import numpy as np
 
@@ -7367,8 +7399,11 @@ class GradientMergeOptimizer:
         def mlp(input_x, input_y, hid_dim=128, label_dim=2):
             fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
             prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
-            cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
-            sum_cost = fluid.layers.reduce_mean(cost)
+            cost = paddle.nn.functional.cross_entropy(
+                input=prediction, label=input_y,
+                reduction='none', use_softmax=False
+            )
+            sum_cost = paddle.mean(cost)
             return sum_cost, fc_1, prediction
 
         input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
@@ -7533,7 +7568,7 @@ class GradientMergeOptimizer:
 
         with device_guard("cpu"):
             # step_var = (step_var + 1) % k_step
-            layers.increment(x=step_var, value=1.0, in_place=True)
+            paddle.increment(x=step_var, value=1.0)
             main_block.append_op(
                 type='elementwise_mod',
                 inputs={'X': step_var, 'Y': k_step_var},
@@ -7663,7 +7698,7 @@ class GradientMergeOptimizer:
                 )
 
         # step3. apply gradient
-        layers.cond(cond, true_fn=true_apply_gradient, false_fn=None)
+        paddle.static.nn.cond(cond, true_fn=true_apply_gradient, false_fn=None)
 
         return self._optimize_ops
 

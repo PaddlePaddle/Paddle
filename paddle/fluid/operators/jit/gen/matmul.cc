@@ -17,7 +17,7 @@
 #include <stddef.h>  // offsetof
 
 #include "paddle/fluid/operators/jit/registry.h"
-#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 
 namespace paddle {
 namespace operators {
@@ -110,12 +110,13 @@ void MatMulJitCode::genCode() {
 class MatMulCreator : public JitCodeCreator<matmul_attr_t> {
  public:
   bool CanBeUsed(const matmul_attr_t& attr) const override {
-    return attr.m == 1 && platform::MayIUse(platform::avx512f) &&
+    return attr.m == 1 &&
+           phi::backends::cpu::MayIUse(phi::backends::cpu::avx512f) &&
            attr.n % ZMM_FLOAT_BLOCK == 0 && attr.k < 512;
   }
   size_t CodeSize(const matmul_attr_t& attr) const override {
     int block = YMM_FLOAT_BLOCK;
-    if (platform::MayIUse(platform::avx512f)) {
+    if (phi::backends::cpu::MayIUse(phi::backends::cpu::avx512f)) {
       block = ZMM_FLOAT_BLOCK;
     }
     return 96 + 4 * attr.k * (attr.n / block + 1) * 8;

@@ -750,6 +750,13 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : log_loss
+  backward : log_loss_grad
+  inputs :
+    {input : Predicted, label : Labels}
+  outputs :
+    out : Loss
+
 - op : log_softmax
   backward : log_softmax_grad
   extra :
@@ -916,6 +923,15 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
+- op : put_along_axis
+  backward : put_along_axis_grad
+  inputs :
+    {arr : Input, indices : Index, values : Value}
+  outputs :
+    out : Result
+  attrs :
+    {axis : Axis, reduce : Reduce}
+
 - op : qr
   backward : qr_grad
   inputs :
@@ -1029,9 +1045,36 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : scatter
+  backward : scatter_grad
+  inputs :
+    {x : X, index : Ids, updates : Updates}
+  outputs :
+    out : Out
+
+- op : scatter_nd_add
+  backward : scatter_nd_add_grad
+  inputs :
+    {x : X, index : Index, updates : Updates}
+  outputs :
+    out : Out
+
+- op : searchsorted
+  inputs :
+    {sorted_sequence : SortedSequence, values : Values}
+  outputs :
+    out : Out
+
 - op : seed
   extra :
     attrs : [bool deterministic = false, str rng_name = "", bool force_cpu = false]
+
+- op : selu
+  backward : selu_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : send_uv (graph_send_uv)
   backward : send_uv_grad (graph_send_uv_grad)
@@ -1044,6 +1087,12 @@
 - op : shape
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+
+- op : shard_index
+  inputs :
+    input : X
+  outputs :
+    out : Out
 
 - op : share_buffer
   inputs :
@@ -1176,6 +1225,13 @@
     attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
+- op : svd
+  backward : svd_grad
+  inputs :
+    x : X
+  outputs :
+    {u : U, s : S, vh : VH}
+
 - op : swish
   backward : swish_grad
   extra :
@@ -1185,6 +1241,15 @@
   backward : sync_batch_norm_grad
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
+
+- op : take_along_axis
+  backward : take_along_axis_grad
+  inputs :
+    {arr : Input, indices : Index}
+  outputs :
+    out : Result
+  attrs :
+    axis : Axis
 
 - op : tan
   backward : tan_grad
@@ -1258,6 +1323,19 @@
     x : X
   outputs :
     out : Y
+
+- op : viterbi_decode
+  inputs :
+    {potentials : Input, transition_params : Transition, lengths : Length}
+  outputs :
+    {scores : Scores, path : Path}
+
+- op : where
+  backward : where_grad
+  inputs :
+    {condition : Condition, x : X, y : Y}
+  outputs :
+    out : Out
 
 - op : while
   backward : while_grad

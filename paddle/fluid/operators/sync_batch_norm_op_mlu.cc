@@ -72,7 +72,7 @@ class SyncBatchNormMLUKernel : public framework::OpKernel<T> {
                           "The Input dim size should be less than 6."));
 
     int N, C, H, W, D;
-    ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
+    phi::funcs::ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
 
     y->mutable_data<T>(ctx.GetPlace());
     mean_out->mutable_data<MPDType>(ctx.GetPlace());
@@ -320,7 +320,7 @@ class SyncBatchNormMLUGradKernel : public framework::OpKernel<T> {
                           "The Input X dim size should be less than 6."));
 
     int N, C, H, W, D;
-    ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
+    phi::funcs::ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
     PADDLE_ENFORCE_EQ(scale->dims()[0],
                       C,
                       platform::errors::InvalidArgument(

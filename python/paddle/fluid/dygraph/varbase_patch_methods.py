@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import inspect
 import numpy as np
 import warnings
@@ -42,6 +41,7 @@ import paddle.profiler as profiler
 from paddle.profiler.utils import in_profiler_mode
 from paddle import _C_ops, _legacy_C_ops
 from paddle.device import get_all_custom_device_type
+from paddle.fluid.framework import _global_flags
 
 _grad_scalar = None
 
@@ -381,8 +381,7 @@ def monkey_patch_varbase():
             new_ivar = self._grad_ivar()
             # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
             if (
-                os.environ.get('FLAGS_npu_storage_format', None)
-                in [1, '1', True, 'True', 'true']
+                _global_flags()['FLAGS_npu_storage_format']
                 and 'npu' in get_all_custom_device_type()
             ):
                 new_ivar = paddle.incubate._npu_identity(x=new_ivar, format=-1)

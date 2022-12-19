@@ -20,8 +20,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-USE_CPU_ONLY_OP(save_combine);
+USE_OP_ITSELF(save_combine);
+PD_DECLARE_KERNEL(save_combine_tensor, CPU, ALL_LAYOUT);
 USE_CPU_ONLY_OP(load_combine);
 
 template <typename T, typename U>

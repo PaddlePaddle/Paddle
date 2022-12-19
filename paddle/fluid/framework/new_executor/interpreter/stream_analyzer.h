@@ -37,8 +37,7 @@ class StreamAnalyzer {
 
   ~StreamAnalyzer() {}
 
-  void ConstructEvents(const DependencyBuilder& dependency_builder,
-                       std::vector<Instruction>* instructions) const;
+  void ConstructEvents(std::vector<Instruction>* instructions) const;
 
   platform::DeviceContext* ParseDeviceContext(
       const OpFuncNode& op_func_node) const;
