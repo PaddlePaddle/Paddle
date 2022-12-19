@@ -12,11 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/matrix_bit_code.h"
+#include "paddle/phi/kernels/funcs/matrix_bit_code.h"
 
-namespace paddle {
-namespace operators {
-namespace math {
+#include <map>
+#include <unordered_map>
+
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+
+namespace phi {
+namespace funcs {
 
 template <typename T>
 struct MatrixBitCodeFunctorAdd {
@@ -354,6 +359,5 @@ void MatrixBitCodeFunctor<T>::Sub(phi::DenseTensor *tmat) {
 template class MatrixBitCodeFunctor<float>;
 template class MatrixBitCodeFunctor<double>;
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi
