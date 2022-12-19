@@ -21,7 +21,7 @@ import numpy as np
 
 import paddle
 from paddle.fluid.log_helper import get_logger
-from paddle.incubate.asp import sparsity
+from paddle.incubate import asp
 
 __all__ = []
 
@@ -53,7 +53,7 @@ def _default_pruning(weight_nparray, m, n, func_name, param_name):
         )
         return weight_pruned_nparray, weight_sparse_mask
 
-    checked_func_name = sparsity.CheckMethod.get_checking_method(func_name)
+    checked_func_name = asp.CheckMethod.get_checking_method(func_name)
 
     # The double transpose ops here make sure pruning direction consistent with cuSparseLt.
     # SPMMA in cuSparseLt: D = (AxB) + C, where matrix A (mxk) is sparse matrix.
@@ -63,14 +63,14 @@ def _default_pruning(weight_nparray, m, n, func_name, param_name):
     #  is 'Act(XW + b)'. For enabling SPMMA, weights and inputs should be transposed
     # for computing, Act( (W^T X^T)^T + b). Therefore, we have to prune alog k dimension
     # of W^T, which is m dimension of W. Moreove, all mask generating functions in
-    # sparsity/utils is row-major pruning. That is the reason we have to transpose weight
+    # asp/utils is row-major pruning. That is the reason we have to transpose weight
     # matrices beforce invoking create_mask. Then we transpose the result mask to make
     # sure its shape to be the same as the input weight.
-    weight_sparse_mask = sparsity.create_mask(
+    weight_sparse_mask = asp.create_mask(
         weight_nparray.T, func_name=func_name, n=n, m=m
     ).T
     weight_pruned_nparray = np.multiply(weight_nparray, weight_sparse_mask)
-    assert sparsity.check_sparsity(
+    assert asp.check_sparsity(
         weight_pruned_nparray.T, n=n, m=m, func_name=checked_func_name
     ), 'Pruning {} weight matrix failure!!!'.format(param_name)
     return weight_pruned_nparray, weight_sparse_mask

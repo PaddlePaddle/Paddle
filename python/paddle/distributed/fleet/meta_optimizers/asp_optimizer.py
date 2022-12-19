@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 
 
-from paddle.incubate.asp.sparsity.asp import ASPHelper
+from paddle.incubate.asp import ASPHelper
 
 from .meta_optimizer_base import MetaOptimizerBase
 

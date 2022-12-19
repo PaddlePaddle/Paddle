@@ -25,7 +25,7 @@ import paddle
 from paddle.fluid import core, global_scope, program_guard
 from paddle.fluid.framework import dygraph_only
 from paddle.fluid.initializer import ConstantInitializer
-from paddle.incubate.asp import sparsity
+from paddle.incubate import asp
 
 from .supported_layer_list import (
     _default_pruning,
@@ -161,7 +161,7 @@ def reset_excluded_layers(main_program=None):
                 # Need to set excluded layers before calling decorate
                 paddle.incubate.asp.set_excluded_layers([my_layer.linear1.full_name()])
                 # Reset excluded_layers, all supported layers would be included into Automatic SParsity's workflow.
-                # Please note, reset_excluded_layers also must be called before calling sparsity.decorate().
+                # Please note, reset_excluded_layers also must be called before calling asp.decorate().
                 paddle.incubate.asp.reset_excluded_layers()
 
                 optimizer = paddle.incubate.asp.decorate(optimizer)
@@ -438,9 +438,9 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
     place = paddle.set_device(device)
 
     MaskAlgo_mapping = {
-        'mask_1d': sparsity.MaskAlgo.MASK_1D,
-        'mask_2d_greedy': sparsity.MaskAlgo.MASK_2D_GREEDY,
-        'mask_2d_best': sparsity.MaskAlgo.MASK_2D_BEST,
+        'mask_1d': asp.MaskAlgo.MASK_1D,
+        'mask_2d_greedy': asp.MaskAlgo.MASK_2D_GREEDY,
+        'mask_2d_best': asp.MaskAlgo.MASK_2D_BEST,
     }
     assert (
         mask_algo in MaskAlgo_mapping
@@ -529,7 +529,7 @@ class ASPHelper:
     @classmethod
     def set_excluded_layers(cls, param_names, main_program):
         r"""
-        This is the implementation of `sparsity.set_excluded_layers`, for details please see explanation in `sparsity.set_excluded_layers`.
+        This is the implementation of `asp.set_excluded_layers`, for details please see explanation in `asp.set_excluded_layers`.
         """
         asp_info = cls._get_program_asp_info(main_program)
         asp_info.update_excluded_layers(param_names)
@@ -537,7 +537,7 @@ class ASPHelper:
     @classmethod
     def reset_excluded_layers(cls, main_program=None):
         r"""
-        This is the implementation of `sparsity.reset_excluded_layers`, for details please see explanation in `sparsity.reset_excluded_layers`.
+        This is the implementation of `asp.reset_excluded_layers`, for details please see explanation in `asp.reset_excluded_layers`.
         """
         if main_program is None:
             for prog in cls.__asp_info:
@@ -548,7 +548,7 @@ class ASPHelper:
     @staticmethod
     def decorate(optimizer):
         r"""
-        This is the implementation of `sparsity.decorate`, for details please see explanation in `sparsity.decorate`.
+        This is the implementation of `asp.decorate`, for details please see explanation in `asp.decorate`.
         """
         if paddle.in_dynamic_mode():
             # main_prog and startup_prog would be used with paddle.static.program_guard
@@ -569,11 +569,11 @@ class ASPHelper:
         main_program=None,
         n=2,
         m=4,
-        mask_algo=sparsity.MaskAlgo.MASK_1D,
+        mask_algo=asp.MaskAlgo.MASK_1D,
         with_mask=True,
     ):
         r"""
-        This is the implementation of `sparsity.prune_model`, for details please see explanation in `sparsity.prune_model`.
+        This is the implementation of `asp.prune_model`, for details please see explanation in `asp.prune_model`.
         """
 
         if main_program is None:
@@ -601,7 +601,7 @@ class ASPHelper:
                     )
                     assert weight_mask_param is not None, (
                         'Cannot find {} variable, please call optimizer.minimize ('
-                        'paddle.sparsity.decorate(optimizer).minimize(loss)'
+                        'paddle.incubate.asp.decorate(optimizer).minimize(loss)'
                         ' and initialization (exe.run(startup_program)) first!'.format(
                             ASPHelper._get_mask_name(param.name)
                         )
@@ -621,11 +621,11 @@ class ASPHelper:
         layer,
         n=2,
         m=4,
-        mask_algo=sparsity.MaskAlgo.MASK_1D,
+        mask_algo=asp.MaskAlgo.MASK_1D,
         with_mask=True,
     ):
         r"""
-        This is the implementation of `sparsity.prune_model`, for details please see explanation in `sparsity.prune_model`.
+        This is the implementation of `asp.prune_model`, for details please see explanation in `asp.prune_model`.
         """
         if paddle.in_dynamic_mode():
             main_program = paddle.static.default_main_program()
@@ -651,7 +651,7 @@ class ASPHelper:
                             param.name, None
                         )
                         assert weight_mask_param is not None, (
-                            'Cannot find {} variable, please call sparsity.decorate() to'
+                            'Cannot find {} variable, please call asp.decorate() to'
                             ' decorate your optimizer first!'.format(
                                 ASPHelper._get_mask_name(param.name)
                             )
@@ -727,7 +727,7 @@ class ASPHelper:
         Examples:
             .. code-block:: python
 
-              from paddle.incubate.asp.sparsity.asp import ASPHelper
+              from paddle.incubate.asp import ASPHelper
 
               main_program = paddle.static.Program()
               startup_program = paddle.static.Program()

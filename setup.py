@@ -1123,7 +1123,6 @@ def get_setup_parameters():
         'paddle.incubate.multiprocessing',
         'paddle.incubate.nn',
         'paddle.incubate.asp',
-        'paddle.incubate.asp.sparsity',
         'paddle.incubate.passes',
         'paddle.distribution',
         'paddle.distributed.utils',
