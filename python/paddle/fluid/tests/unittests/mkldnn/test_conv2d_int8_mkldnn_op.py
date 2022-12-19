@@ -147,6 +147,9 @@ class TestConv2DInt8Op(TestConv2DOp):
                 + " activation not implemented"
             )
 
+        if self.fuse_activation != "":
+            self.op_type = "fused_conv2d"
+
         output = np.round(output).astype(self.dsttype)
 
         self.inputs = {
@@ -154,6 +157,7 @@ class TestConv2DInt8Op(TestConv2DOp):
             'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
         }
         if self.fuse_residual:
+            self.op_type = "fused_conv2d"
             self.inputs['ResidualData'] = OpTest.np_dtype_to_fluid_dtype(
                 input_residual
             )
