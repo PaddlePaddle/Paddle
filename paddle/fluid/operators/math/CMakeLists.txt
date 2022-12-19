@@ -27,7 +27,6 @@ math_library(sample_prob)
 math_library(sampler DEPS generator)
 
 # math_library(math_function DEPS blas dense_tensor tensor)
-math_library(maxouting)
 
 math_library(sequence_padding)
 math_library(sequence_pooling DEPS math_function jit_kernel_helper)
@@ -39,7 +38,6 @@ elseif(WITH_XPU)
 else()
   math_library(beam_search DEPS math_function)
 endif()
-math_library(matrix_bit_code)
 
 math_library(unpooling)
 math_library(prelu)

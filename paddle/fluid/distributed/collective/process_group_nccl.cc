@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
 
-#include "paddle/fluid/distributed/collective/Common.h"
 #include "paddle/fluid/distributed/collective/check.h"
+#include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/fluid/distributed/collective/nccl_tools.h"
 #include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"

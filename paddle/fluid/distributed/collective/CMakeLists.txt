@@ -1,6 +1,6 @@
 cc_library(
-  processgroup
-  SRCS ProcessGroup.cc
+  process_group
+  SRCS process_group.cc
   DEPS dense_tensor)
 cc_library(
   process_group_stream
@@ -9,20 +9,20 @@ cc_library(
 cc_library(
   eager_reducer
   SRCS reducer.cc
-  DEPS eager_api processgroup process_group_stream phi_api string_helper)
+  DEPS eager_api process_group process_group_stream phi_api string_helper)
 
 if(WITH_DISTRIBUTE)
   cc_library(
-    processgroup_gloo
-    SRCS ProcessGroupGloo.cc
+    process_group_gloo
+    SRCS process_group_gloo.cc
     DEPS phi_api eager_api gloo_wrapper)
 endif()
 
 if(WITH_NCCL OR WITH_RCCL)
   cc_library(
     process_group_nccl
-    SRCS process_group_nccl.cc nccl_tools.cc Common.cc check.cc
-    DEPS processgroup
+    SRCS process_group_nccl.cc nccl_tools.cc common.cc check.cc
+    DEPS process_group
          process_group_stream
          place
          enforce
@@ -34,23 +34,23 @@ endif()
 
 if(WITH_XPU_BKCL)
   cc_library(
-    processgroup_bkcl
-    SRCS ProcessGroupBKCL.cc BKCLTools.cc Common.cc
-    DEPS processgroup place enforce collective_helper device_context
+    process_group_bkcl
+    SRCS process_group_bkcl.cc bkcl_tools.cc common.cc
+    DEPS process_group place enforce collective_helper device_context
          dense_tensor)
 endif()
 
 if(WITH_MPI)
   cc_library(
-    processgroup_mpi
-    SRCS ProcessGroupMPI.cc MPITools.cc Common.cc
+    process_group_mpi
+    SRCS process_group_mpi.cc mpi_tools.cc common.cc
     DEPS collective_helper device_context)
 endif()
 
 if(WITH_CUSTOM_DEVICE)
   cc_library(
-    processgroup_custom
-    SRCS ProcessGroupCustom.cc CustomCCLTools.cc Common.cc
-    DEPS processgroup phi_backends place enforce collective_helper
+    process_group_custom
+    SRCS process_group_custom.cc custom_ccl_tools.cc common.cc
+    DEPS process_group phi_backends place enforce collective_helper
          device_context)
 endif()

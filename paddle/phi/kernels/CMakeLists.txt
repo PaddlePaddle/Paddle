@@ -65,7 +65,6 @@ set(COMMON_KERNEL_DEPS
     deformable_conv_functor
     matrix_reduce
     segment_pooling
-    gather_scatter_kernel
     pooling
     maxouting
     matrix_inverse
@@ -76,9 +75,10 @@ set(COMMON_KERNEL_DEPS
     fft
     phi_data_layout_transform
     gpc
-    utf8proc)
+    utf8proc
+    gather_scatter_functor)
 
-set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup)
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group)
 if(WITH_NCCL OR WITH_RCCL)
   set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group_nccl)
 endif()

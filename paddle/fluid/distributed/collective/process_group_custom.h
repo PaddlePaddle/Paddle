@@ -21,8 +21,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/distributed/collective/CustomCCLTools.h"
-#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/collective/custom_ccl_tools.h"
+#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/distributed/store/store.h"
 #include "paddle/fluid/platform/device/npu/npu_stream.h"
 #include "paddle/fluid/platform/device_context.h"
