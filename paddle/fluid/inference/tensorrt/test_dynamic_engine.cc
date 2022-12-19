@@ -514,6 +514,14 @@ TEST_F(TensorRTDynamicTestFusedTokenPrune, test_fused_token_prune) {
 
   LOG(INFO) << "GetOutput";
   GetOutput(slimmed_x_v, cls_inds_v);
+  ASSERT_EQ(slimmed_x_v[0], 0);
+  ASSERT_EQ(slimmed_x_v[1], 0);
+  ASSERT_EQ(slimmed_x_v[2], 0);
+  ASSERT_EQ(slimmed_x_v[3], 0);
+  ASSERT_EQ(slimmed_x_v[4], 0);
+  ASSERT_EQ(slimmed_x_v[5], 1);
+  ASSERT_EQ(slimmed_x_v[6], 1);
+  ASSERT_EQ(slimmed_x_v[7], 0);
   LOG(INFO) << "finish";
 #endif
 }
