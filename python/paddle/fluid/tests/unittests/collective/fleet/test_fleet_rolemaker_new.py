@@ -165,6 +165,7 @@ class TestUserDefinedRoleMaker(unittest.TestCase):
         self.assertEqual(ro._role_id(), 0)
 
 
+"""
 class TestGlooWithCloudRoleMaker(unittest.TestCase):
     def setUp(self):
         os.environ["PADDLE_TRAINERS_NUM"] = "1"
@@ -478,6 +479,7 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         self.assertEqual(1, all_reduce)
 
         self.clean(tmp)
+"""
 
 
 if __name__ == "__main__":

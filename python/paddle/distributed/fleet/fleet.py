@@ -969,6 +969,8 @@ class Fleet:
     def check_save_pre_patch_done(self):
         return self._runtime_handle._check_save_pre_patch_done()
 
+    @is_non_distributed_check
+    @inited_runtime_handler
     def save_cache_table(
         self, table_id, pass_id, mem_cache_key_threshold=4000000000
     ):
@@ -1033,6 +1035,8 @@ class Fleet:
             executor, dirname, scope, program, var_names
         )
 
+    @is_non_distributed_check
+    @inited_runtime_handler
     def shrink(self, threshold=None):
         self._runtime_handle._shrink(threshold)
 
@@ -1337,7 +1341,7 @@ class Fleet:
             and len(self._user_defined_strategy.sparse_table_configs) > 0
         ):
             context["use_fleet_ps"] = True
-            from ..meta_optimizers import ParameterServerOptimizer
+            from .meta_optimizers import ParameterServerOptimizer
 
             meta_optimizer = ParameterServerOptimizer(
                 self.user_defined_optimizer
@@ -1349,7 +1353,7 @@ class Fleet:
                 copy_user_defined_strategy,
             )
             can_not_apply_optimizer_list.append(meta_optimizer)
-            from ..meta_optimizers import ParameterServerGraphOptimizer
+            from .meta_optimizers import ParameterServerGraphOptimizer
 
             graph_optimizer = ParameterServerGraphOptimizer(
                 self.user_defined_optimizer
