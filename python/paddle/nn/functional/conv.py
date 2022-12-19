@@ -1695,7 +1695,7 @@ def conv3d_transpose(
             of each dimension in the output shape. Default: 0.
         groups (int, optional): The groups number of the Conv3D transpose layer. Inspired by
             grouped convolution in `Alex Krizhevsky's Deep CNN paper <https://papers.nips.cc/paper/2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf>`_, in which
-            when group=2, the first half of the filters is only connected to the
+            when groups = 2, the first half of the filters is only connected to the
             first half of the input channels, while the second half of the
             filters is only connected to the second half of the input channels.
             Default: 1.
