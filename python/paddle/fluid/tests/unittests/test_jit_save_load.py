@@ -24,9 +24,9 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import unique_name
-from paddle.fluid.dygraph.io import INFER_PARAMS_INFO_SUFFIX
 from paddle.fluid.layers.utils import flatten
 from paddle.jit.api import declarative
+from paddle.jit.translated_layer import INFER_PARAMS_INFO_SUFFIX
 from paddle.nn import Linear
 from paddle.static import InputSpec
 
@@ -1837,5 +1837,4 @@ class TestNotJitForward(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

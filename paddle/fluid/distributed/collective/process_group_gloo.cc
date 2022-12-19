@@ -28,8 +28,8 @@
 #include <gloo/reduce.h>
 #include <gloo/scatter.h>
 
-#include "paddle/fluid/distributed/collective/Common.h"
-#include "paddle/fluid/distributed/collective/ProcessGroupGloo.h"
+#include "paddle/fluid/distributed/collective/common.h"
+#include "paddle/fluid/distributed/collective/process_group_gloo.h"
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -311,6 +311,16 @@ class AllreduceGlooTask : public ProcessGroupGloo::GlooTask {
 };
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllReduce(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const AllreduceOptions& opts,
+    bool sync_op) {
+  std::vector<phi::DenseTensor> in_wrapper{in_tensor};
+  std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
+  return AllReduce(in_wrapper, out_wrapper, opts, true);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllReduce(
     std::vector<phi::DenseTensor>& inputs,
     std::vector<phi::DenseTensor>& outputs,
     const AllreduceOptions& opts) {
@@ -393,8 +403,17 @@ class AllgatherGlooTask : public ProcessGroupGloo::GlooTask {
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllGather(
     phi::DenseTensor* out_tensor,
     const phi::DenseTensor& in_tensor,
-    int64_t offset,  // for compatibility, no use now
-    int64_t numel,   // for compatibility, no use now
+    bool sync_op) {
+  std::vector<phi::DenseTensor> in_wrapper{in_tensor};
+  std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
+  return AllGather(in_wrapper, out_wrapper, true);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllGather(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    int64_t /*offset*/,
+    int64_t /*offset*/,
     bool sync_op) {
   std::vector<phi::DenseTensor> in_wrapper{in_tensor};
   std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
