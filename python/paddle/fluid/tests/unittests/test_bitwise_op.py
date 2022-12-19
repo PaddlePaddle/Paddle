@@ -13,14 +13,16 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle
 from op_test import OpTest
+
+import paddle
 
 paddle.enable_static()
 
 
-################## TEST OP: BitwiseAnd ##################
+# ----------------- TEST OP: BitwiseAnd ----------------- #
 class TestBitwiseAnd(OpTest):
     def setUp(self):
         self.op_type = "bitwise_and"
@@ -124,7 +126,7 @@ class TestBitwiseAndBool(TestBitwiseAnd):
         self.outputs = {'Out': out}
 
 
-################## TEST OP: BitwiseOr ##################
+# ----------------- TEST OP: BitwiseOr ------------------ #
 class TestBitwiseOr(OpTest):
     def setUp(self):
         self.op_type = "bitwise_or"
@@ -228,7 +230,7 @@ class TestBitwiseOrBool(TestBitwiseOr):
         self.outputs = {'Out': out}
 
 
-################## TEST OP: BitwiseXor ##################
+# ----------------- TEST OP: BitwiseXor ---------------- #
 class TestBitwiseXor(OpTest):
     def setUp(self):
         self.op_type = "bitwise_xor"
@@ -332,7 +334,7 @@ class TestBitwiseXorBool(TestBitwiseXor):
         self.outputs = {'Out': out}
 
 
-##################  TEST OP: BitwiseNot ##################
+# ---------------  TEST OP: BitwiseNot ----------------- #
 class TestBitwiseNot(OpTest):
     def setUp(self):
         self.op_type = "bitwise_not"

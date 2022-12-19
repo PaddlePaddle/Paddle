@@ -98,9 +98,11 @@ LookupTablePluginDynamic::LookupTablePluginDynamic(void const* data,
   deserialize_value(&data, &length, &mWeightSize);
   deserialize_value(&data, &length, &mWeightWidth);
   char const* d = static_cast<char const*>(data);
-  cudaMalloc(&mWeightDev, mWeightSize * sizeof(mType));
-  cudaMemcpy(
-      mWeightDev, d, mWeightSize * sizeof(mType), cudaMemcpyHostToDevice);
+  cudaMalloc(&mWeightDev, mWeightSize * getElementSize(mType));
+  cudaMemcpy(mWeightDev,
+             d,
+             mWeightSize * getElementSize(mType),
+             cudaMemcpyHostToDevice);
 }
 
 // IPluginV2DynamicExt Methods

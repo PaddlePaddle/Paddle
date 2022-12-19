@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 
 from paddle.fluid.optimizer import GradientMergeOptimizer as GM
+
 from .meta_optimizer_base import MetaOptimizerBase
 
 __all__ = []
@@ -19,7 +20,7 @@ __all__ = []
 
 class GradientMergeOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
-        super(GradientMergeOptimizer, self).__init__(optimizer)
+        super().__init__(optimizer)
         self.inner_opt = optimizer
         self.wrapped_opt = None
         self.meta_optimizers_white_list = [
@@ -34,7 +35,7 @@ class GradientMergeOptimizer(MetaOptimizerBase):
     def _set_basic_info(
         self, loss, role_maker, user_defined_optimizer, user_defined_strategy
     ):
-        super(GradientMergeOptimizer, self)._set_basic_info(
+        super()._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy
         )
 

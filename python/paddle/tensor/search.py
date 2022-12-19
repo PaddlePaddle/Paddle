@@ -11,17 +11,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import numpy as np
-import paddle
-from ..framework import LayerHelper, convert_np_dtype_to_dtype_
-from ..fluid.data_feeder import check_dtype, check_variable_and_dtype
-from ..framework import core, in_dygraph_mode, _non_static_mode
-from ..fluid.framework import _in_legacy_dygraph
-from paddle.common_ops_import import Variable
-from paddle.common_ops_import import VarDesc
-from paddle import _C_ops, _legacy_C_ops
 
 # TODO: define searching & indexing functions of a tensor
+
+import numpy as np
+
+import paddle
+from paddle import _C_ops, _legacy_C_ops
+from paddle.common_ops_import import VarDesc, Variable
+
+from ..fluid.data_feeder import check_dtype, check_variable_and_dtype
+from ..fluid.framework import _in_legacy_dygraph
+from ..framework import (
+    LayerHelper,
+    _non_static_mode,
+    convert_np_dtype_to_dtype_,
+    core,
+    in_dygraph_mode,
+)
+
 # from ..fluid.layers import has_inf  #DEFINE_ALIAS
 # from ..fluid.layers import has_nan  #DEFINE_ALIAS
 
@@ -384,7 +392,7 @@ def nonzero(x, as_tuple=False):
 
     Args:
         x (Tensor): The input tensor variable.
-        as_tuple (bool): Return type, Tensor or tuple of Tensor.
+        as_tuple (bool, optional): Return type, Tensor or tuple of Tensor.
 
     Returns:
         Tensor. The data type is int64.
@@ -784,7 +792,7 @@ def index_sample(x, index):
             check_variable_and_dtype(
                 x,
                 'x',
-                ['float32', 'float64', 'int32', 'int64'],
+                ['float16', 'float32', 'float64', 'int32', 'int64'],
                 'paddle.tensor.search.index_sample',
             )
             check_variable_and_dtype(

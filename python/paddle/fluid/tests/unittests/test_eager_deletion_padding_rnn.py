@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-import os
-
 from paddle.fluid import ParamAttr
 from paddle.fluid.contrib.layers import basic_lstm
 from paddle.fluid.executor import Executor
@@ -27,7 +28,7 @@ from paddle.fluid.layers.control_flow import StaticRNN as PaddingRNN
 os.environ["CPU_NUM"] = "1"
 
 
-class RNNConfig(object):
+class RNNConfig:
     def __init__(self, model_type, rnn_model):
         self.model_type = model_type
         self.rnn_model = rnn_model
@@ -93,7 +94,7 @@ class RNNConfig(object):
 
 
 # Fake data reader for test
-class Reader(object):
+class Reader:
     def get_data_iter(self, rnn_config):
         for i in range(rnn_config.max_epoch):
             x = np.zeros(
@@ -126,7 +127,7 @@ def lm_model(
         cell_array = []
         mask_array = []
         for i in range(num_layers):
-            weight_1 = layers.create_parameter(
+            weight_1 = paddle.create_parameter(
                 [hidden_size * 2, hidden_size * 4],
                 dtype="float32",
                 name="fc_weight1_" + str(i),
@@ -135,7 +136,7 @@ def lm_model(
                 ),
             )
             weight_1_arr.append(weight_1)
-            bias_1 = layers.create_parameter(
+            bias_1 = paddle.create_parameter(
                 [hidden_size * 4],
                 dtype="float32",
                 name="fc_bias1_" + str(i),
@@ -143,18 +144,18 @@ def lm_model(
             )
             bias_arr.append(bias_1)
 
-            pre_hidden = layers.slice(
+            pre_hidden = paddle.slice(
                 init_hidden, axes=[0], starts=[i], ends=[i + 1]
             )
-            pre_cell = layers.slice(
+            pre_cell = paddle.slice(
                 init_cell, axes=[0], starts=[i], ends=[i + 1]
             )
-            pre_hidden = layers.reshape(pre_hidden, shape=[-1, hidden_size])
-            pre_cell = layers.reshape(pre_cell, shape=[-1, hidden_size])
+            pre_hidden = paddle.reshape(pre_hidden, shape=[-1, hidden_size])
+            pre_cell = paddle.reshape(pre_cell, shape=[-1, hidden_size])
             hidden_array.append(pre_hidden)
             cell_array.append(pre_cell)
 
-        input_embedding = layers.transpose(input_embedding, perm=[1, 0, 2])
+        input_embedding = paddle.transpose(input_embedding, perm=[1, 0, 2])
         rnn = PaddingRNN()
 
         with rnn.step():
@@ -166,35 +167,35 @@ def lm_model(
                 bias = bias_arr[k]
 
                 nn = layers.concat([input, pre_hidden], 1)
-                gate_input = layers.matmul(x=nn, y=weight_1)
+                gate_input = paddle.matmul(x=nn, y=weight_1)
 
-                gate_input = layers.elementwise_add(gate_input, bias)
-                i = layers.slice(
+                gate_input = paddle.add(gate_input, bias)
+                i = paddle.slice(
                     gate_input, axes=[1], starts=[0], ends=[hidden_size]
                 )
-                j = layers.slice(
+                j = paddle.slice(
                     gate_input,
                     axes=[1],
                     starts=[hidden_size],
                     ends=[hidden_size * 2],
                 )
-                f = layers.slice(
+                f = paddle.slice(
                     gate_input,
                     axes=[1],
                     starts=[hidden_size * 2],
                     ends=[hidden_size * 3],
                 )
-                o = layers.slice(
+                o = paddle.slice(
                     gate_input,
                     axes=[1],
                     starts=[hidden_size * 3],
                     ends=[hidden_size * 4],
                 )
 
-                c = pre_cell * layers.sigmoid(f) + layers.sigmoid(
-                    i
-                ) * layers.tanh(j)
-                m = layers.tanh(c) * layers.sigmoid(o)
+                c = pre_cell * paddle.nn.functional.sigmoid(
+                    f
+                ) + paddle.nn.functional.sigmoid(i) * paddle.tanh(j)
+                m = paddle.tanh(c) * paddle.nn.functional.sigmoid(o)
 
                 rnn.update_memory(pre_hidden, m)
                 rnn.update_memory(pre_cell, c)
@@ -205,10 +206,10 @@ def lm_model(
                 input = m
 
                 if dropout is not None and dropout > 0.0:
-                    input = layers.dropout(
+                    input = paddle.nn.functional.dropout(
                         input,
-                        dropout_prob=dropout,
-                        dropout_implementation='upscale_in_train',
+                        p=dropout,
+                        mode='upscale_in_train',
                     )
 
             rnn.step_output(input)
@@ -222,15 +223,15 @@ def lm_model(
             c = rnnout[i * 2 + 1]
             m.stop_gradient = True
             c.stop_gradient = True
-            last_h = layers.slice(
+            last_h = paddle.slice(
                 m, axes=[0], starts=[num_steps - 1], ends=[num_steps]
             )
             last_hidden_array.append(last_h)
-            last_c = layers.slice(
+            last_c = paddle.slice(
                 c, axes=[0], starts=[num_steps - 1], ends=[num_steps]
             )
             last_cell_array.append(last_c)
-        real_res = layers.transpose(x=real_res, perm=[1, 0, 2])
+        real_res = paddle.transpose(x=real_res, perm=[1, 0, 2])
         last_hidden = layers.concat(last_hidden_array, 0)
         last_cell = layers.concat(last_cell_array, 0)
 
@@ -247,7 +248,7 @@ def lm_model(
         cell_array = []
         mask_array = []
         for i in range(num_layers):
-            weight_1 = layers.create_parameter(
+            weight_1 = paddle.create_parameter(
                 [hidden_size * 2, hidden_size * 4],
                 dtype="float32",
                 name="fc_weight1_" + str(i),
@@ -256,7 +257,7 @@ def lm_model(
                 ),
             )
             weight_1_arr.append(weight_1)
-            bias_1 = layers.create_parameter(
+            bias_1 = paddle.create_parameter(
                 [hidden_size * 4],
                 dtype="float32",
                 name="fc_bias1_" + str(i),
@@ -264,29 +265,25 @@ def lm_model(
             )
             bias_arr.append(bias_1)
 
-            pre_hidden = layers.slice(
+            pre_hidden = paddle.slice(
                 init_hidden, axes=[0], starts=[i], ends=[i + 1]
             )
-            pre_cell = layers.slice(
+            pre_cell = paddle.slice(
                 init_cell, axes=[0], starts=[i], ends=[i + 1]
             )
-            pre_hidden = layers.reshape(
-                pre_hidden, shape=[-1, hidden_size], inplace=True
-            )
-            pre_cell = layers.reshape(
-                pre_cell, shape=[-1, hidden_size], inplace=True
-            )
+            pre_hidden = paddle.reshape(pre_hidden, shape=[-1, hidden_size])
+            pre_cell = paddle.reshape(pre_cell, shape=[-1, hidden_size])
             hidden_array.append(pre_hidden)
             cell_array.append(pre_cell)
 
         res = []
-        sliced_inputs = layers.split(
-            input_embedding, num_or_sections=len, dim=1
+        sliced_inputs = paddle.split(
+            input_embedding, num_or_sections=len, axis=1
         )
 
         for index in range(len):
             input = sliced_inputs[index]
-            input = layers.reshape(input, shape=[-1, hidden_size], inplace=True)
+            input = paddle.reshape(input, shape=[-1, hidden_size])
             for k in range(num_layers):
                 pre_hidden = hidden_array[k]
                 pre_cell = cell_array[k]
@@ -294,46 +291,46 @@ def lm_model(
                 bias = bias_arr[k]
 
                 nn = layers.concat([input, pre_hidden], 1)
-                gate_input = layers.matmul(x=nn, y=weight_1)
+                gate_input = paddle.matmul(x=nn, y=weight_1)
 
-                gate_input = layers.elementwise_add(gate_input, bias)
-                i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
+                gate_input = paddle.add(gate_input, bias)
+                i, j, f, o = paddle.split(
+                    gate_input, num_or_sections=4, axis=-1
+                )
 
-                c = pre_cell * layers.sigmoid(f) + layers.sigmoid(
-                    i
-                ) * layers.tanh(j)
-                m = layers.tanh(c) * layers.sigmoid(o)
+                c = pre_cell * paddle.nn.functional.sigmoid(
+                    f
+                ) + paddle.nn.functional.sigmoid(i) * paddle.tanh(j)
+                m = paddle.tanh(c) * paddle.nn.functional.sigmoid(o)
 
                 hidden_array[k] = m
                 cell_array[k] = c
                 input = m
 
                 if dropout is not None and dropout > 0.0:
-                    input = layers.dropout(
+                    input = paddle.nn.functional.dropout(
                         input,
-                        dropout_prob=dropout,
-                        dropout_implementation='upscale_in_train',
+                        p=dropout,
+                        mode='upscale_in_train',
                     )
 
             res.append(input)
 
         last_hidden = layers.concat(hidden_array, 1)
-        last_hidden = layers.reshape(
-            last_hidden, shape=[-1, num_layers, hidden_size], inplace=True
+        last_hidden = paddle.reshape(
+            last_hidden, shape=[-1, num_layers, hidden_size]
         )
-        last_hidden = layers.transpose(x=last_hidden, perm=[1, 0, 2])
+        last_hidden = paddle.transpose(x=last_hidden, perm=[1, 0, 2])
 
         last_cell = layers.concat(cell_array, 1)
-        last_cell = layers.reshape(
+        last_cell = paddle.reshape(
             last_cell, shape=[-1, num_layers, hidden_size]
         )
-        last_cell = layers.transpose(x=last_cell, perm=[1, 0, 2])
+        last_cell = paddle.transpose(x=last_cell, perm=[1, 0, 2])
 
         real_res = layers.concat(res, 0)
-        real_res = layers.reshape(
-            real_res, shape=[len, -1, hidden_size], inplace=True
-        )
-        real_res = layers.transpose(x=real_res, perm=[1, 0, 2])
+        real_res = paddle.reshape(real_res, shape=[len, -1, hidden_size])
+        real_res = paddle.transpose(x=real_res, perm=[1, 0, 2])
 
         return real_res, last_hidden, last_cell
 
@@ -367,10 +364,10 @@ def lm_model(
     init_cell.persistable = True
     init_hidden.persistable = True
 
-    init_hidden_reshape = layers.reshape(
+    init_hidden_reshape = paddle.reshape(
         init_hidden, shape=[num_layers, -1, hidden_size]
     )
-    init_cell_reshape = layers.reshape(
+    init_cell_reshape = paddle.reshape(
         init_cell, shape=[num_layers, -1, hidden_size]
     )
 
@@ -387,14 +384,12 @@ def lm_model(
         ),
     )
 
-    x_emb = layers.reshape(
-        x_emb, shape=[-1, num_steps, hidden_size], inplace=True
-    )
+    x_emb = paddle.reshape(x_emb, shape=[-1, num_steps, hidden_size])
     if dropout is not None and dropout > 0.0:
-        x_emb = layers.dropout(
+        x_emb = paddle.nn.functional.dropout(
             x_emb,
-            dropout_prob=dropout,
-            dropout_implementation='upscale_in_train',
+            p=dropout,
+            mode='upscale_in_train',
         )
 
     if rnn_model == "padding":
@@ -411,21 +406,6 @@ def lm_model(
             init_hidden=init_hidden_reshape,
             init_cell=init_cell_reshape,
         )
-    elif rnn_model == "cudnn":
-        x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
-        rnn_out, last_hidden, last_cell = layers.lstm(
-            x_emb,
-            init_hidden_reshape,
-            init_cell_reshape,
-            num_steps,
-            hidden_size,
-            num_layers,
-            is_bidirec=False,
-            default_initializer=fluid.initializer.UniformInitializer(
-                low=-init_scale, high=init_scale
-            ),
-        )
-        rnn_out = layers.transpose(rnn_out, perm=[1, 0, 2])
     elif rnn_model == "basic_lstm":
         rnn_out, last_hidden, last_cell = basic_lstm(
             x_emb,
@@ -447,11 +427,9 @@ def lm_model(
         print("type not support")
         return
 
-    rnn_out = layers.reshape(
-        rnn_out, shape=[-1, num_steps, hidden_size], inplace=True
-    )
+    rnn_out = paddle.reshape(rnn_out, shape=[-1, num_steps, hidden_size])
 
-    softmax_weight = layers.create_parameter(
+    softmax_weight = paddle.create_parameter(
         [hidden_size, vocab_size],
         dtype="float32",
         name="softmax_weight",
@@ -459,7 +437,7 @@ def lm_model(
             low=-init_scale, high=init_scale
         ),
     )
-    softmax_bias = layers.create_parameter(
+    softmax_bias = paddle.create_parameter(
         [vocab_size],
         dtype="float32",
         name='softmax_bias',
@@ -468,19 +446,17 @@ def lm_model(
         ),
     )
 
-    projection = layers.matmul(rnn_out, softmax_weight)
-    projection = layers.elementwise_add(projection, softmax_bias)
-    projection = layers.reshape(
-        projection, shape=[-1, vocab_size], inplace=True
-    )
+    projection = paddle.matmul(rnn_out, softmax_weight)
+    projection = paddle.add(projection, softmax_bias)
+    projection = paddle.reshape(projection, shape=[-1, vocab_size])
 
-    loss = layers.softmax_with_cross_entropy(
+    loss = paddle.nn.functional.softmax_with_cross_entropy(
         logits=projection, label=y, soft_label=False
     )
 
-    loss = layers.reshape(loss, shape=[-1, num_steps], inplace=True)
-    loss = layers.reduce_mean(loss, dim=[0])
-    loss = layers.reduce_sum(loss)
+    loss = paddle.reshape(loss, shape=[-1, num_steps])
+    loss = paddle.mean(loss, axis=[0])
+    loss = paddle.sum(loss)
 
     loss.persistable = True
     last_cell.persistable = True
@@ -553,7 +529,7 @@ class PaddingRNNTestBase(unittest.TestCase):
                     )
                 )
 
-                self.learning_rate = fluid.layers.create_global_var(
+                self.learning_rate = paddle.static.create_global_var(
                     name="learning_rate",
                     shape=[1],
                     value=1.0,

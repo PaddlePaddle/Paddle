@@ -17,31 +17,27 @@
 namespace phi {
 
 KernelSignature LessThanArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("less_than", {"X", "Y"}, {"axis"}, {"Out"});
+  return KernelSignature("less_than_raw", {"X", "Y"}, {"axis"}, {"Out"});
 }
 
 KernelSignature LessEqualArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("less_equal", {"X", "Y"}, {"axis"}, {"Out"});
+  return KernelSignature("less_equal_raw", {"X", "Y"}, {"axis"}, {"Out"});
 }
 
 KernelSignature GreaterThanArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("greater_than", {"X", "Y"}, {"axis"}, {"Out"});
+  return KernelSignature("greater_than_raw", {"X", "Y"}, {"axis"}, {"Out"});
 }
 
 KernelSignature GreaterEqualArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("greater_equal", {"X", "Y"}, {"axis"}, {"Out"});
+  return KernelSignature("greater_equal_raw", {"X", "Y"}, {"axis"}, {"Out"});
 }
 
 KernelSignature EqualArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("equal", {"X", "Y"}, {"axis"}, {"Out"});
+  return KernelSignature("equal_raw", {"X", "Y"}, {"axis"}, {"Out"});
 }
 
 KernelSignature NotEqualArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("not_equal", {"X", "Y"}, {"axis"}, {"Out"});
-}
-
-KernelSignature EqualAllArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("equal_all", {"X", "Y"}, {}, {"Out"});
+  return KernelSignature("not_equal_raw", {"X", "Y"}, {"axis"}, {"Out"});
 }
 
 }  // namespace phi
@@ -52,5 +48,3 @@ PD_REGISTER_ARG_MAPPING_FN(greater_than, phi::GreaterThanArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(greater_equal, phi::GreaterEqualArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(equal, phi::EqualArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(not_equal, phi::NotEqualArgumentMapping);
-
-PD_REGISTER_ARG_MAPPING_FN(equal_all, phi::EqualAllArgumentMapping);

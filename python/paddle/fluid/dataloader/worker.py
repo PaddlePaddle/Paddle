@@ -34,16 +34,16 @@ import queue
 __all__ = ['get_worker_info']
 
 
-class _IterableDatasetStopIteration(object):
+class _IterableDatasetStopIteration:
     def __init__(self, worker_id):
         self.worker_id = worker_id
 
 
-class _ResumeIteration(object):
+class _ResumeIteration:
     pass
 
 
-class _DatasetKind(object):
+class _DatasetKind:
     MAP = 0
     ITER = 1
 
@@ -63,7 +63,7 @@ class _DatasetKind(object):
             raise NotImplementedError("unknown Dataset kind {}".format(kind))
 
 
-class ParentWatchDog(object):
+class ParentWatchDog:
     def __init__(self):
         self._parent_pid = os.getppid()
         self._parent_alive = True
@@ -145,7 +145,7 @@ def get_worker_info():
     return _worker_info
 
 
-class WorkerInfo(object):
+class WorkerInfo:
     __initialized = False
 
     def __init__(self, **kwargs):
@@ -160,10 +160,10 @@ class WorkerInfo(object):
                     self.__class__.__name__
                 )
             )
-        return super(WorkerInfo, self).__setattr__(key, val)
+        return super().__setattr__(key, val)
 
 
-class _WorkerException(object):
+class _WorkerException:
     def __init__(self, worker_id, exc_info=None):
         self.worker_id = worker_id
         exc_info = exc_info or sys.exc_info()
@@ -373,21 +373,19 @@ def _worker_loop(
                     out_queue.put((idx, batch, None))
                 batch, structure = _flatten_batch(batch)
                 if use_shared_memory:
-                    # NOTE: In eager mode, Tensor._share_memory has no
-                    # effect, fall back to _array_to_share_memory_tensor
-                    def tensor_share_memory(tensor):
-                        if _in_eager_without_dygraph_check():
-                            return core._array_to_share_memory_tensor(tensor)
-                        return tensor._share_memory()
+
+                    def numpy2lodtensor(arr):
+                        lodtensor = core.Tensor()
+                        lodtensor.set(arr, core.CPUPlace())
+                        return lodtensor
 
                     tensor_list = [
-                        core._array_to_share_memory_tensor(b)
+                        numpy2lodtensor(b)
                         if isinstance(b, np.ndarray)
-                        else tensor_share_memory(b)
+                        else b.value().get_tensor()
                         for b in batch
                     ]
                     out_queue.put((idx, tensor_list, structure))
-                    core._remove_tensor_list_mmap_fds(tensor_list)
                 else:
                     out_queue.put((idx, batch, structure))
     except KeyboardInterrupt:

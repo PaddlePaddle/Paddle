@@ -22,8 +22,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 inline std::vector<int64_t> CorrelationOutputSize(int batch,
                                                   int input_height,
                                                   int input_width,
@@ -121,14 +119,6 @@ class CorrelationOp : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "X and Y shoule have the same datatype"));
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
-  }
-
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name,
-      const phi::DenseTensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
-    return framework::OpKernelType(
-        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 

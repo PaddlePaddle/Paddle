@@ -19,13 +19,12 @@ import numpy as np
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
-from paddle.distributed.fleet import auto
-
 from paddle import LazyGuard
+from paddle.distributed.auto_parallel.helper import ProgramHelper
+from paddle.distributed.fleet import auto
+from paddle.fluid.framework import _non_static_mode
 from paddle.io import Dataset
 from paddle.static import InputSpec
-from paddle.fluid.framework import _non_static_mode
-from paddle.distributed.auto_parallel.helper import ProgramHelper
 
 batch_size = 4
 batch_num = 30
@@ -35,7 +34,7 @@ class_num = 10
 
 class MyDataset(Dataset):
     def __init__(self, num_samples):
-        super(MyDataset, self).__init__()
+        super().__init__()
         self.num_samples = num_samples
 
     def __getitem__(self, index):
@@ -55,7 +54,7 @@ class MLPLayer(nn.Layer):
         dropout_ratio=0.1,
         initializer_range=0.02,
     ):
-        super(MLPLayer, self).__init__()
+        super().__init__()
         d_model = hidden_size
         dim_feedforward = intermediate_size
         weight_attr = paddle.ParamAttr(

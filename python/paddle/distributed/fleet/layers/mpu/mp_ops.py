@@ -14,17 +14,20 @@
 
 import paddle
 from paddle import _legacy_C_ops
-from paddle.fluid import core
-from paddle.fluid.framework import _non_static_mode
-from paddle.fluid.framework import _in_legacy_dygraph
-from paddle.fluid.framework import in_dygraph_mode
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.dygraph import layers
+from paddle.common_ops_import import dygraph_utils
 from paddle.distributed import collective
-from ....communication.reduce import ReduceOp
-from paddle.fluid.data_feeder import check_dtype
-import paddle.fluid.dygraph_utils as dygraph_utils
+from paddle.fluid import core
+from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
+from paddle.framework import (
+    LayerHelper,
+    _in_legacy_dygraph,
+    _varbase_creator,
+    in_dygraph_mode,
+    in_dynamic_mode,
+)
+from paddle.nn import Layer
+
+from ....communication.reduce import ReduceOp, _get_reduce_op
 
 
 def _c_identity(tensor, group=None):
@@ -61,8 +64,8 @@ def _c_identity(tensor, group=None):
 
             @staticmethod
             def backward(ctx, dy):
-                op_type = collective._get_reduce_op(ReduceOp.SUM, "_c_identity")
-                group.process_group.allreduce_on_calc_stream(dy, op_type)
+                op_type = _get_reduce_op(ReduceOp.SUM, "_c_identity")
+                group.process_group.all_reduce_on_calc_stream(dy, op_type)
                 return dy
 
         return c_identity_eager.apply(tensor)
@@ -122,7 +125,7 @@ def _c_concat(tensor, group=None):
     rank = group.rank
     nranks = group.nranks
 
-    if _non_static_mode():
+    if in_dynamic_mode():
         return _legacy_C_ops.c_concat(
             tensor,
             'ring_id',
@@ -188,7 +191,7 @@ def _c_split(tensor, group=None):
         else group.nranks
     )
 
-    if _non_static_mode():
+    if in_dynamic_mode():
         return _legacy_C_ops.c_split(
             tensor,
             'use_calc_stream',
@@ -254,8 +257,8 @@ def _mp_allreduce(
                 ctx.ring_id = group.id
 
                 if use_calc_stream:
-                    op_type = collective._get_reduce_op(op, "_mp_allreduce")
-                    group.process_group.allreduce_on_calc_stream(
+                    op_type = _get_reduce_op(op, "_mp_allreduce")
+                    group.process_group.all_reduce_on_calc_stream(
                         tensor, op_type
                     )
                     return tensor
@@ -266,8 +269,6 @@ def _mp_allreduce(
                         use_calc_stream,
                         'ring_id',
                         ring_id,
-                        "use_model_parallel",
-                        use_model_parallel,
                     )
 
             @staticmethod
@@ -289,19 +290,17 @@ def _mp_allreduce(
     ring_id = 0 if group is None else group.id
     if _in_legacy_dygraph():
         if op == ReduceOp.SUM:
-            return _legacy_C_ops.c_allreduce_sum_(
+            return _legacy_C_ops.mp_allreduce_sum_(
                 tensor,
                 'use_calc_stream',
                 use_calc_stream,
                 'ring_id',
                 ring_id,
-                "use_model_parallel",
-                use_model_parallel,
             )
         else:
             raise ValueError("Unknown parameter: {}.".format(op))
 
-    op_type = 'c_allreduce_sum'
+    op_type = 'mp_allreduce_sum'
     helper = LayerHelper(op_type, **locals())
     out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
 
@@ -319,7 +318,6 @@ def _mp_allreduce(
         attrs={
             'ring_id': ring_id,
             'use_calc_stream': use_calc_stream,
-            'use_model_parallel': use_model_parallel,
         },
     )
     return out
@@ -339,7 +337,7 @@ def _c_lookup_table(table, index, start_index=0, name=None):
     Returns:
         Tensor.
     """
-    if _non_static_mode():
+    if in_dynamic_mode():
         return _legacy_C_ops.c_embedding(
             table, index, "start_index", start_index
         )
@@ -358,7 +356,7 @@ def _c_lookup_table(table, index, start_index=0, name=None):
     return tmp
 
 
-class _Linear(layers.Layer):
+class _Linear(Layer):
     """
     Linear
     """
@@ -371,7 +369,7 @@ class _Linear(layers.Layer):
         bias_attr=None,
         name=None,
     ):
-        super(_Linear, self).__init__()
+        super().__init__()
         self._dtype = self._helper.get_default_dtype()
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
@@ -428,7 +426,7 @@ def _c_softmax_with_cross_entropy(
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=-1)
 
-    if _non_static_mode():
+    if in_dynamic_mode():
         softmax, loss = _legacy_C_ops.c_softmax_with_cross_entropy(
             logits, label, 'ring_id', ring_id, 'rank', rank, 'nranks', nranks
         )
@@ -462,7 +460,7 @@ def _linear(x, weight, bias=None, name=None):
     """
     Fuction Linear
     """
-    if _non_static_mode():
+    if in_dynamic_mode():
         pre_bias = _varbase_creator(dtype=x.dtype)
         _legacy_C_ops.matmul(
             x,
@@ -602,13 +600,12 @@ def _parallel_linear(
     )
     if axis == 0:
         main_block.append_op(
-            type='c_allreduce_sum',
+            type='mp_allreduce_sum',
             inputs={'X': linear_out},
             outputs={'Out': out},
             attrs={
                 'ring_id': ring_id,
                 'use_calc_stream': True,
-                'use_model_parallel': True,
             },
         )
         if linear.bias is not None:
@@ -830,7 +827,7 @@ def split(
             supported_operations
         )
     )
-    if _non_static_mode():
+    if in_dynamic_mode():
         raise ValueError(
             "paddle.distributed.split cannot be used in dynamic "
             "graph mode, plese use ParallelEmbedding, ParallelRowLinear, "

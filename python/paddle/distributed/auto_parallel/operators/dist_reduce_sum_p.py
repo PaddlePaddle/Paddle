@@ -12,19 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .common import DistributedOperatorImplContainer
-from .common import DistributedOperatorImpl
-from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl
-from ..utils import set_dist_op_desc_original_id
-from ..dist_attribute import OperatorDistributedAttribute
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
+
+from ..dist_attribute import OperatorDistributedAttribute
 from ..process_group import new_process_group
+from ..utils import set_dist_op_desc_original_id
+from .common import (
+    DistributedOperatorImpl,
+    DistributedOperatorImplContainer,
+    register_distributed_operator_impl,
+    register_distributed_operator_impl_container,
+)
 
 
 class DistributedReduceSumPrimtive(DistributedOperatorImplContainer):
     def __init__(self, op_type):
-        super(DistributedReduceSumPrimtive, self).__init__(op_type)
+        super().__init__(op_type)
 
 
 register_distributed_operator_impl_container(
@@ -35,7 +38,7 @@ register_distributed_operator_impl_container(
 # Batch Dimension ReduceSum Primitive
 class DistributedReduceSumPrimtiveImpl0(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedReduceSumPrimtiveImpl0, self).__init__(name)
+        super().__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
 
@@ -54,7 +57,7 @@ class DistributedReduceSumPrimtiveImpl0(DistributedOperatorImpl):
             return False
 
         output_name = outputs[0]
-        output_var = dist_op.serial_op.block.var(output_name)
+        output_var = dist_op.serial_op.block._var_recursive(output_name)
         if output_var.shape != (1,):
             return False
 
@@ -124,7 +127,7 @@ class DistributedReduceSumPrimtiveImpl0(DistributedOperatorImpl):
         )
 
         # dist attr
-        var = main_block.var(var_name)
+        var = main_block._var_recursive(var_name)
         tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(var)
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         new_op_attr = OperatorDistributedAttribute()
@@ -141,7 +144,7 @@ class DistributedReduceSumPrimtiveImpl0(DistributedOperatorImpl):
     def backward(ctx, *args, **kwargs):
         raise RuntimeError(
             "primitive operator does NOT have backward function, op type: {}".format(
-                str(op.type)
+                str(op.type)  # noqa: F821
             )
         )
 

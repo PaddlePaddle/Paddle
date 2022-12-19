@@ -12,53 +12,47 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import os
+import random
+import struct
 import sys
 import unittest
 import warnings
-import numpy as np
-import random
-import functools
-import struct
 from collections import defaultdict
 from copy import copy
 
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.framework import _dygraph_tracer
 import paddle.fluid.core as core
-from paddle.fluid.framework import (
-    _in_legacy_dygraph,
-    _enable_legacy_dygraph,
-    _in_eager_without_dygraph_check,
-    _disable_legacy_dygraph,
-)
-from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid import unique_name
 from paddle.fluid.backward import append_backward
-from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import (
     OpProtoHolder,
     Program,
     _current_expected_place,
+    _disable_legacy_dygraph,
+    _dygraph_tracer,
+    _enable_legacy_dygraph,
+    _in_eager_without_dygraph_check,
+    _in_legacy_dygraph,
+    _test_eager_guard,
 )
-from paddle.fluid import unique_name
-from paddle.fluid.dygraph.dygraph_to_static.utils import parse_arg_and_kwargs
+from paddle.fluid.op import Operator
+from paddle.jit.dy2static.utils import parse_arg_and_kwargs
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
-from testsuite import (
-    create_op,
-    set_input,
-    append_input_output,
-    append_loss_ops,
-)
+from testsuite import append_input_output, append_loss_ops, create_op, set_input
 from white_list import (
-    op_accuracy_white_list,
     check_shape_white_list,
     compile_vs_runtime_white_list,
     no_check_set_white_list,
-    op_threshold_white_list,
     no_grad_set_white_list,
+    op_accuracy_white_list,
+    op_threshold_white_list,
 )
 
 # For switch new eager mode globally
@@ -1566,7 +1560,7 @@ class OpTest(unittest.TestCase):
             )
             return found[0]
 
-        class Checker(object):
+        class Checker:
             """base class for check with self.outputs.
             currently don't support check between checkers.
             """

@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import paddle
+
 from ..fluid.core import LoDTensor
-from ..fluid.framework import _non_static_mode
 from ..fluid.data_feeder import check_type
+from ..fluid.framework import _non_static_mode
 
 __all__ = [
     'to_dlpack',
@@ -68,7 +69,7 @@ def from_dlpack(dlpack):
         dlpack (PyCapsule): a PyCapsule object with the dltensor.
 
     Returns:
-        out (Tensor): a tensor decoded from DLPack. One thing to be noted, if we get
+        out (Tensor), a tensor decoded from DLPack. One thing to be noted, if we get
                       an input dltensor with data type as `bool`, we return the decoded
                       tensor as `uint8`.
 

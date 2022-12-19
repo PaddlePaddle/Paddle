@@ -14,16 +14,14 @@
 
 import warnings
 
-from .optimizer import Optimizer
-from ..fluid import core
-from ..fluid import framework
-from ..fluid.layer_helper import LayerHelper
-from ..fluid import unique_name
-from ..fluid import layers
-from paddle.fluid.regularizer import L2DecayRegularizer
-from paddle import _C_ops, _legacy_C_ops
 import paddle
-from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
+from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from paddle.fluid.regularizer import L2DecayRegularizer
+
+from ..fluid import core, framework, unique_name
+from ..fluid.layer_helper import LayerHelper
+from .optimizer import Optimizer
 
 __all__ = []
 
@@ -83,8 +81,8 @@ class Momentum(Optimizer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-            inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+
+            inp = paddle.uniform([10, 10], dtype="float32", min=-0.1, max=0.1)
             linear = paddle.nn.Linear(10, 10)
             inp = paddle.to_tensor(inp)
             out = linear(inp)
@@ -157,7 +155,7 @@ class Momentum(Optimizer):
                     param_group['weight_decay'] = py_regular
 
         py_regular = None if predicate(weight_decay) else weight_decay
-        super(Momentum, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameters=parameters,
             weight_decay=py_regular,
@@ -211,7 +209,7 @@ class Momentum(Optimizer):
 
             var_name = param.name + "_fp32_master"
             var_name = unique_name.generate(var_name)
-            var = layers.create_global_var(
+            var = paddle.static.create_global_var(
                 name=var_name,
                 shape=param.shape,
                 value=0,
@@ -297,7 +295,7 @@ class Momentum(Optimizer):
             param.regularizer, L2DecayRegularizer
         ):
             return grad
-        return super(Momentum, self)._create_regularization_of_grad(
+        return super()._create_regularization_of_grad(
             param, grad, regularization
         )
 

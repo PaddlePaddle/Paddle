@@ -13,11 +13,11 @@
 # limitations under the License.
 import collections
 import os
-from typing import List
-from typing import Tuple
+from typing import List, Tuple
 
-from paddle.utils import download
 from paddle.dataset.common import DATA_HOME
+from paddle.utils import download
+
 from .dataset import AudioClassificationDataset
 
 __all__ = []
@@ -107,7 +107,7 @@ class TESS(AudioClassificationDataset):
         if archive is not None:
             self.archive = archive
         files, labels = self._get_data(mode, n_folds, split)
-        super(TESS, self).__init__(
+        super().__init__(
             files=files, labels=labels, feat_type=feat_type, **kwargs
         )
 

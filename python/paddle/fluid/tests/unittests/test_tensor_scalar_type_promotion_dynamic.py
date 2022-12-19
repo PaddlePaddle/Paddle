@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 import paddle
@@ -319,7 +320,7 @@ class TestTensorScalarTypePromotionDynamic(unittest.TestCase):
             self.func_scalar_pow_tensor()
         self.func_scalar_pow_tensor()
 
-    ## TODO: floordiv op kernel doesn't support float
+    # TODO: floordiv op kernel doesn't support float
     def func_tensor_floordiv_scalar(self):
         # tensor(int64) // scalar(int)
         a = paddle.full([2, 2, 2], 3, dtype='int64')

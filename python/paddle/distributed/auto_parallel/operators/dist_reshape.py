@@ -12,23 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .common import DistributedOperatorImplContainer
-from .common import DistributedOperatorImpl
-from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl, is_parameter_related
-from ..utils import is_dim_shard
-from ..utils import compute_compatible_and_update_dim_mapping
-from ..utils import set_dist_op_desc_original_id
-from .dist_default import DistributedDefaultImpl0
-from ..cost import build_comp_desc_from_dist_op, build_comp_costs_from_descs
-from ..cost import Reshape2OpCost
-from ..cost import Reshape2GradOpCost
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
+
+from ..cost import (
+    Reshape2GradOpCost,
+    Reshape2OpCost,
+    build_comp_costs_from_descs,
+    build_comp_desc_from_dist_op,
+    build_dp_costs,
+)
+from ..utils import (
+    compute_compatible_and_update_dim_mapping,
+    is_dim_shard,
+    set_dist_op_desc_original_id,
+)
+from .common import (
+    DistributedOperatorImpl,
+    DistributedOperatorImplContainer,
+    is_parameter_related,
+    register_distributed_operator_impl,
+    register_distributed_operator_impl_container,
+)
+from .dist_default import DistributedDefaultImpl0
 
 
 class DistributedReshape2(DistributedOperatorImplContainer):
     def __init__(self, op_type):
-        super(DistributedReshape2, self).__init__(op_type)
+        super().__init__(op_type)
 
 
 register_distributed_operator_impl_container(DistributedReshape2("reshape2"))
@@ -36,7 +46,7 @@ register_distributed_operator_impl_container(DistributedReshape2("reshape2"))
 
 class DistributedReshapeImpl0(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedReshapeImpl0, self).__init__(name)
+        super().__init__(name)
         self._forward_implemented = True
         self._backward_implemented = False
 
@@ -52,7 +62,6 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
     def calc_fwd_cost(self, dist_op, ctx, cluster):
         res = []
         op = dist_op.serial_op
-        vars = op.block.vars
         dist_attr = dist_op.dist_attr
 
         shape_list = op.desc.attr("shape")
@@ -102,7 +111,6 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         backward_op = dist_op.serial_op
         main_block = backward_op.block
         need_gradient_allreduce = False
-        vars = main_block.vars
         for input_name in backward_op.desc.input_names():
             for varname in backward_op.desc.input(input_name):
                 if "@GRAD" not in varname and is_parameter_related(
@@ -245,9 +253,9 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
                 output_name
             )
 
-        X_var = main_block.var(kwargs['X'][0])
-        Out_var = main_block.var(kwargs['Out'][0])
-        XShape_var = main_block.var(kwargs['XShape'][0])
+        X_var = main_block._var_recursive(kwargs['X'][0])
+        Out_var = main_block._var_recursive(kwargs['Out'][0])
+        XShape_var = main_block._var_recursive(kwargs['XShape'][0])
         shape_list = src_op.desc.attr("shape")
         ShapeTensor_var_list = []
         for name in kwargs['ShapeTensor']:
@@ -286,7 +294,7 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
 
 class DistributedReshapeImpl1(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedReshapeImpl1, self).__init__(name)
+        super().__init__(name)
         self._forward_implemented = True
         self._backward_implemented = False
 
@@ -302,7 +310,6 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
     def calc_fwd_cost(self, dist_op, ctx, cluster):
         res = []
         op = dist_op.serial_op
-        vars = op.block.vars
         dist_attr = dist_op.dist_attr
 
         shape_list = op.desc.attr("shape")
@@ -352,7 +359,6 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         backward_op = dist_op.serial_op
         main_block = backward_op.block
         need_gradient_allreduce = False
-        vars = main_block.vars
         for input_name in backward_op.desc.input_names():
             for varname in backward_op.desc.input(input_name):
                 if "@GRAD" not in varname and not is_parameter_related(
@@ -498,9 +504,9 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
                 output_name
             )
 
-        X_var = main_block.var(kwargs['X'][0])
-        Out_var = main_block.var(kwargs['Out'][0])
-        XShape_var = main_block.var(kwargs['XShape'][0])
+        X_var = main_block._var_recursive(kwargs['X'][0])
+        Out_var = main_block._var_recursive(kwargs['Out'][0])
+        XShape_var = main_block._var_recursive(kwargs['XShape'][0])
         shape_list = src_op.desc.attr("shape")
         ShapeTensor_var_list = []
         for name in kwargs['ShapeTensor']:
@@ -539,7 +545,7 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
 
 class DistributedReshapeImpl2(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedReshapeImpl2, self).__init__(name)
+        super().__init__(name)
         self._forward_implemented = True
         self._backward_implemented = False
 
@@ -555,7 +561,6 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
     def calc_fwd_cost(self, dist_op, ctx, cluster):
         res = []
         op = dist_op.serial_op
-        vars = op.block.vars
         dist_attr = dist_op.dist_attr
 
         shape_list = op.desc.attr("shape")
@@ -605,7 +610,6 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
         backward_op = dist_op.serial_op
         main_block = backward_op.block
         need_gradient_allreduce = False
-        vars = main_block.vars
         for input_name in backward_op.desc.input_names():
             for varname in backward_op.desc.input(input_name):
                 if "@GRAD" not in varname and not is_parameter_related(
@@ -744,9 +748,9 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
                 output_name
             )
 
-        X_var = main_block.var(kwargs['X'][0])
-        Out_var = main_block.var(kwargs['Out'][0])
-        XShape_var = main_block.var(kwargs['XShape'][0])
+        X_var = main_block._var_recursive(kwargs['X'][0])
+        Out_var = main_block._var_recursive(kwargs['Out'][0])
+        XShape_var = main_block._var_recursive(kwargs['XShape'][0])
         shape_list = src_op.desc.attr("shape")
         ShapeTensor_var_list = []
         for name in kwargs['ShapeTensor']:

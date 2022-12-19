@@ -20,8 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 class MLUWhereIndexKernel : public framework::OpKernel<T> {
  public:
@@ -31,7 +29,7 @@ class MLUWhereIndexKernel : public framework::OpKernel<T> {
     auto dims = condition->dims();
     const int rank = dims.size();
 
-    Tensor num_true;
+    phi::DenseTensor num_true;
     num_true.mutable_data<int>({1}, context.GetPlace());
     MLUCnnlTensorDesc con_desc(*condition);
     MLUCnnlTensorDesc num_true_desc(num_true);
@@ -41,7 +39,7 @@ class MLUWhereIndexKernel : public framework::OpKernel<T> {
                      num_true_desc.get(),
                      GetBasePtr(&num_true));
 
-    Tensor local_true_num;
+    phi::DenseTensor local_true_num;
     paddle::framework::TensorCopySync(
         num_true, platform::CPUPlace(), &local_true_num);
     auto true_num = *local_true_num.data<int>();

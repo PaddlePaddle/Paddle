@@ -22,18 +22,19 @@
 import warnings
 
 import numpy as np
+
 import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.data_feeder import check_variable_and_dtype, convert_dtype
 from paddle.fluid.framework import (
+    _in_legacy_dygraph,
     _non_static_mode,
     in_dygraph_mode,
-    _in_legacy_dygraph,
 )
 from paddle.fluid.layers import tensor
 
 
-class Distribution(object):
+class Distribution:
     """
     The abstract base class for probability distributions. Functions are
     implemented in specific distributions.
@@ -60,7 +61,7 @@ class Distribution(object):
             else tuple(event_shape)
         )
 
-        super(Distribution, self).__init__()
+        super().__init__()
 
     @property
     def batch_shape(self):
@@ -202,7 +203,7 @@ class Distribution(object):
         dtype = tmp.dtype
         for arg in numpy_args:
             arg_broadcasted, _ = np.broadcast_arrays(arg, tmp)
-            arg_variable = tensor.create_tensor(dtype=dtype)
+            arg_variable = paddle.tensor.create_tensor(dtype=dtype)
             tensor.assign(arg_broadcasted, arg_variable)
             variable_args.append(arg_variable)
 

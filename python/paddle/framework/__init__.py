@@ -22,7 +22,6 @@ from .framework import set_grad_enabled  # noqa: F401
 from .framework import is_grad_enabled  # noqa: F401
 
 from ..fluid.param_attr import ParamAttr  # noqa: F401
-from ..fluid.layers.tensor import create_parameter  # noqa: F401
 from ..fluid.core import CPUPlace  # noqa: F401
 from ..fluid.core import IPUPlace  # noqa: F401
 from ..fluid.core import CUDAPlace  # noqa: F401
@@ -47,14 +46,15 @@ from ..fluid.framework import set_flags  # noqa: F401
 from ..fluid.dygraph.base import enable_dygraph as disable_static  # noqa: F401
 from ..fluid.dygraph.base import disable_dygraph as enable_static  # noqa: F401
 from ..fluid.framework import _non_static_mode as in_dynamic_mode  # noqa: F401
-from ..fluid.framework import (
-    _non_static_mode,
-)  #  noqa: F401; temporary used for hackson
+from ..fluid.framework import (  # noqa: F401
+    _non_static_mode,  # temporary used for hackson
+)
 from ..fluid.framework import (
     _current_expected_place,
     _get_paddle_place,
 )  # noqa: F401
 from ..fluid.framework import dygraph_only  # noqa: F401
+from ..fluid.framework import dygraph_not_support  # noqa: F401
 from ..fluid.framework import (
     convert_np_dtype_to_dtype_,
     _varbase_creator,
@@ -65,5 +65,16 @@ from ..fluid.framework import _dygraph_tracer  # noqa: F401
 from ..fluid.layer_helper import LayerHelper  # noqa: F401
 from ..fluid.framework import in_dygraph_mode  # noqa: F401
 from ..fluid.framework import _in_legacy_dygraph  # noqa: F401
+from ..fluid.framework import _global_flags  # noqa: F401
+from ..fluid.framework import _apply_pass  # noqa: F401
+from ..fluid.framework import switch_main_program
+from ..fluid.framework import _set_expected_place  # noqa: F401
+from ..fluid.framework import Block, Program  # noqa: F401
+from ..fluid.dygraph import parallel_helper  # noqa: F401
+from ..fluid.dygraph.parallel import (
+    _split_tensors,
+    build_groups,
+    sync_params_buffers,
+)
 
 __all__ = []

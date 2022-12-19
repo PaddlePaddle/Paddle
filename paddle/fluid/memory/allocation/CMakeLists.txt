@@ -4,7 +4,6 @@ set(ALLOCATOR_DEPS place stats profiler phi_backends device_context)
 set(ALLOCATOR_SRCS
     allocator.cc
     cpu_allocator.cc
-    locked_allocator.cc
     aligned_allocator.cc
     buffered_allocator.cc
     best_fit_allocator.cc
@@ -33,7 +32,7 @@ if(WITH_GPU OR WITH_ROCM)
 endif()
 
 if(WITH_GPU)
-  list(APPEND ALLOCATOR_DEPS cuda_graph)
+  list(APPEND ALLOCATOR_DEPS phi_backends)
 endif()
 
 if(CUDA_VERSION VERSION_GREATER_EQUAL 10.2)
@@ -45,6 +44,10 @@ if(NOT WIN32)
   if(WITH_GPU)
     list(APPEND ALLOCATOR_SRCS cuda_ipc_allocator.cc)
   endif()
+endif()
+
+if(UNIX AND NOT APPLE)
+  list(APPEND ALLOCATOR_DEPS rt)
 endif()
 
 if(WITH_ASCEND_CL)

@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
-import math
-from functools import partial
 import collections
+import math
+import re
+from functools import partial
 
 import paddle
 import paddle.nn as nn
@@ -239,7 +239,7 @@ def efficientnet_params(model_name):
     return params_dict[model_name]
 
 
-class BlockDecoder(object):
+class BlockDecoder:
     """Block Decoder for readability, straight from the official TensorFlow repository"""
 
     @staticmethod

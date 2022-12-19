@@ -174,7 +174,7 @@ def pool2d_backward_navie(
     return x_grad
 
 
-class TestPool2D_Op_Mixin(object):
+class TestPool2D_Op_Mixin:
     def setUp(self):
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True
@@ -734,86 +734,76 @@ class TestPool2DAPI(unittest.TestCase):
         )
 
         ksize = [3, 3]
-        out_1 = fluid.layers.pool2d(
-            input=input_NHWC,
-            pool_size=ksize,
-            pool_type="max",
-            pool_padding=[1, 1],
+        out_1 = paddle.nn.functional.max_pool2d(
+            x=input_NHWC,
+            kernel_size=ksize,
+            padding=[1, 1],
             data_format="NHWC",
         )
 
-        out_2 = fluid.layers.pool2d(
-            input=input_NHWC,
-            pool_size=ksize,
-            pool_type="avg",
-            pool_padding=[[0, 0], [1, 1], [1, 1], [0, 0]],
+        out_2 = paddle.nn.functional.avg_pool2d(
+            x=input_NHWC,
+            kernel_size=ksize,
+            padding=[[0, 0], [1, 1], [1, 1], [0, 0]],
             data_format="NHWC",
         )
 
-        out_3 = fluid.layers.pool2d(
-            input=input_NCHW,
-            pool_size=ksize,
-            pool_type="avg",
-            pool_padding=[[0, 0], [0, 0], [1, 1], [1, 1]],
+        out_3 = paddle.nn.functional.avg_pool2d(
+            x=input_NCHW,
+            kernel_size=ksize,
+            padding=[[0, 0], [0, 0], [1, 1], [1, 1]],
             data_format="NCHW",
         )
 
-        out_4 = fluid.layers.pool2d(
-            input=input_NCHW,
-            pool_size=ksize,
-            pool_type="avg",
-            pool_padding=[1, 2, 1, 0],
+        out_4 = paddle.nn.functional.avg_pool2d(
+            x=input_NCHW,
+            kernel_size=ksize,
+            padding=[1, 2, 1, 0],
             data_format="NCHW",
         )
         # test VALID
-        out_5 = fluid.layers.pool2d(
-            input=input_NCHW,
-            pool_size=ksize,
-            pool_type="avg",
-            pool_padding="VALID",
+        out_5 = paddle.nn.functional.avg_pool2d(
+            x=input_NCHW,
+            kernel_size=ksize,
+            padding="VALID",
             data_format="NCHW",
         )
 
-        out_6 = fluid.layers.pool2d(
-            input=input_NHWC,
-            pool_size=ksize,
-            pool_type="max",
-            pool_padding="VALID",
+        out_6 = paddle.nn.functional.avg_pool2d(
+            x=input_NHWC,
+            kernel_size=ksize,
+            padding="VALID",
             data_format="NHWC",
         )
 
         # test SAME
-        out_7 = fluid.layers.pool2d(
-            input=input_NCHW,
-            pool_size=[4, 4],
-            pool_type="avg",
-            pool_padding="SAME",
+        out_7 = paddle.nn.functional.avg_pool2d(
+            x=input_NCHW,
+            kernel_size=[4, 4],
+            padding="SAME",
             data_format="NCHW",
         )
 
-        out_8 = fluid.layers.pool2d(
-            input=input_NHWC,
-            pool_size=[4, 4],
-            pool_type="max",
-            pool_padding="SAME",
+        out_8 = paddle.nn.functional.avg_pool2d(
+            x=input_NHWC,
+            kernel_size=[4, 4],
+            padding="SAME",
             data_format="NHWC",
         )
 
         # test negetive
-        out_9 = fluid.layers.pool2d(
-            input=input_NHWC_negetive,
-            pool_size=ksize,
-            pool_type="avg",
-            pool_padding=[0, 0],
+        out_9 = paddle.nn.functional.avg_pool2d(
+            x=input_NHWC_negetive,
+            kernel_size=ksize,
+            padding=[0, 0],
             data_format="NHWC",
         )
         assert out_9.shape == (2, -1, 3, 3)
 
-        out_10 = fluid.layers.pool2d(
-            input=input_NCHW_negetive,
-            pool_size=ksize,
-            pool_type="avg",
-            pool_padding=[0, 0],
+        out_10 = paddle.nn.functional.avg_pool2d(
+            x=input_NCHW_negetive,
+            kernel_size=ksize,
+            padding=[0, 0],
             data_format="NCHW",
         )
         assert out_10.shape == (2, 3, -1, -1)
@@ -950,11 +940,10 @@ class TestPool2DAPI_Error(unittest.TestCase):
 
         # data_format value error
         def run_2():
-            out_2 = fluid.layers.pool2d(
-                input=input_NHWC,
-                pool_size=ksize,
-                pool_type="max",
-                pool_padding=[1, 1],
+            out_2 = paddle.nn.functional.max_pool2d(
+                x=input_NHWC,
+                kernel_size=ksize,
+                padding=[1, 1],
                 data_format="NHWCC",
             )
 
@@ -962,11 +951,10 @@ class TestPool2DAPI_Error(unittest.TestCase):
 
         # padding str value error
         def run_3():
-            out_3 = fluid.layers.pool2d(
-                input=input_NHWC,
-                pool_size=ksize,
-                pool_type="max",
-                pool_padding="VALIDSAME",
+            out_3 = paddle.nn.functional.max_pool2d(
+                x=input_NHWC,
+                kernel_size=ksize,
+                padding="VALIDSAME",
                 data_format="NHWC",
             )
 
@@ -974,11 +962,10 @@ class TestPool2DAPI_Error(unittest.TestCase):
 
         # padding str valid and ceil_mode value error
         def run_4():
-            out_4 = fluid.layers.pool2d(
-                input=input_NHWC,
-                pool_size=ksize,
-                pool_type="max",
-                pool_padding="VALID",
+            out_4 = paddle.nn.functional.max_pool2d(
+                x=input_NHWC,
+                kernel_size=ksize,
+                padding="VALID",
                 ceil_mode=True,
                 data_format="NHWC",
             )
@@ -987,120 +974,15 @@ class TestPool2DAPI_Error(unittest.TestCase):
 
         # padding with 8 ele. value error
         def run_5():
-            out_5 = fluid.layers.pool2d(
-                input=input_NHWC,
-                pool_size=ksize,
-                pool_type="max",
-                pool_padding=[[1, 1], [0, 0], [0, 0], [1, 1]],
+            out_5 = paddle.nn.functional.max_pool2d(
+                x=input_NHWC,
+                kernel_size=ksize,
+                padding=[[1, 1], [0, 0], [0, 0], [1, 1]],
                 data_format="NHWC",
             )
 
         self.assertRaises(ValueError, run_5)
 
-
-class TestDygraphPool2DAPIError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-            # the input of Pool2D must be Variable.
-            data1 = np.random.random((3, 32, 32, 5)).astype('float32')
-            pool2d = fluid.dygraph.Pool2D(
-                pool_size=2,
-                pool_type='max',
-                pool_stride=1,
-                global_pooling=False,
-            )
-            self.assertRaises(TypeError, pool2d, data1)
-
-            # the input dtype of mlu Pool2D must be float16 or float32
-            data2 = fluid.layers.data(
-                name='x1', shape=[3, 32, 32, 5], dtype="int32"
-            )
-            self.assertRaises(TypeError, pool2d, data2)
-
-    def test_data_format_error(self):
-        with program_guard(Program(), Program()):
-            # the data_format must be 'NCHW' or 'NHWC'
-            data1 = np.random.random((3, 32, 32, 5)).astype('float32')
-            self.assertRaises(
-                ValueError,
-                fluid.dygraph.Pool2D,
-                pool_size=2,
-                pool_type='max',
-                pool_stride=1,
-                global_pooling=False,
-                data_format='NWHC',
-            )
-
-
-class TestDygraphPool2DAPI(unittest.TestCase):
-    def test_nhwc(self):
-        with fluid.dygraph.guard():
-            data = np.random.random((3, 32, 32, 5)).astype('float32')
-            x = fluid.dygraph.to_variable(data)
-            pool2d = fluid.dygraph.Pool2D(
-                pool_size=2,
-                pool_type='max',
-                pool_stride=1,
-                pool_padding=[0, 0],
-                global_pooling=False,
-                data_format='NHWC',
-            )
-            out1 = pool2d(x)
-            out2 = pool2D_forward_naive(
-                data,
-                [2, 2],
-                [1, 1],
-                paddings=[0, 0],
-                pool_type='max',
-                data_format='NHWC',
-            )
-            np.testing.assert_allclose(out1.numpy(), out2)
-
-    def test_lower_case(self):
-        with fluid.dygraph.guard():
-            data = np.random.random((3, 32, 32, 5)).astype('float32')
-            x = fluid.dygraph.to_variable(data)
-            pool2d = fluid.dygraph.Pool2D(
-                pool_size=2,
-                pool_type='max',
-                pool_stride=1,
-                pool_padding=[0, 0],
-                global_pooling=False,
-                data_format='nhwc',
-            )
-            out1 = pool2d(x)
-            out2 = pool2D_forward_naive(
-                data,
-                [2, 2],
-                [1, 1],
-                paddings=[0, 0],
-                pool_type='max',
-                data_format='NHWC',
-            )
-            np.testing.assert_allclose(out1.numpy(), out2)
-
-    def test_upper_case(self):
-        with fluid.dygraph.guard():
-            data = np.random.random((3, 32, 32, 5)).astype('float32')
-            x = fluid.dygraph.to_variable(data)
-            pool2d = fluid.dygraph.Pool2D(
-                pool_size=2,
-                pool_type='MAX',
-                pool_stride=1,
-                pool_padding=[0, 0],
-                global_pooling=False,
-                data_format='nhwc',
-            )
-            out1 = pool2d(x)
-            out2 = pool2D_forward_naive(
-                data,
-                [2, 2],
-                [1, 1],
-                paddings=[0, 0],
-                pool_type='max',
-                data_format='NHWC',
-            )
-            np.testing.assert_allclose(out1.numpy(), out2)
 
 
 if __name__ == '__main__':

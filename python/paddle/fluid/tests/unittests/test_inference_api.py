@@ -13,15 +13,20 @@
 # limitations under the License.
 
 import unittest
+
 import paddle
 
 paddle.enable_static()
 import numpy as np
+
 import paddle.fluid as fluid
-from paddle.fluid.core import PaddleTensor
-from paddle.fluid.core import PaddleDType
-from paddle.inference import Config, create_predictor
-from paddle.inference import get_trt_compile_version, get_trt_runtime_version
+from paddle.fluid.core import PaddleDType, PaddleTensor
+from paddle.inference import (
+    Config,
+    create_predictor,
+    get_trt_compile_version,
+    get_trt_runtime_version,
+)
 
 
 class TestInferenceApi(unittest.TestCase):
@@ -75,7 +80,7 @@ def get_sample_model():
     startup_program = fluid.Program()
     with fluid.program_guard(main_program, startup_program):
         data = fluid.data(name="data", shape=[-1, 6, 64, 64], dtype="float32")
-        conv_out = fluid.layers.conv2d(
+        conv_out = paddle.static.nn.conv2d(
             input=data,
             num_filters=3,
             filter_size=3,

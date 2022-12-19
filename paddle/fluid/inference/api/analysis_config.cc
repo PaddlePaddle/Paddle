@@ -19,9 +19,10 @@
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/inference/utils/table_printer.h"
-#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/errors.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/utils/string/split.h"
 
 #ifdef PADDLE_WITH_TENSORRT
@@ -85,15 +86,29 @@ void AnalysisConfig::SetModel(const std::string &prog_file_path,
 
   Update();
 }
+
 void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
-                                  int device_id) {
+                                  int device_id,
+                                  Precision precision_mode) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   use_gpu_ = true;
   memory_pool_init_size_mb_ = memory_pool_init_size_mb;
   FLAGS_initial_gpu_memory_in_mb = memory_pool_init_size_mb_;
   gpu_device_id_ = device_id;
+  mixed_precision_mode_ = precision_mode;
+  if (precision_mode == Precision::kFloat32) {
+    // default
+  } else if (precision_mode == Precision::kHalf ||
+             precision_mode == Precision::kBf16) {
+    enable_gpu_mixed_ = true;
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The Paddle-GPU inference currently only supports "
+        "float32/float16/bfloat16 precision. Please check the parameters "
+        "you specified in EnableUseGpu or enable_use_gpu function."));
+  }
 #else
-  LOG(ERROR) << "Please compile with gpu to EnableGpu()";
+  LOG(ERROR) << "Please use PaddlePaddle with GPU version.";
   use_gpu_ = false;
 #endif
 
@@ -160,14 +175,17 @@ void AnalysisConfig::SetXpuDeviceId(int device_id) {
 }
 
 void AnalysisConfig::EnableNpu(int device_id) {
-#ifdef PADDLE_WITH_ASCEND_CL
+#if defined(PADDLE_WITH_ASCEND_CL)
   use_npu_ = true;
   npu_device_id_ = device_id;
+#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+  use_custom_device_ = true;
+  custom_device_id_ = device_id;
+  custom_device_type_ = "npu";
 #else
   LOG(ERROR) << "Please compile with npu to EnableNpu()";
   use_npu_ = false;
 #endif
-
   Update();
 }
 
@@ -202,11 +220,13 @@ void AnalysisConfig::EnableIpu(int ipu_device_num,
 void AnalysisConfig::SetIpuConfig(bool ipu_enable_fp16,
                                   int ipu_replica_num,
                                   float ipu_available_memory_proportion,
-                                  bool ipu_enable_half_partial) {
+                                  bool ipu_enable_half_partial,
+                                  bool ipu_enable_model_runtime_executor) {
   ipu_enable_fp16_ = ipu_enable_fp16;
   ipu_replica_num_ = ipu_replica_num;
   ipu_available_memory_proportion_ = ipu_available_memory_proportion;
   ipu_enable_half_partial_ = ipu_enable_half_partial;
+  ipu_enable_model_runtime_executor_ = ipu_enable_model_runtime_executor;
 
   Update();
 }
@@ -281,7 +301,7 @@ void AnalysisConfig::LoadIpuConfig(const std::string &config_path) {
 
     if (ipu_config_mapper_.find(key) == ipu_config_mapper_.end()) {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "invalid key {} in IPU config", key));
+          "invalid key %s in IPU config: ", key));
     }
     switch (ipu_config_mapper_.at(key)) {
       case ipu_config_code::ipu_device_num:
@@ -314,10 +334,12 @@ void AnalysisConfig::LoadIpuConfig(const std::string &config_path) {
       case ipu_config_code::ipu_custom_patterns:
         ipu_custom_patterns_ = string2vector(value);
         break;
-
+      case ipu_config_code::ipu_enable_model_runtime_executor:
+        ipu_enable_model_runtime_executor_ = string2bool(value);
+        break;
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "invalid key {} in IPU config", key));
+            "invalid key %s in IPU config", key));
         break;
     }
   }
@@ -373,8 +395,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(gpu_device_id_);
   CP_MEMBER(memory_pool_init_size_mb_);
 
-  // Mixed related.
+  // Mixed precision related.
   CP_MEMBER(mixed_black_list_);
+  CP_MEMBER(enable_gpu_mixed_);
+  CP_MEMBER(mixed_precision_mode_);
 
   CP_MEMBER(enable_memory_optim_);
   // TensorRT related.
@@ -443,6 +467,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(xpu_adaptive_seqlen_);
   CP_MEMBER(xpu_enable_multi_stream_);
 
+  // Lite OpenCL Related
+  CP_MEMBER(use_opencl_);
+
   // NPU related.
   CP_MEMBER(use_npu_);
   CP_MEMBER(npu_device_id_);
@@ -450,6 +477,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   // profile related.
   CP_MEMBER(with_profile_);
+
+  // cinn compiler related.
+  CP_MEMBER(use_cinn_compiler_);
 
   // glog related.
   CP_MEMBER(with_glog_info_);
@@ -476,6 +506,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(ipu_replica_num_);
   CP_MEMBER(ipu_available_memory_proportion_);
   CP_MEMBER(ipu_enable_half_partial_);
+  CP_MEMBER(ipu_enable_model_runtime_executor_);
   CP_MEMBER(ipu_custom_ops_info_);
   CP_MEMBER(ipu_custom_patterns_);
 
@@ -515,7 +546,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 #undef CP_MEMBER
 
   Update();
-  if (use_tensorrt_) {
+  if (use_tensorrt_ || use_cinn_compiler_) {
     // Update() will reset all the passes, when some tensorRT pass is deleted in
     // other.pass_builder(), it will set again, so we just remove the
     // deleted_pass.
@@ -594,10 +625,11 @@ void AnalysisConfig::EnableMkldnnQuantizer() {
 
 void AnalysisConfig::EnableMkldnnBfloat16() {
 #ifdef PADDLE_WITH_MKLDNN
-  if (platform::MayIUse(platform::cpu_isa_t::avx512_core)) {
+  if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_core)) {
     use_mkldnn_bfloat16_ = true;
     LOG(INFO) << "Hardware support for BFLOAT16"
-              << (platform::MayIUse(platform::cpu_isa_t::avx512_bf16)
+              << (phi::backends::cpu::MayIUse(
+                      phi::backends::cpu::cpu_isa_t::avx512_bf16)
                       ? " is enabled"
                       : " is disabled. Simulation will be used");
   } else {
@@ -609,6 +641,16 @@ void AnalysisConfig::EnableMkldnnBfloat16() {
   use_mkldnn_bfloat16_ = false;
 #endif
 
+  Update();
+}
+
+void AnalysisConfig::DisableMkldnnFcPasses() {
+#ifdef PADDLE_WITH_MKLDNN
+  disable_mkldnn_fc_passes_ = true;
+#else
+  LOG(ERROR) << "Please compile with MKLDNN first to use DisableMkldnnFcPasses";
+  disable_mkldnn_fc_passes_ = false;
+#endif
   Update();
 }
 
@@ -655,26 +697,13 @@ void AnalysisConfig::EnableTensorRtEngine(
     AnalysisConfig::Precision precision_mode,
     bool use_static,
     bool use_calib_mode) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_TENSORRT
   if (!use_gpu()) {
-    LOG(ERROR) << "To use TensorRT engine, please call EnableGpu() first";
+    LOG(ERROR) << "To use TensorRT engine, please call EnableUseGpu() first";
     return;
   }
 
   use_tensorrt_ = true;
-#ifdef PADDLE_WITH_TENSORRT
-  // https://forums.developer.nvidia.com/t/nvinfer1-createexecutioncontextwithoutdevicememory-returns-nullptr/111878/2
-  // when trt version less than 7.2,
-  // createExecutionContextWithoutDeviceMemory() has bug.
-  // so, we cannot enable engine context memory sharing.
-#if IS_TRT_VERSION_GE(7200)
-  trt_engine_memory_sharing_ = true;
-#else
-  LOG(WARNING)
-      << "TensorRT engine context memory sharing needs version 7.2 and after.";
-  trt_engine_memory_sharing_ = false;
-#endif
-#endif
   tensorrt_workspace_size_ = workspace_size;
   tensorrt_max_batchsize_ = max_batch_size;
   tensorrt_min_subgraph_size_ = min_subgraph_size;
@@ -684,9 +713,33 @@ void AnalysisConfig::EnableTensorRtEngine(
 
   Update();
 #else
-  LOG(ERROR)
-      << "To use TensorRT engine, please compile inference lib with GPU first.";
+  PADDLE_THROW(platform::errors::PreconditionNotMet(
+      "To use Paddle-TensorRT, please compile with TENSORRT first."));
 #endif
+}
+
+void AnalysisConfig::EnableTensorRTMemoryOptim(bool engine_memory_sharing,
+                                               int sharing_identifier) {
+  PADDLE_ENFORCE_EQ(
+      use_tensorrt_,
+      true,
+      platform::errors::InvalidArgument(
+          "To enable TensorRT memory optim, please call "
+          "EnableTensorRtEngine or enable_tensorrt_engine first."));
+  PADDLE_ENFORCE_GE(sharing_identifier,
+                    0,
+                    platform::errors::InvalidArgument(
+                        "The value of sharing_identifier must be greater "
+                        "than or equal to 0."));
+  if (!engine_memory_sharing) {
+    PADDLE_ENFORCE_EQ(sharing_identifier,
+                      0,
+                      platform::errors::InvalidArgument(
+                          "The value of sharing_identifier must be equal to 0 "
+                          "when engine_memory_sharing is false."));
+  }
+  trt_engine_memory_sharing_ = engine_memory_sharing;
+  trt_engine_memory_sharing_identifier_ = sharing_identifier;
 }
 
 void AnalysisConfig::EnableDlnne(
@@ -748,13 +801,7 @@ void AnalysisConfig::Update() {
       ((use_custom_device() ^ pass_builder_->use_custom_device()))) {
     if (use_gpu()) {
       pass_builder_.reset(new GpuPassStrategy);
-
-      if (use_tensorrt_) {
-        // Append after the Affine_channel_conv_fuse pass.
-        pass_builder()->InsertPass(3, "tensorrt_subgraph_pass");
-      }
     } else if (use_ipu()) {
-      VLOG(1) << "IpuPassStrategy has been used for new.";
       pass_builder_.reset(new IpuPassStrategy);
     } else if (use_xpu()) {
       PADDLE_ENFORCE_EQ(
@@ -830,6 +877,14 @@ void AnalysisConfig::Update() {
     }
   }
 
+  // TODO(wilber): An ugly method to update pass, need to be fixed.
+  if (use_cinn_compiler_) {
+    pass_builder()->ClearPasses();
+    for (const auto &pass : kCINNCompilerPasses) {
+      pass_builder()->AppendPass(pass);
+    }
+  }
+
   if (use_dlnne_) {
     pass_builder()->ClearPasses();
     for (const auto &pass : kDlnneSubgraphPasses) {
@@ -889,13 +944,28 @@ void AnalysisConfig::Update() {
 #endif
   }
 
+  if (disable_mkldnn_fc_passes_) {
 #ifdef PADDLE_WITH_MKLDNN
-  // Do not optimize when mkldnn is on
-  if (enable_memory_optim_ && !use_mkldnn_) {
-#else
-  if (enable_memory_optim_) {
+    pass_builder()->DisableMkldnnFcPasses();
 #endif
+  }
+
+  // TODO(inference): When we enable memory_optimize and mkldnn, PaddleSeg model
+  // fail.
+  if (enable_memory_optim_) {
+#ifdef PADDLE_WITH_MKLDNN
+    if (use_mkldnn_) {
+      enable_memory_optim_ = false;
+      LOG_FIRST_N(WARNING, 1)
+          << "It is detected that mkldnn and memory_optimize_pass are enabled "
+             "at the same time, but they are not supported yet. Currently, "
+             "memory_optimize_pass is explicitly disabled";
+    } else {
+      pass_builder()->AppendAnalysisPass("memory_optimize_pass");
+    }
+#else
     pass_builder()->AppendAnalysisPass("memory_optimize_pass");
+#endif
   }
 
   if (use_lite_) {
@@ -954,9 +1024,6 @@ void AnalysisConfig::Update() {
         "but did not have the option -DWITH_CUSTOM_DEVICE compiled."));
 #endif
   }
-  if (ir_debug_) {
-    pass_builder()->TurnOnDebug();
-  }
 }
 
 std::string AnalysisConfig::SerializeInfoCache() {
@@ -966,6 +1033,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << params_file_;
 
   ss << use_gpu_;
+  ss << enable_gpu_mixed_;
   ss << use_external_stream_;
   ss << exec_stream_;
   ss << use_fc_padding_;
@@ -1039,6 +1107,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << ipu_replica_num_;
   ss << ipu_available_memory_proportion_;
   ss << ipu_enable_half_partial_;
+  ss << ipu_enable_model_runtime_executor_;
   for (auto custom_op : ipu_custom_ops_info_)
     for (auto attr : custom_op) ss << attr;
   ss << ";";
@@ -1138,6 +1207,11 @@ void AnalysisConfig::EnableLiteEngine(
   Update();
 }
 
+void AnalysisConfig::EnableOpenCL() {
+  use_opencl_ = true;
+  Update();
+}
+
 void AnalysisConfig::PartiallyRelease() {
   prog_file_.clear();
   prog_file_.shrink_to_fit();
@@ -1176,6 +1250,7 @@ std::string AnalysisConfig::Summary() {
   os.InsertRow({"use_gpu", use_gpu_ ? "true" : "false"});
   if (use_gpu_) {
     os.InsertRow({"gpu_device_id", std::to_string(gpu_device_id_)});
+    os.InsertRow({"enable_gpu_mixed", std::to_string(enable_gpu_mixed_)});
     os.InsertRow({"memory_pool_init_size",
                   std::to_string(memory_pool_init_size_mb_) + "MB"});
     os.InsertRow(
@@ -1262,6 +1337,9 @@ std::string AnalysisConfig::Summary() {
   if (use_lite_) {
     os.InsertRow({"use_lite", use_lite_ ? "true" : "false"});
   }
+
+  // cinn compiler
+  os.InsertRow({"use_cinn_compiler", use_cinn_compiler_ ? "true" : "false"});
 
   // ir info
   os.InsertRow({"ir_optim", enable_ir_optim_ ? "true" : "false"});
@@ -1371,9 +1449,24 @@ bool AnalysisConfig::trt_allow_build_at_runtime() const {
   return trt_allow_build_at_runtime_;
 }
 
-void AnalysisConfig::Exp_SetBlackListOpsForMixedModel(
+void AnalysisConfig::Exp_DisableMixedPrecisionOps(
     const std::unordered_set<std::string> &black_list) {
   mixed_black_list_ = black_list;
+}
+
+void AnalysisConfig::Exp_EnableCINNCompiler() {
+#ifdef PADDLE_WITH_CINN
+  use_cinn_compiler_ = true;
+  Update();
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "You tried to use CINN compiler, but Paddle was not compiled "
+      "with CINN."));
+#endif
+}
+
+bool AnalysisConfig::cinn_compiler_enabled() const {
+  return use_cinn_compiler_;
 }
 
 }  // namespace paddle

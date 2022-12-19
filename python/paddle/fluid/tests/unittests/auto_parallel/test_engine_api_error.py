@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
-import paddle.static as static
 import paddle.nn as nn
 import paddle.nn.functional as F
-from paddle.io import Dataset
-
+import paddle.static as static
 from paddle.distributed.fleet import auto
+from paddle.io import Dataset
 
 paddle.enable_static()
 
@@ -40,7 +41,7 @@ my_feed_vars = []
 
 class TrainDataset(Dataset):
     def __init__(self, num_samples):
-        super(TrainDataset, self).__init__()
+        super().__init__()
         self.num_samples = num_samples
 
     def __getitem__(self, index):
@@ -54,7 +55,7 @@ class TrainDataset(Dataset):
 
 class TestDataset(Dataset):
     def __init__(self, num_samples):
-        super(TestDataset, self).__init__()
+        super().__init__()
         self.num_samples = num_samples
 
     def __getitem__(self, index):
@@ -73,7 +74,7 @@ class MLPLayer(nn.Layer):
         dropout_ratio=0.1,
         initializer_range=0.02,
     ):
-        super(MLPLayer, self).__init__()
+        super().__init__()
         d_model = hidden_size
         dim_feedforward = intermediate_size
         weight_attr = paddle.ParamAttr(

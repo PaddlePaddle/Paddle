@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-import unittest
 
 paddle.disable_static()
 SEED = 2020
@@ -25,18 +27,18 @@ paddle.seed(SEED)
 
 class Generator(fluid.dygraph.Layer):
     def __init__(self):
-        super(Generator, self).__init__()
+        super().__init__()
         self.conv1 = paddle.nn.Conv2D(3, 3, 3, padding=1)
 
     def forward(self, x):
         x = self.conv1(x)
-        x = fluid.layers.tanh(x)
+        x = paddle.tanh(x)
         return x
 
 
 class Discriminator(fluid.dygraph.Layer):
     def __init__(self):
-        super(Discriminator, self).__init__()
+        super().__init__()
         self.convd = paddle.nn.Conv2D(6, 3, 1)
 
     def forward(self, x):

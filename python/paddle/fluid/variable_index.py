@@ -331,10 +331,9 @@ def get_value_for_bool_tensor(var, item):
             )
 
     def idx_not_empty(var, item):
-        from .layers.nn import where
         from ..tensor import gather_nd
 
-        bool_2_idx = where(item == True)
+        bool_2_idx = paddle.nonzero(item == True)
         return gather_nd(var, bool_2_idx)
 
     def idx_empty(var):
@@ -342,7 +341,7 @@ def get_value_for_bool_tensor(var, item):
         var_shape[0] = 0
         return paddle.empty(var_shape, dtype=var.dtype)
 
-    from .layers.control_flow import cond
+    from paddle.static.nn import cond
 
     return cond(
         item.any(), lambda: idx_not_empty(var, item), lambda: idx_empty(var)
@@ -380,6 +379,10 @@ def _getitem_impl_(var, item):
     item = replace_ellipsis(var, item)
     item, none_axes = replace_none(item)
     slice_info = SliceInfo()
+    is_tensor_array = (
+        hasattr(var, "desc")
+        and var.desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY
+    )
 
     for dim, slice_item in enumerate(item):
         if is_integer_or_scalar_tensor(slice_item) and not is_bool_tensor(
@@ -390,13 +393,13 @@ def _getitem_impl_(var, item):
                 and var.shape[dim] is not None
                 and var.shape[dim] >= 0
                 and slice_item >= var.shape[dim]
+                and not is_tensor_array
             ):
                 # For python, if users write a, b = var, the __getitem__
                 # method will iterate through 0, 1, 2 ... until __getitem__
                 # throws an IndexError, then stop. The var[0], var[1] will
                 # be given to a, b respectively. If more values are given,
                 # the unpack size would cause error.
-                #
                 # We raises IndexError here to support grammar like `a, b = var`
                 raise IndexError(
                     "slice_item %d at dim %d should be >= 0 and < var.shape[%d]: %d"
@@ -422,7 +425,7 @@ def _getitem_impl_(var, item):
             if end is None:
                 if var.shape[dim] != -1 and (
                     paddle.fluid.framework._non_static_mode()
-                    or var.desc.type() != core.VarDesc.VarType.LOD_TENSOR_ARRAY
+                    or not is_tensor_array
                 ):
                     end = var.shape[dim] if step > 0 else -1
                 else:
@@ -619,7 +622,7 @@ def _setitem_for_tensor_array(var, item, value):
         not _non_static_mode()
     ), "setitem for tensor_array must be called in static graph mode."
     if isinstance(item, (Variable, int)):
-        from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import (
+        from paddle.jit.dy2static.variable_trans_func import (
             to_static_variable,
         )
         from paddle import cast
@@ -860,19 +863,18 @@ def set_value_for_bool_tensor(var, item, value):
     def idx_not_empty(var, item, value):
         from .framework import Variable
         from .layers import assign
-        from .layers.nn import where
         from ..tensor import gather_nd, scatter_nd_add
 
         if not isinstance(value, Variable):
             value = assign(value).cast(var.dtype)
 
-        idx = where(item)
+        idx = paddle.nonzero(item)
         gather_val = gather_nd(var, idx)
         gather_val_new = value - gather_val
         out = scatter_nd_add(var, idx, gather_val_new)
         var[:] = out
 
-    from .layers.control_flow import cond
+    from paddle.static.nn import cond
 
     # If all the bool index is False, just do nothing
     cond(item.any(), lambda: idx_not_empty(var, item, value))

@@ -13,10 +13,13 @@
 # limitations under the License.
 
 import math
-import numpy
 import warnings
-from paddle import Tensor
+
+import numpy
+
 import paddle.fluid.core as core
+from paddle import Tensor
+
 from ..fluid.framework import _in_legacy_dygraph
 
 __all__ = [  # noqa
@@ -39,7 +42,7 @@ __all__ = [  # noqa
 ]
 
 
-class LRScheduler(object):
+class LRScheduler:
     """
 
     LRScheduler Base class. Define the common interface of a learning rate scheduler.
@@ -82,7 +85,7 @@ class LRScheduler(object):
 
                     self.step_size = step_size
                     self.gamma = gamma
-                    super(StepDecay, self).__init__(learning_rate, last_epoch, verbose)
+                    super().__init__(learning_rate, last_epoch, verbose)
 
                 def get_lr(self):
                     i = self.last_epoch // self.step_size
@@ -297,7 +300,7 @@ class NoamDecay(LRScheduler):
     ):
         self.d_model = d_model
         self.warmup_steps = warmup_steps
-        super(NoamDecay, self).__init__(learning_rate, last_epoch, verbose)
+        super().__init__(learning_rate, last_epoch, verbose)
 
     def get_lr(self):
         if self.last_epoch == 0:
@@ -389,9 +392,7 @@ class PiecewiseDecay(LRScheduler):
     def __init__(self, boundaries, values, last_epoch=-1, verbose=False):
         self.boundaries = boundaries
         self.values = values
-        super(PiecewiseDecay, self).__init__(
-            last_epoch=last_epoch, verbose=verbose
-        )
+        super().__init__(last_epoch=last_epoch, verbose=verbose)
 
     def get_lr(self):
         for i in range(len(self.boundaries)):
@@ -475,9 +476,7 @@ class NaturalExpDecay(LRScheduler):
             gamma > 0.0
         ), " 'gamma' must be a positive number so that the learning rate will decay."
         self.gamma = gamma
-        super(NaturalExpDecay, self).__init__(
-            learning_rate, last_epoch, verbose
-        )
+        super().__init__(learning_rate, last_epoch, verbose)
 
     def get_lr(self):
         return self.base_lr * math.exp(-1 * self.gamma * self.last_epoch)
@@ -557,9 +556,7 @@ class InverseTimeDecay(LRScheduler):
 
     def __init__(self, learning_rate, gamma, last_epoch=-1, verbose=False):
         self.gamma = gamma
-        super(InverseTimeDecay, self).__init__(
-            learning_rate, last_epoch, verbose
-        )
+        super().__init__(learning_rate, last_epoch, verbose)
 
     def get_lr(self):
         return self.base_lr / (1 + self.gamma * self.last_epoch)
@@ -672,9 +669,7 @@ class PolynomialDecay(LRScheduler):
         ), " 'power' must be greater than 0.0 so that the learning rate will decay."
         self.power = power
         self.cycle = cycle
-        super(PolynomialDecay, self).__init__(
-            learning_rate, last_epoch, verbose
-        )
+        super().__init__(learning_rate, last_epoch, verbose)
 
     def get_lr(self):
         tmp_epoch_num = self.last_epoch
@@ -810,7 +805,7 @@ class LinearWarmup(LRScheduler):
         assert (
             end_lr > start_lr
         ), "end_lr {} must be greater than start_lr {}".format(end_lr, start_lr)
-        super(LinearWarmup, self).__init__(start_lr, last_epoch, verbose)
+        super().__init__(start_lr, last_epoch, verbose)
 
     def state_dict(self):
         """
@@ -818,7 +813,7 @@ class LinearWarmup(LRScheduler):
 
         It is a subset of ``self.__dict__`` .
         """
-        state_dict = super(LinearWarmup, self).state_dict()
+        state_dict = super().state_dict()
         if isinstance(self.learning_rate, LRScheduler):
             state_dict["LinearWarmup_LR"] = self.learning_rate.state_dict()
         return state_dict
@@ -827,7 +822,7 @@ class LinearWarmup(LRScheduler):
         """
         Loads state_dict for LinearWarmup scheduler.
         """
-        super(LinearWarmup, self).set_state_dict(state_dict)
+        super().set_state_dict(state_dict)
         if isinstance(self.learning_rate, LRScheduler):
             self.learning_rate.set_state_dict(state_dict["LinearWarmup_LR"])
 
@@ -920,9 +915,7 @@ class ExponentialDecay(LRScheduler):
             gamma > 0.0 and gamma < 1.0
         ), " 'gamma' must be in interval (0.0, 1.0) so that the learning rate will decay."
         self.gamma = gamma
-        super(ExponentialDecay, self).__init__(
-            learning_rate, last_epoch, verbose
-        )
+        super().__init__(learning_rate, last_epoch, verbose)
 
     def get_lr(self):
         return self.base_lr * (self.gamma**self.last_epoch)
@@ -1029,7 +1022,7 @@ class MultiStepDecay(LRScheduler):
 
         self.milestones = milestones
         self.gamma = gamma
-        super(MultiStepDecay, self).__init__(learning_rate, last_epoch, verbose)
+        super().__init__(learning_rate, last_epoch, verbose)
 
     def get_lr(self):
         for i in range(len(self.milestones)):
@@ -1133,7 +1126,7 @@ class StepDecay(LRScheduler):
         ), " 'step_size' must be a positive integer."
         self.step_size = step_size
         self.gamma = gamma
-        super(StepDecay, self).__init__(learning_rate, last_epoch, verbose)
+        super().__init__(learning_rate, last_epoch, verbose)
 
     def get_lr(self):
         i = self.last_epoch // self.step_size
@@ -1223,7 +1216,7 @@ class LambdaDecay(LRScheduler):
             )
 
         self.lr_lambda = lr_lambda
-        super(LambdaDecay, self).__init__(learning_rate, last_epoch, verbose)
+        super().__init__(learning_rate, last_epoch, verbose)
 
     def get_lr(self):
         return self.base_lr * self.lr_lambda(self.last_epoch)
@@ -1565,9 +1558,7 @@ class CosineAnnealingDecay(LRScheduler):
         ), " 'T_max' must be a positive integer."
         self.T_max = T_max
         self.eta_min = float(eta_min)
-        super(CosineAnnealingDecay, self).__init__(
-            learning_rate, last_epoch, verbose
-        )
+        super().__init__(learning_rate, last_epoch, verbose)
 
     def get_lr(self):
         if self.last_epoch == 0:
@@ -1648,9 +1639,7 @@ class MultiplicativeDecay(LRScheduler):
             )
 
         self.lr_lambda = lr_lambda
-        super(MultiplicativeDecay, self).__init__(
-            learning_rate, last_epoch, verbose
-        )
+        super().__init__(learning_rate, last_epoch, verbose)
 
     def get_lr(self):
         cur_lr = self.base_lr
@@ -1661,6 +1650,7 @@ class MultiplicativeDecay(LRScheduler):
 
 class OneCycleLR(LRScheduler):
     r"""
+
     Sets the learning rate according to the one cycle learning rate scheduler.
     The scheduler adjusts the learning rate from an initial learning rate to the maximum learning rate and then
     from that maximum learning rate to the minimum learning rate, which is much less than the initial learning rate.
@@ -1674,22 +1664,25 @@ class OneCycleLR(LRScheduler):
     Also note that you should update learning rate each step.
 
     Args:
-        max_learning_rate (float): The maximum learning rate. It is a python float number.
-             Functionally, it defines the initial learning rate by ``divide_factor`` .
+        max_learning_rate (float): The maximum learning rate. It is a python float number. Functionally, it defines the initial learning rate by ``divide_factor`` .
         total_steps (int): Number of total training steps.
-        divide_factor (float): Initial learning rate will be determined by initial_learning_rate = max_learning_rate / divide_factor. Default: 25.
+        divide_factor (float, optional): Initial learning rate will be determined by initial_learning_rate = max_learning_rate / divide_factor. Default: 25.
         end_learning_rate (float, optional): The minimum learning rate during training, it should be much less than initial learning rate.
         phase_pct (float): The percentage of total steps which used to increasing learning rate. Default: 0.3.
-        anneal_strategy (str, optional): Strategy of adjusting learning rate.'cos' for cosine annealing,
-            'linear' for linear annealing. Default: 'cos'.
+        anneal_strategy (str, optional): Strategy of adjusting learning rate.'cos' for cosine annealing, 'linear' for linear annealing. Default: 'cos'.
         three_phase (bool, optional): Whether to use three phase.
+
             If ``True``:
+
                 1. The learning rate will first increase from initial learning rate to maximum learning rate.
                 2. Then it will decrease to initial learning rate. Number of step in this phase is the same as the one in first phase.
                 3. Finally, it will decrease to minimum learning rate which is much less than initial learning rate.
+
             If ``False``:
+
                 1. The learning rate will increase to maximum learning rate.
                 2. Then it will directly decrease to minimum learning rate.
+
         last_epoch (int, optional):  The index of last epoch. Can be set to restart training. Default: -1, means initial learning rate.
         verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
@@ -1741,6 +1734,7 @@ class OneCycleLR(LRScheduler):
                         },
                         fetch_list=loss.name)
                     scheduler.step()    # You should update learning rate each step
+
     """
 
     def __init__(
@@ -1864,7 +1858,7 @@ class OneCycleLR(LRScheduler):
                     anneal_strategy
                 )
             )
-        super(OneCycleLR, self).__init__(initial_lr, last_epoch, verbose)
+        super().__init__(initial_lr, last_epoch, verbose)
 
     def _cos_annealing(self, start_lr, end_lr, pct):
         cos_out = math.cos(math.pi * pct) + 1

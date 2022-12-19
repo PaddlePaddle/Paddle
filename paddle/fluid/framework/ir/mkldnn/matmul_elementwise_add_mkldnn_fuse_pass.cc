@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/framework/ir/graph_traits.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -62,10 +62,6 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
     if (!IsCompat(subgraph, g)) {
       LOG(WARNING)
           << "op compat for matmul_elementwise_add_mkldnn_fuse_pass failed.";
-      return;
-    }
-    if (matmul->Op()->HasAttr("ResidualData")) {
-      LOG(WARNING) << "matmul_elementwise_add can be fused once";
       return;
     }
 

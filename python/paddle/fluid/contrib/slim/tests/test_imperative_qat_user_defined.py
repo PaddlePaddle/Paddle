@@ -23,12 +23,9 @@ from paddle.optimizer import Adam
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
 from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
 from paddle.nn import Sequential
-from paddle.fluid.dygraph import Conv2D
-from paddle.fluid.dygraph import Pool2D
-from paddle.fluid.dygraph import Linear
+from paddle.nn import Linear
 from paddle.nn.quant.quant_layers import QuantizedConv2DTranspose
 from paddle.fluid.log_helper import get_logger
-from paddle.fluid.framework import _test_eager_guard
 
 os.environ["CPU_NUM"] = "1"
 
@@ -39,7 +36,7 @@ _logger = get_logger(
 
 class PACT(nn.Layer):
     def __init__(self, init_value=20):
-        super(PACT, self).__init__()
+        super().__init__()
         alpha_attr = paddle.ParamAttr(
             name=self.full_name() + ".pact",
             initializer=paddle.nn.initializer.Constant(value=init_value),
@@ -57,7 +54,7 @@ class PACT(nn.Layer):
 
 class CustomQAT(nn.Layer):
     def __init__(self):
-        super(CustomQAT, self).__init__()
+        super().__init__()
         attr = paddle.ParamAttr(
             initializer=paddle.nn.initializer.Constant(value=1.0)
         )
@@ -111,9 +108,9 @@ class CustomQAT(nn.Layer):
 
 class ModelForConv2dT(nn.Layer):
     def __init__(self, num_classes=10):
-        super(ModelForConv2dT, self).__init__()
+        super().__init__()
         self.features = nn.Conv2DTranspose(4, 6, (3, 3))
-        self.fc = Linear(input_dim=600, output_dim=num_classes)
+        self.fc = Linear(600, num_classes)
 
     def forward(self, inputs):
         x = self.features(inputs)
@@ -124,32 +121,30 @@ class ModelForConv2dT(nn.Layer):
 
 class ImperativeLenet(paddle.nn.Layer):
     def __init__(self, num_classes=10, classifier_activation='softmax'):
-        super(ImperativeLenet, self).__init__()
+        super().__init__()
         self.features = Sequential(
-            Conv2D(
-                num_channels=1,
-                num_filters=6,
-                filter_size=3,
+            paddle.nn.Conv2D(
+                in_channels=1,
+                out_channels=6,
+                kernel_size=3,
                 stride=1,
                 padding=1,
             ),
-            Pool2D(pool_size=2, pool_type='max', pool_stride=2),
-            Conv2D(
-                num_channels=6,
-                num_filters=16,
-                filter_size=5,
+            paddle.nn.MaxPool2D(kernel_size=2, stride=2),
+            paddle.nn.Conv2D(
+                in_channels=6,
+                out_channels=16,
+                kernel_size=5,
                 stride=1,
                 padding=0,
             ),
-            Pool2D(pool_size=2, pool_type='max', pool_stride=2),
+            paddle.nn.MaxPool2D(kernel_size=2, stride=2),
         )
 
         self.fc = Sequential(
-            Linear(input_dim=400, output_dim=120),
-            Linear(input_dim=120, output_dim=84),
-            Linear(
-                input_dim=84, output_dim=num_classes, act=classifier_activation
-            ),
+            Linear(400, 120),
+            Linear(120, 84),
+            Linear(84, num_classes),
         )
 
     def forward(self, inputs):
@@ -165,7 +160,7 @@ class TestUserDefinedActPreprocess(unittest.TestCase):
         _logger.info("test act_preprocess")
         self.imperative_qat = ImperativeQuantAware(act_preprocess_layer=PACT)
 
-    def func_quant_aware_training(self):
+    def test_quant_aware_training(self):
         imperative_qat = self.imperative_qat
         seed = 1
         np.random.seed(seed)
@@ -266,11 +261,6 @@ class TestUserDefinedActPreprocess(unittest.TestCase):
         test_reader = paddle.batch(paddle.dataset.mnist.test(), batch_size=512)
         train(lenet)
         test(lenet)
-
-    def test_quant_aware_training(self):
-        with _test_eager_guard():
-            self.func_quant_aware_training()
-        self.func_quant_aware_training()
 
 
 class TestUserDefinedWeightPreprocess(TestUserDefinedActPreprocess):

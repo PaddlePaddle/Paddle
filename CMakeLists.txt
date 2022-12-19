@@ -308,7 +308,7 @@ option(WITH_RPC "Compile with rpc support" ${WITH_DISTRIBUTE})
 option(WITH_CUDNN_FRONTEND
        "Compile with CUDNN Frontend API support (experimental)" OFF)
 option(WITH_CUDNN_DSO "Compile PaddlePaddle with cuDNN dynamic-link libraries"
-       ${WITH_GPU})
+       OFF)
 
 if(WITH_RECORD_BUILDTIME)
   set_property(

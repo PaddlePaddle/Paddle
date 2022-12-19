@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle.fluid import (
     core,
     default_main_program,
@@ -31,7 +32,7 @@ import warnings
 __all__ = ["decorate_bf16"]
 
 
-class OptimizerWithMixedPrecision(object):
+class OptimizerWithMixedPrecision:
     """
     Optimizer with mixed-precision (MP) training. This is a wrapper of a common
     optimizer, plus the support of mixed-precision pre-training. The object
@@ -68,7 +69,7 @@ class OptimizerWithMixedPrecision(object):
         if isinstance(self._optimizer._learning_rate, float):
             self._optimizer._learning_rate_map[
                 default_main_program()
-            ] = layers.create_global_var(
+            ] = paddle.static.create_global_var(
                 name=unique_name.generate("learning_rate"),
                 shape=[1],
                 value=float(self._optimizer._learning_rate),

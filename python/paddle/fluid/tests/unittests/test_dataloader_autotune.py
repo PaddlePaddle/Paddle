@@ -12,16 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
-import tempfile
-import warnings
 import json
+import os
+import sys
+import tempfile
+import unittest
+import warnings
+
+import numpy as np
+
 import paddle
 import paddle.nn as nn
 from paddle.io import DataLoader, Dataset
-import sys
-import os
 
 
 class RandomDataset(Dataset):
@@ -39,7 +41,7 @@ class RandomDataset(Dataset):
 
 class SimpleNet(nn.Layer):
     def __init__(self):
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.fc = nn.Linear(10, 10)
 
     def forward(self, image):

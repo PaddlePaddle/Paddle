@@ -12,21 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .optimizer import Optimizer
-from ..fluid import core
-from ..fluid import framework
-from ..fluid.framework import Variable, in_dygraph_mode
-from ..fluid import layers
-from ..fluid import unique_name
-from ..fluid.layer_helper import LayerHelper
 import warnings
-from ..fluid.dygraph import base as imperative_base
 from collections import defaultdict
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
 
+from ..fluid import core, framework, unique_name
+from ..fluid.dygraph import base as imperative_base
+from ..fluid.framework import Variable, in_dygraph_mode
+from ..fluid.layer_helper import LayerHelper
+from .optimizer import Optimizer
+
 __all__ = []
+
+GRAD_TYPES = [int(paddle.float32), int(paddle.float16), int(paddle.bfloat16)]
 
 
 class Adam(Optimizer):
@@ -194,7 +194,7 @@ class Adam(Optimizer):
                 raise ValueError(
                     "Invaild value of epsilon, expect epsilon >= 0."
                 )
-        super(Adam, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameters=parameters,
             weight_decay=weight_decay,
@@ -233,7 +233,7 @@ class Adam(Optimizer):
 
             var_name = param.name + "_fp32_master"
             var_name = unique_name.generate(var_name)
-            var = layers.create_global_var(
+            var = paddle.static.create_global_var(
                 name=var_name,
                 shape=param.shape,
                 value=0,
@@ -263,8 +263,8 @@ class Adam(Optimizer):
         """
         if self._name is not None:
             name = self._name + "_" + name
-        find_master = (
-            self._multi_precision and param.dtype == core.VarDesc.VarType.FP16
+        find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
+            param.dtype
         )
         target_param = (
             self._master_weights[param.name] if find_master else param
@@ -283,10 +283,7 @@ class Adam(Optimizer):
 
     def _add_moments_pows(self, p):
         acc_dtype = p.dtype
-        if (
-            acc_dtype == core.VarDesc.VarType.FP16
-            or acc_dtype == core.VarDesc.VarType.BF16
-        ):
+        if self._is_dtype_fp16_or_bf16(acc_dtype):
             acc_dtype = core.VarDesc.VarType.FP32
         self._add_accumulator(self._moment1_acc_str, p, dtype=acc_dtype)
         self._add_accumulator(self._moment2_acc_str, p, dtype=acc_dtype)
@@ -320,16 +317,16 @@ class Adam(Optimizer):
 
         # Create accumulator tensors for first and second moments
         for p in parameters:
-            if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
+            if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
                 self._add_moments_pows(master_p)
                 continue
             if (
-                p.dtype == core.VarDesc.VarType.FP16
+                self._is_dtype_fp16_or_bf16(p.dtype)
                 and not self._multi_precision
             ):
                 warnings.warn(
-                    "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
+                    "Accumulating with FP16 or BF16 in optimizer can lead to poor accuracy or slow convergence."
                     "Consider using multi_precision=True option of the Adam optimizer."
                 )
             self._add_moments_pows(p)
@@ -351,9 +348,8 @@ class Adam(Optimizer):
         beta2_pow_acc = self._get_accumulator(
             self._beta2_pow_acc_str, param_and_grad[0]
         )
-        find_master = (
-            self._multi_precision
-            and param_and_grad[0].dtype == core.VarDesc.VarType.FP16
+        find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
+            param_and_grad[0].dtype
         )
         master_weight = (
             self._master_weights[param_and_grad[0].name]
@@ -569,7 +565,7 @@ class Adam(Optimizer):
 
     def _multi_tensor_init(self, target_block, parameters, param_group_idx):
         """
-        All parameters used for optimizer (such as: parameters, master_weight, velocity_acc for momentum) calculations are grouped into a python list by data type (float16, float32).
+        All parameters used for optimizer (such as: parameters, master_weight, velocity_acc for momentum) calculations are grouped into a python list by data type (bfloat16, float16, float32).
         This function will be overridden in the corresponding optimizer file.
         Args:
             target_block: the block in which the loss tensor is present
@@ -602,7 +598,7 @@ class Adam(Optimizer):
                 self._beta2_pow_acc_dict['FP32_LODTensor'][
                     param_group_idx
                 ].append(beta2_pow_acc)
-            elif param.dtype == paddle.float16:
+            elif self._is_dtype_fp16_or_bf16(param.dtype):
                 self._param_dict['FP16_LODTensor'][param_group_idx].append(
                     param
                 )
@@ -626,7 +622,7 @@ class Adam(Optimizer):
                     self._master_weight_dict['FP16_LODTensor'] = None
             else:
                 raise ValueError(
-                    "Now multi_tensor_momentum only support fp32 and fp16 parameters and grad is LOD_TENSOR."
+                    "Now multi_tensor_momentum only support fp32, fp16 or bf16 parameters and grad is LOD_TENSOR."
                 )
 
     def _append_optimize_multi_tensor_op(
@@ -644,26 +640,47 @@ class Adam(Optimizer):
         lr_dict = {'FP32_LODTensor': [], 'FP16_LODTensor': []}
 
         if isinstance(parameters_and_grads, list):
-            for param_and_grad in parameters_and_grads:
-                if param_and_grad[1] is None:
-                    continue
-                if param_and_grad[0].stop_gradient is False:
-                    if (
-                        param_and_grad[0].dtype == paddle.float32
-                        and param_and_grad[1].type
-                        == core.VarDesc.VarType.LOD_TENSOR
-                    ):
-                        grad_dict['FP32_LODTensor'].append(param_and_grad[1])
-                        lr = self._create_param_lr(param_and_grad)
+            if framework.in_dygraph_mode():
+                params = [pair[0] for pair in parameters_and_grads]
+                grads_types = core.eager.get_grads_types(params)
+                for index, tp in enumerate(grads_types):
+                    if tp == GRAD_TYPES[0]:
+                        grad_dict['FP32_LODTensor'].append(
+                            parameters_and_grads[index][1]
+                        )
+                        lr = self._create_param_lr(parameters_and_grads[index])
                         lr_dict['FP32_LODTensor'].append(lr)
-                    elif (
-                        param_and_grad[0].dtype == paddle.float16
-                        and param_and_grad[1].type
-                        == core.VarDesc.VarType.LOD_TENSOR
-                    ):
-                        grad_dict['FP16_LODTensor'].append(param_and_grad[1])
-                        lr = self._create_param_lr(param_and_grad)
+                    elif tp == GRAD_TYPES[1] or tp == GRAD_TYPES[2]:
+                        grad_dict['FP16_LODTensor'].append(
+                            parameters_and_grads[index][1]
+                        )
+                        lr = self._create_param_lr(parameters_and_grads[index])
                         lr_dict['FP16_LODTensor'].append(lr)
+            else:
+                for param_and_grad in parameters_and_grads:
+                    if param_and_grad[1] is None:
+                        continue
+                    if param_and_grad[0].stop_gradient is False:
+                        if (
+                            param_and_grad[0].dtype == paddle.float32
+                            and param_and_grad[1].type
+                            == core.VarDesc.VarType.LOD_TENSOR
+                        ):
+                            grad_dict['FP32_LODTensor'].append(
+                                param_and_grad[1]
+                            )
+                            lr = self._create_param_lr(param_and_grad)
+                            lr_dict['FP32_LODTensor'].append(lr)
+                        elif (
+                            self._is_dtype_fp16_or_bf16(param_and_grad[0].dtype)
+                            and param_and_grad[1].type
+                            == core.VarDesc.VarType.LOD_TENSOR
+                        ):
+                            grad_dict['FP16_LODTensor'].append(
+                                param_and_grad[1]
+                            )
+                            lr = self._create_param_lr(param_and_grad)
+                            lr_dict['FP16_LODTensor'].append(lr)
         else:
             for param_and_grad in parameters_and_grads['params']:
                 if param_and_grad[1] is None:
@@ -688,7 +705,7 @@ class Adam(Optimizer):
                         lr = self._create_param_lr(param_and_grad)
                         lr_dict['FP32_LODTensor'].append(lr)
                     elif (
-                        param_and_grad[0].dtype == paddle.float16
+                        self._is_dtype_fp16_or_bf16(param_and_grad[0].dtype)
                         and param_and_grad[1].type
                         == core.VarDesc.VarType.LOD_TENSOR
                     ):

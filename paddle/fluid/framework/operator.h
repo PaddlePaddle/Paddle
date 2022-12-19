@@ -251,6 +251,10 @@ class OperatorBase {
     return place;
   }
 
+  uint64_t Id() const { return id_; }
+
+  void SetId(uint64_t id) { id_ = id; }
+
  protected:
   std::string type_;
   // NOTE: in case of OpGrad, inputs_ contains:
@@ -272,6 +276,9 @@ class OperatorBase {
 
   // OpInfo
   const OpInfo* info_;
+
+  // OpDesc Id
+  uint64_t id_ = UINT64_MAX;
 
   // Whether this operator executes in an Executor.
   bool run_by_executor_{true};
@@ -605,8 +612,9 @@ class OperatorWithKernel : public OperatorBase {
   OperatorWithKernel(const std::string& type,
                      const VariableNameMap& inputs,
                      const VariableNameMap& outputs,
-                     const AttributeMap& attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
+                     const AttributeMap& attrs);
+
+  virtual ~OperatorWithKernel();
 
   static paddle::flat_hash_map<std::string /* op_type */, OpKernelMap>&
   AllOpKernels() {
@@ -632,11 +640,16 @@ class OperatorWithKernel : public OperatorBase {
 
   bool SupportsMKLDNN(proto::VarType::Type data_type) const;
 
+  bool SupportsCUDNN(proto::VarType::Type data_type) const;
+
   bool SupportsKernelType(const OpKernelType& kernel_type,
                           const ExecutionContext& exe_ctx) const;
 
   bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                        proto::VarType::Type data_type) const;
+
+  bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
+                      proto::VarType::Type data_type) const;
 
   virtual void InferShape(InferShapeContext* ctx) const;
 
@@ -773,8 +786,9 @@ class OperatorWithKernel : public OperatorBase {
   mutable std::unique_ptr<phi::Kernel> phi_kernel_;
   mutable std::unique_ptr<phi::ArgumentMappingFn> arg_map_fn_;
 
+ private:
   struct CacheImpl;
-  mutable CacheImpl* impl_{nullptr};
+  mutable std::unique_ptr<CacheImpl> impl_;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

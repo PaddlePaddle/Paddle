@@ -14,6 +14,7 @@
 
 # import yaml
 import unittest
+
 from paddle.distributed.fleet import auto
 
 
@@ -23,7 +24,7 @@ class TestStrategy(unittest.TestCase):
 
         recompute = strategy.recompute
         self.assertEqual(recompute.enable, False)
-        self.assertIsNone(recompute.checkpoints)
+        self.assertEqual(recompute.checkpoints, [])
 
         amp = strategy.amp
         self.assertEqual(amp.enable, False)
@@ -44,7 +45,9 @@ class TestStrategy(unittest.TestCase):
         self.assertEqual(sharding.enable, False)
         self.assertEqual(sharding.stage, 1)
         self.assertEqual(sharding.degree, 8)
-        self.assertAlmostEqual(sharding.segment_broadcast_MB, 32.0)
+        self.assertAlmostEqual(sharding.overlap_grad_comm, False)
+        self.assertAlmostEqual(sharding.bucket_size_numel, -1)
+        self.assertAlmostEqual(sharding.partition_algor, "greedy_even")
         self.assertEqual(sharding.enable_tuning, False)
         self.assertEqual(sharding.tuning_range, [])
 
@@ -63,12 +66,10 @@ class TestStrategy(unittest.TestCase):
 
         tuning = strategy.tuning
         self.assertEqual(tuning.enable, False)
-        self.assertEqual(tuning.batch_size, 1)
-        self.assertIsNone(tuning.dataset)
         self.assertEqual(tuning.profile_start_step, 1)
         self.assertEqual(tuning.profile_end_step, 1)
         self.assertEqual(tuning.run_after_tuning, True)
-        self.assertEqual(tuning.verbose, True)
+        self.assertEqual(tuning.debug, False)
 
     def test_modify_config(self):
         strategy = auto.Strategy()

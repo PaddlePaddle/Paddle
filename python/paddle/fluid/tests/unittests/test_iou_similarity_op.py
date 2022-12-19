@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+
 import numpy.random as random
 from op_test import OpTest
 
@@ -69,7 +70,7 @@ class TestIOUSimilarityOpWithLoD(TestIOUSimilarityOp):
         self.check_output(check_dygraph=False)
 
     def setUp(self):
-        super(TestIOUSimilarityOpWithLoD, self).setUp()
+        super().setUp()
         self.boxes1_lod = [[1, 1]]
         self.output_lod = [[1, 1]]
         self.box_normalized = False
@@ -85,7 +86,7 @@ class TestIOUSimilarityOpWithBoxNormalized(TestIOUSimilarityOp):
         self.check_output(check_dygraph=False)
 
     def setUp(self):
-        super(TestIOUSimilarityOpWithBoxNormalized, self).setUp()
+        super().setUp()
         self.boxes1_lod = [[1, 1]]
         self.output_lod = [[1, 1]]
         self.box_normalized = True

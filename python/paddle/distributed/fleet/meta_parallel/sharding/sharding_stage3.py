@@ -13,22 +13,24 @@
 # limitations under the License.
 
 import logging
-import numpy as np
-from types import MethodType
 from collections import OrderedDict
+from types import MethodType
+
+import numpy as np
 
 import paddle
+import paddle.distributed as dist
+import paddle.fluid.core as core
 from paddle import nn
 from paddle.autograd import PyLayer
-import paddle.fluid.core as core
-from paddle.fluid.framework import ParamBase
-from paddle.fluid.clip import ClipGradByGlobalNorm
-from paddle.distributed import collective as dist
+from paddle.distributed import collective
 from paddle.distributed.collective import _get_global_group
+from paddle.fluid.clip import ClipGradByGlobalNorm
+from paddle.fluid.framework import ParamBase
 
-from .sharding_utils import Type, ShardingClipGrad, device_guard
-from ..pp_utils.utils import _all_gather
 from ...utils.internal_storage import GradStorage
+from ..pp_utils.utils import _all_gather
+from .sharding_utils import ShardingClipGrad, Type, device_guard
 
 # CUDA alignment 256 bytes
 alignment = {
@@ -101,7 +103,7 @@ class ShardingStage3(nn.Layer):
 
         # Communication group establishment
         self._group = (
-            dist.new_group(_get_global_group().ranks)
+            collective.new_group(_get_global_group().ranks)
             if group is None
             else group
         )

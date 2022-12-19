@@ -15,6 +15,7 @@
 import os
 import tempfile
 import unittest
+
 import numpy as np
 
 import paddle
@@ -98,7 +99,7 @@ def test_set_value(x):
 
 class LayerWithSetValue(paddle.nn.Layer):
     def __init__(self, input_dim, hidden):
-        super(LayerWithSetValue, self).__init__()
+        super().__init__()
         self.linear = paddle.nn.Linear(input_dim, hidden)
 
     @paddle.jit.to_static

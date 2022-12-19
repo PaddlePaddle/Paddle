@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .optimizer import Optimizer
-from ..fluid import core
-from ..fluid import framework
-from ..fluid.framework import Variable
-from ..fluid import layers
-from ..fluid import unique_name
-from ..fluid.layer_helper import LayerHelper
+import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.executor import global_scope
+
+from ..fluid import core, framework, unique_name
+from ..fluid.framework import Variable
+from ..fluid.layer_helper import LayerHelper
+from .optimizer import Optimizer
 
 __all__ = []
 
@@ -115,7 +114,7 @@ class Lamb(Optimizer):
         assert beta1 is not None
         assert beta2 is not None
         assert epsilon is not None
-        super(Lamb, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameters=parameters,
             weight_decay=None,
@@ -164,7 +163,7 @@ class Lamb(Optimizer):
 
             var_name = param.name + "_fp32_master"
             var_name = unique_name.generate(var_name)
-            var = layers.create_global_var(
+            var = paddle.static.create_global_var(
                 name=var_name,
                 shape=param.shape,
                 value=0,

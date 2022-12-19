@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import copy
+
+import numpy as np
+
 import paddle
 
 # Use to store the previous and current process mesh
@@ -39,7 +41,7 @@ def reset_current_process_mesh():
     _g_current_process_mesh = _g_previous_process_mesh
 
 
-class ProcessMesh(object):
+class ProcessMesh:
     """
     The `Processmesh` object describes the topology of the used processes.
 
@@ -188,8 +190,8 @@ class ProcessMesh(object):
         self._old_op_size = len(cur_block.ops)
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
-        from .dist_tensor import DistributedTensor
         from .dist_op import DistributedOperator
+        from .dist_tensor import DistributedTensor
 
         default_prog = paddle.fluid.default_main_program()
         cur_block = default_prog.current_block()

@@ -15,7 +15,7 @@
 __all__ = []
 
 
-class EntryAttr(object):
+class EntryAttr:
     """
     Entry Config for paddle.static.nn.sparse_embedding with Parameter Server.
 
@@ -80,7 +80,7 @@ class ProbabilityEntry(EntryAttr):
     """
 
     def __init__(self, probability):
-        super(ProbabilityEntry, self).__init__()
+        super().__init__()
 
         if not isinstance(probability, float):
             raise ValueError("probability must be a float in (0,1)")
@@ -120,7 +120,7 @@ class CountFilterEntry(EntryAttr):
     """
 
     def __init__(self, count_filter):
-        super(CountFilterEntry, self).__init__()
+        super().__init__()
 
         if not isinstance(count_filter, int):
             raise ValueError(
@@ -168,7 +168,7 @@ class ShowClickEntry(EntryAttr):
     """
 
     def __init__(self, show_name, click_name):
-        super(ShowClickEntry, self).__init__()
+        super().__init__()
 
         if not isinstance(show_name, str) or not isinstance(click_name, str):
             raise ValueError("show_name click_name must be a str")

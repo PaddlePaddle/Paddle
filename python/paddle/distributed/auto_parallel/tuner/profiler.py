@@ -12,24 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import argparse
-import traceback
-import pickle
 import json
+import os
+import pickle
 import time
+import traceback
 
 import paddle
-from paddle.fluid.framework import Program, _current_expected_place
-from paddle.fluid.framework import Operator
+from paddle.distributed.auto_parallel.dist_loader import (
+    DistributedDataLoaderFromGenerator,
+)
 from paddle.distributed.auto_parallel.process_group import (
     get_all_process_groups,
     new_process_group,
 )
-from paddle.distributed.auto_parallel.dist_loader import (
-    DistributedDataLoaderFromGenerator,
-)
 from paddle.distributed.collective import _get_global_env
+from paddle.fluid.framework import Operator, Program, _current_expected_place
 
 paddle.enable_static()
 
@@ -90,7 +89,7 @@ def init_process_groups(group_map, rank):
     # TODO should instantiate global group first
     all_process_groups = get_all_process_groups()
     for process_group in all_process_groups:
-        if process_group.id == 0 or rank not in process_group.ranks:
+        if rank not in process_group.ranks:
             continue
         print(process_group)
         process_group.instantiate()
@@ -174,10 +173,11 @@ def init_comm(profile_ctx):
     genv = _get_global_env()
     genv = dist_env
     print(
-        "current process rank: {}, device_id: {}, ip: {}.",
-        genv.rank,
-        genv.device_id,
-        genv.current_endpoint,
+        "current process rank: {}, device_id: {}, ip: {}.".format(
+            genv.rank,
+            genv.device_id,
+            genv.current_endpoint,
+        )
     )
 
     # init nccl comm
@@ -232,13 +232,12 @@ def profiler(args):
 
     exe = get_executor()
 
-    exe.run(startup_program)
-
-    # profile main
-    duration = 0
-    eval_step = 0
-    data_loader._inner_dataloader.start()
     try:
+        exe.run(startup_program)
+        # profile main
+        duration = 0
+        eval_step = 0
+        data_loader._inner_dataloader.start()
         while eval_step < args.profile_end_step:
             start_time = time.time()
 

@@ -14,22 +14,21 @@
 
 import unittest
 
-import paddle
 import numpy as np
-import paddle.nn as nn
-import paddle.static as static
-import paddle.nn.functional as F
-from paddle.fluid.framework import Program
 
+import paddle
 import paddle.distributed.fleet as fleet
-from paddle.distributed.fleet import auto
+import paddle.nn as nn
+import paddle.nn.functional as F
+import paddle.static as static
 from paddle.distributed.auto_parallel.dist_context import (
     DistributedContext,
     set_default_distributed_context,
 )
-
-from paddle.fluid.core import TensorDistAttr
 from paddle.distributed.auto_parallel.process_mesh_v2 import ProcessMesh
+from paddle.distributed.fleet import auto
+from paddle.fluid.core import TensorDistAttr
+from paddle.fluid.framework import Program
 
 paddle.enable_static()
 
@@ -48,7 +47,7 @@ class MLPLayer(nn.Layer):
         dropout_ratio=0.1,
         initializer_range=0.02,
     ):
-        super(MLPLayer, self).__init__()
+        super().__init__()
         d_model = hidden_size
         dim_feedforward = intermediate_size
         param_initializer = nn.initializer.Normal(

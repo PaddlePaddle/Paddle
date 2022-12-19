@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .. import _C_ops, _legacy_C_ops
+from ..fluid.data_feeder import check_variable_and_dtype
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from ..framework import LayerHelper
 from .layer_function_generator import (
-    generate_layer_fn,
+    add_sample_code,
     generate_activation_fn,
     generate_inplace_fn,
-    add_sample_code,
+    generate_layer_fn,
 )
-from ..fluid.data_feeder import check_variable_and_dtype
-from ..fluid.framework import in_dygraph_mode, _in_legacy_dygraph
-from ..framework import LayerHelper
-from .. import _C_ops, _legacy_C_ops
 
 __deprecated_func_name__ = {
     'tanh_shrink': 'tanhshrink',
@@ -29,7 +29,6 @@ __deprecated_func_name__ = {
 }
 
 __activations_noattr__ = [
-    'sigmoid',
     'silu',
     'logsigmoid',
     'tanh_shrink',
@@ -38,12 +37,7 @@ __activations_noattr__ = [
     'tanh',
 ]
 
-__unary_func__ = [
-    'sqrt',
-    'rsqrt',
-    'abs',
-    'square',
-]
+__unary_func__ = ['abs']
 
 __inplace_unary_func__ = [
     'exp_',
@@ -58,7 +52,7 @@ __inplace_unary_func__ = [
 __all__ = []
 
 # It is a hot fix in some unittest using:
-#   fluid.layers.scale(x=x, scale=10.0, out=out_var)
+#   paddle.scale(x=x, scale=10.0, out=out_var)
 # e.g.: test_program_code.py, test_dist_train.py
 globals()['_scale'] = generate_layer_fn('scale')
 
@@ -84,23 +78,6 @@ for _OP in set(__inplace_unary_func__):
         _new_OP = __deprecated_func_name__[_OP]
     _func = generate_inplace_fn(_OP)
     globals()[_OP] = _func
-
-add_sample_code(
-    globals()["sigmoid"],
-    r"""
-Examples:
-    .. code-block:: python
-
-        import paddle
-        import paddle.nn.functional as F
-
-        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = F.sigmoid(x)
-        print(out)
-        # [0.40131234 0.450166   0.52497919 0.57444252]
-
-""",
-)
 
 add_sample_code(
     globals()["silu"],
@@ -164,38 +141,6 @@ Examples:
 )
 
 add_sample_code(
-    globals()["sqrt"],
-    r"""
-Examples:
-    .. code-block:: python
-
-        import paddle
-
-        x = paddle.to_tensor([0.1, 0.2, 0.3, 0.4])
-        out = paddle.sqrt(x)
-        print(out)
-        # [0.31622777 0.4472136  0.54772256 0.63245553]
-
-""",
-)
-
-add_sample_code(
-    globals()["rsqrt"],
-    r"""
-Examples:
-    .. code-block:: python
-
-        import paddle
-
-        x = paddle.to_tensor([0.1, 0.2, 0.3, 0.4])
-        out = paddle.rsqrt(x)
-        print(out)
-        # [3.16227766 2.23606798 1.82574186 1.58113883]
-
-""",
-)
-
-add_sample_code(
     globals()["abs"],
     r"""
 Examples:
@@ -207,22 +152,6 @@ Examples:
         out = paddle.abs(x)
         print(out)
         # [0.4 0.2 0.1 0.3]
-
-""",
-)
-
-add_sample_code(
-    globals()["square"],
-    r"""
-Examples:
-    .. code-block:: python
-
-        import paddle
-
-        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = paddle.square(x)
-        print(out)
-        # [0.16 0.04 0.01 0.09]
 
 """,
 )
@@ -812,6 +741,85 @@ def round(x, name=None):
     return out
 
 
+def rsqrt(x, name=None):
+    """
+    Rsqrt Activation Operator.
+
+    Please make sure input is legal in case of numeric errors.
+
+    .. math::
+       out = \\frac{1}{\\sqrt{x}}
+
+    Args:
+        x (Tensor): Input of Rsqrt operator, an N-D Tensor, with data type float32, float64 or float16.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor. Output of Rsqrt operator, a Tensor with shape same as input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([0.1, 0.2, 0.3, 0.4])
+            out = paddle.rsqrt(x)
+            print(out)
+            # [3.16227766 2.23606798 1.82574186 1.58113883]
+
+    """
+    if in_dygraph_mode():
+        return _C_ops.rsqrt(x)
+    if _in_legacy_dygraph():
+        return _legacy_C_ops.rsqrt(x)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'rsqrt')
+    helper = LayerHelper('rsqrt', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type='rsqrt', inputs={"X": x}, outputs={"Out": out})
+    return out
+
+
+def sigmoid(x, name=None):
+    """
+    Sigmoid Activation.
+
+    .. math::
+       out = \\frac{1}{1 + e^{-x}}
+
+    Args:
+        x (Tensor): Input of Sigmoid operator, an N-D Tensor, with data type float32, float64 or float16.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor. Output of Sigmoid operator, a Tensor with shape same as input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn.functional as F
+
+            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            out = F.sigmoid(x)
+            print(out)
+            # [0.40131234 0.450166   0.52497919 0.57444252]
+
+    """
+    if in_dygraph_mode():
+        return _C_ops.sigmoid(x)
+    if _in_legacy_dygraph():
+        return _legacy_C_ops.sigmoid(x)
+
+    check_variable_and_dtype(
+        x, 'x', ['float16', 'float32', 'float64'], 'sigmoid'
+    )
+    helper = LayerHelper('sigmoid', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type='sigmoid', inputs={"X": x}, outputs={"Out": out})
+    return out
+
+
 def sin(x, name=None):
     """
     Sine Activation Operator.
@@ -883,6 +891,91 @@ def sinh(x, name=None):
     helper = LayerHelper('sinh', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type='sinh', inputs={"X": x}, outputs={"Out": out})
+    return out
+
+
+def sqrt(x, name=None):
+    """
+    Sqrt Activation Operator.
+
+    .. math::
+       out=\\sqrt{x}=x^{1/2}
+
+    Args:
+        x (Tensor): Input of Sqrt operator, an N-D Tensor, with data type float32, float64 or float16.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor. Output of Sqrt operator, a Tensor with shape same as input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([0.1, 0.2, 0.3, 0.4])
+            out = paddle.sqrt(x)
+            print(out)
+            # [0.31622777 0.4472136  0.54772256 0.63245553]
+    """
+    if in_dygraph_mode():
+        return _C_ops.sqrt(x)
+    if _in_legacy_dygraph():
+        return _legacy_C_ops.sqrt(x)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'sqrt')
+    helper = LayerHelper('sqrt', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type='sqrt', inputs={"X": x}, outputs={"Out": out})
+    return out
+
+
+def square(x, name=None):
+    """
+    Square each elements of the inputs.
+
+    .. math::
+       out = x^2
+
+    Args:
+        x (Tensor): Input of Square operator, an N-D Tensor, with data type float32, float64 or float16.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor. Output of Square operator, a Tensor with shape same as input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            out = paddle.square(x)
+            print(out)
+            # [0.16 0.04 0.01 0.09]
+    """
+    if in_dygraph_mode():
+        return _C_ops.square(x)
+    if _in_legacy_dygraph():
+        return _legacy_C_ops.square(x)
+
+    check_variable_and_dtype(
+        x,
+        'x',
+        [
+            'int32',
+            'int64',
+            'float16',
+            'float32',
+            'float64',
+            'complex64',
+            'complex128',
+        ],
+        'square',
+    )
+    helper = LayerHelper('square', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type='square', inputs={"X": x}, outputs={"Out": out})
     return out
 
 

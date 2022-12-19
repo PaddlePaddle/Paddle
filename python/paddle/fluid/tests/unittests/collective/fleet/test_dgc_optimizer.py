@@ -15,16 +15,18 @@
 import unittest
 
 import paddle
+import paddle.fluid.clip as clip
 import paddle.fluid.framework as framework
 import paddle.fluid.optimizer as optimizer
 import paddle.fluid.regularizer as regularizer
-import paddle.fluid.clip as clip
 
 paddle.enable_static()
 
 
 class TestDGCMomentumOptimizer(unittest.TestCase):
-    class MockDGCMomentum(optimizer.DGCMomentumOptimizer):
+    class MockDGCMomentum(
+        paddle.distributed.fleet.meta_optimizers.DGCMomentumOptimizer
+    ):
         def get_accumulators(self):
             return self._accumulators
 

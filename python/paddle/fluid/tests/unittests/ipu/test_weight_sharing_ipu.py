@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
@@ -66,7 +67,7 @@ class TestWeightSharing(IPUOpTest):
                 input=y, size=768, param_attr=paddle.fluid.ParamAttr(name="fc")
             )
         with paddle.static.ipu_shard_guard(index=0, stage=2):
-            out = paddle.fluid.layers.matmul(
+            out = paddle.matmul(
                 x=z,
                 y=self.main_prog.global_block().var('word_embedding'),
                 transpose_y=True,

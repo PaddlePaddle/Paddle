@@ -12,17 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.collective import fleet
+from paddle.distributed.fleet.utils.fs import HDFSClient, LocalFS
 from paddle.fluid.incubate.checkpoint.auto_checkpoint import ExeTrainStatus
 from paddle.fluid.incubate.checkpoint.checkpoint_saver import CheckpointSaver
-import os
-
-from paddle.distributed.fleet.utils.fs import LocalFS, HDFSClient
-from paddle.fluid.incubate.checkpoint.checkpoint_saver import CheckpointSaver
+from paddle.fluid.incubate.fleet.collective import fleet
 
 
 class FleetTest(unittest.TestCase):
@@ -42,7 +41,9 @@ class FleetTest(unittest.TestCase):
             feed_list=[image, label], place=fluid.CPUPlace()
         )
         predict = fluid.layers.fc(input=image, size=10, act='softmax')
-        loss = fluid.layers.cross_entropy(input=predict, label=label)
+        loss = paddle.nn.functional.cross_entropy(
+            input=predict, label=label, reduction='none', use_softmax=False
+        )
         avg_loss = paddle.mean(loss)
         optimizer = fluid.optimizer.AdamOptimizer(learning_rate=0.001)
 

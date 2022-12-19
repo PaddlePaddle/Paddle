@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.optimizer import Optimizer
-from paddle.fluid import framework, layers
-from paddle.fluid.framework import Program
-from paddle.fluid.layer_helper import LayerHelper
 import paddle
-from paddle.fluid.dygraph import base as imperative_base
-from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid import framework, layers
+from paddle.fluid.dygraph import base as imperative_base
+from paddle.fluid.framework import Program, in_dygraph_mode
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+from paddle.optimizer import Optimizer
 
 __all__ = []
 
@@ -98,7 +97,7 @@ class ModelAverage(Optimizer):
 
         class LinearNet(nn.Layer):
             def __init__(self):
-                super(LinearNet, self).__init__()
+                super().__init__()
                 self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
                 self.bias = self._linear.bias
 
@@ -170,7 +169,7 @@ class ModelAverage(Optimizer):
         max_average_window=10000,
         name=None,
     ):
-        super(ModelAverage, self).__init__(
+        super().__init__(
             learning_rate=0.0,
             parameters=parameters,
             weight_decay=None,
@@ -341,8 +340,7 @@ class ModelAverage(Optimizer):
             .. code-block:: python
 
                 import paddle
-                import numpy as np
-                inp = paddle.to_tensor(np.random.random([1, 10]).astype('float32'))
+                inp = paddle.rand([1, 10], dtype="float32")
                 linear = paddle.nn.Linear(10, 1)
                 out = linear(inp)
                 loss = paddle.mean(out)
@@ -377,8 +375,7 @@ class ModelAverage(Optimizer):
             .. code-block:: python
 
                 import paddle
-                import numpy as np
-                inp = paddle.to_tensor(np.random.random([1, 10]).astype('float32'))
+                inp = paddle.rand([1, 10], dtype="float32")
                 linear = paddle.nn.Linear(10, 1)
                 out = linear(inp)
                 loss = paddle.mean(out)
@@ -424,8 +421,7 @@ class ModelAverage(Optimizer):
             .. code-block:: python
 
                 import paddle
-                import numpy as np
-                inp = paddle.to_tensor(np.random.random([1, 10]).astype('float32'))
+                inp = paddle.rand([1, 10], dtype="float32")
                 linear = paddle.nn.Linear(10, 1)
                 out = linear(inp)
                 loss = paddle.mean(out)
@@ -499,8 +495,7 @@ class ModelAverage(Optimizer):
             .. code-block:: python
 
                 import paddle
-                import numpy as np
-                inp = paddle.to_tensor(np.random.random([1, 10]).astype('float32'))
+                inp = paddle.rand([1, 10], dtype="float32")
                 linear = paddle.nn.Linear(10, 1)
                 out = linear(inp)
                 loss = paddle.mean(out)
@@ -553,15 +548,15 @@ class ModelAverage(Optimizer):
         # backup param value to grad
         layers.assign(input=param, output=grad)
         # param = (sum_1 + sum_2 + sum_3) / (num_accumulates + old_num_accumulates)
-        tmp = layers.sum(x=[num_accumulates, old_num_accumulates])
-        sum = layers.sum(x=[sum_1, sum_2, sum_3])
+        tmp = paddle.add_n([num_accumulates, old_num_accumulates])
+        sum = paddle.add_n([sum_1, sum_2, sum_3])
         tmp = layers.cast(
             x=tmp, dtype='float32' if self._dtype is None else self._dtype
         )
         sum = layers.cast(
             x=sum, dtype='float32' if self._dtype is None else self._dtype
         )
-        layers.ops._elementwise_div(x=sum, y=tmp, out=param)
+        paddle.tensor.ops._elementwise_div(x=sum, y=tmp, out=param)
 
     def _add_average_restore_op(self, block, param):
         param = block._clone_variable(param)

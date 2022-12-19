@@ -12,18 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
 import multiprocessing
 import os
+import sys
+import time
 import unittest
+
+import numpy as np
+from feed_data_reader import FeedDataReader
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import compiler
-import time
-import numpy as np
-import math
-import sys
-from feed_data_reader import FeedDataReader
 
 __all__ = ['TestParallelExecutorBase']
 DeviceType = core.DeviceType

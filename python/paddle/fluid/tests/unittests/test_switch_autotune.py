@@ -12,18 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import unittest
-import numpy as np
-import tempfile
-import warnings
 import json
 import os
+import tempfile
+import unittest
+import warnings
+
+import numpy as np
+
+import paddle
 
 
 class SimpleNet(paddle.nn.Layer):
     def __init__(self):
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.conv = paddle.nn.Conv2D(1, 2, (3, 3))
 
     def forward(self, image, label=None):

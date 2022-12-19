@@ -76,7 +76,11 @@ void IpuBackend::Run(const std::vector<const phi::DenseTensor*>& inputs,
                      const std::vector<phi::DenseTensor*>& outputs,
                      const framework::ExecutionContext& ctx) {
   timer_->Start();
-  executor_->Run(inputs, outputs, ctx);
+  if (ipu_strategy_->enable_model_runtime_executor) {
+    executor_->RunPopef(inputs, outputs, ctx);
+  } else {
+    executor_->Run(inputs, outputs, ctx);
+  }
   timer_->Pause();
   VLOG(10) << "[IPU Run]: " << timer_->ElapsedMS() << " (ms)";
 }

@@ -12,34 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import unittest
 import os
 import tempfile
+import unittest
+
+import numpy as np
+from test_basic_api_transformation import dyfunc_to_variable
+
 import paddle
 import paddle.fluid as fluid
-from paddle.static import InputSpec
-from paddle.fluid.dygraph import (
-    to_variable,
-    declarative,
-    ProgramTranslator,
-    Layer,
-    jit,
-)
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
+from paddle.fluid.dygraph import Layer, to_variable
+from paddle.jit import ProgramTranslator
+from paddle.jit.api import declarative
+from paddle.jit.dy2static.program_translator import (
     ConcreteProgram,
     StaticFunction,
 )
-
-from test_basic_api_transformation import dyfunc_to_variable
+from paddle.static import InputSpec
 
 program_trans = ProgramTranslator()
 
 
 class SimpleNet(Layer):
     def __init__(self):
-        super(SimpleNet, self).__init__()
-        self.linear = fluid.dygraph.Linear(10, 3)
+        super().__init__()
+        self.linear = paddle.nn.Linear(10, 3)
 
     @declarative(input_spec=[InputSpec(shape=[None, 10], dtype='float32')])
     def forward(self, x, a=1, b=2):
@@ -131,8 +128,8 @@ class TestInputSpec(unittest.TestCase):
 
             # 2. test save load
             net.inner_function(x)
-            jit.save(net, self.model_path)
-            infer_net = fluid.dygraph.jit.load(self.model_path)
+            paddle.jit.save(net, self.model_path)
+            infer_net = paddle.jit.load(self.model_path)
             pred = infer_net(x)
             np.testing.assert_allclose(out.numpy(), pred.numpy(), rtol=1e-05)
 
@@ -418,7 +415,7 @@ class TestErrorWithInitFromStaticMode(unittest.TestCase):
 
 class CallNonForwardFuncNet(paddle.nn.Layer):
     def __init__(self):
-        super(CallNonForwardFuncNet, self).__init__()
+        super().__init__()
         self.sub = CallNonForwardFuncSubNet()
 
     @paddle.jit.to_static
@@ -428,7 +425,7 @@ class CallNonForwardFuncNet(paddle.nn.Layer):
 
 class CallNonForwardFuncSubNet(paddle.nn.Layer):
     def __init__(self):
-        super(CallNonForwardFuncSubNet, self).__init__()
+        super().__init__()
         self.a = paddle.to_tensor([1, 2])
 
     def func(self):
@@ -447,7 +444,7 @@ class TestCallNonForwardFunc(unittest.TestCase):
 
 class SetBuffersNet1(paddle.nn.Layer):
     def __init__(self):
-        super(SetBuffersNet1, self).__init__()
+        super().__init__()
         self.a = paddle.to_tensor([1])
 
     @paddle.jit.to_static
@@ -458,7 +455,7 @@ class SetBuffersNet1(paddle.nn.Layer):
 
 class SetBuffersNet2(paddle.nn.Layer):
     def __init__(self):
-        super(SetBuffersNet2, self).__init__()
+        super().__init__()
         self.b = paddle.to_tensor([2])
 
     @paddle.jit.to_static

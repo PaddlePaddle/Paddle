@@ -20,15 +20,16 @@
 #   Licensed under the Apache License, Version 2.0 (the "License").
 
 import numpy as np
+
 import paddle
 import paddle.nn as nn
-from paddle.distributed.utils.moe_utils import global_scatter, global_gather
-
 from paddle.autograd import PyLayer
-from .gate import NaiveGate, GShardGate, SwitchGate, BaseGate
-from .utils import count_by_gate
+from paddle.distributed.utils.moe_utils import global_gather, global_scatter
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.incubate.distributed.fleet import recompute_hybrid
+
+from .gate import BaseGate, GShardGate, NaiveGate, SwitchGate
+from .utils import count_by_gate
 
 
 def _local_scatter(inp, pos):
@@ -291,7 +292,7 @@ class MoELayer(nn.Layer):
 
         class ExpertLayer(Layer):
             def __init__(self, d_model, d_hidden, name=None,rank=0, windex = 0, num_expert=1):
-                super(ExpertLayer, self).__init__()
+                super().__init__()
                 self.htoh4 = nn.Linear(d_model, d_hidden)
                 self.h4toh = nn.Linear(d_hidden, d_model)
 
@@ -329,7 +330,7 @@ class MoELayer(nn.Layer):
         recompute_interval=0,
         recompute_ctx=None,
     ):
-        super(MoELayer, self).__init__()
+        super().__init__()
 
         self.recompute_ctx = recompute_ctx
 

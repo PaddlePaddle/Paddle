@@ -17,14 +17,13 @@ import unittest.mock
 
 import paddle
 import paddle.nn as nn
-import paddle.static as static
 import paddle.nn.functional as F
-import paddle.utils as utils
+import paddle.static as static
 import paddle.tensor as tensor
-from paddle.fluid import layers
-from paddle.distributed.fleet import auto
+import paddle.utils as utils
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
+from paddle.distributed.fleet import auto
 
 paddle.enable_static()
 _global_parallel_strategy = None
@@ -40,7 +39,7 @@ class MLPLayer(nn.Layer):
         dropout_ratio=0.1,
         initializer_range=0.02,
     ):
-        super(MLPLayer, self).__init__()
+        super().__init__()
         d_model = hidden_size
         dim_feedforward = intermediate_size
         weight_attr = paddle.ParamAttr(
@@ -230,7 +229,7 @@ class AttentionLayer(nn.Layer):
         dropout_ratio=0.1,
         initializer_range=0.02,
     ):
-        super(AttentionLayer, self).__init__()
+        super().__init__()
         self.hidden_size = hidden_size
         self.sequence_len = sequence_len
         self.embed_dim = self.hidden_size
@@ -301,9 +300,8 @@ class AttentionLayer(nn.Layer):
         v = tensor.transpose(x=v, perm=[0, 2, 1, 3])
 
         # scale dot product attention
-        product = layers.matmul(
-            x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5
-        )
+        product = tensor.matmul(x=q, y=k, transpose_y=True)
+        product = tensor.scale(product, scale=self.head_dim**-0.5)
 
         if self.attn_mask is not None:
             product = product + self.attn_mask
@@ -434,7 +432,7 @@ class DecoderLayer(nn.Layer):
         dropout_ratio=0.1,
         initializer_range=0.02,
     ):
-        super(DecoderLayer, self).__init__()
+        super().__init__()
         self.vocab_size = vocab_size
         self.hidden_size = hidden_size
         self.max_position_embeddings = max_position_embeddings
@@ -568,9 +566,8 @@ class DecoderLayer(nn.Layer):
         v = tensor.transpose(x=v, perm=[0, 2, 1, 3])
 
         # scale dot product attention
-        product = layers.matmul(
-            x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5
-        )
+        product = tensor.matmul(x=q, y=k, transpose_y=True)
+        product = tensor.scale(product, scale=self.head_dim**-0.5)
 
         if self.attn_mask is not None:
             product = product + self.attn_mask

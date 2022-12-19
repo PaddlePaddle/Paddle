@@ -19,6 +19,23 @@
 
 namespace phi {
 
+const std::vector<int64_t> get_slice_strides(
+    const std::vector<int64_t>& out_vec_dims,
+    const dnnl::memory::desc& full_md,
+    int axis) {
+  auto strides = full_md.data.format_desc.blocking.strides;
+  auto ndims = full_md.data.ndims;
+  auto full_dims = full_md.data.dims;
+  auto splitted_stride = strides[axis];
+  std::vector<int64_t> slice_strides(ndims, splitted_stride);
+  for (int16_t i = 0; i < ndims; ++i) {
+    slice_strides[i] = strides[i] > splitted_stride
+                           ? (strides[i] / full_dims[axis]) * out_vec_dims[axis]
+                           : strides[i];
+  }
+  return slice_strides;
+}
+
 template <typename T, typename Context>
 void SplitKernel(const Context& dev_ctx,
                  const DenseTensor& x,
@@ -49,7 +66,10 @@ void SplitKernel(const Context& dev_ctx,
         out_vec_dims, offset, reorder_src_memory_p);
 
     auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-        out[i], out_vec_dims, x.format(), dev_ctx.GetPlace());
+        out[i],
+        out_vec_dims,
+        get_slice_strides(out_vec_dims, x.mem_desc(), axis),
+        dev_ctx.GetPlace());
     auto reorder_p =
         reorder_handler.AcquireReorder(reorder_dst_memory_p, slice_mem_p);
 
@@ -77,12 +97,20 @@ void SplitWithNumKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    split, OneDNN, ONEDNN, phi::SplitKernel, float, phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(split,
+                   OneDNN,
+                   ONEDNN,
+                   phi::SplitKernel,
+                   float,
+                   phi::dtype::bfloat16,
+                   int8_t,
+                   uint8_t) {}
 
 PD_REGISTER_KERNEL(split_with_num,
                    OneDNN,
                    ONEDNN,
                    phi::SplitWithNumKernel,
                    float,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   int8_t,
+                   uint8_t) {}

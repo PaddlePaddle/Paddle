@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/phi/api/include/tensor.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -89,8 +89,8 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
       const T* send_buff = x->data<T>();
       T* recv_buff = temp_out.data<T>();
       gpuStream_t stream = nullptr;
-      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<phi::GPUContext*>(dev_ctx)->stream();
+      // should ExecutionContext for calc stream.
+      stream = ctx.cuda_device_context().stream();
 
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::ncclAllGather(send_buff,

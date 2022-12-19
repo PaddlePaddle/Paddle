@@ -12,39 +12,156 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# TODO: define functions to manipulate a tensor
+
 from collections import Counter
 
-from ..static import Variable
-from ..framework import core, in_dygraph_mode
-from ..fluid.framework import _in_legacy_dygraph, _non_static_mode
-from ..framework import LayerHelper
-from ..framework import convert_np_dtype_to_dtype_, dygraph_only
-from ..fluid.data_feeder import (
-    convert_dtype,
-    check_variable_and_dtype,
-    check_type,
-    check_dtype,
-)
-from ..fluid.layers import utils
 import numpy as np
 
-# TODO: define functions to manipulate a tensor
-from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 import paddle
 from paddle import _C_ops, _legacy_C_ops
-from ..common_ops_import import dygraph_utils, fill_constant, _varbase_creator
-import warnings
-from .creation import zeros
-from .creation import _complex_to_real_dtype
-from .creation import _real_to_complex_dtype
+from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
+
+from ..common_ops_import import _varbase_creator, fill_constant
+from ..fluid.data_feeder import (
+    check_dtype,
+    check_type,
+    check_variable_and_dtype,
+    convert_dtype,
+)
+from ..fluid.framework import _in_legacy_dygraph, _non_static_mode
+from ..fluid.layers import utils
+from ..framework import (
+    LayerHelper,
+    convert_np_dtype_to_dtype_,
+    core,
+    dygraph_only,
+    in_dygraph_mode,
+)
+from ..static import Variable
+from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
 
 __all__ = []
+
+
+def tensor_array_to_tensor(input, axis=1, use_stack=False, name=None):
+    r"""
+    This function concatenates or stacks all tensors in the input LoDTensorArray
+    along the axis mentioned and returns that as the output.
+
+    For Example:
+
+    .. code-block:: text
+
+        Case 1:
+
+            Given:
+
+                input.data = {[[0.6, 0.1, 0.3],
+                               [0.5, 0.3, 0.2]],
+                              [[1.3],
+                               [1.8]],
+                              [[2.3, 2.1],
+                               [2.5, 2.4]]}
+
+                axis = 1, use_stack = False
+
+            Then:
+
+                output.data = [[0.6, 0.1, 0.3, 1.3, 2.3, 2.1],
+                               [0.5, 0.3, 0.2, 1.8, 2.5, 2.4]]
+
+                output_index.data = [3, 1, 2]
+
+        Case 2:
+
+            Given:
+
+                input.data = {[[0.6, 0.1],
+                               [0.5, 0.3]],
+                              [[0.3, 1.3],
+                               [0.2, 1.8]],
+                              [[2.3, 2.1],
+                               [2.5, 2.4]]}
+
+                axis = 1, use_stack = True
+
+            Then:
+
+                output.data = [[[0.6, 0.1]
+                                [0.3, 1.3]
+                                [2.3, 2.1],
+                               [[0.5, 0.3]
+                                [0.2, 1.8]
+                                [2.5, 2.4]]]
+
+                output_index.data = [2, 2, 2]
+
+    Args:
+        input(TensorArray): A TensorArray variable.
+        axis(int): The axis along which the tensors in attr::`input` will be
+            concatenated or stacked.
+        use_stack(bool): Act as concat_op or stack_op. For stack mode, all
+            tensors in the tensor array must have the same shape.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                       will be named automatically.
+
+    Returns:
+        Tensor: The concatenated or stacked tensor variable.
+        Tensor: A 1-D tensor variable with int32 data type. The data in this \
+            tensor contains all input including tensors' sizes along the axis.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy
+            import paddle
+            x0 = paddle.assign(numpy.random.rand(2, 2).astype("float32"))
+            x1 = paddle.assign(numpy.random.rand(2, 2).astype("float32"))
+            i = paddle.full(shape=[1], dtype="int64", fill_value=0)
+            array = paddle.tensor.array.create_array(dtype='float32')
+            paddle.tensor.array.array_write(x0, i, array)
+            paddle.tensor.array.array_write(x1, i + 1, array)
+            output, output_index = paddle.tensor.manipulation.tensor_array_to_tensor(input=array)
+    """
+    if _non_static_mode():
+        assert isinstance(
+            input, list
+        ), "The 'input' in tensor_array_to_tensor must be list"
+        from paddle import concat, stack
+
+        op = stack if use_stack else concat
+        res = op(input, axis=axis)
+        sizes = paddle.to_tensor(
+            np.array(list(map(lambda x: int(x.shape[axis]), input)))
+        )
+        return res, sizes
+
+    check_type(input, 'input', (list, Variable), 'tensor_array_to_tensor')
+    if isinstance(input, list):
+        for i, input_x in enumerate(input):
+            check_type(
+                input_x,
+                'input[' + str(i) + ']',
+                Variable,
+                'tensor_array_to_tensor',
+            )
+    helper = LayerHelper('tensor_array_to_tensor', **locals())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+    out_index = helper.create_variable_for_type_inference(dtype="int32")
+    helper.append_op(
+        type='tensor_array_to_tensor',
+        inputs={'X': input},
+        outputs={'Out': [out], 'OutIndex': [out_index]},
+        attrs={'axis': axis, 'use_stack': use_stack},
+    )
+    return out, out_index
 
 
 def cast(x, dtype):
     """
 
-    This OP takes in the Tensor :attr:`x` with :attr:`x.dtype` and casts it
+    Take in the Tensor :attr:`x` with :attr:`x.dtype` and cast it
     to the output with :attr:`dtype`. It's meaningless if the output dtype
     equals the input dtype, but it's fine if you do so.
 
@@ -183,13 +300,13 @@ def slice(input, axes, starts, ends):
             starts = [-3, 0, 2]
             ends = [3, 2, 4]
             sliced_1 = paddle.slice(input, axes=axes, starts=starts, ends=ends)
-            # sliced_1 is input[0:3, 0:2, 2:4].
+            # sliced_1 is input[1:3, 0:2, 2:4].
 
             # example 2:
             # attr starts is a list which contain tensor.
             minus_3 = paddle.full([1], -3, "int32")
             sliced_2 = paddle.slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends)
-            # sliced_2 is input[0:3, 0:2, 2:4].
+            # sliced_2 is input[1:3, 0:2, 2:4].
     """
     if in_dygraph_mode():
         attrs = ()
@@ -2275,12 +2392,12 @@ def unique_consecutive(
     dtype="int64",
     name=None,
 ):
-    r"""
+    """
     Eliminates all but the first element from every consecutive group of equivalent elements.
 
     Note:
-        This function is different from :func:`paddle.unique` in the sense that this function
-        only eliminates consecutive duplicate values. This semantics is similar to `std::unique` in C++.
+        This function is different from :ref:`api_paddle_unique` in the sense that this function
+        only eliminates consecutive duplicate values. This semantics is similar to :ref:`api_paddle_unique` in C++.
 
     Args:
         x(Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
@@ -2296,7 +2413,12 @@ def unique_consecutive(
             :ref:`api_guide_Name`. Default is None.
 
     Returns:
-        tuple (out, inverse, counts). `out` is the unique consecutive tensor for `x`. `inverse` is provided only if `return_inverse` is True. `counts` is provided only if `return_counts` is True.
+        - out (Tensor), the unique consecutive tensor for x.
+        - inverse (Tensor), the element of the input tensor corresponds to
+            the index of the elements in the unique consecutive tensor for x.
+            inverse is provided only if return_inverse is True.
+        - counts (Tensor), the counts of the every unique consecutive element in the input tensor.
+            counts is provided only if return_counts is True.
 
     Example:
         .. code-block:: python
@@ -2450,7 +2572,10 @@ def unique(
 
             x = paddle.to_tensor([2, 3, 3, 1, 5, 3])
             unique = paddle.unique(x)
-            np_unique = unique.numpy() # [1 2 3 5]
+            print(unique)
+            # Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            #        [1, 2, 3, 5])
+
             _, indices, inverse, counts = paddle.unique(x, return_index=True, return_inverse=True, return_counts=True)
             print(indices)
             # Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
@@ -2725,13 +2850,13 @@ def gather(x, index, axis=None, name=None):
         x (Tensor): The source input tensor with rank>=1. Supported data type is
             int32, int64, float32, float64 and uint8 (only for CPU),
             float16 (only for GPU).
-        index (Tensor): The index input tensor with rank=1. Data type is int32 or int64.
+        index (Tensor): The index input tensor with rank=0 or rank=1. Data type is int32 or int64.
         axis (Tensor|int, optional): The axis of input to be gathered, it's can be int or a Tensor with data type is int32 or int64. The default value is None, if None, the ``axis`` is 0.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        output (Tensor), The output is a tensor with the same rank as ``x``.
+        output (Tensor), If the index is a 1-D tensor, the output is a tensor with the same shape as ``x``. If the index is a 0-D tensor, the output will reduce the dimension where the axis pointing.
 
     Examples:
 
@@ -2885,8 +3010,8 @@ def scatter(x, index, updates, overwrite=True, name=None):
 
     Args:
         x (Tensor): The input N-D Tensor with ndim>=1. Data type can be float32, float64.
-        index (Tensor): The index 1-D Tensor. Data type can be int32, int64. The length of index cannot exceed updates's length, and the value in index cannot exceed input's length.
-        updates (Tensor): update input with updates parameter based on index. shape should be the same as input, and dim value with dim > 1 should be the same as input.
+        index (Tensor): The index is a 1-D or 0-D Tensor. Data type can be int32, int64. The length of index cannot exceed updates's length, and the value in index cannot exceed input's length.
+        updates (Tensor): Update input with updates parameter based on index. When the index is a 1-D tensor, the updates shape should be the same as input, and dim value with dim > 1 should be the same as input. When the index is a 0-D tensor, the updates should be a (N-1)-D tensor, the ith dim of the updates should be queal with the (i+1)th dim of the input.
         overwrite (bool): The mode that updating the output when there are same indices.
 
             If True, use the overwrite mode to update the output of the same index,
@@ -3067,7 +3192,7 @@ def scatter_nd(index, updates, shape, name=None):
     seen :code:`scatter_nd_add` . This op is the inverse of the :code:`gather_nd` op.
 
     Args:
-        index (Tensor): The index input with ndim > 1 and index.shape[-1] <= len(shape).
+        index (Tensor): The index input with ndim >= 1 and index.shape[-1] <= len(shape).
                           Its dtype should be int32 or int64 as it is used as indexes.
         updates (Tensor): The updated value of scatter_nd op. Its dtype should be float32, float64.
                             It must have the shape index.shape[:-1] + shape[index.shape[-1]:]
@@ -3560,16 +3685,9 @@ def reshape(x, shape, name=None):
 
     """
     actual_shape = None
-    act = None
-    inplace = False
 
     if in_dygraph_mode():
         tmp_tensor_type = core.eager.Tensor
-        # TODO(zhiqiu): enable inplace in dygraph mode.
-        if inplace:
-            warnings.warn(
-                "Inplace on reshape is not allowed and will be discarded in dygraph mode currently."
-            )
         if isinstance(shape, (list, tuple)):
             shape = [
                 item.numpy().item(0)
@@ -3577,8 +3695,11 @@ def reshape(x, shape, name=None):
                 else item
                 for item in shape
             ]
-            out = _C_ops.reshape(x, shape)
-        elif isinstance(shape, tmp_tensor_type):
+            if shape == x.shape:
+                out = x
+            else:
+                out = _C_ops.reshape(x, shape)
+        elif isinstance(shape, core.eager.Tensor):
             shape.stop_gradient = True
             out = _C_ops.reshape(x, shape)
         else:
@@ -3587,14 +3708,10 @@ def reshape(x, shape, name=None):
                 " got '{}.'".format(type(shape))
             )
 
-        return dygraph_utils._append_activation_in_dygraph(out, act)
+        return out
     else:
         if _in_legacy_dygraph():
             tmp_tensor_type = Variable
-            if inplace:
-                warnings.warn(
-                    "Inplace on reshape is not allowed and will be discarded in dygraph mode currently."
-                )
             if isinstance(shape, (list, tuple)):
                 shape = [
                     item.numpy().item(0) if isinstance(item, Variable) else item
@@ -3610,7 +3727,7 @@ def reshape(x, shape, name=None):
                     " got '{}.'".format(type(shape))
                 )
 
-            return dygraph_utils._append_activation_in_dygraph(out, act)
+            return out
 
     check_variable_and_dtype(
         x,
@@ -3686,11 +3803,7 @@ def reshape(x, shape, name=None):
             actual_shape.stop_gradient = True
             inputs["Shape"] = actual_shape
 
-    out = (
-        x
-        if inplace
-        else helper.create_variable_for_type_inference(dtype=x.dtype)
-    )
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type="reshape2",
@@ -3699,7 +3812,7 @@ def reshape(x, shape, name=None):
         outputs={"Out": out, "XShape": x_shape},
     )
 
-    return helper.append_activation(out)
+    return out
 
 
 @inplace_apis_in_dygraph_only
@@ -3717,7 +3830,10 @@ def reshape_(x, shape, name=None):
                 else item
                 for item in shape
             ]
-            out = _C_ops.reshape_(x, shape)
+            if shape == x.shape:
+                out = x
+            else:
+                out = _C_ops.reshape_(x, shape)
         elif isinstance(shape, tmp_tensor_type):
             shape.stop_gradient = True
             out = _C_ops.reshape_(x, shape)

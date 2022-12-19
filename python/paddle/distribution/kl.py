@@ -20,10 +20,10 @@ from paddle.distribution.categorical import Categorical
 from paddle.distribution.dirichlet import Dirichlet
 from paddle.distribution.distribution import Distribution
 from paddle.distribution.exponential_family import ExponentialFamily
-from paddle.distribution.normal import Normal
-from paddle.distribution.lognormal import LogNormal
-from paddle.distribution.uniform import Uniform
 from paddle.distribution.laplace import Laplace
+from paddle.distribution.lognormal import LogNormal
+from paddle.distribution.normal import Normal
+from paddle.distribution.uniform import Uniform
 from paddle.fluid.framework import _non_static_mode
 
 __all__ = ["register_kl", "kl_divergence"]
@@ -127,7 +127,7 @@ def _dispatch(cls_p, cls_q):
 
 
 @functools.total_ordering
-class _Compare(object):
+class _Compare:
     def __init__(self, *classes):
         self.classes = classes
 

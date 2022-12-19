@@ -24,7 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/monitor.h"
@@ -32,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/mem_tracing.h"
 #include "paddle/fluid/string/split.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/core/flags.h"
 
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/dynload/miopen.h"
@@ -123,11 +123,6 @@ static size_t GpuAllocSize(bool realloc) {
 size_t GpuInitAllocSize() { return GpuAllocSize(/* realloc = */ false); }
 
 size_t GpuReallocSize() { return GpuAllocSize(/* realloc = */ true); }
-
-size_t GpuMinChunkSize() {
-  // Allow to allocate the minimum chunk size is 256 bytes.
-  return 1 << 8;
-}
 
 size_t GpuMaxChunkSize() {
   size_t max_chunk_size = GpuMaxAllocSize();
@@ -410,8 +405,8 @@ void RecordedGpuFree(void *p, size_t size, int dev_id) {
 CUresult RecordedGpuMemCreate(CUmemGenericAllocationHandle *handle,
                               size_t size,
                               const CUmemAllocationProp *prop,
-                              unsigned long long flags,
-                              int dev_id) {  // NOLINT
+                              unsigned long long flags,  // NOLINT
+                              int dev_id) {
   return RecordedGpuMallocHelper::Instance(dev_id)->MemCreate(
       handle, size, prop, flags);
 }

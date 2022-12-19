@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import unittest
+
+import numpy as np
 from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
@@ -74,7 +76,7 @@ class TestFoldOp(OpTest):
             + 1
         )
         output = np.zeros(output_shape).astype(np.float64)
-        ############ calculate output ##############
+        # ------------- calculate output ------------- #
         for b in range(output_shape[0]):
             for c in range(self.input_channels):
                 w_offset = int(c % self.kernel_sizes[1])
@@ -157,8 +159,8 @@ class TestFoldAPI(TestFoldOp):
 
 class TestFoldOpError(unittest.TestCase):
     def test_errors(self):
-        from paddle.nn.functional import fold
         from paddle.fluid.framework import Program, program_guard
+        from paddle.nn.functional import fold
 
         with program_guard(Program(), Program()):
 

@@ -16,8 +16,8 @@
 
 #include <vector>
 
-#include "paddle/fluid/operators/math/im2col.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/im2col.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
 
@@ -60,9 +60,7 @@ void FoldGradKernel(const Context& ctx,
                                        output_height,
                                        output_width});
 
-  paddle::operators::math::
-      Im2ColFunctor<paddle::operators::math::ColFormat::kCFO, Context, T>
-          im2col;
+  phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kCFO, Context, T> im2col;
 
   for (int i = 0; i < batch_size; i++) {
     DenseTensor out_grad_batch = out_grad.Slice(i, i + 1).Resize(out_shape);

@@ -44,21 +44,13 @@ bool CanMKLDNNSupportPool(const framework::ExecutionContext& ctx) {
 
 framework::OpKernelType PoolOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  framework::LibraryType library_{framework::LibraryType::kPlain};
-  phi::DataLayout layout_ = phi::DataLayout::kAnyLayout;
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::CanCUDNNBeUsed(ctx)) {
-    library_ = framework::LibraryType::kCUDNN;
-  }
-#endif
 
   // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
   this->SetDnnFallback(!CanMKLDNNSupportPool(ctx));
   // NOTE(jiahongyu) END: Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
-  return framework::OpKernelType(data_type, ctx.GetPlace(), layout_, library_);
+  return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 
 framework::OpKernelType PoolOp::GetKernelTypeForVar(
@@ -66,8 +58,8 @@ framework::OpKernelType PoolOp::GetKernelTypeForVar(
     const phi::DenseTensor& tensor,
     const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
-  if ((expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
-      (tensor.layout() != phi::DataLayout::kMKLDNN)) {
+  if ((expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
+      (tensor.layout() != phi::DataLayout::ONEDNN)) {
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_format = ar.Get<std::string>("data_format");
@@ -86,22 +78,13 @@ framework::OpKernelType PoolOp::GetKernelTypeForVar(
 
 framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  framework::LibraryType library_{framework::LibraryType::kPlain};
-  phi::DataLayout layout_ = phi::DataLayout::kAnyLayout;
   auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::CanCUDNNBeUsed(ctx)) {
-    library_ = framework::LibraryType::kCUDNN;
-  }
-#endif
 
   // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
   this->SetDnnFallback(!CanMKLDNNSupportPool(ctx));
   // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
-  return framework::OpKernelType(
-      input_data_type, ctx.GetPlace(), layout_, library_);
+  return framework::OpKernelType(input_data_type, ctx.GetPlace());
 }
 
 framework::OpKernelType PoolOpGrad::GetKernelTypeForVar(
@@ -109,8 +92,8 @@ framework::OpKernelType PoolOpGrad::GetKernelTypeForVar(
     const phi::DenseTensor& tensor,
     const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
-  if ((expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
-      (tensor.layout() != phi::DataLayout::kMKLDNN)) {
+  if ((expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
+      (tensor.layout() != phi::DataLayout::ONEDNN)) {
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_format = ar.Get<std::string>("data_format");
@@ -126,12 +109,12 @@ framework::OpKernelType PoolOpGrad::GetKernelTypeForVar(
 void Pool2dOpMaker::Make() {
   AddInput(
       "X",
-      "(Tensor) The input tensor of pooling operator. "
+      "(phi::DenseTensor) The input tensor of pooling operator. "
       "The format of input tensor is NCHW, where N is batch size, C is the "
       "number of channels, H is the height of the feature, "
       "and W is the width of the feature.");
   AddOutput("Out",
-            "(Tensor) The output tensor of pooling operator. "
+            "(phi::DenseTensor) The output tensor of pooling operator. "
             "The format of output tensor is also NCHW, "
             "where N is batch size, C is the number of channels, "
             "H is the height of the feature, "
@@ -318,14 +301,14 @@ class PoolOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
 
 void Pool3dOpMaker::Make() {
   AddInput("X",
-           "(Tensor) The input tensor of pooling operator. "
+           "(phi::DenseTensor) The input tensor of pooling operator. "
            "The format of input tensor is NCDHW or NDHWC, where N is batch "
            "size, C is "
            "the number of channels, and D, H and W is the depth, height and "
            "width of "
            "the feature, respectively.");
   AddOutput("Out",
-            "(Tensor) The output tensor of pooling operator."
+            "(phi::DenseTensor) The output tensor of pooling operator."
             "The format of output tensor is also NCDHW or NDHWC, "
             "where N is batch size, C is "
             "the number of channels, and D, H and W is the depth, height and "

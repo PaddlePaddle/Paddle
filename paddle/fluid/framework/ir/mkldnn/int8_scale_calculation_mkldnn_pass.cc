@@ -15,8 +15,8 @@
 #include "paddle/fluid/framework/ir/mkldnn/int8_scale_calculation_mkldnn_pass.h"
 
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace framework {

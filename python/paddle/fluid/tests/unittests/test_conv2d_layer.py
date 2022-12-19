@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-from paddle import fluid, nn
-import paddle.fluid.dygraph as dg
-import paddle.nn.functional as F
-import paddle.fluid.initializer as I
 import unittest
+
+import numpy as np
+
 import paddle
+import paddle.fluid.dygraph as dg
+import paddle.fluid.initializer as I
+import paddle.nn.functional as F
+from paddle import fluid, nn
 from paddle.fluid.framework import _test_eager_guard
 
 
@@ -44,7 +46,7 @@ class Conv2DTestCase(unittest.TestCase):
         data_format="NCHW",
         dtype="float32",
     ):
-        super(Conv2DTestCase, self).__init__(methodName)
+        super().__init__(methodName)
         self.batch_size = batch_size
         self.num_channels = num_channels
         self.num_filters = num_filters
@@ -125,7 +127,7 @@ class Conv2DTestCase(unittest.TestCase):
                 else:
                     padding = self.padding
 
-                y_var = fluid.layers.conv2d(
+                y_var = paddle.static.nn.conv2d(
                     x_var,
                     self.num_filters,
                     self.filter_size,

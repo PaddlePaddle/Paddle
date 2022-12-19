@@ -620,7 +620,7 @@ def _as_lodtensor(data, place, dtype=None):
     return tensor
 
 
-class FetchHandler(object):
+class FetchHandler:
     def __init__(self, var_dict=None, period_secs=60):
         assert var_dict is not None
         self.var_dict = var_dict
@@ -648,7 +648,7 @@ handler = FetchHandlerExample(var_dict=var_dict)
         )
 
 
-class _StandaloneExecutor(object):
+class _StandaloneExecutor:
     def __init__(self, place, main_program, scope):
         self._place = core.Place()
         self._place.set_place(place)
@@ -736,8 +736,8 @@ class _StandaloneExecutor(object):
         return res
 
 
-class _ExecutorCache(object):
-    class _CachedData(object):
+class _ExecutorCache:
+    class _CachedData:
         def __init__(
             self,
             program,
@@ -908,7 +908,7 @@ class _ExecutorCache(object):
         return new_program, new_exe
 
 
-class Executor(object):
+class Executor:
     """
     :api_attr: Static Graph
 
@@ -1480,7 +1480,7 @@ class Executor(object):
                 adam = paddle.optimizer.Adam()
                 adam.minimize(loss)
                 i = paddle.zeros(shape=[1], dtype='int64')
-                array = paddle.fluid.layers.array_write(x=loss, i=i)
+                array = paddle.tensor.array_write(x=loss, i=i)
 
                 # Run the startup program once and only once.
                 exe.run(paddle.static.default_startup_program())

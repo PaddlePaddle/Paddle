@@ -17,7 +17,7 @@ from paddle.fluid import core
 from paddle.fluid.core import Load
 
 
-class Layer(object):
+class Layer:
     def __init__(self):
         self.cpp_layer = None
         # {name: Function}
