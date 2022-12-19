@@ -360,11 +360,6 @@ if(WITH_INFERENCE_NVTX AND NOT WIN32)
   add_definitions(-DPADDLE_WITH_INFERENCE_NVTX)
 endif()
 
-set_source_files_properties(${PROJECT_SOURCE_DIR}/paddle/fluid/inference/api/analysis_predictor.cc
-                              PROPERTIES COMPILE_FLAGS "-DCUDA_REAL_ARCHS=\"${CUDA_REAL_ARCHS}\"")
-
-# set_target_properties(inference_lib_dist PROPERTIES COMPILE_FLAGS "-DCUDA_REAL_ARCHS=\"${CUDA_REAL_ARCHS}\"")
-
 copy(
   inference_lib_dist
   SRCS ${src_dir}/inference/capi_exp/pd_*.h ${paddle_inference_c_lib}
@@ -518,8 +513,7 @@ function(version version_file)
   if(WITH_GPU)
     file(APPEND ${version_file}
          "CUDA version: ${CUDA_VERSION}\n"
-         "CUDNN version: v${CUDNN_MAJOR_VERSION}.${CUDNN_MINOR_VERSION}\n"
-         "CUDA Real Architecture: SM_${CUDA_REAL_ARCHS}\n")
+         "CUDNN version: v${CUDNN_MAJOR_VERSION}.${CUDNN_MINOR_VERSION}\n")
   endif()
   if(WITH_ROCM)
     file(APPEND ${version_file}
