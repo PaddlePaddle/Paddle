@@ -442,4 +442,3 @@ def _endpoints_replacement(program, endpoints):
             op.set_attr(ENDPOINT_MAP, endpoints)
     program._sync_with_cpp()
     return program
-    
