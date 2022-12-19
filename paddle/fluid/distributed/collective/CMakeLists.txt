@@ -1,6 +1,6 @@
 cc_library(
   process_group
-  SRCS ProcessGroup.cc
+  SRCS process_group.cc
   DEPS dense_tensor)
 cc_library(
   process_group_stream
@@ -35,7 +35,7 @@ endif()
 if(WITH_XPU_BKCL)
   cc_library(
     process_group_bkcl
-    SRCS ProcessGroupBKCL.cc BKCLTools.cc common.cc
+    SRCS process_group_bkcl.cc bkcl_tools.cc common.cc
     DEPS process_group place enforce collective_helper device_context
          dense_tensor)
 endif()
@@ -50,7 +50,7 @@ endif()
 if(WITH_CUSTOM_DEVICE)
   cc_library(
     process_group_custom
-    SRCS ProcessGroupCustom.cc CustomCCLTools.cc common.cc
+    SRCS process_group_custom.cc custom_ccl_tools.cc common.cc
     DEPS process_group phi_backends place enforce collective_helper
          device_context)
 endif()

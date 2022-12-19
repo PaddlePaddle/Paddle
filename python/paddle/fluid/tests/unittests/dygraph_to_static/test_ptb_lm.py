@@ -23,7 +23,7 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.jit import ProgramTranslator
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
 
 PRINT_STEP = 20
 SEED = 2020
@@ -186,7 +186,7 @@ class PtbModel(fluid.Layer):
     def build_once(self, input, label, init_hidden, init_cell):
         pass
 
-    @declarative
+    @to_static
     def forward(self, input, label, init_hidden, init_cell):
 
         init_h = paddle.reshape(

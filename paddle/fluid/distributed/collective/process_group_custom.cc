@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/collective/ProcessGroupCustom.h"
+#include "paddle/fluid/distributed/collective/process_group_custom.h"
 
-#include "paddle/fluid/distributed/collective/CustomCCLTools.h"
 #include "paddle/fluid/distributed/collective/common.h"
+#include "paddle/fluid/distributed/collective/custom_ccl_tools.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
