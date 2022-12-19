@@ -58,7 +58,6 @@ class QuantizeLinearKernel : public framework::OpKernel<T> {
 
     // only observer
     if (is_observer) {
-      VLOG(1) << "-q---TensorCopy------";
       framework::TensorCopy(*in, context.GetPlace(), dev_ctx, out);
       return;
     }
@@ -135,7 +134,6 @@ class DeQuantizeLinearKernel : public framework::OpKernel<T> {
 
     // only observer
     if (is_observer) {
-      VLOG(1) << "-dq---TensorCopy------";
       framework::TensorCopy(*in, context.GetPlace(), dev_ctx, out);
       return;
     }
