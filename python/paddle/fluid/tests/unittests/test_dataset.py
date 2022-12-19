@@ -879,8 +879,8 @@ class TestDataset(unittest.TestCase):
 
         dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
         dataset.set_feed_type("SlotRecordInMemoryDataFeed")
+        dataset.set_thread(1)
         dataset.set_batch_size(1)
-        dataset.set_thread_num(1)
         dataset.set_pipe_command("cat")
         dataset.set_use_var(slots_vars)
         dataset.set_filelist([filename1, filename2])
