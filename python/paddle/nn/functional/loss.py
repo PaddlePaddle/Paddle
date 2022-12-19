@@ -813,7 +813,7 @@ def binary_cross_entropy_with_logits(
         one = _C_ops.full(
             [1],
             float(1.0),
-            core.VarDesc.VarType.FP32,
+            logit.dtype,
             _current_expected_place(),
         )
         out = _C_ops.sigmoid_cross_entropy_with_logits(
