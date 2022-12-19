@@ -17,7 +17,7 @@ from transformer_dygraph_model import MultiHeadAttention, PrePostProcessLayer
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import Layer
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
 from paddle.nn import Linear
 
 
@@ -373,7 +373,7 @@ class PretrainModelLayer(Layer):
             bias_attr="next_sent_fc.b_0",
         )
 
-    @declarative
+    @to_static
     def forward(
         self,
         src_ids,
