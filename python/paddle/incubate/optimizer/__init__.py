@@ -18,4 +18,4 @@ from .distributed_fused_lamb import DistributedFusedLamb  # noqa: F401
 from .lbfgs import LBFGS  # noqa: F401
 from . import functional  # noqa: F401
 
-__all__ = []
+__all__ = ['LBFGS']
