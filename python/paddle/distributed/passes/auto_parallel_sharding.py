@@ -822,11 +822,11 @@ class ShardingPass(PassBase):
                     comm_stream = op.dist_attr.execution_stream
 
                 # FIXME remove me when upgrade to multi-comm version
-                if len(dep_map.keys()) < stream_count:
+                if len(dep_map.keys()) < self.comm_stream_num:
                     op = _get_broadcast_first_depend_op(main_block)
                     prior_var = main_block.vars[op.output("ParamOut")[0]]
                 else:
-                    pre_op = main_block.ops[i - stream_count]
+                    pre_op = main_block.ops[i - self.comm_stream_num]
                     assert is_sharding_param_broadcast_op(
                         pre_op
                     ), "Unexpected: sharding broadcast pre op should be broadcast."
