@@ -48,7 +48,7 @@ def Assert(cond, data=None, summarize=20, name=None):
     number of the elements in the tensors to print.
 
     Args:
-        cond (Variable): The boolean condition tensor whose numel should be 1.
+        cond (Tensor): The boolean condition tensor whose numel should be 1.
         data (list|tuple, optional): list or tuple of tensors to print when
             condition is not true. If it's ``None``, no tensor will be printed.
             The default value is ``None``.

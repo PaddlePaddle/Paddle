@@ -25,11 +25,10 @@ from predictor_utils import PredictorTools
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-from paddle.fluid.dygraph.nn import BatchNorm
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
-from paddle.nn import Linear
+from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.nn import BatchNorm, Linear
 
 SEED = 2020
 np.random.seed(SEED)
@@ -312,6 +311,8 @@ class SeResNeXt(fluid.dygraph.Layer):
 
         self.pool2d_avg_output = num_filters[len(num_filters) - 1] * 2 * 1 * 1
 
+        self.dropout = paddle.nn.Dropout(p=0.5, mode="downscale_in_infer")
+
         self.out = Linear(
             self.pool2d_avg_output,
             class_dim,
@@ -335,7 +336,7 @@ class SeResNeXt(fluid.dygraph.Layer):
             y = bottleneck_block(y)
 
         y = self.pool2d_avg(y)
-        y = fluid.layers.dropout(y, dropout_prob=0.5, seed=100)
+        y = self.dropout(y)
         y = paddle.reshape(y, shape=[-1, self.pool2d_avg_output])
         out = self.out(y)
 

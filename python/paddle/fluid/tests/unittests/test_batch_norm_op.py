@@ -770,7 +770,7 @@ class TestBatchNormOpError(unittest.TestCase):
 class TestDygraphBatchNormAPIError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            batch_norm = fluid.dygraph.BatchNorm(10)
+            batch_norm = paddle.nn.BatchNorm(10)
             # the input of BatchNorm must be Variable.
             x1 = fluid.create_lod_tensor(
                 np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
@@ -793,7 +793,7 @@ class TestDygraphBatchNormTrainableStats(unittest.TestCase):
 
             def compute(x, is_test, trainable_statistics):
                 with fluid.dygraph.guard(p):
-                    bn = fluid.dygraph.BatchNorm(
+                    bn = paddle.nn.BatchNorm(
                         shape[1],
                         is_test=is_test,
                         trainable_statistics=trainable_statistics,
@@ -816,7 +816,7 @@ class TestDygraphBatchNormTrainableStats(unittest.TestCase):
 
             def compute(x_np, is_test, trainable_statistics):
                 with program_guard(Program(), Program()):
-                    bn = fluid.dygraph.BatchNorm(
+                    bn = paddle.nn.BatchNorm(
                         shape[1],
                         is_test=is_test,
                         trainable_statistics=trainable_statistics,
@@ -841,7 +841,7 @@ class TestDygraphBatchNormOpenReserveSpace(unittest.TestCase):
             x = fluid.data(name='x', shape=x.shape, dtype=x.dtype)
             # Set this FLAG, the BatchNorm API will pass "reserve_space" argument into batch_norm op.
             os.environ['FLAGS_cudnn_batchnorm_spatial_persistent'] = '1'
-            batch_norm = fluid.dygraph.BatchNorm(7, data_layout="NHWC")
+            batch_norm = paddle.nn.BatchNorm(7, data_layout="NHWC")
             hidden1 = batch_norm(x)
             os.environ['FLAGS_cudnn_batchnorm_spatial_persistent'] = '0'
 

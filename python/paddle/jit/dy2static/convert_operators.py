@@ -13,38 +13,21 @@
 # limitations under the License.
 
 import re
+
 import paddle
 from paddle.fluid.data_feeder import convert_dtype
-from .variable_trans_func import (
-    to_static_variable,
-)
-from paddle.fluid.framework import core, Variable
-from paddle.fluid.layers import Print
-from paddle.fluid.layers import (
-    array_read,
-    array_write,
-)
-from paddle.fluid.layers import (
-    assign,
-    fill_constant,
-)
-from paddle.fluid.layers import (
-    cast,
-    control_flow,
-)
-from paddle.fluid.layers.control_flow import (
-    while_loop,
-)
-from .return_transformer import (
-    RETURN_NO_VALUE_VAR_NAME,
-)
+from paddle.fluid.framework import Variable, core
+from paddle.fluid.layers import Print, assign, cast, control_flow, fill_constant
+from paddle.fluid.layers.control_flow import while_loop
+from paddle.fluid.layers.utils import copy_mutable_vars
 from paddle.jit.dy2static.utils import (
-    UndefinedVar,
     Dygraph2StaticException,
     GetterSetterHelper,
+    UndefinedVar,
 )
 
-from paddle.fluid.layers.utils import copy_mutable_vars
+from .return_transformer import RETURN_NO_VALUE_VAR_NAME
+from .variable_trans_func import to_static_variable
 
 __all__ = []
 
@@ -784,8 +767,10 @@ def _run_paddle_pop(array, *args):
         return paddle.less_than(i, arr_len)
 
     def body(i, new_array):
-        item = array_read(array=array, i=i)
-        array_write(item, paddle.tensor.array_length(new_array), new_array)
+        item = paddle.tensor.array_read(array=array, i=i)
+        paddle.tensor.array_write(
+            item, paddle.tensor.array_length(new_array), new_array
+        )
 
         i = paddle.increment(i)
         return i, new_array
@@ -796,7 +781,7 @@ def _run_paddle_pop(array, *args):
     else:
         idx = fill_constant(shape=[1], dtype="int64", value=idx)
 
-    pop_item = array_read(array, idx)
+    pop_item = paddle.tensor.array_read(array, idx)
 
     new_array = _slice_tensor_array(array, 0, idx)
     i = idx + 1
