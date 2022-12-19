@@ -266,7 +266,7 @@ uint64_t StreamSafeCUDAAllocator::ProcessUnfreedAllocationsAndRelease() {
   return underlying_allocator_->Release(place_);
 }
 
-std::once_flag StreamSafeCUDAAllocation::once_flag_;
+thread_local std::once_flag StreamSafeCUDAAllocation::once_flag_;
 
 std::map<platform::Place, std::vector<StreamSafeCUDAAllocator*>>
     StreamSafeCUDAAllocator::allocator_map_;

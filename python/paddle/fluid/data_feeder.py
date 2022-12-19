@@ -485,7 +485,7 @@ class DataFeeder:
                 x = fluid.data(name='x', shape=[None, 2, 2])
                 y = fluid.data(name='y', shape=[None, 2, 2], dtype='float32')
 
-                z = fluid.layers.elementwise_add(x, y)
+                z = paddle.add(x, y)
 
                 feeder = fluid.DataFeeder(['x','y'], fluid.CPUPlace())
                 place_num = 2

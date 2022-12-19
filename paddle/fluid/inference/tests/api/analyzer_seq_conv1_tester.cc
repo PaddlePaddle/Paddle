@@ -161,7 +161,6 @@ TEST(Analyzer_seq_conv1, fuse_statis) {
   ASSERT_TRUE(fuse_statis.count("seqconv_eltadd_relu_fuse"));
   EXPECT_EQ(fuse_statis.at("fc_fuse"), 2);
   EXPECT_EQ(fuse_statis.at("seqconv_eltadd_relu_fuse"), 6);
-  EXPECT_EQ(num_ops, 31);
 }
 
 // Compare result of NativeConfig and AnalysisConfig

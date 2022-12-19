@@ -2573,7 +2573,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "lookup_table",
       "merge_layernorm",
       "skip_merge_layernorm",
-      // "lookup_table_v2",
+      "lookup_table_v2",
       "expand_v2"};
 
   std::unordered_set<std::string> teller_set{
@@ -2719,7 +2719,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "merge_layernorm",
       "skip_merge_layernorm",
       "lookup_table",
-      // "lookup_table_v2",
+      "lookup_table_v2",
       "expand_v2"};
 };
 

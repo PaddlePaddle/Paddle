@@ -66,7 +66,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
         with fluid.program_guard(main_program, startup_program):
             x = fluid.layers.data(name='x', shape=[1, 28, 28], dtype='float32')
             y = fluid.layers.data(name="y", shape=[1], dtype='int64')
-            conv1_1 = fluid.layers.conv2d(
+            conv1_1 = paddle.static.nn.conv2d(
                 input=x,
                 filter_size=3,
                 num_filters=32,
@@ -77,7 +77,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
                 bias_attr=False,
                 data_format='NHWC',
             )
-            conv1_2 = fluid.layers.conv2d(
+            conv1_2 = paddle.static.nn.conv2d(
                 input=x,
                 filter_size=3,
                 num_filters=32,
@@ -125,7 +125,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
         with fluid.program_guard(main_program, startup_program):
             x = fluid.layers.data(name='x', shape=[1, 28, 28], dtype='float32')
             y = fluid.layers.data(name="y", shape=[1], dtype='int64')
-            conv1_1 = fluid.layers.conv2d(
+            conv1_1 = paddle.static.nn.conv2d(
                 input=x,
                 filter_size=3,
                 num_filters=32,
@@ -143,7 +143,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
                 act=None,
                 data_layout='NHWC',
             )
-            conv1_2 = fluid.layers.conv2d(
+            conv1_2 = paddle.static.nn.conv2d(
                 input=conv1_1,
                 filter_size=1,
                 num_filters=32,
