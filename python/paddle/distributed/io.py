@@ -433,3 +433,13 @@ def load_inference_model_distributed(
     ]
 
     return [program, feed_target_names, fetch_targets]
+
+
+def _endpoints_replacement(program, endpoints):
+    ENDPOINT_MAP = "epmap"
+    for op in program.global_block().ops:
+        if op.has_attr(ENDPOINT_MAP):
+            op.set_attr(ENDPOINT_MAP, endpoints)
+    program._sync_with_cpp()
+    return program
+    
