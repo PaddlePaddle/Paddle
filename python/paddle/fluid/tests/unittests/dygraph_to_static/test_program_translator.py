@@ -109,7 +109,9 @@ class StaticCode1:
 
         def true_fn_1():
             nonlocal __return_0, __return_1, __return_value_0, loss
-            loss = fluid.layers.cross_entropy(x_v, label)
+            loss = paddle.nn.functional.cross_entropy(
+                x_v, label, reduction='none', use_softmax=False
+            )
             __return_0 = _jst.create_bool_as_type(label is not None, True)
             __return_value_0 = loss
             return
@@ -178,7 +180,9 @@ class StaticCode2:
 
         def true_fn_3():
             nonlocal __return_2, __return_3, __return_value_1, loss
-            loss = fluid.layers.cross_entropy(x_v, label)
+            loss = paddle.nn.functional.cross_entropy(
+                x_v, label, reduction='none', use_softmax=False
+            )
             __return_2 = _jst.create_bool_as_type(label is not None, True)
             __return_value_1 = loss
             return
