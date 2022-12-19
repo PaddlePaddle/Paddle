@@ -2757,6 +2757,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     ``x`` will be inferred automatically.
     This API can also be used to debug the neural network by setting the ``func``
     as a function that only print variables.
+
     Args:
         func (callable): The forward function of the registered OP. When the network
             is running, the forward output ``out`` will be calculated according to this
@@ -2780,10 +2781,15 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
             that no tensors need to be removed from ``x`` and ``out``. If it is not None,
             these tensors will not be the input of ``backward_func``. This parameter is only
             useful when ``backward_func`` is not None.
+
     Returns:
-        Tensor|tuple(Tensor)|list[Tensor]: The output ``out`` of the forward function ``func``.
+        Tensor|tuple(Tensor)|list[Tensor], The output ``out`` of the forward function ``func``.
+
     Examples:
+
         .. code-block:: python
+            :name: code-example1
+
             # example 1:
             import paddle
             import numpy as np
@@ -2829,7 +2835,10 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
                           feed={'x':input1, 'y':input2},
                           fetch_list=[res.name])
             print(out)
+
         .. code-block:: python
+            :name: code-example2
+
             # example 2:
             # This example shows how to turn Tensor into numpy array and
             # use numpy API to register an Python OP
