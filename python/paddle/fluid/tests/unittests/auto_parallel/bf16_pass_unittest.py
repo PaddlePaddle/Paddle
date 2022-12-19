@@ -19,6 +19,7 @@ import numpy as np
 from get_gpt_model import FakeDataset, generate_model
 
 import paddle
+import paddle.fluid.core as core
 from paddle.distributed.fleet import auto
 from paddle.fluid.dygraph.parallel import ParallelEnv
 
@@ -51,6 +52,9 @@ def reset_prog():
     paddle.fluid.framework.switch_startup_program(paddle.static.Program())
 
 
+@unittest.skipIf(
+    not core.supports_bfloat16(), 'place does not support BF16 evaluation'
+)
 class TestBF16Pass(unittest.TestCase):
     def setUp(self):
         self.rtol = 1e-5
