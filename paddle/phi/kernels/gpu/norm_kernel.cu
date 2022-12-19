@@ -43,7 +43,7 @@ __global__ void Normalize(const T* x,
                           const int pre,
                           const int axis_n,  // dim in axis
                           const int post,
-                          const T eps,
+                          const float eps,
                           T* y,
                           T* out_norm) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
