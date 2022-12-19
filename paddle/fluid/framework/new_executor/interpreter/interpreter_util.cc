@@ -43,6 +43,11 @@ PADDLE_DEFINE_EXPORTED_bool(
     false,
     "Log memory stats after each op runs, just used for debug.");
 
+PADDLE_DEFINE_EXPORTED_bool(
+    new_executor_static_build,
+    false,
+    "Build the interpreterCore statically without running.");
+
 DECLARE_bool(use_mkldnn);
 DECLARE_bool(check_nan_inf);
 
@@ -521,8 +526,9 @@ bool BuildOpFuncList(const platform::Place& place,
   // Step 1: create all ops for current block.
   CreateAllOps(block, &ops_unique);
 
-  auto skip_run = IsBlockContainsOnlyPhiKernel(block);
-  VLOG(4) << "IsBlockContainsOnlyPhiKernel: " << skip_run;
+  auto skip_run =
+      FLAGS_new_executor_static_build && IsBlockContainsOnlyPhiKernel(block);
+  VLOG(4) << "Static build: " << skip_run;
 
   if (!execution_config.used_for_jit) {
     // If gc is enabled and block size > 1
@@ -733,6 +739,7 @@ bool BuildOpFuncList(const platform::Place& place,
         // for why.
         if (!(op->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
               op->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
+          VLOG(4) << "infer shape";
           InterpretercoreInferShapeContext infer_shape_ctx(*op,
                                                            runtime_context);
           // TODO(Aurelius84): In case of control flow ops, they are NOT
@@ -748,31 +755,47 @@ bool BuildOpFuncList(const platform::Place& place,
           if (!skip_run) {
             (*op_func_node.phi_kernel_)(&phi_kernel_context);
           } else {
-            size_t out_size = phi_kernel_context.OutputsSize();
             auto output_defs =
                 op_func_node.phi_kernel_->args_def().output_defs();
-            for (size_t i = 0; i < out_size; ++i) {
+            auto out_names = op_with_kernel->PhiKernelSignature()->output_names;
+
+            for (size_t i = 0; i < out_names.size(); ++i) {
+              VLOG(4) << out_names[i];
               // calcute the start and end index of the output tensors
-              auto* out_tensor = phi_kernel_context.MutableOutputAt(i);
-              if (phi::DenseTensor::classof(out_tensor)) {
-                VLOG(4) << "DenseTensor alloc "
-                        << phi::backends::gpu::GpuMinChunkSize()
-                        << " bytes of type " << out_tensor->dtype();
-                dev_ctx->template Alloc(
-                    out_tensor,
-                    out_tensor->dtype(),
-                    /*requested_size=*/phi::backends::gpu::GpuMinChunkSize(),
-                    /*pinned=*/false,
-                    /*check_size=*/true);
-              } else if (phi::SparseCooTensor::classof(out_tensor)) {
-                VLOG(4) << "SparseCooTensor";
-              } else if (phi::SparseCsrTensor::classof(out_tensor)) {
-                VLOG(4) << "SparseCsrTensor";
-              } else {
-                PADDLE_THROW(phi::errors::Unimplemented(
-                    "Only support DenseTensor/SparseCooTensor/SparseCsrTensor "
-                    "now"));
-                VLOG(4) << "SparseCooTensor";
+              size_t start_idx = phi_kernel_context.OutputRangeAt(i).first;
+              size_t end_idx = phi_kernel_context.OutputRangeAt(i).second;
+              for (size_t j = start_idx; j < end_idx; ++j) {
+                auto* out_tensor = phi_kernel_context.MutableOutputAt(j);
+                if (out_tensor == nullptr) {
+                  VLOG(4) << "Output" << out_names[i] << " is nullptr";
+                  continue;
+                }
+                if (phi::DenseTensor::classof(out_tensor)) {
+                  if (!out_tensor->initialized()) {
+                    VLOG(4) << "DenseTensor alloc "
+                            << phi::backends::gpu::GpuMinChunkSize()
+                            << " bytes of type " << out_tensor->dtype() << " "
+                            << out_tensor;
+
+                    dev_ctx->template Alloc(
+                        out_tensor,
+                        out_tensor->dtype(),
+                        /*requested_size=*/
+                        phi::backends::gpu::GpuMinChunkSize(),
+                        /*pinned=*/false,
+                        /*check_size=*/false);
+                  }
+                } else if (phi::SparseCooTensor::classof(out_tensor)) {
+                  VLOG(4) << "SparseCooTensor";
+                } else if (phi::SparseCsrTensor::classof(out_tensor)) {
+                  VLOG(4) << "SparseCsrTensor";
+                } else {
+                  PADDLE_THROW(phi::errors::Unimplemented(
+                      "Only support "
+                      "DenseTensor/SparseCooTensor/SparseCsrTensor "
+                      "now"));
+                  VLOG(4) << "SparseCooTensor";
+                }
               }
             }
           }

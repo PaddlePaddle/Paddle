@@ -3029,6 +3029,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
         (i == 0 ? 0 : phi_kernel_context->OutputRangeAt(i - 1).second);
 
     if (it == ctx.outputs.end() || it->second.empty()) {
+      VLOG(4) << "Output " << output_names[i] << " not found";
       // Deal with the case that some outputs are not found or be NULL when run
       // the kernel.
       // For example : the outputs of matmul_grad are dx and dy,
@@ -3074,6 +3075,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
               framework::ToTypeName(var->Type())));
         }
       } else {
+        VLOG(4) << "Output " << output_names[i] << " is nullptr";
         phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
       }
     }

@@ -108,13 +108,14 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
     VLOG(10) << "change data type in mutbale_data, target dtype - " << dtype;
     meta_.dtype = dtype;
   }
-  PADDLE_ENFORCE(
-      valid(),
-      phi::errors::PreconditionNotMet(
-          "The meta data must be valid when call the mutable data function."));
+
   size_t bytes = numel() * SizeOf(this->dtype());
   if (requested_size) {
     if (check_size) {
+      PADDLE_ENFORCE(
+          valid(),
+          phi::errors::PreconditionNotMet("The meta data must be valid when "
+                                          "call the mutable data function."));
       PADDLE_ENFORCE_GE(requested_size,
                         bytes,
                         phi::errors::InvalidArgument(
