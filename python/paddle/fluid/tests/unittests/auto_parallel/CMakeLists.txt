@@ -60,9 +60,10 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_pass_amp MODULES test_pass_amp ENVS ${dist_ENVS})
   set_tests_properties(test_pass_amp PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
                                                 TIMEOUT 50)
-  py_test_modules(test_pass_bf16 MODULES test_pass_bf16 ENVS ${dist_ENVS})
-  set_tests_properties(test_pass_bf16 PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
-                                                 TIMEOUT 50)
+  py_test_modules(bf16_pass_unittest MODULES bf16_pass_unittest ENVS
+                  ${dist_ENVS})
+  set_tests_properties(bf16_pass_unittest
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
   py_test_modules(test_engine_callbacks MODULES test_engine_callbacks)
   set_tests_properties(test_engine_callbacks
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
@@ -79,6 +80,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   set_tests_properties(test_selective_recompute PROPERTIES TIMEOUT 50)
   py_test_modules(test_tuning_recompute MODULES test_tuning_recompute)
   set_tests_properties(test_tuning_recompute PROPERTIES TIMEOUT 240)
+
   py_test_modules(test_while_op_completion MODULES test_while_op_completion
                   ENVS ${dist_ENVS})
   py_test_modules(test_while_op_partition MODULES test_while_op_partition ENVS

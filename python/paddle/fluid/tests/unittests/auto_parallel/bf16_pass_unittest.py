@@ -77,7 +77,7 @@ class TestBF16Pass(unittest.TestCase):
         strategy = apply_pass(use_bf16)
         clip = paddle.nn.ClipGradByGlobalNorm(self.clip_norm)
         opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip)
-        model, loss = generate_model("mp")
+        model, loss = generate_model("serial")
 
         engine = auto.Engine(model, loss, opt, strategy=strategy)
         self.init(engine)
