@@ -119,7 +119,9 @@ class PHIVector : public phi::ExtendedTensor,
  public:
   /// \brief Returns the name of the class for type traits.
   /// \return The name of the class.
-  static const char* name() { return "PHIVector"; }
+  static const char* name() {
+    return (std::string("PHIVector_") + std::string(typeid(T).name())).c_str();
+  }
 
   size_t size() const { return data_.size(); }
 

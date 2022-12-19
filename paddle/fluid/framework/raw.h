@@ -37,7 +37,11 @@ class Raw : public phi::ExtendedTensor,
   Raw& operator=(Raw&& other) = default;
 
   /// \brief Destroy the Raw and release exclusive resources.
-  virtual ~Raw() = default;
+  virtual ~Raw() {
+    if (!data_.empty()) {
+      data_deleter_();
+    }
+  }
 
  public:
   /// \brief Returns the name of the class for type traits.
@@ -82,12 +86,14 @@ class Raw : public phi::ExtendedTensor,
   }
 
   template <typename T>
-  void SetData(T* data) {
+  void SetData(T* data, bool need_manage_memory = false) {
     if (!data_.empty()) {
       data_deleter_();
     }
     data_ = data;
-    data_deleter_ = [data]() { delete data; };
+    if (need_manage_memory) {
+      data_deleter_ = [data]() { delete data; };
+    }
     data_type_ = std::type_index(typeid(T));
   }
 
@@ -98,7 +104,7 @@ class Raw : public phi::ExtendedTensor,
 
  private:
   paddle::any data_;
-  std::function<void(void)> data_deleter_;
+  std::function<void(void)> data_deleter_ = []() {};
   std::type_index data_type_ = std::type_index(typeid(void));
 };
 

@@ -745,6 +745,10 @@ class OperatorWithKernel : public OperatorBase {
                      std::vector<std::string>* transfered_inplace_vars,
                      RuntimeContext* ctx) const;
 
+  void CheckWhetherPreparePhiData(const VariableNameMap& innames,
+                                  const VariableNameMap& outnames,
+                                  const Scope& scope) const;
+
   void TransferInplaceVarsBack(const Scope& scope,
                                const std::vector<std::string>& inplace_vars,
                                const Scope& exec_scope) const;

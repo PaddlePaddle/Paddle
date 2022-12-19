@@ -19,7 +19,7 @@ namespace phi {
 KernelSignature FeedOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.IsDenseTensorOutput("Out")) {
     return KernelSignature("feed_dense_tensor", {"X"}, {"col"}, {"Out"});
-  } else if (ctx.IsSparseCooTensorInput("Out")) {
+  } else if (ctx.IsSparseCooTensorOutput("Out")) {
     return KernelSignature("feed_sparse_coo_tensor", {"X"}, {"col"}, {"Out"});
   } else {
     return KernelSignature("feed_strings", {"X"}, {"col"}, {"Out"});
