@@ -186,7 +186,7 @@ class TestReluDoubleGradCheck(unittest.TestCase):
 
         x = layers.data('x', shape, False, dtype)
         x.persistable = True
-        y = layers.relu(x)
+        y = F.relu(x)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.02
 

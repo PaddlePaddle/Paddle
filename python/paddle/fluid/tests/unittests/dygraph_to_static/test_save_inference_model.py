@@ -20,10 +20,10 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
 from paddle.jit.dy2static.partial_program import partial_program_from
+from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 SEED = 2020
 

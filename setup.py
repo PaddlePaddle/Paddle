@@ -557,12 +557,21 @@ def options_process(args, build_options):
             args.append("-D{}={}".format(key, value))
 
 
+def get_cmake_generator():
+    if os.getenv("CMAKE_GENERATOR"):
+        cmake_generator = os.getenv("CMAKE_GENERATOR")
+    else:
+        cmake_generator = "Unix Makefiles"
+
+    return cmake_generator
+
+
 def cmake_run(args, build_path):
     with cd(build_path):
         cmake_args = []
         cmake_args.append(CMAKE)
-        cmake_args.append('-DWITH_SETUP_INSTALL=ON')
         cmake_args += args
+        cmake_args.append('-DWITH_SETUP_INSTALL=ON')
         cmake_args.append(TOP_DIR)
         print("cmake_args:", cmake_args)
         subprocess.check_call(cmake_args)
@@ -573,12 +582,28 @@ def build_run(args, build_path, envrion_var):
         build_args = []
         build_args.append(CMAKE)
         build_args += args
-        # cmake_args.append(TOP_DIR)
         print(" ".join(build_args))
         try:
             subprocess.check_call(build_args, cwd=build_path, env=envrion_var)
         except (CalledProcessError, KeyboardInterrupt) as e:
             sys.exit(1)
+
+
+def run_cmake_build(build_path):
+    build_args = ["--build", ".", "--target", "install", "--config", 'Release']
+    max_jobs = os.getenv("MAX_JOBS")
+    if max_jobs is not None:
+        max_jobs = max_jobs or str(multiprocessing.cpu_count())
+
+        build_args += ["--"]
+        if IS_WINDOWS:
+            build_args += ["/p:CL_MPCount={}".format(max_jobs)]
+        else:
+            build_args += ["-j", max_jobs]
+    else:
+        build_args += ["-j", str(multiprocessing.cpu_count())]
+    environ_var = os.environ.copy()
+    build_run(build_args, build_path, environ_var)
 
 
 def build_steps():
@@ -596,83 +621,81 @@ def build_steps():
     # if rerun_cmake is True,remove CMakeCache.txt and rerun camke
     if os.path.isfile(cmake_cache_file_path) and rerun_cmake is True:
         os.remove(cmake_cache_file_path)
-    if not os.path.exists(cmake_cache_file_path):
-        env_var = os.environ.copy()  # get env variables
-        paddle_build_options = {}
-        other_options = {}
-        other_options.update(
-            {
-                option: option
-                for option in (
-                    "PYTHON_LIBRARY",
-                    "INFERENCE_DEMO_INSTALL_DIR",
-                    "ON_INFER",
-                    "PYTHON_EXECUTABLE",
-                    "TENSORRT_ROOT",
-                    "CUDA_ARCH_NAME",
-                    "CUDA_ARCH_BIN",
-                    "PYTHON_INCLUDE_DIR",
-                    "PYTHON_LIBRARIES",
-                    "PY_VERSION",
-                    "CUB_PATH",
-                    "NEW_RELEASE_PYPI",
-                    "CUDNN_ROOT",
-                    "THIRD_PARTY_PATH",
-                    "NOAVX_CORE_FILE",
-                    "LITE_GIT_TAG",
-                    "CUDA_TOOLKIT_ROOT_DIR",
-                    "NEW_RELEASE_JIT",
-                    "XPU_SDK_ROOT",
-                    "MSVC_STATIC_CRT",
-                    "Ninja",
-                    "NEW_RELEASE_ALL",
-                )
-            }
-        )
-        # if environment variables which start with "WITH_" or "CMAKE_",put it into build_options
-        for option_key, option_value in env_var.items():
-            if option_key.startswith(("CMAKE_", "WITH_")):
-                paddle_build_options[option_key] = option_value
-            if option_key in other_options:
-                print("type:", type(other_options[option_key]))
-                if (
-                    option_key == 'PYTHON_EXECUTABLE'
-                    or option_key == 'PYTHON_LIBRARY'
-                    or option_key == 'PYTHON_LIBRARIES'
-                ):
-                    key = option_key + ":FILEPATH"
-                    print(key)
-                elif option_key == 'PYTHON_INCLUDE_DIR':
-                    key = key = option_key + ':PATH'
-                    print(key)
-                else:
-                    key = other_options[option_key]
-                if key not in paddle_build_options:
-                    paddle_build_options[key] = option_value
-        args = []
-        options_process(args, paddle_build_options)
-        print("args:", args)
-        cmake_run(args, build_path)
+
+    CMAKE_GENERATOR = get_cmake_generator()
+
+    if CMAKE_GENERATOR == "Ninja":
+        build_ninja_file_path = os.path.join(build_path, "build.ninja")
+        # if os.path.exists(cmake_cache_file_path) and not (USE_NINJA and not os.path.exists(build_ninja_file_path)):
+        if os.path.exists(cmake_cache_file_path) and os.path.exists(
+            build_ninja_file_path
+        ):
+            print("Do not need rerun camke,everything is ready,run build now")
+            run_cmake_build(build_path)
+            return
+
+    args = []
+    env_var = os.environ.copy()  # get env variables
+    paddle_build_options = {}
+    other_options = {}
+    other_options.update(
+        {
+            option: option
+            for option in (
+                "PYTHON_LIBRARY",
+                "INFERENCE_DEMO_INSTALL_DIR",
+                "ON_INFER",
+                "PYTHON_EXECUTABLE",
+                "TENSORRT_ROOT",
+                "CUDA_ARCH_NAME",
+                "CUDA_ARCH_BIN",
+                "PYTHON_INCLUDE_DIR",
+                "PYTHON_LIBRARIES",
+                "PY_VERSION",
+                "CUB_PATH",
+                "NEW_RELEASE_PYPI",
+                "CUDNN_ROOT",
+                "THIRD_PARTY_PATH",
+                "NOAVX_CORE_FILE",
+                "LITE_GIT_TAG",
+                "CUDA_TOOLKIT_ROOT_DIR",
+                "NEW_RELEASE_JIT",
+                "XPU_SDK_ROOT",
+                "MSVC_STATIC_CRT",
+                "NEW_RELEASE_ALL",
+                "CMAKE_GENERATOR",
+            )
+        }
+    )
+    # if environment variables which start with "WITH_" or "CMAKE_",put it into build_options
+    for option_key, option_value in env_var.items():
+        if option_key.startswith(("CMAKE_", "WITH_")):
+            paddle_build_options[option_key] = option_value
+        if option_key in other_options:
+            if (
+                option_key == 'PYTHON_EXECUTABLE'
+                or option_key == 'PYTHON_LIBRARY'
+                or option_key == 'PYTHON_LIBRARIES'
+            ):
+                key = option_key + ":FILEPATH"
+                print(key)
+            elif option_key == 'PYTHON_INCLUDE_DIR':
+                key = key = option_key + ':PATH'
+                print(key)
+            else:
+                key = other_options[option_key]
+            if key not in paddle_build_options:
+                paddle_build_options[key] = option_value
+    options_process(args, paddle_build_options)
+    print("args:", args)
+    cmake_run(args, build_path)
     # make
     if only_cmake:
         print(
             "You have finished running cmake, the program exited,run 'ccmake build' to adjust build options and 'python setup.py install to build'"
         )
         sys.exit()
-    build_args = ["--build", ".", "--target", "install", "--config", 'Release']
-    max_jobs = os.getenv("MAX_JOBS")
-    if max_jobs is not None:
-        max_jobs = max_jobs or str(multiprocessing.cpu_count())
-
-        build_args += ["--"]
-        if IS_WINDOWS:
-            build_args += ["/p:CL_MPCount={}".format(max_jobs)]
-        else:
-            build_args += ["-j", max_jobs]
-    else:
-        build_args += ["-j", str(multiprocessing.cpu_count())]
-    environ_var = os.environ.copy()
-    build_run(build_args, build_path, environ_var)
+    run_cmake_build(build_path)
 
 
 def get_setup_requires():

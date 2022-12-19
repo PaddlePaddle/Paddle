@@ -22,8 +22,8 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
-#include "paddle/fluid/distributed/collective/ProcessGroupStream.h"
 #include "paddle/fluid/distributed/collective/Types.h"
+#include "paddle/fluid/distributed/collective/process_group_stream.h"
 #include "paddle/fluid/distributed/collective/reducer.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -34,11 +34,11 @@ limitations under the License. */
 #include "paddle/phi/api/all.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
+#include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #endif
 
 #if defined(PADDLE_WITH_MPI)
-#include "paddle/fluid/distributed/collective/ProcessGroupMPI.h"
+#include "paddle/fluid/distributed/collective/process_group_mpi.h"
 #endif
 
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
@@ -46,7 +46,7 @@ limitations under the License. */
 #endif
 
 #if defined(PADDLE_WITH_GLOO)
-#include "paddle/fluid/distributed/collective/ProcessGroupGloo.h"
+#include "paddle/fluid/distributed/collective/process_group_gloo.h"
 #include "paddle/fluid/distributed/store/tcp_store.h"
 #endif
 
@@ -169,9 +169,7 @@ void BindDistributed(py::module *m) {
                 auto p_dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
                 auto out_dense = *p_dense;
-                // numel == -1 indicates sending the whole tensor
-                return self.Send(
-                    out_dense, dst, /*offset*/ 0, /*numel*/ -1, sync_op);
+                return self.Send(out_dense, dst, sync_op);
               },
               py::arg("tensor"),
               py::arg("dst"),
@@ -215,9 +213,7 @@ void BindDistributed(py::module *m) {
                 auto p_dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
                 auto *in_dense = p_dense.get();
-                // numel == -1 indicates receiving the whole tensor
-                return self.Recv(
-                    in_dense, src, /*offset*/ 0, /*numel*/ -1, sync_op);
+                return self.Recv(in_dense, src, sync_op);
               },
               py::arg("tensor"),
               py::arg("src"),
@@ -270,11 +266,7 @@ void BindDistributed(py::module *m) {
                 auto in_dense = *p_in_tensor;
 
                 auto *dev_ctx = self.GetDeviceContext(in_tensor.place());
-                auto task = self.AllGather(out_dense,
-                                           in_dense,
-                                           /*offset*/ 0,
-                                           /*numel*/ -1,
-                                           sync_op);
+                auto task = self.AllGather(out_dense, in_dense, sync_op);
                 SplitTensor(*dev_ctx, *out_dense, &out_tensor_list);
                 task->UpdateWaitChain(*dev_ctx);
                 return task;
@@ -300,11 +292,7 @@ void BindDistributed(py::module *m) {
                     in_tensor.impl());
                 auto in_dense = *p_in_tensor;
 
-                return self.AllGather(out_dense,
-                                      in_dense,
-                                      /*offset*/ 0,
-                                      /*numel*/ -1,
-                                      sync_op);
+                return self.AllGather(out_dense, in_dense, sync_op);
               },
               py::arg("out"),
               py::arg("in"),
@@ -771,8 +759,6 @@ void BindDistributed(py::module *m) {
                 auto *dev_ctx = self.GetDeviceContext(in_tensor.place(), true);
                 auto task = self.AllGather(out_dense,
                                            in_dense,
-                                           /*offset*/ 0,
-                                           /*numel*/ -1,
                                            /*sync_op*/ true,
                                            /*use_calc_stream*/ true);
                 SplitTensor(*dev_ctx, *out_dense, &out_tensor_list);
@@ -799,8 +785,6 @@ void BindDistributed(py::module *m) {
 
                 return self.AllGather(out_dense,
                                       in_dense,
-                                      /*offset*/ 0,
-                                      /*numel*/ -1,
                                       /*sync_op*/ true,
                                       /*use_calc_stream*/ true);
               },
@@ -1127,11 +1111,8 @@ void BindDistributed(py::module *m) {
                 auto p_dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
                 auto out_dense = *p_dense;
-                // numel == -1 indicates sending the whole tensor
                 return self.Send(out_dense,
                                  dst,
-                                 /*offset*/ 0,
-                                 /*numel*/ -1,
                                  /*sync_op*/ true,
                                  /*use_calc_stream*/ true);
               },
@@ -1177,11 +1158,8 @@ void BindDistributed(py::module *m) {
                 auto p_dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
                 auto *in_dense = p_dense.get();
-                // numel == -1 indicates receiving the whole tensor
                 return self.Recv(in_dense,
                                  src,
-                                 /*offset*/ 0,
-                                 /*numel*/ -1,
                                  /*sync_op*/ true,
                                  /*use_calc_stream*/ true);
               },
