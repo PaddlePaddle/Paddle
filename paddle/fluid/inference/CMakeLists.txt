@@ -76,8 +76,9 @@ else()
   # message("${phi_kernels}")
   # message("${STATIC_INFERENCE_API}")
   # message("${utils_modules}")
-  create_static_lib(paddle_inference ${fluid_modules} ${phi_modules}
-                    ${phi_kernels} ${STATIC_INFERENCE_API} ${utils_modules})
+  add_library(paddle_inference INTERFACE)
+  target_link_libraries(paddle_inference INTERFACE ${fluid_moduels} ${phi_modules}
+                      ${phi_kernels} ${STATIC_INFERENCE_API} ${utils_modules})
 endif()
 
 if(NOT APPLE)
