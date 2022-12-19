@@ -111,30 +111,34 @@ class TrtConvertNearestInterpV2SizeTensorTest(TrtLayerAutoScanTest):
     def sample_program_configs(self):
         def generate_input():
             return np.ones([1, 3, 32, 32]).astype(np.float32)
+
         ops_config = [
             {
                 "op_type": "fill_constant",
-                "op_inputs":{},
-                "op_outputs":{"Out":["size_tensor_1"]},
-                "op_attrs":{
+                "op_inputs": {},
+                "op_outputs": {"Out": ["size_tensor_1"]},
+                "op_attrs": {
                     "dtype": 2,
-                    "str_value":"64",
-                    "shape":[1],
+                    "str_value": "64",
+                    "shape": [1],
                 },
             },
             {
                 "op_type": "fill_constant",
-                "op_inputs":{},
-                "op_outputs":{"Out":["size_tensor_2"]},
-                "op_attrs":{
+                "op_inputs": {},
+                "op_outputs": {"Out": ["size_tensor_2"]},
+                "op_attrs": {
                     "dtype": 2,
-                    "str_value":"64",
-                    "shape":[1],
+                    "str_value": "64",
+                    "shape": [1],
                 },
             },
             {
                 "op_type": "nearest_interp_v2",
-                "op_inputs": {"X": ["input_data"], "SizeTensor":["size_tensor_1","size_tensor_2"]},
+                "op_inputs": {
+                    "X": ["input_data"],
+                    "SizeTensor": ["size_tensor_1", "size_tensor_2"],
+                },
                 "op_outputs": {"Out": ["interp_output_data"]},
                 "op_attrs": {
                     "data_layout": "NCHW",
@@ -145,7 +149,7 @@ class TrtConvertNearestInterpV2SizeTensorTest(TrtLayerAutoScanTest):
                     "out_h": 0,
                     "out_w": 0,
                 },
-            }
+            },
         ]
 
         ops = self.generate_op_config(ops_config)
@@ -192,7 +196,6 @@ class TrtConvertNearestInterpV2SizeTensorTest(TrtLayerAutoScanTest):
 
     def test(self):
         self.run_test()
-
 
 
 if __name__ == "__main__":

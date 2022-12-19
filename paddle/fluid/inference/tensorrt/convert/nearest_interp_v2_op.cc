@@ -75,18 +75,19 @@ class NearestInterpolateV2OpConverter : public OpConverter {
     } else if (scale.size() > 1) {
       scale_h = scale[0];
       scale_w = scale[1];
-    } else if (engine_->with_dynamic_shape()==false){
+    } else if (engine_->with_dynamic_shape() == false) {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Out_h/out_w or scale is needed for nearest interp v2 trt op in static shape mode."));
-    } else if (has_size_input_attr==false){
+          "Out_h/out_w or scale is needed for nearest interp v2 trt op in "
+          "static shape mode."));
+    } else if (has_size_input_attr == false) {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Invaild out_h/out_w or scale or SizeTensor for nearest interp v2 trt op."));
+          "Invaild out_h/out_w or scale or SizeTensor for nearest interp v2 "
+          "trt op."));
     }
     nvinfer1::ITensor* outsize_tensor = nullptr;
     std::vector<nvinfer1::ITensor*> concat_inputs;
 
-    if (engine_->with_dynamic_shape() &&
-        has_size_input_attr) {
+    if (engine_->with_dynamic_shape() && has_size_input_attr) {
       if (op_desc.Input("SizeTensor").size() > 0) {
         for (auto name : op_desc.Input("SizeTensor")) {
           concat_inputs.push_back(engine_->GetITensor(name));
@@ -94,10 +95,10 @@ class NearestInterpolateV2OpConverter : public OpConverter {
         outsize_tensor = Concat(concat_inputs);
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
-          "Invaild SizeTensor for nearest interp v2 trt op."));
+            "Invaild SizeTensor for nearest interp v2 trt op."));
       }
     }
-    
+
     if (engine_->with_dynamic_shape()) {
       scales.push_back(1.f);
     }
