@@ -33,7 +33,7 @@ inline void GetSeedDataAndIncrement(const phi::GPUContext& dev_ctx,
 
   if (seed) {
     phi::DenseTensor seed_cpu_tensor;
-    phi::Copy(dev_ctx, *seed, phi::CPUPlace(), false, &seed_cpu_tensor);
+    phi::Copy(dev_ctx, *seed, phi::CPUPlace(), true, &seed_cpu_tensor);
     *seed_data = static_cast<uint64_t>(seed_cpu_tensor.data<int>()[0]);
     *increment = offset;
   } else if (!is_fix_seed) {
