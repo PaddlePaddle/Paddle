@@ -36,7 +36,6 @@ class ComplexKronTestCase(unittest.TestCase):
     def runTest(self):
         for place in self._places:
             self.test_kron_api(place)
-            self.test_eager(place)
 
     def test_kron_api(self, place):
         with dg.guard(place):
