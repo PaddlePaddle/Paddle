@@ -63,7 +63,7 @@ class RecordEvent(ContextDecorator):
             result = data1 + data2
             record_event.end()
 
-    **Note**:
+    Note:
         RecordEvent will take effect only when :ref:`Profiler <api_paddle_profiler_Profiler>` is on and at the state of `RECORD`.
     """
 

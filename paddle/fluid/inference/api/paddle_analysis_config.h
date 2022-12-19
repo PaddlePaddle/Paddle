@@ -1009,7 +1009,7 @@ struct PD_INFER_DECL AnalysisConfig {
   /// interface is in the experimental stage and may change in the future. Note
   /// that the blacklist must be the same as the model conversion blacklist.
   ///
-  void Exp_DisableMixedInferOps(
+  void Exp_DisableMixedPrecisionOps(
       const std::unordered_set<std::string>& black_list);
 
   void SetApplyOptim(bool value) { apply_optim_ = value; }
@@ -1049,7 +1049,7 @@ struct PD_INFER_DECL AnalysisConfig {
   bool use_gpu_{false};
   int gpu_device_id_{0};
   uint64_t memory_pool_init_size_mb_{100};  // initial size is 100MB.
-  bool enable_gpu_half_{false};
+  bool enable_gpu_mixed_{false};
   bool thread_local_stream_{false};
 
   bool use_cudnn_{false};

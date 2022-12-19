@@ -23,7 +23,6 @@ from paddle.fluid import core
 import paddle.fluid as fluid
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
-from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 

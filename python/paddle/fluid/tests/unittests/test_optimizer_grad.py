@@ -115,7 +115,7 @@ class SimpleNetWithCond:
             return cond_res
 
         cond_i = fluid.layers.assign(np.array([cond_i], dtype='float32'))
-        sum_cond = fluid.layers.cond(cond_i > 1.0, cond_true, cond_false)
+        sum_cond = paddle.static.nn.cond(cond_i > 1.0, cond_true, cond_false)
         sum_all = paddle.add_n([sum_xy, sub_yz, sum_cond])
         mean_out = paddle.mean(sum_all)
         if use_bf16:

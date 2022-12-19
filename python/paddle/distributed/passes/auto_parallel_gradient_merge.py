@@ -19,12 +19,11 @@ from paddle.distributed.auto_parallel.process_group import (
     get_world_process_group,
 )
 from paddle.distributed.auto_parallel.utils import (
-    OP_ROLE_KEY,
-    OpRole,
     is_optimize_op,
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
     set_var_dist_attr,
 )
+from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 from paddle.fluid import layers
 from paddle.fluid.framework import device_guard
 from paddle.framework import core
@@ -286,7 +285,7 @@ def _create_cond_block_and_update_optimizer(
             )
             new_grad.op._set_attr(OP_ROLE_KEY, op_maker.OpRole.Optimize)
 
-    layers.cond(cond_var, true_fn=true_apply_gradient, false_fn=None)
+    paddle.static.nn.cond(cond_var, true_fn=true_apply_gradient, false_fn=None)
     cond_op = main_program.global_block().ops[-1]
     cond_op._set_attr(OP_ROLE_KEY, OpRole.Optimize)
 
