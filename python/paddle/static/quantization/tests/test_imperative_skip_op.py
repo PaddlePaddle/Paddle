@@ -23,7 +23,6 @@ from imperative_test_utils import (
 )
 
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 from paddle.framework import core, set_flags
 from paddle.optimizer import Adam
 from paddle.quantization import ImperativeQuantAware
