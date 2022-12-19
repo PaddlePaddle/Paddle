@@ -191,7 +191,11 @@ def copy_decorator_attrs(original_func, decorated_obj):
 
 
 def declarative(
-    function=None, input_spec=None, build_strategy=None, property=False
+    function=None,
+    input_spec=None,
+    build_strategy=None,
+    property=False,
+    **kwargs,
 ):
     """
     Converts imperative dygraph APIs into declarative function APIs. Decorator
@@ -251,6 +255,7 @@ def declarative(
                 input_spec=input_spec,
                 build_strategy=build_strategy,
                 property=property,
+                **kwargs,
             ),
         )
 
