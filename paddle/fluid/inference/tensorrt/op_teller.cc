@@ -700,7 +700,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                      : -1;
       bool flatten = PADDLE_GET_CONST(bool, desc.GetAttr("flatten"));
       int dtype = PADDLE_GET_CONST(int, desc.GetAttr("dtype"));
-      if (axis == 0 || flatten || dtype != 2) return false;
+      if (axis == 0 || flatten || (dtype != 2 && dtype != 3)) return false;
     }
 
     if (op_type == "affine_channel") {
