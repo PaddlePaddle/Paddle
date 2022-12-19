@@ -203,13 +203,13 @@ def instance_norm(
 
     ..  math::
 
-        \\mu_{\\beta} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW} x_i \\qquad &//\\
-        \\ mean\ of\ one\  feature\ map\ in\ mini-batch \\\\
-        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW}(x_i - \\
-        \\mu_{\\beta})^2 \\qquad &//\ variance\ of\ one\ feature\ map\ in\ mini-batch \\\\
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+        \mu_{\beta} &\gets \frac{1}{HW} \sum_{i=1}^{HW} x_i \qquad &//
+        \ mean\ of\ one\ feature\ map\ in\ mini-batch \\
+        \sigma_{\beta}^{2} &\gets \frac{1}{HW} \sum_{i=1}^{HW}(x_i -
+        \mu_{\beta})^2 \qquad &//\ variance\ of\ one\ feature\ map\ in\ mini-batch \\
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{
+        \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
+        y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
     Note:
         `H` means height of feature map, `W` means width of feature map.
@@ -403,41 +403,42 @@ def data_norm(
 
     ..  math::
 
-        \\mu_{\\beta} &\\gets \\frac{1}{m} \\sum_{i=1}^{m} x_i \\qquad &//\\
-        \ mini-batch\ mean \\\\
-        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
-        \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+        \mu_{\beta} &\gets \frac{1}{m} \sum_{i=1}^{m} x_i \qquad &//
+        \ mini-batch\ mean \\
+        \sigma_{\beta}^{2} &\gets \frac{1}{m} \sum_{i=1}^{m}(x_i -
+        \mu_{\beta})^2 \qquad &//\ mini-batch\ variance \\
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{
+        \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
+        y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
     Args:
-        input(Tensor): The input Tensor.
-        act(string, Default None): Activation type, linear|relu|prelu|...
-        epsilon(float, Default 1e-05):
-        param_attr(ParamAttr): The parameter attribute for Parameter `scale`.
+        input (Tensor): The input Tensor.
+        act (str, optional): Activation type, linear|relu|prelu|... Default: None.
+        epsilon(float, optional): Whether to add small values ​in​to the variance during calculations
+            to prevent division by zero. Default: 1e-05.
+        param_attr (ParamAttr, optional): The parameter attribute for Parameter `scale`. Default: None.
         data_layout (str, optional): Specify the data format of the input, and the data format of the output
             will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`.
-        in_place(bool, Default False): Make the input and output of batch norm reuse memory.
-        name(string, Default None): A name for this layer(optional). If set None, the layer
-            will be named automatically.
-        moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
-        moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
-        do_model_average_for_mean_and_var(bool, Default True): Whether parameter mean and variance
-            should do model average when model average is enabled.
-        slot_dim(int): The embedding dimension of one slot. Slot is a set of one specific feature. In pslib mode, we
-            distinguish feature ids by slot and pull their embeddings from parameter server (pslib). The first
+            `[batch_size, input_channels, input_height, input_width]`. Default: `"NCHW"`.
+        in_place (bool, optional): Make the input and output of batch norm reuse memory. Default: False.
+        name (str, optional): A name for this layer (optional). If set None, the layer
+            will be named automatically. Default: None.
+        moving_mean_name (str, optional): The name of moving_mean which store the global Mean. Default: None.
+        moving_variance_name (str, optional): The name of the moving_variance which store the global Variance. Default: None.
+        do_model_average_for_mean_and_var (bool, optional): Whether parameter mean and variance
+            should do model average when model average is enabled. Default: True.
+        slot_dim (int, optional): The embedding dimension of one slot. Slot is a set of one specific feature. In pslib mode,
+            we distinguish feature ids by slot and pull their embeddings from parameter server (pslib). The first
             place of the embedding is the historical show number (occurence time of this feature id with a label 0).
             If the input of this op is concated by slot-wise embeddings, and the show number is zero when this slot
             is new or empty, the normalization result may be impractical. To avoid this, we add slot_dim to locate
             the show number and judge if the show number is zero. If so, we choose to skip normalization on this
-            embedding.
-        sync_stats(bool, Default False): When running with multiple GPU cards, using allreduce to sync the
-            summary messages.
-        summary_decay_rate(float, Default 0.9999999): The decay rate when updating summary.
-        enable_scale_and_shift(bool, Default False): do scale&shift after normalization.
+            embedding. Default: -1.
+        sync_stats (bool, optional): When running with multiple GPU cards, using allreduce to sync the
+            summary messages. Default: False.
+        summary_decay_rate (float, optional): The decay rate when updating summary. Default: 0.9999999.
+        enable_scale_and_shift (bool, optional): do scale&shift after normalization. Default: False.
 
     Returns:
         Tensor: A tensor which is the result after applying data normalization on the input.
@@ -715,15 +716,15 @@ def conv3d(
 
     .. math::
 
-        Out = \sigma (W \\ast X + b)
+        Out = \sigma (W \ast X + b)
 
     In the above equation:
 
     * :math:`X`: Input value, a tensor with NCDHW or NDHWC format.
     * :math:`W`: Filter value, a tensor with MCDHW format.
-    * :math:`\\ast`: Convolution operation.
+    * :math:`\ast`: Convolution operation.
     * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
-    * :math:`\\sigma`: Activation function.
+    * :math:`\sigma`: Activation function.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
     Example:
@@ -741,9 +742,9 @@ def conv3d(
 
         .. math::
 
-            D_{out}&= \\frac{(D_{in} + 2 * paddings[0] - (dilations[0] * (D_f - 1) + 1))}{strides[0]} + 1 \\\\
-            H_{out}&= \\frac{(H_{in} + 2 * paddings[1] - (dilations[1] * (H_f - 1) + 1))}{strides[1]} + 1 \\\\
-            W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
+            D_{out}&= \frac{(D_{in} + 2 * paddings[0] - (dilations[0] * (D_f - 1) + 1))}{strides[0]} + 1 \\
+            H_{out}&= \frac{(H_{in} + 2 * paddings[1] - (dilations[1] * (H_f - 1) + 1))}{strides[1]} + 1 \\
+            W_{out}&= \frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
 
     Args:
         input (Tensor): The input is 5-D Tensor with shape [N, C, D, H, W], the data
@@ -799,7 +800,7 @@ def conv3d(
             `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
-        A Variable holding Tensor representing the conv3d, whose data type is
+        A Tensor representing the conv3d, whose data type is
         the same with input. If act is None, the tensor variable storing the
         convolution result, and if act is not None, the tensor variable storing
         convolution and non-linearity activation result.
@@ -1027,15 +1028,15 @@ def conv2d_transpose(
 
     .. math::
 
-        Out = \sigma (W \\ast X + b)
+        Out = \sigma (W \ast X + b)
 
     Where:
 
     * :math:`X`: Input value, a 4-D Tensor with NCHW or NHWC format.
     * :math:`W`: Filter value, a 4-D Tensor with MCHW format.
-    * :math:`\\ast`: Convolution operation.
+    * :math:`\ast`: Convolution operation.
     * :math:`b`: Bias value, a 2-D Tensor with shape [M, 1].
-    * :math:`\\sigma`: Activation function.
+    * :math:`\sigma`: Activation function.
     * :math:`Out`: Output value, a 4-D Tensor with data format 'NCHW' or 'NHWC', the shape of :math:`Out` and :math:`X` may be different.
 
     Example:
@@ -1054,9 +1055,9 @@ def conv2d_transpose(
 
         .. math::
 
-           H^\prime_{out} &= (H_{in} - 1) * strides[0] - pad_height_top - pad_height_bottom + dilations[0] * (H_f - 1) + 1 \\\\
-           W^\prime_{out} &= (W_{in} - 1) * strides[1] - pad_width_left - pad_width_right + dilations[1] * (W_f - 1) + 1 \\\\
-           H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[0] ] \\\\
+           H^\prime_{out} &= (H_{in} - 1) * strides[0] - pad_height_top - pad_height_bottom + dilations[0] * (H_f - 1) + 1 \\
+           W^\prime_{out} &= (W_{in} - 1) * strides[1] - pad_width_left - pad_width_right + dilations[1] * (W_f - 1) + 1 \\
+           H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[0] ] \\
            W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] ]
 
     Note:
@@ -1190,7 +1191,7 @@ def conv2d_transpose(
 
     helper = LayerHelper(op_type, **locals())
     if not isinstance(input, Variable):
-        raise TypeError("Input of conv2d_transpose must be Variable")
+        raise TypeError("Input of conv2d_transpose must be Tensor")
 
     stride = utils.convert_to_list(stride, 2, 'stride')
     dilation = utils.convert_to_list(dilation, 2, 'dilation')
@@ -1280,7 +1281,7 @@ def conv2d_transpose(
                 output_size
             ):
                 raise ValueError(
-                    "filter_size should not be None when output_size is Variable or contain Variable in static mode."
+                    "filter_size should not be None when output_size is Tensor or contain Tensor in static mode."
                 )
         else:
             output_size = utils.convert_shape_to_list(output_size)
@@ -1416,11 +1417,11 @@ def conv3d_transpose(
 
         .. math::
 
-           D^\prime_{out} &= (D_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (D_f - 1) + 1 \\\\
-           H^\prime_{out} &= (H_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (H_f - 1) + 1 \\\\
-           W^\prime_{out} &= (W_{in} - 1) * strides[2] - 2 * paddings[2] + dilations[2] * (W_f - 1) + 1 \\\\
-           D_{out} &\in [ D^\prime_{out}, D^\prime_{out} + strides[0] ] \\\\
-           H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[1] ] \\\\
+           D^\prime_{out} &= (D_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (D_f - 1) + 1 \\
+           H^\prime_{out} &= (H_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (H_f - 1) + 1 \\
+           W^\prime_{out} &= (W_{in} - 1) * strides[2] - 2 * paddings[2] + dilations[2] * (W_f - 1) + 1 \\
+           D_{out} &\in [ D^\prime_{out}, D^\prime_{out} + strides[0] ] \\
+           H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[1] ] \\
            W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[2] ]
 
     Note:
@@ -1497,7 +1498,7 @@ def conv3d_transpose(
             `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
-        A Variable holding Tensor representing the conv3d_transpose, whose data
+        A Tensor representing the conv3d_transpose, whose data
         type is the same with input and shape is (num_batches, channels, out_d, out_h,
         out_w) or (num_batches, out_d, out_h, out_w, channels). If act is None, the tensor
         variable storing the transposed convolution result, and if act is not None, the tensor
@@ -1546,7 +1547,7 @@ def conv3d_transpose(
     l_type = "conv3d_transpose"
     helper = LayerHelper(l_type, **locals())
     if not isinstance(input, Variable):
-        raise TypeError("Input of conv3d_transpose must be Variable")
+        raise TypeError("Input of conv3d_transpose must be Tensor")
     if len(input.shape) != 5:
         raise ValueError(
             "Input should be 5D tensor, but received input with the shape of {}".format(
@@ -1777,15 +1778,15 @@ def deformable_conv(
 
         .. math::
 
-            H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
-            W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
+            H_{out}&= \frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\
+            W_{out}&= \frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
     Args:
         input (Tensor): The input image with [N, C, H, W] format. A Tensor with type
             float32, float64.
         offset (Tensor): The input coordinate offset of deformable convolution layer.
             A Tensor with type float32, float64.
-        Mask (Variable, Optional): The input mask of deformable convolution layer.
+        Mask (Tensor, Optional): The input mask of deformable convolution layer.
             A Tensor with type float32, float64. It should be None when you use
             deformable convolution v1.
         num_filters(int): The number of filter. It is as same as the output
@@ -1876,9 +1877,9 @@ def deformable_conv(
     dtype = helper.input_dtype()
 
     if not isinstance(input, paddle.static.Variable):
-        raise TypeError("Input of deformable_conv must be Variable")
+        raise TypeError("Input of deformable_conv must be Tensor")
     if not isinstance(offset, paddle.static.Variable):
-        raise TypeError("Input Offset of deformable_conv must be Variable")
+        raise TypeError("Input Offset of deformable_conv must be Tensor")
 
     if groups is None:
         num_filter_channels = num_channels
@@ -2016,7 +2017,7 @@ def deform_conv2d(
 
         .. math::
 
-            H_{out}&= \frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
+            H_{out}&= \frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\
             W_{out}&= \frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
     Args:
@@ -2155,9 +2156,9 @@ def bilinear_tensor_product(
       - :math:`y^\mathrm{T}`: the transpose of :math:`y_{2}`.
 
     Args:
-        x (Variable): 2-D input tensor with shape [batch_size, M]. Data type
+        x (Tensor): 2-D input tensor with shape [batch_size, M]. Data type
             is float32 or float64.
-        y (Variable): 2-D input tensor with shape [batch_size, N]. Data type
+        y (Tensor): 2-D input tensor with shape [batch_size, N]. Data type
             should be same as **x**.
         size (int): The dimension of this layer.
         act (str|None): Activation to be applied to the output of this layer. Default None.
@@ -2832,7 +2833,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
                 y = paddle.static.data(name='y', shape=[2,3], dtype='int32')
                 # Output of the forward function, name/dtype/shape must be specified
                 output = create_tmp_var('output','int32', [3,1])
-                # Multiple Variable should be passed in the form of tuple(Variale) or list[Variale]
+                # Multiple Tensor should be passed in the form of tuple(Tensor) or list[Tensor]
                 paddle.static.py_func(func=element_wise_add, x=[x,y], out=output)
                 exe=paddle.static.Executor(paddle.CPUPlace())
                 exe.run(start_program)
@@ -2857,7 +2858,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     elif isinstance(x, tuple):
         x = list(x)
     elif not isinstance(x, (list, tuple, Variable)):
-        raise TypeError('Input must be Variable/list(Variable)/tuple(Variable)')
+        raise TypeError('Input must be Tensor/list(Tensor)/tuple(Tensor)')
     check_type(out, 'Out', (list, tuple, Variable, type(None)), 'py_func')
     if out is None:
         out_list = []
@@ -2868,9 +2869,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     elif isinstance(out, list):
         out_list = out
     else:
-        raise TypeError(
-            'Output must be Variable/list(Variable)/tuple(Variable)'
-        )
+        raise TypeError('Output must be Tensor/list(Tensor)/tuple(Tensor)')
 
     fwd_func_id = PyFuncRegistry(func).id
     bwd_func_id = (
@@ -2895,7 +2894,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
         for v in skip_vars_in_backward_input:
             if v.name not in fwd_in_out:
                 raise ValueError(
-                    'Variable {} is not found in forward inputs and outputs'.format(
+                    'Tensor {} is not found in forward inputs and outputs'.format(
                         v.name
                     )
                 )
