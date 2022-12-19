@@ -124,7 +124,7 @@ inline bool backends_are_same_class(const phi::Backend& l,
            phi::TransToPhiPlace(r).GetDeviceType();
   }
 #endif
-  return l == r;
+  return phi::TransToPhiPlace(l) == phi::TransToPhiPlace(r);
 }
 
 inline bool NeedTransform(const phi::KernelKey& l, const phi::KernelKey& r) {
