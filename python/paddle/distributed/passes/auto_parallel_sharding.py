@@ -89,7 +89,7 @@ class ShardingPass(PassBase):
         self.set_attr("sharding_degree", None)  # for parallelizer
         self.set_attr("degree", None)  # for parallelizer_v2
         self.set_attr("enable_overlap", None)
-        self.set_attr("enable_multi_comm_stream", None)
+        self.set_attr("comm_stream_num", None)
         self.set_attr("bucket_size_numel", None)
         self.set_attr("partition_algor", None)
         self.set_attr("params_grads", [])
@@ -127,7 +127,7 @@ class ShardingPass(PassBase):
             return False
         if self.get_attr("enable_overlap") is None:
             return False
-        if self.get_attr("enable_multi_comm_stream") is None:
+        if self.get_attr("comm_stream_num") is None:
             return False
         if self.get_attr("bucket_size_numel") is None:
             return False
@@ -147,9 +147,11 @@ class ShardingPass(PassBase):
         self.stage = int(self.get_attr("stage"))
         self.global_rank = int(self.get_attr("global_rank"))
         self.enable_overlap = self.get_attr("enable_overlap")
-        self.enable_multi_comm_stream = self.get_attr(
-            "enable_multi_comm_stream"
-        )
+        self.comm_stream_num = int(self.get_attr("comm_stream_num"))
+        if self.comm_stream_num > 1:
+            assert (
+                self.enable_overlap
+            ), "multiple comm stream only need enable_overlap to be True"
         self.bucket_size_numel = int(self.get_attr("bucket_size_numel"))
         self.partition_algor = self.get_attr("partition_algor")
         params_grads = self.get_attr("params_grads")
@@ -715,76 +717,83 @@ class ShardingPass(PassBase):
             # TODO revise me in future
             # 1. manager the comm and corresponding stream
             # 2. allow more than two streams and open to be config
-            self.param_comm_stream0 = "sharding_param_comm_stream0"
-            stream_count = 1
-            if self.enable_multi_comm_stream:
-                self.param_comm_stream1 = "sharding_param_comm_stream1"
-                ranks = sharding_info.group.ranks
-                self.param_comm_group1 = new_process_group(
-                    ranks, force_new_group=True
+            self.param_comm_group_stream_pairs = []
+            ranks = sharding_info.group.ranks
+            for i in range(self.comm_stream_num):
+                if i == 0:
+                    group = sharding_info.group
+                else:
+                    group = new_process_group(ranks, force_new_group=True)
+                # NOTE here stream is just a presentation with different name,
+                # it is up to executor to create the exact streams given the name.
+                stream = "sharding_param_comm_stream{}".format(i)
+                self.param_comm_group_stream_pairs.append(
+                    {
+                        "comm_group": group,
+                        "comm_stream": stream,
+                    }
                 )
-                stream_count = 2
 
-        for i, group in enumerate(group_to_param_map.keys()):
+        for i, param_group in enumerate(group_to_param_map.keys()):
 
-            assert len(group) >= 1
-            if len(group) > 1:
+            assert len(param_group) >= 1
+            if len(param_group) > 1:
                 coalesce_var_name = unique_name.generate(
                     self.param_coalesce_prefix + str(i)
                 )
                 startup_block.create_var(
                     name=coalesce_var_name,
-                    dtype=group.dtype,
+                    dtype=param_group.dtype,
                     persistable=True,
                     stop_gradient=True,
                 )
-                group.coalesce_var = main_block.create_var(
+                param_group.coalesce_var = main_block.create_var(
                     name=coalesce_var_name,
-                    dtype=group.dtype,
+                    dtype=param_group.dtype,
                     persistable=True,
                     stop_gradient=True,
                 )
                 startup_block.append_op(
                     type="coalesce_tensor",
-                    inputs={"Input": group.vars},
+                    inputs={"Input": param_group.vars},
                     outputs={
-                        "Output": group.vars,
-                        "FusedOutput": group.coalesce_var,
+                        "Output": param_group.vars,
+                        "FusedOutput": param_group.coalesce_var,
                     },
                     attrs={
                         "copy_data": True,
                         "use_align": True,
-                        "dtype": group.dtype,
+                        "dtype": param_group.dtype,
                         OP_ROLE_KEY: OpRole.Forward,
                     },
                 )
             else:
-                group.coalesce_var = group.vars[0]
+                param_group.coalesce_var = param_group.vars[0]
             _logger.info(
                 "Bucket[{}] size [{}]MB : {}".format(
                     i,
-                    sum([get_var_size(p) for p in group.vars]),
-                    [p.name for p in group.vars],
+                    sum([get_var_size(p) for p in param_group.vars]),
+                    [p.name for p in param_group.vars],
                 )
             )
-            broadcast_var_to_group_map[group.coalesce_var.name] = group
+            broadcast_var_to_group_map[
+                param_group.coalesce_var.name
+            ] = param_group
 
             # TODO revise me to manager stream and comm
-            ring_id = sharding_info.group.id
-            if (
-                self.enable_overlap
-                and self.enable_multi_comm_stream
-                and i % 2 == 0
-            ):
-                ring_id = self.param_comm_group1.id
-
+            comm_group = self.param_comm_group_stream_pairs[
+                i % self.comm_stream_num
+            ]['comm_group']
+            comm_stream = self.param_comm_group_stream_pairs[
+                i % self.comm_stream_num
+            ]['comm_stream']
             new_op = main_block.append_op(
                 type='c_broadcast',
-                inputs={'X': group.coalesce_var},
-                outputs={'Out': group.coalesce_var},
+                inputs={'X': param_group.coalesce_var},
+                outputs={'Out': param_group.coalesce_var},
                 attrs={
-                    'ring_id': ring_id,
-                    'root': group.rank,
+                    'ring_id': comm_group.id,
+                    'root': param_group.rank,
                     'use_calc_stream': True,
                     OP_ROLE_KEY: OpRole.Optimize,
                 },
@@ -792,19 +801,9 @@ class ShardingPass(PassBase):
             new_op._set_attr(
                 'op_namescope', str('/') + ParallelMode.DataParallel
             )
-
             if self.enable_overlap:
-                if self.enable_multi_comm_stream:
-                    if i % 2 == 0:
-                        new_op.dist_attr.execution_stream = (
-                            self.param_comm_stream0
-                        )
-                    else:
-                        new_op.dist_attr.execution_stream = (
-                            self.param_comm_stream1
-                        )
-                else:
-                    new_op.dist_attr.execution_stream = self.param_comm_stream0
+                new_op.dist_attr.execution_stream = comm_stream
+
             # NOTE the current dist context lack the presentation for bucket tensor which
             # composes many tensor with different dims_mapping. we DO NOT assign dist attr
             # for it currently.
@@ -817,7 +816,7 @@ class ShardingPass(PassBase):
             if is_sharding_param_broadcast_op(op):
                 broadcast_varname = op.output("Out")[0]
                 broadcast_var = main_block.vars[broadcast_varname]
-                group = broadcast_var_to_group_map[broadcast_varname]
+                param_group = broadcast_var_to_group_map[broadcast_varname]
                 comm_stream = None
                 if self.enable_overlap:
                     comm_stream = op.dist_attr.execution_stream
@@ -835,16 +834,16 @@ class ShardingPass(PassBase):
                 # broadcast order dependencies
                 dep_map[i] = [(i, [prior_var], [broadcast_var], comm_stream)]
 
-                if len(group.vars) > 1:
+                if len(param_group.vars) > 1:
                     # in shard coalesce depend to optimizer
-                    if group.is_in_local_shard:
-                        last_grad = group.vars[-1]
+                    if param_group.is_in_local_shard:
+                        last_grad = param_group.vars[-1]
                         dep_map[i].append(
                             (i, [last_grad], [broadcast_var], comm_stream)
                         )
                     # coalesce resolution post deps
                     dep_map[i].append(
-                        (i + 1, [broadcast_var], group.vars, comm_stream)
+                        (i + 1, [broadcast_var], param_group.vars, comm_stream)
                     )
 
         # insert deps
