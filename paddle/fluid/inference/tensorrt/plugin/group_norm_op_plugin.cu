@@ -164,8 +164,7 @@ void groupNormNHWCSum(const GroupNormNHWCParams &params, cudaStream_t stream) {
   grid.y = divUp(params.hw, params.hwPerBlock);
   // The number of instances.
   grid.z = params.n;
-  std::cout << "my cuda error in "
-            << cudaGetErrorString(cudaDeviceSynchronize()) << "\n";
+
   switch (params.cPerBlock) {
     case 320:
       groupNormNHWCSumKernel<160><<<grid, 160, 0, stream>>>(params);
