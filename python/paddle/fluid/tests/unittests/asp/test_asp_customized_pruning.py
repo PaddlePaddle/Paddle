@@ -202,7 +202,7 @@ class TestASPStaticCustomerizedPruneFunc(unittest.TestCase):
                 name='img', shape=[None, 3, 32, 32], dtype='float32'
             )
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
-            hidden = fluid.layers.conv2d(
+            hidden = paddle.static.nn.conv2d(
                 input=img, num_filters=4, filter_size=3, padding=2, act="relu"
             )
             hidden = fluid.layers.fc(
@@ -269,7 +269,12 @@ class TestASPStaticCustomerizedPruneFunc(unittest.TestCase):
     def test_training_pruning(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             loss = paddle.mean(
-                fluid.layers.cross_entropy(input=self.predict, label=self.label)
+                paddle.nn.functional.cross_entropy(
+                    input=self.predict,
+                    label=self.label,
+                    reduction='none',
+                    use_softmax=False,
+                )
             )
             optimizer = sparsity.decorate(
                 fluid.optimizer.SGD(learning_rate=0.01)

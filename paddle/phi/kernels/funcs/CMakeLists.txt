@@ -19,6 +19,9 @@ math_library(matrix_solve DEPS dense_tensor eigen3 blas math_function)
 math_library(cross_entropy)
 math_library(im2col)
 math_library(vol2col)
+math_library(softmax DEPS math_function)
+math_library(maxouting)
+math_library(matrix_bit_code)
 
 cc_library(
   phi_data_layout_transform

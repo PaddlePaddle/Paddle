@@ -113,7 +113,8 @@ class SE_ResNeXt:
                 )
 
         pool = paddle.nn.functional.adaptive_avg_pool2d(x=conv, output_size=1)
-        drop = fluid.layers.dropout(x=pool, dropout_prob=0.2)
+        drop = paddle.nn.functional.dropout(x=pool, p=0.2)
+
         stdv = 1.0 / math.sqrt(drop.shape[1] * 1.0)
         out = fluid.layers.fc(
             input=drop,
@@ -163,7 +164,7 @@ class SE_ResNeXt:
     def conv_bn_layer(
         self, input, num_filters, filter_size, stride=1, groups=1, act=None
     ):
-        conv = fluid.layers.conv2d(
+        conv = paddle.static.nn.conv2d(
             input=input,
             num_filters=num_filters,
             filter_size=filter_size,
@@ -199,7 +200,9 @@ class SE_ResNeXt:
             ),
             act='sigmoid',
         )
-        scale = fluid.layers.elementwise_mul(x=input, y=excitation, axis=0)
+        scale = paddle.tensor.math._multiply_with_axis(
+            x=input, y=excitation, axis=0
+        )
         return scale
 
 
@@ -214,7 +217,9 @@ class DistSeResneXt2x2(TestDistRunnerBase):
         # Train program
         model = SE_ResNeXt(layers=50)
         out = model.net(input=image, class_dim=102)
-        cost = fluid.layers.cross_entropy(input=out, label=label)
+        cost = paddle.nn.functional.cross_entropy(
+            input=out, label=label, reduction='none', use_softmax=False
+        )
 
         avg_cost = paddle.mean(x=cost)
         acc_top1 = paddle.static.accuracy(input=out, label=label, k=1)
