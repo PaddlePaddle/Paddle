@@ -30,7 +30,7 @@
 #include "paddle/fluid/platform/device_context.h"
 
 #if defined(PADDLE_WITH_MPI)
-#include "paddle/fluid/distributed/collective/MPITools.h"
+#include "paddle/fluid/distributed/collective/mpi_tools.h"
 #endif
 
 namespace paddle {
