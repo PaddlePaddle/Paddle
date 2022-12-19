@@ -124,11 +124,13 @@ paddle::framework::GpuPsCommGraphFea GraphTable::make_gpu_ps_graph_fea(
   }
   for (size_t i = 0; i < tasks.size(); i++) tasks[i].get();
 
-  std::stringstream ss;
-  for (int k = 0; k < slot_num; ++k) {
-    ss << slot_feature_num_map_[k] << " ";
+  if (FLAGS_v > 0) {
+    std::stringstream ss;
+    for (int k = 0; k < slot_num; ++k) {
+      ss << slot_feature_num_map_[k] << " ";
+    }
+    VLOG(1) << "slot_feature_num_map: " << ss.str();
   }
-  VLOG(0) << "slot_feature_num_map: " << ss.str();
 
   tasks.clear();
 
@@ -137,7 +139,7 @@ paddle::framework::GpuPsCommGraphFea GraphTable::make_gpu_ps_graph_fea(
   for (size_t i = 0; i < shard_num; i++) {
     tot_len += feature_array[i].size();
   }
-  VLOG(0) << "Loaded feature table on cpu, feature_list_size[" << tot_len
+  VLOG(1) << "Loaded feature table on cpu, feature_list_size[" << tot_len
           << "] node_ids_size[" << node_ids.size() << "]";
   res.init_on_cpu(tot_len, (unsigned int)node_ids.size(), slot_num);
   unsigned int offset = 0, ind = 0;

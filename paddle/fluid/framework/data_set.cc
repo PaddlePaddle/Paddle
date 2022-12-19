@@ -457,7 +457,7 @@ void DatasetImpl<T>::LoadIntoMemory() {
   timeline.Start();
   std::vector<std::thread> load_threads;
   if (gpu_graph_mode_) {
-    VLOG(0) << "in gpu_graph_mode";
+    VLOG(1) << "in gpu_graph_mode";
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
     for (size_t i = 0; i < readers_.size(); i++) {
       readers_[i]->SetGpuGraphMode(gpu_graph_mode_);

@@ -320,7 +320,7 @@ void HogwildWorker::TrainFiles() {
 #endif
   }
   timeline.Pause();
-  VLOG(0) << "worker " << thread_id_ << " train cost " << timeline.ElapsedSec()
+  VLOG(1) << "worker " << thread_id_ << " train cost " << timeline.ElapsedSec()
           << " seconds, batch_num: " << total_batch_num;
 
   if (need_dump_field_ || need_dump_param_) {

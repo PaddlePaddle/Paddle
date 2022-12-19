@@ -813,7 +813,7 @@ void GpuPsGraphTable::build_graph_fea_on_single_gpu(const GpuPsCommGraphFea& g,
   } else {
     gpu_graph_fea_list_[offset].feature_size = 0;
   }
-  VLOG(0) << "gpu node_feature info card :" << gpu_id << " ,node_size is "
+  VLOG(1) << "gpu node_feature info card :" << gpu_id << " ,node_size is "
           << gpu_graph_fea_list_[offset].node_size << ", feature_size is "
           << gpu_graph_fea_list_[offset].feature_size;
 }

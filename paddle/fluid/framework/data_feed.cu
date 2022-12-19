@@ -1979,7 +1979,7 @@ void GraphDataGenerator::DoWalkandSage() {
           sage_batch_num_ += 1;
         }
         uint64_t h_uniq_node_num = CopyUniqueNodes();
-        VLOG(0) << "train sage_batch_num: " << sage_batch_num_;
+        VLOG(1) << "train sage_batch_num: " << sage_batch_num_;
       }
     }
   } else {
@@ -2041,7 +2041,7 @@ void GraphDataGenerator::DoWalkandSage() {
         }
 
         uint64_t h_uniq_node_num = CopyUniqueNodes();
-        VLOG(0) << "infer sage_batch_num: " << sage_batch_num_;
+        VLOG(1) << "infer sage_batch_num: " << sage_batch_num_;
       }
     }
   }
@@ -2380,11 +2380,11 @@ int GraphDataGenerator::FillWalkBuf() {
 
   if (!sage_mode_) {
     uint64_t h_uniq_node_num = CopyUniqueNodes();
-    VLOG(0) << "sample_times:" << sample_times << ", d_walk_size:" << buf_size_
+    VLOG(1) << "sample_times:" << sample_times << ", d_walk_size:" << buf_size_
             << ", d_walk_offset:" << i << ", total_rows:" << total_row_
             << ", total_samples:" << total_samples;
   } else {
-    VLOG(0) << "sample_times:" << sample_times << ", d_walk_size:" << buf_size_
+    VLOG(1) << "sample_times:" << sample_times << ", d_walk_size:" << buf_size_
             << ", d_walk_offset:" << i << ", total_rows:" << total_row_
             << ", total_samples:" << total_samples;
   }

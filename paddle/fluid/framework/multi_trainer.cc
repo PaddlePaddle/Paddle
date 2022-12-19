@@ -177,7 +177,7 @@ void MultiTrainer::InitOtherEnv(const ProgramDesc& main_program) {
   // for unittest which call train_from_dataset but does not call
   // fleet.init_worker() first
   if (communicator == nullptr) {
-    VLOG(0) << "MultiTrainer::InitOtherEnv Communicator is null!";
+    VLOG(1) << "MultiTrainer::InitOtherEnv Communicator is null!";
   } else {
     auto& recv_ctx = communicator->GetRecvCtxMap();
     communicator->PullDense(recv_ctx);
@@ -299,13 +299,13 @@ void MultiTrainer::Finalize() {
   auto communicator = paddle::distributed::Communicator::GetInstance();
   // for unittest which does not call fleet.init_worker() first
   if (communicator == nullptr) {
-    VLOG(0) << "MultiTrainer::Finalize communicator is null!";
+    VLOG(1) << "MultiTrainer::Finalize communicator is null!";
   } else {
     if (communicator->_worker_ptr != nullptr) {
       communicator->_worker_ptr->Flush();
       VLOG(1) << "MultiTrainer::Finalize ps client flush done";
     } else {
-      VLOG(0) << "communicator->_worker_ptr is null";
+      VLOG(1) << "communicator->_worker_ptr is null";
     }
   }
 #endif
