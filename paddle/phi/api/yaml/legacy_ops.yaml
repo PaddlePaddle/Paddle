@@ -17,7 +17,7 @@
     func : AccuracyInferMeta
   kernel :
     func : accuracy
-    dtype : x
+    data_type : x
 
 - op : adadelta_
   args : (Tensor param, Tensor grad, Tensor avg_squared_grad, Tensor avg_squared_update, float rho, float epsilon)
@@ -1132,9 +1132,9 @@
   output : Tensor(solution), Tensor(residuals), Tensor(rank), Tensor(singular_values)
   infer_meta :
     func : LstsqInferMeta
-    dtype : x
   kernel :
     func : lstsq
+    data_type : x
 
 - op : lu
   args : (Tensor x, bool pivot)

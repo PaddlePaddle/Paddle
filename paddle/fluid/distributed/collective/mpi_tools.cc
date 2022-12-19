@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/collective/MPITools.h"
-#include "paddle/fluid/distributed/collective/Common.h"
+#include "paddle/fluid/distributed/collective/mpi_tools.h"
 #include "paddle/fluid/distributed/collective/Types.h"
+#include "paddle/fluid/distributed/collective/common.h"
 
 namespace paddle {
 namespace distributed {

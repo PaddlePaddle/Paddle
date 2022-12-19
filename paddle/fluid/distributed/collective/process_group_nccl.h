@@ -20,7 +20,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/distributed/collective/ProcessGroupStream.h"
+#include "paddle/fluid/distributed/collective/process_group_stream.h"
 #include "paddle/fluid/distributed/store/store.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device_event.h"
@@ -29,7 +29,7 @@
 #include "paddle/phi/core/device_context.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/distributed/collective/NCCLTools.h"
+#include "paddle/fluid/distributed/collective/nccl_tools.h"
 #endif
 
 #ifdef PADDLE_WITH_RCCL
