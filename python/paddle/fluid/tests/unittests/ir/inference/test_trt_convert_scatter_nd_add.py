@@ -22,12 +22,10 @@ import unittest
 
 
 class TrtConvertScatterNd(TrtLayerAutoScanTest):
-
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
-
         def generate_input1():
             return np.random.random([6]).astype(np.float32)
 
@@ -37,38 +35,42 @@ class TrtConvertScatterNd(TrtLayerAutoScanTest):
         def generate_input3():
             return np.random.random([4]).astype(np.float32)
 
-        ops_config = [{
-            "op_type": "scatter_nd_add",
-            "op_inputs": {
-                "X": ["input_data"],
-                "Index": ["index_data"],
-                "Updates": ["update_data"]
-            },
-            "op_outputs": {
-                "Out": ["output_data"]
-            },
-            "op_attrs": {}
-        }]
+        ops_config = [
+            {
+                "op_type": "scatter_nd_add",
+                "op_inputs": {
+                    "X": ["input_data"],
+                    "Index": ["index_data"],
+                    "Updates": ["update_data"],
+                },
+                "op_outputs": {"Out": ["output_data"]},
+                "op_attrs": {},
+            }
+        ]
         ops = self.generate_op_config(ops_config)
         for i in range(10):
             program_config = ProgramConfig(
                 ops=ops,
                 weights={},
                 inputs={
-                    "input_data":
-                    TensorConfig(data_gen=partial(generate_input1)),
-                    "index_data":
-                    TensorConfig(data_gen=partial(generate_input2)),
-                    "update_data":
-                    TensorConfig(data_gen=partial(generate_input3)),
+                    "input_data": TensorConfig(
+                        data_gen=partial(generate_input1)
+                    ),
+                    "index_data": TensorConfig(
+                        data_gen=partial(generate_input2)
+                    ),
+                    "update_data": TensorConfig(
+                        data_gen=partial(generate_input3)
+                    ),
                 },
-                outputs=["output_data"])
+                outputs=["output_data"],
+            )
 
             yield program_config
 
     def sample_predictor_configs(
-            self, program_config) -> (paddle_infer.Config, List[int], float):
-
+        self, program_config
+    ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
                 "input_data": [1],
@@ -100,14 +102,14 @@ class TrtConvertScatterNd(TrtLayerAutoScanTest):
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), (0, 5), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (0, 5), 1e-5
+        yield self.create_inference_config(), (0, 5), 1e-3
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), (1, 4), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 4), 1e-5
+        yield self.create_inference_config(), (1, 4), 1e-3
 
     def test(self):
         self.run_test()

@@ -223,7 +223,8 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
 
 def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
-    """
+    r"""
+
     stanh activation.
 
     .. math::
@@ -234,8 +235,7 @@ def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
         x (Tensor): The input Tensor with data type float32, float64.
         scale_a (float, optional): The scale factor a of the input. Default is 0.67.
         scale_b (float, optional): The scale factor b of the output. Default is 1.7159.
-        name (str, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         A Tensor with the same data type and shape as ``x`` .
