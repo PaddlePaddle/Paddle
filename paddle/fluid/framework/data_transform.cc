@@ -111,8 +111,7 @@ void TransformData(const phi::KernelKey &expected_kernel_type,
   }
 
   // do device transform
-  if (phi::TransToPhiPlace(kernel_type_for_var.backend()) !=
-      phi::TransToPhiPlace(expected_kernel_type.backend())) {
+  if (in.place() != phi::TransToPhiPlace(expected_kernel_type.backend())) {
     TransDataDevice(
         in, phi::TransToPhiPlace(expected_kernel_type.backend()), &out);
     transformed = true;
