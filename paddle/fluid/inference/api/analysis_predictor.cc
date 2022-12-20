@@ -1365,7 +1365,9 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 #if defined(_WIN32)
   argument_->PartiallyRelease();
 #else
-  if (config_.mkldnn_enabled() || config_.tensorrt_engine_enabled()) {
+  if (config_.mkldnn_enabled() ||
+      (config_.tensorrt_engine_enabled() &&
+       config_.tensorrt_precision_mode_ == AnalysisConfig::Precision::kInt8)) {
     argument_->PartiallyRelease();
   } else {
     argument_.reset(nullptr);
