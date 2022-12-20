@@ -67,7 +67,6 @@ HOSTDEVICE void PrintForDifferentLevel(const char* debug_info,
                                        MT min_value,
                                        MT mean_value,
                                        int check_nan_inf_level) {
-  printf("no----------------------attention-----------------");
   if (num_nan > 0 || num_inf > 0) {
     printf(
         "[PRECISION] [ERROR] in %s, numel=%lld, num_nan=%lld, "
