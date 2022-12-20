@@ -82,8 +82,22 @@ void KthvalueKernel(const Context& dev_ctx,
                     DenseTensor* indices) {
   const auto& in_dims = x.dims();
   if (axis < 0) axis += in_dims.size();
+
   T* output_data = dev_ctx.template Alloc<T>(output);
   int64_t* indices_data = dev_ctx.template Alloc<int64_t>(indices);
+  // For 0D Tensor
+  if (in_dims.size() == 0) {
+    PADDLE_ENFORCE_EQ(k,
+                      1,
+                      phi::errors::InvalidArgument(
+                          "the k in the kthvalue must less equal than the "
+                          "elemenents number of the input X, but received %d .",
+                          k));
+
+    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, output);
+    phi::funcs::set_constant(dev_ctx, indices, 0);
+    return;
+  }
   auto out_dims = output->dims();
   if (axis == in_dims.size() - 1) {
     const int64_t& input_height =

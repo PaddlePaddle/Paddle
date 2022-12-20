@@ -18,7 +18,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestDygraphFleetAPI(unittest.TestCase):
@@ -50,6 +49,4 @@ class TestDygraphFleetAPI(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    with _test_eager_guard():
-        pass
     unittest.main()

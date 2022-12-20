@@ -189,7 +189,7 @@ class TestCloneWithStopGradient(unittest.TestCase):
             img = fluid.layers.data(name='image', shape=[784])
             hidden1 = fluid.layers.fc(input=img, size=200, act='relu')
             hidden1.stop_gradient = True
-            hidden2 = fluid.layers.dropout(hidden1, dropout_prob=0.5)
+            hidden2 = paddle.nn.functional.dropout(hidden1, p=0.5)
             loss = paddle.nn.functional.cross_entropy(
                 input=fluid.layers.fc(hidden2, size=10, act='softmax'),
                 label=fluid.layers.data(name='label', shape=[1], dtype='int64'),
@@ -220,15 +220,15 @@ class TestCloneWithStopGradientInSubBlock(unittest.TestCase):
             cond = paddle.equal(true, true)
 
             def true_fn():
-                hidden2 = fluid.layers.dropout(hidden1, dropout_prob=0.5)
+                hidden2 = paddle.nn.functional.dropout(hidden1, p=0.5)
                 hidden2.stop_gradient = True
                 return hidden2
 
             def false_fn():
-                hidden2 = fluid.layers.dropout(hidden1, dropout_prob=0.6)
+                hidden2 = paddle.nn.functional.dropout(hidden1, p=0.6)
                 return hidden2
 
-            hidden2 = fluid.layers.cond(cond, true_fn, false_fn)
+            hidden2 = paddle.static.nn.cond(cond, true_fn, false_fn)
 
             loss = paddle.nn.functional.cross_entropy(
                 input=fluid.layers.fc(hidden2, size=10, act='softmax'),
@@ -263,15 +263,15 @@ class TestCloneWithRaise(unittest.TestCase):
             cond = paddle.equal(true, true)
 
             def true_fn():
-                hidden2 = fluid.layers.dropout(hidden1, dropout_prob=0.5)
+                hidden2 = paddle.nn.functional.dropout(hidden1, p=0.5)
                 hidden2.stop_gradient = True
                 return hidden2
 
             def false_fn():
-                hidden2 = fluid.layers.dropout(hidden1, dropout_prob=0.6)
+                hidden2 = paddle.nn.functional.dropout(hidden1, p=0.6)
                 return hidden2
 
-            hidden2 = fluid.layers.cond(cond, true_fn, false_fn)
+            hidden2 = paddle.static.nn.cond(cond, true_fn, false_fn)
             loss = paddle.nn.functional.cross_entropy(
                 input=fluid.layers.fc(hidden2, size=10, act='softmax'),
                 label=fluid.layers.data(name='label', shape=[1], dtype='int64'),

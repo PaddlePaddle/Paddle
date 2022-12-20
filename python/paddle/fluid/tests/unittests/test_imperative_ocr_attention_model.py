@@ -21,9 +21,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import BatchNorm
-from paddle.fluid.framework import _test_eager_guard
-from paddle.nn import Linear
+from paddle.nn import BatchNorm, Linear
 
 
 class Config:
@@ -307,7 +305,7 @@ class SimpleAttention(fluid.dygraph.Layer):
         )
 
         weights_reshape = paddle.nn.functional.softmax(weights_reshape)
-        scaled = fluid.layers.elementwise_mul(
+        scaled = paddle.tensor.math._multiply_with_axis(
             x=encoder_vec, y=weights_reshape, axis=0
         )
         context = paddle.sum(scaled, axis=1)
@@ -514,12 +512,11 @@ class TestDygraphOCRAttention(unittest.TestCase):
             dy_out, dy_param_init_value, dy_param_value = run_dygraph()
 
         with fluid.dygraph.guard():
-            with _test_eager_guard():
-                (
-                    eager_out,
-                    eager_param_init_value,
-                    eager_param_value,
-                ) = run_dygraph()
+            (
+                eager_out,
+                eager_param_init_value,
+                eager_param_value,
+            ) = run_dygraph()
 
         with new_program_scope():
             paddle.seed(seed)

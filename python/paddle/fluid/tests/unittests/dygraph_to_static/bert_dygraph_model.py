@@ -17,7 +17,7 @@ from transformer_dygraph_model import MultiHeadAttention, PrePostProcessLayer
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import Layer
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
 from paddle.nn import Linear
 
 
@@ -56,9 +56,7 @@ class PositionwiseFeedForwardLayer(Layer):
     def forward(self, x):
         hidden = self._i2h(x)
         if self._dropout_rate:
-            hidden = fluid.layers.dropout(
-                hidden, dropout_prob=self._dropout_rate, is_test=False
-            )
+            hidden = paddle.nn.functional.dropout(hidden, p=self._dropout_rate)
         out = self._h2o(hidden)
         return out
 
@@ -375,7 +373,7 @@ class PretrainModelLayer(Layer):
             bias_attr="next_sent_fc.b_0",
         )
 
-    @declarative
+    @to_static
     def forward(
         self,
         src_ids,

@@ -127,7 +127,7 @@ class Conv2DTestCase(unittest.TestCase):
                 else:
                     padding = self.padding
 
-                y_var = fluid.layers.conv2d(
+                y_var = paddle.static.nn.conv2d(
                     x_var,
                     self.num_filters,
                     self.filter_size,

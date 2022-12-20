@@ -21,8 +21,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-from paddle.fluid.dygraph.nn import BatchNorm
-from paddle.nn import Linear
+from paddle.nn import BatchNorm, Linear
 
 
 class TestDygraphLoadStatic(unittest.TestCase):
@@ -35,10 +34,10 @@ class TestDygraphLoadStatic(unittest.TestCase):
         fc_out1 = fluid.layers.fc(a, 10)
         fc_out2 = fluid.layers.fc(a, 20)
 
-        conv_out_1 = fluid.layers.conv2d(
+        conv_out_1 = paddle.static.nn.conv2d(
             conv_in, num_filters=10, filter_size=5, act="relu"
         )
-        conv_out_2 = fluid.layers.conv2d(
+        conv_out_2 = paddle.static.nn.conv2d(
             conv_in, num_filters=10, filter_size=5, act="relu"
         )
 

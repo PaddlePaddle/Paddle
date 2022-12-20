@@ -239,12 +239,13 @@ TEST(FusedMultiTransformerDecoderFuseQKVPass, basic) {
   // (eltadd_0)                       reshape2         -> reshape_0
   // (reshape_0)                      transpose2       -> transpose_0
   // (transpose_0)                    split            -> split_q, split_k,
-  // split_v (split_k)                        concat           -> concat_k
+  // split_v (split_k)                concat           -> concat_k
   // (split_v)                        concat           -> concat_v
   // (concat_k)                       assign           -> assign_k
   // (concat_v)                       assign           -> assign_v
-  // (split_q, split_k)               matmul           -> matmul_qk
-  // (matmul_qk, bias_qk)             elementwise_add  -> eltadd_qk
+  // (split_q, split_k)               matmul_v2        -> matmul_qk
+  // (matmul_qk)                      scale            -> scale_qk
+  // (scale_qk, bias_qk)              elementwise_add  -> eltadd_qk
   // (eltadd_qk)                      softmax          -> softmax_qk
   // (softmax_qk, transpose_2)        matmul_v2        -> matmul_qkv
   // (matmul_qkv)                     transpose        -> transpose_qkv
@@ -298,10 +299,11 @@ TEST(FusedMultiTransformerDecoderFuseQKVPass, basic) {
   layers.assign(concat_v);
 
   // MHA: QK matmul
-  auto* matmul_qk = layers.matmul(split_q, concat_k, nullptr, false, true);
+  auto* matmul_qk = layers.matmul_v2(split_q, concat_k, nullptr, false, true);
+  auto* scale_qk = layers.scale(matmul_qk, 0.125, 0, false);
 
   auto* bqk = layers.data("biasqk", {1, 12, 128, 128}, true);
-  auto* elementwise_qk = layers.elementwise_add(matmul_qk, bqk);
+  auto* elementwise_qk = layers.elementwise_add(scale_qk, bqk);
   auto* softmax_qk = layers.softmax(elementwise_qk, -1);
 
   // MHA: QKV matmul
@@ -361,11 +363,11 @@ TEST(FusedMultiTransformerDecoderFuseQKVPass, basic) {
 
   PADDLE_ENFORCE_EQ(
       num_nodes_before,
-      num_nodes_after + 50,
+      num_nodes_after + 52,
       platform::errors::InvalidArgument(
           "After the fused_multi_transformer_decoder_fuse_qkv_pass, "
           "The node num in graph should be %d, but the result is %d",
-          num_nodes_before - 50,
+          num_nodes_before - 52,
           num_nodes_after));
   PADDLE_ENFORCE_EQ(num_fused_nodes_after,
                     1,
@@ -396,8 +398,9 @@ TEST(MultiDevicesFusedMultiTransformerDecoderFuseQKVPass, basic) {
   // (split_v)                        concat           -> concat_v
   // (concat_k)                       assign           -> assign_k
   // (concat_v)                       assign           -> assign_v
-  // (split_q, split_k)               matmul           -> matmul_qk
-  // (matmul_qk, bias_qk)             elementwise_add  -> eltadd_qk
+  // (split_q, split_k)               matmul_v2        -> matmul_qk
+  // (matmul_qk)                      scale            -> scale_qk
+  // (scale_qk, bias_qk)              elementwise_add  -> eltadd_qk
   // (eltadd_qk)                      softmax          -> softmax_qk
   // (softmax_qk, transpose_2)        matmul_v2        -> matmul_qkv
   // (matmul_qkv)                     transpose        -> transpose_qkv
@@ -455,10 +458,11 @@ TEST(MultiDevicesFusedMultiTransformerDecoderFuseQKVPass, basic) {
   layers.assign(concat_v);
 
   // MHA: QK matmul
-  auto* matmul_qk = layers.matmul(split_q, concat_k, nullptr, false, true);
+  auto* matmul_qk = layers.matmul_v2(split_q, concat_k, nullptr, false, true);
+  auto* scale_qk = layers.scale(matmul_qk, 0.125, 0, false);
 
   auto* bqk = layers.data("biasqk", {1, 12, 128, 128}, true);
-  auto* elementwise_qk = layers.elementwise_add(matmul_qk, bqk);
+  auto* elementwise_qk = layers.elementwise_add(scale_qk, bqk);
   auto* softmax_qk = layers.softmax(elementwise_qk, -1);
 
   // MHA: QKV matmul
@@ -523,11 +527,11 @@ TEST(MultiDevicesFusedMultiTransformerDecoderFuseQKVPass, basic) {
 
   PADDLE_ENFORCE_EQ(
       num_nodes_before,
-      num_nodes_after + 58,
+      num_nodes_after + 60,
       platform::errors::InvalidArgument(
           "After the fused_multi_transformer_decoder_fuse_qkv_pass, "
           "The node num in graph should be %d, but the result is %d",
-          num_nodes_before - 58,
+          num_nodes_before - 60,
           num_nodes_after));
   PADDLE_ENFORCE_EQ(num_fused_nodes_after,
                     1,
