@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
@@ -34,5 +33,4 @@ class TestHybridPipeParallelWithVirtualStage(TestMultipleGpus):
 
 
 if __name__ == "__main__":
-    os.environ["FLAGS_enable_eager_mode"] = "1"
     unittest.main()
