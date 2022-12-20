@@ -331,7 +331,7 @@ void GpuPsGraphTable::display_sample_res(void* key,
                  (len + len % 2) * sizeof(int) + len * sizeof(uint64_t),
              cudaMemcpyDeviceToHost);
   uint64_t* sample_val = reinterpret_cast<uint64_t*>(
-        val_buffer + (len + len % 2) * sizeof(int) + len * sizeof(int64_t));
+      val_buffer + (len + len % 2) * sizeof(int) + len * sizeof(int64_t));
   for (int i = 0; i < len; i++) {
     printf("key %llu\n",
            *reinterpret_cast<int64_t*>(key_buffer + i * sizeof(uint64_t)));

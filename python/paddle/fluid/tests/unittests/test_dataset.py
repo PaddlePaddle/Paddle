@@ -308,7 +308,8 @@ class TestDataset(unittest.TestCase):
             "debug_mode": 0,
             "batch_size": 800,
             "meta_path": "cuid2clk-clk2cuid;cuid2conv-conv2cuid;clk2cuid-cuid2clk;clk2cuid-cuid2conv",
-            "gpu_graph_training": 1}
+            "gpu_graph_training": 1
+        }
         dataset.set_graph_config(graph_config)
         dataset.set_pass_id(0)
         dataset.get_pass_id()
@@ -843,7 +844,6 @@ class TestDataset(unittest.TestCase):
                 self.assertTrue(False)
 
         temp_dir.cleanup()
-
 
     def test_cuda_in_memory_dataset_run(self):
         """

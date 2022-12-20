@@ -237,7 +237,7 @@ class TestPSMinimize(unittest.TestCase):
         strategy.a_sync = True
 
         sparse_config = dict()
-        sparse_config[embedding] = self.gen_sparse_config()
+        sparse_config['embedding'] = self.gen_sparse_config()
         strategy.fleet_desc_configs = sparse_config
 
         optimizer = paddle.fluid.optimizer.Adam(learning_rate=0.01)
