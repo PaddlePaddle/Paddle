@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle.fluid as fluid
-import paddle
 import contextlib
 import math
-import numpy as np
-import sys
 import os
+import sys
+import unittest
+
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
 
 
 def convolution_net(
@@ -45,90 +47,11 @@ def convolution_net(
     prediction = fluid.layers.fc(
         input=[conv_3, conv_4], size=class_dim, act="softmax"
     )
-    cost = fluid.layers.cross_entropy(input=prediction, label=label)
-    avg_cost = paddle.mean(cost)
-    accuracy = fluid.layers.accuracy(input=prediction, label=label)
-    return avg_cost, accuracy, prediction
-
-
-def dyn_rnn_lstm(
-    data, label, input_dim, class_dim=2, emb_dim=32, lstm_size=128
-):
-    emb = fluid.layers.embedding(
-        input=data, size=[input_dim, emb_dim], is_sparse=True
+    cost = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
     )
-    sentence = fluid.layers.fc(input=emb, size=lstm_size, act='tanh')
-
-    rnn = fluid.layers.DynamicRNN()
-    with rnn.block():
-        word = rnn.step_input(sentence)
-        prev_hidden = rnn.memory(value=0.0, shape=[lstm_size])
-        prev_cell = rnn.memory(value=0.0, shape=[lstm_size])
-
-        def gate_common(ipt, hidden, size):
-            gate0 = fluid.layers.fc(input=ipt, size=size, bias_attr=True)
-            gate1 = fluid.layers.fc(input=hidden, size=size, bias_attr=False)
-            return gate0 + gate1
-
-        forget_gate = paddle.nn.functional.sigmoid(
-            x=gate_common(word, prev_hidden, lstm_size)
-        )
-        input_gate = paddle.nn.functional.sigmoid(
-            x=gate_common(word, prev_hidden, lstm_size)
-        )
-        output_gate = paddle.nn.functional.sigmoid(
-            x=gate_common(word, prev_hidden, lstm_size)
-        )
-        cell_gate = paddle.nn.functional.sigmoid(
-            x=gate_common(word, prev_hidden, lstm_size)
-        )
-
-        cell = forget_gate * prev_cell + input_gate * cell_gate
-        hidden = output_gate * paddle.tanh(x=cell)
-        rnn.update_memory(prev_cell, cell)
-        rnn.update_memory(prev_hidden, hidden)
-        rnn.output(hidden)
-
-    last = fluid.layers.sequence_last_step(rnn())
-    prediction = fluid.layers.fc(input=last, size=class_dim, act="softmax")
-    cost = fluid.layers.cross_entropy(input=prediction, label=label)
     avg_cost = paddle.mean(cost)
-    accuracy = fluid.layers.accuracy(input=prediction, label=label)
-    return avg_cost, accuracy, prediction
-
-
-def stacked_lstm_net(
-    data, label, input_dim, class_dim=2, emb_dim=128, hid_dim=512, stacked_num=3
-):
-    assert stacked_num % 2 == 1
-
-    emb = fluid.layers.embedding(
-        input=data, size=[input_dim, emb_dim], is_sparse=True
-    )
-    # add bias attr
-
-    # TODO(qijun) linear act
-    fc1 = fluid.layers.fc(input=emb, size=hid_dim)
-    lstm1, cell1 = fluid.layers.dynamic_lstm(input=fc1, size=hid_dim)
-
-    inputs = [fc1, lstm1]
-
-    for i in range(2, stacked_num + 1):
-        fc = fluid.layers.fc(input=inputs, size=hid_dim)
-        lstm, cell = fluid.layers.dynamic_lstm(
-            input=fc, size=hid_dim, is_reverse=(i % 2) == 0
-        )
-        inputs = [fc, lstm]
-
-    fc_last = fluid.layers.sequence_pool(input=inputs[0], pool_type='max')
-    lstm_last = fluid.layers.sequence_pool(input=inputs[1], pool_type='max')
-
-    prediction = fluid.layers.fc(
-        input=[fc_last, lstm_last], size=class_dim, act='softmax'
-    )
-    cost = fluid.layers.cross_entropy(input=prediction, label=label)
-    avg_cost = paddle.mean(cost)
-    accuracy = fluid.layers.accuracy(input=prediction, label=label)
+    accuracy = paddle.static.accuracy(input=prediction, label=label)
     return avg_cost, accuracy, prediction
 
 
@@ -318,25 +241,6 @@ class TestUnderstandSentiment(unittest.TestCase):
                 parallel=True,
             )
 
-    @unittest.skip(reason="make CI faster")
-    def test_stacked_lstm_cpu(self):
-        with self.new_program_scope():
-            main(
-                self.word_dict,
-                net_method=stacked_lstm_net,
-                use_cuda=False,
-                save_dirname="understand_sentiment_stacked_lstm.inference.model",
-            )
-
-    def test_stacked_lstm_cpu_parallel(self):
-        with self.new_program_scope():
-            main(
-                self.word_dict,
-                net_method=stacked_lstm_net,
-                use_cuda=False,
-                parallel=True,
-            )
-
     def test_conv_gpu(self):
         with self.new_program_scope():
             main(
@@ -351,44 +255,6 @@ class TestUnderstandSentiment(unittest.TestCase):
             main(
                 self.word_dict,
                 net_method=convolution_net,
-                use_cuda=True,
-                parallel=True,
-            )
-
-    @unittest.skip(reason="make CI faster")
-    def test_stacked_lstm_gpu(self):
-        with self.new_program_scope():
-            main(
-                self.word_dict,
-                net_method=stacked_lstm_net,
-                use_cuda=True,
-                save_dirname="understand_sentiment_stacked_lstm.inference.model",
-            )
-
-    def test_stacked_lstm_gpu_parallel(self):
-        with self.new_program_scope():
-            main(
-                self.word_dict,
-                net_method=stacked_lstm_net,
-                use_cuda=True,
-                parallel=True,
-            )
-
-    @unittest.skip(reason='make CI faster')
-    def test_dynrnn_lstm_gpu(self):
-        with self.new_program_scope():
-            main(
-                self.word_dict,
-                net_method=dyn_rnn_lstm,
-                use_cuda=True,
-                parallel=False,
-            )
-
-    def test_dynrnn_lstm_gpu_parallel(self):
-        with self.new_program_scope():
-            main(
-                self.word_dict,
-                net_method=dyn_rnn_lstm,
                 use_cuda=True,
                 parallel=True,
             )

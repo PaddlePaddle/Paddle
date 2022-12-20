@@ -18,9 +18,9 @@ from functools import reduce
 import paddle
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
-from .base_cost import Cost
-from ..operators.common import get_distributed_operator_impl_container
 from ..dist_tensor import DistributedTensor
+from ..operators.common import get_distributed_operator_impl_container
+from .base_cost import Cost
 
 
 class CostEstimator:
@@ -544,8 +544,9 @@ class CostEstimator:
 
 
 def get_cost_from_engine(engine, mode):
-    from ..utils import to_list
     import copy
+
+    from ..utils import to_list
 
     # Construct cost estimator by original main program
     serial_main_prog = (

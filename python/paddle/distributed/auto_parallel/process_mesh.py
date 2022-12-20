@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import copy
+
+import numpy as np
+
 import paddle
 from paddle.fluid import core
 
@@ -161,8 +163,8 @@ class ProcessMesh(core.ProcessMesh):
         self._old_op_size = len(cur_block.ops)
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
-        from .dist_tensor import DistributedTensor
         from .dist_op import DistributedOperator
+        from .dist_tensor import DistributedTensor
 
         default_prog = paddle.fluid.default_main_program()
         cur_block = default_prog.current_block()

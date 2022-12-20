@@ -12,44 +12,46 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import collections
-import pickle
-import warnings
-import sys
-import numpy as np
 import copyreg
+import os
+import pickle
+import sys
+import warnings
+from collections.abc import Iterable
+
+import numpy as np
+
 import paddle
 
 # deprecated module import
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.io import (
-    _unpack_saved_dict,
-    _pack_loaded_dict,
-    _pickle_loads_mac,
-)
-from paddle.fluid.io import _legacy_save as _legacy_static_save
-from paddle.fluid.io import _open_file_buffer, _is_file_path, _is_memory_buffer
-
 from paddle.fluid.framework import (
+    EagerParamBase,
+    ParamBase,
+    Program,
     Variable,
-    _varbase_creator,
+    _current_expected_place,
     _dygraph_tracer,
     _non_static_mode,
-    ParamBase,
-    EagerParamBase,
-    _current_expected_place,
-    Program,
+    _varbase_creator,
 )
-from paddle.fluid.dygraph.jit import _SaveLoadConfig
-from paddle.fluid.dygraph.io import (
-    _construct_program_holders,
+from paddle.fluid.io import _is_file_path, _is_memory_buffer
+from paddle.fluid.io import _legacy_save as _legacy_static_save
+from paddle.fluid.io import (
+    _open_file_buffer,
+    _pack_loaded_dict,
+    _pickle_loads_mac,
+    _unpack_saved_dict,
+)
+from paddle.jit.api import _SaveLoadConfig
+from paddle.jit.translated_layer import (
+    INFER_MODEL_SUFFIX,
+    INFER_PARAMS_SUFFIX,
     _construct_params_and_buffers,
+    _construct_program_holders,
 )
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-
-from collections.abc import Iterable
 
 __all__ = []
 

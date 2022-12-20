@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -151,10 +151,9 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
 inline bool ContainsNan(const paddle::platform::NPUDeviceContext& dev_ctx,
                         aclrtStream stream,
                         const phi::DenseTensor* in) {
-  using Tensor = phi::DenseTensor;
-  Tensor out(in->type());
+  phi::DenseTensor out(in->type());
 
-  Tensor mean(in->type());
+  phi::DenseTensor mean(in->type());
   mean.Resize({1});
   mean.mutable_data<float>(dev_ctx.GetPlace());
   std::vector<int> axes;
@@ -482,8 +481,10 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
 
     gpuStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<phi::GPUContext*>(dev_ctx)->stream();
+      // should not use global ctx for calc stream.
+      // auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+      // stream = static_cast<phi::GPUContext*>(dev_ctx)->stream();
+      stream = ctx.cuda_device_context().stream();
     } else {
       stream = comm->stream();
     }

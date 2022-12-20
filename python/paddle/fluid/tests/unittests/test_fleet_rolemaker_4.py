@@ -34,9 +34,11 @@ class TestCloudRoleMaker(unittest.TestCase):
         import threading
 
         try:
-            from paddle.distributed.fleet.utils.http_server import KVHandler
-            from paddle.distributed.fleet.utils.http_server import KVServer
-            from paddle.distributed.fleet.utils.http_server import KVHTTPServer
+            from paddle.distributed.fleet.utils.http_server import (
+                KVHandler,
+                KVHTTPServer,
+                KVServer,
+            )
         except:
             print("warning: no fleet, skip test_pslib_4")
             return

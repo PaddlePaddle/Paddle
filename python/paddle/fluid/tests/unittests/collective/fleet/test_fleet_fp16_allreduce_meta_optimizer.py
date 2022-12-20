@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import unittest
+
+import paddle
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
-import unittest
-import paddle
 import paddle.fluid as fluid
-import os
 
 paddle.enable_static()
 
@@ -41,8 +42,11 @@ class TestFleetFP16CompressOptimizer(unittest.TestCase):
             prediction = paddle.fluid.layers.fc(
                 input=[fc_2], size=2, act='softmax'
             )
-            cost = paddle.fluid.layers.cross_entropy(
-                input=prediction, label=input_y
+            cost = paddle.nn.functional.cross_entropy(
+                input=prediction,
+                label=input_y,
+                reduction='none',
+                use_softmax=False,
             )
             avg_cost = paddle.mean(x=cost)
 

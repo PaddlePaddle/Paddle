@@ -71,7 +71,7 @@ ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 
 _dygraph_tracer_ = None
-_in_eager_mode_ = os.environ.get('FLAGS_enable_eager_mode', '1') == '1'
+_in_eager_mode_ = True
 _global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
@@ -786,7 +786,8 @@ def disable_signal_handler():
 
     Make sure you called paddle.disable_signal_handler() before using above mentioned frameworks.
 
-    Returns: None
+    Returns:
+        None
 
     Examples:
         .. code-block:: python
@@ -931,7 +932,8 @@ def xpu_places(device_ids=None):
 
 def npu_places(device_ids=None):
     """
-    **Note**:
+
+    Note:
         For multi-card tasks, please use `FLAGS_selected_npus` environment variable to set the visible NPU device.
 
     This function creates a list of :code:`paddle.NPUPlace` objects.
@@ -1288,7 +1290,7 @@ def _varbase_creator(
     shape=None,
     dtype=None,
     persistable=None,
-    **kwargs
+    **kwargs,
 ):
     if dtype is not None:
         if not isinstance(dtype, core.VarDesc.VarType):
@@ -1383,7 +1385,7 @@ class Variable(metaclass=VariableMetaClass):
                                                 shape=[-1, 23, 48],
                                                 dtype='float32')
 
-        In `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_  Mode:
+        In Dygraph  Mode:
 
         .. code-block:: python
 
@@ -1410,7 +1412,7 @@ class Variable(metaclass=VariableMetaClass):
         is_data=False,
         need_check_feed=False,
         belong_to_optimizer=False,
-        **kwargs
+        **kwargs,
     ):
         self.block = block
         if name is None:
@@ -1640,6 +1642,7 @@ class Variable(metaclass=VariableMetaClass):
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import numpy as np
 
@@ -1652,16 +1655,17 @@ class Variable(metaclass=VariableMetaClass):
                         tmp.stop_gradient=False
                         inputs2.append(tmp)
                     ret2 = fluid.layers.sums(inputs2)
-                    loss2 = fluid.layers.reduce_sum(ret2)
+                    loss2 = paddle.sum(ret2)
                     loss2.backward()
                     print(loss2.gradient())
 
                 # example2: return tuple of ndarray
                 with fluid.dygraph.guard():
-                    embedding = fluid.dygraph.Embedding(
-                        size=[20, 32],
-                        param_attr='emb.w',
-                        is_sparse=True)
+                    embedding = paddle.nn.Embedding(
+                        20,
+                        32,
+                        weight_attr='emb.w',
+                        sparse=True)
                     x_data = np.arange(12).reshape(4, 3).astype('int64')
                     x_data = x_data.reshape((-1, 3, 1))
                     x = fluid.dygraph.base.to_variable(x_data)
@@ -1687,6 +1691,7 @@ class Variable(metaclass=VariableMetaClass):
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import numpy as np
 
@@ -1698,7 +1703,7 @@ class Variable(metaclass=VariableMetaClass):
                         tmp.stop_gradient=False
                         inputs2.append(tmp)
                     ret2 = fluid.layers.sums(inputs2)
-                    loss2 = fluid.layers.reduce_sum(ret2)
+                    loss2 = paddle.sum(ret2)
                     loss2.backward()
                     print(loss2.gradient())
                     loss2.clear_gradient()
@@ -1857,7 +1862,7 @@ class Variable(metaclass=VariableMetaClass):
         """
         Indicating if we stop gradient from current Variable
 
-        **Notes: This Property has default value as** ``True`` **in** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **mode, while Parameter's default value is False. However, in Static Graph Mode all Variable's default stop_gradient value is** ``False``
+        **Notes: This Property has default value as** ``True`` **in** Dygraph **mode, while Parameter's default value is False. However, in Static Graph Mode all Variable's default stop_gradient value is** ``False``
 
         Examples:
           .. code-block:: python
@@ -1899,7 +1904,7 @@ class Variable(metaclass=VariableMetaClass):
 
             **1. All Variable's persistable is** ``False`` **except Parameters.**
 
-            **2. In** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **mode, this property should not be changed**
+            **2. In** Dygraph **mode, this property should not be changed**
 
         Examples:
           .. code-block:: python
@@ -1948,7 +1953,7 @@ class Variable(metaclass=VariableMetaClass):
         """
         Indicating name of current Variable
 
-        **Notes: If it has two or more Varaible share the same name in the same** :ref:`api_guide_Block_en` **, it means these Variable will share content in no-** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **mode. This is how we achieve Parameter sharing**
+        **Notes: If it has two or more Varaible share the same name in the same** :ref:`api_guide_Block_en` **, it means these Variable will share content in no-** Dygraph **mode. This is how we achieve Parameter sharing**
 
         Examples:
           .. code-block:: python
@@ -1978,7 +1983,7 @@ class Variable(metaclass=VariableMetaClass):
           import paddle.fluid as fluid
 
           x = fluid.data(name="x", shape=[-1, 23, 48], dtype='float32')
-          print(x.grad_name) # output is "x@GRAD"
+          print(x.grad_name) # output is ``x@GRAD``
 
         """
         return self.name + "@GRAD"
@@ -2039,7 +2044,7 @@ class Variable(metaclass=VariableMetaClass):
 
             **1. This is a read-only property**
 
-            **2. Don't support this property in** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **mode, it's value should be** ``0(int)``
+            **2. Don't support this property in** Dygraph **mode, it's value should be** ``0(int)``
 
         Examples:
           .. code-block:: python
@@ -2948,11 +2953,8 @@ class Operator:
                                 in_arg_names.append(arg.name)
                             else:
                                 raise TypeError(
-                                    "The type of '%s' in operator %s should be "
-                                    "one of [basestring(), str, Varibale] in python2, "
-                                    "or one of [str, bytes, Variable] in python3."
-                                    "but received : %s"
-                                    % (in_proto.name, type, arg)
+                                    f"The type of '%{in_proto.name}' in operator {type} should be "
+                                    f"one of [str, bytes, Variable]. but received : {arg}"
                                 )
                         self.desc.set_input(in_proto.name, in_arg_names)
                     else:
@@ -6882,7 +6884,7 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
         shape,
         dtype,
         type=core.VarDesc.VarType.LOD_TENSOR,
-        **kwargs
+        **kwargs,
     ):
         if shape is None:
             raise ValueError("The shape of Parameter should not be None")
@@ -6903,7 +6905,7 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
             shape=shape,
             dtype=dtype,
             type=type,
-            **kwargs
+            **kwargs,
         )
         self.trainable = kwargs.get('trainable', True)
 

@@ -451,7 +451,11 @@ void TensorRTEngine::SetITensor(const std::string &name,
   itensor_map_[name] = tensor;
 }
 
-nvinfer1::ITensor *TensorRTEngine::GetITensor(const std::string &name) {
+nvinfer1::ITensor *TensorRTEngine::GetITensor(const std::string &name,
+                                              bool scalar) {
+  if (scalar) {
+    return ConvertWeight2ITensor(name, true);
+  }
   if (itensor_map_.count(name)) {
     return itensor_map_[name];
   } else {
@@ -463,7 +467,7 @@ nvinfer1::ITensor *TensorRTEngine::GetITensor(const std::string &name) {
 // For cases when input is not middle-tensor , but persistable tensor
 // you should call this.
 nvinfer1::ITensor *TensorRTEngine::ConvertWeight2ITensor(
-    const std::string &name) {
+    const std::string &name, bool scalar) {
   auto *var_v = scope_->FindVar(name);
   PADDLE_ENFORCE_NOT_NULL(
       var_v,
@@ -489,9 +493,15 @@ nvinfer1::ITensor *TensorRTEngine::ConvertWeight2ITensor(
       trt_in_shape.d[i] = trt_in_shape.d[i + 1];
     }
   }
+  if (scalar) {
+    trt_in_shape.nbDims = 0;
+    trt_in_shape.d[0] = var_dims[0];
+  }
   nvinfer1::ILayer *layer =
       TRT_ENGINE_ADD_LAYER(this, Constant, trt_in_shape, weight.get());
-  this->SetITensor(name, layer->getOutput(0));
+  if (!scalar) {
+    this->SetITensor(name, layer->getOutput(0));
+  }
   return layer->getOutput(0);
 }
 
@@ -687,8 +697,11 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
                         "twice in TRT OP converter.",
                         name_with_suffix));
 
-  weight_map[name_with_suffix].reset(new phi::DenseTensor());
-  weight_map[name_with_suffix]->Resize(weight_tensor.dims());
+  if (weight_tensor.place() == PlaceType::kGPU ||
+      weight_tensor.dtype() != phi::DataType::FLOAT32) {
+    weight_map[name_with_suffix].reset(new phi::DenseTensor());
+    weight_map[name_with_suffix]->Resize(weight_tensor.dims());
+  }
 
   TensorRTEngine::Weight weight;
   weight.SetCount(weight_tensor.numel());
@@ -722,13 +735,18 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
     for (int i = 0; i < weight_tensor.numel(); i++) {
       int32_data[i] = int64_data[i];
     }
-    weight.SetDataType(phi::DataType::FLOAT32);
+    weight.SetDataType(phi::DataType::INT32);
     weight.SetValues(int32_data);
   } else {
-    paddle::framework::TensorCopySync(
-        weight_tensor, cpu_place, weight_map[name_with_suffix].get());
-    weight.SetDataType(weight_tensor.dtype());
-    weight.SetValues(weight_map[name_with_suffix]->data());
+    if (weight_tensor.place() == PlaceType::kGPU) {
+      paddle::framework::TensorCopySync(
+          weight_tensor, cpu_place, weight_map[name_with_suffix].get());
+      weight.SetDataType(weight_tensor.dtype());
+      weight.SetValues(weight_map[name_with_suffix]->data());
+    } else {
+      weight.SetDataType(weight_tensor.dtype());
+      weight.SetValues(weight_tensor.data());
+    }
   }
 
   name_suffix_counter += 1;

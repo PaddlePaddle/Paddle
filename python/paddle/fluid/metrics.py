@@ -23,7 +23,6 @@ from .initializer import Constant
 from . import unique_name
 from .framework import Program, Variable, program_guard
 from . import layers
-from .layers import detection
 
 __all__ = [
     'MetricBase',
@@ -33,7 +32,6 @@ __all__ = [
     'Accuracy',
     'ChunkEvaluator',
     'EditDistance',
-    'DetectionMAP',
     'Auc',
 ]
 
@@ -714,7 +712,7 @@ class Auc(MetricBase):
     The auc metric is for binary classification.
     Refer to https://en.wikipedia.org/wiki/Receiver_operating_characteristic#Area_under_the_curve.
     Please notice that the auc metric is implemented with python, which may be a little bit slow.
-    If you concern the speed, please use the fluid.layers.auc instead.
+    If you concern the speed, please use the paddle.static.auc instead.
 
     The `auc` function creates four local variables, `true_positives`,
     `true_negatives`, `false_positives` and `false_negatives` that are used to
@@ -816,219 +814,3 @@ class Auc(MetricBase):
         return (
             auc / tot_pos / tot_neg if tot_pos > 0.0 and tot_neg > 0.0 else 0.0
         )
-
-
-class DetectionMAP:
-    """
-    Calculate the detection mean average precision (mAP).
-
-    The general steps are as follows:
-
-    1. calculate the true positive and false positive according to the input
-       of detection and labels.
-    2. calculate mAP value, support two versions: '11 point' and 'integral'.
-       11point: the 11-point interpolated average precision.
-       integral: the natural integral of the precision-recall curve.
-
-    Please get more information from the following articles:
-
-      https://sanchom.wordpress.com/tag/average-precision/
-
-      https://arxiv.org/abs/1512.02325
-
-    Args:
-        input (Variable): LoDTensor, The detection results, which is a LoDTensor with shape
-            [M, 6]. The layout is [label, confidence, xmin, ymin, xmax, ymax].
-            The data type is float32 or float64.
-        gt_label (Variable): LoDTensor, The ground truth label index, which is a LoDTensor
-            with shape [N, 1].The data type is float32 or float64.
-        gt_box (Variable): LoDTensor, The ground truth bounding box (bbox), which is a
-            LoDTensor with shape [N, 4]. The layout is [xmin, ymin, xmax, ymax].
-            The data type is float32 or float64.
-        gt_difficult (Variable|None): LoDTensor, Whether this ground truth is a difficult
-            bounding bbox, which can be a LoDTensor [N, 1] or not set. If None,
-            it means all the ground truth labels are not difficult bbox.The
-            data type is int.
-        class_num (int): The class number.
-        background_label (int): The index of background label, the background
-            label will be ignored. If set to -1, then all categories will be
-            considered, 0 by default.
-        overlap_threshold (float): The threshold for deciding true/false
-            positive, 0.5 by default.
-        evaluate_difficult (bool): Whether to consider difficult ground truth
-            for evaluation, True by default. This argument does not work when
-            gt_difficult is None.
-        ap_version (str): The average precision calculation ways, it must be
-            'integral' or '11point'. Please check
-            https://sanchom.wordpress.com/tag/average-precision/ for details.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-
-            import paddle
-            paddle.enable_static()
-
-            batch_size = None # can be any size
-            image_boxs_num = 10
-            bounding_bboxes_num = 21
-
-            pb = fluid.data(name='prior_box', shape=[image_boxs_num, 4],
-                       dtype='float32')
-
-            pbv = fluid.data(name='prior_box_var', shape=[image_boxs_num, 4],
-                         dtype='float32')
-
-            loc = fluid.data(name='target_box', shape=[batch_size, bounding_bboxes_num, 4],
-                        dtype='float32')
-
-            scores = fluid.data(name='scores', shape=[batch_size, bounding_bboxes_num, image_boxs_num],
-                            dtype='float32')
-
-            nmsed_outs = fluid.layers.detection_output(scores=scores,
-                loc=loc, prior_box=pb, prior_box_var=pbv)
-
-            gt_box = fluid.data(name="gt_box", shape=[batch_size, 4], dtype="float32")
-            gt_label = fluid.data(name="gt_label", shape=[batch_size, 1], dtype="float32")
-            difficult = fluid.data(name="difficult", shape=[batch_size, 1], dtype="float32")
-
-            exe = fluid.Executor(fluid.CUDAPlace(0))
-            map_evaluator = fluid.metrics.DetectionMAP(nmsed_outs, gt_label, gt_box, difficult, class_num = 3)
-
-            cur_map, accum_map = map_evaluator.get_map_var()
-
-
-    """
-
-    def __init__(
-        self,
-        input,
-        gt_label,
-        gt_box,
-        gt_difficult=None,
-        class_num=None,
-        background_label=0,
-        overlap_threshold=0.5,
-        evaluate_difficult=True,
-        ap_version='integral',
-    ):
-
-        self.helper = LayerHelper('map_eval')
-        gt_label = layers.cast(x=gt_label, dtype=gt_box.dtype)
-        if gt_difficult:
-            gt_difficult = layers.cast(x=gt_difficult, dtype=gt_box.dtype)
-            label = layers.concat([gt_label, gt_difficult, gt_box], axis=1)
-        else:
-            label = layers.concat([gt_label, gt_box], axis=1)
-
-        # calculate mean average precision (mAP) of current mini-batch
-        map = detection.detection_map(
-            input,
-            label,
-            class_num,
-            background_label,
-            overlap_threshold=overlap_threshold,
-            evaluate_difficult=evaluate_difficult,
-            ap_version=ap_version,
-        )
-
-        states = []
-        states.append(
-            self._create_state(
-                dtype='int32', shape=None, suffix='accum_pos_count'
-            )
-        )
-        states.append(
-            self._create_state(
-                dtype='float32', shape=None, suffix='accum_true_pos'
-            )
-        )
-        states.append(
-            self._create_state(
-                dtype='float32', shape=None, suffix='accum_false_pos'
-            )
-        )
-        var = self._create_state(dtype='int32', shape=[1], suffix='has_state')
-        self.helper.set_variable_initializer(
-            var, initializer=Constant(value=int(0))
-        )
-        self.has_state = var
-
-        # calculate accumulative mAP
-        accum_map = detection.detection_map(
-            input,
-            label,
-            class_num,
-            background_label,
-            overlap_threshold=overlap_threshold,
-            evaluate_difficult=evaluate_difficult,
-            has_state=self.has_state,
-            input_states=states,
-            out_states=states,
-            ap_version=ap_version,
-        )
-
-        layers.fill_constant(
-            shape=self.has_state.shape,
-            value=1,
-            dtype=self.has_state.dtype,
-            out=self.has_state,
-        )
-
-        self.cur_map = map
-        self.accum_map = accum_map
-
-    def _create_state(self, suffix, dtype, shape):
-        """
-        Create state variable.
-        Args:
-            suffix(str): the state suffix.
-            dtype(str|core.VarDesc.VarType): the state data type
-            shape(tuple|list): the shape of state
-        Returns: State variable
-        """
-        state = self.helper.create_variable(
-            name="_".join([unique_name.generate(self.helper.name), suffix]),
-            persistable=True,
-            dtype=dtype,
-            shape=shape,
-        )
-        return state
-
-    def get_map_var(self):
-        """
-        Returns: mAP variable of current mini-batch and
-            accumulative mAP variable cross mini-batches.
-        """
-        return self.cur_map, self.accum_map
-
-    def reset(self, executor, reset_program=None):
-        """
-        Reset metric states at the begin of each pass/user specified batch.
-        Args:
-            executor(Executor): a executor for executing
-                the reset_program.
-            reset_program(Program|None): a single Program for reset process.
-                If None, will create a Program.
-        """
-
-        def _clone_var_(block, var):
-            assert isinstance(var, Variable)
-            return block.create_var(
-                name=var.name,
-                shape=var.shape,
-                dtype=var.dtype,
-                type=var.type,
-                lod_level=var.lod_level,
-                persistable=var.persistable,
-            )
-
-        if reset_program is None:
-            reset_program = Program()
-        with program_guard(main_program=reset_program):
-            var = _clone_var_(reset_program.current_block(), self.has_state)
-            layers.fill_constant(
-                shape=var.shape, value=0, dtype=var.dtype, out=var
-            )
-        executor.run(reset_program)

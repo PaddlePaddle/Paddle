@@ -12,32 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from functools import reduce
 import logging
+from functools import reduce
 
 import paddle
-
-from paddle.framework import core
-from paddle.fluid.framework import default_main_program, default_startup_program
-from paddle.fluid import unique_name
-from .pass_base import PassBase, register_pass
+from paddle.distributed.auto_parallel.operators.common import (
+    is_data_parallel_reduce_op,
+    is_parameter_related,
+)
 from paddle.distributed.auto_parallel.process_group import new_process_group
-from paddle.distributed.fleet.meta_optimizers.sharding.utils import get_var_size
+from paddle.distributed.auto_parallel.utils import (
+    _get_comm_group,
+    get_logger,
+    get_var_numel,
+    naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
+    set_var_dist_attr,
+)
 from paddle.distributed.fleet.meta_optimizers.common import (
     is_backward_op,
     is_optimizer_op,
 )
-from paddle.distributed.auto_parallel.operators.common import (
-    is_parameter_related,
-    is_data_parallel_reduce_op,
-)
-from paddle.distributed.auto_parallel.utils import (
-    _get_comm_group,
-    naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
-    set_var_dist_attr,
-    get_var_numel,
-    get_logger,
-)
+from paddle.distributed.fleet.meta_optimizers.sharding.utils import get_var_size
+from paddle.fluid import unique_name
+from paddle.fluid.framework import default_main_program, default_startup_program
+from paddle.framework import core
+
+from .pass_base import PassBase, register_pass
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()

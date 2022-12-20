@@ -13,15 +13,14 @@
 # limitations under the License.
 
 import os
+
 import paddle
-from paddle.fluid import framework, core, layers, unique_name
-from paddle.fluid.framework import Variable
+from paddle.fluid import core, framework, unique_name
 from paddle.fluid.clip import ClipGradByGlobalNorm
+from paddle.fluid.executor import global_scope
+from paddle.fluid.framework import Variable, name_scope
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.optimizer import Optimizer
-from paddle.fluid.executor import global_scope
-from paddle.fluid.framework import name_scope
-from paddle.fluid import core, unique_name
 
 
 def init_communicator(block, rank, ranks, ring_id):
@@ -173,7 +172,7 @@ class DistributedFusedLamb(Optimizer):
 
     def _create_scale_from_constant(self, value):
         name = unique_name.generate('global_scale')
-        return layers.create_global_var(
+        return paddle.static.create_global_var(
             name=name,
             shape=[1],
             dtype='float32',

@@ -13,7 +13,12 @@
 # limitations under the License.
 
 import warnings
+
+import paddle
 import paddle.distributed as dist
+import paddle.fluid.core as core
+import paddle.fluid.framework as framework
+import paddle.fluid.layer_helper as layer_helper
 
 
 class Group:
@@ -227,3 +232,122 @@ def get_group(id=0):
         return _GroupManager.group_map_by_id[id]
     warnings.warn("Group {} is not initialized.".format(id))
     return None
+
+
+def _sync_calc_stream(tensor):
+    if framework._non_static_mode():
+        return paddle._legacy_C_ops.c_sync_calc_stream(tensor, tensor)
+
+    op_type = 'c_sync_calc_stream'
+    helper = layer_helper.LayerHelper(op_type, **locals())
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [tensor]},
+        outputs={'Out': [tensor]},
+    )
+
+
+def _sync_comm_stream(tensor, ring_id=0):
+    if framework._non_static_mode():
+        return paddle._legacy_C_ops.c_sync_comm_stream(
+            [tensor], [tensor], 'ring_id', ring_id
+        )
+
+    op_type = 'c_sync_comm_stream'
+    helper = layer_helper.LayerHelper(op_type, **locals())
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [tensor]},
+        outputs={'Out': [tensor]},
+        attrs={'ring_id': ring_id},
+    )
+
+
+def wait(tensor, group=None, use_calc_stream=True):
+    """
+
+    wait to sync stream for group.
+
+    Args:
+        tensor (Tensor): The Tensor used before sync.
+        group (Group): The Group instance to perform sync.
+        use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
+            Default to True.
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            paddle.distributed.init_parallel_env()
+            tindata = paddle.randn(shape=[2, 3])
+            paddle.distributed.all_reduce(tindata, sync_op=True)
+            paddle.distributed.wait(tindata)
+
+    """
+    if group is not None and not group.is_member():
+        return
+
+    if use_calc_stream:
+        _sync_calc_stream(tensor)
+    else:
+        ring_id = 0 if group is None else group.id
+        _sync_comm_stream(tensor, ring_id)
+
+
+def barrier(group=None):
+    """
+
+    Barrier among all participators in the group.
+
+    Args:
+        group (Group): The group instance return by new_group or None for global default group.
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            from paddle.distributed import init_parallel_env
+
+            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
+            init_parallel_env()
+            paddle.distributed.barrier()
+    """
+    if group is not None and not group.is_member():
+        return
+
+    if framework.in_dygraph_mode():
+        group = _get_global_group() if group is None else group
+        place = framework._current_expected_place()
+        if isinstance(place, core.CPUPlace):
+            task = group.process_group.barrier()
+        else:
+            device_id = place.get_device_id()
+            task = group.process_group.barrier(device_id)
+        task.wait()
+        return
+
+    ring_id = 0 if group is None else group.id
+
+    barrier_tensor = paddle.full([1], 1, dtype="int32")
+    if framework._non_static_mode():
+        return paddle._legacy_C_ops.barrier(
+            barrier_tensor, barrier_tensor, 'ring_id', ring_id
+        )
+
+    op_type = 'barrier'
+    if not isinstance(ring_id, int):
+        raise ValueError("The type of 'group' for barrier must be int.")
+    helper = layer_helper.LayerHelper(op_type, **locals())
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [barrier_tensor]},
+        outputs={'Out': [barrier_tensor]},
+        attrs={'ring_id': ring_id},
+    )

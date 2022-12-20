@@ -13,6 +13,7 @@
 # limitations under the License
 
 import copy
+
 from . import constants
 
 
@@ -71,6 +72,10 @@ class BaseConfig:
         for k, v in self.__dict__.items():
             setattr(result, k, copy.deepcopy(v, memo))
         return result
+
+    def get(self, k, d=None):
+        result_dict = self.to_dict()
+        return result_dict.get(k, d)
 
 
 class RecomputeConfig(BaseConfig):
