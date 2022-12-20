@@ -17,6 +17,7 @@ import logging
 import numbers
 import os
 import random
+import time
 from collections import defaultdict
 
 import numpy as np
@@ -817,6 +818,8 @@ class Engine:
         collate_fn=None,
         callbacks=None,
         verbose=2,
+        profile_dir="",
+        max_steps=-1,
     ):
         """
         Trains the model for a fixed number of epochs. If `valid_data` is set,
@@ -920,31 +923,82 @@ class Engine:
         )
 
         cbks.on_begin('train')
+        reader_start = time.time()
         for epoch in range(epochs):
             logs = {}
             cbks.on_epoch_begin(epoch)
             for step, _ in enumerate(train_dataloader):
+                train_reader_cost = time.time() - reader_start
+                train_start = time.time()
                 cbks.on_batch_begin('train', step, logs)
                 try:
+                    if (
+                        len(profile_dir)
+                        and paddle.distributed.get_rank() in [0]
+                        and step == 50
+                    ):
+                        from paddle.fluid import core
+
+                        core.nvprof_start()
+                        core.nvprof_enable_record_event()
+                    if (
+                        len(profile_dir)
+                        and paddle.distributed.get_rank() in [0]
+                        and step >= 50
+                        and step < 60
+                    ):
+                        core.nvprof_nvtx_push(str(step))
                     outs = self._executor.run(
                         self.main_program,
                         fetch_list=fetch_names,
                         use_program_cache=self._strategy.use_cache,
                         return_numpy=self._strategy.return_numpy,
                     )
+                    if (
+                        len(profile_dir)
+                        and paddle.distributed.get_rank() in [0]
+                        and step >= 50
+                        and step < 60
+                    ):
+                        core.nvprof_nvtx_pop()
+                    if (
+                        len(profile_dir)
+                        and paddle.distributed.get_rank() in [0]
+                        and step == 60
+                    ):
+                        core.nvprof_stop()
+                    if len(profile_dir) and step == 60:
+                        import sys
+
+                        sys.exit("NV sys profile finish!")
                 except core.EOFException:
                     break
                 lr = auto_utils.get_lr(self._optimizer)
-                logs = self._prepare_logger(
-                    outs,
-                    epoch,
-                    step,
-                    lr,
-                    fetch_names,
-                    fetch_indices,
-                    self._mode,
+                train_run_cost = time.time() - train_start
+                speed = 1 / (train_reader_cost + train_run_cost)
+                print(
+                    "step: {}, out: {}, reader cost: {}, trainer cost: {}, ips: {} step/s".format(
+                        step,
+                        outs[0][0],
+                        train_reader_cost,
+                        train_run_cost,
+                        speed,
+                    )
                 )
+                # logs = self._prepare_logger(
+                #     outs,
+                #     epoch,
+                #     step,
+                #     lr,
+                #     fetch_names,
+                #     fetch_indices,
+                #     self._mode,
+                # )
                 cbks.on_batch_end('train', step, logs)
+                reader_start = time.time()
+
+                if max_steps > 1 and step > max_steps:
+                    return
 
             if valid_data and (epoch + 1) % valid_freq == 0:
                 val_logs = self.evaluate(
