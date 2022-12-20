@@ -1577,6 +1577,7 @@ void OperatorWithKernel::CheckWhetherPreparePhiData(
     // different type with variable. The PhiKernelContext need be reConstructed.
     if (phi_kernel_context->OutputsSize() >= phi_tensor_index) {
       need_prepare_phi_data_ = true;
+      return;
     }
     for (auto& var_name_item : outnames) {
       for (auto& var_name : var_name_item.second) {
