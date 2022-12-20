@@ -1139,27 +1139,6 @@ class DataFeed {
   }
 #endif
 
-  virtual const std::vector<uint64_t>* GetHostVec() {
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-    return &(gpu_graph_data_generator_.GetHostVec());
-#else
-    return nullptr;
-#endif
-  }
-
-  virtual void clear_gpu_mem() {
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-    gpu_graph_data_generator_.clear_gpu_mem();
-#endif
-  }
-  virtual bool get_epoch_finish() {
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-    return gpu_graph_data_generator_.get_epoch_finish();
-#else
-    return false;
-#endif
-  }
-
   virtual void SetGpuGraphMode(int gpu_graph_mode) {
     gpu_graph_mode_ = gpu_graph_mode;
   }
@@ -1183,32 +1162,38 @@ class DataFeed {
     return 0;
 #endif
   }
-  virtual void ResetPathNum() {
+
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-    gpu_graph_data_generator_.ResetPathNum();
-#endif
+  virtual const std::vector<uint64_t>* GetHostVec() {
+    return &(gpu_graph_data_generator_.GetHostVec());
   }
 
+  virtual void clear_gpu_mem() { gpu_graph_data_generator_.clear_gpu_mem(); }
+
+  virtual bool get_epoch_finish() {
+    return gpu_graph_data_generator_.get_epoch_finish();
+  }
+
+  virtual void ResetPathNum() { gpu_graph_data_generator_.ResetPathNum(); }
+
   virtual void ClearSampleState() {
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
     gpu_graph_data_generator_.ClearSampleState();
-#endif
   }
 
   virtual void ResetEpochFinish() {
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
     gpu_graph_data_generator_.ResetEpochFinish();
-#endif
   }
+
+  virtual void DoWalkandSage() {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "This function(DoWalkandSage) is not implemented."));
+  }
+#endif
 
   virtual bool IsTrainMode() { return train_mode_; }
   virtual void LoadIntoMemory() {
     PADDLE_THROW(platform::errors::Unimplemented(
         "This function(LoadIntoMemory) is not implemented."));
-  }
-  virtual void DoWalkandSage() {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "This function(DoWalkandSage) is not implemented."));
   }
   virtual void SetPlace(const paddle::platform::Place& place) {
     place_ = place;
