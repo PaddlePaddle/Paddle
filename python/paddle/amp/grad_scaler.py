@@ -76,7 +76,7 @@ class AmpScaler:
 
         data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
         with fluid.dygraph.guard():
-            model = fluid.dygraph.Conv2D(3, 2, 3)
+            model = paddle.nn.Conv2D(3, 2, 3)
             optimizer = fluid.optimizer.SGDOptimizer(
                     learning_rate=0.01, parameter_list=model.parameters())
             scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
@@ -170,7 +170,7 @@ class AmpScaler:
 
                 data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
                 with fluid.dygraph.guard():
-                    model = fluid.dygraph.Conv2D(3, 2, 3)
+                    model = paddle.nn.Conv2D(3, 2, 3)
                     optimizer = fluid.optimizer.SGDOptimizer(
                             learning_rate=0.01, parameter_list=model.parameters())
                     scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
@@ -212,7 +212,7 @@ class AmpScaler:
 
                 data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
                 with fluid.dygraph.guard():
-                    model = fluid.dygraph.Conv2D(3, 2, 3)
+                    model = paddle.nn.Conv2D(3, 2, 3)
                     optimizer = fluid.optimizer.SGDOptimizer(
                             learning_rate=0.01, parameter_list=model.parameters())
                     scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
