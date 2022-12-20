@@ -678,46 +678,6 @@ class TestStarGANWithGradientPenalty(unittest.TestCase):
         self.func_main()
 
 
-class TestStarGANWithGradientPenaltyLegacy(unittest.TestCase):
-    def func_main(self):
-        self.place_test(fluid.CPUPlace())
-
-        if fluid.is_compiled_with_cuda():
-            self.place_test(fluid.CUDAPlace(0))
-
-    def place_test(self, place):
-        cfg = Config(place)
-
-        dataset = create_mnist_dataset(cfg)
-        dataset = paddle.reader.cache(dataset)
-
-        static_graph_model = StaticGraphTrainModel(cfg)
-        static_loss = []
-        for batch_id, (image_real, label_org, label_trg) in enumerate(
-            dataset()
-        ):
-            loss = static_graph_model.run(image_real, label_org, label_trg)
-            static_loss.append(loss)
-
-        dygraph_loss = []
-        with fluid.dygraph.guard(cfg.place):
-            dygraph_model = DyGraphTrainModel(cfg)
-            for batch_id, (image_real, label_org, label_trg) in enumerate(
-                dataset()
-            ):
-                loss = dygraph_model.run(image_real, label_org, label_trg)
-                dygraph_loss.append(loss)
-
-        for (g_loss_s, d_loss_s), (g_loss_d, d_loss_d) in zip(
-            static_loss, dygraph_loss
-        ):
-            self.assertEqual(g_loss_s, g_loss_d)
-            self.assertEqual(d_loss_s, d_loss_d)
-
-    def test_all_cases(self):
-        self.func_main()
-
-
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
