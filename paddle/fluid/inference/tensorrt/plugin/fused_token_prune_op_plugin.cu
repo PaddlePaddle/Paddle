@@ -233,7 +233,7 @@ bool FusedTokenPrunePluginDynamic::supportsFormatCombination(
             "should be half for varseqlen."));
       }
     } else if (pos == 6 || pos == 11) {  // mask_id, mask_id_out
-      return (in.type == nvinfer1::DataType::kFLOAT) &&
+      return (in.type == nvinfer1::DataType::kHALF) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
     } else {
       return in.type == nvinfer1::DataType::kINT32 &&
