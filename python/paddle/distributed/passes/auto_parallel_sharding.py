@@ -690,7 +690,10 @@ class ShardingPass(PassBase):
             main_block, sharding_info
         )
         self._overlap_grad_comm(
-            main_block, coalesce_to_group_map, grad_name_to_group_map
+            main_block,
+            sharding_info,
+            coalesce_to_group_map,
+            grad_name_to_group_map,
         )
 
     def _fuse_overlap_parameter_comm_stage_two(self, sharding_info):
@@ -1094,7 +1097,11 @@ class ShardingPass(PassBase):
         return coalesce_to_group_map, grad_name_to_group_map
 
     def _overlap_grad_comm(
-        self, block, coalesce_to_group_map, grad_name_to_group_map
+        self,
+        block,
+        sharding_info,
+        coalesce_to_group_map,
+        grad_name_to_group_map,
     ):
         """
         overlap gradient communication with backward & optimizer computation.
@@ -1111,16 +1118,45 @@ class ShardingPass(PassBase):
         if not use_standalone_executor() or (not self.enable_overlap):
             return
 
-        ops = block.ops
-        self.gradient_sync_stream = "sharding_gradient_comm_stream"
+        self.grad_comm_group_stream_pairs = []
+        ranks = sharding_info.group.ranks
+        # NOTE since the gradient synchronization has calculation, there would be computation
+        # competition between backward calculation. therefore we limit the gradient communication
+        # up to 2, regardless the user configuration.
+        grad_comm_stream_num = 1
+        if self.comm_stream_num > 1:
+            grad_comm_stream_num = 2
+        for i in range(grad_comm_stream_num):
+            if i == 0:
+                group = sharding_info.group
+            else:
+                group = new_process_group(ranks, force_new_group=True)
+            # NOTE here stream is just a presentation with different name,
+            # it is up to executor to create the exact streams given the name.
+            stream = "sharding_grad_comm_stream{}".format(i)
+            self.grad_comm_group_stream_pairs.append(
+                {
+                    "comm_group": group,
+                    "comm_stream": stream,
+                }
+            )
 
+        ops = block.ops
         # analyze dependencies
         dep_map = {}
+        reduce_op_count = 0
         for idx, op in enumerate(ops):
             if is_data_parallel_reduce_op(op):
 
                 if op.type == "c_allreduce":
                     continue
+
+                comm_group = self.grad_comm_group_stream_pairs[
+                    reduce_op_count % grad_comm_stream_num
+                ]["comm_group"]
+                comm_stream = self.grad_comm_group_stream_pairs[
+                    reduce_op_count % grad_comm_stream_num
+                ]["comm_stream"]
 
                 reduce_varname = op.output("Out")[0]
                 grad_group = coalesce_to_group_map[reduce_varname]
@@ -1132,33 +1168,45 @@ class ShardingPass(PassBase):
                     # when the grad_ops' order is random
                     # prior dep
                     dep_map[idx] = [
-                        (idx, grad_group.vars[-1], grad_group.coalesce_var)
+                        (
+                            idx,
+                            grad_group.vars[-1],
+                            grad_group.coalesce_var,
+                            comm_stream,
+                        )
                     ]
                     # post dep
                     post_idx = idx + 1
                     if self.sharding_hybrid_dp and grad_group.is_in_local_shard:
                         post_idx += 1
                     dep_map[idx].append(
-                        (post_idx, grad_group.coalesce_var, grad_group.vars)
+                        (
+                            post_idx,
+                            grad_group.coalesce_var,
+                            grad_group.vars,
+                            comm_stream,
+                        )
                     )
 
                 # assign stream
-                op.dist_attr.execution_stream = self.gradient_sync_stream
+                op.dist_attr.execution_stream = comm_stream
+                op._set_attr("ring_id", comm_group.id)
                 if self.sharding_hybrid_dp and grad_group.is_in_local_shard:
                     next_op = ops[idx + 1]
                     assert next_op.type == "c_allreduce"
                     assert next_op.output("Out") == reduce_varname
-                    next_op.dist_attr.execution_stream = (
-                        self.gradient_sync_stream
-                    )
+                    next_op._set_attr("ring_id", comm_group.id)
+                    next_op.dist_attr.execution_stream = comm_stream
                     idx += 1
+
+                reduce_op_count += 1
 
             idx += 1
 
         # insert deps
         indice = sorted(list(dep_map.keys()), reverse=True)
         for i in indice:
-            for idx, prior_vars, post_vars in dep_map[i][::-1]:
+            for idx, prior_vars, post_vars, comm_stream in dep_map[i][::-1]:
                 depend_op = insert_dependencies_for_vars(
                     block,
                     idx,
@@ -1173,7 +1221,7 @@ class ShardingPass(PassBase):
                     sync=False,
                     op_namescope="sharding_grad_comm_dep",
                 )
-                depend_op.dist_attr.execution_stream = self.gradient_sync_stream
+                depend_op.dist_attr.execution_stream = comm_stream
 
         block._sync_with_cpp()
 
