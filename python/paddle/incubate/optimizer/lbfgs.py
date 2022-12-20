@@ -113,6 +113,7 @@ class LBFGS(Optimizer):
                 input = paddle.to_tensor(input)
                 target = paddle.to_tensor(target)
                 train_step(input, target)
+
     """
 
     def __init__(
@@ -168,7 +169,7 @@ class LBFGS(Optimizer):
         r"""Returns the state of the optimizer as a :class:`dict`.
 
         Return:
-            state - a dict holding current optimization state. Its content
+            state, a dict holding current optimization state. Its content
                 differs between optimizer classes.
         """
 
