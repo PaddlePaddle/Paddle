@@ -9,7 +9,6 @@ if(WITH_GPU OR WITH_ROCM)
        gpu/gpu_resources.cc)
   if(WITH_GPU)
     list(APPEND BACKENDS_SRCS gpu/cuda/cuda_info.cc gpu/cuda/cuda_graph.cc)
-    message("Here is phi backend cmake")
     foreach(CUDA_ARCH ${CMAKE_CUDA_ARCHITECTURES})
       if(CUDA_ARCH MATCHES "^([0-9]+)\\-real$")
         list(APPEND CUDA_REAL_ARCHS_LIST ${CMAKE_MATCH_1})
@@ -18,10 +17,6 @@ if(WITH_GPU OR WITH_ROCM)
       endif()
     endforeach()
     string(JOIN "," CUDA_REAL_ARCHS ${CUDA_REAL_ARCHS_LIST})
-
-    foreach(arch ${CUDA_REAL_ARCHS_LIST})
-      message("==== PaddleInferenceCMAKELISTS CUDA REAL ARCH ${arch} ====")
-    endforeach()
 
     set_source_files_properties(gpu/gpu_resources.cc
                                 PROPERTIES COMPILE_FLAGS "-DCUDA_REAL_ARCHS=\"${CUDA_REAL_ARCHS}\"")

@@ -65,10 +65,9 @@ void InitGpuProperties(Place place,
     static std::atomic<bool> once_flag(false);
     if (!once_flag.exchange(true)) {
       PADDLE_THROW(phi::errors::InvalidArgument(
-        "Paddle Inference with runtime capability %d is not compatible with Paddle installation. Please check compiled version of Paddle. ", compute_capability));
+        "Paddle Inference with runtime capability %d is not compatible with Paddle installation. Please check compiled version of Paddle. ", *compute_capability));
     }
   }
-
   // TODO(wilber): glog may be replaced in the future?
   LOG_FIRST_N(WARNING, 1) << "Please NOTE: device: "
                           << static_cast<int>(place.device)
