@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.core import PassVersionChecker
 
@@ -28,7 +29,7 @@ class ConvActivationMkldnnFusePassTest(InferencePassTest):
             data = fluid.data(
                 name="data", shape=[-1, 3, 100, 100], dtype="float32"
             )
-            conv_out = fluid.layers.conv2d(
+            conv_out = paddle.static.nn.conv2d(
                 data,
                 num_filters=self.conv_num_filters,
                 filter_size=self.conv_filter_size,

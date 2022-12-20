@@ -18,7 +18,6 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 
 def sigmoid(x):
@@ -234,10 +233,6 @@ class TestYoloBoxDygraph(unittest.TestCase):
             iou_aware_factor=0.5,
         )
         paddle.enable_static()
-
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_dygraph()
 
 
 class TestYoloBoxStatic(unittest.TestCase):

@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.jit.api import declarative
+import paddle.nn.functional as F
 from paddle.jit.dy2static.loop_transformer import NameVisitor
 from paddle.utils import gast
 
@@ -51,7 +51,7 @@ def while_loop_dyfun_with_conflict_var(x):
 
     def relu(y):
         # 'y' is not visible outside the scope.
-        return fluid.layers.relu(y)
+        return F.relu(y)
 
     while x < 10:
         # If a tmp variable is created which has same name
@@ -323,7 +323,7 @@ class TestTransformWhileLoop(unittest.TestCase):
             # Set the input of dyfunc to VarBase
             tensor_x = fluid.dygraph.to_variable(self.x, zero_copy=False)
             if to_static:
-                ret = declarative(self.dyfunc)(tensor_x)
+                ret = paddle.jit.to_static(self.dyfunc)(tensor_x)
             else:
                 ret = self.dyfunc(tensor_x)
             if hasattr(ret, "numpy"):
@@ -400,7 +400,7 @@ class TestTransformForLoop(unittest.TestCase):
     def _run(self, to_static):
         with fluid.dygraph.guard(self.place):
             if to_static:
-                ret = declarative(self.dyfunc)(self.len)
+                ret = paddle.jit.to_static(self.dyfunc)(self.len)
             else:
                 ret = self.dyfunc(self.len)
             return ret.numpy()
