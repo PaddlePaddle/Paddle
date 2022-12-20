@@ -78,7 +78,7 @@ TEST(DisMultiTrainerTest, testforgpugraph) {
   dataset->SetGpuGraphMode(true);
   dataset->GetMemoryDataSize();
   dataset->SetPassId(2);
-  int pass_id = dataset->GetPassID();
+  dataset->GetPassID();
   dataset->GetEpochFinish();
 #endif
 }
