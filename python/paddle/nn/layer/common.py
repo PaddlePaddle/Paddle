@@ -698,14 +698,14 @@ class Bilinear(Layer):
 
 
 class Dropout(Layer):
-    """
+    r"""
     Dropout is a regularization technique for reducing overfitting by preventing
     neuron co-adaption during training as described in the paper:
     `Improving neural networks by preventing co-adaptation of feature detectors <https://arxiv.org/abs/1207.0580>`_
     The dropout operator randomly sets the outputs of some units to zero, while upscale others
     according to the given dropout probability.
 
-    See ``paddle.nn.functional.dropout`` for more details.
+    See :ref:`api_paddle_nn_functional_dropout` for more details.
 
     In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 

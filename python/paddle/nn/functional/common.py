@@ -1255,7 +1255,7 @@ def dropout2d(x, p=0.5, training=True, data_format='NCHW', name=None):
     a channel is a 2D feature map with the shape `HW` ). Each channel will be zeroed out independently
     on every forward call with probability `p` using samples from a Bernoulli distribution.
 
-    See ``paddle.nn.functional.dropout`` for more details.
+    See :ref:`api_paddle_nn_functional_dropout` for more details.
 
     Args:
         x (Tensor):  The input is 4-D Tensor with shape [N, C, H, W] or [N, H, W, C].
@@ -1314,7 +1314,7 @@ def dropout3d(x, p=0.5, training=True, data_format='NCDHW', name=None):
     a channel is a 3D feature map with the shape `DHW` ). Each channel will be zeroed out independently
     on every forward call with probability `p` using samples from a Bernoulli distribution.
 
-    See ``paddle.nn.functional.dropout`` for more details.
+    See :ref:`api_paddle_nn_functional_dropout` for more details.
 
     Args:
         x (Tensor):  The input is 5-D Tensor with shape [N, C, D, H, W] or [N, D, H, W, C].
