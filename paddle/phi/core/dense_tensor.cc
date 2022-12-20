@@ -125,6 +125,10 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
                             bytes));
     }
     bytes = requested_size;
+  } else {
+    if (!check_size) {
+      bytes = requested_size;
+    }
   }
   // NOTE(paddle-dev): In case of the allocator of storage_ is different with
   // the incoming allocator, we will re-alloc data using the incoming

@@ -96,6 +96,10 @@ void BuildVariableScope(const framework::BlockDesc& block,
 
 void LogDeviceMemoryStats(const platform::Place& place);
 
+void FakeInitializeOutputs(phi::Kernel* phi_kernel,
+                           phi::KernelSignature* kernel_sig,
+                           phi::KernelContext* phi_kernel_context);
+
 }  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle

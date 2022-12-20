@@ -512,6 +512,50 @@ void HandleOperatorBase(const platform::Place& place,
   op_func_node->dev_ctx_ = dev_ctx;
 }
 
+void FakeInitializeOutputs(phi::Kernel* phi_kernel,
+                           phi::KernelSignature* kernel_sig,
+                           phi::KernelContext* phi_kernel_context) {
+  auto output_defs = phi_kernel->args_def().output_defs();
+  auto out_names = kernel_sig->output_names;
+
+  for (size_t i = 0; i < out_names.size(); ++i) {
+    VLOG(4) << out_names[i];
+    // calcute the start and end index of the output tensors
+    size_t start_idx = phi_kernel_context->OutputRangeAt(i).first;
+    size_t end_idx = phi_kernel_context->OutputRangeAt(i).second;
+    for (size_t j = start_idx; j < end_idx; ++j) {
+      auto* out_tensor = phi_kernel_context->MutableOutputAt(j);
+      if (out_tensor == nullptr) {
+        VLOG(4) << "Output" << out_names[i] << " is nullptr";
+        continue;
+      }
+      if (phi::DenseTensor::classof(out_tensor)) {
+        if (!out_tensor->initialized()) {
+          VLOG(4) << "DenseTensor alloc 0 bytes of type " << out_tensor->dtype()
+                  << " " << out_tensor;
+
+          phi_kernel_context->GetDeviceContext<phi::DeviceContext>()
+              .template Alloc(out_tensor,
+                              out_tensor->dtype(),
+                              /*requested_size=*/0,
+                              /*pinned=*/false,
+                              /*check_size=*/false);
+        }
+      } else if (phi::SparseCooTensor::classof(out_tensor)) {
+        VLOG(4) << "SparseCooTensor";
+      } else if (phi::SparseCsrTensor::classof(out_tensor)) {
+        VLOG(4) << "SparseCsrTensor";
+      } else {
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "Only support "
+            "DenseTensor/SparseCooTensor/SparseCsrTensor "
+            "now"));
+        VLOG(4) << "SparseCooTensor";
+      }
+    }
+  }
+}
+
 bool BuildOpFuncList(const platform::Place& place,
                      const framework::BlockDesc& block,
                      const std::set<std::string>& skip_gc_vars,
@@ -733,7 +777,8 @@ bool BuildOpFuncList(const platform::Place& place,
                            var_scope,
                            &op_func_node,
                            vec_func_list,
-                           use_local_scope);
+                           use_local_scope,
+                           skip_run);
         VLOG(4) << "apply data transform done. ";
         // step 4. infershape, see OperatorWithKernel::RunImpl in operator.cc
         // for why.
@@ -755,49 +800,9 @@ bool BuildOpFuncList(const platform::Place& place,
           if (!skip_run) {
             (*op_func_node.phi_kernel_)(&phi_kernel_context);
           } else {
-            auto output_defs =
-                op_func_node.phi_kernel_->args_def().output_defs();
-            auto out_names = op_with_kernel->PhiKernelSignature()->output_names;
-
-            for (size_t i = 0; i < out_names.size(); ++i) {
-              VLOG(4) << out_names[i];
-              // calcute the start and end index of the output tensors
-              size_t start_idx = phi_kernel_context.OutputRangeAt(i).first;
-              size_t end_idx = phi_kernel_context.OutputRangeAt(i).second;
-              for (size_t j = start_idx; j < end_idx; ++j) {
-                auto* out_tensor = phi_kernel_context.MutableOutputAt(j);
-                if (out_tensor == nullptr) {
-                  VLOG(4) << "Output" << out_names[i] << " is nullptr";
-                  continue;
-                }
-                if (phi::DenseTensor::classof(out_tensor)) {
-                  if (!out_tensor->initialized()) {
-                    VLOG(4) << "DenseTensor alloc "
-                            << phi::backends::gpu::GpuMinChunkSize()
-                            << " bytes of type " << out_tensor->dtype() << " "
-                            << out_tensor;
-
-                    dev_ctx->template Alloc(
-                        out_tensor,
-                        out_tensor->dtype(),
-                        /*requested_size=*/
-                        phi::backends::gpu::GpuMinChunkSize(),
-                        /*pinned=*/false,
-                        /*check_size=*/false);
-                  }
-                } else if (phi::SparseCooTensor::classof(out_tensor)) {
-                  VLOG(4) << "SparseCooTensor";
-                } else if (phi::SparseCsrTensor::classof(out_tensor)) {
-                  VLOG(4) << "SparseCsrTensor";
-                } else {
-                  PADDLE_THROW(phi::errors::Unimplemented(
-                      "Only support "
-                      "DenseTensor/SparseCooTensor/SparseCsrTensor "
-                      "now"));
-                  VLOG(4) << "SparseCooTensor";
-                }
-              }
-            }
+            FakeInitializeOutputs(op_func_node.phi_kernel_,
+                                  op_with_kernel->PhiKernelSignature(),
+                                  &phi_kernel_context);
           }
         } else {
           // the place of exec_ctx maybe has changed.
@@ -805,7 +810,7 @@ bool BuildOpFuncList(const platform::Place& place,
             op_func_node.kernel_func_(ExecutionContext(
                 *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context));
           } else {
-            // fake alloc
+            // TODO(zhiqiu): is it needed to support fluid kernel?
           }
         }
 
