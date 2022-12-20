@@ -24,10 +24,10 @@ from paddle.fluid import core
 
 
 class TestMaxMemoryAllocated(unittest.TestCase):
-    def test_max_memory_allocated(self, device=None):
+    def func_test_max_memory_allocated(self, device=None):
         if core.is_compiled_with_cuda():
             alloc_time = 100
-            max_alloc_size = 10000
+            max_alloc_size = 100000
             peak_memory_allocated_size = max_memory_allocated(device)
             for i in range(alloc_time):
                 shape = paddle.randint(max_alloc_size)

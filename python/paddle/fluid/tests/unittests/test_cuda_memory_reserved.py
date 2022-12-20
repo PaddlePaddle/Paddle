@@ -20,7 +20,7 @@ from paddle.fluid import core
 
 
 class TestMemoryreserved(unittest.TestCase):
-    def test_memory_reserved(self, device=None):
+    def func_test_memory_reserved(self, device=None):
         if core.is_compiled_with_cuda():
             tensor = paddle.zeros(shape=[256])
             alloc_size = 4 * 256  # 256 float32 data, with 4 bytes for each one
