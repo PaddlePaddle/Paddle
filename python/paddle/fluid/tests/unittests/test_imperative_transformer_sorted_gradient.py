@@ -416,11 +416,9 @@ class PrePostProcessLayer(Layer):
                 out = self._layer_norm(out)
             elif cmd == "d":  # add dropout
                 if dropout_rate:
-                    out = fluid.layers.dropout(
+                    out = paddle.nn.functional.dropout(
                         out,
-                        dropout_prob=dropout_rate,
-                        seed=ModelHyperParams.dropout_seed,
-                        is_test=False,
+                        p=dropout_rate,
                     )
         return out
 
@@ -436,11 +434,9 @@ class PositionwiseFeedForwardLayer(Layer):
         hidden = self._i2h(x)
         hidden = paddle.nn.functional.relu(hidden)
         if self._dropout_rate:
-            hidden = fluid.layers.dropout(
+            hidden = paddle.nn.functional.dropout(
                 hidden,
-                dropout_prob=self._dropout_rate,
-                seed=ModelHyperParams.dropout_seed,
-                is_test=False,
+                p=self._dropout_rate,
             )
         out = self._h2o(hidden)
         return out
@@ -504,11 +500,9 @@ class MultiHeadAttentionLayer(Layer):
             product += attn_bias
         weights = paddle.nn.functional.softmax(product)
         if self._dropout_rate:
-            weights_droped = fluid.layers.dropout(
+            weights_droped = paddle.nn.functional.dropout(
                 weights,
-                dropout_prob=self._dropout_rate,
-                seed=ModelHyperParams.dropout_seed,
-                is_test=False,
+                p=self._dropout_rate,
             )
             out = paddle.matmul(weights_droped, transpose_v)
         else:
@@ -703,11 +697,9 @@ class PrepareEncoderDecoderLayer(Layer):
         src_pos_emb.stop_gradient = True
         enc_input = src_word_emb + src_pos_emb
         return (
-            fluid.layers.dropout(
+            paddle.nn.functional.dropout(
                 enc_input,
-                dropout_prob=self._dropout_rate,
-                seed=ModelHyperParams.dropout_seed,
-                is_test=False,
+                p=self._dropout_rate,
             )
             if self._dropout_rate
             else enc_input

@@ -28,6 +28,7 @@
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/passes/convert_to_mixed_precision.h"
+#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
@@ -74,7 +75,7 @@ void OutputProcess(framework::ir::Graph *graph,
     for (auto *var_node : op_node->outputs) {
       if (!trt_outputs.count(var_node)) continue;
       if (!var_node->Var()->Persistable() &&
-          tensorrt::IsFloatVar(var_node->Var()->GetDataType()) &&
+          IsFloatVar(var_node->Var()->GetDataType()) &&
           var_node->Var()->GetDataType() != framework::proto::VarType::FP32) {
         for (auto *next_op : var_node->outputs) {
           // if next_op support mixed_precision, we need to add cast op.
@@ -83,14 +84,14 @@ void OutputProcess(framework::ir::Graph *graph,
                   backend,
                   precision,
                   blacklist)) {
-            AddCastOp(graph,
-                      var_node,
-                      next_op,
-                      framework::proto::VarType::FP32,
-                      to_type,
-                      &suffix,
-                      block_desc,
-                      &var_to_cast_op_map);
+            InsertCastOp(graph,
+                         var_node,
+                         next_op,
+                         framework::proto::VarType::FP32,
+                         to_type,
+                         block_desc,
+                         &suffix,
+                         &var_to_cast_op_map);
             var_node->Var()->SetDataType(framework::proto::VarType::FP32);
           }
         }

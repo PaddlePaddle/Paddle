@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 import paddle.tensor as tensor
-from paddle.fluid.framework import _test_eager_guard
 from paddle.static import Program, program_guard
 
 
@@ -55,7 +54,7 @@ class TestMultiplyApi(unittest.TestCase):
         res = paddle.multiply(x, y)
         return res.numpy()
 
-    def func_test_multiply(self):
+    def test_multiply(self):
         np.random.seed(7)
 
         # test static computation graph: 1-d array
@@ -106,14 +105,9 @@ class TestMultiplyApi(unittest.TestCase):
         res = self._run_dynamic_graph_case(x_data, y_data)
         np.testing.assert_allclose(res, np.multiply(x_data, y_data), rtol=1e-05)
 
-    def test_multiply(self):
-        with _test_eager_guard():
-            self.func_test_multiply()
-        self.func_test_multiply()
-
 
 class TestMultiplyError(unittest.TestCase):
-    def func_test_errors(self):
+    def test_errors(self):
         # test static computation graph: dtype can not be int8
         paddle.enable_static()
         with program_guard(Program(), Program()):
@@ -185,11 +179,6 @@ class TestMultiplyError(unittest.TestCase):
         x_data = np.random.randn(200).astype(np.float32)
         y_data = np.random.randn(200).astype(np.float32)
         self.assertRaises(ValueError, paddle.multiply, x_data, y_data)
-
-    def test_errors(self):
-        with _test_eager_guard():
-            self.func_test_errors()
-        self.func_test_errors()
 
 
 if __name__ == '__main__':
