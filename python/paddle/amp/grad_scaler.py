@@ -24,9 +24,6 @@ from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import _dygraph_tracer, dygraph_only
 
-# from paddle.fluid.dygraph.amp import AmpScaler, OptimizerState
-
-
 __all__ = ['AmpScaler', 'OptimizerState']
 
 
@@ -84,7 +81,7 @@ class AmpScaler:
                     learning_rate=0.01, parameter_list=model.parameters())
             scaler = fluid.dygraph.AmpScaler(init_loss_scaling=1024)
             data = fluid.dygraph.to_variable(data)
-            with fluid.dygraph.amp_guard():
+            with paddle.amp.amp_guard():
                 conv = model(data)
                 loss = fluid.layers.reduce_mean(conv)
                 scaled = scaler.scale(loss)
@@ -178,7 +175,7 @@ class AmpScaler:
                             learning_rate=0.01, parameter_list=model.parameters())
                     scaler = fluid.dygraph.AmpScaler(init_loss_scaling=1024)
                     data = fluid.dygraph.to_variable(data)
-                    with fluid.dygraph.amp_guard():
+                    with paddle.amp.amp_guard():
                         conv = model(data)
                         loss = fluid.layers.reduce_mean(conv)
                         scaled = scaler.scale(loss)
@@ -220,7 +217,7 @@ class AmpScaler:
                             learning_rate=0.01, parameter_list=model.parameters())
                     scaler = fluid.dygraph.AmpScaler(init_loss_scaling=1024)
                     data = fluid.dygraph.to_variable(data)
-                    with fluid.dygraph.amp_guard():
+                    with paddle.amp.amp_guard():
                         conv = model(data)
                         loss = fluid.layers.reduce_mean(conv)
                         scaled = scaler.scale(loss)
