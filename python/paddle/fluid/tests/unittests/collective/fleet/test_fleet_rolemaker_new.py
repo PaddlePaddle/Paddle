@@ -15,6 +15,7 @@
 
 import os
 import unittest
+
 import paddle.distributed.fleet.base.role_maker as role_maker
 
 
