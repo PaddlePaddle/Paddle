@@ -123,7 +123,7 @@ class PHIVector : public phi::ExtendedTensor,
 
   PHIVector& operator=(PHIVector&& other) = default;
 
-  /// \brief Destroy the Vocab and release exclusive resources.
+  /// \brief Destroy the PHIVector and release exclusive resources.
   virtual ~PHIVector() = default;
 
  public:
