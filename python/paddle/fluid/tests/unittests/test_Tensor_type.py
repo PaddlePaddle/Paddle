@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
 
 
 class TensorTypeTest(unittest.TestCase):
@@ -40,19 +39,6 @@ class TensorTypeTest(unittest.TestCase):
         tensorx = paddle.tensor.logic.Tensor(inx)
         typex_str = str(type(tensorx))
 
-        expectx = "<class 'paddle.Tensor'>"
-        self.assertEqual((typex_str == expectx), True)
-
-    def test_type_core(self):
-        paddle.disable_static()
-        inx = np.array([1, 2])
-        tensorx = core.VarBase(inx)
-        typex_str = str(type(tensorx))
-        expectx = "<class 'paddle.Tensor'>"
-        self.assertEqual((typex_str == expectx), True)
-
-        tensorx = paddle.framework.VarBase(inx)
-        typex_str = str(type(tensorx))
         expectx = "<class 'paddle.Tensor'>"
         self.assertEqual((typex_str == expectx), True)
 

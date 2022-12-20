@@ -420,7 +420,7 @@ class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
                 )
 
                 for i in range(self.iter_num):
-                    fluid.layers.array_write(input, zero + i, tensor_array)
+                    paddle.tensor.array_write(input, zero + i, tensor_array)
 
                 self.out_var = fluid.layers.concat(tensor_array, axis=self.axis)
         else:
@@ -434,7 +434,7 @@ class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
 
                 for i in range(self.iter_num):
                     # Api array_write is not supported in paddle 2.0 yet.
-                    fluid.layers.array_write(input, zero + i, tensor_array)
+                    paddle.tensor.array_write(input, zero + i, tensor_array)
 
                 self.out_var = paddle.concat(tensor_array, axis=self.axis)
 

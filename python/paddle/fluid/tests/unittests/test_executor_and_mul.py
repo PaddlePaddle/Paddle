@@ -16,8 +16,10 @@ import unittest
 
 import numpy as np
 
+import paddle
 from paddle.fluid.executor import Executor
-from paddle.fluid.layers import array_write, data, increment, mul, zeros
+from paddle.fluid.layers import data, zeros
+from paddle.tensor import array_write
 
 
 class TestExecutor(unittest.TestCase):
@@ -26,14 +28,14 @@ class TestExecutor(unittest.TestCase):
         a = data(name='a', shape=[784], dtype='float32')
         array = array_write(x=a, i=i)
 
-        i = increment(i)
+        i = paddle.increment(i)
         b = data(
             name='b', shape=[784, 100], dtype='float32', append_batch_size=False
         )
         array_write(x=b, i=i, array=array)
 
-        i = increment(i)
-        out = mul(x=a, y=b)
+        i = paddle.increment(i)
+        out = paddle.matmul(x=a, y=b)
         array_write(x=out, i=i, array=array)
 
         a_np = np.random.random((100, 784)).astype('float32')

@@ -632,7 +632,7 @@ class RecurrentOpSubBlockTest(RecurrentOpTest1):
             step_in = rnn.step_input(x)
             concat_in = layers.concat([step_in, pre_h], 1)
             new_h = paddle.matmul(concat_in, w2)
-            new_h = layers.unsqueeze(new_h, [1])
+            new_h = paddle.unsqueeze(new_h, [1])
             new_h, _ = dot_attention(new_h, y)
             new_h = paddle.squeeze(new_h, [1])
 
