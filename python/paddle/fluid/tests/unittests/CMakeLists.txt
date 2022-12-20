@@ -498,7 +498,6 @@ set(TEST_OPS_WITH_GC
     test_gather_op
     test_gather_nd_op
     test_linear_chain_crf_op
-    test_lod_reset_op
     test_lookup_table_op
     test_mean_op
     test_pad2d_op
@@ -516,7 +515,7 @@ endforeach()
 set(TEST_EAGER_OPS test_jit_save_load test_translated_layer)
 foreach(TEST_OP ${TEST_EAGER_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
-  py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS FLAGS_enable_eager_mode=1)
+  py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()
 
 if((NOT WITH_GPU)
@@ -1246,10 +1245,6 @@ py_test_modules(
 set_tests_properties(test_add_reader_dependency_for_interpretercore
                      PROPERTIES TIMEOUT 120)
 
-py_test_modules(test_renorm_op_without_eager MODULES test_renorm_op ENVS
-                FLAGS_enable_eager_mode=0)
-
-set_tests_properties(test_renorm_op_without_eager PROPERTIES TIMEOUT 120)
 py_test_modules(
   test_eager_deletion_padding_rnn_for_interpretercore MODULES
   test_eager_deletion_padding_rnn ENVS FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)

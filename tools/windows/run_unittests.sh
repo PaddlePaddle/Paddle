@@ -236,7 +236,6 @@ long_time_test="^test_gru_op$|\
 ^test_sequence_conv$|\
 ^test_sgd_op$|\
 ^test_transformer$|\
-^test_imperative_auto_mixed_precision$|\
 ^test_trt_matmul_quant_dequant$|\
 ^test_strided_slice_op$"
 

@@ -29,7 +29,7 @@
 #include "paddle/phi/core/device_context.h"
 
 #if defined(PADDLE_WITH_XPU)
-#include "paddle/fluid/distributed/collective/BKCLTools.h"
+#include "paddle/fluid/distributed/collective/bkcl_tools.h"
 #endif
 
 constexpr const char* BKCL_BACKEND_NAME = "BKCL";

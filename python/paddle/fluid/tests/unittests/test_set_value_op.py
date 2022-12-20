@@ -1437,7 +1437,7 @@ class TestGradientTruncated(unittest.TestCase):
             # set_value_grad_op will not be run during backward.
             y, value = op(x)
             y2 = y + 1
-            loss = paddle.paddle.sum(y2)
+            loss = paddle.sum(y2)
             sgd = paddle.optimizer.Adam()
             sgd.minimize(loss)
             place = (

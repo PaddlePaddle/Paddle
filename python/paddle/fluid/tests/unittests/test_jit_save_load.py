@@ -25,7 +25,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import unique_name
 from paddle.fluid.layers.utils import flatten
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
 from paddle.jit.translated_layer import INFER_PARAMS_INFO_SUFFIX
 from paddle.nn import Linear
 from paddle.static import InputSpec
@@ -57,7 +57,7 @@ class LinearNet(fluid.dygraph.Layer):
         super().__init__()
         self._linear = Linear(in_size, out_size)
 
-    @declarative
+    @to_static
     def forward(self, x):
         return self._linear(x)
 
@@ -67,7 +67,7 @@ class LinearNetWithInputSpec(fluid.dygraph.Layer):
         super().__init__()
         self._linear = Linear(in_size, out_size)
 
-    @declarative(input_spec=[InputSpec(shape=[None, 784], dtype='float32')])
+    @to_static(input_spec=[InputSpec(shape=[None, 784], dtype='float32')])
     def forward(self, x):
         return self._linear(x)
 
@@ -86,7 +86,7 @@ class LinerNetWithLabel(paddle.nn.Layer):
         super().__init__()
         self._linear = Linear(in_size, out_size)
 
-    @declarative(
+    @to_static(
         input_spec=[
             InputSpec(shape=[None, 784], dtype='float32', name="image"),
             InputSpec(shape=[None, 1], dtype='int64', name="label"),
@@ -106,7 +106,7 @@ class LinerNetWithPruneInput(paddle.nn.Layer):
         super().__init__()
         self._linear = Linear(in_size, out_size)
 
-    @declarative(
+    @to_static(
         input_spec=[
             InputSpec(shape=[None, 784], dtype='float32', name="image"),
             InputSpec(shape=[None, 1], dtype='int64', name="label"),
@@ -126,7 +126,7 @@ class LinerNetWithUselessInput(paddle.nn.Layer):
         super().__init__()
         self._linear = Linear(in_size, out_size)
 
-    @declarative(
+    @to_static(
         input_spec=[
             InputSpec(shape=[None, 784], dtype='float32', name="image"),
             InputSpec(shape=[None, 1], dtype='int64', name="label"),
@@ -142,7 +142,7 @@ class LinearNetReturnLoss(fluid.dygraph.Layer):
         super().__init__()
         self._linear = Linear(in_size, out_size)
 
-    @declarative
+    @to_static
     def forward(self, x):
         y = self._linear(x)
         z = self._linear(y)
@@ -156,7 +156,7 @@ class LinearNetMultiInput(fluid.dygraph.Layer):
         self._linear1 = Linear(in_size, out_size)
         self._linear2 = Linear(in_size, out_size)
 
-    @declarative(
+    @to_static(
         input_spec=[
             InputSpec([None, 8], dtype='float32'),
             InputSpec([None, 8], dtype='float32'),
@@ -175,7 +175,7 @@ class LinearNetMultiInput1(fluid.dygraph.Layer):
         self._linear1 = Linear(in_size, out_size)
         self._linear2 = Linear(in_size, out_size)
 
-    @declarative(
+    @to_static(
         input_spec=(
             InputSpec([None, 8], dtype='float32'),
             InputSpec([None, 8], dtype='float32'),
@@ -195,7 +195,7 @@ class MultiLoadingLinearNet(fluid.dygraph.Layer):
         self._load_linear1 = paddle.jit.load(model_path)
         self._load_linear2 = paddle.jit.load(model_path)
 
-    @declarative
+    @to_static
     def forward(self, x):
         tmp1 = self._linear(x)
         tmp2 = self._load_linear1(tmp1)
@@ -210,7 +210,7 @@ class LinearNetReturnHidden(fluid.dygraph.Layer):
         self._linear_1 = Linear(in_size, out_size)
         self._linear_2 = Linear(in_size, out_size)
 
-    @declarative
+    @to_static
     def forward(self, x):
         y = self._linear_1(x)
         z = self._linear_2(y)
@@ -224,7 +224,7 @@ class LinearNetWithNestOut(fluid.dygraph.Layer):
         self._linear_1 = Linear(in_size, out_size)
         self._linear_2 = Linear(in_size, out_size)
 
-    @declarative
+    @to_static
     def forward(self, x):
         y = self._linear_1(x)
         z = self._linear_2(y)
@@ -456,7 +456,7 @@ class TestSaveLoadWithNestOut(unittest.TestCase):
 
         net = LinearNetWithNestOut(8, 8)
         dy_outs = flatten(net(x))
-        net = declarative(net, input_spec=[InputSpec([None, 8], name='x')])
+        net = to_static(net, input_spec=[InputSpec([None, 8], name='x')])
 
         model_path = os.path.join(self.temp_dir.name, "net_with_nest_out/model")
         paddle.jit.save(net, model_path)
@@ -549,7 +549,7 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
     def test_with_input_spec(self):
         net = LinearNetReturnLoss(8, 8)
         # set x.shape = [None, 8]
-        net.forward = declarative(
+        net.forward = to_static(
             net.forward, input_spec=[InputSpec([None, 8], name='x')]
         )
 

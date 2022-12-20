@@ -703,6 +703,21 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (axis == 0 || flatten || dtype != 2) return false;
     }
 
+    if (op_type == "arg_min") {
+      if (!desc.HasAttr("axis", /*with_attr_var=*/false)) {
+        VLOG(3) << "Skip to convert into TRT while found Attribute('axis') is "
+                   "Variable type in arg_min.";
+        return false;
+      }
+
+      int axis = desc.HasAttr("axis")
+                     ? PADDLE_GET_CONST(int64_t, desc.GetAttr("axis"))
+                     : -1;
+      bool flatten = PADDLE_GET_CONST(bool, desc.GetAttr("flatten"));
+      int dtype = PADDLE_GET_CONST(int, desc.GetAttr("dtype"));
+      if (axis == 0 || flatten || dtype != 2) return false;
+    }
+
     if (op_type == "affine_channel") {
       if (!desc.HasAttr("data_layout")) return false;
       auto data_layout = phi::StringToDataLayout(
@@ -2524,6 +2539,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "yolo_box",
       "yolo_box_head",
       "arg_max",
+      "arg_min",
       "roi_align",
       "affine_channel",
       "nearest_interp",
@@ -2573,7 +2589,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "lookup_table",
       "merge_layernorm",
       "skip_merge_layernorm",
-      // "lookup_table_v2",
+      "lookup_table_v2",
       "expand_v2"};
 
   std::unordered_set<std::string> teller_set{
@@ -2669,6 +2685,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "yolo_box",
       "yolo_box_head",
       "arg_max",
+      "arg_min",
       "roi_align",
       "affine_channel",
       "nearest_interp",
@@ -2719,7 +2736,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "merge_layernorm",
       "skip_merge_layernorm",
       "lookup_table",
-      // "lookup_table_v2",
+      "lookup_table_v2",
       "expand_v2"};
 };
 
