@@ -344,7 +344,7 @@ class TestLayer(LayerTest):
     def test_relu(self):
         with self.static_graph():
             t = layers.data(name='t', shape=[3, 3], dtype='float32')
-            ret = layers.relu(t)
+            ret = F.relu(t)
             static_ret = self.get_static_graph_result(
                 feed={'t': np.ones([3, 3], dtype='float32')}, fetch_list=[ret]
             )[0]
@@ -352,11 +352,11 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             with _test_eager_guard():
                 t = np.ones([3, 3], dtype='float32')
-                dy_eager_ret = layers.relu(base.to_variable(t))
+                dy_eager_ret = F.relu(base.to_variable(t))
                 dy_eager_ret_value = dy_eager_ret.numpy()
 
             t = np.ones([3, 3], dtype='float32')
-            dy_ret = layers.relu(base.to_variable(t))
+            dy_ret = F.relu(base.to_variable(t))
             dy_ret_value = dy_ret.numpy()
 
         np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
@@ -922,21 +922,21 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             with _test_eager_guard():
                 input = fluid.dygraph.to_variable(np.random.random((3, 8, 5)))
-                x0, x1 = fluid.layers.split(input, num_or_sections=2, dim=1)
-                x00, x11 = fluid.layers.split(
+                x0, x1 = paddle.split(input, num_or_sections=2, axis=1)
+                x00, x11 = paddle.split(
                     input,
                     num_or_sections=2,
-                    dim=fluid.dygraph.to_variable(np.array([1])),
+                    axis=fluid.dygraph.to_variable(np.array([1])),
                 )
                 np.testing.assert_array_equal(x0.numpy(), x00.numpy())
                 np.testing.assert_array_equal(x1.numpy(), x11.numpy())
 
             input = fluid.dygraph.to_variable(np.random.random((3, 8, 5)))
-            x0, x1 = fluid.layers.split(input, num_or_sections=2, dim=1)
-            x00, x11 = fluid.layers.split(
+            x0, x1 = paddle.split(input, num_or_sections=2, axis=1)
+            x00, x11 = paddle.split(
                 input,
                 num_or_sections=2,
-                dim=fluid.dygraph.to_variable(np.array([1])),
+                axis=fluid.dygraph.to_variable(np.array([1])),
             )
             np.testing.assert_array_equal(x0.numpy(), x00.numpy())
             np.testing.assert_array_equal(x1.numpy(), x11.numpy())
@@ -2368,7 +2368,7 @@ class TestBook(LayerTest):
             fluid.default_main_program(), fluid.default_startup_program()
         ):
             x = self._get_data(name='x', shape=[8, 7, 10], dtype="float32")
-            output = layers.l2_normalize(x, axis=1)
+            output = paddle.nn.functional.normalize(x, axis=1)
             return output
 
     def make_shape(self):
@@ -2593,39 +2593,6 @@ class TestBook(LayerTest):
             out = paddle.nn.functional.square_error_cost(input=x, label=y)
             return out
 
-    def test_dynamic_lstmp(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            hidden_dim, proj_dim = 16, 8
-            seq_data = layers.data(
-                name='seq_data', shape=[10, 10], dtype='float32', lod_level=1
-            )
-            fc_out = layers.fc(input=seq_data, size=4 * hidden_dim)
-            self.assertIsNotNone(
-                layers.dynamic_lstmp(
-                    input=fc_out, size=4 * hidden_dim, proj_size=proj_dim
-                )
-            )
-
-    def test_lod_reset(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            # case 1
-            x = layers.data(name='x', shape=[10], dtype='float32')
-            y = layers.data(
-                name='y', shape=[10, 20], dtype='float32', lod_level=2
-            )
-            z = layers.lod_reset(x=x, y=y)
-            self.assertTrue(z.lod_level == 2)
-            # case 2
-            lod_tensor_in = layers.data(name='lod_in', shape=[1], dtype='int32')
-            z = layers.lod_reset(x=x, y=lod_tensor_in)
-            self.assertTrue(z.lod_level == 1)
-            # case 3
-            z = layers.lod_reset(x=x, target_lod=[1, 2, 3])
-            self.assertTrue(z.lod_level == 1)
-            return z
-
     def test_affine_grid(self):
         with self.static_graph():
             data = layers.data(name='data', shape=[2, 3, 3], dtype="float32")
@@ -2697,7 +2664,7 @@ class TestBook(LayerTest):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
             x = layers.data(name='x', shape=[8, 2], dtype='float32')
-            out = layers.unsqueeze(input=x, axes=[1])
+            out = paddle.unsqueeze(x, axis=[1])
             return out
 
     def test_sequence_scatter(self):
@@ -2806,16 +2773,6 @@ class TestBook(LayerTest):
             x = layers.data(name="input", shape=[1], dtype='int32', lod_level=1)
             out = layers.sequence_enumerate(input=x, win_size=2, pad_value=0)
 
-    def test_roi_perspective_transform(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            x = layers.data(name="x", shape=[256, 30, 30], dtype="float32")
-            rois = layers.data(
-                name="rois", shape=[8], dtype="float32", lod_level=1
-            )
-            output = layers.roi_perspective_transform(x, rois, 7, 7, 0.6)
-            return output
-
     def test_row_conv(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
@@ -2829,7 +2786,7 @@ class TestBook(LayerTest):
             images = layers.data(
                 name='pixel', shape=[3, 48, 48], dtype='float32'
             )
-            return layers.conv2d(
+            return paddle.static.nn.conv2d(
                 input=images, num_filters=3, filter_size=[4, 4]
             )
 
@@ -2896,47 +2853,6 @@ class TestBook(LayerTest):
 
             out = paddle.addmm(input=input, x=x, y=y)
             return out
-
-    def test_retinanet_detection_output(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            bboxes = layers.data(
-                name='bboxes',
-                shape=[1, 21, 4],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            scores = layers.data(
-                name='scores',
-                shape=[1, 21, 10],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            anchors = layers.data(
-                name='anchors',
-                shape=[21, 4],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            im_info = layers.data(
-                name="im_info",
-                shape=[1, 3],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            nmsed_outs = layers.retinanet_detection_output(
-                bboxes=[bboxes, bboxes],
-                scores=[scores, scores],
-                anchors=[anchors, anchors],
-                im_info=im_info,
-                score_threshold=0.05,
-                nms_top_k=1000,
-                keep_top_k=100,
-                nms_threshold=0.3,
-                nms_eta=1.0,
-            )
-            return nmsed_outs
 
     def test_warpctc_with_padding(self):
         # TODO(minqiyang): dygraph do not support lod now

@@ -29,7 +29,13 @@ from paddle.framework import (
 from paddle.tensor.layer_function_generator import templatedoc
 from paddle.utils import unique_name
 
-__all__ = []
+__all__ = [
+    'set_gradient_clip',
+    'ErrorClipByValue',
+    'ClipGradByValue',
+    'ClipGradByNorm',
+    'ClipGradByGlobalNorm',
+]
 
 
 @templatedoc()
