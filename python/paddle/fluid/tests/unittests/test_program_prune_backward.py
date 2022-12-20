@@ -17,7 +17,6 @@ import unittest
 
 import numpy as np
 import seresnext_net
-from fake_reader import fake_imdb_reader
 from simple_nets import fc_with_batchnorm, init_data, simple_fc_net
 from test_parallel_executor_transformer import (
     DeviceType,
@@ -268,29 +267,6 @@ class TestProgramPruneBackward(unittest.TestCase):
             )
             self.check_prune_correctness(
                 method=transformer, feed_dict=feed_dict, optimizer=optimizer
-            )
-
-    def test_lstm(self):
-        def optimizer():
-            optimizer = fluid.optimizer.Adagrad(
-                learning_rate=0.001,
-                regularization=fluid.regularizer.L2Decay(1e-4),
-            )
-            return optimizer
-
-        with self.program_scope_guard():
-            word_dict_size = 5147
-            reader = fake_imdb_reader(word_dict_size, 1)
-            data = fluid.layers.data(
-                name="words", shape=[1], dtype="int64", lod_level=1
-            )
-            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-            feeder = fluid.DataFeeder(
-                feed_list=[data, label], place=core.CPUPlace()
-            )
-            feed_data = feeder.feed(reader())
-            self.check_prune_correctness(
-                method=lstm_net, feed_dict=feed_data, optimizer=optimizer
             )
 
     def test_cond(self):

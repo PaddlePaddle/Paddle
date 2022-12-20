@@ -64,7 +64,6 @@ import os
 import multiprocessing
 import signal
 
-# NOTE: queue has a different name in python2 and python3
 import queue
 
 # NOTE: [ avoid hanging & failed quickly ] These value is used in getting data from another process
@@ -1810,7 +1809,7 @@ class PyReader(DataLoaderBase):
                    paddle.batch(user_defined_reader, batch_size=BATCH_SIZE),
                    place)
                for image, label in py_reader():
-                   relu = fluid.layers.relu(image)
+                   relu = paddle.nn.functional.relu(image)
     """
 
     def __init__(

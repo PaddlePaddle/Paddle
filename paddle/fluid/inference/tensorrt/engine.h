@@ -326,6 +326,7 @@ class TensorRTEngine {
     std::unique_lock<std::mutex> lock(mutex_);
     infer_context_[predictor_id_per_thread].reset(nullptr);
     infer_context_.erase(predictor_id_per_thread);
+    cur_profile_num_ = 0;
   }
 
   nvinfer1::IHostMemory* Serialize() {

@@ -922,21 +922,21 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             with _test_eager_guard():
                 input = fluid.dygraph.to_variable(np.random.random((3, 8, 5)))
-                x0, x1 = fluid.layers.split(input, num_or_sections=2, dim=1)
-                x00, x11 = fluid.layers.split(
+                x0, x1 = paddle.split(input, num_or_sections=2, axis=1)
+                x00, x11 = paddle.split(
                     input,
                     num_or_sections=2,
-                    dim=fluid.dygraph.to_variable(np.array([1])),
+                    axis=fluid.dygraph.to_variable(np.array([1])),
                 )
                 np.testing.assert_array_equal(x0.numpy(), x00.numpy())
                 np.testing.assert_array_equal(x1.numpy(), x11.numpy())
 
             input = fluid.dygraph.to_variable(np.random.random((3, 8, 5)))
-            x0, x1 = fluid.layers.split(input, num_or_sections=2, dim=1)
-            x00, x11 = fluid.layers.split(
+            x0, x1 = paddle.split(input, num_or_sections=2, axis=1)
+            x00, x11 = paddle.split(
                 input,
                 num_or_sections=2,
-                dim=fluid.dygraph.to_variable(np.array([1])),
+                axis=fluid.dygraph.to_variable(np.array([1])),
             )
             np.testing.assert_array_equal(x0.numpy(), x00.numpy())
             np.testing.assert_array_equal(x1.numpy(), x11.numpy())
@@ -1935,7 +1935,7 @@ class TestLayer(LayerTest):
         with self.static_graph():
             data = fluid.data(name="input", shape=[-1, 32, 32], dtype="float32")
             label = fluid.data(name="label", shape=[-1, 1], dtype="int")
-            fc_out = paddle.paddle.paddle.static.nn.fc(x=data, size=10)
+            fc_out = paddle.static.nn.fc(x=data, size=10)
             predict = paddle.nn.functional.softmax(fc_out)
             result = paddle.static.accuracy(input=predict, label=label, k=5)
             place = fluid.CPUPlace()
@@ -1951,7 +1951,7 @@ class TestLayer(LayerTest):
         with self.dynamic_graph(force_to_use_cpu=True):
             data = base.to_variable(x)
             label = base.to_variable(y)
-            fc_out = paddle.paddle.paddle.paddle.static.nn.fc(data, size=10)
+            fc_out = paddle.static.nn.fc(data, size=10)
             predict = paddle.nn.functional.softmax(fc_out)
             dynamic_out = paddle.static.accuracy(
                 input=predict, label=label, k=5
@@ -2077,7 +2077,7 @@ class TestBook(LayerTest):
             startup_program=fluid.default_startup_program(),
         ):
             x = self._get_data(name='x', shape=[13], dtype='float32')
-            y_predict = paddle.static.nn(x, size=1, activation=None)
+            y_predict = paddle.static.nn.fc(x=x, size=1, activation=None)
             y = self._get_data(name='y', shape=[1], dtype='float32')
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
@@ -2092,17 +2092,13 @@ class TestBook(LayerTest):
             # Change g_program, so the rest layers use `g_program`
             images = self._get_data(name='pixel', shape=[784], dtype='float32')
             label = self._get_data(name='label', shape=[1], dtype='int64')
-            hidden1 = paddle.paddle.paddle.static.nn.fc(
-                x=images, size=128, activation='relu'
-            )
-            hidden2 = paddle.paddle.paddle.static.nn.fc(
-                x=hidden1, size=64, activation='relu'
-            )
-            predict = paddle.paddle.paddle.static.nn.fc(
+            hidden1 = paddle.static.nn.fc(x=images, size=128, activation='relu')
+            hidden2 = paddle.static.nn.fc(x=hidden1, size=64, activation='relu')
+            predict = paddle.static.nn.fc(
                 x=[hidden2, hidden1],
                 size=10,
                 activation='softmax',
-                weight_attr=["sftmax.w1", "sftmax.w2"],
+                param_attr=["sftmax.w1", "sftmax.w2"],
             )
             cost = paddle.nn.functional.cross_entropy(
                 input=predict, label=label, reduction='none', use_softmax=False
@@ -2144,7 +2140,7 @@ class TestBook(LayerTest):
                 act="relu",
             )
 
-            predict = paddle.paddle.static.nn.fc(
+            predict = paddle.static.nn.fc(
                 x=conv_pool_2, size=10, activation="softmax"
             )
             cost = paddle.nn.functional.cross_entropy(
@@ -2198,11 +2194,18 @@ class TestBook(LayerTest):
                 axis=1,
             )
 
-            hidden1 = layers.fc(input=concat_embed, size=256, act='sigmoid')
-            predict_word = layers.fc(
-                input=hidden1, size=dict_size, act='softmax'
+            hidden1 = paddle.static.nn.fc(
+                x=concat_embed, size=256, activation='sigmoid'
             )
-            cost = layers.cross_entropy(input=predict_word, label=next_word)
+            predict_word = paddle.static.nn.fc(
+                x=hidden1, size=dict_size, activation='softmax'
+            )
+            cost = paddle.nn.functional.cross_entropy(
+                input=predict_word,
+                label=next_word,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_cost = paddle.mean(cost)
             return avg_cost
 
@@ -2232,7 +2235,7 @@ class TestBook(LayerTest):
             fluid.default_main_program(), fluid.default_startup_program()
         ):
             data = self._get_data(name='data', shape=[10], dtype='float32')
-            hid = paddle.paddle.static.nn.fc(x=data, size=20)
+            hid = paddle.static.nn.fc(x=data, size=20)
             return paddle.nn.functional.softmax(hid, axis=1)
 
     @prog_scope()
@@ -2369,7 +2372,7 @@ class TestBook(LayerTest):
             fluid.default_main_program(), fluid.default_startup_program()
         ):
             x = self._get_data(name='x', shape=[8, 7, 10], dtype="float32")
-            output = layers.l2_normalize(x, axis=1)
+            output = paddle.nn.functional.normalize(x, axis=1)
             return output
 
     def make_shape(self):
@@ -2594,39 +2597,6 @@ class TestBook(LayerTest):
             out = paddle.nn.functional.square_error_cost(input=x, label=y)
             return out
 
-    def test_dynamic_lstmp(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            hidden_dim, proj_dim = 16, 8
-            seq_data = layers.data(
-                name='seq_data', shape=[10, 10], dtype='float32', lod_level=1
-            )
-            fc_out = paddle.paddle.static.nn.fc(x=seq_data, size=4 * hidden_dim)
-            self.assertIsNotNone(
-                layers.dynamic_lstmp(
-                    input=fc_out, size=4 * hidden_dim, proj_size=proj_dim
-                )
-            )
-
-    def test_lod_reset(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            # case 1
-            x = layers.data(name='x', shape=[10], dtype='float32')
-            y = layers.data(
-                name='y', shape=[10, 20], dtype='float32', lod_level=2
-            )
-            z = layers.lod_reset(x=x, y=y)
-            self.assertTrue(z.lod_level == 2)
-            # case 2
-            lod_tensor_in = layers.data(name='lod_in', shape=[1], dtype='int32')
-            z = layers.lod_reset(x=x, y=lod_tensor_in)
-            self.assertTrue(z.lod_level == 1)
-            # case 3
-            z = layers.lod_reset(x=x, target_lod=[1, 2, 3])
-            self.assertTrue(z.lod_level == 1)
-            return z
-
     def test_affine_grid(self):
         with self.static_graph():
             data = layers.data(name='data', shape=[2, 3, 3], dtype="float32")
@@ -2691,14 +2661,14 @@ class TestBook(LayerTest):
             seq_data = layers.data(
                 name='seq_data', shape=[10, 10], dtype='float32', lod_level=1
             )
-            seq = paddle.paddle.paddle.static.nn.fc(input=seq_data, size=20)
+            seq = paddle.static.nn.fc(x=seq_data, size=20)
             return layers.sequence_softmax(seq)
 
     def test_sequence_unsqueeze(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
             x = layers.data(name='x', shape=[8, 2], dtype='float32')
-            out = layers.unsqueeze(input=x, axes=[1])
+            out = paddle.unsqueeze(x, axis=[1])
             return out
 
     def test_sequence_scatter(self):
@@ -2820,7 +2790,7 @@ class TestBook(LayerTest):
             images = layers.data(
                 name='pixel', shape=[3, 48, 48], dtype='float32'
             )
-            return layers.conv2d(
+            return paddle.static.nn.conv2d(
                 input=images, num_filters=3, filter_size=[4, 4]
             )
 

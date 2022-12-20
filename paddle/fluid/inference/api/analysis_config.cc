@@ -19,9 +19,10 @@
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/inference/utils/table_printer.h"
-#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/errors.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/utils/string/split.h"
 
 #ifdef PADDLE_WITH_TENSORRT
@@ -101,10 +102,10 @@ void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
              precision_mode == Precision::kBf16) {
     enable_gpu_mixed_ = true;
   } else {
-    LOG(ERROR)
-        << "The Paddle-GPU inference currently only supports "
-           "float32/float16/bfloat16 precision. Please check the parameters "
-           "you specified in EnableUseGpu or enable_use_gpu function.";
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The Paddle-GPU inference currently only supports "
+        "float32/float16/bfloat16 precision. Please check the parameters "
+        "you specified in EnableUseGpu or enable_use_gpu function."));
   }
 #else
   LOG(ERROR) << "Please use PaddlePaddle with GPU version.";
@@ -624,10 +625,11 @@ void AnalysisConfig::EnableMkldnnQuantizer() {
 
 void AnalysisConfig::EnableMkldnnBfloat16() {
 #ifdef PADDLE_WITH_MKLDNN
-  if (platform::MayIUse(platform::cpu_isa_t::avx512_core)) {
+  if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_core)) {
     use_mkldnn_bfloat16_ = true;
     LOG(INFO) << "Hardware support for BFLOAT16"
-              << (platform::MayIUse(platform::cpu_isa_t::avx512_bf16)
+              << (phi::backends::cpu::MayIUse(
+                      phi::backends::cpu::cpu_isa_t::avx512_bf16)
                       ? " is enabled"
                       : " is disabled. Simulation will be used");
   } else {
@@ -695,7 +697,7 @@ void AnalysisConfig::EnableTensorRtEngine(
     AnalysisConfig::Precision precision_mode,
     bool use_static,
     bool use_calib_mode) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_TENSORRT
   if (!use_gpu()) {
     LOG(ERROR) << "To use TensorRT engine, please call EnableUseGpu() first";
     return;
@@ -711,8 +713,8 @@ void AnalysisConfig::EnableTensorRtEngine(
 
   Update();
 #else
-  LOG(ERROR)
-      << "To use TensorRT engine, please compile inference lib with GPU first.";
+  PADDLE_THROW(platform::errors::PreconditionNotMet(
+      "To use Paddle-TensorRT, please compile with TENSORRT first."));
 #endif
 }
 
@@ -1248,7 +1250,7 @@ std::string AnalysisConfig::Summary() {
   os.InsertRow({"use_gpu", use_gpu_ ? "true" : "false"});
   if (use_gpu_) {
     os.InsertRow({"gpu_device_id", std::to_string(gpu_device_id_)});
-    os.InsertRow({"enable_gpu_mixed_", std::to_string(enable_gpu_mixed_)});
+    os.InsertRow({"enable_gpu_mixed", std::to_string(enable_gpu_mixed_)});
     os.InsertRow({"memory_pool_init_size",
                   std::to_string(memory_pool_init_size_mb_) + "MB"});
     os.InsertRow(
