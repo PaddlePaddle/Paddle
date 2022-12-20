@@ -13,23 +13,18 @@
 # limitations under the License.
 
 import numpy as np
+
+import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.distribution import distribution
-from paddle.tensor import random
 from paddle.fluid.data_feeder import check_type, convert_dtype
 from paddle.fluid.framework import (
+    _in_legacy_dygraph,
     _non_static_mode,
     in_dygraph_mode,
-    _in_legacy_dygraph,
 )
-from paddle.fluid.layers import (
-    elementwise_add,
-    elementwise_div,
-    elementwise_sub,
-    nn,
-    tensor,
-)
-import paddle
+from paddle.fluid.layers import tensor
+from paddle.tensor import random
 
 
 class Uniform(distribution.Distribution):
@@ -54,7 +49,12 @@ class Uniform(distribution.Distribution):
     * :math:`Z`: is the normalizing constant.
 
     The parameters `low` and `high` must be shaped in a way that supports
-    :ref:`user_guide_broadcasting` (e.g., `high - low` is a valid operation).
+    `Boardcasting` (e.g., `high - low` is a valid operation).
+
+    Note:
+        If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         low(int|float|list|tuple|numpy.ndarray|Tensor): The lower boundary of
@@ -183,17 +183,17 @@ class Uniform(distribution.Distribution):
             output = uniform_random_tmp_reshape * (
                 zero_tmp_reshape + self.high - self.low
             )
-            output = elementwise_add(output, self.low, name=name)
+            output = paddle.add(output, self.low, name=name)
             return output
         else:
             output_shape = shape + batch_shape
-            output = nn.uniform_random(
+            output = paddle.uniform(
                 output_shape, dtype=self.dtype, min=0.0, max=1.0, seed=seed
             ) * (
                 tensor.zeros(output_shape, dtype=self.dtype)
                 + (self.high - self.low)
             )
-            output = elementwise_add(output, self.low, name=name)
+            output = paddle.add(output, self.low, name=name)
             if self.all_arg_is_float:
                 return paddle.reshape(output, shape, name=name)
             else:
@@ -218,7 +218,7 @@ class Uniform(distribution.Distribution):
             if in_dygraph_mode():
                 lb = _C_ops.cast(lb_bool, value.dtype)
                 ub = _C_ops.cast(ub_bool, value.dtype)
-                return nn.log(lb * ub) - nn.log(self.high - self.low)
+                return paddle.log(lb * ub) - paddle.log(self.high - self.low)
 
             if _in_legacy_dygraph():
                 lb = _legacy_C_ops.cast(
@@ -227,15 +227,15 @@ class Uniform(distribution.Distribution):
                 ub = _legacy_C_ops.cast(
                     ub_bool, 'in_dtype', ub_bool.dtype, 'out_dtype', value.dtype
                 )
-                return nn.log(lb * ub) - nn.log(self.high - self.low)
+                return paddle.log(lb * ub) - paddle.log(self.high - self.low)
 
         name = self.name + '_log_prob'
         lb_bool = self.low < value
         ub_bool = value < self.high
         lb = tensor.cast(lb_bool, dtype=value.dtype)
         ub = tensor.cast(ub_bool, dtype=value.dtype)
-        return elementwise_sub(
-            nn.log(lb * ub), nn.log(self.high - self.low), name=name
+        return paddle.subtract(
+            paddle.log(lb * ub), paddle.log(self.high - self.low), name=name
         )
 
     def probs(self, value):
@@ -272,7 +272,7 @@ class Uniform(distribution.Distribution):
         ub_bool = value < self.high
         lb = tensor.cast(lb_bool, dtype=value.dtype)
         ub = tensor.cast(ub_bool, dtype=value.dtype)
-        return elementwise_div((lb * ub), (self.high - self.low), name=name)
+        return paddle.divide((lb * ub), (self.high - self.low), name=name)
 
     def entropy(self):
         r"""Shannon entropy in nats.
@@ -288,4 +288,4 @@ class Uniform(distribution.Distribution):
 
         """
         name = self.name + '_entropy'
-        return nn.log(self.high - self.low, name=name)
+        return paddle.log(self.high - self.low, name=name)

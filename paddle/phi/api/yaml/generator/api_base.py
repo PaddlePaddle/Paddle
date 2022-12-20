@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
 import collections
+import re
 
 PREFIX_TENSOR_NAME = 'input_'
 PREFIX_META_TENSOR_NAME = 'meta_'
@@ -166,6 +166,7 @@ class BaseAPI:
             'float[]': 'const std::vector<float>&',
             'double': 'double',
             'bool': 'bool',
+            'bool[]': 'const std::vector<bool>&',
             'str': 'const std::string&',
             'str[]': 'const std::vector<std::string>&',
             'Place': 'const Place&',

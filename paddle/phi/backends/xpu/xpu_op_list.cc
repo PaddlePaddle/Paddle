@@ -10,11 +10,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 #include "paddle/phi/backends/xpu/xpu_op_list.h"
-
 #include <glog/logging.h>
 #include <mutex>
 #include <string>
 #include <unordered_set>
+#include "paddle/phi/backends/xpu/xpu_info.h"
 
 #include "paddle/phi/core/compat/convert_utils.h"
 
@@ -44,8 +44,8 @@ static void Tokenize(const std::string& ops,
 
 bool IsInXPUBlackList(const std::string& kernel_name) {
   static bool inited = false;
-  auto& op_name = TransToFluidOpName(kernel_name);
-  VLOG(6) << "fluid_op_name: " << op_name;
+  auto& fluid_op_name = TransToFluidOpName(kernel_name);
+  VLOG(6) << "fluid_op_name: " << fluid_op_name;
   static std::unordered_set<std::string> xpu_black_list;
   static std::mutex s_mtx;
   if (!inited) {
@@ -63,26 +63,31 @@ bool IsInXPUBlackList(const std::string& kernel_name) {
       }
     }
   }
-  if (xpu_black_list.find(op_name) != xpu_black_list.end()) {
-    return true;
-  }
-#endif
-  return false;
-}
-
-bool IsXPUSupportKernel(const std::string& kernel_name) {
-  auto& op_name = TransToFluidOpName(kernel_name);
-  auto& ops = GetKL2Ops();
-  if (ops.find(op_name) != ops.end() &&
-      ops[op_name].find(type) != ops[op_name].end()) {
+  if (xpu_black_list.find(fluid_op_name) != xpu_black_list.end()) {
     return true;
   }
   return false;
 }
 
-bool IsXPUFallbackToCPU(const std::string& kernel_name, bool kernel_not_exist) {
+bool IsXPUSupportKernel(const std::string& kernel_name,
+                        phi::DataType kernel_dtype) {
+  if (IsInXPUBlackList(kernel_name)) return false;
+  auto v = GetXPUVersion(0);
+  auto& ops =
+      (v == phi::backends::xpu::XPUVersion::XPU1) ? GetKL1Ops() : GetKL2Ops();
+  auto& fluid_op_name = TransToFluidOpName(kernel_name);
+  if (ops.find(fluid_op_name) != ops.end() &&
+      ops[fluid_op_name].find(kernel_dtype) != ops[fluid_op_name].end()) {
+    return true;
+  }
+  return false;
+}
+
+bool IsXPUFallbackToCPU(const std::string& kernel_name,
+                        phi::DataType kernel_dtype,
+                        bool kernel_not_exist) {
   if (!FLAGS_enable_xpu_fast_mode) {
-    return !IsXPUSupportKernel(kernel_name) || IsInXPUBlackList(kernel_name);
+    return !IsXPUSupportKernel(kernel_name, kernel_dtype);
   }
   return kernel_not_exist;
 }

@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import copy
+import unittest
+
+import numpy as np
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+import paddle.nn.functional as F
+from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 
 
 class TestVarBase(unittest.TestCase):
@@ -353,7 +355,7 @@ class TestVarBase(unittest.TestCase):
                 var = fluid.dygraph.to_variable("test", name="abc")
             # test to_variable of LayerObjectHelper(LayerHelperBase)
             with self.assertRaises(TypeError):
-                linear = fluid.dygraph.Linear(32, 64)
+                linear = paddle.nn.Linear(32, 64)
                 var = linear._helper.to_variable("test", name="abc")
 
     def test_to_variable(self):
@@ -652,7 +654,7 @@ class TestVarBase(unittest.TestCase):
         with fluid.dygraph.guard():
             var = fluid.dygraph.to_variable(self.array)
             var.stop_gradient = False
-            loss = fluid.layers.relu(var)
+            loss = F.relu(var)
             loss.backward()
             grad_var = var._grad_ivar()
             self.assertEqual(grad_var.shape, self.shape)
@@ -666,7 +668,7 @@ class TestVarBase(unittest.TestCase):
         with fluid.dygraph.guard():
             var = fluid.dygraph.to_variable(self.array)
             var.stop_gradient = False
-            loss = fluid.layers.relu(var)
+            loss = F.relu(var)
             loss.backward()
             grad_var = var.gradient()
             self.assertEqual(grad_var.shape, self.array.shape)
@@ -1169,13 +1171,13 @@ class TestVarBase(unittest.TestCase):
             self._assert_to_static(var_base, static_param, True)
 
             # Convert ParamBase into Parameter
-            fc = fluid.dygraph.Linear(
+            fc = paddle.nn.Linear(
                 10,
                 20,
-                param_attr=fluid.ParamAttr(
+                weight_attr=paddle.ParamAttr(
                     learning_rate=0.001,
                     do_model_average=True,
-                    regularizer=fluid.regularizer.L1Decay(),
+                    regularizer=paddle.regularizer.L1Decay(),
                 ),
             )
             weight = fc.parameters()[0]
@@ -1288,7 +1290,7 @@ class TestVarBase(unittest.TestCase):
     def func_test_tensor_str_shape_with_zero(self):
         paddle.disable_static(paddle.CPUPlace())
         x = paddle.ones((10, 10))
-        y = paddle.fluid.layers.where(x == 0)
+        y = paddle.nonzero(x == 0)
         a_str = str(y)
 
         expected = '''Tensor(shape=[0, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
@@ -1373,11 +1375,6 @@ class TestVarBase(unittest.TestCase):
         [0.    , 0.    ]])'''
 
         self.assertEqual(a_str, expected)
-
-    def test_tensor_str_bf16(self):
-        with _test_eager_guard():
-            self.func_tensor_str_bf16()
-        self.func_tensor_str_bf16()
 
     def test_tensor_str_bf16(self):
         with _test_eager_guard():

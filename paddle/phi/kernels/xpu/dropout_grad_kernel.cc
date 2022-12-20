@@ -52,7 +52,7 @@ void DropoutGradRawKernel(const Context& dev_ctx,
   }
 
   auto version =
-      phi::backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId());
+      phi::backends::xpu::GetXPUVersion(dev_ctx.GetPlace().GetDeviceId());
   if (version == phi::backends::xpu::XPUVersion::XPU1) {
     xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
     XPUType* mask_new = RAII_GUARD.alloc_l3_or_gm<XPUType>(mask.numel());

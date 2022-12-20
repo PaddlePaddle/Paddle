@@ -14,12 +14,12 @@
 
 #include "paddle/phi/kernels/cumprod_kernel.h"
 
-#include "paddle/fluid/operators/math/inclusive_scan.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/cumprod.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/funcs/inclusive_scan.h"
 
 namespace phi {
 
@@ -35,15 +35,15 @@ void CumprodKernel(const Context &dev_ctx,
 
   const auto *x_data = x->data<T>();
   auto *y_data = dev_ctx.template Alloc<T>(y);
-  paddle::operators::math::InclusiveScan(x_data,
-                                         y_data,
-                                         outer_dim,
-                                         mid_dim,
-                                         inner_dim,
-                                         static_cast<T>(1),
-                                         funcs::MultiplyFunctor<T>(),
-                                         /*reverse=*/false,
-                                         dev_ctx);
+  phi::funcs::InclusiveScan(x_data,
+                            y_data,
+                            outer_dim,
+                            mid_dim,
+                            inner_dim,
+                            static_cast<T>(1),
+                            funcs::MultiplyFunctor<T>(),
+                            /*reverse=*/false,
+                            dev_ctx);
 }
 
 }  // namespace phi

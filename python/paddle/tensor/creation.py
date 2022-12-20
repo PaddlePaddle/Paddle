@@ -31,10 +31,14 @@ from ..fluid.data_feeder import (
     convert_dtype,
 )
 from ..fluid.framework import (
+    Variable,
     _in_eager_without_dygraph_check,
     _in_legacy_dygraph,
+    device_guard,
 )
+from ..fluid.initializer import Constant, Initializer
 from ..fluid.layers import utils
+from ..fluid.param_attr import ParamAttr
 from ..framework import (
     LayerHelper,
     _current_expected_place,
@@ -44,7 +48,6 @@ from ..framework import (
     core,
     in_dygraph_mode,
 )
-from ..static import Variable, device_guard
 
 __all__ = []
 
@@ -65,6 +68,206 @@ def _real_to_complex_dtype(dtype):
         return core.VarDesc.VarType.COMPLEX128
     else:
         return dtype
+
+
+def create_global_var(
+    shape, value, dtype, persistable=False, force_cpu=False, name=None
+):
+    """
+    This function creates a new tensor variable with value in the global block(block 0).
+
+    Args:
+        shape (list[int]|tuple[int]): Shape of the variable
+        value (float): The value of the variable. The new created
+                      variable will be filled with it.
+        dtype (str): Data type of the variable
+        persistable (bool, optional): If this variable is persistable.
+                           Default: False
+        force_cpu (bool, optional): Force this variable to be on CPU.
+                         Default: False
+        name (str, optional): For detailed information, please refer to
+           :ref:`api_guide_Name` . Usually name is no need to set and None by default.
+
+    Returns:
+        Variable: The created Variable
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.enable_static()
+            var = paddle.static.create_global_var(shape=[2,3], value=1.0, dtype='float32',
+                                           persistable=True, force_cpu=True, name='new_var')
+    """
+    check_type(shape, 'shape', (list, tuple, np.ndarray), 'create_global_var')
+    for item in shape:
+        check_type(
+            item,
+            'item of shape',
+            (
+                int,
+                np.uint8,
+                np.int8,
+                np.int16,
+                np.int32,
+                np.int64,
+            ),
+            'create_global_var',
+        )
+
+    check_dtype(
+        dtype,
+        'dtype',
+        [
+            'bool',
+            'float16',
+            'float32',
+            'float64',
+            'int8',
+            'int16',
+            'int32',
+            'int64',
+            'uint8',
+            'uint16',
+        ],
+        'create_global_var',
+    )
+
+    helper = LayerHelper("global_var", **locals())
+    var = helper.create_global_variable(
+        dtype=dtype,
+        shape=shape,
+        persistable=persistable,
+        name=name,
+        stop_gradient=True,
+    )
+    helper.set_variable_initializer(
+        var, initializer=Constant(value=float(value), force_cpu=force_cpu)
+    )
+
+    return var
+
+
+def create_parameter(
+    shape, dtype, name=None, attr=None, is_bias=False, default_initializer=None
+):
+    """
+    This function creates a parameter. The parameter is a learnable variable, which can have
+    gradient, and can be optimized.
+
+    Note:
+        This is a very low-level API. This API is useful when you create operator by your self, instead of using layers.
+
+    Args:
+        shape (list of int): Shape of the parameter
+        dtype (str): Data type of the parameter
+        name (str, optional): For detailed information, please refer to
+           :ref:`api_guide_Name` . Usually name is no need to set and None by default.
+        attr (ParamAttr, optional): Attributes of the parameter
+        is_bias (bool, optional): This can affect which default initializer is chosen
+                       when default_initializer is None. If is_bias,
+                       initializer.Constant(0.0) will be used. Otherwise,
+                       Xavier() will be used.
+        default_initializer (Initializer, optional): Initializer for the parameter
+
+    Returns:
+        The created parameter.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.enable_static()
+            W = paddle.create_parameter(shape=[784, 200], dtype='float32')
+    """
+    check_type(shape, 'shape', (list, tuple, np.ndarray), 'create_parameter')
+    for item in shape:
+        check_type(
+            item,
+            'item of shape',
+            (
+                int,
+                np.uint8,
+                np.int8,
+                np.int16,
+                np.int32,
+                np.int64,
+            ),
+            'create_parameter',
+        )
+
+    check_dtype(
+        dtype,
+        'dtype',
+        [
+            'bool',
+            'float16',
+            'float32',
+            'float64',
+            'int8',
+            'int16',
+            'int32',
+            'int64',
+            'uint8',
+        ],
+        'create_parameter',
+    )
+    check_type(attr, 'attr', (type(None), ParamAttr), 'create_parameter')
+    check_type(
+        default_initializer,
+        'default_initializer',
+        (type(None), Initializer),
+        'create_parameter',
+    )
+
+    helper = LayerHelper("create_parameter", **locals())
+    if attr is None:
+        attr = ParamAttr(name=name)
+    return helper.create_parameter(
+        attr, shape, convert_dtype(dtype), is_bias, default_initializer
+    )
+
+
+def create_tensor(dtype, name=None, persistable=False):
+    """
+    Create a variable, which will hold a Tensor with data type dtype.
+
+    Args:
+        dtype(string|numpy.dtype): the data type of Tensor to be created, the
+            data type is bool, float16, float32, float64, int8, int16, int32 and int64.
+        name(string, optional): The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+        persistable(bool): Set the persistable flag of the create tensor.
+            default value is False.
+
+    Returns:
+        Variable: The tensor to be created according to dtype.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+          tensor = paddle.tensor.create_tensor(dtype='float32')
+    """
+    check_dtype(
+        dtype,
+        'dtype',
+        [
+            'bool',
+            'float16',
+            'float32',
+            'float64',
+            'int8',
+            'int32',
+            'int32',
+            'int64',
+        ],
+        'create_tensor',
+    )
+    helper = LayerHelper("create_tensor", **locals())
+    return helper.create_variable(
+        name=helper.name, dtype=dtype, persistable=persistable
+    )
 
 
 def linspace(start, stop, num, dtype=None, name=None):
@@ -1354,7 +1557,7 @@ def diagflat(x, offset=0, name=None):
     """
     padding_value = 0
     if in_dygraph_mode():
-        if len(x.shape) == 1:
+        if len(x.shape) <= 1:
             return _C_ops.diag(x, offset, padding_value)
         else:
             y = _C_ops.flatten(x, 0, -1)
@@ -1384,7 +1587,7 @@ def diagflat(x, offset=0, name=None):
     out1_shape = helper.create_variable_for_type_inference(x.dtype)
     out2 = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    if len(x.shape) == 1:
+    if len(x.shape) <= 1:
         helper.append_op(
             type='diag_v2',
             inputs={'X': x},
@@ -2005,8 +2208,10 @@ def complex(real, imag, name=None):
     Returns:
         Tensor: The output tensor. The data type is 'complex64' or 'complex128', with the same precision as ``real`` and ``imag``.
 
-    **Note**:
-        ``paddle.complex`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
+    Note:
+        ``paddle.complex`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Examples:
         .. code-block:: python

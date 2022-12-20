@@ -60,6 +60,7 @@ TRT_DT FluidDataType2TRT(FluidDT type) {
     case FluidDT::VarType_Type_FP32:
       return TRT_DT::kFLOAT;
     case FluidDT::VarType_Type_INT32:
+    case FluidDT::VarType_Type_INT64:
       return TRT_DT::kINT32;
     case FluidDT::VarType_Type_FP16:
       return TRT_DT::kHALF;
@@ -68,10 +69,9 @@ TRT_DT FluidDataType2TRT(FluidDT type) {
       return TRT_DT::kBOOL;
 #endif
     default:
-      return TRT_DT::kINT32;
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "unknown fluid datatype in TRT op converter"));
   }
-  PADDLE_THROW(platform::errors::InvalidArgument(
-      "unknown fluid datatype in TRT op converter"));
   return TRT_DT::kINT32;
 }
 
@@ -295,8 +295,9 @@ class TensorRTEngine {
   void DeleteITensor(const std::string& name, nvinfer1::ITensor* tensor);
   void SetITensor(const std::string& name, nvinfer1::ITensor* tensor);
   // Get an ITensor called name.
-  nvinfer1::ITensor* GetITensor(const std::string& name);
-  nvinfer1::ITensor* ConvertWeight2ITensor(const std::string& name);
+  nvinfer1::ITensor* GetITensor(const std::string& name, bool scalar = false);
+  nvinfer1::ITensor* ConvertWeight2ITensor(const std::string& name,
+                                           bool scalar = false);
   std::unordered_map<std::string, nvinfer1::ITensor*>* GetITensorMap();
 
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
@@ -851,6 +852,15 @@ class TRTEngineManager {
   size_t max_ctx_mem_size_{0};
   std::unordered_map<PredictorID, AllocationPtr> context_memorys_;
   std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>> engines_;
+  // createInferBuilder loads trt kernels and take a few second
+  // But as long as one IBuilder lives, trt kernel will not be unloaded
+  // Hence, a persistent IBuilder to avoid TensorRT unload/reload kernels
+  std::unique_ptr<nvinfer1::IBuilder, std::function<void(nvinfer1::IBuilder*)>>
+      holder{createInferBuilder(&NaiveLogger::Global()), [](auto* ptr) {
+               if (ptr) {
+                 ptr->destroy();
+               }
+             }};
 };
 
 }  // namespace tensorrt

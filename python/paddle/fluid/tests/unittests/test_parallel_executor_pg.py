@@ -12,16 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
-import os
 
 os.environ['FLAGS_enable_parallel_graph'] = str(1)
-import paddle.fluid.core as core
 import os
-from parallel_executor_test_base import TestParallelExecutorBase, DeviceType
-from simple_nets import simple_fc_net, init_data
+
+from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
+from simple_nets import init_data, simple_fc_net
+
+import paddle.fluid.core as core
 
 
 class TestMNIST(TestParallelExecutorBase):

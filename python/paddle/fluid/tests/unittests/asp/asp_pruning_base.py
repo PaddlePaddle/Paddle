@@ -35,7 +35,7 @@ class TestASPHelperPruningBase(unittest.TestCase):
                 name='img', shape=[None, 3, 32, 32], dtype='float32'
             )
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
-            hidden = fluid.layers.conv2d(
+            hidden = paddle.static.nn.conv2d(
                 input=img, num_filters=4, filter_size=3, padding=2, act="relu"
             )
             hidden = fluid.layers.fc(input=hidden, size=32, act='relu')
@@ -60,7 +60,12 @@ class TestASPHelperPruningBase(unittest.TestCase):
     def run_training_pruning_test(self, get_mask_gen_func, get_mask_check_func):
         with fluid.program_guard(self.main_program, self.startup_program):
             loss = paddle.mean(
-                fluid.layers.cross_entropy(input=self.predict, label=self.label)
+                paddle.nn.functional.cross_entropy(
+                    input=self.predict,
+                    label=self.label,
+                    reduction='none',
+                    use_softmax=False,
+                )
             )
             optimizer = paddle.incubate.asp.decorate(
                 fluid.optimizer.SGD(learning_rate=0.01)

@@ -13,17 +13,18 @@
 # limitations under the License.
 
 import os
+
 import numpy as np
 
 os.environ['FLAGS_use_mkldnn'] = '0'
 os.environ['CPU_NUM'] = '4'
 
-import paddle.fluid as fluid
-import unittest
 import multiprocessing
+import unittest
 from functools import reduce
 
 import paddle
+import paddle.fluid as fluid
 
 paddle.enable_static()
 
@@ -44,7 +45,9 @@ def simple_fc_net():
             ),
         )
     prediction = fluid.layers.fc(hidden, size=10, act='softmax')
-    loss = fluid.layers.cross_entropy(input=prediction, label=label)
+    loss = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     loss = paddle.mean(loss)
     optimizer = fluid.optimizer.Adam(learning_rate=1e-3)
     optimizer.minimize(loss)

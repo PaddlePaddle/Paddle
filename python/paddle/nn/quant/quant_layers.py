@@ -12,20 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from paddle.framework import core
-from paddle.utils import unique_name
-from paddle.framework import ParamAttr
-from paddle.fluid.framework import _varbase_creator
-from paddle.nn.initializer import Constant
-from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.nn import functional as F
 import logging
+
+import paddle
+from paddle import _legacy_C_ops, in_dynamic_mode
+from paddle.fluid.data_feeder import check_variable_and_dtype
+from paddle.fluid.framework import _varbase_creator
 from paddle.fluid.log_helper import get_logger
-from paddle import _legacy_C_ops
-from paddle import in_dynamic_mode
+from paddle.framework import ParamAttr, core
 from paddle.nn import Layer
+from paddle.nn import functional as F
+from paddle.nn.initializer import Constant
 from paddle.nn.quant.lsq import FakeQuantActLSQPlus, FakeQuantWeightLSQPlus
+from paddle.utils import unique_name
 
 __all__ = [
     'FakeQuantAbsMax',
@@ -40,6 +39,7 @@ __all__ = [
     'QuantStub',
     'QuantizedRowParallelLinear',
     'QuantizedColumnParallelLinear',
+    'QuantizedMatmul',
 ]
 
 _logger = get_logger(
@@ -629,10 +629,8 @@ class QuantizedConv2DTranspose(Layer):
           conv_quantized = QuantizedConv2DTranspose(conv)
           y_quantized = conv_quantized(x_var)
           y_var = conv(x_var)
-          y_quantized_np = y_quantized.numpy()
-          y_np = y_var.numpy()
-          print(y_np.shape, y_quantized_np.shape)
-          # (2, 6, 10, 10), (2, 6, 10, 10)
+          print(y_var.shape, y_quantized.shape)
+          # [2, 6, 10, 10], [2, 6, 10, 10]
 
     """
 
@@ -1000,6 +998,65 @@ class QuantizedRowParallelLinear(Layer):
             output_ = output_parallel
         output = output_ + self.bias if self.bias is not None else output_
         return output
+
+
+class QuantizedMatmul(Layer):
+    """
+    The computational logic of QuantizedMatmul is the same with Matmul.
+    The only difference is that its inputs are all fake quantized.
+    """
+
+    def __init__(
+        self,
+        layer=None,
+        weight_bits=8,
+        activation_bits=8,
+        moving_rate=0.9,
+        weight_quantize_type='abs_max',
+        activation_quantize_type='abs_max',
+        weight_pre_layer=None,
+        act_pre_layer=None,
+        weight_quant_layer=None,
+        act_quant_layer=None,
+    ):
+        super().__init__()
+
+        # For FakeQuant
+        if act_quant_layer is not None:
+            self._fake_quant_x = act_quant_layer()
+            self._fake_quant_y = act_quant_layer()
+        else:
+            self._fake_quant_x = _get_fake_quant_type(
+                activation_quantize_type,
+                moving_rate=moving_rate,
+                quant_bits=activation_bits,
+                quant_on_weight=False,
+            )
+            self._fake_quant_y = _get_fake_quant_type(
+                activation_quantize_type,
+                moving_rate=moving_rate,
+                quant_bits=activation_bits,
+                quant_on_weight=False,
+            )
+
+        self._act_preprocess_x = (
+            act_pre_layer() if act_pre_layer is not None else None
+        )
+        self._act_preprocess_y = (
+            act_pre_layer() if act_pre_layer is not None else None
+        )
+
+    def forward(self, x, y, transpose_x=False, transpose_y=False, name=None):
+        if self._act_preprocess_x is not None:
+            x = self._act_preprocess_x(x)
+        quant_x = self._fake_quant_x(x)
+
+        if self._act_preprocess_y is not None:
+            y = self._act_preprocess_y(y)
+        quant_y = self._fake_quant_y(y)
+
+        out = paddle.matmul(quant_x, quant_y, transpose_x, transpose_y, name)
+        return out
 
 
 class MAOutputScaleLayer(Layer):

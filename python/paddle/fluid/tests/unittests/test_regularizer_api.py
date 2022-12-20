@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
+import random
 import unittest
 from functools import partial
-import contextlib
+
 import numpy as np
-import random
+
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
 def bow_net(
@@ -45,7 +47,9 @@ def bow_net(
     fc_1 = fluid.layers.fc(input=bow_tanh, size=hid_dim, act="tanh")
     fc_2 = fluid.layers.fc(input=fc_1, size=hid_dim2, act="tanh")
     prediction = fluid.layers.fc(input=[fc_2], size=class_dim, act="softmax")
-    cost = fluid.layers.cross_entropy(input=prediction, label=label)
+    cost = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     avg_cost = paddle.mean(x=cost)
 
     return avg_cost
@@ -167,9 +171,11 @@ class TestRegularizer(unittest.TestCase):
         paddle.enable_static()
         l1 = paddle.regularizer.L1Decay(0.1)
         l2 = paddle.regularizer.L2Decay(0.01)
-        fc_param_attr = fluid.ParamAttr(regularizer=l1)
+        fc_param_attr = paddle.ParamAttr(
+            regularizer=paddle.regularizer.L1Decay()
+        )
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            x = fluid.layers.uniform_random([2, 2, 3])
+            x = paddle.uniform([2, 2, 3])
             out = fluid.layers.fc(x, 5, param_attr=fc_param_attr)
             loss = paddle.sum(out)
             sgd = fluid.optimizer.SGD(learning_rate=0.1, regularization=l2)
@@ -181,11 +187,11 @@ class TestRegularizer(unittest.TestCase):
             paddle.seed(1)
             paddle.framework.random._manual_program_seed(1)
 
-            linear1 = fluid.dygraph.Linear(
-                2, 2, param_attr=fc_param_attr, bias_attr=fc_param_attr
+            linear1 = paddle.nn.Linear(
+                2, 2, weight_attr=fc_param_attr, bias_attr=fc_param_attr
             )
-            linear2 = fluid.dygraph.Linear(
-                2, 2, param_attr=fc_param_attr, bias_attr=fc_param_attr
+            linear2 = paddle.nn.Linear(
+                2, 2, weight_attr=fc_param_attr, bias_attr=fc_param_attr
             )
 
             loss1 = linear1(input)

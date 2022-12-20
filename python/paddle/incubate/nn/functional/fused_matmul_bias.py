@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import _non_static_mode
-from paddle.tensor.linalg import matmul
 from paddle import _legacy_C_ops
+from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.tensor.linalg import matmul
 
 
 def fused_matmul_bias(

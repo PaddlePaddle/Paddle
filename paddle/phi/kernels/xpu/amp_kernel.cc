@@ -224,7 +224,7 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
     }
 
     auto version =
-        phi::backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId());
+        phi::backends::xpu::GetXPUVersion(dev_ctx.GetPlace().GetDeviceId());
     DenseTensor float_x;
     DenseTensor float_out;
     if (std::is_same<T, phi::dtype::float16>::value &&

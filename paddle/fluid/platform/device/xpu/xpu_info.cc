@@ -72,7 +72,7 @@ void MemcpySyncD2H(void* dst,
 }
 
 // if src.device == dst.device and you need sync , after call this function,
-// need to call xpu_wait()
+// need to call dev_ctx.Wait()
 void MemcpySyncD2D(void* dst,
                    const platform::XPUPlace& dst_place,
                    const void* src,
@@ -90,8 +90,8 @@ void XPUStreamSync(xpuStream stream) {
 
 /**************************** Others **************************/
 
-phi::backends::xpu::XPUVersion get_xpu_version(int dev_id) {
-  return phi::backends::xpu::get_xpu_version(dev_id);
+phi::backends::xpu::XPUVersion GetXPUVersion(int dev_id) {
+  return phi::backends::xpu::GetXPUVersion(dev_id);
 }
 
 }  // namespace platform

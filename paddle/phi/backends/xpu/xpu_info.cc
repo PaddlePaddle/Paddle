@@ -21,7 +21,7 @@ limitations under the License. */
 
 // TODO(wilber): The phi computing library requires a component to manage
 // flags.
-#include "paddle/fluid/platform/flags.h"
+#include "paddle/phi/core/flags.h"
 
 PADDLE_DEFINE_EXPORTED_string(
     selected_xpus,
@@ -160,7 +160,7 @@ void MemcpySyncD2H(void* dst,
 }
 
 // if src.device == dst.device and you need sync , after call this function,
-// need to call xpu_wait()
+// need to call dev_ctx.Wait()
 void MemcpySyncD2D(void* dst,
                    const phi::XPUPlace& dst_place,
                    const void* src,
@@ -169,19 +169,12 @@ void MemcpySyncD2D(void* dst,
                    const phi::XPUContext& dev_ctx) {
   int dev_id = GetXPUCurrentDeviceId();
   if (dst_place.device == dev_id && src_place.device == dev_id) {
-    dev_ctx.Wait();
-    char* tmp = new char[count];
-    PADDLE_ENFORCE_XPU_SUCCESS(
-        xpu_memcpy(tmp, src, count, XPUMemcpyKind::XPU_DEVICE_TO_HOST));
-    PADDLE_ENFORCE_XPU_SUCCESS(
-        xpu_memcpy(dst, tmp, count, XPUMemcpyKind::XPU_HOST_TO_DEVICE));
-    delete[] tmp;
-    // PADDLE_ENFORCE_XDNN_SUCCESS(
-    //    baidu::xpu::api::copy(dev_ctx.x_context(),
-    //                          static_cast<const int8_t*>(src),
-    //                          static_cast<int8_t*>(dst),
-    //                          count),
-    //    "copy ");
+    PADDLE_ENFORCE_XDNN_SUCCESS(
+        baidu::xpu::api::copy(dev_ctx.x_context(),
+                              static_cast<const int8_t*>(src),
+                              static_cast<int8_t*>(dst),
+                              count),
+        "copy ");
   } else {
     PADDLE_ENFORCE_XPU_SUCCESS(
         xpu_memcpy_peer(dst_place.device, dst, src_place.device, src, count));
@@ -190,7 +183,7 @@ void MemcpySyncD2D(void* dst,
 
 /**************************** Others **************************/
 
-XPUVersion get_xpu_version(int dev_id) {
+XPUVersion GetXPUVersion(int dev_id) {
   uint64_t v = 0;
   PADDLE_ENFORCE_XPU_SUCCESS(xpu_device_get_attr(&v, XPUATTR_MODEL, dev_id));
 

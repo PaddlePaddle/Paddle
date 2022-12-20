@@ -18,8 +18,6 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class FusionSeqPoolCVMConcatOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;

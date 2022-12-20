@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include <iterator>  // NOLINT
 #include "dnnl.hpp"  // NOLINT
-#include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/requantize_op.h"
 #include "paddle/phi/backends/onednn/onednn_helper.h"
@@ -25,7 +24,6 @@ namespace operators {
 
 using dnnl::memory;
 using dnnl::reorder;
-using Tensor = phi::DenseTensor;
 
 namespace {
 
@@ -63,8 +61,7 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
                                           "shift for signed input."));
     }
 
-    auto& dev_ctx =
-        ctx.template device_context<platform::MKLDNNDeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::OneDNNContext>();
 
     auto src_tz = phi::vectorize(input->dims());
 
@@ -102,7 +99,7 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     auto reorder_p =
         reorder_handler.AcquireReorder(dst_memory_p, src_memory_p, attrs);
 
-    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    auto& astream = phi::OneDNNContext::tls().get_stream();
     reorder_p->execute(astream, *src_memory_p, *dst_memory_p);
     astream.wait();
 
@@ -117,7 +114,7 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(requantize,
                    MKLDNN,
-                   ::paddle::platform::CPUPlace,
+                   ::phi::CPUPlace,
                    ops::ReQuantOpKernel<int8_t>,
                    ops::ReQuantOpKernel<uint8_t>,
                    ops::ReQuantOpKernel<paddle::platform::bfloat16>);

@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...device import get_cudnn_version
-from ...static import Variable
-from ...fluid.layer_helper import LayerHelper
-from ...fluid.data_feeder import check_variable_and_dtype
-from paddle import _C_ops, _legacy_C_ops
-from ...device import is_compiled_with_rocm
-from paddle import in_dynamic_mode
-from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
+from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 from paddle.framework import _non_static_mode
+
+from ...device import get_cudnn_version, is_compiled_with_rocm
+from ...fluid.data_feeder import check_variable_and_dtype
+from ...fluid.layer_helper import LayerHelper
+from ...static import Variable
 
 __all__ = []
 
@@ -92,7 +91,7 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
             if isinstance(out_shape, Variable)
             else out_shape
         )
-        theta = theta._use_cudnn(use_cudnn)
+        theta = theta._use_gpudnn(use_cudnn)
         return _C_ops.affine_grid(theta, _out_shape, align_corners)
     elif in_dynamic_mode():
         _out_shape = (
@@ -349,14 +348,14 @@ def grid_sample(
 def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
     """
     This API implements pixel shuffle operation.
-    See more details in :ref:`api_nn_vision_PixelShuffle` .
+    See more details in :ref:`PixelSuffle <api_paddle_nn_PixelSuffle>` .
 
 
     Parameters:
         x(Tensor): 4-D tensor, the data type should be float32 or float64.
         upscale_factor(int): factor to increase spatial resolution.
-        data_format (str, optional): The data format of the input and output data. An optional string from: "NCHW", "NHWC". The default is "NCHW". When it is "NCHW", the data is stored in the order of: [batch_size, input_channels, input_height, input_width].
-        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
+        data_format (str, optional): The data format of the input and output data. An optional string from: ``'NCHW'``, ``'NHWC'``. When it is ``'NCHW'``, the data is stored in the order of: [batch_size, input_channels, input_height, input_width]. Default: ``'NCHW'``.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Out(tensor): Reshaped tensor according to the new dimension.
@@ -369,9 +368,8 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
 
             x = paddle.randn(shape=[2,9,4,4])
             out_var = F.pixel_shuffle(x, 3)
-            out = out_var.numpy()
-            print(out.shape)
-            # (2, 1, 12, 12)
+            print(out_var.shape)
+            # [2, 1, 12, 12]
     """
     if not isinstance(upscale_factor, int):
         raise TypeError("upscale factor must be int type")
@@ -404,12 +402,12 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
 def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
     """
     This API implements pixel unshuffle operation.
-    See more details in :ref:`api_nn_vision_PixelUnshuffle` .
+    See more details in :ref:`PixelUnSuffle <api_paddle_nn_PixelUnSuffle>` .
 
     Parameters:
         x (Tensor): 4-D tensor, the data type should be float32 or float64.
         downscale_factor (int): Factor to decrease spatial resolution.
-        data_format (str, optional): The data format of the input and output data. An optional string of NCHW or NHWC. The default is NCHW. When it is NCHW, the data is stored in the order of [batch_size, input_channels, input_height, input_width].
+        data_format (str, optional): The data format of the input and output data. An optional string of ``'NCHW'`` or ``'NHWC'``. When it is ``'NCHW'``, the data is stored in the order of [batch_size, input_channels, input_height, input_width]. Default: ``'NCHW'``.
         name (str, optional): Name for the operation (optional, default is None). Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -467,12 +465,12 @@ def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
 def channel_shuffle(x, groups, data_format="NCHW", name=None):
     """
     This API implements channel shuffle operation.
-    See more details in :ref:`api_nn_vision_ChannelShuffle` .
+    See more details in :ref:`api_nn_vision_ChannelShuffle`.
 
     Parameters:
         x (Tensor): 4-D tensor, the data type should be float32 or float64.
         groups (int): Number of groups to divide channels in.
-        data_format (str): The data format of the input and output data. An optional string of NCHW or NHWC. The default is NCHW. When it is NCHW, the data is stored in the order of [batch_size, input_channels, input_height, input_width].
+        data_format (str, optional): The data format of the input and output data. An optional string of NCHW or NHWC. The default is NCHW. When it is NCHW, the data is stored in the order of [batch_size, input_channels, input_height, input_width].
         name (str, optional): Name for the operation (optional, default is None). Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:

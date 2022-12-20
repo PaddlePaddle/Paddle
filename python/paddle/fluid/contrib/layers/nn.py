@@ -36,7 +36,6 @@ from paddle.fluid import core
 from paddle.fluid.param_attr import ParamAttr
 
 from paddle.fluid.framework import Variable, convert_np_dtype_to_dtype_
-from paddle.fluid.layers import slice
 import paddle
 import warnings
 from paddle import _C_ops, _legacy_C_ops
@@ -1540,13 +1539,13 @@ def tdm_sampler(
 
         for layer_sample_num in neg_samples_num_list:
             end_offset = start_offset + layer_sample_num + positive_flag
-            layer_samples = slice(
+            layer_samples = paddle.slice(
                 out, axes=[1], starts=[start_offset], ends=[end_offset]
             )
-            layer_labels = slice(
+            layer_labels = paddle.slice(
                 labels, axes=[1], starts=[start_offset], ends=[end_offset]
             )
-            layer_mask = slice(
+            layer_mask = paddle.slice(
                 mask, axes=[1], starts=[start_offset], ends=[end_offset]
             )
 
@@ -1964,13 +1963,18 @@ def fused_bn_add_act(
     Examples:
             .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
 
+            paddle.enable_static()
+            # required: gpu
             def build_program(main_program, startup_program):
                 with fluid.program_guard(main_program, startup_program):
                     x = fluid.layers.data(name='x', shape=[1, 28, 28], dtype='float32')
                     y = fluid.layers.data(name="y", shape=[1], dtype='int64')
-                    conv1_1 = fluid.layers.conv2d(
+                    conv1_1 = paddle.static.nn.conv2d(
                         input=x,
                         filter_size=3,
                         num_filters=32,
@@ -1979,7 +1983,7 @@ def fused_bn_add_act(
                         act=None,
                         bias_attr=False,
                         data_format='NHWC')
-                    conv1_2 = fluid.layers.conv2d(
+                    conv1_2 = paddle.static.nn.conv2d(
                         input=x,
                         filter_size=3,
                         num_filters=32,
@@ -1988,14 +1992,17 @@ def fused_bn_add_act(
                         act=None,
                         bias_attr=False,
                         data_format='NHWC')
-                    bn = fluid.layers.batch_norm(
+                    bn = paddle.static.nn.batch_norm(
                         input=conv1_1,
                         act=None,
                         data_layout='NHWC')
                     fused_bn_add_act = fluid.contrib.layers.fused_bn_add_act(conv1_2, bn)
                     prediction = fluid.layers.fc(input=fused_bn_add_act, size=10, act='softmax')
-                    loss = fluid.layers.cross_entropy(input=prediction, label=y)
-                    loss = fluid.layers.mean(loss)
+                    loss = paddle.nn.functional.cross_entropy(
+                        input=prediction, label=y,
+                        reduction='none', use_softmax=False
+                    )
+                    loss = paddle.mean(loss)
                     sgd = fluid.optimizer.SGD(learning_rate=0.001)
                     sgd = fluid.contrib.mixed_precision.decorate(
                         sgd, use_dynamic_loss_scaling=True, init_loss_scaling=128.0)

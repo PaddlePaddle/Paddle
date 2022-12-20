@@ -14,13 +14,13 @@
 
 import contextlib
 from enum import Enum
-import numpy as np
 from types import MethodType
+
+import numpy as np
 
 import paddle
 from paddle import _legacy_C_ops
-from paddle.fluid import core
-from paddle.fluid import layers
+from paddle.fluid import core, layers
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import dygraph_only
 
@@ -138,7 +138,7 @@ class GroupShardedClipGrad:
             shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm
         )
 
-        clip_var = layers.elementwise_div(
+        clip_var = paddle.divide(
             x=max_global_norm,
             y=paddle.maximum(x=global_norm_var, y=max_global_norm),
         )
@@ -220,7 +220,8 @@ def GroupShardedScaler(scaler):
         temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool_))
         temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool_))
 
-        device = "cpu" if optimizer.offload else "gpu"
+        device = paddle.get_device().split(":")[0]
+        device = "cpu" if optimizer.offload else device
         dev_id = (
             0 if device == "cpu" else int(paddle.get_device().split(":")[1])
         )
@@ -245,8 +246,9 @@ def GroupShardedScaler(scaler):
         is_found_inf = paddle.to_tensor([self._found_inf], dtype="int32")
 
         paddle.distributed.all_reduce(
-            is_found_inf, op=paddle.distributed.ReduceOp.MAX, group=None
+            is_found_inf, op=paddle.distributed.ReduceOp.SUM, group=None
         )
+
         self._found_inf = is_found_inf.numpy()[0]
 
     scaler._unscale = MethodType(unscale_method, scaler)

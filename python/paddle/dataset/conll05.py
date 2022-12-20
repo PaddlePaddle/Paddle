@@ -20,8 +20,9 @@ dataset. And a pre-trained word vector model based on Wikipedia corpus is used
 to initialize SRL model.
 """
 
-import tarfile
 import gzip
+import tarfile
+
 import paddle.dataset.common
 import paddle.utils.deprecated as deprecated
 

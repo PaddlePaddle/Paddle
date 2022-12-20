@@ -68,7 +68,7 @@ void XPUStreamSync(xpuStream stream);
 
 using XPUDeviceGuard = phi::backends::xpu::XPUDeviceGuard;
 
-phi::backends::xpu::XPUVersion get_xpu_version(int dev_id);
+phi::backends::xpu::XPUVersion GetXPUVersion(int dev_id);
 
 }  // namespace platform
 }  // namespace paddle

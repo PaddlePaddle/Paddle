@@ -101,7 +101,7 @@ struct XPUContext::Impl {
     LOG_FIRST_N(WARNING, 1)
         << "Please NOTE: xpu device: " << static_cast<int>(place_.device);
     context_ = xpu::create_context();
-    xpu_version_ = backends::xpu::get_xpu_version(place_.device);
+    xpu_version_ = backends::xpu::GetXPUVersion(place_.device);
     SetL3Cache();
     PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&context_->xpu_stream));
   }

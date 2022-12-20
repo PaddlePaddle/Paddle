@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
 
@@ -174,6 +176,12 @@ class TestKthvalueOpErrors(unittest.TestCase):
             self.x.kthvalue(k=10, axis=5)
 
         self.assertRaises(ValueError, test_dim_range_error)
+
+        def test_k_error_0_dim_input():
+            x_0d = paddle.full([], 1)
+            x_0d.kthvalue(k=8)
+
+        self.assertRaises(ValueError, test_k_error_0_dim_input)
 
 
 class TestModeOpInStatic(unittest.TestCase):

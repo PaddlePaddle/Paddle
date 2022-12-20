@@ -18,9 +18,9 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -158,6 +158,11 @@ void CPUQuantizeSquashPass::DequantQuantSquash(
         PADDLE_GET_CONST(float, quant_op->Op()->GetAttr("Scale"));
     float dequant_shift = dequant_op->Op()->GetAttrIfExists<float>("Shift");
     float quant_shift = quant_op->Op()->GetAttrIfExists<float>("Shift");
+    if (quant_op->Op()->GetAttrIfExists<bool>("is_negative_input") !=
+        dequant_op->Op()->GetAttrIfExists<bool>("is_negative_input")) {
+      return;
+    }
+
     PADDLE_ENFORCE_NE(
         nodes_keep_counter->find(dequant_out),
         nodes_keep_counter->end(),
@@ -169,14 +174,13 @@ void CPUQuantizeSquashPass::DequantQuantSquash(
     if (dequant_scale == quant_scale && dequant_shift == quant_shift) {
       // squash dequantize-quantize to nothing
       auto quant_out_var_name = quant_out->Name();
-      auto next_op_inputs = next_op_desc->InputNames();
-      for (const auto& name : next_op_inputs) {
-        auto input_names = next_op_desc->Input(name);
+      for (auto input_name : next_op_desc->InputNames()) {
+        auto& input_names = next_op_desc->MutableInputs()->at(input_name);
         std::replace(input_names.begin(),
                      input_names.end(),
                      quant_out_var_name,
                      dequant_in->Name());
-        next_op_desc->SetInput(name, input_names);
+        next_op_desc->SetInput(input_name, input_names);
       }
 
       if (keep_dequant)
@@ -413,12 +417,11 @@ void CPUQuantizeSquashPass::MultipleQuantizeSquash(Graph* graph) const {
 
         // update the next operator input,
         // by replacing quant_out with first_quant_out
-        auto last_op_names = last_op->Op()->Input(last_op_input_name);
-        last_op_names.erase(
-            std::remove(
-                last_op_names.begin(), last_op_names.end(), quant_out->Name()),
-            last_op_names.end());
-        last_op_names.push_back(first_quant_out->Name());
+        auto last_op_names = last_op->Op()->Inputs().at(last_op_input_name);
+        std::replace(last_op_names.begin(),
+                     last_op_names.end(),
+                     quant_out->Name(),
+                     first_quant_out->Name());
         last_op_op->SetInput(last_op_input_name,
                              std::vector<std::string>(last_op_names));
 

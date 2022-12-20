@@ -213,6 +213,7 @@ static inline nvinfer1::DataType PhiType2NvType(phi::DataType type) {
   }
   return nv_type;
 }
+
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle

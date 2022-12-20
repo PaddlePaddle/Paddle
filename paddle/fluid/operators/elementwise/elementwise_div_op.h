@@ -24,7 +24,6 @@ namespace operators {
 class ElementwiseDivOpDoubleGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  using Tensor = phi::DenseTensor;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     auto y_grad_name = framework::GradVarName("Y");

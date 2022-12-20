@@ -15,8 +15,8 @@
 #include "paddle/fluid/framework/ir/mkldnn/operator_scale_onednn_fuse_pass.h"
 
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/platform/mkldnn_reuse.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/phi/backends/onednn/onednn_reuse.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -25,7 +25,15 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void FuseOperatorScaleOneDNNPass::ApplyImpl(Graph *graph) const {
-  const std::vector<std::string> fusable_ops{"fc", "matmul", "matmul_v2"};
+  const std::vector<std::string> fusable_ops{
+      "fc",
+      "matmul",
+      "matmul_v2",
+      "elementwise_add",
+      "elementwise_sub",
+      "elementwise_mul",
+      "elementwise_div",
+  };
   for (const auto &op : fusable_ops) FuseScale(graph, op);
 }
 
@@ -105,4 +113,8 @@ REGISTER_PASS_CAPABILITY(operator_scale_onednn_fuse_pass)
             .EQ("fc", 0)
             .LE("matmul", 1)
             .EQ("matmul_v2", 0)
+            .LE("elementwise_add", 1)
+            .LE("elementwise_sub", 1)
+            .LE("elementwise_mul", 1)
+            .LE("elementwise_div", 1)
             .EQ("scale", 0));

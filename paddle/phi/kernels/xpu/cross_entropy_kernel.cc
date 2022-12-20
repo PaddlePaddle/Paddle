@@ -54,7 +54,7 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
   int r = XPU_SUCCESS;
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
 
-  if (phi::backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId()) ==
+  if (phi::backends::xpu::GetXPUVersion(dev_ctx.GetPlace().GetDeviceId()) ==
           phi::backends::xpu::XPUVersion::XPU2 &&
       soft_label && axis == rank - 1) {
     auto labels_data = reinterpret_cast<const XPUType*>(labels.data<T>());
