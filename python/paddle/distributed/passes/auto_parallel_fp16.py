@@ -36,8 +36,9 @@ from paddle.fluid.contrib.mixed_precision.fp16_utils import (
     _valid_types,
 )
 from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
-from paddle.framework import core, unique_name
+from paddle.framework import core
 from paddle.static import default_main_program, default_startup_program
+from paddle.utils import unique_name
 
 from .auto_parallel_amp import AMPPass
 from .pass_base import register_pass
