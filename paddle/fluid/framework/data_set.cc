@@ -1117,7 +1117,7 @@ int64_t DatasetImpl<T>::GetMemoryDataSize() {
 
 template <typename T>
 bool DatasetImpl<T>::GetEpochFinish() {
-#ifdef PADDLE_WITH_HETERPS
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   bool is_epoch_finish = true;
   if (gpu_graph_mode_) {
     for (int i = 0; i < thread_num_; i++) {
