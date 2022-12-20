@@ -21,6 +21,7 @@ def fused_ec_moe(
     """
     Applies fused ec_moe kernel.
     This method requires SM_ARCH in sm75, sm80, sm86.
+
     Args:
         x (Tensor): the input Tensor. Its shape is [bsz, seq_len, d_model].
         gate (Tensor): the gate Tensor to choose expert. Its shape is [bsz, seq_len, e].
@@ -29,18 +30,23 @@ def fused_ec_moe(
         bmm1_weight (Tensor): the second batch matrix matmul weight. Its shape is [e, d_model, d_feed_forward].
         bmm1_bias (Tensor): the second batch matrix matmul bias. Its shape is [e, 1, d_feed_forward].
         act_type (string): the Activation Type. Currently only support `gelu`, `relu`.
+    
     Returns:
         Tensor: the output Tensor.
+    
     Examples:
         .. code-block:: python
+
             # required: gpu
             import paddle
             from paddle.incubate.nn.functional import fused_ec_moe
+        
             batch = 10
             seq_len = 128
             d_model = 1024
             d_feed_forward = d_model * 4
             num_expert = 8
+        
             x = paddle.randn([batch, seq_len, d_model])
             gate = paddle.randn([batch, seq_len, num_expert])
             bmm0_weight = paddle.randn([num_expert, d_model, d_feed_forward])
@@ -48,6 +54,7 @@ def fused_ec_moe(
             bmm1_weight = paddle.randn([num_expert, d_model, d_feed_forward])
             bmm1_bias = paddle.randn([num_expert, d_model, d_feed_forward])
             out = fused_ec_moe(x, gate, bmm0_weight, bmm0_bias, bmm1_weight, bmm1_bias, act_type="gelu")
+        
             print(out.shape) # [batch, seq_len, num_expert]
     """
     helper = LayerHelper('fused_moe', **locals())

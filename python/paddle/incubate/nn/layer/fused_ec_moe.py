@@ -18,6 +18,7 @@ from paddle.nn import Layer
 
 class FusedEcMoe(Layer):
     r"""A FusedEcMoe Layer.
+
     Parameters:
         hidden_size (int): The dim size of input units.
         inter_size (int): The dim size of feed forward network.
@@ -33,17 +34,22 @@ class FusedEcMoe(Layer):
             be created according to ParamAttr. For detailed information, please refer
             to paddle.ParamAttr. The default value is None and the bias will be
             initialized to zero.
+
     Attribute:
         **weight** (Parameter): the learnable weight of this layer.
         **bias** (Parameter): the learnable bias of this layer.
+
     Shape:
         - input: Multi-dimentional tensor with shape :math:`[batch\_size, seq\_len, d\_model]` .
         - output: Multi-dimentional tensor with shape :math:`[batch\_size, seq\_len, d\_model]` .
+
     Examples:
         .. code-block:: python
+
             # required: gpu
             import paddle
             from paddle.incubate.nn import FusedEcMoe
+
             x = paddle.randn([10, 128, 1024]) # [bsz, seq_len, d_model]
             gate = paddle.randn([10, 128, 8]) # [bsz, seq_len, num_experts]
             moe = FusedEcMoe(1024, 4096, 8, act_type="gelu")
