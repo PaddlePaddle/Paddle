@@ -202,8 +202,8 @@ int32_t SSDSparseTable::PullSparsePtr(int shard_id,
       auto itr = local_shard.find(key);
       if (itr == local_shard.end()) {
         cur_ctx->batch_index.push_back(i);
-        cur_ctx->batch_keys.push_back(
-                rocksdb::Slice((char*)&(pull_keys[i]), sizeof(uint64_t))); //NOLINT
+        cur_ctx->batch_keys.push_back(rocksdb::Slice(
+            (char*)&(pull_keys[i]), sizeof(uint64_t))); //NOLINT
         if (cur_ctx->batch_keys.size() == 1024) {
           cur_ctx->batch_values.resize(cur_ctx->batch_keys.size());
           cur_ctx->status.resize(cur_ctx->batch_keys.size());

@@ -16,8 +16,6 @@ import os
 import unittest
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.fluid as fluid
 
 paddle.enable_static()
@@ -158,7 +156,7 @@ class TestSPMT(unittest.TestCase):
         acc = get_acc(cos_q_nt, cos_q_pt, batch_size)
         return [avg_cost, acc, cos_q_pt]
 
-    #def test(self):
+    # def test(self):
     #    os.environ["PADDLE_PSERVER_NUMS"] = "2"
     #    os.environ["PADDLE_TRAINERS_NUM"] = "2"
     #    os.environ["POD_IP"] = "127.0.0.1"
@@ -184,7 +182,6 @@ class TestSPMT(unittest.TestCase):
     #    optimizer = paddle.fluid.optimizer.Adam(learning_rate=0.01)
     #    optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
     #    optimizer.minimize(loss)
-
 
     def get_dist_env(self):
         trainer_id = int(os.getenv('PADDLE_TRAINER_ID', '0'))
@@ -229,19 +226,12 @@ class TestSPMT(unittest.TestCase):
         with fluid.program_guard(main_program, startup_program):
             with fluid.unique_name.guard():
                 loss, acc, _ = self.net()
-        #print("===main_program====")
-        #print(main_program)
-        #print("===main_program====")
         optimizer = paddle.fluid.optimizer.Adam(learning_rate=0.01)
         optimizer.minimize(loss)
         print("===main_program====")
         print(main_program)
         print("===main_program====")
-        #_startup = worker.fake_init_ops_pass(_startup, compiled_config)
-        #_main = worker.ps_gpu_pass(_main)
-        from paddle.fluid.transpiler.collective import (
-            SingleProcessMultiThread,
-        )
+        from paddle.fluid.transpiler.collective import SingleProcessMultiThread
 
         t = SingleProcessMultiThread()
         env = self.get_dist_env()
@@ -255,6 +245,7 @@ class TestSPMT(unittest.TestCase):
         )
         param_cnt = t._get_update_param_count()
         print("param_cnt:", param_cnt)
+
 
 if __name__ == '__main__':
     unittest.main()

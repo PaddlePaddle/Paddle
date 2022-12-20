@@ -185,7 +185,8 @@ __global__ void dy_mf_update_kernel(Table* table,
   if (i < len) {
     auto it = table->find(keys[i]);
     if (it != table->end()) {
-      const float* cur = reinterpret_cast<const float*>(grads + i * grad_value_size);
+      const float* cur =
+          reinterpret_cast<const float*>(grads + i * grad_value_size);
       sgd.dy_mf_update_value(optimizer_config, (it.getter())->second, cur);
     } else {
       printf("warning: push miss key: %lu", keys[i]);

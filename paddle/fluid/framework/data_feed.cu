@@ -1213,7 +1213,7 @@ int GraphDataGenerator::FillSlotFeature(uint64_t *d_walk, size_t key_num) {
     int64_t default_lod = 1;
     for (int i = 0; i < slot_num_; ++i) {
       slot_lod_tensor_ptr_[i] = feed_vec_[3 + 2 * i + 1]->mutable_data<int64_t>(
-          {(long)key_num + 1}, this->place_); // NOLINT
+          {(long)key_num + 1}, this->place_);  // NOLINT
       slot_tensor_ptr_[i] =
           feed_vec_[3 + 2 * i]->mutable_data<int64_t>({1, 1}, this->place_);
       CUDA_CHECK(cudaMemsetAsync(
@@ -1286,7 +1286,7 @@ int GraphDataGenerator::FillSlotFeature(uint64_t *d_walk, size_t key_num) {
 
   for (int i = 0; i < slot_num_; ++i) {
     slot_lod_tensor_ptr_[i] = feed_vec_[3 + 2 * i + 1]->mutable_data<int64_t>(
-        {(long)key_num + 1}, this->place_); // NOLINT
+        {(long)key_num + 1}, this->place_);  // NOLINT
   }
   size_t temp_storage_bytes = 0;
   CUDA_CHECK(cub::DeviceScan::InclusiveSum(NULL,

@@ -395,7 +395,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             fleet.check_save_pre_patch_done()
 
         # add for gpugrahp
-        fleet.save_cache_table()
+        fleet.save_cache_table(0, 0)
         fleet.shrink()
 
 

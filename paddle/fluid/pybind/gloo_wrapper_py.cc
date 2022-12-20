@@ -36,8 +36,7 @@ void BindGlooWrapper(py::module* m) {
       *m, "Gloo")
       .def(py::init([]() { return framework::GlooWrapper::GetInstance(); }))
 #else
-  py::class_<framework::GlooWrapper>(
-      *m, "Gloo")
+  py::class_<framework::GlooWrapper>(*m, "Gloo")
       .def(py::init())
 #endif
       .def("init", &framework::GlooWrapper::Init)

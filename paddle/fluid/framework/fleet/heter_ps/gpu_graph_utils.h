@@ -41,10 +41,7 @@ struct random_engine_wrapper_t {
     static std::atomic<unsigned long> x(  // NOLINT
         static_cast<unsigned long>(1));   // NOLINT
     std::seed_seq sseq = {
-        x++,
-        x++,
-        x++,
-        static_cast<uint64_t>(tp.tv_sec * 1e9 + tp.tv_nsec)};
+        x++, x++, x++, static_cast<uint64_t>(tp.tv_sec * 1e9 + tp.tv_nsec)};
     engine.seed(sseq);
   }
 #endif
