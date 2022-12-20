@@ -29,14 +29,14 @@ TransposeReshapeFusePass::TransposeReshapeFusePass() {
       .AddInput("X")
       .IsTensor()
       .End()
-      // .AddInput("Shape")
-      // .IsTensor()
-      // .IsOptional()
-      // .End()
-      // .AddInput("ShapeTensor")
-      // .IsTensor()
-      // .IsOptional()
-      // .End()
+      .AddInput("Shape")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddInput("ShapeTensor")
+      .IsTensor()
+      .IsOptional()
+      .End()
       .AddOutput("Out")
       .IsTensor()
       .End()
@@ -121,6 +121,10 @@ int TransposeReshapeFusePass::ApplyTRPattern(Graph* graph) const {
     }
     auto* transpose_op_node = subgraph.at(transpose);
     auto* reshape_op_node = subgraph.at(reshape);
+    if (!(reshape_op_node->Op()->Input("ShapeTensor").empty() &&
+          reshape_op_node->Op()->Input("Shape").empty())) {
+      return;
+    }
 
     // Create an fusion Node.
     OpDesc desc(transpose_op_node->Op()->Block());
@@ -199,6 +203,10 @@ int TransposeReshapeFusePass::ApplyRTPattern(Graph* graph) const {
 
     auto* transpose_op_node = subgraph.at(transpose);
     auto* reshape_op_node = subgraph.at(reshape);
+    if (!(reshape_op_node->Op()->Input("ShapeTensor").empty() &&
+          reshape_op_node->Op()->Input("Shape").empty())) {
+      return;
+    }
 
     // Create an fusion Node.
     OpDesc desc(transpose_op_node->Op()->Block());
