@@ -102,9 +102,13 @@ class AnalysisPredictor : public PaddlePredictor {
   explicit AnalysisPredictor(const AnalysisConfig &config) : config_(config) {
     if (config_.shape_range_info_collected()) {
       config_.SwitchIrOptim(false);
-      config_.EnableMemoryOptim(false);
     }
-    predictor_id_ = inference::GetUniqueId();
+    auto trt_identifier = config_.trt_engine_memory_sharing_identifier_;
+    if (trt_identifier > 0) {
+      predictor_id_ = -trt_identifier;
+    } else {
+      predictor_id_ = inference::GetUniqueId();
+    }
   }
   ///
   /// \brief Destroy the Analysis Predictor object
@@ -245,7 +249,7 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \return the argument obtained by config
   ///
-  Argument &analysis_argument() { return argument_; }
+  Argument &analysis_argument() { return *argument_; }
   ///
   /// \brief Clone to get the new predictor. thread safe.
   ///
@@ -271,6 +275,13 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \return the serialized program
   ///
   std::string GetSerializedProgram() const override;
+
+  ///
+  /// \brief Get the fusion_statis_t
+  ///
+  /// \return the fusion_statis_t
+  ///
+  Argument::fusion_statis_t fusion_statis() { return fusion_statis_; }
 
   ///
   /// \brief Register a output hook function to operate the intermediate tensor
@@ -480,7 +491,8 @@ class AnalysisPredictor : public PaddlePredictor {
 
  private:
   AnalysisConfig config_;
-  Argument argument_;
+  std::unique_ptr<Argument> argument_;
+  Argument::fusion_statis_t fusion_statis_;
   std::unique_ptr<NaiveExecutor> executor_;
   platform::Place place_;
   std::shared_ptr<framework::Scope> scope_;
@@ -518,6 +530,7 @@ class AnalysisPredictor : public PaddlePredictor {
   int need_collect_var_shapes_{-1};  // -1 for default, 0 for false, 1 for true.
   std::vector<std::map<std::string, std::vector<int>>> batch_var_shapes_;
   int predictor_id_;
+  int root_predictor_id_{-1};
 
  private:
   std::vector<Exp_OutputHookFunc> hookfuncs_;

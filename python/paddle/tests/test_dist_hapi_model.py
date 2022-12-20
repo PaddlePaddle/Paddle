@@ -12,18 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import os
-import time
 import copy
+import os
 import subprocess
-import paddle.fluid as fluid
+import time
+import unittest
 
+import paddle.fluid as fluid
 from paddle.distributed.utils.launch_utils import (
-    find_free_ports,
-    watch_local_trainers,
-    get_cluster,
     TrainerProc,
+    find_free_ports,
+    get_cluster,
+    watch_local_trainers,
 )
 
 
@@ -77,9 +77,6 @@ def start_local_trainers(
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
         }
-
-        if not eager_mode:
-            proc_env["FLAGS_enable_eager_mode"] = "%d" % 0
 
         current_env.update(proc_env)
 
@@ -148,5 +145,4 @@ class TestMultipleGpus(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    os.environ["FLAGS_enable_eager_mode"] = "1"
     unittest.main()

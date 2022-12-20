@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
+import paddle
+import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.op import Operator
-import paddle.fluid as fluid
-import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestAdamOp1(OpTest):
@@ -184,10 +185,6 @@ class TestAdamOpMultipleSteps(OpTest):
             self.inputs['Grad'] = np.random.uniform(-1, 1, (102, 105)).astype(
                 "float32"
             )
-
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_check_output()
 
 
 def adam_step(inputs, attributes):
@@ -611,13 +608,13 @@ class TestAdamOpV2(unittest.TestCase):
         with fluid.program_guard(train_prog, startup):
             with fluid.unique_name.guard():
                 data = fluid.data(name="data", shape=shape)
-                conv = fluid.layers.conv2d(data, 8, 3)
-                loss = fluid.layers.reduce_mean(conv)
+                conv = paddle.static.nn.conv2d(data, 8, 3)
+                loss = paddle.mean(conv)
 
-                beta1 = fluid.layers.create_global_var(
+                beta1 = paddle.static.create_global_var(
                     shape=[1], value=0.85, dtype='float32', persistable=True
                 )
-                beta2 = fluid.layers.create_global_var(
+                beta2 = paddle.static.create_global_var(
                     shape=[1], value=0.95, dtype='float32', persistable=True
                 )
                 betas = [beta1, beta2]
@@ -639,7 +636,7 @@ class TestAdamOpV2(unittest.TestCase):
         paddle.disable_static()
         value = np.arange(26).reshape(2, 13).astype("float32")
         a = fluid.dygraph.to_variable(value)
-        linear = fluid.Linear(13, 5, dtype="float32")
+        linear = paddle.nn.Linear(13, 5)
 
         adam = paddle.optimizer.Adam(
             learning_rate=0.01, parameters=linear.parameters()
@@ -688,7 +685,7 @@ class TestAdamOpV2(unittest.TestCase):
         paddle.disable_static()
         value = np.arange(26).reshape(2, 13).astype("float32")
         a = fluid.dygraph.to_variable(value)
-        linear = fluid.Linear(13, 5, dtype="float32")
+        linear = paddle.nn.Linear(13, 5)
         clip = fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0)
         adam = paddle.optimizer.Adam(
             0.1, parameters=linear.parameters(), grad_clip=clip
@@ -709,7 +706,7 @@ class TestAdamOpV2(unittest.TestCase):
         cur_lr = adam.get_lr()
         assert lr == cur_lr
         with self.assertRaises(TypeError):
-            lr_var = paddle.fluid.layers.create_global_var(
+            lr_var = paddle.static.create_global_var(
                 shape=[1], value=lr, dtype='float32'
             )
             adam.set_lr(lr_var)
@@ -747,14 +744,6 @@ class TestAdamOpV2(unittest.TestCase):
             out.backward()
             adam.step()
         paddle.enable_static()
-
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_adam_op_dygraph()
-            self.test_adam_op_with_state_dict()
-            self.test_adam_with_grad_clip()
-            self.test_adam_op_with_set_lr()
-            self.test_adam_op_with_sparse_input_and_weight_decay()
 
 
 class TestAdamOptimizer(unittest.TestCase):
@@ -804,27 +793,32 @@ class TestAdamOptimizer(unittest.TestCase):
                     input=fc_1, size=2, param_attr=weight_attr2, act='softmax'
                 )
 
-                cost = fluid.layers.cross_entropy(input=prediction, label=label)
-                loss = fluid.layers.reduce_mean(cost)
+                cost = paddle.nn.functional.cross_entropy(
+                    input=prediction,
+                    label=label,
+                    reduction='none',
+                    use_softmax=False,
+                )
+                loss = paddle.mean(cost)
                 beta1_init = 0.9
                 beta2_init = 0.999
                 epsilon_init = 1e-8
                 if use_tensor:
-                    beta1 = fluid.layers.create_global_var(
+                    beta1 = paddle.static.create_global_var(
                         shape=[1],
                         value=float(beta1_init),
                         dtype='float32',
                         persistable=True,
                         name="beta1",
                     )
-                    beta2 = fluid.layers.create_global_var(
+                    beta2 = paddle.static.create_global_var(
                         shape=[1],
                         value=float(beta2_init),
                         dtype='float32',
                         persistable=True,
                         name="beta2",
                     )
-                    epsilon = fluid.layers.create_global_var(
+                    epsilon = paddle.static.create_global_var(
                         shape=[1],
                         value=float(epsilon_init),
                         dtype='float32',
@@ -939,7 +933,9 @@ class TestAdamOptimizer(unittest.TestCase):
             y_predict = fluid.layers.fc(
                 input=x, size=1, act=None, param_attr=weight_attr
             )
-            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
             adam = fluid.optimizer.AdamOptimizer(
@@ -962,8 +958,10 @@ class TestAdamOptimizer(unittest.TestCase):
         fc_1 = fluid.layers.fc(input=z, size=128)
         prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
 
-        cost = fluid.layers.cross_entropy(input=prediction, label=label)
-        loss = fluid.layers.reduce_mean(cost)
+        cost = paddle.nn.functional.cross_entropy(
+            input=prediction, label=label, reduction='none', use_softmax=False
+        )
+        loss = paddle.mean(cost)
         adam = fluid.optimizer.Adam(use_global_beta_pow=True)
         adam.minimize(loss)
         self.assertRaises(Exception, adam._get_global_accumulator, 'tmp')
@@ -1093,7 +1091,7 @@ class TestMultiTensorAdam(unittest.TestCase):
             trainable=True,
         )
         if use_param_attr:
-            model = paddle.nn.Linear(5, 5, weight_attr)
+            model = paddle.nn.Linear(5, 5, weight_attr=weight_attr)
         else:
             model = paddle.nn.Linear(5, 5)
 
@@ -1269,10 +1267,6 @@ class TestMultiTensorAdam(unittest.TestCase):
                 self._check_with_place_amp(place, use_amp)
                 self._check_with_param_arrt(place, use_amp)
                 self._check_with_param_group(place, use_amp)
-
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_main()
 
 
 if __name__ == "__main__":

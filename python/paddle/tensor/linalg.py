@@ -13,23 +13,23 @@
 # limitations under the License.
 
 import numpy as np
-from ..framework import LayerHelper
-from ..framework import _non_static_mode, in_dygraph_mode
-from ..fluid.data_feeder import (
-    check_variable_and_dtype,
-    check_type,
-    check_dtype,
-)
-from ..static import Variable
-from ..fluid.framework import _in_legacy_dygraph
-from .manipulation import cast
-from .math import multiply, add
-from .logic import logical_not
-from .creation import full
 
 import paddle
-from paddle.common_ops_import import VarDesc
 from paddle import _C_ops, _legacy_C_ops
+from paddle.common_ops_import import VarDesc
+
+from ..fluid.data_feeder import (
+    check_dtype,
+    check_type,
+    check_variable_and_dtype,
+)
+from ..fluid.framework import _in_legacy_dygraph
+from ..framework import LayerHelper, _non_static_mode, in_dygraph_mode
+from ..static import Variable
+from .creation import full
+from .logic import logical_not
+from .manipulation import cast
+from .math import add, multiply
 
 __all__ = []
 
@@ -465,12 +465,6 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
     ):
         if in_dygraph_mode():
             out = _C_ops.abs(input)
-            reduce_all = (
-                True if axis is None or axis == [] or asvector else False
-            )
-            axis = axis if axis is not None and axis != [] else [0]
-            if reduce_all:
-                assert (axis == []) or (axis is None)
             if porder == np.float64('inf'):
                 return _C_ops.max(out, axis, keepdim)
             else:
@@ -844,27 +838,25 @@ def cond(x, p=None, name=None):
             Calculate the matrix norm of a square matrix or batches of square matrices,
             when porder is in (1, -1, inf, -inf)
         """
-        reduce_all = True if axis is None or axis == [] else False
-        axis = axis if axis is not None and axis != [] else [0]
-        keepdim = False
-
         if in_dygraph_mode():
             abs_out = _C_ops.abs(input)
-            sum_out = _C_ops.sum(abs_out, axis, None, keepdim)
+            sum_out = _C_ops.sum(abs_out, axis, None, False)
 
             if porder == 1 or porder == np.inf:
-                return _C_ops.max(sum_out, [-1], keepdim)
+                return _C_ops.max(sum_out, [-1], False)
             if porder == -1 or porder == -np.inf:
-                return _C_ops.min(sum_out, [-1], keepdim)
+                return _C_ops.min(sum_out, [-1], False)
 
         elif _in_legacy_dygraph():
+            reduce_all = True if axis is None or axis == [] else False
+            axis = axis if axis is not None and axis != [] else [0]
             abs_out = _legacy_C_ops.abs(input)
             sum_out = _legacy_C_ops.reduce_sum(
                 abs_out,
                 'dim',
                 axis,
                 'keepdim',
-                keepdim,
+                False,
                 'reduce_all',
                 reduce_all,
             )
@@ -874,7 +866,7 @@ def cond(x, p=None, name=None):
                     'dim',
                     [-1],
                     'keepdim',
-                    keepdim,
+                    False,
                     'reduce_all',
                     reduce_all,
                 )
@@ -884,11 +876,13 @@ def cond(x, p=None, name=None):
                     'dim',
                     [-1],
                     'keepdim',
-                    keepdim,
+                    False,
                     'reduce_all',
                     reduce_all,
                 )
         else:
+            reduce_all = True if axis is None or axis == [] else False
+            axis = axis if axis is not None and axis != [] else [0]
             block = LayerHelper('norm', **locals())
             abs_out = block.create_variable_for_type_inference(
                 dtype=block.input_dtype()
@@ -908,7 +902,7 @@ def cond(x, p=None, name=None):
                 outputs={'Out': sum_out},
                 attrs={
                     'dim': axis,
-                    'keep_dim': keepdim,
+                    'keep_dim': False,
                     'reduce_all': reduce_all,
                 },
             )
@@ -919,7 +913,7 @@ def cond(x, p=None, name=None):
                     outputs={'Out': out},
                     attrs={
                         'dim': [-1],
-                        'keep_dim': keepdim,
+                        'keep_dim': False,
                         'reduce_all': reduce_all,
                     },
                 )
@@ -930,7 +924,7 @@ def cond(x, p=None, name=None):
                     outputs={'Out': out},
                     attrs={
                         'dim': [-1],
-                        'keep_dim': keepdim,
+                        'keep_dim': False,
                         'reduce_all': reduce_all,
                     },
                 )
@@ -941,22 +935,20 @@ def cond(x, p=None, name=None):
         NOTE:
             Calculate the frobenius norm of a square matrix or batches of square matrices.
         """
-        reduce_all = True if axis is None or axis == [] else False
-        keepdim = False
-
         if in_dygraph_mode():
             pow_out = _C_ops.pow(input, porder)
-            sum_out_1 = _C_ops.sum(pow_out, axis, None, keepdim)
-            sum_out_2 = _C_ops.sum(sum_out_1, axis, None, keepdim)
+            sum_out_1 = _C_ops.sum(pow_out, axis, None, False)
+            sum_out_2 = _C_ops.sum(sum_out_1, axis, None, False)
             return _C_ops.pow(sum_out_2, float(1.0 / porder))
         elif paddle.in_dynamic_mode():
+            reduce_all = True if axis is None or axis == [] else False
             pow_out = _legacy_C_ops.pow(input, 'factor', porder)
             sum_out_1 = _legacy_C_ops.reduce_sum(
                 pow_out,
                 'dim',
                 axis,
                 'keepdim',
-                keepdim,
+                False,
                 'reduce_all',
                 reduce_all,
             )
@@ -965,12 +957,13 @@ def cond(x, p=None, name=None):
                 'dim',
                 axis,
                 'keepdim',
-                keepdim,
+                False,
                 'reduce_all',
                 reduce_all,
             )
             return _legacy_C_ops.pow(sum_out_2, 'factor', float(1.0 / porder))
 
+        reduce_all = True if axis is None or axis == [] else False
         block = LayerHelper('norm', **locals())
         pow_out = block.create_variable_for_type_inference(
             dtype=block.input_dtype()
@@ -994,13 +987,13 @@ def cond(x, p=None, name=None):
             type='reduce_sum',
             inputs={'X': pow_out},
             outputs={'Out': sum_out_1},
-            attrs={'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all},
+            attrs={'dim': axis, 'keep_dim': False, 'reduce_all': reduce_all},
         )
         block.append_op(
             type='reduce_sum',
             inputs={'X': sum_out_1},
             outputs={'Out': sum_out_2},
-            attrs={'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all},
+            attrs={'dim': axis, 'keep_dim': False, 'reduce_all': reduce_all},
         )
         block.append_op(
             type='pow',
@@ -1016,28 +1009,27 @@ def cond(x, p=None, name=None):
             Calculate the matrix norm, which is related to singular values, of a matrix
             or batches of matrices, including nuclear norm, 2-norm and (-2)-norm.
         """
-        reduce_all = True if axis is None or axis == [] else False
-        keepdim = False
-
+        if not in_dygraph_mode():
+            reduce_all = True if axis is None or axis == [] else False
         u, s, vh = svd(input, full_matrices=False)
 
         if _non_static_mode():
             if porder == "nuc":
                 if in_dygraph_mode():
-                    return _C_ops.sum(s, axis, None, keepdim)
+                    return _C_ops.sum(s, axis, None, False)
                 else:
                     return _legacy_C_ops.reduce_sum(
                         s,
                         'dim',
                         axis,
                         'keepdim',
-                        keepdim,
+                        False,
                         'reduce_all',
                         reduce_all,
                     )
             if in_dygraph_mode():
-                max_out = _C_ops.max(s, axis, keepdim)
-                min_out = _C_ops.min(s, axis, keepdim)
+                max_out = _C_ops.max(s, axis, False)
+                min_out = _C_ops.min(s, axis, False)
                 if porder == 2:
                     return _C_ops.divide(max_out, min_out)
                 if porder == -2:
@@ -1045,10 +1037,10 @@ def cond(x, p=None, name=None):
 
             else:
                 max_out = _legacy_C_ops.reduce_max(
-                    s, 'dim', axis, 'keepdim', keepdim, 'reduce_all', reduce_all
+                    s, 'dim', axis, 'keepdim', False, 'reduce_all', reduce_all
                 )
                 min_out = _legacy_C_ops.reduce_min(
-                    s, 'dim', axis, 'keepdim', keepdim, 'reduce_all', reduce_all
+                    s, 'dim', axis, 'keepdim', False, 'reduce_all', reduce_all
                 )
                 if porder == 2:
                     return _legacy_C_ops.elementwise_div(
@@ -1070,7 +1062,7 @@ def cond(x, p=None, name=None):
                 outputs={'Out': out},
                 attrs={
                     'dim': axis,
-                    'keep_dim': keepdim,
+                    'keep_dim': False,
                     'reduce_all': reduce_all,
                 },
             )
@@ -1085,13 +1077,13 @@ def cond(x, p=None, name=None):
             type='reduce_max',
             inputs={'X': s},
             outputs={'Out': max_out},
-            attrs={'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all},
+            attrs={'dim': axis, 'keep_dim': False, 'reduce_all': reduce_all},
         )
         block.append_op(
             type='reduce_min',
             inputs={'X': s},
             outputs={'Out': min_out},
-            attrs={'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all},
+            attrs={'dim': axis, 'keep_dim': False, 'reduce_all': reduce_all},
         )
         if porder == 2:
             block.append_op(
@@ -2038,16 +2030,21 @@ def svd(x, full_matrices=False, name=None):
             where `...` is zero or more batch dimensions. N and M can be arbitraty
             positive number. Note that if x is sigular matrices, the grad is numerical
             instable. The data type of x should be float32 or float64.
-        full_matrices (bool): A flag to control the behavor of svd.
+        full_matrices (bool, optional): A flag to control the behavor of svd.
             If full_matrices = True, svd op will compute full U and V matrics,
             which means shape of U is `[..., N, N]`, shape of V is `[..., M, M]`. K = min(M, N).
             If full_matrices = False, svd op will use a economic method to store U and V.
             which means shape of U is `[..., N, K]`, shape of V is `[..., M, K]`. K = min(M, N).
+            Default value is False.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tuple of 3 tensors: (U, S, VH). VH is the conjugate transpose of V. S is the singlar value vectors of matrics with shape `[..., K]`
+        - U (Tensor), is the singular value decomposition result U.
+        - S (Tensor), is the singular value decomposition result S.
+        - VH (Tensor), VH is the conjugate transpose of V, which is the singular value decomposition result V.
+
+        Tuple of 3 tensors(U, S, VH): VH is the conjugate transpose of V. S is the singlar value vectors of matrics with shape `[..., K]`
 
     Examples:
         .. code-block:: python
@@ -3264,7 +3261,7 @@ def eigvalsh(x, UPLO='L', name=None):
     complex Hermitian (conjugate symmetric) or a real symmetric matrix.
 
     Args:
-        x (Tensor): A tensor with shape :math:`[_, M, M]` , The data type of the input Tensor x
+        x (Tensor): A tensor with shape :math:`[*, M, M]` , where * is zero or greater batch dimension. The data type of the input Tensor x
             should be one of float32, float64, complex64, complex128.
         UPLO(str, optional): Lower triangular part of a (‘L’, default) or the upper triangular part (‘U’).
         name(str, optional): The default value is None.  Normally there is no need for user to set this

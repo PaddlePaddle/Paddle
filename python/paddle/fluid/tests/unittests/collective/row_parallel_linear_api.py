@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import numpy as np
-import paddle
-import paddle.fluid as fluid
-import paddle.distributed.fleet as fleet
 from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
+
+import paddle
+import paddle.distributed.fleet as fleet
+import paddle.fluid as fluid
 
 paddle.enable_static()
 

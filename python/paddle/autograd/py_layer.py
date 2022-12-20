@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid.framework import dygraph_only
-from paddle.fluid.dygraph.amp.auto_cast import amp_state
 from paddle.amp.auto_cast import auto_cast
 from paddle.fluid import core
+from paddle.fluid.dygraph.amp.auto_cast import amp_state
+from paddle.fluid.framework import dygraph_only
 
 __all__ = []
 
@@ -462,8 +462,6 @@ class EagerPyLayerContext:
         Examples:
             .. code-block:: python
 
-                import os
-                os.environ['FLAGS_enable_eager_mode'] = '1'
                 import paddle
                 from paddle.autograd import PyLayer
                 import numpy as np
@@ -503,8 +501,6 @@ class EagerPyLayerContext:
         Examples:
             .. code-block:: python
 
-                import os
-                os.environ['FLAGS_enable_eager_mode'] = '1'
                 import paddle
                 from paddle.autograd import PyLayer
                 import numpy as np

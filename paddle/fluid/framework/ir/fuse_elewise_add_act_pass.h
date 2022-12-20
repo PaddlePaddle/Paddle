@@ -49,6 +49,9 @@ class FuseElewiseAddActPass : public FusePassBase {
   ir::Graph *FuseElewiseAddActInplaceGrad(
       ir::Graph *graph, const std::unordered_set<std::string> &act_types) const;
 
+  ir::Graph *FuseActElewiseAddInplaceGrad(
+      ir::Graph *graph, const std::unordered_set<std::string> &act_types) const;
+
   /**
    * Remove the removable intermediate_out.
    *   - If the intermediate_out is only used by the backward op, but the
@@ -69,6 +72,11 @@ class FuseElewiseAddActPass : public FusePassBase {
                    Node *op_1,
                    Node *op_2,
                    Node *fused_op) const;
+  void ReLinkNodes2(Graph *graph,
+                    const Node *intermediate_out,
+                    Node *op_1,
+                    Node *op_2,
+                    Node *fused_op) const;
   Node *CreateFuseElewiseAddActNode(Graph *g,
                                     const Node *op_1,
                                     const Node *op_2,

@@ -15,7 +15,9 @@
 import unittest
 
 import numpy as np
+
 import paddle
+import paddle.nn.functional as F
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
@@ -146,7 +148,7 @@ class TestReciprocal(TestBase):
 
 class TestRelu(TestBase):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.relu
+        self.op = F.relu
         self.op_attrs = {}
 
 

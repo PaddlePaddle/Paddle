@@ -138,6 +138,54 @@ __global__ void CheckNanInfKernel(const T* value,
   PrintNanInfKernel(value, numel, print_num, debug_info);
 }
 
+template <typename T, int ReduceType>
+__device__ T BlockReduce(T value) {
+  __shared__ T shared_mem[1024];
+
+  shared_mem[threadIdx.x] = value;
+  __syncthreads();
+
+  for (int stride = blockDim.x >> 1; stride > 0; stride = stride >> 1) {
+    if (threadIdx.x < stride) {
+      T value0 = shared_mem[threadIdx.x];
+      T value1 = shared_mem[threadIdx.x + stride];
+      T reduce_value;
+      if (ReduceType == 0) {
+        // max
+        reduce_value = value0 > value1 ? value0 : value1;
+      } else if (ReduceType == 1) {
+        // min
+        reduce_value = value0 < value1 ? value0 : value1;
+      } else if (ReduceType == 2) {
+        // sum
+        reduce_value = value0 + value1;
+      }
+      shared_mem[threadIdx.x] = reduce_value;
+    }
+
+    if (stride > 16) {
+      __syncthreads();
+    }
+  }
+
+  __syncthreads();
+  return shared_mem[0];
+}
+
+__device__ void BlockReduceNumNanInfAndWrite(const int64_t num_nan,
+                                             const int64_t num_inf,
+                                             int64_t offset,
+                                             int64_t* num_nan_ptr,
+                                             int64_t* num_inf_ptr) {
+  int64_t block_num_nan = BlockReduce<int64_t, 2>(num_nan);
+  int64_t block_num_inf = BlockReduce<int64_t, 2>(num_inf);
+
+  if (threadIdx.x == 0) {
+    num_nan_ptr[offset] = block_num_nan;
+    num_inf_ptr[offset] = block_num_inf;
+  }
+}
+
 template <
     typename T,
     std::enable_if_t<std::is_same<T, phi::dtype::complex<float>>::value ||
@@ -183,14 +231,15 @@ __device__ void BlockReduceMaxMinAndWrite(const T max_value,
 template <typename T, typename MT>
 __global__ void FindNanInfAndBlockMaxMin(const T* value_ptr,
                                          const int64_t numel,
-                                         int* found_nan_inf_ptr,
+                                         int64_t* block_num_nan_ptr,
+                                         int64_t* block_num_inf_ptr,
                                          MT* tensor_block_max_ptr,
                                          MT* tensor_block_min_ptr,
                                          MT* tensor_block_mean_ptr) {
-  bool has_nan = false;
-  bool has_inf = false;
-
   int64_t i = threadIdx.x + blockIdx.x * blockDim.x;
+
+  int64_t num_nan = 0;
+  int64_t num_inf = 0;
 
   MT max_value = static_cast<MT>(i < numel ? value_ptr[i] : value_ptr[0]);
   MT min_value = static_cast<MT>(i < numel ? value_ptr[i] : value_ptr[0]);
@@ -203,25 +252,14 @@ __global__ void FindNanInfAndBlockMaxMin(const T* value_ptr,
     mean_value += value / static_cast<MT>(numel);
 
     if (isnan(value)) {
-      has_nan = true;
+      num_nan += 1;
+    } else if (isinf(value)) {
+      num_inf += 1;
     }
-    if (isinf(value)) {
-      has_inf = true;
-    }
+  }
 
-    if (has_nan || has_inf) {
-      if (!tensor_block_max_ptr && !tensor_block_min_ptr &&
-          !tensor_block_mean_ptr) {
-        break;
-      }
-    }
-  }
-  if (has_nan) {
-    found_nan_inf_ptr[0] = 1;
-  }
-  if (has_inf) {
-    found_nan_inf_ptr[1] = 1;
-  }
+  BlockReduceNumNanInfAndWrite(
+      num_nan, num_inf, blockIdx.x, block_num_nan_ptr, block_num_inf_ptr);
 
   BlockReduceMaxMinAndWrite<MT>(max_value,
                                 min_value,
@@ -232,32 +270,9 @@ __global__ void FindNanInfAndBlockMaxMin(const T* value_ptr,
                                 tensor_block_mean_ptr);
 }
 
-template <typename T,
-          typename MT,
-          std::enable_if_t<std::is_same<T, float>::value, bool> = true>
-__device__ bool NeedPrint(MT max_value, MT min_value, int check_nan_inf_level) {
-  if (check_nan_inf_level >= 3) {
-    return true;
-  } else if (check_nan_inf_level >= 2) {
-    MT fp16_max =
-        static_cast<MT>(std::numeric_limits<phi::dtype::float16>::max());
-    return max_value > fp16_max || min_value < -fp16_max;
-  }
-  return false;
-}
-
-template <typename T,
-          typename MT,
-          std::enable_if_t<!std::is_same<T, float>::value, bool> = true>
-__device__ bool NeedPrint(MT max_value, MT min_value, int check_nan_inf_level) {
-  if (check_nan_inf_level >= 3) {
-    return true;
-  }
-  return false;
-}
-
 template <typename T, typename MT>
-__global__ void FindGlobalMaxMinAndPrint(const int* found_nan_inf_ptr,
+__global__ void FindGlobalMaxMinAndPrint(const int64_t* block_num_nan_ptr,
+                                         const int64_t* block_num_inf_ptr,
                                          const MT* tensor_block_max_ptr,
                                          const MT* tensor_block_min_ptr,
                                          const MT* tensor_block_mean_ptr,
@@ -266,8 +281,14 @@ __global__ void FindGlobalMaxMinAndPrint(const int* found_nan_inf_ptr,
                                          int64_t numel_max_min,
                                          int check_nan_inf_level) {
   if (blockIdx.x == 0 && threadIdx.x == 0) {
-    int has_nan = found_nan_inf_ptr[0];
-    int has_inf = found_nan_inf_ptr[1];
+    int64_t num_nan = 0;
+    int64_t num_inf = 0;
+
+    // numel_max_min <= 128
+    for (int64_t i = 0; i < numel_max_min; ++i) {
+      num_nan += block_num_nan_ptr[i];
+      num_inf += block_num_inf_ptr[i];
+    }
 
     MT max_value = static_cast<MT>(0);
     MT min_value = static_cast<MT>(0);
@@ -289,67 +310,31 @@ __global__ void FindGlobalMaxMinAndPrint(const int* found_nan_inf_ptr,
       }
     }
 
-    if (has_nan || has_inf) {
-      if (check_nan_inf_level == 0) {
-        PADDLE_ENFORCE(false,
-                       "===[PRECISION] [ERROR] in %s, numel=%ld, find_nan=%d, "
-                       "find_inf=%d, "
-                       "max=%e, min=%e, mean=%e===\n",
-                       debug_info,
-                       numel,
-                       has_nan,
-                       has_inf,
-                       static_cast<float>(max_value),
-                       static_cast<float>(min_value),
-                       static_cast<float>(mean_value));
-      } else if (check_nan_inf_level >= 1) {
-        printf(
-            "===[PRECISION] [ERROR] in %s, numel=%ld, find_nan=%d, "
-            "find_inf=%d, "
-            "max=%e, min=%e, mean=%e===\n",
-            debug_info,
-            numel,
-            has_nan,
-            has_inf,
-            static_cast<float>(max_value),
-            static_cast<float>(min_value),
-            static_cast<float>(mean_value));
-      }
-    } else if (NeedPrint<T, MT>(max_value, min_value, check_nan_inf_level)) {
-      printf("[PRECISION] in %s, numel=%ld, max=%e, min=%e, mean=%e\n",
-             debug_info,
-             numel,
-             static_cast<float>(max_value),
-             static_cast<float>(min_value),
-             static_cast<float>(mean_value));
-    }
+    PrintForDifferentLevel<T, MT>(debug_info,
+                                  numel,
+                                  num_nan,
+                                  num_inf,
+                                  max_value,
+                                  min_value,
+                                  mean_value,
+                                  check_nan_inf_level);
   }
 }
 
-template <>
 template <typename T>
-void TensorCheckerVisitor<phi::GPUContext>::apply(
-    typename std::enable_if<
-        std::is_floating_point<T>::value ||
-        std::is_same<T, ::paddle::platform::complex<float>>::value ||
-        std::is_same<T, ::paddle::platform::complex<double>>::value>::type*)
-    const {
-  auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(
-      platform::DeviceContextPool::Instance().Get(tensor_.place()));
-  int dev_id = tensor_.place().device;
+static char* GetGpuHintStringPtr(const phi::GPUContext& ctx,
+                                 const std::string& op_type,
+                                 const std::string& var_name,
+                                 int dev_id) {
   PADDLE_ENFORCE_EQ(
       (dev_id >= 0 && dev_id < multi_op_var2gpu_str_mutex().size()),
       true,
       platform::errors::OutOfRange("GPU dev_id must >=0 and < dev_count=%d",
                                    multi_op_var2gpu_str_mutex().size()));
 
-  std::string dtype_str = DataTypeToString(DataTypeTrait<T>::DataType());
-  if (dtype_str == "::paddle::platform::float16") {
-    dtype_str = "float16";
-  }
-  std::string op_var = "[op=" + op_type_ + "] [tensor=" + var_name_ +
-                       "] [dtype=" + dtype_str + "]";
-  char* gpu_str_ptr = NULL;
+  std::string op_var =
+      GetCpuHintString<T>(op_type, var_name, ctx.GetPlace(), dev_id);
+  char* gpu_str_ptr = nullptr;
 
   {
     auto& op_var2gpu_str_mutex = multi_op_var2gpu_str_mutex().at(dev_id);
@@ -358,9 +343,9 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
     std::lock_guard<std::mutex> guard(op_var2gpu_str_mutex);
     if (op_var2gpu_str.find(op_var) == op_var2gpu_str.end()) {  // insert
       auto gpu_str_tensor = paddle::memory::Alloc(
-          dev_ctx->GetPlace(),
+          ctx.GetPlace(),
           op_var.length() + 1,
-          phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx->stream())));
+          phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
       gpu_str_ptr = reinterpret_cast<char*>(gpu_str_tensor->ptr());
 
       op_var2gpu_str.emplace(op_var, std::move(gpu_str_tensor));
@@ -378,13 +363,13 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
                                                 iter->first.c_str(),
                                                 op_var.length() + 1,
                                                 hipMemcpyHostToDevice,
-                                                dev_ctx->stream()));
+                                                ctx.stream()));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(gpu_str_ptr,
                                                  iter->first.c_str(),
                                                  op_var.length() + 1,
                                                  cudaMemcpyHostToDevice,
-                                                 dev_ctx->stream()));
+                                                 ctx.stream()));
 #endif
     } else {  // get
       auto iter = op_var2gpu_str.find(op_var);
@@ -397,6 +382,22 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
       gpu_str_ptr = reinterpret_cast<char*>(iter->second->ptr());
     }
   }
+  return gpu_str_ptr;
+}
+
+template <>
+template <typename T>
+void TensorCheckerVisitor<phi::GPUContext>::apply(
+    typename std::enable_if<
+        std::is_floating_point<T>::value ||
+        std::is_same<T, ::paddle::platform::complex<float>>::value ||
+        std::is_same<T, ::paddle::platform::complex<double>>::value>::type*)
+    const {
+  auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(
+      platform::DeviceContextPool::Instance().Get(tensor.place()));
+  int dev_id = tensor.place().device;
+  char* gpu_str_ptr =
+      GetGpuHintStringPtr<T>(*dev_ctx, op_type, var_name, dev_id);
 
 #ifdef __HIPCC__
   // HIP will throw GPU memory access fault if threads > 256
@@ -406,7 +407,7 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
 #endif
   size_t blocks =
       std::min(static_cast<size_t>(128),
-               static_cast<size_t>((tensor_.numel() + threads - 1) / threads));
+               static_cast<size_t>((tensor.numel() + threads - 1) / threads));
 #ifdef __HIPCC__
   int print_num = 3;
 
@@ -415,44 +416,45 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
                      dim3(threads),
                      0,
                      dev_ctx->stream(),
-                     tensor_.data<T>(),
-                     tensor_.numel(),
+                     tensor.data<T>(),
+                     tensor.numel(),
                      print_num,
                      gpu_str_ptr);
 #else
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
-  phi::DenseTensor found_nan_inf;
-  found_nan_inf.Resize({2});
-  int* found_nan_inf_ptr = found_nan_inf.mutable_data<int>(tensor_.place());
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(
-      found_nan_inf_ptr, 0, 2 * sizeof(int), dev_ctx->stream()));
-
   int64_t numel_max_min = blocks;
+
+  phi::DenseTensor block_num_nan_inf;
+  block_num_nan_inf.Resize({static_cast<int64_t>(2 * numel_max_min)});
+  int64_t* block_num_nan_ptr =
+      dev_ctx->template Alloc<int64_t>(&block_num_nan_inf);
+  int64_t* block_num_inf_ptr = block_num_nan_ptr + numel_max_min;
 
   phi::DenseTensor tensor_block_max_min;
   tensor_block_max_min.Resize({static_cast<int64_t>(3 * numel_max_min)});
-  MT* tensor_block_max_ptr =
-      tensor_block_max_min.mutable_data<MT>(tensor_.place());
+  MT* tensor_block_max_ptr = dev_ctx->template Alloc<MT>(&tensor_block_max_min);
   MT* tensor_block_min_ptr = tensor_block_max_ptr + numel_max_min;
   MT* tensor_block_mean_ptr = tensor_block_max_ptr + 2 * numel_max_min;
 
   FindNanInfAndBlockMaxMin<T, MT>
-      <<<blocks, threads, 0, dev_ctx->stream()>>>(tensor_.data<T>(),
-                                                  tensor_.numel(),
-                                                  found_nan_inf_ptr,
+      <<<blocks, threads, 0, dev_ctx->stream()>>>(tensor.data<T>(),
+                                                  tensor.numel(),
+                                                  block_num_nan_ptr,
+                                                  block_num_inf_ptr,
                                                   tensor_block_max_ptr,
                                                   tensor_block_min_ptr,
                                                   tensor_block_mean_ptr);
 
   int check_nan_inf_level = FLAGS_check_nan_inf_level;
   FindGlobalMaxMinAndPrint<T, MT>
-      <<<1, 1, 0, dev_ctx->stream()>>>(found_nan_inf_ptr,
+      <<<1, 1, 0, dev_ctx->stream()>>>(block_num_nan_ptr,
+                                       block_num_inf_ptr,
                                        tensor_block_max_ptr,
                                        tensor_block_min_ptr,
                                        tensor_block_mean_ptr,
                                        gpu_str_ptr,
-                                       tensor_.numel(),
+                                       tensor.numel(),
                                        numel_max_min,
                                        check_nan_inf_level);
 #endif

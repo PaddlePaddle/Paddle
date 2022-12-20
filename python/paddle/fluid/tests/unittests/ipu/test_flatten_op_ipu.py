@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
@@ -46,7 +47,12 @@ class TestBase(IPUOpTest):
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
-        out = paddle.fluid.layers.flatten(x=x, **self.attrs)
+        if self.attrs['axis'] == 0:
+            x = paddle.flatten(x, 0, -1)
+            out = paddle.unsqueeze(x, 0)
+        else:
+            x = paddle.flatten(x, self.attrs['axis'], -1)
+            out = paddle.flatten(x, 0, self.attrs['axis'] - 1)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):

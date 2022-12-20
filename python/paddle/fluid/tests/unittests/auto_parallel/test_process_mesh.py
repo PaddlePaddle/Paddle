@@ -13,18 +13,20 @@
 # limitations under the License
 
 import unittest
+
 import numpy as np
+
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
 import paddle.static as static
+from paddle.distributed.auto_parallel.dist_context import (
+    get_default_distributed_context,
+)
 from paddle.distributed.auto_parallel.process_mesh import (
     ProcessMesh,
     compute_compatible_process_mesh,
     merge_process_meshes,
-)
-from paddle.distributed.auto_parallel.dist_context import (
-    get_default_distributed_context,
 )
 
 paddle.enable_static()

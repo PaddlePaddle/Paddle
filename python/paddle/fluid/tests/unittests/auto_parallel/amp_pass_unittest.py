@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import random
-import numpy as np
-import paddle
+import unittest
 
+import numpy as np
+from get_gpt_model import FakeDataset, generate_model
+
+import paddle
 from paddle.distributed.fleet import auto
 from paddle.fluid.dygraph.parallel import ParallelEnv
-from get_gpt_model import FakeDataset, generate_model
 
 
 def apply_pass(use_amp=False, level=None):

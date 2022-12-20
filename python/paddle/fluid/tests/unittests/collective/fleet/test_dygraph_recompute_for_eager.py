@@ -12,16 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
-os.environ['FLAGS_enable_eager_mode'] = '1'
-
+import random
 import unittest
+
 import numpy as np
 
 import paddle
 from paddle.distributed.fleet.utils import recompute
-import random
 
 
 def get_fc_block(block_idx, input_size, is_last=False):

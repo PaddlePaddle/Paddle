@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy
 import unittest
+
+import numpy
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
-from paddle.fluid.dygraph.jit import declarative
+from paddle.jit import ProgramTranslator
+from paddle.jit.api import to_static
 
 
 @paddle.jit.to_static
@@ -27,7 +28,7 @@ def dyfunc_assert_variable(x):
     assert x_v
 
 
-@declarative
+@to_static
 def dyfunc_assert_non_variable(x=True):
     assert x
 

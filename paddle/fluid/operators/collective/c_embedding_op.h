@@ -25,8 +25,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = phi::DenseTensor;
-
 inline void CheckTableValid() {}
 
 template <typename TIds, typename TData>
@@ -57,9 +55,9 @@ template <typename T>
 class CEmbeddingOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* table_t = ctx.Input<LoDTensor>("W");
-    auto* ids_t = ctx.Input<LoDTensor>("Ids");
-    auto* output_t = ctx.Output<LoDTensor>("Out");
+    auto* table_t = ctx.Input<phi::DenseTensor>("W");
+    auto* ids_t = ctx.Input<phi::DenseTensor>("Ids");
+    auto* output_t = ctx.Output<phi::DenseTensor>("Out");
     const int64_t start_idx = ctx.Attr<int64_t>("start_index");
 
     VLOG(10) << "table_dims:" << table_t->dims();
@@ -119,16 +117,18 @@ class CEmbeddingGradOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const int64_t start_idx = context.Attr<int64_t>("start_index");
-    auto ids_t = context.Input<LoDTensor>("Ids");
-    auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto table_t = context.Input<LoDTensor>("W");
-    auto table_grad_t = context.Output<LoDTensor>(framework::GradVarName("W"));
+    auto ids_t = context.Input<phi::DenseTensor>("Ids");
+    auto d_output_t =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto table_t = context.Input<phi::DenseTensor>("W");
+    auto table_grad_t =
+        context.Output<phi::DenseTensor>(framework::GradVarName("W"));
 
     T* table_grad_data =
         table_grad_t->mutable_data<T>(table_t->dims(), context.GetPlace());
 
     size_t table_t_mem_size =
-        table_t->numel() * framework::DataTypeSize(table_grad_t->dtype());
+        table_t->numel() * phi::SizeOf(table_grad_t->dtype());
     size_t table_grad_t_mem_size =
         table_grad_t->numel() *
         framework::SizeOfType(

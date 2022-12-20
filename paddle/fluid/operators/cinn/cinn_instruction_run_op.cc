@@ -68,11 +68,11 @@ class CinnInstructionRunOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput(kX,
-             "(vector<LoDTensor>)"
+             "(vector<phi::DenseTensor>)"
              "which are the input arguments of this cinn instruction")
         .AsDuplicable();
     AddOutput(kOutputs,
-              "(vector<LoDTensor>)"
+              "(vector<phi::DenseTensor>)"
               "which are the output arguments of this cinn instruction")
         .AsDuplicable();
     AddAttr<int64_t>(
