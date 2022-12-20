@@ -18,47 +18,46 @@ limitations under the License. */
 
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/backends/dynload/port.h"
-#include "warpctc/include/ctc.h"
+#include "warprnnt/include/rnnt.h"
 
 namespace phi {
 namespace dynload {
 
-extern std::once_flag warpctc_dso_flag;
-extern void* warpctc_dso_handle;
+extern std::once_flag warprnnt_dso_flag;
+extern void* warprnnt_dso_handle;
 
 /**
  * The following macro definition can generate structs
- * (for each function) to dynamic load warpctc routine
+ * (for each function) to dynamic load warprnnt routine
  * via operator overloading.
  */
-#define DYNAMIC_LOAD_WARPCTC_WRAP(__name)                            \
+#define DYNAMIC_LOAD_WARPRNNT_WRAP(__name)                           \
   struct DynLoad__##__name {                                         \
     template <typename... Args>                                      \
     auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) { \
-      using warpctcFunc = decltype(&::__name);                       \
-      std::call_once(warpctc_dso_flag, []() {                        \
-        warpctc_dso_handle = phi::dynload::GetWarpCTCDsoHandle();    \
+      using warprnntFunc = decltype(&::__name);                      \
+      std::call_once(warprnnt_dso_flag, []() {                       \
+        warprnnt_dso_handle = phi::dynload::GetWarpRNNTDsoHandle();  \
       });                                                            \
-      static void* p_##__name = dlsym(warpctc_dso_handle, #__name);  \
-      return reinterpret_cast<warpctcFunc>(p_##__name)(args...);     \
+      static void* p_##__name = dlsym(warprnnt_dso_handle, #__name); \
+      return reinterpret_cast<warprnntFunc>(p_##__name)(args...);    \
     }                                                                \
   };                                                                 \
   extern DynLoad__##__name __name
 
-#define DECLARE_DYNAMIC_LOAD_WARPCTC_WRAP(__name) \
-  DYNAMIC_LOAD_WARPCTC_WRAP(__name)
+#define DECLARE_DYNAMIC_LOAD_WARPRNNT_WRAP(__name) \
+  DYNAMIC_LOAD_WARPRNNT_WRAP(__name)
 
-#define WARPCTC_ROUTINE_EACH(__macro) \
-  __macro(get_warpctc_version);       \
-  __macro(ctcGetStatusString);        \
-  __macro(compute_ctc_loss);          \
-  __macro(compute_ctc_loss_double);   \
-  __macro(get_workspace_size);        \
-  __macro(get_workspace_size_double)
+#define WARPRNNT_ROUTINE_EACH(__macro) \
+  __macro(get_warprnnt_version);       \
+  __macro(rnntGetStatusString);        \
+  __macro(compute_rnnt_loss);          \
+  __macro(compute_rnnt_loss_fp64);     \
+  __macro(get_rnnt_workspace_size);
 
-WARPCTC_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_WARPCTC_WRAP);
+WARPRNNT_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_WARPRNNT_WRAP);
 
-#undef DYNAMIC_LOAD_WARPCTC_WRAP
+#undef DYNAMIC_LOAD_WARPRNNT_WRAP
 
 }  // namespace dynload
 }  // namespace phi
