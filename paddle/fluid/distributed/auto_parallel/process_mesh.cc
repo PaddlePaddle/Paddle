@@ -74,9 +74,7 @@ bool ProcessMesh::contains(int64_t process_id) const {
 }
 
 std::string ProcessMesh::to_string() const {
-  std::cout << "begin" << shape_.size() << std::endl;
   std::string mesh_str = "{shape: [" + str_join(shape_) + "], ";
-  std::cout << "mesh_str" << std::endl;
   mesh_str += "process_ids: [" + str_join(process_ids_) + "], ";
   mesh_str += "dim_names: [" + str_join(dim_names_) + "]}";
   return mesh_str;
