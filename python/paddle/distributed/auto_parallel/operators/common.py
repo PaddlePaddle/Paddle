@@ -270,8 +270,8 @@ def is_parameter_related(varname, block):
         varname = varname[: varname.index(".cast_bf")]
     if ".quantized" in varname:
         varname = varname[: varname.index(".quantized")]
-    if "@RESHARD" in varname:
-        varname = varname[: varname.index("@RESHARD")]
+    # if "@RESHARD" in varname:
+    #     varname = varname[: varname.index("@RESHARD")]
     assert block._find_var_recursive(varname)
     var = block._var_recursive(varname)
     return var.is_parameter
