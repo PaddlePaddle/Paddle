@@ -22,12 +22,12 @@ class FusedEcMoe(Layer):
     Parameters:
         hidden_size (int): The dim size of input units.
         inter_size (int): The dim size of feed forward network.
+        num_expert (int): The number of experts. 
+        act_type (string): The activation type. Currently only support `gelu`, `relu`. 
         weight_attr (ParamAttr, optional): The attribute for the learnable
             weight of this layer. The default value is None and the weight will be
             initialized to zero. For detailed information, please refer to
             paddle.ParamAttr.
-        transpose_weight (bool): Whether to transpose the `weight` Tensor before
-            multiplication.
         bias_attr (ParamAttr|bool, optional): The attribute for the learnable bias
             of this layer. If it is set to False, no bias will be added to the output.
             If it is set to None or one kind of ParamAttr, a bias parameter will
