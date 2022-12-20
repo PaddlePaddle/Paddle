@@ -16,6 +16,7 @@ import numpy as np
 
 import paddle
 from paddle import _legacy_C_ops
+from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 from paddle.fluid import backward, core, framework, program_guard
 from paddle.fluid.compiler import BuildStrategy
 from paddle.fluid.contrib.mixed_precision.decorator import (
@@ -26,10 +27,6 @@ from paddle.fluid.contrib.mixed_precision.fp16_utils import (
     rewrite_program,
 )
 from paddle.fluid.dygraph import layers
-from paddle.fluid.dygraph.amp.auto_cast import (
-    _in_amp_guard,
-    _in_pure_fp16_guard,
-)
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.executor import (
     _is_dy2st_enable_standalone_executor,
