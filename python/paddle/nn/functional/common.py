@@ -950,7 +950,7 @@ def bilinear(x1, x2, weight, bias=None, name=None):
 def dropout(
     x, p=0.5, axis=None, training=True, mode="upscale_in_train", name=None
 ):
-    """
+    r"""
     Dropout is a regularization technique for reducing overfitting by preventing
     neuron co-adaption during training. The dropout operator randomly sets the
     outputs of some units to zero, while upscale others according to the given
