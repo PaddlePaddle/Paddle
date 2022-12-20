@@ -158,9 +158,9 @@ class PartialProgramLayer:
         self._inputs = NestSequence(inputs)
         self._outputs = NestSequence(outputs, need_check=True)
         self._params = parameters if parameters is not None else []
-        self._extra_param = kwargs.get('extra_param', None)
-        if self._extra_param:
-            self._params.extend(self._extra_param)
+        extra_params = kwargs.get('extra_params', None)
+        if extra_params:
+            self._params.extend(extra_params)
 
         self._build_strategy = kwargs.get('build_strategy', BuildStrategy())
         assert isinstance(self._build_strategy, BuildStrategy)
@@ -427,9 +427,8 @@ class PartialProgramLayer:
         Verify that the program parameter is initialized, prune some unused params,
         and remove redundant op callstack.
         """
-        if self._extra_param is None:
-            # 1. Check all params from main program can be found in self._params
-            self._check_params_all_inited(main_program)
+        # 1. Check all params from main program can be found in self._params
+        self._check_params_all_inited(main_program)
         # 2. Prune the parameters not used anywhere in the program.
         self._prune_unused_params(main_program)
 
