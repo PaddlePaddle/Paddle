@@ -273,8 +273,7 @@ bool FusedTokenPrunePluginDynamic::supportsFormatCombination(
       const nvinfer1::PluginTensorDesc& prev = in_out[0];
       return in.type == prev.type && in.format == prev.format;
     } else {
-      return in.type == nvinfer1::DataType::kINT32 &&
-             in.format == nvinfer1::TensorFormat::kLINEAR;
+      return in.format == nvinfer1::TensorFormat::kLINEAR;
     }
   }
 }
@@ -574,8 +573,8 @@ int FusedTokenPrunePluginDynamic::enqueue(
 
       // 2. sort scores
       if (padding_token_length == 64) {
-        general_topk_pair_sort<float, 32, 2><<<B, 32, 0, stream>>>(
-            static_cast<float*>(padding_scores_), token_index_);  // 64
+        general_topk_pair_sort<half, 32, 2><<<B, 32, 0, stream>>>(
+            static_cast<half*>(padding_scores_), token_index_);  // 64
       } else if (padding_token_length == 128) {
         general_topk_pair_sort<half, 32, 4><<<B, 32, 0, stream>>>(
             static_cast<half*>(padding_scores_), token_index_);  // 128
