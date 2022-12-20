@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/cpu_vec.h"
 #include "paddle/phi/kernels/funcs/fc_functor.h"
@@ -212,39 +212,41 @@ void AttentionLSTMOpMaker::Make() {
       "this phi::DenseTensor is a matrix with shape (T X M), where T is the "
       "total time steps in this mini-batch, M is the dim size of x.");
   AddInput("C0",
-           "(Tensor) LSTM C0"
+           "(phi::DenseTensor) LSTM C0"
            "This is a tensor with shape (N x D), where N is the batch size, D "
            "is the gate size."
            "C0 is necessary because of attention.");
   AddInput("H0",
-           "(Tensor, optional) LSTM H0"
+           "(phi::DenseTensor, optional) LSTM H0"
            "This is a tensor with shape (N x D), where N is the "
            "batch size and D is the gate size.")
       .AsDispensable();
   AddInput("AttentionWeight",
-           "(Tensor) the weights of attention fc. Always relu the fc result."
+           "(phi::DenseTensor) the weights of attention fc. Always relu the fc "
+           "result."
            "The shape is ((M+D) x 1), where M is the dim size of x, D is the "
            "gate size of LSTM.");
   AddInput("AttentionBias",
-           "(Tensor, optional) the bias of attention fc."
+           "(phi::DenseTensor, optional) the bias of attention fc."
            "The shape is (1 x 1)")
       .AsDispensable();
   AddInput("AttentionScalar",
-           "(Tensor, optional) the scalar on the result of attentioned fc. "
+           "(phi::DenseTensor, optional) the scalar on the result of "
+           "attentioned fc. "
            "Always relu the Scalar."
            "The shape is (1 x 1)")
       .AsDispensable();
   AddInput("AttentionScalarBias",
-           "(Tensor, optional) the scalar bias of attention fc."
+           "(phi::DenseTensor, optional) the scalar bias of attention fc."
            "The shape is (1 x 1)")
       .AsDispensable();
   AddInput("LSTMWeight",
-           "(Tensor) the combined weight of LSTM"
+           "(phi::DenseTensor) the combined weight of LSTM"
            " - The shape is ((D+M) x 4D), where D is the hidden gate size, M "
            "is the dim size of x"
            " - Weight = {W_forget, W_input, W_output, W_cell}");
   AddInput("LSTMBias",
-           "(Tensor) the combined bias of LSTM, shape (1x4D)."
+           "(phi::DenseTensor) the combined bias of LSTM, shape (1x4D)."
            "Note: we should add the bias of hidden and context accorindg to "
            "the same gate: "
            "{B_forget, B_input, B_output, B_cell}");
@@ -257,21 +259,22 @@ void AttentionLSTMOpMaker::Make() {
       "(phi::DenseTensor) (same as LSTMOp) the cell state of LSTM operator. "
       "The shape is (T x D), and lod is the same with the `Input`.");
   AddOutput("AttentionedX",
-            "(Tensor) shape is (T x 1), the result after X * AttentionWeight,"
+            "(phi::DenseTensor) shape is (T x 1), the result after X * "
+            "AttentionWeight,"
             " where T is the total time steps in this mini-batch,"
             " D is the hidden size.")
       .AsIntermediate();
   AddOutput("AttentionFCOut",
-            "(Tensor) (max_seq_len, 1), compute at each step.")
+            "(phi::DenseTensor) (max_seq_len, 1), compute at each step.")
       .AsIntermediate();
   AddOutput("LSTMX",
-            "(Tensor) the input X of LSTM for each step."
+            "(phi::DenseTensor) the input X of LSTM for each step."
             "Shape is (1 x M), where M is the x frame size")
       .AsIntermediate();
-  AddOutput(
-      "LSTMOUT",
-      "(Tensor) the output of LSTM X(1*(D+M))* weight((D+M)*4D) for each step."
-      "Shape is (1 x 4D), where M is the x frame size")
+  AddOutput("LSTMOUT",
+            "(phi::DenseTensor) the output of LSTM X(1*(D+M))* "
+            "weight((D+M)*4D) for each step."
+            "Shape is (1 x 4D), where M is the x frame size")
       .AsIntermediate();
   AddAttr<std::string>("gate_activation",
                        "(string, default: sigmoid)"
@@ -312,10 +315,10 @@ use lstm_x_t as input and compute as standard LSTM.
 template <typename T>
 inline void bias_relu(const int n, const T* x, const T* bias, T* y) {
   if (bias) {
-    phi::funcs::vec_add_bias<T, platform::avx>(n, *bias, x, y);
-    phi::funcs::vec_relu<T, platform::avx>(n, y, y);
+    phi::funcs::vec_add_bias<T, phi::backends::cpu::avx>(n, *bias, x, y);
+    phi::funcs::vec_relu<T, phi::backends::cpu::avx>(n, y, y);
   } else {
-    phi::funcs::vec_relu<T, platform::avx>(n, x, y);
+    phi::funcs::vec_relu<T, phi::backends::cpu::avx>(n, x, y);
   }
 }
 
@@ -326,8 +329,9 @@ inline void vec_softmax(const int n, const T* x, T* y) {
   for (int i = 1; i < n; ++i) {
     scalar = scalar < x[i] ? x[i] : scalar;
   }
-  phi::funcs::vec_add_bias<T, platform::avx>(n, -scalar, x, y);  // sub
-  phi::funcs::vec_exp<T>(n, y, y);                               // exp
+  phi::funcs::vec_add_bias<T, phi::backends::cpu::avx>(
+      n, -scalar, x, y);            // sub
+  phi::funcs::vec_exp<T>(n, y, y);  // exp
   // sum
   scalar = T(0);
   for (int i = 0; i < n; ++i) {
@@ -390,13 +394,13 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
     auto& act_gate_str = ctx.Attr<std::string>("gate_activation");
     auto& act_cell_str = ctx.Attr<std::string>("cell_activation");
     auto& act_cand_str = ctx.Attr<std::string>("candidate_activation");
-    if (platform::MayIUse(platform::avx)) {
-      phi::funcs::VecActivations<T, platform::avx> act_functor;
+    if (phi::backends::cpu::MayIUse(phi::backends::cpu::avx)) {
+      phi::funcs::VecActivations<T, phi::backends::cpu::avx> act_functor;
       act_gate = act_functor(act_gate_str);
       act_cell = act_functor(act_cell_str);
       act_cand = act_functor(act_cand_str);
     } else {
-      phi::funcs::VecActivations<T, platform::isa_any> act_functor;
+      phi::funcs::VecActivations<T, phi::backends::cpu::isa_any> act_functor;
       act_gate = act_functor(act_gate_str);
       act_cell = act_functor(act_cell_str);
       act_cand = act_functor(act_cand_str);

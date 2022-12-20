@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include <iterator>  // NOLINT
 #include "dnnl.hpp"  // NOLINT
-#include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/requantize_op.h"
 #include "paddle/phi/backends/onednn/onednn_helper.h"
@@ -25,7 +24,6 @@ namespace operators {
 
 using dnnl::memory;
 using dnnl::reorder;
-using Tensor = phi::DenseTensor;
 
 namespace {
 
@@ -116,7 +114,7 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(requantize,
                    MKLDNN,
-                   ::paddle::platform::CPUPlace,
+                   ::phi::CPUPlace,
                    ops::ReQuantOpKernel<int8_t>,
                    ops::ReQuantOpKernel<uint8_t>,
                    ops::ReQuantOpKernel<paddle::platform::bfloat16>);

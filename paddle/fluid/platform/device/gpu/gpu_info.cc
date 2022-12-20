@@ -24,7 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/monitor.h"
@@ -32,12 +31,13 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/mem_tracing.h"
 #include "paddle/fluid/string/split.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/core/flags.h"
 
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/dynload/miopen.h"
 #else
-#include "paddle/fluid/platform/device/gpu/cuda/cuda_graph.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
 #endif
 
 #ifdef PADDLE_WITH_CUDA
@@ -230,7 +230,7 @@ class RecordedGpuMallocHelper {
       result = hipMalloc(ptr, size);
     }
 #else
-    CUDAGraphCaptureModeGuard capture_mode_guard;
+    phi::backends::gpu::CUDAGraphCaptureModeGuard capture_mode_guard;
     if (UNLIKELY(malloc_managed_memory)) {
       result = cudaMallocManaged(ptr, size);
     } else {
