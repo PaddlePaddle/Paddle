@@ -459,18 +459,6 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
 #endif
 }
 
-// template <>
-// void tensor_check<phi::GPUContext>(const std::string& op_type,
-//                                    const std::string& var_name,
-//                                    const phi::DenseTensor& tensor,
-//                                    const platform::Place& place) {
-//   std::call_once(init_multi_gpu_op_var_map_flag, InitMultiGPUOpVarMap);
-//
-//   TensorCheckerVisitor<phi::GPUContext> vistor(
-//       op_type, var_name, tensor, place);
-//   VisitDataType(framework::TransToProtoVarType(tensor.dtype()), vistor);
-// }
-
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
