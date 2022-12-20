@@ -52,7 +52,7 @@ class TestNNFunctionalNormalize(unittest.TestCase):
         y = F.normalize(x, axis=0)
         np.testing.assert_allclose(y.numpy(), self.expected3, rtol=1e-05)
 
-        self.assertRaises(BaseException, F.normalize, x)
+        self.assertRaises(BaseException, F.normalize, x, 1)
 
     def run_static(self, use_gpu=False):
         x = paddle.fluid.data(name='input', shape=[10, 10], dtype='float32')
@@ -76,7 +76,7 @@ class TestNNFunctionalNormalize(unittest.TestCase):
         np.testing.assert_allclose(static_result[2], self.expected2, rtol=1e-05)
         self.assertTrue('aaa' in result3.name)
         np.testing.assert_allclose(static_result[3], self.expected3, rtol=1e-05)
-        self.assertRaises(ValueError, F.normalize, x2)
+        self.assertRaises(ValueError, F.normalize, x2, 1)
 
     def test_cpu(self):
         paddle.disable_static(place=paddle.fluid.CPUPlace())
