@@ -76,6 +76,8 @@ class ProcessGroupCustom : public ProcessGroup {
       int size,
       int gid);
 
+  static void DestoryProcessGroupCustom(int gid);
+
   std::string GetBackendName() const override { return "XCCL_" + device_type_; }
 
   std::shared_ptr<ProcessGroup::Task> AllGather(

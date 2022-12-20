@@ -307,3 +307,15 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
     paddle.distributed.all_reduce(tmp, sync_op=True)
     paddle.distributed.wait(tmp)
     return gp
+
+
+def destroy_process_group_custom():
+    """
+
+    Destory the custom process group.
+
+    Args:
+        gid (int): The process group id. Default value : 0.
+
+    """
+    core.ProcessGroupCustom.destory()
