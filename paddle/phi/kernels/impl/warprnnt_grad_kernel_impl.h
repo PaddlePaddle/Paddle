@@ -20,7 +20,6 @@
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/funcs/warp_transducer/include/rnnt.h"
 
 namespace phi {
 
