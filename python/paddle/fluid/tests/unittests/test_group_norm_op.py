@@ -308,7 +308,7 @@ class TestGroupNormEager(unittest.TestCase):
             ret1.backward()
             tensor_eager_1 = fluid.dygraph.to_variable(input)
             tensor_eager_1.stop_gradient = False
-            groupNorm_eager = paddle.nn.GroupNorm(channels=32, groups=4)
+            groupNorm_eager = paddle.nn.GroupNorm(num_channels=32, num_groups=4)
             ret2 = groupNorm_eager(tensor_eager_1)
             ret2.backward()
             self.assertEqual(
@@ -331,7 +331,7 @@ class TestGroupNormEager_fp32(unittest.TestCase):
             ret1.backward()
             tensor_eager_1 = fluid.dygraph.to_variable(input)
             tensor_eager_1.stop_gradient = False
-            groupNorm_eager = paddle.nn.GroupNorm(channels=32, groups=4)
+            groupNorm_eager = paddle.nn.GroupNorm(num_channels=32, num_groups=4)
             ret2 = groupNorm_eager(tensor_eager_1)
             ret2.backward()
             self.assertEqual(
@@ -358,7 +358,7 @@ class TestGroupNormEager_fp16(unittest.TestCase):
             ret1.backward()
             tensor_eager_1 = fluid.dygraph.to_variable(input)
             tensor_eager_1.stop_gradient = False
-            groupNorm_eager = paddle.nn.GroupNorm(channels=32, groups=4)
+            groupNorm_eager = paddle.nn.GroupNorm(num_channels=32, num_groups=4)
             ret2 = groupNorm_eager(tensor_eager_1)
             ret2.backward()
             self.assertEqual(
