@@ -786,7 +786,7 @@ class Dropout2D(Layer):
     Dropout2D will help promote independence between feature maps as described in the paper:
     `Efficient Object Localization Using Convolutional Networks <https://arxiv.org/abs/1411.4280>`_
 
-    See ``paddle.nn.functional.dropout2d`` for more details.
+    See :ref:`api_paddle_nn_functional_dropout2d` for more details.
 
     In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 
@@ -867,7 +867,7 @@ class Dropout3D(Layer):
     Dropout3D will help promote independence between feature maps as described in the paper:
     `Efficient Object Localization Using Convolutional Networks <https://arxiv.org/abs/1411.4280>`_
 
-    See ``paddle.nn.functional.dropout3d`` for more details.
+    See :ref:`api_paddle_nn_functional_dropout3d` for more details.
 
     In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 
