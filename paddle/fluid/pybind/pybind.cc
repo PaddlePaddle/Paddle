@@ -2543,6 +2543,10 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("update_autotune_status",
         [] { return phi::autotune::AutoTuneStatus::Instance().Update(); });
 
+  m.def("get_low_precision_op_list", [] {
+    return paddle::imperative::AmpOperators::Instance().GetAmpOpList();
+  });
+
   m.def("autotune_status", [] {
     py::dict res;
     phi::autotune::AutoTuneCache::Instance().UpdateStatus();
