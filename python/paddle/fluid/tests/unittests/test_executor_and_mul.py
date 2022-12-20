@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 from paddle.fluid.executor import Executor
-from paddle.fluid.layers import data, mul, zeros
+from paddle.fluid.layers import data, zeros
 from paddle.tensor import array_write
 
 
@@ -35,7 +35,7 @@ class TestExecutor(unittest.TestCase):
         array_write(x=b, i=i, array=array)
 
         i = paddle.increment(i)
-        out = mul(x=a, y=b)
+        out = paddle.matmul(x=a, y=b)
         array_write(x=out, i=i, array=array)
 
         a_np = np.random.random((100, 784)).astype('float32')
