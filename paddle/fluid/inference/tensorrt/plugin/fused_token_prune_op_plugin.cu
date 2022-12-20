@@ -41,14 +41,15 @@ __global__ void compute_token_length(const int32_t* src,
 template <typename T>
 __global__ void fill_index_padding_score(int32_t* token_index,
                                          const T* scores,
-                                         int32_t scores_size,
+                                         int32_t sequnce_length,
                                          T* padding_scores) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  token_index[tid] = threadIdx.x;
-  if (tid < scores_size) {
-    padding_scores[tid] = scores[tid];
+  int padding_scores_it = threadIdx.x + blockIdx.x * blockDim.x;
+  int scores_it = threadIdx.x + blockIdx.x * sequnce_length;
+  token_index[padding_scores_it] = threadIdx.x;
+  if (threadIdx.x < sequnce_length) {
+    padding_scores[padding_scores_it] = scores[scores_it];
   } else {
-    padding_scores[tid] = 0;
+    padding_scores[padding_scores_it] = 0;
   }
 }
 
@@ -97,15 +98,18 @@ __global__ void general_topk_pair_sort(T* in_keys, int32_t* in_out_values) {
 
 __global__ void varlen_prune_token(const half* tokens,
                                    const int32_t* token_pos,
+                                   const int32_t padding_token_length,
                                    const int32_t* token_index,
                                    half* output) {
   int batch = blockIdx.x;
   int token_it = batch * gridDim.y + blockIdx.y;
   int pre_value_it =
       token_it * gridDim.z * blockDim.x + blockIdx.z * blockDim.x + threadIdx.x;
+  int token_index_it = batch * padding_token_length + blockIdx.y;
 
-  if (token_index[token_it] < token_pos[batch + 1] - token_pos[batch]) {
-    output[(token_index[token_it] + token_pos[batch]) * gridDim.z * blockDim.x +
+  if (token_index[token_index_it] < token_pos[batch + 1] - token_pos[batch]) {
+    output[(token_index[token_index_it] + token_pos[batch]) * gridDim.z *
+               blockDim.x +
            blockIdx.z * blockDim.x + threadIdx.x] = tokens[pre_value_it];
   }
 }
@@ -113,16 +117,18 @@ __global__ void varlen_prune_token(const half* tokens,
 template <typename T>
 __global__ void prune_token(const T* tokens,
                             int32_t new_sequnce_length,
+                            const int32_t padding_token_length,
                             const int32_t* token_index,
                             T* output) {
   int batch = blockIdx.x;
   int token_it = batch * gridDim.y + blockIdx.y;
   int pre_value_it =
       token_it * gridDim.z * blockDim.x + blockIdx.z * blockDim.x + threadIdx.x;
+  int token_index_it = batch * padding_token_length + blockIdx.y;
 
-  if (token_index[token_it] < new_sequnce_length) {
-    output[(batch * new_sequnce_length + token_index[token_it]) * gridDim.z *
-               blockDim.x +
+  if (token_index[token_index_it] < new_sequnce_length) {
+    output[(batch * new_sequnce_length + token_index[token_index_it]) *
+               gridDim.z * blockDim.x +
            blockIdx.z * blockDim.x + threadIdx.x] = tokens[pre_value_it];
   }
 }
@@ -323,9 +329,10 @@ int FusedTokenPrunePluginDynamic::enqueue(
     const int32_t length = input_desc[1].dims.d[2];  // hidden size
     const half* scores = static_cast<const half*>(inputs[0]);  // reduce sum
     const half* tokens = static_cast<const half*>(inputs[1]);
-    const int32_t scores_size = B * max_sequnce_length;
     int32_t padding_token_length;
-    if (max_sequnce_length <= 128) {
+    if (max_sequnce_length <= 64) {
+      padding_token_length = 64;
+    } else if (max_sequnce_length <= 128) {
       padding_token_length = 128;
     } else if (max_sequnce_length <= 256) {
       padding_token_length = 256;
@@ -344,7 +351,10 @@ int FusedTokenPrunePluginDynamic::enqueue(
 
     // 2. Padding scores
     fill_index_padding_score<half><<<B, padding_token_length, 0, stream>>>(
-        token_index_, scores, scores_size, static_cast<half*>(padding_scores_));
+        token_index_,
+        scores,
+        max_sequnce_length,
+        static_cast<half*>(padding_scores_));
 
     // 3. compute new pos id
     // Determine temporary device storage requirements
@@ -366,7 +376,10 @@ int FusedTokenPrunePluginDynamic::enqueue(
                                   B + 1);
 
     // 4. sort scores
-    if (padding_token_length == 128) {
+    if (padding_token_length == 64) {
+      general_topk_pair_sort<half, 32, 2><<<B, 32, 0, stream>>>(
+          static_cast<half*>(padding_scores_), token_index_);  // 64
+    } else if (padding_token_length == 128) {
       general_topk_pair_sort<half, 32, 4><<<B, 32, 0, stream>>>(
           static_cast<half*>(padding_scores_), token_index_);  // 128
     } else if (padding_token_length == 256) {
@@ -412,7 +425,7 @@ int FusedTokenPrunePluginDynamic::enqueue(
         max_sequnce_length,
         length / num_threads);  //  batchs, max_sequnce_length, vector_ength/***
     varlen_prune_token<<<num_blocks, num_threads, 0, stream>>>(
-        tokens, output3, token_index_, output0);
+        tokens, output3, padding_token_length, token_index_, output0);
   } else {
     auto input_type = input_desc[0].type;
     const int32_t B = input_desc[1].dims.d[0];  // batchs
@@ -424,9 +437,10 @@ int FusedTokenPrunePluginDynamic::enqueue(
       const float* scores = static_cast<const float*>(inputs[0]);  // reduce sum
       const float* tokens = static_cast<const float*>(inputs[1]);  // X
       float* output0 = static_cast<float*>(outputs[0]);
-      const int32_t scores_size = B * pre_sequnce_length;
       int32_t padding_token_length;
-      if (pre_sequnce_length <= 128) {
+      if (pre_sequnce_length <= 64) {
+        padding_token_length = 64;
+      } else if (pre_sequnce_length <= 128) {
         padding_token_length = 128;
       } else if (pre_sequnce_length <= 256) {
         padding_token_length = 256;
@@ -443,11 +457,14 @@ int FusedTokenPrunePluginDynamic::enqueue(
       fill_index_padding_score<float><<<B, padding_token_length, 0, stream>>>(
           token_index_,
           scores,
-          scores_size,
+          pre_sequnce_length,
           static_cast<float*>(padding_scores_));
 
       // 2. sort scores
-      if (padding_token_length == 128) {
+      if (padding_token_length == 64) {
+        general_topk_pair_sort<float, 32, 2><<<B, 32, 0, stream>>>(
+            static_cast<float*>(padding_scores_), token_index_);  // 64
+      } else if (padding_token_length == 128) {
         general_topk_pair_sort<float, 32, 4><<<B, 32, 0, stream>>>(
             static_cast<float*>(padding_scores_), token_index_);  // 128
       } else if (padding_token_length == 256) {
@@ -489,16 +506,21 @@ int FusedTokenPrunePluginDynamic::enqueue(
         }
       }
       const dim3 num_blocks(B, pre_sequnce_length, length / num_threads);
-      prune_token<float><<<num_blocks, num_threads, 0, stream>>>(
-          tokens, new_sequnce_length, token_index_, output0);
+      prune_token<float>
+          <<<num_blocks, num_threads, 0, stream>>>(tokens,
+                                                   new_sequnce_length,
+                                                   padding_token_length,
+                                                   token_index_,
+                                                   output0);
     } else if (input_type == nvinfer1::DataType::kHALF) {
       VLOG(1) << "TRT Plugin DataType selected. FusedTokenPrune-->fp16";
       const half* scores = static_cast<const half*>(inputs[0]);  // reduce sum
       const half* tokens = static_cast<const half*>(inputs[1]);  // X
       half* output0 = static_cast<half*>(outputs[0]);
-      const int32_t scores_size = B * pre_sequnce_length;
       int32_t padding_token_length;
-      if (pre_sequnce_length <= 128) {
+      if (pre_sequnce_length <= 64) {
+        padding_token_length = 64;
+      } else if (pre_sequnce_length <= 128) {
         padding_token_length = 128;
       } else if (pre_sequnce_length <= 256) {
         padding_token_length = 256;
@@ -515,11 +537,14 @@ int FusedTokenPrunePluginDynamic::enqueue(
       fill_index_padding_score<half><<<B, padding_token_length, 0, stream>>>(
           token_index_,
           scores,
-          scores_size,
+          pre_sequnce_length,
           static_cast<half*>(padding_scores_));
 
       // 2. sort scores
-      if (padding_token_length == 128) {
+      if (padding_token_length == 64) {
+        general_topk_pair_sort<float, 32, 2><<<B, 32, 0, stream>>>(
+            static_cast<float*>(padding_scores_), token_index_);  // 64
+      } else if (padding_token_length == 128) {
         general_topk_pair_sort<half, 32, 4><<<B, 32, 0, stream>>>(
             static_cast<half*>(padding_scores_), token_index_);  // 128
       } else if (padding_token_length == 256) {
@@ -561,8 +586,12 @@ int FusedTokenPrunePluginDynamic::enqueue(
         }
       }
       const dim3 num_blocks(B, pre_sequnce_length, length / num_threads);
-      prune_token<half><<<num_blocks, num_threads, 0, stream>>>(
-          tokens, new_sequnce_length, token_index_, output0);
+      prune_token<half>
+          <<<num_blocks, num_threads, 0, stream>>>(tokens,
+                                                   new_sequnce_length,
+                                                   padding_token_length,
+                                                   token_index_,
+                                                   output0);
     } else {
       PADDLE_THROW(
           platform::errors::Fatal("The FusedTokenPrune TRT Plugin's input type "
