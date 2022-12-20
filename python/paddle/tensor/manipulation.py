@@ -44,6 +44,120 @@ from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
 __all__ = []
 
 
+def tensor_array_to_tensor(input, axis=1, use_stack=False, name=None):
+    r"""
+    This function concatenates or stacks all tensors in the input LoDTensorArray
+    along the axis mentioned and returns that as the output.
+
+    For Example:
+
+    .. code-block:: text
+
+        Case 1:
+
+            Given:
+
+                input.data = {[[0.6, 0.1, 0.3],
+                               [0.5, 0.3, 0.2]],
+                              [[1.3],
+                               [1.8]],
+                              [[2.3, 2.1],
+                               [2.5, 2.4]]}
+
+                axis = 1, use_stack = False
+
+            Then:
+
+                output.data = [[0.6, 0.1, 0.3, 1.3, 2.3, 2.1],
+                               [0.5, 0.3, 0.2, 1.8, 2.5, 2.4]]
+
+                output_index.data = [3, 1, 2]
+
+        Case 2:
+
+            Given:
+
+                input.data = {[[0.6, 0.1],
+                               [0.5, 0.3]],
+                              [[0.3, 1.3],
+                               [0.2, 1.8]],
+                              [[2.3, 2.1],
+                               [2.5, 2.4]]}
+
+                axis = 1, use_stack = True
+
+            Then:
+
+                output.data = [[[0.6, 0.1]
+                                [0.3, 1.3]
+                                [2.3, 2.1],
+                               [[0.5, 0.3]
+                                [0.2, 1.8]
+                                [2.5, 2.4]]]
+
+                output_index.data = [2, 2, 2]
+
+    Args:
+        input(TensorArray): A TensorArray variable.
+        axis(int): The axis along which the tensors in attr::`input` will be
+            concatenated or stacked.
+        use_stack(bool): Act as concat_op or stack_op. For stack mode, all
+            tensors in the tensor array must have the same shape.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                       will be named automatically.
+
+    Returns:
+        Tensor: The concatenated or stacked tensor variable.
+        Tensor: A 1-D tensor variable with int32 data type. The data in this \
+            tensor contains all input including tensors' sizes along the axis.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy
+            import paddle
+            x0 = paddle.assign(numpy.random.rand(2, 2).astype("float32"))
+            x1 = paddle.assign(numpy.random.rand(2, 2).astype("float32"))
+            i = paddle.full(shape=[1], dtype="int64", fill_value=0)
+            array = paddle.tensor.array.create_array(dtype='float32')
+            paddle.tensor.array.array_write(x0, i, array)
+            paddle.tensor.array.array_write(x1, i + 1, array)
+            output, output_index = paddle.tensor.manipulation.tensor_array_to_tensor(input=array)
+    """
+    if _non_static_mode():
+        assert isinstance(
+            input, list
+        ), "The 'input' in tensor_array_to_tensor must be list"
+        from paddle import concat, stack
+
+        op = stack if use_stack else concat
+        res = op(input, axis=axis)
+        sizes = paddle.to_tensor(
+            np.array(list(map(lambda x: int(x.shape[axis]), input)))
+        )
+        return res, sizes
+
+    check_type(input, 'input', (list, Variable), 'tensor_array_to_tensor')
+    if isinstance(input, list):
+        for i, input_x in enumerate(input):
+            check_type(
+                input_x,
+                'input[' + str(i) + ']',
+                Variable,
+                'tensor_array_to_tensor',
+            )
+    helper = LayerHelper('tensor_array_to_tensor', **locals())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+    out_index = helper.create_variable_for_type_inference(dtype="int32")
+    helper.append_op(
+        type='tensor_array_to_tensor',
+        inputs={'X': input},
+        outputs={'Out': [out], 'OutIndex': [out_index]},
+        attrs={'axis': axis, 'use_stack': use_stack},
+    )
+    return out, out_index
+
+
 def cast(x, dtype):
     """
 
@@ -3078,7 +3192,7 @@ def scatter_nd(index, updates, shape, name=None):
     seen :code:`scatter_nd_add` . This op is the inverse of the :code:`gather_nd` op.
 
     Args:
-        index (Tensor): The index input with ndim > 1 and index.shape[-1] <= len(shape).
+        index (Tensor): The index input with ndim >= 1 and index.shape[-1] <= len(shape).
                           Its dtype should be int32 or int64 as it is used as indexes.
         updates (Tensor): The updated value of scatter_nd op. Its dtype should be float32, float64.
                             It must have the shape index.shape[:-1] + shape[index.shape[-1]:]

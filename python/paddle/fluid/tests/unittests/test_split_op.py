@@ -272,16 +272,16 @@ class TestSplitAPI(unittest.TestCase):
         x_1 = fluid.data(shape=[4, 5, 6], dtype='int32', name='x_1')
         x_2 = fluid.data(shape=[4, 5, None], dtype='int32', name='x_2')
 
-        out_0, out_1, out_2 = fluid.layers.split(
-            input=x_1,
+        out_0, out_1, out_2 = paddle.split(
+            x=x_1,
             num_or_sections=[positive_2_int64, positive_1_int32, -1],
-            dim=positive_1_int64,
+            axis=positive_1_int64,
         )
 
-        out_3, out_4, out_5 = fluid.layers.split(
-            input=x_1, num_or_sections=[2, 1, 2], dim=positive_1_int32
+        out_3, out_4, out_5 = paddle.split(
+            x=x_1, num_or_sections=[2, 1, 2], axis=positive_1_int32
         )
-        fluid.layers.split(input=x_2, num_or_sections=2, dim=2)
+        paddle.split(x=x_2, num_or_sections=2, axis=2)
 
         exe = fluid.Executor(place=fluid.CPUPlace())
         [res_0, res_1, res_2, res_3, res_4, res_5] = exe.run(
@@ -305,7 +305,7 @@ class TestSplitOpError(unittest.TestCase):
             # The type of axis in split_op should be int or Variable.
             def test_axis_type():
                 x6 = fluid.layers.data(shape=[4], dtype='float16', name='x3')
-                fluid.layers.split(input=x6, num_or_sections=2, dim=3.2)
+                paddle.split(x=x6, num_or_sections=2, axis=3.2)
 
             self.assertRaises(TypeError, test_axis_type)
 
@@ -313,14 +313,14 @@ class TestSplitOpError(unittest.TestCase):
             def test_axis_variable_type():
                 x9 = fluid.layers.data(shape=[4], dtype='float16', name='x9')
                 x10 = fluid.layers.data(shape=[1], dtype='float16', name='x10')
-                fluid.layers.split(input=x9, num_or_sections=2, dim=x10)
+                paddle.split(x=x9, num_or_sections=2, axis=x10)
 
             self.assertRaises(TypeError, test_axis_variable_type)
 
             # The type of num_or_sections in split_op should be int, tuple or list.
             def test_num_or_sections_type():
                 x6 = fluid.layers.data(shape=[4], dtype='float16', name='x4')
-                fluid.layers.split(input=x6, num_or_sections=2.1, dim=3)
+                paddle.split(x=x6, num_or_sections=2.1, axis=3)
 
             self.assertRaises(TypeError, test_num_or_sections_type)
 
@@ -447,7 +447,7 @@ class API_TestDygraphFluidSplit(unittest.TestCase):
             input_1 = np.random.random([4, 6, 6]).astype("int32")
             # input is a variable which shape is [4, 6, 6]
             input = paddle.to_tensor(input_1)
-            x0, x1, x2 = fluid.layers.split(input, num_or_sections=3, dim=1)
+            x0, x1, x2 = paddle.split(input, num_or_sections=3, axis=1)
             x0_out = x0.numpy()
             x1_out = x1.numpy()
             x2_out = x2.numpy()
@@ -455,7 +455,7 @@ class API_TestDygraphFluidSplit(unittest.TestCase):
             # input is a variable which shape is [4, 6, 6]
             input = paddle.to_tensor(input_1)
             input.stop_gradient = False
-            x0, x1, x2 = fluid.layers.split(input, num_or_sections=3, dim=1)
+            x0, x1, x2 = paddle.split(input, num_or_sections=3, axis=1)
             eager_x0_out = x0.numpy()
             eager_x1_out = x1.numpy()
             eager_x2_out = x2.numpy()
@@ -477,7 +477,7 @@ class API_TestDygraphFluidSplit(unittest.TestCase):
             input_1 = np.random.random([4, 6, 6]).astype("int32")
             # input is a variable which shape is [4, 6, 6]
             input = paddle.to_tensor(input_1)
-            x0, x1, x2 = fluid.layers.split(input, [2, 2, 2], dim=1)
+            x0, x1, x2 = paddle.split(input, [2, 2, 2], axis=1)
             x0_out = x0.numpy()
             x1_out = x1.numpy()
             x2_out = x2.numpy()
@@ -485,7 +485,7 @@ class API_TestDygraphFluidSplit(unittest.TestCase):
             # input is a variable which shape is [4, 6, 6]
             input = paddle.to_tensor(input_1)
             input.stop_gradient = False
-            x0, x1, x2 = fluid.layers.split(input, [2, 2, 2], dim=1)
+            x0, x1, x2 = paddle.split(input, [2, 2, 2], axis=1)
             eager_x0_out = x0.numpy()
             eager_x1_out = x1.numpy()
             eager_x2_out = x2.numpy()

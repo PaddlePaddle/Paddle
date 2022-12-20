@@ -145,7 +145,7 @@ void trt_ernie(bool with_fp16,
 
 TEST(AnalysisPredictor, no_fp16) {
   std::vector<float> result = {0.597841, 0.219972, 0.182187};
-  trt_ernie(false, result, 1e-5);
+  trt_ernie(false, result, 1e-4);
 }
 
 TEST(AnalysisPredictor, fp16) {
@@ -158,7 +158,7 @@ TEST(AnalysisPredictor, fp16) {
 TEST(AnalysisPredictor, no_fp16_bs2) {
   std::vector<float> result = {
       0.597841, 0.219972, 0.182187, 0.597841, 0.219972, 0.182187};
-  trt_ernie(false, result, 1e-5, 2);
+  trt_ernie(false, result, 1e-4, 2);
 }
 
 TEST(AnalysisPredictor, fp16_bs2) {

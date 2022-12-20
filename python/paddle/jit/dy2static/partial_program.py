@@ -132,7 +132,7 @@ def _change_is_test_status(program, is_test):
 
 class PartialProgramLayer:
     """
-    PartialProgramLayer wraps all the ops from layers decorated by `@declarative`
+    PartialProgramLayer wraps all the ops from layers decorated by `@to_static`
     and execute them as a static subgraph.
 
     .. note::
@@ -143,8 +143,8 @@ class PartialProgramLayer:
 
     Args:
         main_program(Program): The main program that contains ops need to be executed.
-        inputs(list[Variable]): The input list of the decorated function by `@declarative`.
-        outputs(list[Variable]): The output list of the decorated function by `@declarative`.
+        inputs(list[Variable]): The input list of the decorated function by `@to_static`.
+        outputs(list[Variable]): The output list of the decorated function by `@to_static`.
         parameters(list[VarBase]|None): All trainable parameters included in the program. Default None.
 
     Returns:
@@ -534,7 +534,7 @@ class PartialProgramLayer:
     def _prune_unused_params(self, program):
         """
         Prune the parameters not used anywhere in the program.
-        The `@declarative` may only decorated a sub function which
+        The `@to_static` may only decorated a sub function which
         contains some unused parameters created in `__init__`.
         So prune these parameters to avoid unnecessary operations in
         `run_program_op`.
