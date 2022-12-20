@@ -24,6 +24,9 @@ import unittest
 class CommunicationTestDistBase(unittest.TestCase):
     def setUp(self, save_log_dir=None, num_of_devices=2, timeout=120):
         self._python_interp = sys.executable
+        # for ut coverage
+        if os.getenv("WITH_COVERAGE", "OFF") == "ON":
+            self._python_interp += " -m coverage run --branch -p"
         self._save_log_dir = save_log_dir
         self._log_dir = tempfile.TemporaryDirectory()
         self._num_of_devices = num_of_devices
