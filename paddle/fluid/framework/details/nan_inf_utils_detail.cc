@@ -200,14 +200,14 @@ static void CheckNanInfCpuImpl(const T* value_ptr,
     mean_value += thread_mean_value[i];
   }
 
-  PrintForDifferentLevel<T, MT>(cpu_hint_str.c_str(),
-                                numel,
-                                num_nan,
-                                num_inf,
-                                max_value,
-                                min_value,
-                                mean_value,
-                                FLAGS_check_nan_inf_level);
+  PrintForDifferentLevelFile<T, MT>(cpu_hint_str.c_str(),
+                                    numel,
+                                    num_nan,
+                                    num_inf,
+                                    max_value,
+                                    min_value,
+                                    mean_value,
+                                    FLAGS_check_nan_inf_level);
 }
 
 template <
@@ -248,8 +248,7 @@ void TensorCheckerVisitor<phi::CPUContext>::apply(
         std::is_same<T, ::paddle::platform::complex<float>>::value ||
         std::is_same<T, ::paddle::platform::complex<double>>::value>::type*)
     const {
-  std::string cpu_hint_str =
-      GetCpuHintString<T>(op_type, var_name, tensor.place());
+  std::string cpu_hint_str = GetCpuHintString<T>(op_type, var_name, place);
   CheckNanInfCpuImpl(tensor.data<T>(), tensor.numel(), cpu_hint_str);
 }
 
@@ -260,6 +259,21 @@ void tensor_check<phi::CPUContext>(const std::string& op_type,
                                    const platform::Place& place) {
   TensorCheckerVisitor<phi::CPUContext> vistor(
       op_type, var_name, tensor, place);
+  VisitDataType(framework::TransToProtoVarType(tensor.dtype()), vistor);
+}
+
+template <>
+void tensor_check<phi::GPUContext>(const std::string& op_type,
+                                   const std::string& var_name,
+                                   const phi::DenseTensor& tensor,
+                                   const platform::Place& place) {
+  phi::DenseTensor cpu_tensor;
+  cpu_tensor.Resize(tensor.dims());
+  platform::CPUPlace cpu_place;
+  // copy data from gpu to cpu
+  paddle::framework::TensorCopySync(tensor, cpu_place, &cpu_tensor);
+  TensorCheckerVisitor<phi::CPUContext> vistor(
+      op_type, var_name, cpu_tensor, place);
   VisitDataType(framework::TransToProtoVarType(tensor.dtype()), vistor);
 }
 

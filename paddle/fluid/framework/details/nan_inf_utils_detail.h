@@ -16,9 +16,19 @@
 
 #include <string>
 
+#include <fstream>
+#include <iostream>
+#include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/kernels/funcs/eigen/extensions.h"
+#ifdef PADDLE_WITH_ASCEND_CL
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+#endif
+#include "paddle/fluid/framework/convert_utils.h"
 
 namespace paddle {
 namespace framework {
@@ -57,6 +67,7 @@ HOSTDEVICE void PrintForDifferentLevel(const char* debug_info,
                                        MT min_value,
                                        MT mean_value,
                                        int check_nan_inf_level) {
+  printf("no----------------------attention-----------------");
   if (num_nan > 0 || num_inf > 0) {
     printf(
         "[PRECISION] [ERROR] in %s, numel=%lld, num_nan=%lld, "
@@ -91,6 +102,56 @@ HOSTDEVICE void PrintForDifferentLevel(const char* debug_info,
            static_cast<float>(min_value),
            static_cast<float>(mean_value));
   }
+}
+
+template <typename T, typename MT>
+HOSTDEVICE void PrintForDifferentLevelFile(const char* debug_info,
+                                           int64_t numel,
+                                           int64_t num_nan,
+                                           int64_t num_inf,
+                                           MT max_value,
+                                           MT min_value,
+                                           MT mean_value,
+                                           int check_nan_inf_level) {
+  // 以写模式打开文件
+  std::string file_name = std::to_string(check_nan_inf_level);
+  std::string path = "nan_inf_level_" + file_name;
+  std::ofstream outfile(path, std::ios::app);
+  if (!outfile.is_open()) {
+    std::cout << "Open failed !!!\n" << std::endl;
+  }
+  if (num_nan > 0 || num_inf > 0) {
+    outfile << "[PRECISION] [ERROR] in " << debug_info
+            << ", numel=" << static_cast<long long>(numel)      // NOLINT
+            << ", num_nan=" << static_cast<long long>(num_nan)  // NOLINT
+            << ", num_inf=" << static_cast<long long>(num_inf)  // NOLINT
+            << ", max=" << static_cast<float>(max_value)
+            << ", min=" << static_cast<float>(min_value)
+            << ", mean=" << static_cast<float>(mean_value) << std::endl;
+    if (check_nan_inf_level == 0) {
+#if defined(__NVCC__) || defined(__HIPCC__)
+      PADDLE_ENFORCE(false,
+                     "There are NAN or INF (num_nan=%ld, num_inf=%lld) in %s.",
+                     static_cast<long long>(num_nan),  // NOLINT
+                     static_cast<long long>(num_inf),  // NOLINT
+                     debug_info);
+#else
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "There are NAN or INF (num_nan=%lld, num_inf=%lld) in %s.",
+          static_cast<long long>(num_nan),  // NOLINT
+          static_cast<long long>(num_inf),  // NOLINT
+          debug_info));
+#endif
+    }
+  } else if (NeedPrint<T, MT>(max_value, min_value, check_nan_inf_level)) {
+    outfile << "[PRECISION] in "
+            << debug_info;  // << ", numel=" << static_cast<long long>(numel)
+                            //<< ", max=" << static_cast<float>(max_value)
+                            //<< ", min=" << static_cast<float>(min_value)
+                            //<< ", mean=" << static_cast<float>(mean_value) <<
+                            // std::endl;
+  }
+  outfile.close();
 }
 
 template <typename T>
@@ -153,7 +214,6 @@ void tensor_check(const std::string& op_type,
                   const std::string& var_name,
                   const phi::DenseTensor& tensor,
                   const platform::Place& place);
-
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

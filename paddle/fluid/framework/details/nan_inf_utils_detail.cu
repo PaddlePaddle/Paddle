@@ -309,7 +309,7 @@ __global__ void FindGlobalMaxMinAndPrint(const int64_t* block_num_nan_ptr,
         mean_value += tmp_mean_value;
       }
     }
-
+    printf("this is error");
     PrintForDifferentLevel<T, MT>(debug_info,
                                   numel,
                                   num_nan,
@@ -460,17 +460,17 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
 #endif
 }
 
-template <>
-void tensor_check<phi::GPUContext>(const std::string& op_type,
-                                   const std::string& var_name,
-                                   const phi::DenseTensor& tensor,
-                                   const platform::Place& place) {
-  std::call_once(init_multi_gpu_op_var_map_flag, InitMultiGPUOpVarMap);
-
-  TensorCheckerVisitor<phi::GPUContext> vistor(
-      op_type, var_name, tensor, place);
-  VisitDataType(framework::TransToProtoVarType(tensor.dtype()), vistor);
-}
+// template <>
+// void tensor_check<phi::GPUContext>(const std::string& op_type,
+//                                    const std::string& var_name,
+//                                    const phi::DenseTensor& tensor,
+//                                    const platform::Place& place) {
+//   std::call_once(init_multi_gpu_op_var_map_flag, InitMultiGPUOpVarMap);
+//
+//   TensorCheckerVisitor<phi::GPUContext> vistor(
+//       op_type, var_name, tensor, place);
+//   VisitDataType(framework::TransToProtoVarType(tensor.dtype()), vistor);
+// }
 
 }  // namespace details
 }  // namespace framework
