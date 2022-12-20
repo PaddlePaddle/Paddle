@@ -23,7 +23,7 @@ class TestFuseBatchNormActPass(unittest.TestCase):
         with fluid.program_guard(main_program, startup_program):
             x = fluid.layers.data(name='x', shape=[1, 28, 28], dtype='float32')
             y = fluid.layers.data(name="y", shape=[1], dtype='int64')
-            hidden1 = fluid.layers.conv2d(
+            hidden1 = paddle.static.nn.conv2d(
                 input=x,
                 filter_size=3,
                 num_filters=16,
@@ -53,7 +53,9 @@ class TestFuseBatchNormActPass(unittest.TestCase):
                 input=hidden3, act='relu', data_layout='NHWC'
             )
             prediction = fluid.layers.fc(input=hidden4, size=10, act='softmax')
-            loss = fluid.layers.cross_entropy(input=prediction, label=y)
+            loss = paddle.nn.functional.cross_entropy(
+                input=prediction, label=y, reduction='none', use_softmax=False
+            )
             loss = paddle.mean(loss)
             sgd = fluid.optimizer.SGD(learning_rate=0.001)
             if use_cuda:

@@ -15,9 +15,9 @@
 import paddle
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
 from paddle.framework import core
+from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ...fluid.data_feeder import check_dtype, check_variable_and_dtype
-from ...fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 from ...fluid.framework import (
     _in_legacy_dygraph,
     convert_np_dtype_to_dtype_,
@@ -813,9 +813,9 @@ def maxout(x, groups, axis=1, name=None):
     Parameters:
         x (Tensor): The input is 4-D Tensor with shape [N, C, H, W] or [N, H, W, C], the data type
             of input is float32 or float64.
-        groups (int, optional): The groups number of maxout. `groups` specifies the
+        groups (int): The groups number of maxout. `groups` specifies the
             index of channel dimension where maxout will be performed. This must be
-            a factor of number of features. Default is 1.
+            a factor of number of features.
         axis (int, optional): The axis along which to perform maxout calculations.
             It should be 1 when data format is NCHW, be -1 or 3 when data format
             is NHWC. If ``axis`` < 0, it works the same way as :math:`axis + D` ,

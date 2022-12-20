@@ -22,6 +22,7 @@ from inference_pass_test import InferencePassTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.nn.functional as F
 import paddle.static.nn as nn
 from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
@@ -47,7 +48,7 @@ class TensorRTSubgraphPassActivationTest(InferencePassTest):
         self.fetch_list = [out]
 
     def append_act(self, x):
-        return fluid.layers.relu(x)
+        return F.relu(x)
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -88,7 +89,7 @@ class TensorRTSubgraphPassSigmoidTest(TensorRTSubgraphPassActivationTest):
 
 class TensorRTSubgraphPassHardSwishTest(TensorRTSubgraphPassActivationTest):
     def append_act(self, x):
-        return fluid.layers.hard_swish(x)
+        return paddle.nn.functional.hardswish(x)
 
 
 class TensorRTSubgraphPassHardSigmoidTest(TensorRTSubgraphPassActivationTest):
@@ -100,7 +101,7 @@ class TensorRTSubgraphPassHardSwishPluginTest(
     TensorRTSubgraphPassActivationTest
 ):
     def append_act(self, x):
-        return fluid.layers.hard_swish(x, threshold=4.0, scale=8.0)
+        return paddle.nn.functional.hardswish(x)
 
 
 class TensorRTSubgraphPassClipTest(TensorRTSubgraphPassActivationTest):
@@ -166,7 +167,7 @@ class TensorRTSubgraphPassMishTest(TensorRTSubgraphPassActivationTest):
         )
 
     def append_act(self, x):
-        return fluid.layers.mish(x)
+        return paddle.nn.functional.mish(x)
 
 
 class TensorRTSubgraphPassMishFp16SerializeTest(
@@ -179,7 +180,7 @@ class TensorRTSubgraphPassMishFp16SerializeTest(
         )
 
     def append_act(self, x):
-        return fluid.layers.mish(x)
+        return paddle.nn.functional.mish(x)
 
 
 class TensorRTSubgraphPassDynamicMishFp16SerializeTest(
@@ -200,7 +201,7 @@ class TensorRTSubgraphPassDynamicMishFp16SerializeTest(
         )
 
     def append_act(self, x):
-        return fluid.layers.mish(x)
+        return paddle.nn.functional.mish(x)
 
 
 class TensorRTSubgraphPassPreluAllTest(TensorRTSubgraphPassActivationTest):

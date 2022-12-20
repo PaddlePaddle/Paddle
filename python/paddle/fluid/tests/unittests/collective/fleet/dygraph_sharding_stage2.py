@@ -29,7 +29,6 @@ from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.sharding_optimiz
 from paddle.distributed.fleet.meta_parallel.sharding.sharding_stage2 import (
     ShardingStage2,
 )
-from paddle.fluid.framework import _test_eager_guard
 from paddle.nn import Linear
 
 seed = 2022
@@ -239,7 +238,5 @@ def test_dp_stage2():
 
 
 if __name__ == '__main__':
-    with _test_eager_guard():
-        pass
     fleet.init(is_collective=True, strategy=strategy)
     test_dp_stage2()

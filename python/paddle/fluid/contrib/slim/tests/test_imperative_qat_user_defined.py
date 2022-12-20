@@ -23,10 +23,9 @@ from paddle.optimizer import Adam
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
 from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
 from paddle.nn import Sequential
-from paddle.fluid.dygraph import Linear
+from paddle.nn import Linear
 from paddle.nn.quant.quant_layers import QuantizedConv2DTranspose
 from paddle.fluid.log_helper import get_logger
-from paddle.fluid.framework import _test_eager_guard
 
 os.environ["CPU_NUM"] = "1"
 
@@ -111,7 +110,7 @@ class ModelForConv2dT(nn.Layer):
     def __init__(self, num_classes=10):
         super().__init__()
         self.features = nn.Conv2DTranspose(4, 6, (3, 3))
-        self.fc = Linear(input_dim=600, output_dim=num_classes)
+        self.fc = Linear(600, num_classes)
 
     def forward(self, inputs):
         x = self.features(inputs)
@@ -143,11 +142,9 @@ class ImperativeLenet(paddle.nn.Layer):
         )
 
         self.fc = Sequential(
-            Linear(input_dim=400, output_dim=120),
-            Linear(input_dim=120, output_dim=84),
-            Linear(
-                input_dim=84, output_dim=num_classes, act=classifier_activation
-            ),
+            Linear(400, 120),
+            Linear(120, 84),
+            Linear(84, num_classes),
         )
 
     def forward(self, inputs):
@@ -163,7 +160,7 @@ class TestUserDefinedActPreprocess(unittest.TestCase):
         _logger.info("test act_preprocess")
         self.imperative_qat = ImperativeQuantAware(act_preprocess_layer=PACT)
 
-    def func_quant_aware_training(self):
+    def test_quant_aware_training(self):
         imperative_qat = self.imperative_qat
         seed = 1
         np.random.seed(seed)
@@ -264,11 +261,6 @@ class TestUserDefinedActPreprocess(unittest.TestCase):
         test_reader = paddle.batch(paddle.dataset.mnist.test(), batch_size=512)
         train(lenet)
         test(lenet)
-
-    def test_quant_aware_training(self):
-        with _test_eager_guard():
-            self.func_quant_aware_training()
-        self.func_quant_aware_training()
 
 
 class TestUserDefinedWeightPreprocess(TestUserDefinedActPreprocess):
