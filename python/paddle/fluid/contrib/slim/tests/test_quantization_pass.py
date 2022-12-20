@@ -39,7 +39,9 @@ def linear_fc(num):
     hidden = data
     for _ in range(num):
         hidden = fluid.layers.fc(hidden, size=128, act='relu')
-    loss = fluid.layers.cross_entropy(input=hidden, label=label)
+    loss = paddle.nn.functional.cross_entropy(
+        input=hidden, label=label, reduction='none', use_softmax=False
+    )
     loss = paddle.mean(loss)
     return loss
 
@@ -48,7 +50,7 @@ def residual_block(num, quant_skip_pattern=None):
     def conv_bn_layer(
         input, ch_out, filter_size, stride, padding, act='relu', bias_attr=False
     ):
-        tmp = fluid.layers.conv2d(
+        tmp = paddle.static.nn.conv2d(
             input=input,
             filter_size=filter_size,
             num_filters=ch_out,
@@ -57,7 +59,7 @@ def residual_block(num, quant_skip_pattern=None):
             act=None,
             bias_attr=bias_attr,
         )
-        return fluid.layers.batch_norm(input=tmp, act=act)
+        return paddle.static.nn.batch_norm(input=tmp, act=act)
 
     data = fluid.layers.data(
         name='image',
@@ -79,15 +81,17 @@ def residual_block(num, quant_skip_pattern=None):
     hidden = paddle.matmul(hidden, matmul_weight, True, True)
     if quant_skip_pattern:
         with fluid.name_scope(quant_skip_pattern):
-            pool = fluid.layers.pool2d(
-                input=hidden, pool_size=2, pool_type='avg', pool_stride=2
+            pool = paddle.nn.functional.avg_pool2d(
+                x=hidden, kernel_size=2, stride=2
             )
     else:
-        pool = fluid.layers.pool2d(
-            input=hidden, pool_size=2, pool_type='avg', pool_stride=2
+        pool = paddle.nn.functional.avg_pool2d(
+            x=hidden, kernel_size=2, stride=2
         )
     fc = fluid.layers.fc(input=pool, size=10)
-    loss = fluid.layers.cross_entropy(input=fc, label=label)
+    loss = paddle.nn.functional.cross_entropy(
+        input=fc, label=label, reduction='none', use_softmax=False
+    )
     loss = paddle.mean(loss)
     return loss
 
@@ -102,7 +106,7 @@ def conv_net(img, label, quant_skip_pattern):
         pool_type='max',
         act="relu",
     )
-    conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
+    conv_pool_1 = paddle.static.nn.batch_norm(conv_pool_1)
     conv_pool_2 = fluid.nets.simple_img_conv_pool(
         input=conv_pool_1,
         filter_size=5,
@@ -115,7 +119,9 @@ def conv_net(img, label, quant_skip_pattern):
     hidden = fluid.layers.fc(input=conv_pool_2, size=100, act='relu')
     with fluid.name_scope(quant_skip_pattern):
         prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
-    loss = fluid.layers.cross_entropy(input=prediction, label=label)
+    loss = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     avg_loss = paddle.mean(loss)
     return avg_loss
 
@@ -703,7 +709,7 @@ def quant_dequant_residual_block(num, quant_skip_pattern=None):
     def conv_bn_layer(
         input, ch_out, filter_size, stride, padding, act='relu', bias_attr=False
     ):
-        tmp = fluid.layers.conv2d(
+        tmp = paddle.static.nn.conv2d(
             input=input,
             filter_size=filter_size,
             num_filters=ch_out,
@@ -712,7 +718,7 @@ def quant_dequant_residual_block(num, quant_skip_pattern=None):
             act=None,
             bias_attr=bias_attr,
         )
-        return fluid.layers.batch_norm(input=tmp, act=act)
+        return paddle.static.nn.batch_norm(input=tmp, act=act)
 
     data1 = fluid.layers.data(name='image', shape=[1, 32, 32], dtype='float32')
     data2 = fluid.layers.data(
@@ -727,11 +733,11 @@ def quant_dequant_residual_block(num, quant_skip_pattern=None):
     hidden = paddle.matmul(hidden, data2, True, True)
     if isinstance(quant_skip_pattern, str):
         with fluid.name_scope(quant_skip_pattern):
-            pool1 = fluid.layers.pool2d(
-                input=hidden, pool_size=2, pool_type='avg', pool_stride=2
+            pool1 = paddle.nn.functional.avg_pool2d(
+                x=hidden, kernel_size=2, stride=2
             )
-            pool2 = fluid.layers.pool2d(
-                input=hidden, pool_size=2, pool_type='max', pool_stride=2
+            pool2 = paddle.nn.functional.max_pool2d(
+                x=hidden, kernel_size=2, stride=2
             )
             pool_add = paddle.nn.functional.relu(paddle.add(x=pool1, y=pool2))
     elif isinstance(quant_skip_pattern, list):
@@ -739,24 +745,26 @@ def quant_dequant_residual_block(num, quant_skip_pattern=None):
             len(quant_skip_pattern) > 1
         ), 'test config error: the len of quant_skip_pattern list should be greater than 1.'
         with fluid.name_scope(quant_skip_pattern[0]):
-            pool1 = fluid.layers.pool2d(
-                input=hidden, pool_size=2, pool_type='avg', pool_stride=2
+            pool1 = paddle.nn.functional.avg_pool2d(
+                x=hidden, kernel_size=2, stride=2
             )
-            pool2 = fluid.layers.pool2d(
-                input=hidden, pool_size=2, pool_type='max', pool_stride=2
+            pool2 = paddle.nn.functional.max_pool2d(
+                x=hidden, kernel_size=2, stride=2
             )
         with fluid.name_scope(quant_skip_pattern[1]):
             pool_add = paddle.nn.functional.relu(paddle.add(x=pool1, y=pool2))
     else:
-        pool1 = fluid.layers.pool2d(
-            input=hidden, pool_size=2, pool_type='avg', pool_stride=2
+        pool1 = paddle.nn.functional.avg_pool2d(
+            x=hidden, kernel_size=2, stride=2
         )
-        pool2 = fluid.layers.pool2d(
-            input=hidden, pool_size=2, pool_type='max', pool_stride=2
+        pool2 = paddle.nn.functional.max_pool2d(
+            x=hidden, kernel_size=2, stride=2
         )
         pool_add = paddle.nn.functional.relu(paddle.add(x=pool1, y=pool2))
     fc = fluid.layers.fc(input=pool_add, size=10)
-    loss = fluid.layers.cross_entropy(input=fc, label=label)
+    loss = paddle.nn.functional.cross_entropy(
+        input=fc, label=label, reduction='none', use_softmax=False
+    )
     loss = paddle.mean(loss)
     return loss
 

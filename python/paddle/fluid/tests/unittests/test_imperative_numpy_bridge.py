@@ -18,11 +18,11 @@ import warnings
 import numpy as np
 
 import paddle.fluid as fluid
-from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
+from paddle.fluid.framework import _in_legacy_dygraph
 
 
 class TestImperativeNumpyBridge(unittest.TestCase):
-    def func_tensor_from_numpy(self):
+    def test_tensor_from_numpy(self):
         data_np = np.array([[2, 3, 1]]).astype('float32')
         with fluid.dygraph.guard(fluid.CPUPlace()):
             with warnings.catch_warnings(record=True) as w:
@@ -51,11 +51,6 @@ class TestImperativeNumpyBridge(unittest.TestCase):
             else:
                 self.assertNotEqual(var2[0][0].numpy()[0], -1)
             self.assertFalse(np.array_equal(var2.numpy(), data_np))
-
-    def test_func_tensor_from_numpy(self):
-        with _test_eager_guard():
-            self.func_tensor_from_numpy()
-        self.func_tensor_from_numpy()
 
 
 if __name__ == '__main__':

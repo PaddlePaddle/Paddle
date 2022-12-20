@@ -28,7 +28,6 @@ from ..multiprocess_utils import (
 from ..framework import _non_static_mode, _in_eager_without_dygraph_check
 from .flat import _flatten_batch
 
-# NOTE: queue has a different name in python2 and python3
 import queue
 
 __all__ = ['get_worker_info']

@@ -2030,16 +2030,21 @@ def svd(x, full_matrices=False, name=None):
             where `...` is zero or more batch dimensions. N and M can be arbitraty
             positive number. Note that if x is sigular matrices, the grad is numerical
             instable. The data type of x should be float32 or float64.
-        full_matrices (bool): A flag to control the behavor of svd.
+        full_matrices (bool, optional): A flag to control the behavor of svd.
             If full_matrices = True, svd op will compute full U and V matrics,
             which means shape of U is `[..., N, N]`, shape of V is `[..., M, M]`. K = min(M, N).
             If full_matrices = False, svd op will use a economic method to store U and V.
             which means shape of U is `[..., N, K]`, shape of V is `[..., M, K]`. K = min(M, N).
+            Default value is False.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tuple of 3 tensors: (U, S, VH). VH is the conjugate transpose of V. S is the singlar value vectors of matrics with shape `[..., K]`
+        - U (Tensor), is the singular value decomposition result U.
+        - S (Tensor), is the singular value decomposition result S.
+        - VH (Tensor), VH is the conjugate transpose of V, which is the singular value decomposition result V.
+
+        Tuple of 3 tensors(U, S, VH): VH is the conjugate transpose of V. S is the singlar value vectors of matrics with shape `[..., K]`
 
     Examples:
         .. code-block:: python
@@ -3256,7 +3261,7 @@ def eigvalsh(x, UPLO='L', name=None):
     complex Hermitian (conjugate symmetric) or a real symmetric matrix.
 
     Args:
-        x (Tensor): A tensor with shape :math:`[_, M, M]` , The data type of the input Tensor x
+        x (Tensor): A tensor with shape :math:`[*, M, M]` , where * is zero or greater batch dimension. The data type of the input Tensor x
             should be one of float32, float64, complex64, complex128.
         UPLO(str, optional): Lower triangular part of a (‘L’, default) or the upper triangular part (‘U’).
         name(str, optional): The default value is None.  Normally there is no need for user to set this

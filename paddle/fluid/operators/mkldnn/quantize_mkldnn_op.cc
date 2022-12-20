@@ -14,10 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/quantize_op.h"
 
-#include "paddle/fluid/framework/data_layout_transform.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
-#include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/phi/backends/onednn/onednn_reuse.h"
 
 namespace paddle {
 namespace operators {
@@ -25,7 +25,6 @@ namespace operators {
 using dnnl::memory;
 using dnnl::primitive;
 using dnnl::reorder;
-using Tensor = phi::DenseTensor;
 using dnnl::stream;
 using phi::DataLayout;
 
@@ -107,5 +106,5 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(quantize,
                    MKLDNN,
-                   ::paddle::platform::CPUPlace,
+                   ::phi::CPUPlace,
                    ops::QuantOpKernel<float>);
