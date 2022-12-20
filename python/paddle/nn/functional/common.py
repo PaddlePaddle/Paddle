@@ -965,13 +965,13 @@ def dropout(
 
             1. upscale_in_train (default), upscale the output at training time
 
-                - train: :math:`out = input \times \frac{mask}{(1.0 - dropout_prob)}`
+                - train: :math:`out = input \times \frac{mask}{(1.0 - dropout\_prob)}`
                 - inference: :math:`out = input`
 
             2. downscale_in_infer, downscale the output at inference
 
                 - train: :math:`out = input \times mask`
-                - inference: :math:`out = input \times (1.0 - dropout_prob)`
+                - inference: :math:`out = input \times (1.0 - dropout\_prob)`
 
         name (str, optional): Name for the operation, Default: None. For more information, please refer to :ref:`api_guide_Name`.
 
