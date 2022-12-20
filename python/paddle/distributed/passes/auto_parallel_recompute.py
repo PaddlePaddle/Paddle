@@ -23,9 +23,8 @@ from paddle.fluid.backward import (
     _get_no_grad_set_name,
     _rename_arg_,
 )
-
-# from paddle.fluid import core, framework, unique_name
-from paddle.framework import core, unique_name
+from paddle.framework import core
+from paddle.utils import unique_name
 
 from ..auto_parallel.dist_attribute import OperatorDistributedAttribute
 from ..auto_parallel.utils import (

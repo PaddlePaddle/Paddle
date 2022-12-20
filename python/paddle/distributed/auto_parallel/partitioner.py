@@ -15,15 +15,10 @@
 import copy
 
 import paddle
-
-# import paddle.fluid as fluid
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.operators.common import (
     get_distributed_operator_impl_container,
 )
-
-# from paddle.fluid.framework import Parameter, Program
-# from paddle.fluid import core
 from paddle.framework import Program, core
 from paddle.static import Parameter
 
@@ -122,7 +117,6 @@ class Partitioner:
                 % type(serial_startup_program)
             )
 
-        # partitioned_startup_prog = fluid.Program()
         partitioned_startup_prog = paddle.framework.Program()
         ref_block = serial_main_program.global_block()
         target_block = partitioned_startup_prog.global_block()
@@ -189,7 +183,6 @@ class Partitioner:
         2. replace local op with corresponding dist op
         """
 
-        # partitioned_main_prog = fluid.Program()
         partitioned_main_prog = paddle.framework.Program()
         dist_op_context = self._dist_context.dist_op_context
         dist_op_context.dst_main_program = partitioned_main_prog

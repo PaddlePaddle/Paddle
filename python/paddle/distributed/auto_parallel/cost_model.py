@@ -20,8 +20,6 @@ import numpy as np
 
 import paddle
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
-
-# from paddle.fluid import core
 from paddle.framework import core
 
 SUCC = 0  # successor

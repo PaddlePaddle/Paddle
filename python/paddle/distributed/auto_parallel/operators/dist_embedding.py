@@ -18,9 +18,8 @@ from paddle.distributed.auto_parallel.cost.comm_op_cost import (
 )
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
-
-# from paddle.fluid import core, unique_name
-from paddle.framework import core, unique_name
+from paddle.framework import core
+from paddle.utils import unique_name
 
 from ..cost import (
     EmbeddingGradOpCost,

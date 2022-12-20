@@ -14,7 +14,6 @@
 
 import copy
 
-# from paddle.fluid.framework import Variable
 from paddle.static import Variable
 
 from .process_mesh import ProcessMesh

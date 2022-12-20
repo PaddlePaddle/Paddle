@@ -16,8 +16,6 @@ import copy
 import logging
 
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
-
-# from paddle.fluid import core
 from paddle.framework import core
 
 from .dist_attribute import (

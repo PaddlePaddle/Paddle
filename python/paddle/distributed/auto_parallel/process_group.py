@@ -16,9 +16,6 @@ from collections import OrderedDict
 
 import paddle
 from paddle import _legacy_C_ops
-
-# from ...fluid.framework import _non_static_mode
-# import paddle.fluid.core as core
 from paddle.framework import _non_static_mode, core
 
 from ...fluid.layers.tensor import fill_constant

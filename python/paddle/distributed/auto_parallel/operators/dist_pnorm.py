@@ -15,11 +15,7 @@
 import copy
 
 from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
-
-# from paddle.fluid import core
 from paddle.framework import core
-
-# from paddle.fluid.framework import Operator
 from paddle.static import Operator
 
 from ..dist_attribute import (

@@ -26,8 +26,6 @@ from paddle.distributed.auto_parallel.utils import (
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 from paddle.fluid import layers
 from paddle.framework import core
-
-# from paddle.fluid.framework import device_guard
 from paddle.static import device_guard
 
 from .pass_base import PassBase, PassType, register_pass

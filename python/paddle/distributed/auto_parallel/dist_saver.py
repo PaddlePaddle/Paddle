@@ -21,9 +21,6 @@ import re
 import numpy as np
 
 import paddle
-
-# from paddle import fluid
-# from paddle.fluid import core
 from paddle.framework import core
 
 from ..utils.log_utils import get_logger
@@ -169,7 +166,6 @@ class DistributedSaver:
 
         dist_main_prog = kwargs.get('program', None)
         if not dist_main_prog:
-            # dist_main_prog = fluid.default_main_program()
             dist_main_prog = paddle.static.default_main_program()
         global_block = dist_main_prog.global_block()
 

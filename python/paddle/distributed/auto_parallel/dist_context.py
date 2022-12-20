@@ -16,9 +16,6 @@ import copy
 from collections import defaultdict
 
 from paddle.distributed.passes import PassContext
-
-# from paddle.fluid.framework import set_flags
-# from paddle.fluid import core, framework
 from paddle.framework import IrGraph, core, set_flags
 
 from .dist_op import DistributedOperator

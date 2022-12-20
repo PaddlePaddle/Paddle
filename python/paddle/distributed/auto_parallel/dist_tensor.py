@@ -16,8 +16,6 @@ import copy
 import inspect
 
 import paddle
-
-# from paddle.fluid.framework import Block, Parameter, Variable
 from paddle.framework import Block
 from paddle.static import Parameter, Variable
 
