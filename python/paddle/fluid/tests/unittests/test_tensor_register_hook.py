@@ -304,7 +304,7 @@ class TestTensorRegisterHook(unittest.TestCase):
         run_double_hook_for_accumulated_grad_leaf_var(
             lambda grad: grad * 2, removed=True
         )
-        self.func_hook_for_accumulated_grad_leaf_var()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_hook_in_model(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
