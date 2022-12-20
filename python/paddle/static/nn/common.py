@@ -3251,7 +3251,6 @@ def layer_norm(
     name=None,
 ):
     r"""
-    :api_attr: Static Graph
 
     **Layer Normalization Layer**
 
@@ -3262,11 +3261,11 @@ def layer_norm(
 
     ..  math::
 
-        \\mu & = \\frac{1}{H}\\sum_{i=1}^{H} x_i
+        \mu & = \frac{1}{H}\sum_{i=1}^{H} x_i
 
-        \\sigma & = \\sqrt{\\frac{1}{H}\sum_{i=1}^{H}{(x_i - \\mu)^2} + \\epsilon}
+        \sigma & = \sqrt{\frac{1}{H}\sum_{i=1}^{H}{(x_i - \mu)^2} + \epsilon}
 
-        y & = f(\\frac{g}{\\sigma}(x - \\mu) + b)
+        y & = f(\frac{g}{\sigma}(x - \mu) + b)
 
     - :math:`x`: the vector representation of the summed inputs to the neurons in that layer.
     - :math:`H`: the number of hidden units in a layers
@@ -3297,7 +3296,7 @@ def layer_norm(
             :attr:`bias_attr` is initialized as 0 if it is added. Default: None.
         act(str, optional): Activation to be applied to the output of layer normalization.
                   Default: None.
-        name(str): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
         Tensor: ``Tensor``  indicating the normalized result, the data type is the same as  ``input`` , and the return dimension is the same as  ``input`` .
