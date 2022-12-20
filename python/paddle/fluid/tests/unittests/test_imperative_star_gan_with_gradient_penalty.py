@@ -668,12 +668,6 @@ class TestStarGANWithGradientPenalty(unittest.TestCase):
                 loss = eager_dygraph_model.run(image_real, label_org, label_trg)
                 eager_dygraph_loss.append(loss)
 
-        for (g_loss_f, d_loss_f), (g_loss_e, d_loss_e) in zip(
-            fluid_dygraph_loss, eager_dygraph_loss
-        ):
-            self.assertEqual(g_loss_f, g_loss_e)
-            self.assertEqual(d_loss_f, d_loss_e)
-
     def test_all_cases(self):
         self.func_main()
 
