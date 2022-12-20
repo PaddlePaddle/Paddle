@@ -54,7 +54,7 @@ TEST(DisMultiTrainerTest, test1) {
 #endif
 }
 
-TEST(DisMultiTrainerTest, test2) {
+TEST(DisMultiTrainerTest, testforgpugraph) {
 #ifdef _LINUX
   TrainerDesc t;
   t.set_class_name("MultiTrainer");
@@ -77,6 +77,8 @@ TEST(DisMultiTrainerTest, test2) {
 
   dataset->SetGpuGraphMode(true);
   dataset->GetMemoryDataSize();
+  dataset->SetPassId(2);
+  int pass_id = dataset->GetPassID();
   dataset->GetEpochFinish();
 #endif
 }

@@ -897,6 +897,8 @@ class TestDataset(unittest.TestCase):
             "gpu_graph_training": 1,
         }
         dataset.set_graph_config(graph_config)
+        dataset.set_pass_id(2)
+        pass_id = dataset.get_pass_id()
 
         dataset.load_into_memory()
 
