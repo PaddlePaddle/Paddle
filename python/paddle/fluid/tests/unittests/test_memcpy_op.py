@@ -66,6 +66,7 @@ class TestMemcpy_FillConstant(unittest.TestCase):
         return main_program, gpu_var, pinned_var
 
     def test_gpu_copy_to_pinned(self):
+        print("test_gpu_copy_to_pinned")
         main_program, gpu_var, pinned_var = self.get_prog()
         main_program.global_block().append_op(
             type='memcpy',
@@ -82,6 +83,7 @@ class TestMemcpy_FillConstant(unittest.TestCase):
         np.testing.assert_allclose(pinned_, np.ones((10, 10)), rtol=1e-05)
 
     def test_pinned_copy_gpu(self):
+        print("test_pinned_copy_gpu")
         main_program, gpu_var, pinned_var = self.get_prog()
         main_program.global_block().append_op(
             type='memcpy',
@@ -98,6 +100,7 @@ class TestMemcpy_FillConstant(unittest.TestCase):
         np.testing.assert_allclose(gpu_, np.zeros((10, 10)), rtol=1e-05)
 
     def test_hip_copy_bool_value(self):
+        print("test_hip_copy_bool_value")
         if core.is_compiled_with_rocm():
             paddle.enable_static()
             main_program = Program()
@@ -183,6 +186,7 @@ class TestMemcpyOPError(unittest.TestCase):
         return main_program, pinned_var
 
     def test_SELECTED_ROWS(self):
+        print("test_SELECTED_ROWS")
         main_program, pinned_var = self.get_prog()
         selected_row_var = main_program.global_block().create_var(
             name="selected_row_0",
@@ -219,6 +223,7 @@ class TestMemcpyOPError(unittest.TestCase):
 
 class TestMemcpyApi(unittest.TestCase):
     def test_api(self):
+        paddle.disable_static()
         a = paddle.ones([1024, 1024])
         b = paddle.tensor.creation._memcpy(a, paddle.CUDAPinnedPlace())
         self.assertEqual(b.place.__repr__(), "Place(gpu_pinned)")
