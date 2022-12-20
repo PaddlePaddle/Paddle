@@ -96,11 +96,12 @@ __global__ void general_topk_pair_sort(T* in_keys, int32_t* in_out_values) {
       .Store(in_out_values + block_offset, thread_values);
 }
 
-__global__ void varlen_prune_token(const half* tokens,
-                                   const int32_t* token_pos,
-                                   const int32_t padding_token_length,
-                                   const int32_t* token_index,
-                                   half* output) {
+__global__ void varlen_prune_token_change_order(
+    const half* tokens,
+    const int32_t* token_pos,
+    const int32_t padding_token_length,
+    const int32_t* token_index,
+    half* output) {
   int batch = blockIdx.x;
   int token_it = batch * gridDim.y + blockIdx.y;
   int pre_value_it =
@@ -115,11 +116,11 @@ __global__ void varlen_prune_token(const half* tokens,
 }
 
 template <typename T>
-__global__ void prune_token(const T* tokens,
-                            int32_t new_sequnce_length,
-                            const int32_t padding_token_length,
-                            const int32_t* token_index,
-                            T* output) {
+__global__ void prune_token_change_order(const T* tokens,
+                                         int32_t new_sequnce_length,
+                                         const int32_t padding_token_length,
+                                         const int32_t* token_index,
+                                         T* output) {
   int batch = blockIdx.x;
   int token_it = batch * gridDim.y + blockIdx.y;
   int pre_value_it =
@@ -130,6 +131,26 @@ __global__ void prune_token(const T* tokens,
     output[(batch * new_sequnce_length + token_index[token_index_it]) *
                gridDim.z * blockDim.x +
            blockIdx.z * blockDim.x + threadIdx.x] = tokens[pre_value_it];
+  }
+}
+
+template <typename T>
+__global__ void prune_token_keep_order(const T* tokens,
+                                       int32_t pre_sequnce_length,
+                                       int32_t new_sequnce_length,
+                                       const int32_t padding_token_length,
+                                       const int32_t* token_index,
+                                       T* output) {
+  int batch = blockIdx.x;
+  int index = 0;
+  for (int i = 0; i < pre_sequnce_length; ++i) {
+    if (token_index[batch * padding_token_length + i] < new_sequnce_length) {
+      output[(batch * new_sequnce_length + index) * gridDim.y * blockDim.x +
+             blockIdx.y * blockDim.x + threadIdx.x] =
+          tokens[(batch * pre_sequnce_length + i) * gridDim.y * blockDim.x +
+                 blockIdx.y * blockDim.x + threadIdx.x];
+      index++;
+    }
   }
 }
 
@@ -424,7 +445,7 @@ int FusedTokenPrunePluginDynamic::enqueue(
         B,
         max_sequnce_length,
         length / num_threads);  //  batchs, max_sequnce_length, vector_ength/***
-    varlen_prune_token<<<num_blocks, num_threads, 0, stream>>>(
+    varlen_prune_token_change_order<<<num_blocks, num_threads, 0, stream>>>(
         tokens, output3, padding_token_length, token_index_, output0);
   } else {
     auto input_type = input_desc[0].type;
@@ -505,13 +526,24 @@ int FusedTokenPrunePluginDynamic::enqueue(
           num_threads = 1;
         }
       }
-      const dim3 num_blocks(B, pre_sequnce_length, length / num_threads);
-      prune_token<float>
-          <<<num_blocks, num_threads, 0, stream>>>(tokens,
-                                                   new_sequnce_length,
-                                                   padding_token_length,
-                                                   token_index_,
-                                                   output0);
+      if (keep_order_) {
+        const dim3 num_blocks(B, length / num_threads);
+        prune_token_keep_order<float>
+            <<<num_blocks, num_threads, 0, stream>>>(tokens,
+                                                     pre_sequnce_length,
+                                                     new_sequnce_length,
+                                                     padding_token_length,
+                                                     token_index_,
+                                                     output0);
+      } else {
+        const dim3 num_blocks(B, pre_sequnce_length, length / num_threads);
+        prune_token_change_order<float>
+            <<<num_blocks, num_threads, 0, stream>>>(tokens,
+                                                     new_sequnce_length,
+                                                     padding_token_length,
+                                                     token_index_,
+                                                     output0);
+      }
     } else if (input_type == nvinfer1::DataType::kHALF) {
       VLOG(1) << "TRT Plugin DataType selected. FusedTokenPrune-->fp16";
       const half* scores = static_cast<const half*>(inputs[0]);  // reduce sum
@@ -585,13 +617,24 @@ int FusedTokenPrunePluginDynamic::enqueue(
           num_threads = 1;
         }
       }
-      const dim3 num_blocks(B, pre_sequnce_length, length / num_threads);
-      prune_token<half>
-          <<<num_blocks, num_threads, 0, stream>>>(tokens,
-                                                   new_sequnce_length,
-                                                   padding_token_length,
-                                                   token_index_,
-                                                   output0);
+      if (keep_order_) {
+        const dim3 num_blocks(B, length / num_threads);
+        prune_token_keep_order<half>
+            <<<num_blocks, num_threads, 0, stream>>>(tokens,
+                                                     pre_sequnce_length,
+                                                     new_sequnce_length,
+                                                     padding_token_length,
+                                                     token_index_,
+                                                     output0);
+      } else {
+        const dim3 num_blocks(B, pre_sequnce_length, length / num_threads);
+        prune_token_change_order<half>
+            <<<num_blocks, num_threads, 0, stream>>>(tokens,
+                                                     new_sequnce_length,
+                                                     padding_token_length,
+                                                     token_index_,
+                                                     output0);
+      }
     } else {
       PADDLE_THROW(
           platform::errors::Fatal("The FusedTokenPrune TRT Plugin's input type "
