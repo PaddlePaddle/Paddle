@@ -64,6 +64,9 @@ from .entry_attr import ProbabilityEntry  # noqa: F401
 from .entry_attr import CountFilterEntry  # noqa: F401
 from .entry_attr import ShowClickEntry  # noqa: F401
 
+# (TODO: GhostScreaming) It needs migration of ParallelEnv. However,
+# it's hard to migrate APIs in paddle.fluid.dygraph.parallel completely.
+# It will be replaced later.
 from paddle.fluid.dygraph.parallel import ParallelEnv  # noqa: F401
 
 from . import cloud_utils  # noqa: F401

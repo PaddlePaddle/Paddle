@@ -21,8 +21,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-from paddle.fluid.dygraph.nn import BatchNorm, Embedding, GroupNorm
-from paddle.nn import Linear
+from paddle.nn import BatchNorm, Linear
 
 
 class TestDygraphLoadStatic(unittest.TestCase):
@@ -35,10 +34,10 @@ class TestDygraphLoadStatic(unittest.TestCase):
         fc_out1 = fluid.layers.fc(a, 10)
         fc_out2 = fluid.layers.fc(a, 20)
 
-        conv_out_1 = fluid.layers.conv2d(
+        conv_out_1 = paddle.static.nn.conv2d(
             conv_in, num_filters=10, filter_size=5, act="relu"
         )
-        conv_out_2 = fluid.layers.conv2d(
+        conv_out_2 = paddle.static.nn.conv2d(
             conv_in, num_filters=10, filter_size=5, act="relu"
         )
 
@@ -122,10 +121,10 @@ class TestDygraphLoadStatic(unittest.TestCase):
             name='groupnorm_in', shape=[None, 8, 32, 32], dtype='float32'
         )
         groupnorm_out1 = paddle.static.nn.group_norm(
-            input=groupnorm_in, groups=4
+            input=groupnorm_in, groups=4, param_attr=True, bias_attr=True
         )
         groupnorm_out2 = paddle.static.nn.group_norm(
-            input=groupnorm_in, groups=4
+            input=groupnorm_in, groups=4, param_attr=True, bias_attr=True
         )
         '''
         spec_norm = fluid.data(name='spec_norm', shape=[2, 8, 32, 32], dtype='float32')
@@ -206,14 +205,14 @@ class TestDygraphLoadStatic(unittest.TestCase):
                     self.batch_norm_1 = BatchNorm(10)
                     self.batch_norm_2 = BatchNorm(10)
 
-                    self.emb1 = Embedding([1000, 100])
-                    self.emb2 = Embedding([2000, 200])
+                    self.emb1 = paddle.nn.Embedding(1000, 100)
+                    self.emb2 = paddle.nn.Embedding(2000, 200)
 
                     self.layer_norm_1 = paddle.nn.LayerNorm([10])
                     self.layer_norm_2 = paddle.nn.LayerNorm(10)
 
-                    self.group_norm1 = GroupNorm(8, 4)
-                    self.gourp_norm2 = GroupNorm(8, 4)
+                    self.group_norm1 = paddle.nn.GroupNorm(4, 8)
+                    self.gourp_norm2 = paddle.nn.GroupNorm(4, 8)
 
                     self.w_1 = self.create_parameter(
                         [100, 100], dtype='float32', attr="weight_test_1"

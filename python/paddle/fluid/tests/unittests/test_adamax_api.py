@@ -52,7 +52,7 @@ class TestAdamaxAPI(unittest.TestCase):
         with fluid.program_guard(train_prog, startup):
             with fluid.unique_name.guard():
                 data = fluid.data(name="data", shape=shape)
-                conv = fluid.layers.conv2d(data, 8, 3)
+                conv = paddle.static.nn.conv2d(data, 8, 3)
                 loss = paddle.mean(conv)
                 beta1 = 0.85
                 beta2 = 0.95

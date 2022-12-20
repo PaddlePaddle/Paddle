@@ -16,7 +16,7 @@ import copy
 import logging
 from abc import ABC, abstractmethod
 
-from ..utils import get_logger
+from ..utils import get_logger, is_recompute_op
 from .trial import OptimizationTunerTrial as Trial
 from .trial import TrialStatus
 
@@ -54,7 +54,7 @@ class AlgorithmBase(ABC):
     def collect_model_info(self, main_prog, startup_prog):
         """
         Collect the model static info (from programs) that could be used to
-        pruning candidate trials and saving tuning time.For instance,
+        pruning candidate trials and saving tuning time. For instance,
         model info like number of model parameters and activation memory could be
         used to prune candidated trial and decide the next trial.
         """
@@ -116,7 +116,7 @@ class ShardingStageAlgorithm(AlgorithmBase):
         self._max_stage = 3
         self._trial_idx = 0
 
-        stage_range = self._config.sharding.to_dict().get("tuning_range", None)
+        stage_range = self._config.sharding.get("tuning_range", None)
         if stage_range:
             assert set(stage_range).issubset(
                 set([0, 1, 2, 3])
@@ -157,3 +157,92 @@ class ShardingStageAlgorithm(AlgorithmBase):
             )
         else:
             self._trial_idx += 1
+
+
+@register_algor("recompute")
+class ReccomputeCheckpointAlgorithm(AlgorithmBase):
+    def __init__(self, config):
+        super().__init__(config)
+        self._changed_configs = ["recompute"]
+
+    def collect_model_info(self, main_prog, startup_prog):
+        segments = []
+        for op in main_prog.global_block().ops:
+            if not is_recompute_op(op):
+                continue
+
+            seg_name = op.attr('op_namescope')
+            if seg_name not in segments:
+                segments.append(seg_name)
+
+        self._total_num_trial = len(segments)
+        self._tuning_segments = list(range(len(segments)))
+        self._trail_left = 0
+        self._trail_right = len(segments) - 1
+        self._trial_idx = int(0 + (len(segments) - 1) / 2)
+
+    def _init_spaces(self):
+        self._recompute_mode = "all"
+
+    def next_trial(self):
+        if self._trial_idx < self._total_num_trial:
+            if self._recompute_mode == "all":
+                self._recompute_flag = False
+                new_strategy = copy.deepcopy(self._config.dist_strategy)
+                name = "trial-recompute-all-segments"
+                return Trial(new_strategy, name, self.changed_configs)
+            elif self._recompute_mode == "none":
+                self._recompute_flag = False
+                new_strategy = copy.deepcopy(self._config.dist_strategy)
+                recompute = new_strategy.recompute
+                recompute.enable = False
+                name = "trial-recompute-none-segments"
+                return Trial(new_strategy, name, self.changed_configs)
+            elif self._recompute_mode == "part":
+                new_no_recompute = self._tuning_segments[: self._trial_idx]
+                new_strategy = copy.deepcopy(self._config.dist_strategy)
+                recompute = new_strategy.recompute
+                recompute.no_recompute_segments.extend(new_no_recompute)
+                name = "trial-recompute-part-segments-idx{}".format(
+                    self._trial_idx
+                )
+                return Trial(new_strategy, name, self.changed_configs)
+        else:
+            return Trial(None, None, None, status=TrialStatus.STOPPED)
+
+    def update(self, results):
+
+        et = results.get("ErrorType", None)
+        if self._recompute_mode == "all":
+            if et and et == "ResourceExhaustedError":
+                self._trial_idx = self._total_num_trial
+                self._logger.info(
+                    "Recompute all candidate segments is failed with OOM, please reduce model size or batch size."
+                )
+            else:
+                self._recompute_mode = "none"
+        elif self._recompute_mode == "none":
+            if et and et == "ResourceExhaustedError":
+                self._recompute_mode = "part"
+            else:
+                self._trial_idx = self._total_num_trial
+                self._logger.info(
+                    "Recompute is unnecessary for this model size, which will reduce the Throughtput."
+                )
+        else:
+            if self._trail_left >= self._trail_right:
+                self._trial_idx = self._total_num_trial
+            elif et and et == "ResourceExhaustedError":
+                self._trail_left = self._trail_left
+                self._trail_right = self._trial_idx - 1
+                self._trial_idx = int(
+                    self._trail_left
+                    + (self._trail_right - self._trail_left) / 2
+                )
+            else:
+                self._trail_left = self._trial_idx + 1
+                self._trail_right = self._trail_right
+                self._trial_idx = int(
+                    self._trail_left
+                    + (self._trail_right - self._trail_left) / 2
+                )

@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/params_quantization_mkldnn_pass.h"  // NOLINT
 #include "paddle/fluid/imperative/type_defs.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace framework {

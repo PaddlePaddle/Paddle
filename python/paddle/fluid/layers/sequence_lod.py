@@ -1056,7 +1056,7 @@ def sequence_unpad(x, length, name=None):
     """
 
     Note:
-        The input of the OP is Tensor and the output is LoDTensor.  For padding operation, See:**  :ref:`api_fluid_layers_sequence_pad`
+        The input of this API is Tensor and the output is LoDTensor.  For padding operation, See:**  :ref:`api_fluid_layers_sequence_pad`
 
     Remove the padding data from the input based on the length information and returns a LoDTensor.
 
@@ -1084,7 +1084,7 @@ def sequence_unpad(x, length, name=None):
                      Supported data types: float32, float64, int32, int64.
         length(Variable): A 1D Tensor that stores the actual length of each sample, and the Tensor
                           has the same shape with the 0th dimension of the X . Supported data types: int64.
-        name(str|None):  The default value is None.  Normally there is no need for user to set this property.
+        name(str|None, optional):  The default value is None.  Normally there is no need for user to set this property.
                          For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
