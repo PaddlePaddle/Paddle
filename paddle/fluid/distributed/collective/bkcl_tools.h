@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/fluid/distributed/collective/Types.h"
+#include "paddle/fluid/distributed/collective/types.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"

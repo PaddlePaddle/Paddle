@@ -17,7 +17,7 @@
 #include <error.h>
 #include <string>
 
-#include "paddle/fluid/distributed/collective/Types.h"
+#include "paddle/fluid/distributed/collective/types.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/collective_helper.h"

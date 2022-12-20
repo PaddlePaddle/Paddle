@@ -500,7 +500,6 @@ set(TEST_OPS_WITH_GC
     test_gather_op
     test_gather_nd_op
     test_linear_chain_crf_op
-    test_lod_reset_op
     test_lookup_table_op
     test_mean_op
     test_pad2d_op
