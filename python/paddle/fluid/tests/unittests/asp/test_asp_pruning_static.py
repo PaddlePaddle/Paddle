@@ -35,7 +35,7 @@ class TestASPStaticPruningBase(unittest.TestCase):
                 name='img', shape=[None, 3, 24, 24], dtype='float32'
             )
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
-            hidden = fluid.layers.conv2d(
+            hidden = paddle.static.nn.conv2d(
                 input=img, num_filters=2, filter_size=3, padding=2, act="relu"
             )
             hidden = fluid.layers.fc(input=hidden, size=32, act='softmax')

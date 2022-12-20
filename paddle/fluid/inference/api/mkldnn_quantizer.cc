@@ -30,14 +30,14 @@
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
-#include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 
 using framework::Variable;
 using framework::ir::Graph;
-using platform::CPUPlace;
+using phi::CPUPlace;
 using ConstEigenVectorArrayMap =
     Eigen::Map<const Eigen::Array<float, Eigen::Dynamic, 1>>;
 using EigenMatrixDoubleArray =
@@ -588,15 +588,15 @@ void AnalysisPredictor::MkldnnQuantizer::ClearDeviceContext() const {
 
 void AnalysisPredictor::MkldnnQuantizer::PrepareArgument() const {
   auto& arg = predictor_.argument_;
-  if (!arg.scope_valid()) arg.SetScope(new framework::Scope);
-  arg.SetMainProgramNotOwned(predictor_.inference_program_.get());
-  auto graph = std::unique_ptr<Graph>(new Graph(arg.main_program()));
-  arg.SetMainGraph(graph.release());
-  auto* scope_ptr = arg.scope_ptr();
+  if (!arg->scope_valid()) arg->SetScope(new framework::Scope);
+  arg->SetMainProgramNotOwned(predictor_.inference_program_.get());
+  auto graph = std::unique_ptr<Graph>(new Graph(arg->main_program()));
+  arg->SetMainGraph(graph.release());
+  auto* scope_ptr = arg->scope_ptr();
   PADDLE_ENFORCE_NOT_NULL(
       scope_ptr,
       platform::errors::PreconditionNotMet("The scope should not be nullptr."));
-  arg.main_graph().SetNotOwned(framework::ir::kParamScopeAttr, scope_ptr);
+  arg->main_graph().SetNotOwned(framework::ir::kParamScopeAttr, scope_ptr);
 
   auto* builder = predictor_.config_.pass_builder();
   builder->SetPasses({"cpu_quantize_pass",
@@ -605,10 +605,10 @@ void AnalysisPredictor::MkldnnQuantizer::PrepareArgument() const {
                       "params_quantization_mkldnn_pass"});
   if (predictor_.config_.ir_debug_) builder->TurnOnDebug();
   auto passes = builder->AllPasses();
-  predictor_.argument_.SetIrAnalysisPasses(passes);
-  predictor_.argument_.SetAnalysisPasses(
+  predictor_.argument_->SetIrAnalysisPasses(passes);
+  predictor_.argument_->SetAnalysisPasses(
       {"ir_analysis_pass", "memory_optimize_pass", "ir_graph_to_program_pass"});
-  predictor_.argument_.SetQuantVarScales(scales_);
+  predictor_.argument_->SetQuantVarScales(scales_);
 }
 
 bool AnalysisPredictor::MkldnnQuantizer::Quantize() {
@@ -628,15 +628,15 @@ bool AnalysisPredictor::MkldnnQuantizer::RunQuantizePasses() const {
       *predictor_.inference_program_, 0, true, predictor_.sub_scope_);
   PrepareArgument();
   auto& arg = predictor_.argument_;
-  Analyzer().Run(&arg);
+  Analyzer().Run(arg.get());
   PADDLE_ENFORCE_EQ(
-      arg.scope_valid(),
+      arg->scope_valid(),
       true,
       platform::errors::PreconditionNotMet("The scope should be valid."));
   VLOG(5) << "to prepare executor";
-  ARGUMENT_CHECK_FIELD((&arg), ir_analyzed_program);
+  ARGUMENT_CHECK_FIELD(arg.get(), ir_analyzed_program);
   predictor_.inference_program_.reset(
-      new framework::ProgramDesc(arg.ir_analyzed_program()));
+      new framework::ProgramDesc(arg->ir_analyzed_program()));
   LOG(INFO) << "== optimize 2 end ==";
   predictor_.executor_->CreateVariables(
       *predictor_.inference_program_, 0, false, predictor_.sub_scope_);

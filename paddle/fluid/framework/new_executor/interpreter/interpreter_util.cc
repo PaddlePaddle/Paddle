@@ -651,8 +651,8 @@ void BuildOpFuncList(const platform::Place& place,
           } else {
             if (!op_with_kernel->SupportsKernelType(expected_kernel_key,
                                                     exec_ctx)) {
-              auto phi_cpu_kernel_key = FallBackToCpu(
-                  expected_kernel_key, phi_kernel_key, *op_with_kernel);
+              auto phi_cpu_kernel_key =
+                  FallBackToCpu(phi_kernel_key, *op_with_kernel);
               op_with_kernel->ResetPhiKernel(
                   new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
                       phi_kernel_name, phi_cpu_kernel_key)));

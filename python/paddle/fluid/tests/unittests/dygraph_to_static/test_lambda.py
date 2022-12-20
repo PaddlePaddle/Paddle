@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.nn.functional as F
-from paddle.jit.api import declarative
 
 
 def call_lambda_as_func(x):
@@ -108,7 +107,7 @@ class TestLambda(unittest.TestCase):
         with fluid.dygraph.guard(self.place):
             x_v = fluid.dygraph.to_variable(self.x)
             if to_static:
-                ret = declarative(func)(x_v)
+                ret = paddle.jit.to_static(func)(x_v)
             else:
                 ret = func(x_v)
             return ret.numpy()

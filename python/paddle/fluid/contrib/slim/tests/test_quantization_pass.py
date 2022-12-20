@@ -50,7 +50,7 @@ def residual_block(num, quant_skip_pattern=None):
     def conv_bn_layer(
         input, ch_out, filter_size, stride, padding, act='relu', bias_attr=False
     ):
-        tmp = fluid.layers.conv2d(
+        tmp = paddle.static.nn.conv2d(
             input=input,
             filter_size=filter_size,
             num_filters=ch_out,
@@ -709,7 +709,7 @@ def quant_dequant_residual_block(num, quant_skip_pattern=None):
     def conv_bn_layer(
         input, ch_out, filter_size, stride, padding, act='relu', bias_attr=False
     ):
-        tmp = fluid.layers.conv2d(
+        tmp = paddle.static.nn.conv2d(
             input=input,
             filter_size=filter_size,
             num_filters=ch_out,

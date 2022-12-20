@@ -515,7 +515,7 @@ class TestFunctionalConv2DErrorCase10(TestCase):
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
                 x = fluid.data("input", self.input.shape, dtype=paddle.float32)
-                y = fluid.layers.conv2d(
+                y = paddle.static.nn.conv2d(
                     x,
                     self.num_filters,
                     self.filter_size,
