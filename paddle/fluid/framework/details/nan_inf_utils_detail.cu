@@ -309,7 +309,6 @@ __global__ void FindGlobalMaxMinAndPrint(const int64_t* block_num_nan_ptr,
         mean_value += tmp_mean_value;
       }
     }
-    printf("this is error");
     PrintForDifferentLevel<T, MT>(debug_info,
                                   numel,
                                   num_nan,
