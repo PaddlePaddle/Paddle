@@ -26,7 +26,6 @@ import paddle.fluid as fluid
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
 from paddle.fluid.log_helper import get_logger
 from paddle.dataset.common import download
-from paddle.fluid.framework import _test_eager_guard
 from imperative_test_utils import fix_model_dict, ImperativeLenet
 
 os.environ["CPU_NUM"] = "1"
@@ -119,7 +118,9 @@ class TestImperativeQatAmp(unittest.TestCase):
                 with paddle.amp.auto_cast():
                     out = model(img)
                     acc = paddle.static.accuracy(out, label)
-                    loss = fluid.layers.cross_entropy(out, label)
+                    loss = paddle.nn.functional.cross_entropy(
+                        out, label, reduction='none', use_softmax=False
+                    )
                     avg_loss = paddle.mean(loss)
                 scaled_loss = scaler.scale(avg_loss)
                 scaled_loss.backward()
@@ -129,7 +130,9 @@ class TestImperativeQatAmp(unittest.TestCase):
             else:
                 out = model(img)
                 acc = paddle.static.accuracy(out, label)
-                loss = fluid.layers.cross_entropy(out, label)
+                loss = paddle.nn.functional.cross_entropy(
+                    out, label, reduction='none', use_softmax=False
+                )
                 avg_loss = paddle.mean(loss)
                 avg_loss.backward()
 
@@ -184,7 +187,7 @@ class TestImperativeQatAmp(unittest.TestCase):
         acc_top1 = sum(acc_top1_list) / len(acc_top1_list)
         return acc_top1
 
-    def ptq(self):
+    def test_ptq(self):
         start_time = time.time()
 
         self.set_vars()
@@ -234,11 +237,6 @@ class TestImperativeQatAmp(unittest.TestCase):
 
         end_time = time.time()
         print("total time: %ss" % (end_time - start_time))
-
-    def test_ptq(self):
-        self.ptq()
-        with _test_eager_guard():
-            self.ptq()
 
 
 if __name__ == '__main__':

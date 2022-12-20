@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
 from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode
 from paddle.device import (
     get_all_custom_device_type,
@@ -26,11 +24,11 @@ from paddle.fluid.framework import (
     _in_legacy_dygraph,
     in_dygraph_mode,
 )
+from paddle.tensor.math import _add_with_axis
 
 from ...device import get_cudnn_version
 from ...fluid.data_feeder import check_dtype, check_variable_and_dtype
 from ...fluid.layer_helper import LayerHelper
-from ...fluid.layers import nn
 from ...fluid.layers.utils import (
     _contain_var,
     _convert_to_tensor_list,
@@ -152,8 +150,7 @@ def _conv_nd(
             bias = bias.reshape(new_shape)
             # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
             if (
-                os.environ.get('FLAGS_npu_storage_format', None)
-                in [1, '1', True, 'True', 'true']
+                _global_flags()['FLAGS_npu_storage_format']
                 and 'npu' in get_all_custom_device_type()
             ):
                 with no_grad():
@@ -226,7 +223,7 @@ def _conv_nd(
         )
         pre_bias = getattr(_legacy_C_ops, op_type)(x, weight, *attrs)
         if bias is not None:
-            out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
+            out = _add_with_axis(pre_bias, bias, axis=channel_dim)
         else:
             out = pre_bias
     else:
@@ -491,7 +488,7 @@ def conv1d(
                 False,
             )
         if bias is not None:
-            out = nn.elementwise_add(out, bias, axis=channel_dim)
+            out = _add_with_axis(out, bias, axis=channel_dim)
     elif _in_legacy_dygraph():
         attrs = (
             'strides',
@@ -515,7 +512,7 @@ def conv1d(
         )
         out = getattr(_legacy_C_ops, l_type)(x, weight, *attrs)
         if bias is not None:
-            out = nn.elementwise_add(out, bias, axis=channel_dim)
+            out = _add_with_axis(out, bias, axis=channel_dim)
     else:
         inputs = {'Input': [x], 'Filter': [weight]}
         attrs = {
@@ -540,7 +537,7 @@ def conv1d(
             type=l_type, inputs=inputs, outputs=outputs, attrs=attrs
         )
         if bias is not None:
-            out = nn.elementwise_add(out, bias, axis=channel_dim)
+            out = _add_with_axis(out, bias, axis=channel_dim)
     out = squeeze(out, axis=[squeeze_aixs])
     return out
 
@@ -753,8 +750,7 @@ def conv2d(
                     )
                 # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
                 if (
-                    os.environ.get('FLAGS_npu_storage_format', None)
-                    in [1, '1', True, 'True', 'true']
+                    _global_flags()['FLAGS_npu_storage_format']
                     and 'npu' in get_all_custom_device_type()
                 ):
                     with no_grad():
@@ -1047,7 +1043,7 @@ def conv1d_transpose(
             conv2d_data_format,
         )
         if bias is not None:
-            out = nn.elementwise_add(out, bias, axis=channel_dim)
+            out = _add_with_axis(out, bias, axis=channel_dim)
     elif _in_legacy_dygraph():
         attrs = (
             'output_padding',
@@ -1071,7 +1067,7 @@ def conv1d_transpose(
         )
         out = getattr(_legacy_C_ops, op_type)(x, weight, *attrs)
         if bias is not None:
-            out = nn.elementwise_add(out, bias, axis=channel_dim)
+            out = _add_with_axis(out, bias, axis=channel_dim)
     else:
         inputs = {'Input': [x], 'Filter': [weight]}
         attrs = {
@@ -1096,7 +1092,7 @@ def conv1d_transpose(
             type=op_type, inputs=inputs, outputs=outputs, attrs=attrs
         )
         if bias is not None:
-            out = nn.elementwise_add(out, bias, axis=channel_dim)
+            out = _add_with_axis(out, bias, axis=channel_dim)
 
     out = squeeze(out, axis=[squeeze_axis])
     return out
@@ -1351,7 +1347,7 @@ def conv2d_transpose(
             data_format,
         )
         if bias is not None:
-            return nn.elementwise_add(pre_bias, bias, axis=channel_dim)
+            return _add_with_axis(pre_bias, bias, axis=channel_dim)
         else:
             return pre_bias
 
@@ -1378,7 +1374,7 @@ def conv2d_transpose(
         )
         pre_bias = getattr(_legacy_C_ops, op_type)(x, weight, *attrs)
         if bias is not None:
-            out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
+            out = _add_with_axis(pre_bias, bias, axis=channel_dim)
         else:
             out = pre_bias
     else:
@@ -1405,7 +1401,7 @@ def conv2d_transpose(
         )
 
         if bias is not None:
-            out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
+            out = _add_with_axis(pre_bias, bias, axis=channel_dim)
         else:
             out = pre_bias
 
@@ -1824,7 +1820,7 @@ def conv3d_transpose(
             data_format_,
         )
         if bias is not None:
-            return nn.elementwise_add(pre_bias, bias, axis=channel_dim)
+            return _add_with_axis(pre_bias, bias, axis=channel_dim)
         else:
             return pre_bias
 
@@ -1851,7 +1847,7 @@ def conv3d_transpose(
         )
         pre_bias = getattr(_legacy_C_ops, op_type)(x, weight, *attrs)
         if bias is not None:
-            out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
+            out = _add_with_axis(pre_bias, bias, axis=channel_dim)
         else:
             out = pre_bias
     else:
@@ -1879,7 +1875,7 @@ def conv3d_transpose(
             type=op_type, inputs=inputs, outputs=outputs, attrs=attrs
         )
         if bias is not None:
-            out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
+            out = _add_with_axis(pre_bias, bias, axis=channel_dim)
         else:
             out = pre_bias
 

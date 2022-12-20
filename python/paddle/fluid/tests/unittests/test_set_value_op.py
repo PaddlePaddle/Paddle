@@ -150,7 +150,7 @@ class TestSetValueItemSliceInWhile(TestSetValueApi):
             return i, x
 
         i = paddle.zeros(shape=(1,), dtype='int32')
-        i, x = paddle.fluid.layers.while_loop(cond, body, [i, x])
+        i, x = paddle.static.nn.while_loop(cond, body, [i, x])
 
     def _get_answer(self):
         self.data[0] = self.value
@@ -1421,7 +1421,7 @@ class TestGradientTruncated(unittest.TestCase):
             # set_value_grad_op will not be run during backward.
             y, value = op(x)
             y2 = y + 1
-            loss = paddle.paddle.sum(y2)
+            loss = paddle.sum(y2)
             sgd = paddle.optimizer.Adam()
             sgd.minimize(loss)
             place = (
