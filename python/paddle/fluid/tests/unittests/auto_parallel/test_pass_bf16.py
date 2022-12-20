@@ -126,7 +126,7 @@ class TestBF16Pass(unittest.TestCase):
         )
         fp32_losses = np.array(history.history["loss"])
 
-        bf16_o1_engine = self.get_engine(True)
+        bf16_o1_engine = self.get_engine(False)
         history = bf16_o1_engine.fit(
             self.dataset, 1, batch_size=self.batch_size, steps_per_epoch=10
         )
