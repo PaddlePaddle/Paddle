@@ -77,43 +77,6 @@ void QuantizeConvInput(Scope* scope,
 }  // namespace
 
 ParamsQuantizationMkldnnPass::ParamsQuantizationMkldnnPass() {
-  AddOpCompat(OpCompat("conv2d"))
-      .AddInput("Input")
-      .IsTensor()
-      .End()
-      .AddInput("Filter")
-      .IsTensor()
-      .End()
-      .AddInput("Bias")
-      .IsTensor()
-      .IsOptional()
-      .End()
-      .AddInput("ResidualData")
-      .IsTensor()
-      .IsOptional()
-      .End()
-      .AddOutput("Output")
-      .IsTensor()
-      .End()
-      .AddAttr("strides")
-      .IsType<std::vector<int>>()
-      .End()
-      .AddAttr("paddings")
-      .IsType<std::vector<int>>()
-      .End()
-      .AddAttr("padding_algorithm")
-      .IsOptional()
-      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
-      .End()
-      .AddAttr("groups")
-      .IsNumGE(1)
-      .End()
-      .AddAttr("dilations")
-      .IsType<std::vector<int>>()
-      .End()
-      .AddAttr("data_format")
-      .IsStringIn({"NCHW", "AnyLayout"})
-      .End();
   AddOpCompat(OpCompat("fused_conv2d"))
       .AddInput("Input")
       .IsTensor()
@@ -184,10 +147,6 @@ void ParamsQuantizationMkldnnPass::QuantizeConv(ir::Graph* graph,
       return;
     }
 
-    if (conv_op->Op()->Type() == "conv2d") {
-      conv_op->Op()->SetType("fused_conv2d");
-    }
-
     QuantizeConvInput<int8_t>(
         scope, g, conv_op, conv_filter->Name(), "Scale_weights");
 
@@ -214,8 +173,6 @@ void ParamsQuantizationMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
   QuantizeConv(graph, "fused_conv2d", true /*with_residual_data*/);
   QuantizeConv(graph, "fused_conv2d", false /*with_residual_data*/);
-  QuantizeConv(graph, "conv2d", true /*with_residual_data*/);
-  QuantizeConv(graph, "conv2d", false /*with_residual_data*/);
 }
 
 }  // namespace ir

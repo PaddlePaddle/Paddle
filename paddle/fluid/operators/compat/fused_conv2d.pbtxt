@@ -74,6 +74,10 @@ extra {
     type: FLOATS
   }
   attrs {
+    name: "Bias_scales"
+    type: FLOATS
+  }
+  attrs {
     name: "force_fp32_output"
     type: BOOLEAN
   }
