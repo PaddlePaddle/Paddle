@@ -112,7 +112,6 @@ HOSTDEVICE void PrintForDifferentLevelFile(const char* debug_info,
                                            MT min_value,
                                            MT mean_value,
                                            int check_nan_inf_level) {
-  // 以写模式打开文件
   std::string file_name = std::to_string(check_nan_inf_level);
   std::string path = "nan_inf_level_" + file_name;
   std::ofstream outfile(path, std::ios::app);
