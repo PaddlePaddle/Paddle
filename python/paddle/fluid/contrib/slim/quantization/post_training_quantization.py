@@ -152,8 +152,10 @@ class PostTrainingQuantization:
         onnx_format=False,
         freeze_model=True,
         optimize_model=False,
+        is_use_cache_file=False,
         skip_tensor_list=None,
         same_scale_tensor_list=None,
+        cache_dir=None,
         scale_dict=None,
         return_graph=False,
         deploy_backend=None,
@@ -243,6 +245,8 @@ class PostTrainingQuantization:
                 `conv2d/depthwise_conv2d + bn`, the weights scale for all channel will
                 be different. In address this problem, fuse the pattern before
                 quantization. Default False.
+            is_use_cache_file(bool, optional): This param is deprecated.
+            cache_dir(str, optional): This param is deprecated.
             deploy_backend(str, optional): Deploy backend, it could be None, Tensor, MKLDNN.
                 Other backends will continue to expand, the default is None, which means to
                 use the default general quantization configuration.
@@ -422,6 +426,11 @@ class PostTrainingQuantization:
             )
         elif deploy_backend.lower() == "mkldnn":
             self.quant_config = MKLDNNQuantizer(
+                quant_operation_types=quantizable_op_type,
+                quant_bits=weight_bits,
+            )
+        elif deploy_backend.lower() == "arm":
+            self.quant_config = ArmCPUQuantizer(
                 quant_operation_types=quantizable_op_type,
                 quant_bits=weight_bits,
             )
@@ -1503,8 +1512,10 @@ class PostTrainingQuantizationProgram(PostTrainingQuantization):
         onnx_format=False,
         freeze_model=True,
         optimize_model=False,
+        is_use_cache_file=False,
         skip_tensor_list=None,
         same_scale_tensor_list=None,
+        cache_dir=None,
         scale_dict=None,
         return_graph=True,
     ):
@@ -1533,8 +1544,10 @@ class PostTrainingQuantizationProgram(PostTrainingQuantization):
             onnx_format,
             freeze_model,
             optimize_model,
+            is_use_cache_file,
             skip_tensor_list,
             same_scale_tensor_list,
+            cache_dir,
             scale_dict,
             return_graph,
         )

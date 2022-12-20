@@ -361,3 +361,20 @@ class MKLDNNQuantizer(BaseQuantizer):
             "nearest_interp_v2",
             "split",
         ]
+
+
+class ArmCPUQuantizer(BaseQuantizer):
+    """
+    Arm CPU with Paddle Lite quantization configuration class.
+    """
+
+    def __init__(
+        self,
+        quant_operation_types=None,
+        quant_bits=8,
+    ):
+        super().__init__()
+        self._quantize_op = quant_operation_types
+        self.quant_bits = quant_bits
+        self._quant_min = -127
+        self._quant_max = 127
