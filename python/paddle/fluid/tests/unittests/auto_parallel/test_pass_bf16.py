@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
+import paddle.fluid.core as core
 import paddle.nn as nn
 from paddle.distributed.fleet import auto
 from paddle.fluid.dygraph.parallel import ParallelEnv
@@ -81,6 +82,9 @@ class Model(nn.Layer):
         return self.fc3(self.fc2(self.fc1(x)))
 
 
+@unittest.skipIf(
+    not core.supports_bfloat16(), 'place does not support BF16 evaluation'
+)
 class TestBF16Pass(unittest.TestCase):
     def setUp(self):
         self.rtol = 1e-5
@@ -126,7 +130,7 @@ class TestBF16Pass(unittest.TestCase):
         )
         fp32_losses = np.array(history.history["loss"])
 
-        bf16_o1_engine = self.get_engine(False)
+        bf16_o1_engine = self.get_engine(True)
         history = bf16_o1_engine.fit(
             self.dataset, 1, batch_size=self.batch_size, steps_per_epoch=10
         )
