@@ -27,7 +27,9 @@ def test_trainable():
     feature = paddle.static.nn.fc(
         x, size=10, weight_attr=fluid.ParamAttr(trainable=False)
     )
-    loss = fluid.layers.cross_entropy(input=feature, label=label)
+    loss = paddle.nn.functional.cross_entropy(
+        input=feature, label=label, reduction='none', use_softmax=False
+    )
     loss = paddle.mean(loss)
     return loss
 

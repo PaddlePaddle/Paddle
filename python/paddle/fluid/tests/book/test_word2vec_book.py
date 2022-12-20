@@ -96,7 +96,12 @@ def train(
         predict_word = paddle.static.nn.fc(
             x=hidden1, size=dict_size, activation='softmax'
         )
-        cost = fluid.layers.cross_entropy(input=predict_word, label=words[4])
+        cost = paddle.nn.functional.cross_entropy(
+            input=predict_word,
+            label=words[4],
+            reduction='none',
+            use_softmax=False,
+        )
         avg_cost = paddle.mean(cost)
         return avg_cost, predict_word
 

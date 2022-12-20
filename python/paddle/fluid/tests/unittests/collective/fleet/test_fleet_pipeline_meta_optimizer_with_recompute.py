@@ -54,8 +54,11 @@ class TestFleetMetaOptimizer(unittest.TestCase):
             prediction = paddle.static.nn.fc(
                 x=[fc_7], size=2, activation='softmax'
             )
-            cost = paddle.fluid.layers.cross_entropy(
-                input=prediction, label=input_y
+            cost = paddle.nn.functional.cross_entropy(
+                input=prediction,
+                label=input_y,
+                reduction='none',
+                use_softmax=False,
             )
             avg_cost = paddle.mean(x=cost)
 

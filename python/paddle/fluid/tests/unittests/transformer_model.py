@@ -159,17 +159,16 @@ def multi_head_attention(
 
         def __softmax(x, eps=1e-9):
             exp_out = paddle.exp(x=x)
-            sum_out = paddle.sum(exp_out, axis=-1, keepdim=False)
-            return layers.elementwise_div(x=exp_out, y=sum_out, axis=0)
+            sum_out = paddle.sum(exp_out, axis=-1, keepdim=True)
+            return paddle.divide(x=exp_out, y=sum_out)
 
         scaled_q = paddle.scale(x=q, scale=d_model**-0.5)
-        product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
-        weights = __softmax(layers.elementwise_add(x=product, y=attn_bias))
+        product = paddle.matmul(x=scaled_q, y=k, transpose_y=True)
+        weights = __softmax(paddle.add(x=product, y=attn_bias))
         if dropout_rate:
-            weights = layers.dropout(
-                weights, dropout_prob=dropout_rate, is_test=False
-            )
-        out = layers.matmul(weights, v)
+            weights = paddle.nn.functional.dropout(weights, p=dropout_rate)
+        out = paddle.matmul(weights, v)
+
         return out
 
     q, k, v = __compute_qkv(queries, keys, values, n_head, d_key, d_value)
@@ -241,7 +240,7 @@ def pre_post_process_layer(prev_out, out, process_cmd, dropout=0.0):
             )
         elif cmd == "d":  # add dropout
             if dropout:
-                out = layers.dropout(out, dropout_prob=dropout, is_test=False)
+                out = paddle.nn.functional.dropout(out, p=dropout)
     return out
 
 
@@ -284,7 +283,7 @@ def prepare_encoder(
     # FIXME(guosheng): Decouple the program desc with batch_size.
     enc_input = paddle.reshape(x=enc_input, shape=[batch_size, -1, src_emb_dim])
     return (
-        layers.dropout(enc_input, dropout_prob=dropout, is_test=False)
+        paddle.nn.functional.dropout(enc_input, p=dropout)
         if dropout
         else enc_input
     )
@@ -594,6 +593,8 @@ def transformer(
     )
     predict = paddle.nn.functional.softmax(predict)
 
-    cost = layers.cross_entropy(input=predict, label=gold)
+    cost = paddle.nn.functional.cross_entropy(
+        input=predict, label=gold, reduction='none', use_softmax=False
+    )
     weighted_cost = cost * weights
     return paddle.sum(weighted_cost)

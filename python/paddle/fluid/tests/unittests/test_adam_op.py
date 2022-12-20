@@ -616,10 +616,10 @@ class TestAdamOpV2(unittest.TestCase):
                 conv = fluid.layers.conv2d(data, 8, 3)
                 loss = paddle.mean(conv)
 
-                beta1 = fluid.layers.create_global_var(
+                beta1 = paddle.static.create_global_var(
                     shape=[1], value=0.85, dtype='float32', persistable=True
                 )
-                beta2 = fluid.layers.create_global_var(
+                beta2 = paddle.static.create_global_var(
                     shape=[1], value=0.95, dtype='float32', persistable=True
                 )
                 betas = [beta1, beta2]
@@ -711,7 +711,7 @@ class TestAdamOpV2(unittest.TestCase):
         cur_lr = adam.get_lr()
         assert lr == cur_lr
         with self.assertRaises(TypeError):
-            lr_var = paddle.fluid.layers.create_global_var(
+            lr_var = paddle.static.create_global_var(
                 shape=[1], value=lr, dtype='float32'
             )
             adam.set_lr(lr_var)
@@ -811,27 +811,32 @@ class TestAdamOptimizer(unittest.TestCase):
                     activation='softmax',
                 )
 
-                cost = fluid.layers.cross_entropy(input=prediction, label=label)
+                cost = paddle.nn.functional.cross_entropy(
+                    input=prediction,
+                    label=label,
+                    reduction='none',
+                    use_softmax=False,
+                )
                 loss = paddle.mean(cost)
                 beta1_init = 0.9
                 beta2_init = 0.999
                 epsilon_init = 1e-8
                 if use_tensor:
-                    beta1 = fluid.layers.create_global_var(
+                    beta1 = paddle.static.create_global_var(
                         shape=[1],
                         value=float(beta1_init),
                         dtype='float32',
                         persistable=True,
                         name="beta1",
                     )
-                    beta2 = fluid.layers.create_global_var(
+                    beta2 = paddle.static.create_global_var(
                         shape=[1],
                         value=float(beta2_init),
                         dtype='float32',
                         persistable=True,
                         name="beta2",
                     )
-                    epsilon = fluid.layers.create_global_var(
+                    epsilon = paddle.static.create_global_var(
                         shape=[1],
                         value=float(epsilon_init),
                         dtype='float32',
@@ -946,7 +951,9 @@ class TestAdamOptimizer(unittest.TestCase):
             y_predict = paddle.static.nn.fc(
                 x, size=1, activation=None, weight_attr=weight_attr
             )
-            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
             adam = fluid.optimizer.AdamOptimizer(
@@ -969,7 +976,9 @@ class TestAdamOptimizer(unittest.TestCase):
         fc_1 = paddle.static.nn.fc(x=z, size=128)
         prediction = paddle.static.nn.fc(x=fc_1, size=2, activation='softmax')
 
-        cost = fluid.layers.cross_entropy(input=prediction, label=label)
+        cost = paddle.nn.functional.cross_entropy(
+            input=prediction, label=label, reduction='none', use_softmax=False
+        )
         loss = paddle.mean(cost)
         adam = fluid.optimizer.Adam(use_global_beta_pow=True)
         adam.minimize(loss)

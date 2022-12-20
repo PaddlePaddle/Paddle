@@ -19,8 +19,8 @@ from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
+import paddle.nn.functional as F
 from paddle.fluid import core
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.optimizer import SGDOptimizer
 
 
@@ -38,10 +38,10 @@ class Policy(fluid.dygraph.Layer):
     def forward(self, inputs):
         x = paddle.reshape(inputs, shape=[-1, 4])
         x = self.affine1(x)
-        x = fluid.layers.dropout(x, self.dropout_ratio)
-        x = fluid.layers.relu(x)
+        x = paddle.nn.functional.dropout(x, self.dropout_ratio)
+        x = F.relu(x)
         action_scores = self.affine2(x)
-        return fluid.layers.softmax(action_scores, axis=1)
+        return paddle.nn.functional.softmax(action_scores, axis=1)
 
 
 class TestImperativeMnist(unittest.TestCase):
@@ -72,13 +72,13 @@ class TestImperativeMnist(unittest.TestCase):
             dy_mask.stop_gradient = True
 
             loss_probs = paddle.log(loss_probs)
-            loss_probs = fluid.layers.elementwise_mul(loss_probs, dy_mask)
+            loss_probs = paddle.multiply(loss_probs, dy_mask)
             loss_probs = paddle.sum(loss_probs, axis=-1)
 
             dy_reward = fluid.dygraph.base.to_variable(reward)
             dy_reward.stop_gradient = True
 
-            loss_probs = fluid.layers.elementwise_mul(dy_reward, loss_probs)
+            loss_probs = paddle.multiply(dy_reward, loss_probs)
             loss = paddle.sum(loss_probs)
 
             sgd = SGDOptimizer(
@@ -106,12 +106,11 @@ class TestImperativeMnist(unittest.TestCase):
             dy_out, dy_param_init_value, dy_param_value = run_dygraph()
 
         with fluid.dygraph.guard():
-            with _test_eager_guard():
-                (
-                    eager_out,
-                    eager_param_init_value,
-                    eager_param_value,
-                ) = run_dygraph()
+            (
+                eager_out,
+                eager_param_init_value,
+                eager_param_value,
+            ) = run_dygraph()
 
         with new_program_scope():
             paddle.seed(seed)
@@ -140,12 +139,10 @@ class TestImperativeMnist(unittest.TestCase):
             st_loss_probs = policy(st_state)
 
             st_loss_probs = paddle.log(st_loss_probs)
-            st_loss_probs = fluid.layers.elementwise_mul(st_loss_probs, st_mask)
+            st_loss_probs = paddle.multiply(st_loss_probs, st_mask)
             st_loss_probs = paddle.sum(st_loss_probs, axis=-1)
 
-            st_loss_probs = fluid.layers.elementwise_mul(
-                st_reward, st_loss_probs
-            )
+            st_loss_probs = paddle.multiply(st_reward, st_loss_probs)
             st_loss = paddle.sum(st_loss_probs)
 
             st_sgd.minimize(st_loss)

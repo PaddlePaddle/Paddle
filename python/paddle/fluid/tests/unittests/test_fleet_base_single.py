@@ -85,7 +85,9 @@ class TestFleetBaseSingleRunCollective(unittest.TestCase):
 
         fc_1 = paddle.static.nn.fc(input=input_x, size=64, activation='tanh')
         prediction = paddle.static.nn.fc(x=fc_1, size=2, activation='softmax')
-        cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+        cost = paddle.nn.functional.cross_entropy(
+            input=prediction, label=input_y, reduction='none', use_softmax=False
+        )
         avg_cost = paddle.mean(x=cost)
 
         fleet.init(is_collective=True)
@@ -124,7 +126,9 @@ class TestFleetBaseSingleRunPS(unittest.TestCase):
 
         fc_1 = paddle.static.nn.fc(input=input_x, size=64, activation='tanh')
         prediction = paddle.static.nn.fc(x=fc_1, size=2, activation='softmax')
-        cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+        cost = paddle.nn.functional.cross_entropy(
+            input=prediction, label=input_y, reduction='none', use_softmax=False
+        )
         avg_cost = paddle.mean(x=cost)
 
         fleet.init()

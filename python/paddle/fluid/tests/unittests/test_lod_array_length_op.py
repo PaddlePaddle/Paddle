@@ -17,7 +17,6 @@ import unittest
 import numpy
 
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
 from paddle.fluid import Program, program_guard
@@ -28,8 +27,8 @@ class TestLoDArrayLength(unittest.TestCase):
     def test_array_length(self):
         tmp = layers.zeros(shape=[10], dtype='int32')
         i = layers.fill_constant(shape=[1], dtype='int64', value=10)
-        arr = layers.array_write(tmp, i=i)
-        arr_len = layers.array_length(arr)
+        arr = paddle.tensor.array_write(tmp, i=i)
+        arr_len = paddle.tensor.array_length(arr)
         cpu = core.CPUPlace()
         exe = Executor(cpu)
         result = exe.run(fetch_list=[arr_len])[0]
@@ -42,7 +41,7 @@ class TestLoDArrayLengthOpError(unittest.TestCase):
             # for ci coverage
             x1 = numpy.random.randn(2, 4).astype('int32')
 
-            self.assertRaises(TypeError, fluid.layers.array_length, array=x1)
+            self.assertRaises(TypeError, paddle.tensor.array_length, array=x1)
 
 
 class TestArrayLengthApi(unittest.TestCase):

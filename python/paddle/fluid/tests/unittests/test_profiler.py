@@ -44,18 +44,18 @@ class TestProfiler(unittest.TestCase):
                 shape=[1], dtype='int64', force_cpu=True
             )
             until = layers.fill_constant([1], dtype='int64', value=10)
-            data_arr = layers.array_write(hidden1, i)
-            cond = fluid.layers.less_than(x=counter, y=until)
-            while_op = fluid.layers.While(cond=cond)
+            data_arr = paddle.tensor.array_write(hidden1, i)
+            cond = paddle.less_than(x=counter, y=until)
+            while_op = paddle.static.nn.control_flow.While(cond=cond)
             with while_op.block():
                 hidden_n = paddle.static.nn.fc(
                     x=hidden1, size=64, activation='relu'
                 )
-                layers.array_write(hidden_n, i, data_arr)
-                fluid.layers.increment(x=counter, value=1, in_place=True)
-                layers.less_than(x=counter, y=until, cond=cond)
+                paddle.tensor.array_write(hidden_n, i, data_arr)
+                paddle.increment(x=counter, value=1)
+                paddle.assign(paddle.less_than(x=counter, y=until), cond)
 
-            hidden_n = layers.array_read(data_arr, i)
+            hidden_n = paddle.tensor.array_read(data_arr, i)
             hidden2 = paddle.static.nn.fc(
                 x=hidden_n, size=64, activation='relu'
             )
@@ -63,9 +63,11 @@ class TestProfiler(unittest.TestCase):
                 x=hidden2, size=10, activation='softmax'
             )
             label = fluid.layers.data(name='y', shape=[1], dtype='int64')
-            cost = fluid.layers.cross_entropy(input=predict, label=label)
+            cost = paddle.nn.functional.cross_entropy(
+                input=predict, label=label, reduction='none', use_softmax=False
+            )
             avg_cost = paddle.mean(cost)
-            batch_size = fluid.layers.create_tensor(dtype='int64')
+            batch_size = paddle.tensor.create_tensor(dtype='int64')
             batch_acc = paddle.static.accuracy(
                 input=predict, label=label, total=batch_size
             )

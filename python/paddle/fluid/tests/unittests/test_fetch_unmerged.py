@@ -34,7 +34,7 @@ class TestFetchUnmerged(unittest.TestCase):
             pool_type='max',
             act="relu",
         )
-        conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
+        conv_pool_1 = paddle.static.nn.batch_norm(conv_pool_1)
         conv_pool_2 = fluid.nets.simple_img_conv_pool(
             input=conv_pool_1,
             filter_size=5,
@@ -48,7 +48,9 @@ class TestFetchUnmerged(unittest.TestCase):
         prediction = paddle.static.nn.fc(
             x=hidden, size=10, activation='softmax'
         )
-        loss = fluid.layers.cross_entropy(input=prediction, label=label)
+        loss = paddle.nn.functional.cross_entropy(
+            input=prediction, label=label, reduction='none', use_softmax=False
+        )
         avg_loss = paddle.mean(loss)
         return avg_loss, prediction
 

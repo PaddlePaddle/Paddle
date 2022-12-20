@@ -63,7 +63,7 @@ def net():
         hidden = paddle.static.nn.fc(x=hidden, size=400, activation="sigmoid")
 
     hidden = paddle.static.nn.fc(x=hidden, size=3, activation=None)
-    cost, y_predict = fluid.layers.softmax_with_cross_entropy(
+    cost, y_predict = paddle.nn.functional.softmax_with_cross_entropy(
         hidden, y, return_softmax=True
     )
     acc_top1 = paddle.static.accuracy(input=y_predict, label=y, k=1)

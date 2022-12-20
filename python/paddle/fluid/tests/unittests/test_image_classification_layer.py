@@ -42,11 +42,11 @@ class TestLayer(unittest.TestCase):
             images = fluid.layers.data(
                 name='pixel', shape=[3, 48, 48], dtype='float32'
             )
-            hidden1 = fluid.layers.batch_norm(input=images)
+            hidden1 = paddle.static.nn.batch_norm(input=images)
             hidden2 = paddle.static.nn.fc(
                 x=hidden1, size=128, activation='relu'
             )
-            fluid.layers.batch_norm(input=hidden2)
+            paddle.static.nn.batch_norm(input=hidden2)
 
         print(str(main_program))
 
@@ -57,7 +57,7 @@ class TestLayer(unittest.TestCase):
             images = fluid.layers.data(
                 name='pixel', shape=[3, 48, 48], dtype='float32'
             )
-            fluid.layers.dropout(x=images, dropout_prob=0.5)
+            paddle.nn.functional.dropout(x=images, p=0.5)
 
         print(str(main_program))
 

@@ -21,8 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 class ElementwiseFloorDivNPUKernel : public framework::OpKernel<T> {
  public:

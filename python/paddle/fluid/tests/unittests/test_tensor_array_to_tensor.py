@@ -21,6 +21,8 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 
+paddle.enable_static()
+
 
 class TestTensorArrayToTensorError(unittest.TestCase):
     """Tensor_array_to_tensor error message enhance"""
@@ -191,11 +193,11 @@ class TestLoDTensorArrayStack(unittest.TestCase):
     def set_program(self):
         self.program = fluid.Program()
         with fluid.program_guard(self.program):
-            self.array = array = fluid.layers.create_array(dtype='float32')
+            self.array = array = paddle.tensor.create_array(dtype='float32')
             idx = fluid.layers.fill_constant(shape=[1], dtype="int64", value=0)
             for i, x in enumerate(self.inputs):
                 x = fluid.layers.assign(x)
-                fluid.layers.array_write(x, idx + i, array)
+                paddle.tensor.array_write(x, idx + i, array)
             output, output_index = fluid.layers.tensor_array_to_tensor(
                 input=array, **self.attrs
             )
@@ -236,9 +238,9 @@ class TestTensorArrayToTensorAPI(unittest.TestCase):
         x1 = fluid.layers.assign(inp2)
         x1.stop_gradient = False
         i = fluid.layers.fill_constant(shape=[1], dtype="int64", value=0)
-        array = fluid.layers.create_array(dtype='float32')
-        fluid.layers.array_write(x0, i, array)
-        fluid.layers.array_write(x1, i + 1, array)
+        array = paddle.tensor.create_array(dtype='float32')
+        paddle.tensor.array_write(x0, i, array)
+        paddle.tensor.array_write(x1, i + 1, array)
         output_stack, output_index_stack = fluid.layers.tensor_array_to_tensor(
             input=array, axis=1, use_stack=True
         )
@@ -275,25 +277,27 @@ class TestTensorArrayToTensorAPI(unittest.TestCase):
             zero = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
             i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=1)
             ten = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
-            array = fluid.layers.create_array(dtype='float32')
+            array = paddle.tensor.create_array(dtype='float32')
             inp0 = np.random.rand(2, 3, 4).astype("float32")
             x0 = fluid.layers.assign(inp0)
-            fluid.layers.array_write(x0, zero, array)
+            paddle.tensor.array_write(x0, zero, array)
 
             def cond(i, end, array):
-                return fluid.layers.less_than(i, end)
+                return paddle.less_than(i, end)
 
             def body(i, end, array):
-                prev = fluid.layers.array_read(array, i - 1)
-                fluid.layers.array_write(prev, i, array)
+                prev = paddle.tensor.array_read(array, i - 1)
+                paddle.tensor.array_write(prev, i, array)
                 return i + 1, end, array
 
-            _, _, array = fluid.layers.while_loop(cond, body, [i, ten, array])
+            _, _, array = paddle.static.nn.while_loop(
+                cond, body, [i, ten, array]
+            )
 
-            self.assertTrue(fluid.layers.array_length(array), 10)
+            self.assertTrue(paddle.tensor.array_length(array), 10)
             last = fluid.layers.fill_constant(shape=[1], dtype='int64', value=9)
             np.testing.assert_array_equal(
-                fluid.layers.array_read(array, last).numpy(), inp0
+                paddle.tensor.array_read(array, last).numpy(), inp0
             )
 
 

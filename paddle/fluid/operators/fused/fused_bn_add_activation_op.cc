@@ -262,9 +262,9 @@ framework::OpKernelType FusedBatchNormAddActGradOp::GetExpectedKernelType(
     PADDLE_THROW(platform::errors::NotFound(
         "Can not find Y@GRAD in the execution context."));
   }
-  const Tensor *t = nullptr;
-  if (var->IsType<Tensor>()) {
-    t = &var->Get<Tensor>();
+  const phi::DenseTensor *t = nullptr;
+  if (var->IsType<phi::DenseTensor>()) {
+    t = &var->Get<phi::DenseTensor>();
   } else if (var->IsType<phi::DenseTensor>()) {
     t = &var->Get<phi::DenseTensor>();
   }

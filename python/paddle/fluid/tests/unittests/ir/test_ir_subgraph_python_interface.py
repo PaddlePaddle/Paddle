@@ -37,7 +37,9 @@ class TestQuantizationSubGraph(unittest.TestCase):
                 hidden = paddle.static.nn.fc(
                     hidden, size=128, activation='relu'
                 )
-            loss = fluid.layers.cross_entropy(input=hidden, label=label)
+            loss = paddle.nn.functional.cross_entropy(
+                input=hidden, label=label, reduction='none', use_softmax=False
+            )
             loss = paddle.mean(loss)
             return loss
 
@@ -53,8 +55,8 @@ class TestQuantizationSubGraph(unittest.TestCase):
         with program_guard(main_program, startup_program):
             x = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
             y = layers.fill_constant(shape=[1], dtype='float32', value=0.23)
-            pred = layers.less_than(y, x)
-            out = layers.cond(pred, true_func, false_func)
+            pred = paddle.less_than(y, x)
+            out = paddle.static.nn.cond(pred, true_func, false_func)
 
         core_graph = core.Graph(main_program.desc)
         # We should create graph for test, otherwise it will throw a

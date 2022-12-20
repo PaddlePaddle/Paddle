@@ -12,22 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle.fluid import unique_name
+from paddle.jit.dy2static.utils import BaseNodeVisitor, index_in_list
+from paddle.jit.dy2static.variable_trans_func import create_bool_node
 from paddle.utils import gast
 
-from paddle.fluid import unique_name
-from paddle.fluid.dygraph.dygraph_to_static.utils import index_in_list
-from paddle.fluid.dygraph.dygraph_to_static.utils import BaseNodeVisitor
-from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import (
-    create_bool_node,
-)
-from .base_transformer import (
-    BaseTransformer,
-)
-from .base_transformer import (
-    ForNodeVisitor,
-)
+from .base_transformer import BaseTransformer, ForNodeVisitor
 
-__all__ = ['BreakContinueTransformer']
+__all__ = []
 
 BREAK_NAME_PREFIX = '__break'
 CONTINUE_NAME_PREFIX = '__continue'

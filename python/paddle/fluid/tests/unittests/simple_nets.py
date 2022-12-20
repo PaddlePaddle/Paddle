@@ -32,7 +32,9 @@ def simple_fc_net_with_inputs(img, label, class_num=10):
     prediction = paddle.static.nn.fc(
         hidden, size=class_num, activation='softmax'
     )
-    loss = fluid.layers.cross_entropy(input=prediction, label=label)
+    loss = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     loss = paddle.mean(loss)
     return loss
 
@@ -55,12 +57,14 @@ def batchnorm_fc_with_inputs(img, label, class_num=10):
             ),
         )
 
-        hidden = fluid.layers.batch_norm(input=hidden)
+        hidden = paddle.static.nn.batch_norm(input=hidden)
 
     prediction = paddle.static.nn.fc(
         hidden, size=class_num, activation='softmax'
     )
-    loss = fluid.layers.cross_entropy(input=prediction, label=label)
+    loss = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     loss = paddle.mean(loss)
     return loss
 
@@ -99,7 +103,9 @@ def bow_net(
     prediction = paddle.static.nn.fc(
         x=[fc_2], size=class_dim, activation="softmax"
     )
-    cost = fluid.layers.cross_entropy(input=prediction, label=label)
+    cost = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     avg_cost = paddle.mean(x=cost)
 
     return avg_cost

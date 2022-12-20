@@ -263,7 +263,7 @@ class TestNet(unittest.TestCase):
             fc_1 = paddle.static.nn.fc(x=z, size=128)
             prediction = paddle.static.nn.fc(x=fc_1, size=2, activation='softmax')
 
-            cost = fluid.layers.cross_entropy(input=prediction, label=label)
+            cost = paddle.nn.functional.cross_entropy(input=prediction, label=label, reduction='none', use_softmax=False)
             loss = paddle.mean(cost)
             adam = fluid.optimizer.Adam(learning_rate=0.01)
             adam.minimize(loss)
@@ -348,27 +348,27 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
                     x=fc_1, size=2, weight_attr=weight_attr2, activation='softmax'
                 )
 
-                cost = fluid.layers.cross_entropy(input=prediction, label=label)
+                cost = paddle.nn.functional.cross_entropy(input=prediction, label=label, reduction='none', use_softmax=False)
                 loss = paddle.mean(cost)
                 beta1_init = 0.9
                 beta2_init = 0.999
                 epsilon_init = 1e-8
                 if use_tensor:
-                    beta1 = fluid.layers.create_global_var(
+                    beta1 = paddle.static.create_global_var(
                         shape=[1],
                         value=float(beta1_init),
                         dtype='float32',
                         persistable=True,
                         name="beta1",
                     )
-                    beta2 = fluid.layers.create_global_var(
+                    beta2 = paddle.static.create_global_var(
                         shape=[1],
                         value=float(beta2_init),
                         dtype='float32',
                         persistable=True,
                         name="beta2",
                     )
-                    epsilon = fluid.layers.create_global_var(
+                    epsilon = paddle.static.create_global_var(
                         shape=[1],
                         value=float(epsilon_init),
                         dtype='float32',

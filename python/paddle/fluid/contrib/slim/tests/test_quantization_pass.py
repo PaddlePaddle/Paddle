@@ -39,7 +39,9 @@ def linear_fc(num):
     hidden = data
     for _ in range(num):
         hidden = paddle.static.nn.fc(hidden, size=128, activation='relu')
-    loss = fluid.layers.cross_entropy(input=hidden, label=label)
+    loss = paddle.nn.functional.cross_entropy(
+        input=hidden, label=label, reduction='none', use_softmax=False
+    )
     loss = paddle.mean(loss)
     return loss
 
@@ -57,7 +59,7 @@ def residual_block(num, quant_skip_pattern=None):
             act=None,
             bias_attr=bias_attr,
         )
-        return fluid.layers.batch_norm(input=tmp, act=act)
+        return paddle.static.nn.batch_norm(input=tmp, act=act)
 
     data = fluid.layers.data(
         name='image',
@@ -72,22 +74,24 @@ def residual_block(num, quant_skip_pattern=None):
     for _ in range(num):
         conv = conv_bn_layer(hidden, 16, 3, 1, 1, act=None, bias_attr=True)
         short = conv_bn_layer(hidden, 16, 1, 1, 0, act=None)
-        hidden = fluid.layers.elementwise_add(x=conv, y=short, act='relu')
-    matmul_weight = fluid.layers.create_parameter(
+        hidden = paddle.nn.functional.relu(paddle.add(x=conv, y=short))
+    matmul_weight = paddle.create_parameter(
         shape=[1, 16, 32, 32], dtype='float32'
     )
-    hidden = fluid.layers.matmul(hidden, matmul_weight, True, True)
+    hidden = paddle.matmul(hidden, matmul_weight, True, True)
     if quant_skip_pattern:
         with fluid.name_scope(quant_skip_pattern):
-            pool = fluid.layers.pool2d(
-                input=hidden, pool_size=2, pool_type='avg', pool_stride=2
+            pool = paddle.nn.functional.avg_pool2d(
+                x=hidden, kernel_size=2, stride=2
             )
     else:
-        pool = fluid.layers.pool2d(
-            input=hidden, pool_size=2, pool_type='avg', pool_stride=2
+        pool = paddle.nn.functional.avg_pool2d(
+            x=hidden, kernel_size=2, stride=2
         )
     fc = paddle.static.nn.fc(x=pool, size=10)
-    loss = fluid.layers.cross_entropy(input=fc, label=label)
+    loss = paddle.nn.functional.cross_entropy(
+        input=fc, label=label, reduction='none', use_softmax=False
+    )
     loss = paddle.mean(loss)
     return loss
 
@@ -102,7 +106,7 @@ def conv_net(img, label, quant_skip_pattern):
         pool_type='max',
         act="relu",
     )
-    conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
+    conv_pool_1 = paddle.static.nn.batch_norm(conv_pool_1)
     conv_pool_2 = fluid.nets.simple_img_conv_pool(
         input=conv_pool_1,
         filter_size=5,
@@ -117,7 +121,9 @@ def conv_net(img, label, quant_skip_pattern):
         prediction = paddle.static.nn.fc(
             x=hidden, size=10, activation='softmax'
         )
-    loss = fluid.layers.cross_entropy(input=prediction, label=label)
+    loss = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     avg_loss = paddle.mean(loss)
     return avg_loss
 
@@ -714,7 +720,7 @@ def quant_dequant_residual_block(num, quant_skip_pattern=None):
             act=None,
             bias_attr=bias_attr,
         )
-        return fluid.layers.batch_norm(input=tmp, act=act)
+        return paddle.static.nn.batch_norm(input=tmp, act=act)
 
     data1 = fluid.layers.data(name='image', shape=[1, 32, 32], dtype='float32')
     data2 = fluid.layers.data(
@@ -725,44 +731,42 @@ def quant_dequant_residual_block(num, quant_skip_pattern=None):
     for _ in range(num):
         conv = conv_bn_layer(hidden, 16, 3, 1, 1, act=None, bias_attr=True)
         short = conv_bn_layer(hidden, 16, 1, 1, 0, act=None)
-        hidden = fluid.layers.elementwise_add(x=conv, y=short, act='relu')
-    hidden = fluid.layers.matmul(hidden, data2, True, True)
+        hidden = paddle.nn.functional.relu(paddle.add(x=conv, y=short))
+    hidden = paddle.matmul(hidden, data2, True, True)
     if isinstance(quant_skip_pattern, str):
         with fluid.name_scope(quant_skip_pattern):
-            pool1 = fluid.layers.pool2d(
-                input=hidden, pool_size=2, pool_type='avg', pool_stride=2
+            pool1 = paddle.nn.functional.avg_pool2d(
+                x=hidden, kernel_size=2, stride=2
             )
-            pool2 = fluid.layers.pool2d(
-                input=hidden, pool_size=2, pool_type='max', pool_stride=2
+            pool2 = paddle.nn.functional.max_pool2d(
+                x=hidden, kernel_size=2, stride=2
             )
-            pool_add = fluid.layers.elementwise_add(
-                x=pool1, y=pool2, act='relu'
-            )
+            pool_add = paddle.nn.functional.relu(paddle.add(x=pool1, y=pool2))
     elif isinstance(quant_skip_pattern, list):
         assert (
             len(quant_skip_pattern) > 1
         ), 'test config error: the len of quant_skip_pattern list should be greater than 1.'
         with fluid.name_scope(quant_skip_pattern[0]):
-            pool1 = fluid.layers.pool2d(
-                input=hidden, pool_size=2, pool_type='avg', pool_stride=2
+            pool1 = paddle.nn.functional.avg_pool2d(
+                x=hidden, kernel_size=2, stride=2
             )
-            pool2 = fluid.layers.pool2d(
-                input=hidden, pool_size=2, pool_type='max', pool_stride=2
+            pool2 = paddle.nn.functional.max_pool2d(
+                x=hidden, kernel_size=2, stride=2
             )
         with fluid.name_scope(quant_skip_pattern[1]):
-            pool_add = fluid.layers.elementwise_add(
-                x=pool1, y=pool2, act='relu'
-            )
+            pool_add = paddle.nn.functional.relu(paddle.add(x=pool1, y=pool2))
     else:
-        pool1 = fluid.layers.pool2d(
-            input=hidden, pool_size=2, pool_type='avg', pool_stride=2
+        pool1 = paddle.nn.functional.avg_pool2d(
+            x=hidden, kernel_size=2, stride=2
         )
-        pool2 = fluid.layers.pool2d(
-            input=hidden, pool_size=2, pool_type='max', pool_stride=2
+        pool2 = paddle.nn.functional.max_pool2d(
+            x=hidden, kernel_size=2, stride=2
         )
-        pool_add = fluid.layers.elementwise_add(x=pool1, y=pool2, act='relu')
+        pool_add = paddle.nn.functional.relu(paddle.add(x=pool1, y=pool2))
     fc = paddle.static.nn.fc(x=pool_add, size=10)
-    loss = fluid.layers.cross_entropy(input=fc, label=label)
+    loss = paddle.nn.functional.cross_entropy(
+        input=fc, label=label, reduction='none', use_softmax=False
+    )
     loss = paddle.mean(loss)
     return loss
 

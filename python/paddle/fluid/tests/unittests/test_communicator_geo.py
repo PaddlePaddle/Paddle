@@ -49,7 +49,7 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
         y_predict = paddle.static.nn.fc(x=z, size=1, activation=None)
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
 
-        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
         return avg_cost, x, x1, y
 

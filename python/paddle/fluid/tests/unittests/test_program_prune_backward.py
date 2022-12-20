@@ -56,7 +56,9 @@ def lstm_net(use_feed):
     prediction = paddle.static.nn.fc(
         x=fc1, size=class_dim, activation='softmax'
     )
-    cost = fluid.layers.cross_entropy(input=prediction, label=label)
+    cost = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     avg_cost = paddle.mean(x=cost)
     return avg_cost
 
@@ -76,7 +78,9 @@ def simple_fc_net_with_accuracy(use_feed):
             ),
         )
     prediction = paddle.static.nn.fc(hidden, size=10, activation='softmax')
-    loss = fluid.layers.cross_entropy(input=prediction, label=label)
+    loss = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     loss = paddle.mean(loss)
     accuracy_out = paddle.static.accuracy(input=prediction, label=label, k=5)
     return loss
@@ -89,18 +93,22 @@ def cond_net(use_feed=None):
 
     def loss1(pred, label):
         x = fluid.layers.data(name="x", shape=[4], dtype='float32')
-        loss = fluid.layers.cross_entropy(input=pred, label=label)
+        loss = paddle.nn.functional.cross_entropy(
+            input=pred, label=label, reduction='none', use_softmax=False
+        )
         avg_loss = paddle.mean(loss, name='mean_cross_entropy_loss')
         return avg_loss
 
     def loss2(pred, label):
-        loss = fluid.layers.softmax_with_cross_entropy(logits=pred, label=label)
+        loss = paddle.nn.functional.softmax_with_cross_entropy(
+            logits=pred, label=label
+        )
         avg_loss = paddle.mean(loss, name='mean_softmax_loss')
         return avg_loss
 
     two = fluid.layers.fill_constant([1], 'int32', 2)
     pred = two == 0
-    avg_loss = fluid.layers.case(
+    avg_loss = paddle.static.nn.case(
         [(pred, lambda: loss1(prediction, label))],
         lambda: loss2(prediction, label),
     )
@@ -114,14 +122,18 @@ def optimization_in_cond_net(with_optimize=False):
 
     def loss1(opt, pred, label, with_optimize):
         x = fluid.layers.data(name="x", shape=[4], dtype='float32')
-        loss = fluid.layers.cross_entropy(input=pred, label=label)
+        loss = paddle.nn.functional.cross_entropy(
+            input=pred, label=label, reduction='none', use_softmax=False
+        )
         avg_loss = paddle.mean(loss, name='mean_cross_entropy_loss')
         if with_optimize:
             opt.minimize(avg_loss)
         return avg_loss
 
     def loss2(opt, pred, label, with_optimize):
-        loss = fluid.layers.softmax_with_cross_entropy(logits=pred, label=label)
+        loss = paddle.nn.functional.softmax_with_cross_entropy(
+            logits=pred, label=label
+        )
         avg_loss = paddle.mean(loss, name='mean_softmax_loss')
         if with_optimize:
             opt.minimize(avg_loss)
@@ -130,7 +142,7 @@ def optimization_in_cond_net(with_optimize=False):
     sgd = fluid.optimizer.SGD(learning_rate=0.1)
     two = fluid.layers.fill_constant([1], 'int32', 2)
     pred = two == 0
-    avg_loss = fluid.layers.case(
+    avg_loss = paddle.static.nn.case(
         [(pred, lambda: loss1(sgd, prediction, label, with_optimize))],
         lambda: loss2(sgd, prediction, label, with_optimize),
     )

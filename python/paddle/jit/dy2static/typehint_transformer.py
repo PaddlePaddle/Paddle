@@ -13,12 +13,11 @@
 # limitations under the License.
 
 
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
-    AstNodeWrapper,
-)
-from .base_transformer import (
-    BaseTransformer,
-)
+from paddle.jit.dy2static.static_analysis import AstNodeWrapper
+
+from .base_transformer import BaseTransformer
+
+__all__ = []
 
 
 class TypeHintTransformer(BaseTransformer):

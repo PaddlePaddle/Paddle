@@ -75,14 +75,16 @@ def static(
 
         def fn_1(opt, avg_loss=None, pred=None, label=None):
             if avg_loss is None:
-                loss = layers.cross_entropy(input=pred, label=label)
+                loss = paddle.nn.functional.cross_entropy(
+                    input=pred, label=label, reduction='none', use_softmax=False
+                )
                 avg_loss = paddle.mean(loss, name='mean_cross_entropy_loss')
             opt.minimize(avg_loss)
             return avg_loss
 
         def fn_2(opt, avg_loss=None, pred=None, label=None):
             if avg_loss is None:
-                loss = layers.softmax_with_cross_entropy(
+                loss = paddle.nn.functional.softmax_with_cross_entropy(
                     logits=pred, label=label
                 )
                 avg_loss = paddle.mean(loss, name='mean_softmax_loss')
@@ -101,18 +103,23 @@ def static(
         mod_two = paddle.remainder(id, two) == 0
 
         if loss_in_switch:
-            avg_loss = layers.case(
+            avg_loss = paddle.static.nn.case(
                 [(mod_two, lambda: fn_1(adam, None, prediction, label))],
                 lambda: fn_2(sgd, None, prediction, label),
             )
         else:
-            loss_1 = layers.cross_entropy(input=prediction, label=label)
+            loss_1 = paddle.nn.functional.cross_entropy(
+                input=prediction,
+                label=label,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_loss_1 = paddle.mean(loss_1)
-            loss_2 = layers.softmax_with_cross_entropy(
+            loss_2 = paddle.nn.functional.softmax_with_cross_entropy(
                 logits=prediction, label=label
             )
             avg_loss_2 = paddle.mean(loss_2)
-            avg_loss = layers.case(
+            avg_loss = paddle.static.nn.case(
                 [(mod_two, lambda: fn_1(adam, avg_loss_1))],
                 lambda: fn_2(sgd, avg_loss_2),
             )
@@ -188,12 +195,14 @@ def dynamic(train_data, use_cuda=False, use_parallel_exe=False):
             hidden, prediction = dy_layer(var_input)
 
             if epoch % 2 == 0:
-                cross_entropy_loss = layers.cross_entropy(prediction, var_label)
+                cross_entropy_loss = paddle.nn.functional.cross_entropy(
+                    prediction, var_label, reduction='none', use_softmax=False
+                )
                 loss = paddle.mean(cross_entropy_loss)
                 loss.backward()
                 adam.minimize(loss)
             else:
-                softmax_loss = layers.softmax_with_cross_entropy(
+                softmax_loss = paddle.nn.functional.softmax_with_cross_entropy(
                     prediction, var_label
                 )
                 loss = paddle.mean(softmax_loss)
@@ -264,7 +273,7 @@ class TestMultiOptimizersMultiCardsError(unittest.TestCase):
 
             cond = layers.fill_constant([1], 'bool', True)
 
-            layers.case(
+            paddle.static.nn.case(
                 [(cond, lambda: fn_1(adam, avg_loss))],
                 lambda: fn_2(sgd, avg_loss),
             )

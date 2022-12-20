@@ -187,6 +187,7 @@
     param : [x, x]
   kernel :
     func : cos_double_grad
+  optional: grad_out
   backward : cos_triple_grad
   inplace : (grad_x_grad -> grad_out_grad)
 
@@ -211,6 +212,7 @@
     param : [x, x, grad_x_grad_forward]
   kernel :
     func : cos_triple_grad
+  optional: grad_out_forward, grad_x_grad_forward, grad_out_grad_grad
   inplace : (grad_x_grad_forward -> grad_out_forward_grad)
 
 - backward_op : cosh_grad
@@ -223,6 +225,16 @@
   kernel :
     func : cosh_grad
   inplace : (out_grad -> x_grad)
+
+- backward_op : crop_grad
+  forward : crop (Tensor x, IntArray shape, IntArray offsets) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, IntArray offsets)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : CropGradInferMeta
+  kernel :
+    func : crop_grad
+    data_type : x
 
 - backward_op : cross_grad
   forward : cross (Tensor x, Tensor y, int axis = 9) -> Tensor(out)
@@ -664,6 +676,16 @@
   backward : log_double_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : log_loss_grad
+  forward : log_loss (Tensor input, Tensor label, float epsilon) -> Tensor(out)
+  args : (Tensor input, Tensor label, Tensor out_grad, float epsilon)
+  output : Tensor(input_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [input]
+  kernel :
+    func : log_loss_grad
+
 - backward_op : logit_grad
   forward : logit (Tensor x, float eps = 1e-6f) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, float eps)
@@ -684,6 +706,15 @@
   kernel :
     func : logsigmoid_grad
   inplace : (out_grad -> x_grad)
+
+- backward_op : lu_unpack_grad
+  forward : lu_unpack (Tensor x, Tensor y, bool unpack_ludata = true, bool unpack_pivots = true) -> Tensor(pmat), Tensor(l), Tensor(u)
+  args : (Tensor x, Tensor y, Tensor l, Tensor u, Tensor pmat, Tensor l_grad, Tensor u_grad, bool unpack_ludata, bool unpack_pivots)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : LUUnpackGradInferMeta
+  kernel :
+    func : lu_unpack_grad
 
 - backward_op : masked_select_grad
   forward : masked_select (Tensor x, Tensor mask) -> Tensor(out)
@@ -717,6 +748,16 @@
   kernel :
     func : maxout_grad
 
+- backward_op : mode_grad
+  forward : mode(Tensor x,  int axis = -1,  bool keepdim = false) -> Tensor(out), Tensor(indices)
+  args : (Tensor x, Tensor indices, Tensor out_grad,  int axis,  bool keepdim)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : mode_grad
+
 - backward_op : mv_grad
   forward : mv (Tensor x, Tensor vec) -> Tensor(out)
   args : (Tensor x, Tensor vec, Tensor out_grad)
@@ -727,6 +768,17 @@
   kernel :
     func : mv_grad
 
+- backward_op : nll_loss_grad
+  forward : nll_loss (Tensor input, Tensor label, Tensor weight, int64_t ignore_index = -100, str reduction = "mean") -> Tensor(out), Tensor(total_weight)
+  args : (Tensor input, Tensor label, Tensor weight, Tensor total_weight, Tensor out_grad, int64_t ignore_index, str reduction)
+  output : Tensor(input_grad)
+  infer_meta :
+    func : NllLossGradInferMeta
+  kernel :
+    func : nll_loss_grad
+    data_type : input
+  optional : weight
+
 - backward_op : poisson_grad
   forward : poisson (Tensor x) -> Tensor(out)
   args : (Tensor out_grad)
@@ -736,6 +788,26 @@
     param : [out_grad]
   kernel :
     func : poisson_grad
+
+- backward_op : put_along_axis_grad
+  forward : put_along_axis (Tensor arr, Tensor indices, Tensor value, int axis, str reduce = "assign") -> Tensor(out)
+  args : (Tensor arr, Tensor indices, Tensor out_grad, int axis, str reduce)
+  output : Tensor(arr_grad), Tensor(value_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [arr, indices]
+  kernel :
+    func : put_along_axis_grad
+
+- backward_op : qr_grad
+  forward : qr (Tensor x, str mode = "reduced") -> Tensor(q), Tensor(r)
+  args : (Tensor x, Tensor q, Tensor r, Tensor q_grad, Tensor r_grad, str mode)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : qr_grad
 
 - backward_op : reciprocal_grad
   forward : reciprocal (Tensor x) -> Tensor(out)
@@ -771,6 +843,16 @@
   backward: relu_double_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : renorm_grad
+  forward : renorm (Tensor x, float p, int axis, float max_norm) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, float p, int axis, float max_norm)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_grad]
+  kernel :
+    func : renorm_grad
+
 - backward_op : round_grad
   forward : round(Tensor x) -> Tensor(out)
   args : (Tensor out_grad)
@@ -804,6 +886,39 @@
     func : rsqrt_grad
   backward : rsqrt_double_grad
   inplace : (out_grad -> x_grad)
+
+- backward_op : scatter_grad
+  forward : scatter (Tensor x, Tensor index, Tensor updates, bool overwrite=true) -> Tensor(out)
+  args : (Tensor index, Tensor updates, Tensor out_grad, bool overwrite)
+  output : Tensor(x_grad), Tensor(updates_grad)
+  infer_meta :
+    func : ScatterGradInferMeta
+    param : [index, updates, out_grad, overwrite]
+  kernel :
+    func : scatter_grad
+  no_need_buffer : updates
+
+- backward_op : scatter_nd_add_grad
+  forward : scatter_nd_add (Tensor x, Tensor index, Tensor updates) -> Tensor(out)
+  args : (Tensor index, Tensor updates, Tensor out_grad)
+  output : Tensor(x_grad), Tensor(updates_grad)
+  infer_meta :
+    func : ScatterNdAddGradInferMeta
+    param : [index, updates, out_grad]
+  kernel :
+    func : scatter_nd_add_grad
+  no_need_buffer : updates
+
+- backward_op : selu_grad
+  forward : selu (Tensor x, float scale=1.0507009873554804934193349852946, float alpha=1.6732632423543772848170429916717) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad, float scale, float alpha)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : selu_grad
+    data_type : out
 
 - backward_op : send_uv_grad
   forward : send_uv (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str message_op = "ADD") -> Tensor(out)
@@ -872,6 +987,7 @@
     param : [x, x]
   kernel :
     func : sin_double_grad
+  optional: grad_out
   backward : sin_triple_grad
   inplace : (grad_x_grad -> grad_out_grad)
 
@@ -896,6 +1012,7 @@
     param : [x, x, grad_x_grad_forward]
   kernel :
     func : sin_triple_grad
+  optional: grad_out_forward, grad_x_grad_forward, grad_out_grad_grad
   inplace : (grad_x_grad_forward -> grad_out_forward_grad)
 
 - backward_op : sinh_grad
@@ -998,6 +1115,27 @@
   backward : square_double_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : svd_grad
+  forward : svd (Tensor x, bool full_matrices = false) -> Tensor(u), Tensor(s), Tensor(vh)
+  args : (Tensor x, Tensor u, Tensor vh, Tensor s, Tensor u_grad, Tensor vh_grad, Tensor s_grad, bool full_matrices)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : svd_grad
+  optional: u_grad, vh_grad, s_grad
+
+- backward_op : take_along_axis_grad
+  forward : take_along_axis (Tensor arr, Tensor indices, int axis) -> Tensor(out)
+  args : (Tensor arr, Tensor indices, Tensor out_grad, int axis)
+  output : Tensor(arr_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [arr]
+  kernel :
+    func : take_along_axis_grad
+
 - backward_op : tan_grad
   forward : tan (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -1054,6 +1192,7 @@
   kernel :
     func : tanh_triple_grad
   inplace : (grad_x_grad_forward -> grad_out_forward_grad)
+  optional : grad_out_new_grad, grad_out_grad_grad
 
 - backward_op : thresholded_relu_grad
   forward : thresholded_relu (Tensor x, float threshold) -> Tensor(out)
@@ -1065,6 +1204,17 @@
   kernel :
     func : thresholded_relu_grad
   inplace : (out_grad -> x_grad)
+
+- backward_op : topk_grad
+  forward : topk (Tensor x, Scalar k, int axis = -1, bool largest = true, bool sorted = true) -> Tensor(out), Tensor(indices)
+  args : (Tensor x, Tensor indices, Tensor out_grad, Scalar k, int axis, bool largest, bool sorted)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : topk_grad
+    data_type : out_grad
 
 - backward_op : trace_grad
   forward : trace (Tensor x, int offset, int axis1, int axis2) -> Tensor(out)
@@ -1099,3 +1249,14 @@
     func : unfold_grad
     data_type : out_grad
   no_need_buffer : x
+
+- backward_op : where_grad
+  forward : where (Tensor condition, Tensor x, Tensor y) -> Tensor(out)
+  args : (Tensor condition, Tensor x, Tensor y, Tensor out_grad)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
+  kernel :
+    func : where_grad
+  no_need_buffer : x, y

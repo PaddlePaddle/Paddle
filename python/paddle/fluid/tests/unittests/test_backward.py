@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
+import paddle.nn.functional as F
 import paddle.static as static
 
 
@@ -243,10 +244,8 @@ class SimpleNet(BackwardNet):
             x3, size=[100, 64], param_attr=fluid.ParamAttr(name='w2v')
         )
         # merge layers
-        x_merge = fluid.layers.elementwise_add(x_emb, x2_emb, name='x_add_x2')
-        x2_merge = fluid.layers.elementwise_add(
-            x2_emb, x3_emb, name='x2_add_x3'
-        )
+        x_merge = paddle.add(x_emb, x2_emb, name='x_add_x2')
+        x2_merge = paddle.add(x2_emb, x3_emb, name='x2_add_x3')
         # shared fc_w
         predict = paddle.static.nn.fc(
             x=x_merge,
@@ -264,7 +263,9 @@ class SimpleNet(BackwardNet):
             name='fc_no_use',
         )
         # loss
-        cost = fluid.layers.square_error_cost(input=predict, label=label)
+        cost = paddle.nn.functional.square_error_cost(
+            input=predict, label=label
+        )
         loss = paddle.mean(cost, name='mean_loss')
 
         return loss
@@ -285,7 +286,7 @@ class TestGradientsError(unittest.TestCase):
         x = fluid.data(name='x', shape=[None, 2, 8, 8], dtype='float32')
         x.stop_gradient = False
         conv = fluid.layers.conv2d(x, 4, 1, bias_attr=False)
-        y = fluid.layers.relu(conv)
+        y = F.relu(conv)
 
         with self.assertRaises(TypeError):
             x_grad = fluid.gradients(y.name, x)
@@ -332,7 +333,7 @@ class TestAppendBackwardWithError(unittest.TestCase):
         y = fluid.data(name='y', shape=[None, 1], dtype='float32')
         x_emb = fluid.embedding(x, size=[100, 256])
         y_predict = paddle.static.nn.fc(x=x_emb, size=1, name='my_fc')
-        loss = fluid.layers.square_error_cost(input=y_predict, label=y)
+        loss = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_loss = paddle.mean(loss)
         param_names = [
             param.name

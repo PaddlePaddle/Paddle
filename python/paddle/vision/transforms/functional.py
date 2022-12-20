@@ -20,6 +20,7 @@ from PIL import Image
 
 import paddle
 
+from ...fluid.framework import Variable
 from . import functional_cv2 as F_cv2
 from . import functional_pil as F_pil
 from . import functional_tensor as F_t
@@ -32,7 +33,10 @@ def _is_pil_image(img):
 
 
 def _is_tensor_image(img):
-    return isinstance(img, paddle.Tensor)
+    """
+    Return True if img is a Tensor for dynamic mode or Variable for static mode.
+    """
+    return isinstance(img, (paddle.Tensor, Variable))
 
 
 def _is_numpy_image(img):
@@ -42,7 +46,18 @@ def _is_numpy_image(img):
 def to_tensor(pic, data_format='CHW'):
     """Converts a ``PIL.Image`` or ``numpy.ndarray`` to paddle.Tensor.
 
-    See ``ToTensor`` for more details.
+    Converts a PIL.Image or numpy.ndarray (H x W x C) to a paddle.Tensor of shape (C x H x W).
+
+    If input is a grayscale image (H x W), it will be converted to an image of shape (H x W x 1).
+    And the shape of output tensor will be (1 x H x W).
+
+    If you want to keep the shape of output tensor as (H x W x C), you can set data_format = ``HWC`` .
+
+    Converts a PIL.Image or numpy.ndarray in the range [0, 255] to a paddle.Tensor in the
+    range [0.0, 1.0] if the PIL Image belongs to one of the modes (L, LA, P, I, F, RGB, YCbCr,
+    RGBA, CMYK, 1) or if the numpy.ndarray has dtype = np.uint8.
+
+    In the other cases, tensors are returned without scaling.
 
     Args:
         pic (PIL.Image|np.ndarray): Image to be converted to tensor.
@@ -764,7 +779,7 @@ def rotate(
         center (2-list|2-tuple, optional): Optional center of rotation.
             Origin is the upper left corner.
             Default is the center of the image.
-        fill (3-list|3-tuple or int): RGB pixel fill value for area outside the rotated image.
+        fill (3-list|3-tuple or int, optional): RGB pixel fill value for area outside the rotated image.
             If int, it is used for all channels respectively. Default value is 0.
 
 

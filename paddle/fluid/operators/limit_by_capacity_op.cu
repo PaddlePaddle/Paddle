@@ -28,8 +28,6 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 __global__ void limit_by_capacity_impl(
     const T* expc, T* cap, T* out, const int n_expert, const int n_worker) {

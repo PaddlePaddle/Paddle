@@ -34,7 +34,7 @@ class FCFusePassTest(PassTest):
             tmp_1 = paddle.static.nn.fc(
                 input=tmp_0, size=32, num_flatten_dims=1
             )
-            tmp_2 = fluid.layers.softmax(input=tmp_1)
+            tmp_2 = paddle.nn.functional.softmax(tmp_1)
 
         self.feeds = {"data": np.random.random((32, 128)).astype("float32")}
         self.fetch_list = [tmp_0, tmp_1, tmp_2]

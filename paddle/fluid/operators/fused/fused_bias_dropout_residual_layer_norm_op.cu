@@ -25,8 +25,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 class FusedBiasDropoutResidualLnOpKernel : public framework::OpKernel<T> {
  public:

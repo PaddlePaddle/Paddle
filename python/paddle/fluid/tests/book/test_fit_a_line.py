@@ -56,16 +56,20 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
         if not pure_bf16:
             with amp.bf16.bf16_guard():
                 y_predict = paddle.static.nn.fc(x, size=1, activation=None)
-            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
         else:
             y_predict = paddle.static.nn.fc(x, size=1, activation=None)
             with amp.bf16.bf16_guard():
-                cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+                cost = paddle.nn.functional.square_error_cost(
+                    input=y_predict, label=y
+                )
                 avg_cost = paddle.mean(cost)
     else:
         y_predict = paddle.static.nn.fc(x, size=1, activation=None)
-        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
 
     lr = 5e-3 if use_bf16 else 1e-3

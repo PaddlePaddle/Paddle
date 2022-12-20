@@ -12,20 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.utils import gast
 from paddle.fluid import unique_name
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
-    ORIGI_INFO,
+from paddle.jit.dy2static.utils import (
     FOR_ITER_INDEX_PREFIX,
-    FOR_ITER_VAR_LEN_PREFIX,
+    FOR_ITER_ITERATOR_PREFIX,
     FOR_ITER_TARGET_PREFIX,
+    FOR_ITER_VAR_LEN_PREFIX,
     FOR_ITER_VAR_NAME_PREFIX,
     FOR_ITER_ZIP_TO_LIST_PREFIX,
-    FOR_ITER_ITERATOR_PREFIX,
-    create_assign_node,
+    ORIGI_INFO,
     ast_to_source_code,
+    create_assign_node,
     get_attribute_full_name,
 )
+from paddle.utils import gast
+
+__all__ = []
 
 
 class BaseTransformer(gast.NodeTransformer):

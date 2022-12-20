@@ -12,18 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle.jit.dy2static.static_analysis import AstNodeWrapper
+from paddle.jit.dy2static.utils import ast_to_source_code, is_paddle_api
 from paddle.utils import gast
 
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
-    AstNodeWrapper,
-)
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
-from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_api
-from .base_transformer import (
-    BaseTransformer,
-)
+from .base_transformer import BaseTransformer
 
 PDB_SET = "pdb.set_trace"
+
+__all__ = []
 
 
 class CallTransformer(BaseTransformer):
@@ -51,17 +48,16 @@ class CallTransformer(BaseTransformer):
 
         func_str = ast_to_source_code(node.func).strip()
         try:
-            from paddle.jit.dy2static.convert_call_func import (
-                is_builtin,
-            )
+            from paddle.jit.dy2static.convert_call_func import is_builtin
 
             need_convert_builtin_func_list = {
                 'len',
                 'zip',
                 'range',
                 'enumerate',
+                'print',
             }
-            is_builtin = eval("is_builtin({})".format(func_str))
+            is_builtin = eval("is_builtin({})".format(func_str))  # noqa: F811
             need_convert = func_str in need_convert_builtin_func_list
             return is_builtin and not need_convert
         except Exception:

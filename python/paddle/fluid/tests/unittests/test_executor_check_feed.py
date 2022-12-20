@@ -25,7 +25,7 @@ class TestExecutor(unittest.TestCase):
         y = fluid.data(name="y", shape=[None, 1], dtype='float32')
         y_predict = paddle.static.nn.fc(x, size=1, activation=None)
 
-        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
 
         opt = fluid.optimizer.Adam(learning_rate=lr)

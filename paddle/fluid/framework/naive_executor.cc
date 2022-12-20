@@ -15,8 +15,11 @@
 #include "paddle/fluid/framework/naive_executor.h"
 
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/denormal.h"
 #ifdef PADDLE_WITH_MKLDNN
@@ -61,12 +64,31 @@ void NaiveExecutor::Run() {
 #ifdef PADDLE_WITH_INFERENCE_NVTX
     platform::CudaNvtxRangePush(op->Type(), platform::NvtxRangeColor::Green);
 #endif
+
+    // According to reuse table, we share the out tensor's holder.
+    if (reuse_cache_.count(op.get())) {
+      for (auto &it : reuse_cache_[op.get()]) {
+        it.first->ShareBufferWith(*cluster_buffer_[it.second], true);
+      }
+    }
+
     op->Run(*scope_, place_);
+
+    // Update the shared_holder so that only records the max one.
+    if (reuse_cache_.count(op.get())) {
+      for (auto &it : reuse_cache_[op.get()]) {
+        if (it.first->memory_size() >
+            cluster_buffer_[it.second]->memory_size()) {
+          cluster_buffer_[it.second] = it.first;
+        }
+      }
+    }
+
 #ifdef PADDLE_WITH_INFERENCE_NVTX
     platform::CudaNvtxRangePop();
 #endif
-    if (hookfunc_) {
-      hookfunc_(op.get());
+    for (auto &func : hookfunc_) {
+      func(op.get());
     }
   }
 #ifdef PADDLE_WITH_INFERENCE_NVTX
@@ -146,7 +168,46 @@ phi::DenseTensor *NaiveExecutor::FindTensor(const std::string &name) {
 }
 
 void NaiveExecutor::RegisterOutputHook(const HookFunc &hookfunc) {
-  hookfunc_ = hookfunc;
+  hookfunc_.push_back(hookfunc);
+}
+
+void NaiveExecutor::MakeReusePlan(
+    const std::unordered_map<std::string, std::string> &reuse_table) {
+  std::unordered_map<std::string, std::unordered_set<std::string>> clusters;
+  for (auto &it : reuse_table) {
+    clusters[it.second].insert(it.first);
+  }
+
+  std::vector<std::string> cluster_names;
+  for (auto &it : clusters) {
+    cluster_names.push_back(it.first);
+  }
+  cluster_buffer_.resize(cluster_names.size());
+
+  for (auto &op : ops_) {
+    for (auto &name : op->OutputVars(true)) {
+      if (reuse_table.count(name)) {
+        const auto &reuse_name = reuse_table.at(name);
+        auto it =
+            std::find(cluster_names.begin(), cluster_names.end(), reuse_name);
+        int idx = it - cluster_names.begin();
+        auto *var = scope_->FindVar(name);
+        auto *reuse_var = scope_->FindVar(reuse_name);
+        if (var && reuse_var && var->IsType<phi::DenseTensor>() &&
+            reuse_var->IsType<phi::DenseTensor>()) {
+          auto *tensor = var->GetMutable<phi::DenseTensor>();
+          auto *reuse_tensor = reuse_var->GetMutable<phi::DenseTensor>();
+          cluster_buffer_[idx] = reuse_tensor;
+          if (reuse_cache_.count(op.get())) {
+            reuse_cache_[op.get()].emplace(tensor, idx);
+          } else {
+            reuse_cache_[op.get()] =
+                std::unordered_map<phi::DenseTensor *, int>{{tensor, idx}};
+          }
+        }
+      }
+    }
+  }
 }
 
 NaiveExecutor::~NaiveExecutor() {

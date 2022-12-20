@@ -88,7 +88,9 @@ def bow_net(
     prediction = paddle.static.nn.fc(
         x=[fc_2], size=class_dim, activation="softmax"
     )
-    cost = fluid.layers.cross_entropy(input=prediction, label=label)
+    cost = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     avg_cost = paddle.mean(x=cost)
 
     return avg_cost
@@ -173,9 +175,7 @@ class TestWeightDecay(unittest.TestCase):
             ]
 
             for params in param_list:
-                updated_p = fluid.layers.elementwise_sub(
-                    x=params[0], y=params[1]
-                )
+                updated_p = paddle.subtract(x=params[0], y=params[1])
                 fluid.layers.assign(input=updated_p, output=params[0])
 
             optimizer.apply_optimize(avg_cost, startup_prog, params_grads)

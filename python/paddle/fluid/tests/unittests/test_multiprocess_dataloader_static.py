@@ -80,7 +80,12 @@ def simple_fc_net_static():
                 bias_attr=bias_attr,
             )
             loss = paddle.mean(
-                fluid.layers.cross_entropy(input=predict_label, label=label)
+                paddle.nn.functional.cross_entropy(
+                    input=predict_label,
+                    label=label,
+                    reduction='none',
+                    use_softmax=False,
+                )
             )
 
             optimizer = fluid.optimizer.Adam()

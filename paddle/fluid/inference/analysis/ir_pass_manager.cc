@@ -27,6 +27,7 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/analysis/argument.h"
 #include "paddle/fluid/string/pretty_log.h"
+#include "paddle/phi/core/errors.h"
 
 namespace paddle {
 namespace inference {
@@ -44,8 +45,10 @@ IRPassManager::IRPassManager(Argument *argument) {
 
 void IRPassManager::CreatePasses(Argument *argument,
                                  const std::vector<std::string> &passes) {
+  // For graph_viz_pass
   std::string pre_pass;
   int pass_num = 0;
+
   for (const std::string &pass_name : passes) {
     auto pass = framework::ir::PassRegistry::Instance().Get(pass_name);
     pass->Set("use_varseqlen", new bool(argument->tensorrt_use_varseqlen()));
@@ -86,10 +89,14 @@ void IRPassManager::CreatePasses(Argument *argument,
                               argument->tensorrt_tuned_dynamic_shape();
     pass->Set("with_dynamic_shape", new bool(with_dynamic_shape));
 
-    pass->Set("model_precision", new int(argument->model_precision()));
+    // Mixed precision related.
     pass->Set(
         "mixed_black_list",
         new std::unordered_set<std::string>(argument->mixed_black_list()));
+    pass->Set("enable_gpu_mixed", new bool(argument->enable_gpu_mixed()));
+    pass->Set("mixed_precision_mode",
+              new int(argument->mixed_precision_mode()));
+    pass->Set("model_precision", new int(argument->model_precision()));
 
     if (pass_name == "graph_viz_pass") {
       std::string optim_cache_dir = argument->optim_cache_dir();
@@ -205,6 +212,7 @@ void IRPassManager::CreatePasses(Argument *argument,
           new std::vector<std::string>(argument->tensorrt_disabled_ops()));
       pass->Set("trt_use_dla", new bool(argument->tensorrt_use_dla()));
       pass->Set("trt_dla_core", new int(argument->tensorrt_dla_core()));
+
       // Setting the disable_trt_plugin_fp16 to true means that TRT plugin will
       // not run fp16.
       pass->Set("disable_trt_plugin_fp16",
@@ -229,8 +237,11 @@ void IRPassManager::CreatePasses(Argument *argument,
                     argument->dlnne_input_shape_dict()));
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
-    }
-    if (pass_name == "lite_subgraph_pass") {
+    } else if (pass_name == "memory_optimize_pass") {
+      pass->Set("root_predictor_id", new int(argument->root_predictor_id()));
+    } else if (pass_name == "build_cinn_pass") {
+      pass->Set("is_inference_stage", new bool(argument->use_cinn_compiler()));
+    } else if (pass_name == "lite_subgraph_pass") {
       bool lite_enable_int8 =
           argument->lite_precision_mode() == AnalysisConfig::Precision::kInt8;
       pass->Set("program",
@@ -278,8 +289,7 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("nnadapter_model_cache_token",
                 new std::vector<std::string>(
                     argument->nnadapter_model_cache_token()));
-    }
-    if (pass_name == "fc_fuse_pass") {
+    } else if (pass_name == "fc_fuse_pass") {
       pass->Set("use_gpu", new bool(argument->use_gpu()));
       bool fc_mkldnn_pass = 0;
       for (const std::string &pass_n : passes) {
@@ -297,40 +307,16 @@ void IRPassManager::CreatePasses(Argument *argument,
 }
 
 std::unique_ptr<Graph> IRPassManager::Apply(std::unique_ptr<Graph> graph) {
-  if (passes_.empty()) {
-    return graph;
-  }
   PADDLE_ENFORCE_NOT_NULL(
-      graph.get(),
-      platform::errors::PreconditionNotMet("Graph cannot be NULL."));
+      graph.get(), platform::errors::InvalidArgument("Graph cannot be null."));
   // Apply all the passes
   for (const auto &pass : passes_) {
     if (pass->Type() != "graph_viz_pass" && !disable_logs_) {
       PrettyLogEndl(Style::H2(), "--- Running IR pass [%s]", pass->Type());
     }
-    // delete_fill_constant_op_pass is not apply under trt dynamic shape
-    if (pass->Type() == "delete_fill_constant_op_pass") {
-      bool use_dynamic = pass->Get<bool>("with_dynamic_shape");
-      if (use_dynamic) continue;
-    }
     graph.reset(pass->Apply(graph.release()));
   }
   return graph;
-}
-
-framework::proto::ProgramDesc IRPassManager::AcquireProgram(
-    std::unique_ptr<Graph> *graph, ProgramDesc *program) const {
-  auto pass =
-      framework::ir::PassRegistry::Instance().Get("graph_to_program_pass");
-
-  // Direct using ProgramDesc desc(argument->main_program()) may cause
-  // incomplete copies of information.
-  ProgramDesc desc;
-  desc.CopyFrom(*program->Proto());
-  pass->SetNotOwned("program", &desc);
-  auto *the_graph = graph->release();
-  graph->reset(pass->Apply(the_graph));
-  return *desc.Proto();
 }
 
 }  // namespace analysis

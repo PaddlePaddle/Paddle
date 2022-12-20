@@ -150,7 +150,9 @@ class TestDistFleetHeterProgram(unittest.TestCase):
 
         with fluid.device_guard("gpu"):
             labels = fluid.layers.cast(inputs[-1], dtype="int64")
-            cost = fluid.layers.cross_entropy(input=predict, label=labels)
+            cost = paddle.nn.functional.cross_entropy(
+                input=predict, label=labels, reduction='none', use_softmax=False
+            )
             avg_cost = paddle.sum(cost)
 
         return avg_cost

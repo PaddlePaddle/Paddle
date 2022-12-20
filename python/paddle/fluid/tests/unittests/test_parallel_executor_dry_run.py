@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
+import os
+import unittest
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler
-import unittest
-import logging
-import os
 
 os.environ['CPU_NUM'] = str(4)
 
@@ -83,7 +84,9 @@ class TestMNISTDryRun(TestBase):
         prediction = paddle.static.nn.fc(
             x=hidden, size=10, activation='softmax'
         )
-        loss = fluid.layers.cross_entropy(input=prediction, label=label)
+        loss = paddle.nn.functional.cross_entropy(
+            input=prediction, label=label, reduction='none', use_softmax=False
+        )
         avg_loss = paddle.mean(loss)
         fluid.optimizer.Adam().minimize(avg_loss)
         return avg_loss

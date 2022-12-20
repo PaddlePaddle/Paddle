@@ -13,55 +13,44 @@
 # limitations under the License.
 
 import collections
-from paddle.utils import gast
 import inspect
 import textwrap
 import threading
 import weakref
 
-from paddle.fluid import framework
-from paddle.fluid import _non_static_mode
-from paddle.fluid.dygraph import layers
+from paddle.fluid import _non_static_mode, framework
 from paddle.fluid.data_feeder import check_type
+from paddle.fluid.dygraph import layers
+from paddle.fluid.dygraph.base import param_guard, switch_to_static_graph
 from paddle.fluid.layers.utils import flatten
-from paddle.fluid.dygraph.base import param_guard
-from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.dygraph.dygraph_to_static import error
-from paddle.fluid.dygraph.dygraph_to_static import logging_utils
-from paddle.fluid.dygraph.dygraph_to_static.origin_info import (
-    attach_origin_info,
-)
-from paddle.fluid.dygraph.dygraph_to_static.origin_info import (
-    create_and_update_origin_info_map,
-)
-from paddle.fluid.dygraph.dygraph_to_static.origin_info import (
-    update_op_callstack_with_origin_info,
-)
-from .partial_program import (
-    partial_program_from,
-)
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
-from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
-from paddle.fluid.dygraph.dygraph_to_static.utils import input_specs_compatible
-from paddle.fluid.dygraph.dygraph_to_static.utils import type_name
-from paddle.fluid.dygraph.dygraph_to_static.utils import unwrap
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
-    make_hashable,
-    ALREADY_D2S,
-)
-from paddle.fluid.dygraph.dygraph_to_static.function_spec import (
+from paddle.utils import gast
+
+from . import error, logging_utils
+from .ast_transformer import DygraphToStaticAst
+from .function_spec import (
     FunctionSpec,
     _hash_spec_names,
-)
-from paddle.fluid.dygraph.dygraph_to_static.function_spec import (
     get_buffers,
     get_parameters,
 )
+from .origin_info import (
+    attach_origin_info,
+    create_and_update_origin_info_map,
+    update_op_callstack_with_origin_info,
+)
+from .partial_program import partial_program_from
+from .utils import (
+    ALREADY_D2S,
+    ast_to_func,
+    ast_to_source_code,
+    func_to_source_code,
+    input_specs_compatible,
+    make_hashable,
+    type_name,
+    unwrap,
+)
 
-from .ast_transformer import DygraphToStaticAst
-
-__all__ = ['ProgramTranslator', 'convert_to_static']
+__all__ = []
 
 # For each traced function, we set `max_traced_program_count` = 10 to consider caching performance.
 # Once exceeding the threshold, we will raise warning to users to make sure the conversion is as expected.

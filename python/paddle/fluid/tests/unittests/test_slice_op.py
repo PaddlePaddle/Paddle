@@ -23,7 +23,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
-from paddle.fluid.framework import _enable_legacy_dygraph, _test_eager_guard
 
 paddle.enable_static()
 
@@ -640,29 +639,28 @@ class TestSliceApiWithTensor(unittest.TestCase):
 class TestSliceApiEager(unittest.TestCase):
     def test_slice_api(self):
         with paddle.fluid.dygraph.guard():
-            with _test_eager_guard():
-                a = paddle.rand(shape=[4, 5, 6], dtype='float32')
-                a.stop_gradient = False
-                axes = [0, 1, 2]
-                starts = [-3, 0, 2]
-                ends = [3, 2, 4]
-                a_1 = paddle.slice(a, axes=axes, starts=starts, ends=ends)
+            a = paddle.rand(shape=[4, 5, 6], dtype='float32')
+            a.stop_gradient = False
+            axes = [0, 1, 2]
+            starts = [-3, 0, 2]
+            ends = [3, 2, 4]
+            a_1 = paddle.slice(a, axes=axes, starts=starts, ends=ends)
 
-                a_2 = paddle.slice(
-                    a,
-                    axes=axes,
-                    starts=paddle.to_tensor(starts),
-                    ends=paddle.to_tensor(ends),
-                )
-                np.testing.assert_array_equal(a_1.numpy(), a_2.numpy())
-                a_1.backward()
-                grad_truth = paddle.zeros_like(a)
-                grad_truth[-3:3, 0:2, 2:4] = 1
-                np.testing.assert_array_equal(grad_truth, a.gradient())
+            a_2 = paddle.slice(
+                a,
+                axes=axes,
+                starts=paddle.to_tensor(starts),
+                ends=paddle.to_tensor(ends),
+            )
+            np.testing.assert_array_equal(a_1.numpy(), a_2.numpy())
+            a_1.backward()
+            grad_truth = paddle.zeros_like(a)
+            grad_truth[-3:3, 0:2, 2:4] = 1
+            np.testing.assert_array_equal(grad_truth, a.gradient())
 
-                np.testing.assert_allclose(
-                    a_1.numpy(), a[-3:3, 0:2, 2:4], rtol=1e-05
-                )
+            np.testing.assert_allclose(
+                a_1.numpy(), a[-3:3, 0:2, 2:4], rtol=1e-05
+            )
 
 
 class TestSliceApiWithLoDTensorArray(unittest.TestCase):
@@ -692,17 +690,17 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
             for each_x in x:
                 each_x.stop_gradient = False
 
-            arr = layers.create_array(dtype="float32")
+            arr = paddle.tensor.create_array(dtype="float32")
             for i in range(3):
-                idx = layers.array_length(arr)
-                arr = layers.array_write(x=x[i], i=idx, array=arr)
+                idx = paddle.tensor.array_length(arr)
+                arr = paddle.tensor.array_write(x=x[i], i=idx, array=arr)
 
             if case_num == 1:
                 self.sliced_arr = output = arr[0]
 
             elif case_num == 2:
                 end = (
-                    fluid.layers.array_length(arr) - 1
+                    paddle.tensor.array_length(arr) - 1
                 )  # dtype of end is int64
                 self.sliced_arr = slice_arr = arr[self.start : end]
                 output, _ = fluid.layers.tensor_array_to_tensor(
@@ -861,10 +859,9 @@ class TestInferShape(unittest.TestCase):
 )
 class TestImperativeCUDAPinnedInput(unittest.TestCase):
     def test_input_cuda_pinned_var(self):
-        _enable_legacy_dygraph()
         with fluid.dygraph.guard():
             data = np.random.random((2, 80, 16128)).astype('float32')
-            var = core.VarBase(
+            var = core.eager.Tensor(
                 value=data,
                 name='',
                 persistable=False,

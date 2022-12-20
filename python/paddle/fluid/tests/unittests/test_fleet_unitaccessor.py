@@ -15,6 +15,7 @@
 
 import os
 import unittest
+
 import paddle
 
 
@@ -74,7 +75,7 @@ class TestFleet1(unittest.TestCase):
                 append_batch_size=False,
             )
             label_cast = fluid.layers.cast(label, dtype='float32')
-            cost = fluid.layers.log_loss(fc, label_cast)
+            cost = paddle.nn.functional.log_loss(fc, label_cast)
 
         strategy = {}
         strategy["embedding"] = {}

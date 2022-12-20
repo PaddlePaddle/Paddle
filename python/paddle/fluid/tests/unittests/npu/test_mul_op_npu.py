@@ -247,7 +247,7 @@ class TestMulNet(unittest.TestCase):
             fc_1 = paddle.static.nn.fc(x=result, size=8)
             prediction = paddle.static.nn.fc(x=fc_1, size=2, activation='softmax')
 
-            cost = fluid.layers.cross_entropy(input=prediction, label=label)
+            cost = paddle.nn.functional.cross_entropy(input=prediction, label=label, reduction='none', use_softmax=False)
             loss = paddle.mean(cost)
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
@@ -324,7 +324,7 @@ class TestMulNet3_2(unittest.TestCase):
             fc_1 = paddle.static.nn.fc(x=result, size=8)
             prediction = paddle.static.nn.fc(x=fc_1, size=2, activation='softmax')
 
-            cost = fluid.layers.cross_entropy(input=prediction, label=label)
+            cost = paddle.nn.functional.cross_entropy(input=prediction, label=label, reduction='none', use_softmax=False)
             loss = paddle.mean(cost)
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
@@ -404,7 +404,7 @@ class TestMulNet3_2_xc2(unittest.TestCase):
             fc_1 = paddle.static.nn.fc(x=result_re, size=8)
             prediction = paddle.static.nn.fc(x=fc_1, size=2, activation='softmax')
 
-            cost = fluid.layers.cross_entropy(input=prediction, label=label)
+            cost = paddle.nn.functional.cross_entropy(input=prediction, label=label, reduction='none', use_softmax=False)
             loss = paddle.mean(cost)
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
@@ -485,7 +485,7 @@ class TestMulNet4_2(unittest.TestCase):
 
             prediction = paddle.static.nn.fc(x=result, size=2, activation='softmax')
 
-            cost = fluid.layers.cross_entropy(input=prediction, label=label)
+            cost = paddle.nn.functional.cross_entropy(input=prediction, label=label, reduction='none', use_softmax=False)
             loss = paddle.mean(cost)
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)

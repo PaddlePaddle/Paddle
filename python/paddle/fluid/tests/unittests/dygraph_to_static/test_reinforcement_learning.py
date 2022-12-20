@@ -21,6 +21,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
+import paddle.nn.functional as F
 from paddle.fluid.dygraph import Layer, to_variable
 from paddle.jit import ProgramTranslator
 from paddle.jit.api import declarative
@@ -44,11 +45,11 @@ class Policy(Layer):
     def forward(self, x):
         x = paddle.reshape(x, shape=[1, 4])
         x = self.affine1(x)
-        x = fluid.layers.dropout(x, self.dropout_ratio)
-        x = fluid.layers.relu(x)
+        x = paddle.nn.functional.dropout(x, self.dropout_ratio)
+        x = F.relu(x)
         action_scores = self.affine2(x)
 
-        log_prob = fluid.layers.softmax(action_scores, axis=1)
+        log_prob = paddle.nn.functional.softmax(action_scores, axis=1)
 
         return log_prob
 
@@ -217,5 +218,4 @@ class TestDeclarative(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

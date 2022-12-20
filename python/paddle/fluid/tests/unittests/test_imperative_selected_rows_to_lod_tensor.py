@@ -22,9 +22,9 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import Embedding
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.optimizer import SGDOptimizer
+from paddle.nn import Embedding
 
 
 class SimpleNet(fluid.Layer):
@@ -42,11 +42,12 @@ class SimpleNet(fluid.Layer):
         self.vocab_size = vocab_size
         self.init_scale = init_scale
         self.num_steps = num_steps
+        paddle.set_default_dtype(dtype)
         self.embedding = Embedding(
-            size=[vocab_size, hidden_size],
-            dtype=dtype,
-            is_sparse=is_sparse,
-            param_attr=fluid.ParamAttr(
+            vocab_size,
+            hidden_size,
+            sparse=is_sparse,
+            weight_attr=fluid.ParamAttr(
                 name='embedding_para',
                 initializer=fluid.initializer.UniformInitializer(
                     low=-init_scale, high=init_scale
@@ -72,13 +73,13 @@ class SimpleNet(fluid.Layer):
 
     def forward(self, input, label):
         x_emb = self.embedding(input)
-        fc = fluid.layers.matmul(x_emb, self.softmax_weight)
-        fc = fluid.layers.elementwise_add(fc, self.softmax_bias)
-        projection = fluid.layers.matmul(
+        fc = paddle.matmul(x_emb, self.softmax_weight)
+        fc = paddle.add(fc, self.softmax_bias)
+        projection = paddle.matmul(
             fc, paddle.transpose(self.embedding.weight, perm=[1, 0])
         )
         projection = paddle.reshape(projection, shape=[-1, self.vocab_size])
-        loss = fluid.layers.softmax_with_cross_entropy(
+        loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=projection, label=label, soft_label=False
         )
         loss = paddle.reshape(loss, shape=[-1, self.num_steps])

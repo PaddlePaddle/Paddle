@@ -17,7 +17,7 @@
 import paddle
 import paddle.fluid as fluid
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
-from paddle.framework import _non_static_mode, core
+from paddle.framework import core
 from paddle.utils import deprecated
 
 from ...fluid.data_feeder import check_variable_and_dtype
@@ -1353,17 +1353,20 @@ def l1_loss(input, label, reduction='mean', name=None):
             label = paddle.to_tensor([[1.7, 1], [0.4, 0.5]])
 
             l1_loss = paddle.nn.functional.l1_loss(input, label)
-            print(l1_loss.numpy())
-            # [0.35]
+            print(l1_loss)
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [0.34999999])
 
             l1_loss = paddle.nn.functional.l1_loss(input, label, reduction='none')
-            print(l1_loss.numpy())
-            # [[0.20000005 0.19999999]
-            # [0.2        0.79999995]]
+            print(l1_loss)
+            # Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[0.20000005, 0.19999999],
+            #         [0.20000000, 0.79999995]])
 
             l1_loss = paddle.nn.functional.l1_loss(input, label, reduction='sum')
-            print(l1_loss.numpy())
-            # [1.4]
+            print(l1_loss)
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [1.39999998])
 
     """
     if reduction not in ['sum', 'mean', 'none']:
@@ -1402,15 +1405,13 @@ def l1_loss(input, label, reduction='mean', name=None):
     )
 
     if reduction == 'sum':
-        unreduced = paddle.fluid.layers.elementwise_sub(input, label, act='abs')
+        unreduced = paddle.abs(paddle.subtract(x=input, y=label))
         return paddle.sum(unreduced, name=name)
     elif reduction == 'mean':
-        unreduced = paddle.fluid.layers.elementwise_sub(input, label, act='abs')
+        unreduced = paddle.abs(paddle.subtract(x=input, y=label))
         return paddle.mean(unreduced, name=name)
     else:
-        return paddle.fluid.layers.elementwise_sub(
-            input, label, act='abs', name=name
-        )
+        return paddle.abs(paddle.subtract(x=input, y=label, name=name))
 
 
 def nll_loss(
@@ -1545,33 +1546,27 @@ def kl_div(input, label, reduction='mean', name=None):
 
     $$l(x, y) = y * (\log(y) - x)$$
 
-    While :math:`x` is input and :math:`y` is label.
+    Here :math:`x` is input and :math:`y` is label.
 
-    While :attr:`reduction` is :attr:`none`, output loss is in
-    the same shape as input, loss in each point is calculated
-    separately and no reduction is applied.
+    If `reduction` is ``'none'``, the output loss is the same shape as the input, and the loss at each point is calculated separately. There is no reduction to the result.
 
-    While :attr:`reduction` is :attr:`mean`, output loss is in
-    shape of [1] and loss value is the mean value of all losses.
+    If `reduction` is ``'mean'``, the output loss is the shape of [1], and the output is the average of all losses.
 
-    While :attr:`reduction` is :attr:`sum`, output loss is in
-    shape of [1] and loss value is the sum value of all losses.
+    If `reduction` is ``'sum'``, the output loss is the shape of [1], and the output is the sum of all losses.
 
-    While :attr:`reduction` is :attr:`batchmean`, output loss is
-    in shape of [1] and loss value is the sum value of all losses
-    divided by batch size.
+    If `reduction` is ``'batchmean'``, the output loss is the shape of [N], N is the batch size, and the output is the sum of all losses divided by the batch size.
 
     Args:
         input (Tensor): The input tensor. The shapes is [N, *], where N is batch size and `*` means
-             any number of additional dimensions. It's data type should be float32, float64.
+            any number of additional dimensions. It's data type should be float32, float64.
         label (Tensor): label. The shapes is [N, *], same shape as ``input`` . It's data type should be float32, float64.
-        reduction (Tensor): Indicate how to average the loss,
-             the candicates are ``'none'`` | ``'batchmean'`` | ``'mean'`` | ``'sum'``.
-             If `reduction` is ``'mean'``, the reduced mean loss is returned;
-             If `reduction` is ``'batchmean'``, the sum loss divided by batch size is returned;
-             if `reduction` is ``'sum'``, the reduced sum loss is returned;
-             if `reduction` is ``'none'``, no reduction will be apllied.
-             Default is ``'mean'``.
+        reduction (str, optional): Indicate how to average the loss,
+            the candicates are ``'none'`` | ``'batchmean'`` | ``'mean'`` | ``'sum'``.
+            If `reduction` is ``'mean'``, the reduced mean loss is returned;
+            If `reduction` is ``'batchmean'``, the sum loss divided by batch size is returned;
+            if `reduction` is ``'sum'``, the reduced sum loss is returned;
+            if `reduction` is ``'none'``, no reduction will be apllied.
+            Default is ``'mean'``.
         name(str, optional): Name for the operation (optional, default is None). For more information,
             please refer to :ref:`api_guide_Name`.
 
@@ -2530,9 +2525,11 @@ def cross_entropy(
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
                 weight=weight, reduction=reduction)
             dy_ret = cross_entropy_loss(
-                                       input,
-                                       label)
-            print(dy_ret.numpy()) #[5.41993642]
+                                        input,
+                                        label)
+            print(dy_ret)
+            # Tensor(shape=[1], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+            #        [5.34043430])
 
         .. code-block:: python
 
@@ -2550,13 +2547,15 @@ def cross_entropy(
             labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
             labels /= paddle.sum(labels, axis=axis, keepdim=True)
             paddle_loss_mean = paddle.nn.functional.cross_entropy(
-                                                                  logits,
-                                                                  labels,
-                                                                  soft_label=True,
-                                                                  axis=axis,
-                                                                  weight=weight,
-                                                                  reduction=reduction)
-            print(paddle_loss_mean.numpy()) #[1.12908343]
+                                                                    logits,
+                                                                    labels,
+                                                                    soft_label=True,
+                                                                    axis=axis,
+                                                                    weight=weight,
+                                                                    reduction=reduction)
+            print(paddle_loss_mean)
+            # Tensor(shape=[1], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+            #        [1.11043464])
 
     """
 

@@ -38,9 +38,11 @@ def fc_with_batchnorm(use_feed):
             ),
         )
 
-        hidden = fluid.layers.batch_norm(input=hidden)
+        hidden = paddle.static.nn.batch_norm(input=hidden)
     prediction = paddle.static.nn.fc(hidden, size=10, activation='softmax')
-    loss = fluid.layers.cross_entropy(input=prediction, label=label)
+    loss = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     loss = paddle.mean(loss)
     return loss
 
