@@ -1843,7 +1843,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("set_feed_variable",
         static_cast<void (*)(  // NOLINT
             Scope *,
-            const Strings &,
+            const std::vector<std::string> &,
             const std::string &,
             size_t)>(&framework::SetFeedVariable));
   m.def("get_fetch_variable",

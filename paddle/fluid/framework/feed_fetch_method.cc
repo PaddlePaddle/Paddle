@@ -47,7 +47,7 @@ void SetFeedVariable(Scope* scope,
 }
 
 void SetFeedVariable(Scope* scope,
-                     const Strings& input,
+                     const std::vector<std::string>& input,
                      const std::string& var_name,
                      size_t index) {
   // If var_name Variable is not found in GlobalScope, a new variable will
@@ -59,7 +59,7 @@ void SetFeedVariable(Scope* scope,
     feed_inputs.resize(index + 1);
   }
   // shared data with input tensor
-  feed_inputs[index] = input;
+  feed_inputs[index] = Strings(input);
 }
 
 FetchType& GetFetchVariable(const Scope& scope,

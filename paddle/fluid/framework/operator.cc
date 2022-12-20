@@ -3106,6 +3106,9 @@ void OperatorWithKernel::BuildPhiKernelContext(
           // Note: If the input LoDTensorArray size is 0, the output
           // LoDTensorArray is also 0
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
+        } else if (var->template IsType<framework::Strings>()) {
+          tensor_out = var->template GetMutable<framework::Strings>();
+          phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else if (var->template IsType<paddle::framework::Raw>()) {
           tensor_out = var->template GetMutable<paddle::framework::Raw>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);

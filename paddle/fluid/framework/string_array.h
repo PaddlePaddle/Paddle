@@ -25,6 +25,10 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+// Note(YuanRisheng): Vocab is mainly used for faster_tokenizer_op and we don't
+// recommend widely use it. Because faster_tokenizer_op may be deleted in the
+// future and this class will be deleted.
+
 class Vocab : public phi::ExtendedTensor,
               public phi::TypeInfoTraits<phi::TensorBase, Vocab> {
  public:
@@ -94,11 +98,17 @@ class Vocab : public phi::ExtendedTensor,
   std::unordered_map<std::wstring, std::int32_t> data_;
 };
 
+// Note(YuanRisheng): PHIVector is essentially a vector that only used for PHI
+// Kernel. It can be used when you define a non-tensor type that needs to be
+// stored in a vector as PHI kernel argument.
+
 template <typename T>
 class PHIVector : public phi::ExtendedTensor,
                   public phi::TypeInfoTraits<phi::TensorBase, PHIVector<T>> {
  public:
   PHIVector() = default;
+
+  explicit PHIVector(const std::vector<T>& init_data) : data_(init_data) {}
 
   PHIVector(PHIVector&& other) = default;
 
