@@ -252,9 +252,9 @@ paddle::framework::FetchList InterpreterCore::Run(
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
-    is_build_ = true;
-    platform::DeviceContextPool::Instance().Get(place_)->Wait();
     UpdateSyncOpNum();
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+    is_build_ = true;
   } else {
     // For the program that only run once, it is no need to
     // create work_queue, so the async_work_queue_ is created
@@ -1190,6 +1190,7 @@ void InterpreterCore::Prepare(const std::vector<std::string>& feed_names,
     // convert vec func_list to graph
     Convert(&op_func_nodes);
     UpdateSyncOpNum();
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
     is_build_ = true;
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
   }

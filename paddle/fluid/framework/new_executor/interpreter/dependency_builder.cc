@@ -25,7 +25,7 @@
 PADDLE_DEFINE_EXPORTED_bool(new_executor_sequential_run,
                             false,
                             "Enable sequential execution for standalone "
-                            "executor, only applied to GPU OPs.");
+                            "executor, only applied to kGpuAsync OPs.");
 
 namespace paddle {
 namespace framework {
@@ -290,7 +290,7 @@ void DependencyBuilder::AddDependencyForReadOp() {
 void DependencyBuilder::AddDependencyForSequentialRun() {
   size_t dependence_op_idx = ULLONG_MAX;
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
-    if (!IsCpuOp(instructions_->at(op_idx))) {
+    if (instructions_->at(op_idx).KernelType() == OpFuncType::kGpuAsync) {
       if (dependence_op_idx != ULLONG_MAX) {
         AddDownstreamOp(dependence_op_idx, op_idx);
       }
