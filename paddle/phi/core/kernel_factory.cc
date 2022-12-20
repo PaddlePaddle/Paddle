@@ -147,7 +147,8 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
           kernel_name,
           KernelSelectionErrorMessage(kernel_name, kernel_key)));
 
-  if (NeedFallbackToCPU(kernel_name, kernel_iter == iter->second.end())) {
+  if (NeedFallbackToCPU(
+          kernel_name, kernel_key.dtype(), kernel_iter == iter->second.end())) {
     // Fallback CPU backend
     phi::KernelKey cpu_kernel_key(
         phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
