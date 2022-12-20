@@ -1118,6 +1118,15 @@
   kernel :
     func : logical_xor
 
+- op : logspace
+  args : (Tensor start, Tensor stop, Tensor num, Tensor base, DataType dtype)
+  output : Tensor(out)
+  infer_meta:
+    func : LogspaceInferMeta
+  kernel :
+    func : logspace
+    data_type : dtype
+
 - op : logsumexp
   args : (Tensor x, int64_t[] axis,  bool keepdim,  bool reduce_all)
   output : Tensor(out)
