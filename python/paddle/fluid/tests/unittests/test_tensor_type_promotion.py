@@ -27,37 +27,21 @@ class TestTensorTypePromotion(unittest.TestCase):
         with warnings.catch_warnings(record=True) as context:
             warnings.simplefilter("always")
             self.x + self.y
-            self.assertTrue(
-                "The dtype of left and right variables are not the same"
-                in str(context[-1].message)
-            )
 
     def sub_operator(self):
         with warnings.catch_warnings(record=True) as context:
             warnings.simplefilter("always")
             self.x - self.y
-            self.assertTrue(
-                "The dtype of left and right variables are not the same"
-                in str(context[-1].message)
-            )
 
     def mul_operator(self):
         with warnings.catch_warnings(record=True) as context:
             warnings.simplefilter("always")
             self.x * self.y
-            self.assertTrue(
-                "The dtype of left and right variables are not the same"
-                in str(context[-1].message)
-            )
 
     def div_operator(self):
         with warnings.catch_warnings(record=True) as context:
             warnings.simplefilter("always")
             self.x / self.y
-            self.assertTrue(
-                "The dtype of left and right variables are not the same"
-                in str(context[-1].message)
-            )
 
     def test_operator(self):
         self.setUp()
