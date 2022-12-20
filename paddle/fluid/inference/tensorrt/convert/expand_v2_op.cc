@@ -65,7 +65,6 @@ class ExpandV2OpConverter : public OpConverter {
     }
 
     nvinfer1::ITensor* input_shape_tensor;
-    std::cout << rank << ", " << shape_rank << std::endl;
     if (rank < shape_rank) {
       auto* one_rank_tensor =
           Add1DConstantLayer(std::vector<int32_t>(shape_rank - rank, 1),
@@ -97,9 +96,6 @@ class ExpandV2OpConverter : public OpConverter {
         Add1DConstantLayer(start_vec, output_name + "_start_tensor_");
     auto one_tensor = Add1DConstantLayer(1, output_name + "_one_tensor_");
 
-    std::cout << "input shape: " << input_shape_tensor->getDimensions().nbDims
-              << ", shape: " << shape_tensor->getDimensions().nbDims
-              << std::endl;
     auto sizes_tensor = Max(input_shape_tensor, shape_tensor);
     auto input_sub_tensor = Sub(input_shape_tensor, one_tensor);
     auto strides_tensor = Min(one_tensor, input_sub_tensor);
