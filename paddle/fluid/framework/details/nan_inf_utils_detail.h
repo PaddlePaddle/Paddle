@@ -144,12 +144,11 @@ HOSTDEVICE void PrintForDifferentLevelFile(const char* debug_info,
 #endif
     }
   } else if (NeedPrint<T, MT>(max_value, min_value, check_nan_inf_level)) {
-    outfile << "[PRECISION] in "
-            << debug_info;  // << ", numel=" << static_cast<long long>(numel)
-                            //<< ", max=" << static_cast<float>(max_value)
-                            //<< ", min=" << static_cast<float>(min_value)
-                            //<< ", mean=" << static_cast<float>(mean_value) <<
-                            // std::endl;
+    outfile << "[PRECISION] in " << debug_info
+            << ", numel=" << static_cast<long long>(numel)
+            << ", max=" << static_cast<float>(max_value)
+            << ", min=" << static_cast<float>(min_value)
+            << ", mean=" << static_cast<float>(mean_value) << std::endl;
   }
   outfile.close();
 }
