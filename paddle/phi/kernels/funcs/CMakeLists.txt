@@ -3,8 +3,6 @@ add_subdirectory(blas)
 add_subdirectory(lapack)
 add_subdirectory(detail)
 
-add_subdirectory(warp_transducer)
-
 math_library(deformable_conv_functor DEPS dense_tensor)
 math_library(concat_and_split_functor DEPS dense_tensor)
 math_library(fc_functor DEPS blas jit_kernel_helper)
