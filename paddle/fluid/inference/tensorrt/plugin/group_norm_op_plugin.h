@@ -21,7 +21,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
+#include "paddle/fluid/inference/tensorrt/plugin/common/groupNormPluginCommon.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
+
 namespace paddle {
 namespace inference {
 namespace tensorrt {
@@ -274,6 +276,7 @@ class GroupNormPluginDynamic : public DynamicPluginTensorRT {
   float eps_;
   std::vector<int64_t> mean_shape_;
   std::vector<int64_t> variance_shape_;
+  GroupNormNHWCParams params_;
   bool with_fp16_;
 };
 class GroupNormPluginDynamicCreator : public TensorRTPluginCreator {

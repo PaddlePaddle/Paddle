@@ -19,6 +19,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
+import paddle.nn.functional as F
 from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.vision.models import resnet50, resnet101
 
@@ -280,8 +281,8 @@ class TestDygraphDoubleGrad(TestCase):
         numel = x_np.size
         x.stop_gradient = False
 
-        y1 = fluid.layers.relu(x)
-        y2 = fluid.layers.relu(x)
+        y1 = F.relu(x)
+        y2 = F.relu(x)
         z = y1 + y2
         w = z * z
 
@@ -389,7 +390,7 @@ class TestDygraphDoubleGrad(TestCase):
         numel = x_np.size
         x.stop_gradient = False
 
-        y = fluid.layers.relu(x)
+        y = F.relu(x)
         z = y + 1
         w = z * z
 
@@ -437,8 +438,8 @@ class TestDygraphDoubleGrad(TestCase):
         numel = x_np.size
         x.stop_gradient = False
 
-        y1 = fluid.layers.relu(x)
-        y2 = fluid.layers.relu(x)
+        y1 = F.relu(x)
+        y2 = F.relu(x)
         z = y1 + y2
         w = z * z
 
@@ -483,7 +484,7 @@ class TestDygraphDoubleGrad(TestCase):
         numel = x_np.size
         x.stop_gradient = False
 
-        y = fluid.layers.relu(x)
+        y = F.relu(x)
         z = y + 1
         w = z * z
 
@@ -567,7 +568,7 @@ class TestDygraphDoubleGradVisitedUniq(TestCase):
 
 
 class TestRaiseNoDoubleGradOp(TestCase):
-    def raise_no_grad_op(self):
+    def test_no_grad_op(self):
         with fluid.dygraph.guard():
             x = paddle.ones(shape=[2, 3, 2, 2], dtype='float32')
             x.stop_gradient = False
@@ -579,9 +580,6 @@ class TestRaiseNoDoubleGradOp(TestCase):
 
             loss = paddle.mean(dx)
             loss.backward()
-
-    def test_raise(self):
-        self.assertRaises(RuntimeError, self.raise_no_grad_op)
 
 
 class TestDoubleGradResNet(TestCase):
