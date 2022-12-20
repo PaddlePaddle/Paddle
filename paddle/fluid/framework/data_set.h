@@ -255,7 +255,6 @@ class DatasetImpl : public Dataset {
                                          int read_thread_num,
                                          int consume_thread_num,
                                          int shard_num) {}
-  virtual void SetGraphDeviceKeys(const std::vector<uint64_t>& h_device_keys) {}
   virtual void ClearLocalTables() {}
   virtual void CreatePreLoadReaders();
   virtual void DestroyPreLoadReaders();
@@ -278,7 +277,6 @@ class DatasetImpl : public Dataset {
       return multi_consume_channel_;
     }
   }
-  Channel<T>& GetInputChannelRef() { return input_channel_; }
   std::vector<uint64_t>& GetGpuGraphTotalKeys() {
     return gpu_graph_total_keys_;
   }

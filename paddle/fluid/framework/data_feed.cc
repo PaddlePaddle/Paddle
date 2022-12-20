@@ -2114,17 +2114,15 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
 #endif
 }
 
-void SlotRecordInMemoryDataFeed::InitGraphResource() {
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+void SlotRecordInMemoryDataFeed::InitGraphResource() {
   gpu_graph_data_generator_.AllocResource(thread_id_, feed_vec_);
-#endif
 }
 
 void SlotRecordInMemoryDataFeed::InitGraphTrainResource() {
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   gpu_graph_data_generator_.AllocTrainResource(thread_id_);
-#endif
 }
+#endif
 
 void SlotRecordInMemoryDataFeed::LoadIntoMemory() {
   VLOG(3) << "SlotRecord LoadIntoMemory() begin, thread_id=" << thread_id_;

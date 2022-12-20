@@ -458,7 +458,7 @@ void DatasetImpl<T>::LoadIntoMemory() {
   std::vector<std::thread> load_threads;
   if (gpu_graph_mode_) {
     VLOG(0) << "in gpu_graph_mode";
-#ifdef PADDLE_WITH_HETERPS
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
     for (size_t i = 0; i < readers_.size(); i++) {
       readers_[i]->SetGpuGraphMode(gpu_graph_mode_);
     }
@@ -1117,6 +1117,7 @@ int64_t DatasetImpl<T>::GetMemoryDataSize() {
 
 template <typename T>
 bool DatasetImpl<T>::GetEpochFinish() {
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   bool is_epoch_finish = true;
   if (gpu_graph_mode_) {
     for (int i = 0; i < thread_num_; i++) {
@@ -1124,6 +1125,9 @@ bool DatasetImpl<T>::GetEpochFinish() {
     }
   }
   return is_epoch_finish;
+#else
+  return false;
+#endif
 }
 
 template <typename T>
@@ -1780,7 +1784,9 @@ void SlotRecordDataset::CreateReaders() {
     readers_[i]->SetParseLogKey(parse_logkey_);
     readers_[i]->SetEnablePvMerge(enable_pv_merge_);
     readers_[i]->SetCurrentPhase(current_phase_);
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
     readers_[i]->InitGraphResource();
+#endif
     if (input_channel_ != nullptr) {
       readers_[i]->SetInputChannel(input_channel_.get());
     }

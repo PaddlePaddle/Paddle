@@ -14,13 +14,13 @@ limitations under the License. */
 
 #include <ctime>
 
+#include "paddle/fluid/framework/barrier.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
-#include "paddle/fluid/framework/barrier.h"
 
 #if defined PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
@@ -154,7 +154,9 @@ void HogwildWorker::TrainFilesWithProfiler() {
   bool train_mode = device_reader_->IsTrainMode();
   timeline.Start();
   uint64_t total_inst = 0;
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   device_reader_->InitGraphTrainResource();
+#endif
   while (1) {
     cur_batch = device_reader_->Next();
     if (FLAGS_enable_exit_when_partial_worker && train_mode) {
@@ -272,7 +274,9 @@ void HogwildWorker::TrainFiles() {
 #endif
   // while ((cur_batch = device_reader_->Next()) > 0) {
   bool train_mode = device_reader_->IsTrainMode();
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   device_reader_->InitGraphTrainResource();
+#endif
   while (1) {
     cur_batch = device_reader_->Next();
     if (FLAGS_enable_exit_when_partial_worker && train_mode) {

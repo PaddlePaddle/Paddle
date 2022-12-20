@@ -1131,13 +1131,14 @@ class DataFeed {
   virtual void SetParseLogKey(bool parse_logkey) {}
   virtual void SetEnablePvMerge(bool enable_pv_merge) {}
   virtual void SetCurrentPhase(int current_phase) {}
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   virtual void InitGraphResource() {}
   virtual void InitGraphTrainResource() {}
   virtual void SetDeviceKeys(std::vector<uint64_t>* device_keys, int type) {
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
     gpu_graph_data_generator_.SetDeviceKeys(device_keys, type);
-#endif
   }
+#endif
+
   virtual const std::vector<uint64_t>* GetHostVec() {
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
     return &(gpu_graph_data_generator_.GetHostVec());
@@ -1783,8 +1784,6 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
   //                                    CustomParser* parser) {}
   virtual void PutToFeedVec(const std::vector<SlotRecord>& ins_vec) {}
 
-  virtual void InitGraphResource(void);
-  virtual void InitGraphTrainResource(void);
   virtual void LoadIntoMemoryByCommand(void);
   virtual void LoadIntoMemoryByLib(void);
   virtual void LoadIntoMemoryByLine(void);
@@ -1821,6 +1820,8 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
 #endif
 
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+  virtual void InitGraphResource(void);
+  virtual void InitGraphTrainResource(void);
   virtual void DoWalkandSage();
 #endif
 
