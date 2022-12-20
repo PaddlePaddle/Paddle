@@ -1481,7 +1481,7 @@ class TestSetValueInplace(unittest.TestCase):
 
             self.assertTrue(id(b) == id(c))
             np.testing.assert_array_equal(b.numpy(), c.numpy())
-            self.assertEqual(b.inplace_version, 1)
+            self.assertEqual(b.inplace_version, 0)
 
         paddle.enable_static()
 
