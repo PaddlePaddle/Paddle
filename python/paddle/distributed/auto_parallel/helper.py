@@ -27,7 +27,7 @@ from .utils import get_logger, to_list
 
 class ProxyLayer(Layer):
     """
-    ProxyLayer implements all logic for converting dygraph model into
+    ProxyLayer implements all logic for converting dynamic graph model into
     static Program IR. Meanwhile, it provides conviential interfaces for
     auto parallel to visit feed/fetch/loss/metric variables.
     """
@@ -214,7 +214,7 @@ class ProgramHelper:
 
     def build_program(self, mode):
         """
-        Convert dygraph model into static Program IR.
+        Convert dynamic graph model into static Program IR.
         """
         assert mode in ['train', 'eval', 'predict']
         self.proxy_layer.set_mode(mode)

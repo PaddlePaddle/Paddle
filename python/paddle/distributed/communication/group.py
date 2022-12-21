@@ -143,7 +143,7 @@ def is_initialized():
         `True` if distributed environment has been initialized, otherwise `False`.
 
     Warning:
-        This API only supports the dygraph mode.
+        This API only supports the dynamic graph mode.
 
     Examples:
         .. code-block:: python
@@ -174,7 +174,7 @@ def destroy_process_group(group=None):
     Returns : None
 
     Warning:
-        This API only supports the dygraph mode.
+        This API only supports the dynamic graph mode.
 
     Examples:
         .. code-block:: python

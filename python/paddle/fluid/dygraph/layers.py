@@ -249,7 +249,7 @@ class Layer:
                 print(out)
 
         """
-        # global setting in dygraph
+        # global setting in dynamic graph
         # NOTE(chenweihang): nn.Layer also can be used in static mode,
         # but _dygraph_tracer() can not be called in static mode
         if _non_static_mode():

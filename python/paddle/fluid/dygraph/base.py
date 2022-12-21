@@ -61,7 +61,7 @@ def declarative_unsupport_argument_warning(
 ):
     """
     Warning if inputs do not elementwisely equals to support_values.
-    It's a utility function for dy2static when dygraph interface have
+    It's a utility function for dy2static when dynamic graph interface have
     more inputs than static interface such as paddle.grad.
 
     """
@@ -280,7 +280,7 @@ def no_grad(func=None):
     """
     :api_attr: imperative
 
-    Create a context which disables dygraph gradient calculation.
+    Create a context which disables dynamic graph gradient calculation.
     In this mode, the result of every computation will have `stop_gradient=True`.
 
     Also functions as a decorator. (Make sure to instantiate without parenthesis.)
@@ -343,7 +343,7 @@ class no_grad_:
     """
     :api_attr: imperative
 
-    Create a context which disables dygraph gradient calculation.
+    Create a context which disables dynamic graph gradient calculation.
     In this mode, the result of every computation will have `stop_gradient` set
     to `True`.
 
@@ -420,10 +420,10 @@ def guard(place=None):
     """
     :api_attr: imperative
 
-    This context will create a dygraph context for dygraph to run, using python ``with`` statement.
+    This context will create a dynamic graph context for dynamic graph to run, using python ``with`` statement.
 
     Parameters:
-        place(fluid.CPUPlace| fluid.CUDAPlace|str, optional): Place to execute dygraph.
+        place(fluid.CPUPlace| fluid.CUDAPlace|str, optional): Place to execute dynamic graph.
             If None, the running place will be determined according to the way of paddle compilation.
             If ``place`` is string, It can be ``cpu``, ``gpu:x`` and ``xpu:x``, where ``x`` is the
             index of the GPUs or XPUs. Default: None

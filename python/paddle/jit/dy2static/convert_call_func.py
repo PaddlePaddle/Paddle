@@ -109,7 +109,7 @@ BUILTIN_LIKELY_MODULES = builtin_modules()
 
 def is_unsupported(func):
     """
-    Checks whether the func is supported by dygraph to static graph.
+    Checks whether the func is supported by dynamic graph to static graph.
     """
 
     for m in BUILTIN_LIKELY_MODULES:

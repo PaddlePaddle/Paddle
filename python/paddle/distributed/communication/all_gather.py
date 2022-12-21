@@ -126,7 +126,7 @@ def all_gather_object(object_list, obj, group=None):
         None.
 
     Warning:
-        This API only supports the dygraph mode.
+        This API only supports the dynamic graph mode.
 
     Examples:
         .. code-block:: python

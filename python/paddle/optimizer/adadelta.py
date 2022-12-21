@@ -45,7 +45,7 @@ class Adadelta(Optimizer):
         epsilon (float): a small float number for numeric stability. Default 1.0e-6.
         rho (float): a floating point value indicating the decay rate. Default 0.95.
         parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``. \
-            This parameter is required in dygraph mode. And you can specify different options for \
+            This parameter is required in dynamic graph mode. And you can specify different options for \
             different parameter groups such as the learning rate, weight decay, etc, \
             then the parameters are list of dict. Note that the learning_rate in paramter groups \
             represents the scale of base learning_rate. \

@@ -115,7 +115,7 @@ def extract_vars(inputs, err_tag='inputs'):
 
 def _dygraph_to_static_func_(dygraph_func):
     """
-    Converts imperative dygraph APIs into declarative function APIs. Decorator
+    Converts imperative dynamic graph APIs into declarative function APIs. Decorator
     @dygraph_to_static_func only converts imperative dygraph APIs into
     declarative net-building APIs, which means it doesn't return immediate
     digital result as imperative mode. Users should handle Program and Executor
@@ -130,7 +130,7 @@ def _dygraph_to_static_func_(dygraph_func):
         dygraph_func (callable): callable imperative function.
 
     Returns:
-        Callable: converting imperative dygraph APIs into declarative
+        Callable: converting imperative dynamic graph APIs into declarative
         net-building APIs.
 
     Examples:
@@ -204,9 +204,9 @@ def declarative(
     function=None, input_spec=None, build_strategy=None, property=False
 ):
     """
-    Converts imperative dygraph APIs into declarative function APIs. Decorator
+    Converts imperative dynamic graph APIs into declarative function APIs. Decorator
     @declarative handles the Program and Executor of static mode and returns
-    the result as dygraph Tensor(s). Users could use the returned dygraph
+    the result as dynamic graph Tensor(s). Users could use the returned dynamic graph
     Tensor(s) to do imperative training, inference, or other operations. If the
     decorated function calls other imperative function, the called one will be
     converted into declarative function as well.
@@ -1076,7 +1076,7 @@ def save(layer, path, input_spec=None, **configs):
         if dygraph_state_dict:
             # NOTE(chenweihang): we maintain the mapping of variable name to
             # structured name, the buffer variable (non-persistable)
-            # saved to inference program may not need by dygraph Layer,
+            # saved to inference program may not need by dynamic graph Layer,
             # we only record the state_dict variable's structured name
             state_names_dict = dict()
             state_var_dict = dict()

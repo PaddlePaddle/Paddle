@@ -90,7 +90,7 @@ def broadcast(tensor, src, group=None, sync_op=True, use_calc_stream=False):
         Return a task object.
 
     Warning:
-        This API only supports the dygraph mode now.
+        This API only supports the dynamic graph mode now.
 
     Examples:
         .. code-block:: python

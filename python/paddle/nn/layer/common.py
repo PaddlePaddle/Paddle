@@ -708,7 +708,7 @@ class Dropout(Layer):
 
     See ``paddle.nn.functional.dropout`` for more details.
 
-    In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
+    In dynamic graph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 
     Parameters:
         p (float|int): Probability of setting units to zero. Default: 0.5
@@ -789,7 +789,7 @@ class Dropout2D(Layer):
 
     See ``paddle.nn.functional.dropout2d`` for more details.
 
-    In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
+    In dynamic graph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 
     Parameters:
         p (float, optional): Probability of setting units to zero. Default: 0.5
@@ -870,7 +870,7 @@ class Dropout3D(Layer):
 
     See ``paddle.nn.functional.dropout3d`` for more details.
 
-    In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
+    In dynamic graph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 
     Parameters:
         p (float | int): Probability of setting units to zero. Default: 0.5
@@ -963,7 +963,7 @@ class AlphaDropout(Layer):
     For more information, please refer to:
     `Self-Normalizing Neural Networks <https://arxiv.org/abs/1706.02515>`_
 
-    In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
+    In dynamic graph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 
     Parameters:
         p (float | int): Probability of setting units to zero. Default: 0.5

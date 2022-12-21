@@ -21,7 +21,7 @@ from paddle import _C_ops, _legacy_C_ops
 def _append_activation_in_dygraph(
     input, act=None, use_cudnn=None, use_mkldnn=None
 ):
-    """Append activation in dygraph mode.
+    """Append activation in dynamic graph mode.
 
         Args:
             input: the input variable.
@@ -46,7 +46,7 @@ def _append_activation_in_dygraph(
 
 @dygraph_only
 def _append_bias_in_dygraph(input, bias=None, axis=1, use_mkldnn=False):
-    """Append bias operation in dygraph mode.
+    """Append bias operation in dynamic graph mode.
 
         Args:
             input: the input variable.

@@ -2281,7 +2281,7 @@ class DistributedStrategy:
 
         Indicating whether we are using heter_ccl_mode for model training.
         This feature is currently an experimental feature. Currently,
-        heter_ccl_mode can be used only for dataparallel with dygraph mode.
+        heter_ccl_mode can be used only for dataparallel with dynamic graph mode.
         Default Value: False
 
         Examples:

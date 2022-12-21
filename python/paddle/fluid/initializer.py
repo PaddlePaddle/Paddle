@@ -89,7 +89,7 @@ class Initializer:
             with lazy_init_helper():
                 forward(new_var, block)
 
-        # Add hook function for initializing param in dygraph mode
+        # Add hook function for initializing param in dynamic graph mode
         param.set_init_func(functools.partial(self.forward, param, block))
         param._init_op_creator = functools.partial(
             init_op_creator, self.forward, param

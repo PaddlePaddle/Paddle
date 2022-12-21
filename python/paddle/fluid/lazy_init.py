@@ -19,7 +19,7 @@ __all__ = ["LazyGuard"]
 
 class LazyInitHelper:
     """
-    A Helper Context to trigger switching mode between dygraph and static mode,
+    A Helper Context to trigger switching mode between dynamic graph and static mode,
     and holds the startup program resource.
     """
 

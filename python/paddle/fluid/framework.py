@@ -1114,7 +1114,7 @@ def name_scope(prefix=None):
     Note:
         This should only used for debugging and visualization purpose.
         Don't use it for serious analysis such as graph/program transformations.
-        Don't use it in dygraph, since it will cause memory leak.
+        Don't use it in dynamic graph, since it will cause memory leak.
 
     Args:
         prefix(str, optional): prefix. Default is none.
@@ -4018,7 +4018,7 @@ class Block:
             # record ops in tracer rather than blocks
             #
             # TODO(minqiyang): add op stop_gradient support in static mode too.
-            # currently, we only support stop_gradient in dygraph mode.
+            # currently, we only support stop_gradient in dynamic graph mode.
 
             _dygraph_tracer().trace_op(
                 type,

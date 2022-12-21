@@ -781,7 +781,7 @@ def double_grad_check_for_dygraph(
 
     if len(static_double_grad) != len(eager_double_grad):
         msg = (
-            "The output grad tensor's number of static graph is different with dygraph, "
+            "The output grad tensor's number of static graph is different with dynamic graph, "
             "please check the python api unit test used."
         )
         raise RuntimeError(msg)
@@ -947,7 +947,7 @@ def triple_grad_check_for_dygraph(
 
     if len(static_triple_grad) != len(eager_triple_grad):
         msg = (
-            "The output grad tensor's number of static graph is different with dygraph, "
+            "The output grad tensor's number of static graph is different with dynamic graph, "
             "please check the python api unit test used."
         )
         raise RuntimeError(msg)

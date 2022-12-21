@@ -35,7 +35,7 @@ def set_config(config=None):
     2. layout: When it is enabled, the best data layout such as NCHW or NHWC will be
     determined based on the device and data type. When the origin layout setting is
     not best, layout transformation will be automaticly performed to improve model
-    performance. Layout auto-tuning only supports dygraph mode currently. Tuning
+    performance. Layout auto-tuning only supports dynamic graph mode currently. Tuning
     parameters are as follows:
 
     - enable(bool): Whether to enable layout tuning.

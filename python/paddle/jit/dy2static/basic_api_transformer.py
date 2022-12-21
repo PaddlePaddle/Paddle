@@ -26,7 +26,7 @@ from .base_transformer import (
 
 class BasicApiTransformer(BaseTransformer):
     """
-    Class to transform basic API from dygraph to static graph.
+    Class to transform basic API from dynamic graph to static graph.
     """
 
     def __init__(self, wrapper_root):
@@ -134,7 +134,7 @@ class AttributeJstTransformer(BaseTransformer):
     for example:
         a.size  -->  __jst.attr(a, "size")
 
-    because `size` have different behavier when in dygraph / static mode
+    because `size` have different behavier when in dynamic graph / static mode
     NOTE: we only deal with ctx=Load() case.
     """
 

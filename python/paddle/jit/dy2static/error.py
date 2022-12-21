@@ -237,7 +237,7 @@ class ErrorData:
 
     def create_message(self):
         """
-        Creates a custom error message which includes trace stack with source code information of dygraph from user.
+        Creates a custom error message which includes trace stack with source code information of dynamic graph from user.
         """
         message_lines = []
 
@@ -348,7 +348,7 @@ class ErrorData:
         """
         Simplifies error value to improve readability if error is raised in runtime.
 
-        NOTE(liym27): The op callstack information about transformed static code has been replaced with original dygraph code.
+        NOTE(liym27): The op callstack information about transformed static code has been replaced with original dynamic graph code.
 
         TODO(liym27):
             1. Need a more robust way because the code of start_trace may change.

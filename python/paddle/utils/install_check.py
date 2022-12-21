@@ -109,7 +109,7 @@ def _is_xpu_available():
 
 def _run_dygraph_single(use_cuda, use_xpu, use_npu):
     """
-    Testing the simple network in dygraph mode using one CPU/GPU/XPU/NPU.
+    Testing the simple network in dynamic graph mode using one CPU/GPU/XPU/NPU.
 
     Args:
         use_cuda (bool): Whether running with CUDA.

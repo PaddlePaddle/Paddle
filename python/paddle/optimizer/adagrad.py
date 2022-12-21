@@ -44,7 +44,7 @@ class Adagrad(Optimizer):
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-06.
         parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
-            This parameter is required in dygraph mode. And you can specify different options for
+            This parameter is required in dynamic graph mode. And you can specify different options for
             different parameter groups such as the learning rate, weight decay, etc,
             then the parameters are list of dict. Note that the learning_rate in paramter groups
             represents the scale of base learning_rate.

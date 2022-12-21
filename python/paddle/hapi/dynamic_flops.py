@@ -30,7 +30,7 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
 
     Args:
         net (paddle.nn.Layer||paddle.static.Program): The network which could be a instance of paddle.nn.Layer in
-                    dygraph or paddle.static.Program in static graph.
+                    dynamic graph or paddle.static.Program in static graph.
         input_size (list): size of input tensor. Note that the batch_size in argument ``input_size`` only support 1.
         custom_ops (A dict of function, optional): A dictionary which key is the class of specific operation such as
                     paddle.nn.Conv2D and the value is the function used to count the FLOPs of this operation. This

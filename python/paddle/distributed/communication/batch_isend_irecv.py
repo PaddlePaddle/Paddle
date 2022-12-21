@@ -123,7 +123,7 @@ def batch_isend_irecv(p2p_op_list):
         op in the op_list.
 
     Warning:
-        This API only supports the dygraph mode.
+        This API only supports the dynamic graph mode.
 
     Examples:
         .. code-block:: python

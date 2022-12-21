@@ -66,7 +66,7 @@ class Adam(Optimizer):
             It should be a float number or a Tensor with shape [1] and data type as float32.
             The default value is 1e-08.
         parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
-            This parameter is required in dygraph mode. And you can specify different options for
+            This parameter is required in dynamic graph mode. And you can specify different options for
             different parameter groups such as the learning rate, weight decay, etc,
             then the parameters are list of dict. Note that the learning_rate in paramter groups
             represents the scale of base learning_rate.
@@ -502,7 +502,7 @@ class Adam(Optimizer):
 
                 a = paddle.rand([2,13], dtype="float32")
                 linear = paddle.nn.Linear(13, 5)
-                # This can be any optimizer supported by dygraph.
+                # This can be any optimizer supported by dynamic graph.
                 adam = paddle.optimizer.Adam(learning_rate = 0.01,
                                             parameters = linear.parameters())
                 out = linear(a)

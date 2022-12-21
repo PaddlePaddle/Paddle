@@ -88,7 +88,7 @@ def get_default_dtype():
 @contextmanager
 def set_grad_enabled(mode):
     """
-    Create a context which enables or disables dygraph gradient calculation.
+    Create a context which enables or disables dynamic graph gradient calculation.
 
     Args:
         mode(bool): whether to enable (`True`), or disable (`False`) grad.
@@ -124,10 +124,10 @@ def set_grad_enabled(mode):
 
 def is_grad_enabled():
     """
-    Returns whether current dygraph gradient calculation mode is enabled.
+    Returns whether current dynamic graph gradient calculation mode is enabled.
 
     Returns:
-        bool: True if current dygraph gradient calculation mode is enabled, otherwise false.
+        bool: True if current dynamic graph gradient calculation mode is enabled, otherwise false.
 
     Examples:
         .. code-block:: python
