@@ -143,11 +143,44 @@ class ForwardAPI(BaseAPI):
                     out_type_list.append(inplace_out_type_map[out_type])
             elif self.is_dygraph_api or out_name not in self.intermediate_outs:
                 out_type_list.append(out_type)
-
         if len(out_type_list) == 1:
             return out_type_list[0]
         else:
             return "std::tuple<" + ", ".join(out_type_list) + ">"
+
+    def show_api_output(self, inplace_flag=False):
+        out_type = self.get_return_type_with_intermediate(inplace_flag)
+
+        def _show_api_output(outtype, output):
+            if re.search(r"^\s*std::tuple", outtype):
+                types = outtype[len("std::tuple<") : -1].split(",")
+                data_names = []
+                code = ""
+                for i, tp in enumerate(types):
+                    data_names.append(f"output_{i}")
+                    tp = tp.replace("&", "")
+                    code += f"{tp} output_{i};\n"
+                code += "std::tie(" + ",".join(data_names) + f") = {output};\n"
+                for tp, dn in zip(types, data_names):
+                    code += _show_api_output(tp, dn)
+            elif re.search(r"^\s*std::vector<Tensor>", outtype):
+                code = f'''
+                for (auto it = {output}.begin(); it != {output}.end(); it++){{
+                    // show Tensor it
+                }}
+                '''
+            elif re.search(r"^\s*Tensor", outtype):
+                code = f'''
+                //show tensor {output}
+                '''
+            elif re.search(r"^\s*paddle::optional", outtype):
+                code = ""
+            else:
+                raise ValueError(f"Unsupported out put type: {outtype}")
+            return code
+
+        code = _show_api_output(out_type, "api_output")
+        return "{\n" + code + "\n}"
 
     def gene_return_code(self):
         if self.is_dygraph_api or len(self.intermediate_outs) == 0:
