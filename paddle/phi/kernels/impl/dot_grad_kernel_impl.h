@@ -619,121 +619,131 @@ struct DotTripleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
       if (in_tensor_ddy) {
         in_tensor_ddy_help = Conj<T, DeviceContext>(ctx, *in_tensor_ddy);
       }
-      if (out_tensor_d_x && in_tensor_d_ddout && in_tensor_ddy) {
-        ctx.template Alloc<T>(out_tensor_d_x);
-        auto ddy = EigenVector<T>::Flatten(in_tensor_ddy_help);
-        Eigen::DSizes<int, 1> size(in_tensor_ddy->numel());
-        auto d_x = EigenVector<T>::Flatten(*out_tensor_d_x);
-        auto d_ddout = EigenVector<T>::Flatten(*in_tensor_d_ddout);
-        d_x.device(dev) = ddy * d_ddout.broadcast(size);
-      } else if (out_tensor_d_x) {
+
+      bool d_dout_flag = false;
+      bool d_ddx_flag = false;
+      bool d_ddy_flag = false;
+
+      if (in_tensor_ddx) {
+        if (out_tensor_d_y && in_tensor_d_ddout) {
+          ctx.template Alloc<T>(out_tensor_d_y);
+          auto ddx = EigenVector<T>::Flatten(in_tensor_ddx_help);
+          Eigen::DSizes<int, 1> size(in_tensor_ddx->numel());
+          auto d_y = EigenVector<T>::Flatten(*out_tensor_d_y);
+          auto d_ddout = EigenVector<T>::Flatten(*in_tensor_d_ddout);
+          d_y.device(dev) = ddx * d_ddout.broadcast(size);
+        }
+        if (out_tensor_d_dout && in_tensor_d_dy) {
+          ctx.template Alloc<T>(out_tensor_d_dout);
+          auto ddx = EigenVector<T>::Flatten(in_tensor_ddx_help);
+          auto d_dy = EigenVector<T>::Flatten(*in_tensor_d_dy);
+          auto d_dout = EigenVector<T>::Flatten(*out_tensor_d_dout);
+          d_dout.device(dev) = (ddx * d_dy).sum();
+          d_dout_flag = true;
+        }
+      }
+
+      if (in_tensor_ddy) {
+        if (out_tensor_d_x && in_tensor_d_ddout) {
+          ctx.template Alloc<T>(out_tensor_d_x);
+          auto ddy = EigenVector<T>::Flatten(in_tensor_ddy_help);
+          Eigen::DSizes<int, 1> size(in_tensor_ddy->numel());
+          auto d_x = EigenVector<T>::Flatten(*out_tensor_d_x);
+          auto d_ddout = EigenVector<T>::Flatten(*in_tensor_d_ddout);
+          d_x.device(dev) = ddy * d_ddout.broadcast(size);
+        }
+        if (out_tensor_d_dout && in_tensor_d_dx) {
+          ctx.template Alloc<T>(out_tensor_d_dout);
+          auto ddy = EigenVector<T>::Flatten(in_tensor_ddy_help);
+          auto d_dx = EigenVector<T>::Flatten(*in_tensor_d_dx);
+          auto d_dout = EigenVector<T>::Flatten(*out_tensor_d_dout);
+          if (d_dout_flag) {
+            d_dout.device(dev) += (ddy * d_dx).sum();
+          } else {
+            d_dout.device(dev) = (ddy * d_dx).sum();
+          }
+        }
+      }
+
+      if (in_tensor_d_dx) {
+        if (out_tensor_d_ddy) {
+          ctx.template Alloc<T>(out_tensor_d_ddy);
+          auto dout = EigenVector<T>::Flatten(in_tensor_dout_help);
+          auto d_dx = EigenVector<T>::Flatten(*in_tensor_d_dx);
+          auto d_ddy = EigenVector<T>::Flatten(*out_tensor_d_ddy);
+          Eigen::DSizes<int, 1> size(in_tensor_x->numel());
+          d_ddy.device(dev) = (dout.broadcast(size) * d_dx);
+          d_ddy_flag = true;
+        }
+      }
+
+      if (in_tensor_d_dy) {
+        if (out_tensor_d_ddx) {
+          ctx.template Alloc<T>(out_tensor_d_ddx);
+          auto dout = EigenVector<T>::Flatten(in_tensor_dout_help);
+          auto d_dy = EigenVector<T>::Flatten(*in_tensor_d_dy);
+          auto d_ddx = EigenVector<T>::Flatten(*out_tensor_d_ddx);
+          Eigen::DSizes<int, 1> size(in_tensor_y->numel());
+          d_ddx.device(dev) = (dout.broadcast(size) * d_dy);
+          d_ddx_flag = true;
+        }
+      }
+
+      if (in_tensor_d_ddout) {
+        if (out_tensor_d_ddx) {
+          ctx.template Alloc<T>(out_tensor_d_ddx);
+          auto y = EigenVector<T>::Flatten(in_tensor_y_help);
+          auto d_ddout = EigenVector<T>::Flatten(*in_tensor_d_ddout);
+          Eigen::DSizes<int, 1> size(in_tensor_y->numel());
+          auto d_ddx = EigenVector<T>::Flatten(*out_tensor_d_ddx);
+          if (d_ddx_flag) {
+            d_ddx.device(dev) += (y * d_ddout.broadcast(size));
+          } else {
+            d_ddx.device(dev) = (y * d_ddout.broadcast(size));
+          }
+        }
+        if (out_tensor_d_ddy) {
+          ctx.template Alloc<T>(out_tensor_d_ddy);
+          auto x = EigenVector<T>::Flatten(in_tensor_x_help);
+          auto d_ddout = EigenVector<T>::Flatten(*in_tensor_d_ddout);
+          Eigen::DSizes<int, 1> size(in_tensor_x->numel());
+          auto d_ddy = EigenVector<T>::Flatten(*out_tensor_d_ddy);
+          if (d_ddy_flag) {
+            d_ddy.device(dev) += (x * d_ddout.broadcast(size));
+          } else {
+            d_ddy.device(dev) = (x * d_ddout.broadcast(size));
+          }
+        }
+      }
+      if (out_tensor_d_x && !out_tensor_d_x->IsInitialized()) {
         FullLikeKernel<T, DeviceContext>(ctx,
                                          *in_tensor_x,
                                          Scalar(T(0.0, 0.0)),
                                          in_tensor_x->dtype(),
                                          out_tensor_d_x);
       }
-      if (out_tensor_d_y && in_tensor_d_ddout && in_tensor_ddx) {
-        ctx.template Alloc<T>(out_tensor_d_y);
-        auto ddx = EigenVector<T>::Flatten(in_tensor_ddx_help);
-        Eigen::DSizes<int, 1> size(in_tensor_ddx->numel());
-        auto d_y = EigenVector<T>::Flatten(*out_tensor_d_y);
-        auto d_ddout = EigenVector<T>::Flatten(*in_tensor_d_ddout);
-        d_y.device(dev) = ddx * d_ddout.broadcast(size);
-      } else if (out_tensor_d_y) {
+      if (out_tensor_d_y && !out_tensor_d_y->IsInitialized()) {
         FullLikeKernel<T, DeviceContext>(ctx,
                                          *in_tensor_y,
                                          Scalar(T(0.0, 0.0)),
                                          in_tensor_y->dtype(),
                                          out_tensor_d_y);
       }
-      if (out_tensor_d_dout && in_tensor_ddy && in_tensor_d_dx &&
-          in_tensor_d_dy && in_tensor_ddx) {
-        ctx.template Alloc<T>(out_tensor_d_dout);
-        auto ddx = EigenVector<T>::Flatten(in_tensor_ddx_help);
-        auto ddy = EigenVector<T>::Flatten(in_tensor_ddy_help);
-        auto d_dx = EigenVector<T>::Flatten(*in_tensor_d_dx);
-        auto d_dy = EigenVector<T>::Flatten(*in_tensor_d_dy);
-        auto d_dout = EigenVector<T>::Flatten(*out_tensor_d_dout);
-        d_dout.device(dev) = (ddx * d_dy + ddy * d_dx).sum();
-      } else if (out_tensor_d_dout && in_tensor_ddy && in_tensor_d_dx &&
-                 (!in_tensor_d_dy || !in_tensor_ddx)) {
-        ctx.template Alloc<T>(out_tensor_d_dout);
-        auto ddy = EigenVector<T>::Flatten(in_tensor_ddy_help);
-        auto d_dx = EigenVector<T>::Flatten(*in_tensor_d_dx);
-        auto d_dout = EigenVector<T>::Flatten(*out_tensor_d_dout);
-        d_dout.device(dev) = (ddy * d_dx).sum();
-      } else if (out_tensor_d_dout && in_tensor_d_dy && in_tensor_ddx &&
-                 (!in_tensor_ddy || !in_tensor_d_dx)) {
-        ctx.template Alloc<T>(out_tensor_d_dout);
-        auto ddx = EigenVector<T>::Flatten(in_tensor_ddx_help);
-        auto d_dy = EigenVector<T>::Flatten(*in_tensor_d_dy);
-        auto d_dout = EigenVector<T>::Flatten(*out_tensor_d_dout);
-        d_dout.device(dev) = (ddx * d_dy).sum();
-      } else if (out_tensor_d_dout) {
+      if (out_tensor_d_dout && !out_tensor_d_dout->IsInitialized()) {
         FullLikeKernel<T, DeviceContext>(ctx,
                                          *in_tensor_dout,
                                          Scalar(T(0.0, 0.0)),
                                          in_tensor_dout->dtype(),
                                          out_tensor_d_dout);
       }
-      if (out_tensor_d_ddx && in_tensor_d_dy && in_tensor_d_ddout) {
-        ctx.template Alloc<T>(out_tensor_d_ddx);
-        auto dout = EigenVector<T>::Flatten(in_tensor_dout_help);
-        auto y = EigenVector<T>::Flatten(in_tensor_y_help);
-        auto d_ddout = EigenVector<T>::Flatten(*in_tensor_d_ddout);
-        auto d_dy = EigenVector<T>::Flatten(*in_tensor_d_dy);
-        auto d_ddx = EigenVector<T>::Flatten(*out_tensor_d_ddx);
-        Eigen::DSizes<int, 1> size(in_tensor_y->numel());
-        d_ddx.device(dev) =
-            (dout.broadcast(size) * d_dy + y * d_ddout.broadcast(size));
-      } else if (out_tensor_d_ddx && in_tensor_d_dy && !in_tensor_d_ddout) {
-        ctx.template Alloc<T>(out_tensor_d_ddx);
-        auto dout = EigenVector<T>::Flatten(in_tensor_dout_help);
-        auto d_dy = EigenVector<T>::Flatten(*in_tensor_d_dy);
-        auto d_ddx = EigenVector<T>::Flatten(*out_tensor_d_ddx);
-        Eigen::DSizes<int, 1> size(in_tensor_y->numel());
-        d_ddx.device(dev) = dout.broadcast(size) * d_dy;
-      } else if (out_tensor_d_ddx && !in_tensor_d_dy && in_tensor_d_ddout) {
-        ctx.template Alloc<T>(out_tensor_d_ddx);
-        auto d_ddout = EigenVector<T>::Flatten(*in_tensor_d_ddout);
-        auto y = EigenVector<T>::Flatten(in_tensor_y_help);
-        auto d_ddx = EigenVector<T>::Flatten(*out_tensor_d_ddx);
-        Eigen::DSizes<int, 1> size(in_tensor_y->numel());
-        d_ddx.device(dev) = y * d_ddout.broadcast(size);
-      } else if (out_tensor_d_ddx) {
+      if (out_tensor_d_ddx && !out_tensor_d_ddx->IsInitialized()) {
         FullLikeKernel<T, DeviceContext>(ctx,
                                          *in_tensor_x,
                                          Scalar(T(0.0, 0.0)),
                                          in_tensor_x->dtype(),
                                          out_tensor_d_ddx);
       }
-
-      if (out_tensor_d_ddy && in_tensor_d_dx && in_tensor_d_ddout) {
-        ctx.template Alloc<T>(out_tensor_d_ddy);
-        auto dout = EigenVector<T>::Flatten(in_tensor_dout_help);
-        auto x = EigenVector<T>::Flatten(in_tensor_x_help);
-        auto d_ddout = EigenVector<T>::Flatten(*in_tensor_d_ddout);
-        auto d_dx = EigenVector<T>::Flatten(*in_tensor_d_dx);
-        auto d_ddy = EigenVector<T>::Flatten(*out_tensor_d_ddy);
-        Eigen::DSizes<int, 1> size(in_tensor_x->numel());
-        d_ddy.device(dev) =
-            (dout.broadcast(size) * d_dx + x * d_ddout.broadcast(size));
-      } else if (out_tensor_d_ddy && in_tensor_d_dx && !in_tensor_d_ddout) {
-        ctx.template Alloc<T>(out_tensor_d_ddy);
-        auto dout = EigenVector<T>::Flatten(in_tensor_dout_help);
-        auto d_dx = EigenVector<T>::Flatten(*in_tensor_d_dx);
-        auto d_ddy = EigenVector<T>::Flatten(*out_tensor_d_ddy);
-        Eigen::DSizes<int, 1> size(in_tensor_x->numel());
-        d_ddy.device(dev) = dout.broadcast(size) * d_dx;
-      } else if (out_tensor_d_ddy && !in_tensor_d_dx && in_tensor_d_ddout) {
-        ctx.template Alloc<T>(out_tensor_d_ddy);
-        auto x = EigenVector<T>::Flatten(in_tensor_x_help);
-        auto d_ddout = EigenVector<T>::Flatten(*in_tensor_d_ddout);
-        auto d_ddy = EigenVector<T>::Flatten(*out_tensor_d_ddy);
-        Eigen::DSizes<int, 1> size(in_tensor_x->numel());
-        d_ddy.device(dev) = d_ddout.broadcast(size);
-      } else if (out_tensor_d_ddy) {
+      if (out_tensor_d_ddy && !out_tensor_d_ddy->IsInitialized()) {
         FullLikeKernel<T, DeviceContext>(ctx,
                                          *in_tensor_y,
                                          Scalar(T(0.0, 0.0)),
@@ -751,199 +761,210 @@ struct DotTripleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {
     const T* data_d_dy = in_tensor_d_dy ? in_tensor_d_dy->data<T>() : nullptr;
     const T* data_d_ddout =
         in_tensor_d_ddout ? in_tensor_d_ddout->data<T>() : nullptr;
-    if (out_tensor_d_x && in_tensor_d_ddout && in_tensor_ddy) {
-      auto* data_d_x = ctx.template Alloc<T>(out_tensor_d_x);
-      const DDim& dim = out_tensor_d_x->dims();
-      size_t N = static_cast<size_t>(product(dim));
-      auto step = dim[dim.size() - 1];
-      int s = -1;
 
-      for (size_t i = 0; i < N; ++i) {
-        if (0 == i % step) ++s;
-        data_d_x[i] = T(data_ddy[i].real, -data_ddy[i].imag) * data_d_ddout[s];
+    bool d_dout_flag = false;
+    bool d_ddx_flag = false;
+    bool d_ddy_flag = false;
+
+    if (data_ddx) {
+      if (out_tensor_d_y && data_d_ddout) {
+        auto* data_d_y = ctx.template Alloc<T>(out_tensor_d_y);
+        const DDim& dim = out_tensor_d_y->dims();
+        size_t N = static_cast<size_t>(product(dim));
+        auto step = dim[dim.size() - 1];
+        int s = -1;
+
+        for (size_t i = 0; i < N; ++i) {
+          if (0 == i % step) ++s;
+          data_d_y[i] =
+              T(data_ddx[i].real, -data_ddx[i].imag) * data_d_ddout[s];
+        }
       }
-    } else if (out_tensor_d_x) {
+
+      if (out_tensor_d_dout && data_d_dy) {
+        auto* data_d_dout = ctx.template Alloc<T>(out_tensor_d_dout);
+        const DDim& dim = in_tensor_x->dims();
+        size_t N = static_cast<size_t>(product(dim));
+        auto step = dim[dim.size() - 1];
+        int s = -1;
+        bool new_s = false;
+        for (size_t i = 0; i < N; ++i) {
+          if (0 == i % step) {
+            ++s;
+            new_s = true;
+          }
+          if (new_s) {
+            data_d_dout[s] =
+                T(data_ddx[i].real, -data_ddx[i].imag) * data_d_dy[i];
+          } else {
+            data_d_dout[s] +=
+                T(data_ddx[i].real, -data_ddx[i].imag) * data_d_dy[i];
+          }
+          new_s = false;
+        }
+        d_dout_flag = true;
+      }
+    }
+
+    if (data_ddy) {
+      if (out_tensor_d_x && data_d_ddout) {
+        auto* data_d_x = ctx.template Alloc<T>(out_tensor_d_x);
+        const DDim& dim = out_tensor_d_x->dims();
+        size_t N = static_cast<size_t>(product(dim));
+        auto step = dim[dim.size() - 1];
+        int s = -1;
+
+        for (size_t i = 0; i < N; ++i) {
+          if (0 == i % step) ++s;
+          data_d_x[i] =
+              T(data_ddy[i].real, -data_ddy[i].imag) * data_d_ddout[s];
+        }
+      }
+      if (out_tensor_d_dout && data_d_dx) {
+        auto* data_d_dout = ctx.template Alloc<T>(out_tensor_d_dout);
+        const DDim& dim = in_tensor_x->dims();
+        size_t N = static_cast<size_t>(product(dim));
+        auto step = dim[dim.size() - 1];
+        int s = -1;
+        bool new_s = false;
+        if (d_dout_flag) {
+          for (size_t i = 0; i < N; ++i) {
+            if (0 == i % step) {
+              ++s;
+            }
+            data_d_dout[s] +=
+                T(data_ddy[i].real, -data_ddy[i].imag) * data_d_dx[i];
+          }
+        } else {
+          for (size_t i = 0; i < N; ++i) {
+            if (0 == i % step) {
+              ++s;
+              new_s = true;
+            }
+            if (new_s) {
+              data_d_dout[s] =
+                  T(data_ddy[i].real, -data_ddy[i].imag) * data_d_dx[i];
+            } else {
+              data_d_dout[s] +=
+                  T(data_ddy[i].real, -data_ddy[i].imag) * data_d_dx[i];
+            }
+            new_s = false;
+          }
+        }
+      }
+    }
+
+    if (data_d_dx) {
+      if (out_tensor_d_ddy) {
+        auto* data_d_ddy = ctx.template Alloc<T>(out_tensor_d_ddy);
+        const DDim& dim = out_tensor_d_ddy->dims();
+        size_t N = static_cast<size_t>(product(dim));
+        auto step = dim[dim.size() - 1];
+        int s = -1;
+        for (size_t i = 0; i < N; ++i) {
+          if (0 == i % step) ++s;
+          data_d_ddy[i] =
+              T(data_dout[s].real, -data_dout[s].imag) * data_d_dx[i];
+        }
+        d_ddy_flag = true;
+      }
+    }
+
+    if (data_d_dy) {
+      if (out_tensor_d_ddx) {
+        auto* data_d_ddx = ctx.template Alloc<T>(out_tensor_d_ddx);
+        const DDim& dim = out_tensor_d_ddx->dims();
+        size_t N = static_cast<size_t>(product(dim));
+        auto step = dim[dim.size() - 1];
+        int s = -1;
+        for (size_t i = 0; i < N; ++i) {
+          if (0 == i % step) ++s;
+          data_d_ddx[i] =
+              T(data_dout[s].real, -data_dout[s].imag) * data_d_dy[i];
+        }
+      }
+      d_ddx_flag = true;
+    }
+
+    if (data_d_ddout) {
+      if (out_tensor_d_ddx) {
+        auto* data_d_ddx = ctx.template Alloc<T>(out_tensor_d_ddx);
+        const DDim& dim = out_tensor_d_ddx->dims();
+        size_t N = static_cast<size_t>(product(dim));
+        auto step = dim[dim.size() - 1];
+        int s = -1;
+        if (d_ddx_flag) {
+          for (size_t i = 0; i < N; ++i) {
+            if (0 == i % step) ++s;
+            data_d_ddx[i] +=
+                T(data_y[i].real, -data_y[i].imag) * data_d_ddout[s];
+          }
+        } else {
+          for (size_t i = 0; i < N; ++i) {
+            if (0 == i % step) ++s;
+            data_d_ddx[i] =
+                T(data_y[i].real, -data_y[i].imag) * data_d_ddout[s];
+          }
+        }
+      }
+      if (out_tensor_d_ddy) {
+        auto* data_d_ddy = ctx.template Alloc<T>(out_tensor_d_ddy);
+        const DDim& dim = out_tensor_d_ddy->dims();
+        size_t N = static_cast<size_t>(product(dim));
+        auto step = dim[dim.size() - 1];
+        int s = -1;
+        if (d_ddy_flag) {
+          for (size_t i = 0; i < N; ++i) {
+            if (0 == i % step) ++s;
+            data_d_ddy[i] +=
+                T(data_x[i].real, -data_x[i].imag) * data_d_ddout[s];
+          }
+        } else {
+          for (size_t i = 0; i < N; ++i) {
+            if (0 == i % step) ++s;
+            data_d_ddy[i] =
+                T(data_x[i].real, -data_x[i].imag) * data_d_ddout[s];
+          }
+        }
+      }
+    }
+
+    if (out_tensor_d_x && !out_tensor_d_x->IsInitialized()) {
       FullLikeKernel<T, DeviceContext>(ctx,
                                        *in_tensor_x,
                                        Scalar(T(0.0, 0.0)),
                                        in_tensor_x->dtype(),
                                        out_tensor_d_x);
     }
-
-    if (out_tensor_d_y && in_tensor_d_ddout && in_tensor_ddx) {
-      auto* data_d_y = ctx.template Alloc<T>(out_tensor_d_y);
-      const DDim& dim = out_tensor_d_y->dims();
-      size_t N = static_cast<size_t>(product(dim));
-      auto step = dim[dim.size() - 1];
-      int s = -1;
-
-      for (size_t i = 0; i < N; ++i) {
-        if (0 == i % step) ++s;
-        data_d_y[i] = T(data_ddx[i].real, -data_ddx[i].imag) * data_d_ddout[s];
-      }
-    } else if (out_tensor_d_y) {
+    if (out_tensor_d_y && !out_tensor_d_y->IsInitialized()) {
       FullLikeKernel<T, DeviceContext>(ctx,
                                        *in_tensor_y,
                                        Scalar(T(0.0, 0.0)),
                                        in_tensor_y->dtype(),
                                        out_tensor_d_y);
     }
-
-    if (out_tensor_d_dout && in_tensor_ddy && in_tensor_d_dx &&
-        in_tensor_d_dy && in_tensor_ddx) {
-      auto* data_d_dout = ctx.template Alloc<T>(out_tensor_d_dout);
-      const DDim& dim = in_tensor_x->dims();
-      size_t N = static_cast<size_t>(product(dim));
-      auto step = dim[dim.size() - 1];
-      int s = -1;
-      bool new_s = false;
-      for (size_t i = 0; i < N; ++i) {
-        if (0 == i % step) {
-          ++s;
-          new_s = true;
-        }
-        if (new_s) {
-          data_d_dout[s] =
-              T(data_ddy[i].real, -data_ddy[i].imag) * data_d_dx[i] +
-              T(data_ddx[i].real, -data_ddx[i].imag) * data_d_dy[i];
-        } else {
-          data_d_dout[s] +=
-              T(data_ddy[i].real, -data_ddy[i].imag) * data_d_dx[i] +
-              T(data_ddx[i].real, -data_ddx[i].imag) * data_d_dy[i];
-        }
-        new_s = false;
-      }
-    } else if (out_tensor_d_dout && in_tensor_ddy && in_tensor_d_dx &&
-               (!in_tensor_d_dy || !in_tensor_ddx)) {
-      auto* data_d_dout = ctx.template Alloc<T>(out_tensor_d_dout);
-      const DDim& dim = in_tensor_x->dims();
-      size_t N = static_cast<size_t>(product(dim));
-      auto step = dim[dim.size() - 1];
-      int s = -1;
-      bool new_s = false;
-      for (size_t i = 0; i < N; ++i) {
-        if (0 == i % step) {
-          ++s;
-          new_s = true;
-        }
-        if (new_s) {
-          data_d_dout[s] =
-              T(data_ddy[i].real, -data_ddy[i].imag) * data_d_dx[i];
-        } else {
-          data_d_dout[s] +=
-              T(data_ddy[i].real, -data_ddy[i].imag) * data_d_dx[i];
-        }
-        new_s = false;
-      }
-    } else if (out_tensor_d_dout && in_tensor_d_dy && in_tensor_ddx &&
-               (!in_tensor_ddy || !in_tensor_d_dx)) {
-      auto* data_d_dout = ctx.template Alloc<T>(out_tensor_d_dout);
-      const DDim& dim = in_tensor_x->dims();
-      size_t N = static_cast<size_t>(product(dim));
-      auto step = dim[dim.size() - 1];
-      int s = -1;
-      bool new_s = false;
-      for (size_t i = 0; i < N; ++i) {
-        if (0 == i % step) {
-          ++s;
-          new_s = true;
-        }
-        if (new_s) {
-          data_d_dout[s] =
-              T(data_ddx[i].real, -data_ddx[i].imag) * data_d_dy[i];
-        } else {
-          data_d_dout[s] +=
-              T(data_ddx[i].real, -data_ddx[i].imag) * data_d_dy[i];
-        }
-        new_s = false;
-      }
-    } else if (out_tensor_d_dout) {
+    if (out_tensor_d_dout && !out_tensor_d_dout->IsInitialized()) {
       FullLikeKernel<T, DeviceContext>(ctx,
                                        *in_tensor_dout,
                                        Scalar(T(0.0, 0.0)),
                                        in_tensor_dout->dtype(),
                                        out_tensor_d_dout);
     }
-
-    if (out_tensor_d_ddx && in_tensor_d_dy && in_tensor_d_ddout) {
-      auto* data_d_ddx = ctx.template Alloc<T>(out_tensor_d_ddx);
-      const DDim& dim = out_tensor_d_ddx->dims();
-      size_t N = static_cast<size_t>(product(dim));
-      auto step = dim[dim.size() - 1];
-      int s = -1;
-      for (size_t i = 0; i < N; ++i) {
-        if (0 == i % step) ++s;
-        data_d_ddx[i] =
-            T(data_dout[s].real, -data_dout[s].imag) * data_d_dy[i] +
-            T(data_y[i].real, -data_y[i].imag) * data_d_ddout[s];
-      }
-    } else if (out_tensor_d_ddx && in_tensor_d_dy && !in_tensor_d_ddout) {
-      auto* data_d_ddx = ctx.template Alloc<T>(out_tensor_d_ddx);
-      const DDim& dim = out_tensor_d_ddx->dims();
-      size_t N = static_cast<size_t>(product(dim));
-      auto step = dim[dim.size() - 1];
-      int s = -1;
-      for (size_t i = 0; i < N; ++i) {
-        if (0 == i % step) ++s;
-        data_d_ddx[i] = T(data_dout[s].real, -data_dout[s].imag) * data_d_dy[i];
-      }
-    } else if (out_tensor_d_ddx && !in_tensor_d_dy && in_tensor_d_ddout) {
-      auto* data_d_ddx = ctx.template Alloc<T>(out_tensor_d_ddx);
-      const DDim& dim = out_tensor_d_ddx->dims();
-      size_t N = static_cast<size_t>(product(dim));
-      auto step = dim[dim.size() - 1];
-      int s = -1;
-      for (size_t i = 0; i < N; ++i) {
-        if (0 == i % step) ++s;
-        data_d_ddx[i] = T(data_y[i].real, -data_y[i].imag) * data_d_ddout[s];
-      }
-    } else if (out_tensor_d_ddx) {
+    if (out_tensor_d_ddx && !out_tensor_d_ddx->IsInitialized()) {
       FullLikeKernel<T, DeviceContext>(ctx,
                                        *in_tensor_x,
                                        Scalar(T(0.0, 0.0)),
                                        in_tensor_x->dtype(),
                                        out_tensor_d_ddx);
     }
-
-    if (out_tensor_d_ddy && in_tensor_d_dx && in_tensor_d_ddout) {
-      auto* data_d_ddy = ctx.template Alloc<T>(out_tensor_d_ddy);
-      const DDim& dim = out_tensor_d_ddy->dims();
-      size_t N = static_cast<size_t>(product(dim));
-      auto step = dim[dim.size() - 1];
-      int s = -1;
-      for (size_t i = 0; i < N; ++i) {
-        if (0 == i % step) ++s;
-        data_d_ddy[i] =
-            T(data_dout[s].real, -data_dout[s].imag) * data_d_dx[i] +
-            T(data_x[i].real, -data_x[i].imag) * data_d_ddout[s];
-      }
-    } else if (out_tensor_d_ddy && in_tensor_d_dx && !in_tensor_d_ddout) {
-      auto* data_d_ddy = ctx.template Alloc<T>(out_tensor_d_ddy);
-      const DDim& dim = out_tensor_d_ddy->dims();
-      size_t N = static_cast<size_t>(product(dim));
-      auto step = dim[dim.size() - 1];
-      int s = -1;
-      for (size_t i = 0; i < N; ++i) {
-        if (0 == i % step) ++s;
-        data_d_ddy[i] = T(data_dout[s].real, -data_dout[s].imag) * data_d_dx[i];
-      }
-    } else if (out_tensor_d_ddy && !in_tensor_d_dx && in_tensor_d_ddout) {
-      auto* data_d_ddy = ctx.template Alloc<T>(out_tensor_d_ddy);
-      const DDim& dim = out_tensor_d_ddy->dims();
-      size_t N = static_cast<size_t>(product(dim));
-      auto step = dim[dim.size() - 1];
-      int s = -1;
-      for (size_t i = 0; i < N; ++i) {
-        if (0 == i % step) ++s;
-        data_d_ddy[i] = T(data_x[i].real, -data_x[i].imag) * data_d_ddout[s];
-      }
-    } else if (out_tensor_d_ddy) {
+    if (out_tensor_d_ddy && !out_tensor_d_ddy->IsInitialized()) {
       FullLikeKernel<T, DeviceContext>(ctx,
                                        *in_tensor_y,
                                        Scalar(T(0.0, 0.0)),
                                        in_tensor_y->dtype(),
                                        out_tensor_d_ddy);
     }
+
 #endif
   }
 };
@@ -972,122 +993,130 @@ struct DotTripleGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
 #if defined(__NVCC__) || defined(__HIPCC__)
     if (1 == in_tensor_dout->dims().size()) {
       auto& dev = *ctx.eigen_device();
-      if (out_tensor_d_x && in_tensor_d_ddout && in_tensor_ddy) {
-        ctx.template Alloc<T>(out_tensor_d_x);
-        auto ddy = EigenVector<T>::Flatten(*in_tensor_ddy);
-        Eigen::DSizes<int, 1> size(in_tensor_ddy->numel());
-        auto d_x = EigenVector<T>::Flatten(*out_tensor_d_x);
-        auto d_ddout = EigenVector<T>::Flatten(*in_tensor_d_ddout);
-        d_x.device(dev) = ddy * d_ddout.broadcast(size);
-      } else if (out_tensor_d_x) {
+      bool d_dout_flag = false;
+      bool d_ddx_flag = false;
+      bool d_ddy_flag = false;
+
+      if (in_tensor_ddx) {
+        if (out_tensor_d_y && in_tensor_d_ddout) {
+          ctx.template Alloc<T>(out_tensor_d_y);
+          auto ddx = EigenVector<T>::Flatten(*in_tensor_ddx);
+          Eigen::DSizes<int, 1> size(in_tensor_ddx->numel());
+          auto d_y = EigenVector<T>::Flatten(*out_tensor_d_y);
+          auto d_ddout = EigenVector<T>::Flatten(*in_tensor_d_ddout);
+          d_y.device(dev) = ddx * d_ddout.broadcast(size);
+        }
+        if (out_tensor_d_dout && in_tensor_d_dy) {
+          ctx.template Alloc<T>(out_tensor_d_dout);
+          auto ddx = EigenVector<T>::Flatten(*in_tensor_ddx);
+          auto d_dy = EigenVector<T>::Flatten(*in_tensor_d_dy);
+          auto d_dout = EigenVector<T>::Flatten(*out_tensor_d_dout);
+          d_dout.device(dev) = (ddx * d_dy).sum();
+          d_dout_flag = true;
+        }
+      }
+
+      if (in_tensor_ddy) {
+        if (out_tensor_d_x && in_tensor_d_ddout) {
+          ctx.template Alloc<T>(out_tensor_d_x);
+          auto ddy = EigenVector<T>::Flatten(*in_tensor_ddy);
+          Eigen::DSizes<int, 1> size(in_tensor_ddy->numel());
+          auto d_x = EigenVector<T>::Flatten(*out_tensor_d_x);
+          auto d_ddout = EigenVector<T>::Flatten(*in_tensor_d_ddout);
+          d_x.device(dev) = ddy * d_ddout.broadcast(size);
+        }
+        if (out_tensor_d_dout && in_tensor_d_dx) {
+          ctx.template Alloc<T>(out_tensor_d_dout);
+          auto ddy = EigenVector<T>::Flatten(*in_tensor_ddy);
+          auto d_dx = EigenVector<T>::Flatten(*in_tensor_d_dx);
+          auto d_dout = EigenVector<T>::Flatten(*out_tensor_d_dout);
+          if (d_dout_flag) {
+            d_dout.device(dev) += (ddy * d_dx).sum();
+          } else {
+            d_dout.device(dev) = (ddy * d_dx).sum();
+          }
+        }
+      }
+
+      if (in_tensor_d_dx) {
+        if (out_tensor_d_ddy) {
+          ctx.template Alloc<T>(out_tensor_d_ddy);
+          auto dout = EigenVector<T>::Flatten(*in_tensor_dout);
+          auto d_dx = EigenVector<T>::Flatten(*in_tensor_d_dx);
+          auto d_ddy = EigenVector<T>::Flatten(*out_tensor_d_ddy);
+          Eigen::DSizes<int, 1> size(in_tensor_x->numel());
+          d_ddy.device(dev) = (dout.broadcast(size) * d_dx);
+          d_ddy_flag = true;
+        }
+      }
+
+      if (in_tensor_d_dy) {
+        if (out_tensor_d_ddx) {
+          ctx.template Alloc<T>(out_tensor_d_ddx);
+          auto dout = EigenVector<T>::Flatten(*in_tensor_dout);
+          auto d_dy = EigenVector<T>::Flatten(*in_tensor_d_dy);
+          auto d_ddx = EigenVector<T>::Flatten(*out_tensor_d_ddx);
+          Eigen::DSizes<int, 1> size(in_tensor_y->numel());
+          d_ddx.device(dev) = (dout.broadcast(size) * d_dy);
+          d_ddx_flag = true;
+        }
+      }
+
+      if (in_tensor_d_ddout) {
+        if (out_tensor_d_ddx) {
+          ctx.template Alloc<T>(out_tensor_d_ddx);
+          auto y = EigenVector<T>::Flatten(*in_tensor_y);
+          auto d_ddout = EigenVector<T>::Flatten(*in_tensor_d_ddout);
+          Eigen::DSizes<int, 1> size(in_tensor_y->numel());
+          auto d_ddx = EigenVector<T>::Flatten(*out_tensor_d_ddx);
+          if (d_ddx_flag) {
+            d_ddx.device(dev) += (y * d_ddout.broadcast(size));
+          } else {
+            d_ddx.device(dev) = (y * d_ddout.broadcast(size));
+          }
+        }
+        if (out_tensor_d_ddy) {
+          ctx.template Alloc<T>(out_tensor_d_ddy);
+          auto x = EigenVector<T>::Flatten(*in_tensor_x);
+          auto d_ddout = EigenVector<T>::Flatten(*in_tensor_d_ddout);
+          Eigen::DSizes<int, 1> size(in_tensor_x->numel());
+          auto d_ddy = EigenVector<T>::Flatten(*out_tensor_d_ddy);
+          if (d_ddy_flag) {
+            d_ddy.device(dev) += (x * d_ddout.broadcast(size));
+          } else {
+            d_ddy.device(dev) = (x * d_ddout.broadcast(size));
+          }
+        }
+      }
+      if (out_tensor_d_x && !out_tensor_d_x->IsInitialized()) {
         FullLikeKernel<T, DeviceContext>(ctx,
                                          *in_tensor_x,
                                          Scalar(0.0),
                                          in_tensor_x->dtype(),
                                          out_tensor_d_x);
       }
-      if (out_tensor_d_y && in_tensor_d_ddout && in_tensor_ddx) {
-        ctx.template Alloc<T>(out_tensor_d_y);
-        auto ddx = EigenVector<T>::Flatten(*in_tensor_ddx);
-        Eigen::DSizes<int, 1> size(in_tensor_ddx->numel());
-        auto d_y = EigenVector<T>::Flatten(*out_tensor_d_y);
-        auto d_ddout = EigenVector<T>::Flatten(*in_tensor_d_ddout);
-        d_y.device(dev) = ddx * d_ddout.broadcast(size);
-      } else if (out_tensor_d_y) {
+      if (out_tensor_d_y && !out_tensor_d_y->IsInitialized()) {
         FullLikeKernel<T, DeviceContext>(ctx,
                                          *in_tensor_y,
                                          Scalar(0.0),
                                          in_tensor_y->dtype(),
                                          out_tensor_d_y);
       }
-      if (out_tensor_d_dout && in_tensor_ddy && in_tensor_d_dx &&
-          in_tensor_d_dy && in_tensor_ddx) {
-        ctx.template Alloc<T>(out_tensor_d_dout);
-        auto ddx = EigenVector<T>::Flatten(*in_tensor_ddx);
-        auto ddy = EigenVector<T>::Flatten(*in_tensor_ddy);
-        auto d_dx = EigenVector<T>::Flatten(*in_tensor_d_dx);
-        auto d_dy = EigenVector<T>::Flatten(*in_tensor_d_dy);
-        auto d_dout = EigenVector<T>::Flatten(*out_tensor_d_dout);
-        d_dout.device(dev) = (ddx * d_dy + ddy * d_dx).sum();
-      } else if (out_tensor_d_dout && in_tensor_ddy && in_tensor_d_dx &&
-                 (!in_tensor_d_dy || !in_tensor_ddx)) {
-        ctx.template Alloc<T>(out_tensor_d_dout);
-        auto ddy = EigenVector<T>::Flatten(*in_tensor_ddy);
-        auto d_dx = EigenVector<T>::Flatten(*in_tensor_d_dx);
-        auto d_dout = EigenVector<T>::Flatten(*out_tensor_d_dout);
-        d_dout.device(dev) = (ddy * d_dx).sum();
-      } else if (out_tensor_d_dout && in_tensor_d_dy && in_tensor_ddx &&
-                 (!in_tensor_ddy || !in_tensor_d_dx)) {
-        ctx.template Alloc<T>(out_tensor_d_dout);
-        auto ddx = EigenVector<T>::Flatten(*in_tensor_ddx);
-        auto d_dy = EigenVector<T>::Flatten(*in_tensor_d_dy);
-        auto d_dout = EigenVector<T>::Flatten(*out_tensor_d_dout);
-        d_dout.device(dev) = (ddx * d_dy).sum();
-      } else if (out_tensor_d_dout) {
+      if (out_tensor_d_dout && !out_tensor_d_dout->IsInitialized()) {
         FullLikeKernel<T, DeviceContext>(ctx,
                                          *in_tensor_dout,
                                          Scalar(0.0),
                                          in_tensor_dout->dtype(),
                                          out_tensor_d_dout);
       }
-
-      if (out_tensor_d_ddx && in_tensor_d_dy && in_tensor_d_ddout) {
-        ctx.template Alloc<T>(out_tensor_d_ddx);
-        auto dout = EigenVector<T>::Flatten(*in_tensor_dout);
-        auto y = EigenVector<T>::Flatten(*in_tensor_y);
-        auto d_ddout = EigenVector<T>::Flatten(*in_tensor_d_ddout);
-        auto d_dy = EigenVector<T>::Flatten(*in_tensor_d_dy);
-        auto d_ddx = EigenVector<T>::Flatten(*out_tensor_d_ddx);
-        Eigen::DSizes<int, 1> size(in_tensor_y->numel());
-        d_ddx.device(dev) =
-            (dout.broadcast(size) * d_dy + y * d_ddout.broadcast(size));
-      } else if (out_tensor_d_ddx && in_tensor_d_dy && !in_tensor_d_ddout) {
-        ctx.template Alloc<T>(out_tensor_d_ddx);
-        auto dout = EigenVector<T>::Flatten(*in_tensor_dout);
-        auto d_dy = EigenVector<T>::Flatten(*in_tensor_d_dy);
-        auto d_ddx = EigenVector<T>::Flatten(*out_tensor_d_ddx);
-        Eigen::DSizes<int, 1> size(in_tensor_y->numel());
-        d_ddx.device(dev) = dout.broadcast(size) * d_dy;
-      } else if (out_tensor_d_ddx && !in_tensor_d_dy && in_tensor_d_ddout) {
-        ctx.template Alloc<T>(out_tensor_d_ddx);
-        auto d_ddout = EigenVector<T>::Flatten(*in_tensor_d_ddout);
-        auto y = EigenVector<T>::Flatten(*in_tensor_y);
-        auto d_ddx = EigenVector<T>::Flatten(*out_tensor_d_ddx);
-        Eigen::DSizes<int, 1> size(in_tensor_y->numel());
-        d_ddx.device(dev) = y * d_ddout.broadcast(size);
-      } else if (out_tensor_d_ddx) {
+      if (out_tensor_d_ddx && !out_tensor_d_ddx->IsInitialized()) {
         FullLikeKernel<T, DeviceContext>(ctx,
                                          *in_tensor_x,
                                          Scalar(0.0),
                                          in_tensor_x->dtype(),
                                          out_tensor_d_ddx);
       }
-
-      if (out_tensor_d_ddy && in_tensor_d_dx && in_tensor_d_ddout) {
-        ctx.template Alloc<T>(out_tensor_d_ddy);
-        auto dout = EigenVector<T>::Flatten(*in_tensor_dout);
-        auto x = EigenVector<T>::Flatten(*in_tensor_x);
-        auto d_ddout = EigenVector<T>::Flatten(*in_tensor_d_ddout);
-        auto d_dx = EigenVector<T>::Flatten(*in_tensor_d_dx);
-        auto d_ddy = EigenVector<T>::Flatten(*out_tensor_d_ddy);
-        Eigen::DSizes<int, 1> size(in_tensor_x->numel());
-        d_ddy.device(dev) =
-            (dout.broadcast(size) * d_dx + x * d_ddout.broadcast(size));
-      } else if (out_tensor_d_ddy && in_tensor_d_dx && !in_tensor_d_ddout) {
-        ctx.template Alloc<T>(out_tensor_d_ddy);
-        auto dout = EigenVector<T>::Flatten(*in_tensor_dout);
-        auto d_dx = EigenVector<T>::Flatten(*in_tensor_d_dx);
-        auto d_ddy = EigenVector<T>::Flatten(*out_tensor_d_ddy);
-        Eigen::DSizes<int, 1> size(in_tensor_x->numel());
-        d_ddy.device(dev) = dout.broadcast(size) * d_dx;
-      } else if (out_tensor_d_ddy && !in_tensor_d_dx && in_tensor_d_ddout) {
-        ctx.template Alloc<T>(out_tensor_d_ddy);
-        auto x = EigenVector<T>::Flatten(*in_tensor_x);
-        auto d_ddout = EigenVector<T>::Flatten(*in_tensor_d_ddout);
-        auto d_ddy = EigenVector<T>::Flatten(*out_tensor_d_ddy);
-        Eigen::DSizes<int, 1> size(in_tensor_x->numel());
-        d_ddy.device(dev) = d_ddout.broadcast(size);
-      } else if (out_tensor_d_ddy) {
+      if (out_tensor_d_ddy && !out_tensor_d_ddy->IsInitialized()) {
         FullLikeKernel<T, DeviceContext>(ctx,
                                          *in_tensor_y,
                                          Scalar(0.0),
@@ -1105,183 +1134,188 @@ struct DotTripleGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
     const T* data_d_dy = in_tensor_d_dy ? in_tensor_d_dy->data<T>() : nullptr;
     const T* data_d_ddout =
         in_tensor_d_ddout ? in_tensor_d_ddout->data<T>() : nullptr;
-    if (out_tensor_d_x && in_tensor_d_ddout && in_tensor_ddy) {
-      auto* data_d_x = ctx.template Alloc<T>(out_tensor_d_x);
-      const DDim& dim = out_tensor_d_x->dims();
-      size_t N = static_cast<size_t>(product(dim));
-      auto step = dim[dim.size() - 1];
-      int s = -1;
-      for (size_t i = 0; i < N; ++i) {
-        if (0 == i % step) ++s;
-        data_d_x[i] = data_ddy[i] * data_d_ddout[s];
+
+    bool d_dout_flag = false;
+    bool d_ddx_flag = false;
+    bool d_ddy_flag = false;
+
+    if (data_ddx) {
+      if (out_tensor_d_y && data_d_ddout) {
+        auto* data_d_y = ctx.template Alloc<T>(out_tensor_d_y);
+        const DDim& dim = out_tensor_d_y->dims();
+        size_t N = static_cast<size_t>(product(dim));
+        auto step = dim[dim.size() - 1];
+        int s = -1;
+        for (size_t i = 0; i < N; ++i) {
+          if (0 == i % step) ++s;
+          data_d_y[i] = data_ddx[i] * data_d_ddout[s];
+        }
       }
-    } else if (out_tensor_d_x) {
+      if (out_tensor_d_dout && data_d_dy) {
+        auto* data_d_dout = ctx.template Alloc<T>(out_tensor_d_dout);
+        const DDim& dim = in_tensor_x->dims();
+        size_t N = static_cast<size_t>(product(dim));
+        auto step = dim[dim.size() - 1];
+        int s = -1;
+        bool new_s = false;
+        for (size_t i = 0; i < N; ++i) {
+          if (0 == i % step) {
+            ++s;
+            new_s = true;
+          }
+          if (new_s) {
+            data_d_dout[s] = data_ddx[i] * data_d_dy[i];
+          } else {
+            data_d_dout[s] += data_ddx[i] * data_d_dy[i];
+          }
+          new_s = false;
+        }
+        d_dout_flag = true;
+      }
+    }
+
+    if (data_ddy) {
+      if (out_tensor_d_x && data_d_ddout) {
+        auto* data_d_x = ctx.template Alloc<T>(out_tensor_d_x);
+        const DDim& dim = out_tensor_d_x->dims();
+        size_t N = static_cast<size_t>(product(dim));
+        auto step = dim[dim.size() - 1];
+        int s = -1;
+        for (size_t i = 0; i < N; ++i) {
+          if (0 == i % step) ++s;
+          data_d_x[i] = data_ddy[i] * data_d_ddout[s];
+        }
+      }
+      if (out_tensor_d_dout && data_d_dx) {
+        auto* data_d_dout = ctx.template Alloc<T>(out_tensor_d_dout);
+        const DDim& dim = in_tensor_x->dims();
+        size_t N = static_cast<size_t>(product(dim));
+        auto step = dim[dim.size() - 1];
+        int s = -1;
+        bool new_s = false;
+        if (d_dout_flag) {
+          for (size_t i = 0; i < N; ++i) {
+            if (0 == i % step) {
+              ++s;
+            }
+            data_d_dout[s] += data_ddy[i] * data_d_dx[i];
+          }
+        } else {
+          for (size_t i = 0; i < N; ++i) {
+            if (0 == i % step) {
+              ++s;
+              new_s = true;
+            }
+            if (new_s) {
+              data_d_dout[s] = data_ddy[i] * data_d_dx[i];
+            } else {
+              data_d_dout[s] += data_ddy[i] * data_d_dx[i];
+            }
+            new_s = false;
+          }
+        }
+      }
+    }
+
+    if (data_d_dx) {
+      if (out_tensor_d_ddy) {
+        auto* data_d_ddy = ctx.template Alloc<T>(out_tensor_d_ddy);
+        const DDim& dim = out_tensor_d_ddy->dims();
+        size_t N = static_cast<size_t>(product(dim));
+        auto step = dim[dim.size() - 1];
+        int s = -1;
+        for (size_t i = 0; i < N; ++i) {
+          if (0 == i % step) ++s;
+          data_d_ddy[i] = data_dout[s] * data_d_dx[i];
+        }
+        d_ddy_flag = true;
+      }
+    }
+
+    if (data_d_dy) {
+      if (out_tensor_d_ddx) {
+        auto* data_d_ddx = ctx.template Alloc<T>(out_tensor_d_ddx);
+        const DDim& dim = out_tensor_d_ddx->dims();
+        size_t N = static_cast<size_t>(product(dim));
+        auto step = dim[dim.size() - 1];
+        int s = -1;
+        for (size_t i = 0; i < N; ++i) {
+          if (0 == i % step) ++s;
+          data_d_ddx[i] = data_dout[s] * data_d_dy[i];
+        }
+      }
+      d_ddx_flag = true;
+    }
+
+    if (data_d_ddout) {
+      if (out_tensor_d_ddx) {
+        auto* data_d_ddx = ctx.template Alloc<T>(out_tensor_d_ddx);
+        const DDim& dim = out_tensor_d_ddx->dims();
+        size_t N = static_cast<size_t>(product(dim));
+        auto step = dim[dim.size() - 1];
+        int s = -1;
+        if (d_ddx_flag) {
+          for (size_t i = 0; i < N; ++i) {
+            if (0 == i % step) ++s;
+            data_d_ddx[i] += data_y[i] * data_d_ddout[s];
+          }
+        } else {
+          for (size_t i = 0; i < N; ++i) {
+            if (0 == i % step) ++s;
+            data_d_ddx[i] = data_y[i] * data_d_ddout[s];
+          }
+        }
+      }
+      if (out_tensor_d_ddy) {
+        auto* data_d_ddy = ctx.template Alloc<T>(out_tensor_d_ddy);
+        const DDim& dim = out_tensor_d_ddy->dims();
+        size_t N = static_cast<size_t>(product(dim));
+        auto step = dim[dim.size() - 1];
+        int s = -1;
+        if (d_ddy_flag) {
+          for (size_t i = 0; i < N; ++i) {
+            if (0 == i % step) ++s;
+            data_d_ddy[i] += data_x[i] * data_d_ddout[s];
+          }
+        } else {
+          for (size_t i = 0; i < N; ++i) {
+            if (0 == i % step) ++s;
+            data_d_ddy[i] = data_x[i] * data_d_ddout[s];
+          }
+        }
+      }
+    }
+
+    if (out_tensor_d_x && !out_tensor_d_x->IsInitialized()) {
       FullLikeKernel<T, DeviceContext>(
           ctx, *in_tensor_x, Scalar(0.0), in_tensor_x->dtype(), out_tensor_d_x);
     }
-
-    if (out_tensor_d_y && in_tensor_d_ddout && in_tensor_ddx) {
-      auto* data_d_y = ctx.template Alloc<T>(out_tensor_d_y);
-      const DDim& dim = out_tensor_d_y->dims();
-      size_t N = static_cast<size_t>(product(dim));
-      auto step = dim[dim.size() - 1];
-      int s = -1;
-      for (size_t i = 0; i < N; ++i) {
-        if (0 == i % step) ++s;
-        data_d_y[i] = data_ddx[i] * data_d_ddout[s];
-      }
-    } else if (out_tensor_d_y) {
+    if (out_tensor_d_y && !out_tensor_d_y->IsInitialized()) {
       FullLikeKernel<T, DeviceContext>(
           ctx, *in_tensor_y, Scalar(0.0), in_tensor_y->dtype(), out_tensor_d_y);
     }
-
-    if (out_tensor_d_dout && in_tensor_ddy && in_tensor_d_dx &&
-        in_tensor_d_dy && in_tensor_ddx) {
-      auto* data_d_dout = ctx.template Alloc<T>(out_tensor_d_dout);
-      const DDim& dim = in_tensor_ddx->dims();
-      size_t N = static_cast<size_t>(product(dim));
-      auto step = dim[dim.size() - 1];
-      int s = -1;
-      bool new_s = false;
-      for (size_t i = 0; i < N; ++i) {
-        if (0 == i % step) {
-          ++s;
-          new_s = true;
-        }
-        if (new_s) {
-          data_d_dout[s] =
-              data_ddy[i] * data_d_dx[i] + data_ddx[i] * data_d_dy[i];
-        } else {
-          data_d_dout[s] +=
-              data_ddy[i] * data_d_dx[i] + data_ddx[i] * data_d_dy[i];
-        }
-        new_s = false;
-      }
-    } else if (out_tensor_d_dout && in_tensor_ddy && in_tensor_d_dx &&
-               (!in_tensor_d_dy || !in_tensor_ddx)) {
-      auto* data_d_dout = ctx.template Alloc<T>(out_tensor_d_dout);
-      const DDim& dim = in_tensor_x->dims();
-      size_t N = static_cast<size_t>(product(dim));
-      auto step = dim[dim.size() - 1];
-      int s = -1;
-      bool new_s = false;
-      for (size_t i = 0; i < N; ++i) {
-        if (0 == i % step) {
-          ++s;
-          new_s = true;
-        }
-        if (new_s) {
-          data_d_dout[s] = data_ddy[i] * data_d_dx[i];
-        } else {
-          data_d_dout[s] += data_ddy[i] * data_d_dx[i];
-        }
-        new_s = false;
-      }
-    } else if (out_tensor_d_dout && in_tensor_d_dy && in_tensor_ddx &&
-               (!in_tensor_ddy || !in_tensor_d_dx)) {
-      auto* data_d_dout = ctx.template Alloc<T>(out_tensor_d_dout);
-      const DDim& dim = in_tensor_x->dims();
-      size_t N = static_cast<size_t>(product(dim));
-      auto step = dim[dim.size() - 1];
-      int s = -1;
-      bool new_s = false;
-      for (size_t i = 0; i < N; ++i) {
-        if (0 == i % step) {
-          ++s;
-          new_s = true;
-        }
-        if (new_s) {
-          data_d_dout[s] = data_ddx[i] * data_d_dy[i];
-        } else {
-          data_d_dout[s] += data_ddx[i] * data_d_dy[i];
-        }
-        new_s = false;
-      }
-    } else if (out_tensor_d_dout) {
+    if (out_tensor_d_dout && !out_tensor_d_dout->IsInitialized()) {
       FullLikeKernel<T, DeviceContext>(ctx,
                                        *in_tensor_dout,
                                        Scalar(0.0),
                                        in_tensor_dout->dtype(),
                                        out_tensor_d_dout);
     }
-
-    if (out_tensor_d_ddx && in_tensor_d_dy && in_tensor_d_ddout) {
-      auto* data_d_ddx = ctx.template Alloc<T>(out_tensor_d_ddx);
-      const DDim& dim = out_tensor_d_ddx->dims();
-      size_t N = static_cast<size_t>(product(dim));
-      auto step = dim[dim.size() - 1];
-      int s = -1;
-      for (size_t i = 0; i < N; ++i) {
-        if (0 == i % step) ++s;
-        data_d_ddx[i] =
-            data_dout[s] * data_d_dy[i] + data_y[i] * data_d_ddout[s];
-      }
-    } else if (out_tensor_d_ddx && in_tensor_d_dy && !in_tensor_d_ddout) {
-      auto* data_d_ddx = ctx.template Alloc<T>(out_tensor_d_ddx);
-      const DDim& dim = out_tensor_d_ddx->dims();
-      size_t N = static_cast<size_t>(product(dim));
-      auto step = dim[dim.size() - 1];
-      int s = -1;
-      for (size_t i = 0; i < N; ++i) {
-        if (0 == i % step) ++s;
-        data_d_ddx[i] = data_dout[s] * data_d_dy[i];
-      }
-    } else if (out_tensor_d_ddx && !in_tensor_d_dy && in_tensor_d_ddout) {
-      auto* data_d_ddx = ctx.template Alloc<T>(out_tensor_d_ddx);
-      const DDim& dim = out_tensor_d_ddx->dims();
-      size_t N = static_cast<size_t>(product(dim));
-      auto step = dim[dim.size() - 1];
-      int s = -1;
-      for (size_t i = 0; i < N; ++i) {
-        if (0 == i % step) ++s;
-        data_d_ddx[i] = data_y[i] * data_d_ddout[s];
-      }
-    } else if (out_tensor_d_ddx) {
+    if (out_tensor_d_ddx && !out_tensor_d_ddx->IsInitialized()) {
       FullLikeKernel<T, DeviceContext>(ctx,
                                        *in_tensor_x,
                                        Scalar(0.0),
                                        in_tensor_x->dtype(),
                                        out_tensor_d_ddx);
     }
-
-    if (out_tensor_d_ddy && in_tensor_d_dx && in_tensor_d_ddout) {
-      auto* data_d_ddy = ctx.template Alloc<T>(out_tensor_d_ddy);
-      const DDim& dim = out_tensor_d_ddy->dims();
-      size_t N = static_cast<size_t>(product(dim));
-      auto step = dim[dim.size() - 1];
-      int s = -1;
-      for (size_t i = 0; i < N; ++i) {
-        if (0 == i % step) ++s;
-        data_d_ddy[i] =
-            data_dout[s] * data_d_dx[i] + data_x[i] * data_d_ddout[s];
-      }
-    } else if (out_tensor_d_ddy && in_tensor_d_dx && !in_tensor_d_ddout) {
-      auto* data_d_ddy = ctx.template Alloc<T>(out_tensor_d_ddy);
-      const DDim& dim = out_tensor_d_ddy->dims();
-      size_t N = static_cast<size_t>(product(dim));
-      auto step = dim[dim.size() - 1];
-      int s = -1;
-      for (size_t i = 0; i < N; ++i) {
-        if (0 == i % step) ++s;
-        data_d_ddy[i] = data_dout[s] * data_d_dx[i];
-      }
-    } else if (out_tensor_d_ddy && !in_tensor_d_dx && in_tensor_d_ddout) {
-      auto* data_d_ddy = ctx.template Alloc<T>(out_tensor_d_ddy);
-      const DDim& dim = out_tensor_d_ddy->dims();
-      size_t N = static_cast<size_t>(product(dim));
-      auto step = dim[dim.size() - 1];
-      int s = -1;
-      for (size_t i = 0; i < N; ++i) {
-        if (0 == i % step) ++s;
-        data_d_ddy[i] = data_x[i] * data_d_ddout[s];
-      }
-    } else if (out_tensor_d_ddy) {
+    if (out_tensor_d_ddy && !out_tensor_d_ddy->IsInitialized()) {
       FullLikeKernel<T, DeviceContext>(ctx,
                                        *in_tensor_y,
                                        Scalar(0.0),
                                        in_tensor_y->dtype(),
                                        out_tensor_d_ddy);
     }
+
 #endif
   }
 };
