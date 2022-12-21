@@ -736,7 +736,7 @@ static PyObject* eager_api_current_stream(PyObject* self,
                                           PyObject* args,
                                           PyObject* kwargs) {
   EAGER_TRY
-  PyObject* obj = type->tp_alloc(type, 0);
+  PyObject* obj = p_streambase_type->tp_alloc(p_streambase_type, 0);
   if (obj) {
     auto v = reinterpret_cast<StreamBaseObject*>(obj);
     v->owned_stream_ = false;
@@ -751,7 +751,7 @@ static PyObject* eager_api_default_stream(PyObject* self,
                                           PyObject* args,
                                           PyObject* kwargs) {
   EAGER_TRY
-  PyObject* obj = p_streambase_type->p_streambase_type(type, 0);
+  PyObject* obj = p_streambase_type->tp_alloc(p_streambase_type, 0);
   if (obj) {
     auto v = reinterpret_cast<StreamBaseObject*>(obj);
     v->owned_stream_ = false;
