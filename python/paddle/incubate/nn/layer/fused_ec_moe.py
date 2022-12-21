@@ -22,8 +22,8 @@ class FusedEcMoe(Layer):
     Parameters:
         hidden_size (int): The dim size of input units.
         inter_size (int): The dim size of feed forward network.
-        num_expert (int): The number of experts. 
-        act_type (string): The activation type. Currently only support `gelu`, `relu`. 
+        num_expert (int): The number of experts.
+        act_type (string): The activation type. Currently only support `gelu`, `relu`.
         weight_attr (ParamAttr, optional): The attribute for the learnable
             weight of this layer. The default value is None and the weight will be
             initialized to zero. For detailed information, please refer to
