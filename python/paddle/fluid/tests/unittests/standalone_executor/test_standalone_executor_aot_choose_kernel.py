@@ -42,14 +42,10 @@ def build_resnet50():
 
 
 class TestAOTChooseKernel(unittest.TestCase):
-    def setUp(self):
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.fluid.core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
-
     def test_aot_choose_kernel(self):
+        if not paddle.fluid.core.is_compiled_with_cuda():
+            return
+
         def run(aot_choose_kernel=None):
             paddle.seed(2022)
             np.random.seed(2022)
@@ -57,7 +53,7 @@ class TestAOTChooseKernel(unittest.TestCase):
             main_program, startup_program, loss = build_resnet50()
 
             scope = paddle.static.Scope()
-            exe = paddle.static.Executor(self.place)
+            exe = paddle.static.Executor()
 
             if aot_choose_kernel:
                 set_flags({'FLAGS_new_executor_static_build': 1})

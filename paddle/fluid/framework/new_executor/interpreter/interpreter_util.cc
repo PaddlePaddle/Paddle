@@ -534,12 +534,12 @@ void FakeInitializeOutputs(phi::Kernel* phi_kernel,
           VLOG(4) << "DenseTensor alloc 0 bytes of type " << out_tensor->dtype()
                   << " " << out_tensor;
 
-          phi_kernel_context->GetDeviceContext<phi::DeviceContext>()
-              .template Alloc(out_tensor,
-                              out_tensor->dtype(),
-                              /*requested_size=*/0,
-                              /*pinned=*/false,
-                              /*check_size=*/false);
+          phi_kernel_context->GetDeviceContext<phi::DeviceContext>().Alloc(
+              out_tensor,
+              out_tensor->dtype(),
+              /*requested_size=*/0,
+              /*pinned=*/false,
+              /*check_size=*/false);
         }
       } else if (phi::SparseCooTensor::classof(out_tensor)) {
         VLOG(4) << "SparseCooTensor";
