@@ -334,41 +334,40 @@ class TestDygraphTripleGradMatmulcase1(TestCase):
             self.places.append("gpu")
 
     def actual(self):
-        with _test_eager_guard():
-            x = paddle.to_tensor(
-                self.input_numpy_x, stop_gradient=False, dtype='float32'
-            )
-            y = paddle.to_tensor(
-                self.input_numpy_y, stop_gradient=False, dtype='float32'
-            )
-            out = paddle.matmul(x, y, False, False)
+        x = paddle.to_tensor(
+            self.input_numpy_x, stop_gradient=False, dtype='float32'
+        )
+        y = paddle.to_tensor(
+            self.input_numpy_y, stop_gradient=False, dtype='float32'
+        )
+        out = paddle.matmul(x, y, False, False)
 
-            dout = paddle.to_tensor(
-                self.input_numpy_dout, stop_gradient=False, dtype='float32'
-            )
-            (dx, dy) = paddle.grad(
-                [out], [x, y], [dout], retain_graph=True, create_graph=True
-            )
-            ddx = paddle.to_tensor(
-                self.input_numpy_ddx, stop_gradient=False, dtype='float32'
-            )
-            ddy = paddle.to_tensor(
-                self.input_numpy_ddy, stop_gradient=False, dtype='float32'
-            )
-            dx_double_grad, dy_double_grad = paddle.grad(
-                [dx, dy],
-                [x, y],
-                [ddx, ddy],
-                retain_graph=True,
-                create_graph=True,
-            )
-            d_x, d_y, d_dout, d_ddx, d_ddy = paddle.grad(
-                [dx_double_grad, dy_double_grad],
-                [x, y, dout, ddx, ddy],
-                retain_graph=False,
-                create_graph=False,
-            )
-            return d_x, d_y, d_dout, d_ddx, d_ddy
+        dout = paddle.to_tensor(
+            self.input_numpy_dout, stop_gradient=False, dtype='float32'
+        )
+        (dx, dy) = paddle.grad(
+            [out], [x, y], [dout], retain_graph=True, create_graph=True
+        )
+        ddx = paddle.to_tensor(
+            self.input_numpy_ddx, stop_gradient=False, dtype='float32'
+        )
+        ddy = paddle.to_tensor(
+            self.input_numpy_ddy, stop_gradient=False, dtype='float32'
+        )
+        dx_double_grad, dy_double_grad = paddle.grad(
+            [dx, dy],
+            [x, y],
+            [ddx, ddy],
+            retain_graph=True,
+            create_graph=True,
+        )
+        d_x, d_y, d_dout, d_ddx, d_ddy = paddle.grad(
+            [dx_double_grad, dy_double_grad],
+            [x, y, dout, ddx, ddy],
+            retain_graph=False,
+            create_graph=False,
+        )
+        return d_x, d_y, d_dout, d_ddx, d_ddy
 
     # case1: d_ddout is none, dims != 1
     def test_matmul_triple_grad_case1(self):
@@ -526,41 +525,40 @@ class TestDygraphTripleGradMatmulcase2(TestCase):
             self.places.append("gpu")
 
     def actual(self):
-        with _test_eager_guard():
-            x = paddle.to_tensor(
-                self.input_numpy_x, stop_gradient=False, dtype='complex64'
-            )
-            y = paddle.to_tensor(
-                self.input_numpy_y, stop_gradient=False, dtype='complex64'
-            )
-            out = paddle.matmul(x, y, False, False)
+        x = paddle.to_tensor(
+            self.input_numpy_x, stop_gradient=False, dtype='complex64'
+        )
+        y = paddle.to_tensor(
+            self.input_numpy_y, stop_gradient=False, dtype='complex64'
+        )
+        out = paddle.matmul(x, y, False, False)
 
-            dout = paddle.to_tensor(
-                self.input_numpy_dout, stop_gradient=False, dtype='complex64'
-            )
-            (dx, dy) = paddle.grad(
-                [out], [x, y], [dout], retain_graph=True, create_graph=True
-            )
-            ddx = paddle.to_tensor(
-                self.input_numpy_ddx, stop_gradient=False, dtype='complex64'
-            )
-            ddy = paddle.to_tensor(
-                self.input_numpy_ddy, stop_gradient=False, dtype='complex64'
-            )
-            dx_double_grad, dy_double_grad = paddle.grad(
-                [dx, dy],
-                [x, y],
-                [ddx, ddy],
-                retain_graph=True,
-                create_graph=True,
-            )
-            d_x, d_y, d_dout, d_ddx, d_ddy = paddle.grad(
-                [dx_double_grad, dy_double_grad],
-                [x, y, dout, ddx, ddy],
-                retain_graph=False,
-                create_graph=False,
-            )
-            return d_x, d_y, d_dout, d_ddx, d_ddy
+        dout = paddle.to_tensor(
+            self.input_numpy_dout, stop_gradient=False, dtype='complex64'
+        )
+        (dx, dy) = paddle.grad(
+            [out], [x, y], [dout], retain_graph=True, create_graph=True
+        )
+        ddx = paddle.to_tensor(
+            self.input_numpy_ddx, stop_gradient=False, dtype='complex64'
+        )
+        ddy = paddle.to_tensor(
+            self.input_numpy_ddy, stop_gradient=False, dtype='complex64'
+        )
+        dx_double_grad, dy_double_grad = paddle.grad(
+            [dx, dy],
+            [x, y],
+            [ddx, ddy],
+            retain_graph=True,
+            create_graph=True,
+        )
+        d_x, d_y, d_dout, d_ddx, d_ddy = paddle.grad(
+            [dx_double_grad, dy_double_grad],
+            [x, y, dout, ddx, ddy],
+            retain_graph=False,
+            create_graph=False,
+        )
+        return d_x, d_y, d_dout, d_ddx, d_ddy
 
     # case1: no d_ddout, dims = 1, dtype is complex64
     def test_matmul_triple_grad_case1(self):
@@ -685,41 +683,40 @@ class TestDygraphTripleGradMatmulcase3(TestCase):
             self.places.append("gpu")
 
     def actual(self):
-        with _test_eager_guard():
-            x = paddle.to_tensor(
-                self.input_numpy_x, stop_gradient=False, dtype='float32'
-            )
-            y = paddle.to_tensor(
-                self.input_numpy_y, stop_gradient=False, dtype='float32'
-            )
-            out = paddle.matmul(x, y, False, False)
+        x = paddle.to_tensor(
+            self.input_numpy_x, stop_gradient=False, dtype='float32'
+        )
+        y = paddle.to_tensor(
+            self.input_numpy_y, stop_gradient=False, dtype='float32'
+        )
+        out = paddle.matmul(x, y, False, False)
 
-            dout = paddle.to_tensor(
-                self.input_numpy_dout, stop_gradient=False, dtype='float32'
-            )
-            (dx, dy) = paddle.grad(
-                [out], [x, y], [dout], retain_graph=True, create_graph=True
-            )
-            ddx = paddle.to_tensor(
-                self.input_numpy_ddx, stop_gradient=False, dtype='float32'
-            )
-            ddy = paddle.to_tensor(
-                self.input_numpy_ddy, stop_gradient=False, dtype='float32'
-            )
-            (dy_double_grad,) = paddle.grad(
-                [dx, dy],
-                [y],
-                [ddx, ddy],
-                retain_graph=True,
-                create_graph=True,
-            )
-            d_x, d_y, d_dout, d_ddx, d_ddy = paddle.grad(
-                [dy_double_grad],
-                [x, y, dout, ddx, ddy],
-                retain_graph=False,
-                create_graph=False,
-            )
-            return d_x, d_y, d_dout, d_ddx, d_ddy
+        dout = paddle.to_tensor(
+            self.input_numpy_dout, stop_gradient=False, dtype='float32'
+        )
+        (dx, dy) = paddle.grad(
+            [out], [x, y], [dout], retain_graph=True, create_graph=True
+        )
+        ddx = paddle.to_tensor(
+            self.input_numpy_ddx, stop_gradient=False, dtype='float32'
+        )
+        ddy = paddle.to_tensor(
+            self.input_numpy_ddy, stop_gradient=False, dtype='float32'
+        )
+        (dy_double_grad,) = paddle.grad(
+            [dx, dy],
+            [y],
+            [ddx, ddy],
+            retain_graph=True,
+            create_graph=True,
+        )
+        d_x, d_y, d_dout, d_ddx, d_ddy = paddle.grad(
+            [dy_double_grad],
+            [x, y, dout, ddx, ddy],
+            retain_graph=False,
+            create_graph=False,
+        )
+        return d_x, d_y, d_dout, d_ddx, d_ddy
 
     # case1: d_ddout is none, d_dx is none, dims != 1
     def test_matmul_triple_grad_case1(self):
@@ -873,41 +870,40 @@ class TestDygraphTripleGradMatmulcase4(TestCase):
             self.places.append("gpu")
 
     def actual(self):
-        with _test_eager_guard():
-            x = paddle.to_tensor(
-                self.input_numpy_x, stop_gradient=False, dtype='complex64'
-            )
-            y = paddle.to_tensor(
-                self.input_numpy_y, stop_gradient=False, dtype='complex64'
-            )
-            out = paddle.matmul(x, y, False, False)
+        x = paddle.to_tensor(
+            self.input_numpy_x, stop_gradient=False, dtype='complex64'
+        )
+        y = paddle.to_tensor(
+            self.input_numpy_y, stop_gradient=False, dtype='complex64'
+        )
+        out = paddle.matmul(x, y, False, False)
 
-            dout = paddle.to_tensor(
-                self.input_numpy_dout, stop_gradient=False, dtype='complex64'
-            )
-            (dx, dy) = paddle.grad(
-                [out], [x, y], [dout], retain_graph=True, create_graph=True
-            )
-            ddx = paddle.to_tensor(
-                self.input_numpy_ddx, stop_gradient=False, dtype='complex64'
-            )
-            ddy = paddle.to_tensor(
-                self.input_numpy_ddy, stop_gradient=False, dtype='complex64'
-            )
-            (dy_double_grad,) = paddle.grad(
-                [dx, dy],
-                [y],
-                [ddx, ddy],
-                retain_graph=True,
-                create_graph=True,
-            )
-            d_x, d_y, d_dout, d_ddx, d_ddy = paddle.grad(
-                [dy_double_grad],
-                [x, y, dout, ddx, ddy],
-                retain_graph=False,
-                create_graph=False,
-            )
-            return d_x, d_y, d_dout, d_ddx, d_ddy
+        dout = paddle.to_tensor(
+            self.input_numpy_dout, stop_gradient=False, dtype='complex64'
+        )
+        (dx, dy) = paddle.grad(
+            [out], [x, y], [dout], retain_graph=True, create_graph=True
+        )
+        ddx = paddle.to_tensor(
+            self.input_numpy_ddx, stop_gradient=False, dtype='complex64'
+        )
+        ddy = paddle.to_tensor(
+            self.input_numpy_ddy, stop_gradient=False, dtype='complex64'
+        )
+        (dy_double_grad,) = paddle.grad(
+            [dx, dy],
+            [y],
+            [ddx, ddy],
+            retain_graph=True,
+            create_graph=True,
+        )
+        d_x, d_y, d_dout, d_ddx, d_ddy = paddle.grad(
+            [dy_double_grad],
+            [x, y, dout, ddx, ddy],
+            retain_graph=False,
+            create_graph=False,
+        )
+        return d_x, d_y, d_dout, d_ddx, d_ddy
 
     # case1: no d_ddout,no d_dx, dims = 1
     def test_matmul_triple_grad_case1(self):
@@ -1020,41 +1016,40 @@ class TestDygraphTripleGradMatmulcase5(TestCase):
             self.places.append("gpu")
 
     def actual(self):
-        with _test_eager_guard():
-            x = paddle.to_tensor(
-                self.input_numpy_x, stop_gradient=False, dtype='float32'
-            )
-            y = paddle.to_tensor(
-                self.input_numpy_y, stop_gradient=False, dtype='float32'
-            )
-            out = paddle.matmul(x, y, False, False)
+        x = paddle.to_tensor(
+            self.input_numpy_x, stop_gradient=False, dtype='float32'
+        )
+        y = paddle.to_tensor(
+            self.input_numpy_y, stop_gradient=False, dtype='float32'
+        )
+        out = paddle.matmul(x, y, False, False)
 
-            dout = paddle.to_tensor(
-                self.input_numpy_dout, stop_gradient=False, dtype='float32'
-            )
-            (dx, dy) = paddle.grad(
-                [out], [x, y], [dout], retain_graph=True, create_graph=True
-            )
-            ddx = paddle.to_tensor(
-                self.input_numpy_ddx, stop_gradient=False, dtype='float32'
-            )
-            ddy = paddle.to_tensor(
-                self.input_numpy_ddy, stop_gradient=False, dtype='float32'
-            )
-            (dx_double_grad,) = paddle.grad(
-                [dx, dy],
-                [x],
-                [ddx, ddy],
-                retain_graph=True,
-                create_graph=True,
-            )
-            d_x, d_y, d_dout, d_ddx, d_ddy = paddle.grad(
-                [dx_double_grad],
-                [x, y, dout, ddx, ddy],
-                retain_graph=False,
-                create_graph=False,
-            )
-            return d_x, d_y, d_dout, d_ddx, d_ddy
+        dout = paddle.to_tensor(
+            self.input_numpy_dout, stop_gradient=False, dtype='float32'
+        )
+        (dx, dy) = paddle.grad(
+            [out], [x, y], [dout], retain_graph=True, create_graph=True
+        )
+        ddx = paddle.to_tensor(
+            self.input_numpy_ddx, stop_gradient=False, dtype='float32'
+        )
+        ddy = paddle.to_tensor(
+            self.input_numpy_ddy, stop_gradient=False, dtype='float32'
+        )
+        (dx_double_grad,) = paddle.grad(
+            [dx, dy],
+            [x],
+            [ddx, ddy],
+            retain_graph=True,
+            create_graph=True,
+        )
+        d_x, d_y, d_dout, d_ddx, d_ddy = paddle.grad(
+            [dx_double_grad],
+            [x, y, dout, ddx, ddy],
+            retain_graph=False,
+            create_graph=False,
+        )
+        return d_x, d_y, d_dout, d_ddx, d_ddy
 
     # case1: d_ddout is none, d_dy is none, dims != 1
     def test_matmul_triple_grad_case1(self):
@@ -1208,41 +1203,40 @@ class TestDygraphTripleGradMatmulcase6(TestCase):
             self.places.append("gpu")
 
     def actual(self):
-        with _test_eager_guard():
-            x = paddle.to_tensor(
-                self.input_numpy_x, stop_gradient=False, dtype='complex64'
-            )
-            y = paddle.to_tensor(
-                self.input_numpy_y, stop_gradient=False, dtype='complex64'
-            )
-            out = paddle.matmul(x, y, False, False)
+        x = paddle.to_tensor(
+            self.input_numpy_x, stop_gradient=False, dtype='complex64'
+        )
+        y = paddle.to_tensor(
+            self.input_numpy_y, stop_gradient=False, dtype='complex64'
+        )
+        out = paddle.matmul(x, y, False, False)
 
-            dout = paddle.to_tensor(
-                self.input_numpy_dout, stop_gradient=False, dtype='complex64'
-            )
-            (dx, dy) = paddle.grad(
-                [out], [x, y], [dout], retain_graph=True, create_graph=True
-            )
-            ddx = paddle.to_tensor(
-                self.input_numpy_ddx, stop_gradient=False, dtype='complex64'
-            )
-            ddy = paddle.to_tensor(
-                self.input_numpy_ddy, stop_gradient=False, dtype='complex64'
-            )
-            (dx_double_grad,) = paddle.grad(
-                [dx, dy],
-                [x],
-                [ddx, ddy],
-                retain_graph=True,
-                create_graph=True,
-            )
-            d_x, d_y, d_dout, d_ddx, d_ddy = paddle.grad(
-                [dx_double_grad],
-                [x, y, dout, ddx, ddy],
-                retain_graph=False,
-                create_graph=False,
-            )
-            return d_x, d_y, d_dout, d_ddx, d_ddy
+        dout = paddle.to_tensor(
+            self.input_numpy_dout, stop_gradient=False, dtype='complex64'
+        )
+        (dx, dy) = paddle.grad(
+            [out], [x, y], [dout], retain_graph=True, create_graph=True
+        )
+        ddx = paddle.to_tensor(
+            self.input_numpy_ddx, stop_gradient=False, dtype='complex64'
+        )
+        ddy = paddle.to_tensor(
+            self.input_numpy_ddy, stop_gradient=False, dtype='complex64'
+        )
+        (dx_double_grad,) = paddle.grad(
+            [dx, dy],
+            [x],
+            [ddx, ddy],
+            retain_graph=True,
+            create_graph=True,
+        )
+        d_x, d_y, d_dout, d_ddx, d_ddy = paddle.grad(
+            [dx_double_grad],
+            [x, y, dout, ddx, ddy],
+            retain_graph=False,
+            create_graph=False,
+        )
+        return d_x, d_y, d_dout, d_ddx, d_ddy
 
     # case1: no d_ddout,no d_dy, dims = 1
     def test_matmul_triple_grad_case1(self):
