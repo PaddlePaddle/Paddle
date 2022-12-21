@@ -22,7 +22,6 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.nn import Embedding
 
@@ -90,18 +89,13 @@ class SimpleNet(fluid.Layer):
 
 
 class TestDygraphSimpleNet(unittest.TestCase):
-    def func_simple_net(self):
+    def test_simple_net(self):
         for is_sparse in [True, False]:
             dtype_list = ["float32"]
             if not core.is_compiled_with_rocm():
                 dtype_list.append("float64")
             for dtype in dtype_list:
                 self.simple_net_float(is_sparse, dtype)
-
-    def test_simple_net(self):
-        with _test_eager_guard():
-            self.func_simple_net()
-        self.func_simple_net()
 
     def simple_net_float(self, is_sparse, dtype):
         places = [fluid.CPUPlace()]

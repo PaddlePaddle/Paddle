@@ -25,8 +25,8 @@
 #include <exception>
 #include <mutex>
 
-#include "paddle/fluid/distributed/collective/ProcessGroup.h"
-#include "paddle/fluid/distributed/collective/Types.h"
+#include "paddle/fluid/distributed/collective/process_group.h"
+#include "paddle/fluid/distributed/collective/types.h"
 #include "paddle/fluid/platform/device_context.h"
 
 #if defined(PADDLE_WITH_MPI)
