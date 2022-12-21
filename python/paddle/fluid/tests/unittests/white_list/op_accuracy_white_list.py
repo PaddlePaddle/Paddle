@@ -54,7 +54,6 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'reduce_max',
     'reduce_min',
     'reshape2',
-    'roi_perspective_transform',
     'row_conv',
     'scatter',
     'sequence_conv',

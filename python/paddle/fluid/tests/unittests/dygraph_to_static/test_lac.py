@@ -26,10 +26,10 @@ import paddle
 import paddle.fluid as fluid
 from paddle import _legacy_C_ops
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.fluid.framework import _non_static_mode
 from paddle.jit import ProgramTranslator
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
+from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 SEED = 2020
 
@@ -440,7 +440,7 @@ class LexNet(fluid.dygraph.Layer):
         # share weight
         self.crf_decoding.weight = self.linear_chain_crf.weight
 
-    @declarative(input_spec=input_specs)
+    @to_static(input_spec=input_specs)
     def forward(self, word, target, length=None):
         """
         Configure the network

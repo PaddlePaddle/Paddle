@@ -156,7 +156,7 @@ class BasicGRUUnit(Layer):
         gate_input = paddle.add(gate_input, self._gate_bias)
 
         gate_input = self._gate_activation(gate_input)
-        r, u = layers.split(gate_input, num_or_sections=2, dim=1)
+        r, u = paddle.split(gate_input, num_or_sections=2, axis=1)
 
         r_hidden = r * pre_hidden
 
@@ -378,9 +378,9 @@ def basic_gru(
 
                 step_input = new_hidden
                 if dropout_prob is not None and dropout_prob > 0.0:
-                    step_input = layers.dropout(
+                    step_input = paddle.nn.functional.dropout(
                         step_input,
-                        dropout_prob=dropout_prob,
+                        p=dropout_prob,
                     )
 
             rnn.step_output(step_input)
@@ -680,10 +680,10 @@ def basic_lstm(
 
                 step_input = new_hidden
                 if dropout_prob is not None and dropout_prob > 0.0:
-                    step_input = layers.dropout(
+                    step_input = paddle.nn.functional.dropout(
                         step_input,
-                        dropout_prob=dropout_prob,
-                        dropout_implementation='upscale_in_train',
+                        p=dropout_prob,
+                        mode='upscale_in_train',
                     )
 
             rnn.step_output(step_input)
@@ -877,7 +877,7 @@ class BasicLSTMUnit(Layer):
         gate_input = paddle.matmul(x=concat_input_hidden, y=self._weight)
 
         gate_input = paddle.add(gate_input, self._bias)
-        i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
+        i, j, f, o = paddle.split(gate_input, num_or_sections=4, axis=-1)
         new_cell = paddle.add(
             paddle.multiply(
                 pre_cell,

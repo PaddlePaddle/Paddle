@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestComplexTransposeLayer(unittest.TestCase):
@@ -41,10 +40,6 @@ class TestComplexTransposeLayer(unittest.TestCase):
                     var = dg.to_variable(data)
                     trans = paddle.transpose(var, perm=perm)
                 np.testing.assert_allclose(trans.numpy(), np_trans, rtol=1e-05)
-
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_transpose_by_complex_api()
 
 
 if __name__ == '__main__':
