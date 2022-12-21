@@ -342,7 +342,7 @@ class TestDistBase(unittest.TestCase):
             tr_out1 = np.vstack((tr1_out[0], tr1_out[1]))
             np.testing.assert_allclose(tr_out0, need_result, rtol=1e-05)
             np.testing.assert_allclose(tr_out1, need_result, rtol=1e-05)
-        if col_type == "allgather_object":
+        elif col_type == "allgather_object":
             need_result = [input1, input2]
             self.assertEqual(need_result, tr0_out)
             self.assertEqual(need_result, tr1_out)
@@ -350,6 +350,10 @@ class TestDistBase(unittest.TestCase):
             need_result = input2
             np.testing.assert_allclose(tr0_out[0], need_result, rtol=1e-05)
             np.testing.assert_allclose(tr1_out[0], need_result, rtol=1e-05)
+        elif col_type == "broadcast_object_list":
+            need_result = [input2]
+            self.assertEqual(need_result, tr0_out)
+            self.assertEqual(need_result, tr1_out)
         elif col_type == "reduce":
             need_result = input1 + input2
             # bfloat16 precision loss comes from truncating the last 16 bits of float32,
@@ -365,6 +369,12 @@ class TestDistBase(unittest.TestCase):
             need_result2 = need_result[need_result.shape[0] // 2 :]
             np.testing.assert_allclose(tr0_out[0], need_result1, rtol=1e-05)
             np.testing.assert_allclose(tr1_out[0], need_result2, rtol=1e-05)
+        elif col_type == "scatter_object_list":
+            need_result = input2
+            need_result1 = [need_result[0 : len(need_result) // 2]]
+            need_result2 = [need_result[len(need_result) // 2 :]]
+            self.assertEqual(need_result1, tr0_out)
+            self.assertEqual(need_result2, tr1_out)
         elif col_type == "reduce_scatter":
             need_result = input1 + input2
             need_result1 = need_result[0 : need_result.shape[0] // 2]

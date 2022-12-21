@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import io
-import pickle
-
 import numpy as np
 
 import paddle
 import paddle.distributed as dist
 import paddle.distributed.communication.stream as stream
 import paddle.fluid.framework as framework
+
+from .serialization_utils import (
+    convert_object_to_tensor,
+    convert_tensor_to_object,
+)
 
 
 def all_gather(tensor_list, tensor, group=None, sync_op=True):
@@ -98,20 +100,6 @@ def all_gather(tensor_list, tensor, group=None, sync_op=True):
     tensor_list.extend(paddle.split(out, nranks, 0))
 
 
-def _convert_object_to_tensor(obj):
-    _pickler = pickle.Pickler
-    f = io.BytesIO()
-    _pickler(f).dump(obj)
-    data = np.frombuffer(f.getvalue(), dtype=np.uint8)
-    tensor = paddle.to_tensor(data)
-    return tensor, tensor.numel()
-
-
-def _convert_tensor_to_object(tensor, len_of_tensor):
-    _unpickler = pickle.Unpickler
-    return _unpickler(io.BytesIO(tensor.numpy()[:len_of_tensor])).load()
-
-
 def all_gather_object(object_list, obj, group=None):
     """
 
@@ -149,7 +137,7 @@ def all_gather_object(object_list, obj, group=None):
         framework.in_dygraph_mode()
     ), "all_gather_object doesn't support static graph mode."
 
-    tensor, len_of_tensor = _convert_object_to_tensor(obj)
+    tensor, len_of_tensor = convert_object_to_tensor(obj)
 
     # gather len_of_tensor from all ranks
     list_len_of_tensor = []
@@ -167,5 +155,5 @@ def all_gather_object(object_list, obj, group=None):
     all_gather(tensor_list, input_tensor, group)
     for i, tensor in enumerate(tensor_list):
         object_list.append(
-            _convert_tensor_to_object(tensor, list_len_of_tensor[i])
+            convert_tensor_to_object(tensor, list_len_of_tensor[i])
         )
