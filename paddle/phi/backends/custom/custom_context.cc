@@ -36,6 +36,12 @@ struct CustomContext::Impl {
     return reinterpret_cast<void*>(stream_->raw_stream());
   }
 
+  std::shared_ptr<phi::stream::Stream> GetStream() const { return stream_; }
+
+  void SetStream(std::shared_ptr<phi::stream::Stream> stream) {
+    stream_ = stream;
+  }
+
   void Wait() const { stream_->Wait(); }
 
   Place place_;
@@ -48,6 +54,14 @@ void CustomContext::Init() { impl_->Init(); }
 const Place& CustomContext::GetPlace() const { return impl_->GetPlace(); }
 
 void* CustomContext::stream() const { return impl_->stream(); }
+
+std::shared_ptr<phi::stream::Stream> CustomContext::GetStream() const {
+  return impl_->GetStream();
+}
+
+void CustomContext::SetStream(std::shared_ptr<phi::stream::Stream> stream) {
+  impl_->SetStream(stream);
+}
 
 void CustomContext::Wait() const { return impl_->Wait(); }
 

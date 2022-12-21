@@ -134,6 +134,8 @@ class DeviceEvent {
 
   std::shared_ptr<void> GetEvent() const { return event_; }
 
+  platform::Place place() const { return place_; }
+
  private:
   std::shared_ptr<void> event_;
   platform::Place place_;

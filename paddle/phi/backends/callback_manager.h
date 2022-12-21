@@ -13,16 +13,6 @@
 // limitations under the License.
 
 #pragma once
-
-#ifdef PADDLE_WITH_CUDA
-#include <cuda.h>
-#include <cuda_runtime.h>
-#endif
-
-#ifdef PADDLE_WITH_HIP
-#include <hip/hip_runtime.h>
-#endif
-
 #include <functional>
 #include <future>  // NOLINT
 #include <memory>

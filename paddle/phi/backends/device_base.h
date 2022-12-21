@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include <vector>
 
 #include "paddle/phi/backends/c_comm_lib.h"
@@ -275,5 +274,3 @@ class DeviceInterface {  // Driver / Runtime
 };
 
 }  // namespace phi
-
-#endif

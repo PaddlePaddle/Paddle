@@ -14,7 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/eager/pylayer/py_layer_node.h"
+#include "paddle/fluid/platform/device_event_base.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 
@@ -39,10 +41,21 @@ typedef struct {
   std::weak_ptr<egr::GradNodePyLayer> grad_node;
 } PyLayerObject;
 
+typedef struct {
+  PyObject_HEAD phi::DeviceContext* stream;
+  bool owned_stream_;
+} StreamBaseObject;
+
+typedef struct {
+  PyObject_HEAD paddle::platform::DeviceEvent* event;
+} EventBaseObject;
+
 void BindEager(pybind11::module* m);
 void BindEagerStringTensor(pybind11::module* module);
 void BindFunctions(PyObject* module);
 void BindEagerPyLayer(PyObject* module);
+void BindEagerDeviceStream(PyObject* module);
+void BindEagerDeviceEvent(PyObject* module);
 void BindEagerOpFunctions(pybind11::module* module);
 void BindFinalStateEagerOpFunctions(pybind11::module* module);
 }  // namespace pybind

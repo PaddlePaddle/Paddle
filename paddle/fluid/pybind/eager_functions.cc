@@ -731,6 +731,44 @@ static PyObject* eager_api_reset_saved_tensors_hooks(PyObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* eager_api_current_stream(PyObject* self,
+                                          PyObject* args,
+                                          PyObject* kwargs) {
+  EAGER_TRY
+  egr::SavedTensorsHooks::GetInstance().ResetHooks();
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* eager_api_default_stream(PyObject* self,
+                                          PyObject* args,
+                                          PyObject* kwargs) {
+  EAGER_TRY
+  auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 0), 0);
+  paddle::platform::DeviceContextPool::Instance().Get(place);
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* eager_api_set_stream(PyObject* self,
+                                      PyObject* args,
+                                      PyObject* kwargs) {
+  EAGER_TRY
+  egr::SavedTensorsHooks::GetInstance().ResetHooks();
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* eager_api_synchronize(PyObject* self,
+                                       PyObject* args,
+                                       PyObject* kwargs) {
+  EAGER_TRY
+  auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 0), 0);
+  paddle::platform::DeviceContextPool::Instance().Get(place);
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 #if defined(PADDLE_WITH_CUDA)
 static PyObject* eager_api_async_read(PyObject* self,
                                       PyObject* args,
@@ -1113,6 +1151,22 @@ PyMethodDef variable_functions[] = {
      NULL},
     {"jit_function_call",
      (PyCFunction)(void (*)(void))eager_api_jit_function_call,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"current_stream",
+     (PyCFunction)(void (*)(void))eager_api_current_stream,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"default_stream",
+     (PyCFunction)(void (*)(void))eager_api_default_stream,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"set_stream",
+     (PyCFunction)(void (*)(void))eager_api_set_stream,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"synchronize",
+     (PyCFunction)(void (*)(void))eager_api_synchronize,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     /**sparse functions**/

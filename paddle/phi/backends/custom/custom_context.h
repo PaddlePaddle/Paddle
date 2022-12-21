@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <memory>
 
+#include "paddle/phi/backends/stream.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
 
@@ -30,8 +31,13 @@ class CustomContext : public DeviceContext,
 
   const Place& GetPlace() const override;
 
-  /*! \brief  Return stream in the device context. */
+  /*! \brief  Return raw stream in the device context. */
   void* stream() const;
+
+  /*! \brief  Return stream in the device context. */
+  std::shared_ptr<phi::stream::Stream> GetStream() const;
+
+  void SetStream(std::shared_ptr<phi::stream::Stream> stream);
 
   // Wait for all operations completion in the stream.
   void Wait() const override;

@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/common/complex.h"
 
@@ -666,6 +665,7 @@ std::vector<std::string> ListAllLibraries(const std::string& library_dir) {
   DIR* dir = nullptr;
   dirent* ptr = nullptr;
 
+#if !defined(_WIN32)
   dir = opendir(library_dir.c_str());
   if (dir == nullptr) {
     VLOG(4) << "Failed to open path: " << library_dir;
@@ -681,8 +681,9 @@ std::vector<std::string> ListAllLibraries(const std::string& library_dir) {
     closedir(dir);
   }
 
+#endif
+
   return libraries;
 }
 
 }  // namespace phi
-#endif
