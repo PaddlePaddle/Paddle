@@ -28,8 +28,6 @@ from . import layers
 from .layers import *
 from . import optimizer
 from .optimizer import *
-from . import sparsity
-from .sparsity import *
 
 __all__ = []
 
@@ -39,4 +37,3 @@ __all__ += extend_optimizer.__all__
 __all__ += ['mixed_precision']
 __all__ += layers.__all__
 __all__ += optimizer.__all__
-__all__ += sparsity.__all__

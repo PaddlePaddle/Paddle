@@ -1203,7 +1203,6 @@ def get_setup_parameters():
         'paddle.fluid.contrib.mixed_precision',
         'paddle.fluid.contrib.mixed_precision.bf16',
         'paddle.fluid.contrib.layers',
-        'paddle.fluid.contrib.sparsity',
         'paddle.fluid.transpiler',
         'paddle.fluid.transpiler.details',
         'paddle.fluid.incubate',
