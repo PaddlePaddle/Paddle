@@ -180,7 +180,8 @@ struct DeviceContext::Impl {
 
   void* HostAlloc(TensorBase* tensor,
                   DataType dtype = DataType::UNDEFINED,
-                  size_t requested_size = 0) const {
+                  size_t requested_size = 0,
+                  bool check_size = true) const {
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
         phi::errors::InvalidArgument(
@@ -192,9 +193,11 @@ struct DeviceContext::Impl {
       ClearHolder(tensor);
     }
     auto* allocator =
-        tensor->numel() == 0 ? host_zero_allocator_ : host_allocator_;
+        (tensor->numel() == 0 || check_size == false) && requested_size == 0
+            ? host_zero_allocator_
+            : host_allocator_;
     return tensor->AllocateFrom(
-        const_cast<Allocator*>(allocator), dtype, requested_size);
+        const_cast<Allocator*>(allocator), dtype, requested_size, check_size);
   }
 
   template <typename T>
@@ -371,8 +374,9 @@ T* DeviceContext::Alloc(TensorBase* tensor,
 
 void* DeviceContext::HostAlloc(TensorBase* tensor,
                                DataType dtype,
-                               size_t requested_size) const {
-  return impl_->HostAlloc(tensor, dtype, requested_size);
+                               size_t requested_size,
+                               bool check_size) const {
+  return impl_->HostAlloc(tensor, dtype, requested_size, check_size);
 }
 
 template <typename T>

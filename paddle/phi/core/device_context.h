@@ -162,7 +162,8 @@ class PADDLE_API DeviceContext {
    */
   void* HostAlloc(TensorBase* tensor,
                   DataType dtype,
-                  size_t requested_size = 0) const;
+                  size_t requested_size = 0,
+                  bool check_size = true) const;
 
   template <typename T>
   T* HostAlloc(TensorBase* tensor, size_t requested_size = 0) const;

@@ -529,21 +529,35 @@ void FakeInitializeOutputs(phi::Kernel* phi_kernel,
         VLOG(4) << "Output" << out_names[i] << " is nullptr";
         continue;
       }
+      auto backend = output_defs[j].backend;
+      auto* dev_ctx =
+          &(phi_kernel_context->GetDeviceContext<phi::DeviceContext>());
+
       if (phi::DenseTensor::classof(out_tensor)) {
         if (!out_tensor->initialized()) {
           VLOG(4) << "DenseTensor alloc 0 bytes of type " << out_tensor->dtype()
                   << " " << out_tensor;
-
-          phi_kernel_context->GetDeviceContext<phi::DeviceContext>().Alloc(
-              out_tensor,
-              out_tensor->dtype(),
-              /*requested_size=*/0,
-              /*pinned=*/false,
-              /*check_size=*/false);
+          if (backend == phi::TransToPhiBackend(dev_ctx->GetPlace())) {
+            dev_ctx->Alloc(out_tensor,
+                           out_tensor->dtype(),
+                           /*requested_size=*/0,
+                           /*pinned=*/false,
+                           /*check_size=*/false);
+          } else {
+            if (backend == phi::Backend::CPU ||
+                backend == phi::Backend::ONEDNN) {
+              dev_ctx->HostAlloc(out_tensor,
+                                 out_tensor->dtype(),
+                                 /*requested_size=*/0,
+                                 /*check_size=*/false);
+            }
+          }
         }
       } else if (phi::SparseCooTensor::classof(out_tensor)) {
+        // todo
         VLOG(4) << "SparseCooTensor";
       } else if (phi::SparseCsrTensor::classof(out_tensor)) {
+        // todo
         VLOG(4) << "SparseCsrTensor";
       } else {
         PADDLE_THROW(phi::errors::Unimplemented(
