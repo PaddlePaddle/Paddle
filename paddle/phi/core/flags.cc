@@ -53,6 +53,20 @@ PADDLE_DEFINE_EXPORTED_int32(paddle_num_threads,
                              "Number of threads for each paddle instance.");
 
 /**
+ * Low Precision Op related FLAG
+ * Name: FLAGS_low_precision_op_list
+ * Since Version: 0.13.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Used to debug. Get the low precision op list of current module.
+ */
+PADDLE_DEFINE_EXPORTED_bool(low_precision_op_list,
+                            false,
+                            "Checking whether get the low precision op list of "
+                            "current module. It will be "
+                            "rerun the low precision list after module.");
+
+/**
  * Operator related FLAG
  * Name: FLAGS_check_nan_inf
  * Since Version: 0.13.0

@@ -33,9 +33,10 @@ from .common import py_func  # noqa: F401
 from .common import row_conv  # noqa: F401
 from .common import spectral_norm  # noqa: F401
 from ...tensor.creation import create_parameter  # noqa: F401
-from ...fluid.layers import layer_norm  # noqa: F401
 from .loss import nce  # noqa: F401
 from .common import prelu  # noqa: F401
+from .common import layer_norm  # noqa: F401
+
 
 from ...fluid.input import embedding  # noqa: F401
 from ...fluid.contrib.layers import sparse_embedding  # noqa: F401

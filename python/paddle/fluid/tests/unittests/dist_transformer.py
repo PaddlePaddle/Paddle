@@ -1248,7 +1248,7 @@ def pre_post_process_layer(prev_out, out, process_cmd, dropout_rate=0.0):
         if cmd == "a":  # add residual connection
             out = out + prev_out if prev_out else out
         elif cmd == "n":  # add layer normalization
-            out = layers.layer_norm(
+            out = paddle.static.nn.layer_norm(
                 out,
                 begin_norm_axis=len(out.shape) - 1,
                 param_attr=fluid.initializer.Constant(1.0),

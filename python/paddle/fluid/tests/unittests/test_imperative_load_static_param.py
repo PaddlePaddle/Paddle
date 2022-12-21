@@ -64,8 +64,8 @@ class TestDygraphLoadStatic(unittest.TestCase):
         emb_out_2 = fluid.embedding(emb_in, [2000, 200])
 
         layernorm = fluid.data(name="ln", shape=[None, 10], dtype='float32')
-        layernorm_1 = fluid.layers.layer_norm(layernorm)
-        layernorm_2 = fluid.layers.layer_norm(layernorm)
+        layernorm_1 = paddle.static.nn.layer_norm(layernorm)
+        layernorm_2 = paddle.static.nn.layer_norm(layernorm)
 
         nce_in = fluid.data(name="nce_in", shape=[None, 100], dtype='float32')
         nce_label = fluid.data(
