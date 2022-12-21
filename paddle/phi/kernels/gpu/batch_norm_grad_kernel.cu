@@ -403,10 +403,8 @@ static __global__ void BNBackward2DChannelLastStage2(
     BatchNormParamType<T> ds_sum = static_cast<BatchNormParamType<T>>(0);
     BatchNormParamType<T> db_sum = static_cast<BatchNormParamType<T>>(0);
     BatchNormParamType<T> mean_val = means[i];
-    BatchNormParamType<T> inv_var_val = variances[i];
-    if (is_test) {
-      inv_var_val = 1.0 / sqrt(inv_var_val + epsilon);
-    }
+    BatchNormParamType<T> inv_var_val =
+        is_test ? 1.0 / sqrt(variances[i] + epsilon) : variances[i];
 
     for (int j = blockIdx.y * blockDim.y + threadIdx.y; j < inner_size;
          j += inner_loop_stride) {
@@ -999,7 +997,7 @@ void BatchNormGradRawKernel(const Context &ctx,
                   N,
                   H * W * D,
                   epsilon,
-                  use_global_stats,
+                  false,
                   block_data_ptr,
                   dscale,
                   dbias,
@@ -1322,7 +1320,7 @@ void BatchNormGradRawKernel(const Context &ctx,
                 N,
                 H * W * D,
                 epsilon,
-                use_global_stats,
+                true,
                 block_data_ptr,
                 d_scale->data<BatchNormParamType<T>>(),
                 d_bias->data<BatchNormParamType<T>>(),
