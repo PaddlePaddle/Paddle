@@ -67,7 +67,7 @@ class TestAOTChooseKernel(unittest.TestCase):
             with paddle.static.scope_guard(scope):
                 exe.run(startup_program)
 
-                for i in range(2):
+                for i in range(10):
                     feed = {
                         'image': np.random.randint(
                             0, 256, size=[32, 3, 224, 224]
