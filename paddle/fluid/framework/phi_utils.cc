@@ -104,7 +104,7 @@ phi::KernelKey FallBackToCpu(const phi::KernelKey& kernel_key,
                              const framework::OperatorBase& op) {
 #ifdef PADDLE_WITH_XPU
   if (kernel_key.backend() == phi::Backend::XPU ||
-      paddle::platform::is_in_xpu_black_list(op.Type())) {
+      paddle::platform::IsInXPUBlackList(op.Type())) {
     VLOG(3) << "phi missing XPU kernel: " << op.Type()
             << ", expected_kernel_key:" << kernel_key
             << ", fallback to CPU one!";
