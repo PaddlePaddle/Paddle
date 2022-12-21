@@ -23,11 +23,10 @@ limitations under the License. */
 
 #include "dnnl.hpp"  // NOLINT
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/backends/onednn/onednn_helper.h"
+#include "paddle/phi/common/place.h"
 namespace paddle {
 #ifdef PADDLE_WITH_MKLDNN
-using OneDNNMemoryFormat = dnnl::memory::format_tag;
 using phi::OneDNNContext;
 #endif
 namespace platform {

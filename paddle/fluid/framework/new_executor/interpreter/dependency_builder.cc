@@ -17,6 +17,16 @@
 #include <queue>
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 
+// The difference between "sequential_run" and "serial_run":
+// "sequential_run" dispatches OPs one by one according to the sequence in the
+// Program, while "serial_run" ensures that all Ops are scheduled in a singal
+// thread. In standalone executor, "sequential_run" is also "serial_run", while
+// "serial_run" is not necessarily "sequential_run".
+PADDLE_DEFINE_EXPORTED_bool(new_executor_sequential_run,
+                            false,
+                            "Enable sequential execution for standalone "
+                            "executor, only applied to GPU OPs.");
+
 namespace paddle {
 namespace framework {
 namespace interpreter {
@@ -43,7 +53,7 @@ const std::string StringizeDownstreamMap(
 }
 
 const std::map<size_t, std::set<size_t>>& DependencyBuilder::Build(
-    const std::vector<Instruction>& instructions, bool is_sequential_run) {
+    const std::vector<Instruction>& instructions) {
   PADDLE_ENFORCE_EQ(
       is_build_,
       false,
@@ -56,7 +66,7 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilder::Build(
   BuildOpHappensBefore();
   ShrinkDownstreamMap();
 
-  if (is_sequential_run) {
+  if (FLAGS_new_executor_sequential_run) {
     AddDependencyForSequentialRun();
   }
 

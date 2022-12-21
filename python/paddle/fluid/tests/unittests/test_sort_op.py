@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestSortOnCPU(unittest.TestCase):
@@ -75,19 +74,14 @@ class TestSortDygraph(unittest.TestCase):
         else:
             self.place = core.CPUPlace()
 
-    def func_api_0(self):
+    def test_api_0(self):
         paddle.disable_static(self.place)
         var_x = paddle.to_tensor(self.input_data)
         out = paddle.sort(var_x)
         self.assertEqual((np.sort(self.input_data) == out.numpy()).all(), True)
         paddle.enable_static()
 
-    def test_api_0(self):
-        with _test_eager_guard():
-            self.func_api_0()
-        self.func_api_0()
-
-    def func_api_1(self):
+    def test_api_1(self):
         paddle.disable_static(self.place)
         var_x = paddle.to_tensor(self.input_data)
         out = paddle.sort(var_x, axis=-1)
@@ -95,8 +89,3 @@ class TestSortDygraph(unittest.TestCase):
             (np.sort(self.input_data, axis=-1) == out.numpy()).all(), True
         )
         paddle.enable_static()
-
-    def test_api_1(self):
-        with _test_eager_guard():
-            self.func_api_1()
-        self.func_api_1()
