@@ -37,6 +37,7 @@ list(
   prelnlayernorm_shift_partition_op.cu
   merge_layernorm_op_plugin.cu
   skip_merge_layernorm_op_plugin.cu
+  skip_groupnorm_act_op_plugin.cu
   generic_plugin.cu
   lookup_table.cu)
 
