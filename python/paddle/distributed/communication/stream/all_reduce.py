@@ -106,7 +106,7 @@ def all_reduce(
                 data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
             task = dist.stream.all_reduce(data, sync_op=False)
             task.wait()
-            out = data.numpy()
+            out = data
             # [[5, 7, 9], [5, 7, 9]]
     """
     if _warn_cur_rank_not_in_group(group):

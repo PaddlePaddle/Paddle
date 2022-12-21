@@ -28,7 +28,6 @@ from paddle.fluid.framework import (
     set_flags,
 )
 
-# NOTE: queue has a different name in python2 and python3
 import queue
 
 import paddle

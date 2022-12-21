@@ -21,9 +21,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import BatchNorm, Embedding, GRUUnit, Linear
-from paddle.fluid.framework import _test_eager_guard
-from paddle.nn import Linear
+from paddle.nn import BatchNorm, Linear
 
 
 class Config:
@@ -168,13 +166,9 @@ class DynamicGRU(fluid.dygraph.Layer):
     ):
         super().__init__()
 
-        self.gru_unit = GRUUnit(
+        self.gru_unit = paddle.nn.GRUCell(
             size * 3,
-            param_attr=param_attr,
-            bias_attr=bias_attr,
-            activation=candidate_activation,
-            gate_activation=gate_activation,
-            origin_mode=origin_mode,
+            size,
         )
 
         self.h_0 = h_0
@@ -189,7 +183,7 @@ class DynamicGRU(fluid.dygraph.Layer):
                 i = inputs.shape[1] - 1 - i
             input_ = paddle.slice(inputs, axes=[1], starts=[i], ends=[i + 1])
             input_ = paddle.reshape(input_, [-1, input_.shape[2]])
-            hidden, reset, gate = self.gru_unit(input_, hidden)
+            hidden, reset = self.gru_unit(input_, hidden)
             hidden_ = paddle.reshape(hidden, [-1, 1, hidden.shape[1]])
             if self.is_reverse:
                 res = [hidden_] + res
@@ -310,8 +304,8 @@ class SimpleAttention(fluid.dygraph.Layer):
             shape=[attention_weight.shape[0], attention_weight.shape[1]],
         )
 
-        weights_reshape = fluid.layers.softmax(weights_reshape)
-        scaled = fluid.layers.elementwise_mul(
+        weights_reshape = paddle.nn.functional.softmax(weights_reshape)
+        scaled = paddle.tensor.math._multiply_with_axis(
             x=encoder_vec, y=weights_reshape, axis=0
         )
         context = paddle.sum(scaled, axis=1)
@@ -330,9 +324,7 @@ class GRUDecoderWithAttention(fluid.dygraph.Layer):
         self.fc_2_layer = Linear(
             decoder_size, decoder_size * 3, bias_attr=False
         )
-        self.gru_unit = GRUUnit(
-            size=decoder_size * 3, param_attr=None, bias_attr=None
-        )
+        self.gru_unit = paddle.nn.GRUCell(decoder_size * 3, decoder_size)
         self.out_layer = Linear(decoder_size, num_classes + 2, bias_attr=None)
 
         self.decoder_size = decoder_size
@@ -357,7 +349,7 @@ class GRUDecoderWithAttention(fluid.dygraph.Layer):
             fc_2 = self.fc_2_layer(current_word)
             decoder_inputs = paddle.add(x=fc_1, y=fc_2)
 
-            h, _, _ = self.gru_unit(decoder_inputs, hidden_mem)
+            h, _ = self.gru_unit(decoder_inputs, hidden_mem)
             hidden_mem = h
             out = self.out_layer(h)
             out = paddle.nn.functional.softmax(out)
@@ -377,8 +369,8 @@ class OCRAttention(fluid.dygraph.Layer):
             Config.decoder_size,
             bias_attr=False,
         )
-        self.embedding = Embedding(
-            [Config.num_classes + 2, Config.word_vector_dim], dtype='float32'
+        self.embedding = paddle.nn.Embedding(
+            Config.num_classes + 2, Config.word_vector_dim
         )
         self.gru_decoder_with_attention = GRUDecoderWithAttention(
             Config.decoder_size, Config.num_classes
@@ -483,8 +475,11 @@ class TestDygraphOCRAttention(unittest.TestCase):
                     dy_prediction = paddle.reshape(
                         dy_prediction, [label_out.shape[0], -1]
                     )
-                    loss = fluid.layers.cross_entropy(
-                        input=dy_prediction, label=label_out
+                    loss = paddle.nn.functional.cross_entropy(
+                        input=dy_prediction,
+                        label=label_out,
+                        reduction='none',
+                        use_softmax=False,
                     )
                     avg_loss = paddle.sum(loss)
 
@@ -517,12 +512,11 @@ class TestDygraphOCRAttention(unittest.TestCase):
             dy_out, dy_param_init_value, dy_param_value = run_dygraph()
 
         with fluid.dygraph.guard():
-            with _test_eager_guard():
-                (
-                    eager_out,
-                    eager_param_init_value,
-                    eager_param_value,
-                ) = run_dygraph()
+            (
+                eager_out,
+                eager_param_init_value,
+                eager_param_value,
+            ) = run_dygraph()
 
         with new_program_scope():
             paddle.seed(seed)
@@ -561,8 +555,11 @@ class TestDygraphOCRAttention(unittest.TestCase):
                 static_prediction, shape=[-1, Config.num_classes + 2]
             )
 
-            cost = fluid.layers.cross_entropy(
-                input=static_prediction, label=static_label_out
+            cost = paddle.nn.functional.cross_entropy(
+                input=static_prediction,
+                label=static_label_out,
+                reduction='none',
+                use_softmax=False,
             )
             static_avg_loss = paddle.sum(cost)
             # param_grad_list = fluid.backward.append_backward(static_avg_loss)

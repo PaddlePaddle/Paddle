@@ -14,7 +14,6 @@
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid.framework import _in_legacy_dygraph
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.tensor import fill_constant
 from paddle.framework import core, in_dynamic_mode
@@ -71,17 +70,17 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
                                   data type can be float32 or float64
         kernel_sizes(int|list):   The size of convolution kernel, should be [k_h, k_w]
                                   or an integer k treated as [k, k].
-        strides(int|list):        The strides, should be [stride_h, stride_w]
+        strides(int|list, optional):        The strides, should be [stride_h, stride_w]
                                   or an integer stride treated as [sride, stride].
                                   For default, strides will be [1, 1].
-        paddings(int|list):       The paddings of each dimension, should be
+        paddings(int|list, optional):       The paddings of each dimension, should be
                                   [padding_top, padding_left, padding_bottom, padding_right]
                                   or [padding_h, padding_w] or an integer padding.
                                   If [padding_h, padding_w] was given, it will expanded to
                                   [padding_h, padding_w, padding_h, padding_w]. If an integer
                                   padding was given, [padding, padding, padding, padding] will
                                   be used. For default, paddings will be [0, 0, 0, 0]
-        dilations(int|list):      the dilations of convolution kernel, should be
+        dilations(int|list, optional):      the dilations of convolution kernel, should be
                                   [dilation_h, dilation_w], or an integer dilation treated as
                                   [dilation, dilation]. For default, it will be [1, 1].
         name(str, optional): The default value is None.
@@ -1446,35 +1445,35 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
         return x
 
 
-def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
+def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
     """
-    Pad tensor according to 'pad' and 'mode'.
-    If mode is 'constant' and length of pad is twice as length of x dimension,
+    Pad tensor according to ``'pad'`` and ``'mode'``.
+    If mode is ``'constant'`` and length of pad is twice as length of x dimension,
     then the padding will be started from the first dimension and moved back onto x
-    according to 'pad' and 'value'.
-    If mode is 'reflect', pad[0] and pad[1] must be no greater
+    according to ``'pad'`` and ``'value'``.
+    If mode is ``'reflect'``, pad[0] and pad[1] must be no greater
     than width-1. The height and depth dimension has the same condition.
 
     Parameters:
         x (Tensor): The input tensor with data type float32/double/int32/int64_t.
         pad (Tensor|list[int]|tuple[int]): The padding size with data type int.
-            If mode is 'constant' and length of pad is twice as length of x dimension, then x will
+            If mode is ``'constant'`` and length of pad is twice as length of x dimension, then x will
             be padded from the first  dimension to the last dimension.
             Else: 1. If input dimension is 3, then the pad has the form (pad_left,
             pad_right). 2. If the input dimension is 4, then the pad has the form (pad_left, pad_right,
             pad_top, pad_bottom). 3. If the input dimension is 5, then the pad has the form
             (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
-        mode (str, optional): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'. Default is 'constant'
+        mode (str, optional): Four modes: ``'constant'`` (default), ``'reflect'``, ``'replicate'``, ``'circular'``. Default is ``'constant'``.
 
            - 'constant' mode, uses a constant value to pad the input tensor.
            - 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
            - 'replicate' mode, uses input boundaries to pad the input tensor.
            - 'circular' mode, uses circular input to pad the input tensor.
 
-        value (float, optional): The value to fill the padded areas in 'constant' mode . Default is :math:`0.0`，
-        data_format (str, optional): An string from: "NCL", "NLC", NHWC", "NCHW", "NCDHW", "NDHWC". Specify the data format of
-           the input data. Default is "NCHW"，
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        value (float, optional): The value to fill the padded areas in 'constant' mode . Default is :math:`0.0`.
+        data_format (str, optional): An string from: ``'NCL'``, ``'NLC'``, ``'NHWC'``, ``'NCHW'``, ``'NCDHW'``, ``'NDHWC'``. Specify the data format of
+           the input data. Default: ``'NCHW'``.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: ``'None'``.
 
     Returns:
         Tensor, a Tensor padded according to pad and mode and data type is same as input.

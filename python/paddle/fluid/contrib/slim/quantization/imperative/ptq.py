@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 import paddle.nn.quant.quant_layers as quant_layers
 from paddle.fluid.log_helper import get_logger
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 from . import fuse_utils
 from . import utils

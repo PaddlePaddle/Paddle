@@ -21,8 +21,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-from paddle.fluid.dygraph.nn import NCE, BatchNorm, Embedding, GroupNorm, PRelu
-from paddle.nn import Linear
+from paddle.nn import BatchNorm, Linear
 
 
 class TestDygraphLoadStatic(unittest.TestCase):
@@ -35,10 +34,10 @@ class TestDygraphLoadStatic(unittest.TestCase):
         fc_out1 = fluid.layers.fc(a, 10)
         fc_out2 = fluid.layers.fc(a, 20)
 
-        conv_out_1 = fluid.layers.conv2d(
+        conv_out_1 = paddle.static.nn.conv2d(
             conv_in, num_filters=10, filter_size=5, act="relu"
         )
-        conv_out_2 = fluid.layers.conv2d(
+        conv_out_2 = paddle.static.nn.conv2d(
             conv_in, num_filters=10, filter_size=5, act="relu"
         )
 
@@ -55,16 +54,16 @@ class TestDygraphLoadStatic(unittest.TestCase):
         batchnorm_in = fluid.data(
             name="batchnorm_in", shape=[None, 10], dtype='float32'
         )
-        batchnorm_out_1 = fluid.layers.batch_norm(batchnorm_in)
-        batchnorm_out_2 = fluid.layers.batch_norm(batchnorm_in)
+        batchnorm_out_1 = paddle.static.nn.batch_norm(batchnorm_in)
+        batchnorm_out_2 = paddle.static.nn.batch_norm(batchnorm_in)
 
         emb_in = fluid.data(name='emb_in', shape=[None, 10], dtype='int64')
         emb_out_1 = fluid.embedding(emb_in, [1000, 100])
         emb_out_2 = fluid.embedding(emb_in, [2000, 200])
 
         layernorm = fluid.data(name="ln", shape=[None, 10], dtype='float32')
-        layernorm_1 = fluid.layers.layer_norm(layernorm)
-        layernorm_2 = fluid.layers.layer_norm(layernorm)
+        layernorm_1 = paddle.static.nn.layer_norm(layernorm)
+        layernorm_2 = paddle.static.nn.layer_norm(layernorm)
 
         nce_in = fluid.data(name="nce_in", shape=[None, 100], dtype='float32')
         nce_label = fluid.data(
@@ -86,11 +85,15 @@ class TestDygraphLoadStatic(unittest.TestCase):
             "t2", shape=[None, 4], dtype="float32"
         )
 
-        bilinear_tensor_pro_out_1 = fluid.layers.bilinear_tensor_product(
-            x=bilinear_tensor_pro_x, y=bilinear_tensor_pro_y, size=1000
+        bilinear_tensor_pro_out_1 = (
+            paddle.static.nn.common.bilinear_tensor_product(
+                x=bilinear_tensor_pro_x, y=bilinear_tensor_pro_y, size=1000
+            )
         )
-        bilinear_tensor_pro_out_2 = fluid.layers.bilinear_tensor_product(
-            x=bilinear_tensor_pro_x, y=bilinear_tensor_pro_y, size=1000
+        bilinear_tensor_pro_out_2 = (
+            paddle.static.nn.common.bilinear_tensor_product(
+                x=bilinear_tensor_pro_x, y=bilinear_tensor_pro_y, size=1000
+            )
         )
 
         conv2d_trans_in = fluid.data(
@@ -118,10 +121,10 @@ class TestDygraphLoadStatic(unittest.TestCase):
             name='groupnorm_in', shape=[None, 8, 32, 32], dtype='float32'
         )
         groupnorm_out1 = paddle.static.nn.group_norm(
-            input=groupnorm_in, groups=4
+            input=groupnorm_in, groups=4, param_attr=True, bias_attr=True
         )
         groupnorm_out2 = paddle.static.nn.group_norm(
-            input=groupnorm_in, groups=4
+            input=groupnorm_in, groups=4, param_attr=True, bias_attr=True
         )
         '''
         spec_norm = fluid.data(name='spec_norm', shape=[2, 8, 32, 32], dtype='float32')
@@ -202,20 +205,14 @@ class TestDygraphLoadStatic(unittest.TestCase):
                     self.batch_norm_1 = BatchNorm(10)
                     self.batch_norm_2 = BatchNorm(10)
 
-                    self.emb1 = Embedding([1000, 100])
-                    self.emb2 = Embedding([2000, 200])
+                    self.emb1 = paddle.nn.Embedding(1000, 100)
+                    self.emb2 = paddle.nn.Embedding(2000, 200)
 
                     self.layer_norm_1 = paddle.nn.LayerNorm([10])
                     self.layer_norm_2 = paddle.nn.LayerNorm(10)
 
-                    self.nce1 = NCE(10000, 100)
-                    self.nce2 = NCE(10000, 100)
-
-                    self.prelu1 = PRelu("channel", channel=5)
-                    self.prelu2 = PRelu("channel", channel=5)
-
-                    self.group_norm1 = GroupNorm(8, 4)
-                    self.gourp_norm2 = GroupNorm(8, 4)
+                    self.group_norm1 = paddle.nn.GroupNorm(4, 8)
+                    self.gourp_norm2 = paddle.nn.GroupNorm(4, 8)
 
                     self.w_1 = self.create_parameter(
                         [100, 100], dtype='float32', attr="weight_test_1"

@@ -18,7 +18,6 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 
@@ -101,6 +100,35 @@ class TestDiagonalOpCase3(TestDiagonalOp):
         pass
 
 
+class TestDiagonalOpCase4(TestDiagonalOp):
+    def init_config(self):
+        self.case = np.random.randn(100, 100).astype('int64')
+        self.inputs = {'Input': self.case}
+        self.attrs = {'offset': 1, 'axis1': 1, 'axis2': 0}
+        self.target = np.diagonal(
+            self.inputs['Input'],
+            offset=self.attrs['offset'],
+            axis1=self.attrs['axis1'],
+            axis2=self.attrs['axis2'],
+        )
+
+    def test_check_grad(self):
+        pass
+
+
+class TestDiagonalOpCase5(TestDiagonalOp):
+    def init_config(self):
+        self.case = np.random.randn(4, 2, 4, 4).astype('float32')
+        self.inputs = {'Input': self.case}
+        self.attrs = {'offset': -2, 'axis1': 0, 'axis2': 3}
+        self.target = np.diagonal(
+            self.inputs['Input'],
+            offset=self.attrs['offset'],
+            axis1=self.attrs['axis1'],
+            axis2=self.attrs['axis2'],
+        )
+
+
 class TestDiagonalAPI(unittest.TestCase):
     def setUp(self):
         self.shape = [10, 3, 4]
@@ -128,12 +156,11 @@ class TestDiagonalAPI(unittest.TestCase):
 
     def test_api_eager(self):
         paddle.disable_static(self.place)
-        with _test_eager_guard():
-            x_tensor = paddle.to_tensor(self.x)
-            out = paddle.diagonal(x_tensor)
-            out2 = paddle.diagonal(x_tensor, offset=0, axis1=2, axis2=1)
-            out3 = paddle.diagonal(x_tensor, offset=1, axis1=0, axis2=1)
-            out4 = paddle.diagonal(x_tensor, offset=0, axis1=1, axis2=2)
+        x_tensor = paddle.to_tensor(self.x)
+        out = paddle.diagonal(x_tensor)
+        out2 = paddle.diagonal(x_tensor, offset=0, axis1=2, axis2=1)
+        out3 = paddle.diagonal(x_tensor, offset=1, axis1=0, axis2=1)
+        out4 = paddle.diagonal(x_tensor, offset=0, axis1=1, axis2=2)
         out_ref = np.diagonal(self.x)
         np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-08)
         out2_ref = np.diagonal(self.x, offset=0, axis1=2, axis2=1)
@@ -144,10 +171,6 @@ class TestDiagonalAPI(unittest.TestCase):
         np.testing.assert_allclose(out4.numpy(), out4_ref, rtol=1e-08)
 
         paddle.enable_static()
-
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_api_dygraph()
 
 
 if __name__ == '__main__':

@@ -56,7 +56,7 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                     stop_gradient=False,
                 )
 
-                bn = fluid.layers.batch_norm(
+                bn = paddle.static.nn.batch_norm(
                     data,
                     param_attr=fluid.ParamAttr(name='bn_scale'),
                     bias_attr=fluid.ParamAttr(name='bn_bias'),

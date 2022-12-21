@@ -22,9 +22,8 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import Embedding
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.optimizer import SGDOptimizer
+from paddle.nn import Embedding
 
 
 class SimpleNet(fluid.Layer):
@@ -42,11 +41,12 @@ class SimpleNet(fluid.Layer):
         self.vocab_size = vocab_size
         self.init_scale = init_scale
         self.num_steps = num_steps
+        paddle.set_default_dtype(dtype)
         self.embedding = Embedding(
-            size=[vocab_size, hidden_size],
-            dtype=dtype,
-            is_sparse=is_sparse,
-            param_attr=fluid.ParamAttr(
+            vocab_size,
+            hidden_size,
+            sparse=is_sparse,
+            weight_attr=fluid.ParamAttr(
                 name='embedding_para',
                 initializer=fluid.initializer.UniformInitializer(
                     low=-init_scale, high=init_scale
@@ -72,9 +72,9 @@ class SimpleNet(fluid.Layer):
 
     def forward(self, input, label):
         x_emb = self.embedding(input)
-        fc = fluid.layers.matmul(x_emb, self.softmax_weight)
+        fc = paddle.matmul(x_emb, self.softmax_weight)
         fc = paddle.add(fc, self.softmax_bias)
-        projection = fluid.layers.matmul(
+        projection = paddle.matmul(
             fc, paddle.transpose(self.embedding.weight, perm=[1, 0])
         )
         projection = paddle.reshape(projection, shape=[-1, self.vocab_size])
@@ -89,18 +89,13 @@ class SimpleNet(fluid.Layer):
 
 
 class TestDygraphSimpleNet(unittest.TestCase):
-    def func_simple_net(self):
+    def test_simple_net(self):
         for is_sparse in [True, False]:
             dtype_list = ["float32"]
             if not core.is_compiled_with_rocm():
                 dtype_list.append("float64")
             for dtype in dtype_list:
                 self.simple_net_float(is_sparse, dtype)
-
-    def test_simple_net(self):
-        with _test_eager_guard():
-            self.func_simple_net()
-        self.func_simple_net()
 
     def simple_net_float(self, is_sparse, dtype):
         places = [fluid.CPUPlace()]

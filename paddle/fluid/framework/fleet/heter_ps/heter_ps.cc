@@ -55,7 +55,7 @@ template <typename GPUAccessor, template <typename T> class GPUOptimizer>
 HeterPs<GPUAccessor, GPUOptimizer>::HeterPs(
     size_t capacity,
     std::shared_ptr<HeterPsResource> resource,
-    GPUAccessor& gpu_accessor) {
+    const GPUAccessor& gpu_accessor) {
   comm_ = std::make_shared<HeterComm<FeatureKey, float*, float*, GPUAccessor>>(
       capacity, resource);
   opt_ = GPUOptimizer<GPUAccessor>(gpu_accessor);
