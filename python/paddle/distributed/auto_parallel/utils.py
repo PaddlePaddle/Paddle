@@ -1953,6 +1953,8 @@ def set_recompute_segments(model, losses, strategy, program):
             and hasattr(model.gpt, "checkpoints")
         ):
             ckpts = model.gpt.checkpoints
+            # last recompute segment is not need to recompute
+            ckpts.pop()
         else:
             ckpts = recompute.checkpoints
     else:
