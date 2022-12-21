@@ -1148,7 +1148,7 @@ class ShardingPass(PassBase):
         for idx, op in enumerate(ops):
             if is_data_parallel_reduce_op(op):
 
-                if op.type == "c_allreduce":
+                if op.type == "c_allreduce_sum":
                     continue
 
                 comm_group = self.grad_comm_group_stream_pairs[
@@ -1193,7 +1193,7 @@ class ShardingPass(PassBase):
                 op._set_attr("ring_id", comm_group.id)
                 if self.sharding_hybrid_dp and grad_group.is_in_local_shard:
                     next_op = ops[idx + 1]
-                    assert next_op.type == "c_allreduce"
+                    assert next_op.type == "c_allreduce_sum"
                     assert next_op.output("Out") == reduce_varname
                     next_op._set_attr("ring_id", comm_group.id)
                     next_op.dist_attr.execution_stream = comm_stream
