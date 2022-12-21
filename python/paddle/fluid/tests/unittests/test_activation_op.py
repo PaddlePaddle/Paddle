@@ -23,7 +23,6 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.nn.functional as F
 from paddle.fluid import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 
@@ -2073,7 +2072,7 @@ class TestHardswishAPI(unittest.TestCase):
     def test_fluid_api(self):
         with fluid.program_guard(fluid.Program()):
             x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
-            out = fluid.layers.hard_swish(x)
+            out = paddle.nn.functional.hardswish(x)
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_hardswish(self.x_np)
@@ -2081,7 +2080,7 @@ class TestHardswishAPI(unittest.TestCase):
 
         paddle.disable_static(self.place)
         x = paddle.to_tensor(self.x_np)
-        out = paddle.fluid.layers.hard_swish(x)
+        out = paddle.nn.functional.hardswish(x)
         np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
         paddle.enable_static()
 
@@ -2099,11 +2098,6 @@ class TestHardswishAPI(unittest.TestCase):
                 name='x_fp16', shape=[12, 10], dtype='float16'
             )
             F.hardswish(x_fp16)
-
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_dygraph_api()
-            self.test_errors()
 
 
 class TestSoftRelu(TestActivation):
@@ -2354,11 +2348,6 @@ class TestCELUAPI(unittest.TestCase):
                 name='x_fp16', shape=[10, 12], dtype='float16'
             )
             self.celu(x_fp16)
-
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_dygraph_api()
-            self.test_errors()
 
 
 class TestReciprocal(TestActivation):
@@ -3361,7 +3350,7 @@ class TestSwishAPI(unittest.TestCase):
         for r in res:
             np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
-    def func_test_dygraph_api(self):
+    def test_dygraph_api(self):
         paddle.disable_static(self.place)
         x = paddle.to_tensor(self.x_np)
         out1 = F.swish(x)
@@ -3371,11 +3360,6 @@ class TestSwishAPI(unittest.TestCase):
         for r in [out1, out2]:
             np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
-
-    def test_dygraph_api(self):
-        with _test_eager_guard():
-            self.func_test_dygraph_api()
-        self.func_test_dygraph_api()
 
     def test_fluid_api(self):
         paddle.enable_static()
@@ -3414,7 +3398,7 @@ def ref_mish(x, threshold=20.0):
 class TestMish(TestActivation):
     def setUp(self):
         self.op_type = "mish"
-        self.python_api = paddle.fluid.layers.nn.mish
+        self.python_api = paddle.nn.functional.mish
         self.init_dtype()
         self.init_shape()
 
@@ -3480,7 +3464,7 @@ class TestMishAPI(unittest.TestCase):
         paddle.enable_static()
         with fluid.program_guard(fluid.Program()):
             x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
-            out = fluid.layers.mish(x)
+            out = paddle.nn.functional.mish(x)
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_mish(self.x_np)

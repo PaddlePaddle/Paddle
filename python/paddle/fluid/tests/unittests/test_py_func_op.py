@@ -94,7 +94,7 @@ def simple_fc_net(img, label, use_py_func_op):
                     shape=hidden.shape,
                 )
             )
-            hidden = fluid.layers.py_func(
+            hidden = paddle.static.py_func(
                 func=tanh,
                 x=hidden,
                 out=new_hidden,
@@ -104,14 +104,16 @@ def simple_fc_net(img, label, use_py_func_op):
 
     prediction = fluid.layers.fc(hidden, size=10, act='softmax')
     if not use_py_func_op:
-        loss = fluid.layers.cross_entropy(input=prediction, label=label)
+        loss = paddle.nn.functional.cross_entropy(
+            input=prediction, label=label, reduction='none', use_softmax=False
+        )
     else:
         loss = (
             fluid.default_main_program()
             .current_block()
             .create_var(name='loss', dtype='float32', shape=[-1, 1])
         )
-        loss = fluid.layers.py_func(
+        loss = paddle.static.py_func(
             func=cross_entropy,
             x=[prediction, label],
             out=loss,
@@ -124,11 +126,11 @@ def simple_fc_net(img, label, use_py_func_op):
             .current_block()
             .create_var(name='test_tmp_var', dtype='float32', shape=[1])
         )
-        fluid.layers.py_func(
+        paddle.static.py_func(
             func=dummy_func_with_no_input, x=None, out=dummy_var
         )
         loss += dummy_var
-        fluid.layers.py_func(func=dummy_func_with_no_output, x=loss, out=None)
+        paddle.static.py_func(func=dummy_func_with_no_output, x=loss, out=None)
 
         loss_out = (
             fluid.default_main_program()
@@ -140,7 +142,7 @@ def simple_fc_net(img, label, use_py_func_op):
             .current_block()
             .create_var(dtype='float32', shape=[1])
         )
-        fluid.layers.py_func(
+        paddle.static.py_func(
             func=dummy_func_with_multi_input_output,
             x=(loss, dummy_var),
             out=(loss_out, dummy_var_out),
@@ -149,7 +151,7 @@ def simple_fc_net(img, label, use_py_func_op):
             loss == loss_out and dummy_var == dummy_var_out
         ), "py_func failed with multi input and output"
 
-        fluid.layers.py_func(
+        paddle.static.py_func(
             func=dummy_func_with_multi_input_output,
             x=[loss, dummy_var],
             out=[loss_out, dummy_var_out],

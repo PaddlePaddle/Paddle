@@ -22,7 +22,7 @@ endif()
 cc_test(
   test_cpu_vec
   SRCS test_cpu_vec.cc
-  DEPS blas cpu_info)
+  DEPS blas phi_backends)
 
 # For String Kernels
 cc_test(

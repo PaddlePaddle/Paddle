@@ -426,6 +426,101 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.shape, [])
         self.assertEqual(out.numpy(), 0)
 
+    def test_gather_1D(self):
+        x = paddle.to_tensor([1.0, 3.0, 5.0, 7.0, 9.0], stop_gradient=False)
+        index = paddle.full([], 2, 'int64')
+        out = paddle.gather(x, index)
+        out.backward()
+
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.numpy(), 5)
+        self.assertEqual(out.grad.shape, [])
+
+    def test_gather_xD_axis_0(self):
+        x = paddle.to_tensor(
+            [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], stop_gradient=False
+        )
+        index = paddle.full([], 1, 'int64')
+        out = paddle.gather(x, index)
+        out.backward()
+
+        self.assertEqual(out.shape, [3])
+        for i in range(3):
+            self.assertEqual(out.numpy()[i], x.numpy()[1][i])
+        self.assertEqual(out.grad.shape, [3])
+
+    def test_gather_xD_axis_1(self):
+        x = paddle.to_tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+        index = paddle.full([], 1, 'int64')
+        out = paddle.gather(x, index, axis=1)
+
+        self.assertEqual(out.shape, [2])
+        for i in range(2):
+            self.assertEqual(out.numpy()[i], x.numpy()[i][1])
+
+    def test_scatter_1D(self):
+        x = paddle.to_tensor([1.0, 3.0, 5.0, 7.0, 9.0])
+        index = paddle.full([], 2, 'int64')
+        updates = paddle.full([], 4.0)
+        out = paddle.scatter(x, index, updates)
+
+        self.assertEqual(out.numpy()[2], 4)
+
+    def test_scatter_XD(self):
+        x = paddle.to_tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+        index = paddle.full([], 1, 'int64')
+        updates = paddle.to_tensor([1.0, 2.0, 3.0])
+        out = paddle.scatter(x, index, updates)
+
+        for i in range(3):
+            self.assertEqual(out.numpy()[1][i], updates.numpy()[i])
+
+    def test_diagflat(self):
+        x1 = paddle.rand([])
+        x2 = paddle.rand([])
+        x3 = paddle.rand([])
+
+        x1.stop_gradient = False
+        x2.stop_gradient = False
+        x3.stop_gradient = False
+
+        out1 = paddle.diagflat(x1, 1)
+        out2 = paddle.diagflat(x2, -1)
+        out3 = paddle.diagflat(x3, 0)
+
+        out1.backward()
+        out2.backward()
+        out3.backward()
+
+        self.assertEqual(out1.shape, [2, 2])
+        self.assertEqual(out2.shape, [2, 2])
+        self.assertEqual(out3.shape, [1, 1])
+
+        self.assertEqual(out1.grad.shape, [2, 2])
+        self.assertEqual(out2.grad.shape, [2, 2])
+        self.assertEqual(out3.grad.shape, [1, 1])
+
+        self.assertEqual(x1.grad.shape, [])
+        self.assertEqual(x2.grad.shape, [])
+        self.assertEqual(x3.grad.shape, [])
+
+    def test_scatter__1D(self):
+        x = paddle.to_tensor([1.0, 3.0, 5.0, 7.0, 9.0])
+        index = paddle.full([], 2, 'int64')
+        updates = paddle.full([], 4.0)
+        out = paddle.scatter_(x, index, updates)
+
+        self.assertEqual(out.numpy()[2], 4)
+
+    def test_scatter__XD(self):
+        x = paddle.to_tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+        index = paddle.full([], 1, 'int64')
+        updates = paddle.to_tensor([1.0, 2.0, 3.0])
+        out = paddle.scatter_(x, index, updates)
+
+        for i in range(3):
+            self.assertEqual(out.numpy()[1][i], updates.numpy()[i])
+
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
 class TestNoBackwardAPI(unittest.TestCase):

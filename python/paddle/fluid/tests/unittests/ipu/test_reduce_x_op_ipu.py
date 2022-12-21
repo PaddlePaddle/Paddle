@@ -134,7 +134,7 @@ class TestMin(TestMean):
 
 class TestSum(TestMean):
     def set_test_op(self):
-        self.op = paddle.paddle.sum
+        self.op = paddle.sum
 
 
 class TestLogsumexp(TestMean):
@@ -180,12 +180,12 @@ class TestAll(TestMean):
         self.fetch_list = [out.name]
 
     def set_test_op(self):
-        self.op = paddle.fluid.layers.reduce_all
+        self.op = paddle.all
 
 
 class TestAny(TestAll):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.reduce_any
+        self.op = paddle.any
 
 
 if __name__ == "__main__":

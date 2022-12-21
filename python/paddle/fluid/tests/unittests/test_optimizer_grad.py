@@ -77,20 +77,20 @@ class SimpleNetWithCond:
             mean_out = mean(sum_all)
             optimizer.minimize(mean_out)
         """
-        param_x = fluid.layers.create_parameter(
+        param_x = paddle.create_parameter(
             dtype="float32",
             shape=self.shape,
             attr=fluid.ParamAttr(learning_rate=self.param_lr, name="param_x"),
             default_initializer=fluid.initializer.NumpyArrayInitializer(self.x),
         )
 
-        param_y = fluid.layers.create_parameter(
+        param_y = paddle.create_parameter(
             dtype="float32",
             shape=self.shape,
             attr=fluid.ParamAttr(learning_rate=self.param_lr, name="param_y"),
             default_initializer=fluid.initializer.NumpyArrayInitializer(self.y),
         )
-        param_z = fluid.layers.create_parameter(
+        param_z = paddle.create_parameter(
             dtype="float32",
             shape=self.shape,
             attr=fluid.ParamAttr(learning_rate=self.param_lr, name="param_z"),
@@ -115,7 +115,7 @@ class SimpleNetWithCond:
             return cond_res
 
         cond_i = fluid.layers.assign(np.array([cond_i], dtype='float32'))
-        sum_cond = fluid.layers.cond(cond_i > 1.0, cond_true, cond_false)
+        sum_cond = paddle.static.nn.cond(cond_i > 1.0, cond_true, cond_false)
         sum_all = paddle.add_n([sum_xy, sub_yz, sum_cond])
         mean_out = paddle.mean(sum_all)
         if use_bf16:

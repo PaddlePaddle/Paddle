@@ -105,13 +105,15 @@ class DistPassTestBase(unittest.TestCase):
                 if out_var_no_pass is None:
                     self.assertIsNone(out_var_pass)
                 else:
-                    np.testing.assert_allclose(
-                        out_var_no_pass,
-                        out_var_pass,
-                        rtol=self.rtol,
-                        atol=self.atol,
-                        equal_nan=self.equal_nan,
-                    )
+                    self.assertEqual(len(out_var_pass), len(out_var_no_pass))
+                    for i in range(0, len(out_var_pass)):
+                        np.testing.assert_allclose(
+                            out_var_no_pass[i],
+                            out_var_pass[i],
+                            rtol=self.rtol,
+                            atol=self.atol,
+                            equal_nan=self.equal_nan,
+                        )
 
     @classmethod
     def _to_var_names(cls, names_or_vars):
@@ -188,7 +190,7 @@ class DistPassTestBase(unittest.TestCase):
         else:
             output_dir = "test_without_pass_{}".format(pid)
         remove_path_if_exists(output_dir)
-        os.makedirs(output_dir, mode=777)
+        os.makedirs(output_dir, mode=0o777)
 
         input_dump_file = os.path.join(output_dir, 'inputs.bin')
         model_dump_file = os.path.join(output_dir, 'model.bin')
@@ -267,7 +269,7 @@ class DistPassTestBase(unittest.TestCase):
 
 class PassConflictChecker(DistPassTestBase):
     def setUp(self):
-        os.environ['DEBUG'] = '1'  # to save the debug directory
+        os.environ['DEBUG'] = '0'
         super().setUp()
 
     def pass_config(self):

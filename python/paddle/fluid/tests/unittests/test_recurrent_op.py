@@ -616,13 +616,13 @@ class RecurrentOpSubBlockTest(RecurrentOpTest1):
         rnn = layers.StaticRNN()
 
         def dot_attention(query, memory):
-            attn = layers.matmul(query, memory, transpose_y=True)
-            weight = layers.softmax(attn)
-            weight_memory = layers.matmul(weight, memory)
+            attn = paddle.matmul(query, memory, transpose_y=True)
+            weight = paddle.nn.functional.softmax(attn)
+            weight_memory = paddle.matmul(weight, memory)
 
             return weight_memory, weight
 
-        y = layers.matmul(emb, w1)
+        y = paddle.matmul(emb, w1)
         with rnn.step():
             pre_h = rnn.memory(
                 shape=(self.sent_len, self.input_dim),
@@ -631,8 +631,8 @@ class RecurrentOpSubBlockTest(RecurrentOpTest1):
             )
             step_in = rnn.step_input(x)
             concat_in = layers.concat([step_in, pre_h], 1)
-            new_h = layers.matmul(concat_in, w2)
-            new_h = layers.unsqueeze(new_h, [1])
+            new_h = paddle.matmul(concat_in, w2)
+            new_h = paddle.unsqueeze(new_h, [1])
             new_h, _ = dot_attention(new_h, y)
             new_h = paddle.squeeze(new_h, [1])
 

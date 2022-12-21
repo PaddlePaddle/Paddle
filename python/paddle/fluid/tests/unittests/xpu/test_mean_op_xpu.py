@@ -26,7 +26,6 @@ from paddle.fluid import Program, program_guard
 
 np.random.seed(10)
 
-from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
     XPUOpTestWrapper,
     create_test_class,
@@ -99,7 +98,7 @@ class TestMeanOpError(unittest.TestCase):
             input3 = fluid.layers.data(
                 name='input3', shape=[4], dtype="float16"
             )
-            fluid.layers.softmax(input3)
+            paddle.nn.functional.softmax(input3)
 
 
 support_types = get_xpu_op_support_types('mean')

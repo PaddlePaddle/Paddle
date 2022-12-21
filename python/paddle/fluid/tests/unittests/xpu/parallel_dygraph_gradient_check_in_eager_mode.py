@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 import paddle.distributed as dist
 import paddle.fluid as fluid
-from paddle.fluid.framework import _test_eager_guard
 from paddle.nn import Linear
 
 paddle.seed(1024)
@@ -69,58 +68,57 @@ class SimpleNet(fluid.Layer):
 class TestDistTraning(unittest.TestCase):
     def test_multiple_xpus(self):
         self.trainer_id = dist.get_rank()
-        with _test_eager_guard():
-            self.pg = dist.init_parallel_env()
+        self.pg = dist.init_parallel_env()
 
-            model_a = SimpleNet(self.trainer_id)
-            model_b = SimpleNet(self.trainer_id)
+        model_a = SimpleNet(self.trainer_id)
+        model_b = SimpleNet(self.trainer_id)
 
-            state_dict = model_a.state_dict()
-            model_b.set_state_dict(state_dict)
+        state_dict = model_a.state_dict()
+        model_b.set_state_dict(state_dict)
 
-            model_a = paddle.DataParallel(
-                model_a, find_unused_parameters=True, group=self.pg
+        model_a = paddle.DataParallel(
+            model_a, find_unused_parameters=True, group=self.pg
+        )
+        model_b = paddle.DataParallel(
+            model_b, find_unused_parameters=True, group=self.pg
+        )
+
+        ones_input = paddle.ones(shape=(batch, in_dim))
+        ones_input.stop_gradient = True
+
+        w1_grad_sum = np.zeros((in_dim, out_dim), dtype='float32')
+        w2_grad_sum = np.zeros((in_dim, out_dim), dtype='float32')
+
+        for step_id in range(5):
+            random_input = paddle.rand(shape=(batch, in_dim))
+            random_input.stop_gradient = True
+
+            if step_id % 2 == 0:
+                out_a = model_a(random_input)
+                out_b = model_b(random_input)
+            else:
+                out_a = model_a(ones_input)
+                out_b = model_b(ones_input)
+
+            out_a.sum().backward()
+            out_b.sum().backward()
+
+            self.check_gradient(model_a.parameters())
+            self.check_gradient(model_b.parameters())
+
+            # test acc gradient
+            w1_grad_sum = self.check_acc(
+                model_a._layers.w1.grad,
+                w1_grad_sum,
+                model_b._layers.w1.grad,
             )
-            model_b = paddle.DataParallel(
-                model_b, find_unused_parameters=True, group=self.pg
+            w2_grad_sum = self.check_acc(
+                model_a._layers.w2.grad,
+                w2_grad_sum,
+                model_b._layers.w2.grad,
             )
 
-            ones_input = paddle.ones(shape=(batch, in_dim))
-            ones_input.stop_gradient = True
-
-            w1_grad_sum = np.zeros((in_dim, out_dim), dtype='float32')
-            w2_grad_sum = np.zeros((in_dim, out_dim), dtype='float32')
-
-            for step_id in range(5):
-                random_input = paddle.rand(shape=(batch, in_dim))
-                random_input.stop_gradient = True
-
-                if step_id % 2 == 0:
-                    out_a = model_a(random_input)
-                    out_b = model_b(random_input)
-                else:
-                    out_a = model_a(ones_input)
-                    out_b = model_b(ones_input)
-
-                out_a.sum().backward()
-                out_b.sum().backward()
-
-                self.check_gradient(model_a.parameters())
-                self.check_gradient(model_b.parameters())
-
-                # test acc gradient
-                w1_grad_sum = self.check_acc(
-                    model_a._layers.w1.grad,
-                    w1_grad_sum,
-                    model_b._layers.w1.grad,
-                )
-                w2_grad_sum = self.check_acc(
-                    model_a._layers.w2.grad,
-                    w2_grad_sum,
-                    model_b._layers.w2.grad,
-                )
-
-                model_a.clear_gradients()
+            model_a.clear_gradients()
 
     def check_acc(self, grad, grad_sum, acc_grad):
         if grad is not None:

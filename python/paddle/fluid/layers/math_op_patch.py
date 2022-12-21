@@ -18,7 +18,6 @@ import inspect
 from .. import core
 from ..framework import Variable, unique_name, static_only
 from .layer_function_generator import OpProtoHolder
-from .control_flow import array_write, array_length
 from paddle.fluid.dygraph.base import in_declarative_mode
 
 _supported_int_dtype_ = [
@@ -246,6 +245,8 @@ def monkey_patch_variable():
                     self.type
                 )
             )
+        from paddle.tensor.array import array_length, array_write
+
         array_write(x=var, i=array_length(self), array=self)
 
     @static_only

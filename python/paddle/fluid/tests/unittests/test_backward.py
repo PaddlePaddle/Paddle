@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
+import paddle.nn.functional as F
 import paddle.static as static
 
 
@@ -262,7 +263,9 @@ class SimpleNet(BackwardNet):
             name='fc_no_use',
         )
         # loss
-        cost = fluid.layers.square_error_cost(input=predict, label=label)
+        cost = paddle.nn.functional.square_error_cost(
+            input=predict, label=label
+        )
         loss = paddle.mean(cost, name='mean_loss')
 
         return loss
@@ -282,8 +285,8 @@ class TestGradientsError(unittest.TestCase):
     def test_error(self):
         x = fluid.data(name='x', shape=[None, 2, 8, 8], dtype='float32')
         x.stop_gradient = False
-        conv = fluid.layers.conv2d(x, 4, 1, bias_attr=False)
-        y = fluid.layers.relu(conv)
+        conv = paddle.static.nn.conv2d(x, 4, 1, bias_attr=False)
+        y = F.relu(conv)
 
         with self.assertRaises(TypeError):
             x_grad = fluid.gradients(y.name, x)
@@ -330,7 +333,7 @@ class TestAppendBackwardWithError(unittest.TestCase):
         y = fluid.data(name='y', shape=[None, 1], dtype='float32')
         x_emb = fluid.embedding(x, size=[100, 256])
         y_predict = fluid.layers.fc(input=x_emb, size=1, name='my_fc')
-        loss = fluid.layers.square_error_cost(input=y_predict, label=y)
+        loss = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_loss = paddle.mean(loss)
         param_names = [
             param.name
