@@ -57,7 +57,7 @@ class TensorFillDiagonal_Test(unittest.TestCase):
                 )
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
-    def func_offset(self):
+    def test_offset(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         expected_np = np.array([[2, 2, 1], [2, 2, 2], [2, 2, 2]]).astype(
             'float32'

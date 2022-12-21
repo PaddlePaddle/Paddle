@@ -487,7 +487,7 @@ class TestTensorRegisterHook(unittest.TestCase):
             z.backward()
             np.testing.assert_array_equal(x.grad.numpy(), np.array([8.0]))
 
-    def func_remove_one_hook_multiple_times(self):
+    def test_remove_one_hook_multiple_times(self):
         for device in self.devices:
             paddle.set_device(device)
 
