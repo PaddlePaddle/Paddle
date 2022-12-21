@@ -238,6 +238,7 @@ class ShardingPass(PassBase):
             # sharding hybrid data parallel: partial sharding param within
             if dp_group.nranks > self.sharding_world_size:
                 self.sharding_hybrid_dp = True
+                assert self.comm_stream_num < 2
                 assert (
                     len(self.dp_groups) == 1
                 ), "hybrid sharding and data parallelism are supported only when there is excatly one data parallel group in the network"
@@ -1194,8 +1195,9 @@ class ShardingPass(PassBase):
                 if self.sharding_hybrid_dp and grad_group.is_in_local_shard:
                     next_op = ops[idx + 1]
                     assert next_op.type == "c_allreduce_sum"
-                    assert next_op.output("Out") == reduce_varname
-                    next_op._set_attr("ring_id", comm_group.id)
+                    assert next_op.output("Out")[0] == reduce_varname
+                    # FIXME hybrid sharding-dp support multi comm & stream in feature
+                    # next_op._set_attr("ring_id", comm_group.id)
                     next_op.dist_attr.execution_stream = comm_stream
                     idx += 1
 
