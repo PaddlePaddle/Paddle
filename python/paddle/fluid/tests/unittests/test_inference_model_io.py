@@ -538,9 +538,9 @@ class TestLoadInferenceModelError(unittest.TestCase):
             ValueError, load_inference_model, './test_not_exist_dir', exe
         )
         self.assertRaises(
-            ValueError, 
-            load_inference_model_distributed, 
-            './test_not_exist_dir', 
+            ValueError,
+            load_inference_model_distributed,
+            './test_not_exist_dir',
             exe,
         )
 
