@@ -55,6 +55,7 @@ class TestAOTChooseKernel(unittest.TestCase):
             scope = paddle.static.Scope()
             exe = paddle.static.Executor()
 
+            set_flags({'FLAGS_cudnn_deterministic': 1})
             if aot_choose_kernel:
                 set_flags({'FLAGS_new_executor_static_build': 1})
             else:
