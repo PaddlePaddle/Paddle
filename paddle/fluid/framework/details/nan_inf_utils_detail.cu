@@ -31,36 +31,6 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-static std::once_flag init_multi_gpu_op_var_map_flag;
-
-// lazy init
-static std::vector<std::unordered_map<std::string, memory::AllocationPtr>>&
-multi_op_var2gpu_str() {
-  static std::vector<std::unordered_map<std::string, memory::AllocationPtr>>
-      _multi_op_var2gpu_str;
-  return _multi_op_var2gpu_str;
-}
-
-static std::vector<std::mutex>& multi_op_var2gpu_str_mutex() {
-  static std::vector<std::mutex> _multi_op_var2gpu_str_mutex;
-  return _multi_op_var2gpu_str_mutex;
-}
-
-static void InitMultiGPUOpVarMap() {
-  int dev_count = platform::GetGPUDeviceCount();
-  PADDLE_ENFORCE_GT(dev_count,
-                    0,
-                    platform::errors::NotFound(
-                        "cuda device must > 0, now dev_count=%d", dev_count));
-
-  // https://stackoverflow.com/questions/16465633/how-can-i-use-something-like-stdvectorstdmutex
-  std::vector<std::unordered_map<std::string, memory::AllocationPtr>> tmp_multi(
-      dev_count);
-  std::vector<std::mutex> tmp_multi_mutex(dev_count);
-
-  multi_op_var2gpu_str().swap(tmp_multi);
-  multi_op_var2gpu_str_mutex().swap(tmp_multi_mutex);
-}
 
 template <typename T>
 __device__ __forceinline__ void PrintNanInfKernel(const T* value,

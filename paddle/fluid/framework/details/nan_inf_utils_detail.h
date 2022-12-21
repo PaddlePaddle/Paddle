@@ -25,6 +25,7 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
+#include <sys/file.h>
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 #endif
@@ -33,6 +34,36 @@
 namespace paddle {
 namespace framework {
 namespace details {
+static std::once_flag init_multi_gpu_op_var_map_flag;
+
+// lazy init
+static std::vector<std::unordered_map<std::string, memory::AllocationPtr>>&
+multi_op_var2gpu_str() {
+  static std::vector<std::unordered_map<std::string, memory::AllocationPtr>>
+      _multi_op_var2gpu_str;
+  return _multi_op_var2gpu_str;
+}
+
+static std::vector<std::mutex>& multi_op_var2gpu_str_mutex() {
+  static std::vector<std::mutex> _multi_op_var2gpu_str_mutex;
+  return _multi_op_var2gpu_str_mutex;
+}
+
+static void InitMultiGPUOpVarMap() {
+  int dev_count = platform::GetGPUDeviceCount();
+  PADDLE_ENFORCE_GT(dev_count,
+                    0,
+                    platform::errors::NotFound(
+                        "cuda device must > 0, now dev_count=%d", dev_count));
+
+  // https://stackoverflow.com/questions/16465633/how-can-i-use-something-like-stdvectorstdmutex
+  std::vector<std::unordered_map<std::string, memory::AllocationPtr>> tmp_multi(
+      dev_count);
+  std::vector<std::mutex> tmp_multi_mutex(dev_count);
+
+  multi_op_var2gpu_str().swap(tmp_multi);
+  multi_op_var2gpu_str_mutex().swap(tmp_multi_mutex);
+}
 
 template <typename T,
           typename MT,
@@ -117,6 +148,14 @@ HOSTDEVICE void PrintForDifferentLevelFile(const char* debug_info,
   std::ofstream outfile(path, std::ios::app);
   if (!outfile.is_open()) {
     std::cout << "Open failed !!!\n" << std::endl;
+    return;
+  }
+
+  int nfd = open(path.c_str(), O_WRONLY|O_CREAT);
+  int error = flock(nfd, LOCK_SH | LOCK_NB);
+  if (error == -1) {
+        std::cout << "Lock failed !!!\n" << std::endl;
+        return;
   }
   if (num_nan > 0 || num_inf > 0) {
     outfile << "[PRECISION] [ERROR] in " << debug_info
@@ -149,6 +188,7 @@ HOSTDEVICE void PrintForDifferentLevelFile(const char* debug_info,
             << ", mean=" << static_cast<float>(mean_value) << std::endl;
   }
   outfile.close();
+  flock(nfd, LOCK_UN);
 }
 
 template <typename T>
@@ -171,7 +211,7 @@ inline std::string GetCpuHintString(const std::string& op_type,
   if (platform::is_gpu_place(place)) {
     ss << "[device=gpu:" << device_id << ", ";
   } else {
-    ss << "[device=cpu, ";
+    ss << "[device=cpu, " << device_id;
   }
   ss << "op=" << op_type << ", tensor=" << var_name << ", dtype=" << dtype_str
      << "]";
@@ -183,8 +223,9 @@ struct TensorCheckerVisitor {
   TensorCheckerVisitor(const std::string& o,
                        const std::string& v,
                        const phi::DenseTensor& t,
-                       const platform::Place& p)
-      : op_type(o), var_name(v), tensor(t), place(p) {}
+                       const platform::Place& p,
+		       const int d=-1)
+      : op_type(o), var_name(v), tensor(t), place(p), device_id(d){}
 
   template <typename T>
   void apply(
@@ -204,6 +245,7 @@ struct TensorCheckerVisitor {
   std::string var_name;
   const phi::DenseTensor& tensor;
   const platform::Place& place;
+  const int device_id;
 };
 
 template <typename DeviceContext>
