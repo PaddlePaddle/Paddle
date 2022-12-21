@@ -770,7 +770,7 @@ static PyObject* eager_api_set_stream(PyObject* self,
   auto stream =
       reinterpret_cast<StreamBaseObject*>(PyTuple_GET_ITEM(args, 0), 0);
   paddle::platform::DeviceContextPool::Instance().SetCurrentDeviceContext(
-      place, stream->stream);
+      stream->stream->GetPlace(), stream->stream);
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
