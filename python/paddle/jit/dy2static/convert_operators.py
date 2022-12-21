@@ -15,7 +15,6 @@
 import re
 
 import paddle
-from paddle.static import Print
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.framework import Variable, core
 from paddle.fluid.layers import assign, cast, control_flow, fill_constant
@@ -26,6 +25,7 @@ from paddle.jit.dy2static.utils import (
     GetterSetterHelper,
     UndefinedVar,
 )
+from paddle.static import Print
 
 from .return_transformer import RETURN_NO_VALUE_VAR_NAME
 from .variable_trans_func import to_static_variable
