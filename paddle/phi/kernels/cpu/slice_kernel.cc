@@ -29,4 +29,5 @@ PD_REGISTER_KERNEL(slice,
                    double,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {}
