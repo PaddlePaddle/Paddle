@@ -243,6 +243,7 @@ class QuantConfig(object):
             q_config = QuantConfig(activation=None, weight=None)
             class CustomizedQuantedConv2D:
                 def forward(self, x):
+                    pass
                     # add some code for quantization simulation
             q_config.add_qat_layer_mapping(Conv2D, CustomizedQuantedConv2D)
         """

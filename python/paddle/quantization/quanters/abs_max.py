@@ -21,8 +21,6 @@ from paddle.utils import unique_name
 from ..base_quanter import BaseQuanter
 from ..factory import QuanterFactory
 
-__all__ = ["FakeQuanterWithAbsMaxObserver"]
-
 
 class FakeQuanterWithAbsMaxObserver(QuanterFactory):
     r"""
