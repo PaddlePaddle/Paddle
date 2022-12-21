@@ -110,34 +110,55 @@ void DeviceContextPool::SetCurrentDeviceContext(const platform::Place& place,
 
 platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   VLOG(6) << "DeviceContextPool Get: " << place;
-  const std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
-      ptr;
   if (external_device_contexts_ && external_device_contexts_->count(place)) {
-    ptr = external_device_contexts_;
+    auto it = external_device_contexts_->find(place);
+    if (it == external_device_contexts_->end()) {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Place %s is not supported. Please check that your paddle compiles "
+          "with WITH_GPU, WITH_XPU, WITH_IPU, WITH_MLU or WITH_ASCEND_CL "
+          "option "
+          "or check "
+          "that your train process set the correct device id if you use "
+          "Executor.",
+          place));
+    }
+    return it->second.get().get();
   } else if (device_contexts_.count(place)) {
-    ptr = &device_contexts_;
-  } else {
-    ptr = &default_device_contexts_;
-  }
+    auto it = device_contexts_.find(place);
+    if (it == device_contexts_.end()) {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Place %s is not supported. Please check that your paddle compiles "
+          "with WITH_GPU, WITH_XPU, WITH_IPU, WITH_MLU or WITH_ASCEND_CL "
+          "option "
+          "or check "
+          "that your train process set the correct device id if you use "
+          "Executor.",
+          place));
+    }
+    return it->second;
 
-  auto it = ptr->find(place);
-  if (it == ptr->end()) {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "Place %s is not supported. Please check that your paddle compiles "
-        "with WITH_GPU, WITH_XPU, WITH_IPU, WITH_MLU or WITH_ASCEND_CL option "
-        "or check "
-        "that your train process set the correct device id if you use "
-        "Executor.",
-        place));
+  } else {
+    auto it = default_device_contexts_.find(place);
+    if (it == default_device_contexts_.end()) {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Place %s is not supported. Please check that your paddle compiles "
+          "with WITH_GPU, WITH_XPU, WITH_IPU, WITH_MLU or WITH_ASCEND_CL "
+          "option "
+          "or check "
+          "that your train process set the correct device id if you use "
+          "Executor.",
+          place));
+    }
+    return it->second.get().get();
   }
-  return it->second.get().get();
+  return nullptr;
 }
 
 platform::DeviceContext* DeviceContextPool::GetDefault(
     const platform::Place& place) {
   VLOG(6) << "DeviceContextPool GetDefault: " << place;
-  auto it = device_contexts_.find(place);
-  if (it == device_contexts_.end()) {
+  auto it = default_device_contexts_.find(place);
+  if (it == default_device_contexts_.end()) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Place %s is not supported. Please check that your paddle compiles "
         "with WITH_GPU, WITH_XPU, WITH_IPU, WITH_MLU or WITH_ASCEND_CL option "
