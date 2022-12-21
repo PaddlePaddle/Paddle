@@ -2343,7 +2343,7 @@ def deform_conv2d(
             float32, float64.
         offset (Tensor): The input coordinate offset of deformable convolution layer.
             A Tensor with type float32, float64.
-        mask (Tensor, Optional): The input mask of deformable convolution layer.
+        mask (Tensor): The input mask of deformable convolution layer.
             A Tensor with type float32, float64. It should be None when you use
             deformable convolution v1.
         num_filters(int): The number of filter. It is as same as the output
@@ -2377,7 +2377,7 @@ def deform_conv2d(
             deformable conv will create ParamAttr as weight_attr.
             If the Initializer of the weight_attr is not set, the parameter is
             initialized with :math:`Normal(0.0, std)`, and the
-            :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
+            :math:`std` is :math:`(\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
         bias_attr (ParamAttr|bool, Optional): The parameter attribute for the bias of
             deformable conv layer. If it is set to False, no bias will be added
             to the output units. If it is set to None or one attribute of ParamAttr, conv2d
@@ -2385,9 +2385,9 @@ def deform_conv2d(
             is not set, the bias is initialized zero. Default: None.
         name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
                         Generally, no setting is required. Default: None.
+
     Returns:
-        Tensor: The tensor storing the deformable convolution \
-                  result. A Tensor with type float32, float64.
+        Tensor: The tensor storing the deformable convolution result. A Tensor with type float32, float64.
 
     Examples:
         .. code-block:: python
