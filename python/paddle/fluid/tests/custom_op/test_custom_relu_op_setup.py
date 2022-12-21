@@ -21,7 +21,7 @@ import numpy as np
 
 import paddle
 import paddle.static as static
-from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 from paddle.vision.transforms import Compose, Normalize
 
@@ -153,7 +153,8 @@ def custom_relu_double_grad_dynamic(func, device, dtype, np_x, use_func=True):
     dx = paddle.grad(
         outputs=[out], inputs=[t], create_graph=True, retain_graph=True
     )
-
+    if in_dygraph_mode():
+        dx[0].retain_grads()
     dx[0].backward()
 
     assert dx[0].grad is not None
@@ -349,7 +350,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             )
         paddle.disable_static()
 
-    def test_func_double_grad_dynamic(self):
+    def func_double_grad_dynamic(self):
         for device in self.devices:
             for dtype in self.dtypes:
                 if device == 'cpu' and dtype == 'float16':
@@ -375,6 +376,11 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                         dx_grad, pd_dx_grad
                     ),
                 )
+
+    def test_double_grad_dynamic(self):
+        with _test_eager_guard():
+            self.func_double_grad_dynamic()
+        self.func_double_grad_dynamic()
 
     def test_with_dataloader(self):
         for device in self.devices:
