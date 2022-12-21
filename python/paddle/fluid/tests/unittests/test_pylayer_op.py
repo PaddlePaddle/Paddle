@@ -747,9 +747,9 @@ class TestPyLayerReturnType(unittest.TestCase):
 
         input1 = paddle.randn([3, 2])
         input1.stop_gradient = False
-        y, _ = Tanh.apply(input1, 1 + input1)
 
         with self.assertRaises(ValueError):
+            y, _ = Tanh.apply(input1, 1 + input1)
             y.mean().backward()
 
     def test_backward_return_fake_tensor(self):
@@ -764,9 +764,9 @@ class TestPyLayerReturnType(unittest.TestCase):
 
         input1 = paddle.randn([3, 2])
         input1.stop_gradient = False
-        y, _ = Tanh.apply(input1)
 
         with self.assertRaises(ValueError):
+            y, _ = Tanh.apply(input1)
             y.mean().backward()
 
 
