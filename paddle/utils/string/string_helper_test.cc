@@ -80,6 +80,6 @@ TEST(StringHelper, SplitString) {
       line.c_str(), line.length(), ' ', &vals, 10);
   EXPECT_EQ(num, 4);
 
-  num = paddle::string::split_string_ptr( line.c_str(), -1, ' ', &vals, 3);
+  num = paddle::string::split_string_ptr(line.c_str(), -1, ' ', &vals, 3);
   EXPECT_EQ(num, 0);
 }
