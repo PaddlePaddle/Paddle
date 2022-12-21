@@ -119,10 +119,3 @@ void SetValueGradKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
-
-PD_REGISTER_KERNEL(set_value_grad,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::SetValueGradKernel,
-                   float,
-                   phi::dtype::float16) {}

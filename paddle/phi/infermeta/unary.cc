@@ -1751,15 +1751,13 @@ void KthvalueInferMeta(const MetaTensor& x,
                         dim_size,
                         dim_size,
                         axis));
-  if (dim_size > 0) {
-    PADDLE_ENFORCE_GE(axis,
-                      -dim_size,
-                      phi::errors::InvalidArgument(
-                          "the axis must be [-%d, %d), but received %d .",
-                          dim_size,
-                          dim_size,
-                          axis));
-  }
+  PADDLE_ENFORCE_GE(axis,
+                    -dim_size,
+                    phi::errors::InvalidArgument(
+                        "the axis must be [-%d, %d), but received %d .",
+                        dim_size,
+                        dim_size,
+                        axis));
   if (axis < 0) axis += dim_size;
   PADDLE_ENFORCE_GE(
       k,
@@ -1768,8 +1766,8 @@ void KthvalueInferMeta(const MetaTensor& x,
           "the k in the kthvalue must >= 1, but received %d .", k));
   PADDLE_ENFORCE_GE(
       input_dims.size(),
-      0,
-      phi::errors::InvalidArgument("input of kthvalue must have >= 0d shape"));
+      1,
+      phi::errors::InvalidArgument("input of kthvalue must have >= 1d shape"));
   if (config.is_runtime) {
     PADDLE_ENFORCE_GE(
         input_dims[axis],
@@ -1783,7 +1781,7 @@ void KthvalueInferMeta(const MetaTensor& x,
   for (int64_t i = 0; i < axis; i++) {
     dimvec.emplace_back(input_dims[i]);
   }
-  if (keepdim && dim_size > 0) {
+  if (keepdim) {
     dimvec.emplace_back(static_cast<int64_t>(1));
   }
   for (int64_t i = axis + 1; i < dim_size; i++) {
@@ -2032,38 +2030,33 @@ void ModeInferMeta(const MetaTensor& x,
                    MetaTensor* indices) {
   auto input_dims = x.dims();
   const int& dim_size = input_dims.size();
-  PADDLE_ENFORCE_LT(axis,
-                    dim_size,
-                    phi::errors::InvalidArgument(
-                        "the axis must be [-%d, %d), but received %d .",
-                        dim_size,
-                        dim_size,
-                        axis));
-  if (dim_size > 0) {
-    PADDLE_ENFORCE_GE(axis,
-                      -dim_size,
-                      phi::errors::InvalidArgument(
-                          "the axis must be [-%d, %d), but received %d .",
-                          dim_size,
-                          dim_size,
-                          axis));
-  }
+  PADDLE_ENFORCE_EQ(
+      (axis < dim_size) && (axis >= (-1 * dim_size)),
+      true,
+      errors::InvalidArgument(
+          "the axis of ModeOp must be [-%d, %d), but you set axis is %d",
+          dim_size,
+          dim_size,
+          axis));
   PADDLE_ENFORCE_GE(
       input_dims.size(),
-      0,
-      errors::InvalidArgument("input of ModeOp must have >= 0d shape"));
+      1,
+      errors::InvalidArgument("input of ModeOp must have >= 1d shape"));
   if (axis < 0) axis += dim_size;
   std::vector<int64_t> dimvec;
   for (int64_t i = 0; i < axis; i++) {
     dimvec.emplace_back(input_dims[i]);
   }
-  if (keepdim && dim_size > 0) {
+  if (keepdim) {
     dimvec.emplace_back(static_cast<int64_t>(1));
   }
   for (int64_t i = axis + 1; i < dim_size; i++) {
     dimvec.emplace_back(input_dims[i]);
   }
   DDim dims = phi::make_ddim(dimvec);
+  PADDLE_ENFORCE_GE(input_dims.size(),
+                    1,
+                    errors::InvalidArgument("input shape should >= 1d"));
   out->set_dims(dims);
   out->share_lod(x);
   out->set_dtype(x.dtype());
