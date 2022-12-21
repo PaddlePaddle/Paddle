@@ -48,7 +48,7 @@ class FusedEcMoe(Layer):
 
             # required: gpu
             import paddle
-            from paddle.incubate.nn import FusedEcMoe
+            from paddle.incubate.nn.layer.fused_ec_moe import FusedEcMoe
 
             x = paddle.randn([10, 128, 1024]) # [bsz, seq_len, d_model]
             gate = paddle.randn([10, 128, 8]) # [bsz, seq_len, num_experts]
