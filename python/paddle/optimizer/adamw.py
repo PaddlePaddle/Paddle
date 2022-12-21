@@ -14,7 +14,6 @@
 
 import warnings
 from collections import defaultdict
-from .multi_tensor_base import MultiTensorBase
 from collections.abc import Callable
 
 import paddle
@@ -26,7 +25,7 @@ from ..fluid.dygraph import base as imperative_base
 from ..fluid.framework import Parameter, Variable
 from ..fluid.layer_helper import LayerHelper
 from .lr import LRScheduler
-from .optimizer import Optimizer
+from .multi_tensor_base import MultiTensorBase
 
 __all__ = []
 

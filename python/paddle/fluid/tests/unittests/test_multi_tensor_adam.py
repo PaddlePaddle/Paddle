@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
-import paddle.nn as nn
-import numpy as np
-from paddle.fluid import core
-import paddle.fluid as fluid
 import os
+import unittest
+
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+import paddle.nn as nn
+from paddle.fluid import core
 
 
 class MLPLayer(nn.Layer):
@@ -325,7 +327,9 @@ class TestStaticMultiTensorAdam(unittest.TestCase):
                     input=fc_1, size=2, param_attr=weight_attr2, act='softmax'
                 )
 
-                cost = paddle.nn.functional.cross_entropy(input=prediction, label=label)
+                cost = paddle.nn.functional.cross_entropy(
+                    input=prediction, label=label
+                )
                 loss = paddle.mean(cost)
                 beta1_init = 0.9
                 beta2_init = 0.999

@@ -12,17 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .multi_tensor_base import MultiTensorBase
 import warnings
 from collections import defaultdict
 
+import paddle
 from paddle import _C_ops, _legacy_C_ops
 
 from ..fluid import core, framework, unique_name
 from ..fluid.dygraph import base as imperative_base
 from ..fluid.framework import Variable, in_dygraph_mode
 from ..fluid.layer_helper import LayerHelper
-from .optimizer import Optimizer
+from .multi_tensor_base import MultiTensorBase
 
 __all__ = []
 

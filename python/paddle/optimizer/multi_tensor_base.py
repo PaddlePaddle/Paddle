@@ -12,17 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .optimizer import Optimizer
-from ..fluid import core
-from ..fluid import framework
-from ..fluid.framework import Variable, in_dygraph_mode
-
-from paddle.fluid.framework import (
-    default_main_program,
-)
-
 import paddle
 from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.framework import default_main_program
+
+from ..fluid import core, framework
+from ..fluid.framework import Variable, in_dygraph_mode
+from .optimizer import Optimizer
 
 __all__ = []
 
