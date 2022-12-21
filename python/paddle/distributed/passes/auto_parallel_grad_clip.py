@@ -17,6 +17,7 @@ from functools import reduce
 import numpy as np
 
 import paddle
+from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 
 from ..auto_parallel.dist_attribute import (
     OperatorDistributedAttribute,
@@ -25,8 +26,6 @@ from ..auto_parallel.dist_attribute import (
 from ..auto_parallel.process_group import get_world_process_group
 from ..auto_parallel.reshard import Resharder
 from ..auto_parallel.utils import (
-    OP_ROLE_KEY,
-    OpRole,
     _get_comm_group,
     insert_dependencies_for_two_vars,
     is_gradient_clip_op,
