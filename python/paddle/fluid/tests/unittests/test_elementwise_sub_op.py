@@ -100,6 +100,9 @@ class TestBF16ElementwiseOp(OpTest):
     def test_check_grad_ingore_x(self):
         self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
 
+    def test_check_grad_ingore_y(self):
+        self.check_grad(['X'], 'Out', no_grad_set=set("Y"))
+
 
 class TestElementwiseFP16Op(TestElementwiseOp):
     def _executed_api(self, x, y, name=None):
