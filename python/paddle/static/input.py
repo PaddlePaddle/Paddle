@@ -24,7 +24,6 @@ __all__ = []
 @static_only
 def data(name, shape, dtype=None, lod_level=0):
     """
-    **Data Layer**
 
     This function creates a variable on the global block. The global variable
     can be accessed by all the following operators in the graph. The variable
@@ -36,15 +35,14 @@ def data(name, shape, dtype=None, lod_level=0):
        name (str): The name/alias of the variable, see :ref:`api_guide_Name`
            for more details.
        shape (list|tuple): List|Tuple of integers declaring the shape. You can
-           set "None" or -1 at a dimension to indicate the dimension can be of any
-           size. For example, it is useful to set changeable batch size as "None" or -1.
+           set None or -1 at a dimension to indicate the dimension can be of any
+           size. For example, it is useful to set changeable batch size as None or -1.
        dtype (np.dtype|str, optional): The type of the data. Supported
            dtype: bool, float16, float32, float64, int8, int16, int32, int64,
            uint8. Default: None. When `dtype` is not set, the dtype will get
            from the global dtype by `paddle.get_default_dtype()`.
        lod_level (int, optional): The LoD level of the LoDTensor. Usually users
-           don't have to set this value. For more details about when and how to
-           use LoD level, see :ref:`user_guide_lod_tensor` . Default: 0.
+           don't have to set this value. Default: 0.
 
     Returns:
         Variable: The global variable that gives access to the data.
