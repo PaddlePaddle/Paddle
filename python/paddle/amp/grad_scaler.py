@@ -73,6 +73,7 @@ class AmpScaler:
 
         import numpy as np
         import paddle.fluid as fluid
+        import paddle
 
         data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
         with fluid.dygraph.guard():
@@ -167,6 +168,7 @@ class AmpScaler:
 
                 import numpy as np
                 import paddle.fluid as fluid
+                import paddle
 
                 data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
                 with fluid.dygraph.guard():
@@ -209,6 +211,7 @@ class AmpScaler:
 
                 import numpy as np
                 import paddle.fluid as fluid
+                import paddle
 
                 data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
                 with fluid.dygraph.guard():
