@@ -81,17 +81,17 @@ static inline const void set_operator_process_mesh(
 
 static inline void reset_tensor_dist_attr(TensorDistAttr *dist_attr) {
   dist_attr->set_process_mesh(ProcessMesh());
-  std::vector<int64_t> dims_mapping(dist_attr.dims_mapping().size(), -1);
+  std::vector<int64_t> dims_mapping(dist_attr->dims_mapping().size(), -1);
   dist_attr->set_dims_mapping(dims_mapping);
   dist_attr->clear_annotated();
 }
 
 static inline void reset_operator_dist_attr(OperatorDistAttr *dist_attr) {
   for (auto &item : dist_attr->input_dist_attrs()) {
-    reset_tensor_dist_attr(item.second);
+    reset_tensor_dist_attr(&item.second);
   }
   for (auto &item : dist_attr->output_dist_attrs()) {
-    reset_tensor_dist_attr(item.second);
+    reset_tensor_dist_attr(&item.second);
   }
   dist_attr->set_impl_type(kDefault);
   dist_attr->set_impl_idx(0);
