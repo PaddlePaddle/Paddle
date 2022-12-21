@@ -1808,8 +1808,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 #endif
       ) {
         fallback_to_cpu = true;
-        auto phi_cpu_kernel_key =
-            FallBackToCpu(*kernel_type_.get(), phi_kernel_key, *this);
+        auto phi_cpu_kernel_key = FallBackToCpu(phi_kernel_key, *this);
         phi_kernel_.reset(
             new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
                 phi_kernel_name, phi_cpu_kernel_key)));

@@ -78,9 +78,6 @@ def start_local_trainers(
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
         }
 
-        if not eager_mode:
-            proc_env["FLAGS_enable_eager_mode"] = "%d" % 0
-
         current_env.update(proc_env)
 
         print("trainer proc env:{}".format(current_env))

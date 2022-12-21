@@ -13,18 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <map>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/selected_rows_utils.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/device_context.h"
-
-#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/selected_rows.h"
+#include "paddle/utils/variant.h"
 
 #if defined(_WIN32)
 #include <intrin.h>
@@ -34,9 +28,8 @@ limitations under the License. */
 #include <windows.h>
 #endif  // _WIN32
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace phi {
+namespace funcs {
 /**
  * SimpleCodeTable class should support 3 functions:
  *
@@ -273,6 +266,5 @@ class MatrixBitCodeFunctor {
   const int64_t* ids_;
   CodeTable code_table_;
 };
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi

@@ -12,13 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/maxouting.h"
+#include "paddle/phi/kernels/funcs/maxouting.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace phi {
+namespace funcs {
 
 template <typename T>
 __global__ void KernelMaxOut(const int nthreads,
@@ -57,6 +56,7 @@ __global__ void KernelMaxOut(const int nthreads,
     output_data[i] = ele;
   }
 }
+
 template <typename T>
 __global__ void KernelMaxoutGrad(const int nthreads,
                                  const T* input_data,
@@ -102,6 +102,7 @@ __global__ void KernelMaxoutGrad(const int nthreads,
     }
   }
 }
+
 /*
  * All tensors are in NCHW or NHWC format.
  */
@@ -118,7 +119,7 @@ void MaxOutFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
   const int output_channels = output->dims()[axis];
 
   const T* input_data = input.data<T>();
-  T* output_data = output->mutable_data<T>(context.GetPlace());
+  T* output_data = context.template Alloc<T>(output);
   int nthreads = output->numel();
   int blocks = (nthreads + 1024 - 1) / 1024;
   dim3 threads(1024, 1);
@@ -155,7 +156,7 @@ void MaxOutGradFunctor<DeviceContext, T>::operator()(
   const T* input_data = input.data<T>();
   const T* output_data = output.data<T>();
   const T* output_grad_data = output_grad.data<T>();
-  T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
+  T* input_grad_data = context.template Alloc<T>(input_grad);
   int nthreads = output.numel();
   int blocks = (nthreads + 1024 - 1) / 1024;
   dim3 threads(1024, 1);
@@ -179,6 +180,5 @@ template class MaxOutGradFunctor<phi::GPUContext, double>;
 template class MaxOutFunctor<phi::GPUContext, float>;
 template class MaxOutFunctor<phi::GPUContext, double>;
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi

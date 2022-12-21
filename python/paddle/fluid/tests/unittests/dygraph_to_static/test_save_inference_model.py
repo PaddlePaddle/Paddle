@@ -21,7 +21,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.jit import ProgramTranslator
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
 from paddle.jit.dy2static.partial_program import partial_program_from
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
@@ -40,7 +40,7 @@ class SimpleFcLayer(fluid.dygraph.Layer):
         super().__init__()
         self._linear = paddle.nn.Linear(fc_size, fc_size)
 
-    @declarative
+    @to_static
     def forward(self, x):
         y = self._linear(x)
         z = self._linear(y)
