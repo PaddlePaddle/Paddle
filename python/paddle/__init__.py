@@ -676,3 +676,4 @@ __all__ = [  # noqa
     'take',
     'frexp',
 ]
+__all__ += amp.__all__
