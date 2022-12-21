@@ -574,6 +574,12 @@ class PADDLE_API Tensor final {
    */
   Tensor to_dense() const;
 
+  /**
+   * @brief print tensor data to stdout
+   * @return void
+   */
+  void print_data(int64_t numel = 20) const;
+
  private:
   /**
    * [ Why use abstract TensorImpl interface here? ]

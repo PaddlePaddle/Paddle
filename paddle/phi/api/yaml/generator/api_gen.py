@@ -149,6 +149,9 @@ class ForwardAPI(BaseAPI):
             return "std::tuple<" + ", ".join(out_type_list) + ">"
 
     def show_api_output(self, inplace_flag=False):
+        if re.search("^(cast|slice|copy)", self.get_api_func_name()):
+            return ""
+
         out_type = self.get_return_type_with_intermediate(inplace_flag)
 
         def _show_api_output(outtype, output):
@@ -166,12 +169,12 @@ class ForwardAPI(BaseAPI):
             elif re.search(r"^\s*std::vector<Tensor>", outtype):
                 code = f'''
                 for (auto it = {output}.begin(); it != {output}.end(); it++){{
-                    // show Tensor it
+                    it -> print_data();
                 }}
                 '''
             elif re.search(r"^\s*Tensor", outtype):
                 code = f'''
-                //show tensor {output}
+                {output}.print_data();
                 '''
             elif re.search(r"^\s*paddle::optional", outtype):
                 code = ""
