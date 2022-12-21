@@ -49,6 +49,47 @@ def seed(seed):
     return core.default_cpu_generator().manual_seed(seed)
 
 
+def get_rng_state(device=None):
+    """
+
+    Get all random states of random generators of specified device.
+
+    Args:
+        device(str): This parameter determines the specific running device.
+            It can be ``cpu``, ``gpu``, ``xpu``, Default is None.
+            If None, return the generators of current device (specified by ``set_device``).
+
+
+    Returns:
+        GeneratorState:  object.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            sts = paddle.get_rng_state()
+
+    """
+    state_list = []
+    place = fluid.framework._current_expected_place()
+    if isinstance(place, core.CPUPlace):
+        state_list.append(core.default_cpu_generator().get_state())
+    elif isinstance(place, core.CUDAPlace):
+        for i in range(core.get_cuda_device_count()):
+            state_list.append(core.default_cuda_generator(i).get_state())
+    elif isinstance(place, core.XPUPlace):
+        # todo
+        pass
+    else:
+        raise ValueError(
+            "get_rng_state is not implemented for current device: {}".format(
+                place
+            )
+        )
+
+    return state_list
+
+
 def get_cuda_rng_state():
     """
 
