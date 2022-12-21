@@ -175,31 +175,31 @@ interpreter::CostInfo InterpreterCore::DryRun(
 }
 
 void InterpreterCore::RunImpl() {
-      // For the program that only run once, it is no need to
-    // create work_queue, so the async_work_queue_ is created
-    // until the second step run.
-    async_work_queue_ = GetWorkQueue();
+  // For the program that only run once, it is no need to
+  // create work_queue, so the async_work_queue_ is created
+  // until the second step run.
+  async_work_queue_ = GetWorkQueue();
 
-    // lazy initialization of gc, do not create gc is the program only run once
-    if (!gc_) {
-      gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
-    }
+  // lazy initialization of gc, do not create gc is the program only run once
+  if (!gc_) {
+    gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
+  }
 
-    if (execution_config_.used_for_jit && (sync_op_num_ == 0)) {
-      VLOG(4) << "Tracing Instruction List";
-      TraceInstructionList(vec_instruction_);
-    } else {
-      ExecuteInstructionList(vec_instruction_);
-    }
+  if (execution_config_.used_for_jit && (sync_op_num_ == 0)) {
+    VLOG(4) << "Tracing Instruction List";
+    TraceInstructionList(vec_instruction_);
+  } else {
+    ExecuteInstructionList(vec_instruction_);
+  }
 #ifdef PADDLE_WITH_ASCEND_CL
-    if (platform::is_npu_place(place_)) {
-      platform::DeviceContextPool::Instance().Get(place_)->Wait();
-    }
+  if (platform::is_npu_place(place_)) {
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    if (platform::is_custom_place(place_)) {
-      platform::DeviceContextPool::Instance().Get(place_)->Wait();
-    }
+  if (platform::is_custom_place(place_)) {
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  }
 #endif
 }
 
@@ -231,7 +231,6 @@ paddle::framework::FetchList InterpreterCore::Run(
     return {};
   }
 }
-
 
 paddle::framework::FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names, bool need_fetch) {
