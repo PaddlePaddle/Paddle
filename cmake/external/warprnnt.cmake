@@ -20,8 +20,8 @@ endif()
 
 set(WARPRNNT_PREFIX_DIR ${THIRD_PARTY_PATH}/warprnnt)
 set(WARPRNNT_INSTALL_DIR ${THIRD_PARTY_PATH}/install/warprnnt)
-set(WARPRNNT_REPOSITORY ${GIT_URL}/zh794390558/warp-transducer.git)
-set(WARPRNNT_TAG hipcc)
+set(WARPRNNT_REPOSITORY ${GIT_URL}/PaddlePaddle/warp-transducer.git)
+set(WARPRNNT_TAG 7ea6bfe748779c245a0fcaa5dd9383826273eff2)
 
 set(WARPRNNT_INCLUDE_DIR
     "${WARPRNNT_INSTALL_DIR}/include"
