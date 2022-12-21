@@ -575,8 +575,10 @@ class PADDLE_API Tensor final {
   Tensor to_dense() const;
 
   /**
-   * @brief print tensor data to stdout
-   * @return void
+   * @brief print tensor data to when GLOG_v>=6
+   * @param numel, The number of data to print.
+   *              If numel < 0, print all data of a tensor;
+   *              else print the minimum between Tensor.numel() and numel.
    */
   void print_data(int64_t numel = 20) const;
 
