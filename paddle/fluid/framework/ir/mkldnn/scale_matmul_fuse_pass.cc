@@ -152,4 +152,4 @@ REGISTER_PASS_CAPABILITY(scale_matmul_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .EQ("scale", 0)
-            .LE("matmul", 1));
+            .EQ("matmul", 0));

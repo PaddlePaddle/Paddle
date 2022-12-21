@@ -198,7 +198,7 @@ REGISTER_PASS(matmul_transpose_reshape_mkldnn_fuse_pass,
 REGISTER_PASS_CAPABILITY(matmul_transpose_reshape_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .LE("matmul", 1)
+            .EQ("matmul", 0)
             .EQ("matmul_v2", 0)
             .EQ("transpose2", 0)
             .EQ("reshape2", 0));

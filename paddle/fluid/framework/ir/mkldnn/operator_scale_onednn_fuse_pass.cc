@@ -122,7 +122,7 @@ REGISTER_PASS_CAPABILITY(operator_scale_onednn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .EQ("fc", 0)
-            .LE("matmul", 1)
+            .EQ("matmul", 0)
             .EQ("matmul_v2", 0)
             .LE("elementwise_add", 1)
             .LE("elementwise_sub", 1)

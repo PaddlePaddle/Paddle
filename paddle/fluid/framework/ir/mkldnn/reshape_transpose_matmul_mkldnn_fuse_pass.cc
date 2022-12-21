@@ -243,5 +243,5 @@ REGISTER_PASS_CAPABILITY(reshape_transpose_matmul_mkldnn_fuse_pass)
         paddle::framework::compatible::OpVersionComparatorCombination()
             .EQ("reshape2", 0)
             .EQ("transpose2", 0)
-            .EQ("matmul", 1)
+            .EQ("matmul", 0)
             .EQ("matmul_v2", 0));
