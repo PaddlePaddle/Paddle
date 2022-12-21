@@ -39,11 +39,11 @@ class SkipGroupnormActPluginDynamic : public DynamicPluginTensorRT {
                                 bool with_fp16,
                                 std::shared_ptr<void> scale_gpu = nullptr,
                                 std::shared_ptr<void> bias_gpu = nullptr)
-      : groups_(groups),
+      : scale_gpu_(scale_gpu),
+        bias_gpu_(bias_gpu),
+        groups_(groups),
         eps_(eps),
-        with_fp16_(with_fp16),
-        scale_gpu_(scale_gpu),
-        bias_gpu_(bias_gpu) {
+        with_fp16_(with_fp16) {
     scale_.resize(scale_num);
     bias_.resize(bias_num);
     std::copy(scale, scale + scale_num, scale_.data());
@@ -168,10 +168,10 @@ class SkipGroupnormActPluginDynamic : public DynamicPluginTensorRT {
   std::vector<float> bias_;
   std::shared_ptr<void> scale_gpu_;
   std::shared_ptr<void> bias_gpu_;
+  GroupNormNHWCParams params_;
   int groups_;
   float eps_;
   bool with_fp16_;
-  GroupNormNHWCParams params_;
 };
 
 class SkipGroupnormActPluginDynamicCreator : public TensorRTPluginCreator {
