@@ -28,4 +28,5 @@ KernelSignature FeedOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 }  // namespace phi
 
+PD_REGISTER_BASE_KERNEL_NAME(feed, feed_dense_tensor);
 PD_REGISTER_ARG_MAPPING_FN(feed, phi::FeedOpArgumentMapping);
