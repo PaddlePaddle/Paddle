@@ -13,8 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
+
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.core import PassVersionChecker
 
@@ -30,7 +33,7 @@ class ConvBiasMkldnnFusePassSamePadTest(InferencePassTest):
                 initializer=fluid.initializer.Xavier(uniform=False),
                 learning_rate=0.001,
             )
-            conv_out = fluid.layers.conv2d(
+            conv_out = paddle.static.nn.conv2d(
                 input=data,
                 num_filters=3,
                 filter_size=3,
@@ -63,7 +66,7 @@ class ConvBiasMkldnnFusePassValidPadTest(ConvBiasMkldnnFusePassSamePadTest):
                 initializer=fluid.initializer.Xavier(uniform=False),
                 learning_rate=0.001,
             )
-            conv_out = fluid.layers.conv2d(
+            conv_out = paddle.static.nn.conv2d(
                 input=data,
                 num_filters=3,
                 filter_size=3,
@@ -89,7 +92,7 @@ class ConvBiasMkldnnFusePassExplictPadTest(ConvBiasMkldnnFusePassSamePadTest):
                 initializer=fluid.initializer.Xavier(uniform=False),
                 learning_rate=0.001,
             )
-            conv_out = fluid.layers.conv2d(
+            conv_out = paddle.static.nn.conv2d(
                 input=data,
                 num_filters=3,
                 filter_size=3,
@@ -114,7 +117,7 @@ class ConvBiasMkldnnFusePassGroupTest(ConvBiasMkldnnFusePassSamePadTest):
                 initializer=fluid.initializer.Xavier(uniform=False),
                 learning_rate=0.001,
             )
-            conv_out = fluid.layers.conv2d(
+            conv_out = paddle.static.nn.conv2d(
                 input=data,
                 num_filters=3,
                 filter_size=3,
@@ -145,7 +148,7 @@ class ConvBiasMkldnnFusePassDialtionsGroupsTest(
                 initializer=fluid.initializer.Xavier(uniform=False),
                 learning_rate=0.001,
             )
-            conv_out = fluid.layers.conv2d(
+            conv_out = paddle.static.nn.conv2d(
                 input=data,
                 num_filters=3,
                 filter_size=3,
@@ -173,7 +176,7 @@ class ConvTransposeMkldnnFusePassDialtionsGroupsTest(InferencePassTest):
                 initializer=fluid.initializer.Xavier(uniform=False),
                 learning_rate=0.001,
             )
-            conv_out = fluid.layers.conv2d_transpose(
+            conv_out = paddle.static.nn.conv2d_transpose(
                 input=data,
                 num_filters=3,
                 filter_size=3,

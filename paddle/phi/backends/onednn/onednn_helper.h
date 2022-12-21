@@ -284,5 +284,7 @@ inline std::string ExtendKeyWithThreadInfoIfNeeded(const OneDNNContext& dev_ctx,
              : key;
 }
 
+enum class RNNReorderType { PP_NTC, PP_TNC, NTC_PP, TNC_PP };
+
 }  // namespace funcs
 }  // namespace phi

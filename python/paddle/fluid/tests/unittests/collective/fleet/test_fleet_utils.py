@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
-import tarfile
-import tempfile
 import os
 import sys
+import tarfile
+import tempfile
+import unittest
+
+import numpy as np
+
+import paddle.fluid.incubate.fleet.utils.utils as utils
 from paddle.dataset.common import download
 from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
-import paddle.fluid.incubate.fleet.utils.utils as utils
 
 
 class TestFleetUtils(unittest.TestCase):

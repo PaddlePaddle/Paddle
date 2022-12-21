@@ -27,16 +27,14 @@ from paddle.distributed.fleet.dataset import InMemoryDataset  # noqa: F401
 from paddle.distributed.fleet.dataset import QueueDataset  # noqa: F401
 from paddle.distributed.fleet.base.topology import ParallelMode  # noqa: F401
 
-from .collective import all_gather  # noqa: F401
-from .collective import all_gather_object  # noqa: F401
-from .collective import barrier  # noqa: F401
 from .collective import split  # noqa: F401
 from .collective import new_group  # noqa: F401
-from .collective import wait  # noqa: F401
 
 from .communication import (
     stream,
     ReduceOp,
+    all_gather,
+    all_gather_object,
     all_reduce,
     alltoall,
     alltoall_single,
@@ -53,6 +51,8 @@ from .communication import (
     is_initialized,
     destroy_process_group,
     get_group,
+    wait,
+    barrier,
 )  # noqa: F401
 
 from .auto_parallel import shard_op  # noqa: F401
@@ -64,6 +64,9 @@ from .entry_attr import ProbabilityEntry  # noqa: F401
 from .entry_attr import CountFilterEntry  # noqa: F401
 from .entry_attr import ShowClickEntry  # noqa: F401
 
+# (TODO: GhostScreaming) It needs migration of ParallelEnv. However,
+# it's hard to migrate APIs in paddle.fluid.dygraph.parallel completely.
+# It will be replaced later.
 from paddle.fluid.dygraph.parallel import ParallelEnv  # noqa: F401
 
 from . import cloud_utils  # noqa: F401
@@ -111,5 +114,4 @@ __all__ = [  # noqa
     "isend",
     "irecv",
     "reduce_scatter",
-    "rpc",
 ]

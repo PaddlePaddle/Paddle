@@ -12,18 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import unittest
 import os
-import sys
-import subprocess
 import pickle
+import socket
+import subprocess
+import sys
 import tempfile
+import unittest
 from contextlib import closing
+
+import numpy as np
+from paddle_bfloat import bfloat16
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle_bfloat import bfloat16
 
 
 def create_bool_test_data(shape=None, seed=None):
@@ -157,10 +160,6 @@ def runtime_main(test_class, col_type):
     args["static_mode"] = int(os.getenv("STATIC_MODE"))
     args["dtype"] = os.getenv("DTYPE")
     model.run_trainer(args)
-
-
-import socket
-from contextlib import closing
 
 
 class TestDistBase(unittest.TestCase):
@@ -328,11 +327,6 @@ class TestDistBase(unittest.TestCase):
                 'NVIDIA_TF32_OVERRIDE', ''
             )
 
-        if eager_mode:
-            required_envs["FLAGS_enable_eager_mode"] = "%d" % 1
-        else:
-            required_envs["FLAGS_enable_eager_mode"] = "%d" % 0
-
         tr0_out, tr1_out, pid0, pid1 = self._run_cluster(
             model_file, required_envs
         )
@@ -402,7 +396,7 @@ class TestDistBase(unittest.TestCase):
             for i in range(result_data.shape[0]):
                 for j in range(result_data.shape[1]):
                     data = result_data[i][j]
-                    assert np.allclose(
+                    np.testing.assert_allclose(
                         tr0_out[1][i][j], need_result[data], atol=1e-08
                     )
         elif col_type == "row_parallel_linear":

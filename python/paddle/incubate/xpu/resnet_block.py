@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import numpy as np
+
 import paddle.fluid as fluid
-from paddle.nn import initializer as I
-from paddle.nn import Layer
-from paddle.fluid.layers import utils
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.param_attr import ParamAttr
 from paddle import _legacy_C_ops
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.layers import utils
+from paddle.fluid.param_attr import ParamAttr
+from paddle.nn import Layer
+from paddle.nn import initializer as I
 
 __all__ = ['resnet_basic_block', 'ResNetBasicBlock']
 
@@ -325,6 +326,7 @@ def resnet_basic_block(
 
 class ResNetBasicBlock(Layer):
     r"""
+
     ResNetBasicBlock is designed for optimize the performence of the basic unit of ssd resnet block.
     If has_shortcut = True, it can calculate 3 Conv2D, 3 BatchNorm and 2 ReLU in one time.
     If has_shortcut = False, it can calculate 2 Conv2D, 2 BatchNorm and 2 ReLU in one time. In this
@@ -362,14 +364,14 @@ class ResNetBasicBlock(Layer):
             and variance are also used during train period. Default: False.
         is_test (bool, optional): A flag indicating whether it is in
             test phrase or not. Default: False.
-        filter_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
+        filter_attr (ParamAttr, optional): The parameter attribute for learnable parameters/weights
             of conv2d. If it is set to None or one attribute of ParamAttr, conv2d
             will create ParamAttr as param_attr. Default: None.
-        scale_attr (ParamAttr|None): The parameter attribute for Parameter `scale`
+        scale_attr (ParamAttr, optional): The parameter attribute for Parameter `scale`
             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm will create ParamAttr
             as param_attr, the name of scale can be set in ParamAttr. If the Initializer of the param_attr is not set,
             the parameter is initialized with Xavier. Default: None.
-        bias_attr (ParamAttr|None): The parameter attribute for the bias of batch_norm.
+        bias_attr (ParamAttr, optional): The parameter attribute for the bias of batch_norm.
             If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
             If the Initializer of the bias_attr is not set, the bias is initialized zero.
@@ -396,7 +398,6 @@ class ResNetBasicBlock(Layer):
 
 
     Examples:
-
         .. code-block:: python
 
             # required: xpu
@@ -426,6 +427,7 @@ class ResNetBasicBlock(Layer):
             out = resnet_basic_block.forward(x)
 
             print(out.shape) # [2, 8, 16, 16]
+
     """
 
     def __init__(

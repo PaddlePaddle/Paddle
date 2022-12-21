@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.device import cuda
-import paddle
 import ctypes
-
 import unittest
+
 import numpy as np
+
+import paddle
+from paddle.device import cuda
 
 
 class TestCurrentStream(unittest.TestCase):

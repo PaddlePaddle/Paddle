@@ -16,9 +16,11 @@ TestCases for Dataset,
 including create, config, run, etc.
 """
 
-import paddle.fluid as fluid
-import numpy as np
 import unittest
+
+import numpy as np
+
+import paddle
 
 
 class TestVarInfo(unittest.TestCase):
@@ -27,7 +29,7 @@ class TestVarInfo(unittest.TestCase):
     def test_var_info(self):
         """Testcase for get and set info for variable."""
         value = np.random.randn(1)
-        var = fluid.layers.create_global_var([1], value, "float32")
+        var = paddle.static.create_global_var([1], value, "float32")
         var._set_info("name", "test")
         ret = var._get_info("name")
         assert ret == "test"

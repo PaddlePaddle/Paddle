@@ -14,14 +14,15 @@
 
 import sys
 import unittest
+
 import numpy as np
 from op_test import OpTest
 from test_softmax_op import stable_softmax
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+
 import paddle
+import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle.fluid import Program, program_guard
 
 paddle.enable_static()
 
@@ -206,19 +207,6 @@ class CTCForward:
         return self.loss
 
 
-def python_api(
-    logits,
-    label,
-    logits_length=None,
-    labels_length=None,
-    blank=0,
-    norm_by_times=False,
-):
-    return paddle.fluid.layers.warpctc(
-        logits, label, blank, norm_by_times, logits_length, labels_length
-    )
-
-
 class TestWarpCTCOp(OpTest):
     def config(self):
         self.batch_size = 4
@@ -317,7 +305,6 @@ class TestWarpCTCOpWithPadding(OpTest):
 
     def setUp(self):
         self.op_type = "warpctc"
-        self.python_api = python_api
         self.python_out_sig = ["Loss"]
         self.config()
 
@@ -394,7 +381,7 @@ class TestWarpCTCOpWithPadding(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
@@ -439,7 +426,6 @@ class TestWarpCTCOpFp64(OpTest):
 
     def setUp(self):
         self.op_type = "warpctc"
-        self.python_api = python_api
         self.python_out_sig = ["Loss"]
         self.config()
 
@@ -516,67 +502,74 @@ class TestWarpCTCOpFp64(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
-        self.check_grad(["Logits"], "Loss", check_eager=True)
+        self.check_grad(["Logits"], "Loss", check_eager=False)
 
 
 class TestWarpCTCOpError(unittest.TestCase):
     def test_errors(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
-            logits = fluid.data(
+            logits = paddle.static.data(
                 name='logits', shape=[5, 16, 6], dtype='float32'
             )
-            logits_length = fluid.data(
+            logits_length = paddle.static.data(
                 name='logits_length', shape=[None], dtype='int64'
             )
-            label = fluid.data(name='label', shape=[16, 3], dtype='int32')
-            label_length = fluid.data(
+            label = paddle.static.data(
+                name='label', shape=[16, 3], dtype='int32'
+            )
+            label_length = paddle.static.data(
                 name='labels_length', shape=[None], dtype='int64'
             )
 
             def test_logits_Variable():
                 logits_data = np.random.rand(5, 16, 6).astype(logits.dtype)
-                fluid.layers.warpctc(
-                    input=logits_data,
-                    label=label,
-                    input_length=logits_length,
-                    label_length=label_length,
+                paddle.nn.functional.ctc_loss(
+                    log_probs=logits_data,
+                    labels=label,
+                    input_lengths=logits_length,
+                    label_lengths=label_length,
+                    reduction='none',
                 )
 
             self.assertRaises(TypeError, test_logits_Variable)
 
             def test_label_Variable():
                 label_data = np.random.randint(0, 5, [5, 1]).astype("int32")
-                fluid.layers.warpctc(
-                    input=logits,
-                    label=label_data,
-                    input_length=logits_length,
-                    label_length=label_length,
+                paddle.nn.functional.ctc_loss(
+                    log_probs=logits,
+                    labels=label_data,
+                    input_lengths=logits_length,
+                    label_lengths=label_length,
+                    reduction='none',
                 )
 
             self.assertRaises(TypeError, test_label_Variable)
 
             def test_logits_len_Variable():
                 logits_length_data = np.array([5] * 16).astype("int64")
-                fluid.layers.warpctc(
-                    input=logits,
-                    label=label,
-                    input_length=logits_length_data,
-                    label_length=label_length,
+                paddle.nn.functional.ctc_loss(
+                    log_probs=logits,
+                    labels=label,
+                    input_lengths=logits_length_data,
+                    label_lengths=label_length,
+                    reduction='none',
                 )
 
             self.assertRaises(TypeError, test_logits_len_Variable)
 
             def test_label_len_Variable():
                 label_length_data = np.array([3] * 16).astype("int64")
-                fluid.layers.warpctc(
-                    input=logits,
-                    label=label,
-                    input_length=logits_length,
+                paddle.nn.functional.ctc_loss(
+                    log_probs=logits,
+                    labels=label,
+                    input_lengths=logits_length,
                     label_length=label_length_data,
+                    reduction='none',
                 )
 
             self.assertRaises(TypeError, test_label_len_Variable)
@@ -590,7 +583,13 @@ class TestWarpCTCOpError(unittest.TestCase):
             softmax = paddle.to_tensor(logits)
             labels = paddle.to_tensor(labels)
 
-            fluid.layers.warpctc(input=softmax, label=labels)
+            paddle.nn.functional.ctc_loss(
+                log_probs=softmax,
+                labels=labels,
+                input_lengths=None,
+                label_lengths=None,
+                reduction='none',
+            )
 
         paddle.disable_static()
         self.assertRaises(ValueError, test_dygraph_with_lod)
@@ -598,74 +597,6 @@ class TestWarpCTCOpError(unittest.TestCase):
 
 
 class TestCTCLossAPICase(unittest.TestCase):
-    def test_functinal_api(self):
-        self.batch_size = 4
-        self.num_classes = CUDA_BLOCK_SIZE + 2
-        self.logits_length = np.array([4, 1, 3, 3], dtype=np.int64)
-        self.labels_length = np.array([3, 1, 4, 4], dtype=np.int64)
-        self.blank = self.num_classes - 1
-        self.norm_by_times = False
-
-        logits = np.random.uniform(
-            0.1,
-            1.0,
-            [max(self.logits_length), self.batch_size, self.num_classes],
-        ).astype("float32")
-        softmax = np.apply_along_axis(stable_softmax, -1, logits)
-        # labels should not be blank
-        labels = np.random.randint(
-            0,
-            self.num_classes - 1,
-            [self.batch_size, max(self.labels_length)],
-            dtype="int32",
-        )
-
-        ctc = CTCForward(
-            softmax,
-            self.logits_length,
-            labels,
-            self.labels_length,
-            self.num_classes,
-            self.batch_size,
-            self.blank,
-            self.norm_by_times,
-        )
-        loss_np = ctc.forward()
-
-        paddle.disable_static()
-        softmax = paddle.to_tensor(logits)
-        labels = paddle.to_tensor(labels)
-        logits_length = paddle.to_tensor(self.logits_length)
-        labels_length = paddle.to_tensor(self.labels_length)
-        loss_pd_mean = F.ctc_loss(
-            softmax,
-            labels,
-            logits_length,
-            labels_length,
-            blank=self.blank,
-            reduction='mean',
-        )
-        loss_pd_mean = loss_pd_mean.numpy()
-
-        loss_pd_sum = F.ctc_loss(
-            softmax,
-            labels,
-            logits_length,
-            labels_length,
-            blank=self.blank,
-            reduction='sum',
-        )
-        loss_pd_sum = loss_pd_sum.numpy()
-        paddle.enable_static()
-        loss_np = np.squeeze(loss_np, axis=-1)
-        loss_np_mean = (loss_np / labels_length.numpy()).mean()
-        loss_np_sum = loss_np.sum()
-
-        np.testing.assert_allclose(
-            loss_pd_mean, loss_np_mean, rtol=1e-05, atol=1
-        )
-        np.testing.assert_allclose(loss_pd_sum, loss_np_sum, rtol=1e-05, atol=1)
-
     def test_class_api(self):
         self.batch_size = 3
         self.num_classes = 15
@@ -714,6 +645,79 @@ class TestCTCLossAPICase(unittest.TestCase):
         loss_np = np.squeeze(loss_np, axis=-1)
 
         np.testing.assert_allclose(loss_pd, loss_np, rtol=1e-05, atol=1)
+
+    def test_eager_ctcloss(self):
+        def test_functinal_api():
+            self.batch_size = 4
+            self.num_classes = CUDA_BLOCK_SIZE + 2
+            self.logits_length = np.array([4, 1, 3, 3], dtype=np.int64)
+            self.labels_length = np.array([3, 1, 4, 4], dtype=np.int64)
+            self.blank = self.num_classes - 1
+            self.norm_by_times = False
+
+            logits = np.random.uniform(
+                0.1,
+                1.0,
+                [max(self.logits_length), self.batch_size, self.num_classes],
+            ).astype("float32")
+            softmax = np.apply_along_axis(stable_softmax, -1, logits)
+            # labels should not be blank
+            labels = np.random.randint(
+                0,
+                self.num_classes - 1,
+                [self.batch_size, max(self.labels_length)],
+                dtype="int32",
+            )
+
+            ctc = CTCForward(
+                softmax,
+                self.logits_length,
+                labels,
+                self.labels_length,
+                self.num_classes,
+                self.batch_size,
+                self.blank,
+                self.norm_by_times,
+            )
+            loss_np = ctc.forward()
+
+            paddle.disable_static()
+            softmax = paddle.to_tensor(logits)
+            labels = paddle.to_tensor(labels)
+            logits_length = paddle.to_tensor(self.logits_length)
+            labels_length = paddle.to_tensor(self.labels_length)
+            loss_pd_mean = F.ctc_loss(
+                softmax,
+                labels,
+                logits_length,
+                labels_length,
+                blank=self.blank,
+                reduction='mean',
+            )
+            loss_pd_mean = loss_pd_mean.numpy()
+
+            loss_pd_sum = F.ctc_loss(
+                softmax,
+                labels,
+                logits_length,
+                labels_length,
+                blank=self.blank,
+                reduction='sum',
+            )
+            loss_pd_sum = loss_pd_sum.numpy()
+            paddle.enable_static()
+            loss_np = np.squeeze(loss_np, axis=-1)
+            loss_np_mean = (loss_np / labels_length.numpy()).mean()
+            loss_np_sum = loss_np.sum()
+
+            np.testing.assert_allclose(
+                loss_pd_mean, loss_np_mean, rtol=1e-05, atol=1
+            )
+            np.testing.assert_allclose(
+                loss_pd_sum, loss_np_sum, rtol=1e-05, atol=1
+            )
+
+        test_functinal_api()
 
 
 if __name__ == "__main__":

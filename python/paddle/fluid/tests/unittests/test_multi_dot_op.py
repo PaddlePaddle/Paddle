@@ -13,12 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
 from numpy.linalg import multi_dot
 from op_test import OpTest
+
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 
@@ -285,10 +285,6 @@ class APITestMultiDot(unittest.TestCase):
         out = paddle.linalg.multi_dot([data1, data2])
         expected_result = np.linalg.multi_dot([input_array1, input_array2])
         np.testing.assert_allclose(expected_result, out.numpy(), rtol=1e-05)
-
-    def test_dygraph_api(self):
-        with _test_eager_guard():
-            self.test_dygraph_without_out()
 
 
 if __name__ == "__main__":

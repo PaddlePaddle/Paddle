@@ -12,18 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import time
-import paddle.fluid as fluid
 import copy
 import os
 import subprocess
+import time
+import unittest
 
+import paddle.fluid as fluid
 from paddle.distributed.utils.launch_utils import (
-    find_free_ports,
-    watch_local_trainers,
-    get_cluster,
     TrainerProc,
+    find_free_ports,
+    get_cluster,
+    watch_local_trainers,
 )
 
 
@@ -103,6 +103,7 @@ def start_local_trainers(
     training_script,
     training_script_args,
     eager_mode=True,
+    allocator_strategy="auto_growth",
     log_dir=None,
 ):
     current_env = copy.copy(os.environ.copy())
@@ -123,8 +124,9 @@ def start_local_trainers(
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
         }
 
-        if not eager_mode:
-            proc_env["FLAGS_enable_eager_mode"] = "%d" % 0
+        proc_env["FLAGS_allocator_strategy"] = allocator_strategy
+        if allocator_strategy == "auto_growth":
+            proc_env["FLAGS_fraction_of_gpu_memory_to_use"] = "0.1"
 
         current_env.update(proc_env)
 
@@ -153,7 +155,12 @@ def start_local_trainers(
 
 
 class TestMultipleGpus(unittest.TestCase):
-    def run_mnist_2gpu(self, target_file_name, eager_mode=True):
+    def run_mnist_2gpu(
+        self,
+        target_file_name,
+        eager_mode=True,
+        allocator_strategy="auto_growth",
+    ):
         if (
             not fluid.core.is_compiled_with_cuda()
             or fluid.core.get_cuda_device_count() == 0
@@ -170,6 +177,7 @@ class TestMultipleGpus(unittest.TestCase):
             cluster,
             pod,
             eager_mode=eager_mode,
+            allocator_strategy=allocator_strategy,
             training_script=target_file_name,
             training_script_args=[],
         )
@@ -218,6 +226,10 @@ class TestDataParallelWithPyLayer(TestMultipleGpus):
         self.run_mnist_2gpu(
             'parallel_dygraph_dataparallel_with_pylayer.py', eager_mode=False
         )
+        self.run_mnist_2gpu(
+            'parallel_dygraph_dataparallel_with_pylayer.py',
+            allocator_strategy="naive_best_fit",
+        )
 
 
 class TestGradientCheckInEagerMode(TestMultipleGpus):
@@ -226,5 +238,4 @@ class TestGradientCheckInEagerMode(TestMultipleGpus):
 
 
 if __name__ == "__main__":
-    os.environ["FLAGS_enable_eager_mode"] = "1"
     unittest.main()

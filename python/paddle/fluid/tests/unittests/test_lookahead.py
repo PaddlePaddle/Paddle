@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
+
 import paddle
+import paddle.fluid as fluid
 import paddle.nn as nn
-from paddle.fluid.framework import _test_eager_guard
 
 LOOKAHEAD_K = 5
 LOOKAHEAD_ALPHA = 0.2
@@ -69,7 +70,7 @@ class TestLookAhead(unittest.TestCase):
                 )
             fast_param = latest_b - SGD_LR * b_grad
 
-    def func_test_look_ahead_dygraph(self):
+    def test_look_ahead_dygraph(self):
         BATCH_SIZE = 16
         BATCH_NUM = 4
         EPOCH_NUM = 4
@@ -149,11 +150,6 @@ class TestLookAhead(unittest.TestCase):
         )
 
         train(layer, loader, loss_fn, lookahead)
-
-    def test_look_ahead_dygraph(self):
-        with _test_eager_guard():
-            self.func_test_look_ahead_dygraph()
-        self.func_test_look_ahead_dygraph()
 
 
 if __name__ == "__main__":
