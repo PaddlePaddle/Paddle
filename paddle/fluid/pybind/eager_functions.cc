@@ -62,6 +62,7 @@ namespace py = ::pybind11;
 extern PyTypeObject* p_tensor_type;
 extern PyTypeObject* g_multidevicefeedreader_pytype;
 extern PyTypeObject* g_orderedmultidevicefeedreader_pytype;
+extern PyTypeObject* p_streambase_type;
 
 size_t PyArray_Size_(PyObject* numpy_data) {
   size_t res = 1;
@@ -750,7 +751,7 @@ static PyObject* eager_api_default_stream(PyObject* self,
                                           PyObject* args,
                                           PyObject* kwargs) {
   EAGER_TRY
-  PyObject* obj = type->tp_alloc(type, 0);
+  PyObject* obj = p_streambase_type->p_streambase_type(type, 0);
   if (obj) {
     auto v = reinterpret_cast<StreamBaseObject*>(obj);
     v->owned_stream_ = false;
