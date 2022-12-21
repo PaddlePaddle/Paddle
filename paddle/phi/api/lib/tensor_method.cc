@@ -208,21 +208,25 @@ Tensor Tensor::to_dense() const {
 }
 
 void Tensor::print_data(int64_t numel) const {
-  if (!is_cpu()) {
-    auto cpu_tensor = copy_to(platform::CPUPlace(), true);
-    cpu_tensor.print_data();
+  if (!numel || !initialized()) {
     return;
   }
 
-  numel = numel < 0 ? this->numel() : numel;
+  if (!is_cpu()) {
+    auto cpu_tensor = copy_to(platform::CPUPlace(), true);
+    cpu_tensor.print_data(numel);
+    return;
+  }
+
+  numel = numel < 0 ? this->numel() : std::min(numel, this->numel());
   Tensor tensor_fp64 = cast(experimental::DataType::FLOAT64);
   double* data = tensor_fp64.data<double>();
   std::stringstream ss;
-  ss << "data of " << name() << ":";
-  for (int64_t i = 0; i < tensor_fp64.numel() && i < numel; i++) {
+  ss << "data of " << name() << "(" << numel << ") : ";
+  for (int64_t i = 0; i < numel; i++) {
     ss << " " << data[i];
   }
-  VLOG(6) << ss.str();
+  VLOG(0) << ss.str();
 }
 
 }  // namespace experimental

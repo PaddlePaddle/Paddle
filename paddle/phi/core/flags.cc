@@ -752,6 +752,20 @@ PADDLE_DEFINE_EXPORTED_string(
     "",
     "List of OneDNN operation types to be turned off");
 
+/** Debug related FLAG
+ * Name: print_output_tensor_numel
+ * Since Version 2.4.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Print api output on every api return.
+ */
+PADDLE_DEFINE_EXPORTED_int64(
+    print_output_tensor_numel,
+    0,
+    "Print print_output_tensor_numel output elements on every api return.If "
+    "print_output_tensor_numel < 0 or print_output_tensor_numel > total number "
+    "of elements, print all.");
+
 /**
  * Debug related FLAG
  * Name: check_kernel_launch

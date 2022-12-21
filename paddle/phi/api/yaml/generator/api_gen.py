@@ -148,8 +148,8 @@ class ForwardAPI(BaseAPI):
         else:
             return "std::tuple<" + ", ".join(out_type_list) + ">"
 
-    def show_api_output(self, inplace_flag=False):
-        if re.search("^(cast|slice|copy)", self.get_api_func_name()):
+    def show_api_output(self, inplace_flag=False, code_indent=''):
+        if re.search("^(cast|copy)", self.get_api_func_name()):
             return ""
 
         out_type = self.get_return_type_with_intermediate(inplace_flag)
@@ -161,21 +161,21 @@ class ForwardAPI(BaseAPI):
                 code = ""
                 for i, tp in enumerate(types):
                     data_names.append(f"output_{i}")
-                    tp = tp.replace("&", "")
-                    code += f"{tp} output_{i};\n"
-                code += "std::tie(" + ",".join(data_names) + f") = {output};\n"
+                    tp = tp.replace("&", "").strip()
+                    code += f'''{code_indent}{code_indent}{tp} output_{i};
+'''
+                code += f'''{code_indent}{code_indent}std::tie({",".join(data_names)}) = {output};
+'''
                 for tp, dn in zip(types, data_names):
                     code += _show_api_output(tp, dn)
             elif re.search(r"^\s*std::vector<Tensor>", outtype):
-                code = f'''
-                for (auto it = {output}.begin(); it != {output}.end(); it++){{
-                    it -> print_data();
-                }}
-                '''
+                code = f'''{code_indent}{code_indent}for (auto it = {output}.begin(); it != {output}.end(); it++) {{
+{code_indent}{code_indent}{code_indent}it -> print_data(FLAGS_print_output_tensor_numel);
+{code_indent}{code_indent}}}
+'''
             elif re.search(r"^\s*Tensor", outtype):
-                code = f'''
-                {output}.print_data();
-                '''
+                code = f'''{code_indent}{code_indent}{output}.print_data(FLAGS_print_output_tensor_numel);
+'''
             elif re.search(r"^\s*paddle::optional", outtype):
                 code = ""
             else:
@@ -183,7 +183,9 @@ class ForwardAPI(BaseAPI):
             return code
 
         code = _show_api_output(out_type, "api_output")
-        return "{\n" + code + "\n}"
+        return f'''{code_indent}if (FLAGS_print_output_tensor_numel) {{
+{code}
+{code_indent}}}'''
 
     def gene_return_code(self):
         if self.is_dygraph_api or len(self.intermediate_outs) == 0:
@@ -382,6 +384,7 @@ def source_include(header_file_path):
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 
 DECLARE_bool(conv2d_disable_cudnn);
+DECLARE_int64(print_output_tensor_numel);
 """
 
 
