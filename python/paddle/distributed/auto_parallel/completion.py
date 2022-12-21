@@ -23,12 +23,9 @@ from .dist_attribute import (
     TensorDistributedAttribute,
 )
 from .dist_context import _node_id
-from .dist_attribute import TensorDistributedAttribute
-from .dist_attribute import OperatorDistributedAttribute
-from .process_mesh import ProcessMesh, compute_compatible_process_mesh
 from .operators import find_compatible_distributed_operator_impls
 from .process_group import get_world_process_group
-from .process_mesh import ProcessMesh
+from .process_mesh import ProcessMesh, compute_compatible_process_mesh
 from .utils import (
     __no_shape_var_type__,
     get_logger,
