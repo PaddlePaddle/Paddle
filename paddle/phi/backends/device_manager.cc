@@ -660,12 +660,12 @@ void DeviceManager::Clear() {
 
 std::vector<std::string> ListAllLibraries(const std::string& library_dir) {
   std::vector<std::string> libraries;
+#if !defined(_WIN32)
   std::regex express(".*\\.so");
   std::match_results<std::string::iterator> results;
   DIR* dir = nullptr;
   dirent* ptr = nullptr;
 
-#if !defined(_WIN32)
   dir = opendir(library_dir.c_str());
   if (dir == nullptr) {
     VLOG(4) << "Failed to open path: " << library_dir;
