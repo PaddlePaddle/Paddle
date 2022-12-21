@@ -89,11 +89,12 @@ std::shared_ptr<Predictor> InitPredictor() {
 
   if (FLAGS_enable_cinn) {
     config.EnableMemoryOptim(false);
-    config.pass_builder()->ClearPasses();
-    config.pass_builder()->AppendPass("gpu_cpu_map_matmul_v2_to_mul_pass");
-    config.pass_builder()->AppendPass("gpu_cpu_map_matmul_v2_to_matmul_pass");
-    config.pass_builder()->AppendPass("gpu_cpu_map_matmul_to_mul_pass");
-    config.pass_builder()->AppendPass("build_cinn_pass");
+    config.Exp_EnableCINNCompiler();
+    //config.pass_builder()->ClearPasses();
+    //config.pass_builder()->AppendPass("gpu_cpu_map_matmul_v2_to_mul_pass");
+    //config.pass_builder()->AppendPass("gpu_cpu_map_matmul_v2_to_matmul_pass");
+    //config.pass_builder()->AppendPass("gpu_cpu_map_matmul_to_mul_pass");
+    //config.pass_builder()->AppendPass("build_cinn_pass");
   }
 
   LOG(INFO) << "Used passes: " << config.pass_builder()->DebugString();
