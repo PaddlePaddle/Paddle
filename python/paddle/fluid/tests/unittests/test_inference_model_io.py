@@ -26,6 +26,7 @@ import paddle.fluid.core as core
 import paddle.fluid.executor as executor
 import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
+from paddle.distributed.io import load_inference_model_distributed
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.io import (
@@ -33,7 +34,6 @@ from paddle.fluid.io import (
     save_inference_model,
     save_persistables,
 )
-from paddle.distributed.io import load_inference_model_distributed
 
 paddle.enable_static()
 
@@ -538,7 +538,10 @@ class TestLoadInferenceModelError(unittest.TestCase):
             ValueError, load_inference_model, './test_not_exist_dir', exe
         )
         self.assertRaises(
-            ValueError, load_inference_model_distributed, './test_not_exist_dir', exe
+            ValueError, 
+            load_inference_model_distributed, 
+            './test_not_exist_dir', 
+            exe,
         )
 
 
