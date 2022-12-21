@@ -51,12 +51,11 @@ typedef struct {
 } ConvAllParams;
 
 // Below functions are provided by cutlass, these are called by phi.
-void conv2d_bias_add_relu(ConvAllParams params);
-void conv2d_bias_relu_few_channels(ConvAllParams params);
-void conv2d_bias_relu(ConvAllParams params);
-void conv2d_bias_leaky_relu(ConvAllParams params);
-void conv2d_bias_silu(ConvAllParams params);
-void conv2d_bias(ConvAllParams params);
+void Conv2dBiasAddRelu(ConvAllParams params);
+void Conv2dBiasRelu(ConvAllParams params);
+void Conv2dBiasLeakyRelu(ConvAllParams params);
+void Conv2dBiasSilu(ConvAllParams params);
+void Conv2dBias(ConvAllParams params);
 }  // namespace cutlass_internal
 }  // namespace fusion
 }  // namespace phi

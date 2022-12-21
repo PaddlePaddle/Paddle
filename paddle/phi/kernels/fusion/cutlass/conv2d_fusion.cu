@@ -108,20 +108,20 @@ void Conv2dFusionKernel(const Context& ctx,
   if (residual) {
     if (activation == "relu") {
       params.residual = reinterpret_cast<const half*>(residual->data<T>());
-      conv2d_bias_add_relu(params);
+      Conv2dBiasAddRelu(params);
     } else {
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
           "Cutlass now only support relu activation in a residual block"));
     }
   } else if (activation == "relu") {
-    conv2d_bias_relu(params);
+    Conv2dBiasRelu(params);
   } else if (activation == "swish") {
-    conv2d_bias_silu(params);
+    Conv2dBiasSilu(params);
   } else if (activation == "identity") {
-    conv2d_bias(params);
+    Conv2dBias(params);
   } else if (activation == "leaky_relu") {
     params.alpha = fuse_alpha;
-    conv2d_bias_leaky_relu(params);
+    Conv2dBiasLeakyRelu(params);
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "Cutlass does not support this activation: %s.", activation.c_str()));
