@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from paddle.fluid.framework import static_only
 from paddle.common_ops_import import LayerHelper
 from paddle.fluid.data_feeder import check_variable_and_dtype
+from paddle.fluid.framework import static_only
 
 
 @static_only
