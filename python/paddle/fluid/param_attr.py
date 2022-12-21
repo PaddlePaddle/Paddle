@@ -213,7 +213,7 @@ class WeightNormParamAttr(ParamAttr):
     r"""
 
     Note:
-        Please use 'paddle.nn.utils.weight_norm' in dygraph mode.
+        Please use 'paddle.nn.utils.weight_norm' in dynamic graph mode.
 
     Note:
         ``gradient_clip`` of ``ParamAttr`` HAS BEEN DEPRECATED since 2.0.

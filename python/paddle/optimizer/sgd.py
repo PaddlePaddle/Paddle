@@ -37,7 +37,7 @@ class SGD(Optimizer):
         learning_rate (float|Tensor|LearningRateDecay, optional): The learning rate used to update ``Parameter``.
             It can be a float value, a ``Tensor`` with a float type or a LearningRateDecay. The default value is 0.001.
         parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``. \
-            This parameter is required in dygraph mode. \
+            This parameter is required in dynamic graph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
             It canbe a float value as coeff of L2 regularization or \

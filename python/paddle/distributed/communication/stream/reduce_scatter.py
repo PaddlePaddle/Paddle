@@ -92,7 +92,7 @@ def reduce_scatter(
         Return a task object.
 
     Warning:
-        This API only supports the dygraph mode now.
+        This API only supports the dynamic graph mode now.
 
     Examples:
         .. code-block:: python
@@ -173,7 +173,7 @@ def _reduce_scatter_base(
         Return a task object.
 
     Warning:
-        This API will be deprecated in the future, and only supports the dygraph mode now.
+        This API will be deprecated in the future, and only supports the dynamic graph mode now.
 
     Examples:
         .. code-block:: python

@@ -672,10 +672,10 @@ class DataLoader:
                 the name of each fed Tensors. If return_list=True, the
                 return value on each device would be a list(LoDTensor). It is
                 recommended to use return_list=False in static graph mode and
-                use return_list=True in dygraph mode.
+                use return_list=True in dynamic graph mode.
             use_multiprocess (bool): whether to use multi-process to speed up
                 the data loading process in dygraph. Note: this parameter only
-                can be used in the dygraph mode. In the static graph mode,
+                can be used in the dynamic graph mode. In the static graph mode,
                 whether this parameter is set or not has no effect.
                 The Default value is False.
             drop_last (bool): whether to drop the last batches whose number is
@@ -1652,7 +1652,7 @@ class PyReader(DataLoaderBase):
             the name of each fed variables. If return_list=True, the
             return value on each device would be a list(LoDTensor). It is
             recommended to use return_list=False in static graph mode and
-            use return_list=True in dygraph mode.
+            use return_list=True in dynamic graph mode.
 
     Returns:
         the created reader object.
@@ -1765,7 +1765,7 @@ class PyReader(DataLoaderBase):
 
 
         3. If return_list=True, the return values would be presented as list instead of dict.
-           This is usually used in dygraph mode.
+           This is usually used in dynamic graph mode.
 
         .. code-block:: python
 

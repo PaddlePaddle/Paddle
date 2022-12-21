@@ -1756,7 +1756,7 @@ class OpTest(unittest.TestCase):
                         + name
                         + ") has different lod at "
                         + str(place)
-                        + " in dygraph mode",
+                        + " in dynamic graph mode",
                     )
 
             def _compare_numpy(self, name, actual_np, expect_np):

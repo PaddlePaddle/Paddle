@@ -771,7 +771,7 @@ class RNN(Layer):
         super().__init__()
         self.cell = cell
         if not hasattr(self.cell, "call"):
-            # for non-dygraph mode, `rnn` api uses cell.call
+            # for non-dynamic graph mode, `rnn` api uses cell.call
             self.cell.call = self.cell.forward
         self.is_reverse = is_reverse
         self.time_major = time_major
@@ -854,7 +854,7 @@ class BiRNN(Layer):
             )
         for cell in [self.cell_fw, self.cell_bw]:
             if not hasattr(cell, "call"):
-                # for non-dygraph mode, `rnn` api uses cell.call
+                # for non-dynamic graph mode, `rnn` api uses cell.call
                 cell.call = cell.forward
         self.time_major = time_major
 

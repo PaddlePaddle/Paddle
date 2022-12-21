@@ -701,7 +701,7 @@ class StaticFunction:
                 net = paddle.jit.to_static(Net())  # convert into static mode
                 out = net(x)
 
-                net.forward.rollback()  # rollback into dygraph mode
+                net.forward.rollback()  # rollback into dynamic graph mode
                 out = net(x)
         """
 

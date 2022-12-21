@@ -88,7 +88,7 @@ def irecv(tensor, src=None, group=None):
         Return a task object.
 
     Warning:
-        This API only supports the dygraph mode.
+        This API only supports the dynamic graph mode.
 
     Examples:
         .. code-block:: python

@@ -2615,7 +2615,7 @@ class AdamaxOptimizer(Optimizer):
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
-            This parameter is required in dygraph mode. \
+            This parameter is required in dynamic graph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
              :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \

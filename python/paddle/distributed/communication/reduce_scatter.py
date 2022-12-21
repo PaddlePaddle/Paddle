@@ -39,7 +39,7 @@ def reduce_scatter(
         Return a task object.
 
     Warning:
-        This API only supports the dygraph mode.
+        This API only supports the dynamic graph mode.
 
 
     Examples:

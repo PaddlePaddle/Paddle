@@ -714,7 +714,7 @@ class TestSetGlobalInitializer(unittest.TestCase):
 class TestUniformInitializerDygraph(unittest.TestCase):
     def func_uniform_initializer(self, dtype="float32"):
         """
-        In dygraph mode, we can use initializer directly to initialize a tensor.
+        In dynamic graph mode, we can use initializer directly to initialize a tensor.
         """
         paddle.disable_static()
 
@@ -746,7 +746,7 @@ class TestUniformInitializerDygraph(unittest.TestCase):
 class TestXavierInitializerDygraph(unittest.TestCase):
     def func_xvarier_initializer(self, dtype="float32"):
         """
-        In dygraph mode, we can use initializer directly to initialize a tensor.
+        In dynamic graph mode, we can use initializer directly to initialize a tensor.
         """
         paddle.disable_static()
 
@@ -776,7 +776,7 @@ class TestXavierInitializerDygraph(unittest.TestCase):
 class TestMSRAInitializerDygraph(unittest.TestCase):
     def func_msra_initializer(self, dtype="float32"):
         """
-        In dygraph mode, we can use initializer directly to initialize a tensor.
+        In dynamic graph mode, we can use initializer directly to initialize a tensor.
         """
         paddle.disable_static()
 

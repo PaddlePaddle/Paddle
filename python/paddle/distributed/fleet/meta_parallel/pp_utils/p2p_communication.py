@@ -534,7 +534,7 @@ def _p2p_helper(
 
     if not sync_recv:
         if in_dygraph_mode():
-            # wait irecv tasks in eager dygraph mode with new comm library
+            # wait irecv tasks in eager dynamic graph mode with new comm library
             for task in tasks:
                 assert task is not None
                 task.wait()

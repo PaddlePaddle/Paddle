@@ -58,7 +58,7 @@ class ModelAverage(Optimizer):
     Args:
         average_window_rate (float): The calculate ratio of the window length relative to ``Parameter`` update times.
         parameters (list, optional): List of ``Tensor`` names to update to minimize ``loss``. \
-            This parameter is required in dygraph mode. \
+            This parameter is required in dynamic graph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         min_average_window (int, optional): the minimum size of average window length. The default value is 10000.
         max_average_window (int, optional): The maximum size of average window length. The default value is 10000.
@@ -411,7 +411,7 @@ class ModelAverage(Optimizer):
         Apply the average of the cumulative ``Parameter`` to the parameters of the current model.
 
         Args:
-            executor(Executor): The network executor in static-graph mode. The default value is None in dygraph mode.
+            executor(Executor): The network executor in static-graph mode. The default value is None in dynamic graph mode.
             need_restore(bool): Restore flag variable, if set to True, the network will restore
                 the parameters of the network to the default value, if set to False,
                 it will not be restored. The default value is True.
@@ -488,7 +488,7 @@ class ModelAverage(Optimizer):
         Restore ``Parameter`` values of current model.
 
         Args:
-            executor(Executor): The network executor in static-graph mode. The default value is None in dygraph mode
+            executor(Executor): The network executor in static-graph mode. The default value is None in dynamic graph mode
 
         Examples:
 

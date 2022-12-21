@@ -929,7 +929,7 @@ class BatchNorm(layers.Layer):
         num_channels(int): Indicate the number of channels of the input ``Tensor``.
         act(str, optional): Activation to be applied to the output of batch normalization. Default: None.
         is_test (bool, optional): A flag indicating whether it is in test phrase or not.
-             This flag only has effect on static graph mode. For dygraph mode, please use ``eval()``.
+             This flag only has effect on static graph mode. For dynamic graph mode, please use ``eval()``.
              Default: False.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
         epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.

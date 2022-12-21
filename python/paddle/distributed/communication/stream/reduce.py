@@ -103,7 +103,7 @@ def reduce(
         Return a task object.
 
     Warning:
-        This API only supports the dygraph mode now.
+        This API only supports the dynamic graph mode now.
 
     Examples:
         .. code-block:: python

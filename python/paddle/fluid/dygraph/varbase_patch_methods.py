@@ -86,7 +86,7 @@ def monkey_patch_varbase():
     def _to_static_var(self, to_parameter=False, **kwargs):
         """
         **Notes**:
-            **This API is ONLY available in Dygraph mode**
+            **This API is ONLY available in Dynamic graph mode**
 
         Transform a VarBase into static Variable with same attributes. It's a low level interface used
         in dy2static and shall not be called directly.
@@ -152,7 +152,7 @@ def monkey_patch_varbase():
     def set_value(self, value):
         """
         **Notes**:
-            **This API is ONLY available in Dygraph mode**
+            **This API is ONLY available in Dynamic graph mode**
 
         Set a new value for this Variable.
 
@@ -951,7 +951,7 @@ def monkey_patch_varbase():
     def values(self):
         """
         **Notes**:
-            **This API is ONLY available in Dygraph mode**
+            **This API is ONLY available in Dynamic graph mode**
         Get the values of current SparseTensor(COO or CSR).
 
         Returns:
@@ -976,7 +976,7 @@ def monkey_patch_varbase():
     def to_dense(self):
         """
         **Notes**:
-            **This API is ONLY available in Dygraph mode**
+            **This API is ONLY available in Dynamic graph mode**
         Convert the current SparseTensor(COO or CSR) to DenseTensor.
 
         Returns:
@@ -1004,7 +1004,7 @@ def monkey_patch_varbase():
     def to_sparse_coo(self, sparse_dim):
         """
         **Notes**:
-            **This API is ONLY available in Dygraph mode**
+            **This API is ONLY available in Dynamic graph mode**
         Convert the current DenseTensor to SparseTensor in COO format.
 
         Returns:

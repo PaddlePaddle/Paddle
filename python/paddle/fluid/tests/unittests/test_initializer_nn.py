@@ -418,7 +418,7 @@ class TestNormal(unittest.TestCase):
         block = self.test_normal_initializer("uint16")  # bfloat16
 
     def test_normal_initializer_dygraph(self):
-        """Test normal initializer in dygraph model."""
+        """Test normal initializer in dynamic graph model."""
         paddle.disable_static()
 
         weight_attr = paddle.framework.ParamAttr(
@@ -559,7 +559,7 @@ class TestXavierUniform(unittest.TestCase):
         self.assertEqual(init_op.attr('seed'), 0)
 
     def test_xavier_uniform_initializer_dygraph(self):
-        """Test xavier uniform initializer in dygraph model."""
+        """Test xavier uniform initializer in dynamic graph model."""
         paddle.disable_static()
 
         weight_attr = paddle.framework.ParamAttr(
@@ -687,7 +687,7 @@ class TestAssign(unittest.TestCase):
         self.assertTrue((linear_1.weight.numpy() == [2.0, 2.0]).all(), '')
 
     def test_assign_initializer_dygraph_2(self):
-        """Test assign initializer in dygraph model."""
+        """Test assign initializer in dynamic graph model."""
         paddle.disable_static()
 
         weight_attr_2 = paddle.framework.ParamAttr(
@@ -711,7 +711,7 @@ class TestAssign(unittest.TestCase):
         self.assertTrue((linear_3.weight.numpy() == [2.0, 2.0]).all(), '')
 
     def test_assign_initializer_dygraph_4(self):
-        """Test assign initializer in dygraph model."""
+        """Test assign initializer in dynamic graph model."""
         paddle.disable_static()
 
         weight_attr_4 = paddle.framework.ParamAttr(

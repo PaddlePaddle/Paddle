@@ -30,7 +30,7 @@ _grad_scalar = None
 
 def distributed_model(model):
     """
-    Return distributed data parallel model (Only work in dygraph mode)
+    Return distributed data parallel model (Only work in dynamic graph mode)
 
     Args:
         model (Layer): the user-defind model which inherits Layer.

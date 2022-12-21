@@ -1560,7 +1560,7 @@ class Variable(metaclass=VariableMetaClass):
     def numpy(self):
         """
         **Notes**:
-            **This API is ONLY available in Dygraph mode**
+            **This API is ONLY available in Dynamic graph mode**
 
         Returns a numpy array shows the value of current :ref:`api_guide_Variable_en`
 
@@ -1592,7 +1592,7 @@ class Variable(metaclass=VariableMetaClass):
     def backward(self, retain_graph=False):
         """
         **Notes**:
-            **This API is ONLY available in Dygraph mode**
+            **This API is ONLY available in Dynamic graph mode**
 
         Run backward of current Graph which starts from current Tensor.
 
@@ -1631,7 +1631,7 @@ class Variable(metaclass=VariableMetaClass):
     def gradient(self):
         """
         **Notes**:
-            **This API is ONLY available in Dygraph mode**
+            **This API is ONLY available in Dynamic graph mode**
 
         Get the Gradient of Current Variable
 
@@ -1678,7 +1678,7 @@ class Variable(metaclass=VariableMetaClass):
     def clear_gradient(self):
         """
         **Notes**:
-            **1. This API is ONLY available in Dygraph mode**
+            **1. This API is ONLY available in Dynamic graph mode**
 
             **2. Use it only Variable has gradient, normally we use this for Parameters since other temporal Variable will be deleted by Python's GC**
 

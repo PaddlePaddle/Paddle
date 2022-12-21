@@ -401,7 +401,7 @@ def get_rank(group=None):
         (int) The rank of current trainer in the given group. Return -1 if the process is not part of the given group.
 
     Warning:
-        Argument ``group`` only supports in dygraph mode.
+        Argument ``group`` only supports in dynamic graph mode.
 
     Examples:
         .. code-block:: python
@@ -433,7 +433,7 @@ def get_world_size(group=None):
         (int) The number of trainers in the given group. Return -1 if the process if not part of the given group.
 
     Warning:
-        Argument ``group`` only supports in dygraph mode.
+        Argument ``group`` only supports in dynamic graph mode.
 
     Examples:
         .. code-block:: python

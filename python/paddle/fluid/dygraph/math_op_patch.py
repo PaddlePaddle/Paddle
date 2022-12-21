@@ -70,7 +70,7 @@ _already_patch_eager_tensor = False
 def monkey_patch_math_varbase():
     """
     Similar to monkey_patch_variable.
-    The difference is, in dygraph mode, use auto-generated op functions for better performance.
+    The difference is, in dynamic graph mode, use auto-generated op functions for better performance.
     """
 
     @no_grad

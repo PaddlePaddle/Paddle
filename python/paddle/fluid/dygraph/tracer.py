@@ -93,7 +93,7 @@ class Tracer(core.Tracer):
     :api_attr: imperative
 
     Tracer is used to execute and record the operators executed, to construct the
-    computation graph in dygraph model. Tracer has two mode, :code:`train_mode`
+    computation graph in dynamic graph model. Tracer has two mode, :code:`train_mode`
     and :code:`eval_mode`. In :code:`train_mode`, Tracer would add backward network
     automatically and perform AutoGrad by method :code:`loss.backward()`.
     In :code:`eval_mode`, Tracer would not add backward network.

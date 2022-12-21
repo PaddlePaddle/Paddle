@@ -106,7 +106,7 @@ class Optimizer:
         learning_rate (float|LRScheduler): The learning rate used to update ``Parameter``.
             It can be a float value or any subclass of ``LRScheduler`` .
         parameters (list|tuple, optional): List/Tuple of ``Tensor`` names to update to minimize ``loss``. \
-            This parameter is required in dygraph mode. And you can specify different options for \
+            This parameter is required in dynamic graph mode. And you can specify different options for \
             different parameter groups such as the learning rate, weight decay, etc, \
             then the parameters are list of dict. Note that the learning_rate in paramter groups \
             represents the scale of base learning_rate. \
@@ -845,7 +845,7 @@ class Optimizer:
 
         self._create_global_learning_rate()
 
-        # NOTE: Multi Tensor support [ Momentum, Adam ] for dygraph mode
+        # NOTE: Multi Tensor support [ Momentum, Adam ] for dynamic graph mode
         if self._use_multi_tensor and self.__class__.__name__ in [
             'Momentum',
             'Adam',

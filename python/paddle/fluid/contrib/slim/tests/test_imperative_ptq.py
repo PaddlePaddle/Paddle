@@ -333,7 +333,7 @@ class TestImperativePTQfuse(TestImperativePTQ):
                 % (after_acc_top1, self.eval_acc_top1),
             )
             # Check the saved infer_model.The acc of infer model
-            # should not be lower than the one of dygraph model.
+            # should not be lower than the one of dynamic graph model.
             self.assertTrue(
                 infer_acc_top1 >= after_acc_top1,
                 msg='The acc is lower after converting model.',

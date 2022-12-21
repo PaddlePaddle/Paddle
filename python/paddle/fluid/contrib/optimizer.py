@@ -52,7 +52,7 @@ class Momentum(Optimizer):
             Can be a float value or a Variable with one float value as data element.
         momentum (float): Momentum factor
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
-            This parameter is required in dygraph mode. \
+            This parameter is required in dynamic graph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         use_nesterov (bool, optional): Enables Nesterov momentum, default is false.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \

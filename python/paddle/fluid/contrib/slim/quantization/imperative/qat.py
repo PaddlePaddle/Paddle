@@ -470,7 +470,7 @@ class ImperativeQuantizeOutputs:
     def apply(self, model):
         """
         Insert the `moving_average_abs_max_scale` layers to calculate the
-        output scales for specific layers in the dygraph model.
+        output scales for specific layers in the dynamic graph model.
 
         Args:
             model(paddle.nn.Layer): The target model which would be

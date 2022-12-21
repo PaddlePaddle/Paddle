@@ -54,7 +54,7 @@ class LazyInitHelper:
     def __enter__(self):
         """
         Switch into lazy mode and set _dygraph_tracer_ with None to convert
-        dygraph mode into static mode.
+        dynamic graph mode into static mode.
         """
         self.enable()
         if self._in_guard:

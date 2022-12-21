@@ -818,7 +818,7 @@ def crop(x, shape=None, offsets=None, name=None):
 def fill_(x, value):
     """
     **Notes**:
-        **This API is ONLY available in Dygraph mode**
+        **This API is ONLY available in Dynamic graph mode**
 
     This function fill the Tensor with value inplace.
 
@@ -857,7 +857,7 @@ def fill_(x, value):
 def zero_(x):
     """
     **Notes**:
-        **This API is ONLY available in Dygraph mode**
+        **This API is ONLY available in Dynamic graph mode**
 
     This function fill the Tensor with zero inplace.
 
@@ -890,7 +890,7 @@ def zero_(x):
 def fill_diagonal_(x, value, offset=0, wrap=False, name=None):
     """
     Note:
-        This API is ONLY available in Dygraph mode.
+        This API is ONLY available in Dynamic graph mode.
 
     This function fill the value into the x Tensor's diagonal inplace.
 
@@ -990,7 +990,7 @@ def _fill_diagonal_tensor_impl(x, y, offset=0, dim1=0, dim2=1, inplace=False):
 def fill_diagonal_tensor_(x, y, offset=0, dim1=0, dim2=1, name=None):
     """
     Note:
-        This API is ONLY available in Dygraph mode.
+        This API is ONLY available in Dynamic graph mode.
 
     This function fill the source Tensor y into the x Tensor's diagonal inplace.
 
@@ -1056,7 +1056,7 @@ def fill_diagonal_tensor(x, y, offset=0, dim1=0, dim2=1, name=None):
 def tolist(x):
     """
     Note:
-        This API is ONLY available in Dygraph mode.
+        This API is ONLY available in Dynamic graph mode.
 
     This function translate the paddle.Tensor to python list.
 
@@ -1550,7 +1550,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
             out = paddle.flatten(img, start_axis=1, stop_axis=2)
             # out shape is [2, 12, 4]
 
-            # out shares data with img in dygraph mode
+            # out shares data with img in dynamic graph mode
             img[0, 0, 0, 0] = -1
             print(out[0, 0, 0]) # [-1]
     """
@@ -2187,7 +2187,7 @@ def squeeze(x, axis=None, name=None):
             print(x.shape)  # [5, 1, 10]
             print(output.shape)  # [5, 10]
 
-            # output shares data with x in dygraph mode
+            # output shares data with x in dynamic graph mode
             x[0, 0, 0] = 10.
             print(output[0, 0]) # [10.]
 
@@ -2615,7 +2615,7 @@ def unsqueeze(x, axis, name=None):
             out3 = paddle.unsqueeze(x, axis=axis)
             print(out3.shape)  # [1, 1, 1, 5, 10]
 
-            # out1, out2, out3 share data with x in dygraph mode
+            # out1, out2, out3 share data with x in dynamic graph mode
             x[0, 0] = 10.
             print(out1[0, 0, 0]) # [10.]
             print(out2[0, 0, 0, 0]) # [10.]
@@ -3561,7 +3561,7 @@ def reshape(x, shape, name=None):
             out = paddle.reshape(x, shape=shape_tensor)
             print(out.shape)
             # the shape is [8, 6].
-            # out shares data with x in dygraph mode
+            # out shares data with x in dynamic graph mode
             x[0, 0, 0] = 10.
             print(out[0, 0])
             # the value is [10.]
@@ -4066,7 +4066,7 @@ def tensordot(x, y, axes=2, name=None):
 
             4. It could be a tensor, in which the ``axes`` tensor will be translated to a python list
                and applied the same rules described above to determine the contraction axes.
-               Note that the ``axes`` with Tensor type is ONLY available in Dygraph mode.
+               Note that the ``axes`` with Tensor type is ONLY available in Dynamic graph mode.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.
                              For more information, please refer to :ref:`api_guide_Name` .
 

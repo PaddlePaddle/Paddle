@@ -151,7 +151,7 @@ class TestMNISTWithToStatic(TestMNIST):
     """
     Tests model if doesn't change the layers while decorated
     by `dygraph_to_static_output`. In this case, everything should
-    still works if model is trained in dygraph mode.
+    still works if model is trained in dynamic graph mode.
     """
 
     def train_static(self):

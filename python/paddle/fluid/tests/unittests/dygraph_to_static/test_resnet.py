@@ -239,7 +239,7 @@ class ResNetHelper:
 
     def train(self, to_static, build_strategy=None):
         """
-        Tests model decorated by `dygraph_to_static_output` in static mode. For users, the model is defined in dygraph mode and trained in static mode.
+        Tests model decorated by `dygraph_to_static_output` in static mode. For users, the model is defined in dynamic graph mode and trained in static mode.
         """
         with fluid.dygraph.guard(place):
             np.random.seed(SEED)
