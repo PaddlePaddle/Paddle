@@ -347,6 +347,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         paddle.disable_static()
 
     def test_func_double_grad_dynamic(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         for device in self.devices:
             for dtype in self.dtypes:
                 if device == 'cpu' and dtype == 'float16':
@@ -372,6 +373,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                         dx_grad, pd_dx_grad
                     ),
                 )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_with_dataloader(self):
         for device in self.devices:
