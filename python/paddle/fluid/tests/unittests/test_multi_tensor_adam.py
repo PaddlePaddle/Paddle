@@ -325,8 +325,8 @@ class TestStaticMultiTensorAdam(unittest.TestCase):
                     input=fc_1, size=2, param_attr=weight_attr2, act='softmax'
                 )
 
-                cost = fluid.layers.cross_entropy(input=prediction, label=label)
-                loss = fluid.layers.reduce_mean(cost)
+                cost = paddle.nn.functional.cross_entropy(input=prediction, label=label)
+                loss = paddle.mean(cost)
                 beta1_init = 0.9
                 beta2_init = 0.999
                 epsilon_init = 1e-8
