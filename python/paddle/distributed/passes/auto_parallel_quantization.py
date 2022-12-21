@@ -14,8 +14,8 @@
 
 import paddle
 from paddle.distributed.auto_parallel.dist_attribute import (
-    OperatorDistributedAttribute,
-    TensorDistributedAttribute,
+    OperatorDistAttr,
+    TensorDistAttr,
 )
 from paddle.fluid import core, framework
 from paddle.fluid.contrib.slim.quantization import (
@@ -144,7 +144,7 @@ class QuantizationPass(PassBase):
             # recover origin ops' dist_attr and set quant ops' dist_attr
             qat_offset = 0
             for ip, quant_op in enumerate(block.ops):
-                quant_op_dist_attr = OperatorDistributedAttribute()
+                quant_op_dist_attr = OperatorDistAttr()
 
                 if (
                     "quantize" in quant_op.type
@@ -189,7 +189,7 @@ class QuantizationPass(PassBase):
                             continue
                         for in_name in quant_op.desc.input(slot_name):
                             input_var = block.vars[in_name]
-                            tensor_dist_attr = TensorDistributedAttribute()
+                            tensor_dist_attr = TensorDistAttr()
                             tensor_dist_attr.process_mesh = ref_process_mesh
                             tensor_dist_attr.dims_mapping = [-1]
                             dist_context.set_tensor_dist_attr_for_program(
@@ -210,7 +210,7 @@ class QuantizationPass(PassBase):
                                 output_name, consume_input_dist_attr
                             )
                         else:
-                            tensor_dist_attr = TensorDistributedAttribute()
+                            tensor_dist_attr = TensorDistAttr()
                             tensor_dist_attr.process_mesh = ref_process_mesh
                             tensor_dist_attr.dims_mapping = [-1]
                             dist_context.set_tensor_dist_attr_for_program(

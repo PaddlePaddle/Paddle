@@ -19,9 +19,7 @@ import paddle.nn as nn
 import paddle.nn.functional as F
 import paddle.static as static
 import paddle.utils as utils
-from paddle.distributed.auto_parallel.dist_attribute import (
-    OperatorDistributedAttribute,
-)
+from paddle.distributed.auto_parallel.dist_attribute import OperatorDistAttr
 from paddle.distributed.auto_parallel.dist_op import DistributedOperator
 from paddle.distributed.auto_parallel.operators.common import (
     get_distributed_operator_impl_container,
@@ -115,7 +113,7 @@ class TestCompatible(unittest.TestCase):
                     get_distributed_operator_impl_container(op.type)
                 )
                 impls = dist_op_impl_container.impls
-                op_dist_attr = OperatorDistributedAttribute()
+                op_dist_attr = OperatorDistAttr()
                 op_dist_attr.set_input_dims_mapping(
                     op.input_arg_names[0], [-1, -1, -1]
                 )
@@ -213,7 +211,7 @@ class TestCompatible(unittest.TestCase):
                     get_distributed_operator_impl_container(op.type)
                 )
                 impls = dist_op_impl_container.impls
-                op_dist_attr = OperatorDistributedAttribute()
+                op_dist_attr = OperatorDistAttr()
                 op_dist_attr.set_input_dims_mapping(op.input_arg_names[0], [-1])
                 op_dist_attr.set_output_dims_mapping(
                     op.output_arg_names[0], [-1, -1]
@@ -307,7 +305,7 @@ class TestCompatible(unittest.TestCase):
                     get_distributed_operator_impl_container(op.type)
                 )
                 impls = dist_op_impl_container.impls
-                op_dist_attr = OperatorDistributedAttribute()
+                op_dist_attr = OperatorDistAttr()
                 op_dist_attr.set_input_dims_mapping(
                     op.input_arg_names[0], [-1, -1]
                 )
@@ -369,7 +367,7 @@ class TestCompatible(unittest.TestCase):
                     get_distributed_operator_impl_container(op.type)
                 )
                 impls = dist_op_impl_container.impls
-                op_dist_attr = OperatorDistributedAttribute()
+                op_dist_attr = OperatorDistAttr()
                 op_dist_attr.set_input_dims_mapping(
                     op.input_arg_names[0], [-1, -1]
                 )
@@ -404,7 +402,7 @@ class TestCompatible(unittest.TestCase):
                     get_distributed_operator_impl_container(op.type)
                 )
                 impls = dist_op_impl_container.impls
-                op_dist_attr = OperatorDistributedAttribute()
+                op_dist_attr = OperatorDistAttr()
                 op_dist_attr.set_input_dims_mapping(
                     op.input_arg_names[0], [-1, -1]
                 )

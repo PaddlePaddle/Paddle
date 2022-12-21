@@ -21,9 +21,7 @@ from test_auto_parallel_reshard import mlp_forward
 import paddle
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.completion import Completer
-from paddle.distributed.auto_parallel.dist_attribute import (
-    TensorDistributedAttribute,
-)
+from paddle.distributed.auto_parallel.dist_attribute import TensorDistAttr
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.dist_tensor import DistributedTensor
 from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
@@ -219,7 +217,7 @@ class TestDistributedTensor(unittest.TestCase):
         self.assertEqual(global_sizes, [6, 6])
 
     def test_instance_method(self):
-        tensor_dist_attr = TensorDistributedAttribute()
+        tensor_dist_attr = TensorDistAttr()
         tensor_dist_attr.dims_mapping = [1, 0]
         tensor_dist_attr.process_mesh = auto.ProcessMesh(
             mesh=[[0, 1, 2], [3, 4, 5]]

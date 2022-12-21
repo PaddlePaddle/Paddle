@@ -225,7 +225,7 @@ def completion(train_program, start_program, dist_context):
     #                     out_var)
     #                 if tensor_dist_attr:
     #                     continue
-    #                 tensor_dist_attr = TensorDistributedAttribute()
+    #                 tensor_dist_attr = TensorDistAttr()
     #                 tensor_dist_attr.process_mesh = _g_process_mesh
     #                 tensor_dist_attr.dims_mapping = [-1]
     #                 dist_context.set_tensor_dist_attr_for_program(
@@ -234,7 +234,7 @@ def completion(train_program, start_program, dist_context):
     #         elif op.type == "elementwise_sub":
     #             for out_name in op.output_arg_names:
     #                 out_var = block.vars[out_name]
-    #                 tensor_dist_attr = TensorDistributedAttribute()
+    #                 tensor_dist_attr = TensorDistAttr()
     #                 tensor_dist_attr.process_mesh = _g_process_mesh
     #                 tensor_dist_attr.dims_mapping = [-1, -1, -1]
     #                 dist_context.set_tensor_dist_attr_for_program(
@@ -260,7 +260,7 @@ def completion(train_program, start_program, dist_context):
     #                     out_var)
     #                 if tensor_dist_attr:
     #                     continue
-    #                 tensor_dist_attr = TensorDistributedAttribute()
+    #                 tensor_dist_attr = TensorDistAttr()
     #                 tensor_dist_attr.process_mesh = _g_process_mesh
     #                 if col:
     #                     tensor_dist_attr.dims_mapping = [-1, -1, 0]
@@ -271,7 +271,7 @@ def completion(train_program, start_program, dist_context):
     #         elif op.type == "while":
     #             out_name = op.desc.output("StepScopes")[0]
     #             out_var = block.vars[out_name]
-    #             tensor_dist_attr = TensorDistributedAttribute()
+    #             tensor_dist_attr = TensorDistAttr()
     #             tensor_dist_attr.process_mesh = _g_process_mesh
     #             tensor_dist_attr.dims_mapping = [-1]
     #             dist_context.set_tensor_dist_attr_for_program(out_var,
@@ -280,7 +280,7 @@ def completion(train_program, start_program, dist_context):
     # # completion ops
     # for block in blocks:
     #     for op in block.ops:
-    #         op_dist_attr = OperatorDistributedAttribute()
+    #         op_dist_attr = OperatorDistAttr()
     #         op_dist_attr.process_mesh = _g_process_mesh
     #         if op.type == "create_by_read" or op.type == "create_double_buffer_reader":
     #             for in_name in op.input_arg_names:

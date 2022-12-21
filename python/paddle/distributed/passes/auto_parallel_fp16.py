@@ -15,9 +15,7 @@
 from collections import defaultdict
 
 import paddle
-from paddle.distributed.auto_parallel.dist_attribute import (
-    OperatorDistributedAttribute,
-)
+from paddle.distributed.auto_parallel.dist_attribute import OperatorDistAttr
 from paddle.distributed.auto_parallel.process_group import (
     get_world_process_group,
 )
@@ -582,7 +580,7 @@ def _check_and_update_gradient(grads, loss_scaling, name, dist_context):
         attrs=attrs,
     )
 
-    new_op_dist_attr = OperatorDistributedAttribute()
+    new_op_dist_attr = OperatorDistAttr()
     new_op_dist_attr.process_mesh = world_process_group.ranks
     new_op_dist_attr.impl_idx = 0
     if len(world_process_group.ranks) > 1:
@@ -611,7 +609,7 @@ def _split_grads(params_grads):
 
 
 def _set_op_dist_attr_with_ranks(new_op, ranks, block, dist_context):
-    new_op_dist_attr = OperatorDistributedAttribute()
+    new_op_dist_attr = OperatorDistAttr()
     new_op_dist_attr.process_mesh = ranks
     new_op_dist_attr.impl_idx = 0
     for var_name in new_op.input_arg_names:

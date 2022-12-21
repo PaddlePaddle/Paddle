@@ -498,10 +498,10 @@ def get_cost_by_spec():
 
 if __name__ == "__main__":
     train_high_level(fetch=True)
-    train_high_level(fetch=False)
-    train_low_level()
-    train_builtin_data_vars()
-    train_non_builtin_data_vars()
-    get_cost()
-    get_cost_by_default_program()
-    get_cost_by_spec()
+    # train_high_level(fetch=False)
+    # train_low_level()
+    # train_builtin_data_vars()
+    # train_non_builtin_data_vars()
+    # get_cost()
+    # get_cost_by_default_program()
+    # get_cost_by_spec()

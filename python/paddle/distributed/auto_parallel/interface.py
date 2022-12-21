@@ -256,6 +256,6 @@ def add_to_collection(collection_name, value, name=None):
 
 
 def fetch(tensor, name=None, logging=False):
-    add_to_collection(CollectionNames.FETCHES, tensor, name)
+    add_to_collection(CollectionNames.FETCHES, tensor.name, name)
     if logging:
-        add_to_collection(CollectionNames.LOGGING, tensor, name)
+        add_to_collection(CollectionNames.LOGGING, tensor.name, name)

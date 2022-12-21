@@ -867,7 +867,7 @@ class ParallelTuner:
             assert (
                 dist_op.dist_attr.impl_idx == op_id_to_dist_attr[op_id].impl_idx
             )
-            dist_op.dist_attr.process_mesh = process_mesh
+            dist_op.dist_attr.process_mesh = ProcessMesh(process_mesh)
         self._amend_dist_attr()
 
         self._completer._complete_tensor_dist_attr_by_op()
@@ -1041,7 +1041,6 @@ class ParallelTuner:
         # This store statement must follow the above backup statement
         self._store_init_parallel_strategy()
         init_time = self._estimate_trial()  # estimate_trial when init
-        # print_program_with_dist_attr(self._dist_context.serial_main_program, self._dist_context)
         # We have to restore the distributed context, because the estimation of one trail need to
         # generate the backward and update parts. Since we will do the tuning process,
         # here we only need to reset all distributed information to the default one.
