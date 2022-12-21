@@ -18,7 +18,6 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 np.random.seed(10)
 
@@ -116,11 +115,6 @@ class TestLogitAPI(unittest.TestCase):
 
             x = paddle.fluid.data(name='X2', shape=[100], dtype='float32')
             self.assertRaises(TypeError, paddle.logit, x, dtype='int32')
-
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_check_api()
-            self.test_errors()
 
 
 if __name__ == "__main__":
