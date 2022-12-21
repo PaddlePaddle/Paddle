@@ -156,7 +156,7 @@ def monkey_patch_variable():
     @static_only
     def place(self):
         """
-        Variable don't have 'place' interface in static mode
+        Variable don't have 'place' interface in static graph mode
         But this interface can greatly facilitate dy2static.
         So we give a warnning here and return None.
         """
@@ -230,7 +230,7 @@ def monkey_patch_variable():
         """
         if not isinstance(var, Variable):
             if in_declarative_mode():
-                """in dy2static mode, x may be tensorable values such as int, float, np.array"""
+                """in dynamic graph mode to static graph mode, x may be tensorable values such as int, float, np.array"""
                 from paddle.tensor.creation import to_tensor
 
                 var = to_tensor(var)

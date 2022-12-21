@@ -35,7 +35,7 @@ prim_option = PrimOption()
 def prim_enabled():
     """
     Note:
-        **ONLY available in the static mode.**
+        **ONLY available in the static graph mode.**
 
     Shows whether the automatic differentiation mechanism based on
     automatic differential basic operators is ON. Defaults to OFF.
@@ -66,7 +66,7 @@ def prim_enabled():
 def enable_prim():
     """
     Note:
-        **ONLY available in the static mode.**
+        **ONLY available in the static graph mode.**
 
     Turns ON automatic differentiation mechanism based on automatic
     differential basic operators.
@@ -90,7 +90,7 @@ def enable_prim():
 def disable_prim():
     """
     Note:
-        **ONLY available in the static mode.**
+        **ONLY available in the static graph mode.**
 
     Turns OFF automatic differentiation mechanism based on automatic
     differential basic operators.

@@ -149,7 +149,7 @@ class PartialProgramLayer:
         parameters(list[VarBase]|None): All trainable parameters included in the program. Default None.
 
     Returns:
-        Layer: A Layer object that run all ops internally in static mode.
+        Layer: A Layer object that run all ops internally in static graph mode.
     """
 
     def __init__(

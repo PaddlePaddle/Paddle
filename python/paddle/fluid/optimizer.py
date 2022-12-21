@@ -2616,7 +2616,7 @@ class AdamaxOptimizer(Optimizer):
             The default value is 1e-08.
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dynamic graph mode. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
              :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \

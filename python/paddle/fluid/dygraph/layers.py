@@ -209,8 +209,8 @@ class Layer:
 
         """
         # global setting in dygraph
-        # NOTE(chenweihang): nn.Layer also can be used in static mode,
-        # but _dygraph_tracer() can not be called in static mode
+        # NOTE(chenweihang): nn.Layer also can be used in static graph mode,
+        # but _dygraph_tracer() can not be called in static graph mode
         if _non_static_mode():
             framework._dygraph_tracer().train_mode()
         # Layer-level setting
@@ -250,8 +250,8 @@ class Layer:
 
         """
         # global setting in dynamic graph
-        # NOTE(chenweihang): nn.Layer also can be used in static mode,
-        # but _dygraph_tracer() can not be called in static mode
+        # NOTE(chenweihang): nn.Layer also can be used in static graph mode,
+        # but _dygraph_tracer() can not be called in static graph mode
         if _non_static_mode():
             framework._dygraph_tracer().eval_mode()
         # Layer-level setting

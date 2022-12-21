@@ -158,7 +158,7 @@ class Quant2Int8MkldnnPass:
         For some ops(conv2d, depthwise_conv2d, mul, matml), find and label
         the skip quantized ops. cpu_quantize_placement_pass will use the
         label to identify it.
-        For static models, the skip quantized ops have `skip_quant` attr.
+        For static graph models, the skip quantized ops have `skip_quant` attr.
         Therefore, it only needs to find and label the skip quantized ops for
         dynamic graph models, in which the quantized ops don't have `quantization_type`
         attr.

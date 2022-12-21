@@ -62,7 +62,7 @@ class Adamax(Optimizer):
             different parameter groups such as the learning rate, weight decay, etc,
             then the parameters are list of dict. Note that the learning_rate in paramter groups
             represents the scale of base learning_rate.
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization.
             It canbe a float value as coeff of L2 regularization or
             :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.

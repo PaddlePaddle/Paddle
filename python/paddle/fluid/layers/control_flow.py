@@ -1356,7 +1356,7 @@ def assign_skip_lod_tensor_array(input, output):
             and has_shape_diff(input, output)
         ):
             warnings.warn(
-                "In dy2static mode, we attemp to assign a variable with shape {} into a variable with shape{}, which is not always right.".format(
+                "In dynamic graph mode to static graph mode, we attemp to assign a variable with shape {} into a variable with shape{}, which is not always right.".format(
                     input.shape, output.shape
                 )
             )

@@ -247,7 +247,7 @@ class TestResnet(unittest.TestCase):
 
     def do_train(self, to_static):
         """
-        Tests model decorated by `dygraph_to_static_output` in static mode. For users, the model is defined in dynamic graph mode and trained in static mode.
+        Tests model decorated by `dygraph_to_static_output` in static graph mode. For users, the model is defined in dynamic graph mode and trained in static graph mode.
         """
         paddle.disable_static(place)
         np.random.seed(SEED)

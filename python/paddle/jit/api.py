@@ -205,7 +205,7 @@ def declarative(
 ):
     """
     Converts imperative dynamic graph APIs into declarative function APIs. Decorator
-    @declarative handles the Program and Executor of static mode and returns
+    @declarative handles the Program and Executor of static graph mode and returns
     the result as dynamic graph Tensor(s). Users could use the returned dynamic graph
     Tensor(s) to do imperative training, inference, or other operations. If the
     decorated function calls other imperative function, the called one will be

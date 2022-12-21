@@ -134,7 +134,7 @@ class AttributeJstTransformer(BaseTransformer):
     for example:
         a.size  -->  __jst.attr(a, "size")
 
-    because `size` have different behavier when in dynamic graph / static mode
+    because `size` have different behavier when in dynamic graph / static graph mode
     NOTE: we only deal with ctx=Load() case.
     """
 
