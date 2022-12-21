@@ -134,7 +134,7 @@ We provide [English](https://www.paddlepaddle.org.cn/documentation/docs/en/guide
    Our new API enables much shorter programs.
 
 
-- [How to Contribute](https://www.paddlepaddle.org.cn/documentation/docs/en/dev_guides/index_en.html)
+- [How to Contribute](https://www.paddlepaddle.org.cn/documentation/docs/zh/dev_guides/index_cn.html)
 
    We appreciate your contributions!
 
