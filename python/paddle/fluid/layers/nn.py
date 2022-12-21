@@ -70,10 +70,8 @@ __all__ = [
     'spectral_norm',
     'one_hot',
     'autoincreased_step_counter',
-    'lod_reset',
     'clip',
     'clip_by_norm',
-    'mul',
     'merge_selected_rows',
     'get_tensor_from_selected_rows',
 ]
@@ -1386,110 +1384,6 @@ def unsqueeze(input, axes, name=None):
     return out
 
 
-def lod_reset(x, y=None, target_lod=None):
-    """
-    Set LoD of :attr:`x` to a new one specified by :attr:`y` or
-    :attr:`target_lod`. When :attr:`y` provided, :attr:`y.lod` would be
-    considered as target LoD first, otherwise :attr:`y.data` would be
-    considered as target LoD. If :attr:`y` is not provided, target LoD should
-    be specified by :attr:`target_lod`. If target LoD is specified by
-    :attr:`y.data` or :attr:`target_lod`, only one level LoD is supported.
-
-    .. code-block:: text
-
-        * Example 1:
-
-            Given a 1-level LoDTensor x:
-                x.lod =  [[ 2,           3,                   1 ]]
-                x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
-                x.dims = [6, 1]
-
-            target_lod: [4, 2]
-
-            then we get a 1-level LoDTensor:
-                out.lod =  [[4,                          2]]
-                out.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
-                out.dims = [6, 1]
-
-        * Example 2:
-
-            Given a 1-level LoDTensor x:
-                x.lod =  [[2,            3,                   1]]
-                x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
-                x.dims = [6, 1]
-
-            y is a Tensor:
-                y.data = [[2, 4]]
-                y.dims = [1, 3]
-
-            then we get a 1-level LoDTensor:
-                out.lod =  [[2,            4]]
-                out.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
-                out.dims = [6, 1]
-
-        * Example 3:
-
-            Given a 1-level LoDTensor x:
-                x.lod =  [[2,            3,                   1]]
-                x.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
-                x.dims = [6, 1]
-
-            y is a 2-level LoDTensor:
-                y.lod =  [[2, 2], [2, 2, 1, 1]]
-                y.data = [[1.1], [2.1], [3.1], [4.1], [5.1], [6.1]]
-                y.dims = [6, 1]
-
-            then we get a 2-level LoDTensor:
-                out.lod =  [[2, 2], [2, 2, 1, 1]]
-                out.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
-                out.dims = [6, 1]
-
-    Args:
-        x (Variable): Input variable which could be a Tensor or LoDTensor.
-                      The data type should be int32, int64, float32 or float64.
-        y (Variable, optional): If provided, output's LoD would be derived from :attr:`y`.
-                                If y's lod level>0, the data type can be any type.
-                                If y's lod level=0, the data type should be int32.
-        target_lod (list|tuple, optional): One level LoD which should be considered
-                                      as target LoD when :attr:`y` not provided.
-
-    Returns:
-        Variable: Output variable with LoD specified by this layer.
-
-    Raises:
-        ValueError: If :attr:`y` and :attr:`target_lod` are both None.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[10])
-            y = fluid.layers.data(name='y', shape=[10, 20], lod_level=2)
-            out = fluid.layers.lod_reset(x=x, y=y)
-    """
-    check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'lod_reset'
-    )
-    helper = LayerHelper("lod_reset", **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    if y is not None:
-        check_type(y, 'y', (Variable), 'lod_reset')
-        # TODO: check y.lod_level = 0 dtype
-        helper.append_op(
-            type="lod_reset", inputs={'X': x, 'Y': y}, outputs={'Out': out}
-        )
-    elif target_lod is not None:
-        helper.append_op(
-            type="lod_reset",
-            inputs={'X': x},
-            attrs={'target_lod': target_lod},
-            outputs={'Out': out},
-        )
-    else:
-        raise ValueError("y and target_lod should not be both none.")
-    return out
-
-
 def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
     if _non_static_mode():
         op = getattr(_legacy_C_ops, op_name)
@@ -1678,64 +1572,6 @@ def merge_selected_rows(x, name=None):
         inputs={"X": x},
         attrs={},
         outputs={"Out": out},
-    )
-    return out
-
-
-def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
-    """
-    Mul Operator.
-    This operator is used to perform matrix multiplication for input $x$ and $y$.
-    The equation is:
-
-    ..  math::
-        Out = x * y
-
-    Both the input $x$ and $y$ can carry the LoD (Level of Details) information, or not. But the output only shares the LoD information with input $x$.
-
-    Args:
-        x (Variable): The first input Tensor/LoDTensor of mul_op.
-        y (Variable): The second input Tensor/LoDTensor of mul_op.
-        x_num_col_dims (int, optional): The mul_op can take tensors with more than two dimensions as its inputs. If the input $x$ is a tensor with more than two dimensions, $x$ will be flattened into a two-dimensional matrix first. The flattening rule is: the first `num_col_dims` will be flattened to form the first dimension of the final matrix (the height of the matrix), and the rest `rank(x) - num_col_dims` dimensions are flattened to form the second dimension of the final matrix (the width of the matrix). As a result, height of the flattened matrix is equal to the product of $x$'s first `x_num_col_dims` dimensions' sizes, and width of the flattened matrix is equal to the product of $x$'s last `rank(x) - num_col_dims` dimensions' size. For example, suppose $x$ is a 6-dimensional tensor with the shape [2, 3, 4, 5, 6], and `x_num_col_dims` = 3. Thus, the flattened matrix will have a shape [2 x 3 x 4, 5 x 6] = [24, 30]. Default is 1.
-        y_num_col_dims (int, optional): The mul_op can take tensors with more than two dimensions as its inputs. If the input $y$ is a tensor with more than two dimensions, $y$ will be flattened into a two-dimensional matrix first. The attribute `y_num_col_dims` determines how $y$ is flattened. See comments of `x_num_col_dims` for more details. Default is 1.
-        name (str, optional): Name of the output. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default is None.
-
-    Returns:
-        Variable(Tensor/LoDTensor): The output Tensor/LoDTensor of mul op.
-
-    Examples:
-        ..  code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle
-            paddle.enable_static()
-            dataX = fluid.layers.data(name="dataX", append_batch_size = False, shape=[2, 5], dtype="float32")
-            dataY = fluid.layers.data(name="dataY", append_batch_size = False, shape=[5, 3], dtype="float32")
-            output = fluid.layers.mul(dataX, dataY,
-                                      x_num_col_dims = 1,
-                                      y_num_col_dims = 1)
-
-
-    """
-    if _non_static_mode():
-        return _legacy_C_ops.mul(
-            x,
-            y,
-            'x_num_col_dims',
-            x_num_col_dims,
-            'y_num_col_dims',
-            y_num_col_dims,
-        )
-
-    inputs = {"X": [x], "Y": [y]}
-    attrs = {"x_num_col_dims": x_num_col_dims, "y_num_col_dims": y_num_col_dims}
-    helper = LayerHelper("mul", **locals())
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'mul')
-    check_variable_and_dtype(y, 'y', ['float16', 'float32', 'float64'], 'mul')
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    helper.append_op(
-        type="mul", inputs={"X": x, "Y": y}, attrs=attrs, outputs={"Out": out}
     )
     return out
 

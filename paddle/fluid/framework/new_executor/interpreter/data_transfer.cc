@@ -132,15 +132,6 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place_);
   auto exec_ctx = ExecutionContext(*op, Scope(), *dev_ctx, runtime_context);
-  auto expected_kernel_key = op_with_kernel->GetExpectedKernelType(exec_ctx);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (op_with_kernel->CanCUDNNBeUsed(exec_ctx,
-                                     expected_kernel_key.data_type_)) {
-    expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
-  }
-#endif
-
-  VLOG(6) << "expected_kernel_key " << expected_kernel_key << "\n";
   VLOG(6) << "op_with_kernel Type() " << op_with_kernel->Type() << "\n";
 
   bool run_phi_kernel = false;

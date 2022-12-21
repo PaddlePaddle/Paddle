@@ -34,27 +34,7 @@ static const std::unordered_set<std::string> mkldnn_white_list = {
     "pad3d",
     "slice",
     "slice_grad",
-    "split",
-    // NOTE(jiahongyu): squeeze MKLDNN kernel are disabled
-    // (https://github.com/PaddlePaddle/Paddle/pull/35781). If these MKLDNN
-    // kernels and codes are deleted in the future, attributes `use_mkldnn`
-    // should be removed from function declaration
-    "squeeze",
-    "squeeze_grad",
-    "squeeze2",
-    "squeeze2_grad",
-    // NOTE(jiahongyu): reshape and flatten have attribute use_mkldnn and they
-    // are registered in paddle, but they didn't change the ExpectedKernelType
-    // of tensor. Actually, mkldnn kernel of squeeze, reshape, and flatten
-    // should never be called.
-    "reshape",
-    "reshape_grad",
-    "reshape2",
-    "reshape2_grad",
-    "flatten",
-    "flatten_grad",
-    "flatten2",
-    "flatten2_grad"};
+    "split"};
 
 inline bool in_mkldnn_white_list(const std::string& op_name) {
   return mkldnn_white_list.find(op_name) != mkldnn_white_list.end();
