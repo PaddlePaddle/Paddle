@@ -27,10 +27,11 @@ PD_REGISTER_KERNEL(slice,
                    int,
                    int64_t,
                    float,
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16,
                    double,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(slice_array,
                    CPU,
@@ -41,10 +42,11 @@ PD_REGISTER_KERNEL(slice_array,
                    uint8_t,
                    int64_t,
                    float,
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16,
                    double,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(slice_array_dense,
                    CPU,
@@ -55,7 +57,8 @@ PD_REGISTER_KERNEL(slice_array_dense,
                    uint8_t,
                    int64_t,
                    float,
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16,
                    double,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::complex<double>) {}
