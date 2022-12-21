@@ -932,21 +932,12 @@ class Engine:
                 train_start = time.time()
                 cbks.on_batch_begin('train', step, logs)
                 try:
-                    if (
-                        len(profile_dir)
-                        and paddle.distributed.get_rank() in [0]
-                        and step == 50
-                    ):
+                    if len(profile_dir) and step == 50:
                         from paddle.fluid import core
 
                         core.nvprof_start()
                         core.nvprof_enable_record_event()
-                    if (
-                        len(profile_dir)
-                        and paddle.distributed.get_rank() in [0]
-                        and step >= 50
-                        and step < 60
-                    ):
+                    if len(profile_dir) and step >= 50 and step < 60:
                         core.nvprof_nvtx_push(str(step))
                     outs = self._executor.run(
                         self.main_program,
@@ -954,18 +945,9 @@ class Engine:
                         use_program_cache=self._strategy.use_cache,
                         return_numpy=self._strategy.return_numpy,
                     )
-                    if (
-                        len(profile_dir)
-                        and paddle.distributed.get_rank() in [0]
-                        and step >= 50
-                        and step < 60
-                    ):
+                    if len(profile_dir) and step >= 50 and step < 60:
                         core.nvprof_nvtx_pop()
-                    if (
-                        len(profile_dir)
-                        and paddle.distributed.get_rank() in [0]
-                        and step == 60
-                    ):
+                    if len(profile_dir) and step == 60:
                         core.nvprof_stop()
                     if len(profile_dir) and step == 60:
                         import sys

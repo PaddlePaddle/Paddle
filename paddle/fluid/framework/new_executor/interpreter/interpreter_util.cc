@@ -320,6 +320,10 @@ OpFuncType AnalyseOpFuncType(const OpFuncNode& op_func_node,
     return OpFuncType::kGpuSync;
   }
 
+  if (platform::is_gpu_place(place) && op->Type() == interpreter::kMemcpyD2H) {
+    return OpFuncType::kGpuSync;
+  }
+
   if (op->Type() == "memcpy" &&
       op->Attr<int>("dst_place_type") == 0 /*CPUPlace*/) {
     return OpFuncType::kGpuSync;
