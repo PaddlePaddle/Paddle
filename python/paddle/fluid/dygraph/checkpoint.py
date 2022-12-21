@@ -248,7 +248,6 @@ def load_dygraph(model_path, **configs):
             )
 
             # 2. load layer parameters & buffers
-            # NOTE: using fluid.dygraph.guard() here will cause import error in py2
             with guard():
                 persistable_var_dict = _construct_params_and_buffers(
                     model_prefix,

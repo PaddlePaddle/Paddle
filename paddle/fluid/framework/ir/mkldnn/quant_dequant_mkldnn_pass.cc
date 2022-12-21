@@ -648,7 +648,8 @@ void QuantDequantMkldnnPass::DequantizeWeights(
   for (auto* op_node :
        ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp()) continue;
-    if (op_node->Name() == "conv2d" || op_node->Name() == "depthwise_conv2d") {
+    if (op_node->Name() == "conv2d" || op_node->Name() == "depthwise_conv2d" ||
+        op_node->Name() == "fused_conv2d") {
       if (onnx_format_quantize_model) {
         DequantizeOpWeightsFromONNXFormat(op_node,
                                           scope,
@@ -708,8 +709,12 @@ void QuantDequantMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   const std::string pattern_name = "quant_dequant_mkldnn_pass";
   FusePassBase::Init(pattern_name, graph);
 
-  const std::unordered_set<std::string> skip_ops = {
-      "conv2d", "depthwise_conv2d", "mul", "matmul", "matmul_v2"};
+  const std::unordered_set<std::string> skip_ops = {"conv2d",
+                                                    "depthwise_conv2d",
+                                                    "fused_conv2d",
+                                                    "mul",
+                                                    "matmul",
+                                                    "matmul_v2"};
 
   const std::unordered_set<std::string> fake_quantize_types = {
       "fake_quantize_moving_average_abs_max", "fake_quantize_range_abs_max"};
