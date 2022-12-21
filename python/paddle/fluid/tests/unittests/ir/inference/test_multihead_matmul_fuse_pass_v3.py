@@ -118,12 +118,6 @@ class TestMultiheadMatmulFusePass(PassAutoScanTest):
             alpha=0.125,
             transpose_X=False,
             transpose_Y=False,
-            fused_reshape_Out=[],
-            fused_reshape_X=[],
-            fused_reshape_Y=[],
-            fused_transpose_Out=[],
-            fused_transpose_X=[],
-            fused_transpose_Y=[],
         )
         ele_3 = OpConfig(
             "elementwise_add",
@@ -151,12 +145,6 @@ class TestMultiheadMatmulFusePass(PassAutoScanTest):
             alpha=1.0,
             transpose_X=False,
             transpose_Y=False,
-            fused_reshape_Out=[],
-            fused_reshape_X=[],
-            fused_reshape_Y=[],
-            fused_transpose_Out=[],
-            fused_transpose_X=[],
-            fused_transpose_Y=[],
         )
         transpose_3 = OpConfig(
             "transpose2",
