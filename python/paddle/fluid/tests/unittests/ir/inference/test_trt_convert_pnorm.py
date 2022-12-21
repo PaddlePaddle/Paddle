@@ -14,11 +14,12 @@
 
 import unittest
 from functools import partial
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 import numpy as np
-from program_config import TensorConfig, ProgramConfig
+from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest
+
 import paddle.inference as paddle_infer
 
 
