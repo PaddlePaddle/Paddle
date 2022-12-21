@@ -66,7 +66,7 @@ class TestBase(IPUOpTest):
             )
             scale = paddle.ParamAttr(trainable=True)
             bias = paddle.ParamAttr(trainable=True)
-            out = paddle.fluid.layers.nn.layer_norm(
+            out = paddle.static.nn.layer_norm(
                 conv1, param_attr=scale, bias_attr=bias, **self.attrs
             )
             loss = paddle.mean(out)
@@ -74,7 +74,7 @@ class TestBase(IPUOpTest):
         else:
             scale = self.attrs['scale']
             bias = self.attrs['shift']
-            out = paddle.fluid.layers.nn.layer_norm(
+            out = paddle.static.nn.layer_norm(
                 x, param_attr=scale, bias_attr=bias, **self.attrs
             )
             self.fetch_list = [out.name]

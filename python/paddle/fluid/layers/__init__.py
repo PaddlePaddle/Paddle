@@ -27,7 +27,6 @@ from .loss import *
 from .learning_rate_scheduler import *
 from .collective import *
 from .sequence_lod import *
-from . import rnn
 
 __all__ = []
 __all__ += nn.__all__
@@ -37,6 +36,3 @@ __all__ += control_flow.__all__
 __all__ += learning_rate_scheduler.__all__
 __all__ += sequence_lod.__all__
 __all__ += loss.__all__
-__all__ += rnn.__all__
-
-from .rnn import *

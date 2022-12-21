@@ -21,10 +21,10 @@ limitations under the License. */
 #undef _XOPEN_SOURCE
 #endif
 
-#include "paddle/fluid/distributed/collective/ProcessGroup.h"
-#include "paddle/fluid/distributed/collective/Types.h"
+#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/distributed/collective/process_group_stream.h"
 #include "paddle/fluid/distributed/collective/reducer.h"
+#include "paddle/fluid/distributed/collective/types.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/imperative/layer.h"
@@ -42,7 +42,7 @@ limitations under the License. */
 #endif
 
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
-#include "paddle/fluid/distributed/collective/ProcessGroupCustom.h"
+#include "paddle/fluid/distributed/collective/process_group_custom.h"
 #endif
 
 #if defined(PADDLE_WITH_GLOO)
@@ -51,7 +51,7 @@ limitations under the License. */
 #endif
 
 #if defined(PADDLE_WITH_XPU_BKCL)
-#include "paddle/fluid/distributed/collective/ProcessGroupBKCL.h"
+#include "paddle/fluid/distributed/collective/process_group_bkcl.h"
 #endif
 
 #include "paddle/phi/kernels/sync_batch_norm_kernel.h"
