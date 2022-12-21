@@ -111,9 +111,6 @@ class MultivariateNormal(distribution.Distribution):
         Returns:
             Tensor: entropy value
         """
-        # sigma = paddle.linalg.det(self.covariance_matrix)
-        # return 0.5 * paddle.log(paddle.pow(paddle.to_tensor([2 * math.pi * math.e],dtype=paddle.float32), self.loc.dim()) * sigma)
-
         half_log_det = paddle.diagonal(self._unbroadcasted_scale_tril,axis1=-2, axis2=-1).log().sum(-1)
         H = 0.5 * self._event_shape[0] * (1.0 + math.log(2 * math.pi)) + half_log_det
         if len(self._batch_shape) == 0:
@@ -144,27 +141,47 @@ class MultivariateNormal(distribution.Distribution):
 
 
     def kl_divergence(self, other):
-        """calculate the KL divergence KL(self || other) with two MultivariateNormal instances.
-
-        Args:
-            other (MultivariateNormal): An instance of MultivariateNormal.
-
-        Returns:
-            Tensor: The kl-divergence between two multivariate_normal distributions.
         """
-        sector_1 = paddle.t(self.loc - other.loc) * paddle.inverse(other.covariance_matrix) * (self.loc - other.loc)
-        sector_2 = paddle.log(paddle.linalg.det(paddle.inverse(other.covariance_matrix) * self.covariance_matrix))
-        sector_3 = paddle.trace(paddle.inverse(other.covariance_matrix) * self.covariance_matrix)
-        n = self.loc.shape.pop(1)
-        return 0.5 * (sector_1 - sector_2 + sector_3 - n)
 
+        """
+        if self.event_shape != other.event_shape:
+            raise ValueError("KL-divergence between two Multivariate Normals with\
+                              different event shapes cannot be computed")
+
+        half_term1 = (paddle.diagonal(self._unbroadcasted_scale_tril, axis1=-2, axis2=-1).log().sum(-1) -
+                      paddle.diagonal(other._unbroadcasted_scale_tril, axis1=-2, axis2=-1).log().sum(-1))
+        combined_batch_shape = []
+        n = self.event_shape[0]
+        self_scale_tril = self._unbroadcasted_scale_tril.expand(combined_batch_shape + [n, n])
+        other_scale_tril = other._unbroadcasted_scale_tril.expand(combined_batch_shape + [n, n])
+        term2 = self._batch_trace_XXT(paddle.linalg.triangular_solve(self_scale_tril, other_scale_tril, upper=False))
+        term3 = self._batch_mahalanobis(self._unbroadcasted_scale_tril, (self.loc - other.loc))
+        return half_term1 + 0.5 * (term2 + term3 - n)
+
+    def _batch_trace_XXT(self, bmat):
+        """
+
+        """
+        n = bmat.shape[-1]
+        m = bmat.shape[-2]
+        flat_trace = paddle.reshape(bmat, [1, m * n]).pow(2).sum(-1)
+        if( bmat.shape[:-2] == []):
+            return flat_trace
+        else:
+            return paddle.reshape(flat_trace, bmat.shape[:-2])
 
     def _batch_mv(self,bmat, bvec):
+        """
+
+        """
         bvec_unsqueeze = paddle.unsqueeze(bvec, 1)
         bvec = paddle.squeeze(bvec_unsqueeze)
         return paddle.matmul(bmat, bvec)
 
     def _batch_mahalanobis(self, bL, bx):
+        """
+
+        """
         n = bx.shape[-1]
         bx_batch_shape = bx.shape[:-1]
         bx_batch_dims = len(bx_batch_shape)
@@ -177,8 +194,7 @@ class MultivariateNormal(distribution.Distribution):
 
         for (sL, sx) in zip(bL.shape[:-2], bx.shape[outer_batch_dims:-1]):
             bx_new_shape += (sx // sL, sL)
-
-        bx_new_shape += (n,)
+        bx_new_shape += [n]
         bx = paddle.reshape(bx, bx_new_shape)
 
         permute_dims = (list(range(outer_batch_dims)) +
@@ -187,28 +203,29 @@ class MultivariateNormal(distribution.Distribution):
                         [new_batch_dims])
 
         bx = paddle.transpose(bx, perm=permute_dims)
-        # shape = [a, n, n]
-        flat_L = paddle.reshape(bL, [1, n, n])
-        # shape = [b, a, n]
-        flat_x = paddle.reshape(bx, [n, flat_L.shape[0], n])
-
-        # shape = [a, n, b]
+        # shape = [b, n, n]
+        flat_L = paddle.reshape(bL, [-1, n, n])
+        # shape = [c, b, n]
+        flat_x = paddle.reshape(bx, [-1, flat_L.shape[0], n])
+        # shape = [b, n, c]
         flat_x_swap = paddle.transpose(flat_x, perm=[1, 2, 0])
-
-        # shape = [a, b]
+        # shape = [b, c]
         M_swap = paddle.linalg.triangular_solve(flat_L, flat_x_swap, upper=False).pow(2).sum(-2)
-        # shape = [b, a]
+        # shape = [c, b]
         M = M_swap.t()
-        # shape = [..., 1, j, i, 1]
-        permuted_M = paddle.reshape(M, bx.shape[:-1])
-        permute_inv_dims = list(range(outer_batch_dims))
 
-        for i in range(bL_batch_dims):
-            permute_inv_dims += [outer_batch_dims + i, old_batch_dims + i]
+        if bx.shape[:-1] == []:
+            return M.sum()
+        else:
+            # shape = [..., 1, j, i, 1]
+            permuted_M = paddle.reshape(M, bx.shape[:-1])
+            permute_inv_dims = list(range(outer_batch_dims))
 
-        # shape = [..., 1, i, j, 1]
-        reshaped_M = paddle.transpose(permuted_M, perm=permute_inv_dims)
-        return paddle.reshape(reshaped_M, bx_batch_shape)
+            for i in range(bL_batch_dims):
+                permute_inv_dims += [outer_batch_dims + i, old_batch_dims + i]
+                # shape = [..., 1, i, j, 1]
+            reshaped_M = paddle.transpose(permuted_M, perm=permute_inv_dims)
+            return paddle.reshape(reshaped_M, bx_batch_shape)
 
     def _extend_shape(self, sample_shape):
         """compute shape of the sample
