@@ -101,7 +101,8 @@ thread_local const std::map<Place,
                             std::shared_future<std::unique_ptr<DeviceContext>>>*
     DeviceContextPool::external_device_contexts_ = nullptr;
 
-thread_local std::map<Place, DeviceContext*> device_contexts_;
+thread_local std::map<Place, DeviceContext*>
+    DeviceContextPool::device_contexts_;
 
 void DeviceContextPool::SetCurrentDeviceContext(const platform::Place& place,
                                                 platform::DeviceContext* ctx) {
