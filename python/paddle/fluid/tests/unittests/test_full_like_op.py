@@ -19,7 +19,7 @@ from op_test import OpTest
 
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard, convert_np_dtype_to_dtype_
+from paddle.fluid.framework import convert_np_dtype_to_dtype_
 from paddle.static import Program, program_guard
 
 
@@ -142,14 +142,13 @@ class TestFullLikeOp3(TestFullLikeOp1):
 class TestFullLikeOp4(unittest.TestCase):
     def test_skip_data_transform(self):
         paddle.disable_static()
-        with _test_eager_guard():
-            x = paddle.to_tensor(
-                [1.0, 2.0, 3.0, 4.0], place=paddle.CUDAPinnedPlace()
-            )
-            out = paddle.full_like(x, 1.0)
-            self.assertTrue(
-                (out.numpy() == np.ones([4]).astype(np.float32)).all(), True
-            )
+        x = paddle.to_tensor(
+            [1.0, 2.0, 3.0, 4.0], place=paddle.CUDAPinnedPlace()
+        )
+        out = paddle.full_like(x, 1.0)
+        self.assertTrue(
+            (out.numpy() == np.ones([4]).astype(np.float32)).all(), True
+        )
         paddle.enable_static()
 
 
