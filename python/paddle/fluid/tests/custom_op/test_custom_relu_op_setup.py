@@ -394,6 +394,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             )
 
             for batch_id, (image, _) in enumerate(train_loader()):
+                image = paddle.to_tensor(image)
                 out = self.custom_ops[0](image)
                 pd_out = paddle.nn.functional.relu(image)
                 np.testing.assert_array_equal(
