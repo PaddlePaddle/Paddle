@@ -101,14 +101,23 @@ thread_local const std::map<Place,
                             std::shared_future<std::unique_ptr<DeviceContext>>>*
     DeviceContextPool::external_device_contexts_ = nullptr;
 
+thread_local std::map<Place, DeviceContext*> device_contexts_;
+
+void DeviceContextPool::SetCurrentDeviceContext(const platform::Place& place,
+                                                platform::DeviceContext* ctx) {
+  device_contexts_[place] = ctx;
+}
+
 platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   VLOG(6) << "DeviceContextPool Get: " << place;
   const std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
       ptr;
   if (external_device_contexts_ && external_device_contexts_->count(place)) {
     ptr = external_device_contexts_;
-  } else {
+  } else if (device_contexts_.count(place)) {
     ptr = &device_contexts_;
+  } else {
+    ptr = &default_device_contexts_;
   }
 
   auto it = ptr->find(place);
@@ -124,11 +133,27 @@ platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   return it->second.get().get();
 }
 
+platform::DeviceContext* DeviceContextPool::GetDefault(
+    const platform::Place& place) {
+  VLOG(6) << "DeviceContextPool GetDefault: " << place;
+  auto it = device_contexts_.find(place);
+  if (it == device_contexts_.end()) {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Place %s is not supported. Please check that your paddle compiles "
+        "with WITH_GPU, WITH_XPU, WITH_IPU, WITH_MLU or WITH_ASCEND_CL option "
+        "or check "
+        "that your train process set the correct device id if you use "
+        "Executor.",
+        place));
+  }
+  return it->second.get().get();
+}
+
 size_t DeviceContextPool::size() const {
   if (external_device_contexts_) {
     return external_device_contexts_->size();
   }
-  return device_contexts_.size();
+  return default_device_contexts_.size();
 }
 
 const std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>&
@@ -136,7 +161,7 @@ DeviceContextPool::device_contexts() const {
   if (external_device_contexts_) {
     return *external_device_contexts_;
   }
-  return device_contexts_;
+  return default_device_contexts_;
 }
 
 void DeviceContextPool::SetDeviceContexts(
@@ -330,7 +355,7 @@ void EmplaceDeviceContexts(
 
 DeviceContextPool::DeviceContextPool(
     const std::vector<platform::Place>& places) {
-  EmplaceDeviceContexts(&device_contexts_,
+  EmplaceDeviceContexts(&default_device_contexts_,
                         places,
                         /*disable_setting_default_stream_for_allocator=*/false);
 }

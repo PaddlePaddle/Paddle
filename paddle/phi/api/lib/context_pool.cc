@@ -28,20 +28,20 @@ DeviceContextPool& DeviceContextPool::Instance() {
 }
 
 const phi::DeviceContext* DeviceContextPool::Get(const Place& place) {
-  auto it = context_map_.find(place);
-  if (it == context_map_.end()) {
-    if (!paddle::platform::DeviceContextPool::IsInitialized()) {
-      paddle::framework::InitDevices();
-    }
-    // only when we need the specific DeviceContext, get and cache it
-    auto* dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
-    {
-      std::lock_guard<std::mutex> lock(mutex_);
-      context_map_[place] = dev_ctx;
-    }
-    return dev_ctx;
+  // auto it = context_map_.find(place);
+  // if (it == context_map_.end()) {
+  if (!paddle::platform::DeviceContextPool::IsInitialized()) {
+    paddle::framework::InitDevices();
   }
-  return it->second;
+  // only when we need the specific DeviceContext, get and cache it
+  auto* dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
+  //   {
+  //     std::lock_guard<std::mutex> lock(mutex_);
+  //     context_map_[place] = dev_ctx;
+  //   }
+  return dev_ctx;
+  // }
+  // return it->second;
 }
 
 phi::DeviceContext* DeviceContextPool::GetMutable(const Place& place) {

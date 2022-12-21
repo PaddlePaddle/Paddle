@@ -362,13 +362,25 @@ class DeviceContextPool {
   /*! \brief  Return handle of single device context. */
   platform::DeviceContext* Get(const platform::Place& place);
 
+  /*! \brief  Return handle of single device context. */
+  platform::DeviceContext* GetDefault(const platform::Place& place);
+
+  void SetCurrentDeviceContext(const platform::Place& place,
+                               platform::DeviceContext* ctx);
+
   template <typename Place>
   const typename DefaultDeviceContextType<Place>::TYPE* GetByPlace(
       const Place& place) {
     return reinterpret_cast<
         const typename DefaultDeviceContextType<Place>::TYPE*>(Get(place));
   }
-
+  template <typename Place>
+  const typename DefaultDeviceContextType<Place>::TYPE* GetDefaultByPlace(
+      const Place& place) {
+    return reinterpret_cast<
+        const typename DefaultDeviceContextType<Place>::TYPE*>(
+        GetDefault(place));
+  }
   size_t size() const;
 
   const std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>&
@@ -381,8 +393,9 @@ class DeviceContextPool {
  private:
   explicit DeviceContextPool(const std::vector<platform::Place>& places);
 
+  static thread_local std::map<Place, DeviceContext*> device_contexts_;
   std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>
-      device_contexts_;
+      default_device_contexts_;
   static thread_local const std::
       map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
           external_device_contexts_;  // not owned

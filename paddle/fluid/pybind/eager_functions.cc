@@ -735,7 +735,13 @@ static PyObject* eager_api_current_stream(PyObject* self,
                                           PyObject* args,
                                           PyObject* kwargs) {
   EAGER_TRY
-  egr::SavedTensorsHooks::GetInstance().ResetHooks();
+  PyObject* obj = type->tp_alloc(type, 0);
+  if (obj) {
+    auto v = reinterpret_cast<StreamBaseObject*>(obj);
+    v->owned_stream_ = false;
+    auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 0), 0);
+    v->stream = paddle::platform::DeviceContextPool::Instance().Get(place);
+  }
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -744,8 +750,14 @@ static PyObject* eager_api_default_stream(PyObject* self,
                                           PyObject* args,
                                           PyObject* kwargs) {
   EAGER_TRY
-  auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 0), 0);
-  paddle::platform::DeviceContextPool::Instance().Get(place);
+  PyObject* obj = type->tp_alloc(type, 0);
+  if (obj) {
+    auto v = reinterpret_cast<StreamBaseObject*>(obj);
+    v->owned_stream_ = false;
+    auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 0), 0);
+    v->stream =
+        paddle::platform::DeviceContextPool::Instance().GetDefault(place);
+  }
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -754,7 +766,10 @@ static PyObject* eager_api_set_stream(PyObject* self,
                                       PyObject* args,
                                       PyObject* kwargs) {
   EAGER_TRY
-  egr::SavedTensorsHooks::GetInstance().ResetHooks();
+  auto stream =
+      reinterpret_cast<StreamBaseObject*>(PyTuple_GET_ITEM(args, 0), 0);
+  paddle::platform::DeviceContextPool::Instance().SetCurrentDeviceContext(
+      place, stream->stream);
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -764,7 +779,32 @@ static PyObject* eager_api_synchronize(PyObject* self,
                                        PyObject* kwargs) {
   EAGER_TRY
   auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 0), 0);
-  paddle::platform::DeviceContextPool::Instance().Get(place);
+  auto ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
+  if (platform::is_gpu_place(place)) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    eager_gil_scoped_release guard;
+    auto* gpu_ctx = dynamic_cast<phi::GPUContext*>(ctx);
+    gpu_ctx->cuda_stream()->Synchronize();
+#else
+    PADDLE_THROW(
+        platform::errors::Unimplemented("CUDAPlace is not supported. Please "
+                                        "re-compile with WITH_GPU option."));
+#endif
+  } else if (platform::is_custom_place(place)) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    auto* custom_ctx =
+        dynamic_cast<paddle::platform::CustomDeviceContext*>(ctx);
+    auto stream = custom_ctx->GetStream();
+    stream->Synchronize();
+#else
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "CUDAPlace is not supported. Please "
+        "re-compile with WITH_CUSTOM_DEVICE option."));
+#endif
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Stream.synchronize only supporded on GPU."));
+  }
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }

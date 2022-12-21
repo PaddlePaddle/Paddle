@@ -180,7 +180,8 @@ void BindEagerDeviceEvent(PyObject* module) {
   type->tp_new = (newfunc)EventBaseNew;
   Py_INCREF(&PyBaseObject_Type);
   type->tp_base = reinterpret_cast<PyTypeObject*>(&PyBaseObject_Type);
-  type->tp_flags |= Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE;
+  type->tp_flags |=
+      Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HEAPTYPE;
 #if PY_VERSION_HEX >= 0x03050000
   type->tp_as_async = &heap_type->as_async;
 #endif
@@ -454,6 +455,7 @@ static PyObject* streambase_method_synchronize(StreamBaseObject* self) {
 #endif
   } else if (platform::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
+    eager_gil_scoped_release guard;
     auto* custom_ctx =
         dynamic_cast<paddle::platform::CustomDeviceContext*>(self->stream);
     auto stream = custom_ctx->GetStream();
