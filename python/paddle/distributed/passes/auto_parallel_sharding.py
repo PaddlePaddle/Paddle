@@ -92,6 +92,7 @@ class ShardingPass(PassBase):
         self.set_attr("comm_stream_num", None)
         self.set_attr("bucket_size_numel", None)
         self.set_attr("partition_algor", None)
+        self.set_attr("enable_hierarchical_comm", None)
         self.set_attr("params_grads", [])
         self.set_attr("global_rank", -1)
         self.dp_groups = set()
@@ -133,7 +134,8 @@ class ShardingPass(PassBase):
             return False
         if self.get_attr("partition_algor") is None:
             return False
-
+        if self.get_attr("enable_hierarchical_comm") is None:
+            return False
         return True
 
     def _check_conflict(self, other_pass):
@@ -870,6 +872,84 @@ class ShardingPass(PassBase):
                 )
                 if self.enable_overlap:
                     depend_op.dist_attr.execution_stream = comm_stream
+
+        # hierarchical communication
+        # NOTE if communication cross nodes via low bandwith, it is costly to have a global ring for all ranks
+        # cross all nodes. instead we break it down to two ring
+        # inter node ring: with only "global_world_size / rank_per_node" ranks in this ring
+        # intra node ring: with rank within one node
+        if self.enable_hierarchical_comm:
+            # NOTE so far we only support Isomorphic cluster with 8 ranks per node
+
+            # create communicators
+            nranks_per_node = 8
+            assert self.sharding_degree % self.nranks_per_node == 0
+            global_group = sharding_info.group
+            global_ranks = global_group.ranks
+            relative_idx_in_node = self.global_rank % nranks_per_node
+            node_idx = self.global_rank // nranks_per_node
+            inter_node_ranks = [
+                rank
+                for rank in global_ranks
+                if rank % nranks_per_node == relative_idx_in_node
+            ]
+            assert (
+                len(inter_node_ranks) == self.sharding_degree // nranks_per_node
+            )
+            intra_node_ranks = [
+                rank
+                for rank in global_ranks
+                if rank // nranks_per_node == node_idx
+            ]
+            assert len(intra_node_ranks) == nranks_per_node
+
+            inter_node_group = new_process_group(
+                inter_node_ranks, force_new_group=True
+            )
+            intra_node_group = new_process_group(
+                intra_node_ranks, force_new_group=True
+            )
+
+            # update program
+            for idx, op in reversed(list(enumerate(main_block.ops))):
+                if is_sharding_param_broadcast_op(op):
+                    broadcast_varname = op.output("Out")[0]
+                    if self.enable_overlap:
+                        comm_stream = op.dist_attr.execution_stream
+
+                    if broadcast_varname in broadcast_var_to_group_map:
+                        param_group = broadcast_var_to_group_map[
+                            broadcast_varname
+                        ]
+                        src_rank = param_group.rank
+
+                    else:
+                        src_rank = sharding_info.get_var_rank(broadcast_varname)
+                    in_peer = src_rank % nranks_per_node == relative_idx_in_node
+
+                    intra_node_src = src_rank % nranks_per_node
+
+                    if in_peer:
+                        inter_node_src = src_rank // nranks_per_node
+                        new_op = main_block._insert_op_without_sync(
+                            idx,
+                            type="c_broadcast",
+                            inputs={"X": broadcast_varname},
+                            outputs={
+                                "Out": broadcast_varname,
+                            },
+                            attrs={
+                                'ring_id': inter_node_group.id,
+                                'root': inter_node_src,
+                                'use_calc_stream': True,
+                                OP_ROLE_KEY: OpRole.Optimize,
+                            },
+                        )
+                        if self.enable_overlap:
+                            new_op.dist_attr.execution_stream = comm_stream
+
+                    op._set_attr('ring_id', intra_node_group.id)
+                    op._set_attr('root', intra_node_src)
 
         main_block._sync_with_cpp()
 
