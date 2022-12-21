@@ -33,6 +33,7 @@ from paddle.fluid.io import (
     save_inference_model,
     save_persistables,
 )
+from paddle.distributed.io import load_inference_model_distributed
 
 paddle.enable_static()
 
@@ -112,8 +113,14 @@ class TestBook(unittest.TestCase):
         model_1 = InferModel(
             load_inference_model(None, exe, model_str, params_str)
         )
+        model_2 = InferModel(load_inference_model_distributed(MODEL_DIR, exe))
+        with open(os.path.join(UNI_MODEL_DIR, 'model'), "rb") as f:
+            model_str = f.read()
+        model_3 = InferModel(
+            load_inference_model_distributed(None, exe, model_str, params_str)
+        )
 
-        for model in [model_0, model_1]:
+        for model in [model_0, model_1, model_2, model_3]:
             outs = exe.run(
                 model.program,
                 feed={
@@ -529,6 +536,9 @@ class TestLoadInferenceModelError(unittest.TestCase):
         exe = executor.Executor(place)
         self.assertRaises(
             ValueError, load_inference_model, './test_not_exist_dir', exe
+        )
+        self.assertRaises(
+            ValueError, load_inference_model_distributed, './test_not_exist_dir', exe
         )
 
 
