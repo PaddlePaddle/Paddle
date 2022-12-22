@@ -14,6 +14,7 @@
 
 import os
 import unittest
+from functools import partial
 
 import numpy as np
 
@@ -21,6 +22,17 @@ import paddle
 import paddle.fluid as fluid
 import paddle.nn as nn
 from paddle.fluid import core
+
+
+def simple_lr_setting(param, decay_rate, n_layers):
+    if "fc_0" in param.name or "linear_1" in param.name:
+        depth = int(param.name.split("_")[2]) + 1
+    elif "fc_1" in param.name or "linear_2" in param.name:
+        depth = int(param.name.split("_")[2]) + 2
+    else:
+        depth = 0
+
+    return decay_rate ** (n_layers + 2 - depth)
 
 
 class MLPLayer(nn.Layer):
@@ -81,10 +93,10 @@ class MLPLayer(nn.Layer):
 class TestMultiTensorAdam(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
-        self.input_size = 8
-        self.hidden_size = 5
-        self.output_size = 7
-        self.n = 10
+        self.input_size = 3
+        self.hidden_size = 3
+        self.output_size = 2
+        self.n = 2
 
     def get_adam_or_adamw_out(
         self,
@@ -94,6 +106,8 @@ class TestMultiTensorAdam(unittest.TestCase):
         test_fp16,
         test_lrscheduler,
         test_diff_lr,
+        multi_precision=False,
+        test_raise_error=False,
     ):
 
         paddle.seed(10)
@@ -147,73 +161,79 @@ class TestMultiTensorAdam(unittest.TestCase):
 
                 input_paramters = paramters_dict_list
 
-        multi_precision = True if test_fp16 else False
-        if use_multi_tensor_adam:
-            if not use_adamw:
-                opt = paddle.optimizer.Adam(
-                    learning_rate=learning_rate,
-                    parameters=input_paramters,
-                    weight_decay=0.01,
-                    beta1=beta1,
-                    beta2=beta2,
-                    multi_precision=multi_precision,
-                    use_multi_tensor=True,
-                )
-            else:
-                opt = paddle.optimizer.AdamW(
-                    learning_rate=learning_rate,
-                    parameters=input_paramters,
-                    weight_decay=0.01,
-                    beta1=beta1,
-                    beta2=beta2,
-                    multi_precision=multi_precision,
-                    use_multi_tensor=True,
-                )
-        else:
-            if not use_adamw:
-                opt = paddle.optimizer.Adam(
-                    learning_rate=learning_rate,
-                    parameters=input_paramters,
-                    weight_decay=0.01,
-                    beta1=beta1,
-                    beta2=beta2,
-                    multi_precision=multi_precision,
-                )
-            else:
-                opt = paddle.optimizer.AdamW(
-                    learning_rate=learning_rate,
-                    parameters=input_paramters,
-                    weight_decay=0.01,
-                    beta1=beta1,
-                    beta2=beta2,
-                    multi_precision=multi_precision,
-                )
+        if test_raise_error:
 
-        num_batch = 2
-        if not test_fp16:
-            for _ in range(num_batch):
-                out = model(inp)
-                out.backward()
-                opt.step()
-                opt.clear_grad()
-                if test_lrscheduler:
-                    learning_rate.step()
+            simple_lr_fun = partial(
+                simple_lr_setting, decay_rate=0.8, n_layers=2
+            )
+
+            opt = paddle.optimizer.AdamW(
+                learning_rate=learning_rate,
+                parameters=input_paramters,
+                weight_decay=0.01,
+                beta1=beta1,
+                beta2=beta2,
+                lr_ratio=simple_lr_fun,
+                multi_precision=multi_precision,
+                use_multi_tensor=use_multi_tensor_adam,
+            )
+
+            out = model(inp)
+            out.backward()
+
+            self.assertRaises(ValueError, opt.step)
         else:
-            for _ in range(num_batch):
-                with paddle.amp.auto_cast(level='O2'):
+            if not use_adamw:
+                opt = paddle.optimizer.Adam(
+                    learning_rate=learning_rate,
+                    parameters=input_paramters,
+                    weight_decay=0.01,
+                    beta1=beta1,
+                    beta2=beta2,
+                    multi_precision=multi_precision,
+                    use_multi_tensor=use_multi_tensor_adam,
+                )
+            else:
+                opt = paddle.optimizer.AdamW(
+                    learning_rate=learning_rate,
+                    parameters=input_paramters,
+                    weight_decay=0.01,
+                    beta1=beta1,
+                    beta2=beta2,
+                    multi_precision=multi_precision,
+                    use_multi_tensor=use_multi_tensor_adam,
+                )
+            num_batch = 2
+            if not test_fp16:
+                for _ in range(num_batch):
                     out = model(inp)
-                scaled = scaler.scale(out)
-                scaled.backward()
-                scaler.step(opt)
-                scaler.update()
-                opt.clear_grad()
-                if test_lrscheduler:
-                    learning_rate.step()
+                    out.backward()
+                    opt.step()
+                    opt.clear_grad()
+                    if test_lrscheduler:
+                        learning_rate.step()
+            else:
+                for _ in range(num_batch):
+                    with paddle.amp.auto_cast(level='O2'):
+                        out = model(inp)
+                    scaled = scaler.scale(out)
+                    scaled.backward()
+                    scaler.step(opt)
+                    scaler.update()
+                    opt.clear_grad()
+                    if test_lrscheduler:
+                        learning_rate.step()
 
-        return model.parameters()
+            return model.parameters()
 
     def run_adam_or_adamw(
-        self, use_adamw, test_dict, test_fp16, test_lrscheduler, test_diff_lr
+        self,
+        use_adamw,
+        test_dict,
+        test_fp16,
+        test_lrscheduler,
+        test_diff_lr,
+        multi_precision=False,
     ):
         use_multi_tensor_adam = True
         parameters_1 = self.get_adam_or_adamw_out(
@@ -223,6 +243,7 @@ class TestMultiTensorAdam(unittest.TestCase):
             test_fp16,
             test_lrscheduler,
             test_diff_lr,
+            multi_precision,
         )
         parameters = self.get_adam_or_adamw_out(
             use_multi_tensor_adam,
@@ -231,6 +252,7 @@ class TestMultiTensorAdam(unittest.TestCase):
             test_fp16,
             test_lrscheduler,
             test_diff_lr,
+            multi_precision,
         )
         self.assertEqual(len(parameters), len(parameters_1))
         for i, j in zip(parameters, parameters_1):
@@ -258,9 +280,9 @@ class TestMultiTensorAdam(unittest.TestCase):
                     for test_dict in [True, False]:
                         for test_lrscheduler in [True, False]:
                             test_fp16 = False
-                            print(
-                                f'use_gpu = {use_gpu} use_adamw = {use_adamw} test_dict = {test_dict} test_fp16 = {test_fp16}'
-                            )
+                            # print(
+                            #     f'use_gpu = {use_gpu} use_adamw = {use_adamw} test_dict = {test_dict} test_fp16 = {test_fp16}'
+                            # )
                             self.run_adam_or_adamw(
                                 use_adamw,
                                 test_dict,
@@ -277,6 +299,51 @@ class TestMultiTensorAdam(unittest.TestCase):
                                     test_lrscheduler,
                                     test_diff_lr,
                                 )
+
+        for multi_precision in [True, False]:
+            for use_gpu in [True, False]:
+                if use_gpu and not paddle.is_compiled_with_cuda():
+                    continue
+                if use_gpu:
+                    paddle.set_device("gpu")
+                else:
+                    paddle.set_device("cpu")
+                test_fp16 = False
+                # print(
+                #     f'use_gpu = {use_gpu} use_adamw = {use_adamw} test_dict = {test_dict} test_fp16 = {test_fp16}'
+                # )
+                self.run_adam_or_adamw(
+                    False,
+                    False,
+                    test_fp16,
+                    False,
+                    False,
+                    multi_precision,
+                )
+                if use_gpu:
+                    test_fp16 = True
+                    self.run_adam_or_adamw(
+                        False,
+                        False,
+                        test_fp16,
+                        False,
+                        False,
+                        multi_precision,
+                    )
+
+        test_raise_error = True
+
+        self.get_adam_or_adamw_out(
+            True,
+            True,
+            False,
+            False,
+            False,
+            False,
+            False,
+            test_raise_error,
+        )
+
         paddle.set_device(old_device)
 
 
@@ -364,18 +431,18 @@ class TestStaticMultiTensorAdam(unittest.TestCase):
             exe = paddle.static.Executor(place)
             exe.run(startup_prog)
 
-            print("Start run on {}".format(place))
+            # print("Start run on {}".format(place))
             for epoch in range(10):
                 pred_res, loss_res = exe.run(
                     main_prog,
                     feed={"a": a_np, "b": b_np, "label": label_np},
                     fetch_list=[prediction, loss],
                 )
-                print(
-                    "Epoch {} | Prediction[0]: {}, Loss: {}".format(
-                        epoch, pred_res[0], loss_res
-                    )
-                )
+                # print(
+                #     "Epoch {} | Prediction[0]: {}, Loss: {}".format(
+                #         epoch, pred_res[0], loss_res
+                #     )
+                # )
             paddle.disable_static()
             return pred_res, loss_res
 
