@@ -21,7 +21,6 @@ import numpy as np
 
 import paddle
 import paddle.static as static
-from paddle.fluid.framework import _test_eager_guard
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 from paddle.vision.transforms import Compose, Normalize
 
@@ -228,7 +227,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                     ),
                 )
 
-    def func_dynamic(self):
+    def test_dynamic(self):
         for device in self.devices:
             for dtype in self.dtypes:
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
@@ -252,11 +251,6 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                         x_grad, pd_x_grad
                     ),
                 )
-
-    def test_dynamic(self):
-        with _test_eager_guard():
-            self.func_dynamic()
-        self.func_dynamic()
 
     def test_static_save_and_load_inference_model(self):
         paddle.enable_static()
