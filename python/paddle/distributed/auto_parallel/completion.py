@@ -1668,6 +1668,7 @@ class Completer:
                         # complete op dist_attr with global world ranks
                         op_dist_attr = OperatorDistAttr()
                         op_dist_attr.process_mesh = ProcessMesh(world_ranks)
+
                         for in_name in op.input_arg_names:
                             in_var = vars[in_name]
                             in_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(

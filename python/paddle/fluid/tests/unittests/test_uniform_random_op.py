@@ -23,7 +23,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.op import Operator
 from paddle.tensor import random
 
@@ -171,7 +170,7 @@ class TestUniformRandomOp(OpTest):
         hist, prob = self.output_hist(np.array(outs[0]))
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
-    def func_test_check_api(self):
+    def test_check_api(self):
         places = self._get_places()
         for place in places:
             with fluid.dygraph.base.guard(place=place):
@@ -182,11 +181,6 @@ class TestUniformRandomOp(OpTest):
                     self.attrs['max'],
                     self.attrs['seed'],
                 )
-
-    def test_check_api_eager(self):
-        with _test_eager_guard():
-            self.func_test_check_api()
-        self.func_test_check_api()
 
 
 class TestUniformRandomOpError(unittest.TestCase):
