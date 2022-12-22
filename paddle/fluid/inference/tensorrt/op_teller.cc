@@ -2040,6 +2040,11 @@ struct SimpleOpTypeSetTeller : public Teller {
           return false;
         }
       }
+      if (reshape_inputs.find("ShapeTensor") != reshape_inputs.end()) {
+        if (desc.Input("ShapeTensor").size() >= 1) {
+          return false;
+        }
+      }
       std::vector<int> shape =
           PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("shape"));
       if (shape.size() >= nvinfer1::Dims::MAX_DIMS) return false;
