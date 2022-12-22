@@ -695,32 +695,31 @@ class TestDygraphDoubleGradMatmul(TestCase):
         input_numpy_y = np.random.random([3, 3]).astype('float32')
 
         def actual():
-            with _test_eager_guard():
-                x = paddle.to_tensor(
-                    input_numpy_x, stop_gradient=False, dtype='float32'
-                )
-                y = paddle.to_tensor(
-                    input_numpy_y, stop_gradient=False, dtype='float32'
-                )
-                out = paddle.matmul(x, y, False, False)
+            x = paddle.to_tensor(
+                input_numpy_x, stop_gradient=False, dtype='float32'
+            )
+            y = paddle.to_tensor(
+                input_numpy_y, stop_gradient=False, dtype='float32'
+            )
+            out = paddle.matmul(x, y, False, False)
 
-                dout = paddle.to_tensor(
-                    np.ones([3, 3]), stop_gradient=False, dtype='float32'
-                )
-                (dx,) = paddle.grad(
-                    [out], [x], [dout], retain_graph=True, create_graph=True
-                )
-                ddx = paddle.to_tensor(
-                    np.ones([3, 3]), stop_gradient=False, dtype='float32'
-                )
-                dx_double_grad, dy_double_grad, ddout = paddle.grad(
-                    [dx],
-                    [x, y, dout],
-                    [ddx],
-                    retain_graph=True,
-                    create_graph=True,
-                )
-                return dx_double_grad, dy_double_grad, ddout
+            dout = paddle.to_tensor(
+                np.ones([3, 3]), stop_gradient=False, dtype='float32'
+            )
+            (dx,) = paddle.grad(
+                [out], [x], [dout], retain_graph=True, create_graph=True
+            )
+            ddx = paddle.to_tensor(
+                np.ones([3, 3]), stop_gradient=False, dtype='float32'
+            )
+            dx_double_grad, dy_double_grad, ddout = paddle.grad(
+                [dx],
+                [x, y, dout],
+                [ddx],
+                retain_graph=True,
+                create_graph=True,
+            )
+            return dx_double_grad, dy_double_grad, ddout
 
         def expected():
             dx_double_grad_expected = np.zeros([3, 3], dtype="float32")
@@ -757,32 +756,31 @@ class TestDygraphDoubleGradMatmul(TestCase):
         input_numpy_y = np.random.random([3, 3]).astype('float32')
 
         def actual():
-            with _test_eager_guard():
-                x = paddle.to_tensor(
-                    input_numpy_x, stop_gradient=False, dtype='float32'
-                )
-                y = paddle.to_tensor(
-                    input_numpy_y, stop_gradient=False, dtype='float32'
-                )
-                out = paddle.matmul(x, y, False, False)
+            x = paddle.to_tensor(
+                input_numpy_x, stop_gradient=False, dtype='float32'
+            )
+            y = paddle.to_tensor(
+                input_numpy_y, stop_gradient=False, dtype='float32'
+            )
+            out = paddle.matmul(x, y, False, False)
 
-                dout = paddle.to_tensor(
-                    np.ones([3, 3]), stop_gradient=False, dtype='float32'
-                )
-                (dy,) = paddle.grad(
-                    [out], [y], [dout], retain_graph=True, create_graph=True
-                )
-                ddy = paddle.to_tensor(
-                    np.ones([3, 3]), stop_gradient=False, dtype='float32'
-                )
-                dx_double_grad, dy_double_grad, ddout = paddle.grad(
-                    [dy],
-                    [x, y, dout],
-                    [ddy],
-                    retain_graph=True,
-                    create_graph=True,
-                )
-                return dx_double_grad, dy_double_grad, ddout
+            dout = paddle.to_tensor(
+                np.ones([3, 3]), stop_gradient=False, dtype='float32'
+            )
+            (dy,) = paddle.grad(
+                [out], [y], [dout], retain_graph=True, create_graph=True
+            )
+            ddy = paddle.to_tensor(
+                np.ones([3, 3]), stop_gradient=False, dtype='float32'
+            )
+            dx_double_grad, dy_double_grad, ddout = paddle.grad(
+                [dy],
+                [x, y, dout],
+                [ddy],
+                retain_graph=True,
+                create_graph=True,
+            )
+            return dx_double_grad, dy_double_grad, ddout
 
         def expected():
             dx_double_grad_expected = np.matmul(
@@ -819,32 +817,31 @@ class TestDygraphDoubleGradMatmul(TestCase):
         input_numpy_y = np.random.random([3]).astype('float32')
 
         def actual():
-            with _test_eager_guard():
-                x = paddle.to_tensor(
-                    input_numpy_x, stop_gradient=False, dtype='float32'
-                )
-                y = paddle.to_tensor(
-                    input_numpy_y, stop_gradient=False, dtype='float32'
-                )
-                out = paddle.matmul(x, y, False, False)
+            x = paddle.to_tensor(
+                input_numpy_x, stop_gradient=False, dtype='float32'
+            )
+            y = paddle.to_tensor(
+                input_numpy_y, stop_gradient=False, dtype='float32'
+            )
+            out = paddle.matmul(x, y, False, False)
 
-                dout = paddle.to_tensor(
-                    np.ones([1]), stop_gradient=False, dtype='float32'
-                )
-                (dy,) = paddle.grad(
-                    [out], [y], [dout], retain_graph=True, create_graph=True
-                )
-                ddy = paddle.to_tensor(
-                    np.ones([3]), stop_gradient=False, dtype='float32'
-                )
-                dx_double_grad, dy_double_grad, ddout = paddle.grad(
-                    [dy],
-                    [x, y, dout],
-                    [ddy],
-                    retain_graph=True,
-                    create_graph=True,
-                )
-                return dx_double_grad, dy_double_grad, ddout
+            dout = paddle.to_tensor(
+                np.ones([1]), stop_gradient=False, dtype='float32'
+            )
+            (dy,) = paddle.grad(
+                [out], [y], [dout], retain_graph=True, create_graph=True
+            )
+            ddy = paddle.to_tensor(
+                np.ones([3]), stop_gradient=False, dtype='float32'
+            )
+            dx_double_grad, dy_double_grad, ddout = paddle.grad(
+                [dy],
+                [x, y, dout],
+                [ddy],
+                retain_graph=True,
+                create_graph=True,
+            )
+            return dx_double_grad, dy_double_grad, ddout
 
         def expected():
             dx_double_grad_expected = np.ones([3], dtype="float32")
@@ -878,32 +875,31 @@ class TestDygraphDoubleGradMatmul(TestCase):
         input_numpy_y = np.random.random([3]).astype('float32')
 
         def actual():
-            with _test_eager_guard():
-                x = paddle.to_tensor(
-                    input_numpy_x, stop_gradient=False, dtype='float32'
-                )
-                y = paddle.to_tensor(
-                    input_numpy_y, stop_gradient=False, dtype='float32'
-                )
-                out = paddle.matmul(x, y, False, False)
+            x = paddle.to_tensor(
+                input_numpy_x, stop_gradient=False, dtype='float32'
+            )
+            y = paddle.to_tensor(
+                input_numpy_y, stop_gradient=False, dtype='float32'
+            )
+            out = paddle.matmul(x, y, False, False)
 
-                dout = paddle.to_tensor(
-                    np.ones([1]), stop_gradient=False, dtype='float32'
-                )
-                (dx,) = paddle.grad(
-                    [out], [x], [dout], retain_graph=True, create_graph=True
-                )
-                ddx = paddle.to_tensor(
-                    np.ones([3]), stop_gradient=False, dtype='float32'
-                )
-                dx_double_grad, dy_double_grad, ddout = paddle.grad(
-                    [dx],
-                    [x, y, dout],
-                    [ddx],
-                    retain_graph=True,
-                    create_graph=True,
-                )
-                return dx_double_grad, dy_double_grad, ddout
+            dout = paddle.to_tensor(
+                np.ones([1]), stop_gradient=False, dtype='float32'
+            )
+            (dx,) = paddle.grad(
+                [out], [x], [dout], retain_graph=True, create_graph=True
+            )
+            ddx = paddle.to_tensor(
+                np.ones([3]), stop_gradient=False, dtype='float32'
+            )
+            dx_double_grad, dy_double_grad, ddout = paddle.grad(
+                [dx],
+                [x, y, dout],
+                [ddx],
+                retain_graph=True,
+                create_graph=True,
+            )
+            return dx_double_grad, dy_double_grad, ddout
 
         def expected():
             dx_double_grad_expected = np.zeros([3], dtype="float32")
@@ -937,32 +933,31 @@ class TestDygraphDoubleGradMatmul(TestCase):
         input_numpy_y = np.random.random([1]).astype('float32')
 
         def actual():
-            with _test_eager_guard():
-                x = paddle.to_tensor(
-                    input_numpy_x, stop_gradient=False, dtype='float32'
-                )
-                y = paddle.to_tensor(
-                    input_numpy_y, stop_gradient=False, dtype='float32'
-                )
-                out = paddle.matmul(x, y, False, False)
+            x = paddle.to_tensor(
+                input_numpy_x, stop_gradient=False, dtype='float32'
+            )
+            y = paddle.to_tensor(
+                input_numpy_y, stop_gradient=False, dtype='float32'
+            )
+            out = paddle.matmul(x, y, False, False)
 
-                dout = paddle.to_tensor(
-                    np.ones([2]), stop_gradient=False, dtype='float32'
-                )
-                (dy,) = paddle.grad(
-                    [out], [y], [dout], retain_graph=True, create_graph=True
-                )
-                ddy = paddle.to_tensor(
-                    np.ones([1]), stop_gradient=False, dtype='float32'
-                )
-                dx_double_grad, dy_double_grad, ddout = paddle.grad(
-                    [dy],
-                    [x, y, dout],
-                    [ddy],
-                    retain_graph=True,
-                    create_graph=True,
-                )
-                return dx_double_grad, dy_double_grad, ddout
+            dout = paddle.to_tensor(
+                np.ones([2]), stop_gradient=False, dtype='float32'
+            )
+            (dy,) = paddle.grad(
+                [out], [y], [dout], retain_graph=True, create_graph=True
+            )
+            ddy = paddle.to_tensor(
+                np.ones([1]), stop_gradient=False, dtype='float32'
+            )
+            dx_double_grad, dy_double_grad, ddout = paddle.grad(
+                [dy],
+                [x, y, dout],
+                [ddy],
+                retain_graph=True,
+                create_graph=True,
+            )
+            return dx_double_grad, dy_double_grad, ddout
 
         def expected():
             dx_double_grad_expected = np.ones([2, 1], dtype="float32")
@@ -996,32 +991,31 @@ class TestDygraphDoubleGradMatmul(TestCase):
         input_numpy_y = np.random.random([1]).astype('float32')
 
         def actual():
-            with _test_eager_guard():
-                x = paddle.to_tensor(
-                    input_numpy_x, stop_gradient=False, dtype='float32'
-                )
-                y = paddle.to_tensor(
-                    input_numpy_y, stop_gradient=False, dtype='float32'
-                )
-                out = paddle.matmul(x, y, False, False)
+            x = paddle.to_tensor(
+                input_numpy_x, stop_gradient=False, dtype='float32'
+            )
+            y = paddle.to_tensor(
+                input_numpy_y, stop_gradient=False, dtype='float32'
+            )
+            out = paddle.matmul(x, y, False, False)
 
-                dout = paddle.to_tensor(
-                    np.ones([2]), stop_gradient=False, dtype='float32'
-                )
-                (dx,) = paddle.grad(
-                    [out], [x], [dout], retain_graph=True, create_graph=True
-                )
-                ddx = paddle.to_tensor(
-                    np.ones([2, 1]), stop_gradient=False, dtype='float32'
-                )
-                dx_double_grad, dy_double_grad, ddout = paddle.grad(
-                    [dx],
-                    [x, y, dout],
-                    [ddx],
-                    retain_graph=True,
-                    create_graph=True,
-                )
-                return dx_double_grad, dy_double_grad, ddout
+            dout = paddle.to_tensor(
+                np.ones([2]), stop_gradient=False, dtype='float32'
+            )
+            (dx,) = paddle.grad(
+                [out], [x], [dout], retain_graph=True, create_graph=True
+            )
+            ddx = paddle.to_tensor(
+                np.ones([2, 1]), stop_gradient=False, dtype='float32'
+            )
+            dx_double_grad, dy_double_grad, ddout = paddle.grad(
+                [dx],
+                [x, y, dout],
+                [ddx],
+                retain_graph=True,
+                create_graph=True,
+            )
+            return dx_double_grad, dy_double_grad, ddout
 
         def expected():
             dx_double_grad_expected = np.zeros([2, 1], dtype="float32")
@@ -1058,32 +1052,31 @@ class TestDygraphDoubleGradMatmul(TestCase):
         input_numpy_y_conj = np.conjugate(input_numpy_y)
 
         def actual():
-            with _test_eager_guard():
-                x = paddle.to_tensor(
-                    input_numpy_x, stop_gradient=False, dtype='complex64'
-                )
-                y = paddle.to_tensor(
-                    input_numpy_y, stop_gradient=False, dtype='complex64'
-                )
-                out = paddle.matmul(x, y, False, False)
+            x = paddle.to_tensor(
+                input_numpy_x, stop_gradient=False, dtype='complex64'
+            )
+            y = paddle.to_tensor(
+                input_numpy_y, stop_gradient=False, dtype='complex64'
+            )
+            out = paddle.matmul(x, y, False, False)
 
-                dout = paddle.to_tensor(
-                    np.ones([1]), stop_gradient=False, dtype='complex64'
-                )
-                (dx,) = paddle.grad(
-                    [out], [x], [dout], retain_graph=True, create_graph=True
-                )
-                ddx = paddle.to_tensor(
-                    np.ones([3]), stop_gradient=False, dtype='complex64'
-                )
-                dx_double_grad, dy_double_grad, ddout = paddle.grad(
-                    [dx],
-                    [x, y, dout],
-                    [ddx],
-                    retain_graph=True,
-                    create_graph=True,
-                )
-                return dx_double_grad, dy_double_grad, ddout
+            dout = paddle.to_tensor(
+                np.ones([1]), stop_gradient=False, dtype='complex64'
+            )
+            (dx,) = paddle.grad(
+                [out], [x], [dout], retain_graph=True, create_graph=True
+            )
+            ddx = paddle.to_tensor(
+                np.ones([3]), stop_gradient=False, dtype='complex64'
+            )
+            dx_double_grad, dy_double_grad, ddout = paddle.grad(
+                [dx],
+                [x, y, dout],
+                [ddx],
+                retain_graph=True,
+                create_graph=True,
+            )
+            return dx_double_grad, dy_double_grad, ddout
 
         def expected():
             dx_double_grad_expected = np.zeros(
@@ -1126,32 +1119,31 @@ class TestDygraphDoubleGradMatmul(TestCase):
         input_numpy_x_conj = np.conjugate(input_numpy_x)
 
         def actual():
-            with _test_eager_guard():
-                x = paddle.to_tensor(
-                    input_numpy_x, stop_gradient=False, dtype='complex64'
-                )
-                y = paddle.to_tensor(
-                    input_numpy_y, stop_gradient=False, dtype='complex64'
-                )
-                out = paddle.matmul(x, y, False, False)
+            x = paddle.to_tensor(
+                input_numpy_x, stop_gradient=False, dtype='complex64'
+            )
+            y = paddle.to_tensor(
+                input_numpy_y, stop_gradient=False, dtype='complex64'
+            )
+            out = paddle.matmul(x, y, False, False)
 
-                dout = paddle.to_tensor(
-                    np.ones([1]), stop_gradient=False, dtype='complex64'
-                )
-                (dy,) = paddle.grad(
-                    [out], [y], [dout], retain_graph=True, create_graph=True
-                )
-                ddy = paddle.to_tensor(
-                    np.ones([3]), stop_gradient=False, dtype='complex64'
-                )
-                dx_double_grad, dy_double_grad, ddout = paddle.grad(
-                    [dy],
-                    [x, y, dout],
-                    [ddy],
-                    retain_graph=True,
-                    create_graph=True,
-                )
-                return dx_double_grad, dy_double_grad, ddout
+            dout = paddle.to_tensor(
+                np.ones([1]), stop_gradient=False, dtype='complex64'
+            )
+            (dy,) = paddle.grad(
+                [out], [y], [dout], retain_graph=True, create_graph=True
+            )
+            ddy = paddle.to_tensor(
+                np.ones([3]), stop_gradient=False, dtype='complex64'
+            )
+            dx_double_grad, dy_double_grad, ddout = paddle.grad(
+                [dy],
+                [x, y, dout],
+                [ddy],
+                retain_graph=True,
+                create_graph=True,
+            )
+            return dx_double_grad, dy_double_grad, ddout
 
         def expected():
             dx_double_grad_expected = np.ones([3], dtype="float32")
