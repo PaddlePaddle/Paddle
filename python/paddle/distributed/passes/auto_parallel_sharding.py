@@ -887,7 +887,7 @@ class ShardingPass(PassBase):
 
             # create communicators
             nranks_per_node = 8
-            assert self.sharding_degree % self.nranks_per_node == 0
+            assert self.sharding_world_size % self.nranks_per_node == 0
             global_group = sharding_info.group
             global_ranks = global_group.ranks
             relative_idx_in_node = self.global_rank % nranks_per_node
@@ -898,7 +898,8 @@ class ShardingPass(PassBase):
                 if rank % nranks_per_node == relative_idx_in_node
             ]
             assert (
-                len(inter_node_ranks) == self.sharding_degree // nranks_per_node
+                len(inter_node_ranks)
+                == self.sharding_world_size // nranks_per_node
             )
             intra_node_ranks = [
                 rank
@@ -1315,7 +1316,7 @@ class ShardingPass(PassBase):
 
         #     # create communicators
         #     nranks_per_node = 8
-        #     assert self.sharding_degree % self.nranks_per_node == 0
+        #     assert self.sharding_world_size % self.nranks_per_node == 0
         #     global_group = sharding_info.group
         #     global_ranks = global_group.ranks
         #     relative_idx_in_node = self.global_rank % nranks_per_node
@@ -1326,7 +1327,7 @@ class ShardingPass(PassBase):
         #         if rank % nranks_per_node == relative_idx_in_node
         #     ]
         #     assert (
-        #         len(inter_node_ranks) == self.sharding_degree // nranks_per_node
+        #         len(inter_node_ranks) == self.sharding_world_size // nranks_per_node
         #     )
         #     intra_node_ranks = [
         #         rank
