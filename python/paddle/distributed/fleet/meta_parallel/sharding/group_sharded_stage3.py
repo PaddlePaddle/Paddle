@@ -217,7 +217,7 @@ class GroupShardedStage3(nn.Layer):
         # 1.Handle param's slice
         trainable_params = list(
             filter(
-                lambda p: p not in self._unslice_params,
+                lambda p: p.trainable and p not in self._unslice_params,
                 current_layer_params,
             )
         )
@@ -227,9 +227,8 @@ class GroupShardedStage3(nn.Layer):
             ), "Find {} don't have fw_storage attribute.".format(param.name)
 
             param.fw_storage.clear_gradient(False)
-            if param.trainable:
-                param.bw_storage._clear()
-                param.bw_storage = None
+            param.bw_storage._clear()
+            param.bw_storage = None
         # 2.Handle unslice param
         if not self._offload:
             for grad_storage in self._grad_storages.values():
