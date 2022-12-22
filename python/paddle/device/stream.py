@@ -16,8 +16,10 @@ import ctypes
 
 import paddle
 
+from ..fluid import core
 
-class Event(paddle.fluid.core.eager.EventBase):
+
+class Event(core.eager.EventBase):
     '''
     A event rapper around EventBase.
 
@@ -113,7 +115,7 @@ class Event(paddle.fluid.core.eager.EventBase):
             return '<paddle.device.Event uninitialized>'
 
 
-class Stream(paddle.fluid.core.eager.StreamBase):
+class Stream(core.eager.StreamBase):
     '''
     A device stream wrapper around StreamBase.
 
@@ -252,7 +254,7 @@ def current_stream(device=None):
         place = paddle.framework._current_expected_place()
     else:
         place = paddle.device._convert_to_place(device)
-    return paddle.fluid.core.eager.current_stream(place)
+    return core.eager.current_stream(place)
 
 
 def default_stream(device=None):
@@ -271,7 +273,7 @@ def default_stream(device=None):
         place = paddle.framework._current_expected_place()
     else:
         place = paddle.device._convert_to_place(device)
-    return paddle.fluid.core.eager.default_stream(place)
+    return core.eager.default_stream(place)
 
 
 def set_stream(stream):
@@ -285,7 +287,7 @@ def set_stream(stream):
         Stream: The previous stream.
 
     '''
-    return paddle.fluid.core.eager.set_stream(stream)
+    return core.eager.set_stream(stream)
 
 
 def synchronize(device=None):
@@ -314,7 +316,7 @@ def synchronize(device=None):
     else:
         place = paddle.device._convert_to_place(device)
 
-    paddle.fluid.core.eager.synchronize(place)
+    core.eager.synchronize(place)
 
 
 class stream(object):
