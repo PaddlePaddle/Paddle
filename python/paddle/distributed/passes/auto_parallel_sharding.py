@@ -743,8 +743,7 @@ class ShardingPass(PassBase):
                         "comm_stream": stream,
                     }
                 )
-            if self.comm_stream_num > 1:
-                self.op_to_stream_idx = {}
+            self.op_to_stream_idx = {}
 
         for i, param_group in enumerate(group_to_param_map.keys()):
 
