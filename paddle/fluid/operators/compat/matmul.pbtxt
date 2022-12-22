@@ -68,10 +68,6 @@ extra {
     type: STRING
   }
   attrs {
-    name: "use_quantizer"
-    type: BOOLEAN
-  }
-  attrs {
     name: "force_fp32_output"
     type: BOOLEAN
   }

@@ -722,12 +722,6 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
         "(bool, default false) Indicates if MKL-DNN kernel will be used")
         .SetDefault(false)
         .AsExtra();
-    AddAttr<bool>(
-        "use_quantizer",
-        "(bool, default false) "
-        "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
-        .SetDefault(false)
-        .AsExtra();
     AddAttr<std::string>(
         "mkldnn_data_type",
         "(string, default \"float32\"). Data type of mkldnn kernel")

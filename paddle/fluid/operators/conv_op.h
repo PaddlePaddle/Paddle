@@ -134,25 +134,6 @@ inline void UpdatePaddingAndDilation(std::vector<T>* paddings,
   }
 }
 
-inline bool IsExpand(const std::vector<int64_t>& filter_dim,
-                     const std::vector<int>& strides,
-                     const std::vector<int>& paddings,
-                     const std::vector<int>& dilations) {
-  bool filter_1 = true, strides_1 = true, padding_0 = true, dilation_1 = true;
-  for (size_t j = 0; j < strides.size(); ++j) {
-    filter_1 = filter_1 && (static_cast<int>(filter_dim[j + 2]) == 1);
-    strides_1 = strides_1 && (strides[j] == 1);
-    padding_0 = padding_0 && (paddings[j] == 0);
-    dilation_1 = dilation_1 && (dilations[j] == 1);
-  }
-  if (paddings.size() != strides.size()) {
-    for (size_t j = 0; j < paddings.size(); ++j) {
-      padding_0 = padding_0 && (paddings[j] == 0);
-    }
-  }
-  return !(filter_1 && strides_1 && padding_0 && dilation_1);
-}
-
 // Define Op classes in .h file so that other conv
 // operator implementations can reuse the code.
 class Conv2DOpMaker : public framework::OpProtoAndCheckerMaker {
