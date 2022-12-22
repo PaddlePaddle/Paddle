@@ -117,8 +117,7 @@ if(WITH_CRYPTO)
 endif()
 
 if(WITH_PSCORE)
-  set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} fleet ps_service
-                            tensor_table)
+  set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} fleet ps_service)
 endif()
 
 if(WITH_INFERENCE_NVTX AND NOT WIN32)

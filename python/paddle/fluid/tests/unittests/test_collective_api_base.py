@@ -396,7 +396,7 @@ class TestDistBase(unittest.TestCase):
             for i in range(result_data.shape[0]):
                 for j in range(result_data.shape[1]):
                     data = result_data[i][j]
-                    assert np.allclose(
+                    np.testing.assert_allclose(
                         tr0_out[1][i][j], need_result[data], atol=1e-08
                     )
         elif col_type == "row_parallel_linear":
