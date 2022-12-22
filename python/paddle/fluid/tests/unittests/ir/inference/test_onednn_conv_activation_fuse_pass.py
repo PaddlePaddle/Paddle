@@ -22,12 +22,12 @@ import paddle.fluid as fluid
 from paddle.fluid.core import PassVersionChecker
 
 
-class ConvActivationMkldnnFusePassTest(InferencePassTest):
+class ConvActivationOneDNNFusePassTest(InferencePassTest):
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
-                name="data", shape=[-1, 3, 100, 100], dtype="float32"
+                name='data', shape=[-1, 3, 100, 100], dtype='float32'
             )
             conv_out = paddle.static.nn.conv2d(
                 data,
@@ -38,7 +38,7 @@ class ConvActivationMkldnnFusePassTest(InferencePassTest):
             )
 
         self.feeds = {
-            "data": np.random.random((1, 3, 100, 100)).astype("float32")
+            'data': np.random.random((1, 3, 100, 100)).astype('float32')
         }
         self.fetch_list = [conv_out]
         self.enable_mkldnn = True
@@ -48,7 +48,7 @@ class ConvActivationMkldnnFusePassTest(InferencePassTest):
         self.conv_num_filters = 3
         self.conv_filter_size = 3
         self.conv_bias_attr = False
-        self.act = "relu"
+        self.act = 'relu'
 
     def test_check_output(self):
         use_gpu = False
@@ -58,61 +58,61 @@ class ConvActivationMkldnnFusePassTest(InferencePassTest):
         self.assertTrue(PassVersionChecker.IsCompatible(self.pass_name))
 
 
-class ConvActivationMkldnnFusePassTest_1(ConvActivationMkldnnFusePassTest):
+class ConvActivationMkldnnFusePassTest_1(ConvActivationOneDNNFusePassTest):
     def set_params(self):
         self.conv_num_filters = 5
         self.conv_filter_size = 5
         self.conv_bias_attr = True
-        self.act = "relu"
+        self.act = 'relu'
 
 
-class ConvActivationMkldnnFusePassTest_2(ConvActivationMkldnnFusePassTest):
+class ConvActivationMkldnnFusePassTest_2(ConvActivationOneDNNFusePassTest):
     def set_params(self):
         self.conv_num_filters = 3
         self.conv_filter_size = 3
         self.conv_bias_attr = False
-        self.act = "leaky_relu"
+        self.act = 'leaky_relu'
 
 
-class ConvActivationMkldnnFusePassTest_3(ConvActivationMkldnnFusePassTest):
+class ConvActivationMkldnnFusePassTest_3(ConvActivationOneDNNFusePassTest):
     def set_params(self):
         self.conv_num_filters = 5
         self.conv_filter_size = 5
         self.conv_bias_attr = True
-        self.act = "leaky_relu"
+        self.act = 'leaky_relu'
 
 
-class ConvActivationMkldnnFusePassTest_4(ConvActivationMkldnnFusePassTest):
+class ConvActivationMkldnnFusePassTest_4(ConvActivationOneDNNFusePassTest):
     def set_params(self):
         self.conv_num_filters = 3
         self.conv_filter_size = 3
         self.conv_bias_attr = False
-        self.act = "relu6"
+        self.act = 'relu6'
 
 
-class ConvActivationMkldnnFusePassTest_5(ConvActivationMkldnnFusePassTest):
+class ConvActivationMkldnnFusePassTest_5(ConvActivationOneDNNFusePassTest):
     def set_params(self):
         self.conv_num_filters = 5
         self.conv_filter_size = 5
         self.conv_bias_attr = True
-        self.act = "hard_swish"
+        self.act = 'hard_swish'
 
 
-class ConvActivationMkldnnFusePassTest_6(ConvActivationMkldnnFusePassTest):
+class ConvActivationMkldnnFusePassTest_6(ConvActivationOneDNNFusePassTest):
     def set_params(self):
         self.conv_num_filters = 5
         self.conv_filter_size = 5
         self.conv_bias_attr = True
-        self.act = "mish"
+        self.act = 'mish'
 
 
-class ConvHardSigmoidOneDNNFusePassTest(ConvActivationMkldnnFusePassTest):
+class ConvHardSigmoidOneDNNFusePassTest(ConvActivationOneDNNFusePassTest):
     def set_params(self):
         self.conv_num_filters = 5
         self.conv_filter_size = 5
         self.conv_bias_attr = True
-        self.act = "hard_sigmoid"
+        self.act = 'hard_sigmoid'
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()
