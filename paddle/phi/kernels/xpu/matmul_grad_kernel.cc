@@ -83,6 +83,7 @@ void MatmulGradKernel(const Context& dev_ctx,
                                  dout_ptr);
   std::tie(info_dx, info_dy, a_1, b_1, a_2, b_2) = fc_info;
   if (dx) {
+    dev_ctx.Wait();
     MatMulXPUFunction<XPUType>(xpu_ctx, a_1, b_1, c_1, info_dx, 1.0f);
     if (info_forward.is_x_need_broadcast) {
       int r = xpu::reduce_sum<XPUType>(
@@ -95,6 +96,7 @@ void MatmulGradKernel(const Context& dev_ctx,
     }
   }
   if (dy) {
+    dev_ctx.Wait();
     MatMulXPUFunction<XPUType>(xpu_ctx, a_2, b_2, c_2, info_dy, 1.0f);
   }
 }
