@@ -2871,9 +2871,10 @@ function parallel_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     pip install hypothesis
-    if [ -d "${PADDLE_ROOT}/build/python/dist/" ]; then
+    if ls ${PADDLE_ROOT}/build/python/dist/*whl >/dev/null 2>&1; then
         pip install ${PADDLE_ROOT}/build/python/dist/*whl
-    elif [ -d "${PADDLE_ROOT}/dist/" ]; then
+    fi
+    if ls ${PADDLE_ROOT}/dist/*whl >/dev/null 2>&1; then
         pip install ${PADDLE_ROOT}/dist/*whl
     fi
     cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/testsuite.py ${PADDLE_ROOT}/build/python
