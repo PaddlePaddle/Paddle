@@ -887,7 +887,7 @@ class ShardingPass(PassBase):
 
             # create communicators
             nranks_per_node = 8
-            assert self.sharding_world_size % self.nranks_per_node == 0
+            assert self.sharding_world_size % nranks_per_node == 0
             global_group = sharding_info.group
             global_ranks = global_group.ranks
             relative_idx_in_node = self.global_rank % nranks_per_node
@@ -1310,11 +1310,11 @@ class ShardingPass(PassBase):
                 )
                 depend_op.dist_attr.execution_stream = comm_stream
 
-        # # hierarchical comm
+        # hierarchical comm
         # if self.enable_hierarchical_comm:
         #     # NOTE so far we only support Isomorphic cluster with 8 ranks per node
 
-        #     # create communicators
+        #     # TODO unifiy here create communicators
         #     nranks_per_node = 8
         #     assert self.sharding_world_size % self.nranks_per_node == 0
         #     global_group = sharding_info.group
