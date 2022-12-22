@@ -28,7 +28,7 @@ class TestAMPList(unittest.TestCase):
         with paddle.amp.auto_cast():
             conv = conv2d(data)
             c = a + b
-        paddle.amp.auto_cast.low_precision_op_list()
+        paddle.amp.low_precision_op_list()
         op_list = paddle.fluid.core.get_low_precision_op_list()
         print(conv.dtype)
         if conv.dtype == paddle.float16:
