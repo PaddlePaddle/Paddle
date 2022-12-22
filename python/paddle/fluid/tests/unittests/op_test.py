@@ -39,7 +39,6 @@ from paddle.fluid.framework import (
     _enable_legacy_dygraph,
     _in_eager_without_dygraph_check,
     _in_legacy_dygraph,
-    _test_eager_guard,
 )
 from paddle.fluid.op import Operator
 from paddle.jit.dy2static.utils import parse_arg_and_kwargs
@@ -1790,37 +1789,30 @@ class OpTest(unittest.TestCase):
 
             def calculate_output(self):
                 # we only check end2end api when check_eager=True
-                with _test_eager_guard():
-                    self.is_python_api_test = True
-                    eager_dygraph_outs = self.op_test._calc_python_api_output(
-                        place
+                self.is_python_api_test = True
+                eager_dygraph_outs = self.op_test._calc_python_api_output(place)
+                if eager_dygraph_outs is None:
+                    self.is_python_api_test = False
+                    # missing KernelSignature, fall back to eager middle output.
+                    eager_dygraph_outs = self.op_test._calc_dygraph_output(
+                        place, no_check_set=no_check_set
                     )
-                    if eager_dygraph_outs is None:
-                        self.is_python_api_test = False
-                        # missing KernelSignature, fall back to eager middle output.
-                        eager_dygraph_outs = self.op_test._calc_dygraph_output(
-                            place, no_check_set=no_check_set
-                        )
                 self.outputs = eager_dygraph_outs
 
             def _compare_numpy(self, name, actual_np, expect_np):
-                with _test_eager_guard():
-                    super()._compare_numpy(name, actual_np, expect_np)
+                super()._compare_numpy(name, actual_np, expect_np)
 
             def convert_uint16_to_float_ifneed(self, actual_np, expect_np):
-                with _test_eager_guard():
-                    return super().convert_uint16_to_float_ifneed(
-                        actual_np, expect_np
-                    )
+                return super().convert_uint16_to_float_ifneed(
+                    actual_np, expect_np
+                )
 
             def find_actual_value(self, name):
-                with _test_eager_guard():
-                    return super().find_actual_value(name)
+                return super().find_actual_value(name)
 
             def _compare_list(self, name, actual, expect):
                 """if expect is a tuple, we need to compare list."""
-                with _test_eager_guard():
-                    super()._compare_list(name, actual, expect)
+                super()._compare_list(name, actual, expect)
 
             def _is_skip_name(self, name):
                 # if in final state and kernel signature don't have name, then skip it.
@@ -2332,33 +2324,32 @@ class OpTest(unittest.TestCase):
 
         if check_eager:
             with fluid.dygraph.base.guard(place):
-                with _test_eager_guard():
-                    eager_dygraph_grad = self._get_dygraph_grad(
-                        inputs_to_check,
-                        place,
-                        output_names,
-                        user_defined_grad_outputs,
-                        no_grad_set,
-                        check_eager,
-                    )
-                    fp32_grads = []
-                    for grad in eager_dygraph_grad:
-                        if grad.dtype == np.uint16:
-                            grad = convert_uint16_to_float(grad)
-                            max_relative_error = (
-                                0.03
-                                if max_relative_error < 0.03
-                                else max_relative_error
-                            )
-                        fp32_grads.append(grad)
-                    eager_dygraph_grad = fp32_grads
-                    self._assert_is_close(
-                        numeric_grads,
-                        eager_dygraph_grad,
-                        inputs_to_check,
-                        max_relative_error,
-                        "Gradient Check On %s" % str(place),
-                    )
+                eager_dygraph_grad = self._get_dygraph_grad(
+                    inputs_to_check,
+                    place,
+                    output_names,
+                    user_defined_grad_outputs,
+                    no_grad_set,
+                    check_eager,
+                )
+                fp32_grads = []
+                for grad in eager_dygraph_grad:
+                    if grad.dtype == np.uint16:
+                        grad = convert_uint16_to_float(grad)
+                        max_relative_error = (
+                            0.03
+                            if max_relative_error < 0.03
+                            else max_relative_error
+                        )
+                    fp32_grads.append(grad)
+                eager_dygraph_grad = fp32_grads
+                self._assert_is_close(
+                    numeric_grads,
+                    eager_dygraph_grad,
+                    inputs_to_check,
+                    max_relative_error,
+                    "Gradient Check On %s" % str(place),
+                )
 
     def _find_var_in_dygraph(self, output_vars, name):
         if name in output_vars:

@@ -245,20 +245,6 @@ def _non_static_mode():
     return _dygraph_tracer_ is not None
 
 
-@signature_safe_contextmanager
-def _test_eager_guard(place=None):
-    # FIXME(dev): We haven't fully verified eager mode on NPU et.al but
-    # only GPU/CPU/XPU. Remove this after we improve this feature.
-    already_fallback = _fallback_legacy_dygraph()
-    if not already_fallback:
-        _disable_legacy_dygraph()
-    try:
-        yield
-    finally:
-        if not already_fallback:
-            _enable_legacy_dygraph()
-
-
 global_ipu_index = -1
 global_ipu_stage = -1
 ipu_index_attr_name = 'ipu_index'
