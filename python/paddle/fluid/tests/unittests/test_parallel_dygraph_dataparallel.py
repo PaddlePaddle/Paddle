@@ -213,19 +213,9 @@ class TestMultipleWithGloo(unittest.TestCase):
             time.sleep(3)
 
 
-class TestDataParallelGradientCheck(TestMultipleGpus):
-    def test_multiple_gpus_dynamic(self):
-        self.run_mnist_2gpu(
-            'parallel_dygraph_gradient_check.py', eager_mode=False
-        )
-
-
 class TestDataParallelWithPyLayer(TestMultipleGpus):
     def test_parallel_dygraph_dataparallel_with_pylayer(self):
         self.run_mnist_2gpu('parallel_dygraph_dataparallel_with_pylayer.py')
-        self.run_mnist_2gpu(
-            'parallel_dygraph_dataparallel_with_pylayer.py', eager_mode=False
-        )
         self.run_mnist_2gpu(
             'parallel_dygraph_dataparallel_with_pylayer.py',
             allocator_strategy="naive_best_fit",

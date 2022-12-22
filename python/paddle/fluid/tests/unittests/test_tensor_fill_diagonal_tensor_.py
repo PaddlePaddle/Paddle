@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.nn.functional as F
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TensorFillDiagTensor_Test(unittest.TestCase):
@@ -29,7 +28,8 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
         if fluid.core.is_compiled_with_cuda():
             self.places.append(fluid.CUDAPlace(0))
 
-    def func_dim2(self):
+    def test_dim2(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         expected_np = np.array(
             [[1, 2, 2], [2, 1, 2], [2, 2, 1], [2, 2, 2]]
         ).astype('float32')
@@ -59,15 +59,10 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                     (y.grad.numpy().astype('float32') == expected_grad).all(),
                     True,
                 )
-
-    def test_dim2(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_dim2()
-        self.func_dim2()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
-    def func_dim2_offset_1(self):
+    def test_dim2_offset_1(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         expected_np = np.array(
             [[2, 2, 2], [1, 2, 2], [2, 1, 2], [2, 2, 1]]
         ).astype('float32')
@@ -97,15 +92,10 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                     (y.grad.numpy().astype('float32') == expected_grad).all(),
                     True,
                 )
-
-    def test_dim2_offset_1(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_dim2_offset_1()
-        self.func_dim2_offset_1()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
-    def func_dim2_offset1(self):
+    def test_dim2_offset1(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         expected_np = np.array(
             [[2, 1, 2], [2, 2, 1], [2, 2, 2], [2, 2, 2]]
         ).astype('float32')
@@ -135,15 +125,10 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                     (y.grad.numpy().astype('float32') == expected_grad).all(),
                     True,
                 )
-
-    def test_dim2_offset1(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_dim2_offset1()
-        self.func_dim2_offset1()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
-    def func_dim4(self):
+    def test_dim4(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         expected_np = np.array(
             [
                 [
@@ -201,15 +186,10 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                     (y.grad.numpy().astype('float32') == expected_grad).all(),
                     True,
                 )
-
-    def test_func_dim4(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_dim4()
-        self.func_dim4()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
-    def func_largedim(self):
+    def test_largedim(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         # large dim only test on gpu because the cpu version is too slow for ci test, and the memory is limited
         if len(self.places) > 1:
             bsdim = 1024
@@ -233,12 +213,6 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
 
                 self.assertEqual((y == expected_pred).all(), True)
                 self.assertEqual((y.grad == expected_grad).all(), True)
-
-    def test_largedim(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_largedim()
-        self.func_largedim()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 

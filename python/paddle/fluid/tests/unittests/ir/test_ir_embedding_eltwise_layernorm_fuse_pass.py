@@ -54,7 +54,7 @@ class EmbEltwiseLayerNormFusePassTest(PassTest):
             )
             add1 = paddle.add(word_emb, pos_emb)
             add2 = paddle.add(add1, sent_emb)
-            hidden1 = fluid.layers.layer_norm(input=add2, begin_norm_axis=2)
+            hidden1 = paddle.static.nn.layer_norm(input=add2, begin_norm_axis=2)
 
             id1 = fluid.layers.data(
                 name="id1",
@@ -95,7 +95,9 @@ class EmbEltwiseLayerNormFusePassTest(PassTest):
             add_1 = paddle.add(emb1, emb2)
             add_2 = paddle.add(add_1, emb3)
             add_3 = paddle.add(add_2, emb4)
-            hidden_1 = fluid.layers.layer_norm(input=add_3, begin_norm_axis=2)
+            hidden_1 = paddle.static.nn.layer_norm(
+                input=add_3, begin_norm_axis=2
+            )
 
         self.feeds = {
             "word_id": np.random.randint(
