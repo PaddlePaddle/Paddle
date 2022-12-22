@@ -2527,7 +2527,9 @@ Scope* OperatorWithKernel::PrepareData(
                                             : expected_kernel_key,
                     kernel_type_for_var,
                     *tensor_in,
-                    &out);
+                    &out,
+                    new_expected_kernel_key ? new_expected_kernel_key->place_
+                                            : expected_kernel_key.place_);
       SetTensorToVariable(*var, out, trans_var);
     }
   };
