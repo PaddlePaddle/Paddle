@@ -52,8 +52,7 @@ repos:
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto|xpu|kps|py|sh)$
         exclude: |
             (?x)^(
-                paddle/utils/.*|
-                paddle/phi/kernels/funcs/warp_transducer/.*
+                paddle/utils/.*
             )$
 # For Python files
 -   repo: https://github.com/psf/black.git
