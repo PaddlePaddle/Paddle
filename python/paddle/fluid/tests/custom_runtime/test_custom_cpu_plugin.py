@@ -271,18 +271,12 @@ class TestCustomCPUPlugin(unittest.TestCase):
 
         s1 = paddle.device.Stream()
         s2 = paddle.device.Stream(p)
-        s3 = paddle.device.Stream('custom_cpu')
-        s4 = paddle.device.Stream('custom_cpu', 0)
 
         s1 = paddle.device.current_stream()
         s2 = paddle.device.current_stream(p)
-        s3 = paddle.device.current_stream('custom_cpu')
-        s4 = paddle.device.current_stream('custom_cpu', 0)
 
         e1 = paddle.device.Event()
         e2 = paddle.device.Event(p)
-        e3 = paddle.device.Event('custom_cpu')
-        e4 = paddle.device.Event('custom_cpu', 0)
 
         s = paddle.device.Stream()
         e = paddle.device.Event()
@@ -295,11 +289,6 @@ class TestCustomCPUPlugin(unittest.TestCase):
         e.query()
         e.synchronize()
         e.record(s)
-
-        print(s.raw_stream)
-
-        with paddle.device.stream_guard(s):
-            print(paddle.device.current_stream().raw_stream)
 
 
 if __name__ == '__main__':
