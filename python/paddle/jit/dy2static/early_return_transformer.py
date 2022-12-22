@@ -13,14 +13,11 @@
 # limitations under the License.
 
 from paddle.utils import gast
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
-    AstNodeWrapper,
-)
-from .base_transformer import (
-    BaseTransformer,
-)
 
-__all__ = ['EarlyReturnTransformer']
+from .base_transformer import BaseTransformer
+from .static_analysis import AstNodeWrapper
+
+__all__ = []
 
 
 class EarlyReturnTransformer(BaseTransformer):

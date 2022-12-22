@@ -13,16 +13,14 @@
 # limitations under the License.
 
 import astor
+
 from paddle.utils import gast
 
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
-    AstNodeWrapper,
-)
-from paddle.fluid.dygraph.dygraph_to_static import utils
-from .base_transformer import (
-    BaseTransformer,
-)
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
+from . import utils
+from .base_transformer import BaseTransformer
+from .static_analysis import AstNodeWrapper
+
+__all__ = []
 
 
 class BasicApiTransformer(BaseTransformer):
@@ -166,7 +164,7 @@ class AttributeJstTransformer(BaseTransformer):
             node = (
                 gast.parse(
                     "_jst.Attr({}, \"{}\")".format(
-                        ast_to_source_code(value).strip(), attr
+                        utils.ast_to_source_code(value).strip(), attr
                     )
                 )
                 .body[0]

@@ -38,6 +38,7 @@
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/inference/analysis/helper.h"
+#include "paddle/fluid/inference/analysis/pass_result_info.h"
 #include "paddle/fluid/inference/analysis/passes/convert_to_mixed_precision.h"
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 #include "paddle/fluid/inference/api/helper.h"
@@ -260,6 +261,10 @@ bool AnalysisPredictor::Init(
   } else {
     VLOG(2) << "Profiler is deactivated, and no profiling report will be "
                "generated.";
+  }
+
+  if (!status_is_cloned_) {
+    root_predictor_id_ = predictor_id_;
   }
 
   // no matter with or without MKLDNN
@@ -614,6 +619,15 @@ bool AnalysisPredictor::PrepareExecutor() {
 
   executor_->Prepare(
       sub_scope_, *inference_program_, 0, config_.use_feed_fetch_ops_);
+
+  if (config_.enable_memory_optim_) {
+    auto *pass_res_info =
+        inference::analysis::PassResultInfoForRuntime::Instance();
+    auto reuse_table =
+        pass_res_info->Get<std::unordered_map<std::string, std::string>>(
+            root_predictor_id_, "memory_optimize_pass");
+    executor_->MakeReusePlan(reuse_table);
+  }
 
   PADDLE_ENFORCE_NOT_NULL(sub_scope_,
                           platform::errors::PreconditionNotMet(
@@ -1071,100 +1085,103 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
 }
 
 void AnalysisPredictor::PrepareArgument() {
-  argument_.SetUseGPU(config_.use_gpu());
-  argument_.SetUseFcPadding(config_.use_fc_padding());
-  argument_.SetGPUDeviceId(config_.gpu_device_id());
-  argument_.SetEnableIrOptim(config_.enable_ir_optim_);
-  argument_.SetEnableMemoryOptim(config_.enable_memory_optim());
-  argument_.SetModelFromMemory(config_.model_from_memory_);
+  // Init std::unique_ptr argument_.
+  argument_.reset(new Argument);
+  argument_->SetUseGPU(config_.use_gpu());
+  argument_->SetUseFcPadding(config_.use_fc_padding());
+  argument_->SetGPUDeviceId(config_.gpu_device_id());
+  argument_->SetEnableIrOptim(config_.enable_ir_optim_);
+  argument_->SetEnableMemoryOptim(config_.enable_memory_optim());
+  argument_->SetModelFromMemory(config_.model_from_memory_);
   // Analyze inference_program
-  argument_.SetPredictorID(predictor_id_);
-  argument_.SetOptimCacheDir(config_.opt_cache_dir_);
+  argument_->SetPredictorID(predictor_id_);
+  argument_->SetRootPredictorID(root_predictor_id_);
+  argument_->SetOptimCacheDir(config_.opt_cache_dir_);
   if (!config_.model_dir().empty()) {
-    argument_.SetModelDir(config_.model_dir());
+    argument_->SetModelDir(config_.model_dir());
   } else {
     PADDLE_ENFORCE_EQ(config_.prog_file().empty(),
                       false,
                       platform::errors::PreconditionNotMet(
                           "Either model_dir or prog_file should be set."));
 
-    argument_.SetModelProgramPath(config_.prog_file());
-    argument_.SetModelParamsPath(config_.params_file());
+    argument_->SetModelProgramPath(config_.prog_file());
+    argument_->SetModelParamsPath(config_.params_file());
   }
   // For JITLayer
-  argument_.SetSkipLoadParams(config_.skip_load_params_);
+  argument_->SetSkipLoadParams(config_.skip_load_params_);
 
-  argument_.SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
-  argument_.SetTensorRtUseOSS(config_.trt_use_varseqlen_);
-  argument_.SetTensorRtWithInterleaved(config_.trt_with_interleaved_);
-  argument_.SetTensorRtTransformerPosid(config_.tensorrt_transformer_posid_);
-  argument_.SetTensorRtTransformerMaskid(config_.tensorrt_transformer_maskid_);
-  argument_.SetMinInputShape(config_.min_input_shape_);
-  argument_.SetMaxInputShape(config_.max_input_shape_);
-  argument_.SetOptimInputShape(config_.optim_input_shape_);
-  argument_.SetTensorRtTunedDynamicShape(
+  argument_->SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
+  argument_->SetTensorRtUseOSS(config_.trt_use_varseqlen_);
+  argument_->SetTensorRtWithInterleaved(config_.trt_with_interleaved_);
+  argument_->SetTensorRtTransformerPosid(config_.tensorrt_transformer_posid_);
+  argument_->SetTensorRtTransformerMaskid(config_.tensorrt_transformer_maskid_);
+  argument_->SetMinInputShape(config_.min_input_shape_);
+  argument_->SetMaxInputShape(config_.max_input_shape_);
+  argument_->SetOptimInputShape(config_.optim_input_shape_);
+  argument_->SetTensorRtTunedDynamicShape(
       config_.tuned_tensorrt_dynamic_shape());
   if (config_.use_gpu() && config_.tensorrt_engine_enabled()) {
     LOG(INFO) << "TensorRT subgraph engine is enabled";
-    argument_.SetUseTensorRT(true);
-    argument_.SetTensorRtWorkspaceSize(config_.tensorrt_workspace_size_);
-    argument_.SetTensorRtMaxBatchSize(config_.tensorrt_max_batchsize_);
-    argument_.SetTensorRtMinSubgraphSize(config_.tensorrt_min_subgraph_size_);
-    argument_.SetTensorRtDisabledOPs(config_.trt_disabled_ops_);
-    argument_.SetTensorRtUseDLA(config_.trt_use_dla_);
-    argument_.SetTensorRtDLACore(config_.trt_dla_core_);
-    argument_.SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);
-    argument_.SetTensorRtUseCalibMode(config_.trt_use_calib_mode_);
-    argument_.SetCloseTrtPluginFp16(config_.disable_trt_plugin_fp16_);
-    argument_.SetTensorRtShapeRangeInfoPath(config_.shape_range_info_path());
-    argument_.SetTensorRtAllowBuildAtRuntime(
+    argument_->SetUseTensorRT(true);
+    argument_->SetTensorRtWorkspaceSize(config_.tensorrt_workspace_size_);
+    argument_->SetTensorRtMaxBatchSize(config_.tensorrt_max_batchsize_);
+    argument_->SetTensorRtMinSubgraphSize(config_.tensorrt_min_subgraph_size_);
+    argument_->SetTensorRtDisabledOPs(config_.trt_disabled_ops_);
+    argument_->SetTensorRtUseDLA(config_.trt_use_dla_);
+    argument_->SetTensorRtDLACore(config_.trt_dla_core_);
+    argument_->SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);
+    argument_->SetTensorRtUseCalibMode(config_.trt_use_calib_mode_);
+    argument_->SetCloseTrtPluginFp16(config_.disable_trt_plugin_fp16_);
+    argument_->SetTensorRtShapeRangeInfoPath(config_.shape_range_info_path());
+    argument_->SetTensorRtAllowBuildAtRuntime(
         config_.trt_allow_build_at_runtime());
-    argument_.SetTensorRtUseInspector(config_.trt_use_inspector_);
-    argument_.SetTrtEngineMemorySharing(config_.trt_engine_memory_sharing());
+    argument_->SetTensorRtUseInspector(config_.trt_use_inspector_);
+    argument_->SetTrtEngineMemorySharing(config_.trt_engine_memory_sharing());
   }
 
   if (config_.dlnne_enabled()) {
     LOG(INFO) << "Dlnne subgraph is enabled";
-    argument_.SetUseDlnne(true);
-    argument_.SetDlnneMinSubgraphSize(config_.dlnne_min_subgraph_size_);
-    argument_.SetDlnneMaxBatchSize(config_.dlnne_max_batchsize_);
-    argument_.SetDlnneUseStaticBatch(config_.dlnne_use_static_batch_);
-    argument_.SetDlnneWeightShareMode(config_.dlnne_weight_share_mode_);
-    argument_.SetDlnneDisableNodesByOutputs(
+    argument_->SetUseDlnne(true);
+    argument_->SetDlnneMinSubgraphSize(config_.dlnne_min_subgraph_size_);
+    argument_->SetDlnneMaxBatchSize(config_.dlnne_max_batchsize_);
+    argument_->SetDlnneUseStaticBatch(config_.dlnne_use_static_batch_);
+    argument_->SetDlnneWeightShareMode(config_.dlnne_weight_share_mode_);
+    argument_->SetDlnneDisableNodesByOutputs(
         config_.dlnne_disable_nodes_by_outputs_);
-    argument_.SetDlnneInputShapeDict(config_.dlnne_input_shape_dict_);
-    argument_.SetDlnneUseCalibMode(config_.dlnne_use_calib_mode_);
-    argument_.SetDlnnePrecisionMode(config_.dlnne_precision_mode_);
+    argument_->SetDlnneInputShapeDict(config_.dlnne_input_shape_dict_);
+    argument_->SetDlnneUseCalibMode(config_.dlnne_use_calib_mode_);
+    argument_->SetDlnnePrecisionMode(config_.dlnne_precision_mode_);
   }
 
   if (config_.lite_engine_enabled()) {
-    argument_.SetCpuMathLibraryNumThreads(
+    argument_->SetCpuMathLibraryNumThreads(
         config_.cpu_math_library_num_threads());
-    argument_.SetLitePrecisionMode(config_.lite_precision_mode_);
-    argument_.SetLitePassesFilter(config_.lite_passes_filter_);
-    argument_.SetLiteOpsFilter(config_.lite_ops_filter_);
-    argument_.SetLiteZeroCopy(config_.lite_zero_copy_);
-    argument_.SetUseXpu(config_.use_xpu_);
-    argument_.SetXpuL3WorkspaceSize(config_.xpu_l3_workspace_size_);
-    argument_.SetXpuLocked(config_.xpu_locked_);
-    argument_.SetXpuAutotune(config_.xpu_autotune_);
-    argument_.SetXpuAutotuneFile(config_.xpu_autotune_file_);
-    argument_.SetXpuPrecision(config_.xpu_precision_);
-    argument_.SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
-    argument_.SetXpuDeviceId(config_.xpu_device_id_);
-    argument_.SetXpuEnableMultiStream(config_.xpu_enable_multi_stream_);
-    argument_.SetUseOpenCL(config_.use_opencl_);
+    argument_->SetLitePrecisionMode(config_.lite_precision_mode_);
+    argument_->SetLitePassesFilter(config_.lite_passes_filter_);
+    argument_->SetLiteOpsFilter(config_.lite_ops_filter_);
+    argument_->SetLiteZeroCopy(config_.lite_zero_copy_);
+    argument_->SetUseXpu(config_.use_xpu_);
+    argument_->SetXpuL3WorkspaceSize(config_.xpu_l3_workspace_size_);
+    argument_->SetXpuLocked(config_.xpu_locked_);
+    argument_->SetXpuAutotune(config_.xpu_autotune_);
+    argument_->SetXpuAutotuneFile(config_.xpu_autotune_file_);
+    argument_->SetXpuPrecision(config_.xpu_precision_);
+    argument_->SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
+    argument_->SetXpuDeviceId(config_.xpu_device_id_);
+    argument_->SetXpuEnableMultiStream(config_.xpu_enable_multi_stream_);
+    argument_->SetUseOpenCL(config_.use_opencl_);
     // NNAdapter related
-    argument_.SetUseNNAdapter(config_.NNAdapter().use_nnadapter);
-    argument_.SetNNAdapterDeviceNames(
+    argument_->SetUseNNAdapter(config_.NNAdapter().use_nnadapter);
+    argument_->SetNNAdapterDeviceNames(
         config_.NNAdapter().nnadapter_device_names);
-    argument_.SetNNAdapterContextProperties(
+    argument_->SetNNAdapterContextProperties(
         config_.NNAdapter().nnadapter_context_properties);
-    argument_.SetNNAdapterModelCacheDir(
+    argument_->SetNNAdapterModelCacheDir(
         config_.NNAdapter().nnadapter_model_cache_dir);
-    argument_.SetNNAdapterSubgraphPartitionConfigBuffer(
+    argument_->SetNNAdapterSubgraphPartitionConfigBuffer(
         config_.NNAdapter().nnadapter_subgraph_partition_config_buffer);
-    argument_.SetNNAdapterSubgraphPartitionConfigPath(
+    argument_->SetNNAdapterSubgraphPartitionConfigPath(
         config_.NNAdapter().nnadapter_subgraph_partition_config_path);
     std::vector<std::string> buffer_keys;
     std::vector<std::vector<char>> buffer_vals;
@@ -1172,91 +1189,125 @@ void AnalysisPredictor::PrepareArgument() {
       buffer_keys.emplace_back(it.first);
       buffer_vals.emplace_back(it.second);
     }
-    argument_.SetNNAdapterModelCacheToken(buffer_keys);
-    argument_.SetNNAdapterModelCacheBuffer(buffer_vals);
+    argument_->SetNNAdapterModelCacheToken(buffer_keys);
+    argument_->SetNNAdapterModelCacheBuffer(buffer_vals);
     LOG(INFO) << "Lite subgraph engine is enabled";
   }
 
 #ifdef PADDLE_WITH_IPU
-  argument_.SetUseIpu(config_.use_ipu_);
-  argument_.SetIpuDeviceNum(config_.ipu_device_num());
-  argument_.SetIpuMicroBatchSize(config_.ipu_micro_batch_size_);
-  argument_.SetIpuEnablePipelining(config_.ipu_enable_pipelining_);
-  argument_.SetIpuBatchesPerStep(config_.ipu_batches_per_step_);
-  argument_.SetIpuEnableFp16(config_.ipu_enable_fp16_);
-  argument_.SetIpuReplicaNum(config_.ipu_replica_num_);
-  argument_.SetIpuAvailableMemoryProportion(
+  argument_->SetUseIpu(config_.use_ipu_);
+  argument_->SetIpuDeviceNum(config_.ipu_device_num());
+  argument_->SetIpuMicroBatchSize(config_.ipu_micro_batch_size_);
+  argument_->SetIpuEnablePipelining(config_.ipu_enable_pipelining_);
+  argument_->SetIpuBatchesPerStep(config_.ipu_batches_per_step_);
+  argument_->SetIpuEnableFp16(config_.ipu_enable_fp16_);
+  argument_->SetIpuReplicaNum(config_.ipu_replica_num_);
+  argument_->SetIpuAvailableMemoryProportion(
       config_.ipu_available_memory_proportion_);
-  argument_.SetIpuEnableHalfPartial(config_.ipu_enable_half_partial_);
-  argument_.SetIpuEnableModelRuntimeExecutor(
+  argument_->SetIpuEnableHalfPartial(config_.ipu_enable_half_partial_);
+  argument_->SetIpuEnableModelRuntimeExecutor(
       config_.ipu_enable_model_runtime_executor_);
-  argument_.SetIpuCustomOpsInfo(config_.ipu_custom_ops_info_);
-  argument_.SetIpuCustomPatterns(config_.ipu_custom_patterns_);
+  argument_->SetIpuCustomOpsInfo(config_.ipu_custom_ops_info_);
+  argument_->SetIpuCustomPatterns(config_.ipu_custom_patterns_);
 #endif
 
-  argument_.SetUseNpu(config_.use_npu_);
-  argument_.SetNPUDeviceId(config_.npu_device_id());
+  argument_->SetUseNpu(config_.use_npu_);
+  argument_->SetNPUDeviceId(config_.npu_device_id());
 
   if (config_.use_mkldnn_) {
     LOG(INFO) << "MKLDNN is enabled";
-    argument_.SetMKLDNNEnabledOpTypes(config_.mkldnn_enabled_op_types_);
+    argument_->SetMKLDNNEnabledOpTypes(config_.mkldnn_enabled_op_types_);
+  }
+
+  if (config_.use_cinn_compiler_) {
+    argument_->SetUseCinnCompiler(config_.use_cinn_compiler_);
   }
 
 #ifdef PADDLE_WITH_MKLDNN
   if (config_.mkldnn_quantizer_enabled()) {
     LOG(INFO) << "Quantization is enabled";
-    argument_.SetQuantizeEnabledOpTypes(
+    argument_->SetQuantizeEnabledOpTypes(
         config_.mkldnn_quantizer_config()->enabled_op_types());
-    argument_.SetQuantizeExcludedOpIds(
+    argument_->SetQuantizeExcludedOpIds(
         config_.mkldnn_quantizer_config()->excluded_op_ids());
   }
   if (config_.use_mkldnn_bfloat16_) {
     LOG(INFO) << "Bfloat16 is enabled";
-    argument_.SetBfloat16EnabledOpTypes(config_.bfloat16_enabled_op_types_);
+    argument_->SetBfloat16EnabledOpTypes(config_.bfloat16_enabled_op_types_);
   }
 
   if (config_.use_mkldnn_int8_) {
     LOG(INFO) << "Int8 is enabled";
-    argument_.SetQuantizeEnabledOpTypes(config_.quantize_enabled_op_types_);
-    argument_.SetQuantizeExcludedOpIds(config_.quantize_excluded_op_ids_);
-    argument_.SetQuantVarScales({});
+    argument_->SetQuantizeEnabledOpTypes(config_.quantize_enabled_op_types_);
+    argument_->SetQuantizeExcludedOpIds(config_.quantize_excluded_op_ids_);
+    argument_->SetQuantVarScales({});
+  }
+#endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  argument_->SetUseCustomDevice(config_.use_custom_device());
+  if (config_.use_custom_device()) {
+    LOG(INFO) << "CustomDevice is enabled";
+    argument_->SetCustomDeviceType(config_.custom_device_type());
+    argument_->SetCustomDeviceId(config_.custom_device_id());
   }
 #endif
 
   auto *pass_builder = config_.pass_builder();
+  // TODO(inference): Need to reconstruct the pass_builder, pass should be
+  // processed in a single
   if (model_precision_ != phi::DataType::FLOAT32) {
     LOG(INFO) << "Model is mixed precision type with " << model_precision_
               << ", we will use a new PassStrategy. Note that only the GPU "
                  "backend is supported for now.";
-    pass_builder->ClearPasses();
-    const auto &deleted_passes = pass_builder->GetAllDeletedPasses();
-    if (config_.tensorrt_engine_enabled()) {
-      for (const auto &pass : kTrtLowerPrecisionPasses) {
-        if (deleted_passes.count(pass)) continue;
-        pass_builder->AppendPass(pass);
-      }
-    } else if (config_.use_gpu()) {
-      for (const auto &pass : kGpuLowerPrecisionPasses) {
-        if (deleted_passes.count(pass)) continue;
-        pass_builder->AppendPass(pass);
+    if (!config_.use_cinn_compiler_) {
+      pass_builder->ClearPasses();
+      const auto &deleted_passes = pass_builder->GetAllDeletedPasses();
+      if (config_.tensorrt_engine_enabled()) {
+        for (const auto &pass : kTrtLowerPrecisionPasses) {
+          if (deleted_passes.count(pass)) continue;
+          pass_builder->AppendPass(pass);
+        }
+      } else if (config_.use_gpu()) {
+        for (const auto &pass : kGpuLowerPrecisionPasses) {
+          if (deleted_passes.count(pass)) continue;
+          pass_builder->AppendPass(pass);
+        }
       }
     }
   }
-  if (config_.ir_debug_) {
-    pass_builder->TurnOnDebug();
-  }
+
   if (!config_.ir_optim()) {
-    argument_.SetEnableIrOptim(false);
-    LOG(INFO) << "ir_optim is turned off, no IR pass will be executed";
+    argument_->SetEnableIrOptim(false);
+    if (config_.enable_gpu_mixed_) {
+      argument_->SetEnableIrOptim(true);
+      pass_builder->ClearPasses();
+      pass_builder->AppendPass("auto_mixed_precision_pass");
+      LOG(INFO)
+          << "This model run in Paddle-GPU mixed precision mode with no ir "
+             "optimization.";
+    } else {
+      LOG(INFO) << "ir_optim is turned off, no IR pass will be executed.";
+    }
+  } else {
+    if (config_.ir_debug_) {
+      pass_builder->TurnOnDebug();
+    }
+    if (config_.enable_gpu_mixed_) {
+      LOG(INFO) << "This model run in Paddle-GPU mixed precision mode.";
+    }
   }
-  argument_.SetDisableLogs(config_.glog_info_disabled());
-  argument_.SetIrAnalysisPasses(pass_builder->AllPasses());
-  argument_.SetAnalysisPasses(pass_builder->AnalysisPasses());
-  argument_.SetScopeNotOwned(scope_.get());
+  argument_->SetDisableLogs(config_.glog_info_disabled());
+  argument_->SetIrAnalysisPasses(pass_builder->AllPasses());
+  argument_->SetAnalysisPasses(pass_builder->AnalysisPasses());
+  argument_->SetScopeNotOwned(scope_.get());
 
   // mixed precison.
-  argument_.SetModelPrecision(static_cast<int>(model_precision_));
-  argument_.SetMixedBlackList(config_.mixed_black_list_);
+  argument_->SetModelPrecision(static_cast<int>(model_precision_));
+  argument_->SetMixedBlackList(config_.mixed_black_list_);
+  argument_->SetEnableGPUMixed(config_.enable_gpu_mixed_);
+  argument_->SetMixedPrecisionMode(static_cast<int>(
+      paddle::ConvertPrecision(config_.mixed_precision_mode_)));
 }
 
 // NOTE All the members in AnalysisConfig should be copied to Argument.
@@ -1272,16 +1323,16 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   }
 #endif
 
-  Analyzer().Run(&argument_);
+  Analyzer().Run(argument_.get());
 
   PADDLE_ENFORCE_EQ(
-      argument_.scope_valid(),
+      argument_->scope_valid(),
       true,
       platform::errors::InvalidArgument("The argument scope should be valid."));
   VLOG(5) << "to prepare executor";
-  ARGUMENT_CHECK_FIELD((&argument_), ir_analyzed_program);
+  ARGUMENT_CHECK_FIELD((argument_.get()), ir_analyzed_program);
   inference_program_.reset(
-      new framework::ProgramDesc(argument_.ir_analyzed_program()),
+      new framework::ProgramDesc(argument_->ir_analyzed_program()),
       [](framework::ProgramDesc *prog) {
 // Note, please do NOT use any member variables, because member variables may
 // have been destructed in multiple threads.
@@ -1309,8 +1360,19 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
       });
   // The config and argument take a lot of storage,
   // when the predictor settings are complete, we release these stores.
-  argument_.PartiallyRelease();
   config_.PartiallyRelease();
+  fusion_statis_ = *argument_->fusion_statis_ptr();
+#if defined(_WIN32)
+  argument_->PartiallyRelease();
+#else
+  if (config_.mkldnn_enabled() ||
+      (config_.tensorrt_engine_enabled() &&
+       config_.tensorrt_precision_mode_ == AnalysisConfig::Precision::kInt8)) {
+    argument_->PartiallyRelease();
+  } else {
+    argument_.reset(nullptr);
+  }
+#endif
   LOG(INFO) << "======= optimize end =======";
 }
 
@@ -1382,8 +1444,7 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
       }
 
       // support set flags from enviorment.
-      const platform::ExportedFlagInfoMap &env_map =
-          platform::GetExportedFlagInfoMap();
+      const phi::ExportedFlagInfoMap &env_map = phi::GetExportedFlagInfoMap();
       std::ostringstream os;
       os << "--tryfromenv=";
       for (auto &pair : env_map) {
@@ -2034,9 +2095,9 @@ bool AnalysisPredictor::SaveTrtCalibToDisk() {
       }
 
       std::string model_opt_cache_dir =
-          argument_.Has("model_dir")
-              ? argument_.model_dir()
-              : inference::analysis::GetDirRoot(argument_.model_program_path());
+          argument_->Has("model_dir") ? argument_->model_dir()
+                                      : inference::analysis::GetDirRoot(
+                                            argument_->model_program_path());
 
       std::string calibration_table_data_path =
           inference::analysis::GetTrtCalibPath(
@@ -2114,6 +2175,7 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {
   std::lock_guard<std::mutex> lk(clone_mutex_);
   auto *x = new AnalysisPredictor(config_);
   x->status_is_cloned_ = true;
+  x->root_predictor_id_ = this->root_predictor_id_;
   if (config_.use_external_stream_ && stream == nullptr) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "config has been configured to use external stream, but the Clone "
@@ -2175,12 +2237,6 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
 }
 
 void AnalysisPredictor::RegisterOutputHook(const Exp_OutputHookFunc &hookfunc) {
-  if (config_.enable_memory_optim()) {
-    LOG(WARNING) << "If you want to run output hook function, you should "
-                    "use config.EnableMemoryOptim(false) to turn off memory "
-                    "reuse!";
-    return;
-  }
   static std::once_flag register_hook_flag;
   std::call_once(register_hook_flag, [this] {
     executor_->RegisterOutputHook([this](framework::OperatorBase *op) {
@@ -2228,6 +2284,12 @@ USE_TRT_CONVERTER(elementwise_max_tensor);
 USE_TRT_CONVERTER(elementwise_min_tensor);
 USE_TRT_CONVERTER(elementwise_pow_tensor);
 USE_TRT_CONVERTER(elementwise_floordiv_tensor);
+USE_TRT_CONVERTER(less_than);
+USE_TRT_CONVERTER(greater_than);
+USE_TRT_CONVERTER(logical_or);
+USE_TRT_CONVERTER(logical_xor);
+USE_TRT_CONVERTER(logical_and);
+USE_TRT_CONVERTER(less_equal);
 USE_TRT_CONVERTER(transpose);
 USE_TRT_CONVERTER(transpose2);
 USE_TRT_CONVERTER(flatten);
@@ -2235,13 +2297,9 @@ USE_TRT_CONVERTER(flatten_contiguous_range);
 USE_TRT_CONVERTER(matmul);
 USE_TRT_CONVERTER(matmul_v2);
 USE_TRT_CONVERTER(bmm);
-USE_TRT_CONVERTER(rsqrt);
 USE_TRT_CONVERTER(conv2d);
 USE_TRT_CONVERTER(relu);
-USE_TRT_CONVERTER(exp);
-USE_TRT_CONVERTER(log);
 USE_TRT_CONVERTER(sigmoid);
-USE_TRT_CONVERTER(tanh);
 USE_TRT_CONVERTER(fc);
 USE_TRT_CONVERTER(pool2d);
 USE_TRT_CONVERTER(softmax);
@@ -2258,6 +2316,8 @@ USE_TRT_CONVERTER(conv2d_transpose);
 USE_TRT_CONVERTER(leaky_relu);
 USE_TRT_CONVERTER(shuffle_channel);
 USE_TRT_CONVERTER(where);
+USE_TRT_CONVERTER(one_hot);
+USE_TRT_CONVERTER(one_hot_v2);
 USE_TRT_CONVERTER(swish);
 USE_TRT_CONVERTER(silu);
 USE_TRT_CONVERTER(group_norm);
@@ -2276,6 +2336,7 @@ USE_TRT_CONVERTER(anchor_generator);
 USE_TRT_CONVERTER(yolo_box);
 USE_TRT_CONVERTER(yolo_box_head);
 USE_TRT_CONVERTER(arg_max);
+USE_TRT_CONVERTER(arg_min);
 USE_TRT_CONVERTER(roi_align);
 USE_TRT_CONVERTER(affine_channel);
 USE_TRT_CONVERTER(multiclass_nms);
@@ -2285,20 +2346,44 @@ USE_TRT_CONVERTER(nearest_interp_v2);
 USE_TRT_CONVERTER(bilinear_interp_v2);
 USE_TRT_CONVERTER(reshape);
 USE_TRT_CONVERTER(reshape2);
-USE_TRT_CONVERTER(reduce_sum);
 USE_TRT_CONVERTER(gather_nd);
 USE_TRT_CONVERTER(reduce_mean);
+USE_TRT_CONVERTER(reduce_max);
+USE_TRT_CONVERTER(reduce_sum);
 USE_TRT_CONVERTER(tile);
 USE_TRT_CONVERTER(conv3d);
 USE_TRT_CONVERTER(conv3d_transpose);
 USE_TRT_CONVERTER(mish);
 USE_TRT_CONVERTER(deformable_conv);
 USE_TRT_CONVERTER(pool3d)
-#ifdef _WIN32
-#else
+USE_TRT_CONVERTER(square);
+// unary op
+USE_TRT_CONVERTER(exp);
+USE_TRT_CONVERTER(log);
+USE_TRT_CONVERTER(sqrt);
+USE_TRT_CONVERTER(reciprocal);
+USE_TRT_CONVERTER(abs);
+USE_TRT_CONVERTER(sin);
+USE_TRT_CONVERTER(cos);
+USE_TRT_CONVERTER(tan);
+USE_TRT_CONVERTER(sinh);
+USE_TRT_CONVERTER(cosh);
+USE_TRT_CONVERTER(tanh);
+USE_TRT_CONVERTER(asin);
+USE_TRT_CONVERTER(acos);
+USE_TRT_CONVERTER(atan);
+USE_TRT_CONVERTER(asinh);
+USE_TRT_CONVERTER(acosh);
+USE_TRT_CONVERTER(atanh);
+USE_TRT_CONVERTER(ceil);
+USE_TRT_CONVERTER(floor);
+#if IS_TRT_VERSION_GE(8200)
+USE_TRT_CONVERTER(round);
+USE_TRT_CONVERTER(sign);
+#endif
+USE_TRT_CONVERTER(rsqrt);
 USE_TRT_CONVERTER(fused_preln_embedding_eltwise_layernorm)
 USE_TRT_CONVERTER(fused_embedding_eltwise_layernorm);
-#endif
 USE_TRT_CONVERTER(preln_skip_layernorm)
 USE_TRT_CONVERTER(preln_residual_bias)
 USE_TRT_CONVERTER(c_allreduce_sum)
@@ -2313,6 +2398,7 @@ USE_TRT_CONVERTER(remove_padding)
 USE_TRT_CONVERTER(equal);
 USE_TRT_CONVERTER(top_k)
 USE_TRT_CONVERTER(top_k_v2)
+USE_TRT_CONVERTER(range)
 USE_TRT_CONVERTER(squeeze2)
 USE_TRT_CONVERTER(unsqueeze2)
 USE_TRT_CONVERTER(sum)
@@ -2321,6 +2407,7 @@ USE_TRT_CONVERTER(fill_constant)
 USE_TRT_CONVERTER(fused_token_prune)
 USE_TRT_CONVERTER(celu)
 USE_TRT_CONVERTER(layernorm_shift_partition)
+USE_TRT_CONVERTER(reverse_roll)
 USE_TRT_CONVERTER(preln_layernorm_shift_partition)
 USE_TRT_CONVERTER(merge_layernorm)
 USE_TRT_CONVERTER(skip_merge_layernorm)

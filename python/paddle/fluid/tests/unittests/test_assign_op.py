@@ -22,7 +22,6 @@ from decorator_helper import prog_scope
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.framework as framework
 import paddle.fluid.layers as layers
 from paddle.fluid import Program, program_guard
 from paddle.fluid.backward import append_backward
@@ -42,7 +41,6 @@ class TestAssignOp(op_test.OpTest):
         self.check_output(check_eager=True)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
         paddle.disable_static()
-        framework._disable_legacy_dygraph()
 
     def test_backward(self):
         paddle.enable_static()
@@ -50,7 +48,6 @@ class TestAssignOp(op_test.OpTest):
         self.check_grad(['X'], 'Out', check_eager=True)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
         paddle.disable_static()
-        framework._disable_legacy_dygraph()
 
 
 class TestAssignFP16Op(op_test.OpTest):
@@ -67,7 +64,6 @@ class TestAssignFP16Op(op_test.OpTest):
         self.check_output(check_eager=True)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
         paddle.disable_static()
-        framework._disable_legacy_dygraph()
 
     def test_backward(self):
         paddle.enable_static()
@@ -75,7 +71,6 @@ class TestAssignFP16Op(op_test.OpTest):
         self.check_grad(['X'], 'Out', check_eager=True)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
         paddle.disable_static()
-        framework._disable_legacy_dygraph()
 
 
 class TestAssignOpWithLoDTensorArray(unittest.TestCase):
@@ -90,11 +85,11 @@ class TestAssignOpWithLoDTensorArray(unittest.TestCase):
             y = fluid.layers.fill_constant(
                 shape=[100, 10], dtype='float32', value=1
             )
-            z = fluid.layers.elementwise_add(x=x, y=y)
+            z = paddle.add(x=x, y=y)
             i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
-            init_array = fluid.layers.array_write(x=z, i=i)
+            init_array = paddle.tensor.array_write(x=z, i=i)
             array = fluid.layers.assign(init_array)
-            sums = fluid.layers.array_read(array=init_array, i=i)
+            sums = paddle.tensor.array_read(array=init_array, i=i)
             mean = paddle.mean(sums)
             append_backward(mean)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
@@ -144,11 +139,11 @@ class TestAssignOApi(unittest.TestCase):
             y = fluid.layers.fill_constant(
                 shape=[100, 10], dtype='float32', value=1
             )
-            z = fluid.layers.elementwise_add(x=x, y=y)
+            z = paddle.add(x=x, y=y)
             i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
-            init_array = fluid.layers.array_write(x=z, i=i)
+            init_array = paddle.tensor.array_write(x=z, i=i)
             array = paddle.assign(init_array)
-            sums = fluid.layers.array_read(array=init_array, i=i)
+            sums = paddle.tensor.array_read(array=init_array, i=i)
             mean = paddle.mean(sums)
             append_backward(mean)
 

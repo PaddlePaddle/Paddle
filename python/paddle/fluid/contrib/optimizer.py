@@ -78,7 +78,6 @@ class Momentum(Optimizer):
             import numpy as np
 
             paddle.enable_static()
-
             place = fluid.CPUPlace()
             main = fluid.Program()
             with fluid.program_guard(main):
@@ -144,7 +143,7 @@ class Momentum(Optimizer):
 
         var_name = param.name + "_fp32_master"
         var_name = unique_name.generate(var_name)
-        var = layers.create_global_var(
+        var = paddle.static.create_global_var(
             name=var_name,
             shape=param.shape,
             value=0,

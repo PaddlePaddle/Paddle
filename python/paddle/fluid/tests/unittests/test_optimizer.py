@@ -27,7 +27,6 @@ import paddle.fluid.optimizer as optimizer
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import (
     Program,
-    _test_eager_guard,
     convert_np_dtype_to_dtype_,
     program_guard,
 )
@@ -1162,14 +1161,19 @@ class TestRecomputeOptimizer(unittest.TestCase):
             }
 
         def mlp(input_x, input_y):
-            drop_res = fluid.layers.dropout(
-                input_x, dropout_prob=0.5, name="dropout_with_seed_cpu"
+            drop_res = paddle.nn.functional.dropout(
+                input_x, p=0.5, name="dropout_with_seed_cpu"
             )
             prediction = fluid.layers.fc(
                 input=[drop_res], size=2, act='softmax'
             )
-            cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
-            sum_cost = fluid.layers.reduce_mean(cost)
+            cost = paddle.nn.functional.cross_entropy(
+                input=prediction,
+                label=input_y,
+                reduction='none',
+                use_softmax=False,
+            )
+            sum_cost = paddle.mean(cost)
             return drop_res, prediction, sum_cost
 
         main_program = Program()
@@ -1219,14 +1223,19 @@ class TestRecomputeOptimizerCUDA(unittest.TestCase):
             }
 
         def mlp(input_x, input_y):
-            drop_res = fluid.layers.dropout(
-                input_x, dropout_prob=0.5, name="dropout_with_seed_gpu"
+            drop_res = paddle.nn.functional.dropout(
+                input_x, p=0.5, name="dropout_with_seed_gpu"
             )
             prediction = fluid.layers.fc(
                 input=[drop_res], size=2, act='softmax'
             )
-            cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
-            sum_cost = fluid.layers.reduce_mean(cost)
+            cost = paddle.nn.functional.cross_entropy(
+                input=prediction,
+                label=input_y,
+                reduction='none',
+                use_softmax=False,
+            )
+            sum_cost = paddle.mean(cost)
             return drop_res, prediction, sum_cost
 
         main_program = Program()
@@ -1376,11 +1385,6 @@ class TestOptimizerDtype(unittest.TestCase):
 
     def test_float32(self):
         self.check_with_dtype('float32')
-
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_float64()
-            self.test_float32()
 
 
 class TestMasterWeightSaveForFP16(unittest.TestCase):

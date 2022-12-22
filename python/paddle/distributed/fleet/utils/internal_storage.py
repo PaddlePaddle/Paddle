@@ -25,7 +25,9 @@
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import framework
+
+# (TODO: GhostScreaming) It will be removed later.
 from paddle.fluid import core
 
 from ..meta_parallel.sharding.sharding_utils import Type, device_guard
@@ -111,7 +113,7 @@ class ParamStorage(InternalStorage):
         if keep_alignment:
             self._array_params()
 
-    @fluid.dygraph.no_grad
+    @framework.no_grad()
     def add_rank_params(self, trainable_params, param2align, convert_gpu=True):
         """
         Add new parameters to the InternalStorage. Params becomes a view of this InternalStorage buffer.
@@ -145,7 +147,7 @@ class ParamStorage(InternalStorage):
             self._params.append(param)
             self._param_ids.append(id(param))
 
-    @fluid.dygraph.no_grad
+    @framework.no_grad()
     def _add_param_as_view(self, param, align, convert_gpu=True):
 
         assert (
@@ -185,7 +187,7 @@ class ParamStorage(InternalStorage):
         self._fill = offset
         return p_shape
 
-    @fluid.dygraph.no_grad
+    @framework.no_grad()
     def _convert_buffer(self, param, p_shape, align):
 
         var_end = self._fill + np.prod(p_shape)
@@ -199,7 +201,7 @@ class ParamStorage(InternalStorage):
 
         self._fill = offset
 
-    @fluid.dygraph.no_grad
+    @framework.no_grad()
     def _array_params(self):
         """
         Given the parameters which have been registered previously, rebuild the whole InternalStorage.
@@ -261,7 +263,7 @@ class GradStorage(InternalStorage):
         if keep_alignment:
             self._array_grads()
 
-    @fluid.dygraph.no_grad
+    @framework.no_grad()
     def add_grad(self, param, align):
         """
         Add a new parameter gradient to the InternalStorage. Param.grad becomes a view of this InternalStorage buffer.
@@ -275,7 +277,7 @@ class GradStorage(InternalStorage):
         self._params.append(param)
         self._param_ids.append(id(param))
 
-    @fluid.dygraph.no_grad
+    @framework.no_grad()
     def manumal_relase(self):
         """
         Release the buffer from InternalStorage. The InternalStorage will need to be rebuilt before use.
@@ -291,7 +293,7 @@ class GradStorage(InternalStorage):
             self.params_checked_in = 0
             self._release = True
 
-    @fluid.dygraph.no_grad
+    @framework.no_grad()
     def rebuild(self):
         """
         Given the parameter gradients which have been registered previously, rebuild the whole InternalStorage.
@@ -305,7 +307,7 @@ class GradStorage(InternalStorage):
 
             self._release = False
 
-    @fluid.dygraph.no_grad
+    @framework.no_grad()
     def _array_grads(self):
         """
         Given the parameters gradients which have been registered previously, rebuild the whole InternalStorage.
@@ -315,7 +317,7 @@ class GradStorage(InternalStorage):
             for p in self._params:
                 self._add_grad_as_view(p, self._parm2align[p.name])
 
-    @fluid.dygraph.no_grad
+    @framework.no_grad()
     def _add_grad_as_view(self, param, align):
         assert (
             np.prod(self.buffer.shape) > 0

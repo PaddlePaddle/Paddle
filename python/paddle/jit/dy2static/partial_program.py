@@ -15,34 +15,33 @@
 import numpy as np
 
 import paddle
-from paddle.fluid import framework, backward, core, program_guard
-from paddle.fluid.executor import (
-    _is_enable_standalone_executor,
-    _is_dy2st_enable_standalone_executor,
-)
-from paddle.fluid.dygraph import layers
-from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.dygraph.dygraph_to_static import logging_utils
-from .return_transformer import (
-    RETURN_NO_VALUE_MAGIC_NUM,
-)
-from paddle.fluid.layers.utils import flatten
-from paddle.fluid.layers.utils import pack_sequence_as
-from paddle.fluid.layers.utils import _hash_with_id
+from paddle import _legacy_C_ops
+from paddle.fluid import backward, core, framework, program_guard
 from paddle.fluid.compiler import BuildStrategy
-from paddle.fluid.framework import _apply_pass
 from paddle.fluid.contrib.mixed_precision.decorator import (
     AutoMixedPrecisionLists,
 )
 from paddle.fluid.contrib.mixed_precision.fp16_utils import (
-    rewrite_program,
     cast_model_to_fp16,
+    rewrite_program,
 )
+from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.amp.auto_cast import (
     _in_amp_guard,
     _in_pure_fp16_guard,
 )
-from paddle import _legacy_C_ops
+from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle.fluid.executor import (
+    _is_dy2st_enable_standalone_executor,
+    _is_enable_standalone_executor,
+)
+from paddle.fluid.framework import _apply_pass
+from paddle.fluid.layers.utils import _hash_with_id, flatten, pack_sequence_as
+
+from . import logging_utils
+from .return_transformer import RETURN_NO_VALUE_MAGIC_NUM
+
+__all__ = []
 
 
 class NestSequence:
@@ -133,7 +132,7 @@ def _change_is_test_status(program, is_test):
 
 class PartialProgramLayer:
     """
-    PartialProgramLayer wraps all the ops from layers decorated by `@declarative`
+    PartialProgramLayer wraps all the ops from layers decorated by `@to_static`
     and execute them as a static subgraph.
 
     .. note::
@@ -144,8 +143,8 @@ class PartialProgramLayer:
 
     Args:
         main_program(Program): The main program that contains ops need to be executed.
-        inputs(list[Variable]): The input list of the decorated function by `@declarative`.
-        outputs(list[Variable]): The output list of the decorated function by `@declarative`.
+        inputs(list[Variable]): The input list of the decorated function by `@to_static`.
+        outputs(list[Variable]): The output list of the decorated function by `@to_static`.
         parameters(list[VarBase]|None): All trainable parameters included in the program. Default None.
 
     Returns:
@@ -535,7 +534,7 @@ class PartialProgramLayer:
     def _prune_unused_params(self, program):
         """
         Prune the parameters not used anywhere in the program.
-        The `@declarative` may only decorated a sub function which
+        The `@to_static` may only decorated a sub function which
         contains some unused parameters created in `__init__`.
         So prune these parameters to avoid unnecessary operations in
         `run_program_op`.

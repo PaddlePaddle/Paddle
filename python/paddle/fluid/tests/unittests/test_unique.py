@@ -20,7 +20,6 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestUniqueOp(OpTest):
@@ -74,13 +73,13 @@ class TestRandom(TestUniqueOp):
 class TestUniqueRaiseError(unittest.TestCase):
     def test_errors(self):
         def test_type():
-            fluid.layers.unique([10])
+            paddle.unique([10])
 
         self.assertRaises(TypeError, test_type)
 
         def test_dtype():
             data = fluid.data(shape=[10], dtype="float16", name="input")
-            fluid.layers.unique(data)
+            paddle.unique(data)
 
         self.assertRaises(TypeError, test_dtype)
 
@@ -261,12 +260,6 @@ class TestUniqueAPI(unittest.TestCase):
         self.assertTrue((inverse.numpy() == np_inverse).all(), True)
         self.assertTrue((counts.numpy() == np_counts).all(), True)
         paddle.enable_static()
-
-    def test_dygraph_api(self):
-        with _test_eager_guard():
-            self.test_dygraph_api_out()
-            self.test_dygraph_api_attr()
-            self.test_dygraph_attr_dtype()
 
     def test_static_graph(self):
         with paddle.static.program_guard(

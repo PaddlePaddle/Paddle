@@ -13,6 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Temporary disable isort to avoid circular import
+# This can be removed after the circular import is resolved
+# isort: skip_file
 import os
 import pickle
 import warnings
@@ -34,21 +37,17 @@ from paddle.fluid.dygraph.base import (
     program_desc_tracing_guard,
     switch_to_static_graph,
 )
-from paddle.fluid.dygraph.dygraph_to_static import logging_utils
-from paddle.jit.dy2static.convert_call_func import (
+from .dy2static import logging_utils
+from .dy2static.convert_call_func import (
     ConversionOptions,
     CONVERSION_OPTIONS,
 )
-from paddle.fluid.dygraph.dygraph_to_static.logging_utils import (
-    set_code_level,
-    set_verbosity,
-)
-from paddle.jit.dy2static.program_translator import (
+from .dy2static.program_translator import (
     ProgramTranslator,
     StaticFunction,
     unwrap_decorators,
 )
-from paddle.fluid.dygraph.io import (
+from paddle.jit.translated_layer import (
     TranslatedLayer,
     INFER_MODEL_SUFFIX,
     INFER_PARAMS_SUFFIX,
@@ -73,16 +72,7 @@ from paddle.fluid.framework import (
 from paddle.fluid.framework import dygraph_only, _non_static_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
 
-__all__ = [
-    'TracedLayer',
-    'declarative',
-    'dygraph_to_static_func',
-    'set_code_level',
-    'set_verbosity',
-    'save',
-    'load',
-    'not_to_static',
-]
+__all__ = []
 
 
 def create_program_from_desc(program_desc):
@@ -188,7 +178,7 @@ def copy_decorator_attrs(original_func, decorated_obj):
         original_func(callable): the original decorated function.
         decorated_obj(StaticFunction): the target decorated StaticFunction object.
     """
-    decorator_name = "declarative"
+    decorator_name = "to_static"
 
     decorated_obj.__name__ = original_func.__name__
     decorated_obj._decorator_name = decorator_name
@@ -200,12 +190,12 @@ def copy_decorator_attrs(original_func, decorated_obj):
     return decorated_obj
 
 
-def declarative(
+def to_static(
     function=None, input_spec=None, build_strategy=None, property=False
 ):
     """
     Converts imperative dygraph APIs into declarative function APIs. Decorator
-    @declarative handles the Program and Executor of static mode and returns
+    @to_static handles the Program and Executor of static mode and returns
     the result as dygraph Tensor(s). Users could use the returned dygraph
     Tensor(s) to do imperative training, inference, or other operations. If the
     decorated function calls other imperative function, the called one will be
@@ -274,7 +264,7 @@ def declarative(
             )
         )
 
-    # for usage: `declarative(foo, ...)`
+    # for usage: `to_static(foo, ...)`
     if function is not None:
         if isinstance(function, Layer):
             if isinstance(function.forward, StaticFunction):
@@ -289,7 +279,7 @@ def declarative(
         else:
             return decorated(function)
 
-    # for usage: `@declarative`
+    # for usage: `@to_static`
     return decorated
 
 
@@ -1018,7 +1008,7 @@ def save(layer, path, input_spec=None, **configs):
                     inner_input_spec = pack_sequence_as(
                         input_spec, inner_input_spec
                     )
-                static_forward = declarative(
+                static_forward = to_static(
                     inner_layer.forward, input_spec=inner_input_spec
                 )
                 concrete_program = (
@@ -1027,7 +1017,7 @@ def save(layer, path, input_spec=None, **configs):
                     )
                 )
                 # the input_spec has been used in declarative, which is equal to
-                # @declarative with input_spec and jit.save without input_spec,
+                # @to_static with input_spec and jit.save without input_spec,
                 # avoid needless warning
                 inner_input_spec = None
             else:
@@ -1051,7 +1041,7 @@ def save(layer, path, input_spec=None, **configs):
                     inner_input_spec = pack_sequence_as(
                         input_spec, inner_input_spec
                     )
-                static_function = declarative(
+                static_function = to_static(
                     attr_func, input_spec=inner_input_spec
                 )
                 concrete_program = static_function.concrete_program
@@ -1568,8 +1558,6 @@ class TracedLayer:
         Examples:
             .. code-block:: python:
 
-                import os
-                os.environ['FLAGS_enable_eager_mode'] = '0'
                 import paddle
 
                 class ExampleLayer(paddle.nn.Layer):
@@ -1620,8 +1608,6 @@ class TracedLayer:
         Examples:
             .. code-block:: python:
 
-                import os
-                os.environ['FLAGS_enable_eager_mode'] = '0'
                 import paddle
 
                 class ExampleLayer(paddle.nn.Layer):
@@ -1726,8 +1712,6 @@ class TracedLayer:
         Examples:
             .. code-block:: python:
 
-                import os
-                os.environ['FLAGS_enable_eager_mode'] = '0'
                 import numpy as np
                 import paddle
 

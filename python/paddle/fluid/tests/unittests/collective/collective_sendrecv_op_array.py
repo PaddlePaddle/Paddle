@@ -49,10 +49,10 @@ class TestCollectiveSendRecv(TestCollectiveRunnerBase):
                 data2 = fluid.layers.assign(
                     np.array([[0, 1, 2]], dtype='float32')
                 )
-            tensor_array = fluid.layers.create_array(dtype='float32')
+            tensor_array = paddle.tensor.create_array(dtype='float32')
             i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
-            fluid.layers.array_write(data1, i, tensor_array)
-            fluid.layers.array_write(data2, i + 1, tensor_array)
+            paddle.tensor.array_write(data1, i, tensor_array)
+            paddle.tensor.array_write(data2, i + 1, tensor_array)
             if self.rank == 0:
                 main_prog.global_block().append_op(
                     type="send_v2",

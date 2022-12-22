@@ -13,40 +13,30 @@
 # limitations under the License.
 
 import copy
+from collections import defaultdict
+
+from paddle.fluid import unique_name
 from paddle.utils import gast
 
-from collections import defaultdict
-from paddle.fluid import unique_name
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
-    AstNodeWrapper,
-)
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import NodeVarType
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
-    StaticAnalysisVisitor,
-)
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
-from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
-    create_nonlocal_stmt_nodes,
-    create_get_args_node,
-    create_set_args_node,
-)
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
-    FunctionNameLivenessAnalysis,
-)
-from .ifelse_transformer import ARGS_NAME
 from .base_transformer import (
     BaseTransformer,
     ForLoopTuplePreTransformer,
     ForNodeVisitor,
 )
-
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
+from .ifelse_transformer import ARGS_NAME
+from .static_analysis import AstNodeWrapper, NodeVarType, StaticAnalysisVisitor
+from .utils import (
+    FunctionNameLivenessAnalysis,
     GetterSetterHelper,
+    ast_to_source_code,
+    create_get_args_node,
     create_name_str,
+    create_nonlocal_stmt_nodes,
+    create_set_args_node,
+    get_attribute_full_name,
 )
 
-__all__ = ['LoopTransformer', 'NameVisitor']
+__all__ = []
 
 WHILE_CONDITION_PREFIX = 'while_condition'
 WHILE_BODY_PREFIX = 'while_body'

@@ -19,12 +19,10 @@ from test_lac import DynamicGRU
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Embedding
-from paddle.nn import Linear
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph.nn import Embedding, Linear
 from paddle.jit import ProgramTranslator
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
+from paddle.nn import Embedding, Linear
 
 SEED = 2020
 program_translator = ProgramTranslator()
@@ -74,9 +72,9 @@ class CNN(fluid.dygraph.Layer):
         self.batch_size = batch_size
         self.seq_len = seq_len
         self.embedding = Embedding(
-            size=[self.dict_dim + 1, self.emb_dim],
-            dtype='float32',
-            is_sparse=False,
+            self.dict_dim + 1,
+            self.emb_dim,
+            sparse=False,
         )
         self._simple_conv_pool_1 = SimpleConvPool(
             self.channels,
@@ -91,7 +89,7 @@ class CNN(fluid.dygraph.Layer):
         self._fc1_act = paddle.nn.Softmax()
         self._fc_prediction = Linear(self.fc_hid_dim, self.class_dim)
 
-    @declarative
+    @to_static
     def forward(self, inputs, label=None):
         emb = self.embedding(inputs)
         o_np_mask = (paddle.reshape(inputs, [-1, 1]) != self.dict_dim).astype(
@@ -108,9 +106,11 @@ class CNN(fluid.dygraph.Layer):
         prediction = self._fc_prediction(fc_1)
         prediction = self._fc1_act(prediction)
 
-        cost = fluid.layers.cross_entropy(input=prediction, label=label)
+        cost = paddle.nn.functional.cross_entropy(
+            input=prediction, label=label, reduction='none', use_softmax=False
+        )
         avg_cost = paddle.mean(x=cost)
-        acc = fluid.layers.accuracy(input=prediction, label=label)
+        acc = paddle.static.accuracy(input=prediction, label=label)
         return avg_cost, prediction, acc
 
 
@@ -125,15 +125,15 @@ class BOW(fluid.dygraph.Layer):
         self.batch_size = batch_size
         self.seq_len = seq_len
         self.embedding = Embedding(
-            size=[self.dict_dim + 1, self.emb_dim],
-            dtype='float32',
-            is_sparse=False,
+            self.dict_dim + 1,
+            self.emb_dim,
+            sparse=False,
         )
         self._fc1 = Linear(self.hid_dim, self.hid_dim)
         self._fc2 = Linear(self.hid_dim, self.fc_hid_dim)
         self._fc_prediction = Linear(self.fc_hid_dim, self.class_dim)
 
-    @declarative
+    @to_static
     def forward(self, inputs, label=None):
         emb = self.embedding(inputs)
         o_np_mask = (paddle.reshape(inputs, [-1, 1]) != self.dict_dim).astype(
@@ -151,9 +151,11 @@ class BOW(fluid.dygraph.Layer):
         prediction = self._fc_prediction(fc_2)
         prediction = paddle.nn.functional.softmax(prediction)
 
-        cost = fluid.layers.cross_entropy(input=prediction, label=label)
+        cost = paddle.nn.functional.cross_entropy(
+            input=prediction, label=label, reduction='none', use_softmax=False
+        )
         avg_cost = paddle.mean(x=cost)
-        acc = fluid.layers.accuracy(input=prediction, label=label)
+        acc = paddle.static.accuracy(input=prediction, label=label)
         return avg_cost, prediction, acc
 
 
@@ -168,10 +170,10 @@ class GRU(fluid.dygraph.Layer):
         self.batch_size = batch_size
         self.seq_len = seq_len
         self.embedding = Embedding(
-            size=[self.dict_dim + 1, self.emb_dim],
-            dtype='float32',
-            param_attr=fluid.ParamAttr(learning_rate=30),
-            is_sparse=False,
+            self.dict_dim + 1,
+            self.emb_dim,
+            weight_attr=fluid.ParamAttr(learning_rate=30),
+            sparse=False,
         )
         h_0 = np.zeros((self.batch_size, self.hid_dim), dtype="float32")
         h_0 = to_variable(h_0)
@@ -180,7 +182,7 @@ class GRU(fluid.dygraph.Layer):
         self._fc_prediction = Linear(self.fc_hid_dim, self.class_dim)
         self._gru = DynamicGRU(size=self.hid_dim, h_0=h_0)
 
-    @declarative
+    @to_static
     def forward(self, inputs, label=None):
         emb = self.embedding(inputs)
         o_np_mask = (paddle.reshape(inputs, [-1, 1]) != self.dict_dim).astype(
@@ -197,9 +199,11 @@ class GRU(fluid.dygraph.Layer):
         fc_2 = paddle.tanh(fc_2)
         prediction = self._fc_prediction(fc_2)
         prediction = paddle.nn.functional.softmax(prediction)
-        cost = fluid.layers.cross_entropy(input=prediction, label=label)
+        cost = paddle.nn.functional.cross_entropy(
+            input=prediction, label=label, reduction='none', use_softmax=False
+        )
         avg_cost = paddle.mean(x=cost)
-        acc = fluid.layers.accuracy(input=prediction, label=label)
+        acc = paddle.static.accuracy(input=prediction, label=label)
         return avg_cost, prediction, acc
 
 
@@ -214,10 +218,10 @@ class BiGRU(fluid.dygraph.Layer):
         self.batch_size = batch_size
         self.seq_len = seq_len
         self.embedding = Embedding(
-            size=[self.dict_dim + 1, self.emb_dim],
-            dtype='float32',
-            param_attr=fluid.ParamAttr(learning_rate=30),
-            is_sparse=False,
+            self.dict_dim + 1,
+            self.emb_dim,
+            weight_attr=fluid.ParamAttr(learning_rate=30),
+            sparse=False,
         )
         h_0 = np.zeros((self.batch_size, self.hid_dim), dtype="float32")
         h_0 = to_variable(h_0)
@@ -231,7 +235,7 @@ class BiGRU(fluid.dygraph.Layer):
             size=self.hid_dim, h_0=h_0, is_reverse=True
         )
 
-    @declarative
+    @to_static
     def forward(self, inputs, label=None):
         emb = self.embedding(inputs)
         o_np_mask = (paddle.reshape(inputs, [-1, 1]) != self.dict_dim).astype(
@@ -256,9 +260,11 @@ class BiGRU(fluid.dygraph.Layer):
         prediction = paddle.nn.functional.softmax(prediction)
         # TODO(Aurelius84): Uncomment the following codes when we support return variable-length vars.
         # if label is not None:
-        cost = fluid.layers.cross_entropy(input=prediction, label=label)
+        cost = paddle.nn.functional.cross_entropy(
+            input=prediction, label=label, reduction='none', use_softmax=False
+        )
         avg_cost = paddle.mean(x=cost)
-        acc = fluid.layers.accuracy(input=prediction, label=label)
+        acc = paddle.static.accuracy(input=prediction, label=label)
         return avg_cost, prediction, acc
         # else:
         #     return prediction
@@ -389,5 +395,4 @@ class TestSentiment(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

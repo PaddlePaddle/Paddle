@@ -17,7 +17,6 @@ import unittest
 
 import numpy as np
 import seresnext_net
-from fake_reader import fake_imdb_reader
 from simple_nets import fc_with_batchnorm, init_data, simple_fc_net
 from test_parallel_executor_transformer import (
     DeviceType,
@@ -28,35 +27,6 @@ from test_parallel_executor_transformer import (
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-
-
-def lstm_net(use_feed):
-    dict_dim = 5147
-    emb_dim = 128
-    hid_dim = 128
-    hid_dim2 = 96
-    class_dim = 2
-    emb_lr = 30.0
-    data = fluid.layers.data(
-        name="words", shape=[1], dtype="int64", lod_level=1
-    )
-    label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-    emb = fluid.layers.embedding(
-        input=data,
-        size=[dict_dim, emb_dim],
-        param_attr=fluid.ParamAttr(learning_rate=emb_lr),
-    )
-    fc0 = fluid.layers.fc(input=emb, size=hid_dim * 4)
-    lstm_h, c = fluid.layers.dynamic_lstm(
-        input=fc0, size=hid_dim * 4, is_reverse=False
-    )
-    lstm_max = fluid.layers.sequence_pool(input=lstm_h, pool_type='max')
-    lstm_max_tanh = paddle.tanh(lstm_max)
-    fc1 = fluid.layers.fc(input=lstm_max_tanh, size=hid_dim2, act='tanh')
-    prediction = fluid.layers.fc(input=fc1, size=class_dim, act='softmax')
-    cost = fluid.layers.cross_entropy(input=prediction, label=label)
-    avg_cost = paddle.mean(x=cost)
-    return avg_cost
 
 
 def simple_fc_net_with_accuracy(use_feed):
@@ -74,9 +44,11 @@ def simple_fc_net_with_accuracy(use_feed):
             ),
         )
     prediction = fluid.layers.fc(hidden, size=10, act='softmax')
-    loss = fluid.layers.cross_entropy(input=prediction, label=label)
+    loss = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
     loss = paddle.mean(loss)
-    accuracy_out = fluid.layers.accuracy(input=prediction, label=label, k=5)
+    accuracy_out = paddle.static.accuracy(input=prediction, label=label, k=5)
     return loss
 
 
@@ -87,18 +59,22 @@ def cond_net(use_feed=None):
 
     def loss1(pred, label):
         x = fluid.layers.data(name="x", shape=[4], dtype='float32')
-        loss = fluid.layers.cross_entropy(input=pred, label=label)
+        loss = paddle.nn.functional.cross_entropy(
+            input=pred, label=label, reduction='none', use_softmax=False
+        )
         avg_loss = paddle.mean(loss, name='mean_cross_entropy_loss')
         return avg_loss
 
     def loss2(pred, label):
-        loss = fluid.layers.softmax_with_cross_entropy(logits=pred, label=label)
+        loss = paddle.nn.functional.softmax_with_cross_entropy(
+            logits=pred, label=label
+        )
         avg_loss = paddle.mean(loss, name='mean_softmax_loss')
         return avg_loss
 
     two = fluid.layers.fill_constant([1], 'int32', 2)
     pred = two == 0
-    avg_loss = fluid.layers.case(
+    avg_loss = paddle.static.nn.case(
         [(pred, lambda: loss1(prediction, label))],
         lambda: loss2(prediction, label),
     )
@@ -112,14 +88,18 @@ def optimization_in_cond_net(with_optimize=False):
 
     def loss1(opt, pred, label, with_optimize):
         x = fluid.layers.data(name="x", shape=[4], dtype='float32')
-        loss = fluid.layers.cross_entropy(input=pred, label=label)
+        loss = paddle.nn.functional.cross_entropy(
+            input=pred, label=label, reduction='none', use_softmax=False
+        )
         avg_loss = paddle.mean(loss, name='mean_cross_entropy_loss')
         if with_optimize:
             opt.minimize(avg_loss)
         return avg_loss
 
     def loss2(opt, pred, label, with_optimize):
-        loss = fluid.layers.softmax_with_cross_entropy(logits=pred, label=label)
+        loss = paddle.nn.functional.softmax_with_cross_entropy(
+            logits=pred, label=label
+        )
         avg_loss = paddle.mean(loss, name='mean_softmax_loss')
         if with_optimize:
             opt.minimize(avg_loss)
@@ -128,7 +108,7 @@ def optimization_in_cond_net(with_optimize=False):
     sgd = fluid.optimizer.SGD(learning_rate=0.1)
     two = fluid.layers.fill_constant([1], 'int32', 2)
     pred = two == 0
-    avg_loss = fluid.layers.case(
+    avg_loss = paddle.static.nn.case(
         [(pred, lambda: loss1(sgd, prediction, label, with_optimize))],
         lambda: loss2(sgd, prediction, label, with_optimize),
     )
@@ -254,29 +234,6 @@ class TestProgramPruneBackward(unittest.TestCase):
             )
             self.check_prune_correctness(
                 method=transformer, feed_dict=feed_dict, optimizer=optimizer
-            )
-
-    def test_lstm(self):
-        def optimizer():
-            optimizer = fluid.optimizer.Adagrad(
-                learning_rate=0.001,
-                regularization=fluid.regularizer.L2Decay(1e-4),
-            )
-            return optimizer
-
-        with self.program_scope_guard():
-            word_dict_size = 5147
-            reader = fake_imdb_reader(word_dict_size, 1)
-            data = fluid.layers.data(
-                name="words", shape=[1], dtype="int64", lod_level=1
-            )
-            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-            feeder = fluid.DataFeeder(
-                feed_list=[data, label], place=core.CPUPlace()
-            )
-            feed_data = feeder.feed(reader())
-            self.check_prune_correctness(
-                method=lstm_net, feed_dict=feed_data, optimizer=optimizer
             )
 
     def test_cond(self):

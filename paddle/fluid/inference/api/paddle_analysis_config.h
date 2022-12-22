@@ -247,8 +247,12 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \param memory_pool_init_size_mb initial size of the GPU memory pool in MB.
   /// \param device_id device_id the GPU card to use (default is 0).
+  /// \param precision the precision used in Paddle-GPU inference.
   ///
-  void EnableUseGpu(uint64_t memory_pool_init_size_mb, int device_id = 0);
+  void EnableUseGpu(uint64_t memory_pool_init_size_mb,
+                    int device_id = 0,
+                    Precision precision_mode = Precision::kFloat32);
+
   ///
   /// \brief Turn off GPU.
   ///
@@ -575,6 +579,20 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return bool Whether the TensorRT engine is used.
   ///
   bool tensorrt_engine_enabled() const { return use_tensorrt_; }
+  ///
+  /// \brief Turn on the TensorRT memory optimization.
+  ///
+  /// \param engine_memory_sharing Whether to enable TensorRT memory
+  /// optimization.
+  /// \param sharing_identifier This parameter can be set if TensorRT memory
+  /// optimization is enabled, and the value must be greater than 0. If you have
+  /// multiple predictors that want to share memory, you can specify a
+  /// same value for these predictors. NOTE: The predictors specified with the
+  /// same value must be guaranteed to be executed serially, otherwise undefined
+  /// behavior will occur.
+  ///
+  void EnableTensorRTMemoryOptim(bool engine_memory_sharing = true,
+                                 int sharing_identifier = 0);
   ///
   /// \brief A boolean state telling whether the tensorrt engine memory sharing
   /// is activated.
@@ -991,12 +1009,25 @@ struct PD_INFER_DECL AnalysisConfig {
   /// interface is in the experimental stage and may change in the future. Note
   /// that the blacklist must be the same as the model conversion blacklist.
   ///
-  void Exp_SetBlackListOpsForMixedModel(
+  void Exp_DisableMixedPrecisionOps(
       const std::unordered_set<std::string>& black_list);
 
   void SetApplyOptim(bool value) { apply_optim_ = value; }
 
   void SetSkipLoadParams(bool value) { skip_load_params_ = value; }
+
+  ///
+  /// \brief Enable use cinn compiler optimization.
+  ///
+  void Exp_EnableCINNCompiler();
+
+  ///
+  /// \brief A boolean state telling whether the CINN compiler optimization is
+  /// turned on.
+  ///
+  /// \return bool Whether the CINN compiler optimization is turned on.
+  ///
+  bool cinn_compiler_enabled() const;
 
  protected:
   // Update the config.
@@ -1010,13 +1041,15 @@ struct PD_INFER_DECL AnalysisConfig {
   mutable std::string prog_file_;
   mutable std::string params_file_;
 
-  // Mixed precision.
+  // Mixed precision related.
+  Precision mixed_precision_mode_{Precision::kFloat32};
   std::unordered_set<std::string> mixed_black_list_;
 
   // GPU related.
   bool use_gpu_{false};
   int gpu_device_id_{0};
   uint64_t memory_pool_init_size_mb_{100};  // initial size is 100MB.
+  bool enable_gpu_mixed_{false};
   bool thread_local_stream_{false};
 
   bool use_cudnn_{false};
@@ -1093,6 +1126,7 @@ struct PD_INFER_DECL AnalysisConfig {
   // memory reuse related.
   bool enable_memory_optim_{false};
   bool trt_engine_memory_sharing_{false};
+  int trt_engine_memory_sharing_identifier_{0};
 
   bool use_mkldnn_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
@@ -1121,6 +1155,9 @@ struct PD_INFER_DECL AnalysisConfig {
   std::vector<std::string> lite_ops_filter_;
   Precision lite_precision_mode_;
   bool lite_zero_copy_;
+
+  // CINN compiler related.
+  bool use_cinn_compiler_{false};
 
   // XPU related.
   bool use_xpu_{false};
@@ -1151,6 +1188,7 @@ struct PD_INFER_DECL AnalysisConfig {
       "concat",
       "conv2d",
       "depthwise_conv2d",
+      "fused_conv2d",
       "elementwise_add",
       "elementwise_mul",
       "fc",

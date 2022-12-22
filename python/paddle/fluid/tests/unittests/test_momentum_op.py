@@ -21,7 +21,6 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.op import Operator
 
 
@@ -532,7 +531,9 @@ class TestMomentumV2(unittest.TestCase):
             x = fluid.layers.data(name='x', shape=[13], dtype='float32')
             y = fluid.layers.data(name='y', shape=[1], dtype='float32')
             y_predict = fluid.layers.fc(input=x, size=1, act=None)
-            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
             rms_optimizer = paddle.optimizer.Momentum(
@@ -555,11 +556,6 @@ class TestMomentumV2(unittest.TestCase):
             ValueError, paddle.optimizer.Momentum, learning_rate=None
         )
         self.assertRaises(ValueError, paddle.optimizer.Momentum, momentum=None)
-
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_momentum_dygraph()
-            self.test_raise_error()
 
 
 class TestMomentumOpWithDecay(OpTest):
@@ -673,7 +669,9 @@ class TestMomentumOpWithDecayAPI(unittest.TestCase):
             x = fluid.layers.data(name='x', shape=[13], dtype='float32')
             y = fluid.layers.data(name='y', shape=[1], dtype='float32')
             y_predict = fluid.layers.fc(input=x, size=1, act=None)
-            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
             momentum_optimizer = paddle.fluid.contrib.optimizer.Momentum(
@@ -991,10 +989,6 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
                 self._check_with_place_amp(place, use_amp)
                 self._check_with_param_arrt(place, use_amp)
                 self._check_with_param_group(place, use_amp)
-
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_main()
 
 
 class TestMultiTensorMomentumStatic(unittest.TestCase):

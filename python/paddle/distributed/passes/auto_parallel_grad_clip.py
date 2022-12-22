@@ -12,27 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 from functools import reduce
 
-import paddle
+import numpy as np
 
-from .pass_base import PassBase, register_pass
-from ..auto_parallel.reshard import Resharder
+import paddle
+from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
+
+from ..auto_parallel.dist_attribute import (
+    OperatorDistributedAttribute,
+    TensorDistributedAttribute,
+)
 from ..auto_parallel.process_group import get_world_process_group
+from ..auto_parallel.reshard import Resharder
 from ..auto_parallel.utils import (
-    is_gradient_clip_op,
-    is_optimize_op,
-    OP_ROLE_KEY,
-    OpRole,
     _get_comm_group,
     insert_dependencies_for_two_vars,
+    is_gradient_clip_op,
+    is_optimize_op,
     use_standalone_executor,
 )
-from ..auto_parallel.dist_attribute import (
-    TensorDistributedAttribute,
-    OperatorDistributedAttribute,
-)
+from .pass_base import PassBase, register_pass
 
 
 def _get_params_grads(block):

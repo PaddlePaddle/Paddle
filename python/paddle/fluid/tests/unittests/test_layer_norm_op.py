@@ -341,7 +341,7 @@ class TestLayerNormAPI(unittest.TestCase):
             dtype='float32',
             append_batch_size=False,
         )
-        x = fluid.layers.layer_norm(
+        x = paddle.static.nn.layer_norm(
             x,
             scale=True,
             shift=True,
@@ -350,7 +350,7 @@ class TestLayerNormAPI(unittest.TestCase):
             param_attr=None,
             bias_attr=None,
         )
-        x = fluid.layers.layer_norm(
+        x = paddle.static.nn.layer_norm(
             x,
             scale=False,
             shift=False,
@@ -359,7 +359,7 @@ class TestLayerNormAPI(unittest.TestCase):
             param_attr=None,
             bias_attr=None,
         )
-        x = fluid.layers.layer_norm(
+        x = paddle.static.nn.layer_norm(
             x,
             scale=False,
             shift=False,
@@ -375,7 +375,7 @@ class TestDygraphLayerNormAPIError(unittest.TestCase):
         with program_guard(Program(), Program()):
             paddle.enable_static()
 
-            layer_norm = fluid.LayerNorm([32, 32])
+            layer_norm = paddle.nn.LayerNorm([32, 32])
             # the input of LayerNorm must be Variable.
             x1 = np.random.random((3, 32, 32)).astype('float32')
             self.assertRaises(TypeError, layer_norm, x1)

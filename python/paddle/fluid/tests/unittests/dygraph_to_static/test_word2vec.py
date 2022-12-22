@@ -14,16 +14,15 @@
 
 import math
 import random
-import paddle
-import numpy as np
-import paddle
-import paddle.fluid as fluid
 import unittest
 
+import numpy as np
+
 import paddle
-from paddle.fluid.dygraph.nn import Embedding
+import paddle.fluid as fluid
 from paddle.jit import ProgramTranslator
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
+from paddle.nn import Embedding
 
 
 def fake_text():
@@ -228,9 +227,9 @@ class SkipGram(fluid.dygraph.Layer):
         self.embedding_size = embedding_size
 
         self.embedding = Embedding(
-            size=[self.vocab_size, self.embedding_size],
-            dtype='float32',
-            param_attr=fluid.ParamAttr(
+            self.vocab_size,
+            self.embedding_size,
+            weight_attr=fluid.ParamAttr(
                 name='embedding_para',
                 initializer=fluid.initializer.UniformInitializer(
                     low=-0.5 / self.embedding_size,
@@ -240,9 +239,9 @@ class SkipGram(fluid.dygraph.Layer):
         )
 
         self.embedding_out = Embedding(
-            size=[self.vocab_size, self.embedding_size],
-            dtype='float32',
-            param_attr=fluid.ParamAttr(
+            self.vocab_size,
+            self.embedding_size,
+            weight_attr=fluid.ParamAttr(
                 name='embedding_out_para',
                 initializer=fluid.initializer.UniformInitializer(
                     low=-0.5 / self.embedding_size,
@@ -251,7 +250,7 @@ class SkipGram(fluid.dygraph.Layer):
             ),
         )
 
-    @declarative
+    @to_static
     def forward(self, center_words, target_words, label):
         center_words_emb = self.embedding(center_words)
         target_words_emb = self.embedding_out(target_words)
@@ -266,7 +265,7 @@ class SkipGram(fluid.dygraph.Layer):
         loss = paddle.nn.functional.binary_cross_entropy_with_logits(
             word_sim, label
         )
-        loss = fluid.layers.reduce_mean(loss)
+        loss = paddle.mean(loss)
 
         return pred, loss
 
@@ -333,5 +332,4 @@ class TestWord2Vec(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

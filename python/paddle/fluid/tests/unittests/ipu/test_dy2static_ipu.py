@@ -48,11 +48,10 @@ class SimpleLayer(paddle.nn.Layer):
         x = paddle.flatten(x, 1, -1)
         if target is not None:
             if self.use_softmax:
-                x = paddle.fluid.layers.softmax(x)
-            if self.loss_op:
-                loss = self.loss_op(x, target)
-            else:
-                loss = paddle.fluid.layers.cross_entropy(x, target)
+                x = paddle.nn.functional.softmax(x)
+            loss = paddle.paddle.nn.functional.cross_entropy(
+                x, target, reduction='none', use_softmax=False
+            )
             if self.use_reduction:
                 loss = paddle.mean(loss)
             if self.use_identity_loss:
@@ -67,7 +66,7 @@ class TestBase(IPUD2STest):
         self.set_data_feed()
 
     def set_op_attrs(self):
-        self.loss_op = paddle.fluid.layers.cross_entropy
+        pass
 
     def set_data_feed(self):
         self.data = paddle.uniform((8, 3, 10, 10), dtype='float32')
@@ -220,7 +219,7 @@ class TestWithoutIdentityLoss1(TestBase):
 
 class TestWithoutIdentityLoss2(TestBase):
     def set_op_attrs(self):
-        self.loss_op = paddle.fluid.layers.softmax_with_cross_entropy
+        self.loss_op = paddle.paddle.nn.functional.softmax_with_cross_entropy
 
     def set_data_feed(self):
         self.data = paddle.uniform((8, 3, 10, 10), dtype='float32')

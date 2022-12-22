@@ -15,49 +15,36 @@
 import copy
 from collections import defaultdict
 
+from paddle.fluid import unique_name
+from paddle.jit.dy2static.static_analysis import AstNodeWrapper
+from paddle.jit.dy2static.utils import (
+    FOR_ITER_INDEX_PREFIX,
+    FOR_ITER_ITERATOR_PREFIX,
+    FOR_ITER_TARGET_PREFIX,
+    FOR_ITER_TUPLE_INDEX_PREFIX,
+    FOR_ITER_TUPLE_PREFIX,
+    FOR_ITER_VAR_LEN_PREFIX,
+    FOR_ITER_VAR_NAME_PREFIX,
+    FOR_ITER_ZIP_TO_LIST_PREFIX,
+    FunctionNameLivenessAnalysis,
+    GetterSetterHelper,
+    ast_to_source_code,
+    create_funcDef_node,
+    create_get_args_node,
+    create_name_str,
+    create_nonlocal_stmt_nodes,
+    create_set_args_node,
+)
+
 # gast is a generic AST to represent Python2 and Python3's Abstract Syntax Tree(AST).
 # It provides a compatibility layer between the AST of various Python versions,
 # as produced by ast.parse from the standard ast module.
 # See details in https://github.com/serge-sans-paille/gast/
 from paddle.utils import gast
-from paddle.fluid import unique_name
 
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
-    create_funcDef_node,
-    ast_to_source_code,
-)
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
-    FunctionNameLivenessAnalysis,
-)
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
-    AstNodeWrapper,
-)
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
-    create_nonlocal_stmt_nodes,
-)
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
-    create_get_args_node,
-    create_set_args_node,
-)
-from .base_transformer import (
-    BaseTransformer,
-)
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
-    FOR_ITER_INDEX_PREFIX,
-    FOR_ITER_TUPLE_PREFIX,
-    FOR_ITER_TUPLE_INDEX_PREFIX,
-    FOR_ITER_VAR_LEN_PREFIX,
-    FOR_ITER_VAR_NAME_PREFIX,
-    FOR_ITER_ZIP_TO_LIST_PREFIX,
-    FOR_ITER_TARGET_PREFIX,
-    FOR_ITER_ITERATOR_PREFIX,
-)
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
-    GetterSetterHelper,
-    create_name_str,
-)
+from .base_transformer import BaseTransformer
 
-__all__ = ['IfElseTransformer']
+__all__ = []
 
 TRUE_FUNC_PREFIX = 'true_fn'
 FALSE_FUNC_PREFIX = 'false_fn'

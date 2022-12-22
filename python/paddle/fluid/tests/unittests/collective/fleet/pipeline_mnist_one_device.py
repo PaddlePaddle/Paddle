@@ -92,13 +92,15 @@ class TestDistMnist2x2(TestDistRunnerBase):
             # Train program
             predict = cnn_model(images)
         with fluid.device_guard("gpu:0"):
-            cost = fluid.layers.cross_entropy(input=predict, label=label)
+            cost = paddle.nn.functional.cross_entropy(
+                input=predict, label=label, reduction='none', use_softmax=False
+            )
             avg_cost = paddle.mean(x=cost)
 
         # Evaluator
         with fluid.device_guard("gpu:0"):
-            batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
-            batch_acc = fluid.layers.accuracy(
+            batch_size_tensor = paddle.tensor.create_tensor(dtype='int64')
+            batch_acc = paddle.static.accuracy(
                 input=predict, label=label, total=batch_size_tensor
             )
 

@@ -12,16 +12,13 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/platform/mkldnn_reuse.h"
-#include "paddle/phi/kernels/funcs/transpose_functor.h"
+#include "paddle/phi/backends/onednn/onednn_reuse.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using phi::DataLayout;
 using phi::OneDNNContext;
 
@@ -37,8 +34,8 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const auto& dnnl_engine = dev_ctx.GetEngine();
     std::vector<int> transpose_axis = ctx.Attr<std::vector<int>>("axis");
     int ndims = transpose_axis.size();
-    const phi::DenseTensor* x = ctx.Input<Tensor>("X");
-    auto* out = ctx.Output<Tensor>("Out");
+    const phi::DenseTensor* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     auto& astream = OneDNNContext::tls().get_stream();
 
@@ -122,8 +119,9 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
                       paddle::platform::errors::PreconditionNotMet(
                           "Operator DNNL TransposeGrad must use CPUPlace"));
 
-    const auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    const auto* dout =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     if (!dx) return;
     auto& dev_ctx = ctx.template device_context<OneDNNContext>();
     const auto& dnnl_engine = dev_ctx.GetEngine();
@@ -167,10 +165,10 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(transpose,
                    MKLDNN,
-                   ::paddle::platform::CPUPlace,
+                   ::phi::CPUPlace,
                    ops::TransposeMKLDNNOpKernel<float>);
 
 REGISTER_OP_KERNEL(transpose_grad,
                    MKLDNN,
-                   ::paddle::platform::CPUPlace,
+                   ::phi::CPUPlace,
                    ops::TransposeMKLDNNGradOpKernel<float>);

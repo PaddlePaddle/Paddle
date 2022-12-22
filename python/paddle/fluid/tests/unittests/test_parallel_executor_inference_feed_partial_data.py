@@ -16,7 +16,9 @@ import unittest
 
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
+import paddle.nn.functional as F
 
 
 class TestInferencePartialFeed(unittest.TestCase):
@@ -37,9 +39,9 @@ class TestInferencePartialFeed(unittest.TestCase):
             else:
                 lr = fluid.data(name='lr', shape=[None], dtype='float32')
 
-            relu_x = fluid.layers.relu(x)
-            relu_y = fluid.layers.relu(y)
-            relu_lr = fluid.layers.relu(lr)
+            relu_x = F.relu(x)
+            relu_y = F.relu(y)
+            relu_lr = F.relu(lr)
 
         exe = fluid.Executor(places[0])
         exe.run(startup_prog)
@@ -183,7 +185,7 @@ class TestInferencePartialFeedUsingDataLoader(unittest.TestCase):
             feed_list=[x], capacity=16, iterable=iterable, drop_last=drop_last
         )
         y = fluid.layers.fc(x, size=10)
-        loss = fluid.layers.reduce_mean(y)
+        loss = paddle.mean(y)
 
         exe = fluid.Executor(places[0])
         exe.run(fluid.default_startup_program())

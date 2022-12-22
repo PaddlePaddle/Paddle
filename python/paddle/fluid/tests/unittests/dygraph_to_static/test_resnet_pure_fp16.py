@@ -75,10 +75,12 @@ def train(to_static, build_strategy=None):
                 level='O2',
             ):
                 pred = resnet(img)
-                loss = fluid.layers.cross_entropy(input=pred, label=label)
+                loss = paddle.nn.functional.cross_entropy(
+                    input=pred, label=label, reduction='none', use_softmax=False
+                )
             avg_loss = paddle.mean(x=pred)
-            acc_top1 = fluid.layers.accuracy(input=pred, label=label, k=1)
-            acc_top5 = fluid.layers.accuracy(input=pred, label=label, k=5)
+            acc_top1 = paddle.static.accuracy(input=pred, label=label, k=1)
+            acc_top5 = paddle.static.accuracy(input=pred, label=label, k=5)
 
             scaled = scaler.scale(avg_loss)
             scaled.backward()
@@ -136,5 +138,4 @@ class TestResnet(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

@@ -16,11 +16,10 @@ import unittest
 
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
+import paddle.nn.functional as F
 from paddle import _legacy_C_ops
-from paddle.fluid.framework import in_dygraph_mode
-from paddle.jit.api import TracedLayer
 
 
 class TestTracedLayer(fluid.dygraph.Layer):
@@ -45,7 +44,7 @@ class TestVariable(unittest.TestCase):
             y = fluid.dygraph.to_variable(b)
             x.stop_gradient = False
 
-            res1 = layers.elementwise_add(x, y)
+            res1 = paddle.add(x, y)
             res2 = _legacy_C_ops.elementwise_add(x, y)
 
             np.testing.assert_array_equal(res1.numpy(), res2.numpy())
@@ -57,7 +56,7 @@ class TestVariable(unittest.TestCase):
             x = fluid.dygraph.to_variable(a)
             y = fluid.dygraph.to_variable(b)
 
-            res1 = layers.elementwise_mul(x, y)
+            res1 = paddle.multiply(x, y)
             res2 = _legacy_C_ops.elementwise_mul(x, y)
 
             np.testing.assert_array_equal(res1.numpy(), res2.numpy())
@@ -67,7 +66,7 @@ class TestVariable(unittest.TestCase):
             a = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
             x = fluid.dygraph.to_variable(a)
 
-            res1 = layers.relu(x)
+            res1 = F.relu(x)
             res2 = _legacy_C_ops.relu(x)
 
             np.testing.assert_array_equal(res1.numpy(), res2.numpy())
@@ -91,20 +90,6 @@ class TestVariable(unittest.TestCase):
             np.testing.assert_array_equal(x_grad, loss.gradient() * b)
             np.testing.assert_array_equal(y_grad, loss.gradient() * a)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
-
-    def test_traced_layer(self):
-        if in_dygraph_mode():
-            return
-        with fluid.dygraph.guard():
-            layer = TestTracedLayer("test_traced_layer")
-            a = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
-            x = fluid.dygraph.to_variable(a)
-            res_dygraph, static_layer = TracedLayer.trace(
-                layer, inputs=x
-            )  # dygraph out
-            res_static_graph = static_layer([x])[0]
-
-            np.testing.assert_array_equal(res_dygraph.numpy(), res_static_graph)
 
 
 if __name__ == '__main__':

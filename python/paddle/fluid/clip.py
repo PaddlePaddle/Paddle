@@ -119,6 +119,8 @@ class ErrorClipByValue(BaseErrorClipAttr):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
             BATCH_SIZE = 128
             CLIP_MAX = 2e-6
             CLIP_MIN = -1e-6
@@ -131,12 +133,14 @@ class ErrorClipByValue(BaseErrorClipAttr):
                 predict = fluid.layers.fc(
                     input=hidden2, size=10, act='softmax')
                 label = fluid.layers.data(name='y', shape=[1], dtype='int64')
-                cost = fluid.layers.cross_entropy(input=predict, label=label)
-                avg_cost = fluid.layers.mean(cost)
+                cost = paddle.nn.functional.cross_entropy(input=predict, label=label, reduction='none', use_softmax=False)
+                avg_cost = paddle.mean(cost)
             prog_clip = prog.clone()
             prog_clip.block(0).var(hidden1.name)._set_error_clip(
                 fluid.clip.ErrorClipByValue(
-                    max=CLIP_MAX, min=CLIP_MIN)
+                    max=CLIP_MAX, min=CLIP_MIN
+                )
+            )
     """
 
     def __init__(self, max, min=None):

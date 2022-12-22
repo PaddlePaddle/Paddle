@@ -153,7 +153,7 @@ class RecurrentOpTest1(unittest.TestCase):
             x_t = rnn.step_input(x)
 
             h = paddle.scale(
-                x=layers.elementwise_add(x=h_pre, y=x_t),
+                x=paddle.add(x=h_pre, y=x_t),
                 scale=self.py_rnn.scale,
             )
 
@@ -317,9 +317,7 @@ class RecurrentOpTest2(RecurrentOpTest1):
                 bias_attr=False,
             )
 
-            h = paddle.nn.functional.sigmoid(
-                x=layers.elementwise_add(x=temp_l, y=temp_r)
-            )
+            h = paddle.nn.functional.sigmoid(x=paddle.add(x=temp_l, y=temp_r))
 
             rnn.update_memory(h_pre, h)
             rnn.output(h)
@@ -491,7 +489,7 @@ class RecurrentOpNoMemBootTest(RecurrentOpTest1):
         with rnn.step():
             mem_pre = rnn.memory(shape=[-1, self.input_dim], batch_ref=x)
             x_t = rnn.step_input(x)
-            mem = layers.elementwise_add(x=mem_pre, y=x_t)
+            mem = paddle.add(x=mem_pre, y=x_t)
             rnn.update_memory(mem_pre, mem)
             rnn.output(mem)
 
@@ -618,13 +616,13 @@ class RecurrentOpSubBlockTest(RecurrentOpTest1):
         rnn = layers.StaticRNN()
 
         def dot_attention(query, memory):
-            attn = layers.matmul(query, memory, transpose_y=True)
-            weight = layers.softmax(attn)
-            weight_memory = layers.matmul(weight, memory)
+            attn = paddle.matmul(query, memory, transpose_y=True)
+            weight = paddle.nn.functional.softmax(attn)
+            weight_memory = paddle.matmul(weight, memory)
 
             return weight_memory, weight
 
-        y = layers.matmul(emb, w1)
+        y = paddle.matmul(emb, w1)
         with rnn.step():
             pre_h = rnn.memory(
                 shape=(self.sent_len, self.input_dim),
@@ -633,8 +631,8 @@ class RecurrentOpSubBlockTest(RecurrentOpTest1):
             )
             step_in = rnn.step_input(x)
             concat_in = layers.concat([step_in, pre_h], 1)
-            new_h = layers.matmul(concat_in, w2)
-            new_h = layers.unsqueeze(new_h, [1])
+            new_h = paddle.matmul(concat_in, w2)
+            new_h = paddle.unsqueeze(new_h, [1])
             new_h, _ = dot_attention(new_h, y)
             new_h = paddle.squeeze(new_h, [1])
 
@@ -713,9 +711,7 @@ class RecurrentOpStopGradientTest(RecurrentOpTest1):
                 bias_attr=False,
             )
 
-            h = paddle.nn.functional.sigmoid(
-                x=layers.elementwise_add(temp_l, temp_r)
-            )
+            h = paddle.nn.functional.sigmoid(x=paddle.add(temp_l, temp_r))
 
             rnn.update_memory(h_pre, h)
             rnn.output(h)

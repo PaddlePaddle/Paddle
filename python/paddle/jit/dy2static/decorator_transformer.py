@@ -13,21 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.utils import gast
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
-    AstNodeWrapper,
-)
-from .base_transformer import (
-    BaseTransformer,
-)
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
-    RE_PYNAME,
-    RE_PYMODULE,
-    ast_to_source_code,
-)
+import re
 import warnings
 
-import re
+from paddle.utils import gast
+
+from .base_transformer import BaseTransformer
+from .static_analysis import AstNodeWrapper
+from .utils import RE_PYMODULE, RE_PYNAME, ast_to_source_code
+
+__all__ = []
 
 IGNORE_NAMES = [
     'declarative',

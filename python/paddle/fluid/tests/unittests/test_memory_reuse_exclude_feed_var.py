@@ -16,7 +16,9 @@ import unittest
 
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
+import paddle.nn.functional as F
 
 
 class TestMemoryReuseExcludeFeedVar(unittest.TestCase):
@@ -28,8 +30,8 @@ class TestMemoryReuseExcludeFeedVar(unittest.TestCase):
         image = fluid.layers.data(
             name='image', shape=self.image_shape, dtype='float32'
         )
-        relu_image = fluid.layers.relu(image)
-        loss = fluid.layers.reduce_mean(relu_image)
+        relu_image = F.relu(image)
+        loss = paddle.mean(relu_image)
 
         build_strategy = fluid.BuildStrategy()
         build_strategy.enable_inplace = True

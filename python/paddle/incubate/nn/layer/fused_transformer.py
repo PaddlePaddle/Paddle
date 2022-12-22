@@ -533,8 +533,8 @@ class FusedFeedForward(Layer):
             fused_feedforward_layer = FusedFeedForward(8, 8)
             x = paddle.rand((1, 8, 8))
             out = fused_feedforward_layer(x)
-            print(out.numpy().shape)
-            # (1, 8, 8)
+            print(out.shape)
+            # [1, 8, 8]
     """
 
     def __init__(

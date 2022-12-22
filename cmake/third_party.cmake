@@ -317,8 +317,9 @@ if(WITH_ONNXRUNTIME)
 endif()
 
 if(WITH_GPU)
-  if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0 OR ${CMAKE_CUDA_COMPILER_VERSION}
-                                                 GREATER_EQUAL 11.6)
+  if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0
+     OR (${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.6
+         AND ${CMAKE_CUDA_COMPILER_VERSION} LESS 11.8))
     include(external/cub) # download cub
     list(APPEND third_party_deps extern_cub)
   endif()
@@ -422,6 +423,9 @@ if(WITH_PSCORE)
 
   include(external/rocksdb) # download, build, install rocksdb
   list(APPEND third_party_deps extern_rocksdb)
+
+  include(external/jemalloc) # download, build, install jemalloc
+  list(APPEND third_party_deps extern_jemalloc)
 endif()
 
 if(WITH_RPC

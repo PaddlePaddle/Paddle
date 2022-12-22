@@ -85,14 +85,20 @@ const std::unordered_map<std::string, std::vector<nvinfer1::UnaryOperation>>
         {"acos", {nvinfer1::UnaryOperation::kACOS}},
         {"atan", {nvinfer1::UnaryOperation::kATAN}},
         {"asinh", {nvinfer1::UnaryOperation::kASINH}},
+        {"acosh", {nvinfer1::UnaryOperation::kACOSH}},
         {"atanh", {nvinfer1::UnaryOperation::kATANH}},
         {"ceil", {nvinfer1::UnaryOperation::kCEIL}},
         {"floor", {nvinfer1::UnaryOperation::kFLOOR}},
         {"rsqrt",
          {nvinfer1::UnaryOperation::kSQRT, nvinfer1::UnaryOperation::kRECIP}},
+        {"logical_not", {nvinfer1::UnaryOperation::kNOT}},
         {"reciprocal", {nvinfer1::UnaryOperation::kRECIP}},
 #if IS_TRT_VERSION_GE(7000)
         {"erf", {nvinfer1::UnaryOperation::kERF}},
+#endif
+#if IS_TRT_VERSION_GE(8200)
+        {"sign", {nvinfer1::UnaryOperation::kSIGN}},
+        {"round", {nvinfer1::UnaryOperation::kROUND}},
 #endif
 };
 
@@ -150,6 +156,10 @@ class AsinhOpConverter : public UnaryOpConverter {
  public:
   AsinhOpConverter() { op_type_ = "asinh"; }
 };
+class AcoshOpConverter : public UnaryOpConverter {
+ public:
+  AcoshOpConverter() { op_type_ = "acosh"; }
+};
 class AtanhOpConverter : public UnaryOpConverter {
  public:
   AtanhOpConverter() { op_type_ = "atanh"; }
@@ -167,14 +177,32 @@ class RsqrtOpConverter : public UnaryOpConverter {
  public:
   RsqrtOpConverter() { op_type_ = "rsqrt"; }
 };
+
+class LogicalNotOpConverter : public UnaryOpConverter {
+ public:
+  LogicalNotOpConverter() { op_type_ = "logical_not"; }
+};
+
 class ReciprocalOpConverter : public UnaryOpConverter {
  public:
   ReciprocalOpConverter() { op_type_ = "reciprocal"; }
 };
+
+#if IS_TRT_VERSION_GE(8200)
+class SignOpConverter : public UnaryOpConverter {
+ public:
+  SignOpConverter() { op_type_ = "sign"; }
+};
+#endif
+
 #if IS_TRT_VERSION_GE(7000)
 class ErfOpConverter : public UnaryOpConverter {
  public:
   ErfOpConverter() { op_type_ = "erf"; }
+};
+class RoundOpConverter : public UnaryOpConverter {
+ public:
+  RoundOpConverter() { op_type_ = "round"; }
 };
 #endif
 
@@ -195,11 +223,17 @@ REGISTER_TRT_OP_CONVERTER(asin, AsinOpConverter);
 REGISTER_TRT_OP_CONVERTER(acos, AcosOpConverter);
 REGISTER_TRT_OP_CONVERTER(atan, AtanOpConverter);
 REGISTER_TRT_OP_CONVERTER(asinh, AsinhOpConverter);
+REGISTER_TRT_OP_CONVERTER(acosh, AcoshOpConverter);
 REGISTER_TRT_OP_CONVERTER(atanh, AtanhOpConverter);
 REGISTER_TRT_OP_CONVERTER(ceil, CeilOpConverter);
 REGISTER_TRT_OP_CONVERTER(floor, FloorOpConverter);
 REGISTER_TRT_OP_CONVERTER(rsqrt, RsqrtOpConverter);
+REGISTER_TRT_OP_CONVERTER(logical_not, LogicalNotOpConverter);
 REGISTER_TRT_OP_CONVERTER(reciprocal, ReciprocalOpConverter);
 #if IS_TRT_VERSION_GE(7000)
 REGISTER_TRT_OP_CONVERTER(erf, ErfOpConverter);
+#endif
+#if IS_TRT_VERSION_GE(8200)
+REGISTER_TRT_OP_CONVERTER(sign, SignOpConverter);
+REGISTER_TRT_OP_CONVERTER(round, RoundOpConverter);
 #endif
