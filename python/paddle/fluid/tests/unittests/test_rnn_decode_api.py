@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import random
 import unittest
 
@@ -22,9 +23,18 @@ import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.nn as nn
 from paddle import Model, set_device
-from paddle.fluid.dygraph import Layer
-from paddle.fluid.framework import _test_eager_guard
-from paddle.nn import BeamSearchDecoder, dynamic_decode
+from paddle.fluid.data_feeder import convert_dtype
+from paddle.fluid.layers.utils import map_structure
+from paddle.nn import (
+    RNN,
+    BeamSearchDecoder,
+    Embedding,
+    Layer,
+    Linear,
+    LSTMCell,
+    SimpleRNNCell,
+    dynamic_decode,
+)
 from paddle.static import InputSpec as Input
 
 paddle.enable_static()
@@ -351,7 +361,7 @@ class TestBeamSearch(ModuleApiTest):
         beam_size=4,
         max_step_num=20,
     ):
-        embedder = paddle.nn.Embedding(vocab_size, embed_dim)
+        embedder = Embedding(vocab_size, embed_dim)
         output_layer = nn.Linear(hidden_size, vocab_size)
         cell = nn.LSTMCell(embed_dim, hidden_size)
         self.max_step_num = max_step_num
@@ -381,15 +391,312 @@ class TestBeamSearch(ModuleApiTest):
         ]
         return inputs
 
-    def func_check_output(self):
+    def test_check_output(self):
         self.setUp()
         self.make_inputs()
         self.check_output()
 
+
+class EncoderCell(SimpleRNNCell):
+    def __init__(
+        self,
+        num_layers,
+        input_size,
+        hidden_size,
+        dropout_prob=0.0,
+        init_scale=0.1,
+    ):
+        super(EncoderCell, self).__init__(input_size, hidden_size)
+        self.dropout_prob = dropout_prob
+        # use add_sublayer to add multi-layers
+        self.lstm_cells = []
+        for i in range(num_layers):
+            self.lstm_cells.append(
+                self.add_sublayer(
+                    "lstm_%d" % i,
+                    LSTMCell(
+                        input_size=input_size if i == 0 else hidden_size,
+                        hidden_size=hidden_size,
+                    ),
+                )
+            )
+
+    def forward(self, step_input, states):
+        new_states = []
+        for i, lstm_cell in enumerate(self.lstm_cells):
+            out, new_state = lstm_cell(step_input, states[i])
+            step_input = (
+                layers.dropout(
+                    out,
+                    self.dropout_prob,
+                    dropout_implementation='upscale_in_train',
+                )
+                if self.dropout_prob > 0
+                else out
+            )
+            new_states.append(new_state)
+        return step_input, new_states
+
+    @property
+    def state_shape(self):
+        return [cell.state_shape for cell in self.lstm_cells]
+
+
+class Encoder(Layer):
+    def __init__(
+        self,
+        vocab_size,
+        embed_dim,
+        hidden_size,
+        num_layers,
+        dropout_prob=0.0,
+        init_scale=0.1,
+    ):
+        super(Encoder, self).__init__()
+        self.embedder = Embedding(vocab_size, embed_dim)
+        self.stack_lstm = RNN(
+            EncoderCell(
+                num_layers, embed_dim, hidden_size, dropout_prob, init_scale
+            ),
+            is_reverse=False,
+            time_major=False,
+        )
+
+    def forward(self, sequence, sequence_length):
+        inputs = self.embedder(sequence)
+        encoder_output, encoder_state = self.stack_lstm(
+            inputs, sequence_length=sequence_length
+        )
+        return encoder_output, encoder_state
+
+
+DecoderCell = EncoderCell
+
+
+class Decoder(Layer):
+    def __init__(
+        self,
+        vocab_size,
+        embed_dim,
+        hidden_size,
+        num_layers,
+        dropout_prob=0.0,
+        init_scale=0.1,
+    ):
+        super(Decoder, self).__init__()
+        self.embedder = Embedding(vocab_size, embed_dim)
+        self.stack_lstm = RNN(
+            DecoderCell(
+                num_layers, embed_dim, hidden_size, dropout_prob, init_scale
+            ),
+            is_reverse=False,
+            time_major=False,
+        )
+        self.output_layer = Linear(hidden_size, vocab_size, bias_attr=False)
+
+    def forward(self, target, decoder_initial_states):
+        inputs = self.embedder(target)
+        decoder_output, _ = self.stack_lstm(
+            inputs, initial_states=decoder_initial_states
+        )
+        predict = self.output_layer(decoder_output)
+        return predict
+
+
+class TrainingHelper:
+    def __init__(self, inputs, sequence_length, time_major=False):
+        self.inputs = inputs
+        self.sequence_length = sequence_length
+        self.time_major = time_major
+        self.inputs_ = map_structure(
+            lambda x: paddle.nn.functional.pad(
+                x,
+                pad=([0, 1] + [0, 0] * (len(x.shape) - 1))
+                if time_major
+                else ([0, 0, 0, 1] + [0, 0] * (len(x.shape) - 2)),
+            ),
+            self.inputs,
+        )
+
+    def initialize(self):
+        init_finished = paddle.equal(
+            self.sequence_length,
+            paddle.full(
+                shape=[1], dtype=self.sequence_length.dtype, fill_value=0
+            ),
+        )
+        init_inputs = map_structure(
+            lambda x: x[0] if self.time_major else x[:, 0], self.inputs
+        )
+        return init_inputs, init_finished
+
+    def sample(self, time, outputs, states):
+        sample_ids = paddle.argmax(outputs, axis=-1)
+        return sample_ids
+
+    def next_inputs(self, time, outputs, states, sample_ids):
+        time = (
+            paddle.cast(time, "int32")
+            if convert_dtype(time.dtype) not in ["int32"]
+            else time
+        )
+        if self.sequence_length.dtype != time.dtype:
+            self.sequence_length = paddle.cast(self.sequence_length, time.dtype)
+        next_time = time + 1
+        finished = paddle.less_equal(self.sequence_length, next_time)
+
+        def _slice(x):
+            axes = [0 if self.time_major else 1]
+            return paddle.squeeze(
+                paddle.slice(
+                    x, axes=axes, starts=[next_time], ends=[next_time + 1]
+                ),
+                axis=axes,
+            )
+
+        next_inputs = map_structure(_slice, self.inputs_)
+        return finished, next_inputs, states
+
+
+class BasicDecoder(paddle.nn.decode.Decoder):
+    def __init__(self, cell, helper, output_fn=None):
+        super().__init__()
+        self.cell = cell
+        self.helper = helper
+        self.output_fn = output_fn
+
+    def initialize(self, initial_cell_states):
+        (initial_inputs, initial_finished) = self.helper.initialize()
+        return initial_inputs, initial_cell_states, initial_finished
+
+    class OutputWrapper(
+        collections.namedtuple("OutputWrapper", ("cell_outputs", "sample_ids"))
+    ):
+        pass
+
+    def step(self, time, inputs, states, **kwargs):
+        cell_outputs, cell_states = self.cell(inputs, states, **kwargs)
+        if self.output_fn is not None:
+            cell_outputs = self.output_fn(cell_outputs)
+        sample_ids = self.helper.sample(
+            time=time, outputs=cell_outputs, states=cell_states
+        )
+        sample_ids.stop_gradient = True
+        (finished, next_inputs, next_states) = self.helper.next_inputs(
+            time=time,
+            outputs=cell_outputs,
+            states=cell_states,
+            sample_ids=sample_ids,
+        )
+        outputs = self.OutputWrapper(cell_outputs, sample_ids)
+        return (outputs, next_states, next_inputs, finished)
+
+
+class BaseModel(Layer):
+    def __init__(
+        self,
+        vocab_size=10,
+        embed_dim=32,
+        hidden_size=32,
+        num_layers=1,
+        dropout_prob=0.0,
+        init_scale=0.1,
+    ):
+        super(BaseModel, self).__init__()
+        self.hidden_size = hidden_size
+        self.word_embedding = Embedding(vocab_size, embed_dim)
+        self.encoder = Encoder(
+            vocab_size,
+            embed_dim,
+            hidden_size,
+            num_layers,
+            dropout_prob,
+            init_scale,
+        )
+        self.decoder = Decoder(
+            vocab_size,
+            embed_dim,
+            hidden_size,
+            num_layers,
+            dropout_prob,
+            init_scale,
+        )
+
+    def forward(self, src, src_length, trg, trg_length):
+        encoder_output = self.encoder(src, src_length)
+        trg_emb = self.decoder.embedder(trg)
+        helper = TrainingHelper(inputs=trg_emb, sequence_length=trg_length)
+        decoder = BasicDecoder(self.decoder.stack_lstm.cell, helper)
+        (
+            decoder_output,
+            decoder_final_state,
+            dec_seq_lengths,
+        ) = dynamic_decode(
+            decoder,
+            inits=self.decoder.stack_lstm.cell.get_initial_states(
+                encoder_output
+            ),
+            impute_finished=True,
+            is_test=False,
+            return_length=True,
+        )
+        logits, samples, sample_length = (
+            decoder_output.cell_outputs,
+            decoder_output.sample_ids,
+            dec_seq_lengths,
+        )
+        return logits
+
+
+class TestDynamicDecode(ModuleApiTest):
+    def setUp(self):
+        paddle.set_default_dtype("float64")
+        shape = (1, 10)
+        bs_shape = 1
+        self.inputs = [
+            np.random.randint(0, 10, size=shape).astype("int64"),
+            np.random.randint(0, 10, size=bs_shape).astype("int64"),
+            np.random.randint(0, 10, size=shape).astype("int64"),
+            np.random.randint(0, 10, size=bs_shape).astype("int64"),
+        ]
+        self.outputs = None
+        self.attrs = {
+            "vocab_size": 10,
+            "embed_dim": 32,
+            "hidden_size": 32,
+        }
+        self.param_states = {}
+
+    @staticmethod
+    def model_init(
+        self,
+        vocab_size,
+        embed_dim,
+        hidden_size,
+        bos_id=0,
+        eos_id=1,
+    ):
+        self.model = BaseModel(
+            vocab_size=vocab_size, embed_dim=embed_dim, hidden_size=hidden_size
+        )
+
+    @staticmethod
+    def model_forward(model, src, src_length, trg, trg_length):
+        return model.model(src, src_length, trg, trg_length)
+
+    def make_inputs(self):
+        inputs = [
+            Input([None, None], "int64", "src"),
+            Input([None], "int64", "src_length"),
+            Input([None, None], "int64", "trg"),
+            Input([None], "int64", "trg_length"),
+        ]
+        return inputs
+
     def test_check_output(self):
-        with _test_eager_guard():
-            self.func_check_output()
-        self.func_check_output()
+        self.setUp()
+        self.make_inputs()
+        self.check_output()
 
 
 if __name__ == '__main__':

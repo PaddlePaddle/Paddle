@@ -45,7 +45,7 @@ class AutoPruneLayer0(fluid.Layer):
     def forward(self, x, y):
         a = self.linear1(x)
         b = self.linear2(y)
-        c = fluid.layers.mul(a, b)
+        c = paddle.matmul(a, b)
         d = paddle.mean(c)
         return d
 
@@ -74,7 +74,7 @@ class AutoPruneLayer1(fluid.Layer):
         a = self.linear1(x)
         b = self.linear2(y)
         b.stop_gradient = True
-        c = fluid.layers.mul(a, b)
+        c = paddle.matmul(a, b)
         d = paddle.mean(c)
         return d
 
@@ -105,9 +105,7 @@ class AutoPruneLayer3(fluid.Layer):
 
     def forward(self, x, label, test_num):
         feature = self.linear(x)
-        part1, part2 = fluid.layers.split(
-            feature, num_or_sections=[10, 10], dim=1
-        )
+        part1, part2 = paddle.split(feature, num_or_sections=[10, 10], axis=1)
         # Note that: part2 is not used.
         loss = paddle.nn.functional.cross_entropy(
             input=part1, label=label, reduction='none', use_softmax=False
@@ -420,7 +418,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             label = linear(label)
             label = fluid.layers.cast(label, dtype="float32")
             label = fluid.layers.cast(label, dtype='int64')
-            out = fluid.layers.one_hot(input=label, depth=100)
+            out = paddle.nn.functional.one_hot(label, 100)
             loss = paddle.mean(out)
             loss.backward()
             self.assertIsNone(linear.weight._grad_ivar())

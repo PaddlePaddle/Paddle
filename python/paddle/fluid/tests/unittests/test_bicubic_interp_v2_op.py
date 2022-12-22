@@ -20,7 +20,6 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
 from paddle.nn.functional import interpolate
 
 
@@ -363,12 +362,7 @@ class TestBicubicInterpDataLayout(TestBicubicInterpOp):
 
 
 class TestBicubicInterpOpAPI(unittest.TestCase):
-    def test_imperative_case(self):
-        with _test_eager_guard():
-            self.func_case()
-        self.func_case()
-
-    def func_case(self):
+    def test_case(self):
         np.random.seed(200)
         x_data = np.random.random((2, 3, 6, 6)).astype("float32")
         dim_data = np.array([12]).astype("int32")

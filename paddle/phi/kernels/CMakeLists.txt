@@ -65,7 +65,6 @@ set(COMMON_KERNEL_DEPS
     deformable_conv_functor
     matrix_reduce
     segment_pooling
-    gather_scatter_kernel
     pooling
     maxouting
     matrix_inverse
@@ -76,11 +75,12 @@ set(COMMON_KERNEL_DEPS
     fft
     phi_data_layout_transform
     gpc
-    utf8proc)
+    utf8proc
+    gather_scatter_functor)
 
-set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup)
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group)
 if(WITH_NCCL OR WITH_RCCL)
-  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup_nccl)
+  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group_nccl)
 endif()
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup_comm_utils)
 if(WITH_CUDNN_FRONTEND)
@@ -103,6 +103,12 @@ file(
   "sparse/gpu/*.cu"
   "strings/gpu/*.cu"
   "fusion/gpu/*.cu")
+
+if(WITH_CUTLASS)
+  file(GLOB cutlass_cu "fusion/cutlass/default_moe_fc_traits.h"
+       "fusion/cutlass/linear_combination_ft_gelu.h" "fusion/cutlass/moe*")
+  list(APPEND kernel_cu ${cutlass_cu})
+endif()
 
 if(WITH_MKLDNN)
   file(

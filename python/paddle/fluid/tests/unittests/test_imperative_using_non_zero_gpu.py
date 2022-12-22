@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import guard, to_variable
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestImperativeUsingNonZeroGpu(unittest.TestCase):
@@ -28,7 +27,7 @@ class TestImperativeUsingNonZeroGpu(unittest.TestCase):
             var = to_variable(np_arr)
             np.testing.assert_array_equal(np_arr, var.numpy())
 
-    def func_non_zero_gpu(self):
+    def test_non_zero_gpu(self):
         if not fluid.is_compiled_with_cuda():
             return
 
@@ -38,11 +37,6 @@ class TestImperativeUsingNonZeroGpu(unittest.TestCase):
             self.run_main(np_arr, fluid.CUDAPlace(1))
         else:
             self.run_main(np_arr, fluid.CUDAPlace(0))
-
-    def test_non_zero_gpu(self):
-        with _test_eager_guard():
-            self.func_non_zero_gpu()
-        self.func_non_zero_gpu()
 
 
 if __name__ == '__main__':

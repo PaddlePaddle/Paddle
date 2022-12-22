@@ -129,6 +129,7 @@ void IRPassManager::CreatePasses(Argument *argument,
           new std::unordered_set<int>(argument->quantize_excluded_op_ids()));
     } else if (pass_name == "cpu_quantize_pass") {
       if (argument->quantize_enabled_op_types().count("conv2d") ||
+          argument->quantize_enabled_op_types().count("fused_conv2d") ||
           argument->quantize_enabled_op_types().count("depthwise_conv2d")) {
         pass->Set("data_layout", new std::string("NHWC"));
       }

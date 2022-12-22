@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle import _legacy_C_ops
-from paddle.fluid.framework import _test_eager_guard
 from paddle.tensor import random
 
 if fluid.is_compiled_with_cuda():
@@ -661,62 +660,13 @@ class TestStarGANWithGradientPenalty(unittest.TestCase):
                 fluid_dygraph_loss.append(loss)
 
         eager_dygraph_loss = []
-        with _test_eager_guard():
-            with fluid.dygraph.guard(cfg.place):
-                eager_dygraph_model = DyGraphTrainModel(cfg)
-                for batch_id, (image_real, label_org, label_trg) in enumerate(
-                    dataset()
-                ):
-                    loss = eager_dygraph_model.run(
-                        image_real, label_org, label_trg
-                    )
-                    eager_dygraph_loss.append(loss)
-
-        for (g_loss_f, d_loss_f), (g_loss_e, d_loss_e) in zip(
-            fluid_dygraph_loss, eager_dygraph_loss
-        ):
-            self.assertEqual(g_loss_f, g_loss_e)
-            self.assertEqual(d_loss_f, d_loss_e)
-
-    def test_all_cases(self):
-        self.func_main()
-
-
-class TestStarGANWithGradientPenaltyLegacy(unittest.TestCase):
-    def func_main(self):
-        self.place_test(fluid.CPUPlace())
-
-        if fluid.is_compiled_with_cuda():
-            self.place_test(fluid.CUDAPlace(0))
-
-    def place_test(self, place):
-        cfg = Config(place)
-
-        dataset = create_mnist_dataset(cfg)
-        dataset = paddle.reader.cache(dataset)
-
-        static_graph_model = StaticGraphTrainModel(cfg)
-        static_loss = []
-        for batch_id, (image_real, label_org, label_trg) in enumerate(
-            dataset()
-        ):
-            loss = static_graph_model.run(image_real, label_org, label_trg)
-            static_loss.append(loss)
-
-        dygraph_loss = []
         with fluid.dygraph.guard(cfg.place):
-            dygraph_model = DyGraphTrainModel(cfg)
+            eager_dygraph_model = DyGraphTrainModel(cfg)
             for batch_id, (image_real, label_org, label_trg) in enumerate(
                 dataset()
             ):
-                loss = dygraph_model.run(image_real, label_org, label_trg)
-                dygraph_loss.append(loss)
-
-        for (g_loss_s, d_loss_s), (g_loss_d, d_loss_d) in zip(
-            static_loss, dygraph_loss
-        ):
-            self.assertEqual(g_loss_s, g_loss_d)
-            self.assertEqual(d_loss_s, d_loss_d)
+                loss = eager_dygraph_model.run(image_real, label_org, label_trg)
+                eager_dygraph_loss.append(loss)
 
     def test_all_cases(self):
         self.func_main()
