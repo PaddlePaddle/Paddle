@@ -21,7 +21,6 @@ import paddle.fluid.dygraph as dg
 import paddle.fluid.initializer as I
 import paddle.nn.functional as F
 from paddle import fluid, nn
-from paddle.fluid.framework import _test_eager_guard
 
 
 def _reverse_repeat_list(t, n):
@@ -222,12 +221,8 @@ class Conv2DTestCase(unittest.TestCase):
         result2 = self.functional(place)
         with dg.guard(place):
             result3, g1 = self.paddle_nn_layer()
-            with _test_eager_guard():
-                res_eager, g2 = self.paddle_nn_layer()
         np.testing.assert_array_almost_equal(result1, result2)
         np.testing.assert_array_almost_equal(result2, result3)
-        np.testing.assert_allclose(result3, res_eager, rtol=1e-05)
-        np.testing.assert_allclose(g1, g2, rtol=1e-05)
 
     def runTest(self):
         place = fluid.CPUPlace()
