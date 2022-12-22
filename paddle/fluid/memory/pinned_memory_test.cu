@@ -18,9 +18,9 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/memory_block.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 
 // This unit test is an example comparing the performance between using pinned
 // memory and not. In general, using pinned memory will be faster.

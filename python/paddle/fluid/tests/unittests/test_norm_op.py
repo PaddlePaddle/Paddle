@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from op_test import OpTest, skip_check_grad_ci
+
 import paddle
 import paddle.fluid as fluid
-from op_test import OpTest, skip_check_grad_ci
 
 
 def l2_norm(x, axis, epsilon):
@@ -30,7 +32,7 @@ def l2_norm(x, axis, epsilon):
 class TestNormOp(OpTest):
     def setUp(self):
         self.op_type = "norm"
-        self.python_api = paddle.fluid.layers.l2_normalize
+        self.python_api = paddle.nn.functional.normalize
         self.init_test_case()
         self.init_dtype()
         x = np.random.random(self.shape).astype(self.dtype)
@@ -153,13 +155,11 @@ class API_NormTest(unittest.TestCase):
 
             def test_norm_x_type():
                 data = fluid.data(name="x", shape=[3, 3], dtype="int64")
-                out = fluid.layers.l2_normalize(data)
+                out = paddle.nn.functional.normalize(data)
 
             self.assertRaises(TypeError, test_norm_x_type)
 
 
 if __name__ == '__main__':
-    import paddle
-
     paddle.enable_static()
     unittest.main()

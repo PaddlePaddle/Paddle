@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import unittest
-import paddle
-import paddle.nn.functional as F
-import paddle.fluid as fluid
+
 import numpy as np
-from paddle.fluid.framework import _test_eager_guard
+
+import paddle
+import paddle.fluid as fluid
+import paddle.nn.functional as F
 
 
 def p_normalize(x, axis=1, p=2, epsilon=1e-12, keepdims=True):
@@ -85,12 +86,6 @@ class TestNNFunctionalNormalize(unittest.TestCase):
         with fluid.program_guard(fluid.Program()):
             self.run_static()
 
-    def test_cpu_eager(self):
-        with _test_eager_guard():
-            paddle.disable_static(place=paddle.fluid.CPUPlace())
-            self.run_imperative()
-            paddle.enable_static()
-
     def test_gpu(self):
         if not fluid.core.is_compiled_with_cuda():
             return
@@ -101,15 +96,6 @@ class TestNNFunctionalNormalize(unittest.TestCase):
 
         with fluid.program_guard(fluid.Program()):
             self.run_static(use_gpu=True)
-
-    def test_gpu_eager(self):
-        with _test_eager_guard():
-            if not fluid.core.is_compiled_with_cuda():
-                return
-
-            paddle.disable_static(place=paddle.fluid.CUDAPlace(0))
-            self.run_imperative()
-            paddle.enable_static()
 
 
 if __name__ == "__main__":

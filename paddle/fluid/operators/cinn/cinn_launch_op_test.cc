@@ -78,8 +78,8 @@ class TestCinnLaunchOp : public ::testing::Test {
     // Run ops and check the computation results
     framework::Scope scope;
     InitVariablesWithRandomValue<float>({"x", "y"}, {10, 20}, place, &scope);
-    scope.Var(test_op_out_name)->GetMutable<LoDTensor>();
-    scope.Var(add_op_out_name)->GetMutable<LoDTensor>();
+    scope.Var(test_op_out_name)->GetMutable<phi::DenseTensor>();
+    scope.Var(add_op_out_name)->GetMutable<phi::DenseTensor>();
     elementwise_add_op->Run(scope, place);
     cinn_launch_op->Run(scope, place);
     CompareOpResult<float>(scope.GetVar(test_op_out_name),

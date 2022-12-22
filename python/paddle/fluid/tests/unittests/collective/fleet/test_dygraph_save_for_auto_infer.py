@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import os
-import unittest
 import subprocess
 import sys
+import unittest
 
 
 def strategy_test(saving, seed=1024, loading="static"):
@@ -44,6 +44,5 @@ class TestSingleCard(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    os.environ["FLAGS_enable_eager_mode"] = "1"
     os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
     unittest.main()

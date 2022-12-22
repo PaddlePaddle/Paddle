@@ -16,17 +16,24 @@ from functools import reduce
 
 import paddle
 import paddle.fluid.core as core
-from paddle.utils import unique_name
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import Program, OpProtoHolder
-from paddle.distributed.fleet.meta_optimizers.common import OpRole
 import paddle.fluid.layers.utils as utils
-from .dist_context import DistributedContext
+from paddle.distributed.fleet.meta_optimizers.common import OpRole
+from paddle.fluid.framework import OpProtoHolder, Program
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.utils import unique_name
+
+from .cost import (
+    AllgatherOpCost,
+    CommContext,
+    ConcatOpCost,
+    SendOpCost,
+    SliceOpCost,
+    SplitOpCost,
+    build_comm_desc,
+)
 from .dist_attribute import TensorDistributedAttribute
+from .dist_context import DistributedContext
 from .process_group import new_process_group
-from .cost import build_comm_desc, CommContext
-from .cost import AllgatherOpCost, SendOpCost
-from .cost import SliceOpCost, SplitOpCost, ConcatOpCost
 from .utils import is_gradient_clip_op
 
 # NOTE: If op in _g_special_ops or _g_gradient_clip_ops, it will not be resharded.
@@ -2490,6 +2497,8 @@ class Resharder:
             "read",
             "write_to_array",
             "read_from_array",
+            "nop",
+            "depend",
         ]
         global _g_special_ops
         skip_ops += _g_special_ops

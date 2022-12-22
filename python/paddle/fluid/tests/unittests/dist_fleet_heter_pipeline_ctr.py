@@ -15,14 +15,14 @@
 Distribute CTR model for test fleet api
 """
 
+import os
 import time
+
+import ctr_dataset_reader
+from test_dist_fleet_heter_base import FleetDistHeterRunnerBase, runtime_main
 
 import paddle
 import paddle.fluid as fluid
-import os
-
-import ctr_dataset_reader
-from test_dist_fleet_heter_base import runtime_main, FleetDistHeterRunnerBase
 
 paddle.enable_static()
 
@@ -123,7 +123,9 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
             label = fluid.layers.cast(label, dtype="int64")
             predict = fluid.layers.fc(input=merge_layer, size=2, act='softmax')
 
-            cost = fluid.layers.cross_entropy(input=predict, label=label)
+            cost = paddle.nn.functional.cross_entropy(
+                input=predict, label=label, reduction='none', use_softmax=False
+            )
             avg_cost = paddle.mean(x=cost)
             fluid.layers.Print(avg_cost, message="avg_cost")
 

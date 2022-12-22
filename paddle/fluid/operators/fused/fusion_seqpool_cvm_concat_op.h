@@ -21,9 +21,6 @@
 namespace paddle {
 namespace operators {
 
-using LoDTensor = phi::DenseTensor;
-using Tensor = phi::DenseTensor;
-
 class FusionSeqPoolCVMConcatOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;

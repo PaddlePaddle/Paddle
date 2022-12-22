@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
-import paddle
-from paddle.fluid.wrapped_decorator import wrap_decorator
 import unittest
 from unittest import TestCase
+
 import numpy as np
-from paddle.fluid.framework import _test_eager_guard
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid.wrapped_decorator import wrap_decorator
 
 
 def _dygraph_guard_(func):
@@ -44,67 +45,62 @@ def random_var(size, low=-1, high=1, dtype='float32'):
 class TestDygraphTripleGradMatmul(TestCase):
     def test_matmul_triple_grad(self):
         input_numpy = np.ones([3, 3]) * 2
-        with _test_eager_guard():
-            x = paddle.to_tensor(
-                input_numpy, stop_gradient=False, dtype='float32'
-            )
-            y = paddle.to_tensor(
-                input_numpy, stop_gradient=False, dtype='float32'
-            )
-            out = paddle.matmul(x, y, False, False)
+        x = paddle.to_tensor(input_numpy, stop_gradient=False, dtype='float32')
+        y = paddle.to_tensor(input_numpy, stop_gradient=False, dtype='float32')
+        out = paddle.matmul(x, y, False, False)
 
-            new_out_g = paddle.to_tensor(
-                np.ones([3, 3]), stop_gradient=False, dtype='float32'
-            )
-            new_x_g, new_y_g = paddle.grad(
-                [out], [x, y], [new_out_g], retain_graph=True, create_graph=True
-            )
+        new_out_g = paddle.to_tensor(
+            np.ones([3, 3]), stop_gradient=False, dtype='float32'
+        )
+        new_x_g, new_y_g = paddle.grad(
+            [out], [x, y], [new_out_g], retain_graph=True, create_graph=True
+        )
 
-            new_x_g_g = paddle.to_tensor(
-                np.ones([3, 3]), stop_gradient=False, dtype='float32'
-            )
-            new_y_g_g = paddle.to_tensor(
-                np.ones([3, 3]), stop_gradient=False, dtype='float32'
-            )
-            new_a, new_b, new_c = paddle.grad(
-                [new_x_g, new_y_g],
-                [x, y, new_out_g],
-                [new_x_g_g, new_y_g_g],
-                retain_graph=True,
-                create_graph=True,
-            )
+        new_x_g_g = paddle.to_tensor(
+            np.ones([3, 3]), stop_gradient=False, dtype='float32'
+        )
+        new_y_g_g = paddle.to_tensor(
+            np.ones([3, 3]), stop_gradient=False, dtype='float32'
+        )
+        new_a, new_b, new_c = paddle.grad(
+            [new_x_g, new_y_g],
+            [x, y, new_out_g],
+            [new_x_g_g, new_y_g_g],
+            retain_graph=True,
+            create_graph=True,
+        )
 
-            new_a.backward()
+        new_a.backward()
 
-            out_ref = np.ones([3, 3]) * 12.0
-            np.testing.assert_array_equal(out.numpy(), out_ref)
+        out_ref = np.ones([3, 3]) * 12.0
+        np.testing.assert_array_equal(out.numpy(), out_ref)
 
-            new_x_g_ref = np.ones([3, 3]) * 6.0
-            new_y_g_ref = np.ones([3, 3]) * 6.0
-            np.testing.assert_array_equal(new_x_g.numpy(), new_x_g_ref)
-            np.testing.assert_array_equal(new_y_g.numpy(), new_y_g_ref)
+        new_x_g_ref = np.ones([3, 3]) * 6.0
+        new_y_g_ref = np.ones([3, 3]) * 6.0
+        np.testing.assert_array_equal(new_x_g.numpy(), new_x_g_ref)
+        np.testing.assert_array_equal(new_y_g.numpy(), new_y_g_ref)
 
-            new_a_ref = np.ones([3, 3]) * 3.0
-            new_b_ref = np.ones([3, 3]) * 3.0
-            new_c_ref = np.ones([3, 3]) * 12.0
+        new_a_ref = np.ones([3, 3]) * 3.0
+        new_b_ref = np.ones([3, 3]) * 3.0
+        new_c_ref = np.ones([3, 3]) * 12.0
 
-            np.testing.assert_array_equal(new_a.numpy(), new_a_ref)
-            np.testing.assert_array_equal(new_b.numpy(), new_b_ref)
-            np.testing.assert_array_equal(new_c.numpy(), new_c_ref)
+        np.testing.assert_array_equal(new_a.numpy(), new_a_ref)
+        np.testing.assert_array_equal(new_b.numpy(), new_b_ref)
+        np.testing.assert_array_equal(new_c.numpy(), new_c_ref)
 
-            x_grad_ref = np.ones([3, 3]) * 0.0
-            np.testing.assert_array_equal(x.grad.numpy(), x_grad_ref)
+        x_grad_ref = np.ones([3, 3]) * 0.0
+        np.testing.assert_array_equal(x.grad.numpy(), x_grad_ref)
 
-            y_grad_ref = np.ones([3, 3]) * 0.0
-            np.testing.assert_array_equal(y.grad.numpy(), y_grad_ref)
+        y_grad_ref = np.ones([3, 3]) * 0.0
+        np.testing.assert_array_equal(y.grad.numpy(), y_grad_ref)
 
-            new_out_g_ref = np.ones([3, 3]) * 3.0
-            np.testing.assert_array_equal(new_out_g.grad.numpy(), new_out_g_ref)
+        new_out_g_ref = np.ones([3, 3]) * 3.0
+        np.testing.assert_array_equal(new_out_g.grad.numpy(), new_out_g_ref)
 
-            new_x_g_g_ref = np.ones([3, 3]) * 0.0
-            new_y_g_g_ref = np.ones([3, 3]) * 3.0
-            np.testing.assert_array_equal(new_x_g_g.grad.numpy(), new_x_g_g_ref)
-            np.testing.assert_array_equal(new_y_g_g.grad.numpy(), new_y_g_g_ref)
+        new_x_g_g_ref = np.ones([3, 3]) * 0.0
+        new_y_g_g_ref = np.ones([3, 3]) * 3.0
+        np.testing.assert_array_equal(new_x_g_g.grad.numpy(), new_x_g_g_ref)
+        np.testing.assert_array_equal(new_y_g_g.grad.numpy(), new_y_g_g_ref)
 
 
 class TestDygraphTripleGrad(TestCase):
@@ -182,7 +178,7 @@ class TestDygraphTripleGrad(TestCase):
         numel = z_np.size
         z.stop_gradient = False
 
-        out = fluid.layers.sigmoid(paddle.matmul(x, y) + z)
+        out = paddle.nn.functional.sigmoid(paddle.matmul(x, y) + z)
         out_np = out.numpy()
 
         (dx_actual,) = self.grad([out], [x], create_graph=True)
@@ -229,9 +225,6 @@ class TestDygraphTripleGrad(TestCase):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         self.func_exception()
         self.func_example_with_gradient_and_create_graph()
-        with _test_eager_guard():
-            self.func_exception()
-            self.func_example_with_gradient_and_create_graph()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 
@@ -278,7 +271,7 @@ class TestDygraphTripleGradBradcastCase(TestCase):
         numel = z_np.size
         z.stop_gradient = False
 
-        out = fluid.layers.sigmoid(paddle.matmul(x, y) + z)
+        out = paddle.nn.functional.sigmoid(paddle.matmul(x, y) + z)
         out_np = out.numpy()
 
         (dx_actual,) = self.grad([out], [x], create_graph=True)
@@ -325,8 +318,6 @@ class TestDygraphTripleGradBradcastCase(TestCase):
     def test_all_cases(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         self.func_example_with_gradient_and_create_graph()
-        with _test_eager_guard():
-            self.func_example_with_gradient_and_create_graph()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 

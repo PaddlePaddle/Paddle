@@ -15,7 +15,9 @@
 import unittest
 
 import numpy as np
+
 import paddle
+import paddle.nn.functional as F
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
@@ -62,7 +64,7 @@ class TestBase(IPUOpTest):
         conv3 = paddle.static.nn.conv2d(
             add1, num_filters=8, filter_size=8, bias_attr=False
         )
-        out = paddle.fluid.layers.relu(conv3, **self.attrs)
+        out = F.relu(conv3, **self.attrs)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
@@ -97,7 +99,7 @@ class TestIntInput(TestBase):
         y = paddle.static.data(
             name=self.feed_list[1], shape=self.feed_shape[1], dtype='int32'
         )
-        out = paddle.fluid.layers.gather(x, index=y)
+        out = paddle.gather(x, index=y)
         self.fetch_list = [out.name]
 
 

@@ -12,26 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import tempfile
-
-import ast
-import unittest
-import os
-import sys
-import subprocess
 import argparse
+import ast
+import os
 import pickle
 import random
-import numpy as np
+import subprocess
+import sys
+import tempfile
 import time
+import unittest
+
+import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import compiler
 import paddle.fluid.dygraph as dygraph
-from paddle.fluid.framework import _test_eager_guard
-from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+from paddle.fluid import compiler
+from paddle.fluid.incubate.fleet.collective import DistributedStrategy, fleet
 
 RUN_STEP = 5
 DEFAULT_BATCH_SIZE = 2
@@ -677,7 +676,6 @@ class TestParallelDyGraphRunnerBase:
                     type(self).__name__,
                     "begin to prepare context in dygraph with nccl2",
                 )
-                dygraph.parallel.prepare_context(strategy)
                 if not args.find_unused_parameters:
                     model = dygraph.parallel.DataParallel(
                         model, strategy, find_unused_parameters=False
@@ -1718,16 +1716,6 @@ class TestDistBase(unittest.TestCase):
         log_name="",
     ):
         if self._dygraph and (self._gloo_mode or self._nccl2_mode):
-            need_envs.update({"FLAGS_enable_eager_mode": "1"})
-            with _test_eager_guard():
-                self.check_with_place_func(
-                    model_file=model_file,
-                    delta=delta,
-                    check_error_log=check_error_log,
-                    need_envs=need_envs,
-                    log_name=log_name,
-                )
-            need_envs.update({"FLAGS_enable_eager_mode": "0"})
             self.check_with_place_func(
                 model_file=model_file,
                 delta=delta,

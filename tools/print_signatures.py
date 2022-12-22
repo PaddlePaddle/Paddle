@@ -18,13 +18,14 @@ Usage:
     ./print_signature  "paddle.fluid" > signature.txt
 """
 
-import inspect
-import collections
-import sys
-import hashlib
-import pkgutil
-import logging
 import argparse
+import collections
+import hashlib
+import inspect
+import logging
+import pkgutil
+import sys
+
 import paddle
 
 member_dict = collections.OrderedDict()

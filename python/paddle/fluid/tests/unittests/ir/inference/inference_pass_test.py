@@ -14,13 +14,13 @@
 
 import random
 import unittest
+
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.core import AnalysisConfig
-from paddle.fluid.core import create_paddle_predictor
+from paddle.fluid.core import AnalysisConfig, create_paddle_predictor
 
 
 class InferencePassTest(unittest.TestCase):
@@ -36,7 +36,7 @@ class InferencePassTest(unittest.TestCase):
         self.enable_mkldnn = False
         self.enable_mkldnn_bfloat16 = False
         self.enable_trt = False
-        self.enable_tensorrt_varseqlen = True
+        self.enable_tensorrt_varseqlen = False
         self.trt_parameters = None
         self.dynamic_shape_params = None
         self.enable_lite = False

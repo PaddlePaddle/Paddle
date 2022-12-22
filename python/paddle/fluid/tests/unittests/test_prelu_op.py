@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from op_test import OpTest, skip_check_grad_ci
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid import Program
-from op_test import OpTest, skip_check_grad_ci
-import paddle
 import paddle.nn.functional as F
-from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid import Program
 
 
 def ref_prelu(x, weight):
@@ -76,10 +77,6 @@ class TestFunctionalPReluAPI(unittest.TestCase):
     def test_dygraph_api(self):
         self.dygraph_check(self.weight_np_0)
         self.dygraph_check(self.weight_np_1)
-
-    def test_dygraph_api_eager(self):
-        with _test_eager_guard():
-            self.test_dygraph_api()
 
     def test_error(self):
         with paddle.static.program_guard(paddle.static.Program()):

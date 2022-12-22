@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest
-from program_config import TensorConfig, ProgramConfig
-import numpy as np
-from functools import partial
 import unittest
+from functools import partial
 
 import hypothesis.strategies as st
+import numpy as np
+from auto_scan_test import PassAutoScanTest
+from program_config import ProgramConfig, TensorConfig
 
 
 class TestConvHardSigmoidMkldnnFusePass(PassAutoScanTest):
@@ -93,7 +93,7 @@ class TestConvHardSigmoidMkldnnFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_mkldnn=True)
-        yield config, ["conv2d"], (1e-5, 1e-5)
+        yield config, ["fused_conv2d"], (1e-5, 1e-5)
 
     def test(self):
         self.run_and_statis(

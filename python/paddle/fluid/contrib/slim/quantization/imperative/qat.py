@@ -27,7 +27,7 @@ from paddle.fluid.framework import IrGraph
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.initializer import Constant
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.fluid.io import load_inference_model, save_inference_model
 from ..quantization_pass import ReplaceFakeQuantDequantPass, QuantWeightPass
 from paddle.fluid.log_helper import get_logger

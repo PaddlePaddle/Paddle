@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import os
+
 import numpy as np
+import test_collective_api_base as test_collective_base
+
 import paddle
 import paddle.distributed as dist
-import test_collective_api_base as test_collective_base
 
 
 class StreamBroadcastTestCase:
@@ -50,7 +52,7 @@ class StreamBroadcastTestCase:
         if not self._sync_op:
             task.wait()
 
-        assert np.allclose(tensor, result, rtol=1e-05, atol=1e-05)
+        np.testing.assert_allclose(tensor, result, rtol=1e-05, atol=1e-05)
 
 
 if __name__ == "__main__":

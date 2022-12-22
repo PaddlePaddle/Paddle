@@ -65,7 +65,6 @@ set(COMMON_KERNEL_DEPS
     deformable_conv_functor
     matrix_reduce
     segment_pooling
-    gather_scatter_kernel
     pooling
     maxouting
     matrix_inverse
@@ -77,14 +76,16 @@ set(COMMON_KERNEL_DEPS
     phi_data_layout_transform
     gpc
     utf8proc
-    device_memory_aligment)
+    gather_scatter_functor)
 
-set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup)
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group)
 if(WITH_NCCL OR WITH_RCCL)
-  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup_nccl)
+  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group_nccl)
 endif()
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup_comm_utils)
-
+if(WITH_CUDNN_FRONTEND)
+  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} cudnn-frontend)
+endif()
 copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})
 
 file(GLOB kernel_h "*.h" "selected_rows/*.h" "sparse/*.h" "strings/*.h")
@@ -103,6 +104,12 @@ file(
   "strings/gpu/*.cu"
   "fusion/gpu/*.cu")
 
+if(WITH_CUTLASS)
+  file(GLOB cutlass_cu "fusion/cutlass/default_moe_fc_traits.h"
+       "fusion/cutlass/linear_combination_ft_gelu.h" "fusion/cutlass/moe*")
+  list(APPEND kernel_cu ${cutlass_cu})
+endif()
+
 if(WITH_MKLDNN)
   file(
     GLOB
@@ -117,6 +124,7 @@ if(WITH_MKLDNN)
     "strings/cpu/*.cc"
     "onednn/*.cc"
     "fusion/*.cc"
+    "fusion/onednn/*.cc"
     "fusion/cpu/*.cc")
 else()
   file(

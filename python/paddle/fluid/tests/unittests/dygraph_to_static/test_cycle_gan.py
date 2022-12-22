@@ -23,21 +23,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-import time
+import os
 import random
+import time
 import unittest
+
 import numpy as np
 from PIL import Image, ImageOps
 
-import os
+import paddle.fluid as fluid
 
 # Use GPU:0 to elimate the influence of other tasks.
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid.dygraph import to_variable, declarative, ProgramTranslator
-from paddle.fluid.dygraph.nn import Conv2DTranspose, BatchNorm
+from paddle.fluid.dygraph import to_variable
+from paddle.jit import ProgramTranslator
+from paddle.jit.api import to_static
+from paddle.nn import BatchNorm
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
@@ -79,7 +82,7 @@ class Cycle_Gan(fluid.dygraph.Layer):
                 input_channel
             )
 
-    @declarative
+    @to_static
     def forward(self, input_A, input_B):
         """
         Generator of GAN model.
@@ -89,44 +92,32 @@ class Cycle_Gan(fluid.dygraph.Layer):
         cyc_A = self.build_generator_resnet_9blocks_b(fake_B)
         cyc_B = self.build_generator_resnet_9blocks_a(fake_A)
 
-        diff_A = fluid.layers.abs(
-            fluid.layers.elementwise_sub(x=input_A, y=cyc_A)
-        )
-        diff_B = fluid.layers.abs(
-            fluid.layers.elementwise_sub(x=input_B, y=cyc_B)
-        )
-        cyc_A_loss = fluid.layers.reduce_mean(diff_A) * lambda_A
-        cyc_B_loss = fluid.layers.reduce_mean(diff_B) * lambda_B
+        diff_A = paddle.abs(paddle.subtract(x=input_A, y=cyc_A))
+        diff_B = paddle.abs(paddle.subtract(x=input_B, y=cyc_B))
+        cyc_A_loss = paddle.mean(diff_A) * lambda_A
+        cyc_B_loss = paddle.mean(diff_B) * lambda_B
         cyc_loss = cyc_A_loss + cyc_B_loss
 
         fake_rec_A = self.build_gen_discriminator_a(fake_B)
-        g_A_loss = fluid.layers.reduce_mean(fluid.layers.square(fake_rec_A - 1))
+        g_A_loss = paddle.mean(paddle.square(fake_rec_A - 1))
 
         fake_rec_B = self.build_gen_discriminator_b(fake_A)
-        g_B_loss = fluid.layers.reduce_mean(fluid.layers.square(fake_rec_B - 1))
+        g_B_loss = paddle.mean(paddle.square(fake_rec_B - 1))
         G = g_A_loss + g_B_loss
         idt_A = self.build_generator_resnet_9blocks_a(input_B)
         idt_loss_A = (
-            fluid.layers.reduce_mean(
-                fluid.layers.abs(
-                    fluid.layers.elementwise_sub(x=input_B, y=idt_A)
-                )
-            )
+            paddle.mean(paddle.abs(paddle.subtract(x=input_B, y=idt_A)))
             * lambda_B
             * lambda_identity
         )
 
         idt_B = self.build_generator_resnet_9blocks_b(input_A)
         idt_loss_B = (
-            fluid.layers.reduce_mean(
-                fluid.layers.abs(
-                    fluid.layers.elementwise_sub(x=input_A, y=idt_B)
-                )
-            )
+            paddle.mean(paddle.abs(paddle.subtract(x=input_A, y=idt_B)))
             * lambda_A
             * lambda_identity
         )
-        idt_loss = fluid.layers.elementwise_add(idt_loss_A, idt_loss_B)
+        idt_loss = paddle.add(idt_loss_A, idt_loss_B)
         g_loss = cyc_loss + G + idt_loss
         return (
             fake_A,
@@ -142,7 +133,7 @@ class Cycle_Gan(fluid.dygraph.Layer):
             g_loss,
         )
 
-    @declarative
+    @to_static
     def discriminatorA(self, input_A, input_B):
         """
         Discriminator A of GAN model.
@@ -152,7 +143,7 @@ class Cycle_Gan(fluid.dygraph.Layer):
 
         return rec_B, fake_pool_rec_B
 
-    @declarative
+    @to_static
     def discriminatorB(self, input_A, input_B):
         """
         Discriminator B of GAN model.
@@ -187,10 +178,12 @@ class build_resnet_block(fluid.dygraph.Layer):
         self.dim = dim
 
     def forward(self, inputs):
-        out_res = fluid.layers.pad2d(inputs, [1, 1, 1, 1], mode="reflect")
+        pad1 = paddle.nn.Pad2D([1, 1, 1, 1], mode="reflect")
+        out_res = pad1(inputs)
         out_res = self.conv0(out_res)
 
-        out_res = fluid.layers.pad2d(out_res, [1, 1, 1, 1], mode="reflect")
+        pad2 = paddle.nn.Pad2D([1, 1, 1, 1], mode="reflect")
+        out_res = pad2(out_res)
         out_res = self.conv1(out_res)
         return out_res + inputs
 
@@ -261,7 +254,8 @@ class build_generator_resnet_9blocks(fluid.dygraph.Layer):
         )
 
     def forward(self, inputs):
-        pad_input = fluid.layers.pad2d(inputs, [3, 3, 3, 3], mode="reflect")
+        pad1 = paddle.nn.Pad2D([3, 3, 3, 3], mode="reflect")
+        pad_input = pad1(inputs)
         y = self.conv0(pad_input)
         y = self.conv1(y)
         y = self.conv2(y)
@@ -269,9 +263,10 @@ class build_generator_resnet_9blocks(fluid.dygraph.Layer):
             y = build_resnet_block_i(y)
         y = self.deconv0(y)
         y = self.deconv1(y)
-        y = fluid.layers.pad2d(y, [3, 3, 3, 3], mode="reflect")
+        pad2 = paddle.nn.Pad2D([3, 3, 3, 3], mode="reflect")
+        y = pad2(y)
         y = self.conv3(y)
-        y = fluid.layers.tanh(y)
+        y = paddle.tanh(y)
         return y
 
 
@@ -404,7 +399,7 @@ class conv2d(fluid.dygraph.Layer):
         if self.norm:
             conv = self.bn(conv)
         if self.relu:
-            conv = fluid.layers.leaky_relu(conv, alpha=self.relufactor)
+            conv = paddle.nn.functional.leaky_relu(conv, self.relufactor)
         return conv
 
 
@@ -432,14 +427,13 @@ class DeConv2D(fluid.dygraph.Layer):
                 initializer=fluid.initializer.Constant(0.0)
             )
 
-        self._deconv = Conv2DTranspose(
+        self._deconv = paddle.nn.Conv2DTranspose(
             num_channels,
             num_filters,
-            filter_size=filter_size,
+            filter_size,
             stride=stride,
             padding=padding,
-            use_cudnn=use_cudnn,
-            param_attr=fluid.ParamAttr(
+            weight_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.NormalInitializer(
                     loc=0.0, scale=stddev
                 )
@@ -469,14 +463,15 @@ class DeConv2D(fluid.dygraph.Layer):
 
     def forward(self, inputs):
         conv = self._deconv(inputs)
-        conv = fluid.layers.pad2d(
-            conv, paddings=self.outpadding, mode='constant', pad_value=0.0
+        tmp_pad = paddle.nn.Pad2D(
+            padding=self.outpadding, mode='constant', value=0.0
         )
+        conv = tmp_pad(conv)
 
         if self.norm:
             conv = self.bn(conv)
         if self.relu:
-            conv = fluid.layers.leaky_relu(conv, alpha=self.relufactor)
+            conv = paddle.nn.functional.leaky_relu(conv, self.relufactor)
         return conv
 
 
@@ -647,10 +642,9 @@ def train(args, to_static):
                     data_B, fake_pool_B
                 )
                 d_loss_A = (
-                    fluid.layers.square(fake_pool_rec_B)
-                    + fluid.layers.square(rec_B - 1)
+                    paddle.square(fake_pool_rec_B) + paddle.square(rec_B - 1)
                 ) / 2.0
-                d_loss_A = fluid.layers.reduce_mean(d_loss_A)
+                d_loss_A = paddle.mean(d_loss_A)
 
                 d_loss_A.backward()
                 optimizer2.minimize(d_loss_A)
@@ -661,10 +655,9 @@ def train(args, to_static):
                     data_A, fake_pool_A
                 )
                 d_loss_B = (
-                    fluid.layers.square(fake_pool_rec_A)
-                    + fluid.layers.square(rec_A - 1)
+                    paddle.square(fake_pool_rec_A) + paddle.square(rec_A - 1)
                 ) / 2.0
-                d_loss_B = fluid.layers.reduce_mean(d_loss_B)
+                d_loss_B = paddle.mean(d_loss_B)
 
                 d_loss_B.backward()
                 optimizer3.minimize(d_loss_B)
@@ -727,5 +720,4 @@ class TestCycleGANModel(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

@@ -18,6 +18,8 @@ limitations under the License. */
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
+
+#include "paddle/phi/kernels/funcs/eigen/extensions.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace phi {

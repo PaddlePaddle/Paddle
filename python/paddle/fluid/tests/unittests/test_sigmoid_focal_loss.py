@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-import numpy as np
-import unittest
-from paddle.fluid.framework import _test_eager_guard
 
 
 def call_sfl_functional(
@@ -159,16 +160,6 @@ class TestSigmoidFocalLoss(unittest.TestCase):
                                 gamma,
                                 reduction,
                             )
-                            with _test_eager_guard():
-                                eager_result = test_dygraph(
-                                    place,
-                                    logit_np,
-                                    label_np,
-                                    normalizer_np,
-                                    alpha,
-                                    gamma,
-                                    reduction,
-                                )
                             expected = calc_sigmoid_focal_loss(
                                 logit_np,
                                 label_np,
@@ -185,9 +176,6 @@ class TestSigmoidFocalLoss(unittest.TestCase):
                             )
                             np.testing.assert_allclose(
                                 dy_result, expected, rtol=1e-05
-                            )
-                            np.testing.assert_allclose(
-                                eager_result, expected, rtol=1e-05
                             )
 
     def test_SigmoidFocalLoss_error(self):

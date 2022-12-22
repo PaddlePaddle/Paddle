@@ -12,49 +12,48 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import copy
 import logging
-import random
 import numbers
-import numpy as np
+import os
+import random
 from collections import defaultdict
 
-import paddle
-import paddle.utils as utils
-import paddle.distributed.auto_parallel.utils as auto_utils
+import numpy as np
 
+import paddle
+import paddle.distributed.auto_parallel.utils as auto_utils
+import paddle.utils as utils
 from paddle import fluid, static
+from paddle.distributed import fleet
+from paddle.fluid import Variable, core
+from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.fluid.executor import _to_name_str, global_scope
+from paddle.fluid.framework import Operator
+from paddle.fluid.framework import _current_expected_place as _get_device
+from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.layers.utils import flatten
 from paddle.metric import Metric
 from paddle.static import InputSpec
-from paddle.fluid import core
-from paddle.fluid import Variable
-from paddle.fluid.layers.utils import flatten
-from paddle.fluid.executor import global_scope, _to_name_str
-from paddle.fluid.framework import Operator, _non_static_mode
-from paddle.fluid.framework import _current_expected_place as _get_device
-from paddle.fluid.dygraph.parallel import ParallelEnv
-from paddle.distributed import fleet
-
-from .callbacks import config_callbacks
-from .converter import Converter
-from .helper import ProgramHelper
-from .cluster import Cluster, get_default_cluster
-from .planner_v2 import Planner
-from .parallelizer_v2 import Parallelizer
-from .dist_op import DistributedOperator
-from .dist_saver import DistributedSaver
-from .dist_loader import (
-    DistributedDataLoaderFromGenerator,
-    DistributedDataLoader,
-)
-from .strategy import Strategy
-from .process_group import new_process_group, get_all_process_groups
-from .dist_context import DistributedContext, get_default_distributed_context
-from .interface import CollectionNames, get_collection
-from .cost.estimate_cost import get_cost_from_engine
 
 from ..utils.log_utils import get_logger
+from .callbacks import config_callbacks
+from .cluster import Cluster, get_default_cluster
+from .converter import Converter
+from .cost.estimate_cost import get_cost_from_engine
+from .dist_context import DistributedContext, get_default_distributed_context
+from .dist_loader import (
+    DistributedDataLoader,
+    DistributedDataLoaderFromGenerator,
+)
+from .dist_op import DistributedOperator
+from .dist_saver import DistributedSaver
+from .helper import ProgramHelper
+from .interface import CollectionNames, get_collection
+from .parallelizer_v2 import Parallelizer
+from .planner_v2 import Planner
+from .process_group import get_all_process_groups, new_process_group
+from .strategy import Strategy
 
 
 class Engine:
@@ -494,10 +493,10 @@ class Engine:
         # logging user fetches
         collect_fetches = get_collection(CollectionNames.FETCHES)
         logs_fetch = {}
-        for name, var in collect_fetches:
-            if var.name in fetch_names:
-                idx = fetch_names.index(var.name)
-                logs_fetch[name or var.name] = outs[idx]
+        for name, var_name in collect_fetches:
+            if var_name in fetch_names:
+                idx = fetch_names.index(var_name)
+                logs_fetch[name or var_name] = outs[idx]
         logs["fetches"] = logs_fetch
         return logs
 
@@ -610,7 +609,9 @@ class Engine:
         if mode != "train":
             serial_main_prog = serial_main_prog.clone(for_test=True)
 
-        self._set_recompute_ckpts()
+        auto_utils.set_recompute_segments(
+            self._model, self._losses, self._strategy, serial_main_prog
+        )
         self._dist_contexts[mode] = DistributedContext(
             serial_main_prog,
             serial_startup_prog,
@@ -650,7 +651,6 @@ class Engine:
         from .tuner.optimization_tuner import OptimizationTuner
 
         self._optimization_tuner = OptimizationTuner(
-            self._tuning.to_dict(),
             self._dist_contexts[mode],
             dataset,
             self._inputs_spec,
@@ -1517,35 +1517,6 @@ class Engine:
     def _is_local_var(self, var):
         var_name = _to_name_str(var)
         return var_name in self.main_program.global_block().vars
-
-    def _set_recompute_ckpts(self):
-        # NOTE hack to enable recompute in engine api for GPT-3
-        # TODO support more PaddleNLP/CV models here
-
-        recompute = self._strategy.recompute
-
-        # extract ckpts by specific model
-        if isinstance(self._model, paddle.nn.Layer):
-            if hasattr(
-                self._model, "gpt"
-            ) and self._model.__class__.__name__ in [
-                'GPTForPretraining',
-                'GPTForPretrainingAuto',
-            ]:
-                exact_ckpts = self._model.gpt.checkpoints
-            else:
-                exact_ckpts = recompute.checkpoints
-        else:
-            exact_ckpts = recompute.checkpoints
-
-        # modify strategy
-        if recompute.enable:
-            recompute.checkpoints = exact_ckpts[:]
-            logs = {
-                'Model Class': self._model.__class__.__name__,
-                'Applied Recompute ckpts': exact_ckpts,
-            }
-            self._logger.info(logs)
 
     def _reset_metrics(self):
         for metric in self._metrics:

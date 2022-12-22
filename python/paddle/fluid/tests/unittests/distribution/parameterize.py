@@ -16,11 +16,10 @@ import functools
 import inspect
 import re
 import sys
-
 from unittest import SkipTest
 
-import numpy as np
 import config
+import numpy as np
 
 TEST_CASE_NAME = 'suffix'
 

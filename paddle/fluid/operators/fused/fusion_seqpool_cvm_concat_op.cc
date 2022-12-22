@@ -78,11 +78,13 @@ framework::OpKernelType FusionSeqPoolCVMConcatOp::GetExpectedKernelType(
 }
 
 void FusionSeqPoolCVMConcatOpMaker::Make() {
-  AddInput("X", "(LoDTensor) Input tensors of this operator.").AsDuplicable();
+  AddInput("X", "(phi::DenseTensor) Input tensors of this operator.")
+      .AsDuplicable();
   AddInput("CVM",
-           "(Tensor),  a 2-D Tensor with shape [N x 2], where N is the batch "
+           "(phi::DenseTensor),  a 2-D phi::DenseTensor with shape [N x 2], "
+           "where N is the batch "
            "size, 2 is show and click.");
-  AddOutput("Out", "(LoDTensor) Output tensor of concat operator.");
+  AddOutput("Out", "(phi::DenseTensor) Output tensor of concat operator.");
   AddAttr<std::string>("pooltype",
                        "(string, default 'SUM') some of the pooling "
                        "pooltype of SequencePoolOp.")
@@ -102,8 +104,8 @@ template <typename T>
 class FusionSeqPoolCVMConcatKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto ins = ctx.MultiInput<LoDTensor>("X");
-    auto* out = ctx.Output<LoDTensor>("Out");
+    auto ins = ctx.MultiInput<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     std::string pooltype = ctx.Attr<std::string>("pooltype");
     bool use_cvm = ctx.Attr<bool>("use_cvm");
     auto x0_lod = ins[0]->lod();

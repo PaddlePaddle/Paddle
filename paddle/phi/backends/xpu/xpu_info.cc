@@ -21,7 +21,7 @@ limitations under the License. */
 
 // TODO(wilber): The phi computing library requires a component to manage
 // flags.
-#include "paddle/fluid/platform/flags.h"
+#include "paddle/phi/core/flags.h"
 
 PADDLE_DEFINE_EXPORTED_string(
     selected_xpus,
@@ -160,7 +160,7 @@ void MemcpySyncD2H(void* dst,
 }
 
 // if src.device == dst.device and you need sync , after call this function,
-// need to call xpu_wait()
+// need to call dev_ctx.Wait()
 void MemcpySyncD2D(void* dst,
                    const phi::XPUPlace& dst_place,
                    const void* src,

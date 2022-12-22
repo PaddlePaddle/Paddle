@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY
-from paddle.fluid import core
+from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
+from paddle.framework import core
 from paddle.static import Program
 
 

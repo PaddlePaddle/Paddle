@@ -911,13 +911,14 @@ void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
   // 1. calculate axis
   int rank = x.at(0)->dims().size();
   PADDLE_ENFORCE_EQ(
-      axis >= -rank && axis < rank,
+      !rank || (axis >= -rank && axis < rank),
       true,
       phi::errors::InvalidArgument(
           "The axis is expected to be in range of [%d, %d), but got %d",
           -rank,
           rank,
           axis));
+  axis = rank ? axis : 0;
   if (axis < 0) {
     axis = axis + rank;
   }
@@ -2667,6 +2668,30 @@ void UnchangedMultiInferMeta(const std::vector<const MetaTensor*>& x,
   }
 }
 
+void ShareBufferInferMeta(const std::vector<const MetaTensor*>& xs,
+                          const std::vector<bool>& share_dims_and_dtype,
+                          std::vector<MetaTensor*> outs,
+                          std::vector<MetaTensor*> xouts) {
+  if (share_dims_and_dtype.empty()) {
+    return;
+  }
+  PADDLE_ENFORCE_EQ(xs.size(),
+                    share_dims_and_dtype.size(),
+                    phi::errors::PermissionDenied(
+                        "The input(X) and attribute share_dims_and_dtype "
+                        "should have the same size, but got size of input(X) "
+                        "is %d and size of share_dims_and_dtype is %d.",
+                        xs.size(),
+                        share_dims_and_dtype.size()));
+
+  for (size_t i = 0; i < xs.size(); ++i) {
+    if (share_dims_and_dtype[i]) {
+      outs[i]->set_dims(xs[i]->dims());
+      outs[i]->set_dtype(xs[i]->dtype());
+    }
+  }
+}
+
 void UpdateLossScalingInferMeta(const std::vector<const MetaTensor*>& xs,
                                 const MetaTensor& found_infinite,
                                 const MetaTensor& prev_loss_scaling,
@@ -2904,6 +2929,20 @@ void YoloLossInferMeta(const MetaTensor& x,
   std::vector<int64_t> dim_gt_match_mask({dim_gtbox[0], dim_gtbox[1]});
   gt_match_mask->set_dims(phi::make_ddim(dim_gt_match_mask));
   gt_match_mask->set_dtype(x.dtype());
+}
+
+void MoeInferMeta(const MetaTensor& x,
+                  const MetaTensor& gate,
+                  const MetaTensor& bmm0,
+                  const MetaTensor& bias0,
+                  const MetaTensor& bmm1,
+                  const MetaTensor& bias1,
+                  const std::string& act_type,
+                  MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
 }
 
 }  // namespace phi

@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import unittest
-import paddle
 
 from test_collective_api_base import TestDistBase
+
+import paddle
 
 
 class TestCollectiveGlobalGatherAPI(TestDistBase):
@@ -26,15 +27,6 @@ class TestCollectiveGlobalGatherAPI(TestDistBase):
         paddle.enable_static()
         self.check_with_place(
             "collective_global_gather.py", "global_gather", "nccl"
-        )
-
-    def test_global_gather_nccl_dygraph(self):
-        self.check_with_place(
-            "collective_global_gather_dygraph.py",
-            "global_gather",
-            "nccl",
-            static_mode="0",
-            eager_mode=False,
         )
 
     def test_global_gather_nccl_dygraph_eager(self):

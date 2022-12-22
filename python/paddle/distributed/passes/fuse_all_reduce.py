@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.framework import core
-from paddle.fluid import unique_name
-from .pass_base import PassBase, PassType, register_pass
 import numpy as np
+
+from paddle.framework import core
+from paddle.utils import unique_name
+
+from .pass_base import PassBase, PassType, register_pass
 
 
 def find_adjacent_match_sequences(

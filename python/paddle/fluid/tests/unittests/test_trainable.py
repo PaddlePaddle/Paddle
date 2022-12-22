@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import Counter
 import unittest
+from collections import Counter
+
+from simple_nets import init_data
+
 import paddle
 import paddle.fluid as fluid
-from simple_nets import init_data
 
 
 def test_trainable():
@@ -25,7 +27,9 @@ def test_trainable():
     feature = fluid.layers.fc(
         input=x, size=10, param_attr=fluid.ParamAttr(trainable=False)
     )
-    loss = fluid.layers.cross_entropy(input=feature, label=label)
+    loss = paddle.nn.functional.cross_entropy(
+        input=feature, label=label, reduction='none', use_softmax=False
+    )
     loss = paddle.mean(loss)
     return loss
 

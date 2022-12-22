@@ -15,13 +15,16 @@
 import os
 import shutil
 import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
-import paddle
+import paddle.nn.functional as F
+import paddle.static.nn as nn
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class TensorRTSubgraphPassActivationTest(InferencePassTest):
@@ -38,14 +41,14 @@ class TensorRTSubgraphPassActivationTest(InferencePassTest):
                 name="data", shape=[-1, 6, 32, 32], dtype="float32"
             )
             act_out = self.append_act(data)
-            out = fluid.layers.batch_norm(act_out, is_test=True)
+            out = nn.batch_norm(act_out, is_test=True)
         self.feeds = {
             "data": np.random.random([1, 6, 32, 32]).astype("float32"),
         }
         self.fetch_list = [out]
 
     def append_act(self, x):
-        return fluid.layers.relu(x)
+        return F.relu(x)
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -66,39 +69,39 @@ class TensorRTSubgraphPassActivationTest(InferencePassTest):
 
 class TensorRTSubgraphPassLeakyReluTest(TensorRTSubgraphPassActivationTest):
     def append_act(self, x):
-        return fluid.layers.leaky_relu(x)
+        return paddle.nn.functional.leaky_relu(x)
 
 
 class TensorRTSubgraphPassRelu6Test(TensorRTSubgraphPassActivationTest):
     def append_act(self, x):
-        return fluid.layers.relu6(x)
+        return paddle.nn.functional.relu6(x)
 
 
 class TensorRTSubgraphPassSoftMaxTest(TensorRTSubgraphPassActivationTest):
     def append_act(self, x):
-        return fluid.layers.softmax(x)
+        return paddle.nn.functional.softmax(x)
 
 
 class TensorRTSubgraphPassSigmoidTest(TensorRTSubgraphPassActivationTest):
     def append_act(self, x):
-        return fluid.layers.sigmoid(x)
+        return paddle.nn.functional.sigmoid(x)
 
 
 class TensorRTSubgraphPassHardSwishTest(TensorRTSubgraphPassActivationTest):
     def append_act(self, x):
-        return fluid.layers.hard_swish(x)
+        return paddle.nn.functional.hardswish(x)
 
 
 class TensorRTSubgraphPassHardSigmoidTest(TensorRTSubgraphPassActivationTest):
     def append_act(self, x):
-        return fluid.layers.hard_sigmoid(x)
+        return paddle.nn.functional.hardsigmoid(x)
 
 
 class TensorRTSubgraphPassHardSwishPluginTest(
     TensorRTSubgraphPassActivationTest
 ):
     def append_act(self, x):
-        return fluid.layers.hard_swish(x, threshold=4.0, scale=8.0)
+        return paddle.nn.functional.hardswish(x)
 
 
 class TensorRTSubgraphPassClipTest(TensorRTSubgraphPassActivationTest):
@@ -108,7 +111,7 @@ class TensorRTSubgraphPassClipTest(TensorRTSubgraphPassActivationTest):
 
 class TensorRTSubgraphPassTanhTest(TensorRTSubgraphPassActivationTest):
     def append_act(self, x):
-        return fluid.layers.tanh(x)
+        return paddle.tanh(x)
 
 
 class TensorRTSubgraphPassSwishTest(TensorRTSubgraphPassActivationTest):
@@ -164,7 +167,7 @@ class TensorRTSubgraphPassMishTest(TensorRTSubgraphPassActivationTest):
         )
 
     def append_act(self, x):
-        return fluid.layers.mish(x)
+        return paddle.nn.functional.mish(x)
 
 
 class TensorRTSubgraphPassMishFp16SerializeTest(
@@ -177,7 +180,7 @@ class TensorRTSubgraphPassMishFp16SerializeTest(
         )
 
     def append_act(self, x):
-        return fluid.layers.mish(x)
+        return paddle.nn.functional.mish(x)
 
 
 class TensorRTSubgraphPassDynamicMishFp16SerializeTest(
@@ -198,22 +201,22 @@ class TensorRTSubgraphPassDynamicMishFp16SerializeTest(
         )
 
     def append_act(self, x):
-        return fluid.layers.mish(x)
+        return paddle.nn.functional.mish(x)
 
 
 class TensorRTSubgraphPassPreluAllTest(TensorRTSubgraphPassActivationTest):
     def append_act(self, x):
-        return fluid.layers.prelu(x, mode='all')
+        return paddle.static.nn.prelu(x, mode='all')
 
 
 class TensorRTSubgraphPassPreluChannelTest(TensorRTSubgraphPassActivationTest):
     def append_act(self, x):
-        return fluid.layers.prelu(x, mode='channel')
+        return paddle.static.nn.prelu(x, mode='channel')
 
 
 class TensorRTSubgraphPassPreluElementTest(TensorRTSubgraphPassActivationTest):
     def append_act(self, x):
-        return fluid.layers.prelu(x, mode='element')
+        return paddle.static.nn.prelu(x, mode='element')
 
 
 class TensorRTSubgraphPassPreluDynamicTest(TensorRTSubgraphPassActivationTest):
@@ -232,7 +235,7 @@ class TensorRTSubgraphPassPreluDynamicTest(TensorRTSubgraphPassActivationTest):
         )
 
     def append_act(self, x):
-        return fluid.layers.prelu(x, mode='all')
+        return paddle.static.nn.prelu(x, mode='all')
 
 
 class TensorRTSubgraphPassPreluFp16Test(TensorRTSubgraphPassActivationTest):
@@ -243,7 +246,7 @@ class TensorRTSubgraphPassPreluFp16Test(TensorRTSubgraphPassActivationTest):
         )
 
     def append_act(self, x):
-        return fluid.layers.prelu(x, mode='all')
+        return paddle.static.nn.prelu(x, mode='all')
 
 
 class TensorRTSubgraphPassPreluFp16SerializeTest(
@@ -256,7 +259,7 @@ class TensorRTSubgraphPassPreluFp16SerializeTest(
         )
 
     def append_act(self, x):
-        return fluid.layers.prelu(x, mode='all')
+        return paddle.static.nn.prelu(x, mode='all')
 
 
 class TensorRTSubgraphPassPreluFp16DynamicTest(
@@ -277,7 +280,7 @@ class TensorRTSubgraphPassPreluFp16DynamicTest(
         )
 
     def append_act(self, x):
-        return fluid.layers.prelu(x, mode='all')
+        return paddle.static.nn.prelu(x, mode='all')
 
 
 class TensorRTSubgraphPassPreluFp16DynamicSerializeTest(
@@ -298,12 +301,12 @@ class TensorRTSubgraphPassPreluFp16DynamicSerializeTest(
         )
 
     def append_act(self, x):
-        return fluid.layers.prelu(x, mode='all')
+        return paddle.static.nn.prelu(x, mode='all')
 
 
 class TensorRTSubgraphPassGeluTest(TensorRTSubgraphPassActivationTest):
     def append_act(self, x):
-        return fluid.layers.gelu(x)
+        return paddle.nn.functional.gelu(x)
 
 
 class TensorRTSubgraphPassGeluDynamicTest(TensorRTSubgraphPassActivationTest):
@@ -322,7 +325,7 @@ class TensorRTSubgraphPassGeluDynamicTest(TensorRTSubgraphPassActivationTest):
         )
 
     def append_act(self, x):
-        return fluid.layers.gelu(x)
+        return paddle.nn.functional.gelu(x)
 
 
 class TensorRTSubgraphPassGeluFp16Test(TensorRTSubgraphPassActivationTest):
@@ -333,7 +336,7 @@ class TensorRTSubgraphPassGeluFp16Test(TensorRTSubgraphPassActivationTest):
         )
 
     def append_act(self, x):
-        return fluid.layers.gelu(x)
+        return paddle.nn.functional.gelu(x)
 
 
 class TensorRTSubgraphPassGeluFp16SerializeTest(
@@ -346,7 +349,7 @@ class TensorRTSubgraphPassGeluFp16SerializeTest(
         )
 
     def append_act(self, x):
-        return fluid.layers.gelu(x)
+        return paddle.nn.functional.gelu(x)
 
 
 class TensorRTSubgraphPassGeluFp16DynamicTest(
@@ -367,7 +370,7 @@ class TensorRTSubgraphPassGeluFp16DynamicTest(
         )
 
     def append_act(self, x):
-        return fluid.layers.gelu(x)
+        return paddle.nn.functional.gelu(x)
 
 
 class TensorRTSubgraphPassGeluFp16DynamicSerializeTest(
@@ -388,7 +391,7 @@ class TensorRTSubgraphPassGeluFp16DynamicSerializeTest(
         )
 
     def append_act(self, x):
-        return fluid.layers.gelu(x)
+        return paddle.nn.functional.gelu(x)
 
 
 if __name__ == "__main__":

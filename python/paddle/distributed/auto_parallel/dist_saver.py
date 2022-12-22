@@ -12,19 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-import re
-import os
 import errno
-import pickle
 import logging
-import numpy as np
-import paddle
+import os
+import pickle
+import re
 
+import numpy as np
+
+import paddle
 from paddle import fluid
 from paddle.fluid import core
-from .utils import get_dist_attr
-from .process_group import _g_process_group_map
+
 from ..utils.log_utils import get_logger
+from .process_group import _g_process_group_map
+from .utils import get_dist_attr
 
 
 def check_filename(re_exp, filename):
@@ -193,17 +195,16 @@ class DistributedSaver:
             used_inputs += op.input_arg_names
             used_outputs += op.output_arg_names
 
-        dist_feed_vars_names = list(set(feed_vars_names) & set(used_inputs))
-        dist_fetch_vars_names = list(set(fetch_vars_names) & set(used_outputs))
+        for idx, var_name in enumerate(feed_vars_names):
+            if var_name not in used_inputs:
+                feed_vars_names.pop(idx)
+        for idx, var_name in enumerate(fetch_vars_names):
+            if var_name not in used_outputs:
+                fetch_vars_names.pop(idx)
 
-        dist_feed_vars = [
-            global_block.vars[name] for name in dist_feed_vars_names
-        ]
-        dist_fetch_vars = [
-            global_block.vars[name] for name in dist_fetch_vars_names
-        ]
+        dist_feed_vars = [global_block.vars[name] for name in feed_vars_names]
+        dist_fetch_vars = [global_block.vars[name] for name in fetch_vars_names]
 
-        # NOTE: `paddle.static.save_inference_model` does not support subblock.
         dist_filename = filename + "_dist" + str(rank_id)
         dist_path = os.path.join(dirname, dist_filename)
         paddle.static.save_inference_model(
