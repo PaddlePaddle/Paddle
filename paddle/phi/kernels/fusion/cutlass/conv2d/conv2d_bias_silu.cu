@@ -11,7 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#pragma once
+
+#include <mutex>
 #include "cutlass/conv/kernel/default_conv2d_fprop.h"
 #include "cutlass/epilogue/thread/linear_combination_silu.h"
 #include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_util.h"
@@ -188,6 +189,7 @@ std::vector<std::function<cutlass::Status(ConvAllParams)>>
                            cutlass::gemm::GemmShape<64, 32, 32>>};
 
 std::map<std::vector<int>, int> map_problem_conv2d_bias_silu;
+std::mutex conv2d_bias_silu_mutex;
 
 void Conv2dBiasSilu(ConvAllParams params) {
   int batch = params.batch;
@@ -213,6 +215,8 @@ void Conv2dBiasSilu(ConvAllParams params) {
 
   int best_config_index = ProfileToGetBestConfig(
       conv2d_bias_silu_all_func, params, CONV2D_BIAS_SILU);
+
+  std::lock_guard<std::mutex> guard(conv2d_bias_silu_mutex);
 
   map_problem_conv2d_bias_silu[problem_size] = best_config_index;
   conv2d_bias_silu_all_func[best_config_index](params);

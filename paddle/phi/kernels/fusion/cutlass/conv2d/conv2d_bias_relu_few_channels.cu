@@ -11,7 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#pragma once
+
+#include <mutex>
 #include "cutlass/conv/kernel/default_conv2d_fprop.h"
 #include "cutlass/epilogue/thread/linear_combination_bias_relu.h"
 #include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_util.h"

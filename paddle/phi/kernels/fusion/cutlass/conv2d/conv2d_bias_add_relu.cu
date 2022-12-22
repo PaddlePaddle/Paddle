@@ -11,7 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#pragma once
+
+#include <mutex>
 #include "cutlass/conv/kernel/default_conv2d_fprop_with_broadcast.h"
 #include "cutlass/epilogue/thread/linear_combination_residual_block.h"
 #include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_util.h"
@@ -208,6 +209,7 @@ std::vector<std::function<cutlass::Status(ConvAllParams)>>
         Conv2dBiasAddReluImpl<cutlass::gemm::GemmShape<256, 128, 32>,
                               cutlass::gemm::GemmShape<64, 64, 32>>};
 std::map<std::vector<int>, int> map_problem_conv2d_bias_add_relu;
+std::mutex conv2d_bias_add_relu_mutex;
 
 void Conv2dBiasAddRelu(ConvAllParams params) {
   int batch = params.batch;
@@ -230,6 +232,9 @@ void Conv2dBiasAddRelu(ConvAllParams params) {
         problem_size)](params);
     return;
   }
+
+  std::lock_guard<std::mutex> guard(conv2d_bias_add_relu_mutex);
+
   // config 6's diff is large.
   conv2d_bias_add_relu_all_func[6] = nullptr;
 
