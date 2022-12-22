@@ -242,6 +242,9 @@ class FleetWrapper {
   void BarrierWithTable(uint32_t barrier_type);
 
   void PrintTableStat(const uint64_t table_id);
+  void SaveCacheTable(const uint64_t table_id,
+                      uint16_t pass_id,
+                      size_t threshold);
   // mode = 0, load all feature
   // mode = 1, load delta feature, which means load diff
   void LoadModel(const std::string& path, const int mode);

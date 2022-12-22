@@ -145,21 +145,3 @@ void SetValueKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
-
-PD_REGISTER_KERNEL(set_value,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::SetValueKernel,
-                   float,
-                   phi::dtype::float16,
-                   int,
-                   int64_t) {}
-
-PD_REGISTER_KERNEL(set_value_with_tensor,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::SetTensorValueKernel,
-                   float,
-                   phi::dtype::float16,
-                   int,
-                   int64_t) {}

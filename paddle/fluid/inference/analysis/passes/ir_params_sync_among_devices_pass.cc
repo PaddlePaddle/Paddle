@@ -232,6 +232,7 @@ void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
     CopyParamsToCustomDevice(argument);
   }
 #endif
+  paddle::memory::Release(platform::CPUPlace());
 }
 
 std::string IrParamsSyncAmongDevicesPass::repr() const {
