@@ -23,7 +23,6 @@ from dist_test_utils import remove_ps_flag
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import paddle.fluid.layers.ops as ops
 from paddle.fluid import core
 from paddle.fluid.layers.io import ListenAndServ, Recv, Send
@@ -83,11 +82,10 @@ class TestSendOp(unittest.TestCase):
                     dtype="float32",
                     shape=[32, 32],
                 )
-                x = layers.data(
+                x = paddle.static.data(
                     shape=[32, 32],
                     dtype='float32',
                     name="X",
-                    append_batch_size=False,
                 )
                 fluid.initializer.Constant(value=1.0)(x, main.global_block())
                 ops._scale(x=x, scale=10.0, out=out_var)
@@ -108,12 +106,7 @@ class TestSendOp(unittest.TestCase):
                 },
             )
 
-            x = layers.data(
-                shape=[32, 32],
-                dtype='float32',
-                name='X',
-                append_batch_size=False,
-            )
+            x = paddle.static.data(shape=[32, 32], dtype='float32', name='X')
             x.persistable = True
             fluid.initializer.Constant(value=2.3)(x, main.global_block())
 
@@ -141,12 +134,7 @@ class TestSendOp(unittest.TestCase):
     def run_local(self, place):
         main = fluid.Program()
         with fluid.program_guard(main):
-            x = layers.data(
-                shape=[32, 32],
-                dtype='float32',
-                name='X',
-                append_batch_size=False,
-            )
+            x = paddle.static.data(shape=[32, 32], dtype='float32', name='X')
             fluid.initializer.Constant(value=2.3)(x, main.global_block())
             o = paddle.scale(x=x, scale=10.0)
         exe = fluid.Executor(place)

@@ -86,11 +86,11 @@ class DatasetLoaderTestBase(unittest.TestCase):
         main_prog = fluid.Program()
         startup_prog = fluid.Program()
         with fluid.program_guard(main_prog, startup_prog):
-            image = fluid.layers.data(
-                name='image', shape=IMAGE_SHAPE, dtype='float32'
+            image = paddle.static.data(
+                name='image', shape=[-1] + IMAGE_SHAPE, dtype='float32'
             )
-            label = fluid.layers.data(
-                name='label', shape=LABEL_SHAPE, dtype='int64'
+            label = paddle.static.data(
+                name='label', shape=[-1] + LABEL_SHAPE, dtype='int64'
             )
 
             simple_fc_net_with_inputs(image, label)

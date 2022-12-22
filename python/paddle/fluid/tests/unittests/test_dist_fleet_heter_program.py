@@ -65,18 +65,18 @@ class TestDistFleetHeterProgram(unittest.TestCase):
         return self.strategy
 
     def build_input(self):
-        dense_input = fluid.layers.data(
-            name="dense_input", shape=[10], dtype="float32"
+        dense_input = paddle.static.data(
+            name="dense_input", shape=[-1, 10], dtype="float32"
         )
 
         sparse_input_ids = [
-            fluid.layers.data(
-                name="C" + str(i), shape=[1], lod_level=1, dtype="int64"
+            paddle.static.data(
+                name="C" + str(i), shape=[-1, 1], lod_level=1, dtype="int64"
             )
             for i in range(1, 27)
         ]
 
-        label = fluid.layers.data(name="label", shape=[1], dtype="float32")
+        label = paddle.static.data(name="label", shape=[-1, 1], dtype="float32")
 
         inputs = [dense_input] + sparse_input_ids + [label]
         return inputs

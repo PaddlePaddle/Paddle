@@ -116,16 +116,22 @@ class TestDotOpError(unittest.TestCase):
 
             # the input dtype of elementwise_mul must be float16 or float32 or float64 or int32 or int64
             # float16 only can be set on GPU place
-            x1 = fluid.layers.data(name='x1', shape=[120], dtype="uint8")
-            y1 = fluid.layers.data(name='y1', shape=[120], dtype="uint8")
+            x1 = paddle.static.data(name='x1', shape=[-1, 120], dtype="uint8")
+            y1 = paddle.static.data(name='y1', shape=[-1, 120], dtype="uint8")
             self.assertRaises(Exception, paddle.dot, x1, y1)
 
-            x2 = fluid.layers.data(name='x2', shape=[2, 3], dtype="float32")
-            y2 = fluid.layers.data(name='y2', shape=[2, 3], dtype="float32")
+            x2 = paddle.static.data(
+                name='x2', shape=[-1, 2, 3], dtype="float32"
+            )
+            y2 = paddle.static.data(
+                name='y2', shape=[-1, 2, 3], dtype="float32"
+            )
             self.assertRaises(Exception, paddle.dot, x2, y2)
 
-            x3 = fluid.layers.data(name='x3', shape=[3], dtype="float32")
-            y3 = fluid.layers.data(name='y3', shape=[2, 3], dtype="float32")
+            x3 = paddle.static.data(name='x3', shape=[-1, 3], dtype="float32")
+            y3 = paddle.static.data(
+                name='y3', shape=[-1, 2, 3], dtype="float32"
+            )
             self.assertRaises(Exception, paddle.dot, x2, y3)
 
 

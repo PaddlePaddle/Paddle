@@ -73,7 +73,7 @@ class TestReduceMeanWithDimDoubleGradCheck(unittest.TestCase):
         eps = 0.05
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
+        x = paddle.static.data('x', shape, dtype)
         x.persistable = True
         y = paddle.mean(x, axis=0)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
@@ -97,7 +97,7 @@ class TestReduceSumWithDimDoubleGradCheck(unittest.TestCase):
         eps = 0.05
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
+        x = paddle.static.data('x', shape, dtype)
         x.persistable = True
         y = paddle.sum(x, axis=0)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
