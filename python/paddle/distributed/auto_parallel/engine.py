@@ -759,9 +759,17 @@ class Engine:
                     all_process_groups, cur_rank
                 )
             else:
+                self._logger.info(
+                    "current rank: {} has {} communicators to be init.".format(
+                        self._cur_rank, len(all_process_groups)
+                    )
+                )
                 for process_group in all_process_groups:
                     if cur_rank not in process_group.ranks:
                         continue
+                    self._logger.info(
+                        "Initializing: {}.".format(str(process_group))
+                    )
                     process_group.instantiate()
 
         place = _get_device()
