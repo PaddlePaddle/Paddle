@@ -14,7 +14,6 @@
 # limitations under the License.
 
 from . import amp  # noqa: F401
-from . import sparsity  # noqa: F401
 from . import nn  # noqa: F401
 
 from .nn.common import py_func  # noqa: F401
