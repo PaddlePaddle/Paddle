@@ -352,7 +352,11 @@ static PyObject* streambase_properties_get_priority(StreamBaseObject* self,
     auto stream = gpu_ctx->cuda_stream()->raw_stream();
     phi::backends::gpu::GPUDeviceGuard guard(place.device);
     int priority = 0;
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_GPU_SUCCESS(hipStreamGetPriority(stream, &priority));
+#else
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamGetPriority(stream, &priority));
+#endif
     return ToPyObject(priority);
 #else
     PADDLE_THROW(
@@ -386,8 +390,13 @@ static PyObject* streambase_method_priority_range(StreamBaseObject* self) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     phi::backends::gpu::GPUDeviceGuard guard(place.device);
     int least_priority, greatest_priority;
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        hipDeviceGetStreamPriorityRange(&least_priority, &greatest_priority));
+#else
     PADDLE_ENFORCE_GPU_SUCCESS(
         cudaDeviceGetStreamPriorityRange(&least_priority, &greatest_priority));
+#endif
     PADDLE_ENFORCE_GE(
         least_priority,
         0,
