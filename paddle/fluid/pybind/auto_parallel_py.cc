@@ -52,8 +52,8 @@ static inline const ProcessMesh *get_tensor_process_mesh(
   }
 }
 
-static inline const void set_tensor_process_mesh(
-    TensorDistAttr *self, const ProcessMesh *process_mesh) {
+static inline void set_tensor_process_mesh(TensorDistAttr *self,
+                                           const ProcessMesh *process_mesh) {
   if (process_mesh) {
     self->set_process_mesh(*process_mesh);
   } else {
@@ -70,8 +70,8 @@ static inline const ProcessMesh *get_operator_process_mesh(
   }
 }
 
-static inline const void set_operator_process_mesh(
-    OperatorDistAttr *self, const ProcessMesh *process_mesh) {
+static inline void set_operator_process_mesh(OperatorDistAttr *self,
+                                             const ProcessMesh *process_mesh) {
   if (process_mesh) {
     self->set_process_mesh(*process_mesh);
   } else {
