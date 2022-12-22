@@ -66,10 +66,10 @@ bool TensorArray::valid() const {
 void* TensorArray::AllocateFrom(Allocator* allocator,
                                 DataType dtype,
                                 size_t requested_size,
-                                bool check_size) {
+                                bool fake_allc) {
   for (size_t i = 0; i < tensors_.size(); i++) {
     tensors_[i].AllocateFrom(
-        allocator, tensors_[i].dtype(), requested_size, check_size);
+        allocator, tensors_[i].dtype(), requested_size, fake_allc);
   }
   return nullptr;
 }

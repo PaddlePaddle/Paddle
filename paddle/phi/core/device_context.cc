@@ -135,7 +135,7 @@ struct DeviceContext::Impl {
               DataType dtype = DataType::UNDEFINED,
               size_t requested_size = 0,
               bool pinned = false,
-              bool check_size = true) const {
+              bool fake_alloc = false) const {
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
         phi::errors::InvalidArgument(
@@ -150,7 +150,7 @@ struct DeviceContext::Impl {
       ClearHolder(tensor);
     }
     auto* allocator =
-        (tensor->numel() == 0 || check_size == false) && requested_size == 0
+        (tensor->numel() == 0 || fake_alloc) && requested_size == 0
             ? zero_allocator_
             : (pinned ? pinned_allocator_ : device_allocator_);
 #ifdef PADDLE_WITH_CUDA
@@ -166,7 +166,7 @@ struct DeviceContext::Impl {
     }
 #endif
     return tensor->AllocateFrom(
-        const_cast<Allocator*>(allocator), dtype, requested_size, check_size);
+        const_cast<Allocator*>(allocator), dtype, requested_size, fake_alloc);
   }
 
   template <typename T>
@@ -181,7 +181,7 @@ struct DeviceContext::Impl {
   void* HostAlloc(TensorBase* tensor,
                   DataType dtype = DataType::UNDEFINED,
                   size_t requested_size = 0,
-                  bool check_size = true) const {
+                  bool fake_alloc = false) const {
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
         phi::errors::InvalidArgument(
@@ -193,11 +193,11 @@ struct DeviceContext::Impl {
       ClearHolder(tensor);
     }
     auto* allocator =
-        (tensor->numel() == 0 || check_size == false) && requested_size == 0
+        (tensor->numel() == 0 || fake_alloc) && requested_size == 0
             ? host_zero_allocator_
             : host_allocator_;
     return tensor->AllocateFrom(
-        const_cast<Allocator*>(allocator), dtype, requested_size, check_size);
+        const_cast<Allocator*>(allocator), dtype, requested_size, fake_alloc);
   }
 
   template <typename T>
@@ -348,17 +348,17 @@ void* DeviceContext::Alloc(TensorBase* tensor,
                            DataType dtype,
                            size_t requested_size,
                            bool pinned,
-                           bool check_size) const {
+                           bool fake_alloc) const {
   if (pinned) {
     return impl_->Alloc(tensor,
                         GetPinnedPlace(GetPlace()),
                         dtype,
                         requested_size,
                         pinned,
-                        check_size);
+                        fake_alloc);
   }
   return impl_->Alloc(
-      tensor, GetPlace(), dtype, requested_size, pinned, check_size);
+      tensor, GetPlace(), dtype, requested_size, pinned, fake_alloc);
 }
 
 template <typename T>
@@ -375,8 +375,8 @@ T* DeviceContext::Alloc(TensorBase* tensor,
 void* DeviceContext::HostAlloc(TensorBase* tensor,
                                DataType dtype,
                                size_t requested_size,
-                               bool check_size) const {
-  return impl_->HostAlloc(tensor, dtype, requested_size, check_size);
+                               bool fake_alloc) const {
+  return impl_->HostAlloc(tensor, dtype, requested_size, fake_alloc);
 }
 
 template <typename T>

@@ -126,7 +126,7 @@ class DenseTensor : public TensorBase,
   void* AllocateFrom(Allocator* allocator,
                      DataType dtype,
                      size_t requested_size = 0,
-                     bool check_size = 0) override;
+                     bool fake_alloc = false) override;
 
   /// \brief Check if allocation is shared with other objects.
   /// \return Whether the allocation is shared with other objects.

@@ -124,7 +124,7 @@ class StringTensor : public TensorBase,
   void* AllocateFrom(Allocator* allocator,
                      DataType dtype,
                      size_t requested_size = 0,
-                     bool check_size = true) override;
+                     bool fake_alloc = false) override;
   dtype::pstring* mutable_data(const phi::Place& place,
                                size_t requested_size = 0);
 

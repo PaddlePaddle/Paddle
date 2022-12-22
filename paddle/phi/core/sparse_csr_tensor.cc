@@ -83,9 +83,9 @@ SparseCsrTensor& SparseCsrTensor::operator=(const SparseCsrTensor& other) {
 void* SparseCsrTensor::AllocateFrom(Allocator* allocator,
                                     DataType dtype,
                                     size_t requested_size,
-                                    bool check_size) {
+                                    bool fake_alloc) {
   return non_zero_elements_.AllocateFrom(
-      allocator, dtype, requested_size, check_size);
+      allocator, dtype, requested_size, fake_alloc);
 }
 
 void SparseCsrTensor::Resize(const DDim& dense_dims,

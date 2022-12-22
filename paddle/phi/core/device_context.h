@@ -150,7 +150,7 @@ class PADDLE_API DeviceContext {
               DataType dtype,
               size_t requested_size = 0,
               bool pinned = false,
-              bool check_size = true) const;
+              bool fake_alloc = false) const;
 
   template <typename T>
   T* Alloc(TensorBase* tensor,
@@ -163,7 +163,7 @@ class PADDLE_API DeviceContext {
   void* HostAlloc(TensorBase* tensor,
                   DataType dtype,
                   size_t requested_size = 0,
-                  bool check_size = true) const;
+                  bool fake_alloc = false) const;
 
   template <typename T>
   T* HostAlloc(TensorBase* tensor, size_t requested_size = 0) const;

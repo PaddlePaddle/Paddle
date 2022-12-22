@@ -99,7 +99,7 @@ bool DenseTensor::IsSharedWith(const DenseTensor& b) const {
 void* DenseTensor::AllocateFrom(Allocator* allocator,
                                 DataType dtype,
                                 size_t requested_size,
-                                bool check_size) {
+                                bool fake_alloc) {
   PADDLE_ENFORCE_NOT_NULL(
       allocator,
       phi::errors::InvalidArgument(
@@ -110,8 +110,11 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
   }
 
   size_t bytes = numel() * SizeOf(this->dtype());
-  if (requested_size) {
-    if (check_size) {
+
+  if (fake_alloc) {
+    bytes = 0;
+  } else {
+    if (requested_size) {
       PADDLE_ENFORCE(
           valid(),
           phi::errors::PreconditionNotMet("The meta data must be valid when "
@@ -123,13 +126,10 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
                             "volume required by metadata %d.",
                             requested_size,
                             bytes));
-    }
-    bytes = requested_size;
-  } else {
-    if (!check_size) {
       bytes = requested_size;
     }
   }
+
   // NOTE(paddle-dev): In case of the allocator of storage_ is different with
   // the incoming allocator, we will re-alloc data using the incoming
   // allocator. See DeviceContext.Alloc in core/device_context.cc.

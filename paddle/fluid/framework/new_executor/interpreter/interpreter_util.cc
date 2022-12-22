@@ -535,21 +535,22 @@ void FakeInitializeOutputs(phi::Kernel* phi_kernel,
 
       if (phi::DenseTensor::classof(out_tensor)) {
         if (!out_tensor->initialized()) {
-          VLOG(4) << "DenseTensor alloc 0 bytes of type " << out_tensor->dtype()
-                  << " " << out_tensor;
+          VLOG(4) << "DenseTensor fake alloc 0 bytes of type "
+                  << out_tensor->dtype() << " on backend " << backend << " "
+                  << out_tensor;
           if (backend == phi::TransToPhiBackend(dev_ctx->GetPlace())) {
             dev_ctx->Alloc(out_tensor,
                            out_tensor->dtype(),
                            /*requested_size=*/0,
                            /*pinned=*/false,
-                           /*check_size=*/false);
+                           /*fake_alloc=*/true);
           } else {
             if (backend == phi::Backend::CPU ||
                 backend == phi::Backend::ONEDNN) {
               dev_ctx->HostAlloc(out_tensor,
                                  out_tensor->dtype(),
                                  /*requested_size=*/0,
-                                 /*check_size=*/false);
+                                 /*fake_alloc=*/true);
             }
           }
         }
