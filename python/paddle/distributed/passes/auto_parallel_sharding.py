@@ -150,12 +150,16 @@ class ShardingPass(PassBase):
         self.global_rank = int(self.get_attr("global_rank"))
         self.enable_overlap = self.get_attr("enable_overlap")
         self.comm_stream_num = int(self.get_attr("comm_stream_num"))
+        self.enable_hierarchical_comm = self.get_attr(
+            "enable_hierarchical_comm"
+        )
         if self.comm_stream_num > 1:
             assert (
                 self.enable_overlap
-            ), "multiple comm stream only need enable_overlap to be True"
+            ), "multiple comm stream need enable_overlap to be True"
         self.bucket_size_numel = int(self.get_attr("bucket_size_numel"))
         self.partition_algor = self.get_attr("partition_algor")
+
         params_grads = self.get_attr("params_grads")
         main_block, startup_block = (
             main_program.global_block(),
@@ -1304,6 +1308,32 @@ class ShardingPass(PassBase):
                     op_namescope="sharding_grad_comm_dep",
                 )
                 depend_op.dist_attr.execution_stream = comm_stream
+
+        # # hierarchical comm
+        # if self.enable_hierarchical_comm:
+        #     # NOTE so far we only support Isomorphic cluster with 8 ranks per node
+
+        #     # create communicators
+        #     nranks_per_node = 8
+        #     assert self.sharding_degree % self.nranks_per_node == 0
+        #     global_group = sharding_info.group
+        #     global_ranks = global_group.ranks
+        #     relative_idx_in_node = self.global_rank % nranks_per_node
+        #     node_idx = self.global_rank // nranks_per_node
+        #     inter_node_ranks = [
+        #         rank
+        #         for rank in global_ranks
+        #         if rank % nranks_per_node == relative_idx_in_node
+        #     ]
+        #     assert (
+        #         len(inter_node_ranks) == self.sharding_degree // nranks_per_node
+        #     )
+        #     intra_node_ranks = [
+        #         rank
+        #         for rank in global_ranks
+        #         if rank // nranks_per_node == node_idx
+        #     ]
+        #     assert len(intra_node_ranks) == nranks_per_node
 
         block._sync_with_cpp()
 
