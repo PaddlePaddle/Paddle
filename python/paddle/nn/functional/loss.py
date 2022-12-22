@@ -1310,6 +1310,7 @@ def margin_ranking_loss(
 
 def l1_loss(input, label, reduction='mean', name=None):
     r"""
+
     Computes the L1 Loss of Tensor ``input`` and ``label`` as follows.
 
     If `reduction` set to ``'none'``, the loss is:
@@ -1341,7 +1342,7 @@ def l1_loss(input, label, reduction='mean', name=None):
 
     Returns:
         Tensor, the L1 Loss of Tensor ``input`` and ``label``.
-        If `reduction` is ``'none'``, the shape of output loss is [N, *], the same as ``input`` .
+        If `reduction` is ``'none'``, the shape of output loss is :math:`[N, *]`, the same as ``input`` .
         If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
 
     Examples:
@@ -1364,6 +1365,7 @@ def l1_loss(input, label, reduction='mean', name=None):
             l1_loss = paddle.nn.functional.l1_loss(input, label, reduction='sum')
             print(l1_loss.numpy())
             # [1.4]
+
     """
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
@@ -2286,6 +2288,7 @@ def cross_entropy(
     name=None,
 ):
     r"""
+
     By default, this operator implements the cross entropy loss function with softmax. This function
     combines the calculation of the softmax operation and the cross entropy loss function
     to provide a more numerically stable computing.
@@ -2399,21 +2402,13 @@ def cross_entropy(
 
 
     Parameters:
-
-        - **input** (Tensor)
-
-            Input tensor, the data type is float32, float64. Shape is
-        :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes ,  ``k >= 1`` .
+        input (Tensor): the data type is float32, float64. Shape is :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes, ``k >= 1`` .
 
             Note:
-
-                1. when use_softmax=True, it expects unscaled logits. This operator should not be used with the
-                output of softmax operator, which will produce incorrect results.
-
+                1. when use_softmax=True, it expects unscaled logits. This operator should not be used with the output of softmax operator, which will produce incorrect results.
                 2. when use_softmax=False, it expects the output of softmax operator.
 
-        - **label** (Tensor)
-
+        label (Tensor):
             1. If soft_label=False, the shape is
             :math:`[N_1, N_2, ..., N_k]` or :math:`[N_1, N_2, ..., N_k, 1]`, k >= 1.
             the data type is int32, int64, float32, float64, where each value is [0, C-1].
@@ -2421,48 +2416,27 @@ def cross_entropy(
             2. If soft_label=True, the shape and data type should be same with ``input`` ,
             and the sum of the labels for each sample should be 1.
 
-        - **weight** (Tensor, optional)
-
-            a manual rescaling weight given to each class.
+        weight (Tensor, optional): a manual rescaling weight given to each class.
             If given, has to be a Tensor of size C and the data type is float32, float64.
             Default is ``'None'`` .
-
-        - **ignore_index** (int64, optional)
-
-            Specifies a target value that is ignored
+        ignore_index (int64, optional): Specifies a target value that is ignored
             and does not contribute to the loss. A negative value means that no label
             value needs to be ignored. Only valid when soft_label = False.
             Default is ``-100`` .
-
-        - **reduction** (str, optional)
-
-            Indicate how to average the loss by batch_size,
+        reduction (str, optional): Indicate how to average the loss by batch_size,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
             Default is ``'mean'``.
-
-        - **soft_label** (bool, optional)
-
-            Indicate whether label is soft.
-            Default is ``False``.
-
-        - **axis** (int, optional)
-
-            The index of dimension to perform softmax calculations.
+        soft_label (bool, optional): Indicate whether label is soft. Default is ``False``.
+        axis (int, optional):The index of dimension to perform softmax calculations.
             It should be in range :math:`[-1, rank - 1]`, where :math:`rank` is the
             number of dimensions of input :attr:`input`.
             Default is ``-1`` .
-
-        - **use_softmax** (bool, optional)
-
-            Indicate whether compute softmax before cross_entropy.
+        use_softmax (bool, optional): Indicate whether compute softmax before cross_entropy.
             Default is ``True``.
-
-        - **name** (str, optional)
-
-            The name of the operator. Default is ``None`` .
+        name (str, optional): The name of the operator. Default is ``None`` .
             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
@@ -2478,9 +2452,7 @@ def cross_entropy(
 
         2. if soft_label = True, the dimension of return value is :math:`[N_1, N_2, ..., N_k, 1]` .
 
-
     Examples:
-
         .. code-block:: python
 
             # hard labels
@@ -3836,6 +3808,7 @@ def triplet_margin_loss(
 
 def soft_margin_loss(input, label, reduction='mean', name=None):
     """
+
     The API measures the soft margin loss between input predictions ``input``
     and target labels ``label`` . It can be described as:
 
@@ -3844,9 +3817,9 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
 
     Parameters:
 
-        input (Tensor): The input predications tensor with shape: [N, *],
+        input (Tensor): The input predications tensor with shape: ``[N, *]``,
             N is batch_size, `*` means any number of additional dimensions. The ``input`` ranges from -inf to inf.
-             Available dtype is float32, float64.
+            Available dtype is float32, float64.
 
         label (Tensor): The target labels tensor with the same shape as
             ``input``. The target labels which values should be numbers -1 or 1.
@@ -3864,8 +3837,7 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
 
     Returns:
 
-        Output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
-            same as ``input`` , else the shape of output is [1].
+        Output (Tensor): If ``reduction`` is ``'none'``, the shape of output is same as ``input`` , else the shape of output is [1].
 
     Examples:
         .. code-block:: python
@@ -3891,6 +3863,7 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
             #         [0.84367639, 0.74795729, 0.44629076, 0.55123353, 0.77659678],
             #         [0.39465919, 0.76651484, 0.54485321, 0.76609844, 0.77166790],
             #         [0.51283568, 0.84757161, 0.78913331, 1.05268764, 0.45318675]])
+
     """
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(

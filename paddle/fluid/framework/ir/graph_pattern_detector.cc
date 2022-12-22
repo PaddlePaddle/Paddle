@@ -1045,6 +1045,7 @@ PDNode *patterns::SeqConvEltAddRelu::operator()(
 PDNode *patterns::Squeeze2Transpose2::operator()() {
   auto *squeeze2_op_in = pattern->NewNode(squeeze2_op_in_repr())
                              ->AsInput()
+                             ->assert_has_n_outputs(1)
                              ->assert_is_op_input("squeeze2", "X");
   auto *squeeze2_op = pattern->NewNode(squeeze2_op_repr())
                           ->assert_is_op("squeeze2")
