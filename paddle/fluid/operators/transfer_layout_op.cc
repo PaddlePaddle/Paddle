@@ -49,7 +49,7 @@ class TransferLayoutOp : public framework::OperatorWithKernel {
     auto *in_tensor = framework::GetLoDTensorOrSelectedRowsValueFromVar(*in);
     // NOTE(zhiqiu): hot fix, allow empty tensor of kMKLDNN layout to run this
     // op
-    if (in_tensor->layout() != DataLayout::kMKLDNN) {
+    if (in_tensor->layout() != DataLayout::ONEDNN) {
       PADDLE_ENFORCE_EQ(in_tensor->IsInitialized(),
                         true,
                         platform::errors::PreconditionNotMet(
@@ -66,9 +66,7 @@ class TransferLayoutOp : public framework::OperatorWithKernel {
       const std::string &var_name,
       const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   expected_kernel_type.place_,
-                                   expected_kernel_type.data_layout_);
+    return expected_kernel_type;
   }
 };
 

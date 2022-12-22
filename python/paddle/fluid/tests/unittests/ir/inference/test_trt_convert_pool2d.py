@@ -20,6 +20,7 @@ from functools import partial
 from typing import Any, Dict, List
 import unittest
 import itertools
+import copy
 
 
 class TrtConvertPool2dTest(TrtLayerAutoScanTest):
@@ -29,7 +30,7 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
         ksize = program_config.ops[0].attrs['ksize']
         pooling_type = program_config.ops[0].attrs['pooling_type']
         global_pooling = program_config.ops[0].attrs['global_pooling']
-        if global_pooling == False:
+        if not global_pooling:
             if pooling_type == 'avg':
                 for index in range(len(ksize)):
                     if ksize[index] <= paddings[index]:
@@ -174,10 +175,10 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
         def teller(program_config, predictor_config):
             if (
                 program_config.ops[0].attrs['pooling_type'] == 'avg'
-                and program_config.ops[0].attrs['global_pooling'] == False
-                and program_config.ops[0].attrs['exclusive'] == True
-                and program_config.ops[0].attrs['adaptive'] == False
-                and program_config.ops[0].attrs['ceil_mode'] == True
+                and not program_config.ops[0].attrs['global_pooling']
+                and program_config.ops[0].attrs['exclusive']
+                and not program_config.ops[0].attrs['adaptive']
+                and program_config.ops[0].attrs['ceil_mode']
             ):
                 return True
             return False
@@ -187,6 +188,39 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
             SkipReasons.TRT_NOT_IMPLEMENTED,
             "The results of some cases are Nan, but the results of TensorRT and GPU are the same.",
         )
+
+    def assert_tensors_near(
+        self,
+        atol: float,
+        rtol: float,
+        tensor: Dict[str, np.array],
+        baseline: Dict[str, np.array],
+    ):
+        for key, arr in tensor.items():
+            self.assertEqual(
+                baseline[key].shape,
+                arr.shape,
+                'The output shapes are not equal, the baseline shape is '
+                + str(baseline[key].shape)
+                + ', but got '
+                + str(arr.shape),
+            )
+
+            # The result of Pool2d may have some elements that is the least value (-65504 for FP16),
+            # but for FP32 and FP16 precision, their least value are different.
+            # We set a threshold that is the least value of FP16,
+            # and make the values less than the threshold to be the threshold.
+            def align_less_threshold(arr, threshold):
+                return np.clip(arr, threshold, None)
+
+            fp16_min = np.finfo(np.float16).min
+            baseline_threshold = align_less_threshold(
+                copy.deepcopy(baseline[key]), fp16_min
+            )
+            arr_threshold = align_less_threshold(copy.deepcopy(arr), fp16_min)
+            np.testing.assert_allclose(
+                baseline_threshold, arr_threshold, rtol=rtol, atol=atol
+            )
 
     def test(self):
         self.add_skip_trt_case()

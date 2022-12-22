@@ -1242,7 +1242,7 @@ def sparse_embedding(
             )
         entry_str = entry._to_attr()
 
-    if slot == None:
+    if slot is None:
         slot = 0
 
     helper.append_op(

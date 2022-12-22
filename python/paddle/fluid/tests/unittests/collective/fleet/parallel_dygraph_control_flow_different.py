@@ -26,7 +26,7 @@ np.random.seed(2021)
 
 class SimpleNet(fluid.Layer):
     def __init__(self, hidden_size, vocab_size, is_sparse=False):
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.hidden_size = hidden_size
         self.vocab_size = vocab_size
         self.embedding = Embedding(

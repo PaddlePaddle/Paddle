@@ -143,7 +143,7 @@ def _is_about_global_norm(
     return rank_id in complete_param_ranks
 
 
-class ClipHelper(object):
+class ClipHelper:
     def __init__(self, params_grads, rank_id, block, dist_context):
         params, _ = zip(*params_grads)
         self.params = list(params)
@@ -221,7 +221,7 @@ class ClipGradByGloblNormPass(PassBase):
     """
 
     def __init__(self):
-        super(ClipGradByGloblNormPass, self).__init__()
+        super().__init__()
         self.set_attr("rank_id", None)
         self.set_attr("dist_context", None)
         self.set_attr("params_grads", None)
@@ -269,7 +269,7 @@ class ClipGradByGloblNormPass(PassBase):
             if op.type in removed_op_out_type:
                 input_name = op.input("X")[0]
                 if input_name.find("@GRAD") != -1:
-                    #'clip_by_norm', 'squared_l2_norm', 'square'
+                    # 'clip_by_norm', 'squared_l2_norm', 'square'
                     param_name = input_name[: input_name.find("@GRAD")]
                     is_local = self.clip_helper._is_local_param(param_name)
                     is_calculate = self.clip_helper._is_calcuate_norm(

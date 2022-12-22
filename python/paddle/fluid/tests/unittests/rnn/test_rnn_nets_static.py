@@ -30,7 +30,7 @@ bidirectional_list = ["bidirectional", "bidirect"]
 
 class TestSimpleRNN(unittest.TestCase):
     def __init__(self, time_major=True, direction="forward", place="cpu"):
-        super(TestSimpleRNN, self).__init__("runTest")
+        super().__init__("runTest")
         self.time_major = time_major
         self.direction = direction
         self.num_directions = 2 if direction in bidirectional_list else 1
@@ -184,7 +184,7 @@ class TestSimpleRNN(unittest.TestCase):
 
 class TestGRU(unittest.TestCase):
     def __init__(self, time_major=True, direction="forward", place="cpu"):
-        super(TestGRU, self).__init__("runTest")
+        super().__init__("runTest")
         self.time_major = time_major
         self.direction = direction
         self.num_directions = 2 if direction in bidirectional_list else 1
@@ -338,7 +338,7 @@ class TestGRU(unittest.TestCase):
 
 class TestLSTM(unittest.TestCase):
     def __init__(self, time_major=True, direction="forward", place="cpu"):
-        super(TestLSTM, self).__init__("runTest")
+        super().__init__("runTest")
         self.time_major = time_major
         self.direction = direction
         self.num_directions = 2 if direction in bidirectional_list else 1

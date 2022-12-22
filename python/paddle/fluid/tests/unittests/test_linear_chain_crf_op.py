@@ -19,7 +19,7 @@ import numpy as np
 from op_test import OpTest
 
 
-class LinearChainCrfForward(object):
+class LinearChainCrfForward:
     def __init__(
         self,
         seq_start_positions,

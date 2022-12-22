@@ -32,7 +32,7 @@ class SimpleNet(paddle.nn.Layer):
     def __init__(
         self,
     ):
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.fc1 = paddle.nn.Linear(10, 10)
         # sublayer1 register post hook
         self.fc1.register_forward_post_hook(forward_post_hook1)

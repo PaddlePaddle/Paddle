@@ -30,7 +30,7 @@ from xpu.get_test_cover_info import (
 paddle.enable_static()
 
 
-################## TEST OP: logical_and ##################
+# -------------- TEST OP: logical_and ----------------- #
 class XPUTestLogicalAnd(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = 'logical_and'
@@ -86,7 +86,7 @@ for stype in support_types:
     create_test_class(globals(), XPUTestLogicalAnd, stype)
 
 
-################## TEST OP: logical_or ##################
+# --------------- TEST OP: logical_or ------------------ #
 class XPUTestLogicalOr(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = 'logical_or'
@@ -142,7 +142,7 @@ for stype in support_types:
     create_test_class(globals(), XPUTestLogicalOr, stype)
 
 
-################## TEST OP: logical_xor ##################
+# --------------- TEST OP: logical_xor ------------------- #
 class XPUTestLogicalXor(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = 'logical_xor'
@@ -198,7 +198,7 @@ for stype in support_types:
     create_test_class(globals(), XPUTestLogicalXor, stype)
 
 
-##################  TEST OP: LogicalNot ##################
+# -------------  TEST OP: LogicalNot ---------------- #
 class XPUTestLogicalNot(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = 'logical_not'

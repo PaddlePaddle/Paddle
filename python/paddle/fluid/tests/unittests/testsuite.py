@@ -41,7 +41,7 @@ def create_op(scope, op_type, inputs, outputs, attrs, cache_list=None):
                     __create_var__(in_name, sub_in_name)
             else:
                 __create_var__(in_name, in_name)
-    if cache_list != None and isinstance(cache_list, list):
+    if cache_list is not None and isinstance(cache_list, list):
         for name in cache_list:
             kwargs[name] = []
             scope.var(name)

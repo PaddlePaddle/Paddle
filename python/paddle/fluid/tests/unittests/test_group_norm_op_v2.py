@@ -78,7 +78,7 @@ class TestDygraphGroupNormv2(unittest.TestCase):
 
                     def attr_data_format():
                         out = paddle.nn.GroupNorm(
-                            num_groups=2, num_channels=2, data_format="NHWC"
+                            num_groups=2, num_channels=2, data_format="CNHW"
                         )
 
                     self.assertRaises(ValueError, attr_data_format)

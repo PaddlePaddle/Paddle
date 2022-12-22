@@ -25,7 +25,7 @@ __all__ = []
 
 class GraphExecutionOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
-        super(GraphExecutionOptimizer, self).__init__(optimizer)
+        super().__init__(optimizer)
         self.inner_opt = optimizer
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = []
@@ -177,7 +177,7 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
             gradient_scale_configs['scale_strategy']
         ]
 
-        if self.user_defined_strategy.recompute == True:
+        if self.user_defined_strategy.recompute:
             logging.warn(
                 "set enable_sequential_execution=True since you have enable the recompute strategy"
             )
@@ -269,7 +269,7 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
     def minimize(
         self, loss, startup_program=None, parameter_list=None, no_grad_set=None
     ):
-        if startup_program == None:
+        if startup_program is None:
             startup_program = paddle.static.default_startup_program()
         compiled_program = self._try_to_compile(
             startup_program, loss.block.program, loss

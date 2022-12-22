@@ -37,7 +37,7 @@ class_dim = 102
 
 class MLP(fluid.Layer):
     def __init__(self, param_attr=None, bias_attr=None):
-        super(MLP, self).__init__()
+        super().__init__()
 
         self._linear1 = Linear(10, 10)
         self._linear2 = Linear(10, 10)

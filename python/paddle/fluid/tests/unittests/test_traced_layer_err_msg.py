@@ -25,7 +25,7 @@ import paddle.nn as nn
 
 class SimpleFCLayer(nn.Layer):
     def __init__(self, feature_size, batch_size, fc_size):
-        super(SimpleFCLayer, self).__init__()
+        super().__init__()
         self._linear = nn.Linear(feature_size, fc_size)
         self._offset = paddle.to_tensor(
             np.random.random((batch_size, fc_size)).astype('float32')
@@ -38,7 +38,7 @@ class SimpleFCLayer(nn.Layer):
 
 class LinearNetWithNone(nn.Layer):
     def __init__(self, feature_size, fc_size):
-        super(LinearNetWithNone, self).__init__()
+        super().__init__()
         self._linear = nn.Linear(feature_size, fc_size)
 
     def forward(self, x):

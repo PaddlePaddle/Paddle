@@ -23,7 +23,9 @@ list(
   gelu_op.cc
   layer_norm_op.cc
   multihead_matmul_op.cc
+  multihead_matmul_roformer_op.cc
   shuffle_channel_op.cc
+  where_op.cc
   swish_op.cc
   silu_op.cc
   instance_norm_op.cc
@@ -76,8 +78,13 @@ list(
   shape_op.cc
   fill_constant_op.cc
   fused_token_prune_op.cc
+  celu_op.cc
   layernorm_shift_partition_op.cc
+  tanhshrink_op.cc
+  logsigmoid_op.cc
+  preln_layernorm_shift_partition_op.cc
   merge_layernorm_op.cc
+  skip_merge_layernorm_op.cc
   generic_and_custom_plugin_creater.cc
   fused_lookup_tables_op.cc
   expand_v2_op.cc)

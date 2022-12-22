@@ -30,7 +30,7 @@ program_translator = ProgramTranslator()
 
 class Policy(Layer):
     def __init__(self):
-        super(Policy, self).__init__()
+        super().__init__()
 
         self.affine1 = nn.Linear(4, 128)
         self.affine2 = nn.Linear(128, 2)
@@ -52,7 +52,7 @@ class Policy(Layer):
         return log_prob
 
 
-class Args(object):
+class Args:
     gamma = 0.99
     log_interval = 1
     train_step = 10

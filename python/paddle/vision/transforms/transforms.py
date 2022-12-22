@@ -84,7 +84,7 @@ def _check_input(
     return value
 
 
-class Compose(object):
+class Compose:
     """
     Composes several transforms together use for composing list of transforms
     together for a dataset transform.
@@ -137,7 +137,7 @@ class Compose(object):
         return format_string
 
 
-class BaseTransform(object):
+class BaseTransform:
     """
     Base class of all transforms used in computer vision.
 
@@ -191,7 +191,7 @@ class BaseTransform(object):
 
             class CustomRandomFlip(BaseTransform):
                 def __init__(self, prob=0.5, keys=None):
-                    super(CustomRandomFlip, self).__init__(keys)
+                    super().__init__(keys)
                     self.prob = prob
 
                 def _get_params(self, inputs):
@@ -353,7 +353,7 @@ class ToTensor(BaseTransform):
     """
 
     def __init__(self, data_format='CHW', keys=None):
-        super(ToTensor, self).__init__(keys)
+        super().__init__(keys)
         self.data_format = data_format
 
     def _apply_image(self, img):
@@ -421,7 +421,7 @@ class Resize(BaseTransform):
     """
 
     def __init__(self, size, interpolation='bilinear', keys=None):
-        super(Resize, self).__init__(keys)
+        super().__init__(keys)
         assert isinstance(size, int) or (
             isinstance(size, Iterable) and len(size) == 2
         )
@@ -491,7 +491,7 @@ class RandomResizedCrop(BaseTransform):
         interpolation='bilinear',
         keys=None,
     ):
-        super(RandomResizedCrop, self).__init__(keys)
+        super().__init__(keys)
         if isinstance(size, int):
             self.size = (size, size)
         else:
@@ -573,7 +573,7 @@ class CenterCrop(BaseTransform):
     """
 
     def __init__(self, size, keys=None):
-        super(CenterCrop, self).__init__(keys)
+        super().__init__(keys)
         if isinstance(size, numbers.Number):
             self.size = (int(size), int(size))
         else:
@@ -614,7 +614,7 @@ class RandomHorizontalFlip(BaseTransform):
     """
 
     def __init__(self, prob=0.5, keys=None):
-        super(RandomHorizontalFlip, self).__init__(keys)
+        super().__init__(keys)
         assert 0 <= prob <= 1, "probability must be between 0 and 1"
         self.prob = prob
 
@@ -656,7 +656,7 @@ class RandomVerticalFlip(BaseTransform):
     """
 
     def __init__(self, prob=0.5, keys=None):
-        super(RandomVerticalFlip, self).__init__(keys)
+        super().__init__(keys)
         assert 0 <= prob <= 1, "probability must be between 0 and 1"
         self.prob = prob
 
@@ -711,7 +711,7 @@ class Normalize(BaseTransform):
     def __init__(
         self, mean=0.0, std=1.0, data_format='CHW', to_rgb=False, keys=None
     ):
-        super(Normalize, self).__init__(keys)
+        super().__init__(keys)
         if isinstance(mean, numbers.Number):
             mean = [mean, mean, mean]
 
@@ -765,7 +765,7 @@ class Transpose(BaseTransform):
     """
 
     def __init__(self, order=(2, 0, 1), keys=None):
-        super(Transpose, self).__init__(keys)
+        super().__init__(keys)
         self.order = order
 
     def _apply_image(self, img):
@@ -812,7 +812,7 @@ class BrightnessTransform(BaseTransform):
     """
 
     def __init__(self, value, keys=None):
-        super(BrightnessTransform, self).__init__(keys)
+        super().__init__(keys)
         self.value = _check_input(value, 'brightness')
 
     def _apply_image(self, img):
@@ -855,7 +855,7 @@ class ContrastTransform(BaseTransform):
     """
 
     def __init__(self, value, keys=None):
-        super(ContrastTransform, self).__init__(keys)
+        super().__init__(keys)
         if value < 0:
             raise ValueError("contrast value should be non-negative")
         self.value = _check_input(value, 'contrast')
@@ -900,7 +900,7 @@ class SaturationTransform(BaseTransform):
     """
 
     def __init__(self, value, keys=None):
-        super(SaturationTransform, self).__init__(keys)
+        super().__init__(keys)
         self.value = _check_input(value, 'saturation')
 
     def _apply_image(self, img):
@@ -943,7 +943,7 @@ class HueTransform(BaseTransform):
     """
 
     def __init__(self, value, keys=None):
-        super(HueTransform, self).__init__(keys)
+        super().__init__(keys)
         self.value = _check_input(
             value, 'hue', center=0, bound=(-0.5, 0.5), clip_first_on_zero=False
         )
@@ -996,7 +996,7 @@ class ColorJitter(BaseTransform):
     def __init__(
         self, brightness=0, contrast=0, saturation=0, hue=0, keys=None
     ):
-        super(ColorJitter, self).__init__(keys)
+        super().__init__(keys)
         self.brightness = brightness
         self.contrast = contrast
         self.saturation = saturation
@@ -1108,7 +1108,7 @@ class RandomCrop(BaseTransform):
         padding_mode='constant',
         keys=None,
     ):
-        super(RandomCrop, self).__init__(keys)
+        super().__init__(keys)
         if isinstance(size, numbers.Number):
             self.size = (int(size), int(size))
         else:
@@ -1228,7 +1228,7 @@ class Pad(BaseTransform):
                 + "{} element tuple".format(len(padding))
             )
 
-        super(Pad, self).__init__(keys)
+        super().__init__(keys)
         self.padding = padding
         self.fill = fill
         self.padding_mode = padding_mode
@@ -1340,7 +1340,7 @@ class RandomAffine(BaseTransform):
     ):
         self.degrees = _setup_angle(degrees, name="degrees", req_sizes=(2,))
 
-        super(RandomAffine, self).__init__(keys)
+        super().__init__(keys)
         assert interpolation in ['nearest', 'bilinear', 'bicubic']
         self.interpolation = interpolation
 
@@ -1504,7 +1504,7 @@ class RandomRotation(BaseTransform):
                 )
             self.degrees = degrees
 
-        super(RandomRotation, self).__init__(keys)
+        super().__init__(keys)
         self.interpolation = interpolation
         self.expand = expand
         self.center = center
@@ -1584,7 +1584,7 @@ class RandomPerspective(BaseTransform):
         fill=0,
         keys=None,
     ):
-        super(RandomPerspective, self).__init__(keys)
+        super().__init__(keys)
         assert 0 <= prob <= 1, "probability must be between 0 and 1"
         assert (
             0 <= distortion_scale <= 1
@@ -1701,7 +1701,7 @@ class Grayscale(BaseTransform):
     """
 
     def __init__(self, num_output_channels=1, keys=None):
-        super(Grayscale, self).__init__(keys)
+        super().__init__(keys)
         self.num_output_channels = num_output_channels
 
     def _apply_image(self, img):
@@ -1761,7 +1761,7 @@ class RandomErasing(BaseTransform):
         inplace=False,
         keys=None,
     ):
-        super(RandomErasing, self).__init__(keys)
+        super().__init__(keys)
         assert isinstance(
             scale, (tuple, list)
         ), "scale should be a tuple or list"

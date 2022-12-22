@@ -68,7 +68,7 @@ java.io.IOException: Input/output error
         """  # fmt: off, avoid remove tabs in string
 
         print("split lines:", s.splitlines())
-        self.assertTrue(fs._test_match(s.splitlines()) != None)
+        self.assertIsNotNone(fs._test_match(s.splitlines()))
 
     def test_config(self):
         config = {"fs.default.name": "hdfs://xxx", "hadoop.job.ugi": "ugi"}

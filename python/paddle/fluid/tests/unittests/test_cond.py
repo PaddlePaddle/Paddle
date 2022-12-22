@@ -676,5 +676,44 @@ class TestCondWithError(unittest.TestCase):
                 layers.cond(pred, func, func, set())
 
 
+class TestCondWithDict(unittest.TestCase):
+    def test_input_with_dict(self):
+        paddle.enable_static()
+        main_program = framework.Program()
+        startup_program = framework.Program()
+        with framework.program_guard(main_program, startup_program):
+
+            def true_func():
+                return {
+                    '1': paddle.full(shape=[3, 2], dtype='int32', fill_value=1),
+                    '2': paddle.full(
+                        shape=[2, 3], dtype='bool', fill_value=True
+                    ),
+                }
+
+            def false_func():
+                return {
+                    '1': paddle.full(
+                        shape=[3, 4], dtype='float32', fill_value=3
+                    ),
+                    '2': paddle.full(shape=[4, 5], dtype='int64', fill_value=2),
+                }
+
+            x = paddle.full(shape=[1], dtype='float32', fill_value=0.1)
+            y = paddle.full(shape=[1], dtype='float32', fill_value=0.23)
+            pred = paddle.less_than(x=x, y=y, name=None)
+            ret = paddle.static.nn.cond(pred, true_func, false_func)
+            self.assertEqual(
+                ret['1'].shape,
+                (3, -1),
+                f"The shape is not correct, expects (3, -1) but gets {ret['1'].shape}.",
+            )
+            self.assertEqual(
+                ret['2'].shape,
+                (-1, -1),
+                f"The shape is not correct, expects (-1, -1) but gets {ret['2'].shape}.",
+            )
+
+
 if __name__ == '__main__':
     unittest.main()

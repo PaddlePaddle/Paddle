@@ -120,7 +120,7 @@ def data(name, shape, dtype=None, lod_level=0):
         )
 
 
-class InputSpec(object):
+class InputSpec:
     """
     InputSpec describes the signature information of the model input, such as ``shape`` , ``dtype`` , ``name`` .
 
@@ -183,13 +183,12 @@ class InputSpec(object):
         Examples:
             .. code-block:: python
 
-                import numpy as np
                 import paddle
                 from paddle.static import InputSpec
 
                 paddle.disable_static()
 
-                x = paddle.to_tensor(np.ones([2, 2], np.float32))
+                x = paddle.ones([2, 2], dtype="float32")
                 x_spec = InputSpec.from_tensor(x, name='x')
                 print(x_spec)  # InputSpec(shape=(2, 2), dtype=paddle.float32, name=x)
 

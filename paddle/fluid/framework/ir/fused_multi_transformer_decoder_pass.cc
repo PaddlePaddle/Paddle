@@ -237,15 +237,7 @@ PDNode* FusedMultiTransformerDecoderPattern::operator()() {
   auto* softmax_qk_out_var = pattern->NewNode(softmax_qk_out_repr())
                                  ->assert_is_op_output("softmax")
                                  ->AsIntermediate()
-                                 ->assert_is_op_input("dropout");
-
-  auto* dropout_qk =
-      pattern->NewNode(dropout_qk_repr())->assert_is_op("dropout");
-  auto* dropout_qk_out_var =
-      pattern->NewNode(dropout_qk_out_repr())
-          ->assert_is_op_output("dropout", "Out")
-          ->AsIntermediate()
-          ->assert_is_op_input("matmul_v2", "X");  // -> matmul_qkv
+                                 ->assert_is_op_input("matmul_v2", "X");
 
   // QK path Linsk
   matmul_qk->LinksFrom({transpose2_0_out_var, concat_0_out_var})
@@ -253,7 +245,6 @@ PDNode* FusedMultiTransformerDecoderPattern::operator()() {
   eltadd_qk->LinksFrom({matmul_qk_out_var, eltadd_qk_b_var})
       .LinksTo({eltadd_qk_out_var});
   softmax_qk->LinksFrom({eltadd_qk_out_var}).LinksTo({softmax_qk_out_var});
-  dropout_qk->LinksFrom({softmax_qk_out_var}).LinksTo({dropout_qk_out_var});
 
   // QKV path Nodes
   auto* matmul_qkv =
@@ -294,14 +285,7 @@ PDNode* FusedMultiTransformerDecoderPattern::operator()() {
   auto* eltadd_linear_out_var = pattern->NewNode(eltadd_linear_out_repr())
                                     ->assert_is_op_output("elementwise_add")
                                     ->AsIntermediate()
-                                    ->assert_is_op_input("dropout");
-
-  auto* dropout_linear =
-      pattern->NewNode(dropout_linear_repr())->assert_is_op("dropout");
-  auto* dropout_linear_out_var = pattern->NewNode(dropout_linear_out_repr())
-                                     ->assert_is_op_output("dropout")
-                                     ->AsIntermediate()
-                                     ->assert_is_op_input("elementwise_add");
+                                    ->assert_is_op_input("elementwise_add");
 
   auto* eltadd_out =
       pattern->NewNode(eltadd_out_repr())->assert_is_op("elementwise_add");
@@ -310,7 +294,7 @@ PDNode* FusedMultiTransformerDecoderPattern::operator()() {
                                ->AsIntermediate();
 
   // QKV path Links
-  matmul_qkv->LinksFrom({dropout_qk_out_var, concat_1_out_var})
+  matmul_qkv->LinksFrom({softmax_qk_out_var, concat_1_out_var})
       .LinksTo({matmul_qkv_out_var});
   transpose2_qkv->LinksFrom({matmul_qkv_out_var})
       .LinksTo({transpose2_qkv_out_var});
@@ -320,9 +304,7 @@ PDNode* FusedMultiTransformerDecoderPattern::operator()() {
       .LinksTo({matmul_linear_out_var});
   eltadd_linear->LinksFrom({matmul_linear_out_var, eltadd_linear_b_var})
       .LinksTo({eltadd_linear_out_var});
-  dropout_linear->LinksFrom({eltadd_linear_out_var})
-      .LinksTo({dropout_linear_out_var});
-  eltadd_out->LinksFrom({input0, dropout_linear_out_var})
+  eltadd_out->LinksFrom({input0, eltadd_linear_out_var})
       .LinksTo({attention_output});
 
   // Feed Forward LayerNorm Nodes
@@ -358,7 +340,7 @@ PDNode* FusedMultiTransformerDecoderPattern::operator()() {
                 ffn_layer_norm_mean_var,
                 ffn_layer_norm_variance_var});
 
-  // Feed Forward fc1 -> gelu -> fc2 -> dropout
+  // Feed Forward fc1 -> gelu -> fc2
   auto* ffn_matmul0 =
       pattern->NewNode(ffn_matmul0_repr())->assert_is_op("matmul_v2");
   auto* ffn_matmul0_w_var = pattern->NewNode(ffn_matmul0_w_repr())
@@ -403,13 +385,6 @@ PDNode* FusedMultiTransformerDecoderPattern::operator()() {
   auto* ffn_eltadd1_out_var = pattern->NewNode(ffn_eltadd1_out_repr())
                                   ->assert_is_op_output("elementwise_add")
                                   ->AsIntermediate()
-                                  ->assert_is_op_input("dropout");
-
-  auto* ffn_dropout =
-      pattern->NewNode(ffn_dropout_repr())->assert_is_op("dropout");
-  auto* ffn_dropout_out_var = pattern->NewNode(ffn_dropout_out_repr())
-                                  ->assert_is_op_output("dropout")
-                                  ->AsIntermediate()
                                   ->assert_is_op_input("elementwise_add");
 
   auto* ffn_eltadd_out =
@@ -427,9 +402,8 @@ PDNode* FusedMultiTransformerDecoderPattern::operator()() {
       .LinksTo({ffn_matmul1_out_var});
   ffn_eltadd1->LinksFrom({ffn_matmul1_out_var, ffn_eltadd1_b_var})
       .LinksTo({ffn_eltadd1_out_var});
-  ffn_dropout->LinksFrom({ffn_eltadd1_out_var}).LinksTo({ffn_dropout_out_var});
 
-  ffn_eltadd_out->LinksFrom({attention_output, ffn_dropout_out_var})
+  ffn_eltadd_out->LinksFrom({attention_output, ffn_eltadd1_out_var})
       .LinksTo({ffn_output});
 
   return ffn_output;
@@ -575,15 +549,7 @@ PDNode* FusedMultiTransformerDecoderFuseQKVPattern::operator()() {
   auto* softmax_qk_out_var = pattern->NewNode(softmax_qk_out_repr())
                                  ->assert_is_op_output("softmax")
                                  ->AsIntermediate()
-                                 ->assert_is_op_input("dropout");
-
-  auto* dropout_qk =
-      pattern->NewNode(dropout_qk_repr())->assert_is_op("dropout");
-  auto* dropout_qk_out_var =
-      pattern->NewNode(dropout_qk_out_repr())
-          ->assert_is_op_output("dropout", "Out")
-          ->AsIntermediate()
-          ->assert_is_op_input("matmul_v2", "X");  // -> matmul_qkv
+                                 ->assert_is_op_input("matmul_v2", "X");
 
   // QK path Linsk
   matmul_qk->LinksFrom({split0_q_out_var, concat_k_out_var})
@@ -591,7 +557,6 @@ PDNode* FusedMultiTransformerDecoderFuseQKVPattern::operator()() {
   eltadd_qk->LinksFrom({matmul_qk_out_var, eltadd_qk_b_var})
       .LinksTo({eltadd_qk_out_var});
   softmax_qk->LinksFrom({eltadd_qk_out_var}).LinksTo({softmax_qk_out_var});
-  dropout_qk->LinksFrom({softmax_qk_out_var}).LinksTo({dropout_qk_out_var});
 
   // QKV path Nodes
   auto* matmul_qkv =
@@ -632,14 +597,7 @@ PDNode* FusedMultiTransformerDecoderFuseQKVPattern::operator()() {
   auto* eltadd_linear_out_var = pattern->NewNode(eltadd_linear_out_repr())
                                     ->assert_is_op_output("elementwise_add")
                                     ->AsIntermediate()
-                                    ->assert_is_op_input("dropout");
-
-  auto* dropout_linear =
-      pattern->NewNode(dropout_linear_repr())->assert_is_op("dropout");
-  auto* dropout_linear_out_var = pattern->NewNode(dropout_linear_out_repr())
-                                     ->assert_is_op_output("dropout")
-                                     ->AsIntermediate()
-                                     ->assert_is_op_input("elementwise_add");
+                                    ->assert_is_op_input("elementwise_add");
 
   auto* eltadd_out =
       pattern->NewNode(eltadd_out_repr())->assert_is_op("elementwise_add");
@@ -648,7 +606,7 @@ PDNode* FusedMultiTransformerDecoderFuseQKVPattern::operator()() {
                                ->AsIntermediate();
 
   // QKV path Links
-  matmul_qkv->LinksFrom({dropout_qk_out_var, concat_v_out_var})
+  matmul_qkv->LinksFrom({softmax_qk_out_var, concat_v_out_var})
       .LinksTo({matmul_qkv_out_var});
   transpose2_qkv->LinksFrom({matmul_qkv_out_var})
       .LinksTo({transpose2_qkv_out_var});
@@ -658,9 +616,7 @@ PDNode* FusedMultiTransformerDecoderFuseQKVPattern::operator()() {
       .LinksTo({matmul_linear_out_var});
   eltadd_linear->LinksFrom({matmul_linear_out_var, eltadd_linear_b_var})
       .LinksTo({eltadd_linear_out_var});
-  dropout_linear->LinksFrom({eltadd_linear_out_var})
-      .LinksTo({dropout_linear_out_var});
-  eltadd_out->LinksFrom({input0, dropout_linear_out_var})
+  eltadd_out->LinksFrom({input0, eltadd_linear_out_var})
       .LinksTo({attention_output});
 
   // Feed Forward LayerNorm Nodes
@@ -696,7 +652,7 @@ PDNode* FusedMultiTransformerDecoderFuseQKVPattern::operator()() {
                 ffn_layer_norm_mean_var,
                 ffn_layer_norm_variance_var});
 
-  // Feed Forward fc1 -> gelu -> fc2 -> dropout
+  // Feed Forward fc1 -> gelu -> fc2
   auto* ffn_matmul0 =
       pattern->NewNode(ffn_matmul0_repr())->assert_is_op("matmul_v2");
   auto* ffn_matmul0_w_var = pattern->NewNode(ffn_matmul0_w_repr())
@@ -741,13 +697,6 @@ PDNode* FusedMultiTransformerDecoderFuseQKVPattern::operator()() {
   auto* ffn_eltadd1_out_var = pattern->NewNode(ffn_eltadd1_out_repr())
                                   ->assert_is_op_output("elementwise_add")
                                   ->AsIntermediate()
-                                  ->assert_is_op_input("dropout");
-
-  auto* ffn_dropout =
-      pattern->NewNode(ffn_dropout_repr())->assert_is_op("dropout");
-  auto* ffn_dropout_out_var = pattern->NewNode(ffn_dropout_out_repr())
-                                  ->assert_is_op_output("dropout")
-                                  ->AsIntermediate()
                                   ->assert_is_op_input("elementwise_add");
 
   auto* ffn_eltadd_out =
@@ -765,9 +714,8 @@ PDNode* FusedMultiTransformerDecoderFuseQKVPattern::operator()() {
       .LinksTo({ffn_matmul1_out_var});
   ffn_eltadd1->LinksFrom({ffn_matmul1_out_var, ffn_eltadd1_b_var})
       .LinksTo({ffn_eltadd1_out_var});
-  ffn_dropout->LinksFrom({ffn_eltadd1_out_var}).LinksTo({ffn_dropout_out_var});
 
-  ffn_eltadd_out->LinksFrom({attention_output, ffn_dropout_out_var})
+  ffn_eltadd_out->LinksFrom({attention_output, ffn_eltadd1_out_var})
       .LinksTo({ffn_output});
 
   return ffn_output;
@@ -922,15 +870,7 @@ PDNode* MultiDevicesFusedMultiTransformerDecoderFuseQKVPattern::operator()() {
   auto* softmax_qk_out_var = pattern->NewNode(softmax_qk_out_repr())
                                  ->assert_is_op_output("softmax")
                                  ->AsIntermediate()
-                                 ->assert_is_op_input("dropout");
-
-  auto* dropout_qk =
-      pattern->NewNode(dropout_qk_repr())->assert_is_op("dropout");
-  auto* dropout_qk_out_var =
-      pattern->NewNode(dropout_qk_out_repr())
-          ->assert_is_op_output("dropout", "Out")
-          ->AsIntermediate()
-          ->assert_is_op_input("matmul_v2", "X");  // -> matmul_qkv
+                                 ->assert_is_op_input("matmul_v2", "X");
 
   // QK path Linsk
   matmul_qk->LinksFrom({split0_q_out_var, concat_k_out_var})
@@ -938,7 +878,6 @@ PDNode* MultiDevicesFusedMultiTransformerDecoderFuseQKVPattern::operator()() {
   eltadd_qk->LinksFrom({matmul_qk_out_var, eltadd_qk_b_var})
       .LinksTo({eltadd_qk_out_var});
   softmax_qk->LinksFrom({eltadd_qk_out_var}).LinksTo({softmax_qk_out_var});
-  dropout_qk->LinksFrom({softmax_qk_out_var}).LinksTo({dropout_qk_out_var});
 
   // QKV path Nodes
   auto* matmul_qkv =
@@ -987,14 +926,7 @@ PDNode* MultiDevicesFusedMultiTransformerDecoderFuseQKVPattern::operator()() {
   auto* eltadd_linear_out_var = pattern->NewNode(eltadd_linear_out_repr())
                                     ->assert_is_op_output("elementwise_add")
                                     ->AsIntermediate()
-                                    ->assert_is_op_input("dropout");
-
-  auto* dropout_linear =
-      pattern->NewNode(dropout_linear_repr())->assert_is_op("dropout");
-  auto* dropout_linear_out_var = pattern->NewNode(dropout_linear_out_repr())
-                                     ->assert_is_op_output("dropout")
-                                     ->AsIntermediate()
-                                     ->assert_is_op_input("elementwise_add");
+                                    ->assert_is_op_input("elementwise_add");
 
   auto* eltadd_out =
       pattern->NewNode(eltadd_out_repr())->assert_is_op("elementwise_add");
@@ -1003,7 +935,7 @@ PDNode* MultiDevicesFusedMultiTransformerDecoderFuseQKVPattern::operator()() {
                                ->AsIntermediate();
 
   // QKV path Links
-  matmul_qkv->LinksFrom({dropout_qk_out_var, concat_v_out_var})
+  matmul_qkv->LinksFrom({softmax_qk_out_var, concat_v_out_var})
       .LinksTo({matmul_qkv_out_var});
   transpose2_qkv->LinksFrom({matmul_qkv_out_var})
       .LinksTo({transpose2_qkv_out_var});
@@ -1015,9 +947,7 @@ PDNode* MultiDevicesFusedMultiTransformerDecoderFuseQKVPattern::operator()() {
       .LinksTo({c_allreduce_sum_out_var});
   eltadd_linear->LinksFrom({c_allreduce_sum_out_var, eltadd_linear_b_var})
       .LinksTo({eltadd_linear_out_var});
-  dropout_linear->LinksFrom({eltadd_linear_out_var})
-      .LinksTo({dropout_linear_out_var});
-  eltadd_out->LinksFrom({input0, dropout_linear_out_var})
+  eltadd_out->LinksFrom({input0, eltadd_linear_out_var})
       .LinksTo({attention_output});
 
   // Feed Forward LayerNorm Nodes
@@ -1063,7 +993,7 @@ PDNode* MultiDevicesFusedMultiTransformerDecoderFuseQKVPattern::operator()() {
   ffn_c_identity->LinksFrom({ffn_layer_norm_out_var})
       .LinksTo({ffn_c_identity_out_var});
 
-  // Feed Forward fc1 -> gelu -> fc2 -> dropout
+  // Feed Forward fc1 -> gelu -> fc2
   auto* ffn_matmul0 =
       pattern->NewNode(ffn_matmul0_repr())->assert_is_op("matmul_v2");
   auto* ffn_matmul0_w_var = pattern->NewNode(ffn_matmul0_w_repr())
@@ -1117,13 +1047,6 @@ PDNode* MultiDevicesFusedMultiTransformerDecoderFuseQKVPattern::operator()() {
   auto* ffn_eltadd1_out_var = pattern->NewNode(ffn_eltadd1_out_repr())
                                   ->assert_is_op_output("elementwise_add")
                                   ->AsIntermediate()
-                                  ->assert_is_op_input("dropout");
-
-  auto* ffn_dropout =
-      pattern->NewNode(ffn_dropout_repr())->assert_is_op("dropout");
-  auto* ffn_dropout_out_var = pattern->NewNode(ffn_dropout_out_repr())
-                                  ->assert_is_op_output("dropout")
-                                  ->AsIntermediate()
                                   ->assert_is_op_input("elementwise_add");
 
   auto* ffn_eltadd_out =
@@ -1143,9 +1066,8 @@ PDNode* MultiDevicesFusedMultiTransformerDecoderFuseQKVPattern::operator()() {
       .LinksTo({ffn_c_allreduce_sum_out_var});
   ffn_eltadd1->LinksFrom({ffn_c_allreduce_sum_out_var, ffn_eltadd1_b_var})
       .LinksTo({ffn_eltadd1_out_var});
-  ffn_dropout->LinksFrom({ffn_eltadd1_out_var}).LinksTo({ffn_dropout_out_var});
 
-  ffn_eltadd_out->LinksFrom({attention_output, ffn_dropout_out_var})
+  ffn_eltadd_out->LinksFrom({attention_output, ffn_eltadd1_out_var})
       .LinksTo({ffn_output});
 
   return ffn_output;
@@ -1180,11 +1102,9 @@ int FusedMultiTransformerDecoderPass::BuildFusion(Graph* graph,
                           Node* transpose2_1_out,
                           Node* transpose2_2_out,
                           Node* eltadd_qk_b,
-                          Node* dropout_qk,
                           Node* reshape2_0,
                           Node* matmul_linear_w,
                           Node* eltadd_linear_b,
-                          Node* dropout_linear,
                           Node* ffn_layer_norm,
                           Node* ffn_layer_norm_scale,
                           Node* ffn_layer_norm_bias,
@@ -1194,7 +1114,6 @@ int FusedMultiTransformerDecoderPass::BuildFusion(Graph* graph,
                           Node* ffn_matmul1_w,
                           Node* ffn_eltadd0_b,
                           Node* ffn_eltadd1_b,
-                          Node* ffn_dropout,
                           Node* ffn_output) {
     // Calc index of transformer layer by LayerNorm Scale name
     // This calculation assumes:
@@ -1287,14 +1206,8 @@ int FusedMultiTransformerDecoderPass::BuildFusion(Graph* graph,
         "epsilon", layer_norm->Op()->GetAttr("epsilon"));
 
     // output dropout attribute
-    auto* dropout_op = dropout_linear->Op();
-    fused_multi_transformer_op_desc.SetAttr(
-        "dropout_rate", dropout_op->GetAttr("dropout_prob"));
-    fused_multi_transformer_op_desc.SetAttr("is_test",
-                                            dropout_op->GetAttr("is_test"));
-    fused_multi_transformer_op_desc.SetAttr(
-        "dropout_implementation",
-        dropout_op->GetAttr("dropout_implementation"));
+    fused_multi_transformer_op_desc.SetAttr("is_test", true);
+    fused_multi_transformer_op_desc.SetAttr("dropout_rate", 0.0f);
 
     auto* fused_multi_transformer =
         graph->CreateOpNode(&fused_multi_transformer_op_desc);
@@ -1312,6 +1225,15 @@ int FusedMultiTransformerDecoderPass::BuildFusion(Graph* graph,
     IR_NODE_LINK_TO(shape_out, slice_op);
     IR_NODE_LINK_TO(slice_op, slice_out);
     IR_NODE_LINK_TO(slice_out, fused_multi_transformer)
+
+    IR_NODE_LINK_TO(matmul_linear_w, fused_multi_transformer);
+    IR_NODE_LINK_TO(eltadd_linear_b, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_layer_norm_scale, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_layer_norm_bias, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_matmul0_w, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_eltadd0_b, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_matmul1_w, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_eltadd1_b, fused_multi_transformer);
 
     IR_NODE_LINK_TO(fused_multi_transformer, ffn_output);
   };
@@ -1452,11 +1374,6 @@ int FusedMultiTransformerDecoderPass::BuildFusion(Graph* graph,
         ffn_eltadd1_out, ffn_eltadd1_out, fused_multi_transformer_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(
-        ffn_dropout, ffn_dropout, fused_multi_transformer_pattern)
-    GET_IR_NODE_FROM_SUBGRAPH(
-        ffn_dropout_out, ffn_dropout_out, fused_multi_transformer_pattern)
-
-    GET_IR_NODE_FROM_SUBGRAPH(
         ffn_eltadd_out, ffn_eltadd_out, fused_multi_transformer_pattern)
     GET_IR_NODE_FROM_SUBGRAPH(
         ffn_output, ffn_output, fused_multi_transformer_pattern)
@@ -1499,10 +1416,6 @@ int FusedMultiTransformerDecoderPass::BuildFusion(Graph* graph,
         softmax_qk, softmax_qk, fused_multi_transformer_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
         softmax_qk_out, softmax_qk_out, fused_multi_transformer_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(
-        dropout_qk, dropout_qk, fused_multi_transformer_pattern)
-    GET_IR_NODE_FROM_SUBGRAPH(
-        dropout_qk_out, dropout_qk_out, fused_multi_transformer_pattern)
 
     GET_IR_NODE_FROM_SUBGRAPH(
         matmul_qkv, matmul_qkv, fused_multi_transformer_pattern);
@@ -1531,10 +1444,6 @@ int FusedMultiTransformerDecoderPass::BuildFusion(Graph* graph,
         eltadd_linear_b, eltadd_linear_b, fused_multi_transformer_pattern)
     GET_IR_NODE_FROM_SUBGRAPH(
         eltadd_linear_out, eltadd_linear_out, fused_multi_transformer_pattern)
-    GET_IR_NODE_FROM_SUBGRAPH(
-        dropout_linear, dropout_linear, fused_multi_transformer_pattern)
-    GET_IR_NODE_FROM_SUBGRAPH(
-        dropout_linear_out, dropout_linear_out, fused_multi_transformer_pattern)
 
     GET_IR_NODE_FROM_SUBGRAPH(
         eltadd_out, eltadd_out, fused_multi_transformer_pattern)
@@ -1554,11 +1463,9 @@ int FusedMultiTransformerDecoderPass::BuildFusion(Graph* graph,
                  transpose2_1_out,
                  transpose2_2_out,
                  eltadd_qk_b,
-                 dropout_qk,
                  reshape2_0,
                  matmul_linear_w,
                  eltadd_linear_b,
-                 dropout_linear,
                  ffn_layer_norm,
                  ffn_layer_norm_scale,
                  ffn_layer_norm_bias,
@@ -1568,12 +1475,9 @@ int FusedMultiTransformerDecoderPass::BuildFusion(Graph* graph,
                  ffn_matmul1_w,
                  ffn_eltadd0_b,
                  ffn_eltadd1_b,
-                 ffn_dropout,
                  ffn_output);
 
     std::unordered_set<const Node*> marked_nodes({layer_norm,
-                                                  layer_norm_scale,
-                                                  layer_norm_bias,
                                                   layer_norm_mean,
                                                   layer_norm_variance,
                                                   layer_norm_out,
@@ -1613,8 +1517,6 @@ int FusedMultiTransformerDecoderPass::BuildFusion(Graph* graph,
                                                   eltadd_qk_out,
                                                   softmax_qk,
                                                   softmax_qk_out,
-                                                  dropout_qk,
-                                                  dropout_qk_out,
                                                   transpose2_qkv,
                                                   transpose2_qkv_out,
                                                   matmul_qkv,
@@ -1623,17 +1525,11 @@ int FusedMultiTransformerDecoderPass::BuildFusion(Graph* graph,
                                                   transpose2_qkv,
                                                   transpose2_qkv_out,
                                                   matmul_linear,
-                                                  matmul_linear_w,
                                                   matmul_linear_out,
                                                   eltadd_linear,
-                                                  eltadd_linear_b,
                                                   eltadd_linear_out,
-                                                  dropout_linear,
-                                                  dropout_linear_out,
                                                   eltadd_out,
                                                   ffn_layer_norm,
-                                                  ffn_layer_norm_scale,
-                                                  ffn_layer_norm_bias,
                                                   ffn_layer_norm_mean,
                                                   ffn_layer_norm_variance,
                                                   ffn_layer_norm_out,
@@ -1647,8 +1543,6 @@ int FusedMultiTransformerDecoderPass::BuildFusion(Graph* graph,
                                                   ffn_eltadd1_out,
                                                   ffn_gelu,
                                                   ffn_gelu_out,
-                                                  ffn_dropout,
-                                                  ffn_dropout_out,
                                                   ffn_eltadd_out});
 
     // Remove unneeded nodes.
@@ -1671,6 +1565,7 @@ void FusedMultiTransformerDecoderPass::ApplyImpl(Graph* graph) const {
   int fusion_count = BuildFusion(graph, name_scope_, scope);
   if (fusion_count > 0) {
     graph->Set(kFusedMultiTransformerDecoderPass, new bool(true));
+    graph->Set(kFusedMultiTransformerDecoderFusionCount, new int(fusion_count));
   }
   AddStatis(fusion_count);
 }
@@ -1850,11 +1745,9 @@ int FusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
                           Node* matmul0_w,
                           Node* eltadd0_b,
                           Node* eltadd_qk_b,
-                          Node* dropout_qk,
                           Node* reshape2_0,
                           Node* matmul_linear_w,
                           Node* eltadd_linear_b,
-                          Node* dropout_linear,
                           Node* ffn_layer_norm,
                           Node* ffn_layer_norm_scale,
                           Node* ffn_layer_norm_bias,
@@ -1864,7 +1757,6 @@ int FusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
                           Node* ffn_matmul1_w,
                           Node* ffn_eltadd0_b,
                           Node* ffn_eltadd1_b,
-                          Node* ffn_dropout,
                           Node* ffn_output) {
     // Calc index of transformer layer by LayerNorm Scale name
     // This calculation assumes:
@@ -1957,17 +1849,8 @@ int FusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
         "epsilon", layer_norm->Op()->GetAttr("epsilon"));
 
     // output dropout attribute
-    auto* dropout_op = dropout_linear->Op();
-    fused_multi_transformer_op_desc.SetAttr(
-        "dropout_rate", dropout_op->GetAttr("dropout_prob"));
-    fused_multi_transformer_op_desc.SetAttr("is_test",
-                                            dropout_op->GetAttr("is_test"));
-    fused_multi_transformer_op_desc.SetAttr(
-        "dropout_implementation",
-        dropout_op->GetAttr("dropout_implementation"));
-
-    // fused_multi_transformer_op_desc.SetAttr("act_method", {"gelu"});
-    // fused_multi_transformer_op_desc.SetAttr("trans_qkvw", {true});
+    fused_multi_transformer_op_desc.SetAttr("dropout_rate", 0.0f);
+    fused_multi_transformer_op_desc.SetAttr("is_test", true);
 
     auto* fused_multi_transformer =
         graph->CreateOpNode(&fused_multi_transformer_op_desc);
@@ -1985,6 +1868,15 @@ int FusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
     IR_NODE_LINK_TO(shape_out, slice_op);
     IR_NODE_LINK_TO(slice_op, slice_out);
     IR_NODE_LINK_TO(slice_out, fused_multi_transformer)
+
+    IR_NODE_LINK_TO(matmul_linear_w, fused_multi_transformer);
+    IR_NODE_LINK_TO(eltadd_linear_b, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_layer_norm_scale, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_layer_norm_bias, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_matmul0_w, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_eltadd0_b, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_matmul1_w, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_eltadd1_b, fused_multi_transformer);
 
     IR_NODE_LINK_TO(fused_multi_transformer, ffn_output);
   };
@@ -2116,12 +2008,6 @@ int FusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
                               ffn_eltadd1_out,
                               fused_multi_transformer_fuse_qkv_pattern);
 
-    GET_IR_NODE_FROM_SUBGRAPH(
-        ffn_dropout, ffn_dropout, fused_multi_transformer_fuse_qkv_pattern)
-    GET_IR_NODE_FROM_SUBGRAPH(ffn_dropout_out,
-                              ffn_dropout_out,
-                              fused_multi_transformer_fuse_qkv_pattern)
-
     GET_IR_NODE_FROM_SUBGRAPH(ffn_eltadd_out,
                               ffn_eltadd_out,
                               fused_multi_transformer_fuse_qkv_pattern)
@@ -2153,11 +2039,6 @@ int FusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
     GET_IR_NODE_FROM_SUBGRAPH(softmax_qk_out,
                               softmax_qk_out,
                               fused_multi_transformer_fuse_qkv_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(
-        dropout_qk, dropout_qk, fused_multi_transformer_fuse_qkv_pattern)
-    GET_IR_NODE_FROM_SUBGRAPH(dropout_qk_out,
-                              dropout_qk_out,
-                              fused_multi_transformer_fuse_qkv_pattern)
 
     GET_IR_NODE_FROM_SUBGRAPH(
         matmul_qkv, matmul_qkv, fused_multi_transformer_fuse_qkv_pattern);
@@ -2193,12 +2074,6 @@ int FusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
     GET_IR_NODE_FROM_SUBGRAPH(eltadd_linear_out,
                               eltadd_linear_out,
                               fused_multi_transformer_fuse_qkv_pattern)
-    GET_IR_NODE_FROM_SUBGRAPH(dropout_linear,
-                              dropout_linear,
-                              fused_multi_transformer_fuse_qkv_pattern)
-    GET_IR_NODE_FROM_SUBGRAPH(dropout_linear_out,
-                              dropout_linear_out,
-                              fused_multi_transformer_fuse_qkv_pattern)
 
     GET_IR_NODE_FROM_SUBGRAPH(
         eltadd_out, eltadd_out, fused_multi_transformer_fuse_qkv_pattern)
@@ -2212,11 +2087,9 @@ int FusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
                  matmul0_w,
                  eltadd0_b,
                  eltadd_qk_b,
-                 dropout_qk,
                  reshape2_0,
                  matmul_linear_w,
                  eltadd_linear_b,
-                 dropout_linear,
                  ffn_layer_norm,
                  ffn_layer_norm_scale,
                  ffn_layer_norm_bias,
@@ -2226,12 +2099,9 @@ int FusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
                  ffn_matmul1_w,
                  ffn_eltadd0_b,
                  ffn_eltadd1_b,
-                 ffn_dropout,
                  ffn_output);
 
     std::unordered_set<const Node*> marked_nodes({layer_norm,
-                                                  layer_norm_scale,
-                                                  layer_norm_bias,
                                                   layer_norm_mean,
                                                   layer_norm_variance,
                                                   layer_norm_out,
@@ -2261,8 +2131,6 @@ int FusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
                                                   eltadd_qk_out,
                                                   softmax_qk,
                                                   softmax_qk_out,
-                                                  dropout_qk,
-                                                  dropout_qk_out,
                                                   transpose2_qkv,
                                                   transpose2_qkv_out,
                                                   matmul_qkv,
@@ -2271,17 +2139,11 @@ int FusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
                                                   transpose2_qkv,
                                                   transpose2_qkv_out,
                                                   matmul_linear,
-                                                  matmul_linear_w,
                                                   matmul_linear_out,
                                                   eltadd_linear,
-                                                  eltadd_linear_b,
                                                   eltadd_linear_out,
-                                                  dropout_linear,
-                                                  dropout_linear_out,
                                                   eltadd_out,
                                                   ffn_layer_norm,
-                                                  ffn_layer_norm_scale,
-                                                  ffn_layer_norm_bias,
                                                   ffn_layer_norm_mean,
                                                   ffn_layer_norm_variance,
                                                   ffn_layer_norm_out,
@@ -2295,8 +2157,6 @@ int FusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
                                                   ffn_eltadd1_out,
                                                   ffn_gelu,
                                                   ffn_gelu_out,
-                                                  ffn_dropout,
-                                                  ffn_dropout_out,
                                                   ffn_eltadd_out});
 
     // Remove unneeded nodes.
@@ -2319,6 +2179,7 @@ void FusedMultiTransformerDecoderFuseQKVPass::ApplyImpl(Graph* graph) const {
   int fusion_count = BuildFusion(graph, name_scope_, scope);
   if (fusion_count > 0) {
     graph->Set(kFusedMultiTransformerDecoderFuseQKVPass, new bool(true));
+    graph->Set(kFusedMultiTransformerDecoderFusionCount, new int(fusion_count));
   }
   AddStatis(fusion_count);
 }
@@ -2500,11 +2361,9 @@ int MultiDevicesFusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
                           Node* matmul0_w,
                           Node* eltadd0_b,
                           Node* eltadd_qk_b,
-                          Node* dropout_qk,
                           Node* reshape2_0,
                           Node* matmul_linear_w,
                           Node* eltadd_linear_b,
-                          Node* dropout_linear,
                           Node* ffn_layer_norm,
                           Node* ffn_layer_norm_scale,
                           Node* ffn_layer_norm_bias,
@@ -2514,7 +2373,6 @@ int MultiDevicesFusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
                           Node* ffn_matmul1_w,
                           Node* ffn_eltadd0_b,
                           Node* ffn_eltadd1_b,
-                          Node* ffn_dropout,
                           Node* ffn_output) {
     // Calc index of transformer layer by LayerNorm Scale name
     // This calculation assumes:
@@ -2607,22 +2465,13 @@ int MultiDevicesFusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
         "epsilon", layer_norm->Op()->GetAttr("epsilon"));
 
     // output dropout attribute
-    auto* dropout_op = dropout_linear->Op();
-    fused_multi_transformer_op_desc.SetAttr(
-        "dropout_rate", dropout_op->GetAttr("dropout_prob"));
-    fused_multi_transformer_op_desc.SetAttr("is_test",
-                                            dropout_op->GetAttr("is_test"));
-    fused_multi_transformer_op_desc.SetAttr(
-        "dropout_implementation",
-        dropout_op->GetAttr("dropout_implementation"));
+    fused_multi_transformer_op_desc.SetAttr("dropout_rate", 0.0f);
+    fused_multi_transformer_op_desc.SetAttr("is_test", true);
 
     // parallel ring id
     auto* c_identity_op = c_identity->Op();
     fused_multi_transformer_op_desc.SetAttr("ring_id",
                                             c_identity_op->GetAttr("ring_id"));
-
-    // fused_multi_transformer_op_desc.SetAttr("act_method", {"gelu"});
-    // fused_multi_transformer_op_desc.SetAttr("trans_qkvw", {true});
 
     auto* fused_multi_transformer =
         graph->CreateOpNode(&fused_multi_transformer_op_desc);
@@ -2640,6 +2489,15 @@ int MultiDevicesFusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
     IR_NODE_LINK_TO(shape_out, slice_op);
     IR_NODE_LINK_TO(slice_op, slice_out);
     IR_NODE_LINK_TO(slice_out, fused_multi_transformer)
+
+    IR_NODE_LINK_TO(matmul_linear_w, fused_multi_transformer);
+    IR_NODE_LINK_TO(eltadd_linear_b, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_layer_norm_scale, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_layer_norm_bias, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_matmul0_w, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_eltadd0_b, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_matmul1_w, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_eltadd1_b, fused_multi_transformer);
 
     IR_NODE_LINK_TO(fused_multi_transformer, ffn_output);
   };
@@ -2790,12 +2648,6 @@ int MultiDevicesFusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
                               ffn_eltadd1_out,
                               fused_multi_transformer_fuse_qkv_pattern);
 
-    GET_IR_NODE_FROM_SUBGRAPH(
-        ffn_dropout, ffn_dropout, fused_multi_transformer_fuse_qkv_pattern)
-    GET_IR_NODE_FROM_SUBGRAPH(ffn_dropout_out,
-                              ffn_dropout_out,
-                              fused_multi_transformer_fuse_qkv_pattern)
-
     GET_IR_NODE_FROM_SUBGRAPH(ffn_eltadd_out,
                               ffn_eltadd_out,
                               fused_multi_transformer_fuse_qkv_pattern)
@@ -2827,11 +2679,6 @@ int MultiDevicesFusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
     GET_IR_NODE_FROM_SUBGRAPH(softmax_qk_out,
                               softmax_qk_out,
                               fused_multi_transformer_fuse_qkv_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(
-        dropout_qk, dropout_qk, fused_multi_transformer_fuse_qkv_pattern)
-    GET_IR_NODE_FROM_SUBGRAPH(dropout_qk_out,
-                              dropout_qk_out,
-                              fused_multi_transformer_fuse_qkv_pattern)
 
     GET_IR_NODE_FROM_SUBGRAPH(
         matmul_qkv, matmul_qkv, fused_multi_transformer_fuse_qkv_pattern);
@@ -2873,12 +2720,6 @@ int MultiDevicesFusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
     GET_IR_NODE_FROM_SUBGRAPH(eltadd_linear_out,
                               eltadd_linear_out,
                               fused_multi_transformer_fuse_qkv_pattern)
-    GET_IR_NODE_FROM_SUBGRAPH(dropout_linear,
-                              dropout_linear,
-                              fused_multi_transformer_fuse_qkv_pattern)
-    GET_IR_NODE_FROM_SUBGRAPH(dropout_linear_out,
-                              dropout_linear_out,
-                              fused_multi_transformer_fuse_qkv_pattern)
 
     GET_IR_NODE_FROM_SUBGRAPH(
         eltadd_out, eltadd_out, fused_multi_transformer_fuse_qkv_pattern)
@@ -2893,11 +2734,9 @@ int MultiDevicesFusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
                  matmul0_w,
                  eltadd0_b,
                  eltadd_qk_b,
-                 dropout_qk,
                  reshape2_0,
                  matmul_linear_w,
                  eltadd_linear_b,
-                 dropout_linear,
                  ffn_layer_norm,
                  ffn_layer_norm_scale,
                  ffn_layer_norm_bias,
@@ -2907,12 +2746,9 @@ int MultiDevicesFusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
                  ffn_matmul1_w,
                  ffn_eltadd0_b,
                  ffn_eltadd1_b,
-                 ffn_dropout,
                  ffn_output);
 
     std::unordered_set<const Node*> marked_nodes({layer_norm,
-                                                  layer_norm_scale,
-                                                  layer_norm_bias,
                                                   layer_norm_mean,
                                                   layer_norm_variance,
                                                   layer_norm_out,
@@ -2944,8 +2780,6 @@ int MultiDevicesFusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
                                                   eltadd_qk_out,
                                                   softmax_qk,
                                                   softmax_qk_out,
-                                                  dropout_qk,
-                                                  dropout_qk_out,
                                                   transpose2_qkv,
                                                   transpose2_qkv_out,
                                                   matmul_qkv,
@@ -2954,19 +2788,13 @@ int MultiDevicesFusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
                                                   transpose2_qkv,
                                                   transpose2_qkv_out,
                                                   matmul_linear,
-                                                  matmul_linear_w,
                                                   matmul_linear_out,
                                                   c_allreduce_sum,
                                                   c_allreduce_sum_out,
                                                   eltadd_linear,
-                                                  eltadd_linear_b,
                                                   eltadd_linear_out,
-                                                  dropout_linear,
-                                                  dropout_linear_out,
                                                   eltadd_out,
                                                   ffn_layer_norm,
-                                                  ffn_layer_norm_scale,
-                                                  ffn_layer_norm_bias,
                                                   ffn_layer_norm_mean,
                                                   ffn_layer_norm_variance,
                                                   ffn_layer_norm_out,
@@ -2984,8 +2812,6 @@ int MultiDevicesFusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
                                                   ffn_eltadd1_out,
                                                   ffn_gelu,
                                                   ffn_gelu_out,
-                                                  ffn_dropout,
-                                                  ffn_dropout_out,
                                                   ffn_eltadd_out});
 
     // Remove unneeded nodes.
@@ -3009,6 +2835,7 @@ void MultiDevicesFusedMultiTransformerDecoderFuseQKVPass::ApplyImpl(
   int fusion_count = BuildFusion(graph, name_scope_, scope);
   if (fusion_count > 0) {
     graph->Set(kFusedMultiTransformerDecoderFuseQKVPass, new bool(true));
+    graph->Set(kFusedMultiTransformerDecoderFusionCount, new int(fusion_count));
   }
   AddStatis(fusion_count);
 }

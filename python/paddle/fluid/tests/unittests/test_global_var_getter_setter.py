@@ -16,7 +16,7 @@ import paddle.fluid as fluid
 import unittest as unittest
 
 
-class VarInfo(object):
+class VarInfo:
     def __init__(self, var_name, var_type, writable):
         self.name = var_name
         self.type = var_type
@@ -36,7 +36,7 @@ class TestGlobalVarGetterSetter(unittest.TestCase):
             self.assertTrue(var.name in g.keys())
             value1 = g[var.name]
             value2 = g.get(var.name, None)
-            self.assertTrue(value1 is not None)
+            self.assertIsNotNone(value1)
             self.assertEqual(value1, value2)
             self.assertEqual(type(value1), var.type)
             self.assertEqual(type(value2), var.type)
@@ -53,7 +53,7 @@ class TestGlobalVarGetterSetter(unittest.TestCase):
         name = "__any_non_exist_name__"
         self.assertFalse(name in g)
         self.assertFalse(name in g.keys())
-        self.assertTrue(g.get(name, None) is None)
+        self.assertIsNone(g.get(name, None))
         self.assertEquals(g.get(name, -1), -1)
 
 

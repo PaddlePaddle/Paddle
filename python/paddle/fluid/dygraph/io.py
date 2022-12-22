@@ -17,7 +17,6 @@ import pickle
 import numpy as np
 
 import paddle
-from paddle import compat as cpt
 from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid import backward
@@ -326,7 +325,7 @@ def _change_is_test_status(program_desc, is_test):
                 op._set_attr('is_test', is_test)
 
 
-class _ProgramHolder(object):
+class _ProgramHolder:
     """
     Holds the execution information of a Program.
 
@@ -338,7 +337,7 @@ class _ProgramHolder(object):
     """
 
     def __init__(self, program_desc):
-        super(_ProgramHolder, self).__init__()
+        super().__init__()
 
         # input, output, persistable, double_grads var info
         self._input_descs = []
@@ -1059,24 +1058,11 @@ def _run_dygraph(instance, input, program_holder):
             continue
         persistable_var._set_grad_type(grad_var.type())
 
-    drop_scope_if_no_grad(instance, tmp_scope_vec)
-
     # 3. prepare output, keep same form with inputs
     outs = output_vars
     if len(output_vars) == 1:
         outs = output_vars[0]
     return outs
-
-
-def drop_scope_if_no_grad(instance, scope_vec):
-    tracer = framework._dygraph_tracer()
-    scope = (
-        scope_vec.value().get_scope()
-        if isinstance(scope_vec, (core.VarBase))
-        else scope_vec[0]
-    )
-    if (not instance._is_test) and (not tracer._has_grad):
-        scope.drop_kids()
 
 
 def _run_static_graph(input, program_holder, trace_program):
@@ -1374,7 +1360,7 @@ class TranslatedLayer(layers.Layer):
 
             class LinearNet(nn.Layer):
                 def __init__(self):
-                    super(LinearNet, self).__init__()
+                    super().__init__()
                     self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
 
                 @paddle.jit.to_static
@@ -1432,7 +1418,7 @@ class TranslatedLayer(layers.Layer):
     """
 
     def __init__(self, programs, persistable_vars):
-        super(TranslatedLayer, self).__init__()
+        super().__init__()
 
         if not isinstance(programs, dict):
             raise TypeError(
@@ -1587,7 +1573,7 @@ class TranslatedLayer(layers.Layer):
 
                 class LinearNet(nn.Layer):
                     def __init__(self):
-                        super(LinearNet, self).__init__()
+                        super().__init__()
                         self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
 
                     @paddle.jit.to_static

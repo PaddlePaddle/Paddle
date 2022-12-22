@@ -13,19 +13,53 @@
 # limitations under the License.
 
 import paddle.fluid.framework as framework
-from paddle.distributed import collective
+import paddle.fluid.data_feeder as data_feeder
+import paddle.fluid.layer_helper as layer_helper
+from paddle.distributed.communication.group import (
+    _get_global_group,
+    _warn_cur_rank_not_in_group,
+    _get_or_throw_group_rank,
+)
 
 
-def _send_in_dygraph(tensor, dst, group, sync_op, use_calc_stream):
-    group = collective._get_default_group() if group is None else group
+def _send_in_dygraph(
+    tensor, dst_rank_in_group, group, sync_op, use_calc_stream
+):
     if use_calc_stream:
-        return group.process_group.send_on_calc_stream(tensor, dst)
+        return group.process_group.send_on_calc_stream(
+            tensor, dst_rank_in_group
+        )
 
-    task = group.process_group.send(tensor, dst, sync_op)
+    task = group.process_group.send(tensor, dst_rank_in_group, sync_op)
     if sync_op:
         task.wait()
 
     return task
+
+
+def _send_in_static_mode(
+    tensor, dst_rank_in_group, group, sync_op, use_calc_stream
+):
+    op_type = 'send_v2'
+    data_feeder.check_variable_and_dtype(
+        tensor,
+        'tensor',
+        ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'send',
+    )
+
+    ring_id = 0 if group is None else group.id
+    helper = layer_helper.LayerHelper(op_type, **locals())
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [tensor]},
+        attrs={
+            'ring_id': ring_id,
+            'peer': dst_rank_in_group,
+            'use_calc_stream': sync_op,
+        },
+    )
+    return None
 
 
 def send(tensor, dst=0, group=None, sync_op=True, use_calc_stream=False):
@@ -43,9 +77,6 @@ def send(tensor, dst=0, group=None, sync_op=True, use_calc_stream=False):
 
     Returns:
         Return a task object.
-
-    Warning:
-        This API only supports the dygraph mode now.
 
     Examples:
         .. code-block:: python
@@ -66,10 +97,8 @@ def send(tensor, dst=0, group=None, sync_op=True, use_calc_stream=False):
             out = data.numpy()
             # [[4, 5, 6], [4, 5, 6]] (2 GPUs)
     """
-    if group is not None and not group.is_member():
-        raise RuntimeError(
-            "The group should not be None and all ranks which invoke this operation should be the member of this group."
-        )
+    if _warn_cur_rank_not_in_group(group):
+        return
 
     if not sync_op and use_calc_stream:
         raise RuntimeError(
@@ -77,8 +106,14 @@ def send(tensor, dst=0, group=None, sync_op=True, use_calc_stream=False):
         )
 
     if framework.in_dygraph_mode():
-        return _send_in_dygraph(tensor, dst, group, sync_op, use_calc_stream)
+        group = _get_global_group() if group is None else group
+        dst_rank_in_group = _get_or_throw_group_rank(dst, group)
 
-    raise RuntimeError(
-        "paddle.distributed.stream.send is only supported in dygraph mode now."
-    )
+        return _send_in_dygraph(
+            tensor, dst_rank_in_group, group, sync_op, use_calc_stream
+        )
+    else:
+        assert group is None, "Group can not be used in static mode for now."
+        return _send_in_static_mode(
+            tensor, dst, group, sync_op, use_calc_stream
+        )

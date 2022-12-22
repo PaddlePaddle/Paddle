@@ -18,7 +18,7 @@ from paddle.fluid.dygraph.io import TranslatedLayer
 
 # NOTE: This class will be deprecated later.
 # It is kept here because PaddleHub is already using this API.
-class StaticModelRunner(object):
+class StaticModelRunner:
     """
     A Dynamic graph Layer for loading inference program and related parameters,
     and then performing fine-tune training or inference.

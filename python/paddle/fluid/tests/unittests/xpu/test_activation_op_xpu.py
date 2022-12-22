@@ -75,6 +75,10 @@ class XPUTestExpOP(XPUOpTestWrapper):
             self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
             self.outputs = {'Out': out}
 
+    class XPUTestExp_ZeroDIm(TestActivationOPBase):
+        def set_shape(self):
+            self.shape = []
+
 
 support_types = get_xpu_op_support_types('exp')
 for stype in support_types:
@@ -99,6 +103,10 @@ class XPUTestSigmoidOP(XPUOpTestWrapper):
 
         def init_config(self):
             self.x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+
+    class XPUTestSigmoid_ZeroDIm(XPUTestSigmoid):
+        def init_config(self):
+            self.x = np.random.uniform(-2, 2, []).astype(self.dtype)
 
     class XPUTestSigmoid2(XPUTestSigmoid):
         def init_config(self):
@@ -310,6 +318,10 @@ class XPUTestLogOP(XPUOpTestWrapper):
             self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
             self.outputs = {'Out': out}
 
+    class TestLogCase_ZeroDim(XPUTestLog):
+        def set_shape(self):
+            self.shape = []
+
     class TestLogCase1(XPUTestLog):
         def set_shape(self):
             self.shape = [1, 11, 17]
@@ -350,6 +362,10 @@ class XPUTestSquareOP(XPUOpTestWrapper):
 
         def init_config(self):
             self.x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+
+    class XPUTestSquare_ZeroDim(XPUTestSquare):
+        def init_config(self):
+            self.x = np.random.uniform(-2, 2, []).astype(self.dtype)
 
     class XPUTestSquare2(XPUTestSquare):
         def init_config(self):
@@ -516,6 +532,10 @@ class XPUTestSoftPlusOP(XPUOpTestWrapper):
 
         def init_config(self):
             self.x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+
+    class XPUTestSoftPlus_ZeroDim(XPUTestSoftPlusBase):
+        def init_config(self):
+            self.x = np.random.uniform(-2, 2, []).astype(self.dtype)
 
     class XPUTestSoftPlus2(XPUTestSoftPlusBase):
         def init_config(self):
@@ -976,6 +996,10 @@ class XPUTestSwishOP(XPUOpTestWrapper):
         def init_config(self):
             self.x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
 
+    class XPUTestSwish_ZeroDim(XPUTestSwishBase):
+        def init_config(self):
+            self.x = np.random.uniform(-2, 2, []).astype(self.dtype)
+
     class XPUTestSwish2(XPUTestSwishBase):
         def init_config(self):
             self.x = np.random.uniform(-2, 2, [1024, 8]).astype(self.dtype)
@@ -1056,6 +1080,10 @@ class XPUTestMishOP(XPUOpTestWrapper):
 
         def init_config(self):
             self.x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+
+    class XPUTestMish_ZeroDim(XPUTestMishBase):
+        def init_config(self):
+            self.x = np.random.uniform(-2, 2, []).astype(self.dtype)
 
     class XPUTestMish2(XPUTestMishBase):
         def init_config(self):

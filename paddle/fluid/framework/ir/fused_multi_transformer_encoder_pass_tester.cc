@@ -22,7 +22,7 @@ namespace ir {
 void AddVarToScope(Scope* param_scope,
                    const std::string& name,
                    const DDim& dims) {
-  auto* tensor = param_scope->Var(name)->GetMutable<LoDTensor>();
+  auto* tensor = param_scope->Var(name)->GetMutable<phi::DenseTensor>();
   tensor->Resize(dims);
   tensor->mutable_data<float>(platform::CPUPlace());
 }
@@ -81,13 +81,11 @@ TEST(FusedMultiTransformerEncoderPass, basic) {
   // (transpose_0, transpose_1)       matmul           -> matmul_qk
   // (matmul_qk, bias_qk)             elementwise_add  -> eltadd_qk
   // (eltadd_qk)                      softmax          -> softmax_qk
-  // (softmax_qk)                     dropout          -> dropout_qk
-  // (dropout_qk, transpose_2)        matmul_v2        -> matmul_qkv
+  // (softmax_qk, transpose_2)        matmul_v2        -> matmul_qkv
   // (matmul_qkv)                     transpose        -> transpose_qkv
   // (transpose_qkv)                  reshape          -> reshape_qkv
   // (reshape_qkv)                    matmul_v2        -> matmul_linear
   // (matmul_linear)                  elementwise_add  -> eltadd_linear
-  // (eltadd_linear)                  dropout          -> dropout_linear
   // (eltadd_out)                     elementwise_add  -> attention_out
   //
   // (attention_out, scale, bias)     layer_norm       -> ffn_layer_norm_out
@@ -96,8 +94,7 @@ TEST(FusedMultiTransformerEncoderPass, basic) {
   // (ffn_eltadd0)                    gelu             -> ffn_gelu
   // (ffn_gelu)                       matmul_v2        -> ffn_matmul1
   // (ffn_matmul1, ffn_bias1)         elementwise_add  -> ffn_eltadd1
-  // (ffn_eltadd1)                    dropout          -> ffn_dropout
-  // (attention_out, ffn_dropout)     elementwise_add  -> ffn_output
+  // (attention_out, ffn_eltadd1)     elementwise_add  -> ffn_output
   //
   // (transpose_1, transpose_2)       while            -> decoder block
 
@@ -149,10 +146,9 @@ TEST(FusedMultiTransformerEncoderPass, basic) {
   auto* bqk = layers.data("biasqk", {1, 12, 128, 128}, true);
   auto* elementwise_qk = layers.elementwise_add(matmul_qk, bqk, nullptr, -1);
   auto* softmax_qk = layers.softmax(elementwise_qk, -1);
-  auto* dropout_qk = layers.dropout(softmax_qk, 0.1, "upscale_in_train");
 
   // MHA: QKV matmul
-  auto* matmul_qkv = layers.matmul_v2(dropout_qk, transpose_2);
+  auto* matmul_qkv = layers.matmul_v2(softmax_qk, transpose_2);
 
   auto* transpose_qkv = layers.transpose2(matmul_qkv, {0, 2, 1, 3}, true);
   auto* reshape_qkv_out = layers.reshape2(transpose_qkv, {1, 128, 1024}, true);
@@ -165,9 +161,7 @@ TEST(FusedMultiTransformerEncoderPass, basic) {
   auto* linear_eltadd_out =
       layers.elementwise_add(linear_matmut_out, bias_l, nullptr, 2);
 
-  auto* dropout_qkv =
-      layers.dropout(linear_eltadd_out, 0.1, "upscale_in_train");
-  auto* attention_out = layers.elementwise_add(x, dropout_qkv);
+  auto* attention_out = layers.elementwise_add(x, linear_eltadd_out);
 
   // FFN: pre LayerNorm
   auto* ffn_ln_scale = layers.data("ffn_ln_scale", {1024}, true);
@@ -190,9 +184,7 @@ TEST(FusedMultiTransformerEncoderPass, basic) {
   auto* ffn_eltadd1_out =
       layers.elementwise_add(ffn_matmul1_out, ffn_bias1, nullptr, 2);
 
-  // FFN: dropout -> elementwise_add
-  auto* ffn_dropout = layers.dropout(ffn_eltadd1_out, 0.1, "upscale_in_train");
-  layers.elementwise_add(attention_out, ffn_dropout);
+  layers.elementwise_add(attention_out, ffn_eltadd1_out);
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   graph->Set("__param_scope__", CreateParamScope());
@@ -210,12 +202,12 @@ TEST(FusedMultiTransformerEncoderPass, basic) {
   int num_fused_nodes_after = GetNumOpNodes(graph, "fused_multi_transformer");
 
   PADDLE_ENFORCE_EQ(num_nodes_before,
-                    num_nodes_after + 68,
+                    num_nodes_after + 56,
                     platform::errors::InvalidArgument(
                         "After the fused_multi_transformer_encoder_pass, The "
                         "node num in graph "
                         "should be %d, but the result is %d",
-                        num_nodes_before - 68,
+                        num_nodes_before - 56,
                         num_nodes_after));
   PADDLE_ENFORCE_EQ(num_fused_nodes_after,
                     1,
@@ -246,13 +238,11 @@ TEST(FusedMultiTransformerEncoderFuseQKVPass, basic) {
   // (split_q, split_k)               matmul           -> matmul_qk
   // (matmul_qk, bias_qk)             elementwise_add  -> eltadd_qk
   // (eltadd_qk)                      softmax          -> softmax_qk
-  // (softmax_qk)                     dropout          -> dropout_qk
-  // (dropout_qk, transpose_2)        matmul_v2        -> matmul_qkv
+  // (softmax_qk, transpose_2)        matmul_v2        -> matmul_qkv
   // (matmul_qkv)                     transpose        -> transpose_qkv
   // (transpose_qkv)                  reshape          -> reshape_qkv
   // (reshape_qkv)                    matmul_v2        -> matmul_linear
   // (matmul_linear)                  elementwise_add  -> eltadd_linear
-  // (eltadd_linear)                  dropout          -> dropout_linear
   // (eltadd_out)                     elementwise_add  -> attention_out
   //
   // (attention_out, scale, bias)     layer_norm       -> ffn_layer_norm_out
@@ -261,8 +251,7 @@ TEST(FusedMultiTransformerEncoderFuseQKVPass, basic) {
   // (ffn_eltadd0)                    gelu             -> ffn_gelu
   // (ffn_gelu)                       matmul_v2        -> ffn_matmul1
   // (ffn_matmul1, ffn_bias1)         elementwise_add  -> ffn_eltadd1
-  // (ffn_eltadd1)                    dropout          -> ffn_dropout
-  // (attention_out, ffn_dropout)     elementwise_add  -> ffn_output
+  // (attention_out, ffn_eltadd1)     elementwise_add  -> ffn_output
   //
   // (transpose_1, transpose_2)       while            -> decoder block
 
@@ -304,10 +293,9 @@ TEST(FusedMultiTransformerEncoderFuseQKVPass, basic) {
   auto* bqk = layers.data("biasqk", {1, 12, 128, 128}, true);
   auto* elementwise_qk = layers.elementwise_add(matmul_qk, bqk);
   auto* softmax_qk = layers.softmax(elementwise_qk, -1);
-  auto* dropout_qk = layers.dropout(softmax_qk, 0.1, "upscale_in_train");
 
   // MHA: QKV matmul
-  auto* matmul_qkv = layers.matmul_v2(dropout_qk, split_v);
+  auto* matmul_qkv = layers.matmul_v2(softmax_qk, split_v);
 
   auto* transpose_qkv = layers.transpose2(matmul_qkv, {0, 2, 1, 3}, true);
   auto* reshape_qkv_out = layers.reshape2(transpose_qkv, {1, 128, 1024}, true);
@@ -320,9 +308,7 @@ TEST(FusedMultiTransformerEncoderFuseQKVPass, basic) {
   auto* linear_eltadd_out =
       layers.elementwise_add(linear_matmut_out, bias_l, nullptr, 2);
 
-  auto* dropout_qkv =
-      layers.dropout(linear_eltadd_out, 0.1, "upscale_in_train");
-  auto* attention_out = layers.elementwise_add(x, dropout_qkv);
+  auto* attention_out = layers.elementwise_add(x, linear_eltadd_out);
 
   // FFN: pre LayerNorm
   auto* ffn_ln_scale = layers.data("ffn_ln_scale", {1024}, true);
@@ -345,9 +331,7 @@ TEST(FusedMultiTransformerEncoderFuseQKVPass, basic) {
   auto* ffn_eltadd1_out =
       layers.elementwise_add(ffn_matmul1_out, ffn_bias1, nullptr, 2);
 
-  // FFN: dropout -> elementwise_add
-  auto* ffn_dropout = layers.dropout(ffn_eltadd1_out, 0.1, "upscale_in_train");
-  layers.elementwise_add(attention_out, ffn_dropout);
+  layers.elementwise_add(attention_out, ffn_eltadd1_out);
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   graph->Set("__param_scope__", CreateParamScope());
@@ -366,11 +350,11 @@ TEST(FusedMultiTransformerEncoderFuseQKVPass, basic) {
 
   PADDLE_ENFORCE_EQ(
       num_nodes_before,
-      num_nodes_after + 56,
+      num_nodes_after + 44,
       platform::errors::InvalidArgument(
           "After the fused_multi_transformer_encoder_fuse_qkv_pass, "
           "The node num in graph should be %d, but the result is %d",
-          num_nodes_before - 56,
+          num_nodes_before - 44,
           num_nodes_after));
   PADDLE_ENFORCE_EQ(num_fused_nodes_after,
                     1,
@@ -402,14 +386,12 @@ TEST(MultiDevicesFusedMultiTransformerEncoderFuseQKVPass, basic) {
   // (split_q, split_k)               matmul           -> matmul_qk
   // (matmul_qk, bias_qk)             elementwise_add  -> eltadd_qk
   // (eltadd_qk)                      softmax          -> softmax_qk
-  // (softmax_qk)                     dropout          -> dropout_qk
-  // (dropout_qk, transpose_2)        matmul_v2        -> matmul_qkv
+  // (softmax_qk, transpose_2)        matmul_v2        -> matmul_qkv
   // (matmul_qkv)                     transpose        -> transpose_qkv
   // (transpose_qkv)                  reshape          -> reshape_qkv
   // (reshape_qkv)                    matmul_v2        -> matmul_linear
   // (matmul_linear)                  c_all_reduce     -> c_all_reduce_out
   // (c_all_reduce_out)               elementwise_add  -> eltadd_linear
-  // (eltadd_linear)                  dropout          -> dropout_linear
   // (eltadd_out)                     elementwise_add  -> attention_out
   //
   // (attention_out, scale, bias)     layer_norm       -> ffn_layer_norm_out
@@ -420,8 +402,7 @@ TEST(MultiDevicesFusedMultiTransformerEncoderFuseQKVPass, basic) {
   // (ffn_gelu)                       matmul_v2        -> ffn_matmul1
   // (ffn_matmul1)                    c_all_reduce     -> ffn_c_all_reduce_out
   // (ffn_c_all_reduce_out, ffn_bias1)elementwise_add  -> ffn_eltadd1
-  // (ffn_eltadd1)                    dropout          -> ffn_dropout
-  // (attention_out, ffn_dropout)     elementwise_add  -> ffn_output
+  // (attention_out, ffn_eltadd1)     elementwise_add  -> ffn_output
   //
   // (transpose_1, transpose_2)       while            -> decoder block
 
@@ -464,10 +445,9 @@ TEST(MultiDevicesFusedMultiTransformerEncoderFuseQKVPass, basic) {
   auto* bqk = layers.data("biasqk", {1, 12, 128, 128}, true);
   auto* elementwise_qk = layers.elementwise_add(matmul_qk, bqk);
   auto* softmax_qk = layers.softmax(elementwise_qk, -1);
-  auto* dropout_qk = layers.dropout(softmax_qk, 0.1, "upscale_in_train");
 
   // MHA: QKV matmul
-  auto* matmul_qkv = layers.matmul_v2(dropout_qk, split_v);
+  auto* matmul_qkv = layers.matmul_v2(softmax_qk, split_v);
 
   auto* transpose_qkv = layers.transpose2(matmul_qkv, {0, 2, 1, 3}, true);
   auto* reshape_qkv_out = layers.reshape2(transpose_qkv, {1, 128, 1024}, true);
@@ -481,9 +461,7 @@ TEST(MultiDevicesFusedMultiTransformerEncoderFuseQKVPass, basic) {
   auto* linear_eltadd_out =
       layers.elementwise_add(c_allreduce_out, bias_l, nullptr, 2);
 
-  auto* dropout_qkv =
-      layers.dropout(linear_eltadd_out, 0.1, "upscale_in_train");
-  auto* attention_out = layers.elementwise_add(x, dropout_qkv);
+  auto* attention_out = layers.elementwise_add(x, linear_eltadd_out);
 
   // FFN: pre LayerNorm
   auto* ffn_ln_scale = layers.data("ffn_ln_scale", {1024}, true);
@@ -508,9 +486,7 @@ TEST(MultiDevicesFusedMultiTransformerEncoderFuseQKVPass, basic) {
   auto* ffn_eltadd1_out =
       layers.elementwise_add(ffn_allreduce_out, ffn_bias1, nullptr, 2);
 
-  // FFN: dropout -> elementwise_add
-  auto* ffn_dropout = layers.dropout(ffn_eltadd1_out, 0.1, "upscale_in_train");
-  layers.elementwise_add(attention_out, ffn_dropout);
+  layers.elementwise_add(attention_out, ffn_eltadd1_out);
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   graph->Set("__param_scope__", CreateParamScope());
@@ -531,11 +507,11 @@ TEST(MultiDevicesFusedMultiTransformerEncoderFuseQKVPass, basic) {
 
   PADDLE_ENFORCE_EQ(
       num_nodes_before,
-      num_nodes_after + 64,
+      num_nodes_after + 52,
       platform::errors::InvalidArgument(
           "After the fused_multi_transformer_encoder_fuse_qkv_pass, "
           "The node num in graph should be %d, but the result is %d",
-          num_nodes_before - 64,
+          num_nodes_before - 52,
           num_nodes_after));
   PADDLE_ENFORCE_EQ(num_fused_nodes_after,
                     1,

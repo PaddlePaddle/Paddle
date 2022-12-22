@@ -136,7 +136,7 @@ class TestConv2DTransposeBF16MKLDNNOp(OpTest):
 
 class TestMKLDNNFuseBias(TestConv2DTransposeBF16MKLDNNOp):
     def init_test_case(self):
-        super(TestMKLDNNFuseBias, self).init_test_case()
+        super().init_test_case()
         self.pad = [1, 1]
         self.fuse_bias = True
         self.bias_size = [6]
@@ -144,14 +144,14 @@ class TestMKLDNNFuseBias(TestConv2DTransposeBF16MKLDNNOp):
 
 class TestMKLDNNWithPad(TestConv2DTransposeBF16MKLDNNOp):
     def init_test_case(self):
-        super(TestMKLDNNWithPad, self).init_test_case()
+        super().init_test_case()
         self.pad = [1, 1]
         self.input_size = [2, 3, 10, 10]
 
 
 class TestMKLDNNWithStride(TestConv2DTransposeBF16MKLDNNOp):
     def init_test_case(self):
-        super(TestMKLDNNWithStride, self).init_test_case()
+        super().init_test_case()
         self.pad = [1, 1]
         self.stride = [2, 2]
         self.input_size = [2, 3, 6, 6]  # NCHW
@@ -159,28 +159,28 @@ class TestMKLDNNWithStride(TestConv2DTransposeBF16MKLDNNOp):
 
 class TestMKLDNNWithAsymPad(TestConv2DTransposeBF16MKLDNNOp):
     def init_test_case(self):
-        super(TestMKLDNNWithAsymPad, self).init_test_case()
+        super().init_test_case()
         self.pad = [0, 0, 1, 2]
         self.padding_algorithm = "EXPLICIT"
 
 
 class TestMKLDNNWithSamePad(TestConv2DTransposeBF16MKLDNNOp):
     def init_test_case(self):
-        super(TestMKLDNNWithSamePad, self).init_test_case()
+        super().init_test_case()
         self.pad = [0, 0]
         self.padding_algorithm = "SAME"
 
 
 class TestMKLDNNWithValidPad(TestConv2DTransposeBF16MKLDNNOp):
     def init_test_case(self):
-        super(TestMKLDNNWithValidPad, self).init_test_case()
+        super().init_test_case()
         self.pad = [1, 1]
         self.padding_algorithm = "VALID"
 
 
 class TestMKLDNNWithValidPad_NHWC(TestMKLDNNWithValidPad):
     def init_test_case(self):
-        super(TestMKLDNNWithValidPad_NHWC, self).init_test_case()
+        super().init_test_case()
         self.data_format = 'NHWC'
         N, C, H, W = self.input_size
         self.input_size = [N, H, W, C]
@@ -190,9 +190,7 @@ class TestConv2DTransposeMKLDNNWithDilationsExplicitPad(
     TestConv2DTransposeBF16MKLDNNOp
 ):
     def init_test_case(self):
-        super(
-            TestConv2DTransposeMKLDNNWithDilationsExplicitPad, self
-        ).init_test_case()
+        super().init_test_case()
         self.stride = [2, 1]
         self.dilations = [1, 2]
         self.groups = 1

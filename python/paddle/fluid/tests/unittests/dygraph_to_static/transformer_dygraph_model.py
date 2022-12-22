@@ -52,7 +52,7 @@ def position_encoding_init(n_position, d_pos_vec):
 
 class PrePostProcessLayer(Layer):
     def __init__(self, process_cmd, d_model, dropout_rate):
-        super(PrePostProcessLayer, self).__init__()
+        super().__init__()
         self.process_cmd = process_cmd
         self.functors = []
         for cmd in self.process_cmd:
@@ -99,7 +99,7 @@ class MultiHeadAttention(Layer):
         dropout_rate=0.0,
         param_initializer=None,
     ):
-        super(MultiHeadAttention, self).__init__()
+        super().__init__()
         self.n_head = n_head
         self.d_key = d_key
         self.d_value = d_value
@@ -168,7 +168,7 @@ class MultiHeadAttention(Layer):
 
 class FFN(Layer):
     def __init__(self, d_inner_hid, d_model, dropout_rate):
-        super(FFN, self).__init__()
+        super().__init__()
         self.dropout_rate = dropout_rate
         self.fc1 = Linear(input_dim=d_model, output_dim=d_inner_hid, act="relu")
         self.fc2 = Linear(input_dim=d_inner_hid, output_dim=d_model)
@@ -196,7 +196,7 @@ class EncoderLayer(Layer):
         postprocess_cmd="da",
     ):
 
-        super(EncoderLayer, self).__init__()
+        super().__init__()
 
         self.preprocesser1 = PrePostProcessLayer(
             preprocess_cmd, d_model, prepostprocess_dropout
@@ -242,7 +242,7 @@ class Encoder(Layer):
         postprocess_cmd="da",
     ):
 
-        super(Encoder, self).__init__()
+        super().__init__()
 
         self.encoder_layers = list()
         for i in range(n_layer):
@@ -277,7 +277,7 @@ class Encoder(Layer):
 
 class Embedder(Layer):
     def __init__(self, vocab_size, emb_dim, bos_idx=0):
-        super(Embedder, self).__init__()
+        super().__init__()
         self.word_embedder = Embedding(
             size=[vocab_size, emb_dim],
             padding_idx=bos_idx,
@@ -309,7 +309,7 @@ class WrapEncoder(Layer):
         postprocess_cmd,
         word_embedder,
     ):
-        super(WrapEncoder, self).__init__()
+        super().__init__()
         self.emb_dropout = prepostprocess_dropout
         self.emb_dim = d_model
         self.word_embedder = word_embedder
@@ -368,7 +368,7 @@ class DecoderLayer(Layer):
         preprocess_cmd="n",
         postprocess_cmd="da",
     ):
-        super(DecoderLayer, self).__init__()
+        super().__init__()
 
         self.preprocesser1 = PrePostProcessLayer(
             preprocess_cmd, d_model, prepostprocess_dropout
@@ -432,7 +432,7 @@ class Decoder(Layer):
         preprocess_cmd,
         postprocess_cmd,
     ):
-        super(Decoder, self).__init__()
+        super().__init__()
 
         self.decoder_layers = list()
         for i in range(n_layer):
@@ -496,7 +496,7 @@ class WrapDecoder(Layer):
         share_input_output_embed,
         word_embedder,
     ):
-        super(WrapDecoder, self).__init__()
+        super().__init__()
 
         self.emb_dropout = prepostprocess_dropout
         self.emb_dim = d_model
@@ -565,7 +565,7 @@ class WrapDecoder(Layer):
         return logits
 
 
-class CrossEntropyCriterion(object):
+class CrossEntropyCriterion:
     def __init__(self, label_smooth_eps):
         self.label_smooth_eps = label_smooth_eps
 
@@ -610,7 +610,7 @@ class Transformer(Layer):
         bos_id=0,
         eos_id=1,
     ):
-        super(Transformer, self).__init__()
+        super().__init__()
         src_word_embedder = Embedder(
             vocab_size=src_vocab_size, emb_dim=d_model, bos_idx=bos_id
         )
@@ -789,7 +789,7 @@ class Transformer(Layer):
         )
         predict_ids = []
         parent_ids = []
-        ### initialize states of beam search ###
+        # initialize states of beam search
         log_probs = to_variable(
             np.array(
                 [[0.0] + [-inf] * (beam_size - 1)] * batch_size, dtype="float32"

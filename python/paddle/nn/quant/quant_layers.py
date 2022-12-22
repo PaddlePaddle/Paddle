@@ -65,7 +65,7 @@ class FakeQuantAbsMax(Layer):
         quant_on_weight=False,
         reduce_type=None,
     ):
-        super(FakeQuantAbsMax, self).__init__()
+        super().__init__()
         self._quant_bits = quant_bits
         self._name = name
         self._reduce_type = reduce_type
@@ -165,7 +165,7 @@ class FakeQuantMovingAverageAbsMax(Layer):
         dtype='float32',
         reduce_type=None,
     ):
-        super(FakeQuantMovingAverageAbsMax, self).__init__()
+        super().__init__()
         self._moving_rate = moving_rate
         self._quant_bits = quant_bits
         self._reduce_type = reduce_type
@@ -298,9 +298,9 @@ class FakeQuantChannelWiseAbsMax(Layer):
         reduce_type=None,
     ):
         assert (
-            quant_on_weight == True
+            quant_on_weight
         ), "Channel_wise only can be used on weight quantization."
-        super(FakeQuantChannelWiseAbsMax, self).__init__()
+        super().__init__()
         self._quant_bits = quant_bits
         self._quant_axis = quant_axis
         self._dtype = dtype
@@ -407,7 +407,7 @@ class MovingAverageAbsMaxScale(Layer):
         :math:`scale = (moving\_rate*accum+max(abs(x)))/(moving\_rate*state+1)`
         :math:`Out = X`
         """
-        super(MovingAverageAbsMaxScale, self).__init__()
+        super().__init__()
         self._moving_rate = moving_rate
         self._reduce_type = reduce_type
         scale_prefix = '{}.scale'.format(name) if name else 'outscale.scale'
@@ -531,7 +531,7 @@ class QuantizedConv2D(Layer):
         weight_quant_layer=None,
         act_quant_layer=None,
     ):
-        super(QuantizedConv2D, self).__init__()
+        super().__init__()
         # For Conv2D
         self._groups = getattr(layer, '_groups')
         self._stride = getattr(layer, '_stride')
@@ -650,7 +650,7 @@ class QuantizedConv2DTranspose(Layer):
 
         The arguments are the same as ImperativeQuantAware.
         """
-        super(QuantizedConv2DTranspose, self).__init__()
+        super().__init__()
         # For Conv2DTranspose
         self._groups = getattr(layer, '_groups')
         self._stride = getattr(layer, '_stride')
@@ -744,7 +744,7 @@ class QuantizedLinear(Layer):
         weight_quant_layer=None,
         act_quant_layer=None,
     ):
-        super(QuantizedLinear, self).__init__()
+        super().__init__()
         # For Linear
         self.weight = getattr(layer, 'weight')
         self.bias = getattr(layer, 'bias')
@@ -816,7 +816,7 @@ class QuantizedColumnParallelLinear(Layer):
         weight_quant_layer=None,
         act_quant_layer=None,
     ):
-        super(QuantizedColumnParallelLinear, self).__init__()
+        super().__init__()
         '''
 
         '''
@@ -912,7 +912,7 @@ class QuantizedRowParallelLinear(Layer):
         weight_quant_layer=None,
         act_quant_layer=None,
     ):
-        super(QuantizedRowParallelLinear, self).__init__()
+        super().__init__()
         assert (
             weight_quant_layer is None
         ), "When quantizing RowParallelLinear, weight_quant_layer cannot defined by yourself."
@@ -1015,7 +1015,7 @@ class MAOutputScaleLayer(Layer):
         r"""
         Construct
         """
-        super(MAOutputScaleLayer, self).__init__()
+        super().__init__()
         self._layer = layer
         if name is None:
             name = layer.full_name()
@@ -1053,7 +1053,7 @@ class FakeQuantMAOutputScaleLayer(Layer):
         **kwargs
     ):
 
-        super(FakeQuantMAOutputScaleLayer, self).__init__()
+        super().__init__()
         self._layer = layer
         self._fake_quant_output = _get_fake_quant_type(
             'moving_average_abs_max',

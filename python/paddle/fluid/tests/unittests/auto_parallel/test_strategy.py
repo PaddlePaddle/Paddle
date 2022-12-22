@@ -23,7 +23,7 @@ class TestStrategy(unittest.TestCase):
 
         recompute = strategy.recompute
         self.assertEqual(recompute.enable, False)
-        self.assertEqual(recompute.checkpoints, None)
+        self.assertIsNone(recompute.checkpoints)
 
         amp = strategy.amp
         self.assertEqual(amp.enable, False)
@@ -44,7 +44,9 @@ class TestStrategy(unittest.TestCase):
         self.assertEqual(sharding.enable, False)
         self.assertEqual(sharding.stage, 1)
         self.assertEqual(sharding.degree, 8)
-        self.assertAlmostEqual(sharding.segment_broadcast_MB, 32.0)
+        self.assertAlmostEqual(sharding.overlap_grad_comm, False)
+        self.assertAlmostEqual(sharding.bucket_size_numel, -1)
+        self.assertAlmostEqual(sharding.partition_algor, "greedy_even")
         self.assertEqual(sharding.enable_tuning, False)
         self.assertEqual(sharding.tuning_range, [])
 
@@ -59,12 +61,12 @@ class TestStrategy(unittest.TestCase):
         self.assertEqual(qat.weight_bits, 8)
         self.assertEqual(qat.activation_bits, 8)
         self.assertEqual(qat.not_quant_pattern, ['skip_quant'])
-        self.assertEqual(qat.algo, None)
+        self.assertIsNone(qat.algo)
 
         tuning = strategy.tuning
         self.assertEqual(tuning.enable, False)
         self.assertEqual(tuning.batch_size, 1)
-        self.assertEqual(tuning.dataset, None)
+        self.assertIsNone(tuning.dataset)
         self.assertEqual(tuning.profile_start_step, 1)
         self.assertEqual(tuning.profile_end_step, 1)
         self.assertEqual(tuning.run_after_tuning, True)

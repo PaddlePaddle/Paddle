@@ -420,7 +420,7 @@ class Profiler:
 
                 class SimpleNet(paddle.nn.Layer):
                     def __init__(self):
-                        super(SimpleNet, self).__init__()
+                        super().__init__()
                         self.fc = paddle.nn.Linear(100, 10)
 
                     def forward(self, image, label=None):
@@ -522,7 +522,7 @@ class Profiler:
         else:
             self.scheduler = _default_state_scheduler
 
-        if on_trace_ready == None:
+        if on_trace_ready is None:
             self.on_trace_ready = export_chrome_tracing('./profiler_log/')
         else:
             self.on_trace_ready = on_trace_ready

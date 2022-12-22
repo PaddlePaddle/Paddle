@@ -132,7 +132,7 @@ class LSTMCell(Layer):
         use_cudnn_impl=True,
         dtype='float64',
     ):
-        super(LSTMCell, self).__init__(dtype)
+        super().__init__(dtype)
 
         self._hidden_size = hidden_size
         self._input_size = input_size
@@ -350,7 +350,7 @@ class GRUCell(Layer):
         use_cudnn_impl=True,
         dtype='float64',
     ):
-        super(GRUCell, self).__init__()
+        super().__init__()
 
         self._hidden_size = hidden_size
         self._input_size = input_size

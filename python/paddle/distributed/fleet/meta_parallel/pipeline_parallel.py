@@ -34,7 +34,7 @@ class PipelineParallel(MetaParallelBase):
             raise TypeError(
                 "The Layer should be a derived class of PipelineLayer."
             )
-        super(PipelineParallel, self).__init__(layers, hcg, strategy)
+        super().__init__(layers, hcg, strategy)
         self.use_data_parallel = self._hcg.get_data_parallel_world_size() > 1
         self.use_model_parallel = self._hcg.get_model_parallel_world_size() > 1
         self.use_sharding_parallel = (
@@ -355,51 +355,55 @@ class PipelineParallel(MetaParallelBase):
                     input_tensor_grad = input_tensor.grad
             return input_tensor_grad
 
-    def _load_micro_batch(self, cache_id):
-        inputs = self.data
+    def _check_data_vaild(self, data):
+        batch_size = data.shape[0]
+        assert self.micro_batch_size * self.accumulate_steps == batch_size, (
+            "batch_size needs to be divisible by micro_batch_size. Currently, "
+            "batch_size = %d, micro_batch_size = %d, accumulate_steps = %d."
+            % (batch_size, self.micro_batch_size, self.accumulate_steps)
+        )
+
+    def _load_micro_batch_impl(self, inputs, cache_id):
         begin = cache_id * self.micro_batch_size
         end = begin + self.micro_batch_size
 
-        # The virtual first and last pipeline stage need data, all others don't need.
+        if isinstance(inputs, tuple):
+            output = []
+            for data in inputs:
+                if isinstance(data, list):
+                    assert (
+                        len(data) == self.accumulate_steps
+                    ), "length of data should be %d, but it is %d" % (
+                        self.accumulate_steps,
+                        len(data),
+                    )
+                    output.append(data[cache_id].detach())
+                else:
+                    self._check_data_vaild(data)
+                    output.append(data[begin:end, :].detach())
+            return tuple(output)
+
+        elif isinstance(inputs, list):
+            assert (
+                len(inputs) == self.accumulate_steps
+            ), "length of data should be %d, but it is %d" % (
+                self.accumulate_steps,
+                len(inputs),
+            )
+            return inputs[cache_id].detach()
+        else:
+            self._check_data_vaild(inputs)
+            return inputs[begin:end, :].detach()
+
+    def _load_micro_batch(self, cache_id):
+        inputs = self.data
         if self.is_pipeline_first_stage():
             assert len(inputs) == 2, "length of input should be 2"
-            if isinstance(inputs[0], tuple):
-                assert (
-                    len(inputs[0]) > 1
-                ), "If you use tuple for input data, it should have at least two inputs."
-                batch_size = inputs[0][0].shape[0]
-                assert (
-                    self.micro_batch_size * self.accumulate_steps == batch_size
-                ), (
-                    "batch_size needs to be divisible by micro_batch_size. Currently, "
-                    "batch_size = %d, micro_batch_size = %d, accumulate_steps = %d."
-                    % (batch_size, self.micro_batch_size, self.accumulate_steps)
-                )
-                data = [input[begin:end, :].detach() for input in inputs[0]]
-                return tuple(data)
-            else:
-                batch_size = inputs[0].shape[0]
-                assert (
-                    self.micro_batch_size * self.accumulate_steps == batch_size
-                )
-                return inputs[0][begin:end, :].detach()
+            return self._load_micro_batch_impl(inputs[0], cache_id)
         elif self.is_pipeline_last_stage():
             assert len(inputs) == 2, "length of input should be 2"
-            if isinstance(inputs[1], tuple):
-                batch_size = inputs[1][0].shape[0]
-                assert (
-                    self.micro_batch_size * self.accumulate_steps == batch_size
-                )
-                data = [input[begin:end, :].detach() for input in inputs[1]]
-                return tuple(data)
-            else:
-                batch_size = inputs[1].shape[0]
-                assert (
-                    self.micro_batch_size * self.accumulate_steps == batch_size
-                )
-                return inputs[1][begin:end, :].detach()
+            return self._load_micro_batch_impl(inputs[1], cache_id)
         else:
-            # No data input is required for other stages
             inputs = None
 
     def _broadcast_final_loss(self):
@@ -458,9 +462,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
     # pipeline parallel with interleave scheduler
 
     def __init__(self, layers, hcg, strategy):
-        super(PipelineParallelWithInterleave, self).__init__(
-            layers=layers, hcg=hcg, strategy=strategy
-        )
+        super().__init__(layers=layers, hcg=hcg, strategy=strategy)
         assert layers.get_num_virtual_stages() > 1
         assert (
             framework.in_dygraph_mode()
@@ -530,7 +532,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         return input_tensor_grad
 
-    def interleave_pipeline(
+    def forward_backward_pipeline(
         self, data, scaler, forward_only=False, compute_loss=True
     ):
         # use interleave scheduling strategy.
@@ -759,7 +761,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
     def train_batch(self, data, optimizer, lr_scheduler=None, scaler=None):
         data = self._prepare_training(data, optimizer, lr_scheduler)
         # interleave scheduler for pipeline parallel
-        train_loss = self.interleave_pipeline(data, scaler)
+        train_loss = self.forward_backward_pipeline(data, scaler)
 
         # optimizer
         with paddle.amp.auto_cast(enable=False):
@@ -774,4 +776,4 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self._layers.eval()
         self._compute_loss = compute_loss
 
-        return self.interleave_pipeline(data, None, forward_only=True)
+        return self.forward_backward_pipeline(data, None, forward_only=True)

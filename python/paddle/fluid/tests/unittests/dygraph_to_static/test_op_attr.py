@@ -20,7 +20,7 @@ from paddle.static import InputSpec
 
 class MySub(paddle.nn.Layer):
     def __init__(self):
-        super(MySub, self).__init__()
+        super().__init__()
 
     def forward(self, x, y, name=None):
         return paddle.subtract(x, y, name)
@@ -28,7 +28,7 @@ class MySub(paddle.nn.Layer):
 
 class NetWithOpAttr(paddle.nn.Layer):
     def __init__(self, in_num, out_num):
-        super(NetWithOpAttr, self).__init__()
+        super().__init__()
 
         self.linear = paddle.nn.Linear(in_num, out_num)
         self.bn = paddle.nn.BatchNorm(out_num)

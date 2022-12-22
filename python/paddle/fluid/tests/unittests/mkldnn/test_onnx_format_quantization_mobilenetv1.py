@@ -49,7 +49,7 @@ def resize_short(img, target_size):
 def crop_image(img, target_size, center):
     width, height = img.size
     size = target_size
-    if center == True:
+    if center:
         w_start = (width - size) / 2
         h_start = (height - size) / 2
     else:

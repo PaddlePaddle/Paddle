@@ -16,7 +16,7 @@ import math
 import numpy as np
 
 
-class PyPrRoIPool(object):
+class PyPrRoIPool:
     def __init__(self):
         pass
 

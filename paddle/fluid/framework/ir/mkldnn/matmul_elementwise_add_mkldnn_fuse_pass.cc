@@ -83,7 +83,7 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
   gpd(graph, handler);
   AddStatis(found_matmul_elementwise_add_count);
   if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
-      found_matmul_elementwise_add_count > 0) {
+      (found_matmul_elementwise_add_count > 0)) {
     PrettyLogDetail("---    fused %d %s (as %s) with elementwise_add",
                     found_matmul_elementwise_add_count,
                     matmul_type,

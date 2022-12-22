@@ -41,8 +41,8 @@ class TrtConvertBilinearInterpV2Test(TrtLayerAutoScanTest):
             )
 
         for data_layout in ["NCHW", "NHWC"]:
-            for scale_y in [2.0, -1.0, 0.0]:
-                for scale_x in [2.0, -1.0, 0.0]:
+            for scale_y in [2.0, 1.0]:
+                for scale_x in [2.0, 1.0]:
                     scale = [scale_y, scale_x]
                     for out_h in [32, 64, 128, 192]:
                         for out_w in [32, 64]:

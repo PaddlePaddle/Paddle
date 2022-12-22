@@ -39,7 +39,7 @@ class TestPoolBf16MklDNNOpGrad(TestPool2D_Op_Mixin, OpTest):
         self.dtype = np.uint16
 
     def setUp(self):
-        super(TestPoolBf16MklDNNOpGrad, self).setUp()
+        super().setUp()
         self.attrs['mkldnn_data_type'] = "bfloat16"
         self.x_fp32 = np.random.random(self.shape).astype(np.float32)
 

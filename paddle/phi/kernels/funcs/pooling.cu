@@ -16,56 +16,56 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
-#include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
+#include "paddle/phi/kernels/primitive/datamover_primitives.h"
 
 namespace phi {
 namespace funcs {
 
 struct FastDivModForPooling {
  public:
-  paddle::platform::FastDivMod channel;
-  paddle::platform::FastDivMod width;
-  paddle::platform::FastDivMod height;
+  phi::kps::details::FastDivMod channel;
+  phi::kps::details::FastDivMod width;
+  phi::kps::details::FastDivMod height;
 
   explicit HOSTDEVICE FastDivModForPooling(const int channels,
                                            const int output_width,
                                            const int output_height) {
-    channel = paddle::platform::FastDivMod(channels);
-    width = paddle::platform::FastDivMod(output_width);
-    height = paddle::platform::FastDivMod(output_height);
+    channel = phi::kps::details::FastDivMod(channels);
+    width = phi::kps::details::FastDivMod(output_width);
+    height = phi::kps::details::FastDivMod(output_height);
   }
 };
 
 struct FastDivModForPooling3D {
  public:
-  paddle::platform::FastDivMod channel;
-  paddle::platform::FastDivMod width;
-  paddle::platform::FastDivMod height;
-  paddle::platform::FastDivMod depth;
+  phi::kps::details::FastDivMod channel;
+  phi::kps::details::FastDivMod width;
+  phi::kps::details::FastDivMod height;
+  phi::kps::details::FastDivMod depth;
 
   explicit HOSTDEVICE FastDivModForPooling3D(const int channels,
                                              const int output_width,
                                              const int output_height,
                                              const int output_depth) {
-    channel = paddle::platform::FastDivMod(channels);
-    width = paddle::platform::FastDivMod(output_width);
-    height = paddle::platform::FastDivMod(output_height);
-    depth = paddle::platform::FastDivMod(output_depth);
+    channel = phi::kps::details::FastDivMod(channels);
+    width = phi::kps::details::FastDivMod(output_width);
+    height = phi::kps::details::FastDivMod(output_height);
+    depth = phi::kps::details::FastDivMod(output_depth);
   }
 };
 
 struct FastDivModForPoolingWithMoreStaff {
  public:
-  paddle::platform::FastDivMod channel;
-  paddle::platform::FastDivMod width;
-  paddle::platform::FastDivMod height;
-  paddle::platform::FastDivMod ksize_w;
-  paddle::platform::FastDivMod ksize_h;
-  paddle::platform::FastDivMod stride_w;
-  paddle::platform::FastDivMod stride_h;
+  phi::kps::details::FastDivMod channel;
+  phi::kps::details::FastDivMod width;
+  phi::kps::details::FastDivMod height;
+  phi::kps::details::FastDivMod ksize_w;
+  phi::kps::details::FastDivMod ksize_h;
+  phi::kps::details::FastDivMod stride_w;
+  phi::kps::details::FastDivMod stride_h;
 
   explicit HOSTDEVICE FastDivModForPoolingWithMoreStaff(
       const int channels,
@@ -75,13 +75,13 @@ struct FastDivModForPoolingWithMoreStaff {
       const int ksize_height,
       const int stride_width,
       const int stride_height) {
-    channel = paddle::platform::FastDivMod(channels);
-    width = paddle::platform::FastDivMod(input_width);
-    height = paddle::platform::FastDivMod(input_height);
-    ksize_w = paddle::platform::FastDivMod(ksize_width);
-    ksize_h = paddle::platform::FastDivMod(ksize_height);
-    stride_w = paddle::platform::FastDivMod(stride_width);
-    stride_h = paddle::platform::FastDivMod(stride_height);
+    channel = phi::kps::details::FastDivMod(channels);
+    width = phi::kps::details::FastDivMod(input_width);
+    height = phi::kps::details::FastDivMod(input_height);
+    ksize_w = phi::kps::details::FastDivMod(ksize_width);
+    ksize_h = phi::kps::details::FastDivMod(ksize_height);
+    stride_w = phi::kps::details::FastDivMod(stride_width);
+    stride_h = phi::kps::details::FastDivMod(stride_height);
   }
 };
 

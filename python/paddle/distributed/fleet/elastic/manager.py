@@ -15,7 +15,6 @@
 import time
 import socket
 import os
-import six
 import copy
 import signal
 import random
@@ -53,7 +52,7 @@ class ElasticStatus:
     EXIT = "exit"
 
 
-class LauncherInterface(object):
+class LauncherInterface:
     def __init__(self, args):
         self.args = args
         self.procs = []
@@ -125,7 +124,7 @@ class LauncherInterface(object):
         raise NotImplementedError
 
 
-class ElasticManager(object):
+class ElasticManager:
     def __init__(self, args, etcd_client):
 
         self.args = args
@@ -244,8 +243,7 @@ class ElasticManager(object):
         # register callback
         def host_call_back(event):
             self.hosts = [
-                six.ensure_str(i[0])
-                for i in self.etcd.get_prefix(self.node_prefix)
+                i[0].decode() for i in self.etcd.get_prefix(self.node_prefix)
             ]
             self.hosts = list(set(self.hosts)) if self.hosts else self.hosts
             logger.info(
@@ -266,7 +264,7 @@ class ElasticManager(object):
                     host_lease.refresh()
 
                     hosts = [
-                        six.ensure_str(i[0])
+                        i[0].decode()
                         for i in self.etcd.get_prefix(self.node_prefix)
                     ]
                     hosts = list(set(hosts)) if hosts else hosts
@@ -311,7 +309,8 @@ class ElasticManager(object):
         def endpoints_call_back(event):
             if not self.dist_endpoints:
                 return
-            edps = six.ensure_str(self.etcd.get(self.endpoints_path)[0] or '')
+            value = self.etcd.get(self.endpoints_path)[0]
+            edps = value.decode() if value is not None else ''
             self.dist_endpoints, self.trainers = edps.split('|')
             logger.info(
                 "set DISTRIBUTED_TRAINER_ENDPOINTS {} ".format(
@@ -426,8 +425,7 @@ class ElasticManager(object):
             self.hosts = host_list
         else:
             self.hosts = [
-                six.ensure_str(i[0])
-                for i in self.etcd.get_prefix(self.node_prefix)
+                i[0].decode() for i in self.etcd.get_prefix(self.node_prefix)
             ]
         self.hosts = list(set(self.hosts)) if self.hosts else self.hosts
 

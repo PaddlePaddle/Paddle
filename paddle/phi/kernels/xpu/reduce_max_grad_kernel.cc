@@ -75,6 +75,14 @@ void ReduceMaxGradKernel(const Context& dev_ctx,
       XPU_SUCCESS,
       errors::ResourceExhausted("XPU has no enough memory"));
 
+  // use [1] to replace [], because xpu not support []
+  if (xdims.size() == 0) {
+    xdims = std::vector<int>({1});
+  }
+  if (ydims.size() == 0) {
+    ydims = std::vector<int>({1});
+  }
+
   // step 1. brocast out and out_grad
   int r =
       xpu::broadcast<T>(dev_ctx.x_context(), out_data, brocast1, ydims, xdims);

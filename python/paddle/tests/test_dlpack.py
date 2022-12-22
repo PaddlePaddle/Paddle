@@ -123,6 +123,14 @@ class TestDLPack(unittest.TestCase):
             self.func_test_dlpack_dtype_conversion()
         self.func_test_dlpack_dtype_conversion()
 
+    def test_dlpack_deletion(self):
+        # See Paddle issue 47171
+        if paddle.is_compiled_with_cuda():
+            for i in range(80):
+                a = paddle.rand(shape=[1024 * 128, 1024], dtype="float32")
+                dlpack = paddle.utils.dlpack.to_dlpack(a)
+                b = paddle.utils.dlpack.from_dlpack(dlpack)
+
 
 class TestRaiseError(unittest.TestCase):
     def func_test_from_dlpack_raise_type_error(self):

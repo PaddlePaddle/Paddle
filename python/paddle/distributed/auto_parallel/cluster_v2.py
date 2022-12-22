@@ -116,7 +116,7 @@ class DeviceMesh(core.DeviceMesh):
         return self._mesh
 
 
-# class Cluster(object):
+# class Cluster:
 #     """
 #     The cluster represents the hardware resource.
 #     """

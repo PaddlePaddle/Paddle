@@ -784,7 +784,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
             type="mean", inputs={"X": b2_out}, outputs={"Out": mean_out}
         )
 
-        if return_input == True:
+        if return_input:
             return mul_x, mul_out, b1_out, b2_out, mean_out
         return mul_out, b1_out, b2_out, mean_out
 
@@ -1354,7 +1354,7 @@ class TestOptimizerDtype(unittest.TestCase):
     def check_with_dtype(self, dtype):
         class MyLayer(paddle.nn.Layer):
             def __init__(self, dtype):
-                super(MyLayer, self).__init__()
+                super().__init__()
                 self._w = self.create_parameter([2, 3], dtype=dtype)
                 self._b = self.create_parameter([2, 3], dtype=dtype)
 
@@ -1400,7 +1400,7 @@ class TestMasterWeightSaveForFP16(unittest.TestCase):
 
         class SimpleNet(paddle.nn.Layer):
             def __init__(self, input_size, output_size):
-                super(SimpleNet, self).__init__()
+                super().__init__()
                 self.linears = paddle.nn.LayerList(
                     [
                         paddle.nn.Linear(input_size, output_size)

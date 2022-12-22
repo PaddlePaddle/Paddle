@@ -46,7 +46,7 @@ class RandomDataset(paddle.io.Dataset):
 
 class LinearNet(nn.Layer):
     def __init__(self):
-        super(LinearNet, self).__init__()
+        super().__init__()
         self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
         self._dropout = paddle.nn.Dropout(p=0.5)
 

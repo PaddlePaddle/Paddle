@@ -21,7 +21,7 @@ from paddle.fluid.core import AnalysisConfig
 from paddle.fluid.core import create_paddle_predictor
 
 
-class PredictorTools(object):
+class PredictorTools:
     '''
     Paddle-Inference predictor
     '''

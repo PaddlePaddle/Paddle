@@ -36,8 +36,8 @@ def get_cuda_version():
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11070,
-    "core is not compiled with CUDA and cuda version need larger than or equal to 11.7",
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11080,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.8",
 )
 class TestSparseAttentionAPI1(unittest.TestCase):
     def setUp(self):

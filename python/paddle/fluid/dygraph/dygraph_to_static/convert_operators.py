@@ -373,7 +373,7 @@ def _run_paddle_cond(
     pred, true_fn, false_fn, get_args, set_args, return_name_ids, push_pop_names
 ):
     """
-    Paddle cond API will evaluate both ture_fn and false_fn codes.
+    Paddle cond API will evaluate both true_fn and false_fn codes.
     """
     helper = GetterSetterHelper(
         get_args, set_args, return_name_ids, push_pop_names

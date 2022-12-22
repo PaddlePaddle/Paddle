@@ -19,7 +19,7 @@ import numpy as np
 from ..utils.log_utils import get_logger
 
 
-class Converter(object):
+class Converter:
     """
     Converter is a class object for auto parallel to convert tensors from
     one parallel strategy to another one. Tensors will merge and slice value

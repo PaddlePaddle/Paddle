@@ -112,6 +112,16 @@ struct CastDataType {
             CastDataTypeFunctor<InType, OutType>());
       context->Wait();
 #endif
+#if defined(PADDLE_WITH_IPU)
+    } else if (platform::is_ipu_place(in_.place())) {
+      platform::Transform<phi::CPUContext> trans;
+      auto* context = static_cast<const phi::CPUContext*>(ctx_);
+      trans(*context,
+            in_begin,
+            in_end,
+            out_begin,
+            CastDataTypeFunctor<InType, OutType>());
+#endif
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Place type is not supported when casting data type."));

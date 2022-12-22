@@ -23,7 +23,7 @@ import os
 
 class SimpleNet(paddle.nn.Layer):
     def __init__(self):
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.conv = paddle.nn.Conv2D(1, 2, (3, 3))
 
     def forward(self, image, label=None):

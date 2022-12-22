@@ -50,7 +50,7 @@ class ShardingOptimizer(MetaOptimizerBase):
     """Sharding Optimizer."""
 
     def __init__(self, optimizer):
-        super(ShardingOptimizer, self).__init__(optimizer)
+        super().__init__(optimizer)
         self.inner_opt = optimizer
         self.meta_optimizers_white_list = [
             "RecomputeOptimizer",

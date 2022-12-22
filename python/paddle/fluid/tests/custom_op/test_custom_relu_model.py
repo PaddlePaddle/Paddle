@@ -58,7 +58,7 @@ class Net(nn.Layer):
     """
 
     def __init__(self, in_dim, out_dim, use_custom_op=False):
-        super(Net, self).__init__()
+        super().__init__()
         self.fc1 = nn.Linear(in_dim, in_dim)
         self.fc2 = nn.Linear(in_dim, out_dim)
         self.relu_act = (

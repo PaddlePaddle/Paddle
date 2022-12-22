@@ -95,7 +95,7 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(alltoall,
                         ops::AllToAllOpCUDAKernel<float>,
                         ops::AllToAllOpCUDAKernel<double>,
-#if CUDNN_VERSION_MIN(8, 1, 0) && NCCL_VERSION_CODE >= 21000
+#if NCCL_VERSION_CODE >= 21000
                         ops::AllToAllOpCUDAKernel<plat::bfloat16>,
 #endif
                         ops::AllToAllOpCUDAKernel<int>,

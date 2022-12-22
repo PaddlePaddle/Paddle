@@ -18,9 +18,7 @@ import test_communication_api_base as test_base
 
 class TestCommunicationStreamAllreduceAPI(test_base.CommunicationTestDistBase):
     def setUp(self):
-        super(TestCommunicationStreamAllreduceAPI, self).setUp(
-            num_of_devices=2, timeout=120
-        )
+        super().setUp(num_of_devices=2, timeout=120)
         self._default_envs = {
             "backend": "nccl",
             "shape": "(100, 200)",
@@ -45,7 +43,7 @@ class TestCommunicationStreamAllreduceAPI(test_base.CommunicationTestDistBase):
             )
 
     def tearDown(self):
-        super(TestCommunicationStreamAllreduceAPI, self).tearDown()
+        super().tearDown()
 
 
 if __name__ == '__main__':

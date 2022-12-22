@@ -35,7 +35,7 @@ batch_size = 100
 
 class MLP(fluid.Layer):
     def __init__(self, linear_size=1000, param_attr=None, bias_attr=None):
-        super(MLP, self).__init__()
+        super().__init__()
 
         self._linear1 = Linear(linear_size, linear_size)
         self._linear2 = Linear(linear_size, linear_size)
@@ -151,16 +151,6 @@ def test_sharding_api():
     # test sharding + dp, just for test
     dp_group = paddle.distributed.new_group(
         list(range(paddle.distributed.get_world_size()))
-    )
-
-    stage2_dp_params = train_mlp(
-        mlp1,
-        shard_level="os_g",
-        use_multi_precision=True,
-        output_dir=output_dir,
-        amp_level='O2',
-        sync_buffers=True,
-        dp_group=dp_group,
     )
 
     # fp16

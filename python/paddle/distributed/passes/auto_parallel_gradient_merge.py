@@ -327,7 +327,7 @@ def parse_program(
 @register_pass("auto_parallel_gradient_merge_pass")
 class GradientMergePass(PassBase):
     def __init__(self):
-        super(GradientMergePass, self).__init__()
+        super().__init__()
         self.set_attr("k_steps", -1)
         self.set_attr("avg", True)
 

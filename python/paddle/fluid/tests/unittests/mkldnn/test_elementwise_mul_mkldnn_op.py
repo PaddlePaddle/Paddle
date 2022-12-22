@@ -101,7 +101,7 @@ class TestInt8(ElementwiseMulOp):
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.init_scales()
-        self.check_output(check_dygraph=(self.use_mkldnn == False))
+        self.check_output(check_dygraph=(not self.use_mkldnn))
 
     def test_check_grad_normal(self):
         pass
@@ -138,9 +138,7 @@ class TestInt8Scales(TestInt8):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.init_scales()
         int_atol = 1  # different quantization techniques
-        self.check_output(
-            check_dygraph=(self.use_mkldnn == False), atol=int_atol
-        )
+        self.check_output(check_dygraph=(not self.use_mkldnn), atol=int_atol)
 
 
 class TestUint8Scales(TestInt8Scales):

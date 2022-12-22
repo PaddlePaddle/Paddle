@@ -10,3 +10,4 @@
 | 安全公告编号                                          | 类型                      | 受影响版本 | 报告者                                   | 备注  |
 |-------------------------------------------------|-------------------------|:-----:|---------------------------------------|-----|
 | [PDSA-2022-001](./advisory/pdsa-2022-001_cn.md) | OOB read in gather_tree | < 2.4 | Wang Xuan(王旋) of Qihoo 360 AIVul Team |     |
+| [PDSA-2022-002](./advisory/pdsa-2022-002_cn.md) | Code injection in paddle.audio.functional.get_window | = 2.4.0-rc0 | Tong Liu of ShanghaiTech University |     |

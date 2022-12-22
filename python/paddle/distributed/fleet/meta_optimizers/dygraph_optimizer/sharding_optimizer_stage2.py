@@ -27,13 +27,13 @@ import numpy as np
 from collections import OrderedDict
 
 import paddle
+import paddle.distributed as dist
 from paddle.fluid import core
 from paddle.optimizer import Optimizer
 from paddle.fluid.clip import ClipGradByGlobalNorm
 from paddle.distributed.collective import (
     _get_global_group,
     new_group,
-    broadcast,
     wait,
 )
 
@@ -169,7 +169,7 @@ class ShardingOptimizerStage2(Optimizer):
         """
 
         for p in self._local_params:
-            broadcast(
+            dist.broadcast(
                 p, src=self._global_root_rank, group=self.group, sync_op=True
             )
 
@@ -456,7 +456,7 @@ class ShardingOptimizerStage2(Optimizer):
         # Exchange all the shards with the other ranks
         for dtype_per_rank in self.param_storages.values():
             for dst_rank, internal_storage in dtype_per_rank.items():
-                broadcast(
+                dist.broadcast(
                     tensor=internal_storage.buffer,
                     src=self.group.ranks[dst_rank],
                     group=self.group,

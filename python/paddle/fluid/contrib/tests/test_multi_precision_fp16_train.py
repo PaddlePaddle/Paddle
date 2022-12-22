@@ -25,7 +25,7 @@ paddle.enable_static()
 
 class RandomDataset(Dataset):
     def __init__(self, num_samples, seed=123):
-        super(RandomDataset, self).__init__()
+        super().__init__()
         np.random.seed(seed)
         self.num_samples = num_samples
 

@@ -57,6 +57,27 @@ class TestElementwiseModOp(OpTest):
         pass
 
 
+class TestElementwiseFloorDivOp_ZeroDim1(TestElementwiseModOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0, 10000, []).astype(self.dtype)
+        self.y = np.random.uniform(0, 1000, []).astype(self.dtype)
+        self.out = np.floor_divide(self.x, self.y)
+
+
+class TestElementwiseFloorDivOp_ZeroDim2(TestElementwiseModOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0, 10000, [10, 10]).astype(self.dtype)
+        self.y = np.random.uniform(0, 1000, []).astype(self.dtype)
+        self.out = np.floor_divide(self.x, self.y)
+
+
+class TestElementwiseFloorDivOp_ZeroDim3(TestElementwiseModOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0, 10000, []).astype(self.dtype)
+        self.y = np.random.uniform(0, 1000, [10, 10]).astype(self.dtype)
+        self.out = np.floor_divide(self.x, self.y)
+
+
 class TestElementwiseModOp_scalar(TestElementwiseModOp):
     def init_input_output(self):
         scale_x = random.randint(0, 100000000)

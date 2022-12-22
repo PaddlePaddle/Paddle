@@ -29,7 +29,7 @@ class SimpleLSTMRNN(paddle.nn.Layer):
     def __init__(
         self, hidden_size, num_steps, num_layers=2, init_scale=0.1, dropout=None
     ):
-        super(SimpleLSTMRNN, self).__init__()
+        super().__init__()
         self._hidden_size = hidden_size
         self._num_layers = num_layers
         self._init_scale = init_scale
@@ -135,7 +135,7 @@ class PtbModel(paddle.nn.Layer):
         init_scale=0.1,
         dropout=None,
     ):
-        super(PtbModel, self).__init__()
+        super().__init__()
         self.hidden_size = hidden_size
         self.vocab_size = vocab_size
         self.init_scale = init_scale

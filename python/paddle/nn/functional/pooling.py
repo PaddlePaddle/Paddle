@@ -110,7 +110,7 @@ def _update_padding_nd(padding, num_dims, channel_last=False, ceil_mode=False):
                 )
             )
         if padding == "VALID":
-            if ceil_mode != False:
+            if ceil_mode is not False:
                 raise ValueError(
                     "When Attr(padding) is \"VALID\", Attr(ceil_mode) must be False. "
                     "Received ceil_mode: True."
@@ -1780,10 +1780,8 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
             #             output[:, :, i, j] = avg(input[:, :, hstart: hend, wstart: wend])
             #
             import paddle
-            import numpy as np
 
-            input_data = np.random.rand(2, 3, 32, 32)
-            x = paddle.to_tensor(input_data)
+            x = paddle.rand([2, 3, 32, 32])
             # x.shape is [2, 3, 32, 32]
             out = paddle.nn.functional.adaptive_avg_pool2d(
                             x = x,
@@ -2174,9 +2172,9 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
         output_size = utils.convert_to_list(output_size, 2, 'output_size')
     else:
         output_size = list(output_size)
-        if output_size[0] == None:
+        if output_size[0] is None:
             output_size[0] = in_h
-        if output_size[1] == None:
+        if output_size[1] is None:
             output_size[1] = in_w
     if in_dygraph_mode():
         pool_out = _C_ops.max_pool2d_with_index(
@@ -2269,11 +2267,11 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
         output_size = utils.convert_to_list(output_size, 3, 'output_size')
     else:
         output_size = list(output_size)
-        if output_size[0] == None:
+        if output_size[0] is None:
             output_size[0] = in_l
-        if output_size[1] == None:
+        if output_size[1] is None:
             output_size[1] = in_h
-        if output_size[2] == None:
+        if output_size[2] is None:
             output_size[2] = in_w
 
     if in_dynamic_mode():

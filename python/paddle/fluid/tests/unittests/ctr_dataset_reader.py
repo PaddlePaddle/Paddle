@@ -60,7 +60,7 @@ def load_lr_input_record(sent):
     return res
 
 
-class CtrReader(object):
+class CtrReader:
     def __init__(self):
         pass
 

@@ -39,7 +39,6 @@ void BatchNormCooGradKernel(const Context& dev_ctx,
                             bool is_test,
                             bool use_global_stats,
                             bool trainable_statistics,
-                            bool fuse_with_relu,
                             SparseCooTensor* x_grad,
                             DenseTensor* scale_grad,
                             DenseTensor* bias_grad);

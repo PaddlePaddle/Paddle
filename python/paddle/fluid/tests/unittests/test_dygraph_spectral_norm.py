@@ -67,7 +67,7 @@ class TestDygraphSpectralNorm(unittest.TestCase):
     def test_check_output(self):
         linear = paddle.nn.Conv2D(2, 1, 3)
         before_weight = linear.weight.numpy().copy()
-        if self.dim == None:
+        if self.dim is None:
             if isinstance(
                 linear,
                 (

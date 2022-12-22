@@ -173,7 +173,7 @@ class TestConvertShapeCompare(unittest.TestCase):
 
 class ShapeLayer(paddle.nn.Layer):
     def __init__(self):
-        super(ShapeLayer, self).__init__()
+        super().__init__()
 
     @paddle.jit.to_static(input_spec=[paddle.static.InputSpec(shape=[None, 1])])
     def forward(self, x):

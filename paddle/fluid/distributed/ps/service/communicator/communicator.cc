@@ -1086,7 +1086,6 @@ void GeoCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
     if (varnames.empty()) {
       VLOG(0) << "ERROR! sparse variables num can not be zero";
     }
-    auto &varname = varnames[0];  // embedding_0.w_0@GRAD
     auto &ids = ctx.remote_sparse_ids;
     if (!ids.empty()) {
       it = send_varname_to_ctx_.erase(it);

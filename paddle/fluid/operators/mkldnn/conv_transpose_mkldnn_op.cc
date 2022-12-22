@@ -23,13 +23,14 @@ namespace operators {
 
 using Tensor = phi::DenseTensor;
 using phi::DataLayout;
+using phi::funcs::OneDNNMemDesc;
 
 inline dnnl::memory::dims GetWeightsTz(const phi::DenseTensor* filter,
                                        const int groups) {
   auto weights_tz = phi::vectorize(filter->dims());
   int g = std::max(groups, 1);
   int g_dim = (g > 1) ? 1 : 0;
-  platform::GetGroupConvWeightsTz(weights_tz, g);
+  phi::funcs::GetGroupConvWeightsTz(weights_tz, g);
   // gIOHW -> gOIHW || IOHW -> OIHW
   std::swap(weights_tz[g_dim + 0], weights_tz[g_dim + 1]);
   return weights_tz;
@@ -37,7 +38,8 @@ inline dnnl::memory::dims GetWeightsTz(const phi::DenseTensor* filter,
 
 template <typename T, typename K, typename T_out>
 class ConvTransposeMKLDNNHandlerT
-    : public platform::MKLDNNHandlerNoCachingT<T, dnnl::deconvolution_forward> {
+    : public phi::funcs::OneDNNHandlerNoCachingT<T,
+                                                 dnnl::deconvolution_forward> {
  public:
   ConvTransposeMKLDNNHandlerT(const framework::ExecutionContext& ctx,
                               const dnnl::engine mkldnn_engine,
@@ -45,7 +47,7 @@ class ConvTransposeMKLDNNHandlerT
                               const phi::DenseTensor* filter,
                               const phi::DenseTensor* bias,
                               phi::DenseTensor* output)
-      : platform::MKLDNNHandlerNoCachingT<T, dnnl::deconvolution_forward>(
+      : phi::funcs::OneDNNHandlerNoCachingT<T, dnnl::deconvolution_forward>(
             mkldnn_engine, ctx.GetPlace()),
         is_test_(ctx.Attr<bool>("is_test")) {
     PADDLE_ENFORCE_EQ(is_test_,
@@ -57,16 +59,16 @@ class ConvTransposeMKLDNNHandlerT
 
     PADDLE_ENFORCE_EQ(
         input->layout(),
-        DataLayout::kMKLDNN,
+        DataLayout::ONEDNN,
         platform::errors::InvalidArgument(
             "Got wrong layout = %d for Input tensor.", input->layout()));
 
     PADDLE_ENFORCE_EQ(
         filter->layout(),
-        DataLayout::kMKLDNN,
+        DataLayout::ONEDNN,
         platform::errors::InvalidArgument(
             "The filter tensor's layout should be %d, but got %d.",
-            DataLayout::kMKLDNN,
+            DataLayout::ONEDNN,
             filter->layout()));
 
     PADDLE_ENFORCE_EQ(
@@ -85,10 +87,10 @@ class ConvTransposeMKLDNNHandlerT
     if (bias) {
       PADDLE_ENFORCE_EQ(
           bias->layout(),
-          DataLayout::kMKLDNN,
+          DataLayout::ONEDNN,
           platform::errors::InvalidArgument(
               "The bias tensor's laytout should be %d, but got %d.",
-              DataLayout::kMKLDNN,
+              DataLayout::ONEDNN,
               bias->layout()));
 
       PADDLE_ENFORCE_EQ(
@@ -136,25 +138,24 @@ class ConvTransposeMKLDNNHandlerT
     const auto src_tz = phi::vectorize(input->dims());
     const auto weights_tz = GetWeightsTz(filter, groups);
     const auto dst_tz = phi::vectorize(output->dims());
-    const auto mkldnn_paddings = platform::ToMkldnnPadding(paddings);
+    const auto mkldnn_paddings = phi::funcs::ToOneDNNPadding(paddings);
 
     /* create memory descriptor for convolution without specified format
      * ('any') which lets a primitive (convolution in this case) choose
      * the memory format preferred for best performance
      */
-    const auto chosen_memory_format = MKLDNNMemoryFormat::any;
+    const auto chosen_memory_format = OneDNNMemoryFormat::any;
 
     auto data_type = dnnl::memory::data_type::f32;
     if (ctx.Attr<std::string>("mkldnn_data_type") == "bfloat16" ||
         std::is_same<T_out, platform::bfloat16>::value)
       data_type = dnnl::memory::data_type::bf16;
 
-    const auto src_md =
-        platform::MKLDNNMemDesc(src_tz, data_type, chosen_memory_format);
+    const auto src_md = OneDNNMemDesc(src_tz, data_type, chosen_memory_format);
     const auto weights_md =
-        platform::MKLDNNMemDesc(weights_tz, data_type, chosen_memory_format);
-    const auto dst_md = platform::MKLDNNMemDesc(
-        dst_tz, platform::MKLDNNGetDataType<T_out>(), chosen_memory_format);
+        OneDNNMemDesc(weights_tz, data_type, chosen_memory_format);
+    const auto dst_md = OneDNNMemDesc(
+        dst_tz, phi::funcs::OneDNNGetDataType<T_out>(), chosen_memory_format);
 
     const dnnl::primitive_attr conv_trans_attr = CreateConvAttrs(ctx);
     auto fwd_prop_kind = is_test_ ? dnnl::prop_kind::forward_inference
@@ -162,7 +163,7 @@ class ConvTransposeMKLDNNHandlerT
     if (bias) {
       std::vector<int64_t> bias_tz = phi::vectorize(bias->dims());
       const auto bias_md =
-          platform::MKLDNNMemDesc(bias_tz, data_type, MKLDNNMemoryFormat::x);
+          OneDNNMemDesc(bias_tz, data_type, OneDNNMemoryFormat::x);
       this->AcquireForwardPrimitiveDescriptor(
           conv_trans_attr,
           fwd_prop_kind,
@@ -221,10 +222,10 @@ class ConvTransposeMKLDNNHandlerT
   std::shared_ptr<dnnl::memory> AcquireSrcMemoryWithReorder(
       const phi::DenseTensor* input) {
     const T* input_data = input->data<T>();
-    return platform::MKLDNNHandlerNoCachingT<T, dnnl::deconvolution_forward>::
+    return phi::funcs::OneDNNHandlerNoCachingT<T, dnnl::deconvolution_forward>::
         AcquireMemoryWithReorder(input->mem_desc(),
                                  this->fwd_pd_->src_desc(),
-                                 platform::to_void_cast<T>(input_data));
+                                 phi::funcs::to_void_cast<T>(input_data));
   }
 
   std::shared_ptr<dnnl::memory> AcquireWeightsMemoryWithReorder(
@@ -236,16 +237,16 @@ class ConvTransposeMKLDNNHandlerT
     auto weights_tz = GetWeightsTz(filter, groups);
     int g = std::max(groups, 1);
 
-    auto user_src_md = platform::MKLDNNMemDesc(
+    auto user_src_md = OneDNNMemDesc(
         weights_tz,
-        platform::MKLDNNGetDataType<K>(),
-        (g == 1) ? MKLDNNMemoryFormat::iohw : MKLDNNMemoryFormat::giohw);
+        phi::funcs::OneDNNGetDataType<K>(),
+        (g == 1) ? OneDNNMemoryFormat::iohw : OneDNNMemoryFormat::giohw);
 
     return this->template AcquireMemoryWithReorder<K>(
         dev_ctx,
         user_src_md,
         this->fwd_pd_->weights_desc(),
-        platform::to_void_cast<K>(filter_data),
+        phi::funcs::to_void_cast<K>(filter_data),
         key,
         "@weights_mem_p",
         is_test_);
@@ -276,7 +277,7 @@ class ConvTransposeMKLDNNHandlerT
         target_memory_p =
             std::make_shared<dnnl::memory>(target_md, this->engine_);
         dnnl::reorder::primitive_desc reorder_pdesc;
-        if (platform::is_int8<T>()) {
+        if (phi::funcs::is_int8<T>()) {
           dnnl::primitive_attr attr;
           attr.set_output_scales(mask, scale_data);
           reorder_pdesc = dnnl::reorder::primitive_desc(
@@ -292,7 +293,7 @@ class ConvTransposeMKLDNNHandlerT
         platform::RecordEvent record_reorder(
             "int_reorder",
             platform::TracerEventType::UserDefined,
-            2,
+            1,
             platform::EventRole::kUniqueOp);
         reorder_p->execute(
             astream,
@@ -318,7 +319,7 @@ class ConvTransposeMKLDNNHandlerT
         platform::RecordEvent record_reorder(
             "int_reorder",
             platform::TracerEventType::UserDefined,
-            2,
+            1,
             platform::EventRole::kUniqueOp);
         reorder_p->execute(
             astream,
@@ -334,17 +335,17 @@ class ConvTransposeMKLDNNHandlerT
       const std::string& key,
       const phi::DenseTensor* bias) {
     const K* bias_data = bias->data<K>();
-    auto user_bias_md =
-        platform::MKLDNNMemDesc(phi::vectorize(bias->dims()),
-                                platform::MKLDNNGetDataType<K>(),
-                                MKLDNNMemoryFormat::x);
-    return this->AcquireMemoryWithReorder(dev_ctx,
-                                          user_bias_md,
-                                          this->fwd_pd_->bias_desc(),
-                                          platform::to_void_cast<K>(bias_data),
-                                          key,
-                                          "@bias_mem_p",
-                                          is_test_);
+    auto user_bias_md = OneDNNMemDesc(phi::vectorize(bias->dims()),
+                                      phi::funcs::OneDNNGetDataType<K>(),
+                                      OneDNNMemoryFormat::x);
+    return this->AcquireMemoryWithReorder(
+        dev_ctx,
+        user_bias_md,
+        this->fwd_pd_->bias_desc(),
+        phi::funcs::to_void_cast<K>(bias_data),
+        key,
+        "@bias_mem_p",
+        is_test_);
   }
 
  private:

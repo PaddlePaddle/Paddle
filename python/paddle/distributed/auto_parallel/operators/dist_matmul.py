@@ -544,7 +544,7 @@ def _init_param_sync(Weight_var, dist_op_context, startup_block, ctx, rank_id):
 
 class DistributedMatmul(DistributedOperatorImplContainer):
     def __init__(self, op_type):
-        super(DistributedMatmul, self).__init__(op_type)
+        super().__init__(op_type)
 
 
 register_distributed_operator_impl_container(DistributedMatmul("matmul"))
@@ -553,7 +553,7 @@ register_distributed_operator_impl_container(DistributedMatmul("matmul"))
 # ColumnParallel
 class DistributedMatmulImpl0(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedMatmulImpl0, self).__init__(name)
+        super().__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
 
@@ -939,7 +939,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
 # RowParallel
 class DistributedMatmulImpl1(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedMatmulImpl1, self).__init__(name)
+        super().__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
 
@@ -1300,7 +1300,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
 # ReplicateParallel
 class DistributedMatmulImpl2(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedMatmulImpl2, self).__init__(name)
+        super().__init__(name)
 
     def calc_cost(self, op_role, dist_op, ctx, cluster):
         cost = None
@@ -1441,7 +1441,7 @@ register_distributed_operator_impl(
 
 class DistributedMatmulV2(DistributedOperatorImplContainer):
     def __init__(self, op_type):
-        super(DistributedMatmulV2, self).__init__(op_type)
+        super().__init__(op_type)
 
 
 register_distributed_operator_impl_container(DistributedMatmulV2("matmul_v2"))
@@ -1450,7 +1450,7 @@ register_distributed_operator_impl_container(DistributedMatmulV2("matmul_v2"))
 # ColumnParallel
 class DistributedMatmulV2Impl0(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedMatmulV2Impl0, self).__init__(name)
+        super().__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
 
@@ -1839,7 +1839,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
 # RowParallel
 class DistributedMatmulV2Impl1(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedMatmulV2Impl1, self).__init__(name)
+        super().__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
 
@@ -2199,7 +2199,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
 # ReplicateParallel
 class DistributedMatmulV2Impl2(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedMatmulV2Impl2, self).__init__(name)
+        super().__init__(name)
 
     def calc_cost(self, op_role, dist_op, ctx, cluster):
         cost = None
@@ -2342,7 +2342,7 @@ register_distributed_operator_impl(
 
 class DistributedMul(DistributedOperatorImplContainer):
     def __init__(self, op_type):
-        super(DistributedMul, self).__init__(op_type)
+        super().__init__(op_type)
 
 
 register_distributed_operator_impl_container(DistributedMul("mul"))
@@ -2351,7 +2351,7 @@ register_distributed_operator_impl_container(DistributedMul("mul"))
 # ColumnParallel
 class DistributedMulImpl0(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedMulImpl0, self).__init__(name)
+        super().__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
 
@@ -2743,7 +2743,7 @@ class DistributedMulImpl0(DistributedOperatorImpl):
 # RowParallel
 class DistributedMulImpl1(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedMulImpl1, self).__init__(name)
+        super().__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
 
@@ -3114,7 +3114,7 @@ class DistributedMulImpl1(DistributedOperatorImpl):
 # ReplicateParallel
 class DistributedMulImpl2(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedMulImpl2, self).__init__(name)
+        super().__init__(name)
 
     def calc_cost(self, op_role, dist_op, ctx, cluster):
         cost = None

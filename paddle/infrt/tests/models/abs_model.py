@@ -20,7 +20,7 @@ import sys
 
 class AbsNet(paddle.nn.Layer):
     def __init__(self):
-        super(AbsNet, self).__init__()
+        super().__init__()
 
     def forward(self, x):
         x = paddle.abs(x)

@@ -27,7 +27,7 @@ def register(linter):
     linter.register_checker(DocstringChecker(linter))
 
 
-class Docstring(object):
+class Docstring:
     """Docstring class holds the parsed doc string elements."""
 
     def __init__(self):

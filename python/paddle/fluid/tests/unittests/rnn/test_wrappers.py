@@ -26,7 +26,7 @@ from rnn_numpy import GRUCell, RNN, BiRNN
 
 class TestRNNWrapper(unittest.TestCase):
     def __init__(self, time_major=True, direction="forward", place="cpu"):
-        super(TestRNNWrapper, self).__init__("runTest")
+        super().__init__("runTest")
         self.time_major = time_major
         self.direction = direction
         self.place = (
@@ -109,7 +109,7 @@ class TestRNNWrapper(unittest.TestCase):
 
 class TestBiRNNWrapper(unittest.TestCase):
     def __init__(self, time_major=True, place="cpu"):
-        super(TestBiRNNWrapper, self).__init__("runTest")
+        super().__init__("runTest")
         self.time_major = time_major
         self.place = (
             paddle.CPUPlace() if place == "cpu" else paddle.CUDAPlace(0)

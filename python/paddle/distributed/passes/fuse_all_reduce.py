@@ -351,7 +351,7 @@ def insert_fuse_all_reduce_by_memory_size(block, groups, max_memory_size):
 @register_pass("fuse_all_reduce")
 class FuseAllReducePass(PassBase):
     def __init__(self):
-        super(FuseAllReducePass, self).__init__()
+        super().__init__()
         self.set_attr("max_memory_size", -1)
 
     def _check_self(self):

@@ -71,7 +71,7 @@ class SimpleMPNet(fluid.dygraph.Layer):
         np_fc2,
         mp_id,
     ):
-        super(SimpleMPNet, self).__init__()
+        super().__init__()
 
         if mp_id == 0:
             init_fc1_data = np_fc1[:, : (inner_size // 2)]
@@ -131,7 +131,7 @@ class SimpleDPNet(fluid.dygraph.Layer):
         self, vocab_size, hidden_size, inner_size, output_size, np_fc1, np_fc2
     ):
 
-        super(SimpleDPNet, self).__init__()
+        super().__init__()
         self.linear1 = paddle.nn.Linear(
             hidden_size,
             inner_size,

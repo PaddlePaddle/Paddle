@@ -26,11 +26,8 @@ namespace operators {
 using dnnl::memory;
 using dnnl::primitive;
 using dnnl::reorder;
-using platform::to_void_cast;
 using Tensor = phi::DenseTensor;
 using dnnl::stream;
-using phi::DataLayout;
-using platform::GetMKLDNNFormat;
 
 template <typename T>
 class DeQuantOpKernel : public framework::OpKernel<T> {
@@ -56,8 +53,8 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
         ctx.template device_context<platform::MKLDNNDeviceContext>();
 
     auto x_tz = phi::vectorize<int64_t>(x->dims());
-    auto x_paddle_dtype = framework::TransToProtoVarType(x->dtype());
-    auto out_paddle_dtype = framework::TransToProtoVarType(out->dtype());
+    auto x_type = phi::funcs::ToOneDNNDataType(x->dtype());
+    auto out_type = phi::funcs::ToOneDNNDataType(out->dtype());
 
     dnnl::primitive_attr attrs;
     static constexpr int32_t mask = 0;  // same shift and scale for whole tensor
@@ -70,16 +67,11 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
           DNNL_ARG_SRC, mask, {static_cast<int32_t>(quantization_shift)});
     }
 
-    platform::ReorderMKLDNNHandler reorder_handler(
-        x_tz,
-        x_paddle_dtype,
-        framework::ToMKLDNNDataType(x_paddle_dtype),
-        out_paddle_dtype,
-        framework::ToMKLDNNDataType(out_paddle_dtype),
-        dev_ctx.GetEngine());
+    phi::funcs::ReorderOneDNNHandler reorder_handler(
+        x_tz, x->dtype(), x_type, out->dtype(), out_type, dev_ctx.GetEngine());
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-        x->mem_desc(), platform::to_void_cast(x->data<T>()));
+        x->mem_desc(), phi::funcs::to_void_cast(x->data<T>()));
     auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
         out, x->mem_desc(), dev_ctx.GetPlace());
 

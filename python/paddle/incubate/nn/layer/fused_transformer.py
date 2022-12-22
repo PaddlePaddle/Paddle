@@ -117,7 +117,7 @@ class FusedBiasDropoutResidualLayerNorm(Layer):
         epsilon=1e-5,
         name=None,
     ):
-        super(FusedBiasDropoutResidualLayerNorm, self).__init__()
+        super().__init__()
         assert embed_dim > 0, (
             "Expected embed_dim to be greater than 0, "
             "but recieved {}".format(embed_dim)
@@ -284,7 +284,7 @@ class FusedMultiHeadAttention(Layer):
         ring_id=-1,
         name=None,
     ):
-        super(FusedMultiHeadAttention, self).__init__()
+        super().__init__()
 
         assert embed_dim > 0, (
             "Expected embed_dim to be greater than 0, "
@@ -558,7 +558,7 @@ class FusedFeedForward(Layer):
         name=None,
     ):
 
-        super(FusedFeedForward, self).__init__()
+        super().__init__()
         assert (
             d_model > 0
         ), "Expected d_model to be greater than 0, but received {}".format(
@@ -778,7 +778,7 @@ class FusedTransformerEncoderLayer(Layer):
         self._config.pop("self")
         self._config.pop("__class__", None)  # py3
 
-        super(FusedTransformerEncoderLayer, self).__init__()
+        super().__init__()
         assert (
             d_model > 0
         ), "Expected d_model to be greater than 0, " "but received {}".format(
@@ -987,7 +987,7 @@ class FusedTransformer(Layer):
         custom_encoder=None,
         custom_decoder=None,
     ):
-        super(fusedTransformer, self).__init__()
+        super().__init__()
         raise NotImplementedError()
 
     def forward(self, src, tgt, src_mask=None, tgt_mask=None, memory_mask=None):
@@ -1181,7 +1181,7 @@ class FusedMultiTransformer(Layer):
         ring_id=-1,
         name=None,
     ):
-        super(FusedMultiTransformer, self).__init__()
+        super().__init__()
 
         assert embed_dim > 0, (
             "Expected embed_dim to be greater than 0, "

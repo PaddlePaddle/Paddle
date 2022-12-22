@@ -463,7 +463,7 @@ def amp_guard(
             tracer._amp_dtype = original_amp_dtype
 
 
-class StateDictHook(object):
+class StateDictHook:
     def __init__(self, save_dtype):
         self._save_dtype = save_dtype
 

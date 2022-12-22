@@ -19,7 +19,7 @@ import unittest
 
 class Net(Layer):
     def __init__(self):
-        super(Net, self).__init__()
+        super().__init__()
         self.fc = paddle.nn.Linear(16, 3)
 
     def forward(self, x, y, m, n):

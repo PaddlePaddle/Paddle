@@ -21,7 +21,7 @@ from paddle.jit import to_static, ProgramTranslator
 
 class NetWithParameterList(paddle.nn.Layer):
     def __init__(self, in_size, out_size):
-        super(NetWithParameterList, self).__init__()
+        super().__init__()
         weight = self.create_parameter([in_size, out_size])
         bias = self.create_parameter([out_size], is_bias=True)
         self.params = paddle.nn.ParameterList([weight, bias])
@@ -36,7 +36,7 @@ class NetWithParameterList(paddle.nn.Layer):
 
 class NetWithParameterListIter(NetWithParameterList):
     def __init__(self, in_size, out_size):
-        super(NetWithParameterListIter, self).__init__(in_size, out_size)
+        super().__init__(in_size, out_size)
 
     @to_static
     def forward(self, x):
@@ -87,7 +87,7 @@ class TestParameterList(unittest.TestCase):
 
 class NetWithRawParamList(paddle.nn.Layer):
     def __init__(self, in_size, out_size):
-        super(NetWithRawParamList, self).__init__()
+        super().__init__()
         weight = self.add_parameter(
             'w', self.create_parameter([in_size, out_size])
         )
@@ -140,7 +140,7 @@ class TestRawParameterList(unittest.TestCase):
 
 class NetWithSubLayerParamList(paddle.nn.Layer):
     def __init__(self, sub_layer):
-        super(NetWithSubLayerParamList, self).__init__()
+        super().__init__()
         self.sub_layer = sub_layer
         self.params = [sub_layer.weight]
         self.bias_dict = {'b': sub_layer.bias}

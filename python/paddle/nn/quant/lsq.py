@@ -144,7 +144,7 @@ class FakeQuantActLSQPlus(Layer):
         name=None,
         reduce_type=None,
     ):
-        super(FakeQuantActLSQPlus, self).__init__()
+        super().__init__()
         '''
         Args:
             quant_bits(int): quantization bit number for weights.
@@ -257,7 +257,7 @@ class FakeQuantWeightLSQPlus(Layer):
         name=None,
         reduce_type=None,
     ):
-        super(FakeQuantWeightLSQPlus, self).__init__()
+        super().__init__()
         '''
         Args:
             quant_bits(int): quantization bit number for weights.

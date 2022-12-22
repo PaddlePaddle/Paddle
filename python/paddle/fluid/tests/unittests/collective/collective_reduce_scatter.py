@@ -17,6 +17,7 @@ import unittest
 import paddle
 import numpy as np
 import paddle.distributed as dist
+from paddle.distributed.communication.reduce_scatter import _reduce_scatter_base
 
 
 class TestCollectiveReduceScatter(unittest.TestCase):
@@ -75,9 +76,7 @@ class TestCollectiveReduceScatter(unittest.TestCase):
         # [1, 2, 3, 4]  # Rank-1
 
         output = paddle.empty(shape=[2], dtype=input.dtype)
-        task = paddle.distributed.collective._reduce_scatter_base(
-            output, input, sync_op=False
-        )
+        task = _reduce_scatter_base(output, input, sync_op=False)
 
         task.wait()
 

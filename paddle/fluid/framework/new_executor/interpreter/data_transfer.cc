@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/new_executor/interpreter/data_transfer.h"
 
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 
@@ -132,6 +133,12 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   auto* dev_ctx = pool.Get(place_);
   auto exec_ctx = ExecutionContext(*op, Scope(), *dev_ctx, runtime_context);
   auto expected_kernel_key = op_with_kernel->GetExpectedKernelType(exec_ctx);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (op_with_kernel->CanCUDNNBeUsed(exec_ctx,
+                                     expected_kernel_key.data_type_)) {
+    expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
+  }
+#endif
 
   VLOG(6) << "expected_kernel_key " << expected_kernel_key << "\n";
   VLOG(6) << "op_with_kernel Type() " << op_with_kernel->Type() << "\n";
@@ -202,7 +209,7 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
 // Var is initialized && var contains tensor && tensor is initialized
 bool IsTensorOfVarInitialized(Variable* var) {
   if (var->IsInitialized()) {
-    if (var->IsType<LoDTensor>() || var->IsType<phi::SelectedRows>()) {
+    if (var->IsType<phi::DenseTensor>() || var->IsType<phi::SelectedRows>()) {
       return GetLoDTensorOrSelectedRowsValueFromVar(*var)->IsInitialized();
     } else if (var->IsType<LoDTensorArray>()) {
       return static_cast<const phi::DenseTensor*>(
@@ -223,7 +230,7 @@ std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
 #ifdef PADDLE_WITH_MKLDNN
 
   // NOTE(zhiqiu): hot fix, follow the same logic in DataCopy() in fetch_op.cc
-  if (in_layout == phi::DataLayout::kMKLDNN &&
+  if (in_layout == phi::DataLayout::ONEDNN &&
       var_name == framework::GradVarName("Filter") && is_fetch_v2) {
     VLOG(4) << "Match special case(Filter && fetch_v2) " << var_name;
     out_layout = phi::DataLayout::kNCHW;
@@ -456,7 +463,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
       std::string new_var_name;
       bool is_transferred = false;
 
-      if (var->IsType<LoDTensor>() || var->IsType<phi::SelectedRows>()) {
+      if (var->IsType<phi::DenseTensor>() || var->IsType<phi::SelectedRows>()) {
         tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
       } else if (var->IsType<LoDTensorArray>()) {
         if (var->Get<LoDTensorArray>().size() == 0) {
@@ -477,9 +484,9 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
           // MKL-DNN shape of Var may differ from kNHWC Var
           // In such situation corressponding resized Var
           // has to be created and registered
-          if ((tensor_in->layout() == DataLayout::kMKLDNN) &&
-              (var->IsType<LoDTensor>() == true) &&
-              (expected_kernel_key.data_layout_ != DataLayout::kMKLDNN) &&
+          if ((tensor_in->layout() == DataLayout::ONEDNN) &&
+              (var->IsType<phi::DenseTensor>() == true) &&
+              (expected_kernel_key.data_layout_ != DataLayout::ONEDNN) &&
               (paddle::platform::MKLDNNDeviceContext::tls()
                    .get_cur_paddle_data_layout() == DataLayout::kNHWC)) {
             VLOG(7) << "Created reshaped dummy input based on MKL-DNN "

@@ -299,6 +299,8 @@ class TestPushPopTrans(unittest.TestCase):
         print(paddle.jit.to_static(vlist_of_dict)(x))
 
     def test4(self):
+        import numpy as np
+
         def vlist_of_dict(x):
             a = np.array([1, 2, 3])
             for i in range(3):
@@ -310,6 +312,8 @@ class TestPushPopTrans(unittest.TestCase):
         print(paddle.jit.to_static(vlist_of_dict)(x))
 
     def test5(self):
+        import numpy as np
+
         def vlist_of_dict(x):
             a = np.array([1, 2, 3])
             for i in range(3):

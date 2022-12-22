@@ -331,7 +331,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         dataset.set_pipe_command('python ctr_dataset_reader.py')
         dataset.load_into_memory()
 
-        dataset.global_shuffle(fleet, 12)  ##TODO: thread configure
+        dataset.global_shuffle(fleet, 12)  # TODO: thread configure
         shuffle_data_size = dataset.get_shuffle_data_size(fleet)
         local_data_size = dataset.get_shuffle_data_size()
         data_size_list = fleet.util.all_gather(local_data_size)

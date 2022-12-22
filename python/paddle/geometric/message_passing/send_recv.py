@@ -36,7 +36,6 @@ def send_u_recv(
     x, src_index, dst_index, reduce_op="sum", out_size=None, name=None
 ):
     """
-
     Graph Learning message passing api.
 
     This api is mainly used in Graph Learning domain, and the main purpose is to reduce intermediate memory
@@ -82,9 +81,8 @@ def send_u_recv(
                               For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): The output tensor, should have the same shape and same dtype as input tensor `x`.
-                      If `out_size` is set correctly, then it should have the same shape as `x` except
-                      the 0th dimension.
+        - out (Tensor), the output tensor, should have the same shape and same dtype as input tensor `x`.
+          If `out_size` is set correctly, then it should have the same shape as `x` except the 0th dimension.
 
     Examples:
         .. code-block:: python
@@ -135,7 +133,7 @@ def send_u_recv(
         return out
     if in_dygraph_mode():
         out_size = convert_out_size_to_list(out_size)
-        return _C_ops.graph_send_recv(
+        return _C_ops.send_u_recv(
             x, src_index, dst_index, reduce_op.upper(), out_size
         )
 
@@ -229,6 +227,7 @@ def send_ue_recv(
            out = [[1, 3, 4],
                   [4, 10, 12],
                   [2, 5, 6]]
+
     Args:
         x (Tensor): The input node feature tensor, and the available data type is float32, float64, int32, int64.
                     And we support float16 in gpu version.
@@ -248,9 +247,8 @@ def send_ue_recv(
                               For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): The output tensor, should have the same shape and same dtype as input tensor `x`.
-                      If `out_size` is set correctly, then it should have the same shape as `x` except
-                      the 0th dimension.
+        - out (Tensor), the output tensor, should have the same shape and same dtype as input tensor `x`.
+          If `out_size` is set correctly, then it should have the same shape as `x` except the 0th dimension.
 
     Examples:
         .. code-block:: python
@@ -322,7 +320,7 @@ def send_ue_recv(
         return out
     if in_dygraph_mode():
         out_size = convert_out_size_to_list(out_size)
-        return _C_ops.graph_send_ue_recv(
+        return _C_ops.send_ue_recv(
             x,
             y,
             src_index,
@@ -432,9 +430,10 @@ def send_uv(x, y, src_index, dst_index, message_op="add", name=None):
                               For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): The output tensor.
+        - out (Tensor), the output tensor.
 
     Examples:
+
         .. code-block:: python
 
             import paddle
@@ -465,16 +464,14 @@ def send_uv(x, y, src_index, dst_index, message_op="add", name=None):
         y = 1.0 / (y + 1e-12)
 
     if in_dygraph_mode():
-        return _C_ops.graph_send_uv(
-            x, y, src_index, dst_index, message_op.upper()
-        )
+        return _C_ops.send_uv(x, y, src_index, dst_index, message_op.upper())
     else:
         if _in_legacy_dygraph():
             return _legacy_C_ops.graph_send_uv(
                 x, y, src_index, dst_index, "message_op", message_op.upper()
             )
         else:
-            helper = LayerHelper("send_uv", **locals())
+            helper = LayerHelper("graph_send_uv", **locals())
             check_variable_and_dtype(
                 x,
                 'x',

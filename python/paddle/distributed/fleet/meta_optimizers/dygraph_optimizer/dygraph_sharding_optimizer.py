@@ -25,7 +25,7 @@ def _is_trainable(param):
     return not param.stop_gradient
 
 
-class DygraphShardingOptimizer(object):
+class DygraphShardingOptimizer:
     """
     A wrapper for Sharding Optimizer in Dygraph.
 

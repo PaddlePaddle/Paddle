@@ -77,9 +77,7 @@ class Dirichlet(exponential_family.ExponentialFamily):
             )
 
         self.concentration = concentration
-        super(Dirichlet, self).__init__(
-            concentration.shape[:-1], concentration.shape[-1:]
-        )
+        super().__init__(concentration.shape[:-1], concentration.shape[-1:])
 
     @property
     def mean(self):

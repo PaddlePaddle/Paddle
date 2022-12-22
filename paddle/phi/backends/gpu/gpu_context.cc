@@ -717,6 +717,23 @@ struct GPUContext::Impl {
     }
   }
 
+  bool HasDnnAttr(const std::string& attr_name) const {
+    return dnn_attrs_.count(attr_name) != 0UL;
+  }
+
+  const Attribute& GetDnnAttr(const std::string& attr_name) const {
+    auto iter = dnn_attrs_.find(attr_name);
+    PADDLE_ENFORCE_NE(
+        iter,
+        dnn_attrs_.end(),
+        phi::errors::NotFound("Attribute `%s` is not found in OneDNNContext."));
+    return iter->second;
+  }
+
+  void SetDnnAttr(const std::string& attr_name, Attribute attr) {
+    dnn_attrs_[attr_name] = attr;
+  }
+
   // use one flag for all handles?
   // they should be accessed consistently
   bool owned_{false};
@@ -780,7 +797,14 @@ struct GPUContext::Impl {
   Allocator* allocator_{nullptr};  // external resource.
   // A internal resouce to initinalize eigen_device.
   std::unique_ptr<internal::EigenGpuStreamDevice> eigen_stream_{nullptr};
+
+  // Holds some attributes only used by the gpudnn kernel calculation
+  // Because DeviceContext is a global singleton, you need to ensure thread
+  // safety, use the thread_local variable
+  static thread_local AttributeMap dnn_attrs_;
 };
+
+thread_local AttributeMap GPUContext::Impl::dnn_attrs_ = {};
 
 GPUContext::GPUContext(GPUContext&&) = default;
 
@@ -999,5 +1023,17 @@ void GPUContext::SetMaxGridDimSize(const std::array<int, 3>& val) {
 void GPUContext::SetDriverVersion(int val) { impl_->driver_version_ = val; }
 
 void GPUContext::SetRuntimeVersion(int val) { impl_->runtime_version_ = val; }
+
+bool GPUContext::HasDnnAttr(const std::string& attr_name) const {
+  return impl_->HasDnnAttr(attr_name);
+}
+
+const Attribute& GPUContext::GetDnnAttr(const std::string& attr_name) const {
+  return impl_->GetDnnAttr(attr_name);
+}
+
+void GPUContext::SetDnnAttr(const std::string& attr_name, Attribute attr) {
+  return impl_->SetDnnAttr(attr_name, std::move(attr));
+}
 
 }  // namespace phi

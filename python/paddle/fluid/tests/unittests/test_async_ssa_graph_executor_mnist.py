@@ -177,8 +177,8 @@ def train(use_cuda, thread_num, cpu_num):
                     fetch_list=[array, acc, prediction, avg_loss.name]
                 )
 
-                assert numpy.allclose(array_v[0], prediction_v) == True
-                assert numpy.allclose(array_v[1], acc_v) == True
+                assert numpy.allclose(array_v[0], prediction_v)
+                assert numpy.allclose(array_v[1], acc_v)
 
                 loss_val = numpy.mean(loss_val)
                 if step % 10 == 0:

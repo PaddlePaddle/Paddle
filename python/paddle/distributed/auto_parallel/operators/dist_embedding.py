@@ -51,7 +51,7 @@ from paddle.distributed.auto_parallel.cost.comm_op_cost import (
 
 class DistributedEmbedding(DistributedOperatorImplContainer):
     def __init__(self, op_type):
-        super(DistributedEmbedding, self).__init__(op_type)
+        super().__init__(op_type)
 
 
 register_distributed_operator_impl_container(
@@ -153,7 +153,7 @@ def adopt_lookup_table_v1(ctx, main_block, src_op, Ids_var):
 # RowParallel
 class DistributedEmbeddingImpl(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedEmbeddingImpl, self).__init__(name)
+        super().__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
 

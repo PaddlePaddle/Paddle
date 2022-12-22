@@ -129,7 +129,9 @@ class OrthogonalStrategy:
     def _check_valid_strategy(self):
         assert len(self._list_of_strategy_name) == len(
             set(self._list_of_strategy_name)
-        ), "Defined duplicated strategies: {}".format(list_of_strategy)
+        ), "Defined duplicated strategies: {}".format(
+            self._list_of_strategy_name
+        )
         num_of_ranks = functools.reduce(
             lambda x, y: x * y, self._list_of_degree
         )

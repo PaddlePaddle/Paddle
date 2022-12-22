@@ -44,7 +44,7 @@ def decorated_call_decorated(x):
     return jit_decorated_func(x)
 
 
-class DoubleDecorated(object):
+class DoubleDecorated:
     @classmethod
     @declarative
     def double_decorated_func1(self, x):

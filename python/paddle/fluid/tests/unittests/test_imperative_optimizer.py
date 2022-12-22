@@ -51,7 +51,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 class MLP(fluid.Layer):
     def __init__(self, param_attr=None, bias_attr=None):
-        super(MLP, self).__init__()
+        super().__init__()
 
         self._fc1 = Linear(784, 10)
         self._fc2 = Linear(10, 10)
@@ -84,7 +84,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
     def _check_exception(self, exception_message, place=None):
         seed = 90
         batch_size = 128
-        if place == None:
+        if place is None:
             place = (
                 fluid.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
@@ -106,7 +106,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
         seed = 90
         batch_size = 128
 
-        if place == None:
+        if place is None:
             place = (
                 fluid.CPUPlace()
                 if not core.is_compiled_with_cuda()
@@ -161,7 +161,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
 
-            if place == None:
+            if place is None:
                 place = (
                     fluid.CPUPlace()
                     if not core.is_compiled_with_cuda()

@@ -45,4 +45,6 @@ PD_REGISTER_KERNEL(abs_double_grad,
                    int64_t,
                    phi::dtype::float16,
                    complex<float>,
-                   complex<double>) {}
+                   complex<double>) {
+  kernel->InputAt(1).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
+}

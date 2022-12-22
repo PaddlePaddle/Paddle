@@ -89,7 +89,7 @@ class TestCustomCPUPlugin(unittest.TestCase):
 
         class MNIST(paddle.nn.Layer):
             def __init__(self):
-                super(MNIST, self).__init__()
+                super().__init__()
                 self.shape = 1 * 28 * 28
                 self.size = 10
                 self.output_weight = self.create_parameter(

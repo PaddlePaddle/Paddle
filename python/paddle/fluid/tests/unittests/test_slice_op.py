@@ -298,7 +298,7 @@ class TestSliceOp_decs_dim_starts_OneTensor(OpTest):
         self.outputs = {'Out': self.out}
         self.attrs = {
             'axes': self.axes,
-            #'starts': self.starts,
+            # 'starts': self.starts,
             'ends': self.ends,
             'infer_flags': self.infer_flags,
             'decrease_axis': self.decrease_axis,
@@ -335,8 +335,8 @@ class TestSliceOp_starts_OneTensor_ends_OneTensor(OpTest):
         self.outputs = {'Out': self.out}
         self.attrs = {
             'axes': self.axes,
-            #'starts': self.starts,
-            #'ends': self.ends_infer,
+            # 'starts': self.starts,
+            # 'ends': self.ends_infer,
             'infer_flags': self.infer_flags,
         }
 
@@ -369,8 +369,8 @@ class TestSliceOp_decs_dim_starts_and_ends_OneTensor(OpTest):
         self.outputs = {'Out': self.out}
         self.attrs = {
             'axes': self.axes,
-            #'starts': self.starts,
-            #'ends': self.ends,
+            # 'starts': self.starts,
+            # 'ends': self.ends,
             'infer_flags': self.infer_flags,
             'decrease_axis': self.decrease_axis,
         }
@@ -412,7 +412,7 @@ class TestSliceOp_starts_OneTensor_ends_ListTensor(OpTest):
         self.outputs = {'Out': self.out}
         self.attrs = {
             'axes': self.axes,
-            #'starts': self.starts,
+            # 'starts': self.starts,
             'ends': self.ends_infer,
             'infer_flags': self.infer_flags,
         }

@@ -192,7 +192,7 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if dynamic_shape == True:
+            if dynamic_shape:
                 return 1, 3
             else:
                 return 0, 4

@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <iterator>  // NOLINT
 #include "dnnl.hpp"  // NOLINT
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -23,7 +24,6 @@ namespace operators {
 
 using dnnl::memory;
 using dnnl::reorder;
-using platform::to_void_cast;
 using Tensor = phi::DenseTensor;
 
 namespace {
@@ -85,15 +85,19 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     const T* input_data = input->data<T>();
 
     if (reorder_p == nullptr) {
-      auto dst_tz = phi::vectorize(output->dims());
       auto src_dt = framework::ToMKLDNNDataType(
           framework::TransToProtoVarType(input->dtype()));
-      auto dst_dt = with_shift ? framework::MKLDNNDataType::u8 : src_dt;
+      auto dst_dt = with_shift ? framework::OneDNNDataType::u8 : src_dt;
 
-      auto src_md = platform::MKLDNNMemDesc({src_tz}, src_dt, input->format());
       src_memory = std::make_shared<dnnl::memory>(
-          src_md, engine, to_void_cast<T>(input_data));
-      auto dst_md = platform::MKLDNNMemDesc({dst_tz}, dst_dt, input->format());
+          input->mem_desc(), engine, phi::funcs::to_void_cast<T>(input_data));
+
+      auto xstrides = input->mem_desc().data.format_desc.blocking.strides;
+
+      std::vector<dnnl_dim_t> vstrides(xstrides,
+                                       xstrides + input->mem_desc().data.ndims);
+
+      auto dst_md = dnnl::memory::desc({src_tz}, dst_dt, vstrides);
 
       dnnl::primitive_attr attri;
       int mask = 0;
@@ -107,11 +111,11 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
             clip_to_uint8(shift_out - reorder_scale * shift_in);
         std::memset(output_data, reorder_shift, output->numel());
         dst_memory = std::make_shared<dnnl::memory>(
-            dst_md, engine, to_void_cast<uint8_t>(output_data));
+            dst_md, engine, phi::funcs::to_void_cast<uint8_t>(output_data));
       } else {
         T* output_data = output->mutable_data<T>(ctx.GetPlace());
         dst_memory = std::make_shared<dnnl::memory>(
-            dst_md, engine, to_void_cast<T>(output_data));
+            dst_md, engine, phi::funcs::to_void_cast<T>(output_data));
       }
 
       auto reorder_pd =
@@ -124,7 +128,7 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     } else {
       src_memory =
           std::static_pointer_cast<dnnl::memory>(dev_ctx.GetBlob(key_src_mem));
-      src_memory->set_data_handle(to_void_cast<T>(input_data));
+      src_memory->set_data_handle(phi::funcs::to_void_cast<T>(input_data));
 
       dst_memory =
           std::static_pointer_cast<dnnl::memory>(dev_ctx.GetBlob(key_dst_mem));

@@ -25,7 +25,7 @@ from feed_data_reader import FeedDataReader
 os.environ['CPU_NUM'] = str(4)
 
 
-class ModelHyperParams(object):
+class ModelHyperParams:
     # Dictionary size for source and target language. This model directly uses
     # paddle.dataset.wmt16 in which <bos>, <eos> and <unk> token has
     # alreay been added, but the <pad> token is not added. Transformer requires

@@ -140,7 +140,7 @@ def relu6(x, name=None):
             sparse_x = dense_x.to_sparse_coo(1)
             out = paddle.sparse.nn.functional.relu6(sparse_x)
     """
-    return _C_ops.sparse_relu6(x, 6.0)
+    return _C_ops.sparse_relu6(x)
 
 
 @dygraph_only

@@ -123,7 +123,7 @@ class TrtConvertDropoutTest(TrtLayerAutoScanTest):
         def generate_trt_nodes_num(attrs, dynamic_shape):
             if attrs[0]['dropout_implementation'] == "upscale_in_train":
                 return 0, 2
-            elif self.dims == 1 and dynamic_shape == False:
+            elif self.dims == 1 and not dynamic_shape:
                 return 0, 3
             else:
                 return 1, 2

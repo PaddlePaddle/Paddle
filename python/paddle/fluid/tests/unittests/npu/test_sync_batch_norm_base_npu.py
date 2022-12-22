@@ -45,7 +45,7 @@ paddle.enable_static()
 SEED = 10
 
 
-class TestSyncBatchNormRunnerBase(object):
+class TestSyncBatchNormRunnerBase:
     def get_model(
         self,
         main,
@@ -451,7 +451,6 @@ def runtime_main(test_class, col_type, sub_type):
     model.run_trainer(args)
 
 
-import paddle.compat as cpt
 import socket
 from contextlib import closing
 

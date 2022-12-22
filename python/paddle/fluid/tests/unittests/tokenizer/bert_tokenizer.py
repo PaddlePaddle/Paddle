@@ -26,7 +26,7 @@ from tokenizer_utils import (
 )
 
 
-class BasicTokenizer(object):
+class BasicTokenizer:
     """
     Runs basic tokenization (punctuation splitting, lower casing, etc.).
     Args:
@@ -165,7 +165,7 @@ class BasicTokenizer(object):
         return "".join(output)
 
 
-class WordpieceTokenizer(object):
+class WordpieceTokenizer:
     """
     Runs WordPiece tokenization.
     Args:

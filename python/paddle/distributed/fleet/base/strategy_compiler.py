@@ -106,7 +106,7 @@ def maximum_path_len_algo(optimizer_list):
     return candidate
 
 
-class StrategyCompilerBase(object):
+class StrategyCompilerBase:
     def __init__(self):
         pass
 
@@ -123,7 +123,7 @@ class StrategyCompiler(StrategyCompilerBase):
     """
 
     def __init__(self):
-        super(StrategyCompiler, self).__init__()
+        super().__init__()
         self._meta_optimizers = []
         self._graph_optimizers = []
         self._valid_optimizer_list = None
@@ -204,13 +204,13 @@ class StrategyCompiler(StrategyCompilerBase):
             )
 
             return_meta = (
-                None if meta_optimizers == None else meta_optimizers[0]
+                None if meta_optimizers is None else meta_optimizers[0]
             )
             return_graph = (
-                None if graph_optimizers == None else graph_optimizers[0]
+                None if graph_optimizers is None else graph_optimizers[0]
             )
 
-            if meta_optimizers == None or graph_optimizers == None:
+            if meta_optimizers is None or graph_optimizers is None:
                 return return_meta, return_graph
 
             # do heuristic filter here, if any meta optimizer in graph optimizers is in

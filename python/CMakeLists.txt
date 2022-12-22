@@ -48,6 +48,16 @@ set(FLUID_CORE_DEPS ${FLUID_CORE})
 
 add_custom_target(copy_libpaddle ALL DEPENDS ${FLUID_CORE_DEPS})
 
+# NOTE(zhiqiu): WHY?
+# In `setup.py.in`, some dynamic libraries (eg, libxpuapi.so) are modified using
+# patchelf. In rare cases, if the a linker is linking that dynamic library for
+# some executables at the same time, a `file not recognized, file truncated`
+# error may occur, result in the compilation error.
+# So, add dependency to force the cpp tests built before running `setup.py.in`.
+if(WITH_TESTING)
+  add_dependencies(copy_libpaddle build_tests)
+endif()
+
 if(WIN32)
   add_custom_command(
     OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp

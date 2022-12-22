@@ -96,7 +96,7 @@ def monkey_patch_math_varbase():
         return out
 
     def create_scalar(value, dtype):
-        return create_tensor(value, dtype, shape=[1])
+        return create_tensor(value, dtype, shape=[])
 
     def astype(self, dtype):
         """
@@ -464,7 +464,6 @@ def monkey_patch_math_varbase():
         ('size', _size_),
         ('T', _T_),
         # for logical compare
-        ('__eq__', _binary_creator_('__eq__', 'equal', False, None, True)),
         ('__array_ufunc__', None),
     ]
 
@@ -488,6 +487,7 @@ def monkey_patch_math_varbase():
         '__floordiv__',
         '__pow__',
         '__rpow__',
+        '__eq__',
         '__ne__',
     ]
 

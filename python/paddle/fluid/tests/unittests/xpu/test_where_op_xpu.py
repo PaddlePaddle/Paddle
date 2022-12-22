@@ -91,10 +91,10 @@ class TestXPUWhereAPI(unittest.TestCase):
         self.out = np.where(self.cond, self.x, self.y)
 
     def ref_x_backward(self, dout):
-        return np.where(self.cond == True, dout, 0)
+        return np.where(self.cond, dout, 0)
 
     def ref_y_backward(self, dout):
-        return np.where(self.cond == False, dout, 0)
+        return np.where(~self.cond, dout, 0)
 
     def test_api(self):
         for x_stop_gradient in [False, True]:

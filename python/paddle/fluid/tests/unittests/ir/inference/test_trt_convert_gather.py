@@ -85,7 +85,7 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
                                         "index_data": TensorConfig(
                                             data_gen=partial(
                                                 generate_input2
-                                                if index_type_int32 == True
+                                                if index_type_int32
                                                 else generate_input4,
                                                 index,
                                             )
@@ -180,7 +180,7 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
             if self.input_num == 3:
                 return 0, 5
             else:
-                if dynamic_shape and self.index_type_int32 == True:
+                if dynamic_shape and self.index_type_int32:
                     return 1, 3
                 else:
                     return 0, 4

@@ -40,7 +40,7 @@ def parse_log_file(log_file):
         for line in f.read().strip().split('\n')[::-1]:
             try:
                 result = json.loads(line)
-                if result.get("disabled", False) == True:
+                if result.get("disabled", False):
                     return None
                 return result
             except ValueError:

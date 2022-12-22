@@ -77,7 +77,7 @@ class TrtConvertShuffleChannelTest(TrtLayerAutoScanTest):
             ver = paddle_infer.get_trt_compile_version()
             if (
                 ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8000
-                and dynamic_shape == True
+                and dynamic_shape
             ):
                 return 0, 3
             else:

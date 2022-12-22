@@ -27,7 +27,7 @@ class DeviceType:
     CUSTOM_DEVICE = 'custom_device'
 
 
-class Device(object):
+class Device:
     def __init__(self, dtype=None, memory="", labels=""):
         self._dtype = dtype
         self._memory = memory

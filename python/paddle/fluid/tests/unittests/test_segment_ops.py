@@ -124,7 +124,7 @@ class TestSegmentOps(OpTest):
 
 class TestSegmentSum2(TestSegmentOps):
     def prepare(self):
-        super(TestSegmentSum2, self).prepare()
+        super().prepare()
         self.shape = [40, 20]
         self.dtype = np.float32
 
@@ -144,7 +144,7 @@ class TestSegmentMax(TestSegmentOps):
         return compute_segment_min_max(x, segment_ids, pooltype="MAX")
 
     def prepare(self):
-        super(TestSegmentMax, self).prepare()
+        super().prepare()
         self.shape = [40, 20]
         self.attrs = {'pooltype': "MAX"}
 
@@ -164,7 +164,7 @@ class TestSegmentMax(TestSegmentOps):
 
 class TestSegmentMax2(TestSegmentMax):
     def prepare(self):
-        super(TestSegmentMax2, self).prepare()
+        super().prepare()
         self.dtype = np.float32
 
 
@@ -173,13 +173,13 @@ class TestSegmentMin(TestSegmentMax):
         return compute_segment_min_max(x, segment_ids, pooltype="MIN")
 
     def prepare(self):
-        super(TestSegmentMin, self).prepare()
+        super().prepare()
         self.attrs = {'pooltype': "MIN"}
 
 
 class TestSegmentMin2(TestSegmentMin):
     def prepare(self):
-        super(TestSegmentMin2, self).prepare()
+        super().prepare()
         self.dtype = np.float32
 
 
@@ -188,7 +188,7 @@ class TestSegmentMean(TestSegmentOps):
         return compute_segment_mean(x, segment_ids)
 
     def prepare(self):
-        super(TestSegmentMean, self).prepare()
+        super().prepare()
         self.shape = [40, 20]
         self.attrs = {'pooltype': "MEAN"}
 
@@ -207,7 +207,7 @@ class TestSegmentMean(TestSegmentOps):
 
 class TestSegmentMean2(TestSegmentMean):
     def prepare(self):
-        super(TestSegmentMean2, self).prepare()
+        super().prepare()
         self.dtype = np.float32
         self.shape = [30, 20]
         self.attrs = {'pooltype': "MEAN"}

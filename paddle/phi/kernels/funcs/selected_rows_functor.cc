@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/device_wrapper.h"
 
 #ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/operators/mkldnn/axpy_handler.h"
+#include "paddle/phi/backends/onednn/axpy_handler.h"
 #endif
 
 namespace phi {
@@ -371,7 +371,9 @@ add_sparse_inputs(const std::vector<const phi::SelectedRows*>& inputs,
     auto& input_rows = input->rows();
 
 #ifdef PADDLE_WITH_MKLDNN
-    paddle::operators::OneDNNAXPYHandler<T> axpy_handler(input_width, T(1.f));
+    OneDNNContext onednn_context(context.GetPlace());
+    funcs::OneDNNAXPYHandler<T> axpy_handler(
+        input_width, T(1.f), onednn_context.GetEngine());
     for (size_t i = 0; i < input_rows.size(); i++) {
       size_t out_i = rows_to_id.at(input_rows[i]);
       axpy_handler(&input_data[i * input_width],
@@ -869,11 +871,11 @@ struct UpdateToTensor<phi::CPUContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_row_numel,
         input2->numel() / in1_height,
-        phi::errors::InvalidArgument(
-            "The two inputs width must be equal."
-            "But received first input width = [%d], second input width = [%d]",
-            in1_row_numel,
-            input2->numel() / in1_height));
+        phi::errors::InvalidArgument("The two inputs width must be equal."
+                                     "But received first input width = [%d], "
+                                     "second input width = [%d]",
+                                     in1_row_numel,
+                                     input2->numel() / in1_height));
 
     auto* in1_data = in1_value.data<T>();
     auto* input2_data = input2->data<T>();

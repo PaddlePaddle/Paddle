@@ -105,7 +105,7 @@ class DecoderCell(layers.RNNCell):
         return out, [new_lstm_states, out]
 
 
-class Encoder(object):
+class Encoder:
     def __init__(self, num_layers, hidden_size, dropout_prob=0.0):
         self.encoder_cell = EncoderCell(num_layers, hidden_size, dropout_prob)
 
@@ -119,7 +119,7 @@ class Encoder(object):
         return encoder_output, encoder_final_state
 
 
-class Decoder(object):
+class Decoder:
     def __init__(
         self,
         num_layers,
@@ -191,7 +191,7 @@ class Decoder(object):
         return decoder_output, decoder_final_state, dec_seq_lengths
 
 
-class Seq2SeqModel(object):
+class Seq2SeqModel:
     """Seq2Seq model: RNN encoder-decoder with attention"""
 
     def __init__(
@@ -302,7 +302,7 @@ class Seq2SeqModel(object):
         return probs, samples, sample_length
 
 
-class PolicyGradient(object):
+class PolicyGradient:
     """policy gradient"""
 
     def __init__(self, lr=None):
@@ -395,7 +395,7 @@ def reward_func(samples, sample_length):
     )
 
 
-class MLE(object):
+class MLE:
     """teacher-forcing MLE training"""
 
     def __init__(self, lr=None):
@@ -413,7 +413,7 @@ class MLE(object):
         return loss
 
 
-class SeqPGAgent(object):
+class SeqPGAgent:
     def __init__(
         self,
         model_cls,

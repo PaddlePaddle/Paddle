@@ -61,7 +61,7 @@ class Independent(distribution.Distribution):
         self._reinterpreted_batch_rank = reinterpreted_batch_rank
 
         shape = base.batch_shape + base.event_shape
-        super(Independent, self).__init__(
+        super().__init__(
             batch_shape=shape[
                 : len(base.batch_shape) - reinterpreted_batch_rank
             ],

@@ -18,7 +18,10 @@ import logging
 def get_logger(log_level, name="root"):
 
     logger = logging.getLogger(name)
+
     # Avoid printing multiple logs
+    logger.propagate = False
+
     if not logger.handlers:
         log_handler = logging.StreamHandler()
         logger.setLevel(log_level)

@@ -20,9 +20,7 @@ class TestCommunicationStreamReduceScatterAPI(
     test_base.CommunicationTestDistBase
 ):
     def setUp(self):
-        super(TestCommunicationStreamReduceScatterAPI, self).setUp(
-            num_of_devices=2, timeout=120
-        )
+        super().setUp(num_of_devices=2, timeout=120)
         self._default_envs = {
             "backend": "nccl",
             "shape": "(100, 200)",
@@ -47,7 +45,7 @@ class TestCommunicationStreamReduceScatterAPI(
             )
 
     def tearDown(self):
-        super(TestCommunicationStreamReduceScatterAPI, self).tearDown()
+        super().tearDown()
 
 
 if __name__ == '__main__':

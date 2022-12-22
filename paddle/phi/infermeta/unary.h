@@ -65,6 +65,11 @@ void BatchSizeLikeInferMeta(const MetaTensor& x,
 
 void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out);
 
+void ChannelShuffleInferMeta(const MetaTensor& x,
+                             int groups,
+                             const std::string& data_format,
+                             MetaTensor* out);
+
 void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out);
 
 void ClassCenterSampleInferMeta(const MetaTensor& label,
@@ -82,11 +87,11 @@ void ClipByNormInferMeta(const MetaTensor& x, float max_norm, MetaTensor* out);
 
 void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out);
 
-void CropTensorInferMeta(const MetaTensor& x,
-                         const IntArray& shape,
-                         const IntArray& offsets,
-                         MetaTensor* out,
-                         MetaConfig config = MetaConfig());
+void CropInferMeta(const MetaTensor& x,
+                   const IntArray& shape,
+                   const IntArray& offsets,
+                   MetaTensor* out,
+                   MetaConfig config = MetaConfig());
 
 void CumInferMeta(const MetaTensor& x,
                   int axis,
@@ -191,6 +196,14 @@ void FlipInferMeta(const MetaTensor& x,
                    const std::vector<int>& axis,
                    MetaTensor* out);
 
+void FoldInferMeta(const MetaTensor& x,
+                   const std::vector<int>& output_sizes,
+                   const std::vector<int>& kernel_sizes,
+                   const std::vector<int>& strides,
+                   const std::vector<int>& paddings,
+                   const std::vector<int>& dilations,
+                   MetaTensor* out);
+
 void FrameInferMeta(const MetaTensor& x,
                     int frame_length,
                     int hop_length,
@@ -213,6 +226,8 @@ void GumbelSoftmaxInferMeta(const MetaTensor& x,
                             MetaTensor* out);
 void HistogramInferMeta(
     const MetaTensor& input, int64_t bins, int min, int max, MetaTensor* out);
+
+void IdentityLossInferMeta(const MetaTensor& x, int reduction, MetaTensor* out);
 
 void IncrementInferMeta(const MetaTensor& x, float value, MetaTensor* out);
 
@@ -288,6 +303,8 @@ void NanmedianInferMeta(const MetaTensor& x,
                         MetaTensor* out,
                         MetaTensor* median_index);
 
+void NonZeroInferMeta(const MetaTensor& condition, MetaTensor* out);
+
 void NMSInferMeta(const MetaTensor& x, float threshold, MetaTensor* out);
 
 void NormInferMeta(const MetaTensor& x,
@@ -296,6 +313,14 @@ void NormInferMeta(const MetaTensor& x,
                    bool is_test,
                    MetaTensor* out,
                    MetaTensor* norm);
+
+void OneHotRawInferMeta(const MetaTensor& x,
+                        const Scalar& depth,
+                        DataType dtype,
+                        bool allow_out_of_range,
+                        MetaTensor* out);
+
+void OneHotInferMeta(const MetaTensor& x, const Scalar& depth, MetaTensor* out);
 
 void OverlapAddInferMeta(const MetaTensor& x,
                          int hop_length,
@@ -576,10 +601,10 @@ void TransposeGradInferMeta(const MetaTensor& x,
                             const std::vector<int>& axis,
                             MetaTensor* out);
 
-void TrilTriuInferMeta(const MetaTensor& x,
-                       int diagonal,
-                       bool lower,
-                       MetaTensor* out);
+void TrilInferMeta(const MetaTensor& x,
+                   int diagonal,
+                   bool lower,
+                   MetaTensor* out);
 
 void UnbindInferMeta(const MetaTensor& x,
                      int axis,
@@ -656,30 +681,5 @@ void UnStackInferMeta(const MetaTensor& x,
                       int axis,
                       int num,
                       std::vector<MetaTensor*> outs);
-
-void OneHotRawInferMeta(const MetaTensor& x,
-                        const Scalar& depth,
-                        DataType dtype,
-                        bool allow_out_of_range,
-                        MetaTensor* out);
-
-void OneHotInferMeta(const MetaTensor& x, const Scalar& depth, MetaTensor* out);
-
-void WhereIndexInferMeta(const MetaTensor& condition, MetaTensor* out);
-
-void ChannelShuffleInferMeta(const MetaTensor& x,
-                             int groups,
-                             const std::string& data_format,
-                             MetaTensor* out);
-
-void IdentityLossInferMeta(const MetaTensor& x, int reduction, MetaTensor* out);
-
-void FoldInferMeta(const MetaTensor& x,
-                   const std::vector<int>& output_sizes,
-                   const std::vector<int>& kernel_sizes,
-                   const std::vector<int>& strides,
-                   const std::vector<int>& paddings,
-                   const std::vector<int>& dilations,
-                   MetaTensor* out);
 
 }  // namespace phi

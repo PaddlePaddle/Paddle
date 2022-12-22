@@ -16,8 +16,8 @@
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/operators/gather_scatter_kernel.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 

@@ -35,7 +35,7 @@ class CostNodeType(Enum):
     NOP = 5
 
 
-class Cost(object):
+class Cost:
     def __init__(self):
         self.runtime = None
         self.static_mem = None
@@ -49,7 +49,7 @@ class CostModelMode(Enum):
     MIXED = 3
 
 
-class CostNode(object):
+class CostNode:
     def __init__(self, node, node_type, id=None):
         self.id = id
         self.node = node
@@ -71,7 +71,7 @@ class CostNode(object):
 
 class MergedOpsCostNode(CostNode):
     def __init__(self, node_type, id=None, base_node_list=None, is_bwd=False):
-        super(MergedOpsCostNode, self).__init__(None, node_type, id)
+        super().__init__(None, node_type, id)
         self.node_list = base_node_list
         self.is_bwd = is_bwd
 
@@ -80,7 +80,7 @@ class CommOpCostNode(CostNode):
     def __init__(
         self, node, node_type, id=None, comm_node_list=None, is_bwd=False
     ):
-        super(CommOpCostNode, self).__init__(node, node_type, id)
+        super().__init__(node, node_type, id)
         self.node_list = comm_node_list
         self.ranks = []
         self.comm_type = node.type
@@ -124,7 +124,7 @@ class TensorCostNode(CostNode):
         batch_size=None,
         shared_node_id=None,
     ):
-        super(TensorCostNode, self).__init__(node, node_type, id)
+        super().__init__(node, node_type, id)
         if node.name == "create_py_reader_0" or node.name == "double_buffer_0":
             self.shape = [2, 2]
             self.dtype = paddle.float32
@@ -159,7 +159,7 @@ class TensorCostNode(CostNode):
 
 class CompOpCostNode(CostNode):
     def __init__(self, node, node_type, id=None, is_bwd=False, is_optim=False):
-        super(CompOpCostNode, self).__init__(node, node_type, id)
+        super().__init__(node, node_type, id)
         self.is_bwd = is_bwd
         self.is_optim = is_optim
 
@@ -172,7 +172,7 @@ class CompOpCostNode(CostNode):
             self.cost = 0.0
 
 
-class PipeEvent(object):
+class PipeEvent:
     def __init__(self, stage_id, event_name, duration, start_time=-1):
         self.stage_id = stage_id
         self.name = event_name
@@ -181,7 +181,7 @@ class PipeEvent(object):
         self.e_time = -1
 
 
-class CostModel(object):
+class CostModel:
     def __init__(
         self,
         mode=CostModelMode.BENCHMARKING,

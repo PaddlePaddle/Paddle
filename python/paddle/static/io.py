@@ -688,7 +688,7 @@ def deserialize_persistables(program, data, executor):
         if not isinstance(var, Parameter):
             continue
         var_tmp = paddle.fluid.global_scope().find_var(var.name)
-        assert var_tmp != None, "can't not find var: " + var.name
+        assert var_tmp is not None, "can't not find var: " + var.name
         new_shape = (np.array(var_tmp.get_tensor())).shape
         assert var.name in origin_shape_map, var.name + " MUST in var list."
         origin_shape = origin_shape_map.get(var.name)

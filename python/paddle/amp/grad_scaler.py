@@ -85,7 +85,7 @@ class GradScaler(AmpScaler):
         decr_every_n_nan_or_inf=2,
         use_dynamic_loss_scaling=True,
     ):
-        super(GradScaler, self).__init__(
+        super().__init__(
             enable,
             init_loss_scaling,
             incr_ratio,
@@ -125,7 +125,7 @@ class GradScaler(AmpScaler):
                 scaler.minimize(optimizer, scaled)  # update parameters
                 optimizer.clear_grad()
         """
-        return super(GradScaler, self).scale(var)
+        return super().scale(var)
 
     def minimize(self, optimizer, *args, **kwargs):
         """
@@ -161,7 +161,7 @@ class GradScaler(AmpScaler):
                 scaler.minimize(optimizer, scaled)  # update parameters
                 optimizer.clear_grad()
         """
-        return super(GradScaler, self).minimize(optimizer, *args, **kwargs)
+        return super().minimize(optimizer, *args, **kwargs)
 
     def step(self, optimizer):
         """
@@ -280,7 +280,7 @@ class GradScaler(AmpScaler):
                 scaler.update()
                 optimizer.clear_grad()
         """
-        return super(GradScaler, self)._unscale(optimizer)
+        return super()._unscale(optimizer)
 
     def is_enable(self):
         """
@@ -304,7 +304,7 @@ class GradScaler(AmpScaler):
                 enable = scaler.is_enable()
                 print(enable) # True
         """
-        return super(GradScaler, self).is_enable()
+        return super().is_enable()
 
     def is_use_dynamic_loss_scaling(self):
         """
@@ -328,7 +328,7 @@ class GradScaler(AmpScaler):
                 use_dynamic_loss_scaling = scaler.is_use_dynamic_loss_scaling()
                 print(use_dynamic_loss_scaling) # True
         """
-        return super(GradScaler, self).is_use_dynamic_loss_scaling()
+        return super().is_use_dynamic_loss_scaling()
 
     def get_init_loss_scaling(self):
         """
@@ -352,7 +352,7 @@ class GradScaler(AmpScaler):
                 init_loss_scaling = scaler.get_init_loss_scaling()
                 print(init_loss_scaling) # 1024
         """
-        return super(GradScaler, self).get_init_loss_scaling()
+        return super().get_init_loss_scaling()
 
     def set_init_loss_scaling(self, new_init_loss_scaling):
         """
@@ -378,7 +378,7 @@ class GradScaler(AmpScaler):
                 scaler.set_init_loss_scaling(new_init_loss_scaling)
                 print(scaler.get_init_loss_scaling()) # 1000
         """
-        super(GradScaler, self).set_init_loss_scaling(new_init_loss_scaling)
+        super().set_init_loss_scaling(new_init_loss_scaling)
 
     def get_incr_ratio(self):
         """
@@ -402,7 +402,7 @@ class GradScaler(AmpScaler):
                 incr_ratio = scaler.get_incr_ratio()
                 print(incr_ratio) # 2.0
         """
-        return super(GradScaler, self).get_incr_ratio()
+        return super().get_incr_ratio()
 
     def set_incr_ratio(self, new_incr_ratio):
         """
@@ -428,7 +428,7 @@ class GradScaler(AmpScaler):
                 scaler.set_incr_ratio(new_incr_ratio)
                 print(scaler.get_incr_ratio()) # 3.0
         """
-        super(GradScaler, self).set_incr_ratio(new_incr_ratio)
+        super().set_incr_ratio(new_incr_ratio)
 
     def get_decr_ratio(self):
         """
@@ -452,7 +452,7 @@ class GradScaler(AmpScaler):
                 decr_ratio = scaler.get_decr_ratio()
                 print(decr_ratio) # 0.5
         """
-        return super(GradScaler, self).get_decr_ratio()
+        return super().get_decr_ratio()
 
     def set_decr_ratio(self, new_decr_ratio):
         """
@@ -478,7 +478,7 @@ class GradScaler(AmpScaler):
                 scaler.set_decr_ratio(new_decr_ratio)
                 print(scaler.get_decr_ratio()) # 0.1
         """
-        super(GradScaler, self).set_decr_ratio(new_decr_ratio)
+        super().set_decr_ratio(new_decr_ratio)
 
     def get_incr_every_n_steps(self):
         """
@@ -502,7 +502,7 @@ class GradScaler(AmpScaler):
                 incr_every_n_steps = scaler.get_incr_every_n_steps()
                 print(incr_every_n_steps) # 1000
         """
-        return super(GradScaler, self).get_incr_every_n_steps()
+        return super().get_incr_every_n_steps()
 
     def set_incr_every_n_steps(self, new_incr_every_n_steps):
         """
@@ -528,7 +528,7 @@ class GradScaler(AmpScaler):
                 scaler.set_incr_every_n_steps(new_incr_every_n_steps)
                 print(scaler.get_incr_every_n_steps()) # 2000
         """
-        super(GradScaler, self).set_incr_every_n_steps(new_incr_every_n_steps)
+        super().set_incr_every_n_steps(new_incr_every_n_steps)
 
     def get_decr_every_n_nan_or_inf(self):
         """
@@ -552,7 +552,7 @@ class GradScaler(AmpScaler):
                 decr_every_n_nan_or_inf = scaler.get_decr_every_n_nan_or_inf()
                 print(decr_every_n_nan_or_inf) # 2
         """
-        return super(GradScaler, self).get_decr_every_n_nan_or_inf()
+        return super().get_decr_every_n_nan_or_inf()
 
     def set_decr_every_n_nan_or_inf(self, new_decr_every_n_nan_or_inf):
         """
@@ -578,9 +578,7 @@ class GradScaler(AmpScaler):
                 scaler.set_decr_every_n_nan_or_inf(new_decr_every_n_nan_or_inf)
                 print(scaler.get_decr_every_n_nan_or_inf()) # 3
         """
-        super(GradScaler, self).set_decr_every_n_nan_or_inf(
-            new_decr_every_n_nan_or_inf
-        )
+        super().set_decr_every_n_nan_or_inf(new_decr_every_n_nan_or_inf)
 
     def state_dict(self):
         """
@@ -614,7 +612,7 @@ class GradScaler(AmpScaler):
                                                use_dynamic_loss_scaling=True)
                 scaler_state = scaler.state_dict()
         """
-        return super(GradScaler, self).state_dict()
+        return super().state_dict()
 
     def load_state_dict(self, state_dict):
         """
@@ -640,4 +638,4 @@ class GradScaler(AmpScaler):
                 scaler_state = scaler.state_dict()
                 scaler.load_state_dict(scaler_state)
         """
-        super(GradScaler, self).load_state_dict(state_dict)
+        super().load_state_dict(state_dict)

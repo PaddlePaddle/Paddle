@@ -27,7 +27,7 @@ from paddle.fluid.dygraph.layers import Layer, _convert_camel_to_snake
 
 class MyOwnLayer(Layer):
     def __init__(self):
-        super(MyOwnLayer, self).__init__()
+        super().__init__()
 
     def forward(self, x):
         return x
@@ -78,7 +78,7 @@ class TestASPDynamicCustomerizedPruneFunc(unittest.TestCase):
 
         class CustomerLayer(paddle.nn.Layer):
             def __init__(self):
-                super(CustomerLayer, self).__init__()
+                super().__init__()
 
                 self.weight = self.create_parameter(
                     shape=[32, 32], attr=None, dtype='float32', is_bias=False

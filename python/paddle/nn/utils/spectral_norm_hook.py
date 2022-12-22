@@ -26,7 +26,7 @@ def normal_(x, mean=0.0, std=1.0):
     return x
 
 
-class SpectralNorm(object):
+class SpectralNorm:
     def __init__(self, name='weight', n_power_iterations=1, dim=0, eps=1e-12):
         self.name = name
         self.dim = dim

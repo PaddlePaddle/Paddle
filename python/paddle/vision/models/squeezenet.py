@@ -37,7 +37,7 @@ model_urls = {
 
 class MakeFireConv(nn.Layer):
     def __init__(self, input_channels, output_channels, filter_size, padding=0):
-        super(MakeFireConv, self).__init__()
+        super().__init__()
         self._conv = Conv2D(
             input_channels,
             output_channels,
@@ -61,7 +61,7 @@ class MakeFire(nn.Layer):
         expand1x1_channels,
         expand3x3_channels,
     ):
-        super(MakeFire, self).__init__()
+        super().__init__()
         self._conv = MakeFireConv(input_channels, squeeze_channels, 1)
         self._conv_path1 = MakeFireConv(squeeze_channels, expand1x1_channels, 1)
         self._conv_path2 = MakeFireConv(
@@ -109,7 +109,7 @@ class SqueezeNet(nn.Layer):
     """
 
     def __init__(self, version, num_classes=1000, with_pool=True):
-        super(SqueezeNet, self).__init__()
+        super().__init__()
         self.version = version
         self.num_classes = num_classes
         self.with_pool = with_pool

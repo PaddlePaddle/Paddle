@@ -73,7 +73,7 @@ def fake_vocabulary():
 vocab = fake_vocabulary()
 
 
-class FakeReaderProcessor(object):
+class FakeReaderProcessor:
     def __init__(self, args, vocab):
         self.vocab = vocab
         self.seq_len = args.seq_len

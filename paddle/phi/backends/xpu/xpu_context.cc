@@ -17,6 +17,7 @@
 #include <memory>
 
 #include "paddle/phi/api/ext/exception.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/common/place.h"
 #include "xpu/runtime.h"
 #include "xpu/runtime_ex.h"
@@ -59,14 +60,18 @@ struct XPUContext::Impl {
 
   ~Impl() {
     if (owned_ && context_ != nullptr) {
+      backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
+      // manually destroy XPUStream here until xpu::api integrates this work
+      // into Context dtor
+      xpu_wait(context_->xpu_stream);
+      PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_destroy(context_->xpu_stream));
+      context_->xpu_stream = nullptr;
       xpu::destroy_context(context_);
       context_ = nullptr;
     }
   }
 
   const Place& GetPlace() const { return place_; }
-
-  void SetStream(XPUStream stream) { context_->xpu_stream = stream; }
 
   XPUStream stream() const {
     auto s = context_->xpu_stream;
@@ -85,7 +90,7 @@ struct XPUContext::Impl {
   }
 
   void Wait() const {
-    backends::xpu::SetXPUDeviceId(place_.GetDeviceId());
+    backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
     PD_CHECK(context_ != nullptr, "the xpu context is nullptr.");
     xpu_wait(context_->xpu_stream);
   }
@@ -98,6 +103,7 @@ struct XPUContext::Impl {
     context_ = xpu::create_context();
     xpu_version_ = backends::xpu::get_xpu_version(place_.device);
     SetL3Cache();
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&context_->xpu_stream));
   }
 
   void SetXContext(xpu::Context* context) { context_ = context; }
@@ -122,8 +128,6 @@ XPUContext::XPUContext(const XPUPlace& place)
 XPUContext::~XPUContext() = default;
 
 const Place& XPUContext::GetPlace() const { return impl_->GetPlace(); }
-
-void XPUContext::SetXPUStream(XPUStream stream) { impl_->SetStream(stream); }
 
 XPUStream XPUContext::stream() const { return impl_->stream(); }
 

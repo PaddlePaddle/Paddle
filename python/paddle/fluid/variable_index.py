@@ -380,6 +380,10 @@ def _getitem_impl_(var, item):
     item = replace_ellipsis(var, item)
     item, none_axes = replace_none(item)
     slice_info = SliceInfo()
+    is_tensor_array = (
+        hasattr(var, "desc")
+        and var.desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY
+    )
 
     for dim, slice_item in enumerate(item):
         if is_integer_or_scalar_tensor(slice_item) and not is_bool_tensor(
@@ -390,13 +394,13 @@ def _getitem_impl_(var, item):
                 and var.shape[dim] is not None
                 and var.shape[dim] >= 0
                 and slice_item >= var.shape[dim]
+                and not is_tensor_array
             ):
                 # For python, if users write a, b = var, the __getitem__
                 # method will iterate through 0, 1, 2 ... until __getitem__
                 # throws an IndexError, then stop. The var[0], var[1] will
                 # be given to a, b respectively. If more values are given,
                 # the unpack size would cause error.
-                #
                 # We raises IndexError here to support grammar like `a, b = var`
                 raise IndexError(
                     "slice_item %d at dim %d should be >= 0 and < var.shape[%d]: %d"
@@ -422,7 +426,7 @@ def _getitem_impl_(var, item):
             if end is None:
                 if var.shape[dim] != -1 and (
                     paddle.fluid.framework._non_static_mode()
-                    or var.desc.type() != core.VarDesc.VarType.LOD_TENSOR_ARRAY
+                    or not is_tensor_array
                 ):
                     end = var.shape[dim] if step > 0 else -1
                 else:

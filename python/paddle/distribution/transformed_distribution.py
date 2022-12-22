@@ -65,9 +65,7 @@ class TransformedDistribution(distribution.Distribution):
         self._base = base
         self._transforms = transforms
         if not transforms:
-            super(TransformedDistribution, self).__init__(
-                base.batch_shape, base.event_shape
-            )
+            super().__init__(base.batch_shape, base.event_shape)
             return
         if len(base.batch_shape + base.event_shape) < chain._domain.event_rank:
             raise ValueError(
@@ -84,7 +82,7 @@ class TransformedDistribution(distribution.Distribution):
         transformed_event_rank = chain._codomain.event_rank + max(
             len(base.event_shape) - chain._domain.event_rank, 0
         )
-        super(TransformedDistribution, self).__init__(
+        super().__init__(
             transformed_shape[
                 : len(transformed_shape) - transformed_event_rank
             ],

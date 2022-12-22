@@ -313,7 +313,7 @@ class TestBatchNormOpInference(unittest.TestCase):
         # dims will be in NCHW order as it is MKL-DNN way
         # of memory descripting. So we need to convert NCHW
         # dims into NHWC.
-        if data_layout == "NHWC" and self.use_mkldnn == True:
+        if data_layout == "NHWC" and self.use_mkldnn:
             # Create executor to have MKL-DNN cache
             # cleared after NHWC unit test
             place = core.CPUPlace()

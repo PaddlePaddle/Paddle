@@ -34,9 +34,9 @@ namespace cub = hipcub;
 
 #ifndef PADDLE_WITH_XPU_KP
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #endif
 
 #include "paddle/phi/kernels/cast_kernel.h"
@@ -337,7 +337,7 @@ struct ReduceConfig {
     SetBlockDim();
 #ifndef PADDLE_WITH_XPU_KP
     // step5: limit the grid to prevent thead overflow
-    paddle::platform::LimitGridDim(dev_ctx, &grid);
+    phi::backends::gpu::LimitGridDim(dev_ctx, &grid);
 #endif
   }
 
@@ -1063,6 +1063,14 @@ void ReduceKernel(const KPDevice& dev_ctx,
   dev_ctx.Alloc<Ty>(y);
 
   auto x_dim = phi::vectorize<int>(x.dims());
+
+  if (x_dim.size() == 0) {
+    std::vector<const DenseTensor*> inputs = {&x};
+    std::vector<DenseTensor*> outputs = {y};
+    funcs::ElementwiseKernel<Ty>(dev_ctx, inputs, &outputs, transform);
+    return;
+  }
+
   auto config = ReduceConfig<Ty>(origin_reduce_dims, x_dim);
   config.Run(dev_ctx);
   int numel = x.numel();

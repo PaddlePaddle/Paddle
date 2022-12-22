@@ -28,13 +28,13 @@ np.random.seed(10)
 
 
 def mean_wrapper(x, axis=None, keepdim=False, reduce_all=False):
-    if reduce_all == True:
+    if reduce_all:
         return paddle.mean(x, range(len(x.shape)), keepdim)
     return paddle.mean(x, axis, keepdim)
 
 
 def reduce_mean_wrapper(x, axis=0, keepdim=False, reduce_all=False):
-    if reduce_all == True:
+    if reduce_all:
         return paddle.mean(x, range(len(x.shape)), keepdim)
     return paddle.mean(x, axis, keepdim)
 
@@ -50,6 +50,21 @@ class TestMeanOp(OpTest):
 
     def init_dtype_type(self):
         pass
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+    def test_checkout_grad(self):
+        self.check_grad(['X'], 'Out', check_eager=True)
+
+
+class TestMeanOp_ZeroDim(OpTest):
+    def setUp(self):
+        self.op_type = "mean"
+        self.python_api = paddle.mean
+        self.dtype = np.float64
+        self.inputs = {'X': np.random.random([]).astype(self.dtype)}
+        self.outputs = {'Out': np.mean(self.inputs["X"])}
 
     def test_check_output(self):
         self.check_output(check_eager=True)
@@ -125,7 +140,7 @@ def ref_reduce_mean(x, axis=None, keepdim=False, reduce_all=False):
     return np.mean(x, axis=axis, keepdims=keepdim)
 
 
-def ref_reduce_mean_grad(x, axis, dtype):
+def ref_reduce_mean_grad(x, axis, dtype, reduce_all):
     if reduce_all:
         axis = list(range(x.ndim))
 
@@ -176,7 +191,6 @@ class TestReduceMeanOp(OpTest):
         if self.dtype != 'float16':
             self.check_grad(['X'], ['Out'], check_eager=True)
         else:
-            return
             if not core.is_compiled_with_cuda():
                 return
             place = paddle.CUDAPlace(0)
@@ -189,7 +203,10 @@ class TestReduceMeanOp(OpTest):
                 )
                 dx = paddle.grad(y, x)[0].numpy()
                 dx_expected = ref_reduce_mean_grad(
-                    self.inputs['X'], self.attrs['dim'], self.dtype
+                    self.inputs['X'],
+                    self.attrs['dim'],
+                    self.dtype,
+                    self.attrs['reduce_all'],
                 )
                 np.testing.assert_array_equal(dx, dx_expected)
 

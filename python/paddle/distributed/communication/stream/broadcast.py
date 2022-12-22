@@ -13,29 +13,74 @@
 # limitations under the License.
 
 import paddle.fluid.framework as framework
-from paddle.distributed import collective
+import paddle.fluid.data_feeder as data_feeder
+import paddle.fluid.layer_helper as layer_helper
+from paddle.distributed.communication.group import (
+    _get_global_group,
+    _warn_cur_rank_not_in_group,
+    _get_or_throw_group_rank,
+)
 
 
-def _broadcast_in_dygraph(tensor, src, group, sync_op, use_calc_stream):
-    group = collective._get_default_group() if group is None else group
+def _broadcast_in_dygraph(
+    tensor, src_rank_in_group, group, sync_op, use_calc_stream
+):
     if use_calc_stream:
-        return group.process_group.broadcast_on_calc_stream(tensor, src)
+        return group.process_group.broadcast_on_calc_stream(
+            tensor, src_rank_in_group
+        )
 
-    task = group.process_group.broadcast(tensor, src, sync_op)
+    task = group.process_group.broadcast(tensor, src_rank_in_group, sync_op)
     if sync_op:
         task.wait()
 
     return task
 
 
-def broadcast(tensor, src=0, group=None, sync_op=True, use_calc_stream=False):
+def _broadcast_in_static_mode(
+    tensor, src_rank_in_group, group, sync_op, use_calc_stream
+):
+    data_feeder.check_variable_and_dtype(
+        tensor,
+        'tensor',
+        [
+            'float16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'int8',
+            'uint8',
+            'bool',
+        ],
+        'broadcast',
+    )
+
+    op_type = 'c_broadcast'
+    helper = layer_helper.LayerHelper(op_type, **locals())
+    ring_id = 0 if group is None else group.id
+
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [tensor]},
+        outputs={'Out': [tensor]},
+        attrs={
+            'root': src_rank_in_group,
+            'use_calc_stream': sync_op,
+            'ring_id': ring_id,
+        },
+    )
+    return None
+
+
+def broadcast(tensor, src, group=None, sync_op=True, use_calc_stream=False):
     """
 
     Broadcast a tensor to all devices.
 
     Args:
         tensor (Tensor): The tensor to broadcast. Support float16, float32, float64, int32, int64, int8, uint8 or bool as its data type.
-        src (int, optional): Rank of the source device. If none is given, use `0` as default.
+        src (int, optional): Rank of the source device.
         group (Group, optional): Communicate in which group. If none is given, use the global group as default.
         sync_op (bool, optional): Indicate whether the communication is sync or not. If none is given, use true as default.
         use_calc_stream (bool, optional): Indicate whether the communication is done on calculation stream. If none is given, use false as default. This
@@ -65,10 +110,8 @@ def broadcast(tensor, src=0, group=None, sync_op=True, use_calc_stream=False):
             out = data.numpy()
             # [[1, 2, 3], [1, 2, 3]] (2 GPUs)
     """
-    if group is not None and not group.is_member():
-        raise RuntimeError(
-            "The group should not be None and all ranks which invoke this operation should be the member of this group."
-        )
+    if _warn_cur_rank_not_in_group(group):
+        return
 
     if not sync_op and use_calc_stream:
         raise RuntimeError(
@@ -76,10 +119,14 @@ def broadcast(tensor, src=0, group=None, sync_op=True, use_calc_stream=False):
         )
 
     if framework.in_dygraph_mode():
+        group = _get_global_group() if group is None else group
+        src_rank_in_group = _get_or_throw_group_rank(src, group)
+
         return _broadcast_in_dygraph(
+            tensor, src_rank_in_group, group, sync_op, use_calc_stream
+        )
+    else:
+        assert group is None, "Group can not be used in static mode for now."
+        return _broadcast_in_static_mode(
             tensor, src, group, sync_op, use_calc_stream
         )
-
-    raise RuntimeError(
-        "paddle.distributed.stream.broadcast is only supported in dygraph mode now."
-    )

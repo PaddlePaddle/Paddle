@@ -30,7 +30,7 @@ from xpu.get_test_cover_info import (
 paddle.enable_static()
 
 
-################## TEST OP: BitwiseAnd ##################
+# ----------------- TEST OP: BitwiseAnd -------------------- #
 class XPUTestBitwiseAnd(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = 'bitwise_and'
@@ -102,7 +102,7 @@ for stype in support_types:
     create_test_class(globals(), XPUTestBitwiseAnd, stype)
 
 
-################## TEST OP: BitwiseOr ##################
+# -------------- TEST OP: BitwiseOr ----------------- #
 class XPUTestBitwiseOr(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = 'bitwise_or'
@@ -174,7 +174,7 @@ for stype in support_types:
     create_test_class(globals(), XPUTestBitwiseOr, stype)
 
 
-################## TEST OP: BitwiseXor ##################
+# --------------- TEST OP: BitwiseXor ---------------- #
 class XPUTestBitwiseXor(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = 'bitwise_xor'
@@ -246,7 +246,7 @@ for stype in support_types:
     create_test_class(globals(), XPUTestBitwiseXor, stype)
 
 
-##################  TEST OP: BitwiseNot ##################
+# ----------------  TEST OP: BitwiseNot ------------------ #
 class XPUTestBitwiseNot(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = 'bitwise_not'

@@ -66,7 +66,7 @@ class Identity(Layer):
     """
 
     def __init__(self, *args, **kwargs):
-        super(Identity, self).__init__()
+        super().__init__()
 
     def forward(self, input):
         return input
@@ -152,7 +152,7 @@ class Linear(Layer):
         bias_attr=None,
         name=None,
     ):
-        super(Linear, self).__init__()
+        super().__init__()
         self._dtype = self._helper.get_default_dtype()
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
@@ -364,16 +364,13 @@ class Upsample(Layer):
         .. code-block:: python
 
             import paddle
-            import paddle.nn as nn
-            import numpy as np
 
-            input_data = np.random.rand(2,3,6,10).astype("float32")
-            upsample_out  = paddle.nn.Upsample(size=[12,12])
+            input = paddle.rand([2,3,6,10], dtype="float32")
+            upsample_out = paddle.nn.Upsample(size=[12,12])
 
-            input = paddle.to_tensor(input_data)
             output = upsample_out(x=input)
             print(output.shape)
-            # [2L, 3L, 12L, 12L]
+            # [2, 3, 12, 12]
 
     """
 
@@ -387,7 +384,7 @@ class Upsample(Layer):
         data_format='NCHW',
         name=None,
     ):
-        super(Upsample, self).__init__()
+        super().__init__()
         self.size = size
         self.scale_factor = scale_factor
         self.mode = mode.lower()
@@ -480,7 +477,7 @@ class UpsamplingNearest2D(Layer):
     def __init__(
         self, size=None, scale_factor=None, data_format='NCHW', name=None
     ):
-        super(UpsamplingNearest2D, self).__init__()
+        super().__init__()
         self.size = size
         self.scale_factor = scale_factor
         self.data_format = data_format
@@ -566,7 +563,7 @@ class UpsamplingBilinear2D(Layer):
     def __init__(
         self, size=None, scale_factor=None, data_format='NCHW', name=None
     ):
-        super(UpsamplingBilinear2D, self).__init__()
+        super().__init__()
         self.size = size
         self.scale_factor = scale_factor
         self.data_format = data_format
@@ -640,14 +637,12 @@ class Bilinear(Layer):
        .. code-block:: python
 
         import paddle
-        import numpy
 
-        layer1 = numpy.random.random((5, 5)).astype('float32')
-        layer2 = numpy.random.random((5, 4)).astype('float32')
+        layer1 = paddle.rand((5, 5)).astype('float32')
+        layer2 = paddle.rand((5, 4)).astype('float32')
         bilinear = paddle.nn.Bilinear(
             in1_features=5, in2_features=4, out_features=1000)
-        result = bilinear(paddle.to_tensor(layer1),
-                        paddle.to_tensor(layer2))     # result shape [5, 1000]
+        result = bilinear(layer1,layer2)    # result shape [5, 1000]
 
     """
 
@@ -660,7 +655,7 @@ class Bilinear(Layer):
         bias_attr=None,
         name=None,
     ):
-        super(Bilinear, self).__init__()
+        super().__init__()
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
         self._name = name
@@ -739,21 +734,26 @@ class Dropout(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = np.array([[1,2,3], [4,5,6]]).astype('float32')
-            x = paddle.to_tensor(x)
+            x = paddle.to_tensor([[1,2,3], [4,5,6]], dtype="float32")
             m = paddle.nn.Dropout(p=0.5)
+
             y_train = m(x)
+            print(y_train)
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[2., 0., 6.],
+            #         [0., 0., 0.]])
+
             m.eval()  # switch the model to test phase
             y_test = m(x)
-            print(x)
-            print(y_train)
             print(y_test)
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[1., 2., 3.],
+            #         [4., 5., 6.]])
     """
 
     def __init__(self, p=0.5, axis=None, mode="upscale_in_train", name=None):
-        super(Dropout, self).__init__()
+        super().__init__()
 
         self.p = p
         self.axis = axis
@@ -804,21 +804,39 @@ class Dropout2D(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = np.random.random(size=(2, 3, 4, 5)).astype('float32')
-            x = paddle.to_tensor(x)
+            x = paddle.rand([2, 2, 1, 3], dtype="float32")
+            print(x)
+            # Tensor(shape=[2, 2, 1, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[[[0.10052059, 0.93890846, 0.45351565]],
+            #          [[0.47507706, 0.45021373, 0.11331241]]],
+
+            #         [[[0.53358698, 0.97375143, 0.34997326]],
+            #          [[0.24758087, 0.52628899, 0.17970420]]]])
+
             m = paddle.nn.Dropout2D(p=0.5)
             y_train = m(x)
+            print(y_train)
+            # Tensor(shape=[2, 2, 1, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[[[0.        , 0.        , 0.        ]],
+            #          [[0.95015413, 0.90042746, 0.22662482]]],
+
+            #         [[[1.06717396, 1.94750285, 0.69994652]],
+            #          [[0.        , 0.        , 0.        ]]]])
+
             m.eval()  # switch the model to test phase
             y_test = m(x)
-            print(x)
-            print(y_train)
             print(y_test)
+            # Tensor(shape=[2, 2, 1, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[[[0.10052059, 0.93890846, 0.45351565]],
+            #          [[0.47507706, 0.45021373, 0.11331241]]],
+
+            #         [[[0.53358698, 0.97375143, 0.34997326]],
+            #          [[0.24758087, 0.52628899, 0.17970420]]]])
     """
 
     def __init__(self, p=0.5, data_format='NCHW', name=None):
-        super(Dropout2D, self).__init__()
+        super().__init__()
 
         self.p = p
         self.data_format = data_format
@@ -867,21 +885,51 @@ class Dropout3D(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = np.random.random(size=(2, 3, 4, 5, 6)).astype('float32')
-            x = paddle.to_tensor(x)
+            x = paddle.arange(24, dtype="float32").reshape((1, 2, 2, 2, 3))
+            print(x)
+            # Tensor(shape=[1, 2, 2, 2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[[[[0. , 1. , 2. ],
+            #            [3. , 4. , 5. ]],
+            #           [[6. , 7. , 8. ],
+            #            [9. , 10., 11.]]],
+
+            #          [[[12., 13., 14.],
+            #            [15., 16., 17.]],
+            #           [[18., 19., 20.],
+            #            [21., 22., 23.]]]]])
+
             m = paddle.nn.Dropout3D(p=0.5)
             y_train = m(x)
+            print(y_train)
+            # Tensor(shape=[1, 2, 2, 2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[[[[0. , 2. , 4. ],
+            #            [6. , 8. , 10.]],
+            #           [[12., 14., 16.],
+            #            [18., 20., 22.]]],
+
+            #          [[[0. , 0. , 0. ],
+            #            [0. , 0. , 0. ]],
+            #           [[0. , 0. , 0. ],
+            #            [0. , 0. , 0. ]]]]])
+
             m.eval()  # switch the model to test phase
             y_test = m(x)
-            print(x)
-            print(y_train)
             print(y_test)
+            # Tensor(shape=[1, 2, 2, 2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[[[[0. , 1. , 2. ],
+            #            [3. , 4. , 5. ]],
+            #           [[6. , 7. , 8. ],
+            #            [9. , 10., 11.]]],
+
+            #          [[[12., 13., 14.],
+            #            [15., 16., 17.]],
+            #           [[18., 19., 20.],
+            #            [21., 22., 23.]]]]])
     """
 
     def __init__(self, p=0.5, data_format='NCDHW', name=None):
-        super(Dropout3D, self).__init__()
+        super().__init__()
 
         self.p = p
         self.data_format = data_format
@@ -928,22 +976,25 @@ class AlphaDropout(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = np.array([[-1, 1], [-1, 1]]).astype('float32')
-            x = paddle.to_tensor(x)
+            x = paddle.to_tensor([[-1, 1], [-1, 1]], dtype="float32")
             m = paddle.nn.AlphaDropout(p=0.5)
             y_train = m(x)
+            print(y_train)
+            # Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[-0.77919382,  1.66559887],
+            #         [-0.77919382, -0.77919382]])
+
             m.eval()  # switch the model to test phase
             y_test = m(x)
-            print(x)
-            print(y_train)
-            # [[-0.10721093, 1.6655989 ], [-0.7791938, -0.7791938]] (randomly)
             print(y_test)
+            # Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[-1.,  1.],
+            #         [-1.,  1.]])
     """
 
     def __init__(self, p=0.5, name=None):
-        super(AlphaDropout, self).__init__()
+        super().__init__()
         self.p = p
         self.name = name
 
@@ -1003,7 +1054,7 @@ class Pad1D(Layer):
     def __init__(
         self, padding, mode='constant', value=0.0, data_format="NCL", name=None
     ):
-        super(Pad1D, self).__init__()
+        super().__init__()
         self._pad = _npairs(padding, 1)
         self._mode = mode
         self._value = value
@@ -1076,7 +1127,7 @@ class Pad2D(Layer):
     def __init__(
         self, padding, mode='constant', value=0.0, data_format="NCHW", name=None
     ):
-        super(Pad2D, self).__init__()
+        super().__init__()
         self._pad = _npairs(padding, 2)
         self._mode = mode
         self._value = value
@@ -1145,7 +1196,7 @@ class ZeroPad2D(Layer):
     """
 
     def __init__(self, padding, data_format="NCHW", name=None):
-        super(ZeroPad2D, self).__init__()
+        super().__init__()
         self._pad = _npairs(padding, 2)
         self._mode = 'constant'
         self._value = 0.0
@@ -1223,7 +1274,7 @@ class Pad3D(Layer):
         data_format="NCDHW",
         name=None,
     ):
-        super(Pad3D, self).__init__()
+        super().__init__()
         self._pad = _npairs(padding, 3)
         self._mode = mode
         self._value = value
@@ -1278,22 +1329,21 @@ class CosineSimilarity(Layer):
 
             import paddle
             import paddle.nn as nn
-            import numpy as np
 
-            np.random.seed(0)
-            x1 = np.random.rand(2,3)
-            x2 = np.random.rand(2,3)
-            x1 = paddle.to_tensor(x1)
-            x2 = paddle.to_tensor(x2)
+            x1 = paddle.to_tensor([[1., 2., 3.],
+                                [2., 3., 4.]], dtype="float32")
+            x2 = paddle.to_tensor([[8., 3., 3.],
+                                [2., 3., 4.]], dtype="float32")
 
             cos_sim_func = nn.CosineSimilarity(axis=0)
             result = cos_sim_func(x1, x2)
             print(result)
-            # [0.99806249 0.9817672  0.94987036]
+            # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [0.65079135, 0.98058069, 1.        ])
     """
 
     def __init__(self, axis=1, eps=1e-8):
-        super(CosineSimilarity, self).__init__()
+        super().__init__()
         self._axis = axis
         self._eps = eps
 
@@ -1376,30 +1426,33 @@ class Embedding(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x_data = np.arange(3, 6).reshape((3, 1)).astype(np.int64)
-            y_data = np.arange(6, 12).reshape((3, 2)).astype(np.float32)
+            x = paddle.to_tensor([[0], [1], [3]], dtype="int64", stop_gradient=False)
+            embedding = paddle.nn.Embedding(4, 3, sparse=True)
 
-            x = paddle.to_tensor(x_data, stop_gradient=False)
-            y = paddle.to_tensor(y_data, stop_gradient=False)
-
-            embedding = paddle.nn.Embedding(10, 3, sparse=True)
-
-            w0=np.full(shape=(10, 3), fill_value=2).astype(np.float32)
+            w0 = paddle.to_tensor([[0., 0., 0.],
+                                [1., 1., 1.],
+                                [2., 2., 2.],
+                                [3., 3., 3.]], dtype="float32")
             embedding.weight.set_value(w0)
+            print(embedding.weight)
+            # Tensor(shape=[4, 3], dtype=float32, place=Place(gpu:0), stop_gradient=False,
+            #        [[0., 0., 0.],
+            #         [1., 1., 1.],
+            #         [2., 2., 2.],
+            #         [3., 3., 3.]])
 
             adam = paddle.optimizer.Adam(parameters=[embedding.weight], learning_rate=0.01)
             adam.clear_grad()
 
-            # weight.shape = [10, 3]
 
-            # x.data = [[3],[4],[5]]
-            # x.shape = [3, 1]
+            out = embedding(x)
+            print(out)
+            # Tensor(shape=[3, 1, 3], dtype=float32, place=Place(gpu:0), stop_gradient=False,
+            #        [[[0., 0., 0.]],
+            #         [[1., 1., 1.]],
+            #         [[3., 3., 3.]]])
 
-            # out.data = [[2,2,2], [2,2,2], [2,2,2]]
-            # out.shape = [3, 1, 3]
-            out=embedding(x)
             out.backward()
             adam.step()
 
@@ -1414,7 +1467,7 @@ class Embedding(Layer):
         weight_attr=None,
         name=None,
     ):
-        super(Embedding, self).__init__()
+        super().__init__()
         self._num_embeddings = num_embeddings
         self._embedding_dim = embedding_dim
         self._sparse = sparse
@@ -1527,7 +1580,7 @@ class Unfold(Layer):
     def __init__(
         self, kernel_sizes, dilations=1, paddings=0, strides=1, name=None
     ):
-        super(Unfold, self).__init__()
+        super().__init__()
 
         self.kernel_sizes = kernel_sizes
         self.dilations = dilations
@@ -1622,7 +1675,7 @@ class Fold(Layer):
         strides=1,
         name=None,
     ):
-        super(Fold, self).__init__()
+        super().__init__()
 
         self.output_sizes = output_sizes
         self.kernel_sizes = kernel_sizes

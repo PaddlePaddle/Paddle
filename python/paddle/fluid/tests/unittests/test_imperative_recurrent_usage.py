@@ -24,7 +24,7 @@ import numpy as np
 
 class RecurrentTest(fluid.Layer):
     def __init__(self, name_scope):
-        super(RecurrentTest, self).__init__(name_scope)
+        super().__init__(name_scope)
 
     def forward(self, in1, in2):
         out = fluid.layers.mul(in1, in2)

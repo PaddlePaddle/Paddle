@@ -41,7 +41,7 @@ from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
 
 class LeNetDygraph(paddle.nn.Layer):
     def __init__(self, num_classes=10):
-        super(LeNetDygraph, self).__init__()
+        super().__init__()
         self.num_classes = num_classes
         self.features = Sequential(
             Conv2D(1, 6, 3, stride=1, padding=1),
@@ -68,7 +68,7 @@ class LeNetDygraph(paddle.nn.Layer):
 
 class ModelInner(paddle.nn.Layer):
     def __init__(self):
-        super(ModelInner, self).__init__()
+        super().__init__()
         self.fc = paddle.nn.Linear(3, 4)
 
     def forward(self, x):
@@ -78,7 +78,7 @@ class ModelInner(paddle.nn.Layer):
 
 class ModelOutter(paddle.nn.Layer):
     def __init__(self):
-        super(ModelOutter, self).__init__()
+        super().__init__()
         self.module1 = ModelInner()
         self.module2 = paddle.nn.Linear(4, 5)
 
@@ -90,7 +90,7 @@ class ModelOutter(paddle.nn.Layer):
 
 class LeNetListInput(paddle.nn.Layer):
     def __init__(self, num_classes=10):
-        super(LeNetListInput, self).__init__()
+        super().__init__()
         self.num_classes = num_classes
         self.cov = Conv2D(1, 6, 3, stride=1, padding=1)
         for param in self.cov.parameters():
@@ -131,7 +131,7 @@ class LeNetDictInput(LeNetDygraph):
 
 class MnistDataset(MNIST):
     def __init__(self, mode, return_label=True, sample_num=None):
-        super(MnistDataset, self).__init__(mode=mode)
+        super().__init__(mode=mode)
         self.return_label = return_label
         if sample_num:
             self.images = self.images[:sample_num]
@@ -470,7 +470,7 @@ class TestModel(unittest.TestCase):
 
 class MyModel(paddle.nn.Layer):
     def __init__(self):
-        super(MyModel, self).__init__()
+        super().__init__()
         self._fc = Linear(20, 10)
 
     def forward(self, x):

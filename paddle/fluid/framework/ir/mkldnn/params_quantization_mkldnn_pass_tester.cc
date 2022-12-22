@@ -18,8 +18,6 @@
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/platform/place.h"
 
-using LoDTensor = phi::DenseTensor;
-
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -48,15 +46,15 @@ struct Data {
 struct TestScope {
   void CreateTensor(const std::string& var_name, const Data& data) {
     auto variable = scope.Var(var_name);
-    auto tensor = variable->GetMutable<LoDTensor>();
+    auto tensor = variable->GetMutable<phi::DenseTensor>();
     tensor->Resize(phi::make_ddim(data.getShape()));
     auto dptr = tensor->mutable_data<float>(place);
     std::copy(data.getData().begin(), data.getData().end(), dptr);
   }
 
-  const LoDTensor& GetTensor(const std::string& input) const {
+  const phi::DenseTensor& GetTensor(const std::string& input) const {
     Variable* var = scope.FindVar(input);
-    return var->Get<LoDTensor>();
+    return var->Get<phi::DenseTensor>();
   }
 
   framework::Scope* Scope() { return &scope; }

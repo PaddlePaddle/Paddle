@@ -39,7 +39,7 @@ LEARNING_RATE = 0.01
 DIST_UT_PORT = 0
 
 
-class FleetDistHeterRunnerBase(object):
+class FleetDistHeterRunnerBase:
     """
     run_pserver,run_trainer : after init role, using transpiler split program
     net : implment by child class, the network of model

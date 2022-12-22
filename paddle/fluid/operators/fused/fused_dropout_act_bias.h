@@ -256,17 +256,19 @@ template <typename T,
           int BlockSizeX,
           int BlockSizeY,
           int VecSize,
-          typename Functor>
-__global__ void FusedDropoutActBiasGrad(Functor act_grad,
-                                        const T *dout,
-                                        const MaskType *mask,
-                                        const T *src,
-                                        const T *bias,
-                                        const T factor,
-                                        const int64_t rows,
-                                        const int64_t cols,
-                                        T *dx,
-                                        T *dbias) {
+          typename Functor,
+          int THREADS_PER_CTA = BlockSizeX *BlockSizeY>
+__global__ __launch_bounds__(THREADS_PER_CTA) void FusedDropoutActBiasGrad(
+    Functor act_grad,
+    const T *dout,
+    const MaskType *mask,
+    const T *src,
+    const T *bias,
+    const T factor,
+    const int64_t rows,
+    const int64_t cols,
+    T *dx,
+    T *dbias) {
   int64_t col_id = blockIdx.x * blockDim.x + threadIdx.x;
 
   using LoadT = phi::AlignedVector<T, VecSize>;

@@ -24,7 +24,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 class SimpleNet(paddle.nn.Layer):
     def __init__(self, vocab_size, hidden_size, dtype):
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.emb = fluid.dygraph.Embedding(
             size=[vocab_size, hidden_size],
             dtype=dtype,
@@ -62,18 +62,18 @@ class TestSimpleNet(unittest.TestCase):
                     )  # grad_clip=grad_clip
                     input_emb, emb = simplenet(input)
 
-                    self.assertTrue(emb.weight.gradient() is None)
-                    self.assertTrue(input_emb.gradient() is None)
+                    self.assertIsNone(emb.weight.gradient())
+                    self.assertIsNone(input_emb.gradient())
 
                     input_emb.backward()
                     adam.minimize(input_emb)
-                    self.assertTrue(emb.weight.gradient() is not None)
+                    self.assertIsNotNone(emb.weight.gradient())
 
                     emb.clear_gradients()
-                    self.assertTrue(emb.weight.gradient() is None)
+                    self.assertIsNone(emb.weight.gradient())
 
                     input_emb.clear_gradient()
-                    self.assertTrue(input_emb.gradient() is not None)
+                    self.assertIsNotNone(input_emb.gradient())
                     paddle.enable_static()
 
     def test_selectedrows_gradient1(self):
@@ -107,18 +107,18 @@ class TestSimpleNet(unittest.TestCase):
                     )
                     input_emb, emb = simplenet(input)
 
-                    self.assertTrue(emb.weight.gradient() is None)
-                    self.assertTrue(input_emb.gradient() is None)
+                    self.assertIsNone(emb.weight.gradient())
+                    self.assertIsNone(input_emb.gradient())
 
                     input_emb.backward()
                     adam.minimize(input_emb)
-                    self.assertTrue(emb.weight.gradient() is not None)
+                    self.assertIsNotNone(emb.weight.gradient())
 
                     emb.clear_gradients()
-                    self.assertTrue(emb.weight.gradient() is None)
+                    self.assertIsNone(emb.weight.gradient())
 
                     input_emb.clear_gradient()
-                    self.assertTrue(input_emb.gradient() is not None)
+                    self.assertIsNotNone(input_emb.gradient())
 
     def test_selectedrows_gradient2(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})

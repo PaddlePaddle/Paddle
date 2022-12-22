@@ -131,11 +131,6 @@ class TestMin(TestMean):
         self.op = paddle.fluid.layers.reduce_min
 
 
-class TestProd(TestMean):
-    def set_test_op(self):
-        self.op = paddle.fluid.layers.reduce_prod
-
-
 class TestSum(TestMean):
     def set_test_op(self):
         self.op = paddle.fluid.layers.reduce_sum

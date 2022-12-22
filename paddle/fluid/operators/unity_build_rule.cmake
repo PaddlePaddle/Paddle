@@ -362,7 +362,6 @@ register_unity_group(
   lstm_op.cu.cc
   rnn_op.cu.cc
   split_op.cu.cc
-  activation_cudnn_op.cu.cc
   assign_value_op.cu.cc
   run_program_op.cu.cc
   warpctc_op.cu.cc)

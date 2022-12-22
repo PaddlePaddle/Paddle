@@ -63,7 +63,7 @@ class UCIHousing(Dataset):
 
             class SimpleNet(paddle.nn.Layer):
                 def __init__(self):
-                    super(SimpleNet, self).__init__()
+                    super().__init__()
 
                 def forward(self, feature, target):
                     return paddle.sum(feature), target

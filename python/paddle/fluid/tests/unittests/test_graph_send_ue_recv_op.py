@@ -39,7 +39,7 @@ def get_broadcast_shape(shp1, shp2):
     return rst
 
 
-class BroadCastInfo(object):
+class BroadCastInfo:
     def __init__(self, x_shape, y_shape):
         self.x_shape = x_shape
         self.y_shape = y_shape

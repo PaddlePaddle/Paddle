@@ -73,7 +73,7 @@ def deco4(func=None, x=0):
 
         return inner_deco
 
-    if func == None:
+    if func is None:
         return decorated
     return decorated(func)
 

@@ -364,7 +364,7 @@ class MLPLayer(nn.Layer):
     def __init__(
         self, hidden_size=64, intermediate_size=4 * 64, initializer_range=0.02
     ):
-        super(MLPLayer, self).__init__()
+        super().__init__()
         d_model = hidden_size
         dim_feedforward = intermediate_size
         np.random.seed(2021)
@@ -602,7 +602,7 @@ class TestAutoParallelMapper(unittest.TestCase):
                 outputs={'Out': output},
             )
             self.assertEqual(get_comm_volume(broadcast_op, 0, 1), 400)
-            self.assertEqual(get_comm_volume(broadcast_op, 1, 0), None)
+            self.assertIsNone(get_comm_volume(broadcast_op, 1, 0))
             allgather_op = train_program.global_block().append_op(
                 type="c_allgather",
                 inputs={'X': input},
@@ -610,14 +610,14 @@ class TestAutoParallelMapper(unittest.TestCase):
                 outputs={'Out': output},
             )
             self.assertEqual(get_comm_volume(allgather_op, 0, 1), 400)
-            self.assertEqual(get_comm_volume(allgather_op, 0, 0), None)
+            self.assertIsNone(get_comm_volume(allgather_op, 0, 0))
             reduce_op = train_program.global_block().append_op(
                 type="c_reduce_sum",
                 inputs={'X': input},
                 attrs={'ring_id': ring_id, 'root_id': root_id},
                 outputs={'Out': output},
             )
-            self.assertEqual(get_comm_volume(reduce_op, 0, 1), None)
+            self.assertIsNone(get_comm_volume(reduce_op, 0, 1))
             self.assertEqual(get_comm_volume(reduce_op, 1, 0), 400)
             cast_op = train_program.global_block().append_op(
                 type="cast",

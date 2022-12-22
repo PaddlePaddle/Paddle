@@ -737,7 +737,7 @@ def find_heter_ops(program, default_device="cpu"):
             # Todo: need update this method
             # op._set_attr('op_device', current_heter_device)
             return True
-        elif op_device == None or op_device == default_device:
+        elif op_device is None or op_device == default_device:
             op._set_attr('op_device', default_device)
             return False
         return False

@@ -19,7 +19,6 @@
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/api/include/api.h"
 #include "paddle/phi/common/place.h"
 
 DECLARE_bool(xccl_blocking_wait);
@@ -99,15 +98,11 @@ bool ProcessGroupCustom::CustomTask::Wait(std::chrono::milliseconds timeout) {
 void ProcessGroupCustom::CustomTask::Synchronize() { Wait(kWaitTimeout); }
 
 ProcessGroupCustom::ProcessGroupCustom(const std::shared_ptr<Store>& store,
+                                       const std::string& device_type,
                                        int rank,
                                        int size,
-                                       const platform::Place& place,
                                        int gid)
-    : ProcessGroup(rank, size, place, gid),
-      store_(store),
-      device_type_(place.GetDeviceType()) {
-  phi::DeviceManager::SetDevice(place_);
-}
+    : ProcessGroup(rank, size, gid), store_(store), device_type_(device_type) {}
 
 void ProcessGroupCustom::BroadcastUniqueCustomID(
     std::vector<phi::ccl::CCLRootId>& ccl_ids) {  // NOLINT
@@ -264,24 +259,18 @@ void* XcclGetPointerByOffset(void* raw_pointer,
   return nullptr;
 }
 
-std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather_Partial(
-    std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors,
+// NOTE: this is ONLY for compatibility
+std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
     int64_t offset,
-    int64_t length) {
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInCustomPlace(in_tensors, device_type_),
-      true,
-      platform::errors::InvalidArgument(
-          "All inputs should be in CustomPlace(%s).", device_type_));
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInCustomPlace(out_tensors, device_type_),
-      true,
-      platform::errors::InvalidArgument(
-          "All outputs should be in CustomPlace(%s).", device_type_));
+    int64_t numel,
+    bool sync_op) {
+  std::vector<phi::DenseTensor> in_wrapper{in_tensor};
+  std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
   return Collective(
-      in_tensors,
-      out_tensors,
+      in_wrapper,
+      out_wrapper,
       [&](phi::DenseTensor& input,
           phi::DenseTensor& output,
           phi::ccl::CCLComm comm,
@@ -290,7 +279,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather_Partial(
             device_type_,
             XcclGetPointerByOffset(input.data(), offset, input.dtype()),
             output.data(),
-            length,
+            numel,
             phi::ccl::ToCCLDataType(input.dtype()),
             comm,
             stream);
@@ -380,20 +369,36 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Barrier(
     const BarrierOptions& opts) {
   // Only support single card single process
-  std::vector<phi::CustomPlace> places = {place_};
+  PADDLE_ENFORCE_GE(opts.device_id,
+                    0,
+                    platform::errors::PreconditionNotMet(
+                        "The barrier device id must greater or equal than 0."));
+  platform::CustomPlace place(device_type_, opts.device_id);
+  std::vector<phi::CustomPlace> places = {place};
   std::vector<phi::DenseTensor> barrierTensors;
   barrierTensors.reserve(places.size());
 
   for (auto& place : places) {
     phi::DeviceGuard guard(place);
-    auto dt = full({1}, 0, phi::DataType::FLOAT32, place);
-    barrierTensors.push_back(
-        *std::dynamic_pointer_cast<phi::DenseTensor>(dt.impl()));
+    phi::DenseTensorMeta meta(phi::DataType::FLOAT32, phi::DDim({1}));
+    auto allocator = std::unique_ptr<phi::Allocator>(
+        new paddle::experimental::DefaultAllocator(place));
+    barrierTensors.emplace_back(allocator.get(), meta);
   }
   auto task = ProcessGroupCustom::AllReduce(barrierTensors, barrierTensors);
   auto xccl_task = dynamic_cast<ProcessGroupCustom::CustomTask*>(task.get());
   xccl_task->barrierTensors_ = std::move(barrierTensors);
   return task;
+}
+
+phi::ccl::CCLComm ProcessGroupCustom::CustomCCLComm(const Place& place) const {
+  std::vector<Place> places = {place};
+  const auto& iter = places_to_customcomm_.find(GetKeyFromPlaces(places));
+  PADDLE_ENFORCE_NE(iter,
+                    places_to_customcomm_.end(),
+                    platform::errors::InvalidArgument(
+                        "Cannot find nccl comm in process group."));
+  return iter->second[0]->GetCustomCCLComm();
 }
 
 }  //  namespace distributed

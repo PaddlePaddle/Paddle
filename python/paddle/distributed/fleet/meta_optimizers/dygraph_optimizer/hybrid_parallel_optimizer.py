@@ -160,7 +160,7 @@ class HybridParallelClipGrad:
         )
         clip_var = layers.elementwise_div(
             x=max_global_norm,
-            y=layers.elementwise_max(x=global_norm_var_fp32, y=max_global_norm),
+            y=paddle.maximum(x=global_norm_var_fp32, y=max_global_norm),
         )
         clip_var_fp16 = paddle.cast(clip_var, paddle.float16)
         for p, g in params_grads:

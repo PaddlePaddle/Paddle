@@ -52,7 +52,7 @@ def create_var_struct(var):
     )
 
 
-class VarStruct(object):
+class VarStruct:
     """
     record part properties of a Variable in python.
     """
@@ -80,7 +80,7 @@ class VarStruct(object):
         )
 
 
-class VarDistributed(object):
+class VarDistributed:
     """
     a class to record the var distributed on parameter servers.
     the class will record the relationship between origin var and slice var.
@@ -187,7 +187,7 @@ class VarDistributed(object):
         )
 
 
-class VarsDistributed(object):
+class VarsDistributed:
     """
     a gather about VarDistributed with many methods to find distributed vars.
     through the class, we can get overview about the distributed parameters on parameter servers.

@@ -83,7 +83,7 @@ class SGD(Optimizer):
     ):
         if learning_rate is None:
             raise ValueError("learning_rate is not set")
-        super(SGD, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameters=parameters,
             weight_decay=weight_decay,

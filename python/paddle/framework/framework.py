@@ -40,6 +40,7 @@ def set_default_dtype(d):
 
     """
     if isinstance(d, type):
+        # This branch is for NumPy scalar types
         if d in [np.float16, np.float32, np.float64]:
             d = d.__name__
         else:
@@ -48,19 +49,11 @@ def set_default_dtype(d):
                 ", but received %s" % d.__name__
             )
     else:
-        if d in [
-            'float16',
-            'float32',
-            'float64',
-            u'float16',
-            u'float32',
-            u'float64',
-        ]:
-            # this code is a little bit dangerous, since error could happen
-            # when casting no-ascii code to str in python2.
-            # but since the set itself is limited, so currently, it is good.
-            # however, jointly supporting python2 and python3, (as well as python4 maybe)
-            # may still be a long-lasting problem.
+        # This branch is for np.dtype and str
+        if d in ['float16', 'float32', 'float64']:
+            # NOTE(SigureMo): Since the np.dtype object is not an instance of
+            # type, so it will not be handled by the previous branch. We need
+            # to convert it to str here.
             d = str(d)
         else:
             raise TypeError(

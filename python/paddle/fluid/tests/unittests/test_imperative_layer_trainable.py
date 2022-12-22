@@ -29,16 +29,16 @@ class TestImperativeLayerTrainable(unittest.TestCase):
 
             linear = dygraph.Linear(10, 10)
             y = linear(label)
-            self.assertTrue(y.stop_gradient == False)
+            self.assertFalse(y.stop_gradient)
 
             linear.weight.trainable = False
             linear.bias.trainable = False
 
-            self.assertTrue(linear.weight.trainable == False)
-            self.assertTrue(linear.weight.stop_gradient == True)
+            self.assertFalse(linear.weight.trainable)
+            self.assertTrue(linear.weight.stop_gradient)
 
             y = linear(label)
-            self.assertTrue(y.stop_gradient == True)
+            self.assertTrue(y.stop_gradient)
 
             with self.assertRaises(ValueError):
                 linear.weight.trainable = "1"

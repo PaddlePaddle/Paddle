@@ -101,15 +101,16 @@ void* GetDataFromTensor(const phi::DenseTensor& tensor,
                         dnnl::memory::data_type type) {
   switch (type) {
     case dnnl::memory::data_type::f32:
-      return platform::to_void_cast(tensor.data<float>());
+      return phi::funcs::to_void_cast(tensor.data<float>());
     case dnnl::memory::data_type::s8:
-      return platform::to_void_cast(tensor.data<int8_t>());
+      return phi::funcs::to_void_cast(tensor.data<int8_t>());
     case dnnl::memory::data_type::u8:
-      return platform::to_void_cast(tensor.data<unsigned char>());
+      return phi::funcs::to_void_cast(tensor.data<unsigned char>());
     case dnnl::memory::data_type::s32:
-      return platform::to_void_cast(tensor.data<int32_t>());
+      return phi::funcs::to_void_cast(tensor.data<int32_t>());
     case dnnl::memory::data_type::bf16:
-      return platform::to_void_cast(tensor.data<paddle::platform::bfloat16>());
+      return phi::funcs::to_void_cast(
+          tensor.data<paddle::platform::bfloat16>());
     default:
       PADDLE_THROW(
           platform::errors::InvalidArgument("Wrong mkldnn type provided."));
@@ -125,7 +126,7 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
   auto place = expected_kernel_type.place_;
 
   PADDLE_ENFORCE(
-      in_layout == DataLayout::kMKLDNN && out_layout != DataLayout::kMKLDNN,
+      in_layout == DataLayout::ONEDNN && out_layout != DataLayout::ONEDNN,
       platform::errors::InvalidArgument(
           "TransDataLayoutFromMKLDNN only supports transform from MKLDNN to "
           "non-MKLDNN"));
@@ -165,7 +166,7 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout,
           DataTypeToString(framework::TransToProtoVarType(in.dtype()))));
 
   auto out_format =
-      platform::MKLDNNFormatForSize(in_tz.size(), ToMKLDNNFormat(out_layout));
+      phi::funcs::OneDNNFormatForSize(in_tz.size(), ToOneDNNFormat(out_layout));
   dnnl::memory::desc out_mem_desc(out_tz, in_type, out_format);
 
   // output tensor has the same dims as input. Reorder don't change dims
@@ -177,8 +178,8 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout,
   if (in.initialized() && ((in.mem_desc() != out->mem_desc()) || always_copy)) {
     void* in_data = GetDataFromTensor(in, in_type);
 
-    platform::ReorderMKLDNNHandler handler(
-        in_tz, framework::TransToProtoVarType(in.dtype()), in_type, cpu_engine);
+    phi::funcs::ReorderOneDNNHandler handler(
+        in_tz, in.dtype(), in_type, cpu_engine);
 
     auto reorder_src_memory_p =
         handler.AcquireSrcMemory(in.mem_desc(), in_data);
@@ -199,7 +200,7 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout,
   }
   // For exepected NHWC data format we need to reshape the Output tensor
   // As MKL-DNN description was in NCHW and paddle is expecting NHWC
-  platform::MatchShapeToLayout(out, in_layout, out_layout);
+  phi::funcs::MatchShapeToLayout(out, in_layout, out_layout);
 
   out->set_layout(DataLayout::kNCHW);
 }

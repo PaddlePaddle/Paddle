@@ -28,7 +28,7 @@ class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_input1(attrs: List[Dict[str, Any]], batch, channel):
-            if attrs[0]['iou_aware'] == True:
+            if attrs[0]['iou_aware']:
                 return np.ones([batch, 3 * (channel + 6), 13, 13]).astype(
                     np.float32
                 )
@@ -108,7 +108,7 @@ class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            if attrs[0]['iou_aware'] == True:
+            if attrs[0]['iou_aware']:
                 channel = 3 * (attrs[0]['class_num'] + 6)
                 self.dynamic_shape.min_input_shape = {
                     "yolo_box_input": [1, channel, 12, 12],

@@ -170,7 +170,7 @@ if __name__ == '__main__':
             content = content.replace(i, '')
 
         with open(op_file, 'w', encoding='utf-8') as f:
-            f.write(u'{}'.format(content))
+            f.write(content)
 
     # 2. update operators/CMakeLists.txt
     cmake_file = os.path.join(

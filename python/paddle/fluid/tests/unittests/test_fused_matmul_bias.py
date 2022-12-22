@@ -112,7 +112,7 @@ class TestFusedMatmulBias(unittest.TestCase):
         if need_bias:
             np.testing.assert_array_equal(bias.grad.numpy(), bias_grad_np)
         else:
-            self.assertTrue(bias_grad_np is None)
+            self.assertIsNone(bias_grad_np)
 
     def rand_test(self, m, n, k, dtype):
         seed = int(np.random.randint(low=0, high=1000, size=[1]))

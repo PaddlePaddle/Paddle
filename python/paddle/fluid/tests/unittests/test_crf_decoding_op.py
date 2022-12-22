@@ -19,7 +19,7 @@ import numpy as np
 from op_test import OpTest
 
 
-class CRFDecoding(object):
+class CRFDecoding:
     def __init__(
         self, emission_weights, transition_weights, seq_start_positions
     ):

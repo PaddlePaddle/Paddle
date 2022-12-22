@@ -19,7 +19,7 @@ __all__ = []
 
 class GradientMergeOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
-        super(GradientMergeOptimizer, self).__init__(optimizer)
+        super().__init__(optimizer)
         self.inner_opt = optimizer
         self.wrapped_opt = None
         self.meta_optimizers_white_list = [
@@ -34,7 +34,7 @@ class GradientMergeOptimizer(MetaOptimizerBase):
     def _set_basic_info(
         self, loss, role_maker, user_defined_optimizer, user_defined_strategy
     ):
-        super(GradientMergeOptimizer, self)._set_basic_info(
+        super()._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy
         )
 
@@ -53,7 +53,7 @@ class GradientMergeOptimizer(MetaOptimizerBase):
             return False
 
         can_apply = (
-            self.user_defined_strategy.gradient_merge == True
+            self.user_defined_strategy.gradient_merge
         ) and self.user_defined_strategy.gradient_merge_configs["k_steps"] > 1
         return can_apply
 

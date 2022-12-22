@@ -398,7 +398,7 @@ class TensorRTSubgraphPassElementwiseSerializeTest(
     TensorRTSubgraphPassElementwiseTest
 ):
     def setUp(self):
-        super(TensorRTSubgraphPassElementwiseSerializeTest, self).setUp()
+        super().setUp()
         self.trt_parameters = TensorRTSubgraphPassElementwiseTest.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Float32, True, False
         )
@@ -406,9 +406,7 @@ class TensorRTSubgraphPassElementwiseSerializeTest(
     def test_check_output(self):
         if os.path.exists(self.path + "_opt_cache"):
             shutil.rmtree(self.path + "_opt_cache")
-        super(
-            TensorRTSubgraphPassElementwiseSerializeTest, self
-        ).test_check_output()
+        super().test_check_output()
 
 
 class TensorRTSubgraphPassElementwiseBroadcastDynamicTest(InferencePassTest):

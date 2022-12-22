@@ -26,7 +26,7 @@ class MLPLayer(nn.Layer):
     def __init__(
         self, hidden_size=64, intermediate_size=4 * 64, initializer_range=0.02
     ):
-        super(MLPLayer, self).__init__()
+        super().__init__()
         self.norm = nn.LayerNorm(hidden_size, epsilon=1e-5)
         self.linear0 = nn.Linear(
             hidden_size,

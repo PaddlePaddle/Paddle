@@ -27,7 +27,7 @@ from paddle.fluid.layers.control_flow import StaticRNN as PaddingRNN
 os.environ["CPU_NUM"] = "1"
 
 
-class RNNConfig(object):
+class RNNConfig:
     def __init__(self, model_type, rnn_model):
         self.model_type = model_type
         self.rnn_model = rnn_model
@@ -93,7 +93,7 @@ class RNNConfig(object):
 
 
 # Fake data reader for test
-class Reader(object):
+class Reader:
     def get_data_iter(self, rnn_config):
         for i in range(rnn_config.max_epoch):
             x = np.zeros(
@@ -204,7 +204,7 @@ def lm_model(
 
                 input = m
 
-                if dropout != None and dropout > 0.0:
+                if dropout is not None and dropout > 0.0:
                     input = layers.dropout(
                         input,
                         dropout_prob=dropout,
@@ -308,7 +308,7 @@ def lm_model(
                 cell_array[k] = c
                 input = m
 
-                if dropout != None and dropout > 0.0:
+                if dropout is not None and dropout > 0.0:
                     input = layers.dropout(
                         input,
                         dropout_prob=dropout,
@@ -390,7 +390,7 @@ def lm_model(
     x_emb = layers.reshape(
         x_emb, shape=[-1, num_steps, hidden_size], inplace=True
     )
-    if dropout != None and dropout > 0.0:
+    if dropout is not None and dropout > 0.0:
         x_emb = layers.dropout(
             x_emb,
             dropout_prob=dropout,

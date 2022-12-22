@@ -403,7 +403,7 @@ inline void RunProgramAPI(
       VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(
           out_scope_vec->front());
 
-      if (is_test) {
+      if (is_test || !egr::Controller::Instance().HasGrad()) {
         VLOG(4) << "is test, set this scope can reused";
         global_inner_scope->SetCanReuesd(true);
         details::GcScope(global_inner_scope);
@@ -481,7 +481,7 @@ inline void RunProgramAPI(
     // Debug info: scope info when run end
     VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(out_scope_vec->front());
     // Step 5. Drop all children scopes while testing.
-    if (is_test) {
+    if (is_test || !egr::Controller::Instance().HasGrad()) {
       out_scope_vec->front()->DropKids();
     }
     VLOG(2) << "The number of sub scopes after forward: "

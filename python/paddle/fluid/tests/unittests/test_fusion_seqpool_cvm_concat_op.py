@@ -100,7 +100,7 @@ class TestFusionSeqPoolCVMConcatOpCase4(TestFusionSeqPoolCVMConcatOp):
         self.w = 3
 
 
-## test avg pool and sqrt
+# test avg pool and sqrt
 def create_test_avg_sqrt_class(parent):
     class TestSeqPoolAvgCase(parent):
         def set_pooltype(self):

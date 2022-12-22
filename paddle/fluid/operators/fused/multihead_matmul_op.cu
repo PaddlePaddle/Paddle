@@ -365,6 +365,7 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
                              head_size,
                              reinterpret_cast<half *>(qkptr),
                              reinterpret_cast<const half *>(bias_qk_d),
+                             false,
                              reinterpret_cast<half *>(tptr),
                              __float2half(static_cast<float>(scale)),
                              __float2half(0.0));
@@ -377,6 +378,7 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
                              head_size,
                              qkptr,
                              bias_qk_d,
+                             false,
                              tptr,
                              scale,
                              T(0.0));

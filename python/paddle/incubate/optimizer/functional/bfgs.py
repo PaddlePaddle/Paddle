@@ -132,10 +132,10 @@ def minimize_bfgs(
         return (k < max_iters) & ~done
 
     def body(k, done, is_converge, num_func_calls, xk, value, g1, Hk):
-        #############    compute pk    #############
+        # --------------   compute pk   -------------- #
         pk = -paddle.matmul(Hk, g1)
 
-        #############    compute alpha by line serach    #############
+        # --------------   compute alpha by line serach   -------------- #
         if line_search_fn == 'strong_wolfe':
             alpha, value, g2, ls_func_calls = strong_wolfe(
                 f=objective_func,
@@ -152,7 +152,7 @@ def minimize_bfgs(
             )
         num_func_calls += ls_func_calls
 
-        #############    update Hk    #############
+        # --------------   update Hk   -------------- #
         sk = alpha * pk
         yk = g2 - g1
 
@@ -178,7 +178,7 @@ def minimize_bfgs(
 
         k += 1
 
-        #############    check convergence    #############
+        # --------------   check convergence   -------------- #
         gnorm = paddle.linalg.norm(g1, p=np.inf)
         pk_norm = paddle.linalg.norm(pk, p=np.inf)
         paddle.assign(

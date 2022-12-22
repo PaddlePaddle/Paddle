@@ -27,7 +27,7 @@ except:
     from collections import Sequence
 
 
-class Location(object):
+class Location:
     """
     Location information of source code.
     """
@@ -53,7 +53,7 @@ class Location(object):
         return (self.filepath, self.lineno)
 
 
-class OriginInfo(object):
+class OriginInfo:
     """
     Original information of source code.
     """

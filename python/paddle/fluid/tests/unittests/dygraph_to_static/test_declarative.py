@@ -38,7 +38,7 @@ program_trans = ProgramTranslator()
 
 class SimpleNet(Layer):
     def __init__(self):
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.linear = fluid.dygraph.Linear(10, 3)
 
     @declarative(input_spec=[InputSpec(shape=[None, 10], dtype='float32')])
@@ -418,7 +418,7 @@ class TestErrorWithInitFromStaticMode(unittest.TestCase):
 
 class CallNonForwardFuncNet(paddle.nn.Layer):
     def __init__(self):
-        super(CallNonForwardFuncNet, self).__init__()
+        super().__init__()
         self.sub = CallNonForwardFuncSubNet()
 
     @paddle.jit.to_static
@@ -428,7 +428,7 @@ class CallNonForwardFuncNet(paddle.nn.Layer):
 
 class CallNonForwardFuncSubNet(paddle.nn.Layer):
     def __init__(self):
-        super(CallNonForwardFuncSubNet, self).__init__()
+        super().__init__()
         self.a = paddle.to_tensor([1, 2])
 
     def func(self):
@@ -447,7 +447,7 @@ class TestCallNonForwardFunc(unittest.TestCase):
 
 class SetBuffersNet1(paddle.nn.Layer):
     def __init__(self):
-        super(SetBuffersNet1, self).__init__()
+        super().__init__()
         self.a = paddle.to_tensor([1])
 
     @paddle.jit.to_static
@@ -458,7 +458,7 @@ class SetBuffersNet1(paddle.nn.Layer):
 
 class SetBuffersNet2(paddle.nn.Layer):
     def __init__(self):
-        super(SetBuffersNet2, self).__init__()
+        super().__init__()
         self.b = paddle.to_tensor([2])
 
     @paddle.jit.to_static

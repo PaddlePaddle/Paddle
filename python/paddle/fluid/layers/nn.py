@@ -86,7 +86,6 @@ __all__ = [
     'reduce_mean',
     'reduce_max',
     'reduce_min',
-    'reduce_prod',
     'reduce_all',
     'reduce_any',
     'dropout',
@@ -203,7 +202,6 @@ __all__ = [
     'continuous_value_model',
     'where',
     'sign',
-    'deformable_conv',
     'unfold',
     'deformable_roi_pooling',
     'filter_by_instag',
@@ -3678,7 +3676,7 @@ def instance_norm(
     if param_attr is False:
         assert (
             bias_attr is False
-        ), "param_attr and bias_attr must be set to Fasle at the same time in instance_norm"
+        ), "param_attr and bias_attr must be set to False at the same time in instance_norm"
 
     helper = LayerHelper('instance_norm', **locals())
     dtype = helper.input_dtype()
@@ -3856,7 +3854,7 @@ def data_norm(
         bias_default = param_attr.get("bias", 0.0)
 
     # create scale and shift(bias) when enable_scale_and_shift is True
-    if name == None:
+    if name is None:
         name = "dn"
     if enable_scale_and_shift:
         scale_w = helper.create_parameter(
@@ -5096,9 +5094,6 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_sum(y, dim=[0, 1]) # [16, 20]
 
     """
-    if dim is not None and not isinstance(dim, list):
-        dim = [dim]
-
     reduce_all, dim = _get_reduce_dim(dim, input)
 
     if in_dygraph_mode():
@@ -5237,17 +5232,17 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
         dim = [dim]
 
     if in_dygraph_mode():
-        return _C_ops.max(input, dim if dim != None else [], keep_dim)
+        return _C_ops.max(input, dim if dim is not None else [], keep_dim)
 
     helper.append_op(
         type='reduce_max',
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None and dim != [] else [0],
+            'dim': dim if dim is not None and dim != [] else [0],
             'keep_dim': keep_dim,
             'reduce_all': True
-            if dim == None or dim == [] or len(dim) == len(input.shape)
+            if dim is None or dim == [] or len(dim) == len(input.shape)
             else False,
         },
     )
@@ -5309,108 +5304,17 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
         dim = [dim]
 
     if in_dygraph_mode():
-        return _C_ops.min(input, dim if dim != None else [], keep_dim)
+        return _C_ops.min(input, dim if dim is not None else [], keep_dim)
 
     helper.append_op(
         type='reduce_min',
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None and dim != [] else [0],
+            'dim': dim if dim is not None and dim != [] else [0],
             'keep_dim': keep_dim,
             'reduce_all': True
-            if dim == None or dim == [] or len(dim) == len(input.shape)
-            else False,
-        },
-    )
-    return out
-
-
-def reduce_prod(input, dim=None, keep_dim=False, name=None):
-    """
-
-    Computes the product of tensor elements over the given dimension.
-
-    Args:
-        input (Variable): The input variable which is a Tensor, the data type is float32,
-            float64, int32, int64.
-        dim (int|list|tuple, optional): The dimensions along which the product is performed. If
-            :attr:`None`, multiply all elements of :attr:`input` and return a
-            Tensor variable with a single element, otherwise must be in the
-            range :math:`[-rank(input), rank(input))`. If :math:`dim[i] < 0`,
-            the dimension to reduce is :math:`rank + dim[i]`.
-        keep_dim (bool, optional): Whether to reserve the reduced dimension in the
-            output Tensor. The result tensor will have one fewer dimension
-            than the :attr:`input` unless :attr:`keep_dim` is true, default
-            value is False.
-        name(str, optional): The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
-
-    Returns:
-        Variable: Tensor, result of product on the specified dim of input tensor,
-        it's data type is the same as input's Tensor.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle
-            paddle.enable_static()
-            # x is a Tensor variable with following elements:
-            #    [[0.2, 0.3, 0.5, 0.9]
-            #     [0.1, 0.2, 0.6, 0.7]]
-            # Each example is followed by the corresponding output tensor.
-            x = fluid.data(name='x', shape=[2, 4], dtype='float32')
-            fluid.layers.reduce_prod(x)  # [0.0002268]
-            fluid.layers.reduce_prod(x, dim=0)  # [0.02, 0.06, 0.3, 0.63]
-            fluid.layers.reduce_prod(x, dim=-1)  # [0.027, 0.0084]
-            fluid.layers.reduce_prod(x, dim=1,
-                                     keep_dim=True)  # [[0.027], [0.0084]]
-
-            # y is a Tensor variable with shape [2, 2, 2] and elements as below:
-            #      [[[1.0, 2.0], [3.0, 4.0]],
-            #      [[5.0, 6.0], [7.0, 8.0]]]
-            # Each example is followed by the corresponding output tensor.
-            y = fluid.data(name='y', shape=[2, 2, 2], dtype='float32')
-            fluid.layers.reduce_prod(y, dim=[1, 2]) # [24.0, 1680.0]
-            fluid.layers.reduce_prod(y, dim=[0, 1]) # [105.0, 384.0]
-    """
-
-    if dim is not None and not isinstance(dim, list):
-        if isinstance(dim, tuple):
-            dim = list(dim)
-        elif isinstance(dim, int):
-            dim = [dim]
-        else:
-            raise TypeError(
-                "The type of axis must be int, list or tuple, but received {}".format(
-                    type(dim)
-                )
-            )
-    if in_dygraph_mode():
-        return _C_ops.reduce_prod(
-            input,
-            dim if dim != None and dim != [] else [0],
-            keep_dim,
-            True
-            if dim == None or dim == [] or len(dim) == len(input.shape)
-            else False,
-        )
-
-    helper = LayerHelper('reduce_prod', **locals())
-    check_variable_and_dtype(
-        input, 'input', ['float32', 'float64', 'int32', 'int64'], 'reduce_prod'
-    )
-    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    helper.append_op(
-        type='reduce_prod',
-        inputs={'X': input},
-        outputs={'Out': out},
-        attrs={
-            'dim': dim if dim != None and dim != [] else [0],
-            'keep_dim': keep_dim,
-            'reduce_all': True
-            if dim == None or dim == [] or len(dim) == len(input.shape)
+            if dim is None or dim == [] or len(dim) == len(input.shape)
             else False,
         },
     )
@@ -5465,7 +5369,7 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
         dim = [dim]
 
     if in_dygraph_mode():
-        return _C_ops.all(input, dim if dim != None else [], keep_dim)
+        return _C_ops.all(input, dim if dim is not None else [], keep_dim)
 
     check_variable_and_dtype(input, 'input', ('bool'), 'reduce_all')
     helper = LayerHelper('reduce_all', **locals())
@@ -5475,10 +5379,10 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None and dim != [] else [0],
+            'dim': dim if dim is not None and dim != [] else [0],
             'keep_dim': keep_dim,
             'reduce_all': True
-            if dim == None or dim == [] or len(dim) == len(input.shape)
+            if dim is None or dim == [] or len(dim) == len(input.shape)
             else False,
         },
     )
@@ -5538,10 +5442,10 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None and dim != [] else [0],
+            'dim': dim if dim is not None and dim != [] else [0],
             'keep_dim': keep_dim,
             'reduce_all': True
-            if dim == None or dim == [] or len(dim) == len(input.shape)
+            if dim is None or dim == [] or len(dim) == len(input.shape)
             else False,
         },
     )
@@ -11389,7 +11293,7 @@ def unstack(x, axis=0, num=None):
     """
 
     if _non_static_mode():
-        if num == None:
+        if num is None:
             num = x.shape[axis]
         if num == 0:
             return []
@@ -11840,7 +11744,7 @@ def gaussian_random(
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
         place = _current_expected_place()
-        return _C_ops.gaussian_random(
+        return _C_ops.gaussian(
             shape, float(mean), float(std), seed, dtype, place
         )
 
@@ -14867,7 +14771,7 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None, data_format="NCHW"):
     )
 
 
-class PyFuncRegistry(object):
+class PyFuncRegistry:
     _register_funcs = []
 
     def __init__(self, func):
@@ -15001,7 +14905,6 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
 
             # example 1:
             import paddle
-            import six
             import numpy as np
 
             paddle.enable_static()
@@ -15027,7 +14930,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
 
             def simple_net(img, label):
                 hidden = img
-                for idx in six.moves.range(4):
+                for idx in range(4):
                     hidden = paddle.static.nn.fc(hidden, size=200)
                     new_hidden = create_tmp_var(name='hidden_{}'.format(idx),
                         dtype=hidden.dtype, shape=hidden.shape)
@@ -15045,13 +14948,13 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
                 return ce_loss(prediction, label)
 
             x = paddle.static.data(name='x', shape=[1,4], dtype='float32')
-            y = paddle.static.data(name='y', shape=[1,10], dtype='int64')
+            y = paddle.static.data(name='y', shape=[1], dtype='int64')
             res = simple_net(x, y)
 
             exe = paddle.static.Executor(paddle.CPUPlace())
             exe.run(paddle.static.default_startup_program())
             input1 = np.random.random(size=[1,4]).astype('float32')
-            input2 = np.random.randint(1, 10, size=[1,10], dtype='int64')
+            input2 = np.random.randint(1, 10, size=[1], dtype='int64')
             out = exe.run(paddle.static.default_main_program(),
                           feed={'x':input1, 'y':input2},
                           fetch_list=[res.name])
@@ -15552,7 +15455,7 @@ def where(condition):
     """
 
     if in_dygraph_mode():
-        return _C_ops.where_index(condition)
+        return _C_ops.nonzero(condition)
     if _in_legacy_dygraph():
         return _legacy_C_ops.where_index(condition)
 
@@ -15701,250 +15604,6 @@ def unique_with_counts(x, dtype='int32'):
     )
 
     return out, index, count
-
-
-def deformable_conv(
-    input,
-    offset,
-    mask,
-    num_filters,
-    filter_size,
-    stride=1,
-    padding=0,
-    dilation=1,
-    groups=None,
-    deformable_groups=None,
-    im2col_step=None,
-    param_attr=None,
-    bias_attr=None,
-    modulated=True,
-    name=None,
-):
-    r"""
-    :api_attr: Static Graph
-
-    **Deformable Convolution op**
-
-    Compute 2-D deformable convolution on 4-D input.
-    Given input image x, output feature map y, the deformable convolution operation can be expressed as follow:
-
-
-    Deformable Convolution v2:
-
-    .. math::
-
-        y(p) = \sum_{k=1}^{K}{w_k * x(p + p_k + \Delta p_k) * \Delta m_k}
-
-    Deformable Convolution v1:
-
-    .. math::
-
-        y(p) = \sum_{k=1}^{K}{w_k * x(p + p_k + \Delta p_k)}
-
-    Where :math:`\Delta p_k` and :math:`\Delta m_k` are the learnable offset and modulation scalar for the k-th location,
-    Which :math:`\Delta m_k` is one in deformable convolution v1. Please refer to `Deformable ConvNets v2: More Deformable, Better Results
-    <https://arxiv.org/abs/1811.11168v2>`_ and `Deformable Convolutional Networks <https://arxiv.org/abs/1703.06211>`_.
-
-    Example:
-        - Input:
-
-          Input shape: :math:`(N, C_{in}, H_{in}, W_{in})`
-
-          Filter shape: :math:`(C_{out}, C_{in}, H_f, W_f)`
-
-          Offset shape: :math:`(N, 2 * deformable\_groups * H_f * H_w, H_{in}, W_{in})`
-
-          Mask shape: :math:`(N, deformable\_groups * H_f * H_w, H_{in}, W_{in})`
-
-        - Output:
-
-          Output shape: :math:`(N, C_{out}, H_{out}, W_{out})`
-
-        Where
-
-        .. math::
-
-            H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
-            W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
-
-    Args:
-        input (Variable): The input image with [N, C, H, W] format. A Tensor with type
-            float32, float64.
-        offset (Variable): The input coordinate offset of deformable convolution layer.
-            A Tensor with type float32, float64.
-        Mask (Variable, Optional): The input mask of deformable convolution layer.
-            A Tensor with type float32, float64. It should be None when you use
-            deformable convolution v1.
-        num_filters(int): The number of filter. It is as same as the output
-            image channel.
-        filter_size (int|tuple): The filter size. If filter_size is a tuple,
-            it must contain two integers, (filter_size_H, filter_size_W).
-            Otherwise, the filter will be a square.
-        stride (int|tuple): The stride size. If stride is a tuple, it must
-            contain two integers, (stride_H, stride_W). Otherwise, the
-            stride_H = stride_W = stride. Default: stride = 1.
-        padding (int|tuple): The padding size. If padding is a tuple, it must
-            contain two integers, (padding_H, padding_W). Otherwise, the
-            padding_H = padding_W = padding. Default: padding = 0.
-        dilation (int|tuple): The dilation size. If dilation is a tuple, it must
-            contain two integers, (dilation_H, dilation_W). Otherwise, the
-            dilation_H = dilation_W = dilation. Default: dilation = 1.
-        groups (int): The groups number of the deformable conv layer. According to
-            grouped convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
-            the first half of the filters is only connected to the first half
-            of the input channels, while the second half of the filters is only
-            connected to the second half of the input channels. Default: groups=1.
-        deformable_groups (int): The number of deformable group partitions.
-            Default: deformable_groups = 1.
-        im2col_step (int): Maximum number of images per im2col computation;
-            The total batch size should be devisable by this value or smaller
-            than this value; if you face out of memory problem, you can try
-            to use a smaller value here.
-            Default: im2col_step = 64.
-        param_attr (ParamAttr, Optional): The parameter attribute for learnable parameters/weights
-            of deformable conv. If it is set to None or one attribute of ParamAttr,
-            deformable conv will create ParamAttr as param_attr.
-            If the Initializer of the param_attr is not set, the parameter is
-            initialized with :math:`Normal(0.0, std)`, and the
-            :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
-        bias_attr (ParamAttr|bool, Optional): The parameter attribute for the bias of
-            deformable conv layer. If it is set to False, no bias will be added
-            to the output units. If it is set to None or one attribute of ParamAttr, conv2d
-            will create ParamAttr as bias_attr. If the Initializer of the bias_attr
-            is not set, the bias is initialized zero. Default: None.
-        modulated (bool): Make sure which version should be used between v1 and v2, where v2 is \
-            used while True. Default: True.
-        name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
-                        Generally, no setting is required. Default: None.
-    Returns:
-        Variable: The tensor variable storing the deformable convolution \
-                  result. A Tensor with type float32, float64.
-    Raises:
-        ValueError: If the shapes of input, filter_size, stride, padding and
-                    groups mismatch.
-    Examples:
-        .. code-block:: python
-
-          #deformable conv v2:
-
-          import paddle.fluid as fluid
-          import paddle
-          paddle.enable_static()
-
-          C_in, H_in, W_in = 3, 32, 32
-          filter_size, deformable_groups = 3, 1
-          data = fluid.data(name='data', shape=[None, C_in, H_in, W_in], dtype='float32')
-          offset = fluid.data(name='offset', shape=[None, 2*deformable_groups*filter_size**2, H_in, W_in], dtype='float32')
-          mask = fluid.data(name='mask', shape=[None, deformable_groups*filter_size**2, H_in, W_in], dtype='float32')
-          out = fluid.layers.deformable_conv(input=data, offset=offset, mask=mask,
-                                             num_filters=2, filter_size=filter_size, padding=1, modulated=True)
-
-          #deformable conv v1:
-
-          import paddle.fluid as fluid
-          C_in, H_in, W_in = 3, 32, 32
-          filter_size, deformable_groups = 3, 1
-          data = fluid.data(name='data', shape=[None, C_in, H_in, W_in], dtype='float32')
-          offset = fluid.data(name='offset', shape=[None, 2*deformable_groups*filter_size**2, H_in, W_in], dtype='float32')
-          out = fluid.layers.deformable_conv(input=data, offset=offset, mask=None,
-                                             num_filters=2, filter_size=filter_size, padding=1, modulated=False)
-    """
-
-    check_variable_and_dtype(
-        input, "input", ['float32', 'float64'], 'deformable_conv'
-    )
-    check_variable_and_dtype(
-        offset, "offset", ['float32', 'float64'], 'deformable_conv'
-    )
-    check_type(mask, 'mask', (Variable, type(None)), 'deformable_conv')
-
-    num_channels = input.shape[1]
-    assert param_attr is not False, "param_attr should not be False here."
-
-    helper = LayerHelper('deformable_conv', **locals())
-    dtype = helper.input_dtype()
-
-    if not isinstance(input, Variable):
-        raise TypeError("Input of deformable_conv must be Variable")
-    if not isinstance(offset, Variable):
-        raise TypeError("Input Offset of deformable_conv must be Variable")
-
-    if groups is None:
-        num_filter_channels = num_channels
-    else:
-        if num_channels % groups != 0:
-            raise ValueError("num_channels must be divisible by groups.")
-        num_filter_channels = num_channels // groups
-
-    filter_size = utils.convert_to_list(filter_size, 2, 'filter_size')
-    stride = utils.convert_to_list(stride, 2, 'stride')
-    padding = utils.convert_to_list(padding, 2, 'padding')
-    dilation = utils.convert_to_list(dilation, 2, 'dilation')
-
-    input_shape = input.shape
-    filter_shape = [num_filters, int(num_filter_channels)] + filter_size
-
-    def _get_default_param_initializer():
-        filter_elem_num = filter_size[0] * filter_size[1] * num_channels
-        if filter_elem_num <= 0:
-            raise ValueError(
-                "Invalid filter number, excepted number is larger than 0, but"
-                " received {}, please check the input shape and "
-                "filter size.".format(filter_elem_num)
-            )
-        std = (2.0 / filter_elem_num) ** 0.5
-        return Normal(0.0, std, 0)
-
-    filter_param = helper.create_parameter(
-        attr=helper.param_attr,
-        shape=filter_shape,
-        dtype=dtype,
-        default_initializer=_get_default_param_initializer(),
-    )
-
-    pre_bias = helper.create_variable_for_type_inference(dtype)
-
-    if modulated:
-        helper.append_op(
-            type='deformable_conv',
-            inputs={
-                'Input': input,
-                'Filter': filter_param,
-                'Offset': offset,
-                'Mask': mask,
-            },
-            outputs={"Output": pre_bias},
-            attrs={
-                'strides': stride,
-                'paddings': padding,
-                'dilations': dilation,
-                'groups': groups,
-                'deformable_groups': deformable_groups,
-                'im2col_step': im2col_step,
-            },
-        )
-
-    else:
-        helper.append_op(
-            type='deformable_conv_v1',
-            inputs={
-                'Input': input,
-                'Filter': filter_param,
-                'Offset': offset,
-            },
-            outputs={"Output": pre_bias},
-            attrs={
-                'strides': stride,
-                'paddings': padding,
-                'dilations': dilation,
-                'groups': groups,
-                'deformable_groups': deformable_groups,
-                'im2col_step': im2col_step,
-            },
-        )
-
-    output = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
-    return output
 
 
 def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
@@ -16571,7 +16230,7 @@ def uniform_random(
 
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
-        return _C_ops.uniform_random(
+        return _C_ops.uniform(
             shape,
             dtype,
             float(min),

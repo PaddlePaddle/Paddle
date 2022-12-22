@@ -115,7 +115,7 @@ class TestEqualReduceAPI(unittest.TestCase):
         x = paddle.ones(shape=[10, 10], dtype="int32")
         y = paddle.ones(shape=[10, 10], dtype="int32")
         out = paddle.equal_all(x, y)
-        assert out.numpy()[0] == True
+        assert out.numpy()[0] is np.True_
         paddle.enable_static()
 
 

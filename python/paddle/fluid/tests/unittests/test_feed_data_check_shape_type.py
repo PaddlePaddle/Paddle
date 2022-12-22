@@ -106,7 +106,7 @@ class TestFeedData(unittest.TestCase):
                     "The fed Variable %r should have dimensions = %r, "
                     "shape = %r, but received fed shape %r on each device"
                     % (
-                        u'data',
+                        'data',
                         len(in_shape_tuple),
                         in_shape_tuple,
                         error_shape_list,
@@ -120,7 +120,7 @@ class TestFeedData(unittest.TestCase):
                 self.assertEqual(
                     str(dtype_mismatch_err.exception),
                     "The data type of fed Variable %r must be 'int64', but "
-                    "received 'float64'" % (u'label'),
+                    "received 'float64'" % ('label'),
                 )
 
     def _test_feed_data_dtype_mismatch(self, use_cuda, use_parallel_executor):

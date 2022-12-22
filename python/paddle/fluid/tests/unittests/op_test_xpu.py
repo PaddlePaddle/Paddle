@@ -51,7 +51,7 @@ class XPUOpTest(OpTest):
 
         if cls.dtype == np.float16:
             place = paddle.XPUPlace(0)
-            if core.is_float16_supported(place) == False:
+            if not core.is_float16_supported(place):
                 return
 
         if cls.dtype == np.float64:
@@ -98,7 +98,7 @@ class XPUOpTest(OpTest):
             return
 
         if self.dtype == np.float16:
-            if core.is_float16_supported(place) == False:
+            if not core.is_float16_supported(place):
                 return
 
         if self.dtype == np.float16:
@@ -172,7 +172,7 @@ class XPUOpTest(OpTest):
             return
 
         if self.dtype == np.float16:
-            if core.is_float16_supported(place) == False:
+            if not core.is_float16_supported(place):
                 return
 
         if self.dtype == np.float16:
@@ -254,7 +254,7 @@ class XPUOpTest(OpTest):
 
         # oneDNN numeric gradient should use CPU kernel
         use_onednn = False
-        if "use_mkldnn" in op_attrs and op_attrs["use_mkldnn"] == True:
+        if "use_mkldnn" in op_attrs and op_attrs["use_mkldnn"]:
             op_attrs["use_mkldnn"] = False
             use_onednn = True
 

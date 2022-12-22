@@ -159,7 +159,7 @@ class BatchSampler(Sampler):
         return num_samples // self.batch_size
 
 
-class _InfiniteIterableSampler(object):
+class _InfiniteIterableSampler:
     def __init__(self, dataset, batch_size=1):
         assert isinstance(
             dataset, IterableDataset

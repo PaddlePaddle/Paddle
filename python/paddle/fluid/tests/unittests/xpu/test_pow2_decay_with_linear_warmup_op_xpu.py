@@ -49,7 +49,7 @@ class Pow2Warmup(LinearWarmup):
             power=2,
         )
 
-        super(Pow2Warmup, self).__init__(
+        super().__init__(
             learning_rate=lr_sch,
             warmup_steps=warmup_steps,
             start_lr=0.0,

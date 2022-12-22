@@ -28,12 +28,17 @@ import warnings
 from collections import OrderedDict
 
 import paddle
+import paddle.distributed as dist
 from paddle.fluid import core
 from paddle.optimizer import Optimizer
 from paddle.fluid.clip import ClipGradByGlobalNorm
+from paddle.distributed import fleet, ParallelMode
+
+HybridParallelClipGrad = (
+    fleet.meta_optimizers.dygraph_optimizer.hybrid_parallel_optimizer.HybridParallelClipGrad
+)
 from paddle.distributed.collective import (
     _get_global_group,
-    broadcast,
     new_group,
 )
 
@@ -157,9 +162,18 @@ class GroupShardedOptimizerStage2(Optimizer):
                 "While using ClipGradByGlobalNorm in GroupShardedOptimizerStage2, the grad clip of original optimizer will be changed."
             )
 
-            self._optim._grad_clip = GroupShardedClipGrad(
-                self._optim._grad_clip, paddle.get_device(), self._group
-            )
+            hcg = fleet.fleet._hcg if hasattr(fleet.fleet, "_hcg") else None
+            if (
+                hcg
+                and hcg.get_parallel_mode() is not ParallelMode.DATA_PARALLEL
+            ):
+                self._optim._grad_clip = HybridParallelClipGrad(
+                    self._optim._grad_clip, hcg
+                )
+            else:
+                self._optim._grad_clip = GroupShardedClipGrad(
+                    self._optim._grad_clip, paddle.get_device(), self._group
+                )
             if self._optim._parameter_list and isinstance(
                 self._optim._parameter_list[0], dict
             ):
@@ -192,12 +206,12 @@ class GroupShardedOptimizerStage2(Optimizer):
         """
 
         for p in self._local_params:
-            broadcast(
+            dist.broadcast(
                 p, src=self._global_root_rank, group=self._group, sync_op=True
             )
 
             if self._dp_group:
-                broadcast(
+                dist.broadcast(
                     p,
                     src=self._dp_group.ranks[0],
                     group=self._dp_group,
@@ -484,12 +498,7 @@ class GroupShardedOptimizerStage2(Optimizer):
         with device_guard(self._rank, self.offload_device):
             self.offload_grads.buffer.zero_()
 
-    def step(self):
-        """
-        A wrapper for Optimizer's step function to finish the update operation of the optimizer.
-        """
-        # This method won't be called directly by opt.step()!
-        # The _redefine_opt_step() in class GroupShardedStage2 will wrap this function.
+    def _step(self):
         if self._broadcast_overlap:
             # Clear the pre forward hook in the optimizer step.
             for hook_remove in self._forward_pre_hook_remove_helper:
@@ -522,6 +531,14 @@ class GroupShardedOptimizerStage2(Optimizer):
         # Synchronize all the updated shards in between the ranks
         self._broadcast_params()
 
+    def step(self):
+        """
+        A wrapper for Optimizer's step function to finish the update operation of the optimizer.
+        """
+        # This method won't be called directly by opt.step()!
+        # The _redefine_opt_step() in class GroupShardedStage2 will wrap this function.
+        self._step()
+
     def minimize(self):
         raise RuntimeError(
             "optimizer.minimize() not support now, please use optimizer.step()"
@@ -548,7 +565,7 @@ class GroupShardedOptimizerStage2(Optimizer):
         else:
             for dtype_per_rank in self.param_storages.values():
                 for dst_rank, internal_storage in dtype_per_rank.items():
-                    broadcast(
+                    dist.broadcast(
                         tensor=internal_storage.buffer,
                         src=self._group.ranks[dst_rank],
                         group=self._group,
@@ -576,7 +593,7 @@ class GroupShardedOptimizerStage2(Optimizer):
             if x.trainable:
                 group = self._broadcast_groups[group_idx]
                 group_idx = (group_idx + 1) % self._number_of_broadcast_groups
-                task = broadcast(
+                task = dist.broadcast(
                     tensor=x,
                     src=group.ranks[self._param2rank[x.name]],
                     group=group,

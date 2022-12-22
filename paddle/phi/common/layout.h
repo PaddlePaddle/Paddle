@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <cctype>
 #include "paddle/phi/api/ext/exception.h"
 
 namespace phi {

@@ -14,7 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/controlflow/conditional_block_op.h"
 
+#include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/operators/assign_op.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -34,6 +36,45 @@ const char ConditionalOp::kSkipEagerDeletionVars[] = "skip_eager_deletion_vars";
 
 using Executor = framework::Executor;
 using ExecutorPrepareContext = framework::ExecutorPrepareContext;
+
+using InterpreterCore = framework::InterpreterCore;
+
+namespace details {
+static void BuildScopeForConditionalBlockOp(
+    const paddle::framework::InterpreterCore &interpreter_core,
+    const paddle::framework::BlockDesc &block,
+    paddle::framework::Scope *scope) {
+  for (auto &var_desc : block.AllVars()) {
+    auto var_name = var_desc->Name();
+    if (var_name == framework::kEmptyVarName) {
+      continue;
+    }
+    VLOG(5) << "[BuildScopeForConditionalBlockOp]"
+            << "start:" << var_name;
+    if (var_desc->Persistable()) {
+      VLOG(5) << "[BuildScopeForConditionalBlockOp]"
+              << "Don't process persistent: " << var_name;
+    } else {
+      auto *ptr = scope->Var(var_name);
+      InitializeVariable(ptr, var_desc->GetType());
+      VLOG(5) << "[BuildScopeForConditionalBlockOp]"
+              << "Not Found locally and created: " << var_name;
+    }
+  }
+
+  auto &data_transfer_added_vars =
+      interpreter_core.GetVariableScope()->DataTransferAddedVars();
+  for (size_t i = 0; i < data_transfer_added_vars.size(); i++) {
+    auto *ptr = scope->Var(data_transfer_added_vars[i].first);
+    InitializeVariable(ptr,
+                       static_cast<paddle::framework::proto::VarType::Type>(
+                           data_transfer_added_vars[i].second));
+    VLOG(10) << "[BuildScopeForConditionalBlockOp]"
+             << "Initialize Transfer Added Variable "
+             << data_transfer_added_vars[i].first;
+  }
+}
+}  // namespace details
 
 class ConditionalBlockOp : public ConditionalOp {
  public:
@@ -71,9 +112,20 @@ class ConditionalBlockOp : public ConditionalOp {
           platform::errors::PreconditionNotMet(
               "Expect Scope variable to be set in conditional_block_op, but "
               "got a null Scope variable. Please set the Scope variable."));
+
       auto *scopes = scope_var->GetMutable<std::vector<framework::Scope *>>();
-      scopes->resize(1);
-      scopes->front() = &scope.NewScope();
+
+      if (scopes->size() == 0 || !FLAGS_control_flow_use_new_executor) {
+        scopes->resize(1);
+        scopes->front() = &scope.NewScope();
+      }
+
+      // We need to know whether the scope we cached is still valid.
+      // If not, we need to create a new one.
+      if (scope.kids().size() == 0) {
+        scopes->front() = &scope.NewScope();
+      }
+
       auto &cur_scope = *scopes->front();
 #ifdef PADDLE_WITH_MKLDNN
       // (jczaja) Executor on being destroyed clears oneDNN cache and
@@ -84,25 +136,56 @@ class ConditionalBlockOp : public ConditionalOp {
       auto *block = Attr<framework::BlockDesc *>("sub_block");
       VLOG(3) << "Conditional block.idx = " << block->ID()
               << ", scope = " << &cur_scope;
+
       auto &skip_vars =
           Attr<std::vector<std::string>>(ConditionalOp::kSkipEagerDeletionVars);
-      if (!exec || !platform::is_same_place(exec->GetPlace(), dev_place)) {
-        auto &pdesc = *block->Program();
-        exec.reset(new Executor(dev_place));
-        if (FLAGS_use_mkldnn) exec->EnableMKLDNN(pdesc);
-        ctx = exec->Prepare(pdesc, block->ID(), skip_vars, false);
+
+      if (FLAGS_control_flow_use_new_executor) {
+        std::set<std::string> skip_gc_vars(skip_vars.begin(), skip_vars.end());
+
+        if (!core || !platform::is_same_place(core->GetPlace(), dev_place)) {
+          VLOG(10) << "[interpreterCore cache]" << core.get();
+          VLOG_IF(10, core)
+              << platform::is_same_place(core->GetPlace(), dev_place);
+          core.reset(new InterpreterCore(dev_place,
+                                         *block,
+                                         skip_gc_vars,
+                                         &cur_scope,
+                                         /* used_for_jit */ false,
+                                         /* used_for_control_flow_op */ true));
+          VLOG(10) << "[interpreterCore cache]"
+                   << "new created:" << core;
+        } else {
+          details::BuildScopeForConditionalBlockOp(*core, *block, &cur_scope);
+          core->reset_scope(&cur_scope);
+        }
+
+        core->Run({}, false);
+
+      } else {
+        if (!exec || !platform::is_same_place(exec->GetPlace(), dev_place)) {
+          auto &pdesc = *block->Program();
+          exec.reset(new Executor(dev_place));
+          if (FLAGS_use_mkldnn) exec->EnableMKLDNN(pdesc);
+          ctx = exec->Prepare(pdesc, block->ID(), skip_vars, false);
 #ifdef PADDLE_WITH_MKLDNN
-        platform::AttachPointerHashToMKLDNNKey(exec.get(), dev_place);
-        platform::RegisterModelLayout(ctx->ops_, dev_place);
+          platform::AttachPointerHashToMKLDNNKey(exec.get(), dev_place);
+          platform::RegisterModelLayout(ctx->ops_, dev_place);
 #endif
+        }
+        exec->RunPreparedContext(ctx.get(),
+                                 &cur_scope,
+                                 /* create_local_scope */ false,
+                                 /* create_vars */ true,
+                                 /* keep_kids */ true);
       }
-      exec->RunPreparedContext(ctx.get(), &cur_scope, false, true, true);
     }
   }
 
  private:
   mutable std::shared_ptr<Executor> exec{nullptr};
   mutable std::unique_ptr<ExecutorPrepareContext> ctx{nullptr};
+  mutable std::shared_ptr<InterpreterCore> core{nullptr};
 };
 
 class ConditionalBlockInferShape : public framework::InferShapeBase {
@@ -161,23 +244,51 @@ class ConditionalBlockGradOp : public ConditionalOp {
           platform::errors::InvalidArgument(
               "Expect Scope variable contains at least 1 scope, but got: %d",
               scopes.size()));
-      framework::Scope &cur_scope = *scopes[0];
+      framework::Scope &cur_scope = *(scopes[0]);
 
       auto *block = Attr<framework::BlockDesc *>("sub_block");
-
       VLOG(3) << "Conditional Grad block.idx = " << block->ID()
               << ", scope = " << &cur_scope;
-      if (!exec || !platform::is_same_place(exec->GetPlace(), dev_place)) {
-        auto &pdesc = *block->Program();
-        exec.reset(new Executor(dev_place));
-        if (FLAGS_use_mkldnn) exec->EnableMKLDNN(pdesc);
-        ctx = exec->Prepare(pdesc, block->ID(), inside_grads, false);
+
+      if (FLAGS_control_flow_use_new_executor) {
+        std::set<std::string> skip_gc_vars(inside_grads.begin(),
+                                           inside_grads.end());
+
+        if (!core || !platform::is_same_place(core->GetPlace(), dev_place)) {
+          VLOG(10) << "[interpreterCore cache]" << core.get();
+          VLOG_IF(10, core)
+              << platform::is_same_place(core->GetPlace(), dev_place);
+          core.reset(new InterpreterCore(dev_place,
+                                         *block,
+                                         skip_gc_vars,
+                                         &cur_scope,
+                                         /* used_for_jit */ false,
+                                         /* used_for_control_flow_op */ true));
+          VLOG(10) << "[interpreterCore cache]"
+                   << "new created:" << core;
+        } else {
+          details::BuildScopeForConditionalBlockOp(*core, *block, &cur_scope);
+          core->reset_scope(&cur_scope);
+        }
+        core->Run({}, false);
+
+      } else {
+        if (!exec || !platform::is_same_place(exec->GetPlace(), dev_place)) {
+          auto &pdesc = *block->Program();
+          exec.reset(new Executor(dev_place));
+          if (FLAGS_use_mkldnn) exec->EnableMKLDNN(pdesc);
+          ctx = exec->Prepare(pdesc, block->ID(), inside_grads, false);
 #ifdef PADDLE_WITH_MKLDNN
-        platform::AttachPointerHashToMKLDNNKey(exec.get(), dev_place);
-        platform::RegisterModelLayout(ctx->ops_, dev_place);
+          platform::AttachPointerHashToMKLDNNKey(exec.get(), dev_place);
+          platform::RegisterModelLayout(ctx->ops_, dev_place);
 #endif
+        }
+        exec->RunPreparedContext(ctx.get(),
+                                 &cur_scope,
+                                 /* create_local_scope */ false,
+                                 /* create_vars */ true,
+                                 /* keep_kids */ true);
       }
-      exec->RunPreparedContext(ctx.get(), &cur_scope, false, true, false);
 
       AssignLocalGradientToParentScope(
           dev_place, cur_scope, scope, inside_grads, outside_grads, inputs);
@@ -190,6 +301,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
  private:
   mutable std::shared_ptr<Executor> exec{nullptr};
   mutable std::unique_ptr<ExecutorPrepareContext> ctx{nullptr};
+  mutable std::shared_ptr<InterpreterCore> core{nullptr};
 
  private:
   void AssignLocalGradientToParentScope(
@@ -204,7 +316,8 @@ class ConditionalBlockGradOp : public ConditionalOp {
     for (size_t i = 0; i < outside_grads.size(); ++i) {
       const std::string &outside_grad_name = outside_grads[i];
       const std::string &inside_grad_name = inside_grads[i];
-      VLOG(4) << "inside_grad_name = " << inside_grad_name
+      VLOG(4) << "[assign local]"
+              << "inside_grad_name = " << inside_grad_name
               << ", outside_grad_name = " << outside_grad_name;
       framework::Variable *outside_var =
           parent_scope.FindVar(outside_grad_name);
@@ -237,7 +350,8 @@ class ConditionalBlockGradOp : public ConditionalOp {
     for (size_t i = 0; i < outside_grads.size(); ++i) {
       const std::string &outside_grad_name = outside_grads[i];
       const std::string &input_name = inputs[i];
-      VLOG(4) << "input_name = " << input_name
+      VLOG(4) << "[assign zero]"
+              << "input_name = " << input_name
               << ", outside_grad_name = " << outside_grad_name;
       framework::Variable *input_var = scope.FindVar(input_name);
       if (input_var == nullptr) {

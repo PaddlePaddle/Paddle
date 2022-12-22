@@ -65,6 +65,9 @@ void NaiveExecutor::Run() {
 #ifdef PADDLE_WITH_INFERENCE_NVTX
     platform::CudaNvtxRangePop();
 #endif
+    if (hookfunc_) {
+      hookfunc_(op.get());
+    }
   }
 #ifdef PADDLE_WITH_INFERENCE_NVTX
   platform::CudaNvtxRangePop();
@@ -130,7 +133,7 @@ void NaiveExecutor::CreateOps(const ProgramDesc &desc,
   }
 }
 
-LoDTensor *NaiveExecutor::FindTensor(const std::string &name) {
+phi::DenseTensor *NaiveExecutor::FindTensor(const std::string &name) {
   PADDLE_ENFORCE_NOT_NULL(scope_,
                           platform::errors::PreconditionNotMet(
                               "Need to init scope in NaiveExecutor firstly."));
@@ -138,18 +141,12 @@ LoDTensor *NaiveExecutor::FindTensor(const std::string &name) {
   PADDLE_ENFORCE_NOT_NULL(
       var,
       platform::errors::NotFound("No variable [%s] in current scope.", name));
-  auto *tensor = const_cast<LoDTensor *>(&var->Get<LoDTensor>());
+  auto *tensor = const_cast<phi::DenseTensor *>(&var->Get<phi::DenseTensor>());
   return tensor;
 }
 
-void NaiveExecutor::CleanFeedFetchOps() {
-  std::vector<std::unique_ptr<OperatorBase>> ops;
-  for (auto &op : ops_) {
-    if (op->Type() != "feed" && op->Type() != "fetch") {
-      ops.emplace_back(std::move(op));
-    }
-  }
-  ops_.swap(ops);
+void NaiveExecutor::RegisterOutputHook(const HookFunc &hookfunc) {
+  hookfunc_ = hookfunc;
 }
 
 NaiveExecutor::~NaiveExecutor() {

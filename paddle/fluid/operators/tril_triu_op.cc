@@ -93,7 +93,7 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 DECLARE_INFER_SHAPE_FUNCTOR(tril_triu,
                             TrilTriuInferShapeFunctor,
-                            PD_INFER_META(phi::TrilTriuInferMeta));
+                            PD_INFER_META(phi::TrilInferMeta));
 REGISTER_OPERATOR(tril_triu,
                   ops::TrilTriuOp,
                   ops::TrilTriuOpMaker,

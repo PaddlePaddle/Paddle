@@ -47,7 +47,7 @@ class TestNanInf(unittest.TestCase):
 
         # in python3, type(out+err) is 'bytes', need use encode
         if paddle.fluid.core.is_compiled_with_cuda():
-            assert (out + err).find('find nan or inf==='.encode()) != -1
+            assert (out + err).find('find_nan=1, find_inf=1'.encode()) != -1
         else:
             assert (out + err).find(
                 'There are `nan` or `inf` in tensor'.encode()
@@ -64,7 +64,7 @@ class TestNanInf(unittest.TestCase):
 
 class TestNanInfEnv(TestNanInf):
     def setUp(self):
-        super(TestNanInfEnv, self).setUp()
+        super().setUp()
         # windows python have some bug with env, so need use str to pass ci
         # otherwise, "TypeError: environment can only contain strings"
         self.env[str("PADDLE_INF_NAN_SKIP_OP")] = str("mul")

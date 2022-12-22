@@ -75,8 +75,8 @@ class CropTensorOp : public framework::OperatorWithKernel {
                             x_dim.size()));
       if (ctx->IsRuntime()) {
         // If true, set the shape of Output(Out) according to Input(Shape) in
-        // CropTensorKernel with ExecutionContext. Also check LoD in
-        // CropTensorKernel.
+        // CropKernel with ExecutionContext. Also check LoD in
+        // CropKernel.
         ctx->ShareLoD("X", /*->*/ "Out");
       } else {
         auto out_dims = std::vector<int>(shape_dim[0], -1);

@@ -106,9 +106,7 @@ def _reference_layer_norm_grad(
     grad_x = dx_end + d_mean + d_std
 
     grad_x.shape, x.shape, grad_y.shape = x_shape, x_shape, x_shape
-    var.shape, mean.shape = [N,], [
-        N,
-    ]
+    var.shape, mean.shape = [N], [N]
 
     if scale is not None:
         scale.shape = scale_shape

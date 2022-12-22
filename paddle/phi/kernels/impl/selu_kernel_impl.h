@@ -16,8 +16,8 @@
 #include <string>
 
 #include "paddle/fluid/operators/math.h"
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace phi {
 
@@ -86,7 +86,7 @@ void SeluKernel(const Context& dev_ctx,
   auto out_ptr = dev_ctx.template Alloc<T>(out);
   SeluFunctor<T> functor(x.data<T>(), alpha, scale, out_ptr);
   size_t limit = static_cast<size_t>(x.numel());
-  paddle::platform::ForRange<Context> for_range(dev_ctx, limit);
+  phi::funcs::ForRange<Context> for_range(dev_ctx, limit);
   for_range(functor);
 }
 }  // namespace phi

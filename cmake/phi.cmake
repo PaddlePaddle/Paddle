@@ -111,7 +111,7 @@ function(kernel_declare TARGET_LIST)
 endfunction()
 
 function(append_op_util_declare TARGET)
-  file(READ ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET} target_content)
+  file(READ ${TARGET} target_content)
   string(
     REGEX
       MATCH
@@ -134,13 +134,10 @@ function(register_op_utils TARGET_NAME)
   cmake_parse_arguments(register_op_utils "${options}" "${oneValueArgs}"
                         "${multiValueArgs}" ${ARGN})
 
-  file(
-    GLOB SIGNATURES
-    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-    "*_sig.cc")
+  file(GLOB SIGNATURES "${PADDLE_SOURCE_DIR}/paddle/phi/ops/compat/*_sig.cc")
   foreach(target ${SIGNATURES})
     append_op_util_declare(${target})
-    list(APPEND utils_srcs ${CMAKE_CURRENT_SOURCE_DIR}/${target})
+    list(APPEND utils_srcs ${target})
   endforeach()
 
   cc_library(

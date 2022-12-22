@@ -62,7 +62,7 @@ class Naive_fc_net(paddle.nn.Layer):
         use_raw_recompute=False,
         recompute_kwargs={},
     ):
-        super(Naive_fc_net, self).__init__()
+        super().__init__()
         self.recompute_blocks = recompute_blocks
         self.recompute_kwargs = recompute_kwargs
         self.use_fleet_sq = use_fleet_sq

@@ -18,7 +18,7 @@ import json
 import shutil
 
 
-class Info(object):
+class Info:
     def __repr__(self):
         return str(self.__dict__)
 

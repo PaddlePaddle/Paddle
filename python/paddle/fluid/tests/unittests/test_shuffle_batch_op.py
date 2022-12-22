@@ -32,7 +32,7 @@ class TestShuffleBatchOpBase(OpTest):
         # NOTE: shuffle_batch is not supported on Windows
         if os.name == 'nt':
             return [fluid.CPUPlace()]
-        return super(TestShuffleBatchOpBase, self)._get_places()
+        return super()._get_places()
 
     def setUp(self):
         self.op_type = 'shuffle_batch'

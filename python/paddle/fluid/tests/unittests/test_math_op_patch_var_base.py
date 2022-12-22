@@ -511,7 +511,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         np.testing.assert_array_equal(
             x.asinh().numpy(), paddle.asinh(x).numpy()
         )
-        ### acosh(x) = nan, need to change input
+        # acosh(x) = nan, need to change input
         t_np = np.random.uniform(1, 2, [2, 3]).astype(self.dtype)
         t = paddle.to_tensor(t_np)
         np.testing.assert_array_equal(

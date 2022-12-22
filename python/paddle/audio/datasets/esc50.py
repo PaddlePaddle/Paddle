@@ -20,7 +20,7 @@ from paddle.utils import download
 from paddle.dataset.common import DATA_HOME
 from .dataset import AudioClassificationDataset
 
-__all__ = ['ESC50']
+__all__ = []
 
 
 class ESC50(AudioClassificationDataset):
@@ -143,12 +143,15 @@ class ESC50(AudioClassificationDataset):
         split: int = 1,
         feat_type: str = 'raw',
         archive=None,
-        **kwargs
+        **kwargs,
     ):
+        assert split in range(
+            1, 6
+        ), f'The selected split should be integer, and 1 <= split <= 5, but got {split}'
         if archive is not None:
             self.archive = archive
         files, labels = self._get_data(mode, split)
-        super(ESC50, self).__init__(
+        super().__init__(
             files=files, labels=labels, feat_type=feat_type, **kwargs
         )
 

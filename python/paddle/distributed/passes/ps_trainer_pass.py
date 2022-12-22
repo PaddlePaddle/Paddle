@@ -26,7 +26,7 @@ from paddle.fluid.framework import Program, Parameter
 @register_pass("append_send_ops_pass")
 class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
     def __init__(self):
-        super(AppendSendOpsPass, self).__init__()
+        super().__init__()
 
     def _check_self(self):
         return True
@@ -115,7 +115,7 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
 @register_pass("distributed_ops_pass")
 class DistributedOpsPass(PassBase):
     def __init__(self):
-        super(DistributedOpsPass, self).__init__()
+        super().__init__()
         self.w_2_table_id = {}
         self.emb_size = {}
 
@@ -304,7 +304,7 @@ class DistributedOpsPass(PassBase):
                                 if found:
                                     break
                             if found:
-                                if output_indexes[j] == True:
+                                if output_indexes[j]:
                                     warnings.warn(
                                         "unable to re-arrange dags order to combine distributed embedding ops"
                                     )
@@ -533,7 +533,7 @@ class DistributedOpsPass(PassBase):
 @register_pass("delete_optimizer_pass")
 class DeleteOptimizesPass(PassBase):
     def __init__(self):
-        super(DeleteOptimizesPass, self).__init__()
+        super().__init__()
 
     def _check_self(self):
         return True
@@ -617,7 +617,7 @@ class DeleteOptimizesPass(PassBase):
 @register_pass("delete_extra_optimizer_pass")
 class DeleteExtraOptimizerPass(PassBase):
     def __init__(self):
-        super(DeleteExtraOptimizerPass, self).__init__()
+        super().__init__()
 
     def _check_self(self):
         return True
@@ -674,7 +674,7 @@ class DeleteExtraOptimizerPass(PassBase):
 @register_pass("fake_init_ops_pass")
 class FakeInitOpsPass(PassBase):
     def __init__(self):
-        super(FakeInitOpsPass, self).__init__()
+        super().__init__()
 
     def _check_self(self):
         return True
@@ -729,7 +729,7 @@ class FakeInitOpsPass(PassBase):
 @register_pass("ps_gpu_pass")
 class PsGpuPass(PassBase):
     def __init__(self):
-        super(PsGpuPass, self).__init__()
+        super().__init__()
 
     def _check_self(self):
         return True
@@ -831,7 +831,7 @@ class PsGpuPass(PassBase):
 @register_pass("ps_transpile_pass")
 class PsTranspilePass(PassBase):
     def __init__(self):
-        super(PsTranspilePass, self).__init__()
+        super().__init__()
 
     def _check_self(self):
         return True
@@ -856,7 +856,7 @@ class PsTranspilePass(PassBase):
 @register_pass("split_heter_worker_ops_pass")
 class SplitHeterWorkerOpsPass(PassBase):
     def __init__(self):
-        super(SplitHeterWorkerOpsPass, self).__init__()
+        super().__init__()
 
     def _check_self(self):
         return True
@@ -1064,7 +1064,7 @@ class SplitHeterWorkerOpsPass(PassBase):
 @register_pass("split_trainer_ops_pass")
 class SplitTrainerOpsPass(PassBase):
     def __init__(self):
-        super(SplitTrainerOpsPass, self).__init__()
+        super().__init__()
 
     def _check_self(self):
         return True
@@ -1222,8 +1222,8 @@ class SplitTrainerOpsPass(PassBase):
             # runtime attribute
             "endpoint": get_trainer_endpoint(
                 role_maker
-            ),  ## get trainer endpoint
-            "fanin": 0,  ## get heter worker
+            ),  # get trainer endpoint
+            "fanin": 0,  # get heter worker
             "pserver_id": get_role_id(role_maker),
             "distributed_mode": attrs['ps_mode'],
             "rpc_exec_thread_num": int(os.getenv("CPU_NUM", 32)),
@@ -1238,7 +1238,7 @@ class SplitTrainerOpsPass(PassBase):
             attrs=attrs,
         )
 
-        ## TODO add check for bp block
+        # TODO add check for bp block
         # check_op_device(program.global_block(), DEFAULT_DEVICE)
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
@@ -1272,7 +1272,7 @@ class SplitTrainerOpsPass(PassBase):
 @register_pass("set_heter_pipeline_opt_pass")
 class SetHeterPipelineOptPass(PassBase):
     def __init__(self):
-        super(SetHeterPipelineOptPass, self).__init__()
+        super().__init__()
 
     def _check_self(self):
         return True
@@ -1296,7 +1296,7 @@ class SetHeterPipelineOptPass(PassBase):
         main_program._heter_pipeline_opt = {
             "trainer": "HeterPipelineTrainer",
             "device_worker": "HeterSection",
-            "trainers": role_maker._get_stage_trainers(),  ## trainer num in each stage
+            "trainers": role_maker._get_stage_trainers(),  # trainer num in each stage
             "trainer_id": int(role_maker._role_id()),
             "pipeline_stage": int(role_maker._get_stage_id()) - 1,
             "num_pipeline_stages": int(role_maker._get_num_stage()),
@@ -1310,7 +1310,7 @@ class SetHeterPipelineOptPass(PassBase):
 @register_pass("split_fl_ops_pass")
 class SplitFlOpsPass(PassBase):
     def __init__(self):
-        super(SplitFlOpsPass, self).__init__()
+        super().__init__()
         self.PART_A_DEVICE_FlAG = 'gpu:0'
         self.PART_A_JOINT_OP_DEVICE_FlAG = 'gpu:2'
         self.PART_B_DEVICE_FlAG = 'gpu:1'
@@ -1524,7 +1524,7 @@ class SplitFlOpsPass(PassBase):
         attrs = {
             "message_to_block_id": [grad_to_block_id],
             "optimize_blocks": [second_block],
-            "endpoint": get_trainer_endpoint(self.role_maker),  ##
+            "endpoint": get_trainer_endpoint(self.role_maker),
             "fanin": 0,
             "pserver_id": get_role_id(self.role_maker),
             "distributed_mode": self.ps_mode,
@@ -1584,7 +1584,7 @@ class SplitFlOpsPass(PassBase):
         grad_to_block_id = block_input_flag + ":" + str(second_block.idx)
         attrs = {
             "message_to_block_id": [grad_to_block_id],
-            "optimize_blocks": [second_block],  ## what to do?
+            "optimize_blocks": [second_block],  # what to do?
             "endpoint": get_heter_worker_endpoint(self.role_maker),
             "fanin": len(get_previous_stage_trainers(self.role_maker)),
             "pserver_id": 1,  # TODO

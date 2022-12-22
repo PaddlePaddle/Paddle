@@ -18,8 +18,8 @@
 #include <vector>
 
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -80,16 +80,16 @@ void IndexSampleKernel(const Context& ctx,
   size_t input_length = input_dim[1];
   size_t index_length = index_dim[1];
 
-  auto block_width = paddle::platform::RoundToPowerOfTwo(index_length);
+  auto block_width = phi::backends::gpu::RoundToPowerOfTwo(index_length);
   block_width = MIN(block_width, PREDEFINED_BLOCK_SIZE_X);
   int block_height =
-      paddle::platform::RoundToPowerOfTwo(index_length * batch_size) /
+      phi::backends::gpu::RoundToPowerOfTwo(index_length * batch_size) /
       block_width;
   block_height = MIN(block_height, PREDEFINED_BLOCK_SIZE / block_width);
   dim3 block_dim(block_width, block_height);
   dim3 grid_dim((index_length + block_dim.x - 1) / block_dim.x,
                 (batch_size + block_dim.y - 1) / block_dim.y);
-  paddle::platform::LimitGridDim(ctx, &grid_dim);
+  phi::backends::gpu::LimitGridDim(ctx, &grid_dim);
 
   if (index_type == DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();

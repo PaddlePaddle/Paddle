@@ -29,7 +29,7 @@ class TestSparseUnary(unittest.TestCase):
         origin_x = paddle.rand([8, 16, 32], dtype='float32')
         mask = paddle.randint(0, 2, [8, 16, 32]).astype('float32')
 
-        ### check sparse coo with dense ###
+        # --- check sparse coo with dense --- #
         dense_x = origin_x * mask
         sp_x = self.to_sparse(dense_x, format)
 

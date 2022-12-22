@@ -29,7 +29,7 @@ random.seed(0)
 np.random.seed(0)
 
 
-class SmoothedValue(object):
+class SmoothedValue:
     """Track a series of values and provide access to smoothed values over a
     window or the global series average.
     """
@@ -46,7 +46,7 @@ class SmoothedValue(object):
         return self.loss_sum / self.iter_cnt
 
 
-class FakeDataReader(object):
+class FakeDataReader:
     def __init__(self):
         self.generator_out = []
         self.total_iter = cfg.max_iter

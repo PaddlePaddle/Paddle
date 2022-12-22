@@ -58,7 +58,7 @@ class MultiHeadAttention(nn.Layer):
         fuse=False,
         mesh_idx=None,
     ):
-        super(MultiHeadAttention, self).__init__()
+        super().__init__()
         self.embed_dim = embed_dim
         self.kdim = kdim if kdim is not None else embed_dim
         self.vdim = vdim if vdim is not None else embed_dim
@@ -296,7 +296,7 @@ class TransformerDecoder(nn.Layer):
     """
 
     def __init__(self, decoder_layers, num_layers, norm=None, hidden_size=None):
-        super(TransformerDecoder, self).__init__()
+        super().__init__()
 
         self.num_layers = num_layers
         self.layers = decoder_layers
@@ -533,7 +533,7 @@ class TransformerDecoderLayer(nn.Layer):
         self._config.pop("self")
         self._config.pop("__class__", None)  # py3
         self.mesh_idx = mesh_idx
-        super(TransformerDecoderLayer, self).__init__()
+        super().__init__()
         attn_dropout = dropout if attn_dropout is None else attn_dropout
         act_dropout = dropout if act_dropout is None else act_dropout
         self.normalize_before = normalize_before
@@ -641,7 +641,7 @@ class GPTEmbeddings(nn.Layer):
         type_vocab_size=16,
         initializer_range=0.02,
     ):
-        super(GPTEmbeddings, self).__init__()
+        super().__init__()
         self.word_embeddings = nn.Embedding(
             vocab_size,
             hidden_size,
@@ -717,7 +717,7 @@ class GPTModel(nn.Layer):
         eol_token_id=3,
         pp_degree=None,
     ):
-        super(GPTModel, self).__init__()
+        super().__init__()
         self.pad_token_id = pad_token_id
         self.initializer_range = initializer_range
         self.hidden_size = hidden_size
@@ -834,7 +834,7 @@ class GPTForPretraining(nn.Layer):
         hidden_size=768,
         initializer_range=0.02,
     ):
-        super(GPTForPretraining, self).__init__()
+        super().__init__()
         self.gpt = gpt
 
     def forward(
@@ -916,7 +916,7 @@ class GPTPretrainingCriterion(nn.Layer):
     """
 
     def __init__(self):
-        super(GPTPretrainingCriterion, self).__init__()
+        super().__init__()
         self.loss_func = paddle.nn.CrossEntropyLoss(reduction="none")
 
     def forward(self, prediction_scores, masked_lm_labels, loss_mask):

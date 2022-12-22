@@ -112,7 +112,7 @@ def _apply_pass(
     return graph
 
 
-class PostTrainingQuantization(object):
+class PostTrainingQuantization:
     """
     Utilizing post training quantization methon to quantize the FP32 model,
     and it uses calibrate data to get the quantization information for all
@@ -344,7 +344,7 @@ class PostTrainingQuantization(object):
         # Save input params
         self._bias_correction = bias_correction
         self._executor = executor
-        self._scope = global_scope() if scope == None else scope
+        self._scope = global_scope() if scope is None else scope
         self._model_dir = model_dir
         self._model_filename = model_filename
         self._params_filename = params_filename
@@ -476,7 +476,7 @@ class PostTrainingQuantization(object):
 
         self._reset_activation_persistable()
 
-        if self._algo is 'min_max':
+        if self._algo == 'min_max':
             self._save_input_threhold()
         else:
             self._update_program()
@@ -1481,7 +1481,7 @@ class PostTrainingQuantizationProgram(PostTrainingQuantization):
         self._fetch_list = fetch_list
 
 
-class WeightQuantization(object):
+class WeightQuantization:
     _supported_quantizable_op_type = ['conv2d', 'depthwise_conv2d', 'mul']
     _supported_weight_quantize_type = ['channel_wise_abs_max', 'abs_max']
 

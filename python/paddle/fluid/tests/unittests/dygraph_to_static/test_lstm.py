@@ -22,7 +22,7 @@ import tempfile
 
 class LSTMLayer(nn.Layer):
     def __init__(self, in_channels, hidden_size):
-        super(LSTMLayer, self).__init__()
+        super().__init__()
         self.cell = nn.LSTM(
             in_channels, hidden_size, direction='bidirectional', num_layers=2
         )
@@ -34,7 +34,7 @@ class LSTMLayer(nn.Layer):
 
 class Net(nn.Layer):
     def __init__(self, in_channels, hidden_size):
-        super(Net, self).__init__()
+        super().__init__()
         self.lstm = LSTMLayer(in_channels, hidden_size)
 
     def forward(self, x):
@@ -120,7 +120,7 @@ class TestLstm(unittest.TestCase):
 
 class LinearNet(nn.Layer):
     def __init__(self):
-        super(LinearNet, self).__init__()
+        super().__init__()
         self.fc = nn.Linear(10, 12)
         self.dropout = nn.Dropout(0.5)
 

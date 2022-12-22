@@ -31,7 +31,7 @@ class AffineGridTestCase(unittest.TestCase):
         invalid_theta=False,
         variable_output_shape=False,
     ):
-        super(AffineGridTestCase, self).__init__(methodName)
+        super().__init__(methodName)
 
         self.theta_shape = theta_shape
         self.output_shape = output_shape

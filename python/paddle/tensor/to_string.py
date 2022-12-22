@@ -19,7 +19,7 @@ from paddle.fluid.data_feeder import check_type, convert_dtype
 __all__ = []
 
 
-class PrintOptions(object):
+class PrintOptions:
     precision = 8
     threshold = 1000
     edgeitems = 3

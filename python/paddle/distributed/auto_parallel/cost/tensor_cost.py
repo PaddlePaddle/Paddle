@@ -100,9 +100,9 @@ class TensorCost:
 
         if dtype == paddle.float32 or dtype == paddle.int32:
             dtype_factor = 4
-        elif node.dtype == paddle.int64:
+        elif dtype == paddle.int64:
             dtype_factor = 8
-        elif node.dtype == paddle.uint8:
+        elif dtype == paddle.uint8:
             dtype_factor = 1
         else:
             dtype_factor = 2

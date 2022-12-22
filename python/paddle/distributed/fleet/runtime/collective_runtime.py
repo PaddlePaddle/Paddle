@@ -20,7 +20,7 @@ __all__ = []
 
 class CollectiveRuntime(RuntimeBase):
     def __init__(self):
-        super(CollectiveRuntime, self).__init__()
+        super().__init__()
 
     def _init_worker(self):
         logging.warn(

@@ -106,7 +106,7 @@ def init_rpc(name, rank=None, world_size=None, master_endpoint=None):
     logger.info("Trainer {}: worker endpoint: {}".format(rank, worker_endpoint))
     master_endpoint = (
         master_endpoint
-        if master_endpoint != None
+        if master_endpoint is not None
         else os.environ["PADDLE_MASTER_ENDPOINT"]
     )
     master_addr, master_port = master_endpoint.split(":")

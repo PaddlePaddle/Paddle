@@ -164,61 +164,65 @@ void LoadCustomDevice(const std::string &library_dir) {
 }
 #endif
 
+static std::once_flag init_devices_flag;
+
 void InitDevices() {
-  // set name at the entry point of Paddle
-  platform::SetCurrentThreadName("MainThread");
+  std::call_once(init_devices_flag, []() {
+    // set name at the entry point of Paddle
+    platform::SetCurrentThreadName("MainThread");
 // CUPTI attribute should be set before any CUDA context is created (see CUPTI
 // documentation about CUpti_ActivityAttribute).
 #ifdef PADDLE_WITH_CUDA
-  InitCupti();
+    InitCupti();
 #endif
-  /*Init all available devices by default */
-  std::vector<int> devices;
+    /*Init all available devices by default */
+    std::vector<int> devices;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  try {
-    // use user specified GPUs in single-node multi-process mode.
-    devices = platform::GetSelectedDevices();
-  } catch (const std::exception &exp) {
-    LOG(WARNING) << "Compiled with WITH_GPU, but no GPU found in runtime.";
-  }
+    try {
+      // use user specified GPUs in single-node multi-process mode.
+      devices = platform::GetSelectedDevices();
+    } catch (const std::exception &exp) {
+      LOG(WARNING) << "Compiled with WITH_GPU, but no GPU found in runtime.";
+    }
 #endif
 #ifdef PADDLE_WITH_XPU
-  try {
-    // use user specified XPUs in single-node multi-process mode.
-    devices = platform::GetXPUSelectedDevices();
-  } catch (const std::exception &exp) {
-    LOG(WARNING) << "Compiled with WITH_XPU, but no XPU found in runtime.";
-  }
+    try {
+      // use user specified XPUs in single-node multi-process mode.
+      devices = platform::GetXPUSelectedDevices();
+    } catch (const std::exception &exp) {
+      LOG(WARNING) << "Compiled with WITH_XPU, but no XPU found in runtime.";
+    }
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
-  // NOTE(zhiqiu): use singleton to explicitly init and finalize ACL
-  platform::AclInstance::Instance();  // NOLINT
-  try {
-    // use user specified XPUs in single-node multi-process mode.
-    devices = platform::GetSelectedNPUDevices();
-  } catch (const std::exception &exp) {
-    LOG(WARNING)
-        << "Compiled with PADDLE_WITH_ASCEND_CL, but no NPU found in runtime.";
-  }
+    // NOTE(zhiqiu): use singleton to explicitly init and finalize ACL
+    platform::AclInstance::Instance();  // NOLINT
+    try {
+      // use user specified XPUs in single-node multi-process mode.
+      devices = platform::GetSelectedNPUDevices();
+    } catch (const std::exception &exp) {
+      LOG(WARNING) << "Compiled with PADDLE_WITH_ASCEND_CL, but no NPU found "
+                      "in runtime.";
+    }
 #endif
 #ifdef PADDLE_WITH_IPU
-  try {
-    // use user specified IPUs.
-    devices = platform::GetSelectedIPUDevices();
-  } catch (const std::exception &exp) {
-    LOG(WARNING)
-        << "Compiled with PADDLE_WITH_IPU, but no IPU found in runtime.";
-  }
+    try {
+      // use user specified IPUs.
+      devices = platform::GetSelectedIPUDevices();
+    } catch (const std::exception &exp) {
+      LOG(WARNING)
+          << "Compiled with PADDLE_WITH_IPU, but no IPU found in runtime.";
+    }
 #endif
 #ifdef PADDLE_WITH_MLU
-  try {
-    // use user specified MLUs in single-node multi-process mode.
-    devices = platform::GetMLUSelectedDevices();
-  } catch (const std::exception &exp) {
-    LOG(WARNING) << "Compiled with WITH_MLU, but no MLU found in runtime.";
-  }
+    try {
+      // use user specified MLUs in single-node multi-process mode.
+      devices = platform::GetMLUSelectedDevices();
+    } catch (const std::exception &exp) {
+      LOG(WARNING) << "Compiled with WITH_MLU, but no MLU found in runtime.";
+    }
 #endif
-  InitDevices(devices);
+    InitDevices(devices);
+  });
 }
 
 void InitDevices(const std::vector<int> devices) {

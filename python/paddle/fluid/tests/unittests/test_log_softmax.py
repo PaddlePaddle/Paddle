@@ -69,6 +69,26 @@ class TestLogSoftmaxOp(OpTest):
         )
 
 
+class TestLogSoftmaxOp_ZeroDim(TestLogSoftmaxOp):
+    def setUp(self):
+        self.op_type = 'log_softmax'
+        self.python_api = F.log_softmax
+        self.dtype = 'float64'
+
+        x = np.random.uniform(0.1, 1.0, []).astype(self.dtype)
+        out = np.array(0.0).astype(self.dtype)
+
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+        self.attrs = {'axis': -1}
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], ['Out'], check_eager=True)
+
+
 class TestLogSoftmaxShape(TestLogSoftmaxOp):
     def set_attrs(self):
         self.shape = [12, 10]

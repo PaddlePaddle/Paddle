@@ -55,7 +55,7 @@ def _is_number_or_matrix_(var):
     return _is_number_(var) or isinstance(var, np.ndarray)
 
 
-class MetricBase(object):
+class MetricBase:
     """
     In many cases, we usually have to split the test data into mini-batches for evaluating
     deep neural networks, therefore we need to collect the evaluation results of each
@@ -99,7 +99,7 @@ class MetricBase(object):
             The MetricBase or its succeed classes
 
         """
-        self._name = str(name) if name != None else self.__class__.__name__
+        self._name = str(name) if name is not None else self.__class__.__name__
 
     def __str__(self):
         return self._name
@@ -231,7 +231,7 @@ class CompositeMetric(MetricBase):
     """
 
     def __init__(self, name=None):
-        super(CompositeMetric, self).__init__(name)
+        super().__init__(name)
         self._metrics = []
 
     def add_metric(self, metric):
@@ -308,7 +308,7 @@ class Precision(MetricBase):
     """
 
     def __init__(self, name=None):
-        super(Precision, self).__init__(name)
+        super().__init__(name)
         self.tp = 0  # true positive
         self.fp = 0  # false positive
 
@@ -391,7 +391,7 @@ class Recall(MetricBase):
     """
 
     def __init__(self, name=None):
-        super(Recall, self).__init__(name)
+        super().__init__(name)
         self.tp = 0  # true positive
         self.fn = 0  # false negative
 
@@ -472,7 +472,7 @@ class Accuracy(MetricBase):
     """
 
     def __init__(self, name=None):
-        super(Accuracy, self).__init__(name)
+        super().__init__(name)
         self.value = 0.0
         self.weight = 0.0
 
@@ -560,7 +560,7 @@ class ChunkEvaluator(MetricBase):
     """
 
     def __init__(self, name=None):
-        super(ChunkEvaluator, self).__init__(name)
+        super().__init__(name)
         self.num_infer_chunks = 0
         self.num_label_chunks = 0
         self.num_correct_chunks = 0
@@ -671,7 +671,7 @@ class EditDistance(MetricBase):
     """
 
     def __init__(self, name):
-        super(EditDistance, self).__init__(name)
+        super().__init__(name)
         self.total_distance = 0.0
         self.seq_num = 0
         self.instance_error = 0
@@ -757,7 +757,7 @@ class Auc(MetricBase):
     """
 
     def __init__(self, name, curve='ROC', num_thresholds=4095):
-        super(Auc, self).__init__(name=name)
+        super().__init__(name=name)
         self._curve = curve
         self._num_thresholds = num_thresholds
 
@@ -818,7 +818,7 @@ class Auc(MetricBase):
         )
 
 
-class DetectionMAP(object):
+class DetectionMAP:
     """
     Calculate the detection mean average precision (mAP).
 

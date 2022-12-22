@@ -27,6 +27,16 @@ class MockLease:
         pass
 
 
+class MockKVMetadata:
+    def __init__(self, key):
+        self.key = key
+        self.create_revision = 2
+        self.mod_revision = 3
+        self.version = 2
+        self.lease_id = 0
+        self.response_header = None
+
+
 class MockEtcdClient:
     def __init__(self, lease=None):
         self._lease = lease
@@ -35,28 +45,30 @@ class MockEtcdClient:
         pass
 
     def get(self, key):
-        value = "0"
-        return value, value
+        return b'0', MockKVMetadata(b"/prefix")
 
     def delete_prefix(self, key):
         pass
 
     def get_prefix(self, key_prefix):
-        hosts = ["10.10.10.1:6001", "10.10.10.2:6001"]
-        return hosts
+        hosts = [
+            (b"/prefix/host1", b"10.10.10.1:6001"),
+            (b"/prefix/host2", b"10.10.10.2:6001"),
+        ]
+        return ((v, MockKVMetadata(k)) for k, v in hosts)
 
     def add_watch_callback(self, *args, **kwargs):
-        return "host_watch"
+        return 0
 
     def add_watch_prefix_callback(self, key_prefix, callback, **kwargs):
         callback(None)
-        return "host_watch"
+        return 0
 
     def cancel_watch(self, watch_id):
         pass
 
     def delete(self, key):
-        pass
+        return True
 
     def lease(self, ttl):
         if self._lease:

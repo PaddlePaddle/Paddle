@@ -84,7 +84,6 @@ bool DependencyBuilder::OpHappensBefore(int prior_op_idx,
 }
 
 void DependencyBuilder::AddDependencyForCoalesceTensorOp() {
-  const std::string kCoalesceTensor = "coalesce_tensor";
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
     if (instructions_->at(op_idx).OpBase()->Type() == kCoalesceTensor) {
       VLOG(4) << "Add depend for " << kCoalesceTensor << " " << op_idx;
@@ -151,9 +150,8 @@ void DependencyBuilder::AddDependencyForCoalesceTensorOp() {
       // 'first_read_fused_out_op'
       size_t target = first_read_fused_out_op;
       for (size_t j = first_read_fused_out_op + 1; j < op_num_; ++j) {
-        if (j == target + 1 &&
-            IsCommunicationOp(instructions_->at(target).OpBase()->Type()) &&
-            IsCommunicationOp(instructions_->at(j).OpBase()->Type())) {
+        if (j == target + 1 && IsCommunicationOp(instructions_->at(target)) &&
+            IsCommunicationOp(instructions_->at(j))) {
           VLOG(4) << "Found consecutive communication ops, "
                   << instructions_->at(target).OpBase()->Type() << " -> "
                   << instructions_->at(j).OpBase()->Type();
@@ -174,7 +172,7 @@ void DependencyBuilder::AddDependencyForCoalesceTensorOp() {
 void DependencyBuilder::AddDependencyForCommunicationOp() {
   int dependence_op_idx = -1;
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
-    if (IsCommunicationOp(instructions_->at(op_idx).OpBase()->Type())) {
+    if (IsCommunicationOp(instructions_->at(op_idx))) {
       if (dependence_op_idx != -1) {
         AddDownstreamOp(dependence_op_idx, op_idx);
       }

@@ -209,7 +209,7 @@ class TestMultiDotOp4MatFirstAndLast1D(TestMultiDotOp4Mat):
         self.outputs = {'Out': multi_dot([self.A, self.B, self.C, self.D])}
 
 
-#####python API test#######
+# python API test
 class TestMultiDotOpError(unittest.TestCase):
     def test_errors(self):
         with paddle.static.program_guard(

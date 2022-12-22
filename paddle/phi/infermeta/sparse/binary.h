@@ -45,7 +45,7 @@ void Pool3dInferMeta(const MetaTensor& x,
 
 void SparseCooTensorInferMeta(const MetaTensor& values,
                               const MetaTensor& indices,
-                              const IntArray& dense_shape,
+                              const std::vector<int64_t>& shape,
                               MetaTensor* out);
 
 }  // namespace sparse

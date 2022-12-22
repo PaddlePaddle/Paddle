@@ -103,6 +103,12 @@ class TestLogsumexp(OpTest):
         return dy * np.exp(x - y)
 
 
+class TestLogsumexp_ZeroDim(TestLogsumexp):
+    def set_attrs(self):
+        self.shape = []
+        self.axis = []
+
+
 class TestLogsumexp_shape(TestLogsumexp):
     def set_attrs(self):
         self.shape = [4, 5, 6]

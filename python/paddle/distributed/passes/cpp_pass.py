@@ -20,7 +20,7 @@ from paddle.fluid.framework import core, _apply_pass as _apply_cpp_pass
 @register_pass("fuse_elewise_add_act")
 class FuseElementwiseAddActPass(CPPPassWrapper):
     def __init__(self):
-        super(FuseElementwiseAddActPass, self).__init__()
+        super().__init__()
 
     @property
     def cpp_name(self):
@@ -33,7 +33,7 @@ class FuseElementwiseAddActPass(CPPPassWrapper):
 @register_pass("fuse_bn_act")
 class FuseBatchNormActPass(CPPPassWrapper):
     def __init__(self):
-        super(FuseBatchNormActPass, self).__init__()
+        super().__init__()
 
     @property
     def cpp_name(self):
@@ -46,7 +46,7 @@ class FuseBatchNormActPass(CPPPassWrapper):
 @register_pass("fuse_bn_add_act")
 class FuseBatchNormAddActPass(CPPPassWrapper):
     def __init__(self):
-        super(FuseBatchNormAddActPass, self).__init__()
+        super().__init__()
 
     @property
     def cpp_name(self):
@@ -59,7 +59,7 @@ class FuseBatchNormAddActPass(CPPPassWrapper):
 @register_pass("fuse_relu_depthwise_conv")
 class FuseReluDepthwiseConvPass(CPPPassWrapper):
     def __init__(self):
-        super(FuseReluDepthwiseConvPass, self).__init__()
+        super().__init__()
 
     @property
     def cpp_name(self):
@@ -72,7 +72,7 @@ class FuseReluDepthwiseConvPass(CPPPassWrapper):
 @register_pass("fuse_optimizer")
 class FuseOptimizerPass(CPPPassWrapper):
     def __init__(self):
-        super(FuseOptimizerPass, self).__init__()
+        super().__init__()
 
     @property
     def cpp_name(self):
@@ -89,7 +89,7 @@ class FuseOptimizerPass(CPPPassWrapper):
 @register_pass("inplace_addto_op")
 class InplaceAddtoOpPass(CPPPassWrapper):
     def __init__(self):
-        super(InplaceAddtoOpPass, self).__init__()
+        super().__init__()
 
     @property
     def cpp_name(self):
@@ -109,7 +109,7 @@ def _set_cinn_op_flag(flag_name, extra_ops):
 @register_pass("build_cinn")
 class BuildCINNPass(CPPPassWrapper):
     def __init__(self):
-        super(BuildCINNPass, self).__init__()
+        super().__init__()
         self.set_attr("allow_ops", [])
         self.set_attr("deny_ops", [])
 

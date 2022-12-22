@@ -34,7 +34,7 @@ __all__ = [  # noqa
 ]
 
 
-class ProfilerOptions(object):
+class ProfilerOptions:
     def __init__(self, options=None):
         self.options = {
             'state': 'All',
@@ -74,7 +74,7 @@ class ProfilerOptions(object):
 _current_profiler = None
 
 
-class Profiler(object):
+class Profiler:
     def __init__(self, enabled=True, options=None):
         if options is not None:
             self.profiler_options = options

@@ -20,18 +20,19 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-class LayerNormMKLDNNHandler
-    : public platform::
-          MKLDNNHandlerNoCachingT<T, dnnl::layer_normalization_forward> {
+class LayerNormOneDNNHandler
+    : public phi::funcs::
+          OneDNNHandlerNoCachingT<T, dnnl::layer_normalization_forward> {
  public:
-  LayerNormMKLDNNHandler(const std::vector<int64_t>& dims,
+  LayerNormOneDNNHandler(const std::vector<int64_t>& dims,
                          const float& epsilon,
                          const dnnl::normalization_flags& flags,
                          const bool& is_test,
                          const phi::DenseTensor* x,
                          const dnnl::engine engine,
                          platform::Place cpu_place)
-      : platform::MKLDNNHandlerNoCachingT<T, dnnl::layer_normalization_forward>(
+      : phi::funcs::OneDNNHandlerNoCachingT<T,
+                                            dnnl::layer_normalization_forward>(
             engine, cpu_place) {
     const auto fwd_prop_kind = is_test ? dnnl::prop_kind::forward_inference
                                        : dnnl::prop_kind::forward_training;
@@ -103,7 +104,7 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       flags |= dnnl::normalization_flags::use_scale_shift;
     }
 
-    LayerNormMKLDNNHandler<T> handler(
+    LayerNormOneDNNHandler<T> handler(
         src_tz, epsilon, flags, is_test, x, mkldnn_engine, ctx.GetPlace());
 
     auto src_memory = handler.AcquireSrcMemory(x);

@@ -473,7 +473,7 @@ class ResNetBasicBlock(Layer):
         trainable_statistics=False,
         find_conv_max=True,
     ):
-        super(ResNetBasicBlock, self).__init__()
+        super().__init__()
         self._stride1 = stride1
         self._stride2 = stride2
         self._kernel1_size = utils.convert_to_list(

@@ -94,6 +94,9 @@ class XPUTestArgsortOp(XPUOpTestWrapper):
         def test_check_output(self):
             self.check_output_with_place(self.place)
 
+        def test_check_grad(self):
+            self.check_grad_with_place(self.place, {'X'}, 'Out')
+
 
 support_types = get_xpu_op_support_types('argsort')
 for stype in support_types:

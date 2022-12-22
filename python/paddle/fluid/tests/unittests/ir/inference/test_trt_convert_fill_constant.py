@@ -21,7 +21,7 @@ from functools import partial
 from typing import Any, Dict, List
 
 
-class TrtConvertSplitTest(TrtLayerAutoScanTest):
+class TrtConvertFillConstantTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -36,7 +36,7 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
             return np.array([4]).astype(np.int32)
 
         for shape in [[2, 3, 4]]:
-            for num_input in [0, 1, 2, 3]:
+            for num_input in [0, 1, 2]:
                 for dtype in [5, 2, 3]:
                     for str_value in ["2", "23", "-1"]:
                         self.num_input = num_input

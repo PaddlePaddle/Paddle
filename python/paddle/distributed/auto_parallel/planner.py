@@ -437,7 +437,7 @@ class SearchAlgorithm:
 
     @property
     def name(self):
-        self.name = name
+        self.name = self._name
 
     def search(self):
         raise NotImplementedError("Please Implement this method in subclass.")
@@ -445,7 +445,7 @@ class SearchAlgorithm:
 
 class MCMC(SearchAlgorithm):
     def __init__(self, serial_program_info, parallelizer, max_search_times=5):
-        super(MCMC, self).__init__("mcmc")
+        super().__init__("mcmc")
         self._serial_program_info = serial_program_info
         self._max_search_times = max_search_times
         self._parallelizer = parallelizer

@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -141,15 +142,14 @@ void ArgMinMaxKernel(const Context& dev_ctx,
                      int dtype,
                      DenseTensor* out) {
   if (dtype < 0) {
-    paddle::framework::VisitDataTypeTiny(
-        static_cast<paddle::framework::proto::VarType::Type>(
-            paddle::framework::proto::VarType::INT64),
+    phi::VisitDataTypeTiny(
+        phi::DataType::INT64,
         VisitDataArgMinMaxFunctor<Context, T, EnumArgMinMaxValue>(
             dev_ctx, x, axis.to<int64_t>(), keepdims, flatten, out));
     return;
   }
-  paddle::framework::VisitDataTypeTiny(
-      static_cast<paddle::framework::proto::VarType::Type>(dtype),
+  phi::VisitDataTypeTiny(
+      var_type_map[dtype],
       VisitDataArgMinMaxFunctor<Context, T, EnumArgMinMaxValue>(
           dev_ctx, x, axis.to<int64_t>(), keepdims, flatten, out));
 }

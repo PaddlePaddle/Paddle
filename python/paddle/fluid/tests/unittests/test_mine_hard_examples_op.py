@@ -78,7 +78,7 @@ class TestMineHardExamplesOp(OpTest):
 
 class TestMineHardExamplesOpHardExample(TestMineHardExamplesOp):
     def init_test_data(self):
-        super(TestMineHardExamplesOpHardExample, self).init_test_data()
+        super().init_test_data()
         self.mining_type = "hard_example"
         self.sample_size = 2
 

@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
 
-from paddle.fluid.dygraph.nn import Conv2D, BatchNorm
+from paddle.fluid.dygraph.nn import BatchNorm
 
 
 class ConvBNLayer(fluid.dygraph.Layer):
@@ -31,20 +32,19 @@ class ConvBNLayer(fluid.dygraph.Layer):
         act="leaky",
         is_test=True,
     ):
-        super(ConvBNLayer, self).__init__()
+        super().__init__()
 
-        self.conv = Conv2D(
-            num_channels=ch_in,
-            num_filters=ch_out,
-            filter_size=filter_size,
+        self.conv = paddle.nn.Conv2D(
+            in_channels=ch_in,
+            out_channels=ch_out,
+            kernel_size=filter_size,
             stride=stride,
             padding=padding,
             groups=groups,
-            param_attr=ParamAttr(
+            weight_attr=ParamAttr(
                 initializer=fluid.initializer.Normal(0.0, 0.02)
             ),
             bias_attr=False,
-            act=None,
         )
         self.batch_norm = BatchNorm(
             num_channels=ch_out,
@@ -74,7 +74,7 @@ class DownSample(fluid.dygraph.Layer):
         self, ch_in, ch_out, filter_size=3, stride=2, padding=1, is_test=True
     ):
 
-        super(DownSample, self).__init__()
+        super().__init__()
 
         self.conv_bn_layer = ConvBNLayer(
             ch_in=ch_in,
@@ -93,7 +93,7 @@ class DownSample(fluid.dygraph.Layer):
 
 class BasicBlock(fluid.dygraph.Layer):
     def __init__(self, ch_in, ch_out, is_test=True):
-        super(BasicBlock, self).__init__()
+        super().__init__()
 
         self.conv1 = ConvBNLayer(
             ch_in=ch_in,
@@ -121,7 +121,7 @@ class BasicBlock(fluid.dygraph.Layer):
 
 class LayerWarp(fluid.dygraph.Layer):
     def __init__(self, ch_in, ch_out, count, is_test=True):
-        super(LayerWarp, self).__init__()
+        super().__init__()
 
         self.basicblock0 = BasicBlock(ch_in, ch_out, is_test=is_test)
         self.res_out_list = []
@@ -145,7 +145,7 @@ DarkNet_cfg = {53: ([1, 2, 8, 8, 4])}
 
 class DarkNet53_conv_body(fluid.dygraph.Layer):
     def __init__(self, ch_in=3, is_test=True):
-        super(DarkNet53_conv_body, self).__init__()
+        super().__init__()
         self.stages = DarkNet_cfg[53]
         self.stages = self.stages[0:5]
 

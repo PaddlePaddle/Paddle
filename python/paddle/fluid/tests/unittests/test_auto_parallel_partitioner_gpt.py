@@ -53,26 +53,26 @@ def is_valid_completed_program(dist_context, program):
     vars_ = program.list_vars()
     for op in ops:
         op_dist_attrs = dist_context.get_op_dist_attr_for_program(op)
-        if op_dist_attrs == None:
+        if op_dist_attrs is None:
             return False
 
-        if op_dist_attrs.process_mesh == None:
+        if op_dist_attrs.process_mesh is None:
             return False
 
         for tensor_dist_attr in op_dist_attrs.inputs_dist_attrs.values():
-            if None == tensor_dist_attr.dims_mapping:
+            if tensor_dist_attr.dims_mapping is None:
                 return False
         for tensor_dist_attr in op_dist_attrs.outputs_dist_attrs.values():
-            if None == tensor_dist_attr.dims_mapping:
+            if tensor_dist_attr.dims_mapping is None:
                 return False
 
     for var in vars_:
         var_dist_attrs = dist_context.get_tensor_dist_attr_for_program(var)
-        if var_dist_attrs == None:
+        if var_dist_attrs is None:
             return False
-        elif var_dist_attrs.process_mesh == None:
+        elif var_dist_attrs.process_mesh is None:
             return False
-        elif var_dist_attrs.dims_mapping == None:
+        elif var_dist_attrs.dims_mapping is None:
             return False
 
     return True
@@ -101,7 +101,7 @@ class MultiHeadAttention(nn.Layer):
         topo=None,
         fuse=False,
     ):
-        super(MultiHeadAttention, self).__init__()
+        super().__init__()
         self.embed_dim = embed_dim
         self.kdim = kdim if kdim is not None else embed_dim
         self.vdim = vdim if vdim is not None else embed_dim
@@ -304,7 +304,7 @@ class TransformerDecoder(nn.Layer):
     def __init__(
         self, decoder_layers, num_layers, norm=None, hidden_size=None, topo=None
     ):
-        super(TransformerDecoder, self).__init__()
+        super().__init__()
 
         self.topo = topo
         self.num_layers = num_layers
@@ -407,7 +407,7 @@ class TransformerDecoderLayer(nn.Layer):
         self._config.pop("self")
         self._config.pop("__class__", None)  # py3
 
-        super(TransformerDecoderLayer, self).__init__()
+        super().__init__()
         attn_dropout = dropout if attn_dropout is None else attn_dropout
         act_dropout = dropout if act_dropout is None else act_dropout
         self.normalize_before = normalize_before
@@ -510,7 +510,7 @@ class GPTEmbeddings(nn.Layer):
         initializer_range=0.02,
         topo=None,
     ):
-        super(GPTEmbeddings, self).__init__()
+        super().__init__()
         if topo is None or topo.mp_info.size == 1:
             self.word_embeddings = nn.Embedding(
                 vocab_size,
@@ -577,7 +577,7 @@ class GPTModel(nn.Layer):
         pad_token_id=0,
         topo=None,
     ):
-        super(GPTModel, self).__init__()
+        super().__init__()
 
         self.pad_token_id = pad_token_id
         self.initializer_range = initializer_range
@@ -704,7 +704,7 @@ class GPTForPretraining(nn.Layer):
     """
 
     def __init__(self, gpt):
-        super(GPTForPretraining, self).__init__()
+        super().__init__()
         self.gpt = gpt
         self.share_param = False
         self.weight = self.gpt.embeddings.word_embeddings.weight
@@ -766,7 +766,7 @@ class GPTPretrainingCriterion(nn.Layer):
     """
 
     def __init__(self, topo=None):
-        super(GPTPretrainingCriterion, self).__init__()
+        super().__init__()
         if topo is None or topo.mp_info.size == 1:
             self.loss_func = paddle.nn.CrossEntropyLoss(reduction="none")
         else:
@@ -843,13 +843,13 @@ def gpt_pretrain_forward(train_program, startup_program):
     return train_program, startup_program, loss
 
 
-class FakeStrategy(object):
+class FakeStrategy:
     def __init__(self):
         self.amp = False
         self.recompute = False
 
 
-class FakeFleet(object):
+class FakeFleet:
     def __init__(self):
         self.user_defined_optimizer = None
         self._user_defined_strategy = FakeStrategy()

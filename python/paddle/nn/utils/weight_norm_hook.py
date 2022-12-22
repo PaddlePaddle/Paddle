@@ -95,7 +95,7 @@ def _weight_norm(v, g, dim):
     return weight
 
 
-class WeightNorm(object):
+class WeightNorm:
     def __init__(self, name, dim):
         if dim is None:
             dim = -1

@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/layout_utils.h"
 #include "paddle/fluid/operators/norm_utils.cu.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/batch_norm_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
@@ -578,7 +578,6 @@ void BatchNormGradRawKernel(const Context &ctx,
                             bool is_test,
                             bool use_global_stats,
                             bool trainable_statistics,
-                            bool fuse_with_relu,
                             bool is_inplace,
                             DenseTensor *x_grad,
                             DenseTensor *scale_grad,
@@ -606,6 +605,14 @@ void BatchNormGradRawKernel(const Context &ctx,
           "the dimensions of input is [%s]",
           x_dims.size(),
           x_dims));
+
+  PADDLE_ENFORCE_EQ((d_scale == nullptr && d_bias == nullptr) ||
+                        (d_scale != nullptr && d_bias != nullptr),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Weight and bias's stop_gradient of BatchNorm must be "
+                        "True or False at the same time."));
+
   int N, C, H, W, D;
   phi::funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
@@ -1262,7 +1269,6 @@ void BatchNormGradKernel(const Context &dev_ctx,
                          bool is_test,
                          bool use_global_stats,
                          bool trainable_statistics,
-                         bool fuse_with_relu,
                          DenseTensor *x_grad,
                          DenseTensor *scale_grad,
                          DenseTensor *bias_grad) {
@@ -1282,7 +1288,6 @@ void BatchNormGradKernel(const Context &dev_ctx,
                                      is_test,
                                      use_global_stats,
                                      trainable_statistics,
-                                     fuse_with_relu,
                                      false,
                                      x_grad,
                                      scale_grad,
@@ -1307,7 +1312,6 @@ void BatchNormDoubleGradKernel(const Context &ctx,
                                bool is_test,
                                bool use_global_stats,
                                bool trainable_statistics,
-                               bool fuse_with_relu,
                                DenseTensor *x_grad,
                                DenseTensor *scale_grad,
                                DenseTensor *y_grad_grad) {

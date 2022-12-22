@@ -95,9 +95,9 @@ def case_generator(op_type, Xshape, diagonal, expected):
     globals()[cls_name] = CLASS
 
 
-### NOTE: meaningful diagonal is [1 - min(H, W), max(H, W) -1]
-### test the diagonal just at the border, upper/lower the border,
-###     negative/positive integer within range and a zero
+# NOTE: meaningful diagonal is [1 - min(H, W), max(H, W) -1]
+# test the diagonal just at the border, upper/lower the border,
+#     negative/positive integer within range and a zero
 cases = {
     'success': {
         (2, 2, 3, 4, 5): [-100, -3, -1, 0, 2, 4, 100],  # normal shape

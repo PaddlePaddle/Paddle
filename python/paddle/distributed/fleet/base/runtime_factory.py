@@ -17,7 +17,7 @@ from ...ps.the_one_ps import TheOnePSRuntime
 __all__ = []
 
 
-class RuntimeFactory(object):
+class RuntimeFactory:
     def __init__(self):
         pass
 

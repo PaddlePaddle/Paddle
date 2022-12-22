@@ -273,6 +273,16 @@ class AnalysisPredictor : public PaddlePredictor {
   std::string GetSerializedProgram() const override;
 
   ///
+  /// \brief Register a output hook function to operate the intermediate tensor
+  /// of op output. when using this function, memory reuse should be tured off.
+  /// The hook function signature is void(const std::string&, const
+  /// std::string&, const Tensor&>). Here, the first parameter is op's
+  /// type, the second param is output var name of the op, and the third
+  /// parameter is output tensor with the var name.
+  ///
+  void RegisterOutputHook(const Exp_OutputHookFunc &hookfunc) override;
+
+  ///
   /// \brief Initialize mkldnn quantizer and execute mkldnn quantization pass
   ///
   /// \return Whether the function executed successfully
@@ -510,6 +520,8 @@ class AnalysisPredictor : public PaddlePredictor {
   int predictor_id_;
 
  private:
+  std::vector<Exp_OutputHookFunc> hookfuncs_;
+
   // Some status here that help to determine the status inside the predictor.
   bool status_is_cloned_{false};
 

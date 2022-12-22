@@ -25,7 +25,7 @@ from paddle.fluid.distribute_lookup_table import (
 from google.protobuf import text_format
 
 
-class DownpourSGD(object):
+class DownpourSGD:
     r"""
     Distributed optimizer of downpour stochastic gradient descent
     Standard implementation of Google's Downpour SGD

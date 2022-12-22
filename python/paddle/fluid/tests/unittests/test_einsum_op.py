@@ -154,5 +154,54 @@ class TestEinsumWithBroadcast6(TestEinsumBinary):
         self.equation = "i,i->"
 
 
+class TestEinsumWithDiagonal(TestEinsumBinary):
+    def set_mandatory(self):
+        self.shapes = [(10, 10)]
+        self.types = [np.float64]
+        self.equation = "ii->"
+
+
+class TestEinsumWithDiagonal2(TestEinsumBinary):
+    def set_mandatory(self):
+        self.shapes = [(10, 3, 10)]
+        self.types = [np.float64]
+        self.equation = "iji->j"
+
+
+class TestEinsumWithDiagonal3(TestEinsumBinary):
+    def set_mandatory(self):
+        self.shapes = [(5, 3, 2, 1, 4, 5)]
+        self.types = [np.float64]
+        self.equation = "a...a->..."
+
+
+class TestEinsumWithDiagonal4(TestEinsumBinary):
+    def set_mandatory(self):
+        self.shapes = [(5, 3, 2, 1, 4, 5)]
+        self.types = [np.float64]
+        self.equation = "a...a->a..."
+
+
+class TestEinsumWithDiagonal5(TestEinsumBinary):
+    def set_mandatory(self):
+        self.shapes = [(8, 8, 8)]
+        self.types = [np.float64]
+        self.equation = "aaa->a"
+
+
+class TestEinsumWithDiagonal6(TestEinsumBinary):
+    def set_mandatory(self):
+        self.shapes = [(3, 5, 7, 3), (5, 7, 5, 7)]
+        self.types = [np.float64, np.float64]
+        self.equation = "ijki,jkjk->ik"
+
+
+class TestEinsumWithDiagonal8(TestEinsumBinary):
+    def set_mandatory(self):
+        self.shapes = [(3, 5, 7, 3), (5, 7, 5, 7)]
+        self.types = [np.float64, np.float64]
+        self.equation = "ijki,jkjk->"
+
+
 if __name__ == "__main__":
     unittest.main()

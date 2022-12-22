@@ -91,56 +91,48 @@ def sparse_attention(
 
             # required: skiptest
             import paddle
-            import numpy as np
 
-            query_data = np.array([[[[0, 1,], [2, 3],
-                    [ 0, 1], [2, 3]]]]).astype("float32")
-            key_data = np.array([[[[0, 1,], [2, 3],
-                            [ 0, 1], [2, 3]]]]).astype("float32")
-            value_data = np.array([[[[0, 1,], [2, 3],
-                            [ 0, 1], [2, 3]]]]).astype("float32")
-            sparse_csr_offset_data = np.array([[[0, 2,
-                            4, 6, 8]]]).astype("int32")
-            sparse_csr_columns_data = np.array([[[0, 1,
-                            0, 1, 2, 3, 2, 3]]]).astype("int32")
-            key_padding_mask_data = np.array([[1,1,1,0]]).astype("float32")
-            attention_mask_data = np.array([[1,0,1,1],[1,1,1,1],[1,1,1,1],[1,1,1,1]]).astype("float32")
-            print(query_data.shape)
-            # (1, 1, 4, 2)
-            print(sparse_csr_offset_data.shape)
-            # (1, 1, 5)
-            print(sparse_csr_columns_data.shape)
-            # (1, 1, 8)
             paddle.disable_static()
-            query = paddle.to_tensor(query_data, stop_gradient=False,
-                            place=paddle.CUDAPlace(0))
-            key = paddle.to_tensor(key_data, stop_gradient=False,
-                            place=paddle.CUDAPlace(0))
-            value = paddle.to_tensor(value_data, stop_gradient=False,
-                            place=paddle.CUDAPlace(0))
-            offset = paddle.to_tensor(sparse_csr_offset_data, stop_gradient=False,
-                            place=paddle.CUDAPlace(0))
-            columns = paddle.to_tensor(sparse_csr_columns_data, stop_gradient=False,
-                            place=paddle.CUDAPlace(0))
-            key_padding_mask = paddle.to_tensor(key_padding_mask_data, stop_gradient=False,
-                            place=paddle.CUDAPlace(0))
-            attention_mask = paddle.to_tensor(attention_mask_data, stop_gradient=False,
-                            place=paddle.CUDAPlace(0))
+
+            # `query`, `key` and `value` all have shape [1, 1, 4, 2]
+            query = paddle.to_tensor([[[[0, 1, ], [2, 3],
+                                        [0, 1], [2, 3]]]], dtype="float32")
+            key = paddle.to_tensor([[[[0, 1], [2, 3],
+                                    [0, 1], [2, 3]]]], dtype="float32")
+            value = paddle.to_tensor([[[[0, 1], [2, 3],
+                                        [0, 1], [2, 3]]]], dtype="float32")
+
+
+            offset = paddle.to_tensor([[[0, 2, 4, 6, 8]]], dtype="int32")
+            columns = paddle.to_tensor([[[0, 1, 0, 1, 2, 3, 2, 3]]], dtype="int32")
+
+            print(offset.shape)  # (1, 1, 5)
+            print(columns.shape)  # (1, 1, 8)
+
+            key_padding_mask = paddle.to_tensor([[1, 1, 1, 0]], dtype="float32")
+            attention_mask = paddle.to_tensor([[1, 0, 1, 1],
+                                            [1, 1, 1, 1],
+                                            [1, 1, 1, 1],
+                                            [1, 1, 1, 1]], dtype="float32")
             output_mask = paddle.nn.functional.sparse_attention(query, key,
-                            value, offset, columns,
-                            key_padding_mask=key_padding_mask, attn_mask=attention_mask)
+                                                                value, offset, columns,
+                                                                key_padding_mask=key_padding_mask,
+                                                                attn_mask=attention_mask)
             print(output_mask)
-            # [[[[0.        , 1.        ],
-            #    [1.99830270, 2.99830270],
-            #    [0.        , 1.        ],
-            #    [0.        , 1.        ]]]]
+            # Tensor(shape=[1, 1, 4, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
+            #        [[[[0.        , 1.        ],
+            #           [1.99830270, 2.99830270],
+            #           [0.        , 1.        ],
+            #           [0.        , 1.        ]]]])
+
             output = paddle.nn.functional.sparse_attention(query, key,
-                            value, offset, columns)
+                                                        value, offset, columns)
             print(output)
-            # [[[[1.60885942, 2.60885954],
-            #       [1.99830270, 2.99830270],
-            #       [1.60885942, 2.60885954],
-            #       [1.99830270, 2.99830270]]]]
+            # Tensor(shape=[1, 1, 4, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
+            #        [[[[1.60885942, 2.60885954],
+            #           [1.99830270, 2.99830270],
+            #           [1.60885942, 2.60885954],
+            #           [1.99830270, 2.99830270]]]])
     """
     if in_dynamic_mode():
         (

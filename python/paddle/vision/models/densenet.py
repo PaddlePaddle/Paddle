@@ -59,7 +59,7 @@ class BNACConvLayer(nn.Layer):
         groups=1,
         act="relu",
     ):
-        super(BNACConvLayer, self).__init__()
+        super().__init__()
         self._batch_norm = BatchNorm(num_channels, act=act)
 
         self._conv = Conv2D(
@@ -81,7 +81,7 @@ class BNACConvLayer(nn.Layer):
 
 class DenseLayer(nn.Layer):
     def __init__(self, num_channels, growth_rate, bn_size, dropout):
-        super(DenseLayer, self).__init__()
+        super().__init__()
         self.dropout = dropout
 
         self.bn_ac_func1 = BNACConvLayer(
@@ -116,7 +116,7 @@ class DenseBlock(nn.Layer):
     def __init__(
         self, num_channels, num_layers, bn_size, growth_rate, dropout, name=None
     ):
-        super(DenseBlock, self).__init__()
+        super().__init__()
         self.dropout = dropout
         self.dense_layer_func = []
 
@@ -144,7 +144,7 @@ class DenseBlock(nn.Layer):
 
 class TransitionLayer(nn.Layer):
     def __init__(self, num_channels, num_output_features):
-        super(TransitionLayer, self).__init__()
+        super().__init__()
 
         self.conv_ac_func = BNACConvLayer(
             num_channels=num_channels,
@@ -173,7 +173,7 @@ class ConvBNLayer(nn.Layer):
         groups=1,
         act="relu",
     ):
-        super(ConvBNLayer, self).__init__()
+        super().__init__()
 
         self._conv = Conv2D(
             in_channels=num_channels,
@@ -232,7 +232,7 @@ class DenseNet(nn.Layer):
         num_classes=1000,
         with_pool=True,
     ):
-        super(DenseNet, self).__init__()
+        super().__init__()
         self.num_classes = num_classes
         self.with_pool = with_pool
         supported_layers = [121, 161, 169, 201, 264]

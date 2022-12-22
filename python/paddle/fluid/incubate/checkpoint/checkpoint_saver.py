@@ -15,7 +15,7 @@
 from ...compiler import CompiledProgram
 
 
-class SerializableBase(object):
+class SerializableBase:
     def serialize(self, path):
         raise NotImplementedError
 
@@ -54,7 +54,7 @@ class PaddleModel(SerializableBase):
         )
 
 
-class CheckpointSaver(object):
+class CheckpointSaver:
     def __init__(self, fs):
         self._fs = fs
         self._checkpoint_prefix = "__paddle_checkpoint__"

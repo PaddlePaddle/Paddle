@@ -72,7 +72,7 @@ def generate_compatible_shapes(
     dim_X, dim_Y, transpose_X, transpose_Y, batch_size
 ):
     BATCH_SIZE = 2
-    if batch_size != None:
+    if batch_size is not None:
         BATCH_SIZE = batch_size
 
     M = 3
@@ -106,7 +106,7 @@ def generate_compatible_shapes(
         shape_Y = [BATCH_SIZE] + shape_Y
 
     if dim_Y == 3 and dim_X == 2:
-        if transpose_X == False:
+        if not transpose_X:
             shape_X[1] = shape_X[1] * BATCH_SIZE
         else:
             shape_X[0] = shape_X[0] * BATCH_SIZE
@@ -326,7 +326,7 @@ class TestMatmulBaseGenerator(XPUOpTest):
     def test_check_grad_normal(self):
         if (
             hasattr(self.__class__, "no_need_check_grad")
-            and self.__class__.no_need_check_grad == True
+            and self.__class__.no_need_check_grad
         ):
             return
 
@@ -338,7 +338,7 @@ class TestMatmulBaseGenerator(XPUOpTest):
     def test_check_grad_ignore_x(self):
         if (
             hasattr(self.__class__, "no_need_check_grad")
-            and self.__class__.no_need_check_grad == True
+            and self.__class__.no_need_check_grad
         ):
             return
 
@@ -350,7 +350,7 @@ class TestMatmulBaseGenerator(XPUOpTest):
     def test_check_grad_ignore_y(self):
         if (
             hasattr(self.__class__, "no_need_check_grad")
-            and self.__class__.no_need_check_grad == True
+            and self.__class__.no_need_check_grad
         ):
             return
 

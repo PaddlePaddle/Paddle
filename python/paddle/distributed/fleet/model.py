@@ -47,7 +47,7 @@ def distributed_model(model):
 
             class LinearNet(nn.Layer):
                 def __init__(self):
-                    super(LinearNet, self).__init__()
+                    super().__init__()
                     self._linear1 = nn.Linear(10, 10)
                     self._linear2 = nn.Linear(10, 1)
 
@@ -90,7 +90,7 @@ def distributed_model(model):
 
     amp_enable = False
     strategy = fleet_env._user_defined_strategy
-    if strategy.amp == True:
+    if strategy.amp:
         amp_enable = True
         amp_level = "O2" if strategy.amp_configs['use_pure_fp16'] else "O1"
         if amp_level.upper() == "O2":
@@ -122,7 +122,7 @@ def distributed_model(model):
             use_dynamic_loss_scaling=use_dynamic_loss_scaling,
         )
 
-    if strategy.heter_ccl_mode == True:
+    if strategy.heter_ccl_mode:
         distributed_model = paddle.DataParallel(
             model,
             comm_buffer_size=strategy.fuse_grad_size_in_MB,

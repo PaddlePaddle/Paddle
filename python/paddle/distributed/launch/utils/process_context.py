@@ -16,7 +16,7 @@ import subprocess
 import os, sys, signal, time
 
 
-class ProcessContext(object):
+class ProcessContext:
     def __init__(
         self,
         cmd,

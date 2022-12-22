@@ -28,7 +28,7 @@ namespace operators {
  * Support two Dropouts in the use senarieo.
  * This warpper can be used in FFN op.
  * The DropoutParam will be used in the fused_dropout_act_bias,
- * fused_residual_dropout_bias(pre_layer_norm=ture) or
+ * fused_residual_dropout_bias(pre_layer_norm=true) or
  * fused_layernorm_residual_dropout_bias(pre_layer_norm=false).
  */
 struct DropoutParam {

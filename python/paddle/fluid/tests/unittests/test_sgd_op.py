@@ -321,12 +321,12 @@ class TestSGDMultiPrecision2_0(unittest.TestCase):
         optimizer = paddle.optimizer.SGD(
             parameters=model.parameters(), multi_precision=mp
         )
-        if mp == True:
+        if mp:
             model = paddle.amp.decorate(models=model, level='O2')
             scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
 
         for idx in range(5):
-            if mp == True:
+            if mp:
                 with paddle.amp.auto_cast(level='O2'):
                     output = model(input)
                     loss = paddle.mean(output)
@@ -429,12 +429,12 @@ class TestSGDMultiPrecision1_0(unittest.TestCase):
             parameter_list=model.parameters(),
             multi_precision=mp,
         )
-        if mp == True:
+        if mp:
             model = paddle.amp.decorate(models=model, level='O2')
             scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
 
         for idx in range(5):
-            if mp == True:
+            if mp:
                 with paddle.amp.auto_cast(level='O2'):
                     output = model(input)
                     loss = paddle.mean(output)

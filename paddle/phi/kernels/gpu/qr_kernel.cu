@@ -31,7 +31,7 @@
 #include "paddle/phi/kernels/qr_kernel.h"
 #include "paddle/phi/kernels/slice_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
-#include "paddle/phi/kernels/tril_triu_kernel.h"
+#include "paddle/phi/kernels/tril_kernel.h"
 
 namespace phi {
 
@@ -103,12 +103,12 @@ void QrKernel(const Context& ctx,
     auto trans_qr = TransposeLast2Dim<T, Context>(ctx, qr);
     auto sliced_qr = SliceKernel<T, Context>(
         ctx, trans_qr, {trans_qr.dims().size() - 2}, {0}, {min_mn}, {1}, {});
-    auto tmp_r = TrilTriu<T, Context>(ctx, sliced_qr, 0, false);
+    auto tmp_r = Tril<T, Context>(ctx, sliced_qr, 0, false);
     // Transpose 'tmp_r' to retore the original row-major order
     phi::Copy(ctx, tmp_r, r->place(), false, r);
   } else {
     auto trans_qr = TransposeLast2Dim<T, Context>(ctx, qr);
-    auto tmp_r = TrilTriu<T, Context>(ctx, trans_qr, 0, false);
+    auto tmp_r = Tril<T, Context>(ctx, trans_qr, 0, false);
     // Transpose 'tmp_r' to retore the original row-major order
     phi::Copy(ctx, tmp_r, r->place(), false, r);
   }

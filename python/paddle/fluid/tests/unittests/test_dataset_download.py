@@ -34,7 +34,7 @@ class TestDataSetDownload(unittest.TestCase):
         except Exception as e:
             catch_exp = True
 
-        self.assertTrue(catch_exp == False)
+        self.assertTrue(not catch_exp)
 
         file_path = DATA_HOME + "/flowers/imagelabels.mat"
 

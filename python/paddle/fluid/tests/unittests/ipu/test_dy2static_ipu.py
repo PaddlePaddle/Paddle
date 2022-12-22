@@ -34,7 +34,7 @@ class SimpleLayer(paddle.nn.Layer):
         use_reduction=True,
         use_identity_loss=True,
     ):
-        super(SimpleLayer, self).__init__()
+        super().__init__()
         self.loss_op = loss_op
         self.conv = paddle.nn.Conv2D(
             in_channels=3, out_channels=1, kernel_size=2, stride=1

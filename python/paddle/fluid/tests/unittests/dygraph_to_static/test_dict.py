@@ -29,7 +29,7 @@ PLACE = (
 
 class SubNetWithDict(fluid.dygraph.Layer):
     def __init__(self, hidden_size=16, output_size=16):
-        super(SubNetWithDict, self).__init__()
+        super().__init__()
 
         init_weight = lambda x: fluid.ParamAttr(
             initializer=fluid.initializer.Constant(x)
@@ -76,7 +76,7 @@ class SubNetWithDict(fluid.dygraph.Layer):
 
 class MainNetWithDict(fluid.dygraph.Layer):
     def __init__(self, batch_size=64, hidden_size=16, output_size=16):
-        super(MainNetWithDict, self).__init__()
+        super().__init__()
         self.batch_size = batch_size
         self.hidden_size = hidden_size
         self.output_size = output_size
@@ -219,7 +219,7 @@ class TestDictPop2(TestDictPop):
 
 class NetWithDictPop(paddle.nn.Layer):
     def __init__(self):
-        super(NetWithDictPop, self).__init__()
+        super().__init__()
 
     @to_static
     def forward(self, x, **kwargs):

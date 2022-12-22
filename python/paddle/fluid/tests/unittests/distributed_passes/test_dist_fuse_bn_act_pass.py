@@ -26,7 +26,7 @@ paddle.enable_static()
 
 class BatchNormActNet(nn.Layer):
     def __init__(self):
-        super(BatchNormActNet, self).__init__()
+        super().__init__()
 
         self.conv1 = nn.Conv2D(3, 8, (3, 3), data_format="NHWC")
         self.bn1 = nn.BatchNorm2D(8, data_format="NHWC")

@@ -70,7 +70,6 @@ class Adagrad(Optimizer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             inp = paddle.rand(shape=[10, 10])
             linear = paddle.nn.Linear(10, 10)
@@ -118,7 +117,7 @@ class Adagrad(Optimizer):
     ):
         assert learning_rate is not None
         assert epsilon is not None
-        super(Adagrad, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameters=parameters,
             weight_decay=weight_decay,

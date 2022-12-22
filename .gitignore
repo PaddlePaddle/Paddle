@@ -75,8 +75,7 @@ paddle/fluid/operators/generated_op.cc
 paddle/fluid/operators/generated_sparse_op.cc
 paddle/phi/ops/compat/generated_sig.cc
 paddle/phi/ops/compat/generated_sparse_sig.cc
-paddle/phi/api/yaml/parsed_apis/
-python/paddle/utils/code_gen/
+paddle/fluid/operators/generator/parsed_ops/
 paddle/fluid/pybind/tmp_eager_op_function_impl.h
 paddle/fluid/pybind/eager_op_function_impl.h
 paddle/fluid/pybind/eager_op_function_impl.h

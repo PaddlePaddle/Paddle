@@ -31,7 +31,7 @@ inplace_optional_out_type_map = {
 
 class ForwardAPI(BaseAPI):
     def __init__(self, api_item_yaml):
-        super(ForwardAPI, self).__init__(api_item_yaml)
+        super().__init__(api_item_yaml)
         self.is_dygraph_api, self.intermediate_outs = self.parse_intermediate(
             api_item_yaml
         )

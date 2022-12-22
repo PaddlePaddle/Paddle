@@ -32,7 +32,7 @@ from paddle.fluid.core import AnalysisConfig
 
 class QuantDequantTest(unittest.TestCase):
     def __init__(self, methodName='runTest'):
-        super(QuantDequantTest, self).__init__(methodName)
+        super().__init__(methodName)
         paddle.enable_static()
         self.main_program = fluid.Program()
         self.startup_program = fluid.Program()

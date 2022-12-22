@@ -14,13 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/backends/custom/custom_context.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/backends/onednn/onednn_context.h"
-#ifdef PADDLE_WITH_XPU
-#include "paddle/phi/backends/xpu/xpu_context.h"
-#endif
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -329,21 +323,6 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(StringTensor);
 
   PD_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(TensorArray);
-
-  template <typename... Tail>
-  struct KernelCallHelper<const RuntimeAttrs&, Tail...> {
-    template <int dev_ctx_idx,
-              int in_idx,
-              int attr_idx,
-              int out_idx,
-              typename... PreviousArgs>
-    static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {
-      const auto& runtime_attrs = ctx->GetRuntimeAttrs();
-      KernelCallHelper<Tail...>::
-          template Compute<dev_ctx_idx, in_idx, attr_idx, out_idx>(
-              ctx, pargs..., runtime_attrs);
-    }
-  };
 
   /* End case */
   template <typename T>

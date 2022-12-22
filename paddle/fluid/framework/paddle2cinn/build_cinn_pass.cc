@@ -646,8 +646,8 @@ void SearchAllSubgraphs(Graph* graph) {
   VLOG(4) << "The allowed Cinn Ops: " << FLAGS_allow_cinn_ops;
   VLOG(4) << "The denied Cinn Ops: " << FLAGS_deny_cinn_ops;
   std::vector<GraphNodeVec> clusters = CinnSubgraphDetector(graph, teller)();
-  VLOG(3) << "--- [build_cinn_pass] detected " << clusters.size()
-          << " cinn supported subgraphs";
+  LOG(INFO) << "--- [build_cinn_pass] detected " << clusters.size()
+            << " cinn supported subgraphs";
 
   auto cluster_debug_info = [](const GraphNodeSet& cluster) {
     std::string res = "(";

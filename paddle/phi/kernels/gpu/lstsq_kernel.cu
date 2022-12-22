@@ -23,7 +23,7 @@
 #include "paddle/phi/kernels/funcs/slice.h"
 #include "paddle/phi/kernels/impl/lstsq_kernel_impl.h"
 #include "paddle/phi/kernels/impl/qr_kernel_impl.h"
-#include "paddle/phi/kernels/impl/tril_triu_kernel_impl.h"
+#include "paddle/phi/kernels/impl/tril_kernel_impl.h"
 #include "paddle/phi/kernels/lstsq_kernel.h"
 #include "paddle/phi/kernels/matmul_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
@@ -110,7 +110,7 @@ void LstsqKernel(const Context& dev_ctx,
     DenseTensor* res_r = new DenseTensor();
     res_r->Resize(phi::make_ddim({batch_count, min_mn, min_mn}));
     dev_ctx.template Alloc<T>(res_r);
-    phi::TrilTriuKernel<T>(dev_ctx, slice_r, 0, false, res_r);
+    phi::TrilKernel<T>(dev_ctx, slice_r, 0, false, res_r);
 
     DenseTensor trans_y = phi::TransposeLast2Dim<T>(dev_ctx, tmp_y);
     DenseTensor slice_y =
@@ -135,7 +135,7 @@ void LstsqKernel(const Context& dev_ctx,
     DenseTensor* res_r = new DenseTensor();
     res_r->Resize(phi::make_ddim({batch_count, min_mn, min_mn}));
     dev_ctx.template Alloc<T>(res_r);
-    phi::TrilTriuKernel<T>(dev_ctx, slice_r, 0, false, res_r);
+    phi::TrilKernel<T>(dev_ctx, slice_r, 0, false, res_r);
 
     phi::TriangularSolveKernel<T, Context>(
         dev_ctx, *res_r, *new_y, true, true, false, solution);

@@ -44,14 +44,9 @@ static void AllReduce(phi::DenseTensor& tensor,  // NOLINT
   if (map->has(ring_id)) {
     paddle::distributed::ProcessGroup* pg = map->get(ring_id);
     auto pg_nccl = static_cast<distributed::ProcessGroupNCCL*>(pg);
-
-    std::vector<phi::DenseTensor> in_tensor;
-    std::vector<phi::DenseTensor> out_tensor;
-    in_tensor.push_back(tensor);
-    out_tensor.push_back(tensor);
     paddle::distributed::AllreduceOptions opts;
     opts.reduce_op = distributed::ReduceOp::SUM;
-    auto task = pg_nccl->AllReduce(in_tensor, out_tensor, opts, true, true);
+    auto task = pg_nccl->AllReduce(&tensor, tensor, opts, true, true);
     task->Wait();
   } else {
     auto dtype = platform::ToNCCLDataType(
@@ -337,7 +332,7 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
                const phi::DenseTensor& linear1_out,
                const phi::DenseTensor* ln1_out,
                const phi::DenseTensor& dropout1_out,
-               const phi::DenseTensor& dropout2_out,
+               const phi::DenseTensor* dropout2_out,
                const phi::DenseTensor& linear1_weight,
                const phi::DenseTensor* linear1_bias,
                const phi::DenseTensor& linear2_weight,
@@ -420,7 +415,7 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
       fused_dropout_layernorm_helper.LayernormResidualDropoutBiasGrad(
           ctx,
           d_out.data<T>(),
-          dropout2_out.data<T>(),
+          dropout2_out->data<T>(),
           dropout2_mask.data<uint8_t>(),
           ln2_gamma_ptr,
           ln2_mean->data<U>(),
@@ -504,7 +499,7 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
     auto* ln1_out =
         pre_layer_norm ? context.Input<phi::DenseTensor>("Ln1Out") : nullptr;
     auto dropout1_out = *context.Input<phi::DenseTensor>("Dropout1Out");
-    auto dropout2_out = *context.Input<phi::DenseTensor>("Dropout2Out");
+    auto* dropout2_out = context.Input<phi::DenseTensor>("Dropout2Out");
     auto linear1_weight = *context.Input<phi::DenseTensor>("Linear1Weight");
     auto* linear1_bias = context.Input<phi::DenseTensor>("Linear1Bias");
     auto linear2_weight = *context.Input<phi::DenseTensor>("Linear2Weight");

@@ -168,7 +168,7 @@ class RMSProp(Optimizer):
         if not 0.0 <= rho:
             raise ValueError("Invalid value of rho, expect rho >= 0.")
 
-        super(RMSProp, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameters=parameters,
             weight_decay=weight_decay,

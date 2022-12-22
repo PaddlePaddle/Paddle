@@ -24,7 +24,7 @@ HcomGroupConfig = namedtuple('HcomGroupConfig', ['name', 'nranks', 'rank_ids'])
 __all__ = []
 
 
-class AscendIRParser(object):
+class AscendIRParser:
     def __init__(self, auto_dp=False, world_rank_size=1):
         self.graph_idx = 0
         self.hcom_endpoints = {}

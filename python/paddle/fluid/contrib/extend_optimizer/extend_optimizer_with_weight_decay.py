@@ -17,7 +17,7 @@ from paddle.fluid import framework as framework
 __all__ = ["extend_with_decoupled_weight_decay"]
 
 
-class DecoupledWeightDecay(object):
+class DecoupledWeightDecay:
     def __init__(self, coeff=0.0, apply_decay_param_fun=None, **kwargs):
         if not isinstance(coeff, float) and not isinstance(
             coeff, framework.Variable
@@ -26,7 +26,7 @@ class DecoupledWeightDecay(object):
         self._params_name = set()
         self._apply_decay_param_fun = apply_decay_param_fun
         self._coeff = coeff
-        super(DecoupledWeightDecay, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
     def _scale_parameters(self, params_and_grads):
         """
@@ -75,10 +75,10 @@ class DecoupledWeightDecay(object):
         return scaled_params
 
     def backward(self, **kargs):
-        return super(DecoupledWeightDecay, self).backward(**kargs)
+        return super().backward(**kargs)
 
     def apply_optimize(self, **kargs):
-        return super(DecoupledWeightDecay, self).apply_optimize(**kargs)
+        return super().apply_optimize(**kargs)
 
     def minimize(
         self, loss, startup_program=None, parameter_list=None, no_grad_set=None
@@ -160,8 +160,6 @@ def extend_with_decoupled_weight_decay(base_optimizer):
         """
 
         def __init__(self, weight_decay, apply_decay_param_fun=None, **kwargs):
-            super(OptimizerWithDecoupledWeightDecay, self).__init__(
-                weight_decay, apply_decay_param_fun, **kwargs
-            )
+            super().__init__(weight_decay, apply_decay_param_fun, **kwargs)
 
     return OptimizerWithDecoupledWeightDecay

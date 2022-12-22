@@ -101,7 +101,7 @@ class DistPassTestBase(unittest.TestCase):
                 zip(no_pass_ret, pass_ret)
             ):
                 if out_var_no_pass is None:
-                    self.assertTrue(out_var_pass is None)
+                    self.assertIsNone(out_var_pass)
                 else:
                     np.testing.assert_allclose(
                         out_var_no_pass,
@@ -266,7 +266,7 @@ class DistPassTestBase(unittest.TestCase):
 class PassConflictChecker(DistPassTestBase):
     def setUp(self):
         os.environ['DEBUG'] = '1'  # to save the debug directory
-        super(PassConflictChecker, self).setUp()
+        super().setUp()
 
     def pass_config(self):
         raise NotImplementedError()

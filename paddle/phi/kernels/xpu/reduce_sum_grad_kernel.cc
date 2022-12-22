@@ -57,6 +57,14 @@ void ReduceSumGradKernel(const Context& dev_ctx,
     }
   }
 
+  // use [1] to replace [], because xpu not support []
+  if (xdims.size() == 0) {
+    xdims = std::vector<int>({1});
+  }
+  if (ydims.size() == 0) {
+    ydims = std::vector<int>({1});
+  }
+
   int r = xpu::broadcast<XPUType>(
       dev_ctx.x_context(), out_data, x_grad_data, ydims, xdims);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast");

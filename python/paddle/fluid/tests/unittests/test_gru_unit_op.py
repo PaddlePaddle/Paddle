@@ -209,7 +209,7 @@ class TestGRUUnitOpWithBias(TestGRUUnitOp):
     def set_inputs(self, origin_mode=False):
         batch_size = self.batch_size
         frame_size = self.frame_size
-        super(TestGRUUnitOpWithBias, self).set_inputs()
+        super().set_inputs()
         self.inputs['Bias'] = np.random.uniform(
             -0.1, 0.1, (1, frame_size * 3)
         ).astype(self.dtype)

@@ -19,7 +19,7 @@ __all__ = []
 
 class ParameterServerGraphOptimizer(ParameterServerOptimizer):
     def __init__(self, optimizer):
-        super(ParameterServerGraphOptimizer, self).__init__(optimizer)
+        super().__init__(optimizer)
         self.inner_opt = optimizer
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = []

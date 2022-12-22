@@ -83,7 +83,9 @@ class TestWeightNormalization(unittest.TestCase):
                 lod_level_i = np.random.randint(
                     low=1,
                     high=5,
-                    size=self.batch_size if i == 0 else sum(lod_level_i),
+                    size=self.batch_size
+                    if i == 0
+                    else sum(lod_level_i),  # noqa: F821
                 ).tolist()
                 data_lod.append(lod_level_i)
             data_value = np.random.random(

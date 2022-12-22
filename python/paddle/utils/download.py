@@ -27,7 +27,7 @@ try:
     from tqdm import tqdm
 except:
 
-    class tqdm(object):
+    class tqdm:
         def __init__(self, total=None):
             self.total = total
             self.n = 0

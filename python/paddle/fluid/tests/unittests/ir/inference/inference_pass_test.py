@@ -26,7 +26,7 @@ from paddle.fluid.core import create_paddle_predictor
 class InferencePassTest(unittest.TestCase):
     def __init__(self, methodName='runTest'):
         paddle.enable_static()
-        super(InferencePassTest, self).__init__(methodName)
+        super().__init__(methodName)
         paddle.enable_static()
         self.main_program = fluid.Program()
         self.startup_program = fluid.Program()

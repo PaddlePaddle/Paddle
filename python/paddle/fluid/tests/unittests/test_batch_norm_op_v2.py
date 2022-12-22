@@ -369,7 +369,7 @@ class TestBatchNormUseGlobalStats(unittest.TestCase):
             self.places.append(fluid.CUDAPlace(0))
         self.init_test()
 
-    ### train mode
+    # train mode
     def init_test(self):
         self.use_global_stats = True
         self.trainable_statistics = False
@@ -391,7 +391,7 @@ class TestBatchNormUseGlobalStats(unittest.TestCase):
                 )
                 net2.weight = net1.weight
                 net2.bias = net1.bias
-                if self.trainable_statistics == True:
+                if self.trainable_statistics:
                     net1.training = False
                     net2.training = False
                 y1 = net1(x)
@@ -400,21 +400,21 @@ class TestBatchNormUseGlobalStats(unittest.TestCase):
 
 
 class TestBatchNormUseGlobalStatsCase1(TestBatchNormUseGlobalStats):
-    ### test mode
+    # test mode
     def init_test(self):
         self.use_global_stats = False
         self.trainable_statistics = True
 
 
 class TestBatchNormUseGlobalStatsCase2(TestBatchNormUseGlobalStats):
-    ### train mode
+    # train mode
     def init_test(self):
         self.use_global_stats = False
         self.trainable_statistics = False
 
 
 class TestBatchNormUseGlobalStatsCase3(TestBatchNormUseGlobalStats):
-    ### test mode
+    # test mode
     def init_test(self):
         self.use_global_stats = True
         self.trainable_statistics = True

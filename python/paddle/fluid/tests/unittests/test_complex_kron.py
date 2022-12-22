@@ -22,7 +22,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 class ComplexKronTestCase(unittest.TestCase):
     def __init__(self, methodName='runTest', x=None, y=None):
-        super(ComplexKronTestCase, self).__init__(methodName)
+        super().__init__(methodName)
         self.x = x
         self.y = y
 

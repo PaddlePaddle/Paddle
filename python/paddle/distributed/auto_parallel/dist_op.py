@@ -14,12 +14,15 @@
 
 import copy
 import paddle
-from paddle.fluid import core
 from paddle.fluid.framework import Variable
 from .dist_attribute import OperatorDistributedAttribute
 from .dist_attribute import append_op_input_suffix
 from .dist_attribute import append_op_output_suffix
-from .utils import convert_to_shard_spec, verify_shard_spec
+from .utils import (
+    convert_to_shard_spec,
+    verify_shard_spec,
+    __no_shape_var_type__,
+)
 
 
 class DistributedOperator:
@@ -73,10 +76,7 @@ class DistributedOperator:
             if tensor is None:
                 tensor_shape = []
             else:
-                if (
-                    tensor.type == core.VarDesc.VarType.READER
-                    or tensor.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY
-                ):
+                if tensor.type in __no_shape_var_type__:
                     tensor_shape = []
                 else:
                     tensor_shape = tensor.shape
@@ -87,11 +87,7 @@ class DistributedOperator:
                 )
         for tensor_name in self._serial_op.output_arg_names:
             tensor = self._serial_op.block._var_recursive(tensor_name)
-            if (
-                tensor.type == core.VarDesc.VarType.READER
-                or tensor.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY
-                or tensor.type == core.VarDesc.VarType.STEP_SCOPES
-            ):
+            if tensor.type in __no_shape_var_type__:
                 tensor_shape = []
             else:
                 tensor_shape = tensor.shape
@@ -151,10 +147,7 @@ class DistributedOperator:
         for name in self.serial_op.input_arg_names:
             input_dist_attr = self.dist_attr.get_input_dist_attr(name)
             dims_mapping = input_dist_attr.dims_mapping
-            if (
-                self.get_serial_input(name).type
-                == core.VarDesc.VarType.LOD_TENSOR_ARRAY
-            ):
+            if self.get_serial_input(name).type in __no_shape_var_type__:
                 shape = []
             else:
                 shape = self.get_serial_input(name).shape
@@ -174,12 +167,7 @@ class DistributedOperator:
         for name in self.serial_op.output_arg_names:
             output_dist_attr = self.dist_attr.get_output_dist_attr(name)
             dims_mapping = output_dist_attr.dims_mapping
-            if (
-                self.get_serial_output(name).type
-                == core.VarDesc.VarType.LOD_TENSOR_ARRAY
-                or self.get_serial_output(name).type
-                == core.VarDesc.VarType.STEP_SCOPES
-            ):
+            if self.get_serial_output(name).type in __no_shape_var_type__:
                 shape = []
             else:
                 shape = self.get_serial_output(name).shape
@@ -337,12 +325,7 @@ class DistributedOperatorHelper:
                     if tensor is None:
                         tensor_shape = []
                     else:
-                        if (
-                            tensor.type == core.VarDesc.VarType.READER
-                            or tensor.type
-                            == core.VarDesc.VarType.LOD_TENSOR_ARRAY
-                            or tensor.type == core.VarDesc.VarType.STEP_SCOPES
-                        ):
+                        if tensor.type in __no_shape_var_type__:
                             tensor_shape = []
                         else:
                             tensor_shape = tensor.shape
@@ -368,12 +351,7 @@ class DistributedOperatorHelper:
                     if tensor is None:
                         tensor_shape = []
                     else:
-                        if (
-                            tensor.type == core.VarDesc.VarType.READER
-                            or tensor.type
-                            == core.VarDesc.VarType.LOD_TENSOR_ARRAY
-                            or tensor.type == core.VarDesc.VarType.STEP_SCOPES
-                        ):
+                        if tensor.type in __no_shape_var_type__:
                             tensor_shape = []
                         else:
                             tensor_shape = tensor.shape

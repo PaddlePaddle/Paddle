@@ -126,7 +126,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
         def generate_trt_nodes_num(attrs, dynamic_shape):
             if self.dims == 1:
                 return 0, 4
-            if self.sort == False:
+            if not self.sort:
                 return 0, 4
             return 1, 3
 

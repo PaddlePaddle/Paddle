@@ -101,7 +101,7 @@ class TestDygraphLazy(TestInitializerBase):
 
 class NestModel(Layer):
     def __init__(self, base_model):
-        super(NestModel, self).__init__()
+        super().__init__()
         self.base_model = base_model
         self.fc = Linear(10, 10)
 

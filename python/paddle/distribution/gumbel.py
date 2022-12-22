@@ -96,7 +96,7 @@ class Gumbel(TransformedDistribution):
 
         self.transforms = ()
 
-        super(Gumbel, self).__init__(self.base_dist, self.transforms)
+        super().__init__(self.base_dist, self.transforms)
 
     @property
     def mean(self):

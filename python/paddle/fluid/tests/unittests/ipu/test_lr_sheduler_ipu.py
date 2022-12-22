@@ -22,7 +22,7 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 class LR_New(LRScheduler):
     def __init__(self, learning_rate=1e-5, last_epoch=-1, verbose=False):
-        super(LR_New, self).__init__(learning_rate, last_epoch, verbose)
+        super().__init__(learning_rate, last_epoch, verbose)
 
     def get_lr(self):
         self.base_lr = self.base_lr + 1e-4

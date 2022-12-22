@@ -37,7 +37,7 @@ class _DecoderType:
     BEAM_SEARCH = 2
 
 
-class InitState(object):
+class InitState:
     """
     The initial hidden state object. The state objects holds a variable, and may
     use it to initialize the hidden state cell of RNN. Usually used as input to
@@ -98,7 +98,7 @@ class InitState(object):
         return self._need_reorder
 
 
-class _MemoryState(object):
+class _MemoryState:
     def __init__(self, state_name, rnn_obj, init_state):
         self._state_name = state_name  # each is a rnn.memory
         self._rnn_obj = rnn_obj
@@ -113,7 +113,7 @@ class _MemoryState(object):
         self._rnn_obj.update_memory(self._state_mem, state)
 
 
-class _ArrayState(object):
+class _ArrayState:
     def __init__(self, state_name, block, init_state):
         self._state_name = state_name
         self._block = block
@@ -161,7 +161,7 @@ class _ArrayState(object):
         layers.array_write(state, array=self._state_array, i=self._counter)
 
 
-class StateCell(object):
+class StateCell:
     """
     The state cell class stores the hidden state of the RNN cell. A typical RNN
     cell has one or more hidden states, and one or more step inputs. This class
@@ -401,7 +401,7 @@ class StateCell(object):
         return self._cur_states[self._out_state]
 
 
-class TrainingDecoder(object):
+class TrainingDecoder:
     """
     A decoder that can only be used for training. The decoder could be
     initialized with a `StateCell` object. The computation within the RNN cell
@@ -547,7 +547,7 @@ class TrainingDecoder(object):
             )
 
 
-class BeamSearchDecoder(object):
+class BeamSearchDecoder:
     """
     A beam search decoder that can be used for inference. The decoder should be
     initialized with a `StateCell` object. The decode process can be defined

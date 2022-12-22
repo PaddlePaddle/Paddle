@@ -43,7 +43,7 @@ from paddle.fluid.framework import set_flags
 __all__ = []
 
 
-class ParallelEnvArgs(object):
+class ParallelEnvArgs:
     def __init__(self):
         # Paddle cluster nodes ips, such as 192.168.0.16,192.168.0.17..
         self.cluster_node_ips = None
@@ -412,7 +412,7 @@ def _func_wrapper(func, args, error_queue, return_queue, env_dict, backend):
         sys.exit(1)
 
 
-class MultiprocessContext(object):
+class MultiprocessContext:
     def __init__(self, processes, error_queues, return_queues):
         _py_supported_check()
         self.error_queues = error_queues

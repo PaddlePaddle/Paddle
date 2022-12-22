@@ -61,7 +61,7 @@ class PixelShuffle(Layer):
     """
 
     def __init__(self, upscale_factor, data_format="NCHW", name=None):
-        super(PixelShuffle, self).__init__()
+        super().__init__()
 
         if not isinstance(upscale_factor, int):
             raise TypeError("upscale factor must be int type")
@@ -124,7 +124,7 @@ class PixelUnshuffle(Layer):
     """
 
     def __init__(self, downscale_factor, data_format="NCHW", name=None):
-        super(PixelUnshuffle, self).__init__()
+        super().__init__()
 
         if not isinstance(downscale_factor, int):
             raise TypeError("Downscale factor must be int type")
@@ -199,7 +199,7 @@ class ChannelShuffle(Layer):
     """
 
     def __init__(self, groups, data_format="NCHW", name=None):
-        super(ChannelShuffle, self).__init__()
+        super().__init__()
 
         if not isinstance(groups, int):
             raise TypeError("groups must be int type")

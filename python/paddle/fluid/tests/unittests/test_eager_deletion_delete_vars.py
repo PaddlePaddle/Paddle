@@ -102,7 +102,7 @@ class TestExecutor(unittest.TestCase):
         outline_p_vars = []
         for name in persitables:
             var = scope.find_var(name)
-            self.assertTrue(var is not None)
+            self.assertIsNotNone(var)
             t = var.get_tensor()
             if not t._is_initialized():
                 outline_p_vars.append(name)
@@ -110,7 +110,7 @@ class TestExecutor(unittest.TestCase):
         outline_np_vars = []
         for name in non_persistables:
             var = scope.find_var(name)
-            self.assertTrue(var is not None)
+            self.assertIsNotNone(var)
             t = var.get_tensor()
             if t._is_initialized():
                 outline_np_vars.append(name)

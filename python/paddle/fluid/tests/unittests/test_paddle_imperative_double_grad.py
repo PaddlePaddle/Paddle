@@ -128,7 +128,7 @@ class TestDygraphDoubleGrad(TestCase):
             (none_grad,) = self.grad(
                 [x], [y], create_graph=create_graph, allow_unused=True
             )
-            self.assertTrue(none_grad is None)
+            self.assertIsNone(none_grad)
 
             (grad_with_none_and_not_none,) = self.grad(
                 [x, y], [y], create_graph=create_graph

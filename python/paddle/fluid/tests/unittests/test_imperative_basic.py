@@ -28,7 +28,7 @@ from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 
 class MyLayer(fluid.Layer):
     def __init__(self):
-        super(MyLayer, self).__init__()
+        super().__init__()
 
     def forward(self, inputs):
         x = fluid.layers.relu(inputs)
@@ -40,7 +40,7 @@ class MyLayer(fluid.Layer):
 
 class MLP(fluid.Layer):
     def __init__(self, input_size):
-        super(MLP, self).__init__()
+        super().__init__()
         self._linear1 = Linear(
             input_size,
             3,
@@ -71,7 +71,7 @@ class MLP(fluid.Layer):
 
 class SimpleRNNCell(fluid.Layer):
     def __init__(self, step_input_size, hidden_size, output_size, param_attr):
-        super(SimpleRNNCell, self).__init__()
+        super().__init__()
         self.step_input_size = step_input_size
         self.hidden_size = hidden_size
         self.output_size = output_size
@@ -114,7 +114,7 @@ class SimpleRNNCell(fluid.Layer):
 
 class SimpleRNN(fluid.Layer):
     def __init__(self):
-        super(SimpleRNN, self).__init__()
+        super().__init__()
         self.seq_len = 4
         self._cell = SimpleRNNCell(
             3,
@@ -272,7 +272,7 @@ class TestImperative(unittest.TestCase):
         data = np.array([[2, 3], [4, 5]]).astype('float32')
         with fluid.dygraph.guard():
             l0 = fluid.Linear(2, 2)
-            self.assertTrue(l0.weight._grad_ivar() is None)
+            self.assertIsNone(l0.weight._grad_ivar())
             l1 = fluid.Linear(2, 2)
             with fluid.dygraph.no_grad():
                 self.assertTrue(l1.weight.stop_gradient is False)
@@ -283,14 +283,14 @@ class TestImperative(unittest.TestCase):
             o = l1(y)
             o.backward()
 
-            self.assertTrue(tmp._grad_ivar() is None)
-            self.assertTrue(l0.weight._grad_ivar() is not None)
+            self.assertIsNone(tmp._grad_ivar())
+            self.assertIsNotNone(l0.weight._grad_ivar())
 
     def test_paddle_imperative_no_grad_guard(self):
         data = np.array([[2, 3], [4, 5]]).astype('float32')
         with fluid.dygraph.guard():
             l0 = fluid.Linear(2, 2)
-            self.assertTrue(l0.weight._grad_ivar() is None)
+            self.assertIsNone(l0.weight._grad_ivar())
             l1 = fluid.Linear(2, 2)
             with paddle.no_grad():
                 self.assertTrue(l1.weight.stop_gradient is False)
@@ -301,14 +301,14 @@ class TestImperative(unittest.TestCase):
             o = l1(y)
             o.backward()
 
-            self.assertTrue(tmp._grad_ivar() is None)
-            self.assertTrue(l0.weight._grad_ivar() is not None)
+            self.assertIsNone(tmp._grad_ivar())
+            self.assertIsNotNone(l0.weight._grad_ivar())
 
     def test_paddle_imperative_set_grad_enabled(self):
         data = np.array([[2, 3], [4, 5]]).astype('float32')
         with fluid.dygraph.guard():
             l0 = fluid.Linear(2, 2)
-            self.assertTrue(l0.weight._grad_ivar() is None)
+            self.assertIsNone(l0.weight._grad_ivar())
             l1 = fluid.Linear(2, 2)
             with paddle.set_grad_enabled(False):
                 self.assertTrue(l1.weight.stop_gradient is False)
@@ -322,9 +322,9 @@ class TestImperative(unittest.TestCase):
             o = l1(y)
             o.backward()
 
-            self.assertTrue(tmp._grad_ivar() is None)
-            self.assertTrue(tmp2._grad_ivar() is not None)
-            self.assertTrue(l0.weight._grad_ivar() is not None)
+            self.assertIsNone(tmp._grad_ivar())
+            self.assertIsNotNone(tmp2._grad_ivar())
+            self.assertIsNotNone(l0.weight._grad_ivar())
 
     def test_paddle_imperative_is_grad_enabled(self):
         with fluid.dygraph.guard():

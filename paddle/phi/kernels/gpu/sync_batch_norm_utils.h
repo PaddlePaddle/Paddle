@@ -434,14 +434,14 @@ void SyncBatchNormGradFunctor(
     int dtype = paddle::platform::ToNCCLDataType(
         paddle::framework::TransToProtoVarType(scale.dtype()));
     // In-place operation
-    PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::ncclAllReduce(
-        stats,
-        stats,
-        2 * C + 1,
-        static_cast<ncclDataType_t>(dtype),
-        ncclSum,
-        comm,
-        stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::ncclAllReduce(stats,
+                                    stats,
+                                    2 * C + 1,
+                                    static_cast<ncclDataType_t>(dtype),
+                                    ncclSum,
+                                    comm,
+                                    stream));
     VLOG(3) << "Sync result using all reduce";
   }
 #endif

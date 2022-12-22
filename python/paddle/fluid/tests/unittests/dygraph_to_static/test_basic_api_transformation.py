@@ -133,14 +133,14 @@ def dyfunc_BilinearTensorProduct(layer1, layer2):
 
 
 def dyfunc_Conv2D(input):
-    conv2d = fluid.dygraph.Conv2D(
-        num_channels=3,
-        num_filters=2,
-        filter_size=3,
-        param_attr=fluid.ParamAttr(
+    conv2d = paddle.nn.Conv2D(
+        in_channels=3,
+        out_channels=2,
+        kernel_size=3,
+        weight_attr=paddle.ParamAttr(
             initializer=fluid.initializer.Constant(value=0.99)
         ),
-        bias_attr=fluid.ParamAttr(
+        bias_attr=paddle.ParamAttr(
             initializer=fluid.initializer.Constant(value=0.5)
         ),
     )

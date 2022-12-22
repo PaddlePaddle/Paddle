@@ -39,7 +39,7 @@ def reset_current_process_mesh():
     _g_current_process_mesh = _g_previous_process_mesh
 
 
-class ProcessMesh(object):
+class ProcessMesh:
     """
     The `Processmesh` object describes the topology of the used processes.
 

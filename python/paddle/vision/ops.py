@@ -19,6 +19,7 @@ from ..fluid.layers import nn, utils
 from ..nn import Layer, Conv2D, Sequential, ReLU, BatchNorm2D
 from ..fluid.initializer import Normal
 from ..fluid.framework import (
+    Variable,
     _non_static_mode,
     in_dygraph_mode,
     _in_legacy_dygraph,
@@ -29,6 +30,8 @@ from ..framework import _current_expected_place
 __all__ = [  # noqa
     'yolo_loss',
     'yolo_box',
+    'prior_box',
+    'box_coder',
     'deform_conv2d',
     'DeformConv2D',
     'distribute_fpn_proposals',
@@ -171,15 +174,11 @@ def yolo_loss(
       .. code-block:: python
 
           import paddle
-          import numpy as np
 
-          x = np.random.random([2, 14, 8, 8]).astype('float32')
-          gt_box = np.random.random([2, 10, 4]).astype('float32')
-          gt_label = np.random.random([2, 10]).astype('int32')
+          x = paddle.rand([2, 14, 8, 8]).astype('float32')
+          gt_box = paddle.rand([2, 10, 4]).astype('float32')
+          gt_label = paddle.rand([2, 10]).astype('int32')
 
-          x = paddle.to_tensor(x)
-          gt_box = paddle.to_tensor(gt_box)
-          gt_label = paddle.to_tensor(gt_label)
 
           loss = paddle.vision.ops.yolo_loss(x,
                                              gt_box=gt_box,
@@ -194,7 +193,7 @@ def yolo_loss(
     """
 
     if in_dygraph_mode():
-        loss, _, _ = _C_ops.yolov3_loss(
+        loss, _, _ = _C_ops.yolo_loss(
             x,
             gt_box,
             gt_label,
@@ -344,7 +343,7 @@ def yolo_box(
     .. math::
 
         score_{conf} = \begin{case}
-                         obj, \text{if } iou_aware == flase \\
+                         obj, \text{if } iou_aware == false \\
                          obj^{1 - iou_aware_factor} * iou^{iou_aware_factor}, \text{otherwise}
                        \end{case}
 
@@ -388,13 +387,9 @@ def yolo_box(
     .. code-block:: python
 
         import paddle
-        import numpy as np
 
-        x = np.random.random([2, 14, 8, 8]).astype('float32')
-        img_size = np.ones((2, 2)).astype('int32')
-
-        x = paddle.to_tensor(x)
-        img_size = paddle.to_tensor(img_size)
+        x = paddle.rand([2, 14, 8, 8]).astype('float32')
+        img_size = paddle.ones((2, 2)).astype('int32')
 
         boxes, scores = paddle.vision.ops.yolo_box(x,
                                                    img_size=img_size,
@@ -477,6 +472,379 @@ def yolo_box(
         attrs=attrs,
     )
     return boxes, scores
+
+
+def prior_box(
+    input,
+    image,
+    min_sizes,
+    max_sizes=None,
+    aspect_ratios=[1.0],
+    variance=[0.1, 0.1, 0.2, 0.2],
+    flip=False,
+    clip=False,
+    steps=[0.0, 0.0],
+    offset=0.5,
+    min_max_aspect_ratios_order=False,
+    name=None,
+):
+    r"""
+
+    This op generates prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
+
+    Each position of the input produce N prior boxes, N is determined by
+    the count of min_sizes, max_sizes and aspect_ratios, The size of the
+    box is in range(min_size, max_size) interval, which is generated in
+    sequence according to the aspect_ratios.
+
+    Args:
+       input (Tensor): 4-D tensor(NCHW), the data type should be float32 or float64.
+       image (Tensor): 4-D tensor(NCHW), the input image data of PriorBoxOp,
+            the data type should be float32 or float64.
+       min_sizes (list|tuple|float): the min sizes of generated prior boxes.
+       max_sizes (list|tuple|None, optional): the max sizes of generated prior boxes.
+            Default: None, means [] and will not be used.
+       aspect_ratios (list|tuple|float, optional): the aspect ratios of generated
+            prior boxes. Default: [1.0].
+       variance (list|tuple, optional): the variances to be encoded in prior boxes.
+            Default:[0.1, 0.1, 0.2, 0.2].
+       flip (bool): Whether to flip aspect ratios. Default:False.
+       clip (bool): Whether to clip out-of-boundary boxes. Default: False.
+       steps (list|tuple, optional): Prior boxes steps across width and height, If
+            steps[0] equals to 0.0 or steps[1] equals to 0.0, the prior boxes steps across
+            height or weight of the input will be automatically calculated.
+            Default: [0., 0.]
+       offset (float, optional)): Prior boxes center offset. Default: 0.5
+       min_max_aspect_ratios_order (bool, optional): If set True, the output prior box is
+            in order of [min, max, aspect_ratios], which is consistent with
+            Caffe. Please note, this order affects the weights order of
+            convolution layer followed by and does not affect the final
+            detection results. Default: False.
+       name (str, optional): The default value is None. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name`
+
+    Returns:
+        Tensor: the output prior boxes and the expanded variances of PriorBox.
+            The prior boxes is a 4-D tensor, the layout is [H, W, num_priors, 4],
+            num_priors is the total box count of each position of input.
+            The expanded variances is a 4-D tensor, same shape as the prior boxes.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            input = paddle.rand((1, 3, 6, 9), dtype=paddle.float32)
+            image = paddle.rand((1, 3, 9, 12), dtype=paddle.float32)
+
+            box, var = paddle.vision.ops.prior_box(
+                input=input,
+                image=image,
+                min_sizes=[2.0, 4.0],
+                clip=True,
+                flip=True)
+
+    """
+    helper = LayerHelper("prior_box", **locals())
+    dtype = helper.input_dtype()
+    check_variable_and_dtype(
+        input, 'input', ['uint8', 'int8', 'float32', 'float64'], 'prior_box'
+    )
+
+    def _is_list_or_tuple_(data):
+        return isinstance(data, list) or isinstance(data, tuple)
+
+    if not _is_list_or_tuple_(min_sizes):
+        min_sizes = [min_sizes]
+    if not _is_list_or_tuple_(aspect_ratios):
+        aspect_ratios = [aspect_ratios]
+    if not _is_list_or_tuple_(steps):
+        steps = [steps]
+    if not len(steps) == 2:
+        raise ValueError('steps should be (step_w, step_h)')
+
+    min_sizes = list(map(float, min_sizes))
+    aspect_ratios = list(map(float, aspect_ratios))
+    steps = list(map(float, steps))
+
+    cur_max_sizes = None
+    if max_sizes is not None and len(max_sizes) > 0 and max_sizes[0] > 0:
+        if not _is_list_or_tuple_(max_sizes):
+            max_sizes = [max_sizes]
+        cur_max_sizes = max_sizes
+
+    if in_dygraph_mode():
+        step_w, step_h = steps
+        if max_sizes is None:
+            max_sizes = []
+        box, var = _C_ops.prior_box(
+            input,
+            image,
+            min_sizes,
+            aspect_ratios,
+            variance,
+            max_sizes,
+            flip,
+            clip,
+            step_w,
+            step_h,
+            offset,
+            min_max_aspect_ratios_order,
+        )
+        return box, var
+
+    if _in_legacy_dygraph():
+        attrs = (
+            'min_sizes',
+            min_sizes,
+            'aspect_ratios',
+            aspect_ratios,
+            'variances',
+            variance,
+            'flip',
+            flip,
+            'clip',
+            clip,
+            'step_w',
+            steps[0],
+            'step_h',
+            steps[1],
+            'offset',
+            offset,
+            'min_max_aspect_ratios_order',
+            min_max_aspect_ratios_order,
+        )
+        if cur_max_sizes is not None:
+            attrs += ('max_sizes', cur_max_sizes)
+        box, var = _legacy_C_ops.prior_box(input, image, *attrs)
+        return box, var
+    else:
+        attrs = {
+            'min_sizes': min_sizes,
+            'aspect_ratios': aspect_ratios,
+            'variances': variance,
+            'flip': flip,
+            'clip': clip,
+            'step_w': steps[0],
+            'step_h': steps[1],
+            'offset': offset,
+            'min_max_aspect_ratios_order': min_max_aspect_ratios_order,
+        }
+        if cur_max_sizes is not None:
+            attrs['max_sizes'] = cur_max_sizes
+
+        box = helper.create_variable_for_type_inference(dtype)
+        var = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(
+            type="prior_box",
+            inputs={"Input": input, "Image": image},
+            outputs={"Boxes": box, "Variances": var},
+            attrs=attrs,
+        )
+        box.stop_gradient = True
+        var.stop_gradient = True
+        return box, var
+
+
+def box_coder(
+    prior_box,
+    prior_box_var,
+    target_box,
+    code_type="encode_center_size",
+    box_normalized=True,
+    axis=0,
+    name=None,
+):
+    r"""
+    Encode/Decode the target bounding box with the priorbox information.
+
+    The Encoding schema described below:
+
+    .. math::
+
+        ox &= (tx - px) / pw / pxv
+
+        oy &= (ty - py) / ph / pyv
+
+        ow &= log(abs(tw / pw)) / pwv
+
+        oh &= log(abs(th / ph)) / phv
+
+    The Decoding schema described below:
+
+    .. math::
+
+        ox &= (pw * pxv * tx * + px) - tw / 2
+
+        oy &= (ph * pyv * ty * + py) - th / 2
+
+        ow &= exp(pwv * tw) * pw + tw / 2
+
+        oh &= exp(phv * th) * ph + th / 2
+
+    where `tx`, `ty`, `tw`, `th` denote the target box's center coordinates,
+    width and height respectively. Similarly, `px`, `py`, `pw`, `ph` denote
+    the priorbox's (anchor) center coordinates, width and height. `pxv`,
+    `pyv`, `pwv`, `phv` denote the variance of the priorbox and `ox`, `oy`,
+    `ow`, `oh` denote the encoded/decoded coordinates, width and height.
+    During Box Decoding, two modes for broadcast are supported. Say target
+    box has shape [N, M, 4], and the shape of prior box can be [N, 4] or
+    [M, 4]. Then prior box will broadcast to target box along the
+    assigned axis.
+
+    Args:
+        prior_box (Tensor): Box list prior_box is a 2-D Tensor with shape
+            [M, 4] holds M boxes and data type is float32 or float64. Each box
+            is represented as [xmin, ymin, xmax, ymax], [xmin, ymin] is the
+            left top coordinate of the anchor box, if the input is image feature
+            map, they are close to the origin of the coordinate system.
+            [xmax, ymax] is the right bottom coordinate of the anchor box.
+        prior_box_var (List|Tensor|None): prior_box_var supports three types
+            of input. One is Tensor with shape [M, 4] which holds M group and
+            data type is float32 or float64. The second is list consist of
+            4 elements shared by all boxes and data type is float32 or float64.
+            Other is None and not involved in calculation.
+        target_box (Tensor): This input can be a 2-D LoDTensor with shape
+            [N, 4] when code_type is 'encode_center_size'. This input also can
+            be a 3-D Tensor with shape [N, M, 4] when code_type is
+            'decode_center_size'. Each box is represented as
+            [xmin, ymin, xmax, ymax]. The data type is float32 or float64.
+        code_type (str, optional): The code type used with the target box. It can be
+            `encode_center_size` or `decode_center_size`. `encode_center_size`
+            by default.
+        box_normalized (bool, optional): Whether treat the priorbox as a normalized box.
+            Set true by default.
+        axis (int, optional): Which axis in PriorBox to broadcast for box decode,
+            for example, if axis is 0 and TargetBox has shape [N, M, 4] and
+            PriorBox has shape [M, 4], then PriorBox will broadcast to [N, M, 4]
+            for decoding. It is only valid when code type is
+            `decode_center_size`. Set 0 by default.
+        name (str, optional): For detailed information, please refer
+            to :ref:`api_guide_Name`. Usually name is no need to set and
+            None by default.
+
+    Returns:
+        Tensor: output boxes, when code_type is 'encode_center_size', the
+            output tensor of box_coder_op with shape [N, M, 4] representing the
+            result of N target boxes encoded with M Prior boxes and variances.
+            When code_type is 'decode_center_size', N represents the batch size
+            and M represents the number of decoded boxes.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            # For encode
+            prior_box_encode = paddle.rand((80, 4), dtype=paddle.float32)
+            prior_box_var_encode = paddle.rand((80, 4), dtype=paddle.float32)
+            target_box_encode = paddle.rand((20, 4), dtype=paddle.float32)
+            output_encode = paddle.vision.ops.box_coder(
+                prior_box=prior_box_encode,
+                prior_box_var=prior_box_var_encode,
+                target_box=target_box_encode,
+                code_type="encode_center_size")
+
+            # For decode
+            prior_box_decode = paddle.rand((80, 4), dtype=paddle.float32)
+            prior_box_var_decode = paddle.rand((80, 4), dtype=paddle.float32)
+            target_box_decode = paddle.rand((20, 80, 4), dtype=paddle.float32)
+            output_decode = paddle.vision.ops.box_coder(
+                prior_box=prior_box_decode,
+                prior_box_var=prior_box_var_decode,
+                target_box=target_box_decode,
+                code_type="decode_center_size",
+                box_normalized=False)
+
+    """
+    check_variable_and_dtype(
+        prior_box, 'prior_box', ['float32', 'float64'], 'box_coder'
+    )
+    check_variable_and_dtype(
+        target_box, 'target_box', ['float32', 'float64'], 'box_coder'
+    )
+
+    if in_dygraph_mode():
+        if isinstance(prior_box_var, Variable):
+            output_box = _C_ops.box_coder(
+                prior_box,
+                prior_box_var,
+                target_box,
+                code_type,
+                box_normalized,
+                axis,
+                [],
+            )
+        elif isinstance(prior_box_var, list):
+            output_box = _C_ops.box_coder(
+                prior_box,
+                None,
+                target_box,
+                code_type,
+                box_normalized,
+                axis,
+                prior_box_var,
+            )
+        else:
+            raise TypeError("Input prior_box_var must be Variable or list")
+        return output_box
+
+    if _in_legacy_dygraph():
+        if isinstance(prior_box_var, Variable):
+            output_box = _legacy_C_ops.box_coder(
+                prior_box,
+                prior_box_var,
+                target_box,
+                "code_type",
+                code_type,
+                "box_normalized",
+                box_normalized,
+                "axis",
+                axis,
+            )
+        elif isinstance(prior_box_var, list):
+            output_box = _legacy_C_ops.box_coder(
+                prior_box,
+                None,
+                target_box,
+                "code_type",
+                code_type,
+                "box_normalized",
+                box_normalized,
+                "axis",
+                axis,
+                "variance",
+                prior_box_var,
+            )
+        else:
+            raise TypeError("Input prior_box_var must be Variable or list")
+        return output_box
+    else:
+        helper = LayerHelper("box_coder", **locals())
+
+        output_box = helper.create_variable_for_type_inference(
+            dtype=prior_box.dtype
+        )
+
+        inputs = {"PriorBox": prior_box, "TargetBox": target_box}
+        attrs = {
+            "code_type": code_type,
+            "box_normalized": box_normalized,
+            "axis": axis,
+        }
+        if isinstance(prior_box_var, Variable):
+            inputs['PriorBoxVar'] = prior_box_var
+        elif isinstance(prior_box_var, list):
+            attrs['variance'] = prior_box_var
+        else:
+            raise TypeError("Input prior_box_var must be Variable or list")
+        helper.append_op(
+            type="box_coder",
+            inputs=inputs,
+            attrs=attrs,
+            outputs={"OutputBox": output_box},
+        )
+        return output_box
 
 
 def deform_conv2d(
@@ -864,7 +1232,7 @@ class DeformConv2D(Layer):
         weight_attr=None,
         bias_attr=None,
     ):
-        super(DeformConv2D, self).__init__()
+        super().__init__()
         assert (
             weight_attr is not False
         ), "weight_attr should not be False in Conv."
@@ -1296,7 +1664,7 @@ class PSRoIPool(Layer):
     """
 
     def __init__(self, output_size, spatial_scale=1.0):
-        super(PSRoIPool, self).__init__()
+        super().__init__()
         self.output_size = output_size
         self.spatial_scale = spatial_scale
 
@@ -1429,7 +1797,7 @@ class RoIPool(Layer):
     """
 
     def __init__(self, output_size, spatial_scale=1.0):
-        super(RoIPool, self).__init__()
+        super().__init__()
         self._output_size = output_size
         self._spatial_scale = spatial_scale
 
@@ -1621,7 +1989,7 @@ class RoIAlign(Layer):
     """
 
     def __init__(self, output_size, spatial_scale=1.0):
-        super(RoIAlign, self).__init__()
+        super().__init__()
         self._output_size = output_size
         self._spatial_scale = spatial_scale
 
@@ -1742,33 +2110,36 @@ def nms(
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            boxes = np.random.rand(4, 4).astype('float32')
+            boxes = paddle.rand([4, 4]).astype('float32')
             boxes[:, 2] = boxes[:, 0] + boxes[:, 2]
             boxes[:, 3] = boxes[:, 1] + boxes[:, 3]
-            # [[0.06287421 0.5809351  0.3443958  0.8713329 ]
-            #  [0.0749094  0.9713205  0.99241287 1.2799143 ]
-            #  [0.46246734 0.6753201  1.346266   1.3821303 ]
-            #  [0.8984796  0.5619834  1.1254641  1.0201943 ]]
+            print(boxes)
+            # Tensor(shape=[4, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[0.64811575, 0.89756244, 0.86473107, 1.48552322],
+            #         [0.48085716, 0.84799081, 0.54517937, 0.86396021],
+            #         [0.62646860, 0.72901905, 1.17392159, 1.69691563],
+            #         [0.89729202, 0.46281594, 1.88733089, 0.98588502]])
 
-            out =  paddle.vision.ops.nms(paddle.to_tensor(boxes), 0.1)
-            # [0, 1, 3, 0]
+            out = paddle.vision.ops.nms(boxes, 0.1)
+            print(out)
+            # Tensor(shape=[3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            #        [0, 1, 3])
 
-            scores = np.random.rand(4).astype('float32')
-            # [0.98015213 0.3156527  0.8199343  0.874901 ]
+            scores = paddle.to_tensor([0.6, 0.7, 0.4, 0.233])
 
             categories = [0, 1, 2, 3]
-            category_idxs = np.random.choice(categories, 4)
-            # [2 0 0 3]
+            category_idxs = paddle.to_tensor([2, 0, 0, 3], dtype="int64")
 
-            out =  paddle.vision.ops.nms(paddle.to_tensor(boxes),
-                                                    0.1,
-                                                    paddle.to_tensor(scores),
-                                                    paddle.to_tensor(category_idxs),
-                                                    categories,
-                                                    4)
-            # [0, 3, 2]
+            out = paddle.vision.ops.nms(boxes,
+                                        0.1,
+                                        paddle.to_tensor(scores),
+                                        paddle.to_tensor(category_idxs),
+                                        categories,
+                                        4)
+            print(out)
+            # Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            #        [1, 0, 2, 3])
     """
 
     def _nms(boxes, iou_threshold):

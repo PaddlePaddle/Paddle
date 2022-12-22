@@ -25,7 +25,7 @@ def cyclic_reader(reader):
     return __reader__
 
 
-class FeedDataReader(object):
+class FeedDataReader:
     def __init__(self, feed_list, reader):
         self._feed_list = []
         for var in feed_list:

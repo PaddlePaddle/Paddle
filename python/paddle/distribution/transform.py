@@ -13,9 +13,7 @@
 # limitations under the License.
 
 import enum
-import functools
 import math
-import operator
 import typing
 
 import paddle
@@ -58,7 +56,7 @@ class Type(enum.Enum):
         return _type in (cls.BIJECTION, cls.INJECTION)
 
 
-class Transform(object):
+class Transform:
     r"""Base class for the transformations of random variables.
 
     ``Transform`` can be used to represent any differentiable and injective
@@ -120,7 +118,7 @@ class Transform(object):
     _type = Type.INJECTION
 
     def __init__(self):
-        super(Transform, self).__init__()
+        super().__init__()
 
     @classmethod
     def _is_injective(cls):
@@ -401,7 +399,7 @@ class AbsTransform(Transform):
         return -y, y
 
     def _inverse_log_det_jacobian(self, y):
-        zero = paddle.zeros([1], dtype=y.dtype)
+        zero = paddle.zeros([], dtype=y.dtype)
         return zero, zero
 
     @property
@@ -451,7 +449,7 @@ class AffineTransform(Transform):
             )
         self._loc = loc
         self._scale = scale
-        super(AffineTransform, self).__init__()
+        super().__init__()
 
     @property
     def loc(self):
@@ -540,7 +538,7 @@ class ChainTransform(Transform):
             )
 
         self.transforms = transforms
-        super(ChainTransform, self).__init__()
+        super().__init__()
 
     def _is_injective(self):
         return all(t._is_injective() for t in self.transforms)
@@ -649,7 +647,7 @@ class ExpTransform(Transform):
     _type = Type.BIJECTION
 
     def __init__(self):
-        super(ExpTransform, self).__init__()
+        super().__init__()
 
     @property
     def _domain(self):
@@ -725,7 +723,7 @@ class IndependentTransform(Transform):
 
         self._base = base
         self._reinterpreted_batch_rank = reinterpreted_batch_rank
-        super(IndependentTransform, self).__init__()
+        super().__init__()
 
     def _is_injective(self):
         return self._base._is_injective()
@@ -798,7 +796,7 @@ class PowerTransform(Transform):
                 f"Expected 'power' is a tensor, but got {type(power)}"
             )
         self._power = power
-        super(PowerTransform, self).__init__()
+        super().__init__()
 
     @property
     def power(self):
@@ -872,17 +870,21 @@ class ReshapeTransform(Transform):
                 f"Squence[int], but got 'in_event_shape': {in_event_shape}, "
                 f"'out_event_shape': {out_event_shape}"
             )
-        if functools.reduce(operator.mul, in_event_shape) != functools.reduce(
-            operator.mul, out_event_shape
-        ):
+        in_size = 1
+        for e in in_event_shape:
+            in_size *= e
+        out_size = 1
+        for e in out_event_shape:
+            out_size *= e
+        if in_size != out_size:
             raise ValueError(
                 f"The numel of 'in_event_shape' should be 'out_event_shape', "
-                f"but got {functools.reduce(operator.mul, in_event_shape)}!={functools.reduce(operator.mul, out_event_shape)}"
+                f"but got {in_size}!={out_size}"
             )
 
         self._in_event_shape = tuple(in_event_shape)
         self._out_event_shape = tuple(out_event_shape)
-        super(ReshapeTransform, self).__init__()
+        super().__init__()
 
     @property
     def in_event_shape(self):
@@ -917,7 +919,9 @@ class ReshapeTransform(Transform):
             raise ValueError(
                 f"Expected length of 'shape' is not less than {len(self._in_event_shape)}, but got {len(shape)}"
             )
-        if shape[-len(self._in_event_shape) :] != self._in_event_shape:
+        if tuple(shape[-len(self._in_event_shape) :]) != tuple(
+            self._in_event_shape
+        ):
             raise ValueError(
                 f"Event shape mismatch, expected: {self._in_event_shape}, but got {shape[-len(self._in_event_shape):]}"
             )
@@ -930,7 +934,9 @@ class ReshapeTransform(Transform):
             raise ValueError(
                 f"Expected 'shape' length is not less than {len(self._out_event_shape)}, but got {len(shape)}"
             )
-        if shape[-len(self._out_event_shape) :] != self._out_event_shape:
+        if tuple(shape[-len(self._out_event_shape) :]) != tuple(
+            self._out_event_shape
+        ):
             raise ValueError(
                 f"Event shape mismatch, expected: {self._out_event_shape}, but got {shape[-len(self._out_event_shape):]}"
             )
@@ -939,7 +945,7 @@ class ReshapeTransform(Transform):
         )
 
     def _forward_log_det_jacobian(self, x):
-        # paddle.zeros not support zero dimension Tensor.
+        # TODO(zhouwei): should not set shape to [1], which is []
         shape = x.shape[: x.dim() - len(self._in_event_shape)] or [1]
         return paddle.zeros(shape, dtype=x.dtype)
 
