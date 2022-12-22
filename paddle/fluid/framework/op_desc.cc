@@ -671,6 +671,11 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   if (extra_attr_iter != extra_attr_map.end()) {
     is_runtime_attr = true;
     attrs_ptr = &(this->runtime_attrs_);
+    // When an attribute is found in both attrs and runtime_attrs, it must
+    // be a runtime attribute, so it's value in attrs should be removed.
+    if (this->attrs_.find(name) != this->attrs_.end()) {
+      this->attrs_.erase(name);
+    }
   }
   // NOTICE(minqiyang): pybind11 will take the empty list in python as
   // the std::vector<int> type in C++; so we have to change the attr's type
