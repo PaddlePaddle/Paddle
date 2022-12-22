@@ -296,6 +296,7 @@ class OpConverter {
       const std::vector<std::string>& inputs,
       const std::unordered_set<std::string>& parameters,
       const std::vector<std::string>& outputs,
+      const std::vector<int>& output_dtypes,
       TensorRTEngine* engine) {
     engine->InitNetwork();
     bool all_dynamic_shape_set = true;
@@ -363,8 +364,10 @@ class OpConverter {
                           "check the INFO log above for more details."));
     framework::proto::BlockDesc* block_proto = block_desc->Proto();
     ConvertBlock(*block_proto, parameters, scope, engine);
-    for (auto& output : outputs) {
-      engine->DeclareOutput(output);
+    size_t num_outputs = outputs.size();
+    for (size_t i = 0; i < num_outputs; ++i) {
+      auto output_type = static_cast<phi::DataType>(output_dtypes[i]);
+      engine->DeclareOutput(outputs[i], PhiType2NvType(output_type));
     }
     engine->FreezeNetwork();
     engine->ClearWeights();

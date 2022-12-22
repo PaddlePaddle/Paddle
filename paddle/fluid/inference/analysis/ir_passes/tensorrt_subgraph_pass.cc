@@ -603,6 +603,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
           std::vector<std::string>(input_names.begin(), input_names.end()),
           param_set,
           output_mapping,
+          origin_outputs_dtype,
           trt_engine);
 
   if (use_static_engine) {
