@@ -156,25 +156,25 @@ set(generated_static_files
     "${generated_static_argument_mapping_path}"
     "${generated_sparse_argument_mapping_path}")
 
-foreach(generated_static_file ${generated_static_files})
-  if(EXISTS "${generated_static_file}.tmp" AND EXISTS
-                                               "${generated_static_file}")
-    execute_process(
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different
-              "${generated_static_file}.tmp" "${generated_static_file}")
-    message(
-      "copy if different ${generated_static_file}.tmp ${generated_static_file}")
-  elseif(EXISTS "${generated_static_file}.tmp")
-    execute_process(
-      COMMAND ${CMAKE_COMMAND} -E copy "${generated_static_file}.tmp"
-              "${generated_static_file}")
-    message("copy ${generated_static_file}.tmp ${generated_static_file}")
-  else()
-    execute_process(COMMAND ${CMAKE_COMMAND} -E remove -f
-                            "${generated_static_file}")
-    message("remove ${generated_static_file}")
-  endif()
-endforeach()
+# foreach(generated_static_file ${generated_static_files})
+#   if(EXISTS "${generated_static_file}.tmp" AND EXISTS
+#                                                "${generated_static_file}")
+#     execute_process(
+#       COMMAND ${CMAKE_COMMAND} -E copy_if_different
+#               "${generated_static_file}.tmp" "${generated_static_file}")
+#     message(
+#       "copy if different ${generated_static_file}.tmp ${generated_static_file}")
+#   elseif(EXISTS "${generated_static_file}.tmp")
+#     execute_process(
+#       COMMAND ${CMAKE_COMMAND} -E copy "${generated_static_file}.tmp"
+#               "${generated_static_file}")
+#     message("copy ${generated_static_file}.tmp ${generated_static_file}")
+#   else()
+#     execute_process(COMMAND ${CMAKE_COMMAND} -E remove -f
+#                             "${generated_static_file}")
+#     message("remove ${generated_static_file}")
+#   endif()
+# endforeach()
 
 # op extra info file
 set(ops_extra_info_gen_file

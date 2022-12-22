@@ -23,6 +23,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/fluid/eager/api/prims/composite_grad_desc_maker.h"
 #include "paddle/fluid/framework/grad_op_desc_maker.h"
 #include "paddle/fluid/framework/inplace_op_inference.h"
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
@@ -46,6 +47,7 @@ enum OpInfoFillType {
   kInplaceOpInference = 5,
   kNoNeedBufferVarsInference = 6,
   kGradOpBaseMaker = 7,
+  kGradCompOpDescMaker = 8,
   kUnknown = -1
 };
 
@@ -56,15 +58,16 @@ struct TypePair {
   static constexpr OpInfoFillType kFillType = kType;
 };
 
-using OpRegistryClasses = std::tuple<                                // NOLINT
-    TypePair<OperatorBase, kOperator>,                               // NOLINT
-    TypePair<OpProtoAndCheckerMaker, kOpProtoAndCheckerMaker>,       // NOLINT
-    TypePair<GradOpDescMakerBase, kGradOpDescMaker>,                 // NOLINT
-    TypePair<imperative::GradOpBaseMakerBase, kGradOpBaseMaker>,     // NOLINT
-    TypePair<VarTypeInference, kVarTypeInference>,                   // NOLINT
-    TypePair<InferShapeBase, kShapeInference>,                       // NOLINT
-    TypePair<InplaceOpInference, kInplaceOpInference>,               // NOLINT
-    TypePair<NoNeedBufferVarsInference, kNoNeedBufferVarsInference>  // NOLINT
+using OpRegistryClasses = std::tuple<                                 // NOLINT
+    TypePair<OperatorBase, kOperator>,                                // NOLINT
+    TypePair<OpProtoAndCheckerMaker, kOpProtoAndCheckerMaker>,        // NOLINT
+    TypePair<GradOpDescMakerBase, kGradOpDescMaker>,                  // NOLINT
+    TypePair<imperative::GradOpBaseMakerBase, kGradOpBaseMaker>,      // NOLINT
+    TypePair<prims::GradCompositeOpMakerBase, kGradCompOpDescMaker>,  // NOLINT
+    TypePair<VarTypeInference, kVarTypeInference>,                    // NOLINT
+    TypePair<InferShapeBase, kShapeInference>,                        // NOLINT
+    TypePair<InplaceOpInference, kInplaceOpInference>,                // NOLINT
+    TypePair<NoNeedBufferVarsInference, kNoNeedBufferVarsInference>   // NOLINT
     >;
 
 static constexpr int kOpRegistryClassNumber =
@@ -249,6 +252,30 @@ struct OpInfoFiller<T, kGradOpDescMaker> {
     info->use_empty_grad_op_desc_maker_ =
         std::is_base_of<EmptyGradOpMaker<OpDesc>, T>::value ||
         std::is_base_of<EmptyGradOpMaker<imperative::OpBase>, T>::value;
+  }
+};
+
+template <typename T>
+struct OpInfoFiller<T, kGradCompOpDescMaker> {
+  void operator()(const char* op_type, OpInfo* info) const {
+    PADDLE_ENFORCE_EQ(
+        info->grad_comp_op_maker_,
+        nullptr,
+        platform::errors::AlreadyExists(
+            "GradCompositeOpMakerBase of %s has been registered", op_type));
+
+    info->grad_comp_op_maker_ =
+        [](const OpDesc& fwd_op,
+           const std::unordered_set<std::string>& no_grad_set,
+           std::unordered_map<std::string, std::string>* grad_to_var,
+           BlockDesc* current_block,
+           const std::vector<BlockDesc*>& grad_block) {
+          T maker(fwd_op, no_grad_set, grad_to_var, current_block, grad_block);
+          return maker();
+        };
+    // TODO(jiabin): Support this later or just not.
+    info->use_default_grad_op_desc_maker_ = false;
+    info->use_empty_grad_op_desc_maker_ = false;
   }
 };
 

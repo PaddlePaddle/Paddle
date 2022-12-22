@@ -43,6 +43,7 @@ class OpInfo {
  public:
   OpCreator creator_;
   GradOpMakerFN grad_op_maker_;
+  GradCompositeOpMakerFN grad_comp_op_maker_;
   proto::OpProto* proto_{nullptr};
   OpAttrChecker* checker_{nullptr};
   InferVarTypeFN infer_var_type_;
@@ -95,6 +96,13 @@ class OpInfo {
             type.c_str(),
             type.c_str()));
     return grad_op_maker_;
+  }
+
+  const GradCompositeOpMakerFN& GradCompOpMaker() const {
+    // Normally, proto_ should not be null, except some special operators, such
+    // as LeaklyReluDoubleGrad op.
+    std::string type = proto_ ? proto_->type() : "unknown";
+    return grad_comp_op_maker_;
   }
 
   // some ops don't have grad_op_maker, add check before use GradOpMaker()
