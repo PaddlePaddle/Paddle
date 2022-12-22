@@ -133,18 +133,24 @@ class ProcessGroup:
         if self.nranks >= 2:
             strategy = core.ParallelStrategy()
             strategy.nranks = self.nranks
+            print("nranks: {}".format(strategy.nranks))
             strategy.local_rank = self.local_rank(global_rank)
+            print("local_rank: {}".format(strategy.local_rank))
             strategy.trainer_endpoints = [
                 genv.trainer_endpoints[i] for i in self.ranks
             ]
+            print("trainer_endpoints: {}".format(strategy.trainer_endpoints))
             strategy.current_endpoint = genv.current_endpoint
+            print("current_endpoint: {}".format(strategy.current_endpoint))
             strategy.nrings = 1
 
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(genv.device_id)
+                print("Call NCCLParallelContext")
                 core.NCCLParallelContext(strategy, place).init_with_ring_id(
                     ring_id
                 )
+                print("Finished NCCLParallelContext")
             else:
                 assert False, "No CUDA device found"
 
