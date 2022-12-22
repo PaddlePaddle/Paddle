@@ -1690,8 +1690,14 @@ class OpTest(unittest.TestCase):
                 ]:
                     actual_np = convert_uint16_to_float(actual_np)
                     self.rtol = 1.0e-2
+                elif actual_np.dtype == np.float16 and expect_np.dtype in [
+                    np.float32,
+                    np.float64,
+                ]:
+                    self.rtol = 1.0e-3
                 else:
                     self.rtol = 1.0e-5
+
                 if (
                     expect_np.dtype == np.uint16
                     and actual_np.dtype == np.uint16
@@ -2276,6 +2282,11 @@ class OpTest(unittest.TestCase):
                 max_relative_error = (
                     0.04 if max_relative_error < 0.04 else max_relative_error
                 )
+            if grad.dtype == np.float16:
+                grad = grad.astype(np.float32)
+                max_relative_error = (
+                    1e-3 if max_relative_error < 1e-3 else max_relative_error
+                )
             fp32_analytic_grads.append(grad)
         analytic_grads = fp32_analytic_grads
 
@@ -2286,6 +2297,13 @@ class OpTest(unittest.TestCase):
                 max_relative_error = (
                     0.04 if max_relative_error < 0.04 else max_relative_error
                 )
+
+            if grad.dtype == np.float16:
+                grad = grad.astype(np.float32)
+                max_relative_error = (
+                    1e-3 if max_relative_error < 1e-3 else max_relative_error
+                )
+
             fp32_numeric_grads.append(grad)
         numeric_grads = fp32_numeric_grads
 
