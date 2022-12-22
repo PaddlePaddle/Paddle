@@ -515,6 +515,7 @@ TEST_F(TensorRTDynamicTestFusedTokenPrune, test_fused_token_prune) {
 
   // slimmed_x_v: [[4,3,2,1],[4,3,2,1],[4,3,2,1],[4,3,2,1]] ->
   // [[2,1],[2,1],[2,1],[2,1]]
+
   ASSERT_EQ(slimmed_x_v[0], 2);
   ASSERT_EQ(slimmed_x_v[1], 1);
   ASSERT_EQ(slimmed_x_v[2], 2);
@@ -586,7 +587,7 @@ class TensorRTDynamicTestFusedTokenPruneHalf : public ::testing::Test {
                                  std::map<std::string, std::vector<int>>(),
                                  std::map<std::string, std::vector<int>>(),
                                  false,
-                                 phi::DataType::FLOAT16,
+                                 phi::DataType::FLOAT32,
                                  NaiveLogger::Global());
     engine_->InitNetwork();
   }
@@ -613,8 +614,10 @@ class TensorRTDynamicTestFusedTokenPruneHalf : public ::testing::Test {
     }
   }
 
-  void GetOutput(std::vector<float> &slimmed_x) {  // NOLINT
+  void GetOutput(std::vector<float> &slimmed_x,     // NOLINT
+                 std::vector<int32_t> &cls_inds) {  // NOLINT
     paddle::framework::TensorToVector(outputs_[0], *ctx_, &slimmed_x);
+    paddle::framework::TensorToVector(outputs_[1], *ctx_, &cls_inds);
   }
 
  protected:
@@ -646,13 +649,13 @@ TEST_F(TensorRTDynamicTestFusedTokenPruneHalf, test_fused_token_prune) {
                           platform::errors::InvalidArgument(
                               "TRT fused_token_prune layer building failed."));
   std::vector<std::string> output_tensor_names{"out_slimmed_x", "out_cls_inds"};
-  for (size_t i = 0; i < 1; i++) {
+  for (size_t i = 0; i < 2; i++) {
     layer->getOutput(i)->setName(output_tensor_names[i].c_str());
     engine_->DeclareOutput(layer, i, output_tensor_names[i]);
   }
   engine_->FreezeNetwork();
 
-  ASSERT_EQ(engine_->engine()->getNbBindings(), 5);
+  ASSERT_EQ(engine_->engine()->getNbBindings(), 6);
   LOG(INFO) << "create input";
   std::vector<float16> attn_v(16);
   for (int j = 0; j < 4; ++j) {
@@ -685,8 +688,10 @@ TEST_F(TensorRTDynamicTestFusedTokenPruneHalf, test_fused_token_prune) {
 
   LOG(INFO) << "create output";
   std::vector<int> out_slimmed_x_shape{4, 2, 1};
+  std::vector<int> out_cls_ins_shape{4, 2};
 
-  PrepareInputOutput({attn_v, x_v, mask_v, new_mask_v}, {out_slimmed_x_shape});
+  PrepareInputOutput({attn_v, x_v, mask_v, new_mask_v},
+                     {out_slimmed_x_shape, out_cls_ins_shape});
 
   auto *attn_gpu_data = inputs_[0].mutable_data<float16>(ctx_->GetPlace());
   auto *x_gpu_data = inputs_[1].mutable_data<float16>(ctx_->GetPlace());
@@ -694,27 +699,31 @@ TEST_F(TensorRTDynamicTestFusedTokenPruneHalf, test_fused_token_prune) {
   auto *new_mask_gpu_data = inputs_[3].mutable_data<float16>(ctx_->GetPlace());
 
   auto *slimmed_x_gpu_data = outputs_[0].mutable_data<float>(ctx_->GetPlace());
+  auto *cls_inds_gpu_data = outputs_[1].mutable_data<int32_t>(ctx_->GetPlace());
 
   LOG(INFO) << "create buffers";
 
-  std::vector<void *> buffers(5);
+  std::vector<void *> buffers(6);
   buffers[0] = reinterpret_cast<void *>(attn_gpu_data);
   buffers[1] = reinterpret_cast<void *>(x_gpu_data);
   buffers[2] = reinterpret_cast<void *>(mask_gpu_data);
   buffers[3] = reinterpret_cast<void *>(new_mask_gpu_data);
   buffers[4] = reinterpret_cast<void *>(slimmed_x_gpu_data);
+  buffers[5] = reinterpret_cast<void *>(cls_inds_gpu_data);
 
   LOG(INFO) << "Execute";
 
   engine_->Execute(4, &buffers, ctx_->stream());
 
   std::vector<float> slimmed_x_v(8);
+  std::vector<int32_t> cls_inds_v;
 
   LOG(INFO) << "GetOutput";
-  GetOutput(slimmed_x_v);
+  GetOutput(slimmed_x_v, cls_inds_v);
 
   // slimmed_x_v: [[4,3,2,1],[4,3,2,1],[4,3,2,1],[4,3,2,1]] ->
   // [[2,1],[2,1],[2,1],[2,1]]
+
   ASSERT_EQ(slimmed_x_v[0], 2);
   ASSERT_EQ(slimmed_x_v[1], 1);
   ASSERT_EQ(slimmed_x_v[2], 2);
@@ -723,6 +732,15 @@ TEST_F(TensorRTDynamicTestFusedTokenPruneHalf, test_fused_token_prune) {
   ASSERT_EQ(slimmed_x_v[5], 1);
   ASSERT_EQ(slimmed_x_v[6], 2);
   ASSERT_EQ(slimmed_x_v[7], 1);
+
+  ASSERT_EQ(cls_inds_v[0], 2);
+  ASSERT_EQ(cls_inds_v[1], 3);
+  ASSERT_EQ(cls_inds_v[2], 2);
+  ASSERT_EQ(cls_inds_v[3], 3);
+  ASSERT_EQ(cls_inds_v[4], 2);
+  ASSERT_EQ(cls_inds_v[5], 3);
+  ASSERT_EQ(cls_inds_v[6], 2);
+  ASSERT_EQ(cls_inds_v[7], 3);
 
   LOG(INFO) << "finish";
 #endif
