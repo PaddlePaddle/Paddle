@@ -1261,6 +1261,8 @@ def set_grad_var_shape(program, dist_context):
                 "fused_softmax_mask_upper_triangle_grad",
                 "flatten_contiguous_range_grad",
                 "relu_grad",
+                "exp_grad",
+                "sigmoid_grad",
             ]
             forward_list = [
                 "reshape2",
@@ -1279,6 +1281,8 @@ def set_grad_var_shape(program, dist_context):
                 "fused_softmax_mask_upper_triangle",
                 "flatten_contiguous_range",
                 "relu",
+                "exp",
+                "sigmoid",
             ]
             if op.type in need_set_shape_list:
                 for forward_op in block.ops:
