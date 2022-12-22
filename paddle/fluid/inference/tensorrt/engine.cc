@@ -208,18 +208,6 @@ void TensorRTEngine::FreezeNetwork() {
     }
   }
 
-  // If model is mixed precision, then we should cast all float output to
-  // float32 precision. Otherwise, we can not confirm the output precision of
-  // the trt engine.
-  if (model_precision_ != phi::DataType::FLOAT32) {
-    for (int i = 0; i < network()->getNbOutputs(); ++i) {
-      network()->getOutput(i)->setAllowedFormats(
-          static_cast<nvinfer1::TensorFormats>(
-              1 << static_cast<int>(nvinfer1::TensorFormat::kLINEAR)));
-      network()->getOutput(i)->setType(nvinfer1::DataType::kFLOAT);
-    }
-  }
-
   if (use_dla_) {
     if (!enable_int8 && !enable_fp16) {
       LOG(WARNING) << "TensorRT DLA must be used with int8 or fp16, but you "
