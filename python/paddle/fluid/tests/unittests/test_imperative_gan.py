@@ -71,12 +71,8 @@ class TestDygraphGAN(unittest.TestCase):
             discriminator = Discriminator()
             generator = Generator()
 
-            img = fluid.layers.data(
-                name="img", shape=[2, 1], append_batch_size=False
-            )
-            noise = fluid.layers.data(
-                name="noise", shape=[2, 2], append_batch_size=False
-            )
+            img = paddle.static.data(name="img", shape=[2, 1])
+            noise = paddle.static.data(name="noise", shape=[2, 2])
 
             d_real = discriminator(img)
             d_loss_real = paddle.mean(
@@ -107,9 +103,7 @@ class TestDygraphGAN(unittest.TestCase):
             discriminator = Discriminator()
             generator = Generator()
 
-            noise = fluid.layers.data(
-                name="noise", shape=[2, 2], append_batch_size=False
-            )
+            noise = paddle.static.data(name="noise", shape=[2, 2])
 
             d_fake = discriminator(generator(noise))
             g_loss = paddle.mean(

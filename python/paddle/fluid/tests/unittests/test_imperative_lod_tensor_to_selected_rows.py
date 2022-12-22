@@ -163,10 +163,10 @@ class TestDygraphSimpleNet(unittest.TestCase):
 
                     exe = fluid.Executor(place)
                     sgd = SGDOptimizer(learning_rate=1e-3)
-                    x = fluid.layers.data(
+                    x = paddle.static.data(
                         name="x", shape=[-1, num_steps], dtype='int64'
                     )
-                    y = fluid.layers.data(name="y", shape=[-1, 1], dtype=dtype)
+                    y = paddle.static.data(name="y", shape=[-1, 1], dtype=dtype)
 
                     static_loss = simple_net(x, y)
                     sgd.minimize(static_loss)

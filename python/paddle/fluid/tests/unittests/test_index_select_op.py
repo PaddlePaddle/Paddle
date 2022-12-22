@@ -97,10 +97,8 @@ class TestIndexSelectAPI(unittest.TestCase):
 
         # case 1:
         with program_guard(Program(), Program()):
-            x = fluid.layers.data(name='x', shape=[-1, 4])
-            index = fluid.layers.data(
-                name='index', shape=[3], dtype='int32', append_batch_size=False
-            )
+            x = paddle.static.data(name='x', shape=[-1, 4])
+            index = paddle.static.data(name='index', shape=[3], dtype='int32')
             z = paddle.index_select(x, index, axis=1)
             exe = fluid.Executor(fluid.CPUPlace())
             (res,) = exe.run(
@@ -115,10 +113,8 @@ class TestIndexSelectAPI(unittest.TestCase):
 
         # case 2:
         with program_guard(Program(), Program()):
-            x = fluid.layers.data(name='x', shape=[-1, 4])
-            index = fluid.layers.data(
-                name='index', shape=[3], dtype='int32', append_batch_size=False
-            )
+            x = paddle.static.data(name='x', shape=[-1, 4])
+            index = paddle.static.data(name='index', shape=[3], dtype='int32')
             z = paddle.index_select(x, index)
             exe = fluid.Executor(fluid.CPUPlace())
             (res,) = exe.run(

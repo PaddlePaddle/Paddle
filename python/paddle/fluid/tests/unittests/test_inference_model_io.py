@@ -54,8 +54,8 @@ class TestBook(unittest.TestCase):
         program = Program()
 
         with program_guard(program, init_program):
-            x = layers.data(name='x', shape=[2], dtype='float32')
-            y = layers.data(name='y', shape=[1], dtype='float32')
+            x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
+            y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
 
             y_predict = layers.fc(input=x, size=1, act=None)
 
@@ -150,8 +150,8 @@ class TestSaveInferenceModel(unittest.TestCase):
 
         # fake program without feed/fetch
         with program_guard(program, init_program):
-            x = layers.data(name='x', shape=[2], dtype='float32')
-            y = layers.data(name='y', shape=[1], dtype='float32')
+            x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
+            y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
 
             y_predict = layers.fc(input=x, size=1, act=None)
 
@@ -175,8 +175,8 @@ class TestSaveInferenceModel(unittest.TestCase):
 
         # fake program without feed/fetch
         with program_guard(program, init_program):
-            x = layers.data(name='x', shape=[2], dtype='float32')
-            y = layers.data(name='y', shape=[1], dtype='int32')
+            x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
+            y = paddle.static.data(name='y', shape=[-1, 1], dtype='int32')
             predict = fluid.layers.fc(input=x, size=2, act='softmax')
             acc = paddle.static.accuracy(input=predict, label=y)
             auc_var, batch_auc_var, auc_states = paddle.static.auc(
@@ -210,8 +210,8 @@ class TestInstance(unittest.TestCase):
 
         # fake program without feed/fetch
         with program_guard(program, init_program):
-            x = layers.data(name='x', shape=[2], dtype='float32')
-            y = layers.data(name='y', shape=[1], dtype='float32')
+            x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
+            y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
 
             y_predict = layers.fc(input=x, size=1, act=None)
 
@@ -248,8 +248,8 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
         # fake program without feed/fetch
         with program_guard(program, init_program):
-            x = layers.data(name='x', shape=[2], dtype='float32')
-            y = layers.data(name='y', shape=[1], dtype='float32')
+            x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
+            y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
 
             y_predict = layers.fc(input=x, size=1, act=None)
 
@@ -427,8 +427,8 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
         # fake program without feed/fetch
         with program_guard(program, init_program):
-            x = layers.data(name='x', shape=[2], dtype='float32')
-            y = layers.data(name='y', shape=[1], dtype='float32')
+            x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
+            y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
 
             y_predict = layers.fc(input=x, size=1, act=None)
 
@@ -476,8 +476,8 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
         # fake program without feed/fetch
         with program_guard(program, init_program):
-            x = layers.data(name='x', shape=[2], dtype='float32')
-            y = layers.data(name='y', shape=[1], dtype='float32')
+            x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
+            y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
 
             y_predict = layers.fc(input=x, size=1, act=None)
 

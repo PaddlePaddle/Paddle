@@ -116,12 +116,12 @@ class TestListenAndServOp(unittest.TestCase):
                     cache_path
                 )
                 os.system(cmd)
-            x = fluid.layers.data(name='x', shape=[1], dtype='int64')
+            x = paddle.static.data(name='x', shape=[-1, 1], dtype='int64')
             x_emb = fluid.layers.embedding(
                 input=x, size=[1, 2], is_distributed=True
             )
             y_predict = fluid.layers.fc(input=x_emb, size=1, act=None)
-            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
             )
@@ -178,12 +178,12 @@ class TestListenAndServOp(unittest.TestCase):
                     cache_path
                 )
                 os.system(cmd)
-            x = fluid.layers.data(name='x', shape=[1], dtype='int64')
+            x = paddle.static.data(name='x', shape=[-1, 1], dtype='int64')
             x_emb = fluid.layers.embedding(
                 input=x, size=[1, 2], is_distributed=True
             )
             y_predict = fluid.layers.fc(input=x_emb, size=1, act=None)
-            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
             )

@@ -286,14 +286,14 @@ class TestHSigmoidOpSparse(OpTest):
 
 class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
     def hs_net_conf(self, is_sparse):
-        input_word = fluid.layers.data(name="x", shape=[1], dtype='int64')
-        path_table = fluid.layers.data(
-            name='path_table', shape=[3], dtype='int64'
+        input_word = paddle.static.data(name="x", shape=[-1, 1], dtype='int64')
+        path_table = paddle.static.data(
+            name='path_table', shape=[-1, 3], dtype='int64'
         )
-        path_code = fluid.layers.data(
-            name='path_code', shape=[3], dtype='int64'
+        path_code = paddle.static.data(
+            name='path_code', shape=[-1, 3], dtype='int64'
         )
-        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+        label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
 
         data_list = [input_word, path_table, path_code, label]
 

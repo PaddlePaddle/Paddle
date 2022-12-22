@@ -222,7 +222,7 @@ def make_all_inputs(input_fields):
     """
     inputs = []
     for input_field in input_fields:
-        input_var = fluid.layers.data(
+        input_var = paddle.static.data(
             name=input_field,
             shape=input_descs[input_field][0],
             dtype=input_descs[input_field][1],
