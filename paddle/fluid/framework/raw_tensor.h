@@ -23,21 +23,21 @@ namespace paddle {
 namespace framework {
 
 /// \brief Fluid Kernel and PHI Kernel will be unified in the future.
-/// So, we need a class in PHI that can represent the Raw type in Fluid.
-/// The Raw is for PHI Kernel that has Raw type arguments.
-class Raw : public phi::ExtendedTensor,
-            public phi::TypeInfoTraits<phi::TensorBase, Raw> {
+/// So, we need a class in PHI that can represent the RawTensor type in Fluid.
+/// The RawTensor is for PHI Kernel that has RawTensor type arguments.
+class RawTensor : public phi::ExtendedTensor,
+                  public phi::TypeInfoTraits<phi::TensorBase, RawTensor> {
  public:
-  Raw() = default;
+  RawTensor() = default;
 
-  Raw(Raw&& other) = default;
+  RawTensor(RawTensor&& other) = default;
 
-  Raw(const Raw& other) = default;
+  RawTensor(const RawTensor& other) = default;
 
-  Raw& operator=(Raw&& other) = default;
+  RawTensor& operator=(RawTensor&& other) = default;
 
-  /// \brief Destroy the Raw and release exclusive resources.
-  virtual ~Raw() {
+  /// \brief Destroy the RawTensor and release exclusive resources.
+  virtual ~RawTensor() {
     if (!data_.empty()) {
       data_deleter_();
     }
@@ -46,15 +46,15 @@ class Raw : public phi::ExtendedTensor,
  public:
   /// \brief Returns the name of the class for type traits.
   /// \return The name of the class.
-  static const char* name() { return "Raw"; }
+  static const char* name() { return "RawTensor"; }
 
   template <typename T>
   T& Get() const {
-    PADDLE_ENFORCE_EQ(
-        data_.empty(),
-        false,
-        platform::errors::PreconditionNotMet(
-            "The data in Raw is empty. Please set data before using it."));
+    PADDLE_ENFORCE_EQ(data_.empty(),
+                      false,
+                      platform::errors::PreconditionNotMet(
+                          "The data in RawTensor is empty. Please set data "
+                          "before using it."));
 
     try {
       return *(paddle::any_cast<T*>(data_));

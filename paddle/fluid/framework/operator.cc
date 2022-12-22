@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/phi_utils.h"
-#include "paddle/fluid/framework/raw.h"
+#include "paddle/fluid/framework/raw_tensor.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/unused_var_check.h"
@@ -1574,25 +1574,36 @@ void OperatorWithKernel::CheckWhetherPreparePhiData(
     const auto& phi_kernel_context = impl_->getKernelContext();
     size_t phi_tensor_index = 0;
     // Check each tensor in KernelContext, if there is a tensor that has
-    // different type with variable. The PhiKernelContext need be reConstructed.
-    if (phi_kernel_context->OutputsSize() >= phi_tensor_index) {
+    // different type with variable. The PhiKernelContext need be reconstructed.
+    // We use kernel_signature_'s output to retrieve tensor. Because the tensor
+    // in phi_kernel_context stored in the order of kernel_signature_'s output.
+    if (phi_kernel_context->OutputsSize() >= phi_tensor_index ||
+        kernel_signature_ == nullptr) {
       need_prepare_phi_data_ = true;
       return;
     }
-    for (auto& var_name_item : outnames) {
-      for (auto& var_name : var_name_item.second) {
-        auto var_output = scope.FindVar(var_name);
-        auto phi_output = phi_kernel_context->MutableOutputAt<phi::TensorBase>(
-            phi_tensor_index);
-        if (phi_output == nullptr) {
-          continue;
+
+    const auto& phi_output_names = kernel_signature_->output_names;
+    for (auto& phi_output_name : phi_output_names) {
+      const auto& iter = outnames.find(phi_output_name);
+      if (iter != outnames.end()) {
+        for (auto& var_name : iter->second) {
+          auto var_output = scope.FindVar(var_name);
+          auto phi_output =
+              phi_kernel_context->MutableOutputAt<phi::TensorBase>(
+                  phi_tensor_index);
+          if (phi_output == nullptr) {
+            continue;
+          }
+          if (!(HasSameTensorType<phi::DenseTensor>(phi_output, var_output) ||
+                HasSameTensorType<phi::SparseCooTensor>(phi_output,
+                                                        var_output) ||
+                HasSameTensorType<framework::Strings>(phi_output,
+                                                      var_output))) {
+            need_prepare_phi_data_ = true;
+          }
+          phi_tensor_index++;
         }
-        if (HasSameTensorType<phi::DenseTensor>(phi_output, var_output) ||
-            HasSameTensorType<phi::SparseCooTensor>(phi_output, var_output) ||
-            HasSameTensorType<framework::Strings>(phi_output, var_output)) {
-          need_prepare_phi_data_ = true;
-        }
-        phi_tensor_index++;
       }
     }
   }
@@ -3109,12 +3120,12 @@ void OperatorWithKernel::BuildPhiKernelContext(
         } else if (var->template IsType<framework::Strings>()) {
           tensor_out = var->template GetMutable<framework::Strings>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
-        } else if (var->template IsType<paddle::framework::Raw>()) {
-          tensor_out = var->template GetMutable<paddle::framework::Raw>();
+        } else if (var->template IsType<paddle::framework::RawTensor>()) {
+          tensor_out = var->template GetMutable<paddle::framework::RawTensor>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else if (!var->IsInitialized()) {
           // The following is for RAW type of var
-          tensor_out = var->template GetMutable<paddle::framework::Raw>();
+          tensor_out = var->template GetMutable<paddle::framework::RawTensor>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(

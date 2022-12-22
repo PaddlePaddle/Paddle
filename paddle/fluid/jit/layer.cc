@@ -92,7 +92,7 @@ PD_SPECIALZE_ATTRIBUTE_TYPE(float)
 PD_SPECIALZE_ATTRIBUTE_TYPE(framework::String)
 PD_SPECIALZE_ATTRIBUTE_TYPE(std::vector<int>)
 PD_SPECIALZE_ATTRIBUTE_TYPE(std::vector<float>)
-PD_SPECIALZE_ATTRIBUTE_TYPE(framework::Strings)
+PD_SPECIALZE_ATTRIBUTE_TYPE(std::vector<std::string>)
 
 }  // namespace jit
 }  // namespace paddle

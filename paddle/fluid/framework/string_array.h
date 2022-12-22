@@ -98,39 +98,39 @@ class Vocab : public phi::ExtendedTensor,
   std::unordered_map<std::wstring, std::int32_t> data_;
 };
 
-// Note(YuanRisheng): PHIVector is essentially a vector that only used for PHI
+// Note(YuanRisheng): PhiVector is essentially a vector that only used for PHI
 // Kernel. It can be used when you define a non-tensor type that needs to be
 // stored in a vector as PHI kernel argument.
 
 template <typename T>
-class PHIVector : public phi::ExtendedTensor,
-                  public phi::TypeInfoTraits<phi::TensorBase, PHIVector<T>> {
+class PhiVector : public phi::ExtendedTensor,
+                  public phi::TypeInfoTraits<phi::TensorBase, PhiVector<T>> {
  public:
-  PHIVector() = default;
+  PhiVector() = default;
 
-  explicit PHIVector(const std::vector<T>& init_data) : data_(init_data) {}
+  explicit PhiVector(const std::vector<T>& init_data) : data_(init_data) {}
 
-  PHIVector(PHIVector&& other) = default;
+  PhiVector(PhiVector&& other) = default;
 
-  PHIVector(const PHIVector& other) = default;
+  PhiVector(const PhiVector& other) = default;
 
-  PHIVector& operator=(const PHIVector& other) = default;
+  PhiVector& operator=(const PhiVector& other) = default;
 
-  PHIVector& operator=(const std::vector<T>& other) {
+  PhiVector& operator=(const std::vector<T>& other) {
     data_ = other;
     return *this;
   }
 
-  PHIVector& operator=(PHIVector&& other) = default;
+  PhiVector& operator=(PhiVector&& other) = default;
 
-  /// \brief Destroy the PHIVector and release exclusive resources.
-  virtual ~PHIVector() = default;
+  /// \brief Destroy the PhiVector and release exclusive resources.
+  virtual ~PhiVector() = default;
 
  public:
   /// \brief Returns the name of the class for type traits.
   /// \return The name of the class.
   static const char* name() {
-    return (std::string("PHIVector_") + std::string(typeid(T).name())).c_str();
+    return (std::string("PhiVector_") + std::string(typeid(T).name())).c_str();
   }
 
   size_t size() const { return data_.size(); }
@@ -164,7 +164,7 @@ class PHIVector : public phi::ExtendedTensor,
 };
 
 using String = std::string;
-using Strings = PHIVector<std::string>;
+using Strings = PhiVector<std::string>;
 
 // Convert the std::string type to the std::string type.
 bool ConvertStrToWstr(const std::string& src, std::wstring* res);

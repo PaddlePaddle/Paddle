@@ -41,7 +41,7 @@
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #endif
 
-#include "paddle/fluid/framework/raw.h"
+#include "paddle/fluid/framework/raw_tensor.h"
 #include "paddle/fluid/operators/cuda_graph_with_in_out.h"
 
 namespace paddle {

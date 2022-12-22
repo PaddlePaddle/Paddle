@@ -11,7 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/raw.h"
+#include "paddle/fluid/framework/raw_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 
@@ -81,7 +81,7 @@ class FeedVariableVisitor {
   }
 
  private:
-  framework::Raw out_var_;
+  framework::RawTensor out_var_;
   const platform::Place& place_;
 };
 
@@ -108,7 +108,7 @@ const framework::FeedType& CheckAndGetFeedItem(const phi::ExtendedTensor& x,
   return feed_list->at(static_cast<size_t>(col));
 }
 
-template <typename T, typename Context>
+template <typename Context>
 void FeedDenseTensorKernel(const Context& dev_ctx,
                            const phi::ExtendedTensor& x,
                            int col,
@@ -122,7 +122,7 @@ void FeedDenseTensorKernel(const Context& dev_ctx,
   paddle::visit(visitor, feed_item);
 }
 
-template <typename T, typename Context>
+template <typename Context>
 void FeedSparseCooTensorKernel(const Context& dev_ctx,
                                const phi::ExtendedTensor& x,
                                int col,
@@ -136,7 +136,7 @@ void FeedSparseCooTensorKernel(const Context& dev_ctx,
   paddle::visit(visitor, feed_item);
 }
 
-template <typename T, typename Context>
+template <typename Context>
 void FeedStringsKernel(const Context& dev_ctx,
                        const phi::ExtendedTensor& x,
                        int col,
@@ -193,102 +193,44 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     paddle::operators::FeedOpInfoMaker);
 
-PD_REGISTER_KERNEL(feed_dense_tensor,
-                   CPU,
-                   ALL_LAYOUT,
-                   paddle::operators::FeedDenseTensorKernel,
-                   float,
-                   double,
-                   int8_t,
-                   uint8_t,
-                   int,
-                   int64_t,
-                   bool,
-                   paddle::platform::bfloat16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>,
-                   paddle::platform::float16,
-                   int16_t) {}
-PD_REGISTER_KERNEL(feed_sparse_coo_tensor,
-                   CPU,
-                   ALL_LAYOUT,
-                   paddle::operators::FeedSparseCooTensorKernel,
-                   float,
-                   double,
-                   int8_t,
-                   uint8_t,
-                   int,
-                   int64_t,
-                   bool,
-                   paddle::platform::bfloat16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>,
-                   paddle::platform::float16,
-                   int16_t) {}
-PD_REGISTER_KERNEL(feed_strings,
-                   CPU,
-                   ALL_LAYOUT,
-                   paddle::operators::FeedStringsKernel,
-                   float,
-                   double,
-                   int8_t,
-                   uint8_t,
-                   int,
-                   int64_t,
-                   bool,
-                   paddle::platform::bfloat16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>,
-                   paddle::platform::float16,
-                   int16_t) {}
+PD_REGISTER_GENERAL_KERNEL(
+    feed_dense_tensor,
+    CPU,
+    ALL_LAYOUT,
+    paddle::operators::FeedDenseTensorKernel<phi::CPUContext>,
+    ALL_DTYPE) {}
+
+PD_REGISTER_GENERAL_KERNEL(
+    feed_sparse_coo_tensor,
+    CPU,
+    ALL_LAYOUT,
+    paddle::operators::FeedSparseCooTensorKernel<phi::CPUContext>,
+    ALL_DTYPE) {}
+
+PD_REGISTER_GENERAL_KERNEL(
+    feed_strings,
+    CPU,
+    ALL_LAYOUT,
+    paddle::operators::FeedStringsKernel<phi::CPUContext>,
+    ALL_DTYPE) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_KERNEL(feed_dense_tensor,
-                   GPU,
-                   ALL_LAYOUT,
-                   paddle::operators::FeedDenseTensorKernel,
-                   float,
-                   double,
-                   int8_t,
-                   uint8_t,
-                   int,
-                   int64_t,
-                   bool,
-                   paddle::platform::bfloat16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>,
-                   paddle::platform::float16,
-                   int16_t) {}
-PD_REGISTER_KERNEL(feed_sparse_coo_tensor,
-                   GPU,
-                   ALL_LAYOUT,
-                   paddle::operators::FeedSparseCooTensorKernel,
-                   float,
-                   double,
-                   int8_t,
-                   uint8_t,
-                   int,
-                   int64_t,
-                   bool,
-                   paddle::platform::bfloat16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>,
-                   paddle::platform::float16,
-                   int16_t) {}
-PD_REGISTER_KERNEL(feed_strings,
-                   GPU,
-                   ALL_LAYOUT,
-                   paddle::operators::FeedStringsKernel,
-                   float,
-                   double,
-                   int8_t,
-                   uint8_t,
-                   int,
-                   int64_t,
-                   bool,
-                   paddle::platform::bfloat16,
-                   paddle::platform::complex<float>,
-                   paddle::platform::complex<double>,
-                   paddle::platform::float16,
-                   int16_t) {}
+PD_REGISTER_GENERAL_KERNEL(
+    feed_dense_tensor,
+    GPU,
+    ALL_LAYOUT,
+    paddle::operators::FeedDenseTensorKernel<phi::GPUContext>,
+    ALL_DTYPE) {}
+PD_REGISTER_GENERAL_KERNEL(
+    feed_sparse_coo_tensor,
+    GPU,
+    ALL_LAYOUT,
+    paddle::operators::FeedSparseCooTensorKernel<phi::GPUContext>,
+    ALL_DTYPE) {}
+PD_REGISTER_GENERAL_KERNEL(
+    feed_strings,
+    GPU,
+    ALL_LAYOUT,
+    paddle::operators::FeedStringsKernel<phi::GPUContext>,
+    ALL_DTYPE) {}
 #endif

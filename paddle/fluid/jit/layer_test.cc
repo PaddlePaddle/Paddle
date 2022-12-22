@@ -97,7 +97,8 @@ TEST(CpuLayerTest, Construct) {
   EXPECT_FLOAT_EQ(floats[0], 1.1);
   EXPECT_FLOAT_EQ(floats[1], 2.2);
 
-  framework::Strings strs = layer.Attribute<framework::Strings>("strs");
+  std::vector<std::string> strs =
+      layer.Attribute<std::vector<std::string>>("strs");
   EXPECT_STREQ(strs[0].c_str(), "hello");
   EXPECT_STREQ(strs[1].c_str(), "world");
 

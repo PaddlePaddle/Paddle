@@ -55,7 +55,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/prune.h"
-#include "paddle/fluid/framework/raw.h"
+#include "paddle/fluid/framework/raw_tensor.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
@@ -949,7 +949,7 @@ All parameter, weight, gradient are variables in Paddle.
                return py::bytes(*(self.GetMutable<String>()));
              } else {
                return py::bytes(
-                   *(self.GetMutable<Raw>()->GetMutable<std::string>()));
+                   *(self.GetMutable<RawTensor>()->GetMutable<std::string>()));
              }
            })
       .def("set_string_list",
