@@ -19,6 +19,7 @@ from .common import data_norm  # noqa: F401
 from .common import continuous_value_model  # noqa: F401
 from .common import group_norm  # noqa: F401
 from .common import deform_conv2d  # noqa: F401
+from .common import conv2d  # noqa: F401
 from .common import conv3d  # noqa: F401
 from .common import conv2d_transpose  # noqa: F401
 from .common import conv3d_transpose  # noqa: F401
@@ -29,13 +30,13 @@ from .control_flow import (
 )
 from .common import bilinear_tensor_product  # noqa: F401
 from .common import py_func  # noqa: F401
+from .common import row_conv  # noqa: F401
+from .common import spectral_norm  # noqa: F401
 from ...tensor.creation import create_parameter  # noqa: F401
-from ...fluid.layers import conv2d  # noqa: F401
-from ...fluid.layers import layer_norm  # noqa: F401
 from .loss import nce  # noqa: F401
 from .common import prelu  # noqa: F401
-from ...fluid.layers import row_conv  # noqa: F401
-from ...fluid.layers import spectral_norm  # noqa: F401
+from .common import layer_norm  # noqa: F401
+
 
 from ...fluid.input import embedding  # noqa: F401
 from ...fluid.contrib.layers import sparse_embedding  # noqa: F401

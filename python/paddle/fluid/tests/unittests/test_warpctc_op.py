@@ -23,7 +23,6 @@ import paddle
 import paddle.fluid.core as core
 import paddle.nn.functional as F
 from paddle.fluid import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 
@@ -718,8 +717,6 @@ class TestCTCLossAPICase(unittest.TestCase):
                 loss_pd_sum, loss_np_sum, rtol=1e-05, atol=1
             )
 
-        with _test_eager_guard():
-            test_functinal_api()
         test_functinal_api()
 
 

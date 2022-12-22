@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/collective/mpi_tools.h"
-#include "paddle/fluid/distributed/collective/Types.h"
 #include "paddle/fluid/distributed/collective/common.h"
+#include "paddle/fluid/distributed/collective/types.h"
 
 namespace paddle {
 namespace distributed {

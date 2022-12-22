@@ -73,7 +73,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                     dtype=self.dtype,
                     append_batch_size=False,
                 )
-                conv = fluid.layers.conv2d(
+                conv = paddle.static.nn.conv2d(
                     input=data,
                     num_filters=32,
                     filter_size=1,

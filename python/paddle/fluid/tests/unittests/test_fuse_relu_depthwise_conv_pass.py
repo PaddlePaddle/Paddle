@@ -29,7 +29,7 @@ def norm(*args, **kargs):
 
 def sep_conv(input, channel, stride, filter, dilation=1, act=None):
     # with scope('depthwise'):
-    input = fluid.layers.conv2d(
+    input = paddle.static.nn.conv2d(
         input,
         input.shape[1],
         filter,
@@ -44,7 +44,7 @@ def sep_conv(input, channel, stride, filter, dilation=1, act=None):
     if act:
         input = act(input)
     # with scope('pointwise'):
-    input = fluid.layers.conv2d(
+    input = paddle.static.nn.conv2d(
         input, channel, 1, 1, groups=1, padding=0, bias_attr=False
     )
     input = norm(input)

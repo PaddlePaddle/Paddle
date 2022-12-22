@@ -12,7 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-from paddle.fluid.contrib.sparsity.asp import ASPHelper
+
+from paddle.incubate.asp import ASPHelper
 
 from .meta_optimizer_base import MetaOptimizerBase
 
