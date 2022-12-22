@@ -771,7 +771,9 @@ class Engine:
                         "Initializing: {}.".format(str(process_group))
                     )
                     process_group.instantiate()
-
+                    self._logger.info(
+                        "Initialized: {}.".format(str(process_group))
+                    )
         place = _get_device()
         if isinstance(place, fluid.CUDAPlace):
             place = fluid.CUDAPlace(ParallelEnv().dev_id)
