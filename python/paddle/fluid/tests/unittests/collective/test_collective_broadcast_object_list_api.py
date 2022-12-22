@@ -27,14 +27,7 @@ class TestCollectiveBroadcastObjectListAPI(test_base.TestDistBase):
             "broadcast_object_list",
             "nccl",
             static_mode="0",
-            dtype="pylist",
-        )
-        self.check_with_place(
-            "collective_broadcast_object_list_api_dygraph.py",
-            "broadcast_object_list",
-            "nccl",
-            static_mode="0",
-            dtype="pydict",
+            dtype="pyobject",
         )
 
     def test_broadcast_gloo_dygraph(self):
@@ -44,15 +37,7 @@ class TestCollectiveBroadcastObjectListAPI(test_base.TestDistBase):
             "gloo",
             "3",
             static_mode="0",
-            dtype="pylist",
-        )
-        self.check_with_place(
-            "collective_broadcast_object_list_api_dygraph.py",
-            "broadcast_object_list",
-            "gloo",
-            "3",
-            static_mode="0",
-            dtype="pydict",
+            dtype="pyobject",
         )
 
 

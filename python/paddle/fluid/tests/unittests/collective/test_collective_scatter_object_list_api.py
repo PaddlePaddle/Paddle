@@ -27,7 +27,7 @@ class TestCollectiveScatterObjectListAPI(test_base.TestDistBase):
             "scatter_object_list",
             "nccl",
             static_mode="0",
-            dtype="pylist",
+            dtype="pyobject",
         )
 
     def test_scatter_gloo_dygraph(self):
@@ -37,7 +37,7 @@ class TestCollectiveScatterObjectListAPI(test_base.TestDistBase):
             "gloo",
             "3",
             static_mode="0",
-            dtype="pylist",
+            dtype="pyobject",
         )
 
 

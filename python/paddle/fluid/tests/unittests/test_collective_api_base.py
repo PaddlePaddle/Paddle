@@ -58,22 +58,15 @@ def create_complex_test_data(shape=None, dtype=None, seed=None):
     return data
 
 
-def create_pylist_test_data(shape=None, seed=None):
+def create_pyobject_test_data(shape=None, seed=None):
     if seed:
         np.random.seed(seed)
-    # Generate random shape test case for xxx_object api
-    shape = np.random.randint(0, high=100, size=(2)).tolist()
-    data = np.random.random(shape).tolist()
-    return data
-
-
-def create_pydict_test_data(shape=None, seed=None):
-    if seed:
-        np.random.seed(seed)
-    key = [i for i in range(0, shape[0])]
-    value = np.random.random(shape).tolist()
-    data = dict(zip(key, value))
-    return data
+    list_shape = np.random.randint(0, high=100, size=(2)).tolist()
+    list_data = np.random.random(shape).tolist()
+    dict_key = [i for i in range(0, shape[0])]
+    dict_val = np.random.random(shape).tolist()
+    dict_data = dict(zip(dict_key, dict_val))
+    return [list_data, dict_data]
 
 
 def create_test_data(shape=None, dtype=None, seed=None):
@@ -94,10 +87,8 @@ def create_test_data(shape=None, dtype=None, seed=None):
         return create_int_test_data(shape=shape, dtype=dtype, seed=seed)
     elif dtype == "complex64" or dtype == "complex128":
         return create_complex_test_data(shape=shape, dtype=dtype, seed=seed)
-    elif dtype == "pylist":
-        return create_pylist_test_data(shape=shape, seed=seed)
-    elif dtype == "pydict":
-        return create_pydict_test_data(shape=shape, seed=seed)
+    elif dtype == "pyobject":
+        return create_pyobject_test_data(shape=shape, seed=seed)
     else:
         raise NotImplementedError("Unsupported dtype for creating test data.")
 
