@@ -19,35 +19,29 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <curand_kernel.h>
-
-#include "paddle/fluid/platform/dynload/curand.h"
 #endif
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #include <hiprand_kernel.h>
-
-#include "paddle/fluid/platform/dynload/hiprand.h"
 #endif
 
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/generator.h"
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/operators/dropout_impl_util.h"
-#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
+#include "paddle/phi/kernels/funcs/dropout_impl_util.h"
+
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/functors.h"
+#include "paddle/phi/kernels/primitive/compute_primitives.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
+namespace funcs {
 
 template <typename T1, typename T2 = T1, typename OutT = T1>
 struct DstMaskFunctor {
   const float retain_prob_;
   const bool is_upscale_in_train_;
-  using MT = typename details::MPTypeTrait<T1>::Type;
+  using MT = typename phi::kps::details::MPTypeTrait<T1>::Type;
   MT factor;
   HOSTDEVICE inline DstMaskFunctor(const float retain_prob,
                                    const bool is_upscale_in_train)
@@ -149,7 +143,7 @@ __global__ void VectorizedRandomGenerator(const size_t n,
 template <typename T1, typename T2 = T1, typename OutT = T1>
 struct MaskFunctor {
   const float retain_prob_;
-  using MT = typename details::MPTypeTrait<T1>::Type;
+  using MT = typename phi::kps::details::MPTypeTrait<T1>::Type;
   MT factor;
   HOSTDEVICE inline MaskFunctor(const float retain_prob)
       : retain_prob_(retain_prob) {
@@ -173,7 +167,7 @@ struct MaskFunctor {
 
 template <typename T, typename MaskType>
 struct DstFunctor {
-  using MT = typename details::MPTypeTrait<T>::Type;
+  using MT = typename phi::kps::details::MPTypeTrait<T>::Type;
   MT factor;
   HOSTDEVICE inline DstFunctor(const float retain_prob,
                                const bool is_upscale_in_train,
@@ -271,7 +265,7 @@ inline void CalcBroadcastedMask(const phi::GPUContext& dev_ctx,
                                 phi::DenseTensor* broadcasted_mask) {
   // The broadcast of mask can be combined to the following ElementwiseKernel
   // when the BroadcastKernel supports different input types.
-  broadcasted_mask->mutable_data<uint8_t>(dev_ctx.GetPlace());
+  dev_ctx.template Alloc<uint8_t>(broadcasted_mask);
 
   std::vector<const phi::DenseTensor*> ins = {&mask};
   std::vector<phi::DenseTensor*> outs = {broadcasted_mask};
@@ -337,7 +331,7 @@ void DropoutFwGPUKernelDriver(const phi::GPUContext& dev_ctx,
     size_t block_size = gpu_config.GetBlockSize();
 
     int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
-    const auto& prop = platform::GetDeviceProperties(device_id);
+    const auto& prop = phi::backends::gpu::GetDeviceProperties(device_id);
     size_t max_grid_size = prop.maxThreadsPerMultiProcessor *
                            prop.multiProcessorCount / block_size;
     grid_size = std::min(grid_size, max_grid_size);
@@ -393,9 +387,9 @@ void DropoutFwGPUKernelDriver(const phi::GPUContext& dev_ctx,
   } else {
     if (upscale_in_train) {
       // y = x
-      framework::TensorCopy(x, dev_ctx.GetPlace(), dev_ctx, y);
+      phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, y);
     } else {
-      using MT = typename details::MPTypeTrait<T>::Type;
+      using MT = typename phi::kps::details::MPTypeTrait<T>::Type;
       MT factor = static_cast<MT>(1.0f - dropout_prob);
       // y = factor * x
       ScaleByDropoutFactor<T, MT>(dev_ctx, x, y, factor);
@@ -405,7 +399,7 @@ void DropoutFwGPUKernelDriver(const phi::GPUContext& dev_ctx,
 
 template <typename T, typename MaskType>
 struct CudaDropoutGradFunctor {
-  using MT = typename details::MPTypeTrait<T>::Type;
+  using MT = typename phi::kps::details::MPTypeTrait<T>::Type;
 
   explicit CudaDropoutGradFunctor(const MT factor) : factor_(factor) {}
 
@@ -428,7 +422,7 @@ void DropoutGradGPUKernelDriver(const phi::GPUContext& dev_ctx,
                                 const phi::DenseTensor& mask,
                                 phi::DenseTensor* grad_x,
                                 bool is_dropout_nd = false) {
-  using MT = typename details::MPTypeTrait<T>::Type;
+  using MT = typename phi::kps::details::MPTypeTrait<T>::Type;
 
   auto stream = dev_ctx.stream();
   if (is_test) {
@@ -465,5 +459,5 @@ void DropoutGradGPUKernelDriver(const phi::GPUContext& dev_ctx,
   }
 }
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi

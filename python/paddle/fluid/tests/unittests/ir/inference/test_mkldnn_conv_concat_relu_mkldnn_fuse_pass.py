@@ -158,7 +158,7 @@ class TestConvConcatActivationMkldnnFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_mkldnn=True)
-        yield config, ['conv2d', 'conv2d', 'concat'], (1e-5, 1e-5)
+        yield config, ['fused_conv2d', 'fused_conv2d', 'concat'], (1e-5, 1e-5)
 
     def test(self):
         self.run_and_statis(

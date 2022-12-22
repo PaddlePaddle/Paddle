@@ -21,7 +21,7 @@ import numpy as np
 import paddle
 import paddle.distributed.fleet as fleet
 import paddle.fluid.core as core
-from paddle.fluid.contrib.sparsity.asp import ASPHelper
+from paddle.incubate.asp import ASPHelper
 
 cuda_visible_devices = os.getenv('CUDA_VISIBLE_DEVICES')
 if cuda_visible_devices is None or cuda_visible_devices == "":
@@ -98,15 +98,11 @@ class TestFleetWithASPDynamic(unittest.TestCase):
                     len(param.shape) == 2 and param.shape[0] < 4
                 ):
                     self.assertFalse(
-                        paddle.fluid.contrib.sparsity.check_sparsity(
-                            mat.T, n=2, m=4
-                        )
+                        paddle.incubate.asp.check_sparsity(mat.T, n=2, m=4)
                     )
                 else:
                     self.assertTrue(
-                        paddle.fluid.contrib.sparsity.check_sparsity(
-                            mat.T, n=2, m=4
-                        )
+                        paddle.incubate.asp.check_sparsity(mat.T, n=2, m=4)
                     )
 
 
@@ -169,15 +165,11 @@ class TestFleetWithASPAMPDynamic(unittest.TestCase):
                     len(param.shape) == 2 and param.shape[0] < 4
                 ):
                     self.assertFalse(
-                        paddle.fluid.contrib.sparsity.check_sparsity(
-                            mat.T, n=2, m=4
-                        )
+                        paddle.incubate.asp.check_sparsity(mat.T, n=2, m=4)
                     )
                 else:
                     self.assertTrue(
-                        paddle.fluid.contrib.sparsity.check_sparsity(
-                            mat.T, n=2, m=4
-                        )
+                        paddle.incubate.asp.check_sparsity(mat.T, n=2, m=4)
                     )
 
 

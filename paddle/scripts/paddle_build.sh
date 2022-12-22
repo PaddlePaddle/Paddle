@@ -3179,7 +3179,6 @@ function run_setup(){
     # Delete previous built paddle cache
     rm -rf ${PADDLE_ROOT}/build/python/paddle 2>/dev/null || true
     startTime_s=`date +%s`
-
     SYSTEM=`uname -s`
     if [ "$SYSTEM" == "Darwin" ]; then
         echo "Using python abi: $1"

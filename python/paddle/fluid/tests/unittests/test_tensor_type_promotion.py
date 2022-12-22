@@ -16,7 +16,6 @@ import unittest
 import warnings
 
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestTensorTypePromotion(unittest.TestCase):
@@ -28,42 +27,23 @@ class TestTensorTypePromotion(unittest.TestCase):
         with warnings.catch_warnings(record=True) as context:
             warnings.simplefilter("always")
             self.x + self.y
-            self.assertTrue(
-                "The dtype of left and right variables are not the same"
-                in str(context[-1].message)
-            )
 
     def sub_operator(self):
         with warnings.catch_warnings(record=True) as context:
             warnings.simplefilter("always")
             self.x - self.y
-            self.assertTrue(
-                "The dtype of left and right variables are not the same"
-                in str(context[-1].message)
-            )
 
     def mul_operator(self):
         with warnings.catch_warnings(record=True) as context:
             warnings.simplefilter("always")
             self.x * self.y
-            self.assertTrue(
-                "The dtype of left and right variables are not the same"
-                in str(context[-1].message)
-            )
 
     def div_operator(self):
         with warnings.catch_warnings(record=True) as context:
             warnings.simplefilter("always")
             self.x / self.y
-            self.assertTrue(
-                "The dtype of left and right variables are not the same"
-                in str(context[-1].message)
-            )
 
     def test_operator(self):
-        with _test_eager_guard():
-            pass
-            # add / sub / mul / div has been sunk to cpp level, there is no warnings to catch by this test.
         self.setUp()
         self.add_operator()
         self.sub_operator()

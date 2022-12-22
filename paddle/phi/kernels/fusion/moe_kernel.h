@@ -12,23 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
+
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
-KernelSignature AddmmOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "addmm", {"Input", "X", "Y"}, {"Beta", "Alpha"}, {"Out"});
-}
-
-KernelSignature AddmmGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("addmm_grad",
-                         {"Input", "X", "Y", "Out@GRAD"},
-                         {"Alpha", "Beta"},
-                         {"Input@GRAD", "X@GRAD", "Y@GRAD"});
-}
+template <typename T, typename Context>
+void MoeKernel(const Context& ctx,
+               const DenseTensor& x,
+               const DenseTensor& gate,
+               const DenseTensor& bmm0,
+               const DenseTensor& bias0,
+               const DenseTensor& bmm1,
+               const DenseTensor& bias1,
+               const std::string& act_type,
+               DenseTensor* output);
 
 }  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(addmm, phi::AddmmOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(addmm_grad, phi::AddmmGradOpArgumentMapping);
