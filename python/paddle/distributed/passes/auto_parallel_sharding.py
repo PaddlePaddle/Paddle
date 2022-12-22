@@ -897,6 +897,12 @@ class ShardingPass(PassBase):
                 for rank in global_ranks
                 if rank % nranks_per_node == relative_idx_in_node
             ]
+            _logger.info(
+                "current global rank idx: {}.".format(self.global_rank)
+            )
+            _logger.info(
+                "local inter node ranks idx: {}.".format(inter_node_ranks)
+            )
             assert (
                 len(inter_node_ranks)
                 == self.sharding_world_size // nranks_per_node
@@ -907,7 +913,9 @@ class ShardingPass(PassBase):
                 if rank // nranks_per_node == node_idx
             ]
             assert len(intra_node_ranks) == nranks_per_node
-
+            _logger.info(
+                "local intra node ranks idx: {}.".format(intra_node_ranks)
+            )
             inter_node_group = new_process_group(
                 inter_node_ranks, force_new_group=True
             )
