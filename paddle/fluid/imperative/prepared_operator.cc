@@ -343,12 +343,12 @@ PreparedOp PrepareImpl(
               << " | kernel: " << phi_kernel;
 
       if (expected_kernel_key.place_ != place &&
-          places_are_same_class(expected_kernel_key.place_, place)) {
+          platform::places_are_same_class(expected_kernel_key.place_, place)) {
         LOG(WARNING) << "DEBUG phi same class but different place, target "
                         "expected_kernel_key.place_ "
                      << expected_kernel_key.place_ << " original " << place;
       }
-      if (places_are_same_class(expected_kernel_key.place_, place)) {
+      if (platform::places_are_same_class(expected_kernel_key.place_, place)) {
         dev_ctx = pool.Get(expected_kernel_key.place_);
       }
 
@@ -517,12 +517,12 @@ PreparedOp PrepareImpl(
                                  KernelTypeToString(expected_kernel_key)));
 
   if (expected_kernel_key.place_ != place &&
-      places_are_same_class(expected_kernel_key.place_, place)) {
+      platform::places_are_same_class(expected_kernel_key.place_, place)) {
     LOG(WARNING) << "DEBUG fluid same class but different place, target "
                     "expected_kernel_key.place_ "
                  << expected_kernel_key.place_ << " original " << place;
   }
-  if (places_are_same_class(expected_kernel_key.place_, place)) {
+  if (platform::places_are_same_class(expected_kernel_key.place_, place)) {
     dev_ctx = pool.Get(expected_kernel_key.place_);
   }
 
