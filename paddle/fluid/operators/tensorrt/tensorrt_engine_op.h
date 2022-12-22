@@ -308,7 +308,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     std::vector<std::string> outputs =
         Attr<std::vector<std::string>>("output_name_mapping");
     std::vector<int> output_dtypes =
-        Attr<std::vector<std::string>>("origin_outputs_dtype");
+        Attr<std::vector<int>>("origin_outputs_dtype");
 
     inference::Singleton<inference::tensorrt::OpConverter>::Global()
         .ConvertBlockToTRTEngine(&block_desc,
