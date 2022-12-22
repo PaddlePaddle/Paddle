@@ -33,7 +33,6 @@ from paddle.nn.quant.quant_layers import (
     QuantizedConv2D,
     QuantizedConv2DTranspose,
 )
-from paddle.fluid.framework import _test_eager_guard
 from imperative_test_utils import fix_model_dict, ImperativeLenet
 
 paddle.enable_static()
@@ -63,7 +62,7 @@ class TestImperativeQat(unittest.TestCase):
         self.diff_threshold = 0.03125
         self.fuse_conv_bn = False
 
-    def func_qat(self):
+    def test_qat(self):
         self.set_vars()
 
         imperative_qat = ImperativeQuantAware(
@@ -243,11 +242,6 @@ class TestImperativeQat(unittest.TestCase):
             paddle.enable_static()
             delta_value = fp32_acc - quant_acc
             self.assertLessEqual(delta_value, self.diff_threshold)
-
-    def test_qat(self):
-        with _test_eager_guard():
-            self.func_qat()
-        self.func_qat()
 
 
 class TestImperativeQatONNXFormat(unittest.TestCase):

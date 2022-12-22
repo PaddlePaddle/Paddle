@@ -275,10 +275,13 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
           << "tensorrt_subgraph's input named " << tmp_name
           << " having int64 dtype in pdmodel description, we will cast them to "
              "int32 dtype to feed them into paddle-trt.";
-      PADDLE_ENFORCE_EQ(scope->FindVar(tmp_name),
-                        nullptr,
-                        platform::errors::InvalidArgument(
-                            "The  var name %s has exists in scope.", tmp_name));
+      /*
+            PADDLE_ENFORCE_EQ(scope->FindVar(tmp_name),
+                              nullptr,
+                              platform::errors::InvalidArgument(
+                                  "The  var name %s has exists in scope.",
+         tmp_name));
+      */
       scope->Var(tmp_name);
     }
   }
