@@ -39,7 +39,8 @@ static void PassTensorData(phi::DenseTensor *from, phi::DenseTensor *to) {
 void TransformData(const OpKernelType &expected_kernel_type,
                    const OpKernelType &kernel_type_for_var,
                    const phi::DenseTensor &input_tensor,
-                   phi::DenseTensor *output_tensor) {
+                   phi::DenseTensor *output_tensor,
+                   const phi::Place &place) {
   bool transformed = false;
   phi::DenseTensor in;
   in.ShareDataWith(input_tensor);
@@ -91,7 +92,7 @@ void TransformData(const OpKernelType &expected_kernel_type,
             phi::OneDNNContext::tls().get_cur_paddle_data_layout(),
             in,
             &out,
-            expected_kernel_type.place_);
+            place);
       }
     } else {
       // Case3 - transfrom between Non-ONEDNN OPKernels
@@ -115,7 +116,7 @@ void TransformData(const OpKernelType &expected_kernel_type,
   // do device transform
   if (!platform::is_same_place(kernel_type_for_var.place_,
                                expected_kernel_type.place_)) {
-    TransDataDevice(in, expected_kernel_type.place_, &out);
+    TransDataDevice(in, place, &out);
     transformed = true;
     PassTensorData(&out, &in);
   }

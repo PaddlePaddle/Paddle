@@ -36,7 +36,8 @@ class Variable;
 void TransformData(const OpKernelType &expected_kernel_type,
                    const OpKernelType &kernel_type_for_var,
                    const phi::DenseTensor &input_tensor,
-                   phi::DenseTensor *out);
+                   phi::DenseTensor *out,
+                   const phi::Place &place);
 
 /**
  * Set OutVar from InVar, except the tensor is shared with `tensor`
