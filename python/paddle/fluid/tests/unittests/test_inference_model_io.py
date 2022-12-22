@@ -117,10 +117,6 @@ class TestBook(unittest.TestCase):
         model_3 = InferModel(
             load_inference_model_distributed(None, exe, model_str, params_str)
         )
-        model_4 = InferModel(
-            load_inference_model_distributed(MODEL_DIR, exe, model_str, params_str)
-        )
-
 
         for model in [model_0, model_1, model_2, model_3]:
             outs = exe.run(
