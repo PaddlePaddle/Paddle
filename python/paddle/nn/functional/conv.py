@@ -19,11 +19,7 @@ from paddle.device import (
     is_compiled_with_npu,
     is_compiled_with_rocm,
 )
-from paddle.fluid.framework import (
-    _global_flags,
-    _in_legacy_dygraph,
-    in_dygraph_mode,
-)
+from paddle.fluid.framework import _global_flags, in_dygraph_mode
 from paddle.tensor.math import _add_with_axis
 
 from ...device import get_cudnn_version
@@ -487,30 +483,6 @@ def conv1d(
                 False,
                 False,
             )
-        if bias is not None:
-            out = _add_with_axis(out, bias, axis=channel_dim)
-    elif _in_legacy_dygraph():
-        attrs = (
-            'strides',
-            stride,
-            'paddings',
-            padding,
-            'dilations',
-            dilation,
-            'groups',
-            groups,
-            'use_cudnn',
-            use_cudnn,
-            'use_mkldnn',
-            False,
-            'fuse_relu_before_depthwise_conv',
-            False,
-            "padding_algorithm",
-            padding_algorithm,
-            "data_format",
-            conv2d_data_format,
-        )
-        out = getattr(_legacy_C_ops, l_type)(x, weight, *attrs)
         if bias is not None:
             out = _add_with_axis(out, bias, axis=channel_dim)
     else:
@@ -1044,30 +1016,6 @@ def conv1d_transpose(
         )
         if bias is not None:
             out = _add_with_axis(out, bias, axis=channel_dim)
-    elif _in_legacy_dygraph():
-        attrs = (
-            'output_padding',
-            output_padding,
-            'output_size',
-            output_size,
-            'strides',
-            stride,
-            'paddings',
-            padding,
-            'padding_algorithm',
-            padding_algorithm,
-            'dilations',
-            dilation,
-            'groups',
-            groups,
-            'use_cudnn',
-            use_cudnn,
-            'data_format',
-            conv2d_data_format,
-        )
-        out = getattr(_legacy_C_ops, op_type)(x, weight, *attrs)
-        if bias is not None:
-            out = _add_with_axis(out, bias, axis=channel_dim)
     else:
         inputs = {'Input': [x], 'Filter': [weight]}
         attrs = {
@@ -1350,33 +1298,6 @@ def conv2d_transpose(
             return _add_with_axis(pre_bias, bias, axis=channel_dim)
         else:
             return pre_bias
-
-    if _in_legacy_dygraph():
-        attrs = (
-            'output_padding',
-            output_padding,
-            'output_size',
-            output_size,
-            'strides',
-            stride,
-            'paddings',
-            padding,
-            'padding_algorithm',
-            padding_algorithm,
-            'dilations',
-            dilation,
-            'groups',
-            groups,
-            'use_cudnn',
-            use_cudnn,
-            'data_format',
-            data_format,
-        )
-        pre_bias = getattr(_legacy_C_ops, op_type)(x, weight, *attrs)
-        if bias is not None:
-            out = _add_with_axis(pre_bias, bias, axis=channel_dim)
-        else:
-            out = pre_bias
     else:
         inputs = {'Input': [x], 'Filter': [weight]}
         attrs = {
@@ -1823,33 +1744,6 @@ def conv3d_transpose(
             return _add_with_axis(pre_bias, bias, axis=channel_dim)
         else:
             return pre_bias
-
-    if _in_legacy_dygraph():
-        attrs = (
-            'output_padding',
-            output_padding,
-            'output_size',
-            output_size,
-            'paddings',
-            padding,
-            "padding_algorithm",
-            padding_algorithm,
-            'strides',
-            stride,
-            'dilations',
-            dilation,
-            'groups',
-            groups,
-            'use_cudnn',
-            use_cudnn,
-            "data_format",
-            data_format_,
-        )
-        pre_bias = getattr(_legacy_C_ops, op_type)(x, weight, *attrs)
-        if bias is not None:
-            out = _add_with_axis(pre_bias, bias, axis=channel_dim)
-        else:
-            out = pre_bias
     else:
         inputs = {'Input': [x], 'Filter': [weight]}
         attrs = {
