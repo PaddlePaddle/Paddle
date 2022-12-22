@@ -36,8 +36,12 @@ limitations under the License. */
 #pragma GCC diagnostic ignored "-Wwrite-strings"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #include "paddle/fluid/platform/device_context.h"
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/stream.h"
+#endif
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/core/cuda_stream.h"
+#endif
 
 namespace paddle {
 namespace pybind {
