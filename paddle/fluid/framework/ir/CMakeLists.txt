@@ -402,10 +402,6 @@ if(WITH_MKLDNN)
     test_params_quantization_mkldnn_pass SRCS
     mkldnn/params_quantization_mkldnn_pass_tester.cc DEPS
     params_quantization_mkldnn_pass)
-  cc_test_old(
-    test_batch_norm_act_fuse_pass SRCS
-    mkldnn/batch_norm_act_fuse_pass_tester.cc DEPS batch_norm_act_fuse_pass
-    pass_test_util)
   set(TEST_CONV_BN_PASS_DEPS
       conv_bn_fuse_pass
       graph_to_program_pass
