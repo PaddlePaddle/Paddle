@@ -743,6 +743,8 @@ class ShardingPass(PassBase):
                         "comm_stream": stream,
                     }
                 )
+            if self.comm_stream_num > 1:
+                self.op_to_stream_idx = {}
 
         for i, param_group in enumerate(group_to_param_map.keys()):
 
@@ -791,12 +793,13 @@ class ShardingPass(PassBase):
             ] = param_group
 
             # TODO revise me to manager stream and comm
-            comm_group = self.param_comm_group_stream_pairs[
-                i % self.comm_stream_num
-            ]['comm_group']
-            comm_stream = self.param_comm_group_stream_pairs[
-                i % self.comm_stream_num
-            ]['comm_stream']
+            comm_stream_idx = i % self.comm_stream_num
+            comm_group = self.param_comm_group_stream_pairs[comm_stream_idx][
+                'comm_group'
+            ]
+            comm_stream = self.param_comm_group_stream_pairs[comm_stream_idx][
+                'comm_stream'
+            ]
             new_op = main_block.append_op(
                 type='c_broadcast',
                 inputs={'X': param_group.coalesce_var},
@@ -808,6 +811,7 @@ class ShardingPass(PassBase):
                     OP_ROLE_KEY: OpRole.Optimize,
                 },
             )
+            self.op_to_stream_idx[new_op] = comm_stream_idx
             new_op._set_attr(
                 'op_namescope', str('/') + ParallelMode.DataParallel
             )
@@ -916,16 +920,24 @@ class ShardingPass(PassBase):
             _logger.info(
                 "local intra node ranks idx: {}.".format(intra_node_ranks)
             )
-            inter_node_group = new_process_group(
-                inter_node_ranks, force_new_group=True
-            )
-            intra_node_group = new_process_group(
-                intra_node_ranks, force_new_group=True
-            )
+            inter_node_groups = []
+            intra_node_groups = []
+            for _ in range(self.comm_stream_num):
+                # TODO re-use one origin communicator
+                inter_node_groups.append(
+                    new_process_group(inter_node_ranks, force_new_group=True)
+                )
+                intra_node_groups.append(
+                    new_process_group(intra_node_ranks, force_new_group=True)
+                )
 
             # update program
             for idx, op in reversed(list(enumerate(main_block.ops))):
                 if is_sharding_param_broadcast_op(op):
+                    comm_stream_idx = self.op_to_stream_idx[op]
+                    inter_node_group = inter_node_groups[comm_stream_idx]
+                    intra_node_group = intra_node_groups[comm_stream_idx]
+
                     broadcast_varname = op.output("Out")[0]
                     if self.enable_overlap:
                         comm_stream = op.dist_attr.execution_stream
@@ -957,6 +969,9 @@ class ShardingPass(PassBase):
                                 'use_calc_stream': True,
                                 OP_ROLE_KEY: OpRole.Optimize,
                             },
+                        )
+                        new_op._set_attr(
+                            'op_namescope', str('/') + ParallelMode.DataParallel
                         )
                         if self.enable_overlap:
                             new_op.dist_attr.execution_stream = comm_stream
