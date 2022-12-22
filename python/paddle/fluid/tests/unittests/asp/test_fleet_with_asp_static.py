@@ -21,8 +21,8 @@ import numpy as np
 import paddle
 import paddle.distributed.fleet as fleet
 import paddle.fluid as fluid
-from paddle.fluid.contrib.sparsity.asp import ASPHelper
-from paddle.static import sparsity
+from paddle.incubate import asp as sparsity
+from paddle.incubate.asp import ASPHelper
 
 cuda_visible_devices = os.getenv('CUDA_VISIBLE_DEVICES')
 if cuda_visible_devices is None or cuda_visible_devices == "":
@@ -49,7 +49,12 @@ class TestFleetWithASPStatic(unittest.TestCase):
 
             fc_1 = fluid.layers.fc(input=input_x, size=64, act='tanh')
             prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
-            cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+            cost = paddle.nn.functional.cross_entropy(
+                input=prediction,
+                label=input_y,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_cost = paddle.mean(x=cost)
 
             strategy = paddle.distributed.fleet.DistributedStrategy()
@@ -94,15 +99,11 @@ class TestFleetWithASPStatic(unittest.TestCase):
                     len(param.shape) == 2 and param.shape[0] < 4
                 ):
                     self.assertFalse(
-                        paddle.fluid.contrib.sparsity.check_sparsity(
-                            mat.T, n=2, m=4
-                        )
+                        paddle.incubate.asp.check_sparsity(mat.T, n=2, m=4)
                     )
                 else:
                     self.assertTrue(
-                        paddle.fluid.contrib.sparsity.check_sparsity(
-                            mat.T, n=2, m=4
-                        )
+                        paddle.incubate.asp.check_sparsity(mat.T, n=2, m=4)
                     )
 
 
@@ -122,7 +123,12 @@ class TestFleetWithASPAMPStatic(unittest.TestCase):
 
             fc_1 = fluid.layers.fc(input=input_x, size=64, act='tanh')
             prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
-            cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+            cost = paddle.nn.functional.cross_entropy(
+                input=prediction,
+                label=input_y,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_cost = paddle.mean(x=cost)
 
             strategy = paddle.distributed.fleet.DistributedStrategy()
@@ -170,15 +176,11 @@ class TestFleetWithASPAMPStatic(unittest.TestCase):
                     len(param.shape) == 2 and param.shape[0] < 4
                 ):
                     self.assertFalse(
-                        paddle.fluid.contrib.sparsity.check_sparsity(
-                            mat.T, n=2, m=4
-                        )
+                        paddle.incubate.asp.check_sparsity(mat.T, n=2, m=4)
                     )
                 else:
                     self.assertTrue(
-                        paddle.fluid.contrib.sparsity.check_sparsity(
-                            mat.T, n=2, m=4
-                        )
+                        paddle.incubate.asp.check_sparsity(mat.T, n=2, m=4)
                     )
 
     def test_with_asp_and_pure_fp16(self):
@@ -227,15 +229,11 @@ class TestFleetWithASPAMPStatic(unittest.TestCase):
                     len(param.shape) == 2 and param.shape[0] < 4
                 ):
                     self.assertFalse(
-                        paddle.fluid.contrib.sparsity.check_sparsity(
-                            mat.T, n=2, m=4
-                        )
+                        paddle.incubate.asp.check_sparsity(mat.T, n=2, m=4)
                     )
                 else:
                     self.assertTrue(
-                        paddle.fluid.contrib.sparsity.check_sparsity(
-                            mat.T, n=2, m=4
-                        )
+                        paddle.incubate.asp.check_sparsity(mat.T, n=2, m=4)
                     )
 
 

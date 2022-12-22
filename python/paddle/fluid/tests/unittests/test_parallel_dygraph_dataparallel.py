@@ -124,9 +124,6 @@ def start_local_trainers(
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
         }
 
-        if not eager_mode:
-            proc_env["FLAGS_enable_eager_mode"] = "%d" % 0
-
         proc_env["FLAGS_allocator_strategy"] = allocator_strategy
         if allocator_strategy == "auto_growth":
             proc_env["FLAGS_fraction_of_gpu_memory_to_use"] = "0.1"
@@ -241,5 +238,4 @@ class TestGradientCheckInEagerMode(TestMultipleGpus):
 
 
 if __name__ == "__main__":
-    os.environ["FLAGS_enable_eager_mode"] = "1"
     unittest.main()

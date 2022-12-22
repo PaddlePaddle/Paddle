@@ -21,8 +21,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-from paddle.fluid.dygraph.nn import BatchNorm, Embedding
-from paddle.nn import Linear
+from paddle.nn import BatchNorm, Linear
 
 
 class TestDygraphLoadStatic(unittest.TestCase):
@@ -35,10 +34,10 @@ class TestDygraphLoadStatic(unittest.TestCase):
         fc_out1 = fluid.layers.fc(a, 10)
         fc_out2 = fluid.layers.fc(a, 20)
 
-        conv_out_1 = fluid.layers.conv2d(
+        conv_out_1 = paddle.static.nn.conv2d(
             conv_in, num_filters=10, filter_size=5, act="relu"
         )
-        conv_out_2 = fluid.layers.conv2d(
+        conv_out_2 = paddle.static.nn.conv2d(
             conv_in, num_filters=10, filter_size=5, act="relu"
         )
 
@@ -63,8 +62,8 @@ class TestDygraphLoadStatic(unittest.TestCase):
         emb_out_2 = fluid.embedding(emb_in, [2000, 200])
 
         layernorm = fluid.data(name="ln", shape=[None, 10], dtype='float32')
-        layernorm_1 = fluid.layers.layer_norm(layernorm)
-        layernorm_2 = fluid.layers.layer_norm(layernorm)
+        layernorm_1 = paddle.static.nn.layer_norm(layernorm)
+        layernorm_2 = paddle.static.nn.layer_norm(layernorm)
 
         nce_in = fluid.data(name="nce_in", shape=[None, 100], dtype='float32')
         nce_label = fluid.data(
@@ -206,8 +205,8 @@ class TestDygraphLoadStatic(unittest.TestCase):
                     self.batch_norm_1 = BatchNorm(10)
                     self.batch_norm_2 = BatchNorm(10)
 
-                    self.emb1 = Embedding([1000, 100])
-                    self.emb2 = Embedding([2000, 200])
+                    self.emb1 = paddle.nn.Embedding(1000, 100)
+                    self.emb2 = paddle.nn.Embedding(2000, 200)
 
                     self.layer_norm_1 = paddle.nn.LayerNorm([10])
                     self.layer_norm_2 = paddle.nn.LayerNorm(10)

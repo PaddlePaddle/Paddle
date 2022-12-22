@@ -86,7 +86,7 @@ TEST(CpuLayerTest, Construct) {
   int ds = layer.Attribute<int>("down_sampling");
   EXPECT_EQ(ds, 4);
 
-  std::string fstr = layer.Attribute<std::string>("fstr");
+  std::string fstr = layer.Attribute<framework::String>("fstr");
   EXPECT_STREQ(fstr.c_str(), "save str property");
 
   std::vector<int> ints = layer.Attribute<std::vector<int>>("ints");
