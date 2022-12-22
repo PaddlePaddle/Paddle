@@ -548,4 +548,13 @@ void MultiTensorAdamInferMeta(
     MetaTensor* beta2_pow_out,
     std::vector<MetaTensor*> master_params_out);
 
+void MoeInferMeta(const MetaTensor& x,
+                  const MetaTensor& gate,
+                  const MetaTensor& bmm0,
+                  const MetaTensor& bias0,
+                  const MetaTensor& bmm1,
+                  const MetaTensor& bias1,
+                  const std::string& act_type,
+                  MetaTensor* out);
+
 }  // namespace phi

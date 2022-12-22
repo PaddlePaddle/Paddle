@@ -14,7 +14,6 @@
 # limitations under the License.
 
 from . import amp  # noqa: F401
-from . import sparsity  # noqa: F401
 from . import nn  # noqa: F401
 
 from .nn.common import py_func  # noqa: F401
@@ -74,15 +73,11 @@ from ..fluid.io import batch  # noqa: F401
 from ..fluid.contrib.layers import ctr_metric_bundle  # noqa: F401
 from ..fluid.layers import exponential_decay  # noqa: F401
 
-from .nn.common import batch_norm  # noqa: F401
-from .nn.common import conv2d  # noqa: F401
 from .nn.metric import auc  # noqa: F401
 from .nn.metric import accuracy  # noqa: F401
 
 __all__ = [  # noqa
     'append_backward',
-    'batch_norm',
-    'conv2d',
     'gradients',
     'Executor',
     'global_scope',
