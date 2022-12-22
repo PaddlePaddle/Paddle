@@ -152,7 +152,6 @@ class TestQuantizationPassExport(unittest.TestCase):
             path_prefix=path_prefix, executor=exe
         )
 
-        print(inference_program)
         out = exe.run(
             inference_program,
             feed={
@@ -162,7 +161,6 @@ class TestQuantizationPassExport(unittest.TestCase):
             },
             fetch_list=fetch_targets,
         )
-        print(out)
 
 
 if __name__ == "__main__":
