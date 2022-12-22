@@ -93,18 +93,18 @@ def train_network(
     is_pyreader=False,
 ):
     # query
-    q = fluid.layers.data(
-        name="query_ids", shape=[1], dtype="int64", lod_level=1
+    q = paddle.static.data(
+        name="query_ids", shape=[-1, 1], dtype="int64", lod_level=1
     )
     # label data
-    label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+    label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
     # pt
-    pt = fluid.layers.data(
-        name="pos_title_ids", shape=[1], dtype="int64", lod_level=1
+    pt = paddle.static.data(
+        name="pos_title_ids", shape=[-1, 1], dtype="int64", lod_level=1
     )
     # nt
-    nt = fluid.layers.data(
-        name="neg_title_ids", shape=[1], dtype="int64", lod_level=1
+    nt = paddle.static.data(
+        name="neg_title_ids", shape=[-1, 1], dtype="int64", lod_level=1
     )
 
     datas = [q, label, pt, nt]

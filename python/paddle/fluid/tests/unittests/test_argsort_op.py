@@ -84,12 +84,12 @@ class TestArgsortOpCPU(unittest.TestCase):
         )
 
         with fluid.program_guard(self.main_program, self.startup_program):
-            x = fluid.layers.data(
-                name="x", shape=self.input_shape, dtype=self.dtype
+            x = paddle.static.data(
+                name="x", shape=[-1] + self.input_shape, dtype=self.dtype
             )
             x.stop_gradient = False
-            label = fluid.layers.data(
-                name="label", shape=self.input_shape, dtype=self.dtype
+            label = paddle.static.data(
+                name="label", shape=[-1] + self.input_shape, dtype=self.dtype
             )
             self.index = paddle.argsort(
                 x=x, axis=self.axis, descending=self.descending

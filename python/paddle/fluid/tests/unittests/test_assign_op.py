@@ -22,7 +22,6 @@ from decorator_helper import prog_scope
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 from paddle.fluid import Program, program_guard
 from paddle.fluid.backward import append_backward
 
@@ -273,7 +272,7 @@ class TestAssignDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [3, 4, 5], False, dtype)
+        data = paddle.static.data('data', [3, 4, 5], dtype)
         data.persistable = True
         out = paddle.fluid.layers.assign(data)
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
@@ -305,7 +304,7 @@ class TestAssignTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [3, 4, 5], False, dtype)
+        data = paddle.static.data('data', [3, 4, 5], dtype)
         data.persistable = True
         out = paddle.fluid.layers.assign(data)
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)

@@ -74,8 +74,8 @@ class L2DecayRegularizer(WeightDecayRegularizer):
             main_prog = fluid.Program()
             startup_prog = fluid.Program()
             with fluid.program_guard(main_prog, startup_prog):
-                data = fluid.layers.data(name='image', shape=[3, 28, 28], dtype='float32')
-                label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+                data = paddle.static.data(name='image', shape=[-1,3, 28, 28], dtype='float32')
+                label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
                 hidden = fluid.layers.fc(input=data, size=128, act='relu')
                 prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
                 loss = paddle.nn.functional.cross_entropy(
@@ -193,8 +193,8 @@ class L1DecayRegularizer(WeightDecayRegularizer):
             main_prog = fluid.Program()
             startup_prog = fluid.Program()
             with fluid.program_guard(main_prog, startup_prog):
-                data = fluid.layers.data(name='image', shape=[3, 28, 28], dtype='float32')
-                label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+                data = paddle.static.data(name='image', shape=[-1, 3, 28, 28], dtype='float32')
+                label = fpaddle.static.data(name='label', shape=[-1, 1], dtype='int64')
                 hidden = fluid.layers.fc(input=data, size=128, act='relu')
                 prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
                 loss = paddle.nn.functional.cross_entropy(

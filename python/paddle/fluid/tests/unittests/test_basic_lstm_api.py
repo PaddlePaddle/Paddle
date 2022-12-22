@@ -17,9 +17,9 @@ import unittest
 import numpy
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 from paddle.fluid import framework
 from paddle.fluid.contrib.layers import basic_lstm
 from paddle.fluid.executor import Executor
@@ -207,12 +207,12 @@ class TestBasicLSTMApi(unittest.TestCase):
         self.forget_bias = 1.0
 
     def test_run(self):
-        x = layers.data(
+        x = paddle.static.data(
             name='x',
             shape=[-1, self.batch_size, self.hidden_size],
             dtype='float32',
         )
-        sequence_length = layers.data(
+        sequence_length = paddle.static.data(
             name="sequence_length", shape=[-1], dtype='float32'
         )
 

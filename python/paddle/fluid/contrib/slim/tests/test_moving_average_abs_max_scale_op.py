@@ -41,10 +41,12 @@ class TestMovingAverageAbsMaxScaleOp(unittest.TestCase):
         main_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(main_program, startup_program):
-            image = fluid.layers.data(
-                name='image', shape=[784], dtype='float32'
+            image = paddle.static.data(
+                name='image', shape=[-1, 784], dtype='float32'
             )
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
             fc_tmp = fluid.layers.fc(image, size=10, act='softmax')
             out_scale = quant_layers.MovingAverageAbsMaxScale(
                 name=fc_tmp.name, dtype=fc_tmp.dtype

@@ -17,9 +17,9 @@ import unittest
 import numpy
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 from paddle.fluid import framework
 from paddle.fluid.contrib.layers import BasicLSTMUnit
 from paddle.fluid.executor import Executor
@@ -63,11 +63,13 @@ class TestBasicGRUUnit(unittest.TestCase):
         self.batch_size = 5
 
     def test_run(self):
-        x = layers.data(name='x', shape=[-1, self.hidden_size], dtype='float32')
-        pre_hidden = layers.data(
+        x = paddle.static.data(
+            name='x', shape=[-1, self.hidden_size], dtype='float32'
+        )
+        pre_hidden = paddle.static.data(
             name="pre_hidden", shape=[-1, self.hidden_size], dtype='float32'
         )
-        pre_cell = layers.data(
+        pre_cell = paddle.static.data(
             name="pre_cell", shape=[-1, self.hidden_size], dtype='float32'
         )
 

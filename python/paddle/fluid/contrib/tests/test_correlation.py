@@ -85,16 +85,16 @@ class TestCorrelationOp(unittest.TestCase):
         np.set_printoptions(threshold=np.inf)
         x_shape = (2, 10, 3, 3)
         x_type = 'float32'
-        x1 = fluid.layers.data(
+        x1 = paddle.static.data(
             name='x1',
-            shape=x_shape,
+            shape=[-1] + x_shape,
             dtype=x_type,
             append_batch_size=False,
             stop_gradient=False,
         )
-        x2 = fluid.layers.data(
+        x2 = paddle.static.data(
             name='x2',
-            shape=x_shape,
+            shape=[-1] + x_shape,
             dtype=x_type,
             append_batch_size=False,
             stop_gradient=False,

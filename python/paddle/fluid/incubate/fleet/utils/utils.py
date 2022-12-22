@@ -17,6 +17,7 @@ import sys
 import logging
 import subprocess
 import numpy as np
+import paddle
 from collections import OrderedDict
 import paddle.fluid as fluid
 from paddle.fluid import core
@@ -172,8 +173,17 @@ def save_var(np_array, var_name, shape_list, dtype, save_path):
     program = fluid.Program()
     place = fluid.CPUPlace()
     exe = fluid.Executor(place)
+    shape = list(shape_list)
+    for i in range(len(shape)):
+        if shape[i] is None:
+            shape[i] = -1
+            append_batch_size = False
+        elif shape[i] < 0:
+            append_batch_size = False
+    if append_batch_size:
+        shape = [-1] + shape  # append batch size as -1
     with fluid.program_guard(program):
-        d0_data = fluid.layers.data(var_name, shape=shape_list, dtype=dtype)
+        d0_data = paddle.static.data(var_name, shape=shape, dtype=dtype)
         append_save_op(program.global_block(), d0_data, save_path)
         exe.run(feed={var_name: np_array}, fetch_list=[])
 
@@ -182,8 +192,17 @@ def load_var(var_name, shape_list, dtype, save_path):
     program = fluid.Program()
     place = fluid.CPUPlace()
     exe = fluid.Executor(place)
+    shape = list(shape_list)
+    for i in range(len(shape)):
+        if shape[i] is None:
+            shape[i] = -1
+            append_batch_size = False
+        elif shape[i] < 0:
+            append_batch_size = False
+    if append_batch_size:
+        shape = [-1] + shape  # append batch size as -1
     with fluid.program_guard(program):
-        d0_data = fluid.layers.data(var_name, shape=shape_list, dtype=dtype)
+        d0_data = paddle.static.data(var_name, shape=shape_list, dtype=dtype)
         append_load_op(program.global_block(), d0_data, save_path)
         outs = exe.run(feed={}, fetch_list=[d0_data])
         return outs

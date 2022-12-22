@@ -77,8 +77,8 @@ def train(
 ):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
-    img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    img = paddle.static.data(name='img', shape=[-1, 1, 28, 28], dtype='float32')
+    label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
 
     if nn_type == 'mlp':
         net_conf = mlp

@@ -67,8 +67,8 @@ class BasicGRUUnit(Layer):
 
             input_size = 128
             hidden_size = 256
-            input = layers.data( name = "input", shape = [-1, input_size], dtype='float32')
-            pre_hidden = layers.data( name = "pre_hidden", shape=[-1, hidden_size], dtype='float32')
+            input = paddle.static.data( name = "input", shape = [-1, input_size], dtype='float32')
+            pre_hidden = paddle.static.data( name = "pre_hidden", shape=[-1, hidden_size], dtype='float32')
 
             gru_unit = BasicGRUUnit( "gru_unit", hidden_size )
 
@@ -252,6 +252,7 @@ def basic_gru(
 
             import paddle.fluid.layers as layers
             from paddle.fluid.contrib.layers import basic_gru
+            import paddle
 
             batch_size = 20
             input_size = 128
@@ -261,9 +262,9 @@ def basic_gru(
             bidirectional = True
             batch_first = False
 
-            input = layers.data( name = "input", shape = [-1, batch_size, input_size], dtype='float32')
-            pre_hidden = layers.data( name = "pre_hidden", shape=[-1, hidden_size], dtype='float32')
-            sequence_length = layers.data( name="sequence_length", shape=[-1], dtype='int32')
+            input = paddle.static.data( name = "input", shape = [-1, batch_size, input_size], dtype='float32')
+            pre_hidden = paddle.static.data( name = "pre_hidden", shape=[-1, hidden_size], dtype='float32')
+            sequence_length = paddle.static.data( name="sequence_length", shape=[-1], dtype='int32')
 
 
             rnn_out, last_hidden = basic_gru( input, pre_hidden, hidden_size, num_layers = num_layers, \
@@ -535,6 +536,7 @@ def basic_lstm(
 
             import paddle.fluid.layers as layers
             from paddle.fluid.contrib.layers import basic_lstm
+            import paddle
 
             batch_size = 20
             input_size = 128
@@ -544,10 +546,10 @@ def basic_lstm(
             bidirectional = True
             batch_first = False
 
-            input = layers.data( name = "input", shape = [-1, batch_size, input_size], dtype='float32')
-            pre_hidden = layers.data( name = "pre_hidden", shape=[-1, hidden_size], dtype='float32')
-            pre_cell = layers.data( name = "pre_cell", shape=[-1, hidden_size], dtype='float32')
-            sequence_length = layers.data( name="sequence_length", shape=[-1], dtype='int32')
+            input = paddle.static.data( name = "input", shape = [-1, batch_size, input_size], dtype='float32')
+            pre_hidden = paddle.static.data( name = "pre_hidden", shape=[-1, hidden_size], dtype='float32')
+            pre_cell = paddle.static.data( name = "pre_cell", shape=[-1, hidden_size], dtype='float32')
+            sequence_length = paddle.static.data( name="sequence_length", shape=[-1], dtype='int32')
 
             rnn_out, last_hidden, last_cell = basic_lstm( input, pre_hidden, pre_cell, \
                     hidden_size, num_layers = num_layers, \
@@ -812,12 +814,13 @@ class BasicLSTMUnit(Layer):
 
             import paddle.fluid.layers as layers
             from paddle.fluid.contrib.layers import BasicLSTMUnit
+            import paddle
 
             input_size = 128
             hidden_size = 256
-            input = layers.data( name = "input", shape = [-1, input_size], dtype='float32')
-            pre_hidden = layers.data( name = "pre_hidden", shape=[-1, hidden_size], dtype='float32')
-            pre_cell = layers.data( name = "pre_cell", shape=[-1, hidden_size], dtype='float32')
+            input = paddle.static.data( name = "input", shape = [-1, input_size], dtype='float32')
+            pre_hidden = paddle.static.data( name = "pre_hidden", shape=[-1, hidden_size], dtype='float32')
+            pre_cell = paddle.static.data( name = "pre_cell", shape=[-1, hidden_size], dtype='float32')
 
             lstm_unit = BasicLSTMUnit( "gru_unit", hidden_size)
 

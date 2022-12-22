@@ -16,8 +16,8 @@ import unittest
 
 from test_imperative_base import new_program_scope
 
+import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 from paddle.fluid.contrib.layers import basic_gru, basic_lstm
 
 
@@ -46,15 +46,15 @@ class TestBasicGRUApiName(unittest.TestCase):
         batch_first = False
 
         with new_program_scope():
-            input = layers.data(
+            input = paddle.static.data(
                 name="input",
                 shape=[-1, batch_size, input_size],
                 dtype='float32',
             )
-            pre_hidden = layers.data(
+            pre_hidden = paddle.static.data(
                 name="pre_hidden", shape=[-1, hidden_size], dtype='float32'
             )
-            sequence_length = layers.data(
+            sequence_length = paddle.static.data(
                 name="sequence_length", shape=[-1], dtype='int32'
             )
 
@@ -105,18 +105,18 @@ class TestBasicLSTMApiName(unittest.TestCase):
         batch_first = False
 
         with new_program_scope():
-            input = layers.data(
+            input = paddle.static.data(
                 name="input",
                 shape=[-1, batch_size, input_size],
                 dtype='float32',
             )
-            pre_hidden = layers.data(
+            pre_hidden = paddle.static.data(
                 name="pre_hidden", shape=[-1, hidden_size], dtype='float32'
             )
-            pre_cell = layers.data(
+            pre_cell = paddle.static.data(
                 name="pre_cell", shape=[-1, hidden_size], dtype='float32'
             )
-            sequence_length = layers.data(
+            sequence_length = paddle.static.data(
                 name="sequence_length", shape=[-1], dtype='int32'
             )
 

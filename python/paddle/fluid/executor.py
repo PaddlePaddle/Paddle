@@ -1862,7 +1862,7 @@ class Executor:
                 vardesc = global_block.desc.find_var(varname.encode())
                 varobj = global_block.vars[varname]
 
-                # Can not check var build by fluid.layers.data(), bucause fluid.layers.data() had not set need_check_feed
+                # Can not check var build by paddle.static.data(), bucause paddle.static.data() had not set need_check_feed
                 if (
                     vardesc.persistable() == False
                     and vardesc.type() == core.VarDesc.VarType.LOD_TENSOR

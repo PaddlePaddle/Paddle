@@ -25,8 +25,10 @@ paddle.enable_static()
 
 
 def linear_fc(num):
-    data = fluid.layers.data(name='image', shape=[1, 32, 32], dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    data = paddle.static.data(
+        name='image', shape=[-1, 1, 32, 32], dtype='float32'
+    )
+    label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
     hidden = data
     for _ in range(num):
         hidden = fluid.layers.fc(hidden, size=128, act='relu')
@@ -52,8 +54,10 @@ def residual_block(num):
         )
         return paddle.static.nn.batch_norm(input=tmp, act=act)
 
-    data = fluid.layers.data(name='image', shape=[1, 32, 32], dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    data = paddle.static.data(
+        name='image', shape=[-1, 1, 32, 32], dtype='float32'
+    )
+    label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
     hidden = data
     for _ in range(num):
         conv = conv_bn_layer(hidden, 16, 3, 1, 1, act=None, bias_attr=True)
@@ -196,11 +200,11 @@ class TestQuantizeTranspiler(unittest.TestCase):
             startup.random_seed = seed
             with fluid.unique_name.guard():
                 with fluid.program_guard(main, startup):
-                    img = fluid.layers.data(
-                        name='image', shape=[1, 28, 28], dtype='float32'
+                    img = paddle.static.data(
+                        name='image', shape=[-1, 1, 28, 28], dtype='float32'
                     )
-                    label = fluid.layers.data(
-                        name='label', shape=[1], dtype='int64'
+                    label = paddle.static.data(
+                        name='label', shape=[-1, 1], dtype='int64'
                     )
                     loss = conv_net(img, label)
                     if not is_test:

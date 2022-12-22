@@ -6940,9 +6940,10 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
             .. code-block:: python
 
                 import paddle.fluid as fluid
+                import paddle
 
                 prog = fluid.default_main_program()
-                rlt = fluid.layers.data("fake_data", shape=[1,1], dtype='float32')
+                rlt = paddle.static.data("fake_data", shape=[-1,1,1], dtype='float32')
                 debug_str = prog.to_string(throw_on_error=True, with_details=False)
                 print(debug_str)
         """

@@ -90,8 +90,8 @@ class ListenAndServ:
                 serv = layers.ListenAndServ(
                     "127.0.0.1:6170", ["X"], optimizer_mode=False)
                 with serv.do():
-                    x = layers.data(
-                        shape=[32, 32],
+                    x = paddle.static.data(
+                        shape=[-1, 32, 32],
                         dtype='float32',
                         name="X",
                         append_batch_size=False)

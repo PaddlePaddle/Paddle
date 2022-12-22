@@ -41,10 +41,10 @@ class TestBmmOp(OpTest):
 class API_TestBmm(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data1 = fluid.layers.data(
+            data1 = paddle.static.data(
                 'data1', shape=[-1, 3, 4], dtype='float64'
             )
-            data2 = fluid.layers.data(
+            data2 = paddle.static.data(
                 'data2', shape=[-1, 4, 5], dtype='float64'
             )
             result_bmm = paddle.bmm(data1, data2)

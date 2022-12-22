@@ -27,8 +27,10 @@ os.environ["CPU_NUM"] = "1"
 
 
 def conv_block():
-    img = fluid.layers.data(name='image', shape=[1, 28, 28], dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    img = paddle.static.data(
+        name='image', shape=[-1, 1, 28, 28], dtype='float32'
+    )
+    label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
     conv_pool_1 = fluid.nets.simple_img_conv_pool(
         input=img,
         filter_size=5,

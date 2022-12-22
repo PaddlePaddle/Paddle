@@ -34,8 +34,10 @@ os.environ["CPU_NUM"] = "1"
 
 
 def linear_fc(num):
-    data = fluid.layers.data(name='image', shape=[1, 32, 32], dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    data = paddle.static.data(
+        name='image', shape=[-1, 1, 32, 32], dtype='float32'
+    )
+    label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
     hidden = data
     for _ in range(num):
         hidden = fluid.layers.fc(hidden, size=128, act='relu')
@@ -61,14 +63,14 @@ def residual_block(num, quant_skip_pattern=None):
         )
         return paddle.static.nn.batch_norm(input=tmp, act=act)
 
-    data = fluid.layers.data(
+    data = paddle.static.data(
         name='image',
-        shape=[1, 1, 32, 32],
+        shape=[-1, 1, 1, 32, 32],
         dtype='float32',
         append_batch_size=False,
     )
-    label = fluid.layers.data(
-        name='label', shape=[1, 1], dtype='int64', append_batch_size=False
+    label = paddle.static.data(
+        name='label', shape=[-1, 1, 1], dtype='int64', append_batch_size=False
     )
     hidden = data
     for _ in range(num):
@@ -291,11 +293,11 @@ class TestQuantizationFreezePass(unittest.TestCase):
             startup.random_seed = seed
             with fluid.unique_name.guard():
                 with fluid.program_guard(main, startup):
-                    img = fluid.layers.data(
-                        name='image', shape=[1, 28, 28], dtype='float32'
+                    img = paddle.static.data(
+                        name='image', shape=[-1, 1, 28, 28], dtype='float32'
                     )
-                    label = fluid.layers.data(
-                        name='label', shape=[1], dtype='int64'
+                    label = paddle.static.data(
+                        name='label', shape=[-1, 1], dtype='int64'
                     )
                     loss = conv_net(img, label, quant_skip_pattern)
                     if not is_test:
@@ -720,11 +722,13 @@ def quant_dequant_residual_block(num, quant_skip_pattern=None):
         )
         return paddle.static.nn.batch_norm(input=tmp, act=act)
 
-    data1 = fluid.layers.data(name='image', shape=[1, 32, 32], dtype='float32')
-    data2 = fluid.layers.data(
-        name='matmul_input', shape=[16, 32, 32], dtype='float32'
+    data1 = paddle.static.data(
+        name='image', shape=[-1, 1, 32, 32], dtype='float32'
     )
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    data2 = paddle.static.data(
+        name='matmul_input', shape=[-1, 16, 32, 32], dtype='float32'
+    )
+    label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
     hidden = data1
     for _ in range(num):
         conv = conv_bn_layer(hidden, 16, 3, 1, 1, act=None, bias_attr=True)

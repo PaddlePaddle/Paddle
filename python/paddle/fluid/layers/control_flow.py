@@ -468,7 +468,7 @@ class StaticRNN:
                         is_sparse=False)
                 # transform batch size to dim 1
                 x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
-                boot_memory = fluid.layers.data(name='boot', shape=[hidden_size], dtype='float32', lod_level=1)
+                boot_memory = paddle.static.data(name='boot', shape=[-1, hidden_size], dtype='float32', lod_level=1)
                 rnn = fluid.layers.StaticRNN()
                 with rnn.step():
                         # mark created x_emb as input, each step process a word

@@ -192,10 +192,11 @@ def var_conv_2d(
               import numpy as np
               from paddle.fluid import layers
               from paddle.fluid import contrib
+              import paddle
 
-              x_lod_tensor = layers.data(name='x', shape=[1], lod_level=1)
-              row_lod_tensor = layers.data(name='row', shape=[6], lod_level=1)
-              col_lod_tensor = layers.data(name='col', shape=[6], lod_level=1)
+              x_lod_tensor = paddle.static.data(name='x', shape=[-1, 1], lod_level=1)
+              row_lod_tensor = paddle.static.data(name='row', shape=[-1, 6], lod_level=1)
+              col_lod_tensor = paddle.static.data(name='col', shape=[-1, 6], lod_level=1)
               out = contrib.var_conv_2d(input=x_lod_tensor,
                                        row=row_lod_tensor,
                                        col=col_lod_tensor,
@@ -298,9 +299,10 @@ def match_matrix_tensor(
             import numpy as np
             from paddle.fluid import layers
             from paddle.fluid import contrib
+            import paddle
 
-            x_lod_tensor = layers.data(name='x', shape=[10], lod_level=1)
-            y_lod_tensor = layers.data(name='y', shape=[10], lod_level=1)
+            x_lod_tensor = paddle.static.data(name='x', shape=[-1, 10], lod_level=1)
+            y_lod_tensor = paddle.static.data(name='y', shape=[-1, 10], lod_level=1)
             out, out_tmp = contrib.match_matrix_tensor(
                 x=x_lod_tensor, y=y_lod_tensor, channel_num=3)
     """
@@ -375,10 +377,11 @@ def sequence_topk_avg_pooling(input, row, col, topks, channel_num):
             import numpy as np
             from paddle.fluid import layers
             from paddle.fluid import contrib
+            import paddle
 
-            x_lod_tensor = layers.data(name='x', shape=[1], lod_level=1)
-            row_lod_tensor = layers.data(name='row', shape=[6], lod_level=1)
-            col_lod_tensor = layers.data(name='col', shape=[6], lod_level=1)
+            x_lod_tensor = paddle.static.data(name='x', shape=[-1, 1], lod_level=1)
+            row_lod_tensor = paddle.static.data(name='row', shape=[-1, 6], lod_level=1)
+            col_lod_tensor = paddle.static.data(name='col', shape=[-1, 6], lod_level=1)
             out = contrib.sequence_topk_avg_pooling(input=x_lod_tensor,
                                                    row=row_lod_tensor,
                                                    col=col_lod_tensor,
@@ -434,11 +437,11 @@ def tree_conv(
               import paddle.fluid as fluid
 
               # 10 for max_node_size of dataset, 5 for vector width
-              nodes_vector = fluid.layers.data(
-                  name='vectors', shape=[10, 5], dtype='float32')
+              nodes_vector = paddle.static.data(
+                  name='vectors', shape=[-1, 10, 5], dtype='float32')
               # 10 for max_node_size of dataset, 2 for every edge has two nodes
               # edges must be directional
-              edge_set = fluid.layers.data(name='edge_set', shape=[
+              edge_set = paddle.static.data(name='edge_set', shape=[-1,
                                            10, 2], dtype='float32')
               # the shape of output will be [10, 6, 1],
               # 10 for max_node_size of dataset, 6 for output size, 1 for 1 filter
@@ -515,8 +518,8 @@ def fused_embedding_seq_pool(
             import paddle.fluid as fluid
 
             dict_size = 20
-            data_t = fluid.layers.data(
-                name='word', shape=[1], dtype='int64', lod_level=1)
+            data_t = paddle.static.data(
+                name='word', shape=[-1, 1], dtype='int64', lod_level=1)
             padding_idx = np.random.randint(1, 10)
             out = fluid.contrib.fused_embedding_seq_pool(
                 input=data_t,
@@ -720,9 +723,9 @@ def multiclass_nms2(
 
 
             import paddle.fluid as fluid
-            boxes = fluid.layers.data(name='bboxes', shape=[81, 4],
+            boxes = paddle.static.data(name='bboxes', shape=[-1, 81, 4],
                                       dtype='float32', lod_level=1)
-            scores = fluid.layers.data(name='scores', shape=[81],
+            scores = paddle.static.data(name='scores', shape=[-1, 81],
                                       dtype='float32', lod_level=1)
             out, index = fluid.layers.multiclass_nms2(bboxes=boxes,
                                               scores=scores,
@@ -916,7 +919,7 @@ def shuffle_batch(x, seed=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[-1, 4])
+            x = paddle.static.data(name="x", shape=[-1, 4])
             out = fluid.contrib.layers.shuffle_batch(x)
     """
     helper = LayerHelper('shuffle_batch', **locals())
@@ -1728,7 +1731,7 @@ def _pull_box_extended_sparse(input, size, extend_size=64, dtype='float32'):
     Examples:
         .. code-block:: python
           import paddle.fluid as fluid
-          data = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          data = paddle.static.data(name='sequence', shape=[-1, 1], dtype='int64', lod_level=1)
           emb, emb_ex = fluid.contrib.layers._pull_box_extended_sparse(input=data, size=8, extend_size=128)
     """
     helper = LayerHelper('pull_box_extended_sparse', **locals())
@@ -1853,12 +1856,13 @@ def correlation(
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle
 
-            x1 = fluid.layers.data(name='x1',
+            x1 = paddle.static.data(name='x1',
                                shape=x_shape,
                                dtype=x_type,
                                append_batch_size=False)
-            x2 = fluid.layers.data(name='x2',
+            x2 = paddle.static.data(name='x2',
                                 shape=x_shape,
                                 dtype=x_type,
                                 append_batch_size=False)
@@ -1972,8 +1976,8 @@ def fused_bn_add_act(
             # required: gpu
             def build_program(main_program, startup_program):
                 with fluid.program_guard(main_program, startup_program):
-                    x = fluid.layers.data(name='x', shape=[1, 28, 28], dtype='float32')
-                    y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+                    x = paddle.static.data(name='x', shape=[-1, 1, 28, 28], dtype='float32')
+                    y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
                     conv1_1 = paddle.static.nn.conv2d(
                         input=x,
                         filter_size=3,
