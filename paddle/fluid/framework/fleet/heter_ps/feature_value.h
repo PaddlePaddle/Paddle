@@ -33,6 +33,11 @@ namespace framework {
 #define MF_DIM 8
 
 typedef uint64_t FeatureKey;
+
+#ifdef PADDLE_WITH_XPU_KP
+typedef uint32_t FidKey;
+#endif
+
 #define TYPEALIGN(ALIGNVAL, LEN) \
   (((uint64_t)(LEN) + ((ALIGNVAL)-1)) & ~((uint64_t)((ALIGNVAL)-1)))
 
@@ -567,6 +572,7 @@ class CommonFeatureValueAccessor {
   CommonPullValue common_pull_value;
 };
 
+#ifdef PADDLE_WITH_CUDA
 struct FeatureValue {
   float delta_score;
   float show;
@@ -637,6 +643,55 @@ struct FeaturePushValue {
     }
   }
 };
+#endif
+
+#ifdef PADDLE_WITH_XPU_KP
+struct FeatureValue {
+  float delta_score;
+  float show;
+  float clk;
+  int slot;
+  float lr;
+  float lr_g2sum;
+  int mf_size;
+  float mf[MF_DIM + 1];
+  uint64_t cpu_ptr;
+
+  friend std::ostream& operator<<(std::ostream& out, FeatureValue& val) {
+    out << "show:" << val.show << " clk:" << val.clk << " slot:" << val.slot
+        << " lr:" << val.lr << " mf_size:" << val.mf_size << " mf:";
+    for (int i = 0; i < MF_DIM + 1; ++i) {
+      if (i == 0) {
+        out << val.mf[i];
+      } else {
+        out << "," << val.mf[i];
+      }
+    }
+    out << " cpu_ptr:" << val.cpu_ptr;
+    return out;
+  }
+};
+
+// If FeaturePushValue struct change, the size of it can't over 64 bytes.
+// Otherwise the merge_grad_kernel, sum_fidseq_add_grad_kernel in XPUPS will cause fault.
+struct FeaturePushValue {
+  float show;
+  float clk;
+  int slot;
+  float lr_g;
+  float mf_g[MF_DIM];
+
+  friend std::ostream& operator<<(std::ostream& out, FeaturePushValue& val) {
+    out << "show:" << val.show << " clk:" << val.clk << " slot:" << val.slot
+        << " lr_g:" << val.lr_g;
+    for (int i = 0; i < MF_DIM; ++i) {
+      out << " " << val.mf_g[i];
+    }
+    return out;
+  }
+
+};
+#endif
 
 class VirtualAccessor {
  public:

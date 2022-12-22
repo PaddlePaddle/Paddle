@@ -33,6 +33,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/hashtable.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
+#if defined(PADDLE_WITH_XPU_KP)
+#include "paddle/fluid/framework/fleet/heter_ps/cache_manager.h"
+#endif
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/place.h"
@@ -101,7 +104,11 @@ class HeterComm {
                   int& uniq_len);  // NOLINT
   void dynamic_merge_grad(
       int gpu_num, KeyType* d_keys, float* d_grads, size_t len, int& uniq_len);
+#if defined(PADDLE_WITH_XPU_KP)
+  void pull_sparse(int num, KeyType* d_keys, ValType* d_vals, size_t len);
+#else
   void pull_sparse(int num, KeyType* d_keys, float* d_vals, size_t len);
+#endif
   void build_ps(int num,
                 KeyType* h_keys,
                 char* pool,
@@ -324,6 +331,9 @@ class HeterComm {
                    int* h_right,
                    char* src_val,
                    size_t val_size);
+#if defined(PADDLE_WITH_XPU_KP)
+  std::shared_ptr<CacheManager> get_cache_manager() {return cache_mgr_;}
+#endif
 
  protected:
   void pull_merge_sparse(int num, KeyType* d_keys, float* d_vals, size_t len);
@@ -356,6 +366,11 @@ class HeterComm {
   int max_mf_dim_ = 8;
   std::vector<std::shared_ptr<cub::CachingDeviceAllocator>> allocators_;
 #endif
+
+#if defined(PADDLE_WITH_XPU_KP)
+  std::shared_ptr<CacheManager> cache_mgr_ = nullptr;
+#endif
+
 };
 
 }  // end namespace framework

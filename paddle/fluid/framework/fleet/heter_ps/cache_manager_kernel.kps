@@ -1,0 +1,258 @@
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
+#ifdef PADDLE_WITH_HETERPS
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
+#include "paddle/fluid/framework/fleet/heter_ps/cache_manager_kernel.h"
+
+#if defined(PADDLE_WITH_XPU_KP)
+#include <xpu/runtime.h>
+#include "xpu/kernel/cluster_header.h"
+#include "xpu/runtime.h"
+#include "xpu/kernel/math.h"
+#include "xpu/kernel/simd.h"
+#endif
+
+#include "paddle/fluid/platform/device/xpu/xpu_header.h"
+
+namespace paddle {
+namespace framework {
+
+#if defined(PADDLE_WITH_XPU_KP)
+
+static inline __device__ void mfence_lm() {
+    __asm__("mfence {lm}\n\t");
+}
+
+static inline __device__ void xpu_sync_all(int group_mask = -1) {
+    __asm__("sync_local");
+    __asm__("csr_set csr3, %0"::"r"(group_mask));
+    __asm__("sync_group csr3");
+}
+
+static __device__ inline int xpu_min(int a, int b) {
+    int ret;
+    __asm__("min.s %0, %1, %2":"=r"(ret): "r"(a), "r"(b));
+    return ret;
+}
+
+static __device__ inline int xpu_max(int a, int b) {
+    int ret;
+    __asm__("max.s %0, %1, %2":"=r"(ret): "r"(a), "r"(b));
+    return ret;
+}
+
+static __device__ inline int find_last_le(uint32_t dst_key, __shared_ptr__ uint32_t * src_keys, uint32_t src_key_size) {
+  int start = 0;
+  int end = src_key_size - 1;
+  int mid = 0;
+  while (start < end) {
+    mid = (start + end + 1) / 2;
+    if (dst_key < src_keys[mid]) {
+      end = mid - 1;
+    } else if (dst_key > src_keys[mid]) {
+      start = mid;
+    } else {
+      return mid;
+    }
+  }
+
+  if (src_keys[start] <= dst_key) {
+    return start;
+  }
+
+  return -1;
+}
+
+static __device__ inline int binary_search(uint32_t dst_key, uint32_t * src_keys, uint32_t src_key_size) {
+  int start = 0;
+  int end = src_key_size - 1;
+  int mid = 0;
+  while (start <= end) {
+    mid = (start + end) / 2;
+    if (dst_key < src_keys[mid]) {
+      end = mid - 1;
+    } else if (dst_key > src_keys[mid]) {
+      start = mid + 1;
+    } else {
+      return mid;
+    }
+  }
+  return -1;
+}
+
+__global__ void search_fid_seq_kernel(uint32_t * fid_seq_ptr,
+                                       uint32_t fid_seq_size,
+                                     uint32_t * bucket_sizes,
+                                         uint32_t bucket_num,
+                                       uint32_t * key_in_ptr,
+                                        uint32_t key_in_size,
+                                           int * key_out_ptr) {
+  int thread_id = core_num() * cluster_id() + core_id();
+  int nthreads = core_num() * cluster_num();
+
+  // build shard-index in shared memory
+  const int max_shard_num = 1000;
+  const int max_bucket_num = 100;
+
+  if (bucket_num > max_bucket_num) {
+    return;
+  }
+
+  int mean_shard_num = max_shard_num / bucket_num;
+  __shared__ uint32_t shard_fid[max_shard_num];
+  __shared__ int shard_fid_offset[max_shard_num];
+  __shared__ int shard_fid_size[max_shard_num];
+  __shared__ int bucket_shard_nums[max_bucket_num];
+
+  for (int i = core_id(); i < max_shard_num; i += core_num()) {
+    shard_fid[i] = MAX_UINT32_VALUE;
+    shard_fid_offset[i] = 0;
+    shard_fid_size[i] = 0;
+    if (i < max_bucket_num) {
+      bucket_shard_nums[i] = 0;
+    }
+  }
+
+  mfence();
+  xpu_sync_all();
+
+  __local__ uint32_t local_bucket_size;
+  uint32_t bucket_mean_size = fid_seq_size / bucket_num;
+  for (uint32_t bucket_idx = core_id() % bucket_num; bucket_idx < bucket_num; bucket_idx += core_num()) {
+    uint32_t bucket_thread_num = core_num() / bucket_num;
+    if (bucket_thread_num > 0 && bucket_idx < (core_num() % bucket_num)) { // core_num() > bucket_num
+      bucket_thread_num += 1;
+    } else if (bucket_thread_num == 0) { // core_num() < bucket_num
+      bucket_thread_num = 1;
+    }
+
+    mfence_lm();
+    GM2LM(bucket_sizes + bucket_idx, &local_bucket_size, sizeof(uint32_t));
+
+    uint32_t bucket_tid = core_id() / bucket_num;
+    uint32_t bucket_shard_mean_size = local_bucket_size / mean_shard_num
+        + (local_bucket_size % mean_shard_num > 0 ? 1 : 0);
+    bucket_shard_mean_size = bucket_shard_mean_size == 0 ? 1 : bucket_shard_mean_size;
+
+    __local__ uint32_t local_key;
+    for (uint32_t i = bucket_tid * bucket_shard_mean_size; i < local_bucket_size; i += bucket_thread_num * bucket_shard_mean_size) {
+      mfence_lm();
+      GM2LM(fid_seq_ptr + bucket_mean_size * bucket_idx + i, &local_key, sizeof(uint32_t));
+      uint32_t bucket_shard_idx = i / bucket_shard_mean_size + mean_shard_num * bucket_idx;
+      shard_fid[bucket_shard_idx] = local_key;
+      shard_fid_offset[bucket_shard_idx] = bucket_mean_size * bucket_idx + i;
+      int current_shard_fid_size = xpu_min(local_bucket_size - i, bucket_shard_mean_size);
+      shard_fid_size[bucket_shard_idx] = current_shard_fid_size < 0 ? 0 : current_shard_fid_size;
+    }
+
+    if (bucket_tid == 0) {
+      bucket_shard_nums[bucket_idx] = (local_bucket_size / bucket_shard_mean_size) +
+          (local_bucket_size % bucket_shard_mean_size > 0 ? 1 : 0);
+    }
+  }
+
+  mfence();
+  xpu_sync_all();
+
+  // search key
+  uint32_t mean_cluster_search_key_size = (key_in_size / cluster_num()) +
+      (key_in_size % cluster_num() > 0 ? 1 : 0);
+  uint32_t mean_thread_search_key_size = (mean_cluster_search_key_size / core_num()) +
+      (mean_cluster_search_key_size % core_num() > 0 ? 1 : 0);
+  uint32_t search_key_start = cluster_id() * mean_cluster_search_key_size + core_id() * mean_thread_search_key_size;
+  int search_key_size = xpu_min(mean_thread_search_key_size, key_in_size - search_key_start);
+  search_key_size = search_key_size < 0 ? 0 : search_key_size;
+
+  const int local_buffer_size = 300;
+  __local__ uint32_t local_search_keys[local_buffer_size];
+  __local__ int local_search_results[local_buffer_size];
+  __local__ uint32_t local_shard_fids[local_buffer_size];
+  for (uint32_t i = 0; i < search_key_size; i += local_buffer_size) {
+    int read_size = xpu_min(local_buffer_size, search_key_size - i);
+    if (read_size <= 0) {
+      break;
+    }
+    mfence_lm();
+    GM2LM(key_in_ptr + search_key_start + i, local_search_keys, read_size * sizeof(uint32_t));
+    for (uint32_t j = 0; j < read_size; j++) {
+      uint32_t bucket_idx = local_search_keys[j] % bucket_num;
+      int bucket_shard_num = bucket_shard_nums[bucket_idx];
+      if (bucket_shard_num <= 0) {
+        local_search_results[j] = INVALID_BFID;
+        continue;
+      }
+      // find bucket shard
+      int le_shard_idx = find_last_le(local_search_keys[j], shard_fid + bucket_idx * mean_shard_num, bucket_shard_num);
+      if (le_shard_idx < 0 || le_shard_idx >= bucket_shard_num) {
+        local_search_results[j] = INVALID_BFID;
+        continue;
+      }
+      le_shard_idx += bucket_idx * mean_shard_num;
+
+      // find key
+      int find_fid_idx = -1;
+      int le_shard_fid_size = shard_fid_size[le_shard_idx];
+      int le_shard_fid_offset = shard_fid_offset[le_shard_idx];
+      for (uint32_t k = 0; k < le_shard_fid_size; k += local_buffer_size) {
+        int read_shard_size = xpu_min(local_buffer_size, le_shard_fid_size - k);
+        if (read_shard_size <= 0) {
+          break;
+        }
+        mfence_lm();
+        GM2LM(fid_seq_ptr + le_shard_fid_offset + k, local_shard_fids, read_shard_size * sizeof(uint32_t));
+        find_fid_idx = binary_search(local_search_keys[j], local_shard_fids, read_shard_size);
+        if (find_fid_idx >= 0) {
+          find_fid_idx += k;
+          break;
+        }
+      }
+      if (find_fid_idx < 0) {
+        local_search_results[j] = INVALID_BFID;
+        continue;
+      }
+      local_search_results[j] = find_fid_idx + le_shard_fid_offset;
+    }
+    LM2GM(local_search_results, key_out_ptr + search_key_start + i, read_size * sizeof(uint32_t));
+  }
+}
+
+
+#if defined(PADDLE_WITH_XPU_CACHE_BFID)
+
+void CacheManagerKernel::convert_fid2bfid(uint32_t * fid_seq_ptr,
+                                           uint32_t fid_seq_size,
+                                         uint32_t * bucket_sizes,
+                                             uint32_t bucket_num,
+                                           uint32_t * key_in_ptr,
+                                            uint32_t key_in_size,
+                                               int * key_out_ptr,
+                                               ppStream & stream) {
+  search_fid_seq_kernel<<<8, 64, stream>>>(fid_seq_ptr, 
+                                          fid_seq_size, 
+                                          bucket_sizes, 
+                                            bucket_num, 
+                                            key_in_ptr, 
+                                           key_in_size, 
+                                           key_out_ptr);
+}
+
+#endif // end PADDLE_WITH_XPU_CACHE_BFID
+
+#endif // end PADDLE_WITH_XPU_KP
+
+}  // end namespace framework
+}  // end namespace paddle
+#endif // end PADDLE_WITH_HETERPS

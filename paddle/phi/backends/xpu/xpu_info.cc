@@ -167,8 +167,8 @@ void MemcpySyncD2D(void* dst,
                    const phi::XPUPlace& src_place,
                    size_t count,
                    const phi::XPUContext& dev_ctx) {
-  int dev_id = GetXPUCurrentDeviceId();
-  if (dst_place.device == dev_id && src_place.device == dev_id) {
+  if (dst_place.device == src_place.device) {
+    XPUDeviceGuard guard(src_place.device);
     PADDLE_ENFORCE_XDNN_SUCCESS(
         baidu::xpu::api::copy(dev_ctx.x_context(),
                               static_cast<const int8_t*>(src),

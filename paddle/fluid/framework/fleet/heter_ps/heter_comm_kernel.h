@@ -16,6 +16,8 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
+#include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/platform/place.h"
 
 #if defined(PADDLE_WITH_CUDA)
 #include "cub/cub.cuh"
@@ -142,6 +144,13 @@ class HeterCommKernel {
                   long long len,
                   const StreamType& stream);
 
+#if defined(PADDLE_WITH_XPU_KP)
+  template <typename ValType, typename T, typename StreamType>
+  void fill_dvals_with_bfid(ValType* d_all_vals, ValType* d_vals, T* idx, long long len,
+                  const StreamType& stream);
+#endif
+
+#if defined(PADDLE_WITH_CUDA)
   template <typename KeyT, typename ValueT, typename StreamType>
   void sort_pairs(void* d_temp_storage,
                   size_t& temp_storage_bytes,  // NOLINT
@@ -155,7 +164,19 @@ class HeterCommKernel {
                   int end_bit = sizeof(KeyT) * 8,
                   StreamType stream = NULL,
                   bool debug_synchronous = false);
+#elif defined(PADDLE_WITH_XPU_KP)
+  template <typename KeyT, typename ValueT, typename StreamType>
+  void sort_pairs(const paddle::platform::Place& place,
+                  void* d_temp_storage, size_t& temp_storage_bytes,  // NOLINT
+                  const KeyT* d_keys_in, KeyT* d_keys_out,
+                  const ValueT* d_values_in, ValueT* d_values_out,
+                  int num_items, int begin_bit = 0,
 
+                  int end_bit = sizeof(KeyT) * 8, StreamType stream = NULL,
+                  bool debug_synchronous = false);
+#endif
+
+#if defined(PADDLE_WITH_CUDA)
   template <typename KeysInputIteratorT,
             typename UniqueOutputIteratorT,
             typename ValuesInputIteratorT,
@@ -173,6 +194,55 @@ class HeterCommKernel {
 
                      StreamType stream = NULL,
                      bool debug_synchronous = false);
+#elif defined(PADDLE_WITH_XPU_KP)
+  template <typename KeysInputIteratorT, typename UniqueOutputIteratorT,
+            typename ValuesInputIteratorT, typename AggregatesOutputIteratorT,
+            typename NumRunsOutputIteratorT, typename StreamType>
+  void reduce_by_key(const paddle::platform::Place& place,
+                     void* d_temp_storage,
+                     size_t& temp_storage_bytes,  // NOLINT
+                     KeysInputIteratorT d_keys_in,
+                     UniqueOutputIteratorT d_unique_out,
+                     ValuesInputIteratorT d_values_in,
+                     AggregatesOutputIteratorT d_aggregates_out,
+                     NumRunsOutputIteratorT d_num_runs_out, int num_items,
+                     StreamType stream = NULL, bool debug_synchronous = false);
+#endif
+
+#if defined(PADDLE_WITH_XPU_KP)
+template <typename TID, typename ValueT, typename StreamType>
+void merge_grad(
+    uint32_t first_fidseq_elem,
+    TID* fidseq_grad_idxs,
+    TID* fidseq_lods,
+    int fidseq_lods_len,
+    ValueT* d_vals_in,
+    int len,
+    ValueT* d_vals_out,
+    const StreamType& stream);
+
+template <typename ValueT, typename StreamType>
+void convert_feature_value_as_float(
+    ValueT* d_vals_in,
+    int len,
+    bool to_float,
+    const StreamType& stream);
+
+template <typename ValueT, typename StreamType>
+void convert_feature_push_value_as_float(
+    ValueT* d_vals_in,
+    int len,
+    bool to_float,
+    const StreamType& stream);
+
+template <typename GradType, typename StreamType>
+void sum_fidseq_add_grad(
+    GradType* all_device_fidseq_grad_ptr,
+    uint32_t all_device_fidseq_grad_len,
+    const StreamType& stream,
+    uint32_t bucket_num,
+    GradType* out_fidseq_grad_compress_ptr);
+#endif
 
   template <typename KeyType,
             typename T,

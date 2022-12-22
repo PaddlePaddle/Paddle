@@ -37,7 +37,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-
+class Dataset;
 class HeterContext {
  public:
   virtual ~HeterContext() {
@@ -55,6 +55,7 @@ class HeterContext {
       }
     }
   }
+  Dataset* dataset_;
   Scope* scope_{nullptr};
   std::vector<std::vector<FeatureKey>> feature_keys_;
   std::vector<std::vector<std::vector<FeatureKey>>> feature_dim_keys_;
@@ -80,6 +81,9 @@ class HeterContext {
 #endif
   std::vector<std::vector<FeatureValue>> device_values_;
   std::vector<std::vector<FeatureKey>> device_keys_;
+#ifdef PADDLE_WITH_XPU_KP
+  std::vector<std::vector<uint32_t>> device_fid_keys_;
+#endif
   std::vector<std::vector<std::vector<FeatureKey>>> device_dim_keys_;
   std::vector<std::mutex*> mutex_;
   std::vector<std::vector<std::mutex*>> dim_mutex_;
@@ -95,6 +99,28 @@ class HeterContext {
   }
   void SetShardNum(uint32_t shard_num) { shard_num_ = shard_num; }
   uint32_t ShardNum() { return shard_num_; }
+  void init(int shard_num, int device_num) {
+    shard_num_ = shard_num;
+    feature_keys_.resize(shard_num_);
+    value_ptr_.resize(shard_num_);
+    device_task_ptr_.resize(shard_num_);
+    device_task_keys_.resize(shard_num_);
+    for (size_t i = 0; i < device_task_ptr_.size(); i++) {
+      device_task_ptr_[i].resize(device_num);
+      device_task_keys_[i].resize(device_num);
+    }
+
+    device_values_.resize(device_num);
+
+    device_keys_.resize(device_num);
+#ifdef PADDLE_WITH_XPU_KP
+    device_fid_keys_.resize(device_num);
+#endif
+    mutex_.resize(device_num);
+    for (size_t i = 0; i < mutex_.size(); ++i) {
+      mutex_[i] = new std::mutex();
+    }
+  }
 
   void init(int shard_num, int device_num, int dim_num) {
     shard_num_ = shard_num;
@@ -114,6 +140,9 @@ class HeterContext {
     }
     device_values_.resize(device_num);
     device_keys_.resize(device_num);
+#ifdef PADDLE_WITH_XPU_KP
+    device_fid_keys_.resize(device_num);
+#endif
 
     device_dim_keys_.resize(device_num);
     device_dim_ptr_.resize(device_num);
@@ -145,6 +174,11 @@ class HeterContext {
       for (size_t i = 0; i < device_keys_.size(); ++i) {
         device_keys_[i].clear();
       }
+#ifdef PADDLE_WITH_XPU_KP
+      for (size_t i = 0; i < device_fid_keys_.size(); ++i) {
+          device_fid_keys_[i].clear();
+      }
+#endif
       for (size_t i = 0; i < device_task_ptr_.size(); ++i) {
         for (size_t j = 0; j < device_task_ptr_[i].size(); ++j) {
           device_task_ptr_[i][j].clear();

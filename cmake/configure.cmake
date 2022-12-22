@@ -115,6 +115,11 @@ if(WITH_XPU_KP)
   add_definitions(-DPADDLE_WITH_XPU_KP)
 endif()
 
+if(WITH_XPU_CACHE_BFID)
+    message(STATUS "Compile with XPU_CACHE")
+    add_definitions(-DPADDLE_WITH_XPU_CACHE_BFID)
+endif()
+
 if(WITH_IPU)
   message(STATUS "Compile with IPU!")
   add_definitions(-DPADDLE_WITH_IPU)

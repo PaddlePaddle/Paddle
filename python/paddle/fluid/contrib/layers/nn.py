@@ -62,6 +62,7 @@ __all__ = [
     'correlation',
     'fused_bn_add_act',
     'fused_seqpool_cvm',
+    'fusion_seqpool_cvm_concat',
 ]
 
 
@@ -2147,3 +2148,28 @@ def pow2_decay_with_linear_warmup(
         },
     )
     return lr
+
+def fusion_seqpool_cvm_concat(x, cvm, pooltype, axis, use_cvm):
+    helper = LayerHelper("fusion_seqpool_cvm_concat", **locals())
+    output = helper.create_variable_for_type_inference(dtype=x[0].dtype)
+
+    inputs = {
+        "X": x,
+        "CVM": cvm
+    }
+    attrs = {
+        "pooltype": pooltype.upper(),
+        "axis": axis,
+        'use_cvm': use_cvm
+    }
+    outputs = {
+        "Out": output,
+    }
+
+    helper.append_op(
+        type="fusion_seqpool_cvm_concat",
+        inputs=inputs,
+        outputs=outputs,
+        attrs=attrs)
+
+    return output

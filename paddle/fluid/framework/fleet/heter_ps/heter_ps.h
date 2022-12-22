@@ -20,7 +20,9 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 #endif
-
+#if defined(PADDLE_WITH_XPU_KP)
+#include "paddle/fluid/framework/fleet/heter_ps/cache_manager.h"
+#endif
 #ifdef PADDLE_WITH_HETERPS
 
 namespace paddle {
@@ -37,6 +39,18 @@ class HeterPs : public HeterPsBase {
   HeterPs(const HeterPs&) = delete;
   HeterPs& operator=(const HeterPs&) = delete;
 
+#if defined(PADDLE_WITH_XPU_KP)
+  void pull_sparse(int num,
+                   FidKey* d_keys,
+                   FeatureValue* d_vals,
+                   size_t len) override;
+  void build_ps(int num,
+                FidKey* h_keys,
+                FeatureValue* h_vals,
+                size_t len,
+                size_t chunk_size,
+                int stream_num) override;
+#else
   void pull_sparse(int num,
                    FeatureKey* d_keys,
                    float* d_vals,
@@ -50,6 +64,8 @@ class HeterPs : public HeterPsBase {
                 size_t feature_value_size,
                 size_t chunk_size,
                 int stream_num) override;
+#endif
+
 #if defined(PADDLE_WITH_CUDA)
   void set_nccl_comm_and_size(const std::vector<ncclComm_t>& inner_comms,
                               const std::vector<ncclComm_t>& inter_comms,
@@ -64,7 +80,12 @@ class HeterPs : public HeterPsBase {
   void end_pass() override;
   int get_index_by_devid(int devid) override;
   void show_one_table(int gpu_num) override;
-  void push_sparse(int num, FeatureKey* d_keys, float* d_grads, size_t len);
+#if defined(PADDLE_WITH_XPU_KP)
+  void push_sparse(int num, FidKey* d_keys, FeaturePushValue* d_grads, size_t len) override;
+  std::shared_ptr<CacheManager> get_cache_manager() {return comm_ -> get_cache_manager();}
+#else
+  void push_sparse(int num, FeatureKey* d_keys, float* d_grads, size_t len) override;
+#endif
   void show_table_collisions() override;
 #if defined(PADDLE_WITH_CUDA)
   // dedup
@@ -80,7 +101,12 @@ class HeterPs : public HeterPsBase {
                              bool filter_zero);
 #endif
  private:
+#if defined(PADDLE_WITH_XPU_KP)
+  std::shared_ptr<HeterComm<FidKey, FeatureValue, FeaturePushValue, GPUAccessor>> comm_;
+#else
   std::shared_ptr<HeterComm<FeatureKey, float*, float*, GPUAccessor>> comm_;
+#endif
+
 #if defined(PADDLE_WITH_CUDA)
   GPUOptimizer<GPUAccessor> opt_;
 #endif

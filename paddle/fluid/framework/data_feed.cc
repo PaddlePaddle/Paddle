@@ -2017,6 +2017,7 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
   all_slots_.resize(all_slot_num);
   all_slots_info_.resize(all_slot_num);
   used_slots_info_.resize(all_slot_num);
+  uint64_use_slots_is_dense_.clear();
   use_slot_size_ = 0;
   use_slots_.clear();
 
@@ -2045,6 +2046,8 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
       if (info.type[0] == 'u') {
         info.slot_value_idx = uint64_use_slot_size_;
         all_slot.slot_value_idx = uint64_use_slot_size_;
+        uint64_use_slots_is_dense_.push_back(slot.is_dense());
+        //VLOG(0) << "uint64_use_slots_is_dense_.push_back "<<slot.is_dense()<<" idx "<<uint64_use_slot_size_;
         ++uint64_use_slot_size_;
       } else if (info.type[0] == 'f') {
         info.slot_value_idx = float_use_slot_size_;

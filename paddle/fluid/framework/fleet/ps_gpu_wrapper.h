@@ -63,11 +63,13 @@ limitations under the License. */
 #include "downpour_accessor.h"  // NOLINT
 #endif
 #include "paddle/fluid/framework/fleet/heter_ps/log_patch.h"
+#include "paddle/fluid/framework/fleet/heter_ps/parallel_thread_pool.h"
 
 namespace paddle {
 namespace framework {
 
 class Dataset;
+class Record;
 
 #ifdef PADDLE_WITH_PSLIB
 class AfsWrapper {
@@ -152,7 +154,27 @@ class PSGPUWrapper {
   PSGPUWrapper() {
     HeterPs_ = NULL;
     sleep_seconds_before_fail_exit_ = 300;
+#ifdef PADDLE_WITH_PSLIB
+    pull_thread_pool_.resize(thread_keys_shard_num_);
+    for (size_t i = 0; i < pull_thread_pool_.size(); i++) {
+      pull_thread_pool_[i].reset(new ::ThreadPool(1));
+    }
+    hbm_thread_pool_.resize(thread_keys_shard_num_);
+    for (size_t i = 0; i < hbm_thread_pool_.size(); i++) {
+      hbm_thread_pool_[i].reset(new ::ThreadPool(1));
+    }
+#endif
+#ifdef PADDLE_WITH_XPU_KP
+    sign2fid_thread_pool_.init(24);
+#endif
   }
+
+#if defined(PADDLE_WITH_XPU_KP) && defined(PADDLE_WITH_XPU_CACHE_BFID)
+  void build_batch_fidseq(std::vector<std::deque<Record> *> & all_chan_recs,
+                          const std::vector<bool> & slot_is_dense);
+  void prepare_next_batch(int thread_id);
+  void build_batch_fidseq(std::vector<paddle::framework::DataFeed*> all_readers);
+#endif
 
   void PullSparse(const paddle::platform::Place& place,
                   const int table_id,
@@ -174,6 +196,20 @@ class PSGPUWrapper {
                       const std::vector<int64_t>& slot_lengths,
                       const int hidden_size,
                       const int batch_size);
+#if defined(PADDLE_WITH_XPU_KP)
+  void CopyKeys(const paddle::platform::Place& place,
+                uint64_t** origin_keys,
+                uint32_t* total_keys,
+                const int64_t* gpu_len,
+                int slot_num,
+                int total_len);
+  void CopyForPush(const paddle::platform::Place& place,
+                   const std::vector<const float*>& grad_values,
+                   FeaturePushValue* total_grad_values_gpu,
+                   const std::vector<int64_t>& slot_lengths,
+                   const int hidden_size, const int64_t total_length,
+                   const int batch_size);
+#else
   void CopyKeys(const paddle::platform::Place& place,
                 uint64_t** origin_keys,
                 uint64_t* total_keys,
@@ -187,16 +223,19 @@ class PSGPUWrapper {
                 int slot_num,
                 int total_len,
                 int* key2slot);
+#endif
 
   void BuildGPUTask(std::shared_ptr<HeterContext> gpu_task);
   void PreBuildTask(std::shared_ptr<HeterContext> gpu_task);
   void BuildPull(std::shared_ptr<HeterContext> gpu_task);
   void LoadIntoMemory(bool is_shuffle);
+  void HandlePreloadDoneData(bool is_shuffle);
   void BeginPass();
   void EndPass();
   void start_build_thread();
   void pre_build_thread();
   void build_task();
+  void dump_cache_array();
 
   void Finalize() {
     VLOG(3) << "PSGPUWrapper Begin Finalize.";
@@ -211,14 +250,18 @@ class PSGPUWrapper {
     pre_build_threads_.join();
     s_instance_ = nullptr;
     VLOG(3) << "PSGPUWrapper Finalize Finished.";
+#ifdef PADDLE_WITH_CUDA
     HeterPs_->show_table_collisions();
+#endif
     if (device_caches_ != nullptr) {
       delete[] device_caches_;
       device_caches_ = nullptr;
     }
+
   }
 
   void InitializeGPU(const std::vector<int>& dev_ids) {
+    VLOG(0) << "PSGPUWrapper Begin InitializeGPU";
     if (s_instance_ != NULL && is_initialized_ == false) {
       VLOG(3) << "PSGPUWrapper Begin InitializeGPU";
       is_initialized_ = true;
@@ -287,6 +330,7 @@ class PSGPUWrapper {
       table_id_ = 0;
 
       // start build cpu&gpu ps thread
+      VLOG(0) << "PSGPUWrapper: before start build thread";
       start_build_thread();
     }
   }
@@ -641,6 +685,11 @@ class PSGPUWrapper {
   static std::shared_ptr<PSGPUWrapper> s_instance_;
   static std::mutex ins_mutex;
   Dataset* dataset_;
+
+#ifdef PADDLE_WITH_XPU_KP
+  ParallelThreadPool sign2fid_thread_pool_;
+#endif
+
 #ifdef PADDLE_WITH_PSLIB
   paddle::ps::AfsApiWrapper afs_handler_;
 #endif

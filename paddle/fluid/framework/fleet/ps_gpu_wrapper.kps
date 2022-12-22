@@ -94,6 +94,7 @@ __global__ void PullCopy(float* dest,
           }
         }
       }
+      mfence();
       LM2GM(local_dest_vals,
             local_dest[i] + k * hidden,
             real_read_len * hidden * sizeof(float));
@@ -102,9 +103,8 @@ __global__ void PullCopy(float* dest,
 }
 
 __global__ void CopyKeysKernel(unsigned long long* src_keys,
-                               unsigned long long* dest_total_keys,
-                               const long long* len,
-                               int slot_num,
+                               uint32_t* dest_total_keys,
+                               const long long* len, int slot_num,
                                int total_len) {
   int cid = core_id();
   int ncores = core_num();
@@ -128,15 +128,19 @@ __global__ void CopyKeysKernel(unsigned long long* src_keys,
     int read_len = 100;
     int dest_len = i ? local_len[i - 1] : 0;
     __local__ unsigned long long local_slot_keys[read_len];
+    __local__ uint32_t local_slot_keys_uint32[read_len];
 
     for (int k = 0; k < slot_len; k += read_len) {
       int real_read_len = min(read_len, slot_len - k);
       GM2LM(local_keys[i] + k,
             local_slot_keys,
             real_read_len * sizeof(unsigned long long));
-      LM2GM(local_slot_keys,
-            dest_total_keys + dest_len + k,
-            real_read_len * sizeof(unsigned long long));
+      for (int m = 0; m < real_read_len; m++) {
+          local_slot_keys_uint32[m] = (uint32_t)local_slot_keys[m];
+      }
+      mfence();
+      LM2GM(local_slot_keys_uint32, dest_total_keys + dest_len + k,
+            real_read_len * sizeof(uint32_t));
     }
   }
 }
@@ -174,6 +178,7 @@ __global__ void PushCopy(FeaturePushValue* dest,
     int dest_len = i ? local_len[i - 1] : 0;
     __local__ float local_slot_grads[read_len * hidden];
     __local__ FeaturePushValue local_dest_grads[read_len];
+    mfence();
 
     // copy read_len(length) of slots' grad to LM
     for (int k = 0; k < slot_len; k += read_len) {
@@ -192,6 +197,7 @@ __global__ void PushCopy(FeaturePushValue* dest,
               local_slot_grads[j * hidden + 3 + m] * -1. * bs;
         }
       }
+      mfence();
       LM2GM(local_dest_grads,
             dest + dest_len + k,
             real_read_len * sizeof(FeaturePushValue));
@@ -203,7 +209,7 @@ PSGPUWrapper::~PSGPUWrapper() { delete HeterPs_; }
 
 void PSGPUWrapper::CopyKeys(const paddle::platform::Place& place,
                             uint64_t** origin_keys,
-                            uint64_t* total_keys,
+                            uint32_t* total_keys,
                             const int64_t* gpu_len,
                             int slot_num,
                             int total_len) {
@@ -214,10 +220,120 @@ void PSGPUWrapper::CopyKeys(const paddle::platform::Place& place,
                ->xpu_stream;
   unsigned long long* o_keys =
       reinterpret_cast<unsigned long long*>(origin_keys);
-  unsigned long long* t_keys = (unsigned long long*)total_keys;
   const long long* c_len = (const long long*)gpu_len;
-  CopyKeysKernel<<<2, 64, stream>>>(o_keys, t_keys, c_len, slot_num, total_len);
+  CopyKeysKernel<<<2, 64, stream>>>(o_keys, total_keys, c_len, slot_num, total_len);
   xpu_wait(stream);
+}
+
+void PSGPUWrapper::CopyForPush(const paddle::platform::Place& place,
+                               const std::vector<const float*>& grad_values,
+                               FeaturePushValue* total_grad_values_gpu,
+                               const std::vector<int64_t>& slot_lengths,
+                               const int hidden_size,
+                               const int64_t total_length,
+                               const int batch_size) {
+  XPUStream stream = nullptr;
+  auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  auto ctx_xpu = static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
+  stream = static_cast<platform::XPUDeviceContext*>(dev_ctx)
+               ->x_context()
+               ->xpu_stream;
+  auto slot_lengths_lod = slot_lengths;
+  for (size_t i = 1; i < slot_lengths_lod.size(); i++) {
+    slot_lengths_lod[i] += slot_lengths_lod[i - 1];
+  }
+  auto gpu_values_tmp = memory::Alloc(place, grad_values.size() * sizeof(float*));
+  float* gpu_values = reinterpret_cast<float*>(gpu_values_tmp->ptr());
+  auto gpu_len_tmp = memory::Alloc(place, slot_lengths.size() * sizeof(int64_t));
+  int64_t* gpu_len = reinterpret_cast<int64_t*>(gpu_len_tmp->ptr());
+  auto d_slot_vec_tmp = memory::Alloc(place, slot_lengths_lod.size() * sizeof(int));
+  int* d_slot_vector = reinterpret_cast<int*>(d_slot_vec_tmp->ptr());
+
+  xpu_memcpy(gpu_values, grad_values.data(),
+             grad_values.size() * sizeof(float*), XPU_HOST_TO_DEVICE);
+  xpu_memcpy(gpu_len, slot_lengths_lod.data(),
+             slot_lengths.size() * sizeof(int64_t), XPU_HOST_TO_DEVICE);
+  xpu_memcpy(d_slot_vector, slot_vector_.data(),
+             slot_lengths_lod.size() * sizeof(int), XPU_HOST_TO_DEVICE);
+
+  long long* c_len = (long long*)gpu_len;
+  int size = total_length; //slot_lengths_lod[slot_lengths_lod.size()-1];
+  int slot_num = slot_lengths.size();
+
+  auto gm_src = memory::Alloc(place, size * hidden_size * sizeof(float));
+  float* gm_src_ptr = reinterpret_cast<float*>(gm_src->ptr());
+
+  for (size_t i = 0; i < slot_lengths.size(); i++) {
+    int offset = i ? slot_lengths_lod[i - 1] : 0;
+    PADDLE_ENFORCE_XDNN_SUCCESS(xpu::copy<float>(ctx_xpu, grad_values[i], gm_src_ptr + offset * hidden_size, slot_lengths[i] * hidden_size), "copy");
+  }
+
+  int r = xpu::push_copy<xpu::FeaturePushValue>(
+      ctx_xpu,
+      reinterpret_cast<xpu::FeaturePushValue*>(total_grad_values_gpu),
+      gm_src_ptr,
+      c_len,
+      d_slot_vector,
+      size,
+      hidden_size,
+      slot_num,
+      batch_size);
+  PADDLE_ENFORCE_EQ(
+      r, XPU_SUCCESS,
+      platform::errors::External("XPU push_copy kernel return wrong value[%d %s]",
+                                  r, XPUAPIErrorMsg[r]));
+  // PushCopy<<<2, 64, stream>>>(total_grad_values_gpu, gpu_values, c_len,
+  //                             hidden_size, slot_lengths.size(), total_length,
+  //                             batch_size, d_slot_vector);
+  xpu_wait(stream);
+}
+
+void PSGPUWrapper::SetSparseSGD(float nonclk_coeff,
+                                float clk_coeff,
+                                float min_bound,
+                                float max_bound,
+                                float learning_rate,
+                                float initial_g2sum,
+                                float initial_range,
+                                float beta1_decay_rate,
+                                float beta2_decay_rate,
+                                float ada_epsilon) {
+  optimizer_config_.set_sparse_sgd(nonclk_coeff,
+                                   clk_coeff,
+                                   min_bound,
+                                   max_bound,
+                                   learning_rate,
+                                   initial_g2sum,
+                                   initial_range,
+                                   beta1_decay_rate,
+                                   beta2_decay_rate,
+                                   ada_epsilon);
+  HeterPs_->set_sparse_sgd(optimizer_config_);
+}
+
+void PSGPUWrapper::SetEmbedxSGD(float mf_create_thresholds,
+                                float mf_learning_rate,
+                                float mf_initial_g2sum,
+                                float mf_initial_range,
+                                float mf_min_bound,
+                                float mf_max_bound,
+                                float mf_beta1_decay_rate,
+                                float mf_beta2_decay_rate,
+                                float mf_ada_epsilon,
+                                float nodeid_slot,
+                                float feature_learning_rate) {
+  optimizer_config_.set_embedx_sgd(mf_create_thresholds,
+                                   mf_learning_rate,
+                                   mf_initial_g2sum,
+                                   mf_initial_range,
+                                   mf_min_bound,
+                                   mf_max_bound,
+                                   mf_beta1_decay_rate,
+                                   mf_beta2_decay_rate,
+                                   mf_ada_epsilon,
+                                   nodeid_slot,
+                                   feature_learning_rate);
+  HeterPs_->set_embedx_sgd(optimizer_config_);
 }
 
 }  // end namespace framework

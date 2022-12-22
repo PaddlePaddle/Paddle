@@ -149,7 +149,6 @@ XPUOpMap& get_kl1_ops() {
       {"hard_switch", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"iou_similarity",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
-      {"lamb", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"layer_norm_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"layer_norm", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},

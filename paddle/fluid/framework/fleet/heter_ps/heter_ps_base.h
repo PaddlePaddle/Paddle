@@ -32,6 +32,18 @@ class HeterPsBase {
   HeterPsBase(const HeterPsBase&) = delete;
   HeterPsBase& operator=(const HeterPsBase&) = delete;
 
+#if defined(PADDLE_WITH_XPU_KP)
+  virtual void pull_sparse(int num,
+                           FidKey* d_keys,
+                           FeatureValue* d_vals,
+                           size_t len) = 0;
+  virtual void build_ps(int num,
+                        FidKey* h_keys,
+                        FeatureValue* h_vals,
+                        size_t len,
+                        size_t chunk_size,
+                        int stream_num) = 0;
+#else
   virtual void pull_sparse(int num,
                            FeatureKey* d_keys,
                            float* d_vals,
@@ -43,6 +55,8 @@ class HeterPsBase {
                         size_t feature_value_size,
                         size_t chunk_size,
                         int stream_num) = 0;
+#endif
+
   virtual int get_index_by_devid(int devid) = 0;
 #if defined(PADDLE_WITH_CUDA)
   virtual void set_nccl_comm_and_size(
@@ -55,10 +69,17 @@ class HeterPsBase {
   virtual void end_pass() = 0;
   virtual void show_one_table(int gpu_num) = 0;
   virtual void show_table_collisions() = 0;
+#if defined(PADDLE_WITH_XPU_KP)
+  virtual void push_sparse(int num,
+                           FidKey* d_keys,
+                           FeaturePushValue* d_grads,
+                           size_t len) = 0;
+#else
   virtual void push_sparse(int num,
                            FeatureKey* d_keys,
                            float* d_grads,
                            size_t len) = 0;
+#endif
 
   virtual void set_sparse_sgd(const OptimizerConfig& optimizer_config) = 0;
   virtual void set_embedx_sgd(const OptimizerConfig& optimizer_config) = 0;

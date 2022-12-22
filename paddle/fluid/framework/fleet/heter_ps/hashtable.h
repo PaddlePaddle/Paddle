@@ -19,11 +19,16 @@ limitations under the License. */
 #include <limits>
 #include <memory>
 #include <vector>
+#include <fstream>
+#include <sstream>
+#include <chrono>
 
 #ifdef PADDLE_WITH_PSLIB
 #include "common_value.h"  // NOLINT
 #endif
 
+#include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
+#include "paddle/fluid/memory/memory.h"
 #if defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/ps/table/depends/feature_value.h"
 #endif
@@ -35,12 +40,16 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "thrust/pair.h"
-#elif defined(__xpu__)
+#elif defined(PADDLE_WITH_XPU_KP)
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/device/xpu/xpu_header.h"
+#if defined(__xpu__)
 #include <xpu/runtime.h>
 
 #include "xpu/kernel/cluster_header.h"
 #include "xpu/kernel/math.h"
 #include "xpu/kernel/simd.h"
+#endif
 #endif
 
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
@@ -65,59 +74,104 @@ class TableContainer
 template <typename KeyType, typename ValType>
 class XPUCacheArray {
  public:
-  explicit XPUCacheArray(long long capacity) : capacity_(capacity), size_(0) {
-    xpu_malloc(reinterpret_cast<void**>(&keys), capacity_ * sizeof(KeyType));
-    xpu_malloc(reinterpret_cast<void**>(&vals), capacity_ * sizeof(ValType));
-  }
+  explicit XPUCacheArray(long long capacity, DevPlace& place) : capacity_(capacity), size_(0) {
+    keys_auto_ptr_ = memory::Alloc(place, capacity_ * sizeof(KeyType));
+    vals_auto_ptr_ = memory::Alloc(place, capacity_ * sizeof(ValType));
+    keys_ = reinterpret_cast<KeyType*>(keys_auto_ptr_->ptr());
+    vals_ = reinterpret_cast<ValType*>(vals_auto_ptr_->ptr());
+    CPUPlace cpu_place = CPUPlace();
+    cpu_keys_auto_ptr_ = memory::Alloc(cpu_place, capacity_ * sizeof(KeyType));
+    cpu_vals_auto_ptr_ = memory::Alloc(cpu_place, capacity_ * sizeof(ValType));
+    cpu_keys_ = reinterpret_cast<KeyType*>(cpu_keys_auto_ptr_->ptr());
+    cpu_vals_ = reinterpret_cast<ValType*>(cpu_vals_auto_ptr_->ptr());
+ }
 
   virtual ~XPUCacheArray() {
-    xpu_free(keys);
-    xpu_free(vals);
   }
 
-  void print() {}
-  void print_collision(int i) {}
+  void print() {
+    xpu_set_device(get_xpu_id());//TODO: logic to physics
 
-#if defined(__xpu__)
-  __device__ ValType* find(const KeyType& key) {
-    for (int i = 0; i < size_; i++) {
-      if (keys[i] == key) return &vals[i];
+    KeyType* keys = get_cpu_keys();
+    ValType* vals = get_cpu_vals();
+
+    sleep(1);
+    auto now_time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    struct tm* ptm = localtime(&now_time);
+    char date[100] = {0};
+    snprintf(date, 100, "%d%02d%02d%02d%02d%02d",
+                    (int)ptm->tm_year + 1900, (int)ptm->tm_mon + 1, (int)ptm->tm_mday,
+                    (int)ptm->tm_hour, (int)ptm->tm_min, (int)ptm->tm_sec);
+
+    std::stringstream name_ss;
+    name_ss << "cache_array-" << xpu_id_ << "." << date << ".dump";
+    
+    std::stringstream data_ss;
+    data_ss << "xpu_id/num:" << xpu_id_ << "/" << xpu_num_ << "\n";
+    data_ss << "size:" << size_ << "\n";
+    for (long long i = 0; i < size_; i++) {
+      data_ss << i << "\t" << keys[i] 
+              << "\t" << vals[i] << "\n";
     }
-    return NULL;
+    data_ss << "------------------------------------\n";
+
+    std::ofstream ofs;
+    ofs.open(name_ss.str(), std::ios::app);
+    ofs << data_ss.str();
+    ofs.close();    
   }
-  __device__ bool insert(const KeyType& key, const ValType& val) {
-    // # NOTE(zhangminxu): we set the capacity larger than the feasign number of
-    // one batch
-    if (size_ == capacity_) {
-      return false;
-    } else {
-      keys[size_] = key;
-      vals[size_] = val;
-      size_++;
-      return true;
-    }
+
+  void set_xpu_id(uint32_t xpu_id) { xpu_id_ = xpu_id; }
+  void set_xpu_idx(uint32_t xpu_idx) { xpu_idx_ = xpu_idx; }
+  void set_xpu_num(uint32_t xpu_num) { xpu_num_ = xpu_num; }
+  void set_size(long long size) { size_ = size; }
+  uint32_t get_xpu_id() {return xpu_id_;}
+  uint32_t get_xpu_idx() {return xpu_idx_;}
+  uint32_t get_xpu_num() {return xpu_num_;}
+  KeyType* get_keys() {return keys_;}
+  ValType* get_vals() {return vals_;}
+  KeyType* get_cpu_keys() {
+    xpu_memcpy(cpu_keys_, keys_, size_ * sizeof(KeyType), XPU_DEVICE_TO_HOST);
+    return cpu_keys_;
   }
-#endif
+  ValType* get_cpu_vals() {
+    xpu_memcpy(cpu_vals_, vals_, size_ * sizeof(ValType), XPU_DEVICE_TO_HOST);
+    return cpu_vals_;
+  }
 
   int prefetch(const int dev_id, XPUStream stream = NULL) { return 0; }
   size_t size() { return size_; }
+  size_t capacity() { return capacity_; }
 
  private:
   long long capacity_;
   long long size_;
-  KeyType* keys;
-  ValType* vals;
+  memory::AllocationPtr keys_auto_ptr_, cpu_keys_auto_ptr_;
+  memory::AllocationPtr vals_auto_ptr_, cpu_vals_auto_ptr_;
+  KeyType* keys_;
+  ValType* vals_;
+  KeyType* cpu_keys_;
+  ValType* cpu_vals_;
+  uint32_t xpu_id_ = 0;
+  uint32_t xpu_idx_ = 0;
+  uint32_t xpu_num_ = 1;
 };
 #endif
 
 template <typename KeyType, typename ValType>
 class HashTable {
  public:
+#if defined(PADDLE_WITH_XPU_KP)
+  explicit HashTable(size_t capacity, DevPlace& place);
+#endif
+#if defined(PADDLE_WITH_CUDA)
   explicit HashTable(size_t capacity);
+#endif
   virtual ~HashTable();
   HashTable(const HashTable&) = delete;
   HashTable& operator=(const HashTable&) = delete;
 
+#if defined(PADDLE_WITH_CUDA)
   template <typename StreamType>
   void insert(const KeyType* d_keys,
               const ValType* d_vals,
@@ -131,21 +185,25 @@ class HashTable {
               size_t feature_value_size,
               size_t start_index,
               StreamType stream);
+#endif
 
+#if defined(PADDLE_WITH_XPU_KP)
   template <typename StreamType>
-  void get(const KeyType* d_keys,
-           ValType* d_vals,
-           size_t len,
-           StreamType stream);
+  void insert(const paddle::platform::Place& place,
+              const KeyType* d_keys,
+              const ValType* d_vals,
+              size_t len,
+              StreamType stream);
 
-  template <typename StreamType, typename GPUAccessor>
-  void get(const KeyType* d_keys,
-           char* d_vals,
-           size_t len,
-           StreamType stream,
-           GPUAccessor& fv_accessor);
+#endif
 
   void show();
+
+#if defined(PADDLE_WITH_XPU_KP)
+  void set_xpu_id(uint32_t xpu_id) { container_->set_xpu_id(xpu_id); }
+  void set_xpu_idx(uint32_t xpu_idx) { container_->set_xpu_idx(xpu_idx); }
+  void set_xpu_num(uint32_t xpu_num) { container_->set_xpu_num(xpu_num); }
+#endif
 
   void set_sparse_sgd(const OptimizerConfig& optimizer_config);
   void set_embedx_sgd(const OptimizerConfig& optimizer_config);
@@ -169,18 +227,47 @@ class HashTable {
               Sgd sgd,
               StreamType stream);
 
+  template <typename StreamType>
+  void get(const KeyType* d_keys,
+           ValType* d_vals,
+           size_t len,
+           StreamType stream);
+
+  template <typename StreamType, typename GPUAccessor>
+  void get(const KeyType* d_keys,
+           char* d_vals,
+           size_t len,
+           StreamType stream,
+           GPUAccessor& fv_accessor);
+
 #elif defined(PADDLE_WITH_XPU_KP)
   template <typename GradType, typename StreamType>
-  void update(const KeyType* d_keys,
+  void update(const paddle::platform::Place& place,
+              const KeyType* d_keys,
               const GradType* d_grads,
               size_t len,
               StreamType stream);
 
   template <typename StreamType>
-  void update(const KeyType* d_keys,
+  void update(const paddle::platform::Place& place,
+              const KeyType* d_keys,
               const char* d_grads,
               size_t len,
               StreamType stream);
+
+  template <typename StreamType>
+  void get(const paddle::platform::Place& place,
+           const KeyType* d_keys,
+           ValType* d_vals,
+           size_t len,
+           StreamType stream);
+
+  template <typename StreamType>
+  void get(const paddle::platform::Place& place,
+           const KeyType* d_keys,
+           char* d_vals,
+           size_t len,
+           StreamType stream);
 
 #endif
 
@@ -203,6 +290,7 @@ class HashTable {
   TableContainer<KeyType, ValType>* container_;
 #elif defined(PADDLE_WITH_XPU_KP)
   XPUCacheArray<KeyType, ValType>* container_;
+  memory::AllocationPtr OptimizerConfigAutoPtr_;
 #endif
   OptimizerConfig* device_optimizer_config_;
   OptimizerConfig host_optimizer_config_;

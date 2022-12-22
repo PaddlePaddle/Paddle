@@ -445,7 +445,7 @@ class InMemoryDataset(DatasetBase):
     def _dynamic_adjust_after_train(self):
         if not self.is_user_set_queue_num:
             if self.use_ps_gpu:
-                self.dataset.dynamic_adjust_channel_num(self.thread_num, True)
+                self.dataset.dynamic_adjust_channel_num(self.thread_num, False)
             else:
                 self.dataset.dynamic_adjust_channel_num(self.thread_num, False)
         self.dataset.dynamic_adjust_readers_num(self.thread_num)
@@ -828,6 +828,17 @@ class InMemoryDataset(DatasetBase):
         """
         self.dataset.wait_preload_done()
         self.dataset.destroy_preload_readers()
+
+    @deprecated(
+        since="2.0.0",
+        update_to="paddle.distributed.InMemoryDataset.handle_preload_done_data")
+    def handle_preload_done_data(self, is_shuffle=False):
+        """
+        Handle load-done data where use ps_gpu_wrapper and preload_into_memeory
+        """
+        if self.use_ps_gpu and core._is_compiled_with_heterps():
+            self.psgpu.set_dataset(self.dataset)
+            self.psgpu.handle_preload_done_data(is_shuffle)
 
     @deprecated(
         since="2.0.0",

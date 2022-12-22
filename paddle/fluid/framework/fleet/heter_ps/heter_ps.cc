@@ -56,21 +56,46 @@ HeterPs<GPUAccessor, GPUOptimizer>::HeterPs(
     size_t capacity,
     std::shared_ptr<HeterPsResource> resource,
     GPUAccessor& gpu_accessor) {
+#if defined(PADDLE_WITH_XPU_KP)
+  comm_ = std::make_shared<HeterComm<FidKey, FeatureValue, FeaturePushValue, GPUAccessor>>(
+      capacity, resource);
+#else
   comm_ = std::make_shared<HeterComm<FeatureKey, float*, float*, GPUAccessor>>(
       capacity, resource);
   opt_ = GPUOptimizer<GPUAccessor>(gpu_accessor);
+#endif
 }
 
 template <typename GPUAccessor, template <typename T> class GPUOptimizer>
 HeterPs<GPUAccessor, GPUOptimizer>::~HeterPs() {}
 
 template <typename GPUAccessor, template <typename T> class GPUOptimizer>
+#if defined(PADDLE_WITH_XPU_KP)
+void HeterPs<GPUAccessor, GPUOptimizer>::pull_sparse(int num,
+                                                     FidKey* d_keys,
+                                                     FeatureValue* d_vals,
+                                                     size_t len) {
+#else
 void HeterPs<GPUAccessor, GPUOptimizer>::pull_sparse(int num,
                                                      FeatureKey* d_keys,
                                                      float* d_vals,
                                                      size_t len) {
+#endif                                
   comm_->pull_sparse(num, d_keys, d_vals, len);
 }
+
+#if defined(PADDLE_WITH_XPU_KP)
+template <typename GPUAccessor, template <typename T> class GPUOptimizer>
+void HeterPs<GPUAccessor, GPUOptimizer>::build_ps(int num,
+                                                  FidKey* h_keys,
+                                                  FeatureValue* h_vals
+                                                  size_t len,
+                                                  size_t chunk_size,
+                                                  int stream_num) {
+  comm_->build_ps(
+      num, h_keys, h_vals, len, chunk_size, stream_num, -1);
+}
+#endif
 
 template <typename GPUAccessor, template <typename T> class GPUOptimizer>
 int HeterPs<GPUAccessor, GPUOptimizer>::get_index_by_devid(int devid) {
@@ -99,10 +124,17 @@ void HeterPs<GPUAccessor, GPUOptimizer>::show_one_table(int gpu_num) {
 }
 
 template <typename GPUAccessor, template <typename T> class GPUOptimizer>
+#if defined(PADDLE_WITH_XPU_KP)
+void HeterPs<GPUAccessor, GPUOptimizer>::push_sparse(int num,
+                                                     FidKey* d_keys,
+                                                     FeaturePushValue* d_grads,
+                                                     size_t len) {
+#else
 void HeterPs<GPUAccessor, GPUOptimizer>::push_sparse(int num,
                                                      FeatureKey* d_keys,
                                                      float* d_grads,
                                                      size_t len) {
+#endif
   comm_->push_sparse(num, d_keys, d_grads, len);
   // comm_->push_sparse_multi_node(num, d_keys, d_grads, len, opt_);
 }

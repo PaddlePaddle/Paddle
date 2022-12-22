@@ -70,10 +70,11 @@ if(WITH_XPU_KP)
   xpu_library(heter_comm_kernel SRCS heter_comm_kernel.h heter_comm_kernel.kps
                                      feature_value.h)
   xpu_library(hashtable_kernel SRCS hashtable.h hashtable_kernel.kps)
+  xpu_library(cache_manager_kernel SRCS cache_manager_kernel.h cache_manager_kernel.kps)
   cc_library(
     heter_comm
-    SRCS heter_comm.h heter_resource.cc
-    DEPS ${HETERPS_DEPS} heter_comm_kernel hashtable_kernel)
+    SRCS heter_comm.h thread_barrier.h cache_manager.h heter_resource.cc cache_manager.cc
+    DEPS ${HETERPS_DEPS} heter_comm_kernel hashtable_kernel cache_manager_kernel)
   cc_library(
     heter_ps
     SRCS heter_ps.cc

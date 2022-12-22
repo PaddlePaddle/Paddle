@@ -242,10 +242,17 @@ void DeviceWorker::DumpParam(const Scope& scope, const int batch_id) {
     }
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     phi::DenseTensor cpu_tensor;
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     if (platform::is_gpu_place(tensor->place())) {
       TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
       tensor = &cpu_tensor;
     }
+#elif defined(PADDLE_WITH_XPU_BKCL)
+    if (platform::is_xpu_place(tensor->place())) {
+      TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
+      tensor = &cpu_tensor;
+    }
+#endif
     int64_t len = tensor->numel();
     os << "(" << batch_id << "," << param << ")"
        << PrintLodTensor(tensor, 0, len);
@@ -431,11 +438,19 @@ void DeviceWorker::DumpField(const Scope& scope,
       continue;
     }
     phi::DenseTensor cpu_tensor;
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     if (platform::is_gpu_place(tensor->place())) {
       TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
       cpu_tensor.set_lod(tensor->lod());
       tensor = &cpu_tensor;
     }
+#elif defined(PADDLE_WITH_XPU_BKCL)
+    if (platform::is_xpu_place(tensor->place())) {
+      TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
+      cpu_tensor.set_lod(tensor->lod());
+      tensor = &cpu_tensor;
+    }
+#endif
     if (!CheckValidOutput(tensor, batch_size)) {
       VLOG(0) << "Note: field[" << field
               << "] cannot pass check, so it was "

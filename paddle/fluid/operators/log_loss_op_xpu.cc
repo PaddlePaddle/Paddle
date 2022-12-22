@@ -1,3 +1,4 @@
+
 /* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -70,9 +71,9 @@ class LogLossGradXPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(
-    log_loss, ops::LogLossXPUKernel<paddle::platform::XPUDeviceContext, float>);
+     log_loss, ops::LogLossXPUKernel<paddle::platform::XPUDeviceContext, float>);
 REGISTER_OP_XPU_KERNEL(
-    log_loss_grad,
-    ops::LogLossGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
+     log_loss_grad,
+     ops::LogLossGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
 
 #endif
