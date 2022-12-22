@@ -24,7 +24,7 @@ endif()
 include(ExternalProject)
 
 set(PADDLE2ONNX_PROJECT "extern_paddle2onnx")
-set(PADDLE2ONNX_VERSION "1.0.0rc2")
+set(PADDLE2ONNX_VERSION "1.0.5")
 set(PADDLE2ONNX_PREFIX_DIR ${THIRD_PARTY_PATH}/paddle2onnx)
 set(PADDLE2ONNX_SOURCE_DIR
     ${THIRD_PARTY_PATH}/paddle2onnx/src/${PADDLE2ONNX_PROJECT})
@@ -34,7 +34,7 @@ set(PADDLE2ONNX_INC_DIR
     CACHE PATH "paddle2onnx include directory." FORCE)
 set(PADDLE2ONNX_LIB_DIR
     "${PADDLE2ONNX_INSTALL_DIR}/lib"
-    CACHE PATH "onnxruntime lib directory." FORCE)
+    CACHE PATH "paddle2onnx lib directory." FORCE)
 set(CMAKE_BUILD_RPATH "${CMAKE_BUILD_RPATH}" "${PADDLE2ONNX_LIB_DIR}")
 
 # For PADDLE2ONNX code to include internal headers.
