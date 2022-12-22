@@ -19,6 +19,7 @@ from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
 class TestElementwiseOp(OpTest):
@@ -105,110 +106,41 @@ class TestBF16ElementwiseOp(OpTest):
 
 
 class TestElementwiseFP16Op(TestElementwiseOp):
-    def _executed_api(self, x, y, name=None):
-        return paddle.subtract(x, y, name)
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.dtype = np.float16
+        x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
 
-    def _executed_x_grad(self, x, y):
-        paddle.disable_static()
-        tensor_x = paddle.to_tensor(x)
-        tensor_y = paddle.to_tensor(y)
-        tensor_x.stop_gradient = False
-        tensor_y.stop_gradient = False
-        out = self._executed_api(tensor_x, tensor_y)
-        grad = paddle.grad(out, [tensor_x], no_grad_vars=[tensor_y])
-        x_grad = grad[0].numpy()
-        paddle.enable_static()
-        return x_grad
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(y),
+        }
 
-    def _executed_y_grad(self, x, y):
-        paddle.disable_static()
-        tensor_x = paddle.to_tensor(x)
-        tensor_y = paddle.to_tensor(y)
-        tensor_x.stop_gradient = False
-        tensor_y.stop_gradient = False
-        out = self._executed_api(tensor_x, tensor_y)
-        grad = paddle.grad(out, [tensor_y], no_grad_vars=[tensor_x])
-        y_grad = grad[0].numpy()
-        paddle.enable_static()
-        return y_grad
+        x_fp32 = x.astype(np.float32)
+        y_fp32 = y.astype(np.float32)
 
-    def _executed_xy_grad(self, x, y):
-        paddle.disable_static()
-        tensor_x = paddle.to_tensor(x)
-        tensor_y = paddle.to_tensor(y)
-        tensor_x.stop_gradient = False
-        tensor_y.stop_gradient = False
-        out = self._executed_api(tensor_x, tensor_y)
-        grad = paddle.grad(out, [tensor_x, tensor_y])
-        paddle.enable_static()
-        return [grad[0].numpy(), grad[1].numpy()]
-
-    def _executed_ref_api(self, x, y, name=None):
-        return x - y
-
-    def _executed_ref_x_grad(self, x, y):
-        return np.ones(x.shape).astype(np.float32)
-
-    def _executed_ref_y_grad(self, x, y):
-        return np.zeros(y.shape).astype(np.float32) - np.ones(y.shape).astype(
-            np.float32
-        )
-
-    def _executed_ref_xy_grad(self, x, y):
-        return [
-            self._executed_ref_x_grad(x, y),
-            self._executed_ref_y_grad(x, y),
-        ]
+        out = x_fp32 - y_fp32
+        self.outputs = {'Out': OpTest.np_dtype_to_fluid_dtype(out)}
 
     def test_check_output(self):
-        ref_x = self.inputs['X'].astype(np.float32)
-        ref_y = self.inputs['Y'].astype(np.float32)
-        out_ref = self._executed_ref_api(ref_x, ref_y)
-        paddle.disable_static()
-        x = self.inputs['X'].astype(np.float16)
-        y = self.inputs['Y'].astype(np.float16)
-        tensor_x = paddle.to_tensor(x)
-        tensor_y = paddle.to_tensor(y)
-        out_pad = self._executed_api(tensor_x, tensor_y)
-        paddle.enable_static()
-        np.testing.assert_allclose(
-            out_pad.numpy(), out_ref, rtol=1e-03, atol=1e-03
-        )
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=1e-3)
 
-    def test_check_grad(self):
-        self.__class__.dtype = 'float16'
-        ref_x = self.inputs['X'].astype(np.float32)
-        ref_y = self.inputs['Y'].astype(np.float32)
-        ref_xy_grad = self._executed_ref_xy_grad(ref_x, ref_y)
-        x = self.inputs['X'].astype(np.float16)
-        y = self.inputs['Y'].astype(np.float16)
-        xy_grad = self._executed_xy_grad(x, y)
-        np.testing.assert_allclose(
-            ref_xy_grad[0], xy_grad[0], rtol=1e-03, atol=1e-03
-        )
-        np.testing.assert_allclose(
-            ref_xy_grad[1], xy_grad[1], rtol=1e-03, atol=1e-03
-        )
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out', max_relative_error=1e-3)
 
-    def test_check_grad_ingore_y1(self):
-        self.__class__.dtype = 'float16'
-        ref_x = self.inputs['X'].astype(np.float32)
-        ref_y = self.inputs['Y'].astype(np.float32)
-        ref_x_grad = self._executed_ref_x_grad(ref_x, ref_y)
-        x = self.inputs['X'].astype(np.float16)
-        y = self.inputs['Y'].astype(np.float16)
-        x_grad = self._executed_x_grad(x, y)
-        np.testing.assert_allclose(ref_x_grad, x_grad, rtol=1e-03, atol=1e-03)
+    def test_check_grad_ingore_y(self):
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=1e-3, no_grad_set=set("Y")
+        )
 
     def test_check_grad_ingore_x(self):
-        self.__class__.dtype = 'float16'
-        ref_x = self.inputs['X'].astype(np.float32)
-        ref_y = self.inputs['Y'].astype(np.float32)
-        ref_y_grad = self._executed_ref_y_grad(ref_x, ref_y)
-        x = self.inputs['X'].astype(np.float16)
-        y = self.inputs['Y'].astype(np.float16)
-        y_grad = self._executed_y_grad(x, y)
-        np.testing.assert_allclose(ref_y_grad, y_grad, rtol=1e-03, atol=1e-03)
+        self.check_grad(
+            ['Y'], 'Out', max_relative_error=1e-3, no_grad_set=set("X")
+        )
 
 
 @skip_check_grad_ci(
