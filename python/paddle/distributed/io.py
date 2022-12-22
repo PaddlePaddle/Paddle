@@ -423,9 +423,6 @@ def load_inference_model_distributed(
     # Binary data also need versioning.
     load_persistables(executor, load_dirname, program, params_filename)
 
-    if pserver_endpoints:
-        program = _endpoints_replacement(program, pserver_endpoints)
-
     feed_target_names = program.desc.get_feed_target_names()
     fetch_target_names = program.desc.get_fetch_target_names()
     fetch_targets = [
@@ -433,12 +430,3 @@ def load_inference_model_distributed(
     ]
 
     return [program, feed_target_names, fetch_targets]
-
-
-def _endpoints_replacement(program, endpoints):
-    ENDPOINT_MAP = "epmap"
-    for op in program.global_block().ops:
-        if op.has_attr(ENDPOINT_MAP):
-            op.set_attr(ENDPOINT_MAP, endpoints)
-    program._sync_with_cpp()
-    return program

@@ -114,11 +114,13 @@ class TestBook(unittest.TestCase):
             load_inference_model(None, exe, model_str, params_str)
         )
         model_2 = InferModel(load_inference_model_distributed(MODEL_DIR, exe))
-        with open(os.path.join(UNI_MODEL_DIR, 'model'), "rb") as f:
-            model_str = f.read()
         model_3 = InferModel(
             load_inference_model_distributed(None, exe, model_str, params_str)
         )
+        model_4 = InferModel(
+            load_inference_model_distributed(MODEL_DIR, exe, model_str, params_str)
+        )
+
 
         for model in [model_0, model_1, model_2, model_3]:
             outs = exe.run(
@@ -141,6 +143,14 @@ class TestBook(unittest.TestCase):
         self.assertRaises(
             ValueError,
             fluid.io.load_inference_model,
+            None,
+            exe,
+            model_str,
+            None,
+        )
+        self.assertRaises(
+            ValueError,
+            load_inference_model_distributed,
             None,
             exe,
             model_str,
