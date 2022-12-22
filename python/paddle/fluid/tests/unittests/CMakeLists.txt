@@ -625,6 +625,11 @@ if(WITH_DISTRIBUTE)
 
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_gloo")
 
+  if(NOT WITH_GPU)
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_spmt")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_minimize")
+  endif()
+
   if(NOT WITH_HETERPS)
     list(REMOVE_ITEM DIST_TEST_OPS "test_communicator_ps_gpu")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ps11")
