@@ -101,26 +101,25 @@ class TestBF16ElementwiseOp(OpTest):
     def test_check_grad_ingore_x(self):
         self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
 
-    def test_check_grad_ingore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
-
 
 class TestElementwiseFP16Op(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.dtype = np.float16
-        x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
-        y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        ref_dtype = np.float32
+
+        x = np.random.uniform(0.1, 1, [13, 17]).astype(ref_dtype)
+        y = np.random.uniform(0.1, 1, [13, 17]).astype(ref_dtype)
+
+        x_fp16 = x.astype(self.dtype)
+        y_fp16 = y.astype(self.dtype)
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(y),
+            'X': OpTest.np_dtype_to_fluid_dtype(x_fp16),
+            'Y': OpTest.np_dtype_to_fluid_dtype(y_fp16),
         }
 
-        x_fp32 = x.astype(np.float32)
-        y_fp32 = y.astype(np.float32)
-
-        out = x_fp32 - y_fp32
+        out = x - y
         self.outputs = {'Out': OpTest.np_dtype_to_fluid_dtype(out)}
 
     def test_check_output(self):
