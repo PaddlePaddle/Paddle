@@ -167,7 +167,7 @@ class ProcessGroup:
             )
             # use legacy ops
             _legacy_C_ops.c_allreduce_sum_(
-                tmp, 'use_calc_stream', True, 'ring_id', self.id
+                tmp, 'use_calc_stream', True, 'ring_id', 0
             )
             _legacy_C_ops.c_sync_calc_stream(tmp, tmp)
             paddle.enable_static()
