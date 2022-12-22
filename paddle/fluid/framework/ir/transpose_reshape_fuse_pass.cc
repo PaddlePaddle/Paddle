@@ -121,8 +121,8 @@ int TransposeReshapeFusePass::ApplyTRPattern(Graph* graph) const {
     }
     auto* transpose_op_node = subgraph.at(transpose);
     auto* reshape_op_node = subgraph.at(reshape);
-    if (!(reshape_op_node->Op()->Input("ShapeTensor").empty() &&
-          reshape_op_node->Op()->Input("Shape").empty())) {
+    // If reshape op has ShapeTensor input or Shape input, we should not fuse.
+    if (reshape_op_node->inputs.size() > 1) {
       return;
     }
 
@@ -203,8 +203,8 @@ int TransposeReshapeFusePass::ApplyRTPattern(Graph* graph) const {
 
     auto* transpose_op_node = subgraph.at(transpose);
     auto* reshape_op_node = subgraph.at(reshape);
-    if (!(reshape_op_node->Op()->Input("ShapeTensor").empty() &&
-          reshape_op_node->Op()->Input("Shape").empty())) {
+    // If reshape op has ShapeTensor input or Shape input, we should not fuse.
+    if (reshape_op_node->inputs.size() > 1) {
       return;
     }
 

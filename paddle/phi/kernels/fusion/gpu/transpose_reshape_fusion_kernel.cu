@@ -67,4 +67,7 @@ PD_REGISTER_KERNEL(fused_transpose_reshape,
                    phi::fusion::TransposeReshapeFusionKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   int32_t,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
