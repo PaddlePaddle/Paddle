@@ -21,7 +21,7 @@ import numpy as np
 
 import paddle
 import paddle.static as static
-from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
+from paddle.fluid.framework import _test_eager_guard
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 from paddle.vision.transforms import Compose, Normalize
 
@@ -148,17 +148,25 @@ def custom_relu_double_grad_dynamic(func, device, dtype, np_x, use_func=True):
     t = paddle.to_tensor(np_x, dtype=dtype, stop_gradient=False)
 
     out = func(t) if use_func else paddle.nn.functional.relu(t)
-    out.stop_gradient = False
-
+    out.retain_grads()
     dx = paddle.grad(
-        outputs=[out], inputs=[t], create_graph=True, retain_graph=True
+        outputs=out,
+        inputs=t,
+        grad_outputs=paddle.ones_like(t),
+        create_graph=True,
+        retain_graph=True,
     )
-    if in_dygraph_mode():
-        dx[0].retain_grads()
-    dx[0].backward()
 
-    assert dx[0].grad is not None
-    return dx[0].numpy(), dx[0].grad.numpy()
+    dx[0].retain_grads()
+    ddout = paddle.grad(
+        outputs=dx[0],
+        inputs=out.grad,
+        grad_outputs=paddle.ones_like(t),
+        create_graph=False,
+    )
+
+    assert ddout[0].numpy() is not None
+    return dx[0].numpy(), ddout[0].numpy()
 
 
 class TestNewCustomOpSetUpInstall(unittest.TestCase):
@@ -380,7 +388,6 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
     def test_double_grad_dynamic(self):
         with _test_eager_guard():
             self.func_double_grad_dynamic()
-        self.func_double_grad_dynamic()
 
     def test_with_dataloader(self):
         for device in self.devices:
