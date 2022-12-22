@@ -235,16 +235,21 @@ class TestPostTrainingQuantization(unittest.TestCase):
             label = label.reshape([-1, 1])
 
             t1 = time.time()
-            _, acc1, _ = exe.run(
+            pred = exe.run(
                 infer_program,
-                feed={feed_dict[0]: image, feed_dict[1]: label},
+                feed={feed_dict[0]: image},
                 fetch_list=fetch_targets,
             )
             t2 = time.time()
             period = t2 - t1
             periods.append(period)
 
-            test_info.append(np.mean(acc1) * len(data))
+            pred = np.array(pred[0])
+            sort_array = pred.argsort(axis=1)
+            top_1_pred = sort_array[:, -1:][:, ::-1]
+            top_1 = np.mean(label == top_1_pred)
+
+            test_info.append(np.mean(top_1) * len(data))
             cnt += len(data)
 
             if (batch_id + 1) % 100 == 0:
@@ -302,7 +307,11 @@ class TestPostTrainingQuantization(unittest.TestCase):
             is_use_cache_file=is_use_cache_file,
         )
         ptq.quantize()
-        ptq.save_quantized_model(self.int8_model)
+        ptq.save_quantized_model(
+            self.int8_model,
+            model_filename="inference.pdmodel",
+            params_filename="inference.pdiparams",
+        )
 
     def run_test(
         self,
@@ -332,7 +341,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
             )
         )
         (fp32_throughput, fp32_latency, fp32_acc1) = self.run_program(
-            os.path.join(model_cache_folder, "model"),
+            os.path.join(model_cache_folder, "MobileNetV1_infer"),
             model_filename,
             params_filename,
             batch_size,
@@ -340,7 +349,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         )
 
         self.generate_quantized_model(
-            os.path.join(model_cache_folder, "model"),
+            os.path.join(model_cache_folder, "MobileNetV1_infer"),
             model_filename,
             params_filename,
             quantizable_op_type,
@@ -390,9 +399,9 @@ class TestPostTrainingKLForMobilenetv1(TestPostTrainingQuantization):
         algo = "KL"
         round_type = "round"
         data_urls = [
-            'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model_combined.tar.gz'
+            'https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/inference/MobileNetV1_infer.tar'
         ]
-        data_md5s = ['058357fc06183519690ef879eb847e7c']
+        data_md5s = ['5ee2b1775b11dc233079236cdc216c2e']
         quantizable_op_type = [
             "conv2d",
             "depthwise_conv2d",
@@ -406,8 +415,8 @@ class TestPostTrainingKLForMobilenetv1(TestPostTrainingQuantization):
         batch_nums = 3
         self.run_test(
             model,
-            'model.pdmodel',
-            'model.pdiparams',
+            'inference.pdmodel',
+            'inference.pdiparams',
             algo,
             round_type,
             data_urls,
@@ -426,9 +435,9 @@ class TestPostTrainingavgForMobilenetv1(TestPostTrainingQuantization):
         algo = "avg"
         round_type = "round"
         data_urls = [
-            'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model_combined.tar.gz'
+            'https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/inference/MobileNetV1_infer.tar'
         ]
-        data_md5s = ['058357fc06183519690ef879eb847e7c']
+        data_md5s = ['5ee2b1775b11dc233079236cdc216c2e']
         quantizable_op_type = [
             "conv2d",
             "depthwise_conv2d",
@@ -440,8 +449,8 @@ class TestPostTrainingavgForMobilenetv1(TestPostTrainingQuantization):
         diff_threshold = 0.025
         self.run_test(
             model,
-            'model.pdmodel',
-            'model.pdiparams',
+            'inference.pdmodel',
+            'inference.pdiparams',
             algo,
             round_type,
             data_urls,
@@ -460,9 +469,9 @@ class TestPostTraininghistForMobilenetv1(TestPostTrainingQuantization):
         algo = "hist"
         round_type = "round"
         data_urls = [
-            'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model_combined.tar.gz'
+            'https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/inference/MobileNetV1_infer.tar'
         ]
-        data_md5s = ['058357fc06183519690ef879eb847e7c']
+        data_md5s = ['5ee2b1775b11dc233079236cdc216c2e']
         quantizable_op_type = [
             "conv2d",
             "depthwise_conv2d",
@@ -475,8 +484,8 @@ class TestPostTraininghistForMobilenetv1(TestPostTrainingQuantization):
         batch_nums = 3
         self.run_test(
             model,
-            'model.pdmodel',
-            'model.pdiparams',
+            'inference.pdmodel',
+            'inference.pdiparams',
             algo,
             round_type,
             data_urls,
@@ -496,9 +505,9 @@ class TestPostTrainingAbsMaxForMobilenetv1(TestPostTrainingQuantization):
         algo = "abs_max"
         round_type = "round"
         data_urls = [
-            'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model_combined.tar.gz'
+            'https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/inference/MobileNetV1_infer.tar'
         ]
-        data_md5s = ['058357fc06183519690ef879eb847e7c']
+        data_md5s = ['5ee2b1775b11dc233079236cdc216c2e']
         quantizable_op_type = [
             "conv2d",
             "mul",
@@ -510,8 +519,8 @@ class TestPostTrainingAbsMaxForMobilenetv1(TestPostTrainingQuantization):
         diff_threshold = 0.05
         self.run_test(
             model,
-            'model.pdmodel',
-            'model.pdiparams',
+            'inference.pdmodel',
+            'inference.pdiparams',
             algo,
             round_type,
             data_urls,
@@ -530,9 +539,9 @@ class TestPostTrainingAvgONNXFormatForMobilenetv1(TestPostTrainingQuantization):
         algo = "emd"
         round_type = "round"
         data_urls = [
-            'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model_combined.tar.gz'
+            'https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/inference/MobileNetV1_infer.tar'
         ]
-        data_md5s = ['058357fc06183519690ef879eb847e7c']
+        data_md5s = ['5ee2b1775b11dc233079236cdc216c2e']
         quantizable_op_type = [
             "conv2d",
             "depthwise_conv2d",
@@ -546,8 +555,8 @@ class TestPostTrainingAvgONNXFormatForMobilenetv1(TestPostTrainingQuantization):
         batch_nums = 3
         self.run_test(
             model,
-            'model.pdmodel',
-            'model.pdiparams',
+            'inference.pdmodel',
+            'inference.pdiparams',
             algo,
             round_type,
             data_urls,

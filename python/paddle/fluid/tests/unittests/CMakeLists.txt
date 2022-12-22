@@ -78,6 +78,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op_api)
 endif()
 
+list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
@@ -143,6 +144,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_trt_convert_preln_residual_bias)
   list(REMOVE_ITEM TEST_OPS test_trt_convert_preln_residual_no_bias)
   list(REMOVE_ITEM TEST_OPS test_fused_multi_transformer_int8_op)
+  list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
 endif()
 list(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
 
@@ -624,6 +626,11 @@ if(WITH_DISTRIBUTE)
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_word2vec")
 
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_gloo")
+
+  if(NOT WITH_GPU)
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_spmt")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_minimize")
+  endif()
 
   if(NOT WITH_HETERPS)
     list(REMOVE_ITEM DIST_TEST_OPS "test_communicator_ps_gpu")
