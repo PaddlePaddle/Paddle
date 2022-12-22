@@ -77,7 +77,10 @@ def set_input(scope, op, inputs, place):
                 tensor.set_recursive_sequence_lengths(var[1])
                 var = var[0]
             tensor._set_dims(var.shape)
-            tensor.set(var, place)
+            if var.dtype == np.float16:
+                tensor.set(var.astype(np.float32), place)
+            else:
+                tensor.set(var, place)
         elif isinstance(var, float):
             scope.find_var(var_name).set_float(var)
         elif isinstance(var, int):

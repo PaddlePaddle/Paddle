@@ -1063,7 +1063,6 @@ class OpTest(unittest.TestCase):
         program = Program()
         block = program.global_block()
         op = self._append_ops(block)
-
         inputs = self._get_inputs(block)
         outputs = self._get_outputs(block)
         feed_map = self.feed_var(inputs, place)
@@ -1624,6 +1623,7 @@ class OpTest(unittest.TestCase):
                 actual_np, expect_np = self.convert_uint16_to_float_ifneed(
                     actual_np, expect_np
                 )
+
                 # NOTE(zhiqiu): np.allclose([], [1.]) returns True
                 # see details: https://stackoverflow.com/questions/38331703/why-does-numpys-broadcasting-sometimes-allow-comparing-arrays-of-different-leng
                 if expect_np.size == 0:
@@ -1871,6 +1871,7 @@ class OpTest(unittest.TestCase):
         static_checker = StaticChecker(self, self.outputs)
         static_checker.check()
         outs, fetch_list = static_checker.outputs, static_checker.fetch_list
+
         if check_dygraph:
             # always enable legacy dygraph
             g_enable_legacy_dygraph()
@@ -2208,6 +2209,7 @@ class OpTest(unittest.TestCase):
             op_attrs["use_mkldnn"] = False
             use_onednn = True
 
+        # should change the dtype in scope and op_type
         self.op = create_op(
             self.scope,
             self.op_type,
@@ -2237,11 +2239,13 @@ class OpTest(unittest.TestCase):
                 )
 
         for input_to_check in inputs_to_check:
+            # we should change the dtype to FP32 for checking if the dtype of inputs is FP16
             set_input(self.scope, self.op, self.inputs, place)
             tensor_to_check = self.scope.find_var(input_to_check).get_tensor()
             tensor_size = functools.reduce(
                 lambda a, b: a * b, tensor_to_check.shape(), 1
             )
+
             tensor_ndim = len(tensor_to_check.shape())
             # for 0D Tensor, it's additional case for OP, so not raise error
             if tensor_ndim > 0 and tensor_size < 100:
@@ -2273,6 +2277,7 @@ class OpTest(unittest.TestCase):
             no_grad_set,
             user_defined_grad_outputs,
         )
+
         # comparison of bf16 results will happen as fp32
         # loop over list of grads and convert bf16 to fp32
         fp32_analytic_grads = []
@@ -2281,11 +2286,6 @@ class OpTest(unittest.TestCase):
                 grad = convert_uint16_to_float(grad)
                 max_relative_error = (
                     0.04 if max_relative_error < 0.04 else max_relative_error
-                )
-            if grad.dtype == np.float16:
-                grad = grad.astype(np.float32)
-                max_relative_error = (
-                    1e-3 if max_relative_error < 1e-3 else max_relative_error
                 )
             fp32_analytic_grads.append(grad)
         analytic_grads = fp32_analytic_grads
@@ -2297,13 +2297,6 @@ class OpTest(unittest.TestCase):
                 max_relative_error = (
                     0.04 if max_relative_error < 0.04 else max_relative_error
                 )
-
-            if grad.dtype == np.float16:
-                grad = grad.astype(np.float32)
-                max_relative_error = (
-                    1e-3 if max_relative_error < 1e-3 else max_relative_error
-                )
-
             fp32_numeric_grads.append(grad)
         numeric_grads = fp32_numeric_grads
 
