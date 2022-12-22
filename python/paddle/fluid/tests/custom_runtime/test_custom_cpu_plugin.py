@@ -67,7 +67,7 @@ class TestCustomCPUPlugin(unittest.TestCase):
     def _test_custom_device_dataloader(self):
         import paddle
 
-        paddle.set_device(paddle.CustomPlace('custom_cpu', 0))
+        paddle.set_device('custom_cpu')
         dataset = paddle.vision.datasets.MNIST(
             mode='test',
             transform=paddle.vision.transforms.Compose(
@@ -113,7 +113,7 @@ class TestCustomCPUPlugin(unittest.TestCase):
                 else:
                     return x
 
-        paddle.set_device(paddle.CustomPlace('custom_cpu', 0))
+        paddle.set_device('custom_cpu')
         dataset = paddle.vision.datasets.MNIST(
             mode='train',
             transform=paddle.vision.transforms.Compose(
@@ -149,7 +149,7 @@ class TestCustomCPUPlugin(unittest.TestCase):
 
         import paddle
 
-        paddle.set_device(paddle.CustomPlace('custom_cpu', 0))
+        paddle.set_device('custom_cpu')
         paddle.device.get_available_device()
         x_tensor = paddle.to_tensor(x, stop_gradient=False)
         y_tensor = paddle.to_tensor(y)
@@ -236,7 +236,7 @@ class TestCustomCPUPlugin(unittest.TestCase):
                 else:
                     return x
 
-        paddle.set_device(paddle.CustomPlace('custom_cpu', 0))
+        paddle.set_device('custom_cpu')
         dataset = paddle.vision.datasets.MNIST(
             mode='train',
             transform=paddle.vision.transforms.Compose(
@@ -267,7 +267,7 @@ class TestCustomCPUPlugin(unittest.TestCase):
     def _test_custom_device_py_api(self):
         import paddle
 
-        p = paddle.set_device(paddle.CustomPlace('custom_cpu', 0))
+        p = paddle.set_device('custom_cpu')
 
         s1 = paddle.device.Stream()
         s2 = paddle.device.Stream(p)
