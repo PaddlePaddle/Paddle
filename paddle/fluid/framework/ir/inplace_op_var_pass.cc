@@ -50,7 +50,14 @@ void InplaceOpVarPass::ApplyImpl(ir::Graph* graph) const {
   for (auto* node : nodes) {
     if (node->IsOp()) {
       auto* op_node = node->Op();
+      // If reshape2 op have ShapeTensor input or Shape input, we will not fuse.
       if (op_node->Type() == "reshape2" && node->inputs.size() == 1) {
+        // Some cases need to consider, please refer to
+        // https://github.com/PaddlePaddle/Paddle/pull/49146
+        if (node->inputs[0]->outputs.size() > 1) {
+          return;
+        }
+
         ++found_subgraph_count;
 
         auto input_name = op_node->Input("X")[0];
