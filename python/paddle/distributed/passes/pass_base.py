@@ -13,7 +13,8 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from paddle.fluid.framework import _apply_pass as _apply_cpp_pass
+
+from paddle.framework import _apply_pass as _apply_cpp_pass
 
 
 class PassContext:

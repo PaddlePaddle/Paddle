@@ -14,11 +14,13 @@
 # limitations under the License.
 
 import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.contrib.sparsity.asp import ASPHelper
-import numpy as np
+from paddle.incubate.asp import ASPHelper
 
 paddle.enable_static()
 
@@ -33,7 +35,7 @@ class TestASPStaticOptimize(unittest.TestCase):
                 name='img', shape=[None, 3, 24, 24], dtype='float32'
             )
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
-            hidden = fluid.layers.conv2d(
+            hidden = paddle.static.nn.conv2d(
                 input=img, num_filters=4, filter_size=3, padding=2, act="relu"
             )
             hidden = fluid.layers.fc(input=hidden, size=32, act='relu')
@@ -43,7 +45,12 @@ class TestASPStaticOptimize(unittest.TestCase):
         with fluid.program_guard(self.main_program, self.startup_program):
             self.img, self.label, predict = build_model()
             self.loss = paddle.mean(
-                fluid.layers.cross_entropy(input=predict, label=self.label)
+                paddle.nn.functional.cross_entropy(
+                    input=predict,
+                    label=self.label,
+                    reduction='none',
+                    use_softmax=False,
+                )
             )
             self.optimizer = fluid.optimizer.SGD(learning_rate=0.01)
 
@@ -195,15 +202,11 @@ class TestASPStaticOptimize(unittest.TestCase):
                     len(param.shape) == 2 and param.shape[0] < 4
                 ):
                     self.assertFalse(
-                        paddle.fluid.contrib.sparsity.check_sparsity(
-                            mat.T, n=2, m=4
-                        )
+                        paddle.incubate.asp.check_sparsity(mat.T, n=2, m=4)
                     )
                 else:
                     self.assertTrue(
-                        paddle.fluid.contrib.sparsity.check_sparsity(
-                            mat.T, n=2, m=4
-                        )
+                        paddle.incubate.asp.check_sparsity(mat.T, n=2, m=4)
                     )
 
     def test_asp_training_with_amp(self):
@@ -241,15 +244,11 @@ class TestASPStaticOptimize(unittest.TestCase):
                         len(param.shape) == 2 and param.shape[0] < 4
                     ):
                         self.assertFalse(
-                            paddle.fluid.contrib.sparsity.check_sparsity(
-                                mat.T, n=2, m=4
-                            )
+                            paddle.incubate.asp.check_sparsity(mat.T, n=2, m=4)
                         )
                     else:
                         self.assertTrue(
-                            paddle.fluid.contrib.sparsity.check_sparsity(
-                                mat.T, n=2, m=4
-                            )
+                            paddle.incubate.asp.check_sparsity(mat.T, n=2, m=4)
                         )
 
     def __get_param_names(self, params):

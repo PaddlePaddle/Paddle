@@ -13,13 +13,10 @@
 # limitations under the License.
 """Http Server."""
 
-import logging
-
-# NOTE: HTTPServer has a different name in python2 and python3
-from http.server import HTTPServer
 import http.server as SimpleHTTPServer
-
+import logging
 import threading
+from http.server import HTTPServer
 
 __all__ = []
 

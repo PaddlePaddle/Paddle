@@ -13,13 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from op_test import OpTest
+
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.nn.functional as F
-from op_test import OpTest
-from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 np.random.seed(1)
@@ -107,7 +107,7 @@ class TestMaxoutAPI(unittest.TestCase):
         for r in res:
             np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
-    def func_test_dygraph_api(self):
+    def test_dygraph_api(self):
         paddle.disable_static(self.place)
         x = paddle.to_tensor(self.x_np)
         out1 = F.maxout(x, self.groups, self.axis)
@@ -122,21 +122,6 @@ class TestMaxoutAPI(unittest.TestCase):
         np.testing.assert_allclose(out3_ref, out3.numpy(), rtol=1e-05)
         paddle.enable_static()
 
-    def test_fluid_api(self):
-        with fluid.program_guard(fluid.Program()):
-            x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
-            out = fluid.layers.maxout(x, groups=self.groups, axis=self.axis)
-            exe = fluid.Executor(self.place)
-            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
-        out_ref = maxout_forward_naive(self.x_np, self.groups, self.axis)
-        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
-
-        paddle.disable_static(self.place)
-        x = paddle.to_tensor(self.x_np)
-        out = paddle.fluid.layers.maxout(x, groups=self.groups, axis=self.axis)
-        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
-        paddle.enable_static()
-
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
@@ -149,11 +134,6 @@ class TestMaxoutAPI(unittest.TestCase):
 
             x_float32 = paddle.fluid.data(name='x_float32', shape=[2, 4, 6, 8])
             self.assertRaises(ValueError, F.maxout, x_float32, 2, 2)
-
-    def test_dygraph_api(self):
-        with _test_eager_guard():
-            self.func_test_dygraph_api()
-        self.func_test_dygraph_api()
 
 
 if __name__ == '__main__':

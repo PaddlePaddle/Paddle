@@ -50,7 +50,7 @@ function gen_full_html_report() {
         '/paddle/paddle/fluid/string/*' \
         '/paddle/paddle/fluid/eager/*' \
         '/paddle/paddle/phi/*' \
-        '/paddle/paddle/utils/*' \ 
+        '/paddle/paddle/utils/*' \
         -o coverage-full.tmp \
         --rc lcov_branch_coverage=0
 

@@ -28,7 +28,6 @@ import paddle.fluid as fluid
 from paddle.fluid.contrib.slim.quantization import *
 from paddle.fluid.log_helper import get_logger
 from paddle.dataset.common import download
-from paddle.fluid.framework import _test_eager_guard
 
 from imperative_test_utils import (
     fix_model_dict,
@@ -150,8 +149,8 @@ class TestImperativePTQ(unittest.TestCase):
             label = paddle.to_tensor(y_data)
 
             out = model(img)
-            acc_top1 = fluid.layers.accuracy(input=out, label=label, k=1)
-            acc_top5 = fluid.layers.accuracy(input=out, label=label, k=5)
+            acc_top1 = paddle.static.accuracy(input=out, label=label, k=1)
+            acc_top5 = paddle.static.accuracy(input=out, label=label, k=5)
             eval_acc_top1_list.append(float(acc_top1.numpy()))
 
             if batch_id % 50 == 0:
@@ -208,7 +207,7 @@ class TestImperativePTQ(unittest.TestCase):
                 break
         return top1_correct_num / total_num
 
-    def func_ptq(self):
+    def test_ptq(self):
         start_time = time.time()
 
         self.set_vars()
@@ -266,14 +265,9 @@ class TestImperativePTQ(unittest.TestCase):
             end_time = time.time()
             print("total time: %ss \n" % (end_time - start_time))
 
-    def test_ptq(self):
-        with _test_eager_guard():
-            self.func_ptq()
-        self.func_ptq()
-
 
 class TestImperativePTQfuse(TestImperativePTQ):
-    def func_ptq(self):
+    def test_ptq(self):
         start_time = time.time()
 
         self.set_vars()
@@ -341,11 +335,6 @@ class TestImperativePTQfuse(TestImperativePTQ):
 
             end_time = time.time()
             print("total time: %ss \n" % (end_time - start_time))
-
-    def test_ptq(self):
-        with _test_eager_guard():
-            self.func_ptq()
-        self.func_ptq()
 
 
 class TestImperativePTQHist(TestImperativePTQ):

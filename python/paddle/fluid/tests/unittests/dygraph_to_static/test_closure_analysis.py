@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 import unittest
 
-import paddle
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
-    FunctionNameLivenessAnalysis,
-)
-from paddle.utils import gast
-import inspect
 from numpy import append
+
+import paddle
+from paddle.jit.dy2static.utils import FunctionNameLivenessAnalysis
+from paddle.utils import gast
 
 global_a = []
 

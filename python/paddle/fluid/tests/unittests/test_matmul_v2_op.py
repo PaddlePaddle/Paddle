@@ -13,14 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
-from paddle.fluid.tests.unittests.testsuite import create_op
-import paddle.fluid.core as core
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.framework import _test_eager_guard
+import paddle.fluid.core as core
+from paddle.fluid.tests.unittests.testsuite import create_op
 
 
 def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
@@ -558,11 +558,6 @@ class TestMatMulV2API(unittest.TestCase):
                         {'FLAGS_gemm_use_half_precision_compute_type': False}
                     )
 
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_dygraph()
-            self.test_dygraph_fp16()
-
 
 class TestComplexMatMulOp(OpTest):
     def setUp(self):
@@ -712,6 +707,24 @@ class TestMatMulTypePromotion(TestComplexMatMulOp):
         )
         self.grad_x = np.matmul(self.grad_out, np.conj(self.y).T).real
         self.grad_y = np.matmul(np.conj(self.x).T, self.grad_out)
+
+
+class TestMatmulop(unittest.TestCase):
+    def func_dygraph_matmul(self):
+        paddle.disable_static()
+
+        np_a = np.random.random((2, 4)).astype(np.float32)
+        np_b = np.random.random((4, 2)).astype(np.float32)
+
+        tensor_a = paddle.to_tensor(np_a, dtype="float32")
+        tensor_b = paddle.to_tensor(np_b, dtype="float32")
+
+        # normal case: tensor @ nparray
+        expect_out = np_a @ np_b
+        actual_out = tensor_a @ np_b
+        np.testing.assert_allclose(actual_out, expect_out)
+
+        paddle.enable_static()
 
 
 if __name__ == "__main__":

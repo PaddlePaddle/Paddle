@@ -13,17 +13,17 @@
 # limitations under the License.
 
 import os
-import unittest
-import numpy as np
 import tempfile
+import unittest
+
+import numpy as np
+from utils import IS_MAC, extra_cc_args, extra_nvcc_args, paddle_includes
 
 import paddle
 from paddle import nn
-from paddle.utils.cpp_extension import load, get_build_directory
+from paddle.fluid.framework import _in_legacy_dygraph
+from paddle.utils.cpp_extension import get_build_directory, load
 from paddle.utils.cpp_extension.extension_utils import run_cmd
-
-from utils import paddle_includes, extra_cc_args, extra_nvcc_args, IS_MAC
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
@@ -115,7 +115,7 @@ class TestDygraphModel(unittest.TestCase):
             shape=[None, self.in_dim], dtype='float32', name='x'
         )
 
-    def func_train_eval(self):
+    def test_train_eval(self):
         for device in self.devices:
             # set device
             paddle.set_device(device)
@@ -150,11 +150,6 @@ class TestDygraphModel(unittest.TestCase):
             np.testing.assert_array_equal(
                 origin_relu_eval_out, custom_relu_eval_out
             )
-
-    def test_train_eval(self):
-        with _test_eager_guard():
-            self.func_train_eval()
-        self.func_train_eval()
 
     def train_model(self, use_custom_op=False, dy2stat=False):
         # reset random seed

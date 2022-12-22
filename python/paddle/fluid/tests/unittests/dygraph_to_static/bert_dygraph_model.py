@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from transformer_dygraph_model import MultiHeadAttention, PrePostProcessLayer
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import Embedding, Layer, Linear
-from paddle.fluid.dygraph.jit import declarative
-
-from transformer_dygraph_model import MultiHeadAttention, PrePostProcessLayer
+from paddle.fluid.dygraph import Layer
+from paddle.jit.api import to_static
+from paddle.nn import Linear
 
 
 class PositionwiseFeedForwardLayer(Layer):
@@ -33,19 +34,18 @@ class PositionwiseFeedForwardLayer(Layer):
         super().__init__()
 
         self._i2h = Linear(
-            input_dim=d_model,
-            output_dim=d_inner_hid,
-            param_attr=fluid.ParamAttr(
+            in_features=d_model,
+            out_features=d_inner_hid,
+            weight_attr=fluid.ParamAttr(
                 name=name + '_fc_0.w_0', initializer=param_initializer
             ),
             bias_attr=name + '_fc_0.b_0',
-            act=hidden_act,
         )
 
         self._h2o = Linear(
-            input_dim=d_inner_hid,
-            output_dim=d_model,
-            param_attr=fluid.ParamAttr(
+            in_features=d_inner_hid,
+            out_features=d_model,
+            weight_attr=fluid.ParamAttr(
                 name=name + '_fc_1.w_0', initializer=param_initializer
             ),
             bias_attr=name + '_fc_1.b_0',
@@ -56,9 +56,7 @@ class PositionwiseFeedForwardLayer(Layer):
     def forward(self, x):
         hidden = self._i2h(x)
         if self._dropout_rate:
-            hidden = fluid.layers.dropout(
-                hidden, dropout_prob=self._dropout_rate, is_test=False
-            )
+            hidden = paddle.nn.functional.dropout(hidden, p=self._dropout_rate)
         out = self._h2o(hidden)
         return out
 
@@ -208,39 +206,38 @@ class BertModelLayer(Layer):
         self._param_initializer = fluid.initializer.TruncatedNormal(
             scale=config['initializer_range']
         )
-
-        self._src_emb = Embedding(
-            size=[self._voc_size, self._emb_size],
-            param_attr=fluid.ParamAttr(
+        paddle.set_default_dtype(self._dtype)
+        self._src_emb = paddle.nn.Embedding(
+            self._voc_size,
+            self._emb_size,
+            weight_attr=fluid.ParamAttr(
                 name=self._word_emb_name, initializer=self._param_initializer
             ),
-            dtype=self._dtype,
         )
 
-        self._pos_emb = Embedding(
-            size=[self._max_position_seq_len, self._emb_size],
-            param_attr=fluid.ParamAttr(
+        self._pos_emb = paddle.nn.Embedding(
+            self._max_position_seq_len,
+            self._emb_size,
+            weight_attr=fluid.ParamAttr(
                 name=self._pos_emb_name, initializer=self._param_initializer
             ),
-            dtype=self._dtype,
         )
 
-        self._sent_emb = Embedding(
-            size=[self._sent_types, self._emb_size],
-            param_attr=fluid.ParamAttr(
+        self._sent_emb = paddle.nn.Embedding(
+            self._sent_types,
+            self._emb_size,
+            weight_attr=fluid.ParamAttr(
                 name=self._sent_emb_name, initializer=self._param_initializer
             ),
-            dtype=self._dtype,
         )
 
         self.pooled_fc = Linear(
-            input_dim=self._emb_size,
-            output_dim=self._emb_size,
-            param_attr=fluid.ParamAttr(
+            in_features=self._emb_size,
+            out_features=self._emb_size,
+            weight_attr=fluid.ParamAttr(
                 name="pooled_fc.w_0", initializer=self._param_initializer
             ),
             bias_attr="pooled_fc.b_0",
-            act="tanh",
         )
 
         self.pre_process_layer = PrePostProcessLayer(
@@ -273,13 +270,13 @@ class BertModelLayer(Layer):
 
         emb_out = self.pre_process_layer(emb_out)
 
-        self_attn_mask = fluid.layers.matmul(
+        self_attn_mask = paddle.matmul(
             x=input_mask, y=input_mask, transpose_y=True
         )
-        self_attn_mask = fluid.layers.scale(
+        self_attn_mask = paddle.scale(
             x=self_attn_mask, scale=10000.0, bias=-1.0, bias_after_scale=False
         )
-        n_head_self_attn_mask = fluid.layers.stack(
+        n_head_self_attn_mask = paddle.stack(
             x=[self_attn_mask] * self._n_head, axis=1
         )
         n_head_self_attn_mask.stop_gradient = True
@@ -291,11 +288,13 @@ class BertModelLayer(Layer):
         #
         # if not self.return_pooled_out:
         #    return enc_output
-        next_sent_feat = fluid.layers.slice(
+        next_sent_feat = paddle.slice(
             input=enc_output, axes=[1], starts=[0], ends=[1]
         )
         next_sent_feat = self.pooled_fc(next_sent_feat)
-        next_sent_feat = fluid.layers.reshape(
+
+        next_sent_feat = paddle.tanh(next_sent_feat)
+        next_sent_feat = paddle.reshape(
             next_sent_feat, shape=[-1, self._emb_size]
         )
 
@@ -334,13 +333,12 @@ class PretrainModelLayer(Layer):
         )
 
         self.pooled_fc = Linear(
-            input_dim=self._emb_size,
-            output_dim=self._emb_size,
-            param_attr=fluid.ParamAttr(
+            in_features=self._emb_size,
+            out_features=self._emb_size,
+            weight_attr=fluid.ParamAttr(
                 name="mask_lm_trans_fc.w_0", initializer=self._param_initializer
             ),
             bias_attr="mask_lm_trans_fc.b_0",
-            act="tanh",
         )
 
         self.mask_lm_out_bias_attr = fluid.ParamAttr(
@@ -350,9 +348,9 @@ class PretrainModelLayer(Layer):
 
         if not self._weight_sharing:
             self.out_fc = Linear(
-                input_dim=self._emb_size,
-                output_dim=self._voc_size,
-                param_attr=fluid.ParamAttr(
+                in_features=self._emb_size,
+                out_features=self._voc_size,
+                weight_attr=fluid.ParamAttr(
                     name="mask_lm_out_fc.w_0",
                     initializer=self._param_initializer,
                 ),
@@ -367,15 +365,15 @@ class PretrainModelLayer(Layer):
             )
 
         self.next_sent_fc = Linear(
-            input_dim=self._emb_size,
-            output_dim=2,
-            param_attr=fluid.ParamAttr(
+            in_features=self._emb_size,
+            out_features=2,
+            weight_attr=fluid.ParamAttr(
                 name="next_sent_fc.w_0", initializer=self._param_initializer
             ),
             bias_attr="next_sent_fc.b_0",
         )
 
-    @declarative
+    @to_static
     def forward(
         self,
         src_ids,
@@ -391,16 +389,17 @@ class PretrainModelLayer(Layer):
         enc_output, next_sent_feat = self.bert_layer(
             src_ids, position_ids, sentence_ids, input_mask
         )
-        reshaped_emb_out = fluid.layers.reshape(
+        reshaped_emb_out = paddle.reshape(
             x=enc_output, shape=[-1, self._emb_size]
         )
 
-        mask_feat = fluid.layers.gather(input=reshaped_emb_out, index=mask_pos)
+        mask_feat = paddle.gather(reshaped_emb_out, index=mask_pos)
         mask_trans_feat = self.pooled_fc(mask_feat)
+        mask_trans_feat = paddle.tanh(mask_trans_feat)
         mask_trans_feat = self.pre_process_layer(mask_trans_feat)
 
         if self._weight_sharing:
-            fc_out = fluid.layers.matmul(
+            fc_out = paddle.matmul(
                 x=mask_trans_feat,
                 y=self.bert_layer._src_emb._w,
                 transpose_y=True,
@@ -409,7 +408,7 @@ class PretrainModelLayer(Layer):
         else:
             fc_out = self.out_fc(mask_trans_feat)
 
-        mask_lm_loss = fluid.layers.softmax_with_cross_entropy(
+        mask_lm_loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=fc_out, label=mask_label
         )
         mean_mask_lm_loss = paddle.mean(mask_lm_loss)
@@ -419,11 +418,11 @@ class PretrainModelLayer(Layer):
         (
             next_sent_loss,
             next_sent_softmax,
-        ) = fluid.layers.softmax_with_cross_entropy(
+        ) = paddle.nn.functional.softmax_with_cross_entropy(
             logits=next_sent_fc_out, label=labels, return_softmax=True
         )
 
-        next_sent_acc = fluid.layers.accuracy(
+        next_sent_acc = paddle.static.accuracy(
             input=next_sent_softmax, label=labels
         )
 

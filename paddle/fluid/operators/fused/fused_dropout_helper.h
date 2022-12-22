@@ -15,11 +15,14 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/generator.h"
-#include "paddle/fluid/operators/dropout_impl_util.h"
 #include "paddle/fluid/operators/fused/fused_dropout_act_bias.h"
 #include "paddle/fluid/operators/fused/fused_layernorm_residual_dropout_bias.h"
 #include "paddle/fluid/operators/fused/fused_residual_dropout_bias.h"
+#include "paddle/phi/kernels/funcs/dropout_impl_util.h"
 #include "paddle/phi/kernels/funcs/functors.h"
+#include "paddle/phi/kernels/layer_norm_kernel.h"
+
+DECLARE_bool(use_fast_math);
 
 namespace paddle {
 namespace operators {
@@ -103,7 +106,7 @@ struct DropoutParam {
 
   int UpdateSeedAndIncrement(const phi::GPUContext& ctx, const int offset) {
     uint64_t tmp_increment;
-    GetSeedDataAndIncrement(
+    phi::funcs::GetSeedDataAndIncrement(
         ctx, tensor_seed, fix_seed, seed_val, offset, &seed, &tmp_increment);
     increment = static_cast<int>(tmp_increment);
     return increment;
@@ -151,7 +154,6 @@ class FusedDropoutHelper {
                            MaskType* mask,
                            const float quant_last_in_scale = 1.0,
                            const float* dequant_out_scale_data = nullptr,
-                           const int quant_out_scale_offset = 0,
                            const float quant_next_in_scale = 1.0) {
     auto increment = GetIncrement(ctx);
     LaunchResidualDropoutBias<T, MaskType, InType, OutType>(
@@ -170,7 +172,6 @@ class FusedDropoutHelper {
         ctx,
         quant_last_in_scale,
         dequant_out_scale_data,
-        quant_out_scale_offset,
         quant_next_in_scale);
   }
 
@@ -209,35 +210,57 @@ class FusedDropoutHelper {
                       MaskType* mask,
                       const float quant_last_in_scale = 1.0,
                       const float* dequant_out_scale_data = nullptr,
-                      const int quant_out_scale_offset = 0,
                       const float quant_next_in_scale = 1.0,
                       const int quant_round_type = 1,
                       const float quant_max_bound = 127.0,
                       const float quant_min_bound = -127.0) {
     auto increment = GetIncrement(ctx);
     if (act_method == "gelu") {
-      GeluFunctor<T> gelu;
-      LaunchDropoutActBias<T, MaskType, GeluFunctor<T>, InType, OutType>(
-          gelu,
-          dropout_param_.seed,
-          rows_,
-          cols_,
-          dropout_param_.increment,
-          dropout_param_.dropout_prob,
-          dropout_param_.is_upscale_in_train,
-          dropout_param_.is_test,
-          src,
-          bias,
-          out,
-          mask,
-          ctx,
-          quant_last_in_scale,
-          dequant_out_scale_data,
-          quant_out_scale_offset,
-          quant_next_in_scale,
-          quant_round_type,
-          quant_max_bound,
-          quant_min_bound);
+      if (FLAGS_use_fast_math) {
+        FastGeluFunctor<T> fast_gelu;
+        LaunchDropoutActBias<T, MaskType, FastGeluFunctor<T>, InType, OutType>(
+            fast_gelu,
+            dropout_param_.seed,
+            rows_,
+            cols_,
+            dropout_param_.increment,
+            dropout_param_.dropout_prob,
+            dropout_param_.is_upscale_in_train,
+            dropout_param_.is_test,
+            src,
+            bias,
+            out,
+            mask,
+            ctx,
+            quant_last_in_scale,
+            dequant_out_scale_data,
+            quant_next_in_scale,
+            quant_round_type,
+            quant_max_bound,
+            quant_min_bound);
+      } else {
+        GeluFunctor<T> gelu;
+        LaunchDropoutActBias<T, MaskType, GeluFunctor<T>, InType, OutType>(
+            gelu,
+            dropout_param_.seed,
+            rows_,
+            cols_,
+            dropout_param_.increment,
+            dropout_param_.dropout_prob,
+            dropout_param_.is_upscale_in_train,
+            dropout_param_.is_test,
+            src,
+            bias,
+            out,
+            mask,
+            ctx,
+            quant_last_in_scale,
+            dequant_out_scale_data,
+            quant_next_in_scale,
+            quant_round_type,
+            quant_max_bound,
+            quant_min_bound);
+      }
     } else if (act_method == "relu") {
       phi::funcs::ReluFunctor<T> relu;
       LaunchDropoutActBias<T,
@@ -259,7 +282,6 @@ class FusedDropoutHelper {
                                     ctx,
                                     quant_last_in_scale,
                                     dequant_out_scale_data,
-                                    quant_out_scale_offset,
                                     quant_next_in_scale,
                                     quant_round_type,
                                     quant_max_bound,
@@ -320,6 +342,18 @@ class FusedDropoutHelper {
   DropoutParam dropout_param_;
 };
 
+template <typename T>
+struct PDDataTypeTraits {
+  using DataType = T;
+};
+
+template <>
+struct PDDataTypeTraits<phi::dtype::float16> {
+  // Since LayerNormDirectCUDAFunctor register half type, we need to convert
+  // phi::float16 to half.
+  using DataType = half;
+};
+
 template <typename T,
           typename MaskType,
           typename InType = T,
@@ -356,13 +390,22 @@ class FusedDropoutLayerNormHelper
                  OutType* out,
                  LayerNormParamType<T>* mean,
                  LayerNormParamType<T>* variance) {
-    using U = LayerNormParamType<T>;
-    switch (GetDesiredBlockDim(this->cols_)) {
-      FIXED_BLOCK_DIM_CASE(
-          LayerNormForward<T, U, kBlockDim, false, InType, OutType>
-          <<<this->rows_, kBlockDim, 0, ctx.stream()>>>(
-              src, gamma, beta, out, mean, variance, epsilon_, this->cols_));
-    }
+    using InDataType = typename PDDataTypeTraits<InType>::DataType;
+    using OutDataType = typename PDDataTypeTraits<OutType>::DataType;
+
+    phi::LayerNormDirectCUDAFunctor<InDataType, LayerNormParamType<T>>
+        layer_norm;
+    std::vector<int> src_shape{this->rows_, this->cols_};
+    layer_norm(ctx.stream(),
+               reinterpret_cast<const InDataType*>(src),
+               src_shape,
+               beta,
+               gamma,
+               reinterpret_cast<OutDataType*>(out),
+               mean,
+               variance,
+               1,
+               epsilon_);
   }
 
   void LayerNormGrad(const phi::GPUContext& ctx,
@@ -405,7 +448,6 @@ class FusedDropoutLayerNormHelper
       LayerNormParamType<T>* variance,
       const float quant_last_in_scale = 1.0,
       const float* dequant_out_scale_data = nullptr,
-      const int quant_out_scale_offset = 0,
       const float quant_next_in_scale = 1.0,
       const int quant_round_type = 1,
       const float quant_max_bound = 127.0,
@@ -445,7 +487,6 @@ class FusedDropoutLayerNormHelper
         ctx,
         quant_last_in_scale,
         dequant_out_scale_data,
-        quant_out_scale_offset,
         quant_next_in_scale,
         quant_round_type,
         quant_max_bound,

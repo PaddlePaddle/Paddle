@@ -141,7 +141,7 @@ enum class AttributeType {
   INT_ARRAY,
   DATA_TYPE,
   DATA_LAYOUT,
-  PLACE,
+  PLACE
 };
 
 struct AttributeArgDef {
@@ -274,8 +274,7 @@ class KernelFactory {
   bool HasCompatiblePhiKernel(const std::string& op_type) const;
 
   KernelResult SelectKernelOrThrowError(const std::string& kernel_name,
-                                        const KernelKey& kernel_key,
-                                        bool use_gpudnn = false) const;
+                                        const KernelKey& kernel_key) const;
 
   bool HasKernel(const std::string& kernel_name,
                  const KernelKey& kernel_key) const;

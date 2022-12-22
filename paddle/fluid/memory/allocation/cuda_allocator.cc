@@ -75,7 +75,7 @@ phi::Allocation* CUDAAllocator::AllocateImpl(size_t size) {
     managed_memory_msg = string::Sprintf(
         "If the above ways do not solve the out of memory problem, you can try "
         "to use CUDA managed memory. The command is `export "
-        "FLAGS_use_cuda_managed_memory=false`.");
+        "FLAGS_use_cuda_managed_memory=true`.");
   }
 
   PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(

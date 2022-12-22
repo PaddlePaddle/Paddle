@@ -13,43 +13,36 @@
 # limitations under the License.
 
 import paddle
-from paddle.framework import core
-from paddle.fluid import unique_name
-from .pass_base import PassBase, register_pass
-from paddle.distributed.fleet.meta_optimizers.common import OpRole
-from paddle.fluid.data_feeder import check_variable_and_dtype, check_type
-from paddle.distributed.auto_parallel.utils import (
-    get_loss_op,
-    set_var_dist_attr,
-)
-from paddle.distributed.auto_parallel.utils import (
-    naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
+from paddle.distributed.auto_parallel.dist_attribute import (
+    OperatorDistributedAttribute,
 )
 from paddle.distributed.auto_parallel.process_group import (
     get_world_process_group,
 )
+from paddle.distributed.auto_parallel.utils import (
+    get_loss_op,
+    naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
+    set_var_dist_attr,
+)
+from paddle.distributed.fleet.meta_optimizers.common import OpRole
+from paddle.fluid import unique_name
 from paddle.fluid.contrib.mixed_precision.fp16_utils import (
     AutoMixedPrecisionLists,
-)
-from paddle.fluid.contrib.mixed_precision.fp16_utils import (
+    _dtype_to_str,
+    _is_in_black_varnames,
     _keep_fp32_input,
     _keep_fp32_output,
-    find_op_index,
-)
-from paddle.fluid.contrib.mixed_precision.fp16_utils import (
+    _rename_arg,
     _valid_types,
+    find_op_index,
     find_true_post_op,
     find_true_prev_op,
 )
-from paddle.fluid.contrib.mixed_precision.fp16_utils import (
-    _is_in_black_varnames,
-    _dtype_to_str,
-    _rename_arg,
-)
-from paddle.distributed.auto_parallel.dist_attribute import (
-    OperatorDistributedAttribute,
-)
-from ..auto_parallel.utils import is_forward_op, is_backward_op, is_loss_op
+from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
+from paddle.framework import core
+
+from ..auto_parallel.utils import is_backward_op, is_forward_op, is_loss_op
+from .pass_base import PassBase, register_pass
 
 world_process_group = get_world_process_group()
 
@@ -233,6 +226,9 @@ class AMPState:
                             dist_context, out_var, ref_mapping, ref_mesh
                         )
 
+                        op_namescope = "/"
+                        if op.has_attr('op_namescope'):
+                            op_namescope = op.attr('op_namescope')
                         cast_op = self._block._insert_op_without_sync(
                             idx,
                             type="cast",
@@ -243,6 +239,9 @@ class AMPState:
                                 "out_dtype": out_var.dtype,
                             },
                         )
+                        cast_op._set_attr(
+                            'op_namescope', op_namescope
+                        )  # for recompute
                         naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
                             cast_op, ref_mesh, ref_mapping, dist_context
                         )
@@ -801,6 +800,9 @@ class AMPPass(PassBase):
 
             pre_grad_name = first_backward_op.output_arg_names[0]
             first_backward_op._rename_output(pre_grad_name, cast_loss_grad.name)
+            naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                first_backward_op, ref_mesh, [-1], self.dist_context
+            )
             cast_grad_op = main_block._insert_op(
                 loss_op_idx + 3,
                 type='cast',
@@ -871,6 +873,9 @@ class AMPPass(PassBase):
             pre_grad_name = first_backward_op.output_arg_names[0]
             first_backward_op._rename_output(
                 pre_grad_name, self._scaled_loss_grad.name
+            )
+            naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                first_backward_op, ref_mesh, [-1], self.dist_context
             )
             # FIXME(JZ-LIANG) a trick to insert backward op
             main_block._sync_with_cpp()

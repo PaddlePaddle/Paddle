@@ -14,13 +14,13 @@
 import unittest
 import uuid
 
-import numpy as np
-import paddle
-from numpy.random import randint, randn
-from paddle.incubate.autograd import primops
-
 import config
+import numpy as np
 import utils
+from numpy.random import randint, randn
+
+import paddle
+from paddle.incubate.autograd import primops
 
 paddle.enable_static()
 

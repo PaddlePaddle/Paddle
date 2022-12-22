@@ -20,16 +20,19 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using phi::OneDNNContext;
 using phi::funcs::OneDNNGetDataType;
 using phi::funcs::OneDNNMemDesc;
+using phi::funcs::RNNReorderType;
+using OneDNNMemoryFormat = dnnl::memory::format_tag;
 
 template <typename T, typename T_out = T>
 class LSTMMKLDNNHandler
     : public RNNMKLDNNHandler<T, dnnl::lstm_forward, T_out> {
  public:
   LSTMMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
-                    const platform::MKLDNNDeviceContext& dev_ctx,
-                    const dnnl::engine mkldnn_engine,
+                    const OneDNNContext& dev_ctx,
+                    const dnnl::engine onednn_engine,
                     platform::Place cpu_place,
                     const phi::DenseTensor* input,
                     const phi::DenseTensor* weight_h,
@@ -44,7 +47,7 @@ class LSTMMKLDNNHandler
       : RNNMKLDNNHandler<T, dnnl::lstm_forward, T_out>(
             ctx,
             dev_ctx,
-            mkldnn_engine,
+            onednn_engine,
             ctx.GetPlace(),
             input,
             weight_h,
@@ -186,7 +189,7 @@ class LSTMMKLDNNHandler
       memory_p = std::make_shared<dnnl::memory>(
           this->fwd_pd_->weights_layer_desc(), this->engine_);
 
-      auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+      auto& astream = OneDNNContext::tls().get_stream();
       dnnl::reorder(user_memory, *memory_p, this->attr_)
           .execute(astream, user_memory, *memory_p);
 
@@ -218,7 +221,7 @@ class LSTMMKLDNNHandler
       memory_p = std::make_shared<dnnl::memory>(
           this->fwd_pd_->weights_iter_desc(), this->engine_);
 
-      auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+      auto& astream = OneDNNContext::tls().get_stream();
       dnnl::reorder(user_memory, *memory_p, this->attr_)
           .execute(astream, user_memory, *memory_p);
 
@@ -308,7 +311,7 @@ class LSTMMKLDNNHandler
       memory_p = std::make_shared<dnnl::memory>(
           this->fwd_pd_->src_iter_c_desc(), this->engine_);
 
-      auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+      auto& astream = OneDNNContext::tls().get_stream();
       dnnl::reorder(user_c0_memory, *memory_p)
           .execute(astream, user_c0_memory, *memory_p);
 
@@ -335,9 +338,8 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
 
   template <typename Tout = T>
   void RunKernel(const framework::ExecutionContext& ctx) const {
-    auto& dev_ctx =
-        ctx.template device_context<platform::MKLDNNDeviceContext>();
-    const auto& mkldnn_engine = dev_ctx.GetEngine();
+    auto& dev_ctx = ctx.template device_context<OneDNNContext>();
+    const auto& onednn_engine = dev_ctx.GetEngine();
 
     // Get Tensors
     const auto* input = ctx.Input<phi::DenseTensor>("X");
@@ -378,7 +380,7 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
     LSTMMKLDNNHandler<T, Tout> handler(
         ctx,
         dev_ctx,
-        mkldnn_engine,
+        onednn_engine,
         ctx.GetPlace(),
         input,
         weight_h,
@@ -444,7 +446,7 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
 
     auto lstm_forward_p = handler.AcquireForwardPrimitive();
 
-    auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+    auto& astream = OneDNNContext::tls().get_stream();
     lstm_forward_p->execute(astream, lstm_args);
     astream.wait();
 
@@ -456,13 +458,13 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
                              hidden_data,
                              input_lod,
                              is_reverse,
-                             platform::RNNReorderType::NTC_PP);
+                             RNNReorderType::NTC_PP);
     } else {
       handler.reorderRNNdata(hidden_onednn_data,
                              hidden_data,
                              input_lod,
                              is_reverse,
-                             platform::RNNReorderType::TNC_PP);
+                             RNNReorderType::TNC_PP);
     }
   }
 };
@@ -473,7 +475,7 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(fusion_lstm,
                    MKLDNN,
-                   paddle::platform::CPUPlace,
+                   phi::CPUPlace,
                    ops::FusionLSTMMKLDNNKernel<float>,
                    ops::FusionLSTMMKLDNNKernel<paddle::platform::bfloat16>,
                    ops::FusionLSTMMKLDNNKernel<uint8_t>);

@@ -15,8 +15,8 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/primitive/datamover_primitives.h"
@@ -428,8 +428,7 @@ __global__ void KernelMaxPool2DGrad(const int nthreads,
 
     if (maxIndex != -1) {
       // atomic add
-      paddle::platform::CudaAtomicAdd(input_grad + maxIndex,
-                                      output_grad[index]);
+      phi::CudaAtomicAdd(input_grad + maxIndex, output_grad[index]);
     }
   }
 }
@@ -1330,7 +1329,7 @@ __global__ void KernelMaxPool3DGrad(const int nthreads,
     }
     if (maxIdx != -1) {
       // atomic add
-      paddle::platform::CudaAtomicAdd(input_grad + maxIdx, output_grad[index]);
+      phi::CudaAtomicAdd(input_grad + maxIdx, output_grad[index]);
     }
   }
 }
@@ -2359,7 +2358,7 @@ __global__ void KernelMaxPool3DWithIdxGrad(
           w_offset;
       int max_index = mask[output_index];
       if (max_index != -1) {
-        paddle::platform::CudaAtomicAdd(
+        phi::CudaAtomicAdd(
             &input_grad[nc_offset * input_depth * input_height * input_width +
                         max_index],
             output_grad[output_index]);

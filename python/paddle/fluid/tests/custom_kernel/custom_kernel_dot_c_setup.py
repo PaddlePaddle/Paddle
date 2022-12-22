@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import os
-from paddle.fluid import core
 from distutils.sysconfig import get_python_lib
-from distutils.core import setup, Extension
+
+from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
+
+from paddle.fluid import core
 
 
 # refer: https://note.qidong.name/2018/03/setup-warning-strict-prototypes

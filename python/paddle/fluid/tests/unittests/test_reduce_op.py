@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
@@ -503,12 +505,12 @@ class TestAllOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
             # The input type of reduce_all_op must be Variable.
             input1 = 12
-            self.assertRaises(TypeError, fluid.layers.reduce_all, input1)
+            self.assertRaises(TypeError, paddle.all, input1)
             # The input dtype of reduce_all_op must be bool.
             input2 = fluid.layers.data(
                 name='input2', shape=[12, 10], dtype="int32"
             )
-            self.assertRaises(TypeError, fluid.layers.reduce_all, input2)
+            self.assertRaises(TypeError, paddle.all, input2)
 
 
 class TestAnyOp(OpTest):
@@ -620,12 +622,12 @@ class TestAnyOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
             # The input type of reduce_any_op must be Variable.
             input1 = 12
-            self.assertRaises(TypeError, fluid.layers.reduce_any, input1)
+            self.assertRaises(TypeError, paddle.any, input1)
             # The input dtype of reduce_any_op must be bool.
             input2 = fluid.layers.data(
                 name='input2', shape=[12, 10], dtype="int32"
             )
-            self.assertRaises(TypeError, fluid.layers.reduce_any, input2)
+            self.assertRaises(TypeError, paddle.any, input2)
 
 
 class Test1DReduce(OpTest):
@@ -914,10 +916,10 @@ class TestReduceSumOpError(unittest.TestCase):
             x1 = fluid.create_lod_tensor(
                 np.array([[-1]]), [[1]], fluid.CPUPlace()
             )
-            self.assertRaises(TypeError, fluid.layers.reduce_sum, x1)
+            self.assertRaises(TypeError, paddle.sum, x1)
             # The input dtype of reduce_sum_op  must be float32 or float64 or int32 or int64.
             x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
-            self.assertRaises(TypeError, fluid.layers.reduce_sum, x2)
+            self.assertRaises(TypeError, paddle.sum, x2)
 
 
 class API_TestSumOp(unittest.TestCase):
@@ -1112,7 +1114,5 @@ class TestAnyAPI(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    import paddle
-
     paddle.enable_static()
     unittest.main()

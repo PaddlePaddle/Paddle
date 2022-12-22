@@ -14,10 +14,12 @@
 
 import copy
 
+import paddle
 from paddle.fluid import layers, unique_name
 from paddle.fluid.dygraph import Layer
 from paddle.fluid.dygraph.layer_object_helper import LayerObjectHelper
 from paddle.fluid.layers.control_flow import StaticRNN
+import paddle
 
 __all__ = ['BasicGRUUnit', 'basic_gru', 'BasicLSTMUnit', 'basic_lstm']
 
@@ -95,8 +97,8 @@ class BasicGRUUnit(Layer):
         self._hiden_size = hidden_size
         self._param_attr = param_attr
         self._bias_attr = bias_attr
-        self._gate_activation = gate_activation or layers.sigmoid
-        self._activation = activation or layers.tanh
+        self._gate_activation = gate_activation or paddle.nn.functional.sigmoid
+        self._activation = activation or paddle.tanh
         self._dtype = dtype
 
     def _build_once(self, input, pre_hidden):
@@ -149,19 +151,19 @@ class BasicGRUUnit(Layer):
     def forward(self, input, pre_hidden):
         concat_input_hidden = layers.concat([input, pre_hidden], 1)
 
-        gate_input = layers.matmul(x=concat_input_hidden, y=self._gate_weight)
+        gate_input = paddle.matmul(x=concat_input_hidden, y=self._gate_weight)
 
-        gate_input = layers.elementwise_add(gate_input, self._gate_bias)
+        gate_input = paddle.add(gate_input, self._gate_bias)
 
         gate_input = self._gate_activation(gate_input)
-        r, u = layers.split(gate_input, num_or_sections=2, dim=1)
+        r, u = paddle.split(gate_input, num_or_sections=2, axis=1)
 
         r_hidden = r * pre_hidden
 
-        candidate = layers.matmul(
+        candidate = paddle.matmul(
             layers.concat([input, r_hidden], 1), self._candidate_weight
         )
-        candidate = layers.elementwise_add(candidate, self._candidate_bias)
+        candidate = paddle.add(candidate, self._candidate_bias)
 
         c = self._activation(candidate)
         new_hidden = u * pre_hidden + (1 - u) * c
@@ -324,21 +326,21 @@ def basic_gru(
             )
 
     if batch_first:
-        input = layers.transpose(input, [1, 0, 2])
+        input = paddle.transpose(input, [1, 0, 2])
 
     mask = None
     if sequence_length:
-        max_seq_len = layers.shape(input)[0]
+        max_seq_len = paddle.shape(input)[0]
         mask = layers.sequence_mask(
             sequence_length, maxlen=max_seq_len, dtype='float32'
         )
-        mask = layers.transpose(mask, [1, 0])
+        mask = paddle.transpose(mask, [1, 0])
 
     direc_num = 1
     if bidirectional:
         direc_num = 2
     if init_hidden:
-        init_hidden = layers.reshape(
+        init_hidden = paddle.reshape(
             init_hidden, shape=[num_layers, direc_num, -1, hidden_size]
         )
 
@@ -365,9 +367,9 @@ def basic_gru(
                 new_hidden = unit_list[i](step_input, pre_hidden)
 
                 if mask:
-                    new_hidden = layers.elementwise_mul(
+                    new_hidden = paddle.tensor.math._multiply_with_axis(
                         new_hidden, step_mask, axis=0
-                    ) - layers.elementwise_mul(
+                    ) - paddle.tensor.math._multiply_with_axis(
                         pre_hidden, (step_mask - 1), axis=0
                     )
                 rnn.update_memory(pre_hidden, new_hidden)
@@ -376,9 +378,9 @@ def basic_gru(
 
                 step_input = new_hidden
                 if dropout_prob is not None and dropout_prob > 0.0:
-                    step_input = layers.dropout(
+                    step_input = paddle.nn.functional.dropout(
                         step_input,
-                        dropout_prob=dropout_prob,
+                        p=dropout_prob,
                     )
 
             rnn.step_output(step_input)
@@ -393,7 +395,7 @@ def basic_gru(
             last_hidden_array.append(last_hidden)
 
         last_hidden_output = layers.concat(last_hidden_array, axis=0)
-        last_hidden_output = layers.reshape(
+        last_hidden_output = paddle.reshape(
             last_hidden_output, shape=[num_layers, -1, hidden_size]
         )
 
@@ -405,25 +407,25 @@ def basic_gru(
     )
 
     if bidirectional:
-        bw_input = layers.reverse(input, axis=[0])
+        bw_input = paddle.reverse(input, axis=[0])
         bw_mask = None
         if mask:
-            bw_mask = layers.reverse(mask, axis=[0])
+            bw_mask = paddle.reverse(mask, axis=[0])
         bw_rnn_out, bw_last_hidden = get_single_direction_output(
             bw_input, bw_unit_list, bw_mask, direc_index=1
         )
 
-        bw_rnn_out = layers.reverse(bw_rnn_out, axis=[0])
+        bw_rnn_out = paddle.reverse(bw_rnn_out, axis=[0])
 
         rnn_out = layers.concat([fw_rnn_out, bw_rnn_out], axis=2)
         last_hidden = layers.concat([fw_last_hidden, bw_last_hidden], axis=1)
 
-        last_hidden = layers.reshape(
+        last_hidden = paddle.reshape(
             last_hidden, shape=[num_layers * direc_num, -1, hidden_size]
         )
 
         if batch_first:
-            rnn_out = layers.transpose(rnn_out, [1, 0, 2])
+            rnn_out = paddle.transpose(rnn_out, [1, 0, 2])
         return rnn_out, last_hidden
     else:
 
@@ -431,7 +433,7 @@ def basic_gru(
         last_hidden = fw_last_hidden
 
         if batch_first:
-            rnn_out = layers.transpose(rnn_out, [1, 0, 2])
+            rnn_out = paddle.transpose(rnn_out, [1, 0, 2])
 
         return rnn_out, last_hidden
 
@@ -608,26 +610,26 @@ def basic_lstm(
             )
 
     if batch_first:
-        input = layers.transpose(input, [1, 0, 2])
+        input = paddle.transpose(input, [1, 0, 2])
 
     mask = None
     if sequence_length:
-        max_seq_len = layers.shape(input)[0]
+        max_seq_len = paddle.shape(input)[0]
         mask = layers.sequence_mask(
             sequence_length, maxlen=max_seq_len, dtype='float32'
         )
 
-        mask = layers.transpose(mask, [1, 0])
+        mask = paddle.transpose(mask, [1, 0])
 
     direc_num = 1
     if bidirectional:
         direc_num = 2
         # convert to [num_layers, 2, batch_size, hidden_size]
     if init_hidden:
-        init_hidden = layers.reshape(
+        init_hidden = paddle.reshape(
             init_hidden, shape=[num_layers, direc_num, -1, hidden_size]
         )
-        init_cell = layers.reshape(
+        init_cell = paddle.reshape(
             init_cell, shape=[num_layers, direc_num, -1, hidden_size]
         )
 
@@ -659,14 +661,14 @@ def basic_lstm(
                 )
 
                 if mask:
-                    new_hidden = layers.elementwise_mul(
+                    new_hidden = paddle.tensor.math._multiply_with_axis(
                         new_hidden, step_mask, axis=0
-                    ) - layers.elementwise_mul(
+                    ) - paddle.tensor.math._multiply_with_axis(
                         pre_hidden, (step_mask - 1), axis=0
                     )
-                    new_cell = layers.elementwise_mul(
+                    new_cell = paddle.tensor.math._multiply_with_axis(
                         new_cell, step_mask, axis=0
-                    ) - layers.elementwise_mul(
+                    ) - paddle.tensor.math._multiply_with_axis(
                         pre_cell, (step_mask - 1), axis=0
                     )
 
@@ -678,10 +680,10 @@ def basic_lstm(
 
                 step_input = new_hidden
                 if dropout_prob is not None and dropout_prob > 0.0:
-                    step_input = layers.dropout(
+                    step_input = paddle.nn.functional.dropout(
                         step_input,
-                        dropout_prob=dropout_prob,
-                        dropout_implementation='upscale_in_train',
+                        p=dropout_prob,
+                        mode='upscale_in_train',
                     )
 
             rnn.step_output(step_input)
@@ -700,11 +702,11 @@ def basic_lstm(
             last_cell_array.append(last_cell)
 
         last_hidden_output = layers.concat(last_hidden_array, axis=0)
-        last_hidden_output = layers.reshape(
+        last_hidden_output = paddle.reshape(
             last_hidden_output, shape=[num_layers, -1, hidden_size]
         )
         last_cell_output = layers.concat(last_cell_array, axis=0)
-        last_cell_output = layers.reshape(
+        last_cell_output = paddle.reshape(
             last_cell_output, shape=[num_layers, -1, hidden_size]
         )
 
@@ -716,29 +718,29 @@ def basic_lstm(
     )
 
     if bidirectional:
-        bw_input = layers.reverse(input, axis=[0])
+        bw_input = paddle.reverse(input, axis=[0])
         bw_mask = None
         if mask:
-            bw_mask = layers.reverse(mask, axis=[0])
+            bw_mask = paddle.reverse(mask, axis=[0])
         bw_rnn_out, bw_last_hidden, bw_last_cell = get_single_direction_output(
             bw_input, bw_unit_list, bw_mask, direc_index=1
         )
 
-        bw_rnn_out = layers.reverse(bw_rnn_out, axis=[0])
+        bw_rnn_out = paddle.reverse(bw_rnn_out, axis=[0])
 
         rnn_out = layers.concat([fw_rnn_out, bw_rnn_out], axis=2)
         last_hidden = layers.concat([fw_last_hidden, bw_last_hidden], axis=1)
-        last_hidden = layers.reshape(
+        last_hidden = paddle.reshape(
             last_hidden, shape=[num_layers * direc_num, -1, hidden_size]
         )
 
         last_cell = layers.concat([fw_last_cell, bw_last_cell], axis=1)
-        last_cell = layers.reshape(
+        last_cell = paddle.reshape(
             last_cell, shape=[num_layers * direc_num, -1, hidden_size]
         )
 
         if batch_first:
-            rnn_out = layers.transpose(rnn_out, [1, 0, 2])
+            rnn_out = paddle.transpose(rnn_out, [1, 0, 2])
         return rnn_out, last_hidden, last_cell
     else:
 
@@ -747,7 +749,7 @@ def basic_lstm(
         last_cell = fw_last_cell
 
         if batch_first:
-            rnn_out = layers.transpose(rnn_out, [1, 0, 2])
+            rnn_out = paddle.transpose(rnn_out, [1, 0, 2])
 
         return rnn_out, last_hidden, last_cell
 
@@ -845,8 +847,8 @@ class BasicLSTMUnit(Layer):
         self._hiden_size = hidden_size
         self._param_attr = param_attr
         self._bias_attr = bias_attr
-        self._gate_activation = gate_activation or layers.sigmoid
-        self._activation = activation or layers.tanh
+        self._gate_activation = gate_activation or paddle.nn.functional.sigmoid
+        self._activation = activation or paddle.tanh
         self._forget_bias = layers.fill_constant(
             [1], dtype=dtype, value=forget_bias
         )
@@ -872,17 +874,17 @@ class BasicLSTMUnit(Layer):
 
     def forward(self, input, pre_hidden, pre_cell):
         concat_input_hidden = layers.concat([input, pre_hidden], 1)
-        gate_input = layers.matmul(x=concat_input_hidden, y=self._weight)
+        gate_input = paddle.matmul(x=concat_input_hidden, y=self._weight)
 
-        gate_input = layers.elementwise_add(gate_input, self._bias)
-        i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
-        new_cell = layers.elementwise_add(
-            layers.elementwise_mul(
+        gate_input = paddle.add(gate_input, self._bias)
+        i, j, f, o = paddle.split(gate_input, num_or_sections=4, axis=-1)
+        new_cell = paddle.add(
+            paddle.multiply(
                 pre_cell,
-                layers.sigmoid(layers.elementwise_add(f, self._forget_bias)),
+                paddle.nn.functional.sigmoid(paddle.add(f, self._forget_bias)),
             ),
-            layers.elementwise_mul(layers.sigmoid(i), layers.tanh(j)),
+            paddle.multiply(paddle.nn.functional.sigmoid(i), paddle.tanh(j)),
         )
-        new_hidden = layers.tanh(new_cell) * layers.sigmoid(o)
+        new_hidden = paddle.tanh(new_cell) * paddle.nn.functional.sigmoid(o)
 
         return new_hidden, new_cell
