@@ -23,6 +23,13 @@ from paddle.fluid.framework import is_compiled_with_cuda  # noqa: F401
 from paddle.fluid.framework import is_compiled_with_rocm  # noqa: F401
 from . import cuda
 from . import xpu
+from .stream import Stream
+from .stream import Event
+from .stream import current_stream
+from .stream import set_stream
+from .stream import default_stream
+from .stream import synchronize
+from .stream import stream
 
 __all__ = [  # noqa
     'get_cudnn_version',
@@ -42,6 +49,13 @@ __all__ = [  # noqa
     'get_all_custom_device_type',
     'get_available_device',
     'get_available_custom_device',
+    'Stream',
+    'Event',
+    'current_stream',
+    'set_stream',
+    'default_stream',
+    'synchronize',
+    'stream',
 ]
 
 _cudnn_version = None
