@@ -1659,7 +1659,7 @@ def conv3d_transpose(
            H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[1] ] \\
            W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[2] ]
 
-    .. note::
+    Note:
         The conv3d_transpose can be seen as the backward of the conv3d. For conv3d,
         when stride > 1, conv3d maps multiple input shape to the same output shape,
         so for conv3d_transpose, when stride > 1, input shape maps multiple output shape.
