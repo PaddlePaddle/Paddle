@@ -21,6 +21,7 @@ import paddle.static as static
 import tempfile
 import subprocess
 import numpy as np
+import fluid
 from paddle.vision.transforms import Compose, Normalize
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 from paddle.fluid.framework import _test_eager_guard
