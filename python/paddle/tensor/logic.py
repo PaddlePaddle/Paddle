@@ -957,12 +957,12 @@ def bitwise_not(x, out=None, name=None):
 
 @templatedoc()
 def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
-    """
+    r"""
     This operator checks if all :math:`x` and :math:`y` satisfy the condition:
 
     .. math::
 
-        | x - y | <= atol + rtol X | y |
+        \left| x - y \right| \leq atol + rtol \times \left| y \right|
 
     elementwise, for all elements of :math:`x` and :math:`y`. The behaviour of this
     operator is analogous to :math:`numpy.isclose`, namely that it returns :math:`True` if
