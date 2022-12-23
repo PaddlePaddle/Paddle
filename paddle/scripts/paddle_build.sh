@@ -3473,7 +3473,6 @@ function run_setup(){
     # Delete previous built paddle cache
     rm -rf ${PADDLE_ROOT}/build/python/paddle 2>/dev/null || true
     startTime_s=`date +%s`
-
     SYSTEM=`uname -s`
     if [ "$SYSTEM" == "Darwin" ]; then
         echo "Using python abi: $1"
@@ -3784,7 +3783,7 @@ function main() {
         ;;
       cicheck_coverage)
         check_diff_file_for_coverage
-        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        run_setup ${PYTHON_ABI:-""} install
         enable_unused_var_check
         parallel_test
         check_coverage

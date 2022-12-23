@@ -29,7 +29,7 @@ __all__ = []
 class BCEWithLogitsLoss(Layer):
     r"""
 
-    This operator combines the sigmoid layer and the :ref:`api_paddle_nn_BCELoss` layer.
+    Combine the sigmoid layer and the :ref:`api_paddle_nn_BCELoss` layer.
 
     This measures the element-wise probability error in classification tasks
     in which each class is independent.
@@ -37,7 +37,7 @@ class BCEWithLogitsLoss(Layer):
     are not mutually exclusive. For example, a news article can be about
     politics, technology or sports at the same time or none of these.
 
-    First this operator calculate loss function as follows:
+    Firstly, calculate loss function as follows:
 
     .. math::
            Out = -Labels * \log(\sigma(Logit)) - (1 - Labels) * \log(1 - \sigma(Logit))
@@ -53,13 +53,13 @@ class BCEWithLogitsLoss(Layer):
         .. math::
            Out = \max(Logit, 0) - Logit * Labels + \log(1 + e^{-\|Logit\|})
 
-    Then, if ``weight`` or ``pos_weight`` is not None, this operator multiply the
+    Then, if ``weight`` or ``pos_weight`` is not None, then multiply the
     weight tensor on the loss `Out`. The ``weight`` tensor will attach different
     weight on every items in the batch. The ``pos_weight`` will attach different
     weight on the positive label of each class.
 
-    Finally, this operator applies reduce operation on the loss.
-    If :attr:`reduction` set to ``'none'``, the operator will return the original loss `Out`.
+    Finally, apply reduce operation on the loss.
+    If :attr:`reduction` set to ``'none'``, will return the original loss `Out`.
     If :attr:`reduction` set to ``'mean'``, the reduced mean loss is :math:`Out = MEAN(Out)`.
     If :attr:`reduction` set to ``'sum'``, the reduced sum loss is :math:`Out = SUM(Out)`.
 
@@ -82,22 +82,19 @@ class BCEWithLogitsLoss(Layer):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Shapes:
-        - logit (Tensor): The input predications tensor. 2-D tensor with shape: [N, `*`],
-          N is batch_size, `*` means number of additional dimensions. The ``logit``
-          is usually the output of Linear layer. Available dtype is float32, float64.
-        - label (Tensor): The target labels tensor. 2-D tensor with the same shape as
-          ``logit``. The target labels which values should be numbers between 0 and 1.
-          Available dtype is float32, float64.
-        - output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
-          same as ``logit`` , else the shape of output is scalar.
+        - logit (Tensor): The input predications tensor. 2-D tensor with shape: [N, `*`], N is batch_size, `*` means number of additional dimensions. The ``logit`` is usually the output of Linear layer. Available dtype is float32, float64.
+        - label (Tensor): The target labels tensor. 2-D tensor with the same shape as ``logit``. The target labels which values should be numbers between 0 and 1. Available dtype is float32, float64.
+        - output (Tensor): If ``reduction`` is ``'none'``, the shape of output is same as ``logit`` , else the shape of output is scalar.
 
     Returns:
         A callable object of BCEWithLogitsLoss.
 
     Examples:
+
         .. code-block:: python
 
             import paddle
+
             logit = paddle.to_tensor([5.0, 1.0, 3.0], dtype="float32")
             label = paddle.to_tensor([1.0, 0.0, 1.0], dtype="float32")
             bce_logit_loss = paddle.nn.BCEWithLogitsLoss()
@@ -722,14 +719,9 @@ class BCELoss(Layer):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
-        - input (Tensor): 2-D tensor with shape: ``[N, *]``, N is batch_size, `*` means
-          number of additional dimensions. The input ``input`` should always
-          be the output of sigmod.  Available dtype is float32, float64.
-        - label (Tensor): 2-D tensor with the same shape as ``input``. The target
-          labels which values should be numbers between 0 and 1. Available
-          dtype is float32, float64.
-        - output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
-          same as ``input`` , else the shape of output is scalar.
+        - input (Tensor): 2-D tensor with shape: ``[N, *]``, N is batch_size, `*` means number of additional dimensions. The input ``input`` should always be the output of sigmod. Available dtype is float32, float64.
+        - label (Tensor): 2-D tensor with the same shape as ``input``. The target labels which values should be numbers between 0 and 1. Available dtype is float32, float64.
+        - output (Tensor): If ``reduction`` is ``'none'``, the shape of output is same as ``input`` , else the shape of output is scalar.
 
     Returns:
         A callable object of BCELoss.
@@ -817,12 +809,12 @@ class NLLLoss(Layer):
         ignore_index (int, optional): Specifies a target value that is ignored
             and does not contribute to the input gradient.
         reduction (str, optional): Indicate how to average the loss,
-            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``. Default is ``'mean'``.
             If `reduction` is ``'mean'``, the reduced mean loss is returned;
             if `reduction` is ``'sum'``, the reduced sum loss is returned;
             if `reduction` is ``'none'``, no reduction will be apllied.
             Default is ``'mean'``.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default is ``'None'``.
 
     Shape:
         - input (Tensor): Input tensor, the shape is :math:`[N, C]`, `C` is the number of classes.
@@ -1126,6 +1118,79 @@ class CTCLoss(Layer):
             self.blank,
             self.reduction,
             norm_by_times=norm_by_times,
+        )
+
+
+class RNNTLoss(Layer):
+    """
+    Parameters:
+        blank (int, optional): blank label. Default: 0.
+        fastemit_lambda (float, optional): Regularization parameter for FastEmit (https://arxiv.org/pdf/2010.11148.pdf)
+        reduction (string, optional): Specifies the reduction to apply to the output:
+            'none' | 'mean' | 'sum'. 'none': no reduction will be applied,
+            'mean': the output losses will be divided by the target lengths and
+            then the mean over the batch is taken. Default: 'mean'
+
+    Shape:
+        input: logprob Tensor of (batch x seqLength x labelLength x outputDim) containing output from network
+        label: 2 dimensional (batch, labelLength) Tensor containing all the targets of the batch with zero padded
+        input_lengths: Tensor of size (batch) containing size of each output sequence from the network
+        label_lengths: Tensor of (batch) containing label length of each example
+
+    Returns:
+     Tensor, The RNN-T loss between ``logprobs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is [1]. Data type is the same as ``logprobs``.
+
+    Examples:
+        .. code-block:: python
+
+            # declarative mode
+            import numpy as np
+            import paddle
+            from paddle.nn import RNNTLoss
+
+            fn = RNNTLoss(reduction='sum', fastemit_lambda=0.0)
+
+            acts = np.array([[[[0.1, 0.6, 0.1, 0.1, 0.1],
+                            [0.1, 0.1, 0.6, 0.1, 0.1],
+                            [0.1, 0.1, 0.2, 0.8, 0.1]],
+                            [[0.1, 0.6, 0.1, 0.1, 0.1],
+                            [0.1, 0.1, 0.2, 0.1, 0.1],
+                            [0.7, 0.1, 0.2, 0.1, 0.1]]]])
+            labels = [[1, 2]]
+
+            acts = paddle.to_tensor(acts, stop_gradient=False)
+
+            lengths = [acts.shape[1]] * acts.shape[0]
+            label_lengths = [len(l) for l in labels]
+            labels = paddle.to_tensor(labels, paddle.int32)
+            lengths = paddle.to_tensor(lengths, paddle.int32)
+            label_lengths = paddle.to_tensor(label_lengths, paddle.int32)
+
+            costs = fn(acts, labels, lengths, label_lengths)
+            print(costs)
+            # Tensor(shape=[1], dtype=float64, place=Place(gpu:0), stop_gradient=False,
+            #        [4.49566677])
+    """
+
+    def __init__(
+        self, blank=0, fastemit_lambda=0.001, reduction='mean', name=None
+    ):
+        super().__init__()
+        self.blank = blank
+        self.reduction = reduction
+        self.fastemit_lambda = fastemit_lambda
+        self.name = name
+
+    def forward(self, input, label, input_lengths, label_lengths):
+        return paddle.nn.functional.rnnt_loss(
+            input,
+            label,
+            input_lengths,
+            label_lengths,
+            blank=self.blank,
+            fastemit_lambda=self.fastemit_lambda,
+            reduction=self.reduction,
+            name=self.name,
         )
 
 

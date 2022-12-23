@@ -593,7 +593,9 @@ class CrossEntropyCriterion:
     def __call__(self, predict, label, weights):
         if self.label_smooth_eps:
             label_out = F.label_smooth(
-                label=layers.one_hot(input=label, depth=predict.shape[-1]),
+                label=paddle.squeeze(
+                    paddle.nn.functional.one_hot(label, predict.shape[-1])
+                ),
                 epsilon=self.label_smooth_eps,
             )
 
@@ -775,7 +777,7 @@ class Transformer(Layer):
             finished = layers.cast(finished, dtype=probs.dtype)
             probs = paddle.multiply(
                 paddle.expand(
-                    layers.unsqueeze(finished, [2]),
+                    paddle.unsqueeze(finished, [2]),
                     [-1, -1, self.trg_vocab_size],
                 ),
                 noend_mask_tensor,
@@ -805,7 +807,7 @@ class Transformer(Layer):
         noend_array[eos_id] = 0
         noend_mask_tensor = to_variable(np.array(noend_array, dtype="float32"))
         batch_pos = paddle.expand(
-            layers.unsqueeze(
+            paddle.unsqueeze(
                 to_variable(np.arange(0, batch_size, 1, dtype="int64")), [1]
             ),
             [-1, beam_size],
