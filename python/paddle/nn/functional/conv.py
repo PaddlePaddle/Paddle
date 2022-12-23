@@ -852,7 +852,7 @@ def conv1d_transpose(
 
         .. math::
 
-           L^\prime_{out} &= (L_{in} - 1) * stride - 2 * padding + dilation * (L_f - 1) + 1 + output_padding \\\\
+           L^\prime_{out} &= (L_{in} - 1) * stride - 2 * padding + dilation * (L_f - 1) + 1 + output_padding \\
            L_{out} &\in [ L^\prime_{out}, L^\prime_{out} + stride ]
 
     Note:
