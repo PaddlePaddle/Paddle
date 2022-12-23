@@ -22,9 +22,6 @@ paddle.enable_static()
 
 class TestOpPriority(unittest.TestCase):
     def test_op_priority(self):
-        if not paddle.fluid.core.is_compiled_with_cuda():
-            return
-
         # In this test case, x and y share the same data,
         # which is initialized to 0. The shared data is
         # read and wrote by two concurrent Ops increment(x)

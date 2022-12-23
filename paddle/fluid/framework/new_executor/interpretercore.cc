@@ -1015,7 +1015,6 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
   // guaranteed. Only Ops scheduled by the same AddTask call have the guarantee
   // of priority order.
   SchedulingQueue ready_ops(instruction_prority_less);
-
   ready_ops.push(instr_id);
   while (!ready_ops.empty()) {
     instr_id = ready_ops.top();
