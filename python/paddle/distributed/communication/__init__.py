@@ -27,4 +27,5 @@ from .group import (
     get_group,
     wait,
     barrier,
+    get_backend,
 )

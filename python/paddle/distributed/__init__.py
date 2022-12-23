@@ -29,6 +29,7 @@ from paddle.distributed.fleet.base.topology import ParallelMode  # noqa: F401
 
 from .collective import split  # noqa: F401
 from .collective import new_group  # noqa: F401
+from .collective import is_available  # noqa: F401
 
 from .communication import (
     stream,
@@ -55,6 +56,7 @@ from .communication import (
     get_group,
     wait,
     barrier,
+    get_backend,
 )  # noqa: F401
 
 from .auto_parallel import shard_op  # noqa: F401
@@ -118,4 +120,6 @@ __all__ = [  # noqa
     "isend",
     "irecv",
     "reduce_scatter",
+    "is_available",
+    "get_backend",
 ]
