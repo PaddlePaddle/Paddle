@@ -90,23 +90,19 @@ class TestCinnLaunchOp : public ::testing::Test {
 };
 
 TEST_F(TestCinnLaunchOp, TestRunCPUInstructionByPE) {
-  framework::Scope* scope1 = new framework::Scope();
-  RunAndCheck(platform::CPUPlace(), scope1);
+  framework::Scope scope1;
+  RunAndCheck(platform::CPUPlace(), &scope1);
   // the second run on the same place is to check the cache logic
-  framework::Scope* scope2 = new framework::Scope();
-  RunAndCheck(platform::CPUPlace(), scope2);
-  delete scope1;
-  delete scope2;
+  framework::Scope scope2;
+  RunAndCheck(platform::CPUPlace(), &scope2);
 }
 
 #ifdef PADDLE_WITH_CUDA
 TEST_F(TestCinnLaunchOp, TestRunGPUInstructionByPE) {
-  framework::Scope* scope1 = new framework::Scope();
-  RunAndCheck(platform::CUDAPlace(), scope1);
-  framework::Scope* scope2 = new framework::Scope();
-  RunAndCheck(platform::CUDAPlace(), scope2);
-  delete scope1;
-  delete scope2;
+  framework::Scope scope1;
+  RunAndCheck(platform::CUDAPlace(), &scope1);
+  framework::Scope scope2;
+  RunAndCheck(platform::CUDAPlace(), &scope2);
 }
 #endif
 
@@ -115,12 +111,10 @@ TEST_F(TestCinnLaunchOp, TestRunCPUInstructionByCinnProgram) {
   // default scheduler of CINN to execute the compiled program
   FLAGS_enable_pe_launch_cinn = false;
   FLAGS_enable_interpretercore_launch_cinn = false;
-  framework::Scope* scope1 = new framework::Scope();
-  RunAndCheck(platform::CPUPlace(), scope1);
-  framework::Scope* scope2 = new framework::Scope();
-  RunAndCheck(platform::CPUPlace(), scope2);
-  delete scope1;
-  delete scope2;
+  framework::Scope scope1;
+  RunAndCheck(platform::CPUPlace(), &scope1);
+  framework::Scope scope2;
+  RunAndCheck(platform::CPUPlace(), &scope2);
 }
 
 #ifdef PADDLE_WITH_CUDA
@@ -129,12 +123,10 @@ TEST_F(TestCinnLaunchOp, TestRunGPUInstructionByCinnProgram) {
   // default scheduler of CINN to execute the compiled program
   FLAGS_enable_pe_launch_cinn = false;
   FLAGS_enable_interpretercore_launch_cinn = false;
-  framework::Scope* scope1 = new framework::Scope();
-  RunAndCheck(platform::CUDAPlace(), scope1);
-  framework::Scope* scope2 = new framework::Scope();
-  RunAndCheck(platform::CUDAPlace(), scope2);
-  delete scope1;
-  delete scope2;
+  framework::Scope scope1;
+  RunAndCheck(platform::CUDAPlace(), &scope1);
+  framework::Scope scope2;
+  RunAndCheck(platform::CUDAPlace(), &scope2);
 }
 #endif
 
@@ -142,12 +134,10 @@ TEST_F(TestCinnLaunchOp, TestRunWithAutoTuneEnabled) {
   FLAGS_enable_cinn_auto_tune = true;
 
   // currently only check on cpu, will add a test for gpu after CINN ready
-  framework::Scope* scope1 = new framework::Scope();
-  RunAndCheck(platform::CPUPlace(), scope1);
-  framework::Scope* scope2 = new framework::Scope();
-  RunAndCheck(platform::CPUPlace(), scope2);
-  delete scope1;
-  delete scope2;
+  framework::Scope scope1;
+  RunAndCheck(platform::CPUPlace(), &scope1);
+  framework::Scope scope2;
+  RunAndCheck(platform::CPUPlace(), &scope2);
 }
 
 namespace details {

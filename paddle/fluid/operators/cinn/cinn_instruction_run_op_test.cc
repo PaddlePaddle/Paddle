@@ -105,25 +105,21 @@ class TestCinnInstructionRunOp : public ::testing::Test {
 TEST_F(TestCinnInstructionRunOp, CPU) {
   platform::CPUPlace place;
   Compile(place);
-  framework::Scope* scope1 = new framework::Scope();
-  RunAndCheck(place, scope1);
+  framework::Scope scope1;
+  RunAndCheck(place, &scope1);
   // the second run on the same place is to check the cache logic
-  framework::Scope* scope2 = new framework::Scope();
-  RunAndCheck(place, scope2);
-  delete scope1;
-  delete scope2;
+  framework::Scope scope2;
+  RunAndCheck(place, &scope2);
 }
 
 #ifdef PADDLE_WITH_CUDA
 TEST_F(TestCinnInstructionRunOp, GPU) {
   platform::CUDAPlace place;
   Compile(place);
-  framework::Scope* scope1 = new framework::Scope();
-  RunAndCheck(place, scope1);
-  framework::Scope* scope2 = new framework::Scope();
-  RunAndCheck(place, scope2);
-  delete scope1;
-  delete scope2;
+  framework::Scope scope1;
+  RunAndCheck(place, &scope1);
+  framework::Scope scope2;
+  RunAndCheck(place, &scope2);
 }
 #endif
 
