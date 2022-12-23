@@ -6193,7 +6193,7 @@ class Program:
                     for output_proto in proto.outputs:
                         if output_proto.name != name:
                             continue
-                        if output_proto.extra:
+                        if output_proto.extra or output_proto.intermediate:
                             remove_output_list.append(name)
                         find = True
                         break
