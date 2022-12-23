@@ -31,6 +31,36 @@ namespace paddle {
 namespace framework {
 namespace details {
 
+static std::once_flag init_multi_gpu_op_var_map_flag;
+
+// lazy init
+static std::vector<std::unordered_map<std::string, memory::AllocationPtr>>&
+multi_op_var2gpu_str() {
+  static std::vector<std::unordered_map<std::string, memory::AllocationPtr>>
+      _multi_op_var2gpu_str;
+  return _multi_op_var2gpu_str;
+}
+
+static std::vector<std::mutex>& multi_op_var2gpu_str_mutex() {
+  static std::vector<std::mutex> _multi_op_var2gpu_str_mutex;
+  return _multi_op_var2gpu_str_mutex;
+}
+
+static void InitMultiGPUOpVarMap() {
+  int dev_count = platform::GetGPUDeviceCount();
+  PADDLE_ENFORCE_GT(dev_count,
+                    0,
+                    platform::errors::NotFound(
+                        "cuda device must > 0, now dev_count=%d", dev_count));
+
+  // https://stackoverflow.com/questions/16465633/how-can-i-use-something-like-stdvectorstdmutex
+  std::vector<std::unordered_map<std::string, memory::AllocationPtr>> tmp_multi(
+      dev_count);
+  std::vector<std::mutex> tmp_multi_mutex(dev_count);
+
+  multi_op_var2gpu_str().swap(tmp_multi);
+  multi_op_var2gpu_str_mutex().swap(tmp_multi_mutex);
+}
 
 template <typename T>
 __device__ __forceinline__ void PrintNanInfKernel(const T* value,
@@ -279,6 +309,7 @@ __global__ void FindGlobalMaxMinAndPrint(const int64_t* block_num_nan_ptr,
         mean_value += tmp_mean_value;
       }
     }
+
     PrintForDifferentLevel<T, MT>(debug_info,
                                   numel,
                                   num_nan,
@@ -291,18 +322,26 @@ __global__ void FindGlobalMaxMinAndPrint(const int64_t* block_num_nan_ptr,
 }
 
 template <typename T>
-static char* GetGpuHintStringPtr(const phi::GPUContext& ctx,
-                                 const std::string& op_type,
+inline std::string GetHintString(const std::string& op_type,
                                  const std::string& var_name,
-                                 int dev_id) {
+                                 const phi::Place& place,
+                                 int dev_id = -1) {
+  std::string op_var = GetCpuHintString<T>(op_type, var_name, place, dev_id);
   PADDLE_ENFORCE_EQ(
       (dev_id >= 0 && dev_id < multi_op_var2gpu_str_mutex().size()),
       true,
       platform::errors::OutOfRange("GPU dev_id must >=0 and < dev_count=%d",
                                    multi_op_var2gpu_str_mutex().size()));
+  return op_var;
+}
 
+template <typename T>
+static char* GetGpuHintStringPtr(const phi::GPUContext& ctx,
+                                 const std::string& op_type,
+                                 const std::string& var_name,
+                                 int dev_id) {
   std::string op_var =
-      GetCpuHintString<T>(op_type, var_name, ctx.GetPlace(), dev_id);
+      GetHintString<T>(op_type, var_name, ctx.GetPlace(), dev_id);
   char* gpu_str_ptr = nullptr;
 
   {
@@ -365,6 +404,20 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
   auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(
       platform::DeviceContextPool::Instance().Get(tensor.place()));
   int dev_id = tensor.place().device;
+  if (FLAGS_check_nan_inf_level >= 4) {
+    phi::DenseTensor cpu_tensor;
+    platform::CPUPlace cpu_place;
+    cpu_tensor.Resize(tensor.dims());
+    paddle::framework::TensorCopySync(tensor, cpu_place, &cpu_tensor);
+    auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(
+        platform::DeviceContextPool::Instance().Get(tensor.place()));
+    const std::string debug_info =
+        GetHintString<T>(op_type, var_name, place, dev_id);
+    // copy from gpu to cpu
+    // copy data from gpu to cpu
+    CheckNanInfCpuImpl(cpu_tensor.data<T>(), tensor.numel(), debug_info, "gpu");
+    return;
+  }
   char* gpu_str_ptr =
       GetGpuHintStringPtr<T>(*dev_ctx, op_type, var_name, dev_id);
 
@@ -427,6 +480,18 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
                                        numel_max_min,
                                        check_nan_inf_level);
 #endif
+}
+
+template <>
+void tensor_check<phi::GPUContext>(const std::string& op_type,
+                                   const std::string& var_name,
+                                   const phi::DenseTensor& tensor,
+                                   const platform::Place& place) {
+  std::call_once(init_multi_gpu_op_var_map_flag, InitMultiGPUOpVarMap);
+
+  TensorCheckerVisitor<phi::GPUContext> vistor(
+      op_type, var_name, tensor, place);
+  VisitDataType(framework::TransToProtoVarType(tensor.dtype()), vistor);
 }
 
 }  // namespace details
