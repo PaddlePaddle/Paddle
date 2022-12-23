@@ -33,7 +33,7 @@ from paddle.jit.dy2static.partial_program import (
     add_build_strategy_for,
 )
 
-__all__ = ['TranslatedLayer']
+__all__ = []
 
 INFER_MODEL_SUFFIX = ".pdmodel"
 INFER_PARAMS_SUFFIX = ".pdiparams"
