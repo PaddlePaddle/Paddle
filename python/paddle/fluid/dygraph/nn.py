@@ -28,7 +28,6 @@ from ..framework import (
     default_main_program,
     _global_flags,
     in_dygraph_mode,
-    _in_legacy_dygraph,
 )
 
 from ..data_feeder import (
@@ -264,37 +263,6 @@ class BatchNorm(layers.Layer):
                 )
                 return dygraph_utils._append_activation_in_dygraph(
                     batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn
-                )
-
-            elif _in_legacy_dygraph():
-                attrs = (
-                    "momentum",
-                    self._momentum,
-                    "epsilon",
-                    self._epsilon,
-                    "is_test",
-                    not self.training,
-                    "data_layout",
-                    self._data_layout,
-                    "use_mkldnn",
-                    self._use_mkldnn,
-                    "fuse_with_relu",
-                    self._fuse_with_relu,
-                    "use_global_stats",
-                    self._use_global_stats,
-                    'trainable_statistics',
-                    self._trainable_statistics,
-                )
-                batch_norm_out, _, _, _, _, _ = _legacy_C_ops.batch_norm(
-                    input,
-                    self.weight,
-                    self.bias,
-                    self._mean,
-                    self._variance,
-                    None,
-                    mean_out,
-                    variance_out,
-                    *attrs
                 )
 
             return dygraph_utils._append_activation_in_dygraph(
