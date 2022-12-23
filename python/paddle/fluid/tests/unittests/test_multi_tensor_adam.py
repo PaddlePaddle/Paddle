@@ -300,14 +300,26 @@ class TestMultiTensorAdam(unittest.TestCase):
                                     test_diff_lr,
                                 )
 
-        for multi_precision in [True, False]:
-            for use_gpu in [True, False]:
-                if use_gpu and not paddle.is_compiled_with_cuda():
-                    continue
-                if use_gpu:
-                    paddle.set_device("gpu")
-                else:
-                    paddle.set_device("cpu")
+        for use_gpu in [True, False]:
+            if use_gpu and not paddle.is_compiled_with_cuda():
+                continue
+            if use_gpu:
+                paddle.set_device("gpu")
+            else:
+                paddle.set_device("cpu")
+            if use_gpu:
+                test_raise_error = True
+                self.get_adam_or_adamw_out(
+                    True,
+                    True,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                    test_raise_error,
+                )
+            for multi_precision in [True, False]:
                 test_fp16 = False
                 # print(
                 #     f'use_gpu = {use_gpu} use_adamw = {use_adamw} test_dict = {test_dict} test_fp16 = {test_fp16}'
@@ -330,19 +342,6 @@ class TestMultiTensorAdam(unittest.TestCase):
                         False,
                         multi_precision,
                     )
-
-        test_raise_error = True
-
-        self.get_adam_or_adamw_out(
-            True,
-            True,
-            False,
-            False,
-            False,
-            False,
-            False,
-            test_raise_error,
-        )
 
         paddle.set_device(old_device)
 
