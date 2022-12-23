@@ -80,8 +80,8 @@ struct MultiHeadMatmulRoformerPattern : public PatternBase {
 
   // declare operator node's name
   PATTERN_DECL_NODE(input0);
-  PATTERN_DECL_NODE(input_cos);
-  PATTERN_DECL_NODE(input_sin);
+  PATTERN_DECL_NODE(input_cos_q);
+  PATTERN_DECL_NODE(input_sin_q);
   PATTERN_DECL_NODE(mul0);
   PATTERN_DECL_NODE(mul1);
   PATTERN_DECL_NODE(mul2);
@@ -119,21 +119,45 @@ struct MultiHeadMatmulRoformerPattern : public PatternBase {
   PATTERN_DECL_NODE(transpose2_2_out);
   PATTERN_DECL_NODE(transpose2_qkv_out);
 
+  
+  PATTERN_DECL_NODE(shape_q);
+  PATTERN_DECL_NODE(shape_q_out);
+  PATTERN_DECL_NODE(slice_q);
+  PATTERN_DECL_NODE(slice_q_out);
+  PATTERN_DECL_NODE(slice_cos_q);
+  PATTERN_DECL_NODE(slice_cos_q_out);
+  PATTERN_DECL_NODE(slice_sin_q);
+  PATTERN_DECL_NODE(slice_sin_q_out);
   PATTERN_DECL_NODE(eltmul_cos_q);
   PATTERN_DECL_NODE(eltmul_cos_q_out);
   PATTERN_DECL_NODE(eltmul_sin_q);
   PATTERN_DECL_NODE(eltmul_sin_q_out);
+
+  PATTERN_DECL_NODE(shape_k);
+  PATTERN_DECL_NODE(shape_k_out);
+  PATTERN_DECL_NODE(slice_k);
+  PATTERN_DECL_NODE(slice_k_out);
+  PATTERN_DECL_NODE(slice_cos_k);
+  PATTERN_DECL_NODE(slice_cos_k_out);
+  PATTERN_DECL_NODE(slice_sin_k);
+  PATTERN_DECL_NODE(slice_sin_k_out);
   PATTERN_DECL_NODE(eltmul_cos_k);
   PATTERN_DECL_NODE(eltmul_cos_k_out);
   PATTERN_DECL_NODE(eltmul_sin_k);
   PATTERN_DECL_NODE(eltmul_sin_k_out);
 
   PATTERN_DECL_NODE(split_q);
-  PATTERN_DECL_NODE(split_q_out);
+  PATTERN_DECL_NODE(split_q_out_0);
+  PATTERN_DECL_NODE(split_q_out_1);
+  PATTERN_DECL_NODE(scale_q);
+  PATTERN_DECL_NODE(scale_q_out);
   PATTERN_DECL_NODE(concat_q);
   PATTERN_DECL_NODE(concat_q_out);
   PATTERN_DECL_NODE(split_k);
-  PATTERN_DECL_NODE(split_k_out);
+  PATTERN_DECL_NODE(split_k_out_0);
+  PATTERN_DECL_NODE(split_k_out_1);
+  PATTERN_DECL_NODE(scale_k);
+  PATTERN_DECL_NODE(scale_k_out);
   PATTERN_DECL_NODE(concat_k);
   PATTERN_DECL_NODE(concat_k_out);
 

@@ -30,8 +30,30 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("Input").front());
-    auto* input_cos = engine_->GetITensor(op_desc.Input("Input_cos").front());
-    auto* input_sin = engine_->GetITensor(op_desc.Input("Input_sin").front());
+    int input_cos_len = op_desc.Input("Input_cos").front().length();
+    std::string new_input_cos = op_desc.Input("Input_cos").front().substr(0, input_cos_len - 1);
+    int input_sin_len = op_desc.Input("Input_sin").front().length();
+    std::string new_input_sin = op_desc.Input("Input_sin").front().substr(0, input_sin_len - 1);
+
+    //auto* input_cos = engine_->GetITensor(op_desc.Input("Input_cos").front());
+    //auto* input_sin = engine_->GetITensor(op_desc.Input("Input_sin").front());
+    auto* input_cos = engine_->GetITensor(new_input_cos);
+    auto* input_sin = engine_->GetITensor(new_input_sin);
+    /*
+    auto input_cos_name = op_desc.Input("Input_cos").front();
+    auto* inpt_cos_v = scope.FindVar(input_cos_name);
+    auto* input_cos_t = inpt_cos_v->GetMutable<phi::DenseTensor>();
+    float* input_cos_data = nullptr;
+    input_cos_data = const_cast<float*>(static_cast<const float*>(
+        engine_->GetFp32TrtWeight(input_cos_name, *input_cos_t).get().values));
+
+    auto input_sin_name = op_desc.Input("Input_sin").front();
+    auto* inpt_sin_v = scope.FindVar(input_sin_name);
+    auto* input_sin_t = inpt_sin_v->GetMutable<phi::DenseTensor>();
+    float* input_sin_data = nullptr;
+    input_sin_data = const_cast<float*>(static_cast<const float*>(
+        engine_->GetFp32TrtWeight(input_sin_name, *input_sin_t).get().values));
+    */
     // fc weights and fc bias
     auto weight_name = op_desc.Input("W").front();
     auto bias_name = op_desc.Input("Bias").front();
@@ -108,7 +130,14 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
         TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT,
                                     static_cast<void*>(bias_data),
                                     static_cast<size_t>(bias_t->numel())};
-
+        /*
+        TensorRTEngine::Weight input_cos{nvinfer1::DataType::kFLOAT,
+                                    static_cast<void*>(input_cos_data),
+                                    static_cast<size_t>(input_cos_t->numel())};
+        TensorRTEngine::Weight input_sin{nvinfer1::DataType::kFLOAT,
+                                    static_cast<void*>(input_sin_data),
+                                   static_cast<size_t>(input_sin_t->numel())};
+        */
         // add shuffle before fc
         nvinfer1::Dims reshape_before_fc_dim;
         reshape_before_fc_dim.nbDims = 5;
