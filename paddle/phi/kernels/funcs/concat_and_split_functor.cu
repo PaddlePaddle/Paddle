@@ -19,32 +19,188 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-template <typename T>
-__global__ void ConcatKernel_(const T** inputs,
-                              const int64_t* input_cols,
-                              int col_size,
-                              const int64_t output_rows,
-                              const int64_t output_cols,
-                              T* output) {
-  int64_t curr_segment = 0;
-  int64_t curr_offset = input_cols[0];
-  CUDA_KERNEL_LOOP_TYPE(tid_x, output_cols, int64_t) {
-    int64_t curr_col_offset = input_cols[curr_segment + 1];
+namespace {
+
+static inline void GetBlockDims(const phi::GPUContext& context,
+                                int64_t num_rows,
+                                int64_t num_cols,
+                                dim3* block_dims,
+                                dim3* grid_dims) {
+  // Set the thread block and grid according to CurrentDeviceId
+  const int kThreadsPerBlock = 1024;
+  int block_cols = kThreadsPerBlock;
+  if (num_cols < kThreadsPerBlock) {  // block_cols is aligned by 32.
+    block_cols = ((num_cols + 31) >> 5) << 5;
+  }
+  int block_rows = kThreadsPerBlock / block_cols;
+  *block_dims = dim3(block_cols, block_rows, 1);
+
+  constexpr int waves = 16; 
+  int max_threads = context.GetMaxPhysicalThreadCount() * waves;
+  int64_t max_blocks = std::max(max_threads / kThreadsPerBlock, 1);
+
+  int grid_cols =
+      std::min((num_cols + block_cols - 1) / block_cols, max_blocks);
+  int grid_rows = std::min(max_blocks / grid_cols,
+                           std::max(num_rows / block_rows, (int64_t)1));
+  *grid_dims = dim3(grid_cols, grid_rows, 1);
+} 
+
+} // namespace 
+
+template <typename IndexType, int MovSize>
+__global__ void ConcatKernelMultiInputKernel(const void** inputs,
+                                             const IndexType* input_cols,
+                                             const IndexType output_rows,
+                                             const IndexType vectorized_output_cols, 
+                                             void* output) {
+  using VecT = typename std::aligned_storage<MovSize, MovSize>::type;
+  const VecT** src = reinterpret_cast<const VecT**>(inputs);
+  VecT* dst = reinterpret_cast<VecT*>(output);
+
+  IndexType curr_segment = 0;
+  IndexType curr_offset = input_cols[0];
+  CUDA_KERNEL_LOOP_TYPE(tid_x, vectorized_output_cols, IndexType) {
+    IndexType curr_col_offset = input_cols[curr_segment + 1];
     while (curr_col_offset <= tid_x) {
       curr_offset = curr_col_offset;
       ++curr_segment;
       curr_col_offset = input_cols[curr_segment + 1];
     }
 
-    int64_t local_col = tid_x - curr_offset;
-    int64_t segment_width = curr_col_offset - curr_offset;
+    IndexType local_col = tid_x - curr_offset;
+    IndexType segment_width = curr_col_offset - curr_offset;
 
-    const T* input_ptr = inputs[curr_segment];
-    int64_t tid_y = blockIdx.y * blockDim.y + threadIdx.y;
-    for (; tid_y < output_rows; tid_y += blockDim.y * gridDim.y)
-      output[tid_y * output_cols + tid_x] =
-          input_ptr[tid_y * segment_width + local_col];
+    const VecT* input_ptr = src[curr_segment];
+    IndexType tid_y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    for (; tid_y < output_rows; tid_y += blockDim.y * gridDim.y){
+      dst[tid_y * vectorized_output_cols + tid_x] = input_ptr[tid_y * segment_width + local_col]; 
+    }
   }
+}
+
+template<typename T, typename IndexType>
+void DispatchConcatMultiInputKernelVecsize(const phi::GPUContext& context,
+                                 const T** inputs_data,
+                                 const int64_t* input_cols_ptr,
+                                 const int64_t output_rows,
+                                 const int64_t output_cols,
+                                 T* output, 
+                                 const int64_t vec_size, 
+                                 const int64_t in_num){
+  const int64_t inputs_col_num = in_num + 1; 
+  std::vector<IndexType> inputs_col_vec(inputs_col_num);
+  for(int i = 0; i < inputs_col_num; i++){
+    // Here we preprocess to get vectorized input cols size. 
+    inputs_col_vec.at(i) = static_cast<IndexType>(input_cols_ptr[i]) / vec_size; 
+  }
+
+  IndexType* inputs_col_data = inputs_col_vec.data(); 
+
+  dim3 block_dims;
+  dim3 grid_dims;
+
+  const int64_t vectorized_output_cols = output_cols / vec_size; 
+
+  GetBlockDims(context, output_rows, vectorized_output_cols, &block_dims, &grid_dims);
+  auto tmp_dev_ins_col_data = paddle::memory::Alloc(
+          context.GetPlace(),
+          inputs_col_num * sizeof(IndexType),
+          phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
+  auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
+      inputs_col_data, inputs_col_num);
+  paddle::memory::Copy(context.GetPlace(),
+                        tmp_dev_ins_col_data->ptr(),
+                        paddle::platform::CPUPlace(),
+                        restored,
+                        inputs_col_num * sizeof(IndexType),
+                        context.stream());
+  IndexType* dev_ins_col_data =
+      static_cast<IndexType*>(tmp_dev_ins_col_data->ptr());
+
+  paddle::memory::allocation::AllocationPtr tmp_dev_ins_data;
+  const T** dev_ins_data = nullptr;
+  tmp_dev_ins_data = paddle::memory::Alloc(
+          context.GetPlace(),
+          in_num * sizeof(T*),
+          phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
+  auto* restored2 = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
+      inputs_data, in_num);
+  paddle::memory::Copy(context.GetPlace(),
+                        tmp_dev_ins_data->ptr(),
+                        paddle::platform::CPUPlace(),
+                        restored2,
+                        in_num * sizeof(T*),
+                        context.stream());
+  dev_ins_data = reinterpret_cast<const T**>(tmp_dev_ins_data->ptr());
+  const int32_t mov_size = vec_size * sizeof(T); 
+  if(mov_size == 16){
+    ConcatKernelMultiInputKernel<IndexType, 16><<<grid_dims, block_dims, 0, context.stream()>>>(reinterpret_cast<const void**>(dev_ins_data), dev_ins_col_data, output_rows, vectorized_output_cols, reinterpret_cast<void*>(output)); 
+  } else if(mov_size == 8){
+    ConcatKernelMultiInputKernel<IndexType, 8><<<grid_dims, block_dims, 0, context.stream()>>>(reinterpret_cast<const void**>(dev_ins_data), dev_ins_col_data, output_rows, vectorized_output_cols, reinterpret_cast<void*>(output)); 
+  } else if(mov_size == 4){
+    ConcatKernelMultiInputKernel<IndexType, 4><<<grid_dims, block_dims, 0, context.stream()>>>(reinterpret_cast<const void**>(dev_ins_data), dev_ins_col_data, output_rows, vectorized_output_cols, reinterpret_cast<void*>(output)); 
+  } else if(mov_size == 2){
+    ConcatKernelMultiInputKernel<IndexType, 2><<<grid_dims, block_dims, 0, context.stream()>>>(reinterpret_cast<const void**>(dev_ins_data), dev_ins_col_data, output_rows, vectorized_output_cols, reinterpret_cast<void*>(output)); 
+  } else {
+    ConcatKernelMultiInputKernel<IndexType, 1><<<grid_dims, block_dims, 0, context.stream()>>>(reinterpret_cast<const void**>(dev_ins_data), dev_ins_col_data, output_rows, vectorized_output_cols, reinterpret_cast<void*>(output)); 
+  }
+}
+
+template<typename T>
+void DispatchConcatMultiInputKernelIndexType(const phi::GPUContext& context,
+                                             const T** inputs_data,
+                                             const int64_t* input_cols,
+                                             const int64_t output_rows,
+                                             const int64_t output_cols,
+                                             T* output, 
+                                             const int64_t vec_size, 
+                                             const int64_t in_num){
+  if(output_cols > std::numeric_limits<int32_t>::max()){
+    DispatchConcatMultiInputKernelVecsize<T, int64_t>(
+      context, inputs_data, input_cols, output_rows,
+      output_cols, output, vec_size, in_num
+    ); 
+  } else {
+    DispatchConcatMultiInputKernelVecsize<T, int32_t>(
+      context, inputs_data, input_cols, output_rows,
+      output_cols, output, vec_size, in_num
+    ); 
+  }
+}
+
+template<typename T>
+void DispatchMultiInputConcatKernel(const phi::GPUContext& context,
+                                    const T** inputs,
+                                    const int64_t* input_cols,
+                                    const int64_t input_num, 
+                                    const int64_t output_rows,
+                                    const int64_t output_cols,
+                                    T* output){
+  constexpr int32_t MaxVecSize = 16 / sizeof(T); 
+  bool find_vecsize_flag = false; 
+  int64_t dispatch_vec_size = 1; 
+
+  for(int32_t vec_size = MaxVecSize; vec_size > 0; vec_size /= 2){
+    for(int64_t idx = 0; idx < input_num; idx++){
+      // Since input_cols[0] is 0, we need to jump. 
+      const int64_t input_col = input_cols[idx + 1] - input_cols[idx];  
+      if(input_col % vec_size == 0){
+        if(idx == input_num - 1){
+          find_vecsize_flag = true; 
+        }
+      } else {
+        break; 
+      }
+    }
+    if(find_vecsize_flag){
+      dispatch_vec_size = vec_size; 
+      break; 
+    }
+  }
+  DispatchConcatMultiInputKernelIndexType<T>(context, inputs, input_cols, 
+                              output_rows, output_cols, output, dispatch_vec_size, input_num); 
 }
 
 template <typename T>
@@ -226,30 +382,6 @@ __global__ void SplitKernel_(const T* input_data,
   SplitKernelDetail<T>(input_data, in_row, in_col, fixed_out_col, outputs_data);
 }
 
-static inline void GetBlockDims(const phi::GPUContext& context,
-                                int64_t num_rows,
-                                int64_t num_cols,
-                                dim3* block_dims,
-                                dim3* grid_dims) {
-  // Set the thread block and grid according to CurrentDeviceId
-  const int kThreadsPerBlock = 1024;
-  int block_cols = kThreadsPerBlock;
-  if (num_cols < kThreadsPerBlock) {  // block_cols is aligned by 32.
-    block_cols = ((num_cols + 31) >> 5) << 5;
-  }
-  int block_rows = kThreadsPerBlock / block_cols;
-  *block_dims = dim3(block_cols, block_rows, 1);
-
-  int max_threads = context.GetMaxPhysicalThreadCount();
-  int64_t max_blocks = std::max(max_threads / kThreadsPerBlock, 1);
-
-  int grid_cols =
-      std::min((num_cols + block_cols - 1) / block_cols, max_blocks);
-  int grid_rows = std::min(max_blocks / grid_cols,
-                           std::max(num_rows / block_rows, (int64_t)1));
-  *grid_dims = dim3(grid_cols, grid_rows, 1);
-}
-
 /*
  * All tensors' dimension should be the same and the values of
  * each dimension must be the same, except the axis dimension.
@@ -363,29 +495,14 @@ struct ConcatFunctor<phi::GPUContext, T> {
             dev_ins_data, in_num, in_col, out_row, out_col, output->data<T>());
       }
     } else {
-      auto tmp_dev_ins_col_data = paddle::memory::Alloc(
-          context.GetPlace(),
-          inputs_col_num * sizeof(int64_t),
-          phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
-
-      auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
-          inputs_col, inputs_col_num);
-      paddle::memory::Copy(context.GetPlace(),
-                           tmp_dev_ins_col_data->ptr(),
-                           paddle::platform::CPUPlace(),
-                           restored,
-                           inputs_col_num * sizeof(int64_t),
-                           context.stream());
-      int64_t* dev_ins_col_data =
-          static_cast<int64_t*>(tmp_dev_ins_col_data->ptr());
-
-      ConcatKernel_<<<grid_dims, block_dims, 0, context.stream()>>>(
-          dev_ins_data,
-          dev_ins_col_data,
-          static_cast<int>(inputs_col_num),
-          out_row,
-          out_col,
-          output->data<T>());
+      // MultiInput without same shape. 
+      DispatchMultiInputConcatKernel<T>(context, 
+                                        inputs_data, 
+                                        inputs_col,
+                                        in_num, 
+                                        out_row,
+                                        out_col,
+                                        output->data<T>()); 
     }
 
 #ifdef PADDLE_WITH_HIP
