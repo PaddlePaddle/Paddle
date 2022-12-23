@@ -871,19 +871,6 @@ class _ExecutorCache:
             use_fetch_v2=True,
         )
 
-        if (
-            os.environ.get('FLAGS_CONVERT_GRAPH_TO_PROGRAM', None)
-            in [1, '1', True, 'True', 'true']
-            and not program._is_start_up_program_
-        ):
-            if program.num_blocks > 1:
-                # If there are multiple blocks in the program, subblock will not be executed with the new executor in temporary
-                logging.warning("There are more than 1 block in program.")
-            elif program.num_blocks == 1:
-                logging.warning("There are 1 block in program.")
-            else:
-                logging.warning("There are no block in program.")
-
         # standalone executor will apply buffer_shared_inplace_pass and
         # inplace_addto_op_pass to program according to build_strategy
         enable_inplace = (
@@ -1711,10 +1698,6 @@ class Executor:
             if core.is_compiled_with_mlu():
                 return False
 
-            use_standalone_executor_for_distribution = os.environ.get(
-                'FLAGS_CONVERT_GRAPH_TO_PROGRAM', None
-            ) in [1, '1', True, 'True', 'true']
-
             compiled = isinstance(
                 program, compiler.CompiledProgram
             ) or isinstance(program._graph, compiler.CompiledProgram)
@@ -1784,20 +1767,8 @@ class Executor:
                         UserWarning,
                     )
                     return False
-
-            # delete this code after supporting fleet
-            from paddle.distributed.fleet import fleet
-
-            if fleet._role_maker is not None:
-                warnings.warn(
-                    "Standalone executor is not used for fleet", UserWarning
-                )
-                return use_standalone_executor_for_distribution
-
             return True
 
-        # NOTE: This is an experimental feature. If `export FLAGS_USE_STANDALONE_EXECUTOR=1 `,
-        # use StandaloneExecutor to run the program.
         if (
             return_merged
             and self._enable_interpreter_core

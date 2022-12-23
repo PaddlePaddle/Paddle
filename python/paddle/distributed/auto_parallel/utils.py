@@ -2288,7 +2288,7 @@ def insert_dependencies_for_two_vars(
 
 
 def use_standalone_executor():
-    return os.environ.get('FLAGS_CONVERT_GRAPH_TO_PROGRAM', None) in [
+    return os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR', None) in [
         1,
         '1',
         True,

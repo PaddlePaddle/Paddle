@@ -1245,22 +1245,6 @@ if(WITH_CINN AND WITH_TESTING)
   )
 endif()
 
-py_test_modules(
-  test_add_reader_dependency_for_interpretercore MODULES
-  test_add_reader_dependency ENVS FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)
-
-set_tests_properties(test_add_reader_dependency_for_interpretercore
-                     PROPERTIES TIMEOUT 120)
-
-py_test_modules(
-  test_eager_deletion_padding_rnn_for_interpretercore MODULES
-  test_eager_deletion_padding_rnn ENVS FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)
-
-set_tests_properties(
-  test_buffer_shared_memory_reuse_pass
-  test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
-  PROPERTIES ENVIRONMENT FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)
-
 # ExecutionStrategy is deprecated in standalone executor
 set_tests_properties(test_parallel_executor_dry_run
                      PROPERTIES ENVIRONMENT "FLAGS_USE_STANDALONE_EXECUTOR=0")
