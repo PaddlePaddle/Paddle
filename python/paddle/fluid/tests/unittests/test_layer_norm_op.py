@@ -341,7 +341,7 @@ class TestLayerNormAPI(unittest.TestCase):
             dtype='float32',
             append_batch_size=False,
         )
-        x = fluid.layers.layer_norm(
+        x = paddle.static.nn.layer_norm(
             x,
             scale=True,
             shift=True,
@@ -350,7 +350,7 @@ class TestLayerNormAPI(unittest.TestCase):
             param_attr=None,
             bias_attr=None,
         )
-        x = fluid.layers.layer_norm(
+        x = paddle.static.nn.layer_norm(
             x,
             scale=False,
             shift=False,
@@ -359,7 +359,7 @@ class TestLayerNormAPI(unittest.TestCase):
             param_attr=None,
             bias_attr=None,
         )
-        x = fluid.layers.layer_norm(
+        x = paddle.static.nn.layer_norm(
             x,
             scale=False,
             shift=False,

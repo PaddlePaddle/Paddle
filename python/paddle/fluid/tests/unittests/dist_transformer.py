@@ -1179,11 +1179,9 @@ def multi_head_attention(
             product += attn_bias
         weights = paddle.nn.functional.softmax(product)
         if dropout_rate:
-            weights = layers.dropout(
+            weights = paddle.nn.functional.dropout(
                 weights,
-                dropout_prob=dropout_rate,
-                seed=ModelHyperParams.dropout_seed,
-                is_test=False,
+                p=dropout_rate,
             )
         out = paddle.matmul(weights, v)
         return out
@@ -1250,7 +1248,7 @@ def pre_post_process_layer(prev_out, out, process_cmd, dropout_rate=0.0):
         if cmd == "a":  # add residual connection
             out = out + prev_out if prev_out else out
         elif cmd == "n":  # add layer normalization
-            out = layers.layer_norm(
+            out = paddle.static.nn.layer_norm(
                 out,
                 begin_norm_axis=len(out.shape) - 1,
                 param_attr=fluid.initializer.Constant(1.0),
@@ -1258,11 +1256,9 @@ def pre_post_process_layer(prev_out, out, process_cmd, dropout_rate=0.0):
             )
         elif cmd == "d":  # add dropout
             if dropout_rate:
-                out = layers.dropout(
+                out = paddle.nn.functional.dropout(
                     out,
-                    dropout_prob=dropout_rate,
-                    seed=ModelHyperParams.dropout_seed,
-                    is_test=False,
+                    p=dropout_rate,
                 )
     return out
 
@@ -1318,11 +1314,9 @@ def prepare_encoder(
     src_pos_enc.stop_gradient = True
     enc_input = src_word_emb + src_pos_enc
     return (
-        layers.dropout(
+        paddle.nn.functional.dropout(
             enc_input,
-            dropout_prob=dropout_rate,
-            seed=ModelHyperParams.dropout_seed,
-            is_test=False,
+            p=dropout_rate,
         )
         if dropout_rate
         else enc_input
@@ -1581,7 +1575,7 @@ def transformer(
     label, weights = make_all_inputs(label_data_input_fields)
     if label_smooth_eps:
         label = F.label_smooth(
-            label=layers.one_hot(input=label, depth=trg_vocab_size),
+            label=paddle.nn.functional.one_hot(label, trg_vocab_size),
             epsilon=label_smooth_eps,
         )
 

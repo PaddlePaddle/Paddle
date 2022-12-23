@@ -13,16 +13,13 @@
 # limitations under the License.
 
 import inspect
-
-from paddle.utils import gast
-from paddle.fluid import core
-from .utils import (
-    unwrap,
-    ORIGI_INFO,
-)
-from paddle.fluid.framework import Program
-
 from collections.abc import Sequence
+
+from paddle.fluid import core
+from paddle.fluid.framework import Program
+from paddle.utils import gast
+
+from .utils import ORIGI_INFO, unwrap
 
 __all__ = []
 

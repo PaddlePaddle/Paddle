@@ -24,7 +24,6 @@ from test_pool2d_op import (
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
 from paddle.nn.functional import avg_pool2d, max_pool2d
 
 
@@ -372,10 +371,6 @@ class TestPool2D_API(unittest.TestCase):
             self.check_max_dygraph_ceilmode_results(place)
             self.check_max_dygraph_nhwc_results(place)
 
-    def test_dygraph_api(self):
-        with _test_eager_guard():
-            self.test_pool2d()
-
 
 class TestPool2DError_API(unittest.TestCase):
     def test_error_api(self):
@@ -601,10 +596,6 @@ class TestPool2DError_API(unittest.TestCase):
                 )
 
         self.assertRaises(ValueError, run_stride_out_of_range)
-
-    def test_dygraph_api(self):
-        with _test_eager_guard():
-            self.test_error_api()
 
 
 if __name__ == '__main__':

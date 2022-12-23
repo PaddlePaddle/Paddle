@@ -52,7 +52,7 @@ class StreamBroadcastTestCase:
         if not self._sync_op:
             task.wait()
 
-        assert np.allclose(tensor, result, rtol=1e-05, atol=1e-05)
+        np.testing.assert_allclose(tensor, result, rtol=1e-05, atol=1e-05)
 
 
 if __name__ == "__main__":
