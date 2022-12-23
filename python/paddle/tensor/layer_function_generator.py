@@ -274,41 +274,44 @@ def generate_activation_fn(op_type):
     op_proto = OpProtoHolder.instance().get_op_proto(op_type)
 
     def func(x, name=None):
-        if in_dygraph_mode() and hasattr(_C_ops, op_type):
-            op = getattr(_C_ops, op_type)
-            return op(x)
-        # TODO(dev): Because some ops' yaml has not been migrated.
-        # Replace it with _in_legacy_dygraph while all yaml work is done.
-        if _non_static_mode():
-            op = getattr(_legacy_C_ops, op_type)
-            return op(x)
-
-        if op_type not in ["abs", "exp", "square"]:
-            check_variable_and_dtype(
-                x, 'x', ['float16', 'float32', 'float64'], op_type
-            )
+        if in_dygraph_mode():
+            if hasattr(_C_ops, op_type):
+                op = getattr(_C_ops, op_type)
+                return op(x)
+            else:
+                # TODO(dev): Because some ops' yaml has not been migrated.
+                # Replace it with _C_ops while all yaml work is done.
+                op = getattr(_legacy_C_ops, op_type)
+                return op(x)
         else:
-            # abs exp square ops support dtype(int32, int64, float16, float32, float64)
-            check_variable_and_dtype(
-                x,
-                'x',
-                [
-                    'int32',
-                    'int64',
-                    'float16',
-                    'float32',
-                    'float64',
-                    'complex64',
-                    'complex128',
-                ],
-                op_type,
+            if op_type not in ["abs", "exp", "square"]:
+                check_variable_and_dtype(
+                    x, 'x', ['float16', 'float32', 'float64'], op_type
+                )
+            else:
+                # abs exp square ops support dtype(int32, int64, float16, float32, float64)
+                check_variable_and_dtype(
+                    x,
+                    'x',
+                    [
+                        'int32',
+                        'int64',
+                        'float16',
+                        'float32',
+                        'float64',
+                        'complex64',
+                        'complex128',
+                    ],
+                    op_type,
+                )
+
+            helper = LayerHelper(op_type, **locals())
+
+            output = helper.create_variable_for_type_inference(dtype=x.dtype)
+            helper.append_op(
+                type=op_type, inputs={"X": x}, outputs={"Out": output}
             )
-
-        helper = LayerHelper(op_type, **locals())
-
-        output = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type=op_type, inputs={"X": x}, outputs={"Out": output})
-        return output
+            return output
 
     func.__name__ = op_type
     func.__doc__ = _generate_doc_string_(

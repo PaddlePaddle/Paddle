@@ -16,7 +16,7 @@
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from paddle.fluid.framework import in_dygraph_mode
 
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..framework import LayerHelper, core
@@ -81,39 +81,37 @@ def mean(x, axis=None, keepdim=False, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.mean(x, axis, keepdim)
-
-    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.reduce_mean(
-            x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
+    else:
+        reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
+        check_variable_and_dtype(
+            x,
+            'x/input',
+            ['uint16', 'float16', 'float32', 'float64'],
+            'mean/reduce_mean',
         )
+        check_type(
+            axis, 'axis/dim', (int, list, tuple, Variable), 'mean/reduce_mean'
+        )
+        if isinstance(axis, (list, tuple)):
+            for item in axis:
+                check_type(
+                    item,
+                    'elements of axis/dim',
+                    (int, Variable),
+                    'mean/reduce_mean',
+                )
 
-    check_variable_and_dtype(
-        x,
-        'x/input',
-        ['uint16', 'float16', 'float32', 'float64'],
-        'mean/reduce_mean',
-    )
-    check_type(
-        axis, 'axis/dim', (int, list, tuple, Variable), 'mean/reduce_mean'
-    )
-    if isinstance(axis, (list, tuple)):
-        for item in axis:
-            check_type(
-                item,
-                'elements of axis/dim',
-                (int, Variable),
-                'mean/reduce_mean',
-            )
+        helper = LayerHelper('mean', **locals())
 
-    helper = LayerHelper('mean', **locals())
-
-    attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all}
-    out = helper.create_variable_for_type_inference(x.dtype)
-    helper.append_op(
-        type='reduce_mean', inputs={'X': x}, outputs={'Out': out}, attrs=attrs
-    )
-    return out
+        attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all}
+        out = helper.create_variable_for_type_inference(x.dtype)
+        helper.append_op(
+            type='reduce_mean',
+            inputs={'X': x},
+            outputs={'Out': out},
+            attrs=attrs,
+        )
+        return out
 
 
 def var(x, axis=None, unbiased=True, keepdim=False, name=None):
@@ -243,17 +241,15 @@ def numel(x, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.numel(x)
-    elif _in_legacy_dygraph():
-        return _legacy_C_ops.size(x)
-
-    if not isinstance(x, Variable):
-        raise TypeError("x must be a Tensor in numel")
-    helper = LayerHelper('numel', **locals())
-    out = helper.create_variable_for_type_inference(
-        dtype=core.VarDesc.VarType.INT64
-    )
-    helper.append_op(type='size', inputs={'Input': x}, outputs={'Out': out})
-    return out
+    else:
+        if not isinstance(x, Variable):
+            raise TypeError("x must be a Tensor in numel")
+        helper = LayerHelper('numel', **locals())
+        out = helper.create_variable_for_type_inference(
+            dtype=core.VarDesc.VarType.INT64
+        )
+        helper.append_op(type='size', inputs={'Input': x}, outputs={'Out': out})
+        return out
 
 
 def nanmedian(x, axis=None, keepdim=True, name=None):
@@ -331,7 +327,7 @@ def nanmedian(x, axis=None, keepdim=True, name=None):
     if len(axis) != len(set(axis)):
         raise ValueError("Axis has duplicated elements.")
 
-    if _in_legacy_dygraph():
+    if in_dygraph_mode():
         median_index, out = _legacy_C_ops.nanmedian(
             x, 'axis', axis, 'keepdim', keepdim
         )
