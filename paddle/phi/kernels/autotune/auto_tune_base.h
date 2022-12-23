@@ -123,7 +123,7 @@ class AutoTuneBase {
   float RunAndMeasureKernel(const Context& ctx, const int idx, Args&&... args) {
     // Regard 1st run as warmup, judge the compare result by the time cost
     // of rest cycles.
-    constexpr int repeats = 4;
+    constexpr int repeats = 6;
     phi::GpuTimer timer;
     float time_cost = 0;
     const auto& stream = ctx.stream();

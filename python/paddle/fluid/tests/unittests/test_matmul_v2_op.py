@@ -20,7 +20,6 @@ from op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.tests.unittests.testsuite import create_op
 
 
@@ -559,11 +558,6 @@ class TestMatMulV2API(unittest.TestCase):
                         {'FLAGS_gemm_use_half_precision_compute_type': False}
                     )
 
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_dygraph()
-            self.test_dygraph_fp16()
-
 
 class TestComplexMatMulOp(OpTest):
     def setUp(self):
@@ -731,10 +725,6 @@ class TestMatmulop(unittest.TestCase):
         np.testing.assert_allclose(actual_out, expect_out)
 
         paddle.enable_static()
-
-    def func_dygraph_matmul(self):  # noqa: F811
-        with _test_eager_guard():
-            self.func_dygraph_matmul()
 
 
 if __name__ == "__main__":

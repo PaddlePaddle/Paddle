@@ -35,7 +35,7 @@ class QuantDequantTensorRTSubgraphPassConvTest(QuantDequantTest):
             data_reshape = paddle.reshape(self.data, shape=[1, 4, 14, 14])
             self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
             label_shape = paddle.reshape(self.label, shape=[1, 1, 1])
-            conv_out = fluid.layers.conv2d(
+            conv_out = paddle.static.nn.conv2d(
                 input=data_reshape,
                 num_filters=self.conv_num_filters,
                 filter_size=self.conv_filter_size,
@@ -150,7 +150,7 @@ class DynamicShapeQuantDequantTensorRTSubgraphPassConvTest(QuantDequantTest):
             data_reshape = paddle.reshape(self.data, shape=[1, 4, 14, 14])
             self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
             label_shape = paddle.reshape(self.label, shape=[1, 1, 1])
-            conv_out = fluid.layers.conv2d(
+            conv_out = paddle.static.nn.conv2d(
                 input=data_reshape,
                 num_filters=self.conv_num_filters,
                 filter_size=self.conv_filter_size,

@@ -18,7 +18,7 @@
 
 #include "paddle/fluid/operators/jit/macro.h"
 #include "paddle/fluid/operators/jit/registry.h"
-#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 
 namespace paddle {
 namespace operators {
@@ -113,20 +113,21 @@ void LSTMJitCode::genCode() {
   }
 }
 
-#define DECLARE_LSTM_CREATOR(name)                                \
-  class name##Creator : public JitCodeCreator<lstm_attr_t> {      \
-   public:                                                        \
-    /* TODO(TJ): enable more */                                   \
-    bool CanBeUsed(const lstm_attr_t& attr) const override {      \
-      return platform::MayIUse(platform::avx) && attr.d % 8 == 0; \
-    }                                                             \
-    size_t CodeSize(const lstm_attr_t& attr) const override {     \
-      return 96 + attr.d / YMM_FLOAT_BLOCK * 90 * 4 * 8;          \
-    }                                                             \
-    std::unique_ptr<GenBase> CreateJitCode(                       \
-        const lstm_attr_t& attr) const override {                 \
-      return make_unique<name##JitCode>(attr, CodeSize(attr));    \
-    }                                                             \
+#define DECLARE_LSTM_CREATOR(name)                                   \
+  class name##Creator : public JitCodeCreator<lstm_attr_t> {         \
+   public:                                                           \
+    /* TODO(TJ): enable more */                                      \
+    bool CanBeUsed(const lstm_attr_t& attr) const override {         \
+      return phi::backends::cpu::MayIUse(phi::backends::cpu::avx) && \
+             attr.d % 8 == 0;                                        \
+    }                                                                \
+    size_t CodeSize(const lstm_attr_t& attr) const override {        \
+      return 96 + attr.d / YMM_FLOAT_BLOCK * 90 * 4 * 8;             \
+    }                                                                \
+    std::unique_ptr<GenBase> CreateJitCode(                          \
+        const lstm_attr_t& attr) const override {                    \
+      return make_unique<name##JitCode>(attr, CodeSize(attr));       \
+    }                                                                \
   }
 
 DECLARE_LSTM_CREATOR(LSTMCtHt);
