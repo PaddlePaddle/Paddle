@@ -1757,7 +1757,7 @@ def ctc_loss(
         label_lengths (Tensor): The length for each label sequence, it should have shape [batch_size] and dtype int64.
         blank (int, optional): The blank label index of Connectionist Temporal Classification (CTC) loss, which is in the half-opened interval [0, num_classes + 1). The data type must be int32. Default is 0.
         reduction (string, optional): Indicate how to average the loss, the candicates are ``'none'`` | ``'mean'`` | ``'sum'``. If :attr:`reduction` is ``'mean'``, the output loss will be divided by the label_lengths, and then return the mean of quotient; If :attr:`reduction` is ``'sum'``, return the sum of loss; If :attr:`reduction` is ``'none'``, no reduction will be applied. Default is ``'mean'``.
-        norm_by_times (bool, default False) – Whether to normalize the gradients by the number of time-step, which is also the sequence’s length. There is no need to normalize the gradients if reduction mode is 'mean'.
+        norm_by_times (bool, default False): Whether to normalize the gradients by the number of time-step, which is also the sequence’s length. There is no need to normalize the gradients if reduction mode is 'mean'.
 
     Returns:
         Tensor, The Connectionist Temporal Classification (CTC) loss between ``log_probs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is [1]. Data type is the same as ``log_probs``.
@@ -1892,6 +1892,130 @@ def ctc_loss(
         loss_out = paddle.mean(loss_out / label_lengths)
     elif reduction == 'sum':
         loss_out = paddle.sum(loss_out)
+    return loss_out
+
+
+def rnnt_loss(
+    input,
+    label,
+    input_lengths,
+    label_lengths,
+    blank=0,
+    fastemit_lambda=0.001,
+    reduction='mean',
+    name=None,
+):
+    """
+    An operator integrating the open source Warp-Transducer library (https://github.com/b-flo/warp-transducer.git)
+    to compute Sequence Transduction with Recurrent Neural Networks (RNN-T) loss.
+
+    Parameters:
+        input (Tensor): The logprobs sequence with padding, which is a 4-D Tensor. The tensor shape is [B, Tmax， Umax, D], where Tmax， is the longest length of input logit sequence. The data type should be float32 or float64.
+        label (Tensor): The ground truth sequence with padding, which must be a 2-D Tensor. The tensor shape is [B, Umax], where Umax is the longest length of label sequence. The data type must be int32.
+        input_lengths (Tensor): The length for each input sequence, it should have shape [batch_size] and dtype int64.
+        label_lengths (Tensor): The length for each label sequence, it should have shape [batch_size] and dtype int64.
+        blank (int, optional): The blank label index of RNN-T loss, which is in the half-opened interval [0, B). The data type must be int32. Default is 0.
+        fastemit_lambda (float, default 0.001): Regularization parameter for FastEmit (https://arxiv.org/pdf/2010.11148.pdf)
+        reduction (string, optional): Indicate how to average the loss, the candicates are ``'none'`` | ``'mean'`` | ``'sum'``. If :attr:`reduction` is ``'mean'``, the output will be sum of loss and be divided by the batch_size; If :attr:`reduction` is ``'sum'``, return the sum of loss; If :attr:`reduction` is ``'none'``, no reduction will be applied. Default is ``'mean'``.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, The RNN-T loss between ``logprobs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is [1]. Data type is the same as ``logprobs``.
+
+    Examples:
+
+        .. code-block:: python
+
+            # declarative mode
+            import paddle.nn.functional as F
+            import numpy as np
+            import paddle
+            import functools
+
+            fn = functools.partial(F.rnnt_loss, reduction='sum', fastemit_lambda=0.0, blank=0)
+
+            acts = np.array([[[[0.1, 0.6, 0.1, 0.1, 0.1],
+                            [0.1, 0.1, 0.6, 0.1, 0.1],
+                            [0.1, 0.1, 0.2, 0.8, 0.1]],
+                            [[0.1, 0.6, 0.1, 0.1, 0.1],
+                            [0.1, 0.1, 0.2, 0.1, 0.1],
+                            [0.7, 0.1, 0.2, 0.1, 0.1]]]])
+            labels = [[1, 2]]
+
+            acts = paddle.to_tensor(acts, stop_gradient=False)
+
+            lengths = [acts.shape[1]] * acts.shape[0]
+            label_lengths = [len(l) for l in labels]
+            labels = paddle.to_tensor(labels, paddle.int32)
+            lengths = paddle.to_tensor(lengths, paddle.int32)
+            label_lengths = paddle.to_tensor(label_lengths, paddle.int32)
+
+            costs = fn(acts, labels, lengths, label_lengths)
+            print(costs)
+            # Tensor(shape=[1], dtype=float64, place=Place(gpu:0), stop_gradient=False,
+            #        [4.49566677])
+    """
+
+    def warprnnt(
+        input, label, input_length, label_length, blank=0, fastemit_lambda=0.001
+    ):
+        if in_dygraph_mode():
+            loss_out = _C_ops.warprnnt(
+                input,
+                label,
+                input_length,
+                label_length,
+                blank,
+                fastemit_lambda,
+            )
+            return loss_out
+        helper = LayerHelper('warprnnt', **locals())
+        check_variable_and_dtype(
+            input, 'input', ['float32', 'float64'], "warprnnt"
+        )
+        check_variable_and_dtype(label, 'label', ['int32'], "warprnnt")
+        check_variable_and_dtype(
+            input_length, 'input_lengths', ['int32'], "warprnnt"
+        )
+        check_variable_and_dtype(
+            label_length, 'label_lengths', ['int32'], "warprnnt"
+        )
+        this_inputs = {
+            'input': [input],
+            'label': [label],
+            'input_lengths': [input_length],
+            'label_lengths': [label_length],
+        }
+
+        loss_out = helper.create_variable_for_type_inference(dtype=input.dtype)
+        grad_out = helper.create_variable_for_type_inference(dtype=input.dtype)
+
+        helper.append_op(
+            type='warprnnt',
+            inputs=this_inputs,
+            outputs={'warprnntgrad': [grad_out], 'loss': [loss_out]},
+            attrs={
+                'blank': blank,
+                'fastemit_lambda': fastemit_lambda,
+            },
+        )
+        return loss_out
+
+    B = input.shape[0]
+
+    # NOTE manually done log_softmax for CPU version,
+    # log_softmax is computed within GPU version.
+
+    # (B,)
+    loss_out = warprnnt(
+        input, label, input_lengths, label_lengths, blank, fastemit_lambda
+    )
+
+    assert reduction in ['mean', 'sum', 'none']
+    if reduction == 'mean':
+        loss_out = paddle.sum(loss_out, name=name) / B
+    elif reduction == 'sum':
+        loss_out = paddle.sum(loss_out, name=name)
     return loss_out
 
 
