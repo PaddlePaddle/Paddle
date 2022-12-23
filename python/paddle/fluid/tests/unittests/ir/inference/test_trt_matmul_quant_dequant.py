@@ -20,6 +20,7 @@ from quant_dequant_test import QuantDequantTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.nn.functional as F
 from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
@@ -46,7 +47,7 @@ class TensorRTMatMulQuantDequantDims3Test(QuantDequantTest):
                 bias_attr=False,
                 act=None,
             )
-            result = fluid.layers.relu(fc_out)
+            result = F.relu(fc_out)
             loss = paddle.nn.functional.cross_entropy(
                 input=result,
                 label=self.label,
@@ -148,7 +149,7 @@ class TensorRTMatMulQuantDequantDims4Test(QuantDequantTest):
                 bias_attr=False,
                 act=None,
             )
-            result = fluid.layers.relu(fc_out)
+            result = F.relu(fc_out)
             loss = paddle.nn.functional.cross_entropy(
                 input=result,
                 label=self.label,
@@ -249,7 +250,7 @@ class TensorRTMatMulQuantDequantDims3DynamicTest(QuantDequantTest):
                 bias_attr=False,
                 act=None,
             )
-            result = fluid.layers.relu(fc_out)
+            result = F.relu(fc_out)
             loss = paddle.nn.functional.cross_entropy(
                 input=result,
                 label=self.label,

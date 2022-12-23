@@ -226,6 +226,9 @@ class AMPState:
                             dist_context, out_var, ref_mapping, ref_mesh
                         )
 
+                        op_namescope = "/"
+                        if op.has_attr('op_namescope'):
+                            op_namescope = op.attr('op_namescope')
                         cast_op = self._block._insert_op_without_sync(
                             idx,
                             type="cast",
@@ -236,6 +239,9 @@ class AMPState:
                                 "out_dtype": out_var.dtype,
                             },
                         )
+                        cast_op._set_attr(
+                            'op_namescope', op_namescope
+                        )  # for recompute
                         naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
                             cast_op, ref_mesh, ref_mapping, dist_context
                         )
@@ -794,6 +800,9 @@ class AMPPass(PassBase):
 
             pre_grad_name = first_backward_op.output_arg_names[0]
             first_backward_op._rename_output(pre_grad_name, cast_loss_grad.name)
+            naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                first_backward_op, ref_mesh, [-1], self.dist_context
+            )
             cast_grad_op = main_block._insert_op(
                 loss_op_idx + 3,
                 type='cast',
@@ -864,6 +873,9 @@ class AMPPass(PassBase):
             pre_grad_name = first_backward_op.output_arg_names[0]
             first_backward_op._rename_output(
                 pre_grad_name, self._scaled_loss_grad.name
+            )
+            naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                first_backward_op, ref_mesh, [-1], self.dist_context
             )
             # FIXME(JZ-LIANG) a trick to insert backward op
             main_block._sync_with_cpp()

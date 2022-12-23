@@ -85,6 +85,7 @@ class GroupShardedStage3(nn.Layer):
         pertrain_sync_models=True,
         offload=False,
         sync_comm=False,
+        dp_group=None,
     ):
         super().__init__()
 
@@ -120,6 +121,7 @@ class GroupShardedStage3(nn.Layer):
             if group is None
             else group
         )
+        self._dp_group = dp_group
         self._world_size_scaling = 1.0 / self._group.nranks
         assert (
             self._group.nranks > 1
@@ -201,6 +203,13 @@ class GroupShardedStage3(nn.Layer):
             dist.broadcast(
                 p, src=self._global_root_rank, group=self._group, sync_op=True
             )
+            if self._dp_group is not None and self._dp_group.nranks > 1:
+                dist.broadcast(
+                    p,
+                    src=self._dp_group.ranks[0],
+                    group=self._dp_group,
+                    sync_op=True,
+                )
 
     def _clear_gradients(self):
         assert len(self._trainable_params.keys()) > 0
@@ -502,6 +511,13 @@ class GroupShardedStage3(nn.Layer):
             dist.broadcast(
                 buffer, self._global_root_rank, self._group, sync_op=True
             )
+            if self._dp_group is not None and self._dp_group.nranks > 1:
+                dist.broadcast(
+                    buffer,
+                    self._dp_group.ranks[0],
+                    self._dp_group,
+                    sync_op=True,
+                )
 
     def __getattr__(self, name):
         """Forward missing attributes to wrapped layer."""
@@ -528,12 +544,7 @@ class GroupShardedStage3(nn.Layer):
             assert hasattr(
                 param, "fw_storage"
             ), "Find {} don't have fw_storage attribute".format(param.name)
-            # Gradient average
-            if self._offload:
-                with device_guard():
-                    param.bw_storage.scale_(scale=self._world_size_scaling)
-            else:
-                param.bw_storage.scale_(scale=self._world_size_scaling)
+
             param.fw_storage = _VarBaseWrapper(param)
             assert param.fw_storage.grad is None
             param.fw_storage._copy_gradient_from(param.bw_storage)
@@ -543,6 +554,12 @@ class GroupShardedStage3(nn.Layer):
         for grad_storage in self._grad_storages.values():
             grad_storage.buffer.scale_(scale=self._world_size_scaling)
             dist.all_reduce(tensor=grad_storage.buffer, group=self._group)
+            if self._dp_group is not None and self._dp_group.nranks > 1:
+                grad_storage.buffer.scale_(scale=(1.0 / self._dp_group.nranks))
+                dist.all_reduce(
+                    tensor=grad_storage.buffer, group=self._dp_group
+                )
+
         if self._offload:
             for param in list(self._unslice_params):
                 param._clear_data()
@@ -609,7 +626,11 @@ class GroupShardedStage3(nn.Layer):
             if param.name in self._task_flow.full_grad.keys():
                 full_grad = self._task_flow.full_grad[param.name]
                 # Only support sync allreduce current rank's layer now
+                full_grad.scale_(scale=self._world_size_scaling)
                 dist.all_reduce(tensor=full_grad, group=self._group)
+                if self._dp_group is not None and self._dp_group.nranks > 1:
+                    full_grad.scale_(scale=1.0 / self._dp_group.nranks)
+                    dist.all_reduce(tensor=full_grad, group=self._dp_group)
 
                 start, end = self._param2buffer[param.name][self._rank]
                 if param.bw_storage is None:

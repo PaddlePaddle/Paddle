@@ -47,13 +47,7 @@ class TestCustomCPUProfilerPlugin(unittest.TestCase):
         self.temp_dir.cleanup()
         del os.environ['CUSTOM_DEVICE_ROOT']
 
-    def test_custom_device(self):
-        import paddle
-
-        with paddle.fluid.framework._test_eager_guard():
-            self._test_custom_profiler()
-
-    def _test_custom_profiler(self):
+    def test_custom_profiler(self):
         import paddle
         import paddle.profiler as profiler
 

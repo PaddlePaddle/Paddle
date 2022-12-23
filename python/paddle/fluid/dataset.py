@@ -389,6 +389,7 @@ class InMemoryDataset(DatasetBase):
         self.merge_by_lineid = False
         self.fleet_send_sleep_seconds = None
         self.trainer_num = -1
+        self.pass_id = 0
 
     @deprecated(
         since="2.0.0",
@@ -1112,7 +1113,49 @@ class InMemoryDataset(DatasetBase):
         self.proto_desc.graph_config.gpu_graph_training = config.get(
             "gpu_graph_training", True
         )
+        self.proto_desc.graph_config.sage_mode = config.get("sage_mode", False)
+        self.proto_desc.graph_config.samples = config.get("samples", "")
+        self.proto_desc.graph_config.train_table_cap = config.get(
+            "train_table_cap", 800000
+        )
+        self.proto_desc.graph_config.infer_table_cap = config.get(
+            "infer_table_cap", 800000
+        )
         self.dataset.set_gpu_graph_mode(True)
+
+    def set_pass_id(self, pass_id):
+        """
+        Set pass id, user can set pass id in gpu graph mode.
+
+        Args:
+            pass_id: pass id.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              pass_id = 0
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              dataset.set_pass_id(pass_id)
+        """
+        self.pass_id = pass_id
+        self.dataset.set_pass_id(pass_id)
+
+    def get_pass_id(self):
+        """
+        Get pass id, user can set pass id in gpu graph mode.
+
+        Returns:
+            The pass id.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              pass_id = dataset.get_pass_id()
+        """
+        return self.pass_id
 
 
 class QueueDataset(DatasetBase):

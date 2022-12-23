@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.framework import _test_eager_guard
 
 
 def run_static(x_np, dtype, op_str, use_gpu=False):
@@ -51,14 +50,13 @@ def run_dygraph(x_np, op_str, use_gpu=True):
 
 def run_eager(x_np, op_str, use_gpu=True):
     with paddle.fluid.dygraph.guard():
-        with _test_eager_guard():
-            place = paddle.CPUPlace()
-            if use_gpu and fluid.core.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
+        place = paddle.CPUPlace()
+        if use_gpu and fluid.core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
 
-            x = paddle.to_tensor(x_np)
-            dygraph_result = getattr(paddle.tensor, op_str)(x)
-            return dygraph_result
+        x = paddle.to_tensor(x_np)
+        dygraph_result = getattr(paddle.tensor, op_str)(x)
+        return dygraph_result
 
 
 def np_data_generator(
