@@ -2759,6 +2759,36 @@ void WarpctcInferMeta(const MetaTensor& logits,
   loss->set_dtype(logits.dtype());
 }
 
+void WarprnntInferMeta(const MetaTensor& input,
+                       const MetaTensor& label,
+                       const MetaTensor& input_lengths,
+                       const MetaTensor& label_lengths,
+                       int blank,
+                       float fastemit_lambda,
+                       MetaTensor* loss,
+                       MetaTensor* warpctcgrad) {
+  auto acts_dims = input.dims();
+  int D = acts_dims[3];
+
+  PADDLE_ENFORCE_GE(
+      blank,
+      0,
+      errors::InvalidArgument(
+          "The value of Attr(blank) should be in interval [0, %d), "
+          "but received %d",
+          blank));
+  PADDLE_ENFORCE_LT(
+      blank,
+      D,
+      errors::InvalidArgument(
+          "The value of Attr(blank) should be in interval [0, %d), "
+          "but received %d",
+          blank));
+
+  loss->set_dims({-1});
+  loss->set_dtype(input.dtype());
+}
+
 void WhereInferMeta(const MetaTensor& condition,
                     const MetaTensor& x,
                     const MetaTensor& y,
