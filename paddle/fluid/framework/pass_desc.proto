@@ -11,7 +11,7 @@ limitations under the License. */
 
 syntax = "proto2";
 
-import "framework.proto";
+import "paddle/fluid/framework/framework.proto";
 package paddle.framework.proto;
 
 // Describes one subsitute subgraph.

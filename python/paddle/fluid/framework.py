@@ -28,7 +28,8 @@ import subprocess
 import multiprocessing
 import sys
 import logging
-from .proto import framework_pb2
+from .. import compat as cpt
+from .proto import framework_pb2, data_feed_pb2
 
 from . import core
 from . import unique_name
