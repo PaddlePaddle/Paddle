@@ -70,11 +70,11 @@ from ..fluid.io import load_vars  # noqa: F401
 from ..fluid.io import save_vars  # noqa: F401
 from ..fluid.io import batch  # noqa: F401
 
-from ..fluid.contrib.layers import ctr_metric_bundle  # noqa: F401
 from ..fluid.layers import exponential_decay  # noqa: F401
 
 from .nn.metric import auc  # noqa: F401
 from .nn.metric import accuracy  # noqa: F401
+from .nn.metric import ctr_metric_bundle  # noqa: F401
 
 __all__ = [  # noqa
     'append_backward',

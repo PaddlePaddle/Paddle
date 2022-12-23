@@ -231,7 +231,7 @@ def mae(abserr, total_ins_num, scope=None, util=None):
     distributed mae in fleet
 
     Args:
-        abserr(numpy.array|Variable|string): abserr in output of fluid.contrib.layers.ctr_metric_bundle
+        abserr(numpy.array|Variable|string): abserr in output of paddle.static.ctr_metric_bundle
         total_ins_num(numpy.array|Variable|string): total variable
         scope(Scope): specific scope
 
@@ -242,7 +242,7 @@ def mae(abserr, total_ins_num, scope=None, util=None):
         .. code-block:: python
 
           # in model.py
-          sqrerr, abserr, prob, q, pos, total = fluid.contrib.layers.ctr_metric_bundle(similarity_norm, fluid.layers.cast(x=label, dtype='float32'))
+          sqrerr, abserr, prob, q, pos, total = paddle.static.ctr_metric_bundle(similarity_norm, fluid.layers.cast(x=label, dtype='float32'))
 
           # in train.py, after train or infer
           res = np.array(scope.find_var(abserr.name).get_tensor())
@@ -281,7 +281,7 @@ def rmse(sqrerr, total_ins_num, scope=None, util=None):
     distributed rmse in fleet
 
     Args:
-        sqrerr(numpy.array|Variable|string): sqrerr in output of fluid.contrib.layers.ctr_metric_bundle
+        sqrerr(numpy.array|Variable|string): sqrerr in output of paddle.static.ctr_metric_bundle
         total_ins_num(numpy.array|Variable|string): total variable
         scope(Scope): specific scope
 
@@ -292,7 +292,7 @@ def rmse(sqrerr, total_ins_num, scope=None, util=None):
         .. code-block:: python
 
           # in model.py
-          sqrerr, abserr, prob, q, pos, total = fluid.contrib.layers.ctr_metric_bundle(similarity_norm, fluid.layers.cast(x=label, dtype='float32'))
+          sqrerr, abserr, prob, q, pos, total = paddle.static.ctr_metric_bundle(similarity_norm, fluid.layers.cast(x=label, dtype='float32'))
 
           # in train.py, after train or infer
           res = np.array(scope.find_var(sqrerr.name).get_tensor())
@@ -331,7 +331,7 @@ def mse(sqrerr, total_ins_num, scope=None, util=None):
     distributed mse in fleet
 
     Args:
-        sqrerr(numpy.array|Variable|string): sqrerr in output of fluid.contrib.layers.ctr_metric_bundle
+        sqrerr(numpy.array|Variable|string): sqrerr in output of paddle.static.ctr_metric_bundle
         total_ins_num(numpy.array|Variable|string): total variable
         scope(Scope): specific scope
 
@@ -342,7 +342,7 @@ def mse(sqrerr, total_ins_num, scope=None, util=None):
         .. code-block:: python
 
           # in model.py
-          sqrerr, abserr, prob, q, pos, total = fluid.contrib.layers.ctr_metric_bundle(similarity_norm, fluid.layers.cast(x=label, dtype='float32'))
+          sqrerr, abserr, prob, q, pos, total = paddle.static.ctr_metric_bundle(similarity_norm, fluid.layers.cast(x=label, dtype='float32'))
 
           # in train.py, after train or infer
           metric = np.array(scope.find_var(sqrerr.name).get_tensor())

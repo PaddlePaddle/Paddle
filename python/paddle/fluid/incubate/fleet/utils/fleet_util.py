@@ -1385,7 +1385,7 @@ class FleetUtil:
                                                label=label, curve='ROC',\
                                                num_thresholds=4096)
               local_sqrerr, local_abserr, local_prob, local_q, local_pos_ins,\
-                  local_total_ins = fluid.contrib.layers.ctr_metric_bundle(\
+                  local_total_ins = paddle.static.ctr_metric_bundle(\
                       similarity_norm, label)
 
         """
@@ -1585,7 +1585,7 @@ class FleetUtil:
                                                label=label, curve='ROC',\
                                                num_thresholds=4096)
               local_sqrerr, local_abserr, local_prob, local_q, local_pos_ins, \
-                  local_total_ins = fluid.contrib.layers.ctr_metric_bundle(\
+                  local_total_ins = paddle.static.ctr_metric_bundle(\
                       similarity_norm, label)
 
         """
