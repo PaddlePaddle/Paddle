@@ -91,8 +91,8 @@ class SelectedRows : public TensorBase,
   void* AllocateFrom(Allocator* allocator,
                      DataType dtype,
                      size_t requested_size = 0,
-                     bool check_size = true) override {
-    return impl_->AllocateFrom(allocator, dtype, requested_size, check_size);
+                     bool fake_alloc = false) override {
+    return impl_->AllocateFrom(allocator, dtype, requested_size, fake_alloc);
   }
 
   /*

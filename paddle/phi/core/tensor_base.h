@@ -67,7 +67,7 @@ class TensorBase {
   virtual void* AllocateFrom(Allocator* allocator,
                              DataType dtype,
                              size_t requested_size = 0,
-                             bool check_size = true) = 0;
+                             bool fake_alloc = false) = 0;
 
   /// \brief Return the type information of the derived class to support
   /// safely downcast in non-rtti environment.

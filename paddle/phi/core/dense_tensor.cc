@@ -114,11 +114,11 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
   if (fake_alloc) {
     bytes = 0;
   } else {
+    PADDLE_ENFORCE(
+        valid(),
+        phi::errors::PreconditionNotMet("The meta data must be valid when "
+                                        "call the mutable data function."));
     if (requested_size) {
-      PADDLE_ENFORCE(
-          valid(),
-          phi::errors::PreconditionNotMet("The meta data must be valid when "
-                                          "call the mutable data function."));
       PADDLE_ENFORCE_GE(requested_size,
                         bytes,
                         phi::errors::InvalidArgument(
