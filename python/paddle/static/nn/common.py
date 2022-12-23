@@ -1045,13 +1045,13 @@ def conv2d_transpose(
         If `padding` = `"SAME"`:
 
         .. math::
-            H^\prime_{out} &= \frac{(H_{in} + stride[0] - 1)}{stride[0]} \\\\
+            H^\prime_{out} &= \frac{(H_{in} + stride[0] - 1)}{stride[0]} \\
             W^\prime_{out} &= \frac{(H_{in} + stride[1] - 1)}{stride[1]}
 
         If `padding` = `"VALID"`:
 
         .. math::
-            H^\prime_{out} &= (H_{in} - 1) * stride[0]} + dilations[0] * (H_f - 1) + 1 \\\\
+            H^\prime_{out} &= (H_{in} - 1) * stride[0]} + dilations[0] * (H_f - 1) + 1 \\
             W^\prime_{out} &= (W_{in} − 1) * strides[1] + dilations[1] * (W_f − 1) + 1
 
         If output_size is None, :math:`H_{out} = H^\prime_{out}, W_{out} = W^\prime_{out}`;
@@ -1418,15 +1418,15 @@ def conv3d_transpose(
     If `padding` = `"SAME"`:
 
         .. math::
-            D^\prime_{out} &= \frac{(D_{in} + stride[0] - 1)}{stride[0]} \\\\
-            H^\prime_{out} &= \frac{(H_{in} + stride[1] - 1)}{stride[1]} \\\\
+            D^\prime_{out} &= \frac{(D_{in} + stride[0] - 1)}{stride[0]} \\
+            H^\prime_{out} &= \frac{(H_{in} + stride[1] - 1)}{stride[1]} \\
             W^\prime_{out} &= \frac{(H_{in} + stride[2] - 1)}{stride[2]}
 
     If `padding` = `"VALID"`:
 
     .. math::
-        D^\prime_{out} &= (D_{in} - 1) * stride[0]} + dilations[0] * (D_f - 1) + 1 \\\\
-        H^\prime_{out} &= (H_{in} - 1) * stride[1]} + dilations[1] * (H_f - 1) + 1 \\\\
+        D^\prime_{out} &= (D_{in} - 1) * stride[0]} + dilations[0] * (D_f - 1) + 1 \\
+        H^\prime_{out} &= (H_{in} - 1) * stride[1]} + dilations[1] * (H_f - 1) + 1 \\
         W^\prime_{out} &= (W_{in} − 1) * strides[2] + dilations[2] * (W_f − 1) + 1
 
     If `output_size` is None, :math:`D_{out} = D^\prime_{out}, :math:`H_{out} = \
