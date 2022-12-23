@@ -258,13 +258,15 @@ void StreamAnalyzer::AnalyseAllEventInfo(
     const std::vector<size_t>& next_instr_ids =
         run_type_info[cur_instr_id][DownstreamRunType::kEventRun];
     std::set<size_t> waiter_instr_ids;
+    std::set<size_t> visited_next_instr_id;
 
     for (size_t next_instr_id : next_instr_ids) {
       AnalyseEventInfoForTwoInstructions(instructions,
                                          run_type_info,
                                          cur_instr_id,
                                          next_instr_id,
-                                         &waiter_instr_ids);
+                                         &waiter_instr_ids,
+                                         &visited_next_instr_id);
     }
 
     for (size_t waiter_instr_id : waiter_instr_ids) {
@@ -302,7 +304,14 @@ void StreamAnalyzer::AnalyseEventInfoForTwoInstructions(
     const std::vector<std::vector<std::vector<size_t>>>& run_type_info,
     const size_t cur_instr_id,
     const size_t next_instr_id,
-    std::set<size_t>* waiter_instr_ids) const {
+    std::set<size_t>* waiter_instr_ids,
+    std::set<size_t>* visited_next_instr_id) const {
+  if (visited_next_instr_id->find(next_instr_id) !=
+      visited_next_instr_id->end()) {
+    return;
+  }
+  visited_next_instr_id->insert(next_instr_id);
+
   // NOTE(Ruibiao): Though depend_op as next_instr is no_need_buffer, we should
   // also wait event for it. Because depend_op is used to build dependencies for
   // fused vars in some scenarios. In those cases, we do not know which vars may
@@ -338,8 +347,12 @@ void StreamAnalyzer::AnalyseEventInfoForTwoInstructions(
   // between cur_instr and next_instr.
   for (size_t instr_id :
        run_type_info[next_instr_id][DownstreamRunType::kDirectRun]) {
-    AnalyseEventInfoForTwoInstructions(
-        instructions, run_type_info, cur_instr_id, instr_id, waiter_instr_ids);
+    AnalyseEventInfoForTwoInstructions(instructions,
+                                       run_type_info,
+                                       cur_instr_id,
+                                       instr_id,
+                                       waiter_instr_ids,
+                                       visited_next_instr_id);
   }
 }
 
