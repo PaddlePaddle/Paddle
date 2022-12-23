@@ -18,6 +18,7 @@ list(
   group_norm_op.cc
   pad_op.cc
   split_op.cc
+  square_op.cc
   prelu_op.cc
   leaky_relu_op.cc
   gelu_op.cc
@@ -46,6 +47,7 @@ list(
   yolo_box_op.cc
   yolo_box_head_op.cc
   arg_max_op.cc
+  arg_min_op.cc
   roi_align_op.cc
   affine_channel_op.cc
   multiclass_nms_op.cc

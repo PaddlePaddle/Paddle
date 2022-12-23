@@ -20,7 +20,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/phi/kernels/funcs/transpose_functor.h"
 
 namespace paddle {
 namespace operators {

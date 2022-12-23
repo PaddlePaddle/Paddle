@@ -50,18 +50,12 @@ class TestCustomCPUPlugin(unittest.TestCase):
         del os.environ['CUSTOM_DEVICE_ROOT']
 
     def test_custom_device(self):
-        import paddle
-
-        with paddle.fluid.framework._test_eager_guard():
-            self._test_custom_device_dataloader()
-            self._test_custom_device_mnist()
-            self._test_eager_backward_api()
-            self._test_eager_copy_to()
-            self._test_fallback_kernel()
-            self._test_scalar()
-            self._test_custom_device_gradient_accumulation()
         self._test_custom_device_dataloader()
         self._test_custom_device_mnist()
+        self._test_eager_backward_api()
+        self._test_eager_copy_to()
+        self._test_fallback_kernel()
+        self._test_scalar()
 
     def _test_custom_device_dataloader(self):
         import paddle
