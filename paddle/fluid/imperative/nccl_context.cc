@@ -49,7 +49,7 @@ void NCCLParallelContext::BcastNCCLId(
     int server_fd) {
   if (strategy_.local_rank_ == root) {
     std::vector<std::string> other_trainers;
-    VLOG(0) << "BcastNCCLId from: " << ep;
+    VLOG(0) << "BcastNCCLId from: " << strategy_.local_rank_;
     for (auto &ep : strategy_.trainer_endpoints_) {
       if (ep != strategy_.current_endpoint_) {
         other_trainers.push_back(ep);
