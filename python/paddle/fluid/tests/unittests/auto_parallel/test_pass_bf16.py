@@ -35,16 +35,18 @@ def apply_pass(use_bf16=False):
         amp = strategy.amp
         amp.enable = True
         amp.enable_bf16 = True
-        amp.custom_fp32_list = {
-            'pool2d',
-            'reduce_mean',
-            'matmul_v2',
-            'conv2d',
+        amp.custom_bf16_list = {
             'elementwise_add',
             'scale',
             'relu',
             'bias_add',
             'reshape2',
+        }
+        amp.custom_fp32_list = {
+            'pool2d',
+            'reduce_mean',
+            'matmul_v2',
+            'conv2d',
         }
     return strategy
 
