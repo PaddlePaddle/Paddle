@@ -58,7 +58,7 @@ class QuantizeLinearKernel : public framework::OpKernel<T> {
 
     // only observer
     if (is_observer) {
-      framework::TensorCopy(*in, context.GetPlace(), dev_ctx, out);
+      out->ShareDataWith(*in);
       return;
     }
 
@@ -134,7 +134,7 @@ class DeQuantizeLinearKernel : public framework::OpKernel<T> {
 
     // only observer
     if (is_observer) {
-      framework::TensorCopy(*in, context.GetPlace(), dev_ctx, out);
+      out->ShareDataWith(*in);
       return;
     }
 

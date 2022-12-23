@@ -363,9 +363,9 @@ class MKLDNNQuantizer(BaseQuantizer):
         ]
 
 
-class ArmCPUQuantizer(BaseQuantizer):
+class ARMCPUQuantizer(BaseQuantizer):
     """
-    Arm CPU with Paddle Lite quantization configuration class.
+    ARM CPU with Paddle Lite quantization configuration class.
     """
 
     def __init__(

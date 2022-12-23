@@ -49,6 +49,7 @@ from .quant_config import (
     BaseQuantizer,
     TensorRTQuantizer,
     MKLDNNQuantizer,
+    ARMCPUQuantizer,
 )
 
 __all__ = [
@@ -247,7 +248,7 @@ class PostTrainingQuantization:
                 quantization. Default False.
             is_use_cache_file(bool, optional): This param is deprecated.
             cache_dir(str, optional): This param is deprecated.
-            deploy_backend(str, optional): Deploy backend, it could be None, Tensor, MKLDNN.
+            deploy_backend(str, optional): Deploy backend, it could be None, TensorRT, MKLDNN, ARM.
                 Other backends will continue to expand, the default is None, which means to
                 use the default general quantization configuration.
         Returns:
@@ -430,7 +431,7 @@ class PostTrainingQuantization:
                 quant_bits=weight_bits,
             )
         elif deploy_backend.lower() == "arm":
-            self.quant_config = ArmCPUQuantizer(
+            self.quant_config = ARMCPUQuantizer(
                 quant_operation_types=quantizable_op_type,
                 quant_bits=weight_bits,
             )
