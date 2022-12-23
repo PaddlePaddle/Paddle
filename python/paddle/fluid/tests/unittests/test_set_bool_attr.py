@@ -21,7 +21,9 @@ import paddle.fluid as fluid
 
 class TestAttrSet(unittest.TestCase):
     def test_set_bool_attr(self):
-        x = fluid.layers.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
+        x = paddle.static.data(
+            name='x', shape=[-1, 3, 7, 3, 7], dtype='float32'
+        )
         param_attr = fluid.ParamAttr(
             name='batch_norm_w',
             initializer=fluid.initializer.Constant(value=1.0),
