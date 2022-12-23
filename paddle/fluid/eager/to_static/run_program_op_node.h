@@ -792,12 +792,18 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     }
 
     PADDLE_ENFORCE_EQ(hooked_grads[0].size(),
-                      fwd_out_names_.size(),
+                      out_grad_names_.size(),
                       paddle::platform::errors::InvalidArgument(
                           "The hooked_grads[0].size() and "
-                          "fwd_out_names_.size() should be equal."));
-    for (size_t i = 0; i < fwd_out_names_.size(); ++i) {
-      hooked_grads[0][i].set_name(fwd_out_names_[i] + "@GRAD");
+                          "out_grad_names_.size() should be equal."));
+    for (size_t i = 0; i < out_grad_names_.size(); ++i) {
+      hooked_grads[0][i].set_name(out_grad_names_[i]);
+
+      // if (hooked_grads[0][i].name() == "linear_7.tmp_1@GRAD") {
+      //   hooked_grads[0][i].set_name("linear_7.tmp_1@GRAD_1");
+      // }
+
+      VLOG(1) << "hooked_grads: " << hooked_grads[0][i].name();
     }
     RunProgramGradAPI(x_,
                       params_,
@@ -829,8 +835,8 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     step_scope_ = scopes;
   }
 
-  void SetFwdOutNames(std::vector<std::string> out_names) {
-    fwd_out_names_ = out_names;
+  void SetOutGradNames(std::vector<std::string> out_grad_names) {
+    out_grad_names_ = out_grad_names;
   }
 
  protected:
@@ -880,7 +886,7 @@ class GradNodeRunProgram : public egr::GradNodeBase {
   std::vector<paddle::experimental::Tensor> params_;
   std::vector<paddle::framework::Scope *> step_scope_;
 
-  std::vector<std::string> fwd_out_names_;
+  std::vector<std::string> out_grad_names_;
 
   // Attribute Map
   paddle::framework::AttributeMap attrs_;

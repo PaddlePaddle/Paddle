@@ -54,6 +54,25 @@ static void clear_no_grad_edges_with_partial_block(
   }
 }
 
+static std::vector<std::string> get_out_grad_names_from_desc(
+    const paddle::framework::BlockDesc* desc,
+    size_t fwd_end_op_index,
+    size_t out_size) {
+  std::vector<std::string> out_grad_names;
+  out_grad_names.reserve(out_size);
+  for (size_t i = fwd_end_op_index + 1;
+       i < desc->OpSize() && i < fwd_end_op_index + out_size * 2;
+       i = i + 2) {
+    auto* op = desc->Op(i);
+    auto op_type = op->Type();
+    if (op_type == "fill_constant") {
+      auto var_name = op->Output("Out")[0];
+      out_grad_names.emplace_back(var_name);
+    }
+  }
+  return out_grad_names;
+}
+
 inline void run_program_ad_func(
     const std::vector<paddle::experimental::Tensor>& x,
     const std::vector<paddle::experimental::Tensor>& params,
@@ -80,16 +99,10 @@ inline void run_program_ad_func(
       trace_backward, &p_autograd_x, &p_autograd_params);
 
   if (require_any_grad) {
-    std::vector<std::string> out_names;
-    for (auto& t : deref_out) {
-      out_names.emplace_back(t.name());
-    }
-
     egr::EagerUtils::PassStopGradient(false, &p_autograd_outs);
     // Create GradOpNode (1 means [out_grad], 2 means [x_grad, paramx_grad])
     auto grad_node = std::make_shared<GradNodeRunProgram>(1, 2);
 
-    grad_node->SetFwdOutNames(out_names);
     // Set Attributes
     grad_node->SetAttrMap(attrs);
     // Set TensorWrappers
@@ -101,6 +114,13 @@ inline void run_program_ad_func(
     // Set Grad out rank as same as fwd input and set stop gradient to bwd
     grad_node->SetGradOutMeta(x, /*slot id*/ 0);
     grad_node->SetGradOutMeta(params, /*slot id*/ 1);
+
+    auto* global_block = PADDLE_GET_CONST(paddle::framework::BlockDesc*,
+                                          attrs.at("global_block"));
+    auto fwd_end_op_index = PADDLE_GET_CONST(int64_t, attrs.at("end_op_index"));
+    auto out_grad_names = get_out_grad_names_from_desc(
+        global_block, static_cast<size_t>(fwd_end_op_index), deref_out.size());
+    grad_node->SetOutGradNames(out_grad_names);
 
     bool use_interpretorcore =
         PADDLE_GET_CONST(bool, attrs.at("use_interpretorcore"));
@@ -117,8 +137,6 @@ inline void run_program_ad_func(
                                              /*slot id*/ 1);
 
     } else {
-      auto* global_block = PADDLE_GET_CONST(paddle::framework::BlockDesc*,
-                                            attrs.at("global_block"));
       clear_no_grad_edges(params, global_block, grad_node.get(), /*slot id*/ 1);
     }
 
