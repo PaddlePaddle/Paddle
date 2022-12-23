@@ -34,7 +34,6 @@ from ..fluid.data_feeder import (
 from ..fluid.layers import utils
 from ..framework import (
     LayerHelper,
-    _non_static_mode,
     convert_np_dtype_to_dtype_,
     core,
     in_dygraph_mode,
@@ -279,20 +278,22 @@ def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
 
     """
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         return _legacy_C_ops.stanh(x, 'scale_a', scale_a, 'scale_b', scale_b)
+    else:
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'stanh'
+        )
 
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'stanh')
-
-    helper = LayerHelper('stanh', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='stanh',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'scale_a': scale_a, 'scale_b': scale_b},
-    )
-    return out
+        helper = LayerHelper('stanh', **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='stanh',
+            inputs={'X': x},
+            outputs={'Out': out},
+            attrs={'scale_a': scale_a, 'scale_b': scale_b},
+        )
+        return out
 
 
 def multiplex(inputs, index, name=None):
@@ -1814,53 +1815,54 @@ def mm(input, mat2, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.matmul(input, mat2, False, False)
-    elif paddle.in_dynamic_mode():
-        return _legacy_C_ops.matmul_v2(input, mat2)
+    else:
 
-    def __check_input(x, y):
-        var_names = {'x': x, 'y': y}
-        for name, val in var_names.items():
-            check_variable_and_dtype(
-                val, name, ['float16', 'float32', 'float64'], 'mm'
-            )
-        x_shape = list(x.shape)
-        y_shape = list(y.shape)
-        if len(x_shape) == 1:
-            x_shape = [1] + x_shape
-        if len(y_shape) == 1:
-            y_shape = y_shape + [1]
-
-        # check the inner 2 dimensions
-        if x_shape[-1] != y_shape[-2]:
-            if not ((x_shape[-1] == -1) or (y_shape[-2] == -1)):
-                raise ValueError(
-                    "After performing an optional transpose, Input X's width should be "
-                    "equal to Y's width for multiplication "
-                    "prerequisites. But received X's shape: %s, Y's shape: %s\n"
-                    % (x_shape, y_shape)
+        def __check_input(x, y):
+            var_names = {'x': x, 'y': y}
+            for name, val in var_names.items():
+                check_variable_and_dtype(
+                    val, name, ['float16', 'float32', 'float64'], 'mm'
                 )
+            x_shape = list(x.shape)
+            y_shape = list(y.shape)
+            if len(x_shape) == 1:
+                x_shape = [1] + x_shape
+            if len(y_shape) == 1:
+                y_shape = y_shape + [1]
 
-        if len(y_shape) > 2 and len(x_shape) > 2:
-            for i, dim_x in enumerate(x_shape[:-2]):
-                # don't check neg shape
-                if dim_x < 0 or y_shape[i] < 0:
-                    continue
-                if dim_x != y_shape[i]:
+            # check the inner 2 dimensions
+            if x_shape[-1] != y_shape[-2]:
+                if not ((x_shape[-1] == -1) or (y_shape[-2] == -1)):
                     raise ValueError(
-                        "When the matrix is larger than 2 dimensions, the higher "
-                        "dimensional values of the two matrices need to be equal. "
-                        "But received x_shape[%d] != y_shape[%d]. X's shape: %s, "
-                        "Y's shape: %s.\n" % (i, i, x_shape, y_shape)
+                        "After performing an optional transpose, Input X's width should be "
+                        "equal to Y's width for multiplication "
+                        "prerequisites. But received X's shape: %s, Y's shape: %s\n"
+                        % (x_shape, y_shape)
                     )
 
-    __check_input(input, mat2)
+            if len(y_shape) > 2 and len(x_shape) > 2:
+                for i, dim_x in enumerate(x_shape[:-2]):
+                    # don't check neg shape
+                    if dim_x < 0 or y_shape[i] < 0:
+                        continue
+                    if dim_x != y_shape[i]:
+                        raise ValueError(
+                            "When the matrix is larger than 2 dimensions, the higher "
+                            "dimensional values of the two matrices need to be equal. "
+                            "But received x_shape[%d] != y_shape[%d]. X's shape: %s, "
+                            "Y's shape: %s.\n" % (i, i, x_shape, y_shape)
+                        )
 
-    helper = LayerHelper('mm', **locals())
-    out = helper.create_variable_for_type_inference(dtype=input.dtype)
-    helper.append_op(
-        type='matmul_v2', inputs={'X': input, 'Y': mat2}, outputs={'Out': out}
-    )
-    return out
+        __check_input(input, mat2)
+
+        helper = LayerHelper('mm', **locals())
+        out = helper.create_variable_for_type_inference(dtype=input.dtype)
+        helper.append_op(
+            type='matmul_v2',
+            inputs={'X': input, 'Y': mat2},
+            outputs={'Out': out},
+        )
+        return out
 
 
 def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
@@ -2079,36 +2081,37 @@ def inner(x, y, name=None):
 
         if in_dygraph_mode():
             return _C_ops.matmul(nx, ny.T, False, False).reshape(dstshape)
-        elif paddle.in_dynamic_mode():
-            return _legacy_C_ops.matmul_v2(nx, ny.T).reshape(dstshape)
+        else:
 
-        def __check_input(x, y):
-            var_names = {'x': x, 'y': y}
-            for name, val in var_names.items():
-                check_variable_and_dtype(
-                    val, name, ['float16', 'float32', 'float64'], 'inner'
-                )
-            x_shape = list(xshape)
-            y_shape = list(yshape)
-
-            # check the inner 2 dimensions
-            if x_shape[-1] != y_shape[-1]:
-                if not ((x_shape[-1] == -1) or (y_shape[-1] == -1)):
-                    raise ValueError(
-                        "After performing an optional transpose, Input X's last dim should be "
-                        "equal to Y's last dim for multiplication "
-                        "prerequisites. But received X's shape: %s, Y's shape: %s\n"
-                        % (x_shape, y_shape)
+            def __check_input(x, y):
+                var_names = {'x': x, 'y': y}
+                for name, val in var_names.items():
+                    check_variable_and_dtype(
+                        val, name, ['float16', 'float32', 'float64'], 'inner'
                     )
+                x_shape = list(xshape)
+                y_shape = list(yshape)
 
-        __check_input(nx, ny)
+                # check the inner 2 dimensions
+                if x_shape[-1] != y_shape[-1]:
+                    if not ((x_shape[-1] == -1) or (y_shape[-1] == -1)):
+                        raise ValueError(
+                            "After performing an optional transpose, Input X's last dim should be "
+                            "equal to Y's last dim for multiplication "
+                            "prerequisites. But received X's shape: %s, Y's shape: %s\n"
+                            % (x_shape, y_shape)
+                        )
 
-        helper = LayerHelper('inner', **locals())
-        out = helper.create_variable_for_type_inference(dtype=nx.dtype)
-        helper.append_op(
-            type='matmul_v2', inputs={'X': nx, 'Y': ny.T}, outputs={'Out': out}
-        )
-        return out.reshape(dstshape)
+            __check_input(nx, ny)
+
+            helper = LayerHelper('inner', **locals())
+            out = helper.create_variable_for_type_inference(dtype=nx.dtype)
+            helper.append_op(
+                type='matmul_v2',
+                inputs={'X': nx, 'Y': ny.T},
+                outputs={'Out': out},
+            )
+            return out.reshape(dstshape)
 
 
 def outer(x, y, name=None):
@@ -2145,24 +2148,23 @@ def outer(x, y, name=None):
 
     if in_dygraph_mode():
         return _C_ops.matmul(nx, ny, False, False)
-    elif paddle.in_dynamic_mode():
-        return _legacy_C_ops.matmul_v2(nx, ny)
+    else:
 
-    def __check_input(x, y):
-        var_names = {'x': x, 'y': y}
-        for name, val in var_names.items():
-            check_variable_and_dtype(
-                val, name, ['float16', 'float32', 'float64'], 'inner'
-            )
+        def __check_input(x, y):
+            var_names = {'x': x, 'y': y}
+            for name, val in var_names.items():
+                check_variable_and_dtype(
+                    val, name, ['float16', 'float32', 'float64'], 'inner'
+                )
 
-    __check_input(nx, ny)
+        __check_input(nx, ny)
 
-    helper = LayerHelper('outer', **locals())
-    out = helper.create_variable_for_type_inference(dtype=nx.dtype)
-    helper.append_op(
-        type='matmul_v2', inputs={'X': nx, 'Y': ny}, outputs={'Out': out}
-    )
-    return out
+        helper = LayerHelper('outer', **locals())
+        out = helper.create_variable_for_type_inference(dtype=nx.dtype)
+        helper.append_op(
+            type='matmul_v2', inputs={'X': nx, 'Y': ny}, outputs={'Out': out}
+        )
+        return out
 
 
 def logsumexp(x, axis=None, keepdim=False, name=None):
@@ -2252,25 +2254,24 @@ def inverse(x, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.inverse(x)
-    elif paddle.in_dynamic_mode():
-        return _legacy_C_ops.inverse(x)
+    else:
 
-    def _check_input(x):
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'inverse')
-        if len(x.shape) < 2:
-            raise ValueError(
-                "The input of inverse is expected to be a Tensor whose number "
-                "of dimensions is no less than 2. But reviced: %d, "
-                "x's shape: %s." % (len(x.shape), x.shape)
-            )
+        def _check_input(x):
+            check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'inverse')
+            if len(x.shape) < 2:
+                raise ValueError(
+                    "The input of inverse is expected to be a Tensor whose number "
+                    "of dimensions is no less than 2. But reviced: %d, "
+                    "x's shape: %s." % (len(x.shape), x.shape)
+                )
 
-    _check_input(x)
-    helper = LayerHelper('inverse', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='inverse', inputs={'Input': [x]}, outputs={'Output': [out]}
-    )
-    return out
+        _check_input(x)
+        helper = LayerHelper('inverse', **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='inverse', inputs={'Input': [x]}, outputs={'Output': [out]}
+        )
+        return out
 
 
 def max(x, axis=None, keepdim=False, name=None):
@@ -3684,9 +3685,7 @@ def tanh_(x, name=None):
     Inplace version of ``tanh`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_tensor_tanh`.
     """
-    if in_dygraph_mode():
-        return _C_ops.tanh_(x)
-    return _legacy_C_ops.tanh_(x)
+    return _C_ops.tanh_(x)
 
 
 def increment(x, value=1.0, name=None):
@@ -3939,22 +3938,21 @@ def conj(x, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.conj(x)
+    else:
+        check_variable_and_dtype(
+            x,
+            "x",
+            ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'],
+            'conj',
+        )
 
-    if paddle.in_dynamic_mode():
-        return _legacy_C_ops.conj(x)
+        helper = LayerHelper('conj', **locals())
+        out = helper.create_variable_for_type_inference(
+            dtype=helper.input_dtype()
+        )
 
-    check_variable_and_dtype(
-        x,
-        "x",
-        ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'],
-        'conj',
-    )
-
-    helper = LayerHelper('conj', **locals())
-    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-
-    helper.append_op(type='conj', inputs={'X': x}, outputs={'Out': [out]})
-    return out
+        helper.append_op(type='conj', inputs={'X': x}, outputs={'Out': [out]})
+        return out
 
 
 def digamma(x, name=None):
@@ -4249,9 +4247,7 @@ def lerp_(x, y, weight, name=None):
                 out_shape, x.shape
             )
         )
-    if in_dygraph_mode():
-        return _C_ops.lerp_(x, y, weight)
-    return _legacy_C_ops.lerp_(x, y, weight)
+    return _C_ops.lerp_(x, y, weight)
 
 
 def erfinv(x, name=None):
@@ -4281,16 +4277,12 @@ def erfinv(x, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.erfinv(x)
-
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'erfinv')
-
-    if paddle.in_dynamic_mode():
-        return _legacy_C_ops.erfinv(x)
-
-    helper = LayerHelper('erfinv', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type='erfinv', inputs={'X': x}, outputs={'Out': out})
-    return out
+    else:
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'erfinv')
+        helper = LayerHelper('erfinv', **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(type='erfinv', inputs={'X': x}, outputs={'Out': out})
+        return out
 
 
 @inplace_apis_in_dygraph_only
@@ -4300,9 +4292,7 @@ def erfinv_(x, name=None):
     Please refer to :ref:`api_tensor_erfinv`.
     """
     check_type(x, 'x', (paddle.Tensor, Variable), 'erfinv')
-    if in_dygraph_mode():
-        return _C_ops.erfinv_(x)
-    return _legacy_C_ops.erfinv_(x)
+    return _C_ops.erfinv_(x)
 
 
 def rad2deg(x, name=None):
@@ -4351,10 +4341,6 @@ def rad2deg(x, name=None):
         if convert_dtype(x.dtype) in ['int32', 'int64']:
             x = cast(x, dtype="float32")
         return _C_ops.scale(x, rad2deg_scale, 0.0, True)
-    elif paddle.in_dynamic_mode():
-        if convert_dtype(x.dtype) in ['int32', 'int64']:
-            x = cast(x, dtype="float32")
-        return _legacy_C_ops.scale(x, 'scale', rad2deg_scale)
     else:
         check_variable_and_dtype(
             x, 'x', ['int32', 'int64', 'float32', 'float64'], 'rad2deg'
@@ -4419,10 +4405,6 @@ def deg2rad(x, name=None):
         if convert_dtype(x.dtype) in ['int32', 'int64']:
             x = cast(x, dtype="float32")
         return _C_ops.scale(x, deg2rad_scale, 0.0, True)
-    elif paddle.in_dynamic_mode():
-        if convert_dtype(x.dtype) in ['int32', 'int64']:
-            x = cast(x, dtype="float32")
-        return _legacy_C_ops.scale(x, 'scale', deg2rad_scale)
     else:
         check_variable_and_dtype(
             x, 'x', ['int32', 'int64', 'float32', 'float64'], 'deg2rad'
@@ -4522,7 +4504,7 @@ def gcd(x, y, name=None):
         )
         return (paddle.where(x < y, y, x), paddle.where(x < y, x, y))
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode:
         while _gcd_cond_fn(x, y):
             x, y = _gcd_body_fn(x, y)
 
@@ -4813,21 +4795,19 @@ def angle(x, name=None):
 
     if in_dygraph_mode():
         return _C_ops.angle(x)
-    elif paddle.in_dynamic_mode():
-        return _legacy_C_ops.angle(x)
-
-    check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'complex64', 'complex128'], 'angle'
-    )
-    op_type = "angle"
-    helper = LayerHelper(op_type, **locals())
-    inputs = {"X": x}
-    out = helper.create_variable_for_type_inference(
-        dtype=_complex_to_real_dtype(x.dtype)
-    )
-    outputs = {"Out": out}
-    helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
-    return out
+    else:
+        check_variable_and_dtype(
+            x, 'x', ['float32', 'float64', 'complex64', 'complex128'], 'angle'
+        )
+        op_type = "angle"
+        helper = LayerHelper(op_type, **locals())
+        inputs = {"X": x}
+        out = helper.create_variable_for_type_inference(
+            dtype=_complex_to_real_dtype(x.dtype)
+        )
+        outputs = {"Out": out}
+        helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
+        return out
 
 
 def heaviside(x, y, name=None):
@@ -4874,11 +4854,12 @@ def heaviside(x, y, name=None):
     op_type = 'elementwise_heaviside'
     axis = -1
     act = None
-    if _non_static_mode():
+    if in_dygraph_mode():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type
         )
-    return _elementwise_op(LayerHelper(op_type, **locals()))
+    else:
+        return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
 def frac(x, name=None):
@@ -5059,7 +5040,7 @@ def take(x, index, mode='raise', name=None):
             )
         )
 
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode:
         if not isinstance(index, (paddle.Tensor, Variable)):
             raise TypeError(
                 "The type of 'index' must be Tensor, but got {}".format(

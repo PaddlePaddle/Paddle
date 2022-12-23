@@ -42,7 +42,6 @@ from ..framework import (
     LayerHelper,
     _current_expected_place,
     _get_paddle_place,
-    _non_static_mode,
     convert_np_dtype_to_dtype_,
     core,
     in_dygraph_mode,
@@ -297,34 +296,31 @@ def linspace(start, stop, num, dtype='float32', name=None):
              data = paddle.linspace(0, 10, 1, 'float32') # [0.0]
 
     """
+    tensor_num = num
+    tensor_start = start
+    tensor_stop = stop
+    if not isinstance(num, Variable):
+        check_type(num, 'num', (int), 'linspace')
+    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
+    if not isinstance(start, Variable):
+        with device_guard("cpu"):
+            tensor_start = fill_constant([1], dtype, start, force_cpu=True)
+    if not isinstance(stop, Variable):
+        with device_guard("cpu"):
+            tensor_stop = fill_constant([1], dtype, stop, force_cpu=True)
+    if not isinstance(num, Variable):
+        with device_guard("cpu"):
+            tensor_num = fill_constant([1], 'int32', num, force_cpu=True)
     if in_dygraph_mode():
-        if not isinstance(dtype, core.VarDesc.VarType):
-            dtype = convert_np_dtype_to_dtype_(dtype)
         return _C_ops.linspace(
-            start,
-            stop,
-            num,
+            tensor_start,
+            tensor_stop,
+            tensor_num,
             dtype,
             _current_expected_place(),
         )
     else:
-        tensor_num = num
-        tensor_start = start
-        tensor_stop = stop
-        if not isinstance(num, Variable):
-            check_type(num, 'num', (int), 'linspace')
-        if not isinstance(dtype, core.VarDesc.VarType):
-            dtype = convert_np_dtype_to_dtype_(dtype)
-        if not isinstance(start, Variable):
-            with device_guard("cpu"):
-                tensor_start = fill_constant([1], dtype, start, force_cpu=True)
-        if not isinstance(stop, Variable):
-            with device_guard("cpu"):
-                tensor_stop = fill_constant([1], dtype, stop, force_cpu=True)
-        if not isinstance(num, Variable):
-            with device_guard("cpu"):
-                tensor_num = fill_constant([1], 'int32', num, force_cpu=True)
-
         helper = LayerHelper("linspace", **locals())
 
         start_dtype = convert_dtype(tensor_start.dtype)
@@ -446,91 +442,91 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
     if not isinstance(base, Variable):
         with device_guard("cpu"):
             tensor_base = fill_constant([1], dtype, base)
-    if _non_static_mode():
+    if in_dygraph_mode():
         return _legacy_C_ops.logspace(
             tensor_start, tensor_stop, tensor_num, tensor_base, 'dtype', dtype
         )
-
-    helper = LayerHelper("logspace", **locals())
-
-    start_dtype = convert_dtype(tensor_start.dtype)
-    stop_dtype = convert_dtype(tensor_stop.dtype)
-    base_dtype = convert_dtype(tensor_base.dtype)
-    out_dtype = convert_dtype(dtype)
-    if isinstance(start, Variable):
-        check_dtype(
-            start.dtype,
-            'start',
-            ['float32', 'float64', 'int32', 'int64'],
-            'logspace',
-        )
     else:
-        check_type(start, 'start', (int, float), 'logspace')
+        helper = LayerHelper("logspace", **locals())
 
-    if isinstance(stop, Variable):
-        check_dtype(
-            stop.dtype,
-            'stop',
-            ['float32', 'float64', 'int32', 'int64'],
-            'logspace',
-        )
-    else:
-        check_type(stop, 'stop', (int, float), 'logspace')
-
-    if isinstance(num, Variable):
-        check_dtype(num.dtype, 'num', ['int32'], 'logspace')
-
-    if isinstance(base, Variable):
-        check_dtype(
-            base.dtype,
-            'base',
-            ['float32', 'float64', 'int32', 'int64'],
-            'logspace',
-        )
-    else:
-        check_type(base, 'base', (int, float), 'logspace')
-
-    check_dtype(
-        dtype, 'dtype', ['int32', 'int64', 'float32', 'float64'], 'logspace'
-    )
-    if (
-        (
-            stop_dtype == "float64"
-            or start_dtype == "float64"
-            or base_dtype == "float64"
-        )
-        and out_dtype in ["float32", "int32"]
-    ) or (
-        (
-            stop_dtype == "int64"
-            or start_dtype == "int64"
-            or base_dtype == "int64"
-        )
-        and out_dtype == "int32"
-    ):
-        raise ValueError(
-            "The dtype of start/stop/base is {}/{}/{} but the attr(dtype) of logspace is {}, "
-            "which may cause data type overflows. Please reset attr(dtype) of logspace.".format(
-                start_dtype, stop_dtype, base_dtype, dtype
+        start_dtype = convert_dtype(tensor_start.dtype)
+        stop_dtype = convert_dtype(tensor_stop.dtype)
+        base_dtype = convert_dtype(tensor_base.dtype)
+        out_dtype = convert_dtype(dtype)
+        if isinstance(start, Variable):
+            check_dtype(
+                start.dtype,
+                'start',
+                ['float32', 'float64', 'int32', 'int64'],
+                'logspace',
             )
+        else:
+            check_type(start, 'start', (int, float), 'logspace')
+
+        if isinstance(stop, Variable):
+            check_dtype(
+                stop.dtype,
+                'stop',
+                ['float32', 'float64', 'int32', 'int64'],
+                'logspace',
+            )
+        else:
+            check_type(stop, 'stop', (int, float), 'logspace')
+
+        if isinstance(num, Variable):
+            check_dtype(num.dtype, 'num', ['int32'], 'logspace')
+
+        if isinstance(base, Variable):
+            check_dtype(
+                base.dtype,
+                'base',
+                ['float32', 'float64', 'int32', 'int64'],
+                'logspace',
+            )
+        else:
+            check_type(base, 'base', (int, float), 'logspace')
+
+        check_dtype(
+            dtype, 'dtype', ['int32', 'int64', 'float32', 'float64'], 'logspace'
         )
+        if (
+            (
+                stop_dtype == "float64"
+                or start_dtype == "float64"
+                or base_dtype == "float64"
+            )
+            and out_dtype in ["float32", "int32"]
+        ) or (
+            (
+                stop_dtype == "int64"
+                or start_dtype == "int64"
+                or base_dtype == "int64"
+            )
+            and out_dtype == "int32"
+        ):
+            raise ValueError(
+                "The dtype of start/stop/base is {}/{}/{} but the attr(dtype) of logspace is {}, "
+                "which may cause data type overflows. Please reset attr(dtype) of logspace.".format(
+                    start_dtype, stop_dtype, base_dtype, dtype
+                )
+            )
 
-    out = helper.create_variable_for_type_inference(dtype=dtype)
+        out = helper.create_variable_for_type_inference(dtype=dtype)
 
-    helper.append_op(
-        type='logspace',
-        inputs={
-            'Start': tensor_start,
-            'Stop': tensor_stop,
-            'Num': tensor_num,
-            'Base': tensor_base,
-        },
-        attrs={'dtype': dtype},
-        outputs={'Out': [out]},
-    )
-    if isinstance(num, int):
-        out.desc.set_shape((num,))
-    return out
+        helper.append_op(
+            type='logspace',
+            inputs={
+                'Start': tensor_start,
+                'Stop': tensor_stop,
+                'Num': tensor_num,
+                'Base': tensor_base,
+            },
+            attrs={'dtype': dtype},
+            outputs={'Out': [out]},
+        )
+        if isinstance(num, int):
+            out.desc.set_shape((num,))
+        return out
 
 
 def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
@@ -746,7 +742,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     if place is None:
         place = _current_expected_place()
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         return _to_tensor_non_static(data, dtype, place, stop_gradient)
 
     # call assign for static graph
@@ -1178,40 +1174,39 @@ def arange(start=0, end=None, step=1, dtype='int64', name=None):
     if end is None:
         end = start
         start = 0
+
+    out_shape = None
+    if (
+        not isinstance(start, Variable)
+        and not isinstance(end, Variable)
+        and not isinstance(step, Variable)
+    ):
+        out_shape = [int(math.ceil((end - start) / step))]
+
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if not isinstance(start, Variable):
+        with device_guard("cpu"):
+            start = fill_constant([1], dtype, start, force_cpu=True)
+    elif start.dtype != dtype:
+        start = paddle.cast(start, dtype)
+
+    if not isinstance(end, Variable):
+        with device_guard("cpu"):
+            end = fill_constant([1], dtype, end, force_cpu=True)
+    elif end.dtype != dtype:
+        end = paddle.cast(end, dtype)
+
+    if not isinstance(step, Variable):
+        with device_guard("cpu"):
+            step = fill_constant([1], dtype, step, force_cpu=True)
+    elif step.dtype != dtype:
+        step = paddle.cast(step, dtype)
+
     if in_dygraph_mode():
-        if start.dtype != dtype:
-            start = paddle.cast(start, dtype)
-        if end.dtype != dtype:
-            end = paddle.cast(end, dtype)
-        if step.dtype != dtype:
-            step = paddle.cast(step, dtype)
         return _C_ops.arange(start, end, step, dtype, _current_expected_place())
     else:
-        out_shape = None
-        if (
-            not isinstance(start, Variable)
-            and not isinstance(end, Variable)
-            and not isinstance(step, Variable)
-        ):
-            out_shape = [int(math.ceil((end - start) / step))]
-        if not isinstance(start, Variable):
-            with device_guard("cpu"):
-                start = fill_constant([1], dtype, start, force_cpu=True)
-        elif start.dtype != dtype:
-            start = paddle.cast(start, dtype)
-        if not isinstance(end, Variable):
-            with device_guard("cpu"):
-                end = fill_constant([1], dtype, end, force_cpu=True)
-        elif end.dtype != dtype:
-            end = paddle.cast(end, dtype)
-
-        if not isinstance(step, Variable):
-            with device_guard("cpu"):
-                step = fill_constant([1], dtype, step, force_cpu=True)
-        elif step.dtype != dtype:
-            step = paddle.cast(step, dtype)
         check_dtype(
             dtype,
             'dtype',
@@ -1904,7 +1899,7 @@ def assign(x, output=None):
         input = np.array(input)
     # NOTE(Aurelius84): Why we judge core.VarBase?
     # In case of @to_static, a VarBase can be as input of `assign`,
-    # but _non_static_mode()==False under @to_static, which means
+    # but in_dygraph_mode()==False under @to_static, which means
     # isinstance(VarBase, Variable) == False. It will cause return None
     # after this api.
     if isinstance(input, (Variable, core.VarBase, core.eager.Tensor)):
@@ -2163,23 +2158,26 @@ def complex(real, imag, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.complex(real, imag)
+    else:
+        check_variable_and_dtype(
+            real, 'real', ['float32', 'float64'], 'complex'
+        )
+        check_variable_and_dtype(
+            imag, 'imag', ['float32', 'float64'], 'complex'
+        )
 
-    if paddle.in_dynamic_mode():
-        return paddle._legacy_C_ops.complex(real, imag)
-
-    check_variable_and_dtype(real, 'real', ['float32', 'float64'], 'complex')
-    check_variable_and_dtype(imag, 'imag', ['float32', 'float64'], 'complex')
-
-    op_type = "complex"
-    helper = LayerHelper(op_type, **locals())
-    inputs = {"X": real, "Y": imag}
-    out = helper.create_variable_for_type_inference(
-        dtype=_real_to_complex_dtype(real.dtype)
-    )
-    outputs = {"Out": out}
-    attrs = {}
-    helper.append_op(type=op_type, inputs=inputs, attrs=attrs, outputs=outputs)
-    return out
+        op_type = "complex"
+        helper = LayerHelper(op_type, **locals())
+        inputs = {"X": real, "Y": imag}
+        out = helper.create_variable_for_type_inference(
+            dtype=_real_to_complex_dtype(real.dtype)
+        )
+        outputs = {"Out": out}
+        attrs = {}
+        helper.append_op(
+            type=op_type, inputs=inputs, attrs=attrs, outputs=outputs
+        )
+        return out
 
 
 def tril_indices(row, col, offset=0, dtype='int64'):

@@ -17,13 +17,12 @@
 import numpy as np
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from paddle.common_ops_import import VarDesc, Variable
 
 from ..fluid.data_feeder import check_dtype, check_variable_and_dtype
 from ..framework import (
     LayerHelper,
-    _non_static_mode,
     convert_np_dtype_to_dtype_,
     core,
     in_dygraph_mode,
@@ -406,8 +405,6 @@ def nonzero(x, as_tuple=False):
 
     if in_dygraph_mode():
         outs = _C_ops.nonzero(x)
-    elif paddle.in_dynamic_mode():
-        outs = _legacy_C_ops.where_index(x)
     else:
         helper = LayerHelper("where_index", **locals())
 
@@ -615,7 +612,7 @@ def where(condition, x=None, y=None, name=None):
     if x is None or y is None:
         raise ValueError("either both or neither of x and y should be given")
 
-    if not paddle.in_dynamic_mode():
+    if not in_dygraph_mode():
         check_variable_and_dtype(condition, 'condition', ['bool'], 'where')
         check_variable_and_dtype(
             x, 'x', ['float32', 'float64', 'int32', 'int64'], 'where'
@@ -869,49 +866,30 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
             axis = -1
         out, indices = _C_ops.topk(x, k, axis, largest, sorted)
         return out, indices
-
-    if _non_static_mode():
-        if axis is None:
-            out, indices = _legacy_C_ops.top_k_v2(
-                x, 'k', int(k), 'largest', largest, 'sorted', sorted
-            )
-        else:
-            out, indices = _legacy_C_ops.top_k_v2(
-                x,
-                'k',
-                int(k),
-                'axis',
-                axis,
-                'largest',
-                largest,
-                'sorted',
-                sorted,
-            )
-        return out, indices
-
-    helper = LayerHelper("top_k_v2", **locals())
-    inputs = {"X": [x]}
-    attrs = {}
-    if isinstance(k, Variable):
-        inputs['K'] = [k]
     else:
-        attrs = {'k': k}
-    attrs['largest'] = largest
-    attrs['sorted'] = sorted
-    if axis is not None:
-        attrs['axis'] = axis
+        helper = LayerHelper("top_k_v2", **locals())
+        inputs = {"X": [x]}
+        attrs = {}
+        if isinstance(k, Variable):
+            inputs['K'] = [k]
+        else:
+            attrs = {'k': k}
+        attrs['largest'] = largest
+        attrs['sorted'] = sorted
+        if axis is not None:
+            attrs['axis'] = axis
 
-    values = helper.create_variable_for_type_inference(dtype=x.dtype)
-    indices = helper.create_variable_for_type_inference(dtype="int64")
+        values = helper.create_variable_for_type_inference(dtype=x.dtype)
+        indices = helper.create_variable_for_type_inference(dtype="int64")
 
-    helper.append_op(
-        type="top_k_v2",
-        inputs=inputs,
-        outputs={"Out": [values], "Indices": [indices]},
-        attrs=attrs,
-    )
-    indices.stop_gradient = True
-    return values, indices
+        helper.append_op(
+            type="top_k_v2",
+            inputs=inputs,
+            outputs={"Out": [values], "Indices": [indices]},
+            attrs=attrs,
+        )
+        indices.stop_gradient = True
+        return values, indices
 
 
 def bucketize(x, sorted_sequence, out_int32=False, right=False, name=None):

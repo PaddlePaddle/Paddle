@@ -24,7 +24,6 @@ from ..fluid.proto import framework_pb2
 from ..framework import (
     LayerHelper,
     OpProtoHolder,
-    _non_static_mode,
     convert_np_dtype_to_dtype_,
     core,
     in_dygraph_mode,
@@ -335,18 +334,20 @@ def generate_inplace_fn(inplace_op_type):
     origin_op_type = inplace_op_type[:-1]
 
     def func(x, name=None):
-        if in_dygraph_mode() and hasattr(_C_ops, inplace_op_type):
-            op = getattr(_C_ops, inplace_op_type)
-            return op(x)
-        if _non_static_mode():
-            op = getattr(_legacy_C_ops, inplace_op_type)
-            return op(x)
-        warnings.warn(
-            "In static mode, {}() is the same as {}() and does not perform inplace operation.".format(
-                inplace_op_type, origin_op_type
+        if in_dygraph_mode():
+            if hasattr(_C_ops, inplace_op_type):
+                op = getattr(_C_ops, inplace_op_type)
+                return op(x)
+            else:
+                op = getattr(_legacy_C_ops, inplace_op_type)
+                return op(x)
+        else:
+            warnings.warn(
+                "In static mode, {}() is the same as {}() and does not perform inplace operation.".format(
+                    inplace_op_type, origin_op_type
+                )
             )
-        )
-        return generate_activation_fn(origin_op_type)(x, name)
+            return generate_activation_fn(origin_op_type)(x, name)
 
     func.__name__ = inplace_op_type
     func.__doc__ = """

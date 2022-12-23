@@ -144,7 +144,7 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
             out2 = paddle.var(x, axis=1)
             # [1.         4.33333333]
     """
-    if not paddle.in_dynamic_mode():
+    if not in_dygraph_mode:
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'var')
 
     u = mean(x, axis, True, name)
@@ -209,7 +209,7 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
             # [1.       2.081666]
 
     """
-    if not paddle.in_dynamic_mode():
+    if not in_dygraph_mode():
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'std')
 
     out = var(**locals())
@@ -332,22 +332,25 @@ def nanmedian(x, axis=None, keepdim=True, name=None):
             x, 'axis', axis, 'keepdim', keepdim
         )
         return out
+    else:
+        check_variable_and_dtype(
+            x,
+            'X',
+            ['int32', 'int64', 'float16', 'float32', 'float64'],
+            'nanmedian',
+        )
 
-    check_variable_and_dtype(
-        x, 'X', ['int32', 'int64', 'float16', 'float32', 'float64'], 'nanmedian'
-    )
-
-    helper = LayerHelper('nanmedian', **locals())
-    attrs = {'axis': axis, 'keepdim': keepdim}
-    out = helper.create_variable_for_type_inference(x.dtype)
-    medians = helper.create_variable_for_type_inference(x.dtype)
-    helper.append_op(
-        type='nanmedian',
-        inputs={'X': x},
-        outputs={'Out': out, 'MedianIndex': medians},
-        attrs=attrs,
-    )
-    return out
+        helper = LayerHelper('nanmedian', **locals())
+        attrs = {'axis': axis, 'keepdim': keepdim}
+        out = helper.create_variable_for_type_inference(x.dtype)
+        medians = helper.create_variable_for_type_inference(x.dtype)
+        helper.append_op(
+            type='nanmedian',
+            inputs={'X': x},
+            outputs={'Out': out, 'MedianIndex': medians},
+            attrs=attrs,
+        )
+        return out
 
 
 def median(x, axis=None, keepdim=False, name=None):
@@ -530,7 +533,7 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
     for q_num in q:
         if q_num < 0 or q_num > 1:
             raise ValueError("q should be in range [0, 1]")
-        if paddle.in_dynamic_mode():
+        if in_dygraph_mode():
             q_num = paddle.to_tensor(q_num, dtype='float64')
         if ignore_nan:
             indices.append(q_num * (valid_counts - 1))

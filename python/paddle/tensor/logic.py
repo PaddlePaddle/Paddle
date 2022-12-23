@@ -26,7 +26,7 @@ if _in_eager_mode_:
 else:
     from ..framework import VarBase as Tensor
 
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from paddle.tensor.creation import full
 
 from ..framework import LayerHelper, in_dygraph_mode
@@ -338,16 +338,15 @@ def equal_all(x, y, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.equal_all(x, y)
-
-    if paddle.in_dynamic_mode():
-        return _legacy_C_ops.equal_all(x, y)
-
-    helper = LayerHelper("equal_all", **locals())
-    out = helper.create_variable_for_type_inference(dtype='bool')
-    helper.append_op(
-        type='equal_all', inputs={'X': [x], 'Y': [y]}, outputs={'Out': [out]}
-    )
-    return out
+    else:
+        helper = LayerHelper("equal_all", **locals())
+        out = helper.create_variable_for_type_inference(dtype='bool')
+        helper.append_op(
+            type='equal_all',
+            inputs={'X': [x], 'Y': [y]},
+            outputs={'Out': [out]},
+        )
+        return out
 
 
 @templatedoc()
