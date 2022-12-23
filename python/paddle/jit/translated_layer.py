@@ -559,7 +559,6 @@ class _ProgramHolder:
                             stop_gradient=True,
                         )
                         op.desc.set_output("ReserveSpace", [reserve_space.name])
-                    continue
 
                 proto = OpProtoHolder.instance().get_op_proto(op.type)
                 has_create_intermediate_out = False
