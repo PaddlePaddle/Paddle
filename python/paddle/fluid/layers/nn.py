@@ -22,7 +22,6 @@ import numpy as np
 
 import paddle
 from ..layer_helper import LayerHelper
-from paddle.fluid.framework import _in_legacy_dygraph
 from ..initializer import Normal, Constant
 from ..framework import (
     Variable,
@@ -34,7 +33,6 @@ from ..framework import (
     _varbase_creator,
     static_only,
     _global_flags,
-    _in_legacy_dygraph,
     in_dygraph_mode,
 )
 from ..framework import _current_expected_place
@@ -128,10 +126,6 @@ def _elementwise_op_in_dygraph(
                 OP_NAMEMAPPING[op_name] if not is_inplace(op_name) else op_name,
             )
             out = op(x, y)
-
-        if _in_legacy_dygraph():
-            op = getattr(_legacy_C_ops, op_name)
-            out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
     return dygraph_utils._append_activation_in_dygraph(
         out, act, use_mkldnn=use_mkldnn
     )
@@ -794,10 +788,6 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
 
     if in_dygraph_mode():
         return _C_ops.sum(input, dim, None, keep_dim)
-    elif _in_legacy_dygraph():
-        return _legacy_C_ops.reduce_sum(
-            input, 'dim', dim, 'keep_dim', keep_dim, 'reduce_all', reduce_all
-        )
     attrs = {'dim': dim, 'keep_dim': keep_dim, 'reduce_all': reduce_all}
     check_variable_and_dtype(
         input,
@@ -905,9 +895,6 @@ def unsqueeze(input, axes, name=None):
                 item.numpy().item(0) if isinstance(item, Variable) else item
                 for item in axes
             ]
-        if _in_legacy_dygraph():
-            out, _ = _legacy_C_ops.unsqueeze2(input, 'axes', axes)
-            return out
         return _C_ops.unsqueeze(input, axes)
 
     check_type(axes, 'axis/axes', (int, list, tuple, Variable), 'unsqueeze')

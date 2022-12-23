@@ -19,7 +19,6 @@ from ..framework import (
     Variable,
     _non_static_mode,
     in_dygraph_mode,
-    _in_legacy_dygraph,
     convert_np_dtype_to_dtype_,
 )
 from ..layer_helper import LayerHelper

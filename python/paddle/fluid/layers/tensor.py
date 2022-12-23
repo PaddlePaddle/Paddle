@@ -21,7 +21,6 @@ from ..framework import (
     convert_np_dtype_to_dtype_,
     _non_static_mode,
     _varbase_creator,
-    _in_legacy_dygraph,
     in_dygraph_mode,
 )
 from ..framework import Variable
@@ -190,16 +189,6 @@ def concat(input, axis=0, name=None):
         if not isinstance(input, Variable):
             input = [t for t in input if t.shape.count(0) == 0]
         out = _C_ops.concat(input, axis)
-        return out
-
-    if _in_legacy_dygraph():
-        if isinstance(axis, Variable):
-            axis = axis.numpy()
-            axis = axis.item(0)
-        if not isinstance(input, Variable):
-            input = [t for t in input if t.shape.count(0) == 0]
-        out = _varbase_creator()
-        _legacy_C_ops.concat(input, out, 'axis', axis)
         return out
 
     check_type(input, 'input', (list, tuple, Variable), 'concat')
@@ -402,10 +391,7 @@ def assign(input, output=None):
                 _C_ops.assign_out_(input, output)
             else:
                 if output is None:
-                    if _in_legacy_dygraph():
-                        output = core.VarBase()
-                    else:
-                        output = core.eager.Tensor()
+                    output = core.eager.Tensor()
                 _legacy_C_ops.assign(input, output)
         else:
             check_dtype(
@@ -479,18 +465,6 @@ def assign(input, output=None):
                 dtype,
                 values,
                 _current_expected_place(),
-            )
-        elif _in_legacy_dygraph():
-            if output is None:
-                output = core.VarBase()
-            _legacy_C_ops.assign_value(
-                output,
-                'shape',
-                list(input.shape),
-                'dtype',
-                dtype,
-                value_name,
-                values,
             )
         else:
             if output is None:
@@ -591,33 +565,6 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             _C_ops.full_(out, shape, float(value), dtype, place)
             out.stop_gradient = True
             return out
-
-    if _in_legacy_dygraph():
-        shape = utils.convert_shape_to_list(shape)
-        if out is None:
-            out = _varbase_creator(dtype=dtype)
-
-        if isinstance(value, Variable):
-            if dtype in ['uint8', 'int16', 'int32', 'int64']:
-                attrs['str_value'] = str(int(value.numpy().item(0)))
-            else:
-                attrs['str_value'] = str(float(value.numpy().item(0)))
-
-        _legacy_C_ops.fill_constant(
-            out,
-            'value',
-            float(value),
-            'force_cpu',
-            force_cpu,
-            'dtype',
-            out.dtype,
-            'str_value',
-            attrs['str_value'],
-            'shape',
-            shape,
-        )
-        out.stop_gradient = True
-        return out
 
     helper = LayerHelper("fill_constant", **locals())
     inputs = {}

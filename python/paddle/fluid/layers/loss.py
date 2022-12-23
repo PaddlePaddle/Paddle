@@ -23,7 +23,6 @@ from ..framework import (
     Variable,
     _non_static_mode,
     static_only,
-    _in_legacy_dygraph,
     in_dygraph_mode,
 )
 from .. import core
