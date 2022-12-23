@@ -186,7 +186,6 @@ def instance_norm(
     input, epsilon=1e-05, param_attr=None, bias_attr=None, name=None
 ):
     r"""
-    :api_attr: Static Graph
 
     **Instance Normalization Layer**
 
@@ -388,7 +387,6 @@ def data_norm(
     enable_scale_and_shift=False,
 ):
     r"""
-    :api_attr: Static Graph
 
     **Data Normalization Layer**
 
@@ -587,7 +585,6 @@ def group_norm(
     name=None,
 ):
     """
-    :api_attr: Static Graph
 
     **Group Normalization Layer**
 
@@ -701,7 +698,6 @@ def conv3d(
     data_format="NCDHW",
 ):
     r"""
-    :api_attr: Static Graph
 
     The convolution3D layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input(Input) and
@@ -804,19 +800,6 @@ def conv3d(
         the same with input. If act is None, the tensor variable storing the
         convolution result, and if act is not None, the tensor variable storing
         convolution and non-linearity activation result.
-
-    Raises:
-        ValueError: If the type of `use_cudnn` is not bool.
-        ValueError: If `data_format` is not "NCDHW" or "NDHWC".
-        ValueError: If the channel dimmention of the input is less than or equal to zero.
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0
-            or the element corresponding to the input's channel is not 0.
-        ShapeError: If the input is not 5-D Tensor.
-        ShapeError: If the input's dimension size and filter's dimension size not equal.
-        ShapeError: If the dimension size of input minus the size of `stride` is not 2.
-        ShapeError: If the number of input channels is not equal to filter's channels * groups.
-        ShapeError: If the number of output channels is not be divided by groups.
 
     Examples:
         .. code-block:: python
@@ -1010,7 +993,6 @@ def conv2d_transpose(
     data_format='NCHW',
 ):
     r"""
-    :api_attr: Static Graph
 
     The convolution2D transpose layer calculates the output based on the input,
     filter, and dilations, strides, paddings. Input(Input) and output(Output)
@@ -1055,8 +1037,8 @@ def conv2d_transpose(
 
         .. math::
 
-           H^\prime_{out} &= (H_{in} - 1) * strides[0] - pad_height_top - pad_height_bottom + dilations[0] * (H_f - 1) + 1 \\
-           W^\prime_{out} &= (W_{in} - 1) * strides[1] - pad_width_left - pad_width_right + dilations[1] * (W_f - 1) + 1 \\
+           H^\prime_{out} &= (H_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (H_f - 1) + 1 \\
+           W^\prime_{out} &= (W_{in} - 1) * strides[1] - 2 * paddings[0] + dilations[1] * (W_f - 1) + 1 \\
            H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[0] ] \\
            W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] ]
 
@@ -1382,7 +1364,6 @@ def conv3d_transpose(
     data_format='NCDHW',
 ):
     r"""
-    :api_attr: Static Graph
 
     The convolution3D transpose layer calculates the output based on the input,
     filter, and dilations, strides, paddings. Input(Input) and output(Output)
@@ -1427,9 +1408,9 @@ def conv3d_transpose(
 
         .. math::
 
-           D^\prime_{out} &= (D_{in} - 1) * strides[0] - pad_depth_front - pad_depth_back + dilations[0] * (D_f - 1) + 1 \\
-           H^\prime_{out} &= (H_{in} - 1) * strides[1] - pad_depth_top - pad_depth_bottom + dilations[1] * (H_f - 1) + 1 \\
-           W^\prime_{out} &= (W_{in} - 1) * strides[2] - pad_with_left - pad_width_right + dilations[2] * (W_f - 1) + 1 \\
+           D^\prime_{out} &= (D_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (D_f - 1) + 1 \\
+           H^\prime_{out} &= (H_{in} - 1) * strides[1] - 2 * paddings[0] + dilations[1] * (H_f - 1) + 1 \\
+           W^\prime_{out} &= (W_{in} - 1) * strides[2] - 2 * paddings[0] + dilations[2] * (W_f - 1) + 1 \\
            D_{out} &\in [ D^\prime_{out}, D^\prime_{out} + strides[0] ] \\
            H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[1] ] \\
            W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[2] ]
@@ -1529,19 +1510,6 @@ def conv3d_transpose(
         out_w) or (num_batches, out_d, out_h, out_w, channels). If act is None, the tensor
         variable storing the transposed convolution result, and if act is not None, the tensor
         variable storing transposed convolution and non-linearity activation result.
-
-    Raises:
-        ValueError: If the type of `use_cudnn` is not bool.
-        ValueError: If `data_format` is not "NCDHW" or "NDHWC".
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0
-            or the element corresponding to the input's channel is not 0.
-        ValueError: If `output_size` and filter_size are None at the same time.
-        ShapeError: If the input is not 5-D Tensor.
-        ShapeError: If the input's dimension size and filter's dimension size not equal.
-        ShapeError: If the dimension size of input minus the size of `stride` is not 2.
-        ShapeError: If the number of input channels is not equal to filter's channels.
-        ShapeError: If the size of `output_size` is not equal to that of `stride`.
 
     Examples:
        .. code-block:: python
