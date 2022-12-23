@@ -84,8 +84,8 @@ void MatmulTransposeReshapeMKLDNNPass::Fuse(
     }
 
     OpDesc *matmul_desc = matmul_op->Op();
+    matmul_desc->SetType("fused_matmul");
     if (matmul_type == "matmul") {
-      matmul_desc->SetType("matmul_v2");
       matmul_desc->SetAttr("trans_x", matmul_desc->GetAttr("transpose_X"));
       matmul_desc->SetAttr("trans_y", matmul_desc->GetAttr("transpose_Y"));
       auto matmul_alpha = matmul_desc->GetAttrIfExists<float>("alpha");

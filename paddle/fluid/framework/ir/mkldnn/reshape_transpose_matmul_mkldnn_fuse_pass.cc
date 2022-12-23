@@ -22,7 +22,7 @@ namespace framework {
 namespace ir {
 
 void ReshapeTransposeMatmulMkldnnFusePass::ApplyImpl(Graph *graph) const {
-  auto matmul_types = {"matmul", "matmul_v2"};
+  auto matmul_types = {"matmul", "matmul_v2", "fused_matmul"};
 
   for (const auto &matmul_type : matmul_types) {
     Fuse(graph,
@@ -123,8 +123,16 @@ void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
       return;
     }
 
+    std::unordered_set<const ir::Node *> nodes_to_remove{
+        reshape_op, reshape_out, transpose_op, transpose_out};
+    if (with_reshape_xshape) nodes_to_remove.insert(reshape_xshape);
+    if (with_transpose_xshape) nodes_to_remove.insert(transpose_xshape);
+    GraphSafeRemoveNodes(graph, nodes_to_remove);
+
+    IR_NODE_LINK_TO(reshape_in, matmul_op);
+
+    matmul_desc->SetType("fused_matmul");
     if (matmul_type == "matmul") {
-      matmul_desc->SetType("matmul_v2");
       matmul_desc->SetAttr("trans_x", matmul_desc->GetAttr("transpose_X"));
       matmul_desc->SetAttr("trans_y", matmul_desc->GetAttr("transpose_Y"));
       auto matmul_alpha = matmul_desc->GetAttrIfExists<float>("alpha");
@@ -136,14 +144,6 @@ void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
     matmul_desc->SetAttr("fused_reshape_" + matmul_input_name, reshape_shape);
     matmul_desc->SetAttr("fused_transpose_" + matmul_input_name,
                          transpose_axis);
-
-    std::unordered_set<const ir::Node *> nodes_to_remove{
-        reshape_op, reshape_out, transpose_op, transpose_out};
-    if (with_reshape_xshape) nodes_to_remove.insert(reshape_xshape);
-    if (with_transpose_xshape) nodes_to_remove.insert(transpose_xshape);
-    GraphSafeRemoveNodes(graph, nodes_to_remove);
-
-    IR_NODE_LINK_TO(reshape_in, matmul_op);
 
     ++found_reshape_transpose_matmul_count;
   };
@@ -214,6 +214,23 @@ ReshapeTransposeMatmulMkldnnFusePass::ReshapeTransposeMatmulMkldnnFusePass() {
       .End();
 
   AddOpCompat(OpCompat("matmul_v2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("trans_x")
+      .IsType<bool>()
+      .End()
+      .AddAttr("trans_y")
+      .IsType<bool>()
+      .End();
+
+  AddOpCompat(OpCompat("fused_matmul"))
       .AddInput("X")
       .IsTensor()
       .End()

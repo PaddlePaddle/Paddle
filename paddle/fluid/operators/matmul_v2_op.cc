@@ -24,26 +24,6 @@
 namespace paddle {
 namespace operators {
 
-static framework::DDim GetDimForInput(const framework::InferShapeContext& ctx,
-                                      const std::string input_name) {
-  auto shape = ctx.Attrs().Get<std::vector<int>>("fused_reshape_" + input_name);
-  auto axis =
-      ctx.Attrs().Get<std::vector<int>>("fused_transpose_" + input_name);
-  auto dim = ctx.GetInputDim(input_name);
-
-  PADDLE_ENFORCE_GT(dim.size(),
-                    0,
-                    platform::errors::InvalidArgument(
-                        "The Input(%s) has not been initialized properly. The "
-                        "shape of Input(%s) = [%s].",
-                        dim));
-
-  if (!shape.empty() && !axis.empty()) {
-    dim = dim.reshape(shape).transpose(axis);
-  }
-  return dim;
-}
-
 class MatMulV2Op : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -54,8 +34,8 @@ class MatMulV2Op : public framework::OperatorWithKernel {
     bool trans_x = ctx->Attrs().Get<bool>("trans_x");
     bool trans_y = ctx->Attrs().Get<bool>("trans_y");
 
-    std::vector<int64_t> dims_x = phi::vectorize(GetDimForInput(*ctx, "X"));
-    std::vector<int64_t> dims_y = phi::vectorize(GetDimForInput(*ctx, "Y"));
+    std::vector<int64_t> dims_x = phi::vectorize(ctx->GetInputDim("X"));
+    std::vector<int64_t> dims_y = phi::vectorize(ctx->GetInputDim("Y"));
     auto ndims_x = dims_x.size();
     auto ndims_y = dims_y.size();
     PADDLE_ENFORCE_GT(ndims_x,
@@ -116,15 +96,6 @@ class MatMulV2Op : public framework::OperatorWithKernel {
     }
 
     auto ddim_out = phi::make_ddim(new_dims);
-
-#ifdef PADDLE_WITH_MKLDNN
-    auto shape = ctx->Attrs().Get<std::vector<int>>("fused_reshape_Out");
-    auto axis = ctx->Attrs().Get<std::vector<int>>("fused_transpose_Out");
-
-    if (!shape.empty() && !axis.empty()) {
-      ddim_out = ddim_out.transpose(axis).reshape(shape);
-    }
-#endif
 
     ctx->SetOutputDim("Out", ddim_out);
     ctx->ShareLoD("X", "Out");

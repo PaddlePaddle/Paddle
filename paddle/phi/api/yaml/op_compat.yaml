@@ -556,6 +556,12 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : fused_matmul
+  extra :
+    attrs : [bool use_mkldnn = false, 'int[] fused_reshape_Out = {}', 'int[] fused_transpose_Out = {}',
+             str mkldnn_data_type = "float32", 'int[] fused_reshape_X = {}', 'int[] fused_reshape_Y = {}',
+             'int[] fused_transpose_X = {}', 'int[] fused_transpose_Y = {}']
+
 - op : gather
   backward : gather_grad
   extra :
@@ -813,9 +819,7 @@
 - op : matmul (matmul_v2)
   backward : matmul_grad (matmul_v2_grad)
   extra :
-    attrs : [bool use_mkldnn = false, 'int[] fused_reshape_Out = {}', 'int[] fused_transpose_Out = {}',
-             str mkldnn_data_type = "float32", 'int[] fused_reshape_X = {}', 'int[] fused_reshape_Y = {}',
-             'int[] fused_transpose_X = {}', 'int[] fused_transpose_Y = {}']
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
 - op : matmul_with_flatten (mul)
   backward : matmul_with_flatten_grad (mul_grad)

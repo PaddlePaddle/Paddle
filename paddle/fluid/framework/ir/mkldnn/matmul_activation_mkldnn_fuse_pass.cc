@@ -79,7 +79,7 @@ void MatmulActivationMkldnnFusePass::FuseMatmulAct(
     }
 
     if (matmul_type == "matmul") {
-      matmul_op->SetType("matmul_v2");
+      matmul_op->SetType("fused_matmul");
       matmul_op->SetAttr("trans_x", matmul_op->GetAttr("transpose_X"));
       matmul_op->SetAttr("trans_y", matmul_op->GetAttr("transpose_Y"));
       auto matmul_alpha = matmul_op->GetAttrIfExists<float>("alpha");

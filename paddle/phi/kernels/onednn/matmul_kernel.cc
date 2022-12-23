@@ -28,31 +28,11 @@ using paddle::framework::ReshapeToMatrix;
 
 namespace phi {
 
-DDim GetDimsForInput(const OneDNNContext &dev_ctx,
-                     DDim input_dims,
-                     std::string input_name) {
-  auto shape =
-      dev_ctx.HasDnnAttr("fused_reshape_" + input_name)
-          ? PADDLE_GET_CONST(std::vector<int>,
-                             dev_ctx.GetDnnAttr("fused_reshape_" + input_name))
-          : std::vector<int>();
-  auto axis = dev_ctx.HasDnnAttr("fused_transpose_" + input_name)
-                  ? PADDLE_GET_CONST(
-                        std::vector<int>,
-                        dev_ctx.GetDnnAttr("fused_transpose_" + input_name))
-                  : std::vector<int>();
-  if (!shape.empty() && !axis.empty()) {
-    return input_dims.reshape(shape).transpose(axis);
-  }
-  return input_dims;
-}
-
 void CalculateMatrixDims(const std::vector<int64_t> &x_dims,
                          const std::vector<int64_t> &y_dims,
                          std::vector<int64_t> *x_bd_dims,
                          std::vector<int64_t> *y_bd_dims,
-                         DenseTensor *out,
-                         const bool is_output_fused) {
+                         DenseTensor *out) {
   if (x_dims.size() == 1) {
     (*x_bd_dims)[(*x_bd_dims).size() - 1] = x_dims[0];
   } else if (x_dims.size() == 2) {
@@ -74,7 +54,7 @@ void CalculateMatrixDims(const std::vector<int64_t> &x_dims,
     }
   }
 
-  if (!is_output_fused && x_dims.size() > 2 && y_dims.size() > 2) {
+  if (x_dims.size() > 2 && y_dims.size() > 2) {
     auto out_dims = vectorize(out->dims());
     for (size_t i = 0; i < (*x_bd_dims).size() - 2; ++i) {
       PADDLE_ENFORCE_EQ(
@@ -130,8 +110,8 @@ void MatmulKernel(const Context &dev_ctx,
     }
   }
 
-  auto x_dims = vectorize(GetDimsForInput(dev_ctx, x.dims(), "X"));
-  auto y_dims = vectorize(GetDimsForInput(dev_ctx, y.dims(), "Y"));
+  auto x_dims = vectorize(x.dims());
+  auto y_dims = vectorize(y.dims());
 
   int ndims = std::max(x_dims.size(), y_dims.size());
   ndims = std::max(ndims, 3);
@@ -139,12 +119,7 @@ void MatmulKernel(const Context &dev_ctx,
   std::vector<int64_t> x_bd_dims(ndims, 1);
   std::vector<int64_t> y_bd_dims(ndims, 1);
 
-  CalculateMatrixDims(x_dims,
-                      y_dims,
-                      &x_bd_dims,
-                      &y_bd_dims,
-                      out,
-                      funcs::IsOutputFused(dev_ctx));
+  CalculateMatrixDims(x_dims, y_dims, &x_bd_dims, &y_bd_dims, out);
 
   if (force_fp32_output || ((!is_int8) && (!is_bfloat16))) {
     funcs::ExecuteMatmul<T, float>(
