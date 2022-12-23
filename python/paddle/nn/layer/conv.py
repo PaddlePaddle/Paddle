@@ -434,7 +434,7 @@ class Conv1DTranspose(_ConvNd):
 
         .. math::
 
-           L^\prime_{out} &= (L_{in} - 1) * stride - pad_top - pad_bottom + dilation * (L_f - 1) + 1 \\
+           L^\prime_{out} &= (L_{in} - 1) * stride - 2 * padding + dilation * (L_f - 1) + 1 \\
            L_{out} &\in [ L^\prime_{out}, L^\prime_{out} + stride ]
 
     Note:
