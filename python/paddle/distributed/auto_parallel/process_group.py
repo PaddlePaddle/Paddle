@@ -143,6 +143,10 @@ class ProcessGroup:
             strategy.current_endpoint = genv.current_endpoint
             print("current_endpoint: {}".format(strategy.current_endpoint))
             strategy.nrings = 1
+            print("wait 25 sec")
+            import time
+
+            time.sleep(25)
 
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(genv.device_id)
