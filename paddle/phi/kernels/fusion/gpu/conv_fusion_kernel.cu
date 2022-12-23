@@ -82,11 +82,13 @@ class CudnnConvDescManager {
     // std::hash takes about 5us, xxhash can optimize to 2.5us.
     XXH64_state_t* const state = XXH64_createState();
     if (state == nullptr) {
-      CHECK(false);
+      PADDLE_THROW(phi::errors::PreconditionNotMet(
+          "xxhash create state failed, maybe a environment error."));
     }
     XXH64_hash_t const seed = 0;
     if (XXH64_reset(state, seed) == XXH_ERROR) {
-      CHECK(false);
+      PADDLE_THROW(phi::errors::PreconditionNotMet(
+          "xxhash reset state failed, maybe a environment error."));
     }
     XXH64_update(state, input_dims.data(), input_dims.size() * sizeof(int));
     XXH64_update(state, filter_dims.data(), filter_dims.size() * sizeof(int));
@@ -153,11 +155,13 @@ class CudnnConvDescManager {
     // std::hash takes about 5us, xxhash can optimize to 2.5us.
     XXH64_state_t* const state = XXH64_createState();
     if (state == nullptr) {
-      CHECK(false);
+      PADDLE_THROW(phi::errors::PreconditionNotMet(
+          "xxhash create state failed, maybe a environment error."));
     }
     XXH64_hash_t const seed = 0;
     if (XXH64_reset(state, seed) == XXH_ERROR) {
-      CHECK(false);
+      PADDLE_THROW(phi::errors::PreconditionNotMet(
+          "xxhash create state failed, maybe a environment error."));
     }
     XXH64_update(state, paddings_t.data(), paddings_t.size() * sizeof(int));
     XXH64_update(state, dilations_t.data(), dilations_t.size() * sizeof(int));
@@ -429,92 +433,85 @@ void ConvFusionKernel(const Context& ctx,
     b_dims[input.dims().size() - 1] = static_cast<int>(bias.dims()[0]);
   }
 
-  std::function<void(cudnnConvolutionFwdAlgo_t*,
-                     size_t*,
-                     cudnnTensorDescriptor_t,
-                     cudnnFilterDescriptor_t,
-                     cudnnTensorDescriptor_t,
-                     cudnnConvolutionDescriptor_t)>
-      search_func = [&](cudnnConvolutionFwdAlgo_t* cudnn_algo,
-                        size_t* wks_bytes,
-                        cudnnTensorDescriptor_t x_desc,
-                        cudnnFilterDescriptor_t w_desc,
-                        cudnnTensorDescriptor_t o_desc,
-                        cudnnConvolutionDescriptor_t cudnn_conv_desc) {
-        if (!exhaustive_search) {
+  auto search_func = [&](cudnnConvolutionFwdAlgo_t* cudnn_algo,
+                         size_t* wks_bytes,
+                         cudnnTensorDescriptor_t x_desc,
+                         cudnnFilterDescriptor_t w_desc,
+                         cudnnTensorDescriptor_t o_desc,
+                         cudnnConvolutionDescriptor_t cudnn_conv_desc) {
+    if (!exhaustive_search) {
 #if CUDNN_VERSION >= 8000
-          int perf_count;
-          int best_algo_idx = 0;
-          size_t tmp_size = 0;
-          std::unique_ptr<cudnnConvolutionFwdAlgoPerf_t[]> perf_results(
-              new cudnnConvolutionFwdAlgoPerf_t[phi::kNUM_CUDNN_FWD_ALGS]);
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              phi::dynload::cudnnGetConvolutionForwardAlgorithm_v7(
-                  handle,
-                  x_desc,
-                  w_desc,
-                  cudnn_conv_desc,
-                  o_desc,
-                  phi::kNUM_CUDNN_FWD_ALGS,
-                  &perf_count,
-                  perf_results.get()));
-          *cudnn_algo = (perf_results.get())[best_algo_idx].algo;
+      int perf_count;
+      int best_algo_idx = 0;
+      size_t tmp_size = 0;
+      std::unique_ptr<cudnnConvolutionFwdAlgoPerf_t[]> perf_results(
+          new cudnnConvolutionFwdAlgoPerf_t[phi::kNUM_CUDNN_FWD_ALGS]);
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::cudnnGetConvolutionForwardAlgorithm_v7(
+              handle,
+              x_desc,
+              w_desc,
+              cudnn_conv_desc,
+              o_desc,
+              phi::kNUM_CUDNN_FWD_ALGS,
+              &perf_count,
+              perf_results.get()));
+      *cudnn_algo = (perf_results.get())[best_algo_idx].algo;
 #else
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              phi::dynload::cudnnGetConvolutionForwardAlgorithm(
-                  handle,
-                  x_desc,
-                  w_desc,
-                  cudnn_conv_desc,
-                  o_desc,
-                  CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
-                  workspace_size_limit,
-                  cudnn_algo));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::cudnnGetConvolutionForwardAlgorithm(
+              handle,
+              x_desc,
+              w_desc,
+              cudnn_conv_desc,
+              o_desc,
+              CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
+              workspace_size_limit,
+              cudnn_algo));
 #endif
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              phi::dynload::cudnnGetConvolutionForwardWorkspaceSize(
-                  handle,
-                  x_desc,
-                  w_desc,
-                  cudnn_conv_desc,
-                  o_desc,
-                  *cudnn_algo,
-                  wks_bytes));
-        } else {
-          std::array<cudnnConvolutionFwdAlgoPerf_t, phi::kNUM_CUDNN_FWD_ALGS>
-              fwd_perf_stat;
-          int returned_algo_count;
-          auto cudnn_find_func = [&](void* cudnn_workspace) {
-            PADDLE_ENFORCE_GPU_SUCCESS(
-                phi::dynload::cudnnFindConvolutionForwardAlgorithmEx(
-                    handle,
-                    x_desc,
-                    transformed_input.data(),
-                    w_desc,
-                    filter.data(),
-                    cudnn_conv_desc,
-                    o_desc,
-                    output->data(),
-                    phi::kNUM_CUDNN_FWD_ALGS,
-                    &returned_algo_count,
-                    fwd_perf_stat.data(),
-                    cudnn_workspace,
-                    workspace_size_limit));
-          };
-          workspace_handle.RunFuncSync(cudnn_find_func, workspace_size_limit);
-          *cudnn_algo = fwd_perf_stat[0].algo;
-
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              phi::dynload::cudnnGetConvolutionForwardWorkspaceSize(
-                  handle,
-                  x_desc,
-                  w_desc,
-                  cudnn_conv_desc,
-                  o_desc,
-                  fwd_perf_stat[0].algo,
-                  wks_bytes));
-        }
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::cudnnGetConvolutionForwardWorkspaceSize(handle,
+                                                                x_desc,
+                                                                w_desc,
+                                                                cudnn_conv_desc,
+                                                                o_desc,
+                                                                *cudnn_algo,
+                                                                wks_bytes));
+    } else {
+      std::array<cudnnConvolutionFwdAlgoPerf_t, phi::kNUM_CUDNN_FWD_ALGS>
+          fwd_perf_stat;
+      int returned_algo_count;
+      auto cudnn_find_func = [&](void* cudnn_workspace) {
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            phi::dynload::cudnnFindConvolutionForwardAlgorithmEx(
+                handle,
+                x_desc,
+                transformed_input.data(),
+                w_desc,
+                filter.data(),
+                cudnn_conv_desc,
+                o_desc,
+                output->data(),
+                phi::kNUM_CUDNN_FWD_ALGS,
+                &returned_algo_count,
+                fwd_perf_stat.data(),
+                cudnn_workspace,
+                workspace_size_limit));
       };
+      workspace_handle.RunFuncSync(cudnn_find_func, workspace_size_limit);
+      *cudnn_algo = fwd_perf_stat[0].algo;
+
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::cudnnGetConvolutionForwardWorkspaceSize(
+              handle,
+              x_desc,
+              w_desc,
+              cudnn_conv_desc,
+              o_desc,
+              fwd_perf_stat[0].algo,
+              wks_bytes));
+    }
+  };
 
   auto cudnn_cache_info = CudnnConvDescManager::Instance()->GetCudnnCacheInfo(
       phi::vectorize<int>(transformed_input.dims()),
