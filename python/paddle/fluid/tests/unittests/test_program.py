@@ -98,7 +98,7 @@ class TestProgram(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            d = layers.data(name='x', shape=[784], dtype='float32')
+            d = paddle.static.data(name='x', shape=[-1, 784], dtype='float32')
             hidden = layers.fc(input=d, size=100)
             layers.fc(input=hidden, size=100)
 

@@ -46,10 +46,12 @@ class TestReaderReset(unittest.TestCase):
         startup_prog = fluid.Program()
 
         with fluid.program_guard(main_prog, startup_prog):
-            image = fluid.layers.data(
-                name='image', shape=self.ins_shape, dtype='float32'
+            image = paddle.static.data(
+                name='image', shape=[-1] + self.ins_shape, dtype='float32'
             )
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
             data_reader_handle = fluid.io.PyReader(
                 feed_list=[image, label],
                 capacity=16,

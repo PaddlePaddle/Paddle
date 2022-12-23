@@ -22,7 +22,6 @@ from rnn.rnn_numpy import rnn as numpy_rnn
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 import paddle.fluid.layers.utils as utils
 from paddle.fluid import framework
 from paddle.fluid.executor import Executor
@@ -42,10 +41,9 @@ class TestRnnError(unittest.TestCase):
             inputs = fluid.data(
                 name='inputs', shape=[None, input_size], dtype='float32'
             )
-            pre_hidden = layers.data(
+            pre_hidden = paddle.static.data(
                 name='pre_hidden',
                 shape=[None, hidden_size],
-                append_batch_size=False,
                 dtype='float32',
             )
             inputs_basic_lstm = fluid.data(

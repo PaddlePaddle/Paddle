@@ -157,8 +157,11 @@ class TestOneHotOp_exception(unittest.TestCase):
     def test_check_output(self):
         program = Program()
         with program_guard(program):
-            x = fluid.layers.data(
-                name='x', shape=[self.dimension], dtype='float32', lod_level=1
+            x = paddle.static.data(
+                name='x',
+                shape=[-1, self.dimension],
+                dtype='float32',
+                lod_level=1,
             )
             block = program.current_block()
             one_hot_out = block.create_var(
@@ -191,18 +194,16 @@ class TestOneHotOpError(unittest.TestCase):
             in_w = np.random.random((4, 1)).astype("int32")
             self.assertRaises(TypeError, fluid.layers.one_hot, in_w)
             # the input must be int32 or int 64
-            in_w2 = fluid.layers.data(
+            in_w2 = paddle.static.data(
                 name="in_w2",
                 shape=[4, 1],
-                append_batch_size=False,
                 dtype="float32",
             )
             self.assertRaises(TypeError, fluid.layers.one_hot, in_w2)
             # the depth must be int, long or Variable
-            in_r = fluid.layers.data(
+            in_r = paddle.static.data(
                 name="in_r",
                 shape=[4, 1],
-                append_batch_size=False,
                 dtype="int32",
             )
             depth_w = np.array([4])

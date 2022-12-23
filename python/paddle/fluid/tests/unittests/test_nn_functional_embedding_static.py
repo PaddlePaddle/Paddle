@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 import paddle.nn.functional as functional
 
@@ -41,10 +42,9 @@ class EmbeddingStatic(unittest.TestCase):
                     (128, 100), attr=param_attr, dtype="float32"
                 )
 
-                label = fluid.layers.data(
+                label = paddle.static.data(
                     name="label",
-                    shape=[4],
-                    append_batch_size=False,
+                    shape=[-1, 4],
                     dtype="int64",
                 )
 
@@ -74,10 +74,9 @@ class EmbeddingStatic(unittest.TestCase):
                     (128, 100), attr=param_attr, dtype="float32"
                 )
 
-                label = fluid.layers.data(
+                label = paddle.static.data(
                     name="label",
-                    shape=[4],
-                    append_batch_size=False,
+                    shape=[-1, 4],
                     dtype="int32",
                 )
 

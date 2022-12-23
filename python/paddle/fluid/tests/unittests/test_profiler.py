@@ -37,7 +37,9 @@ class TestProfiler(unittest.TestCase):
         startup_program = fluid.Program()
         main_program = fluid.Program()
         with fluid.program_guard(main_program, startup_program):
-            image = fluid.layers.data(name='x', shape=[784], dtype='float32')
+            image = paddle.static.data(
+                name='x', shape=[-1, 784], dtype='float32'
+            )
             hidden1 = fluid.layers.fc(input=image, size=64, act='relu')
             i = layers.zeros(shape=[1], dtype='int64')
             counter = fluid.layers.zeros(
@@ -56,7 +58,7 @@ class TestProfiler(unittest.TestCase):
             hidden_n = paddle.tensor.array_read(data_arr, i)
             hidden2 = fluid.layers.fc(input=hidden_n, size=64, act='relu')
             predict = fluid.layers.fc(input=hidden2, size=10, act='softmax')
-            label = fluid.layers.data(name='y', shape=[1], dtype='int64')
+            label = paddle.static.data(name='y', shape=[-1, 1], dtype='int64')
             cost = paddle.nn.functional.cross_entropy(
                 input=predict, label=label, reduction='none', use_softmax=False
             )

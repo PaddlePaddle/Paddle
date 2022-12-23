@@ -134,8 +134,11 @@ class TestOneHotOp_exception(unittest.TestCase):
     def test_check_output(self):
         program = Program()
         with program_guard(program):
-            x = fluid.layers.data(
-                name='x', shape=[self.dimension], dtype='float32', lod_level=1
+            x = paddle.static.data(
+                name='x',
+                shape=[-1, self.dimension],
+                dtype='float32',
+                lod_level=1,
             )
             block = program.current_block()
             one_hot_out = block.create_var(
@@ -181,7 +184,7 @@ class TestOneHotOpApi(unittest.TestCase):
             )
 
     def _run(self, num_classes):
-        label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+        label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
         one_hot_label = functional.one_hot(x=label, num_classes=num_classes)
 
         place = fluid.CPUPlace()
@@ -205,10 +208,9 @@ class BadInputTestOnehotV2(unittest.TestCase):
         with fluid.program_guard(fluid.Program()):
 
             def test_bad_x():
-                label = fluid.layers.data(
+                label = paddle.static.data(
                     name="label",
                     shape=[4],
-                    append_batch_size=False,
                     dtype="float32",
                 )
                 one_hot_label = functional.one_hot(x=label, num_classes=4)

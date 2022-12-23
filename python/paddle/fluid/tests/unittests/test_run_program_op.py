@@ -442,8 +442,8 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
 
     def build_model(self):
         # 1. simple model
-        x = fluid.layers.data(
-            name=self.input_names['X'][0], shape=[5], dtype='int64'
+        x = paddle.static.data(
+            name=self.input_names['X'][0], shape=[-1, 5], dtype='int64'
         )
         emb = fluid.input.embedding(
             input=x,

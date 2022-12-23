@@ -25,7 +25,7 @@ class TestNonZeroAPI(unittest.TestCase):
     def test_nonzero_api_as_tuple(self):
         data = np.array([[True, False], [False, True]])
         with program_guard(Program(), Program()):
-            x = fluid.layers.data(name='x', shape=[-1, 2])
+            x = paddle.static.data(name='x', shape=[-1, 2])
             y = paddle.nonzero(x, as_tuple=True)
             self.assertEqual(type(y), tuple)
             self.assertEqual(len(y), 2)
@@ -40,7 +40,7 @@ class TestNonZeroAPI(unittest.TestCase):
 
         data = np.array([True, True, False])
         with program_guard(Program(), Program()):
-            x = fluid.layers.data(name='x', shape=[-1])
+            x = paddle.static.data(name='x', shape=[-1])
             y = paddle.nonzero(x, as_tuple=True)
             self.assertEqual(type(y), tuple)
             self.assertEqual(len(y), 1)
@@ -55,7 +55,7 @@ class TestNonZeroAPI(unittest.TestCase):
     def test_nonzero_api(self):
         data = np.array([[True, False], [False, True]])
         with program_guard(Program(), Program()):
-            x = fluid.layers.data(name='x', shape=[-1, 2])
+            x = paddle.static.data(name='x', shape=[-1, 2])
             y = paddle.nonzero(x)
             exe = fluid.Executor(fluid.CPUPlace())
             (res,) = exe.run(
@@ -66,7 +66,7 @@ class TestNonZeroAPI(unittest.TestCase):
 
         data = np.array([True, True, False])
         with program_guard(Program(), Program()):
-            x = fluid.layers.data(name='x', shape=[-1])
+            x = paddle.static.data(name='x', shape=[-1])
             y = paddle.nonzero(x)
             exe = fluid.Executor(fluid.CPUPlace())
             (res,) = exe.run(

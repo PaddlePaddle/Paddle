@@ -28,7 +28,9 @@ class TestRunTimeException(unittest.TestCase):
         train_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+            label = paddle.static.data(
+                name="label", shape=[-1, 1], dtype="int64"
+            )
             fluid.layers.one_hot(input=label, depth=100)
 
         def _run_program():
@@ -46,9 +48,7 @@ class TestCompileTimeException(unittest.TestCase):
         train_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            label = fluid.layers.data(
-                name="label", shape=[1], dtype="int64", append_batch_size=False
-            )
+            label = paddle.static.data(name="label", shape=[1], dtype="int64")
             fluid.layers.one_hot(input=label, depth=100)
 
 

@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
+import paddle
 import paddle.fluid as fluid
 
 
@@ -109,8 +110,8 @@ class TestMatchMatrixTensorOpCase4(TestMatchMatrixTensorOp):
         self.init_data(ix, x_lod, iy, y_lod, h, dim_t)
 
     def test_api(self):
-        x_lod_tensor = fluid.layers.data(name='x', shape=[10], lod_level=1)
-        y_lod_tensor = fluid.layers.data(name='y', shape=[10], lod_level=1)
+        x_lod_tensor = paddle.static.data(name='x', shape=[-1, 10], lod_level=1)
+        y_lod_tensor = paddle.static.data(name='y', shape=[-1, 10], lod_level=1)
         out, out_tmp = fluid.contrib.match_matrix_tensor(
             x=x_lod_tensor, y=y_lod_tensor, channel_num=3
         )

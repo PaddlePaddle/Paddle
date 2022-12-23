@@ -179,8 +179,12 @@ def test_main(use_cuda, use_py_func_op, use_parallel_executor):
         with fluid.scope_guard(fluid.core.Scope()):
             gen = paddle.seed(1)
             np.random.seed(1)
-            img = fluid.layers.data(name='image', shape=[784], dtype='float32')
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            img = paddle.static.data(
+                name='image', shape=[-1, 784], dtype='float32'
+            )
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
             loss = simple_fc_net(img, label, use_py_func_op)
             optimizer = fluid.optimizer.SGD(learning_rate=1e-3)
             optimizer.minimize(loss)
