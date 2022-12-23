@@ -71,7 +71,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_auc_single_pred_op',
     'test_avoid_twice_initialization',
     'test_backward',
-    'test_basic_rnn_name',
     'test_batch_norm_op',
     'test_batch_norm_op_v2',
     'test_bce_loss',
