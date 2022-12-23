@@ -19,6 +19,8 @@ from paddle.distributed.fleet import auto
 from paddle.fluid import program_guard
 from paddle.fluid.backward import append_backward
 
+paddle.enable_static()
+
 
 def make_program_dp2_axis_None():
     main_program = paddle.fluid.Program()
@@ -169,5 +171,4 @@ class TestDistPNormDPAxis1(TestDistPNorm):
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()
