@@ -141,8 +141,8 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
                 def test_dtype():
                     # the input dtype of dropout must be float16 or float32 or float64
                     # float16 only can be set on GPU place
-                    x2 = fluid.layers.data(
-                        name='x2', shape=[3, 4, 5, 6], dtype="int32"
+                    x2 = paddle.static.data(
+                        name='x2', shape=[-1, 3, 4, 5, 6], dtype="int32"
                     )
                     paddle.nn.functional.dropout(x2, p=0.5)
 

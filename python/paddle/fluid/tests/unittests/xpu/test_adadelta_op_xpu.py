@@ -168,8 +168,12 @@ class XPUTestAdadelta(XPUOpTestWrapper):
             place = fluid.XPUPlace(0)
             main = fluid.Program()
             with fluid.program_guard(main):
-                x = fluid.layers.data(name='x', shape=[13], dtype=self.dtype)
-                y = fluid.layers.data(name='y', shape=[1], dtype=self.dtype)
+                x = paddle.static.data(
+                    name='x', shape=[-1, 13], dtype=self.dtype
+                )
+                y = paddle.static.data(
+                    name='y', shape=[-1, 1], dtype=self.dtype
+                )
                 y_predict = fluid.layers.fc(input=x, size=1, act=None)
                 cost = paddle.nn.functional.square_error_cost(
                     input=y_predict, label=y

@@ -500,8 +500,11 @@ def build_inputs(max_length, n_head):
     all_inputs = []
     for name, shape, dtype in zip(names, shapes, dtypes):
         all_inputs.append(
-            fluid.layers.data(
-                name=name, shape=shape, dtype=dtype, append_batch_size=False
+            paddle.static.data(
+                name=name,
+                shape=[-1] + shape,
+                dtype=dtype,
+                append_batch_size=False,
             )
         )
     return all_inputs

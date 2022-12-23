@@ -188,7 +188,7 @@ class TestTransposeOpError(unittest.TestCase):
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
-            x = fluid.layers.data(name='x', shape=[10, 5, 3], dtype='float32')
+            x = paddle.static.data(name='x', shape=[-1, 10, 5, 3], dtype='float32')
 
             def test_x_Variable_check():
                 # the Input(x)'s type must be Variable

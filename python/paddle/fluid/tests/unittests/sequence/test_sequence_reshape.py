@@ -17,6 +17,8 @@ import unittest
 
 import numpy as np
 
+import paddle
+
 sys.path.append("../")
 from op_test import OpTest
 
@@ -93,10 +95,9 @@ class TestSequenceReshapeOpError(unittest.TestCase):
         self.assertRaises(TypeError, test_variable)
 
         def test_dtype():
-            x1 = fluid.layers.data(
+            x1 = paddle.static.data(
                 name='x1',
-                shape=[2, 6],
-                append_batch_size=False,
+                shape=[-1, 2, 6],
                 dtype='float16',
                 lod_level=1,
             )

@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.framework import Program, program_guard
 
@@ -170,8 +171,8 @@ class TestTreeConv_OpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             nodes_vector_1 = np.random.random((10, 5)).astype("float32")
-            edge_set_1 = fluid.layers.data(
-                name='edge_set_1', shape=[10, 2], dtype='float32'
+            edge_set_1 = paddle.static.data(
+                name='edge_set_1', shape=[-1, 10, 2], dtype='float32'
             )
             # the nodes_vector of tree_conv must be Variable.
             self.assertRaises(
@@ -182,8 +183,8 @@ class TestTreeConv_OpError(unittest.TestCase):
                 3,
             )
 
-            nodes_vector_2 = fluid.layers.data(
-                name='vectors2', shape=[10, 5], dtype='float32'
+            nodes_vector_2 = paddle.static.data(
+                name='vectors2', shape=[-1, 10, 5], dtype='float32'
             )
             edge_set_2 = np.random.random((10, 2)).astype("float32")
             # the edge_set of tree_conv must be Variable.

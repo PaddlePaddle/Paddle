@@ -18,6 +18,8 @@ from copy import deepcopy
 
 import numpy as np
 
+import paddle
+
 sys.path.append("../")
 from op_test import OpTest
 
@@ -166,9 +168,9 @@ class TestSequenceTopkAvgPoolingOpCase1(TestSequenceTopkAvgPoolingOp):
     def test_api(self):
         import paddle.fluid as fluid
 
-        x = fluid.layers.data(name='x', shape=[1], lod_level=1)
-        row = fluid.layers.data(name='row', shape=[10], lod_level=1)
-        col = fluid.layers.data(name='col', shape=[10], lod_level=1)
+        x = paddle.static.data(name='x', shape=[-1, 1], lod_level=1)
+        row = paddle.static.data(name='row', shape=[-1, 10], lod_level=1)
+        col = paddle.static.data(name='col', shape=[-1, 10], lod_level=1)
         topk_avg = fluid.contrib.sequence_topk_avg_pooling(
             input=x, row=row, col=col, topks=[1, 3, 5], channel_num=5
         )

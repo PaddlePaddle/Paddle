@@ -17,6 +17,8 @@ import unittest
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci
 
+import paddle
+
 
 class TestVarConv2DOp(OpTest):
     def setUp(self):
@@ -299,9 +301,9 @@ class TestVarConv2DApi(unittest.TestCase):
     def test_api(self):
         import paddle.fluid as fluid
 
-        x = fluid.layers.data(name='x', shape=[1], lod_level=1)
-        row = fluid.layers.data(name='row', shape=[6], lod_level=1)
-        col = fluid.layers.data(name='col', shape=[6], lod_level=1)
+        x = paddle.static.data(name='x', shape=[-1, 1], lod_level=1)
+        row = paddle.static.data(name='row', shape=[-1, 6], lod_level=1)
+        col = paddle.static.data(name='col', shape=[-1, 6], lod_level=1)
         out = fluid.contrib.var_conv_2d(
             input=x,
             row=row,

@@ -55,7 +55,7 @@ def test_class(op_type, typename):
         def test_out_name(self):
             with fluid.program_guard(fluid.Program()):
                 np_x = np.array([0.1])
-                data = fluid.layers.data(name="X", shape=[1])
+                data = paddle.static.data(name="X", shape=[-1, 1])
                 out = eval("paddle.%s(data, name='Y')" % self.op_type)
                 place = fluid.NPUPlace(0)
                 exe = fluid.Executor(place)

@@ -28,15 +28,9 @@ paddle.enable_static()
 
 class TestWhileOp(unittest.TestCase):
     def simple_net(self):
-        d0 = layers.data(
-            "d0", shape=[10], append_batch_size=False, dtype='float32'
-        )
-        d1 = layers.data(
-            "d1", shape=[10], append_batch_size=False, dtype='float32'
-        )
-        d2 = layers.data(
-            "d2", shape=[10], append_batch_size=False, dtype='float32'
-        )
+        d0 = paddle.static.data("d0", shape=[10], dtype='float32')
+        d1 = paddle.static.data("d1", shape=[10], dtype='float32')
+        d2 = paddle.static.data("d2", shape=[10], dtype='float32')
         i = layers.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True
         init = layers.zeros(shape=[10], dtype='float32')
@@ -151,8 +145,8 @@ class TestIgnoreVarNameInWhile(unittest.TestCase):
             i = i + 1
             return [i, ten, batch_info, origin_seq]
 
-        x = fluid.layers.data(name='x', shape=[-1, 1, 4])
-        y = fluid.layers.data(name='y', shape=[-1, 1, 1])
+        x = paddle.static.data(name='x', shape=[-1, 1, 4])
+        y = paddle.static.data(name='y', shape=[-1, 1, 1])
         temp = layers.concat(input=[x, y], axis=-1)
         i = layers.fill_constant(shape=[1], value=0, dtype='int32')
         num = layers.fill_constant(shape=[1], value=5, dtype='int32')

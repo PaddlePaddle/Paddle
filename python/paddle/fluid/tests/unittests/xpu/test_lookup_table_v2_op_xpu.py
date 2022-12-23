@@ -167,7 +167,7 @@ class TestLookupTableWithTensorIdsWIsSelectedRows(
 
 class TestLookupTableApi(unittest.TestCase):
     def test_api(self):
-        x = fluid.layers.data(name='x', shape=[20], dtype='int64')
+        x = paddle.static.data(name='x', shape=[-1, 20], dtype='int64')
         emb = fluid.embedding(input=x, size=[128, 64])
 
         place = paddle.XPUPlace(0)
