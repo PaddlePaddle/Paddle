@@ -781,12 +781,12 @@ def full_like(x, fill_value, dtype=None, name=None):
           # [[2. 2. 2.]
           #  [2. 2. 2.]]
     """
+    if dtype is None:
+        dtype = x.dtype
+    else:
+        if not isinstance(dtype, core.VarDesc.VarType):
+            dtype = convert_np_dtype_to_dtype_(dtype)
     if in_dygraph_mode():
-        if dtype is None:
-            dtype = x.dtype
-        else:
-            if not isinstance(dtype, core.VarDesc.VarType):
-                dtype = convert_np_dtype_to_dtype_(dtype)
         return _C_ops.full_like(x, fill_value, dtype, x.place)
     else:
         helper = LayerHelper("full_like", **locals())
@@ -1899,7 +1899,7 @@ def assign(x, output=None):
         input = np.array(input)
     # NOTE(Aurelius84): Why we judge core.VarBase?
     # In case of @to_static, a VarBase can be as input of `assign`,
-    # but in_dygraph_mode()==False under @to_static, which means
+    # but _non_static_mode()==False under @to_static, which means
     # isinstance(VarBase, Variable) == False. It will cause return None
     # after this api.
     if isinstance(input, (Variable, core.VarBase, core.eager.Tensor)):

@@ -1111,6 +1111,8 @@ def concat(x, axis=0, name=None):
             #  [11 12 13]
             #  [14 15 16]]
     """
+    if paddle.fluid.framework._in_legacy_dygraph():
+        raise ValueError("wanghuan")
     input = x
     if in_dygraph_mode():
         if isinstance(axis, Variable):

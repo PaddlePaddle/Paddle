@@ -15,7 +15,7 @@
 import numpy as np
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from paddle.common_ops_import import VarDesc
 
 from ..fluid.data_feeder import (
@@ -2460,7 +2460,7 @@ def multi_dot(x, name=None):
 
     """
     if in_dygraph_mode():
-        return _legacy_C_ops.multi_dot(x)
+        return _C_ops.multi_dot(x)
     else:
         check_type(x, 'x', (list, tuple), 'multi_dot')
         for id, item in enumerate(x):
