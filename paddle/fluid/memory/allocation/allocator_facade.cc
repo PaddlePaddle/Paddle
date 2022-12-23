@@ -39,7 +39,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/device/gpu/cuda/cuda_graph.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
 #endif
 
 #if CUDA_VERSION >= 10020
@@ -157,7 +157,7 @@ class CUDAGraphAllocator
 
 static bool IsCUDAGraphCapturing() {
 #ifdef PADDLE_WITH_CUDA
-  return UNLIKELY(platform::CUDAGraph::IsThisThreadCapturing());
+  return UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing());
 #else
   return false;
 #endif
@@ -1007,7 +1007,7 @@ AllocatorFacade& AllocatorFacade::Instance() {
 AllocatorFacadePrivate* AllocatorFacade::GetPrivate() const {
 #ifdef PADDLE_WITH_CUDA
   if (UNLIKELY(IsCUDAGraphCapturing())) {
-    auto id = platform::CUDAGraph::CapturingPoolID();
+    auto id = phi::backends::gpu::CUDAGraph::CapturingPoolID();
     auto iter = cuda_graph_map_.find(id);
     PADDLE_ENFORCE_NE(
         iter,

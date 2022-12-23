@@ -95,15 +95,15 @@ pass_library(quant_conv2d_dequant_fuse_pass inference)
 pass_library(shuffle_channel_detect_pass inference)
 pass_library(delete_quant_dequant_op_pass inference)
 pass_library(delete_quant_dequant_filter_op_pass inference)
+pass_library(trt_delete_weight_dequant_linear_op_pass inference)
 pass_library(delete_weight_dequant_linear_op_pass inference)
-pass_library(delete_weight_dequant_linear_op_encoder_pass inference)
-pass_library(delete_weight_dequant_linear_op_decoder_pass inference)
 pass_library(delete_quant_dequant_linear_op_pass inference)
 pass_library(delete_dropout_op_pass inference)
 pass_library(delete_c_identity_op_pass inference)
 pass_library(preln_residual_bias_fuse_pass inference)
 pass_library(delete_fill_constant_op_pass inference)
 pass_library(constant_folding_pass inference)
+pass_library(auto_mixed_precision_pass inference)
 pass_library(conv2d_fusion_layout_transfer_pass inference)
 pass_library(simplify_with_basic_ops_pass base)
 pass_library(fc_elementwise_layernorm_fuse_pass base)
@@ -135,10 +135,11 @@ if(WITH_TENSORRT)
   pass_library(remove_padding_recover_padding_pass inference)
   pass_library(delete_remove_padding_recover_padding_pass inference)
   pass_library(layernorm_shift_partition_fuse_pass inference)
+  pass_library(reverse_roll_fuse_pass inference)
   pass_library(preln_layernorm_x_fuse_pass inference)
 endif()
 
-if(WITH_TENSORRT AND NOT WIN32)
+if(WITH_TENSORRT)
   pass_library(trt_embedding_eltwise_layernorm_fuse_pass inference)
   pass_library(preln_embedding_eltwise_layernorm_fuse_pass inference)
 endif()
@@ -150,19 +151,6 @@ endif()
 
 if(WITH_MKLDNN)
   pass_library(mkldnn_placement_pass base DEPS placement_pass_base DIR mkldnn)
-  pass_library(
-    mkldnn_inplace_pass
-    inference
-    DEPS
-    mkldnn_placement_pass
-    op_registry
-    elementwise_add_op
-    generated_op
-    activation_op
-    softmax_op
-    softmax
-    DIR
-    mkldnn)
   pass_library(depthwise_conv_mkldnn_pass base DIR mkldnn)
   pass_library(conv_affine_channel_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(conv_bias_mkldnn_fuse_pass inference DIR mkldnn)
@@ -357,6 +345,10 @@ cc_test(
   test_delete_dropout_pass_cc
   SRCS delete_dropout_op_pass_test.cc
   DEPS delete_dropout_op_pass)
+cc_test(
+  test_delete_dequant_weight_linear_op_pass
+  SRCS delete_weight_dequant_linear_op_pass_tester.cc
+  DEPS delete_weight_dequant_linear_op_pass)
 if(WITH_GPU OR WITH_ROCM)
   cc_test(
     test_embedding_eltwise_layernorm_fuse_pass
@@ -445,10 +437,6 @@ if(WITH_MKLDNN)
     test_mkldnn_placement_pass
     SRCS mkldnn/mkldnn_placement_pass_tester.cc
     DEPS mkldnn_placement_pass)
-  cc_test(
-    test_mkldnn_inplace_pass
-    SRCS mkldnn/mkldnn_inplace_pass_tester.cc
-    DEPS mkldnn_inplace_pass)
   cc_test(
     test_compute_propagate_scales_mkldnn_pass
     SRCS mkldnn/compute_propagate_scales_mkldnn_pass_tester.cc

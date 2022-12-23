@@ -17,7 +17,6 @@ import paddle
 from paddle import in_dynamic_mode
 from paddle.nn import Layer
 
-from ...fluid.dygraph import Flatten  # noqa: F401
 from .. import functional as F
 
 __all__ = []
@@ -1013,24 +1012,24 @@ class AlphaDropout(Layer):
 class Pad1D(Layer):
     """
     This interface is used to construct a callable object of the ``Pad1D`` class.
-    Pad tensor according to 'pad', 'mode' and 'value'.
-    If mode is 'reflect', pad[0] and pad[1] must be no greater than width-1.
+    Pad tensor according to ``pad``, ``mode`` and ``value``.
+    If mode is ``reflect``, pad[0] and pad[1] must be no greater than width-1.
 
     Parameters:
-        padding (Tensor|list[int]|int): The padding size with data type int. If is int, use the
+        padding (Tensor|list[int]|int): The padding size with data type ``'int'``. If is ``'int'``, use the
             same padding in both dimensions. Else [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right).
-        mode (str, optional): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'. Default is 'constant'.
+        mode (str, optional): Four modes: ``'constant'`` (default), ``'reflect'``, ``'replicate'``, ``'circular'``. Default: ``'constant'``.
 
            - 'constant' mode, uses a constant value to pad the input tensor.
            - 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
            - 'replicate' mode, uses input boundaries to pad the input tensor.
            - 'circular' mode, uses circular input to pad the input tensor.
 
-        value (float, optional): The value to fill the padded areas. Default is :math:`0.0`。
-        data_format (str, optional): An string from: "NCL", "NLC". Specify the data format of the input data.
-           Default is  "NCL"
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        value (float, optional): The value to fill the padded areas. Default is :math:`0.0`.
+        data_format (str, optional): An string from: ``'NCL'``, ``'NLC'``. Specify the data format of the input data.
+           Default: ``'NCL'``.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: ``'None'``.
 
     Returns:
         None
@@ -1082,25 +1081,25 @@ class Pad1D(Layer):
 class Pad2D(Layer):
     """
     This interface is used to construct a callable object of the ``Pad2D`` class.
-    Pad tensor according to 'pad', 'mode' and 'value'.
-    If mode is 'reflect', pad[0] and pad[1] must be no greater
+    Pad tensor according to ``pad``, ``mode`` and ``value``.
+    If mode is ``'reflect'``, pad[0] and pad[1] must be no greater
     than width-1. The height dimension has the same condition.
 
     Parameters:
-        padding (Tensor|list[int]|int): The padding size with data type int. If is int, use the
+        padding (Tensor|list[int]|int): The padding size with data type ``'int'``. If is ``'int'``, use the
             same padding in all dimensions. Else [len(padding)/2] dimensions of input will be padded.
             The pad has the form (pad_left, pad_right, pad_top, pad_bottom).
-        mode (str, optional): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'. Default is 'constant'.
+        mode (str, optional): Four modes: ``'constant'`` (default), ``'reflect'``, ``'replicate'``, ``'circular'``. Default: ``'constant'``.
 
            - 'constant' mode, uses a constant value to pad the input tensor.
            - 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
            - 'replicate' mode, uses input boundaries to pad the input tensor.
            - 'circular' mode, uses circular input to pad the input tensor.
 
-        value (float, optional): The value to fill the padded areas. Default is :math:`0.0`。
-        data_format (str, optional): An string from: "NCHW", "NHWC". Specify the data format of the input data.
-           Default is  "NCHW"。
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        value (float, optional): The value to fill the padded areas. Default is :math:`0.0`.
+        data_format (str, optional): An string from: ``'NCHW'``, ``'NHWC'``. Specify the data format of the input data.
+           Default: ``'NCHW'``.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: ``'None'``.
 
     Returns:
         None
@@ -1224,25 +1223,25 @@ class ZeroPad2D(Layer):
 class Pad3D(Layer):
     """
     This interface is used to construct a callable object of the ``Pad3D`` class.
-    Pad tensor according to 'pad', 'mode' and 'value'.
-    If mode is 'reflect', pad[0] and pad[1] must be no greater
+    Pad tensor according to ``'pad'``, ``'mode'`` and ``'value'``.
+    If mode is ``'reflect'``, pad[0] and pad[1] must be no greater
     than width-1. The height and depth dimension has the same condition.
 
     Parameters:
-        padding (Tensor|list[int]|int): The padding size with data type int. If is int, use the
+        padding (Tensor|list[int]|int): The padding size with data type ``'int'``. If is ``'int'``, use the
             same padding in all dimensions. Else [len(padding)/2] dimensions
             of input will be padded. The pad has the form (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
-        mode (str, optional): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'. Default is 'constant'.
+        mode (str, optional): Four modes: ``'constant'`` (default), ``'reflect'``, ``'replicate'``, ``'circular'``. Default: ``'constant'``.
 
            - 'constant' mode, uses a constant value to pad the input tensor.
            - 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
            - 'replicate' mode, uses input boundaries to pad the input tensor.
            - 'circular' mode, uses circular input to pad the input tensor.
 
-        value (float, optional): The value to fill the padded areas. Default is :math:`0.0`。
-        data_format (str, optional): An string from: "NCDHW", "NDHWC". Specify the data format of the input data.
-           Default is  "NCDHW"。
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        value (float, optional): The value to fill the padded areas. Default is :math:`0.0`.
+        data_format (str, optional): An string from: ``'NCDHW'``, ``'NDHWC'``. Specify the data format of the input data.
+           Default:  ``'NCDHW'``。
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: ``'None'``.
 
     Returns:
         None
@@ -1534,7 +1533,7 @@ class Embedding(Layer):
 
 class Unfold(Layer):
     """
-    This op returns a col buffer of sliding local blocks of input x, also known
+    Returns a col buffer of sliding local blocks of input x, also known
     as im2col for batched 2D image tensors. For each block under the convolution filter,
     all element will be rearranged as a column. While the convolution filter sliding over
     the input feature map, a series of such columns will be formed.
@@ -1705,3 +1704,41 @@ class Fold(Layer):
             self.strides,
             name_str,
         )
+
+
+class Flatten(Layer):
+    """
+    This interface is used to construct a callable object of the ``FLatten`` class.
+    For more details, refer to code examples.
+    It implements flatten a contiguous range of dims into a tensor.
+
+    Parameters:
+        start_axis(int): first dim to flatten (default = 1)
+        stop_axis(int): last dim to flatten (default = -1).
+
+    Returns:
+        None
+
+    Examples:
+
+        .. code-block:: python
+
+          import paddle
+
+          inp = paddle.ones([5, 2, 3, 4]).astype('float32')
+          flatten = paddle.nn.Flatten(start_axis=1, stop_axis=2)
+          y = flatten(inp)
+          # y.shape = [5, 6, 4]
+
+    """
+
+    def __init__(self, start_axis=1, stop_axis=-1):
+        super().__init__()
+        self.start_axis = start_axis
+        self.stop_axis = stop_axis
+
+    def forward(self, x):
+        out = paddle.flatten(
+            x, start_axis=self.start_axis, stop_axis=self.stop_axis
+        )
+        return out

@@ -22,20 +22,18 @@ from functools import reduce
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
-from paddle.distributed.auto_parallel.dist_attribute import (
+from paddle.fluid.framework import Variable
+from paddle.fluid.io import is_belong_to_optimizer, is_parameter
+from paddle.framework import core
+
+from .dist_attribute import (
     OperatorDistributedAttribute,
     TensorDistributedAttribute,
 )
-from paddle.distributed.auto_parallel.process_group import (
-    get_all_process_groups,
-)
-from paddle.distributed.fleet.meta_optimizers.common import OpRole
-from paddle.fluid.framework import Variable
-from paddle.fluid.io import is_belong_to_optimizer, is_parameter
+from .process_group import get_all_process_groups
 
-OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
 OpRole = core.op_proto_and_checker_maker.OpRole
+OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
 
 __no_shape_var_type__ = [
     core.VarDesc.VarType.READER,
@@ -1922,10 +1920,16 @@ def initialize_pg_in_full_mode(all_process_groups, cur_rank):
     server_socket.close()
 
 
-def set_recompute_ckpts(model, strategy):
-    from .interface import _g_recompute_idx
+def is_recompute_op(op):
+    return op.has_attr('op_namescope') and "/auto_parallel/rc" in op.attr(
+        'op_namescope'
+    )
 
-    if _g_recompute_idx > -1:
+
+def set_recompute_segments(model, losses, strategy, program):
+    from ..passes.auto_parallel_recompute import RecomputeState
+
+    if not losses:
         return
 
     recompute = strategy.recompute
@@ -1935,24 +1939,65 @@ def set_recompute_ckpts(model, strategy):
     # NOTE: hack to enable recompute in engine api for GPT-3
     # TODO support more PaddleNLP/CV models here
     # extract ckpts by specific model
+    ckpts = []
     if isinstance(model, paddle.nn.Layer):
-        if hasattr(model, "gpt") and model.__class__.__name__ in [
-            'GPTForPretraining',
-            'GPTForPretrainingAuto',
-        ]:
-            exact_ckpts = model.gpt.checkpoints
+        if (
+            hasattr(model, "gpt")
+            and model.__class__.__name__
+            in [
+                'GPTForPretraining',
+                'GPTForPretrainingAuto',
+            ]
+            and hasattr(model.gpt, "checkpoints")
+        ):
+            ckpts = model.gpt.checkpoints
         else:
-            exact_ckpts = recompute.checkpoints
+            ckpts = recompute.checkpoints
     else:
-        exact_ckpts = recompute.checkpoints
+        ckpts = recompute.checkpoints
 
-    # modify strategy
-    recompute.checkpoints = exact_ckpts[:]
-    logs = {
-        'Model Class': model.__class__.__name__,
-        'Applied Recompute ckpts': exact_ckpts,
-    }
-    logging.info(logs)
+    if not ckpts:
+        return
+
+    block = program.global_block()
+    rc_state = RecomputeState(block, block.ops)
+    rc_state.build_stats()
+    checkpoints = rc_state.sort_checkpoints(ckpts)
+
+    segments = []
+    start_idx = -1
+    pre_segment_end_idx = -1
+    while start_idx + 1 < len(checkpoints):
+        if start_idx == -1:
+            ckpt_name = checkpoints[start_idx + 1]
+            if ckpt_name not in rc_state.var_op_deps:
+                start_idx += 1
+                continue
+            op_idx_list = rc_state.var_op_deps[ckpt_name]["var_as_output_ops"]
+            if op_idx_list and max(op_idx_list) > 0:
+                segments.append([0, max(op_idx_list) + 1])
+        else:
+            flag, min_idx, max_idx = rc_state.is_subgraph(
+                [checkpoints[start_idx]], [checkpoints[start_idx + 1]]
+            )
+            if flag:
+                min_idx = rc_state._update_segment_start(
+                    min_idx, pre_segment_end_idx
+                )
+                segments.append([min_idx, max_idx + 1])
+            else:
+                logging.debug(
+                    "Could not recompute op range [{}] - [{}] ".format(
+                        min_idx, max_idx + 1
+                    )
+                )
+        start_idx += 1
+
+    for i, segment in enumerate(segments):
+        for j in range(segment[0], segment[1]):
+            block.ops[j]._set_attr(
+                'op_namescope', "/auto_parallel/rc_" + str(i)
+            )
 
 
 def get_input_split_info(cur_rank, var, dist_context):
@@ -2169,6 +2214,9 @@ def insert_dependencies_for_two_ops(
 
     def _select_best_depend_var(vars):
 
+        # parameter should not be dep var since it maybe partition in sharding pass
+        vars = [var for var in vars if not var.is_parameter]
+        assert len(vars) > 0
         vars_with_numels = [(var, get_var_numel(var)) for var in vars]
         vars_with_numels.sort(key=lambda x: x[1])
 

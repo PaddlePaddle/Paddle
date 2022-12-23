@@ -19,7 +19,7 @@
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/platform/device_memory_aligment.h"
+#include "paddle/phi/backends/device_memory_aligment.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
@@ -61,7 +61,7 @@ struct FillConstantVisitor {
                  * = nullptr) const {
 #ifdef PADDLE_WITH_ASCEND_CL
     if (platform::is_npu_place(dev_ctx_.GetPlace())) {
-      Tensor tensor_tmp(framework::TransToPhiDataType(dtype_));
+      phi::DenseTensor tensor_tmp(framework::TransToPhiDataType(dtype_));
       tensor_tmp.mutable_data<T>({1}, context_.GetPlace());
       FillNpuTensorWithConstant<T>(&tensor_tmp, static_cast<T>(value_));
 
@@ -250,9 +250,9 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
         framework::TensorCopy(
             *in_tensors[i], context.GetPlace(), dev_ctx, &sub_tensor);
 
-        offset += use_align ? platform::Alignment(len * size_of_dtype,
-                                                  context.GetPlace(),
-                                                  align_size) /
+        offset += use_align ? phi::Alignment(len * size_of_dtype,
+                                             context.GetPlace(),
+                                             align_size) /
                                   size_of_dtype
                             : len;
       }
@@ -274,9 +274,9 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
           framework::TensorCopy(
               *out_tensors[i], context.GetPlace(), dev_ctx, &sub_tensor);
         }
-        offset += use_align ? platform::Alignment(len * size_of_dtype,
-                                                  context.GetPlace(),
-                                                  align_size) /
+        offset += use_align ? phi::Alignment(len * size_of_dtype,
+                                             context.GetPlace(),
+                                             align_size) /
                                   size_of_dtype
                             : len;
       }
@@ -296,7 +296,7 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
               static_cast<int64_t>(offset), static_cast<int64_t>(offset + len)))
           .Resize(dim);
       len = use_align
-                ? platform::Alignment(
+                ? phi::Alignment(
                       len * size_of_dtype, context.GetPlace(), align_size) /
                       size_of_dtype
                 : len;
@@ -342,12 +342,12 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
           0,
           platform::errors::InvalidArgument(
               "The number of tensor `%s`'s elements is 0.", var_names[i]));
-      auto len = use_align ? platform::Alignment(
-                                 static_cast<size_t>(size) * size_of_dtype,
-                                 place,
-                                 align_size) /
-                                 size_of_dtype
-                           : static_cast<size_t>(size);
+      auto len = use_align
+                     ? phi::Alignment(static_cast<size_t>(size) * size_of_dtype,
+                                      place,
+                                      align_size) /
+                           size_of_dtype
+                     : static_cast<size_t>(size);
       const void *ptr =
           lod_tensors[i]->IsInitialized() ? lod_tensors[i]->data() : nullptr;
       VLOG(4) << size << " " << len;

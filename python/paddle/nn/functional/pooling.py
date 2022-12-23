@@ -1427,29 +1427,53 @@ def max_pool2d(
     )
     dtype = helper.input_dtype(input_param_name='x')
     pool_out = helper.create_variable_for_type_inference(dtype)
-    mask = helper.create_variable_for_type_inference("int32")
-    outputs = {"Out": pool_out, "Mask": mask}
 
-    helper.append_op(
-        type=op_type,
-        inputs={"X": x},
-        outputs=outputs,
-        attrs={
-            "pooling_type": 'max',
-            "ksize": kernel_size,
-            "global_pooling": False,
-            "strides": stride,
-            "paddings": padding,
-            "padding_algorithm": padding_algorithm,
-            "use_cudnn": True,
-            "ceil_mode": ceil_mode,
-            "use_mkldnn": False,
-            "exclusive": True,
-            "data_format": data_format,
-        },
-    )
+    if return_mask:
+        mask = helper.create_variable_for_type_inference("int32")
+        outputs = {"Out": pool_out, "Mask": mask}
 
-    return (pool_out, mask) if return_mask else pool_out
+        helper.append_op(
+            type="max_pool2d_with_index",
+            inputs={"X": x},
+            outputs=outputs,
+            attrs={
+                "pooling_type": 'max',
+                "ksize": kernel_size,
+                "global_pooling": False,
+                "strides": stride,
+                "paddings": padding,
+                "padding_algorithm": padding_algorithm,
+                "use_cudnn": True,
+                "ceil_mode": ceil_mode,
+                "use_mkldnn": False,
+                "exclusive": True,
+                "data_format": data_format,
+            },
+        )
+        return (pool_out, mask)
+
+    else:
+        outputs = {"Out": pool_out}
+
+        helper.append_op(
+            type="pool2d",
+            inputs={"X": x},
+            outputs=outputs,
+            attrs={
+                "pooling_type": 'max',
+                "ksize": kernel_size,
+                "global_pooling": False,
+                "strides": stride,
+                "paddings": padding,
+                "padding_algorithm": padding_algorithm,
+                "use_cudnn": True,
+                "ceil_mode": ceil_mode,
+                "use_mkldnn": False,
+                "exclusive": True,
+                "data_format": data_format,
+            },
+        )
+        return pool_out
 
 
 def max_pool3d(

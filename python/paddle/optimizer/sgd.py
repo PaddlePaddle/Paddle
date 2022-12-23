@@ -14,9 +14,10 @@
 
 import warnings
 
+import paddle
 from paddle import _C_ops, _legacy_C_ops
 
-from ..fluid import core, framework, layers, unique_name
+from ..fluid import core, framework, unique_name
 from ..fluid.dygraph import no_grad
 from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 from ..fluid.layer_helper import LayerHelper
@@ -101,7 +102,7 @@ class SGD(Optimizer):
 
             var_name = param.name + "_fp32_master"
             var_name = unique_name.generate(var_name)
-            var = layers.create_global_var(
+            var = paddle.static.create_global_var(
                 name=var_name,
                 shape=param.shape,
                 value=0,

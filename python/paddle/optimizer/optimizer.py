@@ -31,7 +31,7 @@ from paddle.fluid.framework import (
     name_scope,
 )
 
-from ..fluid import framework, layers, unique_name
+from ..fluid import framework, unique_name
 from ..fluid.backward import _get_no_grad_set_name, append_backward
 from ..fluid.clip import (
     GradientClipBase,
@@ -469,7 +469,7 @@ class Optimizer:
             else:
                 self._learning_rate_map[
                     framework.default_main_program()
-                ] = layers.create_global_var(
+                ] = paddle.static.create_global_var(
                     name=unique_name.generate("learning_rate"),
                     shape=[1],
                     value=float(self._learning_rate),

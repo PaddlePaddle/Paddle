@@ -129,7 +129,7 @@ class ReduceSumGradNPUKernel : public framework::OpKernel<T> {
       out_dims = UnsqueezeKernel<DeviceContext, T>::GetOutputShape(
           dims, out_grad->dims());
 
-      Tensor out_grad_tmp(out_grad->type());
+      phi::DenseTensor out_grad_tmp(out_grad->type());
       out_grad_tmp.Resize(out_dims);
       out_grad_tmp.mutable_data<T>(ctx.GetPlace());
       framework::TensorCopy(

@@ -215,10 +215,11 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
             lengths = paddle.to_tensor([10, 9, 8])
             mask = paddle.nn.functional.sequence_mask(lengths)
 
-            print(mask.numpy())
-            # [[1 1 1 1 1 1 1 1 1 1]
-            #  [1 1 1 1 1 1 1 1 1 0]
-            #  [1 1 1 1 1 1 1 1 0 0]]
+            print(mask)
+            # Tensor(shape=[3, 10], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            #        [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            #         [1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+            #         [1, 1, 1, 1, 1, 1, 1, 1, 0, 0]])
 
     """
 
