@@ -19,7 +19,6 @@ from . import core
 from .framework import (
     _non_static_mode,
     in_dygraph_mode,
-    _in_legacy_dygraph,
     default_main_program,
     _current_expected_place,
 )
@@ -191,21 +190,6 @@ class ConstantInitializer(Initializer):
                 var, var.shape, str(float(self._value)), var.dtype, place
             )
             return None
-        elif _in_legacy_dygraph():
-            _legacy_C_ops.fill_constant(
-                var,
-                'value',
-                float(self._value),
-                'force_cpu',
-                self._force_cpu,
-                'dtype',
-                int(var.dtype),
-                'str_value',
-                str(float(self._value)),
-                'shape',
-                var.shape,
-            )
-            return None
         else:
             op = block.append_op(
                 type="fill_constant",
@@ -317,26 +301,7 @@ class UniformInitializer(Initializer):
                     self._seed,
                     _current_expected_place(),
                 )
-            elif _in_legacy_dygraph():
-                out_var = _legacy_C_ops.uniform_random(
-                    'shape',
-                    var.shape,
-                    'min',
-                    self._low,
-                    'max',
-                    self._high,
-                    'seed',
-                    self._seed,
-                    'dtype',
-                    out_dtype,
-                    'diag_num',
-                    self._diag_num,
-                    'diag_step',
-                    self._diag_step,
-                    'diag_val',
-                    self._diag_val,
-                )
-            if var.dtype == VarDesc.VarType.FP16:
+            elif var.dtype == VarDesc.VarType.FP16:
                 if in_dygraph_mode():
                     var_tmp = _C_ops.cast(out_var, var.dtype)
                 elif _in_legacy_dygraph():

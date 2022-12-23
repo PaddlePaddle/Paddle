@@ -62,7 +62,6 @@ from .wrapped_decorator import signature_safe_contextmanager
 import warnings
 from paddle import _C_ops, _legacy_C_ops
 from ..fluid.framework import (
-    _in_legacy_dygraph,
     in_dygraph_mode,
     _current_expected_place,
 )
@@ -531,17 +530,6 @@ class Optimizer:
                         float(value),
                         current_lr.dtype,
                         place,
-                    )
-
-                elif _in_legacy_dygraph():
-                    _legacy_C_ops.fill_constant(
-                        current_lr,
-                        'value',
-                        float(value),
-                        'dtype',
-                        current_lr.dtype,
-                        'shape',
-                        list(current_lr.shape),
                     )
                 else:
                     global_block = (
@@ -1562,42 +1550,32 @@ class SGDOptimizer(Optimizer):
                 find_master,
             )
             return None
-        if _in_legacy_dygraph():
-            _legacy_C_ops.sgd(
-                param_and_grad[0],
-                lr,
-                param_and_grad[1],
-                master_weight,
-                param_and_grad[0],
-                master_weight,
+        else:
+            assert isinstance(block, framework.Block)
+            # create the optimize op
+            inputs = {
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "LearningRate": lr,
+            }
+
+            outputs = {"ParamOut": param_and_grad[0]}
+
+            attrs = {"multi_precision": find_master}
+
+            if find_master:
+                inputs["MasterParam"] = master_weight
+                outputs["MasterParamOut"] = master_weight
+
+            sgd_op = block.append_op(
+                type=self.type,
+                inputs=inputs,
+                outputs=outputs,
+                attrs=attrs,
+                stop_gradient=True,
             )
-            return None
 
-        assert isinstance(block, framework.Block)
-        # create the optimize op
-        inputs = {
-            "Param": param_and_grad[0],
-            "Grad": param_and_grad[1],
-            "LearningRate": lr,
-        }
-
-        outputs = {"ParamOut": param_and_grad[0]}
-
-        attrs = {"multi_precision": find_master}
-
-        if find_master:
-            inputs["MasterParam"] = master_weight
-            outputs["MasterParamOut"] = master_weight
-
-        sgd_op = block.append_op(
-            type=self.type,
-            inputs=inputs,
-            outputs=outputs,
-            attrs=attrs,
-            stop_gradient=True,
-        )
-
-        return sgd_op
+            return sgd_op
 
 
 class MomentumOptimizer(Optimizer):
@@ -2120,18 +2098,6 @@ class AdagradOptimizer(Optimizer):
                 param_and_grad[1],
                 moment_acc,
                 self._create_param_lr(param_and_grad),
-                self._epsilon,
-            )
-            return None
-        elif _in_legacy_dygraph():
-            _legacy_C_ops.adagrad(
-                param_and_grad[0],
-                param_and_grad[1],
-                moment_acc,
-                self._create_param_lr(param_and_grad),
-                param_and_grad[0],
-                moment_acc,
-                "epsilon",
                 self._epsilon,
             )
             return None
@@ -2733,24 +2699,6 @@ class AdamaxOptimizer(Optimizer):
                 self._beta2,
                 self._epsilon,
             )
-        elif framework._in_legacy_dygraph():
-            _legacy_C_ops.adamax(
-                param_and_grad[0],
-                param_and_grad[1],
-                self._create_param_lr(param_and_grad),
-                moment,
-                inf_norm,
-                beta1_pow_acc,
-                param_and_grad[0],
-                moment,
-                inf_norm,
-                "beta1",
-                self._beta1,
-                "beta2",
-                self._beta2,
-                "epsilon",
-                self._epsilon,
-            )
         else:
             # create the adamax optimize op
             adamax_op = block.append_op(
@@ -3169,20 +3117,6 @@ class AdadeltaOptimizer(Optimizer):
                 self._rho,
                 self._epsilon,
             )
-        elif framework._in_legacy_dygraph():
-            _legacy_C_ops.adadelta(
-                param_and_grad[0],
-                param_and_grad[1],
-                avg_squared_grad_acc,
-                avg_squared_update_acc,
-                param_and_grad[0],
-                avg_squared_grad_acc,
-                avg_squared_update_acc,
-                "epsilon",
-                self._epsilon,
-                "rho",
-                self._rho,
-            )
         else:
             # Create the adadelta optimizer op
             adadelta_op = block.append_op(
@@ -3384,27 +3318,6 @@ class RMSPropOptimizer(Optimizer):
                 self._epsilon,
                 self._rho,
                 self._momentum,
-                self._centered,
-            )
-            return None
-        elif _in_legacy_dygraph():
-            _legacy_C_ops.rmsprop(
-                param_and_grad[0],
-                mean_square_acc,
-                self._create_param_lr(param_and_grad),
-                param_and_grad[1],
-                momentum_acc,
-                param_and_grad[0],
-                momentum_acc,
-                mean_square_acc,
-                mean_grad_acc,
-                "epsilon",
-                self._epsilon,
-                "decay",
-                self._rho,
-                "momentum",
-                self._momentum,
-                "centered",
                 self._centered,
             )
             return None
