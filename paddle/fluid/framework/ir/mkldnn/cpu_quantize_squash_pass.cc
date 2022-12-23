@@ -341,6 +341,7 @@ void CPUQuantizeSquashPass::OpDequantSquash(Graph* graph) const {
 
     if (dequant_in->outputs.size() == 1) {
       if (any_op->Op()->Type() == "conv2d" ||
+          any_op->Op()->Type() == "fused_conv2d" ||
           any_op->Op()->Type() == "conv2d_transpose" ||
           any_op->Op()->Type() == "fc") {
         // do not squash if fuse residual connection is true

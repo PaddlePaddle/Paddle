@@ -64,7 +64,6 @@ import os
 import multiprocessing
 import signal
 
-# NOTE: queue has a different name in python2 and python3
 import queue
 
 # NOTE: [ avoid hanging & failed quickly ] These value is used in getting data from another process

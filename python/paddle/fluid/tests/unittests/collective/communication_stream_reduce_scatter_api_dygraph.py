@@ -67,9 +67,13 @@ class StreamReduceScatterTestCase:
         if not self._sync_op:
             task.wait()
         if rank == 0:
-            assert np.allclose(result_tensor, result1, rtol=1e-05, atol=1e-05)
+            np.testing.assert_allclose(
+                result_tensor, result1, rtol=1e-05, atol=1e-05
+            )
         else:
-            assert np.allclose(result_tensor, result2, rtol=1e-05, atol=1e-05)
+            np.testing.assert_allclose(
+                result_tensor, result2, rtol=1e-05, atol=1e-05
+            )
 
         # case 2: pass a pre-sized tensor
         result_tensor = paddle.empty_like(t1)
@@ -82,9 +86,13 @@ class StreamReduceScatterTestCase:
         if not self._sync_op:
             task.wait()
         if rank == 0:
-            assert np.allclose(result_tensor, result1, rtol=1e-05, atol=1e-05)
+            np.testing.assert_allclose(
+                result_tensor, result1, rtol=1e-05, atol=1e-05
+            )
         else:
-            assert np.allclose(result_tensor, result2, rtol=1e-05, atol=1e-05)
+            np.testing.assert_allclose(
+                result_tensor, result2, rtol=1e-05, atol=1e-05
+            )
 
         # case 3: test the legacy API
         result_tensor = paddle.empty_like(t1)
@@ -97,9 +105,13 @@ class StreamReduceScatterTestCase:
         if not self._sync_op:
             task.wait()
         if rank == 0:
-            assert np.allclose(result_tensor, result1, rtol=1e-05, atol=1e-05)
+            np.testing.assert_allclose(
+                result_tensor, result1, rtol=1e-05, atol=1e-05
+            )
         else:
-            assert np.allclose(result_tensor, result2, rtol=1e-05, atol=1e-05)
+            np.testing.assert_allclose(
+                result_tensor, result2, rtol=1e-05, atol=1e-05
+            )
 
 
 if __name__ == "__main__":

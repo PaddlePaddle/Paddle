@@ -87,15 +87,6 @@
   invoke : add_n_impl(inputs)
   backward : add_n_grad
 
-- op : addmm
-  args : (Tensor input, Tensor x, Tensor y, float beta, float alpha)
-  output : Tensor
-  infer_meta :
-    func : AddmmInferMeta
-  kernel :
-    func : addmm
-  backward : addmm_grad
-
 - op : affine_grid
   args : (Tensor input, IntArray outputShape, bool align_corners=true)
   output : Tensor
@@ -403,15 +394,6 @@
   kernel :
     func : coalesce_tensor
     data_type : dtype
-
-- op : complex
-  args : (Tensor real, Tensor imag)
-  output : Tensor
-  infer_meta :
-    func : ComplexInferMeta
-  kernel :
-    func : complex
-  backward : complex_grad
 
 - op : concat
   args : (Tensor[] x, Scalar(int64_t) axis)
@@ -1507,6 +1489,7 @@
     param: [x]
   kernel :
     func : pow
+    data_type : x
   backward : pow_grad
 
 - op : prelu
@@ -1686,15 +1669,6 @@
   optional : boxes_num
   intermediate : arg_max
   backward : roi_pool_grad
-
-- op : roll
-  args : (Tensor x, IntArray shifts, int64_t[] axis)
-  output : Tensor(out)
-  infer_meta :
-    func : RollInferMeta
-  kernel :
-    func : roll
-  backward : roll_grad
 
 - op : scale
   args : (Tensor x, Scalar scale, float bias, bool bias_after_scale)
@@ -2105,15 +2079,6 @@
   view: (x -> out)
   intermediate : xshape
   backward : unsqueeze_grad
-
-- op : unstack
-  args : (Tensor x, int axis, int num)
-  output : Tensor[]{num}
-  infer_meta :
-    func : UnStackInferMeta
-  kernel :
-    func : unstack
-  backward : unstack_grad
 
 - op : update_loss_scaling_
   args : (Tensor[] x, Tensor found_infinite, Tensor prev_loss_scaling, Tensor in_good_steps, Tensor in_bad_steps, int incr_every_n_steps, int decr_every_n_nan_or_inf, float incr_ratio, float decr_ratio, Scalar stop_update)

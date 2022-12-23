@@ -21,7 +21,6 @@ import numpy as np
 
 import paddle
 import paddle.static as static
-from paddle.fluid.framework import _test_eager_guard
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 from paddle.vision.transforms import Compose, Normalize
 
@@ -143,6 +142,9 @@ def custom_relu_static_inference(func, device, np_data, np_label, path_prefix):
 
 
 def custom_relu_double_grad_dynamic(func, device, dtype, np_x, use_func=True):
+    import paddle.fluid as fluid
+
+    fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
     paddle.set_device(device)
 
     t = paddle.to_tensor(np_x, dtype=dtype, stop_gradient=False)
@@ -158,6 +160,7 @@ def custom_relu_double_grad_dynamic(func, device, dtype, np_x, use_func=True):
 
     assert dx[0].grad is not None
     return dx[0].numpy(), dx[0].grad.numpy()
+    fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 
 class TestNewCustomOpSetUpInstall(unittest.TestCase):
@@ -228,7 +231,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                     ),
                 )
 
-    def func_dynamic(self):
+    def test_dynamic(self):
         for device in self.devices:
             for dtype in self.dtypes:
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
@@ -252,11 +255,6 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                         x_grad, pd_x_grad
                     ),
                 )
-
-    def test_dynamic(self):
-        with _test_eager_guard():
-            self.func_dynamic()
-        self.func_dynamic()
 
     def test_static_save_and_load_inference_model(self):
         paddle.enable_static()

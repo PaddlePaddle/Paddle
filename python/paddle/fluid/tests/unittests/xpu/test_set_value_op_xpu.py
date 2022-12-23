@@ -28,7 +28,6 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 
 class XPUTestSetValueOp(XPUOpTestWrapper):
@@ -66,7 +65,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             paddle.disable_static()
             return out
 
-        def func_test_api(self):
+        def test_api(self):
             static_out = self._run_static()
             self._get_answer()
 
@@ -77,11 +76,6 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
                 (self.data == static_out).all(),
                 msg=error_msg.format("static", self.data, static_out),
             )
-
-        def test_api(self):
-            with _test_eager_guard():
-                self.func_test_api()
-            self.func_test_api()
 
 
 support_types = get_xpu_op_support_types('set_value')
