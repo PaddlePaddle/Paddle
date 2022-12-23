@@ -845,6 +845,20 @@ PADDLE_DEFINE_EXPORTED_bool(graph_load_in_parallel,
 
 /**
  * Distributed related FLAG
+ * Name: FLAGS_graph_metapath_split_opt
+ * Since Version: 2.2.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Control whether load graph node and edge with multi threads parallely
+ *       If it is not set, load graph data with one thread
+ */
+PADDLE_DEFINE_EXPORTED_bool(graph_metapath_split_opt,
+                            false,
+                            "It controls whether load graph node and edge with "
+                            "mutli threads parallely.");
+
+/**
+ * Distributed related FLAG
  * Name: FLAGS_graph_get_neighbor_id
  * Since Version: 2.2.0
  * Value Range: bool, default=false
@@ -856,6 +870,32 @@ PADDLE_DEFINE_EXPORTED_bool(
     graph_get_neighbor_id,
     false,
     "It controls get all neighbor id when running sub part graph.");
+
+/**
+ * Distributed related FLAG
+ * Name: enable_exit_when_partial_worker
+ * Since Version: 2.2.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Control  whether exit trainer when an worker has no ins.
+ *       If it is not set, trainer will exit until all worker finish train.
+ */
+PADDLE_DEFINE_EXPORTED_bool(
+    enable_exit_when_partial_worker,
+    false,
+    "It controls whether exit trainer when an worker has no ins.");
+
+/**
+ * Distributed related FLAG
+ * Name: enable_exit_when_partial_worker
+ * Since Version: 2.2.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: represent gpugraph storage mode, 1 for full hbm, 2 for hbm + mem + ssd.
+ */
+PADDLE_DEFINE_EXPORTED_int32(gpugraph_storage_mode,
+                             1,
+                             "gpugraph storage mode, default 1");
 
 /**
  * KP kernel related FLAG
@@ -985,6 +1025,9 @@ PADDLE_DEFINE_EXPORTED_uint64(
     gpugraph_merge_grads_segment_size,
     128,
     "segment size with segment gradient merge, default 128");
+PADDLE_DEFINE_EXPORTED_uint64(gpugraph_slot_feasign_max_num,
+                              5,
+                              "max feasign number in one slot, default 5");
 PADDLE_DEFINE_EXPORTED_int32(
     gpugraph_dedup_pull_push_mode,
     0,
@@ -992,7 +1035,27 @@ PADDLE_DEFINE_EXPORTED_int32(
 PADDLE_DEFINE_EXPORTED_bool(gpugraph_load_node_list_into_hbm,
                             true,
                             "enable load_node_list_into_hbm, default true");
-
+PADDLE_DEFINE_EXPORTED_int32(gpugraph_sparse_table_storage_mode,
+                             0,
+                             "parse_table_storage_mode, default 0");
+PADDLE_DEFINE_EXPORTED_bool(enable_auto_detect_gpu_topo,
+                            true,
+                            "enable auto detect gpu topo, default true");
+PADDLE_DEFINE_EXPORTED_bool(enable_auto_rdma_trans,
+                            true,
+                            "enable auto gpu rdma trans, default true");
+PADDLE_DEFINE_EXPORTED_bool(enable_tracker_all2all,
+                            false,
+                            "enable tracker all2all log, default false");
+PADDLE_DEFINE_EXPORTED_bool(enable_all2all_use_fp16,
+                            false,
+                            "enable all2all use fp16, default false");
+PADDLE_DEFINE_EXPORTED_bool(enable_sparse_inner_gather,
+                            false,
+                            "enable sparse inner gather, default false");
+PADDLE_DEFINE_EXPORTED_bool(gpugraph_debug_gpu_memory,
+                            false,
+                            "enable debug gpu memory, default false");
 /**
  * ProcessGroupNCCL related FLAG
  * Name: nccl_blocking_wait

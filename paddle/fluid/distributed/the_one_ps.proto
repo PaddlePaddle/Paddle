@@ -169,6 +169,7 @@ message CtrAccessorParameter {
       [ default = 1 ]; // threshold to save ssd
   optional bool show_scale = 10 [ default = true ];
   optional bool zero_init = 11 [ default = true ];
+  repeated float load_filter_slots = 12;
 }
 
 message TensorAccessorParameter {

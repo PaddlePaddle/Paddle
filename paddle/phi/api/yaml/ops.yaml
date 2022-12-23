@@ -1119,6 +1119,17 @@
     func : viterbi_decode
     data_type : potentials
 
+- op : warprnnt
+  args : (Tensor input, Tensor label, Tensor input_lengths, Tensor label_lengths, int blank = 0, float fastemit_lambda = 0.0)
+  output :  Tensor(loss), Tensor(warprnntgrad)
+  infer_meta :
+    func : WarprnntInferMeta
+  kernel :
+    func : warprnnt
+    data_type: input
+  intermediate: warprnntgrad
+  backward : warprnnt_grad
+
 - op : where
   args : (Tensor condition, Tensor x, Tensor y)
   output : Tensor

@@ -53,5 +53,34 @@ TEST(DisMultiTrainerTest, test1) {
   tmp1->Finalize();
 #endif
 }
+
+TEST(DisMultiTrainerTest, testforgpugraph) {
+#ifdef _LINUX
+  TrainerDesc t;
+  t.set_class_name("MultiTrainer");
+  t.set_device_worker_name("HogwildWorker");
+  t.set_thread_num(1);
+  auto* m = t.mutable_downpour_param()->add_program_config();
+  m->set_program_id("123");
+  std::string str;
+  str += "name: \"MultiSlotDataFeed\"\nbatch_size: 2\nmulti_slot_desc {\n";
+  str += "slots {\nname: \"words\"\ntype: \"uint64\"\nis_dense: false\n";
+  str += "is_used: true\n}\nslots {\nname: \"label\"\ntype: \"uint64\"\n";
+  str += "is_dense: false\nis_used: true\n}\n}\n";
+  std::shared_ptr<MultiSlotDataset> dataset =
+      std::make_shared<MultiSlotDataset>();
+  dataset->SetFileList(std::vector<std::string>());
+  dataset->SetThreadNum(1);
+  dataset->SetTrainerNum(1);
+  dataset->SetDataFeedDesc(str);
+  dataset->CreateReaders();
+  dataset->SetGpuGraphMode(true);
+  dataset->GetMemoryDataSize();
+  dataset->SetPassId(2);
+  dataset->GetPassID();
+  dataset->GetEpochFinish();
+#endif
+}
+
 }  // namespace framework
 }  // namespace paddle

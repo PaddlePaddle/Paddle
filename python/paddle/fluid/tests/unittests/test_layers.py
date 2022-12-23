@@ -109,7 +109,9 @@ class TestLayer(LayerTest):
         inp = np.ones([3, 32, 32], dtype='float32')
         with self.static_graph():
             t = paddle.static.data(
-                name='data', shape=[3, 32, 32], dtype='float32'
+                name='data',
+                shape=[3, 32, 32],
+                dtype='float32',
             )
             dropout = paddle.nn.Dropout(p=0.35)
             ret = dropout(t)
@@ -662,9 +664,9 @@ class TestLayer(LayerTest):
     def test_one_hot(self):
         with self.dynamic_graph():
             label = fluid.dygraph.to_variable(np.array([[1], [1], [3], [0]]))
-            one_hot_label1 = fluid.layers.one_hot(input=label, depth=4)
-            one_hot_label2 = fluid.layers.one_hot(
-                input=label, depth=fluid.dygraph.to_variable(np.array([4]))
+            one_hot_label1 = paddle.nn.functional.one_hot(label, 4)
+            one_hot_label2 = paddle.nn.functional.one_hot(
+                label, fluid.dygraph.to_variable(np.array([4]))
             )
             np.testing.assert_array_equal(
                 one_hot_label1.numpy(), one_hot_label2.numpy()
@@ -910,7 +912,9 @@ class TestLayer(LayerTest):
             Weight = paddle.static.data(
                 name='Weight', shape=shape, dtype='float32', lod_level=1
             )
-            ret = layers.spectral_norm(weight=Weight, dim=1, power_iters=2)
+            ret = paddle.static.nn.spectral_norm(
+                weight=Weight, dim=1, power_iters=2
+            )
             static_ret = self.get_static_graph_result(
                 feed={
                     'Weight': fluid.create_lod_tensor(
@@ -961,9 +965,7 @@ class TestLayer(LayerTest):
                 feed={'pixel': input_array}, fetch_list=[out]
             )[0]
         with self.static_graph():
-            img = paddle.static.data(
-                name='pixel', shape=[-1, 3, 2, 2, 2], dtype='float32'
-            )
+            img = layers.data(name='pixel', shape=[3, 2, 2, 2], dtype='float32')
             conv3d_transpose = paddle.nn.Conv3DTranspose(
                 in_channels=3, out_channels=12, kernel_size=12
             )
@@ -1775,7 +1777,7 @@ class TestBook(LayerTest):
     def make_one_hot(self):
         with fluid.framework._dygraph_place_guard(place=fluid.CPUPlace()):
             label = self._get_data(name="label", shape=[1], dtype="int32")
-            one_hot_label = layers.one_hot(input=label, depth=10)
+            one_hot_label = paddle.nn.functional.one_hot(label, 10)
             return one_hot_label
 
     def make_label_smooth(self):
@@ -1783,7 +1785,7 @@ class TestBook(LayerTest):
         self._force_to_use_cpu = True
         with fluid.framework._dygraph_place_guard(place=fluid.CPUPlace()):
             label = self._get_data(name="label", shape=[1], dtype="int32")
-            one_hot_label = layers.one_hot(input=label, depth=10)
+            one_hot_label = paddle.nn.functional.one_hot(label, 10)
             smooth_label = F.label_smooth(label=one_hot_label, epsilon=0.1)
             return smooth_label
 
@@ -1976,7 +1978,7 @@ class TestBook(LayerTest):
                 dtype="float32",
                 append_batch_size=False,
             )
-            out = layers.spectral_norm(weight, dim=1, power_iters=1)
+            out = paddle.static.nn.spectral_norm(weight, dim=1, power_iters=1)
             return out
 
     def make_kldiv_loss(self):
@@ -2225,7 +2227,7 @@ class TestBook(LayerTest):
             x = paddle.static.data(
                 name='x', shape=[-1, 16], dtype='float32', lod_level=1
             )
-            out = layers.row_conv(input=x, future_context_size=2)
+            out = paddle.static.nn.row_conv(input=x, future_context_size=2)
             return out
 
     def test_simple_conv2d(self):
@@ -2323,33 +2325,6 @@ class TestBook(LayerTest):
                 reduction='none',
             )
             return output
-
-    def test_basic_gru(self):
-        input_size = 128
-        hidden_size = 256
-        with self.static_graph():
-            input = fluid.data(
-                name="input", shape=[None, None, input_size], dtype='float32'
-            )
-            pre_hidden = fluid.data(
-                name="pre_hidden", shape=[None, hidden_size], dtype='float32'
-            )
-            sequence_length = fluid.data(
-                name="sequence_length", shape=[None], dtype='int32'
-            )
-
-            for bidirectional in [True, False]:
-                for batch_first in [True, False]:
-                    rnn_out, last_hidden = fluid.contrib.layers.basic_gru(
-                        input,
-                        pre_hidden,
-                        hidden_size=256,
-                        num_layers=2,
-                        sequence_length=sequence_length,
-                        dropout_prob=0.5,
-                        bidirectional=bidirectional,
-                        batch_first=batch_first,
-                    )
 
 
 class ExampleNet(paddle.nn.Layer):
