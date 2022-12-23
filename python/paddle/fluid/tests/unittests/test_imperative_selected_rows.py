@@ -20,7 +20,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.optimizer import SGDOptimizer
 
 
@@ -40,7 +39,8 @@ class SimpleNet(paddle.nn.Layer):
 
 
 class TestSimpleNet(unittest.TestCase):
-    def func_selectedrows_gradient1(self):
+    def test_selectedrows_gradient1(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -77,15 +77,10 @@ class TestSimpleNet(unittest.TestCase):
                     input_emb.clear_gradient()
                     self.assertIsNotNone(input_emb.gradient())
                     paddle.enable_static()
-
-    def test_selectedrows_gradient1(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_selectedrows_gradient1()
-        self.func_selectedrows_gradient1()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
-    def func_selectedrows_gradient2(self):
+    def test_selectedrows_gradient2(self):
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -121,12 +116,6 @@ class TestSimpleNet(unittest.TestCase):
 
                     input_emb.clear_gradient()
                     self.assertIsNotNone(input_emb.gradient())
-
-    def test_selectedrows_gradient2(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_selectedrows_gradient2()
-        self.func_selectedrows_gradient2()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 

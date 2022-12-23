@@ -523,4 +523,13 @@ void YoloLossInferMeta(const MetaTensor& x,
                        MetaTensor* objectness_mask,
                        MetaTensor* gt_match_mask);
 
+void MoeInferMeta(const MetaTensor& x,
+                  const MetaTensor& gate,
+                  const MetaTensor& bmm0,
+                  const MetaTensor& bias0,
+                  const MetaTensor& bmm1,
+                  const MetaTensor& bias1,
+                  const std::string& act_type,
+                  MetaTensor* out);
+
 }  // namespace phi

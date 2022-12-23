@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import inspect
+import warnings
+from functools import reduce
 
 import numpy as np
 
@@ -3231,6 +3233,313 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     return out
 
 
+@templatedoc()
+def row_conv(input, future_context_size, param_attr=None, act=None):
+    """
+    :api_attr: Static Graph
+
+    ${comment}
+
+    Args:
+        input (${x_type}): ${x_comment}.
+        future_context_size (int): Future context size. Please note, the shape
+            of convolution kernel is [future_context_size + 1, D].
+        param_attr (ParamAttr): Attributes of parameters, including
+            name, initializer etc.
+        act (str): Non-linear activation to be applied to output variable.
+
+    Returns:
+        ${out_comment}.
+
+    Examples:
+
+      .. code-block:: python
+
+        # for LodTensor inputs
+        import paddle
+        paddle.enable_static()
+        x = paddle.static.data(name='x', shape=[9, 16],
+                               dtype='float32', lod_level=1)
+        out_x = paddle.static.nn.row_conv(input=x, future_context_size=2)
+        # for Tensor inputs
+        y = paddle.static.data(name='y', shape=[9, 4, 16], dtype='float32')
+        out_y = paddle.static.nn.row_conv(input=y, future_context_size=2)
+    """
+    helper = LayerHelper('row_conv', **locals())
+    check_variable_and_dtype(input, 'input', ['float32'], 'row_conv')
+    dtype = helper.input_dtype()
+    filter_shape = [future_context_size + 1, input.shape[-1]]
+    filter_param = helper.create_parameter(
+        attr=helper.param_attr, shape=filter_shape, dtype=dtype
+    )
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='row_conv',
+        inputs={'X': [input], 'Filter': [filter_param]},
+        outputs={'Out': [out]},
+    )
+    return helper.append_activation(out)
+
+
+@templatedoc()
+def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
+    r"""
+    :api_attr: Static Graph
+
+    **Spectral Normalization Layer**
+
+    This operation calculates the spectral normalization value of weight parameters of
+    fc, conv1d, conv2d, conv3d layers which should be 2-D, 3-D, 4-D, 5-D
+    Parameters. Output tensor will be in same shape with input tensor.
+    Calculations are showed as follows.
+
+    Step 1:
+    Generate vector U in shape of [H], and V in shape of [W].
+    While H is the :attr:`dim` th dimension of the input weights,
+    and W is the product result of remaining dimensions.
+
+    Step 2:
+    :attr:`power_iters` should be a positive integer, do following
+    calculations with U and V for :attr:`power_iters` rounds. Calculations
+    as follows:
+
+    .. math::
+
+        \mathbf{v} := \\frac{\mathbf{W}^{T} \mathbf{u}}{\|\mathbf{W}^{T} \mathbf{u}\|_2}
+
+        \mathbf{u} := \\frac{\mathbf{W}^{T} \mathbf{v}}{\|\mathbf{W}^{T} \mathbf{v}\|_2}
+
+    Step 3:
+    Calculate :math:`\sigma(\mathbf{W})` and normalize weight values.
+
+    .. math::
+
+        \sigma(\mathbf{W}) = \mathbf{u}^{T} \mathbf{W} \mathbf{v}
+
+        \mathbf{W} = \\frac{\mathbf{W}}{\sigma(\mathbf{W})}
+
+
+    Refer to `Spectral Normalization <https://arxiv.org/abs/1802.05957>`_ .
+
+    Args:
+        weight(Tensor): ${weight_comment}
+        dim(int): ${dim_comment}
+        power_iters(int): ${power_iters_comment}
+        eps(float): ${eps_comment}
+        name(str, optional): For detailed information, please refer
+                             to :ref:`api_guide_Name`. Usually name is no need to set and
+                             None by default.
+
+    Returns:
+        Tensor: A tensor of weight parameters after spectral normalization.
+                  The data type and shape is same as input tensor.
+
+    Examples:
+       .. code-block:: python
+
+            import paddle
+
+            paddle.enable_static()
+            weight = paddle.static.data(name='weight', shape=[2, 8, 32, 32], dtype='float32')
+            x = paddle.static.nn.spectral_norm(weight=weight, dim=1, power_iters=2)
+            print(x.shape) # [2, 8, 32, 32]
+    """
+    helper = LayerHelper('spectral_norm', **locals())
+    check_variable_and_dtype(
+        weight, 'weight', ['float32', 'float64'], 'spectral_norm'
+    )
+    check_type(dim, 'dim', int, 'spectral_norm')
+    check_type(power_iters, 'power_iters', int, 'spectral_norm')
+    check_type(eps, 'eps', float, 'spectral_norm')
+    dtype = weight.dtype
+
+    # create intput and parameters
+    input_shape = weight.shape
+    assert weight.numel() > 0, "Any dimension of input cannot be equal to 0."
+    assert dim < len(input_shape), (
+        "The input `dim` should be less than the "
+        "rank of `weight`, but received dim="
+        "{}".format(dim)
+    )
+    h = input_shape[dim]
+    w = np.prod(input_shape) // h
+
+    u = helper.create_parameter(
+        attr=ParamAttr(),
+        shape=[h],
+        dtype=dtype,
+        default_initializer=Normal(0.0, 1.0),
+    )
+    u.stop_gradient = True
+    v = helper.create_parameter(
+        attr=ParamAttr(),
+        shape=[w],
+        dtype=dtype,
+        default_initializer=Normal(0.0, 1.0),
+    )
+    v.stop_gradient = True
+
+    if paddle.framework.in_dygraph_mode():
+        return paddle._C_ops.spectral_norm(weight, u, v, dim, power_iters, eps)
+
+    inputs = {'Weight': weight}
+    inputs['U'] = u
+    inputs['V'] = v
+
+    # create output
+    out = helper.create_variable(dtype=dtype)
+
+    helper.append_op(
+        type="spectral_norm",
+        inputs=inputs,
+        outputs={
+            "Out": out,
+        },
+        attrs={
+            "dim": dim,
+            "power_iters": power_iters,
+            "eps": eps,
+        },
+    )
+
+    return out
+
+
 # For debug usage
 py_func.registered_func = PyFuncRegistry.registered_func
 py_func.registered_func_num = PyFuncRegistry.registered_func_num
+
+
+@templatedoc()
+def layer_norm(
+    input,
+    scale=True,
+    shift=True,
+    begin_norm_axis=1,
+    epsilon=1e-05,
+    param_attr=None,
+    bias_attr=None,
+    act=None,
+    name=None,
+):
+    r"""
+
+    **Layer Normalization Layer**
+
+    The API implements the function of the Layer Normalization Layer and can be applied to mini-batch input data.
+    Refer to `Layer Normalization <https://arxiv.org/pdf/1607.06450v1.pdf>`_
+
+    The formula is as follows:
+
+    ..  math::
+
+        \mu & = \frac{1}{H}\sum_{i=1}^{H} x_i
+
+        \sigma & = \sqrt{\frac{1}{H}\sum_{i=1}^{H}{(x_i - \mu)^2} + \epsilon}
+
+        y & = f(\frac{g}{\sigma}(x - \mu) + b)
+
+    - :math:`x`: the vector representation of the summed inputs to the neurons in that layer.
+    - :math:`H`: the number of hidden units in a layers
+    - :math:`\\epsilon`: the small value added to the variance to prevent division by zero.
+    - :math:`g`: the trainable scale parameter.
+    - :math:`b`: the trainable bias parameter.
+
+    Args:
+        input(Tensor): A multi-dimension ``Tensor`` , and the data type is float32 or float64.
+        scale(bool, optional): Whether to learn the adaptive gain :math:`g` after
+            normalization. Default: True.
+        shift(bool, optional): Whether to learn the adaptive bias :math:`b` after
+            normalization. Default: True.
+        begin_norm_axis(int, optional): The normalization will be performed along
+            dimensions from :attr:`begin_norm_axis` to :attr:`rank(input)`.
+            Default: 1.
+        epsilon(float, optional): The small value added to the variance to prevent
+            division by zero. Default: 1e-05.
+        param_attr(ParamAttr, optional): The parameter attribute for the learnable
+            gain :math:`g`. If :attr:`scale` is False, :attr:`param_attr` is
+            omitted. If :attr:`scale` is True and :attr:`param_attr` is None,
+            a default :code:`ParamAttr` would be added as scale. The
+            :attr:`param_attr` is initialized as 1 if it is added. Default: None.
+        bias_attr(ParamAttr, optional): The parameter attribute for the learnable
+            bias :math:`b`. If :attr:`shift` is False, :attr:`bias_attr` is
+            omitted. If :attr:`shift` is True and :attr:`param_attr` is None,
+            a default :code:`ParamAttr` would be added as bias. The
+            :attr:`bias_attr` is initialized as 0 if it is added. Default: None.
+        act(str, optional): Activation to be applied to the output of layer normalization.
+                  Default: None.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
+
+    Returns:
+        Tensor: ``Tensor``  indicating the normalized result, the data type is the same as  ``input`` , and the return dimension is the same as  ``input`` .
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            paddle.enable_static()
+            x = paddle.static.data(name='x', shape=[8, 32, 32], dtype='float32')
+            output = paddle.static.nn.layer_norm(input=x, begin_norm_axis=1)
+            print(output.shape)  # [8, 32, 32]
+    """
+    assert (
+        _non_static_mode() is not True
+    ), "please use LayerNorm instead of layer_norm in dygraph mode!"
+    helper = LayerHelper('layer_norm', **locals())
+    check_variable_and_dtype(
+        input, 'input', ['float32', 'float64'], 'layer_norm'
+    )
+    dtype = helper.input_dtype()
+
+    # create intput and parameters
+    inputs = {'X': input}
+    input_shape = input.shape
+    param_shape = [reduce(lambda x, y: x * y, input_shape[begin_norm_axis:])]
+    if scale:
+        assert (
+            param_attr is not False
+        ), "param_attr should not be False when using scale."
+        scale = helper.create_parameter(
+            attr=helper.param_attr,
+            shape=param_shape,
+            dtype=dtype,
+            default_initializer=Constant(1.0),
+        )
+        inputs['Scale'] = scale
+    else:
+        if param_attr:
+            warnings.warn("param_attr is only available with scale is True.")
+    if shift:
+        assert (
+            bias_attr is not False
+        ), "bias_attr should not be False when using shift."
+        bias = helper.create_parameter(
+            attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True
+        )
+        inputs['Bias'] = bias
+    else:
+        if bias_attr:
+            warnings.warn("bias_attr is only available with shift is True.")
+
+    # create output
+    mean_out = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True
+    )
+    variance_out = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True
+    )
+    layer_norm_out = helper.create_variable_for_type_inference(dtype)
+
+    helper.append_op(
+        type="layer_norm",
+        inputs=inputs,
+        outputs={
+            "Y": layer_norm_out,
+            "Mean": mean_out,
+            "Variance": variance_out,
+        },
+        attrs={"epsilon": epsilon, "begin_norm_axis": begin_norm_axis},
+    )
+
+    return helper.append_activation(layer_norm_out)
