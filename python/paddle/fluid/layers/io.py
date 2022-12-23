@@ -41,9 +41,7 @@ from ..framework import (
     _set_expected_place,
 )
 
-__all__ = [
-    'data',
-]
+__all__ = []
 
 
 class BlockGuardServ(BlockGuard):
