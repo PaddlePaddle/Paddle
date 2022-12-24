@@ -22,7 +22,6 @@ namespace paddle {
 namespace operators {
 
 using platform::PADDLE_CUDA_NUM_THREADS;
-using LoDTensor = framework::LoDTensor;
 
 template <typename T, typename LodType>
 __global__ void unzipKernel(const T* X,
@@ -51,17 +50,17 @@ template <typename T, typename LodType>
 class unzipCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    const auto* x = context.Input<LoDTensor>("X");
+    const auto* x = context.Input<phi::DenseTensor>("X");
     const T* x_data = x->data<T>();
 
-    const auto* lod = context.Input<LoDTensor>("lod");
+    const auto* lod = context.Input<phi::DenseTensor>("lod");
     const LodType* lod_data = lod->data<LodType>();
 
     auto col_size = x->dims()[1];
     auto row_size = lod->dims()[0] - 1;
     auto y_numel = col_size * row_size;
 
-    auto* y = context.Output<LoDTensor>("Y");
+    auto* y = context.Output<phi::DenseTensor>("Y");
     T* y_data = y->mutable_data<T>(context.GetPlace());
 
     // for Input X do not have lod Information.
