@@ -89,10 +89,9 @@ class ListenAndServ:
                     "127.0.0.1:6170", ["X"], optimizer_mode=False)
                 with serv.do():
                     x = paddle.static.data(
-                        shape=[-1, 32, 32],
+                        shape=[32, 32],
                         dtype='float32',
-                        name="X",
-                        append_batch_size=False)
+                        name="X")
                     fluid.initializer.Constant(value=1.0)(x, main.global_block())
                     paddle.scale(x=x, scale=10.0, out=out_var)
 

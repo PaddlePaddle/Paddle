@@ -30,7 +30,6 @@ class TestCollectiveSendRecvAPI(TestCollectiveAPIRunnerBase):
                 name="tindata",
                 shape=[10, 1000],
                 dtype='float32',
-                append_batch_size=False,
             )
             if rank == 0:
                 paddle.distributed.send(tindata, dst=1)

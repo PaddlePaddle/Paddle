@@ -229,7 +229,6 @@ def make_all_inputs(input_fields):
             lod_level=input_descs[input_field][2]
             if len(input_descs[input_field]) == 3
             else 0,
-            append_batch_size=False,
         )
         inputs.append(input_var)
     return inputs

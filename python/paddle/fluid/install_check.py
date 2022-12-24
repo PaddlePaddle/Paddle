@@ -138,9 +138,7 @@ def run_check():
         with executor.scope_guard(scope):
             with program_guard(train_prog, startup_prog):
                 with unique_name.guard():
-                    inp0 = paddle.static.data(
-                        name="inp", shape=[-1, 2, 2], append_batch_size=False
-                    )
+                    inp0 = paddle.static.data(name="inp", shape=[2, 2])
                     simple_layer0 = SimpleLayer(input_size=2)
                     out0 = simple_layer0(inp0)
                     param_grads = backward.append_backward(

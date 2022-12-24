@@ -1802,7 +1802,7 @@ class LarsMomentumOptimizer(Optimizer):
             paddle.enable_static()
             np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
             inp = paddle.static.data(
-                name="inp", shape=[-1, 2, 2], append_batch_size=False)
+                name="inp", shape=[2, 2])
             out = fluid.layers.fc(inp, size=3)
             out = paddle.sum(out)
             optimizer = fluid.optimizer.LarsMomentumOptimizer(learning_rate=0.001, momentum=0.9)

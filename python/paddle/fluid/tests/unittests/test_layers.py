@@ -1759,16 +1759,11 @@ class TestBook(LayerTest):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
         ):
-            x = self._get_data(
-                name='x', shape=[3, 3], append_batch_size=False, dtype='float32'
-            )
-            idx = self._get_data(
-                name='idx', shape=[2], append_batch_size=False, dtype='int32'
-            )
+            x = self._get_data(name='x', shape=[3, 3], dtype='float32')
+            idx = self._get_data(name='idx', shape=[2], dtype='int32')
             updates = self._get_data(
                 name='updates',
                 shape=[2, 3],
-                append_batch_size=False,
                 dtype='float32',
             )
             out = paddle.scatter(x, index=idx, updates=updates)
@@ -1912,7 +1907,6 @@ class TestBook(LayerTest):
                 name="scale",
                 shape=[1],
                 dtype='float32',
-                append_batch_size=False,
             )
             out = paddle.scale(input, scale=scale_var)
             return out
@@ -1950,7 +1944,6 @@ class TestBook(LayerTest):
                 name='momentum',
                 shape=[1],
                 dtype='float32',
-                append_batch_size=False,
             )
             out = paddle.static.nn.batch_norm(data, momentum=momentum)
             return out
@@ -1976,7 +1969,6 @@ class TestBook(LayerTest):
                 name='weight',
                 shape=[2, 3, 32, 32],
                 dtype="float32",
-                append_batch_size=False,
             )
             out = paddle.static.nn.spectral_norm(weight, dim=1, power_iters=1)
             return out
@@ -1989,13 +1981,11 @@ class TestBook(LayerTest):
                 name='x',
                 shape=[32, 128, 128],
                 dtype="float32",
-                append_batch_size=False,
             )
             target = self._get_data(
                 name='target',
                 shape=[32, 128, 128],
                 dtype="float32",
-                append_batch_size=False,
             )
             loss = paddle.nn.functional.kl_div(
                 input=x, label=target, reduction='batchmean'

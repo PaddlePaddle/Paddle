@@ -54,21 +54,18 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
                 shape=[-1, 1],
                 dtype="int64",
                 lod_level=1,
-                append_batch_size=False,
             )
             lr_data = paddle.static.data(
                 name="lr_data",
                 shape=[-1, 1],
                 dtype="int64",
                 lod_level=1,
-                append_batch_size=False,
             )
             label = paddle.static.data(
                 name="click",
                 shape=[-1, 1],
                 dtype="float32",
                 lod_level=0,
-                append_batch_size=False,
             )
 
             datas = [dnn_data, lr_data, label]

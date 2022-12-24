@@ -1860,12 +1860,10 @@ def correlation(
 
             x1 = paddle.static.data(name='x1',
                                shape=x_shape,
-                               dtype=x_type,
-                               append_batch_size=False)
+                               dtype=x_type)
             x2 = paddle.static.data(name='x2',
                                 shape=x_shape,
-                                dtype=x_type,
-                                append_batch_size=False)
+                                dtype=x_type)
 
 
             out = fluid.contrib.correlation(

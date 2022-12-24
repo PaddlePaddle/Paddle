@@ -52,9 +52,8 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                     name='input',
                     shape=self.dshape,
                     dtype=self.dtype,
-                    append_batch_size=False,
-                    stop_gradient=False,
                 )
+                data.stop_gradient = False
 
                 bn = paddle.static.nn.batch_norm(
                     data,

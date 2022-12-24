@@ -65,13 +65,10 @@ def residual_block(num, quant_skip_pattern=None):
 
     data = paddle.static.data(
         name='image',
-        shape=[-1, 1, 1, 32, 32],
+        shape=[1, 1, 32, 32],
         dtype='float32',
-        append_batch_size=False,
     )
-    label = paddle.static.data(
-        name='label', shape=[-1, 1, 1], dtype='int64', append_batch_size=False
-    )
+    label = paddle.static.data(name='label', shape=[1, 1], dtype='int64')
     hidden = data
     for _ in range(num):
         conv = conv_bn_layer(hidden, 16, 3, 1, 1, act=None, bias_attr=True)
