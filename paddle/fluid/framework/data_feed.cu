@@ -435,7 +435,6 @@ __global__ void CopyDuplicateKeys(int64_t *dist_tensor,
 }
 
 int GraphDataGenerator::AcquireInstance(BufState *state) {
-  //
   if (state->GetNextStep()) {
     DEBUG_STATE(state);
     return state->len;
