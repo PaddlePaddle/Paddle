@@ -52,7 +52,7 @@ if [ ${check_error} != 0 ];then
     echo "    pip install pre-commit==2.17.0"
     echo "    pre-commit install"
     echo ""
-    if [[ $num_diff_files -le 200 ]];then
+    if [[ $num_diff_files -le 100 ]];then
         echo "Then, run pre-commit to check codestyle issues in your PR:"
         echo ""
         echo "    pre-commit run --files" $(echo ${diff_files} | tr "\n" " ")
