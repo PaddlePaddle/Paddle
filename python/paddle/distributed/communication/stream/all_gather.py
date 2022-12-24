@@ -178,7 +178,9 @@ def all_gather(
                 tensor_or_tensor_list, tensor, group, sync_op, use_calc_stream
             )
     else:
-        assert group is None, "Group can not be used in static graph mode for now."
+        assert (
+            group is None
+        ), "Group can not be used in static graph mode for now."
         if paddle.is_tensor(tensor_or_tensor_list):
             raise RuntimeError(
                 "Only support passing a tensor list to `all_gather` in static graph mode now."
