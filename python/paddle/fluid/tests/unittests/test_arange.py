@@ -70,6 +70,12 @@ class TestInt64ArangeOp(TestArangeOp):
         self.case = (-1, -10, -2)
 
 
+class TestZeroSizeArangeOp(TestArangeOp):
+    def init_config(self):
+        self.dtype = np.int32
+        self.case = (0, 0, 1)
+
+
 class TestArangeOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
