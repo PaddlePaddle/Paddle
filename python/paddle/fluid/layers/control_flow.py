@@ -53,8 +53,6 @@ from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
     'Switch',
-    'array_write',
-    'array_read',
     'StaticRNN',
     'Print',
     'while_loop',
@@ -147,130 +145,6 @@ def select_input(inputs, mask):
     return out
 
 
-def split_lod_tensor(input, mask, level=0):
-    """
-    This function takes in an input that contains the complete lod information,
-    and takes in a mask which is used to mask certain parts of the input.
-    The output is the true branch and the false branch with the mask applied to
-    the input at a certain level in the tensor. Mainly used in IfElse to split
-    data into two parts.
-
-    Args:
-        input(Variable|tuple|list|None): The input tensor that contains complete
-                                lod information needed to construct the output.
-        mask(Variable|list): A bool column vector which masks the input.
-        level(int): The specific lod level to split.
-
-    Returns:
-        tuple(Variable, Variable):
-        The true branch of tensor as per the mask applied to input.
-
-        The false branch of tensor as per the mask applied to input.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          x = fluid.layers.data(name='x', shape=[1])
-          x.persistable = True
-
-          y = fluid.layers.data(name='y', shape=[1])
-          y.persistable = True
-
-          out_true, out_false = fluid.layers.split_lod_tensor(
-                input=x, mask=y, level=level)
-
-    """
-    check_type(
-        input,
-        'input',
-        (Variable, list, tuple, type(None)),
-        'fluid.layers.split_lod_tensor',
-    )
-    check_type(mask, 'mask', (Variable, list), 'fluid.layers.split_lod_tensor')
-    check_type(level, 'level', int, 'fluid.layers.split_lod_tensor')
-    helper = LayerHelper('split_lod_tensor', **locals())
-    out_true = helper.create_variable_for_type_inference(dtype=input.dtype)
-    out_false = helper.create_variable_for_type_inference(dtype=input.dtype)
-    helper.append_op(
-        type='split_lod_tensor',
-        inputs={
-            'X': input,
-            'Mask': mask,
-        },
-        outputs={'OutTrue': out_true, 'OutFalse': out_false},
-        attrs={'level': level},
-    )
-    return out_true, out_false
-
-
-def merge_lod_tensor(in_true, in_false, x, mask, level=0):
-    """
-    **merge_lod_tensor**
-
-    This function takes in an input :math:`x`, the True branch, the False
-    branch and a binary :math:`mask`. Using this information, this function
-    merges the True and False branches of the tensor into a single tensor as
-    output at a certain lod level indicated by :math:`level`. Used in IfElse
-    to merge the output if True block and False Block.
-
-    Args:
-        in_true(Variable|tuple|list|None): The True branch to be merged.
-        in_false(Variable|tuple|list|None): The False branch to be merged.
-        x(Variable|tuple|list|None): The input tensor that contains complete
-                            lod information needed to construct the output.
-        mask(Variable|list): A bool column vector which masks the input.
-        level(int): The specific lod level to merge.
-
-    Returns:
-        Variable: The merged output tensor.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          x = layers.data(
-                      name='x', shape=[1], dtype='float32', stop_gradient=False)
-          y = layers.data(
-                name='y', shape=[1], dtype='bool', stop_gradient=False)
-
-          level = 0
-
-          out_true, out_false = layers.split_lod_tensor(
-                input=x, mask=y, level=level)
-          out = layers.merge_lod_tensor(
-                in_true=out_true, in_false=out_false, mask=y, x=x, level=level)
-    """
-    helper = LayerHelper('merge_lod_tensor', **locals())
-    check_type(
-        x,
-        'x',
-        (Variable, list, tuple, type(None)),
-        'fluid.layers.merge_lod_tensor',
-    )
-    check_type(mask, 'mask', (Variable, list), 'fluid.layers.merge_lod_tensor')
-    check_type(
-        in_true,
-        'in_true',
-        (Variable, list, tuple, type(None)),
-        'fluid.layers.merge_lod_tensor',
-    )
-    check_type(
-        in_false,
-        'in_false',
-        (Variable, list, tuple, type(None)),
-        'fluid.layers.merge_lod_tensor',
-    )
-    out = helper.create_variable_for_type_inference(dtype=in_true.dtype)
-    helper.append_op(
-        type='merge_lod_tensor',
-        inputs={'X': x, 'Mask': mask, 'InTrue': in_true, 'InFalse': in_false},
-        outputs={'Out': out},
-        attrs={'level': level},
-    )
-    return out
-
-
 @static_only
 def Print(
     input,
@@ -296,27 +170,27 @@ def Print(
     tensor `t`.
 
     Args:
-        input (Variable): A Tensor to print.
-        summarize (int): Number of elements in the tensor to be print. If it's
-                value is -1, then all elements in the tensor will be print.
-        message (str): A string message to print as a prefix.
-        first_n (int): Only log `first_n` number of times.
+        input (Tensor): A Tensor to print.
+        first_n (int, optional): Only log `first_n` number of times. Default: -1.
+        message (str, optional): A string message to print as a prefix. Default: None.
+        summarize (int, optional): Number of elements in the tensor to be print. If
+                it's value is -1, then all elements in the tensor will be print.
         print_tensor_name (bool, optional): Print the tensor name. Default: True.
         print_tensor_type (bool, optional): Print the tensor type. Defaultt: True.
         print_tensor_shape (bool, optional): Print the tensor shape. Default: True.
         print_tensor_layout (bool, optional): Print the tensor layout. Default: True.
         print_tensor_lod (bool, optional): Print the tensor lod. Default: True.
-        print_phase (str): Which phase to displace, including 'forward',
+        print_phase (str, optional): Which phase to displace, including 'forward',
                 'backward' and 'both'. Default: 'both'. If set to 'backward', will
                 only print the gradients of input tensor; If set to 'both', will
                 both print the input tensor itself and the gradients of input tensor.
 
     Returns:
-        Variable: Output tensor.
+        Tensor: Output tensor.
 
     NOTES:
-        The input and output are two different variables, and in the
-        following process, you should use the output variable but not the input,
+        The input and output are two different Tensor, and in the
+        following process, you should use the output Tensor but not the input,
         otherwise, the print layer doesn't have backward.
 
     Examples:
@@ -1090,10 +964,10 @@ class While:
             cond = paddle.less_than(x=i, y=loop_len)
             while_op = fluid.layers.While(cond=cond)
             with while_op.block():
-                sums_tensor = fluid.layers.elementwise_add(x=data, y=data)
+                sums_tensor = paddle.add(x=data, y=data)
                 fluid.layers.assign(sums_tensor, sums)  # Update the value of sums_tensor defined in While to the sums which defined outside of While through layers.assign
                 i = paddle.increment(x=i, value=1)
-                data = fluid.layers.elementwise_add(x=data, y=one)
+                data = paddle.add(x=data, y=one)
                 paddle.assign(paddle.less_than(x=i, y=loop_len), cond)
 
             feed_data = np.ones(1).astype('float32')
@@ -1360,196 +1234,6 @@ def _deal_with_undefined_var(output_vars, loop_vars):
         else:
             results.append(l_var)
     return results
-
-
-def array_write(x, i, array=None):
-    """
-    This OP writes the input ``x`` into the i-th position of the ``array``
-    :ref:`api_fluid_LoDTensorArray` and returns the modified array.
-    If ``array`` is none, a new LoDTensorArray will be created and returned.
-    This OP is often used together with :ref:`api_fluid_layers_array_read` OP.
-
-    Args:
-        x (Variable): The input data to be written into array. It's multi-dimensional
-            Tensor or LoDTensor. Data type: float32, float64, int32, int64.
-        i (Variable): 1-D Tensor with shape [1], which represents the position into which
-            ``x`` is written. Data type: int64.
-        array (LoDTensorArray, optional): The LoDTensorArray into which ``x`` is written.
-            The default value is None, when a new LoDTensorArray will be created and returned
-            as a result.
-
-    Returns:
-        Variable: The input ``array`` after ``x`` is written into.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            tmp = fluid.layers.fill_constant(shape=[3, 2], dtype='int64', value=5)
-            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
-            # Write tmp into the position of arr with subscript 10 and return arr.
-            arr = fluid.layers.array_write(tmp, i=i)
-
-            # Now, arr is a LoDTensorArray with length 11. We can use array_read OP to read
-            # the data at subscript 10 and print it out.
-            item = fluid.layers.array_read(arr, i=i)
-            input = fluid.layers.Print(item, message="The content of i-th LoDTensor:")
-            main_program = fluid.default_main_program()
-            exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(main_program)
-
-            # The printed result is:
-            # 1570533133    The content of i-th LoDTensor:  The place is:CPUPlace
-            # Tensor[array_read_0.tmp_0]
-            #    shape: [3,2,]
-            #    dtype: l
-            #    data: 5,5,5,5,5,5,
-
-            # the output is 2-D Tensor with shape [3,2], which is tmp above.
-            # dtype is the corresponding C++ data type, which may vary in different environments.
-            # Eg: if the data type of tensor is int64, then the corresponding C++ data type is int64_t,
-            #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux,
-            #       and '__int64' on Windows. They both represent 64-bit integer variables.
-
-    """
-    if _non_static_mode():
-        assert isinstance(
-            x, Variable
-        ), "The input data 'x' in array_write must be Variable in dygraph mode"
-        assert isinstance(
-            i, Variable
-        ), "The index 'i' in array_write must be Variable in dygraph mode"
-        assert i.shape == [
-            1
-        ], "The shape of index 'i' should be [1] in dygraph mode"
-        i = i.numpy().item(0)
-        if array is None:
-            array = paddle.tensor.create_array(x.dtype)
-        assert isinstance(
-            array, list
-        ), "The 'array' in array_write must be a list in dygraph mode"
-        assert i <= len(
-            array
-        ), "The index 'i' should not be greater than the length of 'array' in dygraph mode"
-        if i < len(array):
-            array[i] = x
-        else:
-            array.append(x)
-        return array
-
-    check_variable_and_dtype(i, 'i', ['int64'], 'array_write')
-    check_type(x, 'x', (Variable), 'array_write')
-    helper = LayerHelper('array_write', **locals())
-    if array is not None:
-        if (
-            not isinstance(array, Variable)
-            or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY
-        ):
-            raise TypeError(
-                "array should be tensor array vairable in array_write Op"
-            )
-    if array is None:
-        array = helper.create_variable(
-            name="{0}.out".format(helper.name),
-            type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
-            dtype=x.dtype,
-        )
-    helper.append_op(
-        type='write_to_array',
-        inputs={'X': [x], 'I': [i]},
-        outputs={'Out': [array]},
-    )
-    return array
-
-
-def array_read(array, i):
-    """
-    This OP is used to read data at the specified position from the input array
-    :ref:`api_fluid_LoDTensorArray` . ``array`` is the input array and ``i``
-    is the specified read position. This OP is often used together with
-    :ref:`api_fluid_layers_array_write` OP.
-
-    Case 1:
-    ::
-        Input:
-            The shape of first three tensors are [1], and that of the last one is [1,2]:
-                array = ([0.6], [0.1], [0.3], [0.4, 0.2])
-            And:
-                i = [3]
-
-        Output:
-            output = [0.4, 0.2]
-
-    Args:
-        array (LoDTensorArray): The input LoDTensorArray.
-        i (Variable): 1-D Tensor, whose shape is [1] and dtype is int64. It represents the
-            specified read position of ``array``.
-
-    Returns:
-        Variable: The LoDTensor or Tensor that is read at the specified position of ``array``.
-
-    Examples:
-        .. code-block:: python
-
-            # First we're going to create a LoDTensorArray, then we're going to write the Tensor into
-            # the specified position, and finally we're going to read the Tensor at that position.
-            import paddle.fluid as fluid
-            arr = fluid.layers.create_array(dtype='float32')
-            tmp = fluid.layers.fill_constant(shape=[3, 2], dtype='int64', value=5)
-            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
-            # tmp is the Tensor with shape [3,2], and if we write it into the position with subscript 10
-            # of the empty-array: arr, then the length of arr becomes 11.
-            arr = fluid.layers.array_write(tmp, i, array=arr)
-            # Read the data of the position with subscript 10.
-            item = fluid.layers.array_read(arr, i)
-
-            # You can print out the data via executor.
-            input = fluid.layers.Print(item, message="The LoDTensor of the i-th position:")
-            main_program = fluid.default_main_program()
-            exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(main_program)
-
-            # The printed result is:
-
-            # 1569588169  The LoDTensor of the i-th position: The place is:CPUPlace
-            # Tensor[array_read_0.tmp_0]
-            #    shape: [3,2,]
-            #    dtype: l
-            #    data: 5,5,5,5,5,5,
-
-            # the output is 2-D Tensor with shape [3,2].
-            # dtype is the corresponding C++ data type, which may vary in different environments.
-            # Eg: if the data type of tensor is int64, then the corresponding C++ data type is int64_t,
-            #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux,
-            #       and '__int64' on Windows. They both represent 64-bit integer variables.
-    """
-    if _non_static_mode():
-        assert isinstance(
-            array, list
-        ), "The 'array' in array_read must be list in dygraph mode"
-        assert isinstance(
-            i, Variable
-        ), "The index 'i' in array_read must be Variable in dygraph mode"
-        assert i.shape == [
-            1
-        ], "The shape of index 'i' should be [1] in dygraph mode"
-        i = i.numpy().item(0)
-        return array[i]
-
-    check_variable_and_dtype(i, 'i', ['int64'], 'array_read')
-    helper = LayerHelper('array_read', **locals())
-    if (
-        not isinstance(array, Variable)
-        or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY
-    ):
-        raise TypeError("array should be tensor array vairable")
-    out = helper.create_variable_for_type_inference(dtype=array.dtype)
-    helper.append_op(
-        type='read_from_array',
-        inputs={'X': [array], 'I': [i]},
-        outputs={'Out': [out]},
-    )
-    return out
 
 
 class ConditionalBlockGuard(BlockGuard):
