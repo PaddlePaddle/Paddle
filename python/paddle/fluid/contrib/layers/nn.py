@@ -2178,6 +2178,7 @@ def unzip(input, lod):
           import numpy as np
           import paddle
           import paddle.fluid as fluid
+          paddle.enable_static()
           input_np = np.array([
                         [1.0, 2.0, 3.0, 4.0],
                         [10.0, 20.0, 30.0, 40.0],
