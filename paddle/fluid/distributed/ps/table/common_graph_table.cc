@@ -1215,7 +1215,8 @@ int32_t GraphTable::Load(const std::string &path, const std::string &param) {
     std::string edge_type = param.substr(2);
     int ret = this->load_edges(path, reverse_edge, edge_type);
     if (ret != 0) {
-      VLOG(0) << "Fail to load edges, path[" << path << "] edge_type[" << edge_type << "]";
+      VLOG(0) << "Fail to load edges, path[" << path << "] edge_type["
+              << edge_type << "]";
       return -1;
     }
   }
@@ -1223,7 +1224,8 @@ int32_t GraphTable::Load(const std::string &path, const std::string &param) {
     std::string node_type = param.substr(1);
     int ret = this->load_nodes(path, node_type);
     if (ret != 0) {
-      VLOG(0) << "Fail to load nodes, path[" << path << "] node_type[" << node_type << "]";
+      VLOG(0) << "Fail to load nodes, path[" << path << "] node_type["
+              << node_type << "]";
       return -1;
     }
   }
@@ -1346,7 +1348,8 @@ int32_t GraphTable::parse_node_and_load(std::string ntype2files,
     for (size_t j = 0; j < ntypes.size(); j++) {
       int ret = this->load_nodes(npath_str, ntypes[j]);
       if (ret != 0) {
-        VLOG(0) << "Fail to load nodes, path[" << npath << "], ntypes[" << ntypes[j] << "]";
+        VLOG(0) << "Fail to load nodes, path[" << npath << "], ntypes["
+                << ntypes[j] << "]";
         return -1;
       }
     }
@@ -1432,7 +1435,8 @@ int32_t GraphTable::load_node_and_edge_file(std::string etype2files,
               for (size_t j = 0; j < ntypes.size(); j++) {
                 int ret = this->load_nodes(npath_str, ntypes[j]);
                 if (ret != 0) {
-                  VLOG(0) << "Fail to load nodes, path[" << npath_str << "], ntypes[" << ntypes[j] << "]";
+                  VLOG(0) << "Fail to load nodes, path[" << npath_str
+                          << "], ntypes[" << ntypes[j] << "]";
                   return -1;
                 }
               }
@@ -1653,7 +1657,7 @@ int32_t GraphTable::load_nodes(const std::string &path, std::string node_type) {
   }
   if (is_parse_node_fail_) {
     VLOG(0) << "Fail to load nodes, path[" << paths[0] << ".."
-        << paths[paths.size() -1] << "] node_type[" << node_type << "]";
+            << paths[paths.size() -1] << "] node_type[" << node_type << "]";
     return -1;
   }
 

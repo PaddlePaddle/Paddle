@@ -258,8 +258,7 @@ class FeatureNode : public Node {
   static int parse_value_to_bytes(
       std::vector<paddle::string::str_ptr>::iterator feat_str_begin,
       std::vector<paddle::string::str_ptr>::iterator feat_str_end,
-      std::string *output)
-  {
+      std::string *output) {
     size_t feat_str_size = feat_str_end - feat_str_begin;
     size_t Tsize = sizeof(T) * feat_str_size;
     size_t num = output->length();
@@ -271,7 +270,7 @@ class FeatureNode : public Node {
     for (size_t i = 0; i < feat_str_size; i++) {
       ss.reset(*(feat_str_begin + i));
       int len = ss.end - ss.ptr;
-      char* old_ptr = ss.ptr;
+      char *old_ptr = ss.ptr;
       ss >> fea_ptrs[i];
       if (ss.ptr - old_ptr != len) {
         return -1;
