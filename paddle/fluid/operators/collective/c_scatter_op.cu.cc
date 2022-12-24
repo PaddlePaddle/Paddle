@@ -29,7 +29,6 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     auto x = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
-    framework::DDim real_out_dim = out->dims();
     int numel = x->numel();
     ncclDataType_t dtype =
         platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
@@ -98,7 +97,7 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
     framework::TensorCopySync(*static_cast<const phi::DenseTensor*>(&temp),
                               place,
                               static_cast<phi::DenseTensor*>(out));
-    out->Resize(real_out_dim);
+    out->Resize(out_dims);
 #else
     PADDLE_ENFORCE_EQ(
         true,
