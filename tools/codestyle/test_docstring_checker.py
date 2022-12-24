@@ -218,7 +218,7 @@ def fc(input,
         ValueError: If rank of the input tensor is less than 2.
     Examples:
         .. code-block:: python
-            data = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+            data = paddle.static.data(name="data", shape=[-1, 32, 32], dtype="float32")
             fc = fluid.layers.fc(input=data, size=1000, act="tanh")
     """
     raise ValueError('A very specific bad thing happened.')

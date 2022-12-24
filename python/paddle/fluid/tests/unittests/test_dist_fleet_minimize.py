@@ -69,7 +69,9 @@ class TestPSMinimize(unittest.TestCase):
         is_sparse = True
 
         # query
-        q = fluid.layers.data(name="1", shape=[1], dtype="int64", lod_level=1)
+        q = paddle.static.data(
+            name="1", shape=[-1, 1], dtype="int64", lod_level=1
+        )
         # embedding
         q_emb = fluid.contrib.layers.sparse_embedding(
             input=q,
@@ -95,9 +97,11 @@ class TestPSMinimize(unittest.TestCase):
             ),
         )
         # label data
-        label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+        label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
         # pt
-        pt = fluid.layers.data(name="2", shape=[1], dtype="int64", lod_level=1)
+        pt = paddle.static.data(
+            name="2", shape=[-1, 1], dtype="int64", lod_level=1
+        )
         # embedding
         pt_emb = fluid.contrib.layers.sparse_embedding(
             input=pt,
@@ -124,7 +128,9 @@ class TestPSMinimize(unittest.TestCase):
             bias_attr=fluid.ParamAttr(name="__fc_b__"),
         )
         # nt
-        nt = fluid.layers.data(name="3", shape=[1], dtype="int64", lod_level=1)
+        nt = paddle.static.data(
+            name="3", shape=[-1, 1], dtype="int64", lod_level=1
+        )
         # embedding
         nt_emb = fluid.contrib.layers.sparse_embedding(
             input=nt,

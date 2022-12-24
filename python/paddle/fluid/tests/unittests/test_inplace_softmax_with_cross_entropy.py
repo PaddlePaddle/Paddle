@@ -37,14 +37,14 @@ class TestSoftmaxWithXe(unittest.TestCase):
         m, n = x.shape
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             with fluid.scope_guard(fluid.Scope()):
-                x_d = fluid.layers.data(
+                x_d = paddle.static.data(
                     name='x',
-                    shape=[m, n],
+                    shape=[-1, m, n],
                     dtype=self.dtype,
                 )
-                y_d = fluid.layers.data(
+                y_d = paddle.static.data(
                     name='y',
-                    shape=[m, 1] if not self.soft_label else [m, n],
+                    shape=[-1, m, 1] if not self.soft_label else [m, n],
                     dtype='int64' if not self.soft_label else self.dtype,
                 )
                 z_d, s_d = paddle.nn.functional.softmax_with_cross_entropy(

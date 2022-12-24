@@ -550,8 +550,10 @@ class TestSliceAPI(unittest.TestCase):
         input = np.random.random([3, 4, 5, 6]).astype("float64")
         minus_1 = fluid.layers.fill_constant([1], "int32", -1)
         minus_3 = fluid.layers.fill_constant([1], "int64", -3)
-        starts = paddle.static.data(name='starts', shape=[1, 3])
-        ends = paddle.static.data(name='ends', shape=[3])
+        starts = paddle.static.data(
+            name='starts', shape=[1, 3], dtype="float32"
+        )
+        ends = paddle.static.data(name='ends', shape=[3], dtype="float32")
 
         x = paddle.static.data(
             name="x",

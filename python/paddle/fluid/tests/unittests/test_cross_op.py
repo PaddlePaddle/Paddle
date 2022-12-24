@@ -79,8 +79,8 @@ class TestCrossAPI(unittest.TestCase):
 
         # case 1:
         with program_guard(Program(), Program()):
-            x = paddle.static.data(name='x', shape=[-1, 3])
-            y = paddle.static.data(name='y', shape=[-1, 3])
+            x = paddle.static.data(name='x', shape=[-1, 3], dtype="float32")
+            y = paddle.static.data(name='y', shape=[-1, 3], dtype="float32")
             z = paddle.cross(x, y, axis=1)
             exe = fluid.Executor(fluid.CPUPlace())
             (res,) = exe.run(
@@ -95,8 +95,8 @@ class TestCrossAPI(unittest.TestCase):
 
         # case 2:
         with program_guard(Program(), Program()):
-            x = paddle.static.data(name='x', shape=[-1, 3])
-            y = paddle.static.data(name='y', shape=[-1, 3])
+            x = paddle.static.data(name='x', shape=[-1, 3], dtype="float32")
+            y = paddle.static.data(name='y', shape=[-1, 3], dtype="float32")
             z = paddle.cross(x, y)
             exe = fluid.Executor(fluid.CPUPlace())
             (res,) = exe.run(

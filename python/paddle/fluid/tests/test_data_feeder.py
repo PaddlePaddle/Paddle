@@ -42,7 +42,7 @@ class TestDataFeeder(unittest.TestCase):
         # lod_level = 1
         # each sentence has a different number of words
         sentences = paddle.static.data(
-            name='sentences', shape=[-1, 1, 1], dtype='int64', lod_level=1
+            name='sentences', shape=[-1, 1], dtype='int64', lod_level=1
         )
         label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
         feeder = fluid.DataFeeder([sentences, label], fluid.CPUPlace())

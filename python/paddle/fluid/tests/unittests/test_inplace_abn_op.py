@@ -48,9 +48,9 @@ class TestInplaceANBOpTraining(unittest.TestCase):
         startup.random_seed = seed
         with fluid.unique_name.guard():
             with fluid.program_guard(main, startup):
-                data = fluid.layers.data(
+                data = paddle.static.data(
                     name='input',
-                    shape=self.dshape,
+                    shape=[-1] + self.dshape,
                     dtype=self.dtype,
                 )
                 data.stop_gradient = False
