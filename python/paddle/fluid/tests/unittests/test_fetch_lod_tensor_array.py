@@ -35,11 +35,11 @@ class TestFetchLoDTensorArray(unittest.TestCase):
                 opt = fluid.optimizer.SGD(learning_rate=0.001)
                 opt.minimize(loss)
 
-                array = layers.array_write(x=img, i=i)
+                array = paddle.tensor.array_write(x=img, i=i)
                 i = paddle.increment(i)
-                layers.array_write(x=label, i=i, array=array)
+                paddle.tensor.array_write(x=label, i=i, array=array)
                 i = paddle.increment(i)
-                layers.array_write(x=loss, i=i, array=array)
+                paddle.tensor.array_write(x=loss, i=i, array=array)
 
                 return loss, array
 

@@ -1023,10 +1023,10 @@ void OpDesc::Flush() {
         [](std::pair<std::string, Attribute> a,
            std::pair<std::string, Attribute> b) { return a.first < b.first; });
 
-    for (auto &attr : sorted_attrs) {
+    for (auto &attr : sorted_runtime_attrs) {
       set_attr_desc(attr.first, attr.second);
     }
-    for (auto &attr : sorted_runtime_attrs) {
+    for (auto &attr : sorted_attrs) {
       set_attr_desc(attr.first, attr.second);
     }
 

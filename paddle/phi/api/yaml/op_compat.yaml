@@ -46,6 +46,12 @@
 
 - op : addmm
   backward : addmm_grad
+  inputs :
+    {input : Input, x : X, y : Y}
+  outputs :
+    out : Out
+  attrs :
+    {alpha : Alpha, beta : Beta}
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -177,6 +183,13 @@
   backward : clip_grad
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+
+- op : complex
+  backward : complex_grad
+  inputs :
+    {real : X, imag : Y}
+  outputs :
+    out : Out
 
 - op : concat
   backward : concat_grad
@@ -1023,6 +1036,17 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : roll
+  backward : roll_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  int_array :
+    shifts :
+      data_type : int64_t
+      tensor_name : ShiftsTensor
+
 - op : round
   backward : round_grad
   inputs :
@@ -1319,6 +1343,13 @@
     out : Out
 
 - op : unfold
+  inputs :
+    x : X
+  outputs :
+    out : Y
+
+- op : unstack
+  backward : unstack_grad
   inputs :
     x : X
   outputs :
