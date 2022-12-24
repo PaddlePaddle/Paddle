@@ -20,7 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T, typename LodType>
 __global__ void unzipKernel(const T* X,
