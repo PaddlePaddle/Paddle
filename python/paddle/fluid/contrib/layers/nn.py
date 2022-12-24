@@ -2175,7 +2175,7 @@ def unzip(input, lod):
     Examples:
 
         .. code-block:: python
-
+          import numpy as np
           import paddle.fluid as fluid
           input_np = np.array([
                         [1.0, 2.0, 3.0, 4.0],
