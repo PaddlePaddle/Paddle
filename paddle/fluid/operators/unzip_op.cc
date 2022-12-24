@@ -21,7 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-
 class unzipOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -126,8 +125,7 @@ class unzipOpMaker : public framework::OpProtoAndCheckerMaker {
              "(LodTensor, default LodTensor<float>), a 2-D tensor with shape "
              "[M x N],"
              " where N is the batch size and D is the emebdding dim. ");
-    AddInput("lod",
-             "(Tensor),  a 1-D Tensor with shape [K]");
+    AddInput("lod", "(Tensor),  a 1-D Tensor with shape [K]");
     AddOutput("Y",
               "(LodTensor, default LodTensor<float>), a 2-D tensor with shape "
               "[K-1 x N].");
@@ -171,7 +169,9 @@ REGISTER_OPERATOR(unzip_grad,
                   ops::unzipGradientOp,
                   ops::unzipGradNoNeedBufferVarInferer);
 
-REGISTER_OP_CPU_KERNEL(unzip, ops::unzipOpKernel<int64_t>, ops::unzipOpKernel<int64_t>);
+REGISTER_OP_CPU_KERNEL(unzip, 
+                       ops::unzipOpKernel<int64_t>,
+                       ops::unzipOpKernel<int64_t>);
 
 REGISTER_OP_CPU_KERNEL(unzip_grad,
                        ops::unzipGradOpKernel<int64_t>,
