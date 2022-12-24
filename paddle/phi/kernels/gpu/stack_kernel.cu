@@ -178,5 +178,6 @@ PD_REGISTER_KERNEL(stack,
                    int64_t,
                    int,
                    uint8_t,
+                   int8_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
