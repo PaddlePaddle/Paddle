@@ -255,9 +255,9 @@ void BindDistributed(py::module *m) {
                  bool sync_op) {
                 auto out_tensor_list =
                     CastPyArg2VectorOfTensor(py_out_tensor_list.ptr(), 0);
-                Tensor concat_out_tensor = paddle::stack(out_tensor_list, 0);
+                Tensor stack_out_tensor = paddle::stack(out_tensor_list, 0);
                 auto p_out_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
-                    concat_out_tensor.impl());
+                    stack_out_tensor.impl());
                 auto *out_dense = p_out_tensor.get();
 
                 auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
@@ -307,9 +307,9 @@ void BindDistributed(py::module *m) {
                  bool sync_op) {
                 auto out_tensor_list =
                     CastPyArg2VectorOfTensor(py_out_tensor_list.ptr(), 0);
-                Tensor concat_out_tensor = paddle::stack(out_tensor_list, 0);
+                Tensor stack_out_tensor = paddle::stack(out_tensor_list, 0);
                 auto p_out_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
-                    concat_out_tensor.impl());
+                    stack_out_tensor.impl());
                 auto *out_dense = p_out_tensor.get();
 
                 auto in_tensor_list =
@@ -746,9 +746,9 @@ void BindDistributed(py::module *m) {
                  py::handle py_in_tensor) {
                 auto out_tensor_list =
                     CastPyArg2VectorOfTensor(py_out_tensor_list.ptr(), 0);
-                Tensor concat_out_tensor = paddle::stack(out_tensor_list, 0);
+                Tensor stack_out_tensor = paddle::stack(out_tensor_list, 0);
                 auto p_out_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
-                    concat_out_tensor.impl());
+                    stack_out_tensor.impl());
                 auto *out_dense = p_out_tensor.get();
 
                 auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
@@ -854,9 +854,9 @@ void BindDistributed(py::module *m) {
                  py::handle py_in_tensor_list) {
                 auto out_tensor_list =
                     CastPyArg2VectorOfTensor(py_out_tensor_list.ptr(), 0);
-                Tensor concat_out_tensor = paddle::stack(out_tensor_list, 0);
+                Tensor stack_out_tensor = paddle::stack(out_tensor_list, 0);
                 auto p_out_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
-                    concat_out_tensor.impl());
+                    stack_out_tensor.impl());
                 auto *out_dense = p_out_tensor.get();
 
                 auto in_tensor_list =
