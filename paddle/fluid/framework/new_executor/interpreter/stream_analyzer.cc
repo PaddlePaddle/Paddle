@@ -356,16 +356,17 @@ void StreamAnalyzer::AnalyseEventInfoForTwoInstructions(
   }
 }
 
-// waiter instr should only wait events for the last recorder instrs in each
-// stream
 void StreamAnalyzer::ShrinkEventInfo(
     const DependencyBuilder& dependency_builder,
     std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>*
         event_info) const {
-  for (auto& context_item : *event_info) {
-    for (auto& waiter_item : context_item.second) {
-      size_t waiter_instr_id = waiter_item.first;
-      std::set<size_t>& recorder_instr_ids = waiter_item.second;
+  for (auto& item : *event_info) {
+    // shrink redundant recorders, waiter instrs should only wait for the last
+    // recorder instrs in each stream
+    std::map<size_t, std::set<size_t>>& waiter_recorder_map = item.second;
+    for (auto& waiter_recorder : waiter_recorder_map) {
+      size_t waiter_instr_id = waiter_recorder.first;
+      std::set<size_t>& recorder_instr_ids = waiter_recorder.second;
       std::set<size_t> unnecessary_recorder_instr_ids;
       for (size_t cur_instr_id : recorder_instr_ids) {
         for (size_t next_instr_id : recorder_instr_ids) {
@@ -381,6 +382,38 @@ void StreamAnalyzer::ShrinkEventInfo(
         VLOG(8) << "Shrink event : " << unnecessary_recorder_instr_id << " -> "
                 << waiter_instr_id;
         recorder_instr_ids.erase(unnecessary_recorder_instr_id);
+      }
+    }
+
+    // shrink redundant waiters, recorder instrs should only wait by the first
+    // waiter instrs in each stream
+    std::map<size_t, std::set<size_t>> recorder_waiter_map;
+    for (auto& waiter_recorder : waiter_recorder_map) {
+      size_t waiter_instr_id = waiter_recorder.first;
+      std::set<size_t>& recorder_instr_ids = waiter_recorder.second;
+      for (size_t record_instr_id : recorder_instr_ids) {
+        recorder_waiter_map[record_instr_id].insert(waiter_instr_id);
+      }
+    }
+
+    for (auto& recorder_waiter : recorder_waiter_map) {
+      size_t recorder_instr_id = recorder_waiter.first;
+      std::set<size_t>& waiter_instr_ids = recorder_waiter.second;
+      std::set<size_t> unnecessary_waiter_instr_ids;
+      for (size_t cur_instr_id : waiter_instr_ids) {
+        for (size_t next_instr_id : waiter_instr_ids) {
+          if (dependency_builder.OpHappensBefore(cur_instr_id, next_instr_id)) {
+            unnecessary_waiter_instr_ids.insert(next_instr_id);
+            break;
+          }
+        }
+      }
+
+      for (size_t unnecessary_wiater_instr_id : unnecessary_waiter_instr_ids) {
+        VLOG(8) << "Shrink event : " << recorder_instr_id << " -> "
+                << unnecessary_wiater_instr_id;
+        waiter_recorder_map[unnecessary_wiater_instr_id].erase(
+            recorder_instr_id);
       }
     }
   }
