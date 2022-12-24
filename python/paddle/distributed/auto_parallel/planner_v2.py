@@ -15,6 +15,7 @@
 from .completion import Completer
 from .dist_context import get_default_distributed_context
 from .tuner.parallel_tuner import ParallelTuner
+from .tuner.rule_based_tuner import RuleBasedTuner
 from .utils import is_naive_data_parallel
 
 
@@ -22,7 +23,6 @@ class Planner:
     def __init__(self, mode, dist_context):
         self._mode = mode
         self._dist_context = dist_context
-
         # NOTE: [HighOrderGrad]. There are grad ops in forward phase, and it need
         # dependency of backward-forward ops in forward completion.
         default_ctx = get_default_distributed_context()
@@ -39,8 +39,12 @@ class Planner:
 
         self._strategy = dist_context.strategy
         # set parallel tuner for auto search
-        if self._strategy.auto_mode == "full":
+        if self._strategy.auto_mode == "full_random":
             self._parallel_tuner = ParallelTuner(
+                self._dist_context, mode=self._mode
+            )
+        elif self._strategy.auto_mode == "full_rule_based":
+            self._parallel_tuner = RuleBasedTuner(
                 self._dist_context, mode=self._mode
             )
 
@@ -49,7 +53,7 @@ class Planner:
         return self._completer
 
     def plan(self):
-        if self._strategy.auto_mode == "full":
+        if self._strategy.auto_mode != "semi":
             self._parallel_tuner.tune()
         else:
             self._completer.complete_forward_annotation()

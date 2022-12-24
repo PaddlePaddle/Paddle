@@ -16,6 +16,7 @@ from collections import OrderedDict
 from functools import reduce
 
 import paddle
+from paddle.utils.flops import flops
 
 from ..cluster import LinkType
 from ..dist_tensor import DistributedTensor
@@ -91,9 +92,10 @@ def build_comp_desc_from_dist_op(dist_op, dist_context):
         output_desc = OrderedDict()
 
         # Get partitioned shape of input
+        input_var_desc = {}
         for input_name in op.input_names:
             var_name_list = op.input(input_name)
-            var_desc = []
+            input_var_desc[input_name] = []
             for var_name in var_name_list:
                 var = get_var_with_recursion(
                     var_name, op.block, op.block.program
@@ -112,7 +114,8 @@ def build_comp_desc_from_dist_op(dist_op, dist_context):
                     process,
                     shard_sizes,
                 )
-                var_desc.append((var.dtype, shape))
+                input_var_desc[input_name].append(shape)
+                # var_desc.append((var.dtype, shape))
 
                 # For special op such as embedding and its grad op
                 if (
@@ -137,8 +140,8 @@ def build_comp_desc_from_dist_op(dist_op, dist_context):
                         relative_idx = relative_idx * per_part_size
                         desc["attrs"]["start_index"] = relative_idx
 
-            input_desc[input_name] = var_desc
-        desc["inputs"] = input_desc
+            # input_desc[input_name] = var_desc
+        desc["inputs"] = input_var_desc
 
         for out_name in op.output_names:
             var_name_list = op.output(out_name)
@@ -350,7 +353,9 @@ def build_comm_desc(op_type, group_ranks, dtype, shape, attrs=None):
     return desc
 
 
-def build_comm_costs_from_descs(op_cost_class, ctx, processes, descs, cluster):
+def build_comm_costs_from_descs(
+    op_cost_class, ctx, processes, descs, cluster, is_dp=False
+):
     """Build comm costs by descriptions"""
     comm_context = CommContext(cluster)
     group_ranks_list = []
@@ -363,6 +368,8 @@ def build_comm_costs_from_descs(op_cost_class, ctx, processes, descs, cluster):
             comm_op_cost = op_cost_class(
                 op_desc=desc, comm_context=comm_context
             )
+            if is_dp:
+                comm_op_cost.cost.time *= 0.9
             comm_op_cost_list.append(comm_op_cost)
     return comm_op_cost_list
 
@@ -418,6 +425,7 @@ def build_dp_costs(
         processes,
         c_allreduce_sum_descs,
         cluster,
+        is_dp=True,
     )
     result.append(comm_cost_list)
 
@@ -670,6 +678,8 @@ class Cost:
 
 
 class OpCost:
+    OP_TYPE = "op"
+
     def __init__(self, op=None, op_desc=None):
         self._op = op
         self._op_desc = op_desc
@@ -871,6 +881,22 @@ class CompOpCost(OpCost):
                         NON_COMP_TYPE, cls.OP_TYPE
                     )
                 )
+
+    def calc_flops(self):
+        if "_grad" in self.__class__.OP_TYPE:
+            op_type = self.__class__.OP_TYPE[: len(self.__class__.OP_TYPE) - 5]
+            return 2 * flops(
+                op_type, self.op_desc["inputs"], self.op_desc["attrs"]
+            )
+        return flops(
+            self.__class__.OP_TYPE,
+            self.op_desc["inputs"],
+            self.op_desc["attrs"],
+        )
+
+    def calc_time(self):
+        flops_count = self.calc_flops()
+        return flops_count * 2.9e-7
 
 
 def register_op_cost(cls):

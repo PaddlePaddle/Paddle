@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+import logging
 from collections import OrderedDict
 from functools import reduce
 
@@ -21,6 +22,8 @@ from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from ..dist_tensor import DistributedTensor
 from ..operators.common import get_distributed_operator_impl_container
 from .base_cost import Cost
+
+logging.basicConfig(level=logging.INFO)
 
 
 class CostEstimator:
@@ -189,6 +192,9 @@ class CostEstimator:
 
                 # Calc dist op cost
                 dist_op = dist_context.get_dist_op_for_program(op)
+                if not dist_op:
+                    continue
+
                 op_dist_attr = dist_op.dist_attr
                 processes = op_dist_attr.process_mesh.processes
 
@@ -211,6 +217,12 @@ class CostEstimator:
                     if isinstance(item, list):
                         # Comm sync
                         for comm_op_cost in item:
+                            print(
+                                "dist_op and comm_op_cost: ",
+                                dist_op,
+                                comm_op_cost,
+                                comm_op_cost.time,
+                            )
                             max_time = None
                             cost_time = {}
                             group_ranks = comm_op_cost.group_ranks
@@ -225,6 +237,8 @@ class CostEstimator:
                             for rank in group_ranks:
                                 self.local_cost(rank).time = (
                                     max_time + comm_op_cost.time
+                                    if op.attr('op_role') != OpRole.Backward
+                                    else max_time + 0.9 * comm_op_cost.time
                                 )
                                 if rank not in self._bubble_time_mapping:
                                     self._bubble_time_mapping[rank] = 0
@@ -233,10 +247,14 @@ class CostEstimator:
                                 )
                     elif isinstance(item, dict):
                         # Op just one
+                        not_print = True
                         for rank in processes:
                             # DP+PP+MP
                             if rank not in item:
                                 continue
+                            # if not_print:
+                            #     print("comp_op_cost: ", item[rank].time, item)
+                            #     not_print = False
                             self.local_cost(rank).time += item[rank].time
 
     def prepare(self):
@@ -298,6 +316,8 @@ class CostEstimator:
             ]:
                 continue
             dist_op = dist_context.get_dist_op_for_program(op)
+            if not dist_op:
+                continue
             process_mesh = dist_op.dist_attr.process_mesh
             for var_name in op.input_arg_names:
                 input_dims_mapping = dist_op.dist_attr.get_input_dims_mapping(
@@ -367,6 +387,8 @@ class CostEstimator:
             can_free_memories = {}
             can_free_vars = set()
             dist_op = dist_context.get_dist_op_for_program(op)
+            if not dist_op:
+                continue
             process_mesh = dist_op.dist_attr.process_mesh
             for var_name in op.input_arg_names:
                 input_dims_mapping = dist_op.dist_attr.get_input_dims_mapping(
@@ -513,7 +535,7 @@ class CostEstimator:
 
         # Padding automatically
         max_len = 0
-        header = ["Execution Time(ms)", "Max Memory(MiB)"]
+        header = ["Execution Time(us)", "Max Memory(MiB)"]
         vals = [round(self.global_cost.time, 3), int(self.max_memory // 1e6)]
         for memory in vals + header:
             if len(str(memory)) > max_len:

@@ -140,7 +140,7 @@ class IdentityOpCost(CommOpCost):
         super().__init__(op=op, op_desc=op_desc, comm_context=comm_context)
 
     def calc_time(self):
-        return 0
+        return self.comm_count * 1 / (144 * 1e3)
 
 
 @register_op_cost

@@ -2497,8 +2497,6 @@ class Resharder:
             "read",
             "write_to_array",
             "read_from_array",
-            "nop",
-            "depend",
         ]
         global _g_special_ops
         skip_ops += _g_special_ops
@@ -2507,6 +2505,8 @@ class Resharder:
             pre_op_count = len(block.ops)
             op = block.ops[idx]
             dist_op = self.dist_context.get_dist_op_for_program(op)
+            # print("op****", op)
+            # print("dist_op****", dist_op)
             if dist_op is not None and op.type not in skip_ops:
                 idx_offset = 0
                 for var_name in op.output_arg_names:
@@ -2516,6 +2516,8 @@ class Resharder:
                     dist_tensor = self.dist_context.get_dist_tensor_for_program(
                         var
                     )
+                    # print("var****", var)
+                    # print("dist_tensor****", dist_tensor)
                     tensor_process_mesh = dist_tensor.dist_attr.process_mesh
                     output_attr = [
                         dist_op.dist_attr.process_mesh,
@@ -2661,7 +2663,11 @@ class Resharder:
                     tensor
                 )
                 # simplified processing: ignore union process mesh and output reshard
+                # print("reshard.py****", op)
                 dist_op = self.dist_context.get_dist_op_for_program(op)
+                if not dist_tensor or not dist_op:
+                    return reshard_op_cost
+
                 dims_mapping = dist_op.dist_attr.get_input_dims_mapping(
                     tensor.name
                 )

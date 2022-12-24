@@ -182,6 +182,10 @@ class DistributedContext:
     def process_meshes(self):
         return self._process_meshes
 
+    @process_meshes.setter
+    def process_meshes(self, val):
+        self._process_meshes = val
+
     @property
     def pass_context(self):
         return self._pass_context
@@ -398,7 +402,7 @@ class DistributedContext:
         if dist:
             self._restore_dist_info(dist_mode)
 
-    def initialize(self, with_graph=True, with_cpp=False):
+    def initialize(self, with_graph=True, with_cpp=False, no_default=False):
         if not self._is_initialized:
             if not self._serial_main_program:
                 if self._original_serial_main_program:
@@ -419,7 +423,7 @@ class DistributedContext:
             if not self._serial_fetch_vars:
                 self._restore_serial_fetch_vars()
 
-            self._init_dist_attr_for_program()
+            self._init_dist_attr_for_program(no_default)
             # Backup the original distributed information for later restore
             self._original_dist_tensors_for_program = copy.deepcopy(
                 self._dist_tensors_for_program
