@@ -2706,11 +2706,11 @@ int SlotRecordInMemoryDataFeed::Next() {
 #endif
 }
 
-void SlotRecordInMemoryDataFeed::DoWalkandSage() {
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+void SlotRecordInMemoryDataFeed::DoWalkandSage() {
   gpu_graph_data_generator_.DoWalkandSage();
-#endif
 }
+#endif
 
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
 void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {

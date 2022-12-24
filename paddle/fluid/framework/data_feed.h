@@ -1150,14 +1150,6 @@ class DataFeed {
   }
 #endif
 
-  virtual bool get_epoch_finish() {
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-    return gpu_graph_data_generator_.get_epoch_finish();
-#else
-    return false;
-#endif
-  }
-
   virtual void SetGpuGraphMode(int gpu_graph_mode) {
     gpu_graph_mode_ = gpu_graph_mode;
   }
@@ -1189,9 +1181,9 @@ class DataFeed {
 
   virtual void clear_gpu_mem() { gpu_graph_data_generator_.clear_gpu_mem(); }
 
-  // virtual bool get_epoch_finish() {
-  //   return gpu_graph_data_generator_.get_epoch_finish();
-  // }
+  virtual bool get_epoch_finish() {
+     return gpu_graph_data_generator_.get_epoch_finish();
+  }
 
   virtual void ResetPathNum() { gpu_graph_data_generator_.ResetPathNum(); }
 
