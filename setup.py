@@ -942,7 +942,7 @@ def get_package_data_and_package_dir():
                     )
         shutil.copy(env_dict.get("XPU_API_LIB"), libs_path)
         package_data['paddle.libs'] += [env_dict.get("XPU_API_LIB_NAME")]
-        xpu_rt_lib_list = glob.glob(env_dict.get("XPU_RT_LIB"))
+        xpu_rt_lib_list = glob.glob(env_dict.get("XPU_RT_LIB") + '*')
         for xpu_rt_lib_file in xpu_rt_lib_list:
             shutil.copy(xpu_rt_lib_file, libs_path)
             package_data['paddle.libs'] += [os.path.basename(xpu_rt_lib_file)]
