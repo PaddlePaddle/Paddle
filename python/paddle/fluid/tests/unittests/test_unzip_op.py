@@ -40,7 +40,7 @@ class TestUnzipOp(OpTest):
         out = [[1.0, 2.0, 3.0, 4.0], [0.0, 0.0, 0.0, 0.0], [10.0, 20.0, 30.0, 40.0], [0.0, 0.0, 0.0, 0.0],
                 [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [100.0, 200.0, 300.0, 400.0], [0.0, 0.0, 0.0, 0.0],
                 [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]]
-        self.outputs = {'Y': np.array(out, dtype=float)}
+        self.outputs = {'Y': np.array(out, dtype="float32")}
 
     def test_check_output(self):
         paddle.enable_static()
