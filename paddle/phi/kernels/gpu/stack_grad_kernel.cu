@@ -139,7 +139,12 @@ PD_REGISTER_KERNEL(stack_grad,
                    phi::StackGradKernel,
                    float,
                    double,
+                   bool,
                    int64_t,
                    int,
+                   uint8_t,
+                   int8_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
