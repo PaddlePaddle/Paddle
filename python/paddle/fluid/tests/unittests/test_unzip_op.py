@@ -46,7 +46,7 @@ class TestUnzipOp(OpTest):
         paddle.enable_static()
         if core.is_compiled_with_cuda():
             place = fluid.CUDAPlace(0)
-            self.check_output(place)
+            self.check_output_with_place(place)
 
 
 if __name__ == '__main__':
