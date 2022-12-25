@@ -334,7 +334,7 @@ class TestWhereDygraphAPI(unittest.TestCase):
     def test_where_condition(self):
         data = np.array([[True, False], [False, True]])
         with program_guard(Program(), Program()):
-            x = paddle.static.data(name='x', shape=[(-1), 2])
+            x = paddle.static.data(name='x', shape=[(-1), 2], dtype='float32')
             y = paddle.where(x)
             self.assertEqual(type(y), tuple)
             self.assertEqual(len(y), 2)
@@ -347,7 +347,7 @@ class TestWhereDygraphAPI(unittest.TestCase):
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
         data = np.array([True, True, False])
         with program_guard(Program(), Program()):
-            x = paddle.static.data(name='x', shape=[(-1)])
+            x = paddle.static.data(name='x', shape=[(-1)], dtype='float32')
             y = paddle.where(x)
             self.assertEqual(type(y), tuple)
             self.assertEqual(len(y), 1)

@@ -145,8 +145,8 @@ class TestIgnoreVarNameInWhile(unittest.TestCase):
             i = i + 1
             return [i, ten, batch_info, origin_seq]
 
-        x = paddle.static.data(name='x', shape=[-1, 1, 4])
-        y = paddle.static.data(name='y', shape=[-1, 1, 1])
+        x = paddle.static.data(name='x', shape=[-1, 1, 4], dtype='float32')
+        y = paddle.static.data(name='y', shape=[-1, 1, 1], dtype='float32')
         temp = layers.concat(input=[x, y], axis=-1)
         i = layers.fill_constant(shape=[1], value=0, dtype='int32')
         num = layers.fill_constant(shape=[1], value=5, dtype='int32')
@@ -201,7 +201,7 @@ class TestOutputsMustExistsInputs(unittest.TestCase):
                 return s
 
             paddle.enable_static()
-            x = paddle.static.data(shape=[-1], name='x')
+            x = paddle.static.data(shape=[-1], name='x', dtype='float32')
             func(x)
         for op in main_program.block(0).ops:
             if op.type == "while":

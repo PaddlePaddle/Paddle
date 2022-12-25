@@ -68,7 +68,7 @@ class TestRollAPI(unittest.TestCase):
         paddle.enable_static()
         # case 1:
         with program_guard(Program(), Program()):
-            x = paddle.static.data(name='x', shape=[-1, 3])
+            x = paddle.static.data(name='x', shape=[-1, 3], dtype='float32')
             z = paddle.roll(x, shifts=1)
             exe = fluid.Executor(fluid.CPUPlace())
             (res,) = exe.run(
@@ -81,7 +81,7 @@ class TestRollAPI(unittest.TestCase):
 
         # case 2:
         with program_guard(Program(), Program()):
-            x = paddle.static.data(name='x', shape=[-1, 3])
+            x = paddle.static.data(name='x', shape=[-1, 3], dtype='float32')
             z = paddle.roll(x, shifts=1, axis=0)
             exe = fluid.Executor(fluid.CPUPlace())
             (res,) = exe.run(
@@ -119,7 +119,7 @@ class TestRollAPI(unittest.TestCase):
 
         def test_axis_out_range():
             with program_guard(Program(), Program()):
-                x = paddle.static.data(name='x', shape=[-1, 3])
+                x = paddle.static.data(name='x', shape=[-1, 3], dtype='float32')
                 z = paddle.roll(x, shifts=1, axis=10)
                 exe = fluid.Executor(fluid.CPUPlace())
                 (res,) = exe.run(
