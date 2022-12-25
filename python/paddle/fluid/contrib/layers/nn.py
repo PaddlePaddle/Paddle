@@ -62,7 +62,7 @@ __all__ = [
     'correlation',
     'fused_bn_add_act',
     'fused_seqpool_cvm',
-    'unzip'
+    'unzip',
 ]
 
 
@@ -2206,14 +2206,14 @@ def unzip(input, lod):
     """
     helper = LayerHelper('unzip', **locals())
     out = helper.create_variable(dtype=input.dtype)
-    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64', 'int', 'bool', 'int64'],
-                             'unzip')
-    check_variable_and_dtype(lod, 'lod', ['int', 'int64'],
-                             'unzip')
-    helper.append_op(type='unzip',
-                     inputs={
-                         'X': [input],
-                         'lod': [lod]
-                     },
-                     outputs={'Y': [out]})
+    check_variable_and_dtype(
+        input,
+        'input',
+        ['float16', 'float32', 'float64', 'int', 'bool', 'int64'],
+        'unzip'
+    )
+    check_variable_and_dtype(lod, 'lod', ['int', 'int64'], 'unzip')
+    helper.append_op(
+        type='unzip', inputs={'X': [input], 'lod': [lod]}, outputs={'Y': [out]}
+    )
     return out
