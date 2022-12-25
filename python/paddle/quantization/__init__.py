@@ -46,3 +46,13 @@ from .imperative.ptq import (
 from .imperative.qat import (
     ImperativeQuantAware,
 )
+
+from .config import QuantConfig
+from .base_quanter import BaseQuanter
+from .factory import quanter
+
+__all__ = [
+    "QuantConfig",
+    "BaseQuanter",
+    "quanter",
+]

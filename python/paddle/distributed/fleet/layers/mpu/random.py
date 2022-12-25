@@ -20,7 +20,8 @@ import paddle
 from paddle import _legacy_C_ops
 from paddle.fluid import core
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.framework import LayerHelper, in_dynamic_mode
+from paddle.fluid.framework import in_dygraph_mode
+from paddle.framework import LayerHelper
 from paddle.static import Variable
 
 __all__ = []
@@ -211,7 +212,7 @@ def dropout(
     )  # semantic transfer
 
     # dygraph using tracker, doesn't need determinate seed
-    if in_dynamic_mode():
+    if in_dygraph_mode():
         out, mask = _legacy_C_ops.dropout(
             x,
             'dropout_prob',
@@ -226,34 +227,34 @@ def dropout(
             mode,
         )
         return out
+    else:
+        seed = determinate_seed(rng_name)
 
-    seed = determinate_seed(rng_name)
-
-    if isinstance(p, Variable) and not p.shape != [1]:
-        raise TypeError(
-            "Required p.shape == [1] if type(p) is Variable, but received p.shape = {}".format(
-                p.shape
+        if isinstance(p, Variable) and not p.shape != [1]:
+            raise TypeError(
+                "Required p.shape == [1] if type(p) is Variable, but received p.shape = {}".format(
+                    p.shape
+                )
             )
+
+        helper = LayerHelper('dropout', **locals())
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'dropout'
         )
 
-    helper = LayerHelper('dropout', **locals())
-    check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64'], 'dropout'
-    )
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        mask = helper.create_variable_for_type_inference(
+            dtype=core.VarDesc.VarType.UINT8, stop_gradient=True
+        )
 
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    mask = helper.create_variable_for_type_inference(
-        dtype=core.VarDesc.VarType.UINT8, stop_gradient=True
-    )
-
-    helper.append_op(
-        type='dropout',
-        inputs={'X': [x], 'Seed': seed},
-        outputs={'Out': [out], 'Mask': [mask]},
-        attrs={
-            'dropout_prob': p,
-            'is_test': not training,
-            'dropout_implementation': mode,
-        },
-    )
-    return out
+        helper.append_op(
+            type='dropout',
+            inputs={'X': [x], 'Seed': seed},
+            outputs={'Out': [out], 'Mask': [mask]},
+            attrs={
+                'dropout_prob': p,
+                'is_test': not training,
+                'dropout_implementation': mode,
+            },
+        )
+        return out

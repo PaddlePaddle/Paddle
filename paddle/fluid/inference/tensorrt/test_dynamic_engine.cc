@@ -525,6 +525,15 @@ TEST_F(TensorRTDynamicTestFusedTokenPrune, test_fused_token_prune) {
   ASSERT_EQ(slimmed_x_v[6], 2);
   ASSERT_EQ(slimmed_x_v[7], 1);
 
+  ASSERT_EQ(cls_inds_v[0], 2);
+  ASSERT_EQ(cls_inds_v[1], 3);
+  ASSERT_EQ(cls_inds_v[2], 2);
+  ASSERT_EQ(cls_inds_v[3], 3);
+  ASSERT_EQ(cls_inds_v[4], 2);
+  ASSERT_EQ(cls_inds_v[5], 3);
+  ASSERT_EQ(cls_inds_v[6], 2);
+  ASSERT_EQ(cls_inds_v[7], 3);
+
   LOG(INFO) << "finish";
 #endif
 }
@@ -578,7 +587,7 @@ class TensorRTDynamicTestFusedTokenPruneHalf : public ::testing::Test {
                                  std::map<std::string, std::vector<int>>(),
                                  std::map<std::string, std::vector<int>>(),
                                  false,
-                                 phi::DataType::FLOAT16,
+                                 phi::DataType::FLOAT32,
                                  NaiveLogger::Global());
     engine_->InitNetwork();
   }
@@ -723,6 +732,15 @@ TEST_F(TensorRTDynamicTestFusedTokenPruneHalf, test_fused_token_prune) {
   ASSERT_EQ(slimmed_x_v[5], 1);
   ASSERT_EQ(slimmed_x_v[6], 2);
   ASSERT_EQ(slimmed_x_v[7], 1);
+
+  ASSERT_EQ(cls_inds_v[0], 2);
+  ASSERT_EQ(cls_inds_v[1], 3);
+  ASSERT_EQ(cls_inds_v[2], 2);
+  ASSERT_EQ(cls_inds_v[3], 3);
+  ASSERT_EQ(cls_inds_v[4], 2);
+  ASSERT_EQ(cls_inds_v[5], 3);
+  ASSERT_EQ(cls_inds_v[6], 2);
+  ASSERT_EQ(cls_inds_v[7], 3);
 
   LOG(INFO) << "finish";
 #endif
