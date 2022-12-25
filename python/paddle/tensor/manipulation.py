@@ -2441,6 +2441,18 @@ def unique(
         out, indices, inverse, counts = _C_ops.unique(
             x, return_index, return_inverse, return_counts, axis, attr_dtype
         )
+        outs = [out]
+        if return_index:
+            outs.append(indices)
+        if return_inverse:
+            outs.append(inverse)
+        if return_counts:
+            outs.append(counts)
+
+        if len(outs) == 1:
+            return outs[0]
+
+        return tuple(outs)
     else:
         check_variable_and_dtype(
             x, "input", ['float32', 'float64', 'int32', 'int64'], 'unique'
