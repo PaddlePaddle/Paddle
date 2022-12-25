@@ -35,12 +35,12 @@ class TestUnzipOp(OpTest):
         lod = [0, 4, 4, 8, 8, 8, 8, 12, 12, 12, 12]
         self.inputs = {
             'X': np.array(input).astype("float64"),
-            'lod': np.array(lod).astype("int32")
+            'lod': np.array(lod).astype("int64")
         }
         out = [[1.0, 2.0, 3.0, 4.0], [0.0, 0.0, 0.0, 0.0], [10.0, 20.0, 30.0, 40.0], [0.0, 0.0, 0.0, 0.0],
                 [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [100.0, 200.0, 300.0, 400.0], [0.0, 0.0, 0.0, 0.0],
                 [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]]
-        self.outputs = {'Y': np.array(out, dtype="float32")}
+        self.outputs = {'Y': np.array(out, dtype="float64")}
 
     def test_check_output(self):
         paddle.enable_static()
