@@ -4504,7 +4504,7 @@ def gcd(x, y, name=None):
         )
         return (paddle.where(x < y, y, x), paddle.where(x < y, x, y))
 
-    if in_dygraph_mode:
+    if in_dygraph_mode():
         while _gcd_cond_fn(x, y):
             x, y = _gcd_body_fn(x, y)
 
@@ -5040,7 +5040,7 @@ def take(x, index, mode='raise', name=None):
             )
         )
 
-    if in_dygraph_mode:
+    if in_dygraph_mode():
         if not isinstance(index, (paddle.Tensor, Variable)):
             raise TypeError(
                 "The type of 'index' must be Tensor, but got {}".format(

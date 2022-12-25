@@ -144,7 +144,7 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
             out2 = paddle.var(x, axis=1)
             # [1.         4.33333333]
     """
-    if not in_dygraph_mode:
+    if not in_dygraph_mode():
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'var')
 
     u = mean(x, axis, True, name)
