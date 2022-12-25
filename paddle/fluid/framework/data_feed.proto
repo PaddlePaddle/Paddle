@@ -38,6 +38,10 @@ message GraphConfig {
   optional string first_node_type = 8;
   optional string meta_path = 9;
   optional bool gpu_graph_training = 10 [ default = true ];
+  optional bool sage_mode = 11 [ default = false ];
+  optional string samples = 12;
+  optional int64 train_table_cap = 13 [ default = 80000 ];
+  optional int64 infer_table_cap = 14 [ default = 80000 ];
 }
 
 message DataFeedDesc {

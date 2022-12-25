@@ -23,7 +23,6 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.learning_rate_scheduler import LearningRateDecay
-from paddle.fluid.framework import _test_eager_guard
 from paddle.nn import Embedding
 from paddle.optimizer import Adam
 
@@ -108,8 +107,8 @@ class SimpleLSTMRNN(fluid.Layer):
                 gate_input = paddle.matmul(x=nn, y=weight_1)
 
                 gate_input = paddle.add(gate_input, bias)
-                i, j, f, o = fluid.layers.split(
-                    gate_input, num_or_sections=4, dim=-1
+                i, j, f, o = paddle.split(
+                    gate_input, num_or_sections=4, axis=-1
                 )
                 c = pre_cell * paddle.nn.functional.sigmoid(
                     f
@@ -1072,17 +1071,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
         self.func_testOnlyLoadParams()
         self.func_test_no_state_in_input_dict()
         self.func_test_state_shape_mismatch()
-        with _test_eager_guard():
-            self.func_setUp()
-            self.func_testLoadAndSetVarBase()
-            self.func_testSetVariable()
-            self.func_testSetNumpy()
-            self.func_testSetVariableBeforeTrain()
-            self.func_testLoadAndSetVarBaseBeforeTrain()
-            self.func_testSetNumpyBeforeTrain()
-            self.func_testOnlyLoadParams()
-            self.func_test_no_state_in_input_dict()
-            self.func_test_state_shape_mismatch()
 
 
 if __name__ == '__main__':

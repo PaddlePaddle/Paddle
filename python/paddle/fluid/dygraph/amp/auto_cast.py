@@ -110,6 +110,21 @@ PURE_BF16_BLACK_LIST = set()
 _g_amp_state_ = None
 
 
+def low_precision_op_list():
+    op_list = paddle.fluid.core.get_low_precision_op_list()
+    op_count = 0
+    print('<---------------- low precision op list ------------------->')
+    print('<---- op name ------|------- op count---------------------->')
+    for x in op_list:
+        print('  %-18s| %4d' % (x, op_list[x]))
+        op_count += 1
+    print(
+        '<------------- low precision op num:{:5d} ----------------->'.format(
+            op_count
+        )
+    )
+
+
 def amp_state():
     global _g_amp_state_
     return _g_amp_state_

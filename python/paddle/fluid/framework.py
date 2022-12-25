@@ -71,7 +71,7 @@ ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 
 _dygraph_tracer_ = None
-_in_eager_mode_ = os.environ.get('FLAGS_enable_eager_mode', '1') == '1'
+_in_eager_mode_ = True
 _global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
@@ -932,7 +932,8 @@ def xpu_places(device_ids=None):
 
 def npu_places(device_ids=None):
     """
-    **Note**:
+
+    Note:
         For multi-card tasks, please use `FLAGS_selected_npus` environment variable to set the visible NPU device.
 
     This function creates a list of :code:`paddle.NPUPlace` objects.
@@ -1289,7 +1290,7 @@ def _varbase_creator(
     shape=None,
     dtype=None,
     persistable=None,
-    **kwargs
+    **kwargs,
 ):
     if dtype is not None:
         if not isinstance(dtype, core.VarDesc.VarType):
@@ -1411,7 +1412,7 @@ class Variable(metaclass=VariableMetaClass):
         is_data=False,
         need_check_feed=False,
         belong_to_optimizer=False,
-        **kwargs
+        **kwargs,
     ):
         self.block = block
         if name is None:
@@ -2952,11 +2953,8 @@ class Operator:
                                 in_arg_names.append(arg.name)
                             else:
                                 raise TypeError(
-                                    "The type of '%s' in operator %s should be "
-                                    "one of [basestring(), str, Varibale] in python2, "
-                                    "or one of [str, bytes, Variable] in python3."
-                                    "but received : %s"
-                                    % (in_proto.name, type, arg)
+                                    f"The type of '%{in_proto.name}' in operator {type} should be "
+                                    f"one of [str, bytes, Variable]. but received : {arg}"
                                 )
                         self.desc.set_input(in_proto.name, in_arg_names)
                     else:
@@ -6886,7 +6884,7 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
         shape,
         dtype,
         type=core.VarDesc.VarType.LOD_TENSOR,
-        **kwargs
+        **kwargs,
     ):
         if shape is None:
             raise ValueError("The shape of Parameter should not be None")
@@ -6907,7 +6905,7 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
             shape=shape,
             dtype=dtype,
             type=type,
-            **kwargs
+            **kwargs,
         )
         self.trainable = kwargs.get('trainable', True)
 

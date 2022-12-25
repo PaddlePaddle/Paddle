@@ -493,10 +493,10 @@ class Engine:
         # logging user fetches
         collect_fetches = get_collection(CollectionNames.FETCHES)
         logs_fetch = {}
-        for name, var in collect_fetches:
-            if var.name in fetch_names:
-                idx = fetch_names.index(var.name)
-                logs_fetch[name or var.name] = outs[idx]
+        for name, var_name in collect_fetches:
+            if var_name in fetch_names:
+                idx = fetch_names.index(var_name)
+                logs_fetch[name or var_name] = outs[idx]
         logs["fetches"] = logs_fetch
         return logs
 
@@ -609,7 +609,9 @@ class Engine:
         if mode != "train":
             serial_main_prog = serial_main_prog.clone(for_test=True)
 
-        auto_utils.set_recompute_ckpts(self._model, self._strategy)
+        auto_utils.set_recompute_segments(
+            self._model, self._losses, self._strategy, serial_main_prog
+        )
         self._dist_contexts[mode] = DistributedContext(
             serial_main_prog,
             serial_startup_prog,
@@ -649,7 +651,6 @@ class Engine:
         from .tuner.optimization_tuner import OptimizationTuner
 
         self._optimization_tuner = OptimizationTuner(
-            self._tuning.to_dict(),
             self._dist_contexts[mode],
             dataset,
             self._inputs_spec,

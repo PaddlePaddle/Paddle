@@ -767,9 +767,11 @@ def get_package_data_and_package_dir():
     libs_path = paddle_binary_dir + '/python/paddle/libs'
     package_data['paddle.libs'] = []
     package_data['paddle.libs'] = [
-        ('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_suffix
+        ('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_suffix,
+        ('libwarprnnt' if os.name != 'nt' else 'warprnnt') + ext_suffix,
     ]
     shutil.copy(env_dict.get("WARPCTC_LIBRARIES"), libs_path)
+    shutil.copy(env_dict.get("WARPRNNT_LIBRARIES"), libs_path)
     package_data['paddle.libs'] += [
         os.path.basename(env_dict.get("LAPACK_LIB")),
         os.path.basename(env_dict.get("BLAS_LIB")),
@@ -855,8 +857,13 @@ def get_package_data_and_package_dir():
             + '/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh',
             libs_path,
         )
+        shutil.copy(
+            env_dict.get("CINN_INCLUDE_DIR") + '/cinn/runtime/cuda/float16.h',
+            libs_path,
+        )
         package_data['paddle.libs'] += ['libcinnapi.so']
         package_data['paddle.libs'] += ['cinn_cuda_runtime_source.cuh']
+        package_data['paddle.libs'] += ['float16.h']
         if env_dict.get("CMAKE_BUILD_TYPE") == 'Release' and os.name != 'nt':
             command = (
                 "patchelf --set-rpath '$ORIGIN/' %s/" % libs_path
@@ -957,7 +964,7 @@ def get_package_data_and_package_dir():
     package_dir['paddle.libs'] = libs_path
 
     # change rpath of ${FLUID_CORE_NAME}.ext, add $ORIGIN/../libs/ to it.
-    # The reason is that libwarpctc.ext, libiomp5.ext etc are in paddle.libs, and
+    # The reason is that libwarpctc.ext, libwarprnnt.ext, libiomp5.ext etc are in paddle.libs, and
     # ${FLUID_CORE_NAME}.ext is in paddle.fluid, thus paddle/fluid/../libs will pointer to above libraries.
     # This operation will fix https://github.com/PaddlePaddle/Paddle/issues/3213
     if env_dict.get("CMAKE_BUILD_TYPE") == 'Release':
@@ -1207,7 +1214,6 @@ def get_setup_parameters():
         'paddle.fluid.contrib.mixed_precision',
         'paddle.fluid.contrib.mixed_precision.bf16',
         'paddle.fluid.contrib.layers',
-        'paddle.fluid.contrib.sparsity',
         'paddle.fluid.transpiler',
         'paddle.fluid.transpiler.details',
         'paddle.fluid.incubate',
@@ -1248,6 +1254,8 @@ def get_setup_parameters():
         'paddle.incubate.distributed.models',
         'paddle.incubate.distributed.models.moe',
         'paddle.incubate.distributed.models.moe.gate',
+        'paddle.quantization',
+        'paddle.quantization.quanters',
         'paddle.sparse',
         'paddle.sparse.nn',
         'paddle.sparse.nn.layer',
@@ -1265,7 +1273,6 @@ def get_setup_parameters():
         'paddle.static',
         'paddle.static.nn',
         'paddle.static.amp',
-        'paddle.static.sparsity',
         'paddle.tensor',
         'paddle.onnx',
         'paddle.autograd',
