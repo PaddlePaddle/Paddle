@@ -977,14 +977,14 @@ class ShardingPass(PassBase):
                             peer = 1
                         else:
                             peer = 0
-
+                        broadcast_var = main_block.vars[broadcast_varname]
                         if src_rank == self.global_rank:
                             type_ = "send_v2"
                             slot_name = 'X'
                             new_op = main_block._insert_op_without_sync(
                                 index=idx,
                                 type=type_,
-                                inputs={slot_name: broadcast_varname},
+                                inputs={slot_name: broadcast_var},
                                 attrs={
                                     OP_ROLE_KEY: OpRole.Optimize,
                                     'use_calc_stream': True,
@@ -998,8 +998,10 @@ class ShardingPass(PassBase):
                             new_op = main_block._insert_op_without_sync(
                                 index=idx,
                                 type=type_,
-                                outputs={slot_name: broadcast_varname},
+                                outputs={slot_name: broadcast_var},
                                 attrs={
+                                    'out_shape': broadcast_var.shape,
+                                    'dtype': broadcast_var.dtype,
                                     OP_ROLE_KEY: OpRole.Optimize,
                                     'use_calc_stream': True,
                                     'peer': peer,
