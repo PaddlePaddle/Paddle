@@ -911,14 +911,13 @@ void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
   // 1. calculate axis
   int rank = x.at(0)->dims().size();
   PADDLE_ENFORCE_EQ(
-      !rank || (axis >= -rank && axis < rank),
+      axis >= -rank && axis < rank,
       true,
       phi::errors::InvalidArgument(
           "The axis is expected to be in range of [%d, %d), but got %d",
           -rank,
           rank,
           axis));
-  axis = rank ? axis : 0;
   if (axis < 0) {
     axis = axis + rank;
   }
@@ -2757,6 +2756,36 @@ void WarpctcInferMeta(const MetaTensor& logits,
 
   loss->set_dims({-1, 1});
   loss->set_dtype(logits.dtype());
+}
+
+void WarprnntInferMeta(const MetaTensor& input,
+                       const MetaTensor& label,
+                       const MetaTensor& input_lengths,
+                       const MetaTensor& label_lengths,
+                       int blank,
+                       float fastemit_lambda,
+                       MetaTensor* loss,
+                       MetaTensor* warpctcgrad) {
+  auto acts_dims = input.dims();
+  int D = acts_dims[3];
+
+  PADDLE_ENFORCE_GE(
+      blank,
+      0,
+      errors::InvalidArgument(
+          "The value of Attr(blank) should be in interval [0, %d), "
+          "but received %d",
+          blank));
+  PADDLE_ENFORCE_LT(
+      blank,
+      D,
+      errors::InvalidArgument(
+          "The value of Attr(blank) should be in interval [0, %d), "
+          "but received %d",
+          blank));
+
+  loss->set_dims({-1});
+  loss->set_dtype(input.dtype());
 }
 
 void WhereInferMeta(const MetaTensor& condition,

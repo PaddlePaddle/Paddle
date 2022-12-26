@@ -18,7 +18,6 @@ import pickle
 import numpy as np
 
 import paddle
-import paddle.distributed as dist
 import paddle.distributed.communication.stream as stream
 import paddle.fluid.framework as framework
 
@@ -64,38 +63,7 @@ def all_gather(tensor_list, tensor, group=None, sync_op=True):
             print(tensor_list)
             # [[[4, 5, 6], [4, 5, 6]], [[1, 2, 3], [1, 2, 3]]] (2 GPUs)
     """
-    if not framework._in_legacy_dygraph():
-        return stream.all_gather(tensor_list, tensor, group, sync_op)
-
-    # NOTE: uncomment code below when having fully complex support
-    # def convert_to_complex(list_of_tensor):
-    #     list_of_complex = []
-    #     for tensor in list_of_tensor:
-    #         list_of_complex.append(paddle.as_complex(tensor))
-    #     return list_of_complex
-
-    # is_input_complex = (tensor.dtype == paddle.complex64
-    #                     or tensor.dtype == paddle.complex128)
-    # if is_input_complex:
-    #     tensor = paddle.as_real(tensor)
-
-    # code below will be removed after we remove the old dygraph
-    if group is not None and not group.is_member():
-        return
-
-    ring_id = 0 if group is None else group.id
-    nranks = dist.get_world_size()
-    out = paddle._legacy_C_ops.c_allgather(
-        tensor,
-        'use_calc_stream',
-        sync_op,
-        'ring_id',
-        ring_id,
-        'nranks',
-        nranks,
-    )
-    tensor_list.clear()
-    tensor_list.extend(paddle.split(out, nranks, 0))
+    return stream.all_gather(tensor_list, tensor, group, sync_op)
 
 
 def _convert_object_to_tensor(obj):
