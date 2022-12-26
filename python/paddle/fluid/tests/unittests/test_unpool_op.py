@@ -346,6 +346,7 @@ class TestUnpoolOpAPI_dy3(unittest.TestCase):
         else:
             place = core.CPUPlace()
         with fluid.dygraph.guard(place):
+            paddle.disable_static()
             input_data = np.array(
                 [
                     [
@@ -372,6 +373,7 @@ class TestUnpoolOpAPI_dy3(unittest.TestCase):
                 output_np, indices_np, [2, 2], [2, 2], [0, 0], [4, 4]
             ).astype("float64")
             np.testing.assert_allclose(out_pp.numpy(), expect_res, rtol=1e-05)
+            paddle.enable_static()
 
 
 class TestUnpoolOpAPI_st(unittest.TestCase):
