@@ -92,10 +92,11 @@ void TensorDistAttr::set_process_mesh(const ProcessMesh& process_mesh) {
 
 void TensorDistAttr::set_dims_mapping(
     const std::vector<int64_t>& dims_mapping) {
-  PADDLE_ENFORCE_EQ(verify_dims_mapping(dims_mapping),
-                    true,
-                    platform::errors::InvalidArgument("Wrong dims_mapping %s.",
-                                                      str_join(dims_mapping)));
+  // PADDLE_ENFORCE_EQ(verify_dims_mapping(dims_mapping),
+  //                   true,
+  //                   platform::errors::InvalidArgument("Wrong dims_mapping
+  //                   %s.",
+  //                                                     str_join(dims_mapping)));
   dims_mapping_ = dims_mapping;
 }
 

@@ -999,7 +999,7 @@ class ShardingPass(PassBase):
                             if len(broadcast_var.shape) >= 1:
                                 out_shape = broadcast_var.shape
                             else:
-                                out_shape = [-1]
+                                out_shape = [1]
                             new_op = main_block._insert_op_without_sync(
                                 index=idx,
                                 type=type_,
