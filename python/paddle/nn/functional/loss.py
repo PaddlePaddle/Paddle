@@ -21,11 +21,7 @@ from paddle.framework import core
 from paddle.utils import deprecated
 
 from ...fluid.data_feeder import check_variable_and_dtype
-from ...fluid.framework import (
-    _current_expected_place,
-    _non_static_mode,
-    in_dygraph_mode,
-)
+from ...fluid.framework import _current_expected_place, in_dygraph_mode
 from ...fluid.layer_helper import LayerHelper
 from ...static import Variable
 from ...tensor.manipulation import reshape
@@ -257,7 +253,7 @@ def fluid_softmax_with_cross_entropy(
             # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             #        [1.15328646])
     """
-    if _non_static_mode():
+    if in_dygraph_mode():
         if core.is_compiled_with_npu():
             softmax, backprop, loss = _legacy_C_ops.softmax_with_cross_entropy(
                 logits,
@@ -1716,7 +1712,7 @@ def ctc_loss(
                 input, label, input_length, label_length, blank, norm_by_times
             )
             return loss_out
-        if _non_static_mode():
+        if in_dygraph_mode():
             if input_length is None or label_length is None:
                 raise ValueError(
                     "input_length and label_length must not be None in dygraph mode!"
@@ -3109,7 +3105,7 @@ def multi_label_soft_margin_loss(
             "but received {}!={}".format(input.shape, label.shape)
         )
 
-    if not _non_static_mode():
+    if not in_dygraph_mode():
         check_variable_and_dtype(
             input,
             'input',
@@ -3129,7 +3125,7 @@ def multi_label_soft_margin_loss(
     )
 
     if weight is not None:
-        if not _non_static_mode():
+        if not in_dygraph_mode():
             check_variable_and_dtype(
                 weight,
                 'weight',
@@ -3228,7 +3224,7 @@ def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
             "but received {}.".format(reduction)
         )
 
-    if not _non_static_mode():
+    if not in_dygraph_mode():
         check_variable_and_dtype(
             input, 'input', ['float32', 'float64'], 'hinge_embedding_loss'
         )
@@ -3453,7 +3449,7 @@ def triplet_margin_with_distance_loss(
         raise ValueError(
             "The margin between positive samples and negative samples should be greater than 0."
         )
-    if not _non_static_mode():
+    if not in_dygraph_mode():
         check_variable_and_dtype(
             input,
             'input',
@@ -3602,7 +3598,7 @@ def triplet_margin_loss(
         raise ValueError(
             "The margin between positive samples and negative samples should be greater than 0."
         )
-    if not _non_static_mode():
+    if not in_dygraph_mode():
         check_variable_and_dtype(
             input, 'input', ['float32', 'float64'], 'triplet_margin_loss'
         )
@@ -3712,7 +3708,7 @@ def multi_margin_loss(
             "but received {}.".format(reduction)
         )
 
-    if not _non_static_mode():
+    if not in_dygraph_mode():
         check_variable_and_dtype(
             input, 'input', ['float32', 'float64'], 'multi_margin_loss'
         )
@@ -3729,7 +3725,7 @@ def multi_margin_loss(
     label = label.reshape((-1, 1))
     index_sample = paddle.index_sample(input, label)
     if weight is not None:
-        if not _non_static_mode():
+        if not in_dygraph_mode():
             check_variable_and_dtype(
                 weight, 'weight', ['float32', 'float64'], 'multi_margin_loss'
             )
@@ -3833,7 +3829,7 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
             % reduction
         )
 
-    if not _non_static_mode():
+    if not in_dygraph_mode():
         fluid.data_feeder.check_variable_and_dtype(
             input, 'input', ['float32', 'float64'], 'soft_margin_loss'
         )

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
-from paddle.fluid.framework import Variable, _non_static_mode, in_dygraph_mode
+from paddle.fluid.framework import Variable, in_dygraph_mode
 
 from ...fluid.data_feeder import check_type, check_variable_and_dtype
 
@@ -365,83 +365,58 @@ def avg_pool2d(
         padding, 2, channel_last, ceil_mode=ceil_mode
     )
 
-    if _non_static_mode():
-        if in_dygraph_mode():
-            output = _C_ops.pool2d(
-                x,
-                kernel_size,
-                stride,
-                padding,
-                ceil_mode,
-                exclusive,
-                data_format,
-                'avg',
-                False,
-                False,
-                padding_algorithm,
-            )
-        else:
-            output = _legacy_C_ops.pool2d(
-                x,
-                'pooling_type',
-                'avg',
-                'ksize',
-                kernel_size,
-                'global_pooling',
-                False,
-                'padding_algorithm',
-                padding_algorithm,
-                'strides',
-                stride,
-                'paddings',
-                padding,
-                'use_cudnn',
-                True,
-                'ceil_mode',
-                ceil_mode,
-                'use_mkldnn',
-                False,
-                'exclusive',
-                exclusive,
-                'data_format',
-                data_format,
-            )
+    if in_dygraph_mode():
+        output = _C_ops.pool2d(
+            x,
+            kernel_size,
+            stride,
+            padding,
+            ceil_mode,
+            exclusive,
+            data_format,
+            'avg',
+            False,
+            False,
+            padding_algorithm,
+        )
         if divisor_override is None:
             return output
         else:
             _check_instance(divisor_override, "divisor_override")
             return output * (kernel_size[0] * kernel_size[1]) / divisor_override
-
-    op_type = 'pool2d'
-    helper = LayerHelper(op_type, **locals())
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'avg_pool2d')
-    dtype = helper.input_dtype(input_param_name='x')
-    pool_out = helper.create_variable_for_type_inference(dtype)
-
-    helper.append_op(
-        type=op_type,
-        inputs={"X": x},
-        outputs={"Out": pool_out},
-        attrs={
-            "pooling_type": "avg",
-            "ksize": kernel_size,
-            "global_pooling": False,
-            "strides": stride,
-            "paddings": padding,
-            "padding_algorithm": padding_algorithm,
-            "use_cudnn": True,
-            "ceil_mode": ceil_mode,
-            "use_mkldnn": False,
-            "exclusive": exclusive,
-            "data_format": data_format,
-        },
-    )
-
-    if divisor_override is None:
-        return pool_out
     else:
-        _check_instance(divisor_override, "divisor_override")
-        return pool_out * (kernel_size[0] * kernel_size[1]) / divisor_override
+        op_type = 'pool2d'
+        helper = LayerHelper(op_type, **locals())
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'avg_pool2d')
+        dtype = helper.input_dtype(input_param_name='x')
+        pool_out = helper.create_variable_for_type_inference(dtype)
+
+        helper.append_op(
+            type=op_type,
+            inputs={"X": x},
+            outputs={"Out": pool_out},
+            attrs={
+                "pooling_type": "avg",
+                "ksize": kernel_size,
+                "global_pooling": False,
+                "strides": stride,
+                "paddings": padding,
+                "padding_algorithm": padding_algorithm,
+                "use_cudnn": True,
+                "ceil_mode": ceil_mode,
+                "use_mkldnn": False,
+                "exclusive": exclusive,
+                "data_format": data_format,
+            },
+        )
+
+        if divisor_override is None:
+            return pool_out
+        else:
+            _check_instance(divisor_override, "divisor_override")
+            return (
+                pool_out * (kernel_size[0] * kernel_size[1]) / divisor_override
+            )
 
 
 def avg_pool3d(
@@ -716,7 +691,7 @@ def _unpool_output_size(x, kernel_size, stride, padding, output_size):
     if output_size is None:
         return default_size
     elif utils._contain_var(output_size):
-        if not _non_static_mode():
+        if not in_dygraph_mode():
             has_static_var = True
             output_size = utils._convert_to_tensor_list(output_size)
         else:
@@ -1613,7 +1588,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
         if output_size[1] is None:
             output_size[1] = in_w
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         output_size = [
             item.numpy().item(0) if isinstance(item, Variable) else item
             for item in output_size
