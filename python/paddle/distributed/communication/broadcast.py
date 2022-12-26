@@ -68,7 +68,6 @@ def broadcast(tensor, src, group=None, sync_op=True):
         sync_op=sync_op,
         use_calc_stream=False,
     )
-        offset += data_len
 
 
 def broadcast_object_list(object_list, src, group=None):
