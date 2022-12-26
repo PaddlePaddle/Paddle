@@ -958,7 +958,7 @@ def bitwise_not(x, out=None, name=None):
 @templatedoc()
 def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     r"""
-    This operator checks if all :math:`x` and :math:`y` satisfy the condition:
+    Checks if all :math:`x` and :math:`y` satisfy the condition:
 
     .. math::
 
