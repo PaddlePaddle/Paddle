@@ -50,7 +50,7 @@ typedef struct {
   float alpha;  // for leaky_relu use
 } ConvAllParams;
 
-// Below functions are provided by cutlass, these are called by phi.
+// Below functions are provided by cutlass, they are called by phi.
 void Conv2dBiasAddRelu(ConvAllParams params);
 void Conv2dBiasRelu(ConvAllParams params);
 void Conv2dBiasLeakyRelu(ConvAllParams params);

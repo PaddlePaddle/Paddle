@@ -37,9 +37,6 @@ namespace cutlass_internal {
     return status;                                                           \
   }
 
-constexpr int WARMUP = 10;
-constexpr int REPEAT = 100;
-
 typedef enum {
   CONV2D_BIAS,
   CONV2D_BIAS_RELU,
@@ -49,7 +46,7 @@ typedef enum {
 } OpType;
 
 // conv2d_diff_gpu calculate diff of cutlass output and baseline output, you can
-// use them to debug. return value is the max diff between cutlass and baseline
+// use them to debug. return value is the max diff between cutlass and baseline.
 float conv2d_diff_gpu(ConvAllParams params, OpType op_type);
 
 int ProfileToGetBestConfig(

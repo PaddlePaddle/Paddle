@@ -229,6 +229,8 @@ int ProfileToGetBestConfig(
     const std::vector<std::function<cutlass::Status(ConvAllParams)>> &all_func,
     ConvAllParams params,
     OpType op_type) {
+  constexpr int WARMUP = 10;
+  constexpr int REPEAT = 100;
   float min_time = 100000.f;
   int min_time_index = -1;
   for (int i = 0; i < all_func.size(); i++) {
@@ -259,7 +261,7 @@ int ProfileToGetBestConfig(
     }
     // debug code
     VLOG(3) << OpType2String(op_type) << ": tactic " << i << " has max diff "
-            << conv2d_diff_gpu(params, op_type) << " compared with baseline";
+            << conv2d_diff_gpu(params, op_type) << " compared with baseline.";
   }
 
   if (min_time_index < 0) {
