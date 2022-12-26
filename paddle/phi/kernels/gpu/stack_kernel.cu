@@ -25,7 +25,9 @@ namespace phi {
 template <typename IndexT>
 struct DivmodWarpper {
  public:
-  void SetDivisor(IndexT divisor) { divmoder = phi::funcs::FastDivMod(divisor); }
+  void SetDivisor(IndexT divisor) {
+    divmoder = phi::funcs::FastDivMod(divisor);
+  }
   __device__ inline phi::funcs::FastDivMod::DivModT div_mod(IndexT val) {
     return divmoder.Divmod(val);
   }
@@ -81,9 +83,9 @@ struct PointerToPointer : public DivmodWarpper<IndexT> {
     }
 
     auto tmp_ins_ptr = paddle::memory::Alloc(
-      ctx.GetPlace(),
-      num * sizeof(T*),
-      phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+        ctx.GetPlace(),
+        num * sizeof(T*),
+        phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
     *tmp_dev_ins_ptr = std::move(tmp_ins_ptr);
     paddle::memory::Copy(ctx.GetPlace(),
                          (*tmp_dev_ins_ptr)->ptr(),
@@ -94,7 +96,7 @@ struct PointerToPointer : public DivmodWarpper<IndexT> {
     data = reinterpret_cast<T**>((*tmp_dev_ins_ptr)->ptr());
   }
 
- private : 
+ private:
   paddle::memory::AllocationPtr* tmp_dev_ins_ptr{nullptr};
 };
 
@@ -130,37 +132,30 @@ void LaunchStackCUDAKernel(const Context& ctx,
                            const std::vector<const DenseTensor*>& x,
                            T* dst_data) {
   int num = static_cast<int>(x.size());
-
-#define IMPL_STACK_CUDA_KERNEL_CASE(size_, ...)    \
-  case size_: {                                             \
-    PointerArray<T, IndexT, size_> ptr_array(x, num, x_col);\
-    __VA_ARGS__;                                            \
+#define IMPL_STACK_CUDA_KERNEL_CASE(size_, ...)              \
+  case size_: {                                              \
+    PointerArray<T, IndexT, size_> ptr_array(x, num, x_col); \
+    __VA_ARGS__;                                             \
   } break;
 
-#define IMPL_STACK_CUDA_KERNEL_HELPER(...)  \
-  IMPL_STACK_CUDA_KERNEL_CASE(4,   ##__VA_ARGS__); \
-  IMPL_STACK_CUDA_KERNEL_CASE(8,   ##__VA_ARGS__); \
-  IMPL_STACK_CUDA_KERNEL_CASE(16,  ##__VA_ARGS__); \
-  IMPL_STACK_CUDA_KERNEL_CASE(32,  ##__VA_ARGS__); \
-  IMPL_STACK_CUDA_KERNEL_CASE(64,  ##__VA_ARGS__); \
+#define IMPL_STACK_CUDA_KERNEL_HELPER(...)        \
+  IMPL_STACK_CUDA_KERNEL_CASE(4, ##__VA_ARGS__);  \
+  IMPL_STACK_CUDA_KERNEL_CASE(8, ##__VA_ARGS__);  \
+  IMPL_STACK_CUDA_KERNEL_CASE(16, ##__VA_ARGS__); \
+  IMPL_STACK_CUDA_KERNEL_CASE(32, ##__VA_ARGS__); \
+  IMPL_STACK_CUDA_KERNEL_CASE(64, ##__VA_ARGS__); \
   IMPL_STACK_CUDA_KERNEL_CASE(128, ##__VA_ARGS__);
-  
+
   switch (phi::backends::gpu::RoundToNextHighPowOfTwo(num, 4)) {
     IMPL_STACK_CUDA_KERNEL_HELPER(
-      StackCUDAKernel<T, IndexT, decltype(ptr_array)>
-        <<<cfg.block_per_grid, cfg.thread_per_block, 0, ctx.stream()>>>(ptr_array,                    
-                           x_col,  
-                           x_row,  
-                           out_col,
-                           dst_data));
-    default : {
+        StackCUDAKernel<T, IndexT, decltype(ptr_array)>
+        <<<cfg.block_per_grid, cfg.thread_per_block, 0, ctx.stream()>>>(
+            ptr_array, x_col, x_row, out_col, dst_data));
+    default: {
       PointerToPointer<Context, T, IndexT> ptr_array(ctx, x, num, x_col);
-      StackCUDAKernel<T, IndexT, decltype(ptr_array)>     
-        <<<cfg.block_per_grid, cfg.thread_per_block, 0, ctx.stream()>>>(ptr_array,                    
-                           x_col,  
-                           x_row,  
-                           out_col,
-                           dst_data);
+      StackCUDAKernel<T, IndexT, decltype(ptr_array)>
+          <<<cfg.block_per_grid, cfg.thread_per_block, 0, ctx.stream()>>>(
+              ptr_array, x_col, x_row, out_col, dst_data);
     }
   }
 #undef IMPL_STACK_CUDA_KERNEL_HELPER
@@ -183,12 +178,15 @@ void StackKernel(const Context& dev_ctx,
   }
   x_col = x[0]->numel() / x_row;
   int64_t out_col = x_col * num;
-  auto config = phi::backends::gpu::GetGpuLaunchConfig2D(dev_ctx, out_col, x_row);
+  auto config =
+      phi::backends::gpu::GetGpuLaunchConfig2D(dev_ctx, out_col, x_row);
 
   if (out->numel() < std::numeric_limits<int32_t>::max()) {
-    LaunchStackCUDAKernel<T, int32_t, Context>(dev_ctx, x_col, x_row, out_col, config, x, dst_data);
+    LaunchStackCUDAKernel<T, int32_t, Context>(
+        dev_ctx, x_col, x_row, out_col, config, x, dst_data);
   } else {
-    LaunchStackCUDAKernel<T, int64_t, Context>(dev_ctx, x_col, x_row, out_col, config, x, dst_data);
+    LaunchStackCUDAKernel<T, int64_t, Context>(
+        dev_ctx, x_col, x_row, out_col, config, x, dst_data);
   }
 }
 }  // namespace phi
