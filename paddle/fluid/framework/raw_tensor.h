@@ -86,18 +86,6 @@ class RawTensor : public phi::ExtendedTensor,
   }
 
   template <typename T>
-  void SetData(T* data, bool need_manage_memory = false) {
-    if (!data_.empty()) {
-      data_deleter_();
-    }
-    data_ = data;
-    if (need_manage_memory) {
-      data_deleter_ = [data]() { delete data; };
-    }
-    data_type_ = std::type_index(typeid(T));
-  }
-
-  template <typename T>
   bool IsType() const {
     return std::type_index(typeid(T)) == data_type_;
   }

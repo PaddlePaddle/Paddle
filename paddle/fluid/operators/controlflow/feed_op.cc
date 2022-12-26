@@ -30,61 +30,6 @@ class OpBase;
 namespace paddle {
 namespace operators {
 
-// FeedVariableVisitor is to feed the variable data
-// according to data type (phi::DenseTensor or  Strings).
-template <typename T>
-class FeedVariableVisitor {
- public:
-  explicit FeedVariableVisitor(T* out_var, const platform::Place& place)
-      : place_(place) {
-    out_var_.SetData(out_var);
-  }
-
-  void operator()(const phi::DenseTensor& in_tensor) const {
-    phi::DenseTensor* out_tensor = &(out_var_.Get<phi::DenseTensor>());
-    if (platform::is_same_place(in_tensor.place(), place_)) {
-      out_tensor->ShareDataWith(in_tensor);
-#ifdef PADDLE_WITH_IPU
-    } else if (platform::is_ipu_place(place_)) {
-      // For ipu, both in_tensor and out_tensor are allocated on cpu,
-      // PopART will copy tensor from host automatically,
-      // no TensorCopy() is required here.
-      out_tensor->ShareDataWith(in_tensor);
-#endif
-    } else {
-      platform::DeviceContext* context =
-          platform::DeviceContextPool::Instance().Get(place_);
-      framework::TensorCopy(in_tensor, place_, *context, out_tensor);
-    }
-    out_tensor->set_lod(in_tensor.lod());
-  }
-
-  void operator()(const framework::Strings& in_str) const {
-    framework::Strings* out_str = &(out_var_.Get<framework::Strings>());
-    out_str->resize(in_str.size());
-    *out_str = in_str;
-  }
-
-  void operator()(const phi::SparseCooTensor& in_tensor) const {
-    phi::SparseCooTensor* out_tensor = &(out_var_.Get<phi::SparseCooTensor>());
-    if (platform::is_same_place(in_tensor.place(), place_)) {
-      *out_tensor = in_tensor;
-    } else {
-      platform::DeviceContext* context =
-          platform::DeviceContextPool::Instance().Get(place_);
-
-      phi::DenseTensor indices, values;
-      framework::TensorCopy(in_tensor.indices(), place_, *context, &indices);
-      framework::TensorCopy(in_tensor.values(), place_, *context, &values);
-      out_tensor->SetMember(indices, values, in_tensor.meta());
-    }
-  }
-
- private:
-  framework::RawTensor out_var_;
-  const platform::Place& place_;
-};
-
 const framework::FeedType& CheckAndGetFeedItem(const phi::ExtendedTensor& x,
                                                int col) {
   PADDLE_ENFORCE_GE(col,
@@ -118,8 +63,23 @@ void FeedDenseTensorKernel(const Context& dev_ctx,
       platform::errors::NotFound(
           "Output cannot be found in scope for operator 'Feed'"));
   const auto& feed_item = CheckAndGetFeedItem(x, col);
-  FeedVariableVisitor<phi::DenseTensor> visitor(out, dev_ctx.GetPlace());
-  paddle::visit(visitor, feed_item);
+  const auto& in_tensor = paddle::get<phi::DenseTensor>(feed_item);
+  const auto& place = dev_ctx.GetPlace();
+  if (platform::is_same_place(in_tensor.place(), place)) {
+    out->ShareDataWith(in_tensor);
+#ifdef PADDLE_WITH_IPU
+  } else if (platform::is_ipu_place(place)) {
+    // For ipu, both in_tensor and out are allocated on cpu,
+    // PopART will copy tensor from host automatically,
+    // no TensorCopy() is required here.
+    out->ShareDataWith(in_tensor);
+#endif
+  } else {
+    platform::DeviceContext* context =
+        platform::DeviceContextPool::Instance().Get(place);
+    framework::TensorCopy(in_tensor, place, *context, out);
+  }
+  out->set_lod(in_tensor.lod());
 }
 
 template <typename Context>
@@ -132,8 +92,19 @@ void FeedSparseCooTensorKernel(const Context& dev_ctx,
       platform::errors::NotFound(
           "Output cannot be found in scope for operator 'Feed'"));
   const auto& feed_item = CheckAndGetFeedItem(x, col);
-  FeedVariableVisitor<phi::SparseCooTensor> visitor(out, dev_ctx.GetPlace());
-  paddle::visit(visitor, feed_item);
+  const auto& in_tensor = paddle::get<phi::SparseCooTensor>(feed_item);
+  const auto& place = dev_ctx.GetPlace();
+  if (platform::is_same_place(in_tensor.place(), place)) {
+    *out = in_tensor;
+  } else {
+    platform::DeviceContext* context =
+        platform::DeviceContextPool::Instance().Get(place);
+
+    phi::DenseTensor indices, values;
+    framework::TensorCopy(in_tensor.indices(), place, *context, &indices);
+    framework::TensorCopy(in_tensor.values(), place, *context, &values);
+    out->SetMember(indices, values, in_tensor.meta());
+  }
 }
 
 template <typename Context>
@@ -147,8 +118,9 @@ void FeedStringsKernel(const Context& dev_ctx,
           "Output cannot be found in scope for operator 'Feed'"));
   const auto& feed_item = CheckAndGetFeedItem(x, col);
   auto strs_out = static_cast<framework::Strings*>(out);
-  FeedVariableVisitor<framework::Strings> visitor(strs_out, dev_ctx.GetPlace());
-  paddle::visit(visitor, feed_item);
+  const auto& in_str = paddle::get<framework::Strings>(feed_item);
+  strs_out->resize(in_str.size());
+  *strs_out = in_str;
 }
 
 class FeedOp : public framework::OperatorWithKernel {
