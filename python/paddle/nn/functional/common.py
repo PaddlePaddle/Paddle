@@ -512,9 +512,7 @@ def interpolate(
                         temp_out = helper.create_variable_for_type_inference(
                             'int32'
                         )
-                        fill_constant(
-                            [1], 'int32', dim, force_cpu=True, out=temp_out
-                        )
+                        fill_constant([1], 'int32', dim, out=temp_out)
                         new_size_tensor.append(temp_out)
                         size_list.append(dim)
                 inputs['SizeTensor'] = new_size_tensor

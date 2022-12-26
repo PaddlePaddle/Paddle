@@ -883,7 +883,7 @@ def crop(x, shape=None, offsets=None, name=None):
             else:
                 _attr_offsets_check(dim)
                 temp_out = helper.create_variable_for_type_inference('int32')
-                fill_constant([1], 'int32', dim, force_cpu=True, out=temp_out)
+                fill_constant([1], 'int32', dim, out=temp_out)
                 new_offsets_tensor.append(temp_out)
                 offsets_attr.append(dim)
         ipts['OffsetsTensor'] = new_offsets_tensor
@@ -907,9 +907,7 @@ def crop(x, shape=None, offsets=None, name=None):
             else:
                 _attr_shape_check(dim_size)
                 temp_out = helper.create_variable_for_type_inference('int32')
-                fill_constant(
-                    [1], 'int32', dim_size, force_cpu=True, out=temp_out
-                )
+                fill_constant([1], 'int32', dim_size, out=temp_out)
                 new_shape_tensor.append(temp_out)
                 shape_attr.append(dim_size)
         ipts['ShapeTensor'] = new_shape_tensor
@@ -2138,9 +2136,7 @@ def split(x, num_or_sections, axis=0, name=None):
                     )
                     unk_dim_idx = idx
                 temp_out = helper.create_variable_for_type_inference('int32')
-                fill_constant(
-                    [1], 'int32', dim_size, force_cpu=True, out=temp_out
-                )
+                fill_constant([1], 'int32', dim_size, out=temp_out)
                 tensor_list.append(temp_out)
         return tensor_list
 
@@ -4082,7 +4078,7 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
             else:
                 assert isinstance(dim, int)
                 temp_out = helper.create_variable_for_type_inference('int32')
-                fill_constant([1], 'int32', dim, force_cpu=True, out=temp_out)
+                fill_constant([1], 'int32', dim, out=temp_out)
                 new_list_tensor.append(temp_out)
         return new_list_tensor
 
