@@ -1000,6 +1000,7 @@ class ShardingPass(PassBase):
                                 out_shape = broadcast_var.shape
                             else:
                                 out_shape = [1]
+                            print(broadcast_var, out_shape)
                             new_op = main_block._insert_op_without_sync(
                                 index=idx,
                                 type=type_,
