@@ -501,7 +501,7 @@ PreparedOp PrepareImpl(
                                  op.Type(),
                                  KernelTypeToString(fluid_kernel_type)));
 
-  if (!platform::places_are_same_class(fluid_kernel_type.place_ == place)) {
+  if (!platform::places_are_same_class(fluid_kernel_type.place_, place)) {
     dev_ctx = pool.Get(fluid_kernel_type.place_);
   }
 
