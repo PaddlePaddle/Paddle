@@ -2285,13 +2285,3 @@ def insert_dependencies_for_two_vars(
         block._sync_with_cpp()
 
     return depend_op
-
-
-def use_standalone_executor():
-    return os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR', None) in [
-        1,
-        '1',
-        True,
-        'True',
-        'true',
-    ]

@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
+from paddle.fluid.executor import _is_enable_standalone_executor
 
 from ..auto_parallel.dist_attribute import (
     OperatorDistributedAttribute,
@@ -30,7 +31,6 @@ from ..auto_parallel.utils import (
     insert_dependencies_for_two_vars,
     is_gradient_clip_op,
     is_optimize_op,
-    use_standalone_executor,
 )
 from .pass_base import PassBase, register_pass
 
@@ -378,7 +378,7 @@ class ClipGradByGloblNormPass(PassBase):
                     self.clip_helper._init_dist_attr(allreduce_op)
 
                     if (
-                        use_standalone_executor
+                        _is_enable_standalone_executor()
                         and insert_leaf_fill_constant_node
                     ):
 
