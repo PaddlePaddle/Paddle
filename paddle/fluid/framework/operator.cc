@@ -2537,14 +2537,15 @@ Scope* OperatorWithKernel::PrepareData(
 
       // Do transfer
       phi::DenseTensor out;
-      TransformData(new_expected_kernel_key ? *new_expected_kernel_key
-                                            : expected_kernel_key,
-                    kernel_type_for_var,
-                    *tensor_in,
-                    &out,
-                    new_expected_kernel_key
-                        ? phi::TransToPhiPlace(*new_expected_kernel_key)
-                        : phi::TransToPhiPlace(expected_kernel_key));
+      TransformData(
+          new_expected_kernel_key ? *new_expected_kernel_key
+                                  : expected_kernel_key,
+          kernel_type_for_var,
+          *tensor_in,
+          &out,
+          new_expected_kernel_key
+              ? phi::TransToPhiPlace(new_expected_kernel_key->backend())
+              : phi::TransToPhiPlace(expected_kernel_key.backend()));
       SetTensorToVariable(*var, out, trans_var);
     }
   };
