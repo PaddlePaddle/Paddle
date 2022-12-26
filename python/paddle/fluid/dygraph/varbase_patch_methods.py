@@ -275,7 +275,7 @@ def monkey_patch_varbase():
                 # 4: [5000.]
 
         """
-        if framework._non_static_mode():
+        if framework.in_dygraph_mode():
             if in_profiler_mode():
                 record_event = profiler.RecordEvent(
                     "Gradient Backward", profiler.TracerEventType.Backward
