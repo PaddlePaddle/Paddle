@@ -63,7 +63,7 @@ def sequence_conv(
     r"""
 
     Note:
-        Only receives LoDTensor as input. If your input is Tensor, please use conv2d Op.(fluid.layers.** :ref:`api_fluid_layers_conv2d` ).
+        Only receives LoDTensor as input. If your input is Tensor, please use conv2d Op.(fluid.layers.** :ref:`api_paddle_nn_functional_conv2d` ).
 
     This operator receives input sequences with variable length and other convolutional
     configuration parameters(num_filters, filter_size) to apply the convolution operation.
@@ -114,29 +114,29 @@ def sequence_conv(
             and K is hidden_size of input. Only lod_level of 1 is supported. The data type should be float32 or
             float64.
         num_filters (int): the number of filters.
-        filter_size (int): the height of filter. Specified filter width is not supported, the width is
+        filter_size (int, optional): the height of filter. Specified filter width is not supported, the width is
             hidden_size by default. Default: 3.
-        filter_stride (int): stride of the filter. Currently only supports :attr:`stride` = 1.
-        padding (bool): the parameter :attr:`padding` take no effect and will be discarded in the
+        filter_stride (int, optional): stride of the filter. Currently only supports :attr:`stride` = 1.
+        padding (bool, optional): the parameter :attr:`padding` take no effect and will be discarded in the
             future. Currently, it will always pad input to make sure the length of the output is
             the same as input whether :attr:`padding` is set true or false. Because the length of
             input sequence may be shorter than :attr:`filter\_size`, which will cause the convolution
             result to not be computed correctly. These padding data will not be trainable or updated
             while training. Default: True.
-        padding_start (int): It is used to indicate the start index for padding the input
+        padding_start (int, optional): It is used to indicate the start index for padding the input
             sequence, which can be negative. The negative number means to pad
             :attr:`|padding_start|` time-steps of all-zero data at the beginning of each instance.
             The positive number means to skip :attr:`padding_start` time-steps of each instance,
             and it will pad :math:`filter\_size + padding\_start - 1` time-steps of all-zero data
             at the end of the sequence to ensure that the output is the same length as the input.
-            If set None, the same length :math:`\\frac{filter\_size}{2}` of data will be filled
+            If set None, the same length :math:`\frac{filter\_size}{2}` of data will be filled
             on both sides of the sequence. If set 0, the length of :math:`filter\_size - 1` data
             is padded at the end of each input sequence. Default: None.
-        bias_attr (ParamAttr): To specify the bias parameter property. Default: None, which means the
-            default bias parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` .
-        param_attr (ParamAttr): To specify the weight parameter property. Default: None, which means the
-            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` .
-        act (str): Activation to be applied to the output of this layer, such as tanh, softmax,
+        bias_attr (ParamAttr, optional): To specify the bias parameter property. Default: None, which means the
+            default bias parameter property is used. See usage for details in :ref:`api_paddle_ParamAttr` .
+        param_attr (ParamAttr, optional): To specify the weight parameter property. Default: None, which means the
+            default weight parameter property is used. See usage for details in :ref:`api_paddle_ParamAttr` .
+        act (str, optional): Activation to be applied to the output of this layer, such as tanh, softmax,
             sigmoid, relu. For more information, please refer to :ref:`api_guide_activations_en` . Default: None.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
@@ -1302,9 +1302,9 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
     r"""
 
     Generate a new sequence for the input index sequence with \
-        shape ``[d_1, win_size]``, which enumerates all the \
-        sub-sequences with length ``win_size`` of the input with \
-        shape ``[d_1, 1]``, and padded by ``pad_value`` if necessary in generation.
+    shape ``[d_1, win_size]``, which enumerates all the \
+    sub-sequences with length ``win_size`` of the input with \
+    shape ``[d_1, 1]``, and padded by ``pad_value`` if necessary in generation.
 
     Please note that the `input` must be LodTensor.
 
