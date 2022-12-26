@@ -27,7 +27,7 @@ import paddle.fluid.nets as nets
 import paddle.nn.functional as F
 from paddle.fluid import core
 from paddle.fluid.dygraph import base, to_variable
-from paddle.fluid.framework import Program, default_main_program, program_guard
+from paddle.fluid.framework import Program, program_guard
 from paddle.tensor import random
 
 
@@ -2156,19 +2156,6 @@ class TestBook(LayerTest):
             )
             return out
 
-    def test_shuffle_batch(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            x = layers.data(
-                name='X', shape=[4, 50], dtype='float32', lod_level=0
-            )
-            out1 = fluid.contrib.layers.shuffle_batch(x)
-            default_main_program().random_seed = 1000
-            out2 = fluid.contrib.layers.shuffle_batch(x)
-            self.assertIsNotNone(out1)
-            self.assertIsNotNone(out2)
-            return out1
-
     def test_partial_sum(self):
         with self.static_graph():
             x = fluid.data(name="x", shape=[None, 3], dtype="float32")
@@ -2272,18 +2259,6 @@ class TestBook(LayerTest):
             x = layers.data(name='x', shape=[3, 20, 20], dtype='float32')
             out = paddle.nn.functional.unfold(x, [3, 3], 1, 1, 1)
             return out
-
-    def test_partial_concat(self):
-        with self.static_graph():
-            x = fluid.data(name="x", shape=[None, 3], dtype="float32")
-            y = fluid.data(name="y", shape=[None, 3], dtype="float32")
-            concat1 = fluid.contrib.layers.partial_concat(
-                [x, y], start_index=0, length=2
-            )
-            concat2 = fluid.contrib.layers.partial_concat(
-                x, start_index=0, length=-1
-            )
-            return concat1, concat2
 
     def test_addmm(self):
         with program_guard(
