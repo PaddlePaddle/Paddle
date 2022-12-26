@@ -320,6 +320,11 @@ OpFuncType AnalyseOpFuncType(const OpFuncNode& op_func_node,
     return OpFuncType::kGpuSync;
   }
 
+  // for memcpy explicitly called by user
+  if (platform::is_gpu_place(place) && op->Type() == interpreter::kMemcpyD2H) {
+    return OpFuncType::kGpuSync;
+  }
+
   if (op->Type() == "shape") {
     return OpFuncType::kGpuSync;
   }
