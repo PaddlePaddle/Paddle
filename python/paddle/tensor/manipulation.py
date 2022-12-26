@@ -682,7 +682,7 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
         index_num (int): An integer represents the integer above the maximum value of `input`.
         nshards (int): The number of shards.
         shard_id (int): The index of the current shard.
-        ignore_value (int): An integer value out of sharded index range.
+        ignore_value (int, optional): An integer value out of sharded index range. The default value is -1.
 
     Returns:
         Tensor.
