@@ -19,13 +19,8 @@ from . import backward_mode  # noqa: F401
 from .backward_mode import backward  # noqa: F401
 from ..fluid.framework import _in_eager_mode_
 
-if _in_eager_mode_:
-    from .py_layer import EagerPyLayer as PyLayer  # noqa: F401
-    from .py_layer import EagerPyLayerContext as PyLayerContext  # noqa: F401
-else:
-    from .py_layer import LegacyPyLayer as PyLayer  # noqa: F401
-    from .py_layer import LegacyPyLayerContext as PyLayerContext  # noqa: F401
-from .saved_tensors_hooks import saved_tensors_hooks
+from .py_layer import PyLayer as PyLayer  # noqa: F401
+from .py_layer import PyLayerContext as PyLayerContext  # noqa: F401
 
 __all__ = [  # noqa
     'backward',
