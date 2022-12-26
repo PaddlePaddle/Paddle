@@ -348,7 +348,10 @@ PreparedOp PrepareImpl(
                         "expected_kernel_key.place_ "
                      << expected_kernel_key.place_ << " original " << place;
       }
-      if (platform::places_are_same_class(expected_kernel_key.place_, place)) {
+      if (!platform::places_are_same_class(expected_kernel_key.place_, place)) {
+        LOG(WARNING) << "DEBUG change place target "
+                        "expected_kernel_key.place_ "
+                     << expected_kernel_key.place_ << " original " << place;
         dev_ctx = pool.Get(expected_kernel_key.place_);
       }
 
@@ -522,7 +525,7 @@ PreparedOp PrepareImpl(
                     "expected_kernel_key.place_ "
                  << expected_kernel_key.place_ << " original " << place;
   }
-  if (platform::places_are_same_class(expected_kernel_key.place_, place)) {
+  if (!platform::places_are_same_class(expected_kernel_key.place_, place)) {
     dev_ctx = pool.Get(expected_kernel_key.place_);
   }
 
