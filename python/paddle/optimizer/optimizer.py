@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 import paddle.autograd as imperative_base
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from paddle.fluid import core
 from paddle.fluid.framework import (
     Variable,
@@ -1098,9 +1098,7 @@ class Optimizer:
             params_grads = self._grad_clip(params_grads)
         else:
 
-            params_grads = paddle.nn.clip.append_gradient_clip_ops(
-                paddle.nn.clip.params_grads
-            )
+            params_grads = paddle.nn.clip.append_gradient_clip_ops(params_grads)
 
         # Add regularization if any
         params_grads = self.append_regularization_ops(
