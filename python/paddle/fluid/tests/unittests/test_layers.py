@@ -2329,33 +2329,6 @@ class TestBook(LayerTest):
             )
             return output
 
-    def test_basic_gru(self):
-        input_size = 128
-        hidden_size = 256
-        with self.static_graph():
-            input = fluid.data(
-                name="input", shape=[None, None, input_size], dtype='float32'
-            )
-            pre_hidden = fluid.data(
-                name="pre_hidden", shape=[None, hidden_size], dtype='float32'
-            )
-            sequence_length = fluid.data(
-                name="sequence_length", shape=[None], dtype='int32'
-            )
-
-            for bidirectional in [True, False]:
-                for batch_first in [True, False]:
-                    rnn_out, last_hidden = fluid.contrib.layers.basic_gru(
-                        input,
-                        pre_hidden,
-                        hidden_size=256,
-                        num_layers=2,
-                        sequence_length=sequence_length,
-                        dropout_prob=0.5,
-                        bidirectional=bidirectional,
-                        batch_first=batch_first,
-                    )
-
 
 class ExampleNet(paddle.nn.Layer):
     def __init__(self):
