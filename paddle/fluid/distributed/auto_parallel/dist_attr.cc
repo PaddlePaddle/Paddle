@@ -116,11 +116,11 @@ void TensorDistAttr::set_batch_dim(int64_t batch_dim) {
 }
 
 void TensorDistAttr::set_dynamic_dims(const std::vector<bool>& dynamic_dims) {
-  PADDLE_ENFORCE_EQ(
-      verify_dynamic_dims(dynamic_dims),
-      true,
-      platform::errors::InvalidArgument("The dynamic_dims [%s] is wrong.",
-                                        str_join(dynamic_dims)));
+  // PADDLE_ENFORCE_EQ(
+  //     verify_dynamic_dims(dynamic_dims),
+  //     true,
+  //     platform::errors::InvalidArgument("The dynamic_dims [%s] is wrong.",
+  //                                       str_join(dynamic_dims)));
   dynamic_dims_ = dynamic_dims;
 }
 
@@ -204,6 +204,7 @@ bool TensorDistAttr::verify_batch_dim(int64_t dim) const {
 
 bool TensorDistAttr::verify_dynamic_dims(
     const std::vector<bool>& dynamic_dims) const {
+  return true;
   VLOG(4) << "[TensorDistAttr verify_dynamic_dims] " << str_join(dynamic_dims);
   if (dynamic_dims.size() != tensor_shape_.size()) {
     return false;
