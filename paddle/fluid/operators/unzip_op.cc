@@ -151,9 +151,6 @@ class unzipGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(unzipNoNeedBufferVarInferer, "lod");
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(unzipGradNoNeedBufferVarInferer, "X");
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -162,12 +159,10 @@ REGISTER_OPERATOR(unzip,
                   ops::unzipOp,
                   ops::unzipOpMaker,
                   ops::unzipGradOpMaker<paddle::framework::OpDesc>,
-                  ops::unzipGradOpMaker<paddle::imperative::OpBase>,
-                  ops::unzipNoNeedBufferVarInferer);
+                  ops::unzipGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(unzip_grad,
-                  ops::unzipGradientOp,
-                  ops::unzipGradNoNeedBufferVarInferer);
+                  ops::unzipGradientOp);
 
 REGISTER_OP_CPU_KERNEL(unzip, 
                        ops::unzipOpKernel<int64_t>,
