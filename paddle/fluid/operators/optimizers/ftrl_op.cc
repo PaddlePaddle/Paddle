@@ -39,6 +39,7 @@ class FTRLOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("ParamOut"), "Output", "ParamOut", "FTRL");
     OP_INOUT_CHECK(
         ctx->HasOutput("SquaredAccumOut"), "Output", "SquaredAccumOut", "FTRL");
+
     OP_INOUT_CHECK(
         ctx->HasOutput("LinearAccumOut"), "Output", "LinearAccumOut", "FTRL");
 

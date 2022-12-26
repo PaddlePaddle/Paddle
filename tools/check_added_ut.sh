@@ -65,6 +65,10 @@ grep -F -x -v -f br-ut pr-ut > $PADDLE_ROOT/added_ut
 if [[ "$SYSTEM" == 'Linux' ]];then
     sort pr-ut |uniq -d > $PADDLE_ROOT/duplicate_ut
 fi
+echo "br-ut:"
+cat $PADDLE_ROOT/br-ut
+echo "pr-ut:"
+cat $PADDLE_ROOT/pr-ut
 echo "New-UT:"
 cat $PADDLE_ROOT/added_ut
 rm -rf prec_build

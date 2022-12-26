@@ -132,6 +132,7 @@ class InterpreterCore {
 
   // NOTE(zhiqiu): when add fetch ops in GetInterpreterCore, we will
   // copy a new program and block, the copy_program_ here is used to
+
   // hold the program, otherwise block_ maybe not valid after the
   // new program is deleted.
   std::shared_ptr<ProgramDesc> copy_program_{nullptr};

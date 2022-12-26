@@ -1066,6 +1066,7 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
    * all the following conditions are satisfied:
    * 1. The tensor will be GC after running the instruction, i.e., in
    * instr.GCCheckVars.
+   *
    * 2. The stream which initializes this tensor is different from the stream
    * which the instruction run in.
    * 3. The tensor is the instruction's input, cause we assume that

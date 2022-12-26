@@ -197,6 +197,7 @@ class GradScaler(AmpScaler):
             return optimizer.step()
 
         optimizer_state = self._optimizer_states[id(optimizer)]
+
         if optimizer_state["state"] is OptimizerState.STEPPED:
             raise RuntimeError(
                 "step() has already been called since the last update()."
