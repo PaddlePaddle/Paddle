@@ -722,7 +722,7 @@ class TestMatmulop(unittest.TestCase):
         # normal case: tensor @ nparray
         expect_out = np_a @ np_b
         actual_out = tensor_a @ np_b
-        np.testing.assert_allclose(actual_out, expect_out, rtol=1e-6)
+        np.testing.assert_allclose(actual_out, expect_out, atol=1e-4, rtol=1e-5)
 
         paddle.enable_static()
 
