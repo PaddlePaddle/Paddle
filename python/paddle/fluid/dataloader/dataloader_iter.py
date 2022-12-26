@@ -34,7 +34,7 @@ import paddle
 import paddle.profiler as profiler
 from paddle.profiler.utils import in_profiler_mode
 from .. import core, layers
-from ..framework import _non_static_mode, in_dygraph_mode
+from ..framework import in_dygraph_mode
 from ..multiprocess_utils import (
     _set_SIGCHLD_handler,
     MP_STATUS_CHECK_INTERVAL,

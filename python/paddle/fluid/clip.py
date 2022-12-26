@@ -23,7 +23,7 @@ from . import core
 from . import name_scope
 from .dygraph import base as imperative_base
 from .data_feeder import check_variable_and_dtype
-from .framework import _non_static_mode, in_dygraph_mode
+from .framework import in_dygraph_mode
 from .layer_helper import LayerHelper
 from .framework import default_main_program
 from paddle import _C_ops, _legacy_C_ops
@@ -194,7 +194,7 @@ class ClipGradBase:
         raise NotImplementedError
 
     def __call__(self, params_grads):
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             return self._dygraph_clip(params_grads)
         else:
             for p, g in params_grads:
