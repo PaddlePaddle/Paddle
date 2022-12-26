@@ -297,34 +297,10 @@ class PRChecker:
                     return True
         return False
 
-    def get_pr_ut(self):
-        """Get unit tests in pull request."""
-        if self.full_case:
-            return ''
-        check_added_ut = False
-        ut_list = []
-        file_ut_map = None
-
-        ret = self.__urlretrieve(
-            'https://paddle-docker-tar.bj.bcebos.com/tmp_test/ut_file_map.json',
-            'ut_file_map.json',
-        )
-        if not ret:
-            print('PREC download file_ut.json failed')
-            exit(1)
-
-        with open('ut_file_map.json') as jsonfile:
-            file_ut_map = json.load(jsonfile)
-
-        current_system = platform.system()
-        notHitMapFiles = []
-        hitMapFiles = {}
-        onlyCommentsFilesOrXpu = []
+    def check_directory_of_file(self, file_dict):
+        # the filtered files are saved to filterFiles ,and the rest are stored in file_list to be compared with ut_file_map later
         filterFiles = []
         file_list = []
-        file_dict = self.get_pr_files()
-        if len(file_dict) == 30:  # if pr file count = 31, nend to run all case
-            return ''
         for filename in file_dict:
             if filename.startswith(PADDLE_ROOT + 'python/'):
                 file_list.append(filename)
@@ -359,8 +335,39 @@ class PRChecker:
                         file_list.append(filename)
                     else:
                         filterFiles.append(filename)
-        if len(file_list) == 0:
-            ut_list.append('filterfiles_placeholder')
+        return filterFiles, file_list
+
+    def only_run_prec_delta(self, filterFiles):
+        ut_list = []
+        ut_list.append('filterfiles_placeholder')
+        ret = self.__urlretrieve(
+            'https://paddle-docker-tar.bj.bcebos.com/tmp_test/prec_delta',
+            'prec_delta',
+        )
+        if ret:
+            with open('prec_delta') as delta:
+                for ut in delta:
+                    ut_list.append(ut.rstrip('\r\n'))
+        else:
+            print('PREC download prec_delta failed')
+            exit(1)
+        PRECISION_TEST_Cases_ratio = format(
+            float(len(ut_list)) / float(self.get_all_count()), '.2f'
+        )
+        print("filterFiles: %s" % filterFiles)
+        print("ipipe_log_param_PRECISION_TEST: true")
+        print("ipipe_log_param_PRECISION_TEST_Cases_count: %s" % len(ut_list))
+        print(
+            "ipipe_log_param_PRECISION_TEST_Cases_ratio: %s"
+            % PRECISION_TEST_Cases_ratio
+        )
+        print("The unittests in prec delta is shown as following: %s" % ut_list)
+        return '\n'.join(ut_list)
+
+    def is_notHitMapFiles_empyt(
+        self, ut_list, notHitMapFiles, hitMapFiles, filterFiles
+    ):
+        if ut_list:
             ret = self.__urlretrieve(
                 'https://paddle-docker-tar.bj.bcebos.com/tmp_test/prec_delta',
                 'prec_delta',
@@ -368,137 +375,185 @@ class PRChecker:
             if ret:
                 with open('prec_delta') as delta:
                     for ut in delta:
-                        ut_list.append(ut.rstrip('\r\n'))
+                        if ut not in ut_list:
+                            ut_list.append(ut.rstrip('\r\n'))
             else:
                 print('PREC download prec_delta failed')
                 exit(1)
-            PRECISION_TEST_Cases_ratio = format(
-                float(len(ut_list)) / float(self.get_all_count()), '.2f'
-            )
-            print("filterFiles: %s" % filterFiles)
+            print("hitMapFiles: %s" % hitMapFiles)
             print("ipipe_log_param_PRECISION_TEST: true")
             print(
                 "ipipe_log_param_PRECISION_TEST_Cases_count: %s" % len(ut_list)
+            )
+            PRECISION_TEST_Cases_ratio = format(
+                float(len(ut_list)) / float(self.get_all_count()), '.2f'
             )
             print(
                 "ipipe_log_param_PRECISION_TEST_Cases_ratio: %s"
                 % PRECISION_TEST_Cases_ratio
             )
-            print(
-                "The unittests in prec delta is shown as following: %s"
-                % ut_list
-            )
-            return '\n'.join(ut_list)
-        else:
-            for f in file_list:
-                if (
-                    current_system == "Darwin"
-                    or current_system == "Windows"
-                    or self.suffix == ".py3"
+            if len(filterFiles) != 0:
+                print("filterFiles: %s" % filterFiles)
+        return '\n'.join(ut_list)
+
+    def check_files_of_ut_list(
+        self, file_list, file_dict, current_system, file_ut_map
+    ):
+        ut_list = []
+        onlyCommentsFilesOrXpu = []
+        notHitMapFiles = []
+        hitMapFiles = {}
+        for f in file_list:
+            if (
+                current_system == "Darwin"
+                or current_system == "Windows"
+                or self.suffix == ".py3"
+            ):
+                f_judge = f.replace(PADDLE_ROOT, '/paddle/', 1)
+                f_judge = f_judge.replace('//', '/')
+            else:
+                f_judge = f
+            # If changed file is not in ut_file_map, check whether if all tests must be run
+            if f_judge not in file_ut_map:
+                if f_judge.endswith('.md'):
+                    ut_list.append('md_placeholder')
+                    onlyCommentsFilesOrXpu.append(f_judge)
+                elif (
+                    'tests/unittests/xpu' in f_judge
+                    or 'tests/unittests/npu' in f_judge
+                    or 'op_npu.cc' in f_judge
                 ):
-                    f_judge = f.replace(PADDLE_ROOT, '/paddle/', 1)
-                    f_judge = f_judge.replace('//', '/')
-                else:
-                    f_judge = f
-                if f_judge not in file_ut_map:
-                    if f_judge.endswith('.md'):
-                        ut_list.append('md_placeholder')
-                        onlyCommentsFilesOrXpu.append(f_judge)
-                    elif (
-                        'tests/unittests/xpu' in f_judge
-                        or 'tests/unittests/npu' in f_judge
-                        or 'op_npu.cc' in f_judge
-                    ):
-                        ut_list.append('xpu_npu_placeholder')
-                        onlyCommentsFilesOrXpu.append(f_judge)
-                    elif f_judge.endswith(('.h', '.cu', '.cc', '.py')):
-                        # determine whether the new added file is a member of added_ut
-                        if file_dict[f] in ['added']:
-                            f_judge_in_added_ut = False
-                            path = PADDLE_ROOT + 'added_ut'
-                            print("PADDLE_ROOT:", PADDLE_ROOT)
-                            print("adde_ut path:", path)
-                            (unittest_directory, unittest_name) = os.path.split(
-                                f_judge
-                            )
-                            with open(path, 'r') as f:
-                                added_unittests = f.readlines()
-                                for test in added_unittests:
-                                    test = test.replace('\n', '').strip()
-                                    if test == unittest_name.split(".")[0]:
-                                        f_judge_in_added_ut = True
-                            if f_judge_in_added_ut:
-                                print(
-                                    "Adding new unit tests not hit mapFiles: %s"
-                                    % f_judge
-                                )
-                            else:
-                                notHitMapFiles.append(f_judge)
-                        elif file_dict[f] in ['removed']:
-                            print("remove file not hit mapFiles: %s" % f_judge)
-                        else:
-                            if self.is_only_comment(f):
-                                ut_list.append('comment_placeholder')
-                                onlyCommentsFilesOrXpu.append(f_judge)
-                            if self.file_is_unnit_test(f_judge):
-                                ut_list.append(f_judge.split(".")[0])
-                            else:
-                                notHitMapFiles.append(f_judge)
-                    else:
-                        notHitMapFiles.append(f_judge) if file_dict[
-                            f
-                        ] != 'removed' else print(
-                            "remove file not hit mapFiles: %s" % f_judge
+                    ut_list.append('xpu_npu_placeholder')
+                    onlyCommentsFilesOrXpu.append(f_judge)
+                elif f_judge.endswith(('.h', '.cu', '.cc', '.py')):
+                    # determine whether the new added file is a member of added_ut
+                    if file_dict[f] in ['added']:
+                        f_judge_in_added_ut = False
+                        path = PADDLE_ROOT + 'added_ut'
+                        print("PADDLE_ROOT:", PADDLE_ROOT)
+                        print("adde_ut path:", path)
+                        (unittest_directory, unittest_name) = os.path.split(
+                            f_judge
                         )
-                else:
-                    if file_dict[f] not in ['removed']:
+                        with open(path, 'r') as f:
+                            added_unittests = f.readlines()
+                            for test in added_unittests:
+                                test = test.replace('\n', '').strip()
+                                if test == unittest_name.split(".")[0]:
+                                    f_judge_in_added_ut = True
+                        if f_judge_in_added_ut:
+                            print(
+                                "Adding new unit tests not hit mapFiles: %s"
+                                % f_judge
+                            )
+                        else:
+                            notHitMapFiles.append(f_judge)
+                    elif file_dict[f] in ['removed']:
+                        print("remove file not hit mapFiles: %s" % f_judge)
+                    else:
                         if self.is_only_comment(f):
                             ut_list.append('comment_placeholder')
                             onlyCommentsFilesOrXpu.append(f_judge)
+                        if self.file_is_unnit_test(f_judge):
+                            ut_list.append(f_judge.split(".")[0])
                         else:
-                            hitMapFiles[f_judge] = len(file_ut_map[f_judge])
-                            ut_list.extend(file_ut_map.get(f_judge))
+                            notHitMapFiles.append(f_judge)
+                else:
+                    notHitMapFiles.append(f_judge) if file_dict[
+                        f
+                    ] != 'removed' else print(
+                        "remove file not hit mapFiles: %s" % f_judge
+                    )
+            else:
+                if file_dict[f] not in ['removed']:
+                    if self.is_only_comment(f):
+                        ut_list.append('comment_placeholder')
+                        onlyCommentsFilesOrXpu.append(f_judge)
                     else:
                         hitMapFiles[f_judge] = len(file_ut_map[f_judge])
                         ut_list.extend(file_ut_map.get(f_judge))
+                else:
+                    hitMapFiles[f_judge] = len(file_ut_map[f_judge])
+                    ut_list.extend(file_ut_map.get(f_judge))
+        return ut_list, notHitMapFiles, hitMapFiles
 
+    def get_pr_ut(self):
+        """Get unit tests in pull request."""
+        if self.full_case:
+            return ''
+        check_added_ut = False
+        ut_list = []
+        current_system = platform.system()
+        file_ut_map = None
+        ret = self.__urlretrieve(
+            'https://paddle-docker-tar.bj.bcebos.com/tmp_test/ut_file_map.json',
+            'ut_file_map.json',
+        )
+        if not ret:
+            print('PREC download file_ut.json failed')
+            exit(1)
+
+        with open('ut_file_map.json') as jsonfile:
+            file_ut_map = json.load(jsonfile)
+        file_dict = self.get_pr_files()
+        if len(file_dict) == 30:  # if pr file count = 31, nend to run all case
+            print("Your PR changes more than 30 files，need to run all cases")
+            return ''
+
+        # Exclude non-essential run all unnittests at the directory level
+        (filterFiles, file_list) = self.check_directory_of_file(file_dict)
+
+        # Further exclude files from file_list that do not necessarily run all tests
+        if len(file_list) == 0:  # if file_list is empty,only run prec_delta
+            ut_list = self.only_run_prec_delta(filterFiles)
+            return ut_list
+        else:
+            # if file_list is not empty,further exclude files from ut_list that do not necessarily run all tests
+            (
+                ut_list,
+                notHitMapFiles,
+                hitMapFiles,
+            ) = self.check_files_of_ut_list(
+                file_list, file_dict, current_system, file_ut_map
+            )
             ut_list = list(set(ut_list))
-            if len(notHitMapFiles) != 0:
-                print("ipipe_log_param_PRECISION_TEST: false")
-                print("notHitMapFiles: %s" % notHitMapFiles)
-                if len(filterFiles) != 0:
-                    print("filterFiles: %s" % filterFiles)
-                return ''
+
+        # Determine whether to trigger precise_test or run all test cases
+        if len(notHitMapFiles) != 0:
+            print("ipipe_log_param_PRECISION_TEST: false")
+            print("notHitMapFiles: %s" % notHitMapFiles)
+            if len(filterFiles) != 0:
+                print("filterFiles: %s" % filterFiles)
+            return ''
+        else:
+            if ut_list:
+                ret = self.__urlretrieve(
+                    'https://paddle-docker-tar.bj.bcebos.com/tmp_test/prec_delta',
+                    'prec_delta',
+                )
+            if ret:
+                with open('prec_delta') as delta:
+                    for ut in delta:
+                        if ut not in ut_list:
+                            ut_list.append(ut.rstrip('\r\n'))
             else:
-                if ut_list:
-                    ret = self.__urlretrieve(
-                        'https://paddle-docker-tar.bj.bcebos.com/tmp_test/prec_delta',
-                        'prec_delta',
-                    )
-                    if ret:
-                        with open('prec_delta') as delta:
-                            for ut in delta:
-                                if ut not in ut_list:
-                                    ut_list.append(ut.rstrip('\r\n'))
-                    else:
-                        print('PREC download prec_delta failed')
-                        exit(1)
-                    print("hitMapFiles: %s" % hitMapFiles)
-                    print("ipipe_log_param_PRECISION_TEST: true")
-                    print(
-                        "ipipe_log_param_PRECISION_TEST_Cases_count: %s"
-                        % len(ut_list)
-                    )
-                    PRECISION_TEST_Cases_ratio = format(
-                        float(len(ut_list)) / float(self.get_all_count()), '.2f'
-                    )
-                    print(
-                        "ipipe_log_param_PRECISION_TEST_Cases_ratio: %s"
-                        % PRECISION_TEST_Cases_ratio
-                    )
-                    if len(filterFiles) != 0:
-                        print("filterFiles: %s" % filterFiles)
-                return '\n'.join(ut_list)
+                print('PREC download prec_delta failed')
+                exit(1)
+            print("hitMapFiles: %s" % hitMapFiles)
+            print("ipipe_log_param_PRECISION_TEST: true")
+            print(
+                "ipipe_log_param_PRECISION_TEST_Cases_count: %s" % len(ut_list)
+            )
+            PRECISION_TEST_Cases_ratio = format(
+                float(len(ut_list)) / float(self.get_all_count()), '.2f'
+            )
+            print(
+                "ipipe_log_param_PRECISION_TEST_Cases_ratio: %s"
+                % PRECISION_TEST_Cases_ratio
+            )
+            if len(filterFiles) != 0:
+                print("filterFiles: %s" % filterFiles)
+        return '\n'.join(ut_list)
 
 
 if __name__ == '__main__':
