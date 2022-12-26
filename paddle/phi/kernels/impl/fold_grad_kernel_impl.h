@@ -54,7 +54,7 @@ void FoldGradKernel(const Context& ctx,
 
   DDim out_shape =
       make_ddim({n_output_plane, output_sizes[0], output_sizes[1]});
-  DDim input_matrix_shape = make_ddim({x_dims[0],
+  DDim input_matrix_shape = make_ddim({1,
                                        kernel_sizes[0],
                                        kernel_sizes[1],
                                        output_height,
