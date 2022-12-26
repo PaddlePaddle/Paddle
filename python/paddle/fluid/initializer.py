@@ -299,6 +299,11 @@ class UniformInitializer(Initializer):
                 self._seed,
                 _current_expected_place(),
             )
+            if var.dtype == VarDesc.VarType.FP16:
+                var_tmp = _C_ops.cast(out_var, var.dtype)
+                var_tmp._share_underline_tensor_to(var)
+            else:
+                out_var._share_underline_tensor_to(var)
             return None
         else:
             op = block.append_op(
