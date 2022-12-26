@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -124,7 +123,7 @@ void Conv2dFusionKernel(const Context& ctx,
     params.alpha = fuse_alpha;
     Conv2dBiasLeakyRelu(params);
   } else {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Cutlass does not support this activation: %s.", activation.c_str()));
   }
   output->set_layout(DataLayout::NHWC);

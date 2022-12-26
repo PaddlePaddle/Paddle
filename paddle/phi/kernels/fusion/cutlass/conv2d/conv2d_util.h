@@ -24,7 +24,6 @@
 
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/enforce.h"
 
@@ -52,8 +51,6 @@ typedef enum {
 // conv2d_diff_gpu calculate diff of cutlass output and baseline output, you can
 // use them to debug. return value is the max diff between cutlass and baseline
 float conv2d_diff_gpu(ConvAllParams params, OpType op_type);
-
-// Profile is
 
 int ProfileToGetBestConfig(
     const std::vector<std::function<cutlass::Status(ConvAllParams)>>& all_func,

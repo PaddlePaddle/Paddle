@@ -234,7 +234,7 @@ int ProfileToGetBestConfig(
   for (int i = 0; i < all_func.size(); i++) {
     cutlass::Status status;
     auto func = all_func[i];
-    // when func may be large diff, we will make it nullptr
+    // When func has large diff, we will make it nullptr.
     if (!func) continue;
 
     for (int ii = 0; ii < WARMUP; ii++) {
