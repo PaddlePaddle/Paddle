@@ -972,29 +972,40 @@ class ShardingPass(PassBase):
                         # new_op._set_attr(
                         #     'op_namescope', str('/') + ParallelMode.DataParallel
                         # )
-                        if src_rank == self.global_rank:
-                            type_ = "send_v2"
-                            slot_name = 'X'
-                        else:
-                            type_ = "recv_v2"
-                            slot_name = 'Out'
                         # FIXME  only support 2 nodes
                         if self.global_rank // nranks_per_node == 0:
                             peer = 1
                         else:
                             peer = 0
 
-                        new_op = main_block._insert_op_without_sync(
-                            index=idx,
-                            type=type_,
-                            inputs={slot_name: broadcast_varname},
-                            attrs={
-                                OP_ROLE_KEY: OpRole.Optimize,
-                                'use_calc_stream': True,
-                                'peer': peer,
-                                'ring_id': inter_node_group.id,
-                            },
-                        )
+                        if src_rank == self.global_rank:
+                            type_ = "send_v2"
+                            slot_name = 'X'
+                            new_op = main_block._insert_op_without_sync(
+                                index=idx,
+                                type=type_,
+                                inputs={slot_name: broadcast_varname},
+                                attrs={
+                                    OP_ROLE_KEY: OpRole.Optimize,
+                                    'use_calc_stream': True,
+                                    'peer': peer,
+                                    'ring_id': inter_node_group.id,
+                                },
+                            )
+                        else:
+                            type_ = "recv_v2"
+                            slot_name = 'Out'
+                            new_op = main_block._insert_op_without_sync(
+                                index=idx,
+                                type=type_,
+                                outputs={slot_name: broadcast_varname},
+                                attrs={
+                                    OP_ROLE_KEY: OpRole.Optimize,
+                                    'use_calc_stream': True,
+                                    'peer': peer,
+                                    'ring_id': inter_node_group.id,
+                                },
+                            )
 
                         if self.enable_overlap:
                             new_op.dist_attr.execution_stream = comm_stream
