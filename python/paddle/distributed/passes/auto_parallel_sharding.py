@@ -954,24 +954,46 @@ class ShardingPass(PassBase):
                     intra_node_src = src_rank % nranks_per_node
 
                     if in_peer:
-                        inter_node_src = src_rank // nranks_per_node
+                        # inter_node_src = src_rank // nranks_per_node
+                        # new_op = main_block._insert_op_without_sync(
+                        #     idx,
+                        #     type="c_broadcast",
+                        #     inputs={"X": broadcast_varname},
+                        #     outputs={
+                        #         "Out": broadcast_varname,
+                        #     },
+                        #     attrs={
+                        #         'ring_id': inter_node_group.id,
+                        #         'root': inter_node_src,
+                        #         'use_calc_stream': True,
+                        #         OP_ROLE_KEY: OpRole.Optimize,
+                        #     },
+                        # )
+                        # new_op._set_attr(
+                        #     'op_namescope', str('/') + ParallelMode.DataParallel
+                        # )
+                        if src_rank == self.global_rank:
+                            type_ = "send_v2"
+                        else:
+                            type_ = "recv_v2"
+                        # FIXME  only support 2 nodes
+                        if self.global_rank // nranks_per_node == 0:
+                            peer = 1
+                        else:
+                            peer = 0
+
                         new_op = main_block._insert_op_without_sync(
-                            idx,
-                            type="c_broadcast",
-                            inputs={"X": broadcast_varname},
-                            outputs={
-                                "Out": broadcast_varname,
-                            },
+                            index=idx,
+                            type=type_,
+                            inputs={'X': broadcast_varname},
                             attrs={
-                                'ring_id': inter_node_group.id,
-                                'root': inter_node_src,
-                                'use_calc_stream': True,
                                 OP_ROLE_KEY: OpRole.Optimize,
+                                'use_calc_stream': True,
+                                'peer': peer,
+                                'ring_id': inter_node_group.id,
                             },
                         )
-                        new_op._set_attr(
-                            'op_namescope', str('/') + ParallelMode.DataParallel
-                        )
+
                         if self.enable_overlap:
                             new_op.dist_attr.execution_stream = comm_stream
 
