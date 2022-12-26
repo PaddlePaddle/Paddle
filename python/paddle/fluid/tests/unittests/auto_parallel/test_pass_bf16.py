@@ -142,10 +142,16 @@ class TestBF16Pass(unittest.TestCase):
         fp32_losses = np.array(history.history["loss"])
 
         bf16_o1_engine = self.get_engine(True)
-        history = bf16_o1_engine.fit(
-            self.dataset, 1, batch_size=self.batch_size, steps_per_epoch=10
-        )
-        bf16_o1_losses = np.array(history.history["loss"])
+        (
+            bf16_o1_engine._inputs_spec,
+            bf16_o1_engine._labels_spec,
+        ) = bf16_o1_engine._prepare_data_spec(self.dataset, 1, self.batch_size)
+        bf16_o1_engine._prepare_program("train")
+        # print(bf16_o1_engine._dist_main_progs["train"])
+        # history = bf16_o1_engine.fit(
+        #     self.dataset, 1, batch_size=self.batch_size, steps_per_epoch=10
+        # )
+        # bf16_o1_losses = np.array(history.history["loss"])
         # bf16_o1_engine.evaluate(
         #     self.eval_dataset, 1, batch_size=self.batch_size
         # )
