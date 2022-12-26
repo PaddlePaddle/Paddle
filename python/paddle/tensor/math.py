@@ -4119,7 +4119,7 @@ def atan2(x, y, name=None):
         return out
 
 
-def logit(x, eps=0.0, name=None):
+def logit(x, eps=None, name=None):
     r"""
     This function generates a new tensor with the logit of the elements of input x. x is clamped to [eps, 1-eps] when eps is not zero. When eps is zero and x < 0 or x > 1, the function will yields NaN.
 
@@ -4159,6 +4159,8 @@ def logit(x, eps=0.0, name=None):
             # [-1.0277, -4.5365, -0.9544, -1.3269,  1.4468]
 
     """
+    if eps is None:
+        eps = 0.0
     if in_dygraph_mode():
         return _C_ops.logit(x, eps)
     else:

@@ -268,7 +268,7 @@ def create_tensor(dtype, name=None, persistable=False):
     )
 
 
-def linspace(start, stop, num, dtype='float32', name=None):
+def linspace(start, stop, num, dtype=None, name=None):
     r"""
     Return fixed number of evenly spaced values within a given interval. Note: no gradient calculation is performed.
 
@@ -296,6 +296,8 @@ def linspace(start, stop, num, dtype='float32', name=None):
              data = paddle.linspace(0, 10, 1, 'float32') # [0.0]
 
     """
+    if dtype is None:
+        dtype = 'float32'
     tensor_num = num
     tensor_start = start
     tensor_stop = stop
@@ -984,7 +986,7 @@ def zeros_like(x, dtype=None, name=None):
     return full_like(x=x, fill_value=0, dtype=dtype, name=name)
 
 
-def eye(num_rows, num_columns=None, dtype='float32', name=None):
+def eye(num_rows, num_columns=None, dtype=None, name=None):
     """
 
     This function constructs 2-D Tensor with ones on the diagonal and zeros elsewhere.
@@ -1023,6 +1025,8 @@ def eye(num_rows, num_columns=None, dtype='float32', name=None):
 
     _check_attr(num_rows, "num_rows")
 
+    if dtype is None:
+        dtype = 'float32'
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
     if num_columns is not None:
@@ -1117,7 +1121,7 @@ def full(shape, fill_value, dtype=None, name=None):
     return fill_constant(shape=shape, dtype=dtype, value=fill_value, name=name)
 
 
-def arange(start=0, end=None, step=1, dtype='int64', name=None):
+def arange(start=0, end=None, step=1, dtype=None, name=None):
     """
     Returns a 1-D Tensor with spaced values within a given interval.
 
@@ -1171,6 +1175,8 @@ def arange(start=0, end=None, step=1, dtype='int64', name=None):
             # [3, 4, 5, 6]
 
     """
+    if dtype is None:
+        dtype = 'int64'
     if end is None:
         end = start
         start = 0
