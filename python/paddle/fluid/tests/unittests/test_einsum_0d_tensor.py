@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
 from numpy.testing import assert_allclose
 
 import paddle
+
+os.environ['NVIDIA_TF32_OVERRIDE'] = "0"
 
 
 class Test0DCase0(unittest.TestCase):
