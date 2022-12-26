@@ -318,4 +318,5 @@ def destroy_process_group_custom():
         gid (int): The process group id. Default value : 0.
 
     """
-    core.ProcessGroupCustom.destory()
+    if 'npu' in paddle.device.get_all_custom_device_type():
+        core.ProcessGroupCustom.destory()
