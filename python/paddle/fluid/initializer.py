@@ -400,24 +400,6 @@ class NormalInitializer(Initializer):
             out_var._share_underline_tensor_to(var)
             return None
 
-        if _in_legacy_dygraph():
-            out_var = _legacy_C_ops.gaussian_random(
-                'shape',
-                var.shape,
-                'dtype',
-                var.dtype,
-                'mean',
-                self._mean,
-                'std',
-                self._std_dev,
-                'seed',
-                self._seed,
-                'use_mkldnn',
-                False,
-            )
-
-            out_var._share_underline_tensor_to(var)
-            return None
         else:
             op = block.append_op(
                 type="gaussian_random",
