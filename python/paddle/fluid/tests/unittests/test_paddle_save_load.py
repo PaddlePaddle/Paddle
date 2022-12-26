@@ -22,12 +22,14 @@ from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 import paddle.nn as nn
 import paddle.optimizer as opt
-from paddle.fluid.core.eager import Tensor
 from paddle.fluid.optimizer import Adam
 from paddle.optimizer.lr import LRScheduler
+
+Tensor = core.eager.Tensor
 
 BATCH_SIZE = 16
 BATCH_NUM = 4

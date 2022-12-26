@@ -27,7 +27,8 @@ from .. import framework
 import numpy as np
 import warnings
 from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid.core.eager import Tensor
+
+Tensor = core.eager.Tensor
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.UINT8,

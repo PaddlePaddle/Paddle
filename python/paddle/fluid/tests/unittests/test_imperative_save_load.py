@@ -20,11 +20,12 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.core.eager import Tensor
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.learning_rate_scheduler import LearningRateDecay
 from paddle.fluid.optimizer import Adam
 from paddle.nn import Embedding
+
+Tensor = core.eager.Tensor
 
 
 class SimpleLSTMRNN(fluid.Layer):

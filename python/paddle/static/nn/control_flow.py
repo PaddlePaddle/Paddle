@@ -24,7 +24,6 @@ from paddle.common_ops_import import (
     check_variable_and_dtype,
     convert_dtype,
 )
-from paddle.fluid.core.eager import Tensor
 from paddle.fluid.framework import Operator, Program, Variable
 
 # Temporary solution, it will be deleted later
@@ -40,6 +39,8 @@ from paddle.fluid.layers.utils import (
     pack_sequence_as,
     to_sequence,
 )
+
+Tensor = core.eager.Tensor
 
 
 def Assert(cond, data=None, summarize=20, name=None):

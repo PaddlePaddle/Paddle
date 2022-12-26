@@ -21,10 +21,11 @@ from paddle.autograd import PyLayer
 from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
     get_rng_state_tracker,
 )
-from paddle.fluid.core.eager import Tensor
 from paddle.framework import core, in_dygraph_mode
 
 from ..utils.log_util import logger
+
+Tensor = core.eager.Tensor
 
 __all__ = []
 

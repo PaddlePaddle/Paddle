@@ -25,7 +25,6 @@ from paddle.fluid.contrib.mixed_precision.fp16_utils import (
     cast_model_to_fp16,
     rewrite_program,
 )
-from paddle.fluid.core.eager import Tensor
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.amp.auto_cast import (
     _in_amp_guard,
@@ -41,6 +40,8 @@ from paddle.fluid.layers.utils import _hash_with_id, flatten, pack_sequence_as
 
 from . import logging_utils
 from .return_transformer import RETURN_NO_VALUE_MAGIC_NUM
+
+Tensor = core.eager.Tensor
 
 __all__ = []
 

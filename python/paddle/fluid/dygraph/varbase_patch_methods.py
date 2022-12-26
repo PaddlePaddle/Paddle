@@ -41,7 +41,8 @@ from paddle.profiler.utils import in_profiler_mode
 from paddle import _C_ops, _legacy_C_ops
 from paddle.device import get_all_custom_device_type
 from paddle.fluid.framework import _global_flags
-from paddle.fluid.core.eager import Tensor
+
+Tensor = core.eager.Tensor
 
 _grad_scalar = None
 

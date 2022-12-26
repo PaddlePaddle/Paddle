@@ -32,7 +32,8 @@ from ..framework import (
 )
 import paddle
 import warnings
-from paddle.fluid.core.eager import Tensor
+
+Tensor = core.eager.Tensor
 
 __all__ = [
     'no_grad',

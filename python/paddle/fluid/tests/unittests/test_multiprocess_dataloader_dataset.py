@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.core.eager import Tensor
+import paddle.fluid.core as core
 from paddle.io import (
     ChainDataset,
     ComposeDataset,
@@ -27,6 +27,8 @@ from paddle.io import (
     IterableDataset,
     TensorDataset,
 )
+
+Tensor = core.eager.Tensor
 
 IMAGE_SIZE = 32
 

@@ -14,10 +14,11 @@
 
 import paddle
 from paddle.fluid import Variable, core
-from paddle.fluid.core.eager import Tensor
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.framework import convert_np_dtype_to_dtype_, static_only
 from paddle.fluid.layer_helper import LayerHelper
+
+Tensor = core.eager.Tensor
 
 __all__ = []
 

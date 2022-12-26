@@ -66,7 +66,8 @@ from ..fluid.framework import (
     in_dygraph_mode,
     _current_expected_place,
 )
-from paddle.fluid.core.eager import Tensor
+
+Tensor = core.eager.Tensor
 
 __all__ = [
     'SGD',

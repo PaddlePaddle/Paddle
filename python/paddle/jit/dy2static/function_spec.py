@@ -18,7 +18,7 @@ import inspect
 import numpy as np
 
 import paddle
-from paddle.fluid.core.eager import Tensor
+from paddle.fluid import core
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.layers.utils import flatten, pack_sequence_as
@@ -31,6 +31,8 @@ from .utils import (
     parse_varargs_name,
     type_name,
 )
+
+Tensor = core.eager.Tensor
 
 __all__ = []
 

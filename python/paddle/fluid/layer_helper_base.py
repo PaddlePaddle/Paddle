@@ -28,7 +28,8 @@ from . import unique_name
 from .param_attr import ParamAttr, WeightNormParamAttr
 from . import core
 from .initializer import _global_weight_initializer, _global_bias_initializer
-from paddle.fluid.core.eager import Tensor
+
+Tensor = core.eager.Tensor
 
 __all__ = ['LayerHelperBase']
 

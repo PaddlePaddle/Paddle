@@ -15,8 +15,8 @@
 # TODO: define logic functions of a tensor
 
 import paddle
+import paddle.fluid.core as core
 from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid.core.eager import Tensor
 from paddle.tensor.creation import full
 
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
@@ -25,6 +25,7 @@ from ..framework import LayerHelper, in_dygraph_mode
 from ..static import Variable
 from .layer_function_generator import templatedoc
 
+Tensor = core.eager.Tensor
 __all__ = []
 
 

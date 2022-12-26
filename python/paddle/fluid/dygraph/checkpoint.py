@@ -35,7 +35,8 @@ from paddle.jit.translated_layer import (
     _construct_program_holders,
     _construct_params_and_buffers,
 )
-from paddle.fluid.core.eager import Tensor
+
+Tensor = core.eager.Tensor
 
 __all__ = [
     'save_dygraph',

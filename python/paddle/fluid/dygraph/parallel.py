@@ -35,7 +35,8 @@ from paddle.fluid.framework import (
     _non_static_mode,
     in_dygraph_mode,
 )
-from paddle.fluid.core.eager import Tensor
+
+Tensor = core.eager.Tensor
 
 __all__ = ["ParallelEnv", "DataParallel"]
 

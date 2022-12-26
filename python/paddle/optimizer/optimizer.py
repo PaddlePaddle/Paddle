@@ -20,7 +20,6 @@ import numpy as np
 import paddle
 from paddle import _C_ops
 from paddle.fluid import core
-from paddle.fluid.core.eager import Tensor
 from paddle.fluid.framework import (
     Variable,
     _current_expected_place,
@@ -44,6 +43,7 @@ from ..fluid.initializer import Constant
 from ..fluid.layer_helper import LayerHelper
 from .lr import LRScheduler
 
+Tensor = core.eager.Tensor
 __all__ = []
 
 

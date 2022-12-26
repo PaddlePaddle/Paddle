@@ -20,7 +20,6 @@ import numpy as np
 import paddle
 from paddle import _legacy_C_ops
 from paddle.fluid import backward, core, framework, unique_name
-from paddle.fluid.core.eager import Tensor
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.executor import (
@@ -33,6 +32,8 @@ from paddle.jit.dy2static.partial_program import (
     LazyInitialized,
     add_build_strategy_for,
 )
+
+Tensor = core.eager.Tensor
 
 __all__ = []
 

@@ -27,7 +27,6 @@ import paddle.utils as utils
 from paddle import fluid, static
 from paddle.distributed import fleet
 from paddle.fluid import Variable, core
-from paddle.fluid.core.eager import Tensor
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.fluid.executor import _to_name_str, global_scope
 from paddle.fluid.framework import Operator
@@ -55,6 +54,8 @@ from .parallelizer_v2 import Parallelizer
 from .planner_v2 import Planner
 from .process_group import get_all_process_groups, new_process_group
 from .strategy import Strategy
+
+Tensor = core.eager.Tensor
 
 
 class Engine:

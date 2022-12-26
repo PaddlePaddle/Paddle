@@ -27,7 +27,6 @@ import paddle
 # deprecated module import
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.core.eager import Tensor
 from paddle.fluid.framework import (
     ParamBase,
     Program,
@@ -52,6 +51,8 @@ from paddle.jit.translated_layer import (
     _construct_params_and_buffers,
     _construct_program_holders,
 )
+
+Tensor = core.eager.Tensor
 
 __all__ = []
 

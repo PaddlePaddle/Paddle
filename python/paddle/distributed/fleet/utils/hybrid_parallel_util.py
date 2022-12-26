@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import paddle
+import paddle.fluid.core as core
 from paddle import framework
 
 # (TODO: GhostScreaming) It will be removed later.
-from paddle.fluid.core.eager import Tensor
 from paddle.framework import (
     _split_tensors,
     build_groups,
@@ -25,6 +25,8 @@ from paddle.framework import (
 )
 
 from .log_util import logger
+
+Tensor = core.eager.Tensor
 
 __all__ = []
 

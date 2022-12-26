@@ -61,7 +61,8 @@ from .dataloader import *
 from . import core
 from paddle.utils import deprecated
 from paddle.fluid.framework import static_only
-from paddle.fluid.core.eager import Tensor
+
+Tensor = core.eager.Tensor
 
 batch = paddle.batch
 

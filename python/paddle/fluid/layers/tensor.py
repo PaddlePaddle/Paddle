@@ -39,7 +39,8 @@ from paddle.utils import deprecated
 
 from .utils import check_shape
 from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid.core.eager import Tensor
+
+Tensor = core.eager.Tensor
 
 __all__ = [
     'cast',

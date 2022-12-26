@@ -23,7 +23,6 @@ import numpy as np
 import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.common_ops_import import fill_constant
-from paddle.fluid.core.eager import Tensor
 
 from ..fluid.data_feeder import (
     check_dtype,
@@ -50,6 +49,7 @@ from ..framework import (
     in_dygraph_mode,
 )
 
+Tensor = core.eager.Tensor
 __all__ = []
 
 

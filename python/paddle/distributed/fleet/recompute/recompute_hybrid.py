@@ -15,7 +15,6 @@
 import paddle
 from paddle.autograd import PyLayer
 from paddle.fluid import core, framework
-from paddle.fluid.core.eager import Tensor
 
 from ..meta_parallel.parallel_layers.random import get_rng_state_tracker
 from ..meta_parallel.pp_utils import utils
@@ -24,6 +23,8 @@ from .recompute import (
     detach_variable,
     swith_rng_state_tracker,
 )
+
+Tensor = core.eager.Tensor
 
 __all__ = []
 

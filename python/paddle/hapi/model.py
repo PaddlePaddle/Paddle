@@ -29,7 +29,6 @@ from paddle import fluid
 from paddle.autograd import no_grad
 from paddle.distributed.fleet.base import role_maker
 from paddle.fluid import core
-from paddle.fluid.core.eager import Tensor
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.fluid.executor import global_scope
@@ -47,6 +46,7 @@ from paddle.static import InputSpec as Input
 from .callbacks import EarlyStopping, config_callbacks
 from .model_summary import summary
 
+Tensor = core.eager.Tensor
 __all__ = []
 
 _parallel_context_initialized = False
