@@ -131,6 +131,12 @@ if(WITH_ONNXRUNTIME)
       ${CMAKE_CURRENT_SOURCE_DIR}/api/onnxruntime_predictor.cc)
 endif()
 
+if(WITH_LITE)
+  set(SHARED_INFERENCE_SRCS
+      ${SHARED_INFERENCE_SRCS}
+      ${CMAKE_CURRENT_SOURCE_DIR}/api/paddlelite_predictor.cc)
+endif()
+
 #export all symbols for paddle/phi/api/include/api.h on paddle_inference_shared, only for UNIX
 if(UNIX)
   set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS}

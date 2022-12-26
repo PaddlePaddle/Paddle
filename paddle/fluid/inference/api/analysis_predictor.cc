@@ -81,6 +81,10 @@
 #include "paddle/fluid/inference/api/onnxruntime_predictor.h"
 #endif
 
+#ifdef PADDLE_WITH_LITE
+#include "paddle/fluid/inference/api/paddlelite_predictor.h"
+#endif
+
 #ifdef PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
@@ -2405,6 +2409,22 @@ Predictor::Predictor(const Config &config) {
         << "The onnxruntime backend isn't enabled,"
            " and please re-compile Paddle with WITH_ONNXRUNTIME option,"
            "fall back to using Paddle Inference.";
+#endif
+  }
+  if (config.lite_engine_enabled() &&
+      !config.lite_engine_enabled_with_subgraph()) {
+#ifdef PADDLE_WITH_LITE
+    LOG(INFO) << "The paddlelite backend is enabled, "
+                 " and create the paddleLite predictor";
+    predictor_ =
+        paddle::CreatePaddlePredictor<Config,
+                                      paddle::PaddleEngineKind::kPaddleLite>(
+            config);
+    return;
+#else
+    LOG(WARNING) << "The paddlelite backend isn't enabled,"
+                    " and please re-compile Paddle with WITH_LITE option,"
+                    "fall back to using Paddle Inference.";
 #endif
   }
   predictor_ =

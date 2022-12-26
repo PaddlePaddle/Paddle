@@ -88,6 +88,13 @@ if(WITH_ONNXRUNTIME)
          model_utils
          onnxruntime
          paddle2onnx)
+elseif(WITH_LITE)
+  cc_library(
+    analysis_predictor
+    SRCS analysis_predictor.cc paddlelite_predictor.cc resource_manager.cc
+         infer_context.cc ${mkldnn_quantizer_src}
+    DEPS ${inference_deps} zero_copy_tensor ir_pass_manager op_compatible_info
+         infer_io_utils model_utils)
 else()
   cc_library(
     analysis_predictor

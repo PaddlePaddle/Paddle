@@ -196,6 +196,7 @@ class PD_INFER_DECL ZeroCopyTensor : public paddle_infer::Tensor {
  private:
   friend class AnalysisPredictor;
   friend class ONNXRuntimePredictor;
+  friend class PaddleLitePredictor;
   explicit ZeroCopyTensor(void* scope, const void* device_contexts)
       : paddle_infer::Tensor{scope, device_contexts} {}
 };
@@ -408,6 +409,7 @@ enum class PaddleEngineKind {
   kAutoMixedTensorRT,  ///< Automatically mix Fluid with TensorRT.
   kAnalysis,           ///< More optimization.
   kONNXRuntime,        ///< Use ONNXRuntime
+  kPaddleLite,         ///< Use PaddleLite library.
 };
 
 template <typename ConfigT, PaddleEngineKind engine>
@@ -427,6 +429,11 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
 template <>
 PD_INFER_DECL std::unique_ptr<PaddlePredictor>
 CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kONNXRuntime>(
+    const AnalysisConfig& config);
+
+template <>
+PD_INFER_DECL std::unique_ptr<PaddlePredictor>
+CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kPaddleLite>(
     const AnalysisConfig& config);
 
 PD_INFER_DECL int PaddleDtypeSize(PaddleDType dtype);

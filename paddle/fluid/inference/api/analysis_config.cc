@@ -1182,13 +1182,19 @@ void AnalysisConfig::EnableLiteEngine(
     AnalysisConfig::Precision precision_mode,
     bool zero_copy,
     const std::vector<std::string> &passes_filter,
-    const std::vector<std::string> &ops_filter) {
+    const std::vector<std::string> &ops_filter,
+    bool use_lite_engine_with_subgraph) {
   use_lite_ = true;
   lite_precision_mode_ = precision_mode;
   lite_passes_filter_ = passes_filter;
   lite_ops_filter_ = ops_filter;
   lite_zero_copy_ = zero_copy;
+  use_lite_engine_with_subgraph_ = use_lite_engine_with_subgraph;
   Update();
+}
+
+AnalysisConfig::Precision AnalysisConfig::GetLitePrecisionMode() const {
+  return lite_precision_mode_;
 }
 
 void AnalysisConfig::EnableOpenCL() {

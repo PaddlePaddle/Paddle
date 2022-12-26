@@ -47,6 +47,10 @@
 #include "paddle/fluid/inference/api/onnxruntime_predictor.h"
 #endif
 
+#ifdef PADDLE_WITH_LITE
+#include "paddle/fluid/inference/api/paddlelite_predictor.h"
+#endif
+
 namespace py = pybind11;
 
 namespace pybind11 {
@@ -790,7 +794,8 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
            py::arg("zero_copy") = false,
            py::arg("passes_filter") = std::vector<std::string>(),
-           py::arg("ops_filter") = std::vector<std::string>())
+           py::arg("ops_filter") = std::vector<std::string>(),
+           py::arg("use_lite_engine_with_subgraph") = true)
       .def("enable_opencl", &AnalysisConfig::EnableOpenCL)
       .def("lite_engine_enabled", &AnalysisConfig::lite_engine_enabled)
       .def("switch_ir_debug",
