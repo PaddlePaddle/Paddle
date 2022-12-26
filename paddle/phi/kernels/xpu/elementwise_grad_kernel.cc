@@ -29,15 +29,21 @@ void MaximumGradKernel(const Context& dev_ctx,
                        DenseTensor* dx,
                        DenseTensor* dy) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  XPUElementwiseGrad<T, XPUType>(dev_ctx,
-                                 x,
-                                 y,
-                                 dout,
-                                 axis,
-                                 dx,
-                                 dy,
-                                 xpu::broadcast_max_grad<XPUType>,
-                                 true);
+
+  auto f = [](xpu::Context* ctx,
+              const XPUType* x,
+              const XPUType* y,
+              const XPUType* z,
+              const XPUType* dz,
+              XPUType* dy,
+              XPUType* dx,
+              const std::vector<int>& xshape,
+              const std::vector<int>& yshape) {
+    return xpu::broadcast_max_grad<XPUType>(
+        ctx, x, y, z, dz, dy, dx, xshape, yshape);
+  };
+
+  XPUElementwiseGrad<T, XPUType>(dev_ctx, x, y, dout, axis, dx, dy, f, true);
 }
 
 template <typename T, typename Context>
@@ -49,15 +55,21 @@ void MinimumGradKernel(const Context& dev_ctx,
                        DenseTensor* dx,
                        DenseTensor* dy) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  XPUElementwiseGrad<T, XPUType>(dev_ctx,
-                                 x,
-                                 y,
-                                 dout,
-                                 axis,
-                                 dx,
-                                 dy,
-                                 xpu::broadcast_min_grad<XPUType>,
-                                 true);
+
+  auto f = [](xpu::Context* ctx,
+              const XPUType* x,
+              const XPUType* y,
+              const XPUType* z,
+              const XPUType* dz,
+              XPUType* dy,
+              XPUType* dx,
+              const std::vector<int>& xshape,
+              const std::vector<int>& yshape) {
+    return xpu::broadcast_min_grad<XPUType>(
+        ctx, x, y, z, dz, dy, dx, xshape, yshape);
+  };
+
+  XPUElementwiseGrad<T, XPUType>(dev_ctx, x, y, dout, axis, dx, dy, f, true);
 }
 
 }  // namespace phi
