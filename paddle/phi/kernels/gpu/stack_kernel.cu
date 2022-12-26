@@ -25,7 +25,7 @@ namespace phi {
 template <typename IndexT>
 struct DivmodWarpper {
  public:
-  void SetDivden(IndexT divisor) { divmoder = phi::funcs::FastDivMod(divisor); }
+  void SetDivisor(IndexT divisor) { divmoder = phi::funcs::FastDivMod(divisor); }
   __device__ inline phi::funcs::FastDivMod::DivModT div_mod(IndexT val) {
     return divmoder.Divmod(val);
   }
@@ -39,7 +39,7 @@ struct DivmodWarpper<int64_t> {
  public:
   using DivModT = phi::AlignedVector<int64_t, 2>;
 
-  void SetDivden(int64_t divisor) { dividen_ = divisor; }
+  void SetDivisor(int64_t divisor) { dividen_ = divisor; }
   __device__ inline DivModT div_mod(int64_t val) {
     DivModT data;
     data[0] = val / dividen_;
@@ -58,7 +58,7 @@ struct PointerArray : public DivmodWarpper<IndexT> {
   PointerArray(const std::vector<const DenseTensor*>& x,
                int num,
                IndexT divisor) {
-    this->SetDivden(divisor);
+    this->SetDivisor(divisor);
     for (auto i = 0; i < num; ++i) {
       data[i] = x[i]->data<T>();
     }
@@ -72,26 +72,34 @@ struct PointerToPointer : public DivmodWarpper<IndexT> {
   PointerToPointer(const Context& ctx,
                    const std::vector<const DenseTensor*>& x,
                    IndexT num,
-                   IndexT divisor,
-                   const paddle::memory::AllocationPtr& ins_gpu_ptr) {
-    this->SetDivden(divisor);
+                   IndexT divisor) {
+    this->SetDivisor(divisor);
     auto byte_len = num * sizeof(T*);
     std::vector<const T*> x_datas(num);
     for (int i = 0; i < num; ++i) {
       x_datas[i] = x[i]->data<T>();
     }
+
+    auto tmp_ins_ptr = paddle::memory::Alloc(
+      ctx.GetPlace(),
+      num * sizeof(T*),
+      phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+    *tmp_dev_ins_ptr = std::move(tmp_ins_ptr);
     paddle::memory::Copy(ctx.GetPlace(),
-                         ins_gpu_ptr->ptr(),
+                         (*tmp_dev_ins_ptr)->ptr(),
                          phi::CPUPlace(),
                          reinterpret_cast<void*>(x_datas.data()),
                          x_datas.size() * sizeof(T*),
                          ctx.stream());
-    data = reinterpret_cast<T**>(ins_gpu_ptr->ptr());
+    data = reinterpret_cast<T**>((*tmp_dev_ins_ptr)->ptr());
   }
+
+ private : 
+  paddle::memory::AllocationPtr* tmp_dev_ins_ptr{nullptr};
 };
 
-template <typename T, typename IndexT, typename WarpT>
-__global__ void StackCUDAKernel(WarpT input_warpper,
+template <typename T, typename IndexT, typename WrapT>
+__global__ void StackCUDAKernel(WrapT input_warpper,
                                 IndexT split_size,
                                 IndexT rows,
                                 IndexT cols,
@@ -113,14 +121,60 @@ __global__ void StackCUDAKernel(WarpT input_warpper,
   }
 }
 
+template <typename T, typename IndexT, typename Context>
+void LaunchStackCUDAKernel(const Context& ctx,
+                           const IndexT x_col,
+                           const IndexT x_row,
+                           const IndexT out_col,
+                           const phi::backends::gpu::GpuLaunchConfig& cfg,
+                           const std::vector<const DenseTensor*>& x,
+                           T* dst_data) {
+  int num = static_cast<int>(x.size());
+
+#define IMPL_STACK_CUDA_KERNEL_CASE(size_, ...)    \
+  case size_: {                                             \
+    PointerArray<T, IndexT, size_> ptr_array(x, num, x_col);\
+    __VA_ARGS__;                                            \
+  } break;
+
+#define IMPL_STACK_CUDA_KERNEL_HELPER(...)  \
+  IMPL_STACK_CUDA_KERNEL_CASE(4,   ##__VA_ARGS__); \
+  IMPL_STACK_CUDA_KERNEL_CASE(8,   ##__VA_ARGS__); \
+  IMPL_STACK_CUDA_KERNEL_CASE(16,  ##__VA_ARGS__); \
+  IMPL_STACK_CUDA_KERNEL_CASE(32,  ##__VA_ARGS__); \
+  IMPL_STACK_CUDA_KERNEL_CASE(64,  ##__VA_ARGS__); \
+  IMPL_STACK_CUDA_KERNEL_CASE(128, ##__VA_ARGS__);
+  
+  switch (phi::backends::gpu::RoundToNextHighPowOfTwo(num, 4)) {
+    IMPL_STACK_CUDA_KERNEL_HELPER(
+      StackCUDAKernel<T, IndexT, decltype(ptr_array)>
+        <<<cfg.block_per_grid, cfg.thread_per_block, 0, ctx.stream()>>>(ptr_array,                    
+                           x_col,  
+                           x_row,  
+                           out_col,
+                           dst_data));
+    default : {
+      PointerToPointer<Context, T, IndexT> ptr_array(ctx, x, num, x_col);
+      StackCUDAKernel<T, IndexT, decltype(ptr_array)>     
+        <<<cfg.block_per_grid, cfg.thread_per_block, 0, ctx.stream()>>>(ptr_array,                    
+                           x_col,  
+                           x_row,  
+                           out_col,
+                           dst_data);
+    }
+  }
+#undef IMPL_STACK_CUDA_KERNEL_HELPER
+#undef IMPL_STACK_CUDA_KERNEL_CASE
+}
+
 template <typename T, typename Context>
 void StackKernel(const Context& dev_ctx,
                  const std::vector<const DenseTensor*>& x,
                  int axis,
                  DenseTensor* out) {
   if (axis < 0) axis += (x[0]->dims().size() + 1);
-  int n = static_cast<int>(x.size());
-  T* y_data = dev_ctx.template Alloc<T>(out);
+  int num = static_cast<int>(x.size());
+  T* dst_data = dev_ctx.template Alloc<T>(out);
 
   // Split x dim from axis to matrix
   int64_t x_row = 1, x_col = 1;
@@ -128,67 +182,14 @@ void StackKernel(const Context& dev_ctx,
     x_row *= x[0]->dims()[i];
   }
   x_col = x[0]->numel() / x_row;
-  int64_t out_col = x_col * n;
-  auto config =
-      phi::backends::gpu::GetGpuLaunchConfig2D(dev_ctx, out_col, x_row);
-
-  // Impl stack kernel with macro.
-#define IMPL_STACK_CUDA_KERNEL_CASE(size_, index_t, ...)    \
-  case size_: {                                             \
-    PointerArray<T, index_t, size_> ptr_array(x, n, x_col); \
-    __VA_ARGS__;                                            \
-  } break;
-
-#define IMPL_STACK_CUDA_KERNEL_HELPER(index_t, ...)        \
-  IMPL_STACK_CUDA_KERNEL_CASE(4, index_t, ##__VA_ARGS__);  \
-  IMPL_STACK_CUDA_KERNEL_CASE(8, index_t, ##__VA_ARGS__);  \
-  IMPL_STACK_CUDA_KERNEL_CASE(16, index_t, ##__VA_ARGS__); \
-  IMPL_STACK_CUDA_KERNEL_CASE(32, index_t, ##__VA_ARGS__); \
-  IMPL_STACK_CUDA_KERNEL_CASE(64, index_t, ##__VA_ARGS__); \
-  IMPL_STACK_CUDA_KERNEL_CASE(128, index_t, ##__VA_ARGS__);
-
-#define IMPL_STACK_CUDA_KERNEL(index_t)                     \
-  StackCUDAKernel<T, index_t, decltype(ptr_array)>          \
-      <<<config.block_per_grid,                             \
-         config.thread_per_block,                           \
-         0,                                                 \
-         dev_ctx.stream()>>>(ptr_array,                     \
-                             static_cast<index_t>(x_col),   \
-                             static_cast<index_t>(x_row),   \
-                             static_cast<index_t>(out_col), \
-                             y_data);
+  int64_t out_col = x_col * num;
+  auto config = phi::backends::gpu::GetGpuLaunchConfig2D(dev_ctx, out_col, x_row);
 
   if (out->numel() < std::numeric_limits<int32_t>::max()) {
-    switch (phi::backends::gpu::RoundToNextHighPowOfTwo(n, 4)) {
-      IMPL_STACK_CUDA_KERNEL_HELPER(int32_t, IMPL_STACK_CUDA_KERNEL(int32_t));
-      default: {
-        auto tmp_ins_ptr = paddle::memory::Alloc(
-            dev_ctx.GetPlace(),
-            n * sizeof(T*),
-            phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-        PointerToPointer<Context, T, int32_t> ptr_array(
-            dev_ctx, x, n, x_col, tmp_ins_ptr);
-        IMPL_STACK_CUDA_KERNEL(int32_t);
-      }
-    }
+    LaunchStackCUDAKernel<T, int32_t, Context>(dev_ctx, x_col, x_row, out_col, config, x, dst_data);
   } else {
-    switch (phi::backends::gpu::RoundToNextHighPowOfTwo(n, 4)) {
-      IMPL_STACK_CUDA_KERNEL_HELPER(int64_t, IMPL_STACK_CUDA_KERNEL(int64_t));
-      default: {
-        auto tmp_ins_ptr = paddle::memory::Alloc(
-            dev_ctx.GetPlace(),
-            n * sizeof(T*),
-            phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-        PointerToPointer<Context, T, int64_t> ptr_array(
-            dev_ctx, x, n, x_col, tmp_ins_ptr);
-        IMPL_STACK_CUDA_KERNEL(int64_t);
-      }
-    }
+    LaunchStackCUDAKernel<T, int64_t, Context>(dev_ctx, x_col, x_row, out_col, config, x, dst_data);
   }
-
-#undef IMPL_STACK_CUDA_KERNEL_HELPER
-#undef IMPL_STACK_CUDA_KERNEL_CASE
-#undef IMPL_STACK_CUDA_KERNEL
 }
 }  // namespace phi
 
@@ -198,7 +199,10 @@ PD_REGISTER_KERNEL(stack,
                    phi::StackKernel,
                    float,
                    double,
+                   bool,
                    int64_t,
                    int,
+                   uint8_t,
+                   int8_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}

@@ -13,9 +13,8 @@
 # limitations under the License.
 
 from paddle import _legacy_C_ops
-from paddle.fluid import core
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
 
 
@@ -43,8 +42,6 @@ def _number_count(numbers, upper_range):
     """
     if in_dygraph_mode():
         return _legacy_C_ops.number_count(numbers, 'upper_range', upper_range)
-    elif _in_legacy_dygraph():
-        return core.ops.number_count(numbers, 'upper_range', upper_range)
     else:
         op_type = 'number_count'
 
@@ -92,8 +89,6 @@ def _assign_pos(x, cum_count):
     """
     if in_dygraph_mode():
         return _legacy_C_ops.assign_pos(x, cum_count, cum_count[-1])
-    elif _in_legacy_dygraph():
-        return core.ops.assign_pos(x, cum_count, cum_count[-1])
     else:
         op_type = 'assign_pos'
 
@@ -129,8 +124,6 @@ def _random_routing(topk_idx, topk_value, prob, topk=2):
     if topk == 2:
         if in_dygraph_mode():
             return _legacy_C_ops.random_routing(prob, topk_value, topk_idx)
-        elif _in_legacy_dygraph():
-            return core.ops.random_routing(prob, topk_value, topk_idx)
         else:
             raise RuntimeError("Not supporting static mode now")
     else:
@@ -160,10 +153,6 @@ def _limit_by_capacity(expert_count, capacity, n_worker):
     """
     if in_dygraph_mode():
         return _legacy_C_ops.limit_by_capacity(
-            expert_count, capacity, 'n_worker', n_worker
-        )
-    elif _in_legacy_dygraph():
-        return core.ops.limit_by_capacity(
             expert_count, capacity, 'n_worker', n_worker
         )
     else:
@@ -211,32 +200,29 @@ def _prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker):
         return _legacy_C_ops.prune_gate_by_capacity(
             gate_idx, expert_count, "n_expert", n_expert, "n_worker", n_worker
         )
-    elif _in_legacy_dygraph():
-        return core.ops.prune_gate_by_capacity(
-            gate_idx, expert_count, "n_expert", n_expert, "n_worker", n_worker
+    else:
+        check_variable_and_dtype(
+            gate_idx,
+            'GateIdx',
+            ['int32', 'int64'],
+            'paddle.distributed.utils.prune_gate_by_capacity',
         )
-    check_variable_and_dtype(
-        gate_idx,
-        'GateIdx',
-        ['int32', 'int64'],
-        'paddle.distributed.utils.prune_gate_by_capacity',
-    )
-    check_variable_and_dtype(
-        expert_count,
-        'ExpertCount',
-        ['int32', 'int64'],
-        'paddle.distributed.utils.prune_gate_by_capacity',
-    )
+        check_variable_and_dtype(
+            expert_count,
+            'ExpertCount',
+            ['int32', 'int64'],
+            'paddle.distributed.utils.prune_gate_by_capacity',
+        )
 
-    helper = LayerHelper('prune_gate_by_capacity', **locals())
-    new_gate_idx = helper.create_variable_for_type_inference(
-        dtype=gate_idx.dtype
-    )
-    helper.append_op(
-        type='prune_gate_by_capacity',
-        inputs={'GateIdx': gate_idx, "ExpertCount": expert_count},
-        outputs={'NewGateIdx': new_gate_idx},
-        attrs={"n_expert": n_expert, "n_worker": n_worker},
-    )
+        helper = LayerHelper('prune_gate_by_capacity', **locals())
+        new_gate_idx = helper.create_variable_for_type_inference(
+            dtype=gate_idx.dtype
+        )
+        helper.append_op(
+            type='prune_gate_by_capacity',
+            inputs={'GateIdx': gate_idx, "ExpertCount": expert_count},
+            outputs={'NewGateIdx': new_gate_idx},
+            attrs={"n_expert": n_expert, "n_worker": n_worker},
+        )
 
-    return new_gate_idx
+        return new_gate_idx

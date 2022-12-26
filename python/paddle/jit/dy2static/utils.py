@@ -13,29 +13,28 @@
 # limitations under the License.
 
 import ast
-import astor
 import atexit
 import copy
-from paddle.utils import gast
-import inspect
 import importlib.util
+import inspect
 import os
-import sys
 import shutil
+import sys
 import tempfile
 import textwrap
+import warnings
+from functools import reduce
+from importlib.machinery import SourceFileLoader
+
+import astor
 import numpy as np
 
 import paddle
-from paddle.fluid import unique_name
+from paddle.fluid import core, unique_name
 from paddle.fluid.data_feeder import convert_dtype
-from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import assign
-from functools import reduce
-from importlib.machinery import SourceFileLoader
-import warnings
-
+from paddle.utils import gast
 
 __all__ = []
 
@@ -263,8 +262,8 @@ def is_api_in_module(node, module_prefix):
         import paddle.fluid.dygraph as dygraph  # noqa: F401
         import paddle.fluid.layers as layers  # noqa: F401
         import paddle.jit.dy2static as _jst  # noqa: F401
-        from paddle.fluid.dygraph import to_variable  # noqa: F401
         from paddle import to_tensor  # noqa: F401
+        from paddle.fluid.dygraph import to_variable  # noqa: F401
 
         return eval(
             "_is_api_in_module_helper({}, '{}')".format(func_str, module_prefix)
@@ -891,9 +890,7 @@ class IsControlFlowVisitor(gast.NodeVisitor):
         return node
 
     def _is_node_with_tensor(self, node, name_id):
-        from paddle.jit.dy2static.static_analysis import (
-            NodeVarType,
-        )
+        from paddle.jit.dy2static.static_analysis import NodeVarType
 
         # Look up the node_var_type_map by name_id.
         if self.node_var_type_map:
@@ -1209,14 +1206,14 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
             """NOTE: why we need merge w_vars and push_pop_vars here ?
             because we do ifelse_transformer after loop_transformer. Loops will changed into functioons. but we know this function will be called in if. so we add w_vars to father function scope.
             """
-            from paddle.jit.dy2static.loop_transformer import (
-                WHILE_BODY_PREFIX,
-                FOR_CONDITION_PREFIX,
-                FOR_BODY_PREFIX,
-            )
             from paddle.jit.dy2static.ifelse_transformer import (
-                TRUE_FUNC_PREFIX,
                 FALSE_FUNC_PREFIX,
+                TRUE_FUNC_PREFIX,
+            )
+            from paddle.jit.dy2static.loop_transformer import (
+                FOR_BODY_PREFIX,
+                FOR_CONDITION_PREFIX,
+                WHILE_BODY_PREFIX,
             )
 
             control_flow_function_def = [

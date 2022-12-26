@@ -57,9 +57,6 @@ def start_local_trainers(
             "PADDLE_DISTRI_CUSTOM_DEVICE_TYPE": "custom_cpu",
         }
 
-        if not eager_mode:
-            proc_env["FLAGS_enable_eager_mode"] = "%d" % 0
-
         current_env.update(proc_env)
 
         print("trainer proc env:{}".format(current_env))

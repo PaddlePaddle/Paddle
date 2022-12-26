@@ -28,7 +28,6 @@
 # TODO: define normalization api
 
 import numbers
-import os
 import warnings
 
 import numpy as np
@@ -133,25 +132,25 @@ class InstanceNorm1D(_InstanceNormBase):
         \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
         y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-Where `H` means height of feature map, `W` means width of feature map.
+    Where `H` means height of feature map, `W` means width of feature map.
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
         epsilon(float, optional): A value added to the denominator for
             numerical stability. Default is 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
-        weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
-            of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
+        weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale` of instance_norm.
+            If it is set to None or one attribute of ParamAttr, instance_norm
             will create ParamAttr as weight_attr, the name of scale can be set in ParamAttr.
             If the Initializer of the weight_attr is not set, the parameter is initialized
-            one. If it is set to False, will not create weight_attr. Default: None.
+            one. If it is set to False, will not create weight_attr. Default: None. For more information, please refer to :ref:`api_paddle_ParamAttr` .
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of instance_norm.
             If it is set to None or one attribute of ParamAttr, instance_norm
             will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
             If the Initializer of the bias_attr is not set, the bias is initialized zero.
-            If it is set to False, will not create bias_attr. Default: None.
+            If it is set to False, will not create bias_attr. Default: None. For more information, please refer to :ref:`api_paddle_ParamAttr` .
         data_format(str, optional): Specify the input data format, may be "NC", "NCL". Default "NCL".
-        name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
+        name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name` .
 
 
     Shape:
@@ -175,6 +174,26 @@ Where `H` means height of feature map, `W` means width of feature map.
           print(instance_norm_out)
 
     """
+
+    def __init__(
+        self,
+        num_features,
+        epsilon=0.00001,
+        momentum=0.9,
+        weight_attr=None,
+        bias_attr=None,
+        data_format="NCL",
+        name=None,
+    ):
+        super().__init__(
+            num_features,
+            epsilon,
+            momentum,
+            weight_attr,
+            bias_attr,
+            data_format,
+            name,
+        )
 
     def _check_input_dim(self, input):
         if len(input.shape) != 2 and len(input.shape) != 3:
@@ -204,7 +223,7 @@ class InstanceNorm2D(_InstanceNormBase):
         \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
         y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-Where `H` means height of feature map, `W` means width of feature map.
+    Where `H` means height of feature map, `W` means width of feature map.
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
@@ -215,14 +234,14 @@ Where `H` means height of feature map, `W` means width of feature map.
             of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
             will create ParamAttr as weight_attr, the name of scale can be set in ParamAttr.
             If the Initializer of the weight_attr is not set, the parameter is initialized
-            one. If it is set to False, will not create weight_attr. Default: None.
+            one. If it is set to False, will not create weight_attr. Default: None. For more information, please refer to :ref:`api_paddle_ParamAttr` .
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of instance_norm.
             If it is set to None or one attribute of ParamAttr, instance_norm
             will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
             If the Initializer of the bias_attr is not set, the bias is initialized zero.
-    `       If it is set to False, will not create bias_attr. Default: None.
+            If it is set to False, will not create bias_attr. Default: None. For more information, please refer to :ref:`api_paddle_ParamAttr` .
         data_format(str, optional): Specify the input data format, could be "NCHW". Default: NCHW.
-        name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
+        name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name` .
 
     Shape:
         - x: 4-D tensor with shape: (batch, num_features, height, weight).
@@ -245,6 +264,26 @@ Where `H` means height of feature map, `W` means width of feature map.
             print(instance_norm_out)
     """
 
+    def __init__(
+        self,
+        num_features,
+        epsilon=0.00001,
+        momentum=0.9,
+        weight_attr=None,
+        bias_attr=None,
+        data_format="NCHW",
+        name=None,
+    ):
+        super().__init__(
+            num_features,
+            epsilon,
+            momentum,
+            weight_attr,
+            bias_attr,
+            data_format,
+            name,
+        )
+
     def _check_input_dim(self, input):
         if len(input.shape) != 4:
             raise ValueError(
@@ -256,7 +295,7 @@ class InstanceNorm3D(_InstanceNormBase):
     r"""
     Create a callable object of `InstanceNorm3D`. Applies Instance Normalization over a 5D input (a mini-batch of 3D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
-    DataLayout: NCHW `[batch, in_channels, D, in_height, in_width]`
+    DataLayout: NCDHW `[batch, in_channels, D, in_height, in_width]`
 
 
     :math:`input` is the input features over a mini-batch.
@@ -271,7 +310,7 @@ class InstanceNorm3D(_InstanceNormBase):
         \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
         y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-Where `H` means height of feature map, `W` means width of feature map.
+    Where `H` means height of feature map, `W` means width of feature map.
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
@@ -282,14 +321,14 @@ Where `H` means height of feature map, `W` means width of feature map.
             of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
             will create ParamAttr as weight_attr, the name of scale can be set in ParamAttr.
             If the Initializer of the weight_attr is not set, the parameter is initialized
-            one. If it is set to False, will not create weight_attr. Default: None.
+            one. If it is set to False, will not create weight_attr. Default: None. For more information, please refer to :ref:`api_paddle_ParamAttr` .
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of instance_norm.
             If it is set to None or one attribute of ParamAttr, instance_norm
             will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
             If the Initializer of the bias_attr is not set, the bias is initialized zero.
-            If it is set to False, will not create bias_attr. Default: None.
+            If it is set to False, will not create bias_attr. Default: None. For more information, please refer to :ref:`api_paddle_ParamAttr` .
         data_format(str, optional): Specify the input data format, could be "NCDHW". Default: NCDHW.
-        name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
+        name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name` .
 
     Shape:
         - x: 5-D tensor with shape: (batch, num_features, dims, height, weight).
@@ -311,6 +350,26 @@ Where `H` means height of feature map, `W` means width of feature map.
 
             print(instance_norm_out.numpy)
     """
+
+    def __init__(
+        self,
+        num_features,
+        epsilon=0.00001,
+        momentum=0.9,
+        weight_attr=None,
+        bias_attr=None,
+        data_format="NCDHW",
+        name=None,
+    ):
+        super().__init__(
+            num_features,
+            epsilon,
+            momentum,
+            weight_attr,
+            bias_attr,
+            data_format,
+            name,
+        )
 
     def _check_input_dim(self, input):
         if len(input.shape) != 5:
@@ -509,11 +568,11 @@ class LayerNorm(Layer):
             division by zero. Default: 1e-05.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for the learnable
             gain :math:`g`. If False, weight is None. If is None, a default :code:`ParamAttr` would be added as scale. The
-            :attr:`param_attr` is initialized as 1 if it is added. Default: None.
+            :attr:`param_attr` is initialized as 1 if it is added. Default: None. For more information, please refer to :ref:`api_paddle_ParamAttr` .
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the learnable
             bias :math:`b`. If is False, bias is None. If is None, a default :code:`ParamAttr` would be added as bias. The
-            :attr:`bias_attr` is initialized as 0 if it is added. Default: None.
-        name(str, optional): Name for the LayerNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
+            :attr:`bias_attr` is initialized as 0 if it is added. Default: None. For more information, please refer to :ref:`api_paddle_ParamAttr` .
+        name(str, optional): Name for the LayerNorm, default is None. For more information, please refer to :ref:`api_guide_Name` .
 
     Shape:
         - x: 2-D, 3-D, 4-D or 5-D tensor.
@@ -688,8 +747,7 @@ class _BatchNormBase(Layer):
 
         # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
         if (
-            os.environ.get('FLAGS_npu_storage_format', None)
-            in [1, '1', True, 'True', 'true']
+            _global_flags()['FLAGS_npu_storage_format']
             and 'npu' in get_all_custom_device_type()
         ):
             with no_grad():
@@ -823,7 +881,7 @@ class BatchNorm(Layer):
              is not set, the bias is initialized zero. Default: None.
         dtype(str, optional): Indicate the data type of the input ``Tensor``,
              which can be float32 or float64. Default: float32.
-        data_layout(str, optional): Specify the input data format, the data format can be "NCHW" or "NHWC". Default: NCHW.
+        data_layout(str, optional): Specify the input data format, the data format can be "NCHW" or "NHWC", where `N` is batch size, `C` is the number of the feature map, `H` is the height of the feature map, `W` is the width of the feature map. Default: NCHW.
         in_place(bool, optional): Make the input and output of batch norm reuse memory. Default: False.
         moving_mean_name(str, optional): The name of moving_mean which store the global Mean. Default: None.
         moving_variance_name(str, optional): The name of the moving_variance which store the global Variance. Default: None.
@@ -1111,7 +1169,7 @@ class BatchNorm1D(_BatchNormBase):
             If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as bias_attr. If it is set to False, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
-        data_format(str, optional): Specify the input data format, may be "NC", "NCL" or "NLC". Default "NCL".
+        data_format(str, optional): Specify the input data format, may be "NC", "NCL" or "NLC", where `N` is batch size, `C` is the number of the feature map, `L` is the length of the feature map. Default "NCL".
         use_global_stats(bool|None, optional): Whether to use global mean and variance. If set to False, use the statistics of one mini-batch, if set to True, use the global statistics, if set to None, use global statistics in the test phase and use the statistics of one mini-batch in the training phase. Default: None.
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
@@ -1224,7 +1282,7 @@ class BatchNorm2D(_BatchNormBase):
             If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as bias_attr. If it is set to False, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
-        data_format(str, optional): Specify the input data format, the data format can be "NCHW" or "NHWC". Default: NCHW.
+        data_format(str, optional): Specify the input data format, the data format can be "NCHW" or "NHWC", where `N` is batch size, `C` is the number of the feature map, `H` is the height of the feature map, `W` is the width of the feature map. Default: NCHW.
         use_global_stats(bool|None, optional): Whether to use global mean and variance. If set to False, use the statistics of one mini-batch, if set to True, use the global statistics, if set to None, use global statistics in the test phase and use the statistics of one mini-batch in the training phase. Default: None.
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
@@ -1310,7 +1368,7 @@ class BatchNorm3D(_BatchNormBase):
             If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as bias_attr. If it is set to False, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
-        data_format(str, optional): Specify the input data format, the data format can be "NCDHW" or "NDHWC. Default: NCDHW.
+        data_format(str, optional): Specify the input data format, the data format can be "NCDHW" or "NDHWC", where `N` is batch size, `C` is the number of the feature map, `D` is the depth of the feature, `H` is the height of the feature map, `W` is the width of the feature map. Default: NCDHW.
         use_global_stats(bool|None, optional): Whether to use global mean and variance. If set to False, use the statistics of one mini-batch, if set to True, use the global statistics, if set to None, use global statistics in the test phase and use the statistics of one mini-batch in the training phase. Default: None.
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
@@ -1754,7 +1812,7 @@ class SpectralNorm(Layer):
 
     Step 1:
     Generate vector U in shape of [H], and V in shape of [W].
-    While H is the :attr:`axis` th dimension of the input weights,
+    While H is the :attr:`dim` th dimension of the input weights,
     and W is the product result of remaining dimensions.
 
     Step 2:
@@ -1781,9 +1839,9 @@ class SpectralNorm(Layer):
 
     Parameters:
         weight_shape(list or tuple): The shape of weight parameter.
-        axis(int, optional): The index of dimension which should be permuted to the first before reshaping Input(Weight) to matrix, it should be set as 0 if Input(Weight) is the weight of fc layer, and should be set as 1 if Input(Weight) is the weight of conv layer. Default: 0.
+        dim(int, optional): The index of dimension which should be permuted to the first before reshaping Input(Weight) to matrix, it should be set as 0 if Input(Weight) is the weight of fc layer, and should be set as 1 if Input(Weight) is the weight of conv layer. Default: 0.
         power_iters(int, optional): The number of power iterations to calculate spectral norm. Default: 1.
-        epsilon(float, optional): The epsilon for numerical stability in calculating norms. Default: 1e-12.
+        eps(float, optional): The epsilon for numerical stability in calculating norms. Default: 1e-12.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
         dtype (str, optional): Data type, it can be "float32" or "float64". Default: "float32".
 
@@ -1796,7 +1854,7 @@ class SpectralNorm(Layer):
             import paddle
             x = paddle.rand((2,8,32,32))
 
-            spectral_norm = paddle.nn.SpectralNorm(x.shape, axis=1, power_iters=2)
+            spectral_norm = paddle.nn.SpectralNorm(x.shape, dim=1, power_iters=2)
             spectral_norm_out = spectral_norm(x)
 
             print(spectral_norm_out.shape) # [2, 8, 32, 32]
@@ -1806,25 +1864,25 @@ class SpectralNorm(Layer):
     def __init__(
         self,
         weight_shape,
-        axis=0,
+        dim=0,
         power_iters=1,
-        epsilon=1e-12,
+        eps=1e-12,
         dtype='float32',
     ):
         super().__init__()
         self._power_iters = power_iters
-        self._epsilon = epsilon
-        self._dim = axis
+        self._epsilon = eps
+        self._dim = dim
         self._dtype = dtype
 
         self._weight_shape = list(weight_shape)
         assert (
             np.prod(self._weight_shape) > 0
         ), "Any dimension of `weight_shape` cannot be equal to 0."
-        assert axis < len(self._weight_shape), (
-            "The input `axis` should be less than the "
-            "length of `weight_shape`, but received axis="
-            "{}".format(axis)
+        assert dim < len(self._weight_shape), (
+            "The input `dim` should be less than the "
+            "length of `weight_shape`, but received dim="
+            "{}".format(dim)
         )
         h = self._weight_shape[self._dim]
         w = np.prod(self._weight_shape) // h

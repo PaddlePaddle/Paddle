@@ -23,7 +23,6 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.learning_rate_scheduler import LearningRateDecay
-from paddle.fluid.framework import _test_eager_guard
 from paddle.nn import Embedding
 from paddle.optimizer import Adam
 
@@ -108,8 +107,8 @@ class SimpleLSTMRNN(fluid.Layer):
                 gate_input = paddle.matmul(x=nn, y=weight_1)
 
                 gate_input = paddle.add(gate_input, bias)
-                i, j, f, o = fluid.layers.split(
-                    gate_input, num_or_sections=4, dim=-1
+                i, j, f, o = paddle.split(
+                    gate_input, num_or_sections=4, axis=-1
                 )
                 c = pre_cell * paddle.nn.functional.sigmoid(
                     f
@@ -120,10 +119,10 @@ class SimpleLSTMRNN(fluid.Layer):
                 self._input = m
 
                 if self._dropout is not None and self._dropout > 0.0:
-                    self._input = fluid.layers.dropout(
+                    self._input = paddle.nn.functional.dropout(
                         self._input,
-                        dropout_prob=self._dropout,
-                        dropout_implementation='upscale_in_train',
+                        p=self._dropout,
+                        mode='upscale_in_train',
                     )
             res.append(
                 paddle.reshape(self._input, shape=[1, -1, self._hidden_size])
@@ -210,10 +209,10 @@ class PtbModel(fluid.Layer):
             x_emb, shape=[-1, self.num_steps, self.hidden_size]
         )
         if self.dropout is not None and self.dropout > 0.0:
-            x_emb = fluid.layers.dropout(
+            x_emb = paddle.nn.functional.dropout(
                 x_emb,
-                dropout_prob=self.drop_out,
-                dropout_implementation='upscale_in_train',
+                p=self.drop_out,
+                mode='upscale_in_train',
             )
         rnn_out, last_hidden, last_cell = self.simple_lstm_rnn(
             x_emb, init_h, init_c
@@ -1072,17 +1071,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
         self.func_testOnlyLoadParams()
         self.func_test_no_state_in_input_dict()
         self.func_test_state_shape_mismatch()
-        with _test_eager_guard():
-            self.func_setUp()
-            self.func_testLoadAndSetVarBase()
-            self.func_testSetVariable()
-            self.func_testSetNumpy()
-            self.func_testSetVariableBeforeTrain()
-            self.func_testLoadAndSetVarBaseBeforeTrain()
-            self.func_testSetNumpyBeforeTrain()
-            self.func_testOnlyLoadParams()
-            self.func_test_no_state_in_input_dict()
-            self.func_test_state_shape_mismatch()
 
 
 if __name__ == '__main__':

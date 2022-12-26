@@ -14,27 +14,24 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 
 namespace phi {
 namespace funcs {
 
-using AllocatT = paddle::memory::AllocationPtr;
-
 template <typename T, int Size>
 struct PointerWrapper {
  public:
-  const T* data[Size];
-  __device__ inline const T* operator[](int i) const { return data[i]; }
+  const T* ins_addr[Size];
+  __device__ inline const T* operator[](int i) const { return ins_addr[i]; }
 
   PointerWrapper() {}
   PointerWrapper(const phi::GPUContext& ctx,
                  const std::vector<phi::DenseTensor>& ins,
-                 const T** pre_alloced_host_ptr,
-                 const AllocatT& tmp_dev_ins_ptr = nullptr) {
+                 const T** pre_alloced_host_ptr) {
     for (auto i = 0; i < ins.size(); ++i) {
-      data[i] = ins[i].data<T>();
+      ins_addr[i] = ins[i].data<T>();
     }
   }
 };
@@ -42,28 +39,35 @@ struct PointerWrapper {
 template <typename T>
 struct PointerWrapper<T, 0> {
  public:
-  T** data{nullptr};
-  __device__ inline const T* operator[](int i) const { return data[i]; }
+  T** ins_addr{nullptr};
+  __device__ inline const T* operator[](int i) const { return ins_addr[i]; }
 
   PointerWrapper() {}
   PointerWrapper(const phi::GPUContext& ctx,
                  const std::vector<phi::DenseTensor>& ins,
-                 const T** pre_alloced_host_ptr,
-                 const AllocatT& tmp_dev_ins_ptr = nullptr) {
+                 const T** pre_alloced_host_ptr) {
     auto in_num = ins.size();
     for (auto i = 0; i < in_num; ++i) {
       pre_alloced_host_ptr[i] = ins[i].data<T>();
     }
-    auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
+    auto tmp_ins_ptr = paddle::memory::Alloc(
+            ctx.GetPlace(),
+            in_num * sizeof(T*),
+            phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+    *tmp_dev_ins_ptr = std::move(tmp_ins_ptr);
+    auto* restored = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
         pre_alloced_host_ptr, in_num);
     paddle::memory::Copy(ctx.GetPlace(),
-                         tmp_dev_ins_ptr->ptr(),
+                         (*tmp_dev_ins_ptr)->ptr(),
                          phi::CPUPlace(),
                          restored,
                          in_num * sizeof(T*),
                          ctx.stream());
-    data = reinterpret_cast<T**>(tmp_dev_ins_ptr->ptr());
+    ins_addr = reinterpret_cast<T**>((*tmp_dev_ins_ptr)->ptr());
   }
+ 
+ private :
+  paddle::memory::AllocationPtr* tmp_dev_ins_ptr{nullptr};
 };
 
 template <typename T, typename IndexT, int Size>
@@ -74,20 +78,17 @@ struct PointerAndColWrapper {
                        const std::vector<phi::DenseTensor>& ins,
                        const IndexT& inputs_col_num,
                        const T** pre_alloced_host_ptr,
-                       IndexT* inputs_col,
-                       const AllocatT& tmp_dev_ins_ptr = nullptr,
-                       const AllocatT& tmp_dev_col_ptr = nullptr) {
+                       IndexT* inputs_col) {
     for (auto i = 0; i < inputs_col_num; ++i) {
       col_length[i] = inputs_col[i];
     }
-    data_warpper = PointerWrapper<T, Size>(
-        ctx, ins, pre_alloced_host_ptr, tmp_dev_ins_ptr);
+    ins_ptr_wrapper = PointerWrapper<T, Size>(ctx, ins, pre_alloced_host_ptr);
   }
 
-  __device__ inline const T* operator[](int i) const { return data_warpper[i]; }
+  __device__ inline const T* operator[](int i) const { return ins_ptr_wrapper[i]; }
 
  private:
-  PointerWrapper<T, Size> data_warpper;
+  PointerWrapper<T, Size> ins_ptr_wrapper;
 };
 
 template <typename T, typename IndexT>
@@ -98,34 +99,37 @@ struct PointerAndColWrapper<T, IndexT, 0> {
                        const std::vector<phi::DenseTensor>& ins,
                        const IndexT& inputs_col_num,
                        const T** pre_alloced_host_ptr,
-                       IndexT* inputs_col,
-                       const AllocatT& tmp_dev_ins_ptr = nullptr,
-                       const AllocatT& tmp_dev_col_ptr = nullptr) {
-    auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
+                       IndexT* inputs_col) {
+    auto tmp_col_ptr = paddle::memory::Alloc(
+            ctx.GetPlace(),
+            inputs_col_num * sizeof(IndexT),
+            phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+    *tmp_dev_col_ptr = std::move(tmp_col_ptr);
+    auto* restored = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
         inputs_col, inputs_col_num);
     paddle::memory::Copy(ctx.GetPlace(),
-                         tmp_dev_col_ptr->ptr(),
+                         (*tmp_dev_col_ptr)->ptr(),
                          phi::CPUPlace(),
                          restored,
                          inputs_col_num * sizeof(IndexT),
                          ctx.stream());
-    col_length = static_cast<IndexT*>(tmp_dev_col_ptr->ptr());
-    data_warpper =
-        PointerWrapper<T, 0>(ctx, ins, pre_alloced_host_ptr, tmp_dev_ins_ptr);
+    col_length = static_cast<IndexT*>((*tmp_dev_col_ptr)->ptr());
+    ins_ptr_wrapper = PointerWrapper<T, 0>(ctx, ins, pre_alloced_host_ptr);
   }
 
-  __device__ inline const T* operator[](int i) const { return data_warpper[i]; }
+  __device__ inline const T* operator[](int i) const { return ins_ptr_wrapper[i]; }
 
  private:
-  PointerWrapper<T, 0> data_warpper;
+  paddle::memory::AllocationPtr* tmp_dev_col_ptr{nullptr};
+  PointerWrapper<T, 0> ins_ptr_wrapper;
 };
 
-template <typename T, typename IndexT, typename WrapperT>
-__global__ void ConcatKernel_(WrapperT ins_datas,
-                              int col_size,
-                              const IndexT output_rows,
-                              const IndexT output_cols,
-                              T* output) {
+template <typename T, typename IndexT, typename PointerAndColWrapperT>
+__global__ void ConcatTensorWithDifferentShape(PointerAndColWrapperT ins_datas,
+                                               int col_size,
+                                               const IndexT output_rows,
+                                               const IndexT output_cols,
+                                               T* output) {
   IndexT curr_segment = 0;
   IndexT curr_offset = ins_datas.col_length[0];
   CUDA_KERNEL_LOOP_TYPE(tid_x, output_cols, IndexT) {
@@ -147,12 +151,12 @@ __global__ void ConcatKernel_(WrapperT ins_datas,
   }
 }
 
-template <typename T, typename IndexT, typename WrapperT>
-__global__ void ConcatKernel(WrapperT ins_data,
-                             const IndexT fixed_in_col,
-                             const IndexT out_rows,
-                             const IndexT out_cols,
-                             T* output_data) {
+template <typename T, typename IndexT, typename PointerWrapperT>
+__global__ void ConcatTensorWithSameShape(PointerWrapperT ins_data,
+                                          const IndexT fixed_in_col,
+                                          const IndexT out_rows,
+                                          const IndexT out_cols,
+                                          T* output_data) {
   CUDA_KERNEL_LOOP_TYPE(tid_x, out_cols, IndexT) {
     IndexT split = tid_x / fixed_in_col;
     IndexT in_offset = tid_x - split * fixed_in_col;
@@ -295,7 +299,6 @@ static inline void GetBlockDims(const phi::GPUContext& context,
  * All tensors' dimension should be the same and the values of
  * each dimension must be the same, except the axis dimension.
  */
-
 template <typename T, typename IndexT>
 void ConcatFunctorWithIndexType(const phi::GPUContext& context,
                                 const std::vector<phi::DenseTensor>& input,
@@ -316,21 +319,12 @@ void ConcatFunctorWithIndexType(const phi::GPUContext& context,
   std::vector<IndexT> inputs_col_vec(inputs_col_num, 0);
   const T** inputs_data = inputs_data_vec.data();
   IndexT* inputs_col = inputs_col_vec.data();
-
 #ifdef PADDLE_WITH_HIP
-  // There are some differences between hip runtime and NV runtime.
-  // In NV, when the pageable memory data less than 64K is transferred from
-  // hosttodevice, it will be automatically asynchronous.
-  // However, only pinned memory in hip can copy asynchronously
-  // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#concurrent-execution-host-device
-  // 3.2.6.1. Concurrent Execution between Host and Device
-  // Memory copies from host to device of a memory block of 64 KB or less
   // TODO(chentianyu03): try to find a method to remove the Alloc function
-  AllocatT data_alloc = paddle::memory::Alloc(
+  paddle::memory::AllocationPtr data_alloc = paddle::memory::Alloc(
       paddle::platform::CUDAPinnedPlace(), in_num * sizeof(T*));
   inputs_data = reinterpret_cast<const T**>(data_alloc->ptr());
-  // TODO(chentianyu03): try to find a method to remove the Alloc function
-  AllocatT col_alloc = paddle::memory::Alloc(
+  paddle::memory::AllocationPtr col_alloc = paddle::memory::Alloc(
       paddle::platform::CUDAPinnedPlace(), inputs_col_num * sizeof(IndexT));
   inputs_col = reinterpret_cast<IndexT*>(col_alloc->ptr());
 #endif
@@ -364,21 +358,15 @@ void ConcatFunctorWithIndexType(const phi::GPUContext& context,
     __VA_ARGS__;                                                     \
   } break;
 
-    // Imple int32_t type concat kernel.
     switch (phi::backends::gpu::RoundToNextHighPowOfTwo(limit_num, 4)) {
       IMPL_CONCATE_CUDA_KERNEL_HELPER(
           IMPL_CONCAT_CUDA_KERNEL_CASE,
-          ConcatKernel<T, IndexT, decltype(ptr_array)>
+          ConcatTensorWithSameShape<T, IndexT, decltype(ptr_array)>
           <<<grid_dims, block_dims, 0, context.stream()>>>(
               ptr_array, in_col, out_row, out_col, output->data<T>()));
       default: {
-        AllocatT tmp_dev_ins_ptr = paddle::memory::Alloc(
-            context.GetPlace(),
-            in_num * sizeof(T*),
-            phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
-        PointerWrapper<T, 0> ptr_array(
-            context, input, inputs_data, tmp_dev_ins_ptr);
-        ConcatKernel<T, IndexT, decltype(ptr_array)>
+        PointerWrapper<T, 0> ptr_array(context, input, inputs_data);
+        ConcatTensorWithSameShape<T, IndexT, decltype(ptr_array)>
             <<<grid_dims, block_dims, 0, context.stream()>>>(
                 ptr_array, in_col, out_row, out_col, output->data<T>());
       }
@@ -392,33 +380,19 @@ void ConcatFunctorWithIndexType(const phi::GPUContext& context,
     __VA_ARGS__;                                                  \
   } break;
 
-    // Imple int64_t type concat kernel.
     switch (phi::backends::gpu::RoundToNextHighPowOfTwo(limit_num, 4)) {
       IMPL_CONCATE_CUDA_KERNEL_HELPER(
           IMPL_COMPLEX_CONCAT_CUDA_KERNEL_CASE,
-          ConcatKernel_<T, IndexT, decltype(ptr_col_array)>
+          ConcatTensorWithDifferentShape<T, IndexT, decltype(ptr_col_array)>
           <<<grid_dims, block_dims, 0, context.stream()>>>(ptr_col_array,
                                                            inputs_col_num,
                                                            (out_row),
                                                            (out_col),
                                                            output->data<T>()));
       default: {
-        AllocatT tmp_dev_col_ptr = paddle::memory::Alloc(
-            context.GetPlace(),
-            inputs_col_num * sizeof(IndexT),
-            phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
-        AllocatT tmp_dev_ins_ptr = paddle::memory::Alloc(
-            context.GetPlace(),
-            in_num * sizeof(T*),
-            phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
-        PointerAndColWrapper<T, IndexT, 0> ptr_col_array(context,
-                                                         input,
-                                                         inputs_col_num,
-                                                         inputs_data,
-                                                         inputs_col,
-                                                         tmp_dev_ins_ptr,
-                                                         tmp_dev_col_ptr);
-        ConcatKernel_<T, IndexT, decltype(ptr_col_array)>
+        PointerAndColWrapper<T, IndexT, 0> ptr_col_array(
+            context, input, inputs_col_num, inputs_data, inputs_col);
+        ConcatTensorWithDifferentShape<T, IndexT, decltype(ptr_col_array)>
             <<<grid_dims, block_dims, 0, context.stream()>>>(ptr_col_array,
                                                              inputs_col_num,
                                                              (out_row),
@@ -431,9 +405,8 @@ void ConcatFunctorWithIndexType(const phi::GPUContext& context,
 #undef IMPL_CONCATE_CUDA_KERNEL_HELPER
 
 #ifdef PADDLE_WITH_HIP
-  // Prevent the pinned memory value from being covered and release the memory
-  // after the launch kernel of the stream is executed (reapply pinned memory
-  // next time)
+  // Prevent pinned memory from being covered and release the memory after
+  // kernel launch of the stream is executed (reapply pinned memory next time)
   auto* data_alloc_released = data_alloc.release();
   auto* col_alloc_released = col_alloc.release();
   context.AddStreamCallback([data_alloc_released, col_alloc_released] {
@@ -501,7 +474,7 @@ class SplitFunctor<phi::GPUContext, T> {
 // 3.2.6.1. Concurrent Execution between Host and Device
 // Memory copies from host to device of a memory block of 64 KB or less
 #ifdef PADDLE_WITH_HIP
-    AllocatT data_alloc, cols_alloc;
+    paddle::memory::AllocationPtr data_alloc, cols_alloc;
     // TODO(chentianyu03): try to find a method to remove the Alloc function
     data_alloc = paddle::memory::Alloc(paddle::platform::CUDAPinnedPlace(),
                                        o_num * sizeof(T*));
@@ -539,7 +512,7 @@ class SplitFunctor<phi::GPUContext, T> {
           context.GetPlace(),
           o_num * sizeof(T*),
           phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
-      auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
+      auto* restored = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           outputs_data, o_num);
       paddle::memory::Copy(context.GetPlace(),
                            tmp_dev_outs_data->ptr(),
@@ -590,7 +563,7 @@ class SplitFunctor<phi::GPUContext, T> {
               context.GetPlace(),
               outputs_cols_num * sizeof(int64_t),
               phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
-      auto* restored = paddle::platform::RestoreHostMemIfCapturingCUDAGraph(
+      auto* restored = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
           outputs_cols, outputs_cols_num);
       paddle::memory::Copy(context.GetPlace(),
                            tmp_dev_ins_col_data->ptr(),

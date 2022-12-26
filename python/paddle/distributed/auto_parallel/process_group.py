@@ -17,8 +17,8 @@ from collections import OrderedDict
 import paddle
 import paddle.fluid.core as core
 from paddle import _legacy_C_ops
+from paddle.fluid.framework import in_dygraph_mode
 
-from ...fluid.framework import _non_static_mode
 from ...fluid.layers.tensor import fill_constant
 from ..collective import _get_global_env, _new_ring_id
 
@@ -154,7 +154,7 @@ class ProcessGroup:
             )
             tmp = (
                 paddle.to_tensor([1], dtype="int32")
-                if _non_static_mode()
+                if in_dygraph_mode()
                 else fill_constant([0], dtype="int32", value="1")
             )
             # use legacy ops

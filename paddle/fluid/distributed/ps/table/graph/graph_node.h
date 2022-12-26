@@ -31,7 +31,7 @@ namespace distributed {
 class Node {
  public:
   Node() {}
-  Node(uint64_t id) : id(id) {}
+  explicit Node(uint64_t id) : id(id) {}
   virtual ~Node() {}
   static int id_size, int_size, weight_size;
   uint64_t get_id() { return id; }
@@ -56,8 +56,14 @@ class Node {
   virtual int get_feature_ids(int slot_idx, std::vector<uint64_t> *res) const {
     return 0;
   }
+  virtual int get_feature_ids(int slot_idx,
+                              std::vector<uint64_t> &feature_id,      // NOLINT
+                              std::vector<uint8_t> &slot_id) const {  // NOLINT
+    return 0;
+  }
   virtual void set_feature(int idx, const std::string &str) {}
   virtual void set_feature_size(int size) {}
+  virtual void shrink_to_fit() {}
   virtual int get_feature_size() { return 0; }
   virtual size_t get_neighbor_size() { return 0; }
 
@@ -69,7 +75,8 @@ class Node {
 class GraphNode : public Node {
  public:
   GraphNode() : Node(), sampler(nullptr), edges(nullptr) {}
-  GraphNode(uint64_t id) : Node(id), sampler(nullptr), edges(nullptr) {}
+  explicit GraphNode(uint64_t id)
+      : Node(id), sampler(nullptr), edges(nullptr) {}
   virtual ~GraphNode();
   virtual void build_edges(bool is_weighted);
   virtual void build_sampler(std::string sample_type);
@@ -92,13 +99,13 @@ class GraphNode : public Node {
 class FeatureNode : public Node {
  public:
   FeatureNode() : Node() {}
-  FeatureNode(uint64_t id) : Node(id) {}
+  explicit FeatureNode(uint64_t id) : Node(id) {}
   virtual ~FeatureNode() {}
   virtual int get_size(bool need_feature);
   virtual void to_buffer(char *buffer, bool need_feature);
   virtual void recover_from_buffer(char *buffer);
   virtual std::string get_feature(int idx) {
-    if (idx < (int)this->feature.size()) {
+    if (idx < static_cast<int>(this->feature.size())) {
       return this->feature[idx];
     } else {
       return std::string("");
@@ -135,7 +142,7 @@ class FeatureNode : public Node {
                                 "get_feature_ids res should not be null"));
     res->clear();
     errno = 0;
-    if (slot_idx < (int)this->feature.size()) {
+    if (slot_idx < static_cast<int>(this->feature.size())) {
       const std::string &s = this->feature[slot_idx];
       const uint64_t *feas = (const uint64_t *)(s.c_str());
 
@@ -155,21 +162,51 @@ class FeatureNode : public Node {
     return 0;
   }
 
+  virtual int get_feature_ids(int slot_idx,
+                              std::vector<uint64_t> &feature_id,      // NOLINT
+                              std::vector<uint8_t> &slot_id) const {  // NOLINT
+    errno = 0;
+    size_t num = 0;
+    if (slot_idx < static_cast<int>(this->feature.size())) {
+      const std::string &s = this->feature[slot_idx];
+      const uint64_t *feas = (const uint64_t *)(s.c_str());
+      num = s.length() / sizeof(uint64_t);
+      CHECK((s.length() % sizeof(uint64_t)) == 0)
+          << "bad feature_item: [" << s << "]";
+      for (size_t i = 0; i < num; ++i) {
+        feature_id.push_back(feas[i]);
+        slot_id.push_back(slot_idx);
+      }
+    }
+    PADDLE_ENFORCE_EQ(
+        errno,
+        0,
+        paddle::platform::errors::InvalidArgument(
+            "get_feature_ids get errno should be 0, but got %d.", errno));
+    return num;
+  }
+
   virtual std::string *mutable_feature(int idx) {
-    if (idx >= (int)this->feature.size()) {
+    if (idx >= static_cast<int>(this->feature.size())) {
       this->feature.resize(idx + 1);
     }
     return &(this->feature[idx]);
   }
 
   virtual void set_feature(int idx, const std::string &str) {
-    if (idx >= (int)this->feature.size()) {
+    if (idx >= static_cast<int>(this->feature.size())) {
       this->feature.resize(idx + 1);
     }
     this->feature[idx] = str;
   }
   virtual void set_feature_size(int size) { this->feature.resize(size); }
   virtual int get_feature_size() { return this->feature.size(); }
+  virtual void shrink_to_fit() {
+    feature.shrink_to_fit();
+    for (auto &slot : feature) {
+      slot.shrink_to_fit();
+    }
+  }
 
   template <typename T>
   static std::string parse_value_to_bytes(std::vector<std::string> feat_str) {
@@ -179,7 +216,8 @@ class FeatureNode : public Node {
     for (size_t i = 0; i < feat_str.size(); i++) {
       std::stringstream ss(feat_str[i]);
       ss >> v;
-      std::memcpy(buffer + sizeof(T) * i, (char *)&v, sizeof(T));
+      std::memcpy(
+          buffer + sizeof(T) * i, reinterpret_cast<char *>(&v), sizeof(T));
     }
     return std::string(buffer, Tsize);
   }
@@ -196,7 +234,8 @@ class FeatureNode : public Node {
     for (size_t i = 0; i < feat_str_size; i++) {
       std::stringstream ss(*(feat_str_begin + i));
       ss >> v;
-      std::memcpy(buffer + sizeof(T) * i, (char *)&v, sizeof(T));
+      std::memcpy(
+          buffer + sizeof(T) * i, reinterpret_cast<char *>(&v), sizeof(T));
     }
     output->assign(buffer);
   }
@@ -208,7 +247,7 @@ class FeatureNode : public Node {
     size_t start = 0;
     const char *buffer = feat_str.data();
     while (start < feat_str.size()) {
-      std::memcpy((char *)&v, buffer + start, sizeof(T));
+      std::memcpy(reinterpret_cast<char *>(&v), buffer + start, sizeof(T));
       start += sizeof(T);
       out.push_back(v);
     }
@@ -225,7 +264,7 @@ class FeatureNode : public Node {
     size_t num = output->length();
     output->resize(num + Tsize);
 
-    T *fea_ptrs = (T *)(&(*output)[num]);
+    T *fea_ptrs = reinterpret_cast<T *>(&(*output)[num]);
 
     thread_local paddle::string::str_ptr_stream ss;
     for (size_t i = 0; i < feat_str_size; i++) {
