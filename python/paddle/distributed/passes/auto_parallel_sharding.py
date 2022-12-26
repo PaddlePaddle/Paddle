@@ -974,8 +974,10 @@ class ShardingPass(PassBase):
                         # )
                         if src_rank == self.global_rank:
                             type_ = "send_v2"
+                            slot_name = 'X'
                         else:
                             type_ = "recv_v2"
+                            slot_name = 'Out'
                         # FIXME  only support 2 nodes
                         if self.global_rank // nranks_per_node == 0:
                             peer = 1
@@ -985,7 +987,7 @@ class ShardingPass(PassBase):
                         new_op = main_block._insert_op_without_sync(
                             index=idx,
                             type=type_,
-                            inputs={'X': broadcast_varname},
+                            inputs={slot_name: broadcast_varname},
                             attrs={
                                 OP_ROLE_KEY: OpRole.Optimize,
                                 'use_calc_stream': True,
