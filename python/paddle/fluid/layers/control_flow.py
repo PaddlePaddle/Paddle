@@ -21,7 +21,6 @@ from ..framework import (
     Program,
     Variable,
     Operator,
-    _non_static_mode,
     static_only,
     in_dygraph_mode,
 )
@@ -1153,7 +1152,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             "but given shape as {0}.".format(list(pre_cond.shape))
         )
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         now_cond = pre_cond.numpy()[0]
         while now_cond:
             output_vars = body(*loop_vars)

@@ -26,7 +26,6 @@ from ..initializer import Normal, Constant
 from ..framework import (
     Variable,
     OpProtoHolder,
-    _non_static_mode,
     dygraph_only,
     _dygraph_tracer,
     default_main_program,
@@ -885,7 +884,7 @@ def unsqueeze(input, axes, name=None):
             y = fluid.layers.unsqueeze(input=x, axes=[1])
 
     """
-    if _non_static_mode():
+    if in_dygraph_mode():
         if isinstance(axes, int):
             axes = [axes]
         elif isinstance(axes, Variable):
@@ -896,54 +895,54 @@ def unsqueeze(input, axes, name=None):
                 for item in axes
             ]
         return _C_ops.unsqueeze(input, axes)
+    else:
+        check_type(axes, 'axis/axes', (int, list, tuple, Variable), 'unsqueeze')
+        check_variable_and_dtype(
+            input,
+            'input',
+            [
+                'float16',
+                'float32',
+                'float64',
+                'bool',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ],
+            'unsqueeze',
+        )
+        helper = LayerHelper("unsqueeze2", **locals())
+        inputs = {"X": input}
+        attrs = {}
 
-    check_type(axes, 'axis/axes', (int, list, tuple, Variable), 'unsqueeze')
-    check_variable_and_dtype(
-        input,
-        'input',
-        [
-            'float16',
-            'float32',
-            'float64',
-            'bool',
-            'int8',
-            'int16',
-            'int32',
-            'int64',
-            'complex64',
-            'complex128',
-        ],
-        'unsqueeze',
-    )
-    helper = LayerHelper("unsqueeze2", **locals())
-    inputs = {"X": input}
-    attrs = {}
+        if isinstance(axes, int):
+            axes = [axes]
+        if isinstance(axes, Variable):
+            axes.stop_gradient = True
+            inputs["AxesTensor"] = axes
+        elif isinstance(axes, (list, tuple)):
+            if utils._contain_var(axes):
+                inputs["AxesTensorList"] = utils._convert_to_tensor_list(axes)
+            else:
+                attrs["axes"] = axes
 
-    if isinstance(axes, int):
-        axes = [axes]
-    if isinstance(axes, Variable):
-        axes.stop_gradient = True
-        inputs["AxesTensor"] = axes
-    elif isinstance(axes, (list, tuple)):
-        if utils._contain_var(axes):
-            inputs["AxesTensorList"] = utils._convert_to_tensor_list(axes)
-        else:
-            attrs["axes"] = axes
+        out = helper.create_variable_for_type_inference(dtype=input.dtype)
+        x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
+        helper.append_op(
+            type="unsqueeze2",
+            inputs=inputs,
+            attrs=attrs,
+            outputs={"Out": out, "XShape": x_shape},
+        )
 
-    out = helper.create_variable_for_type_inference(dtype=input.dtype)
-    x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
-    helper.append_op(
-        type="unsqueeze2",
-        inputs=inputs,
-        attrs=attrs,
-        outputs={"Out": out, "XShape": x_shape},
-    )
-
-    return out
+        return out
 
 
 def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
-    if _non_static_mode():
+    if _in_dygraph_mode():
         op = getattr(_legacy_C_ops, op_name)
         if binary_op:
             return op(x, y)
@@ -1069,30 +1068,28 @@ def clip_by_norm(x, max_norm, name=None):
 
     if in_dygraph_mode():
         return _C_ops.clip_by_norm(x, max_norm)
-    if _non_static_mode():
-        return _legacy_C_ops.clip_by_norm(x, 'max_norm', max_norm)
+    else:
+        helper = LayerHelper("clip_by_norm", **locals())
+        check_variable_and_dtype(x, 'X', ['float32', 'float16'], 'clip_by_norm')
+        check_type(max_norm, 'max_norm', (float), 'clip_by_norm')
 
-    helper = LayerHelper("clip_by_norm", **locals())
-    check_variable_and_dtype(x, 'X', ['float32', 'float16'], 'clip_by_norm')
-    check_type(max_norm, 'max_norm', (float), 'clip_by_norm')
+        if name is None:
+            name = unique_name.generate_with_ignorable_key(
+                ".".join([helper.name, 'tmp'])
+            )
 
-    if name is None:
-        name = unique_name.generate_with_ignorable_key(
-            ".".join([helper.name, 'tmp'])
+        out = helper.create_variable(
+            type=x.type, name=name, dtype=x.dtype, persistable=False
         )
 
-    out = helper.create_variable(
-        type=x.type, name=name, dtype=x.dtype, persistable=False
-    )
+        helper.append_op(
+            type="clip_by_norm",
+            inputs={"X": x},
+            attrs={"max_norm": max_norm},
+            outputs={"Out": out},
+        )
 
-    helper.append_op(
-        type="clip_by_norm",
-        inputs={"X": x},
-        attrs={"max_norm": max_norm},
-        outputs={"Out": out},
-    )
-
-    return out
+        return out
 
 
 @templatedoc()
@@ -1119,19 +1116,16 @@ def merge_selected_rows(x, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.merge_selected_rows(x)
-
-    if _non_static_mode():
-        return _legacy_C_ops.merge_selected_rows(x)
-
-    helper = LayerHelper("merge_selected_rows", **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type="merge_selected_rows",
-        inputs={"X": x},
-        attrs={},
-        outputs={"Out": out},
-    )
-    return out
+    else:
+        helper = LayerHelper("merge_selected_rows", **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type="merge_selected_rows",
+            inputs={"X": x},
+            attrs={},
+            outputs={"Out": out},
+        )
+        return out
 
 
 @templatedoc()
