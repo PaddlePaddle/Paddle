@@ -408,13 +408,13 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
     phi::DenseTensor cpu_tensor;
     platform::CPUPlace cpu_place;
     cpu_tensor.Resize(tensor.dims());
+    // 1. copy from gpu to cpu
     paddle::framework::TensorCopySync(tensor, cpu_place, &cpu_tensor);
     auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(
         platform::DeviceContextPool::Instance().Get(tensor.place()));
     const std::string debug_info =
         GetHintString<T>(op_type, var_name, place, dev_id);
-    // copy from gpu to cpu
-    // copy data from gpu to cpu
+    // 2. write log to file
     CheckNanInfCpuImpl(cpu_tensor.data<T>(), tensor.numel(), debug_info, "gpu");
     return;
   }

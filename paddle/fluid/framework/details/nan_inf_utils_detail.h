@@ -15,19 +15,12 @@
 #pragma once
 
 #include <sys/file.h>
-#include <fstream>
-#include <iostream>
 #include <string>
 
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/backends/dynload/port.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
-#endif
-#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
 DECLARE_int32(check_nan_inf_level);
@@ -154,7 +147,7 @@ HOSTDEVICE void PrintForDifferentLevelFile(const char* debug_info,
     }
   } else if (NeedPrint<T, MT>(max_value, min_value, check_nan_inf_level)) {
     outfile << "[PRECISION] in " << debug_info
-            << ", numel=" << static_cast<long long>(numel)
+            << ", numel=" << static_cast<long long>(numel)  // NOLINT
             << ", max=" << static_cast<float>(max_value)
             << ", min=" << static_cast<float>(min_value)
             << ", mean=" << static_cast<float>(mean_value) << std::endl;
