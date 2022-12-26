@@ -30,7 +30,7 @@ from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.fluid.executor import _to_name_str
 from paddle.fluid.layers.utils import flatten
 from paddle.framework import _current_expected_place as _get_device
-from paddle.framework import _non_static_mode, core
+from paddle.framework import core, in_dygraph_mode
 from paddle.metric import Metric
 from paddle.static import InputSpec, Operator, Variable, global_scope
 
@@ -298,7 +298,7 @@ class Engine:
         return inputs_spec, labels_spec
 
     def _prepare_data_tensor(self, inputs_spec, labels_spec, inputs, labels):
-        if _non_static_mode() or self._dygraph_mode:
+        if in_dygraph_mode() or self._dygraph_mode:
             raise ValueError("Only support static graph mode.")
 
         if inputs_spec:
@@ -491,10 +491,10 @@ class Engine:
         # logging user fetches
         collect_fetches = get_collection(CollectionNames.FETCHES)
         logs_fetch = {}
-        for name, var in collect_fetches:
-            if var.name in fetch_names:
-                idx = fetch_names.index(var.name)
-                logs_fetch[name or var.name] = outs[idx]
+        for name, var_name in collect_fetches:
+            if var_name in fetch_names:
+                idx = fetch_names.index(var_name)
+                logs_fetch[name or var_name] = outs[idx]
         logs["fetches"] = logs_fetch
         return logs
 
@@ -510,7 +510,7 @@ class Engine:
         self._has_prepared[mode] = True
 
     def _build(self, mode):
-        if _non_static_mode() or self._dygraph_mode:
+        if in_dygraph_mode() or self._dygraph_mode:
             paddle.disable_static()
             self._dygraph_mode = True
             self._logger.info("Building model with 'to_static' method.")
@@ -1711,7 +1711,7 @@ class Engine:
             self._build(mode)
             self._plan(mode)
         else:
-            if _non_static_mode() or self._dygraph_mode:
+            if in_dygraph_mode() or self._dygraph_mode:
                 raise ValueError(
                     "Please call `prepare()` or `fit()` or  `evaluate()` or  `predict()` before calling `cost()`."
                 )

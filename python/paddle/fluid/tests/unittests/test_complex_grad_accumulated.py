@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
 
 
 class Optimization_ex1(paddle.nn.Layer):
@@ -127,12 +126,6 @@ class TestComplexGradAccumulated(unittest.TestCase):
             for dtype in self.dtypes:
                 self.train(dev, dtype, 3)
                 self.train_no_clear_grad(dev, dtype, 3)
-
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_case_one_step()
-            self.test_case_two_step()
-            self.test_case_non_param()
 
 
 if __name__ == '__main__':

@@ -17,7 +17,6 @@ import numpy as np
 import paddle
 
 from operator import mul
-import paddle.fluid.core as core
 import paddle.fluid as fluid
 import paddle.nn.functional as F
 from functools import reduce
@@ -142,7 +141,7 @@ class TestLayerNormOp(unittest.TestCase):
                     },
                 )
                 # generate backward op_desc
-                grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
+                grad_op_desc_list, op_grad_to_var = paddle.get_grad_op_desc(
                     layer_norm_op.desc, set(), []
                 )
                 grad_op_desc = grad_op_desc_list[0]
@@ -154,7 +153,7 @@ class TestLayerNormOp(unittest.TestCase):
                 grad_op_desc.infer_shape(block.desc)
                 for arg in grad_op_desc.output_arg_names():
                     grad_var = block.desc.find_var(arg.encode("ascii"))
-                    grad_var.set_dtype(core.VarDesc.VarType.FP32)
+                    grad_var.set_dtype(paddle.VarDesc.VarType.FP32)
 
                 program._sync_with_cpp()
                 exe = fluid.Executor(place)
@@ -252,7 +251,7 @@ class TestLayerNormAPI(unittest.TestCase):
             dtype='float32',
             append_batch_size=False,
         )
-        x = fluid.layers.layer_norm(
+        x = paddle.static.nn.layer_norm(
             x,
             scale=True,
             shift=True,
@@ -261,7 +260,7 @@ class TestLayerNormAPI(unittest.TestCase):
             param_attr=None,
             bias_attr=None,
         )
-        x = fluid.layers.layer_norm(
+        x = paddle.static.nn.layer_norm(
             x,
             scale=False,
             shift=False,
@@ -270,7 +269,7 @@ class TestLayerNormAPI(unittest.TestCase):
             param_attr=None,
             bias_attr=None,
         )
-        x = fluid.layers.layer_norm(
+        x = paddle.static.nn.layer_norm(
             x,
             scale=False,
             shift=False,

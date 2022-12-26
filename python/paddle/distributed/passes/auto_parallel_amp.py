@@ -800,6 +800,9 @@ class AMPPass(PassBase):
 
             pre_grad_name = first_backward_op.output_arg_names[0]
             first_backward_op._rename_output(pre_grad_name, cast_loss_grad.name)
+            naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                first_backward_op, ref_mesh, [-1], self.dist_context
+            )
             cast_grad_op = main_block._insert_op(
                 loss_op_idx + 3,
                 type='cast',
@@ -870,6 +873,9 @@ class AMPPass(PassBase):
             pre_grad_name = first_backward_op.output_arg_names[0]
             first_backward_op._rename_output(
                 pre_grad_name, self._scaled_loss_grad.name
+            )
+            naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                first_backward_op, ref_mesh, [-1], self.dist_context
             )
             # FIXME(JZ-LIANG) a trick to insert backward op
             main_block._sync_with_cpp()

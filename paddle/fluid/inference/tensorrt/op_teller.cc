@@ -609,18 +609,9 @@ struct SimpleOpTypeSetTeller : public Teller {
                    "the pass.";
         return false;
       }
-
+#if IS_TRT_VERSION_LT(8200)
       auto index_var_name = desc.Input("Index")[0];
       auto* index_var_desc = block->FindVar(index_var_name);
-
-      // The index input must be int32 datatype.
-      if (index_var_desc->GetDataType() !=
-          paddle::framework::proto::VarType_Type::VarType_Type_INT32) {
-        VLOG(3) << "gather_nd op Index input data type must be int32";
-        return false;
-      }
-
-#if IS_TRT_VERSION_LT(8200)
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto index_shape = index_var_desc->GetShape();
@@ -692,6 +683,21 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (!desc.HasAttr("axis", /*with_attr_var=*/false)) {
         VLOG(3) << "Skip to convert into TRT while found Attribute('axis') is "
                    "Variable type in arg_max.";
+        return false;
+      }
+
+      int axis = desc.HasAttr("axis")
+                     ? PADDLE_GET_CONST(int64_t, desc.GetAttr("axis"))
+                     : -1;
+      bool flatten = PADDLE_GET_CONST(bool, desc.GetAttr("flatten"));
+      int dtype = PADDLE_GET_CONST(int, desc.GetAttr("dtype"));
+      if (axis == 0 || flatten || (dtype != 2 && dtype != 3)) return false;
+    }
+
+    if (op_type == "arg_min") {
+      if (!desc.HasAttr("axis", /*with_attr_var=*/false)) {
+        VLOG(3) << "Skip to convert into TRT while found Attribute('axis') is "
+                   "Variable type in arg_min.";
         return false;
       }
 
@@ -2524,6 +2530,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "yolo_box",
       "yolo_box_head",
       "arg_max",
+      "arg_min",
       "roi_align",
       "affine_channel",
       "nearest_interp",
@@ -2669,6 +2676,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "yolo_box",
       "yolo_box_head",
       "arg_max",
+      "arg_min",
       "roi_align",
       "affine_channel",
       "nearest_interp",

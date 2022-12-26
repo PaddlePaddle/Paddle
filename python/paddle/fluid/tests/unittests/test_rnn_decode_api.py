@@ -24,7 +24,6 @@ import paddle.fluid.layers as layers
 import paddle.nn as nn
 from paddle import Model, set_device
 from paddle.fluid.data_feeder import convert_dtype
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.layers.utils import map_structure
 from paddle.nn import (
     RNN,
@@ -392,15 +391,10 @@ class TestBeamSearch(ModuleApiTest):
         ]
         return inputs
 
-    def func_check_output(self):
+    def test_check_output(self):
         self.setUp()
         self.make_inputs()
         self.check_output()
-
-    def test_check_output(self):
-        with _test_eager_guard():
-            self.func_check_output()
-        self.func_check_output()
 
 
 class EncoderCell(SimpleRNNCell):
@@ -699,15 +693,10 @@ class TestDynamicDecode(ModuleApiTest):
         ]
         return inputs
 
-    def func_check_output(self):
+    def test_check_output(self):
         self.setUp()
         self.make_inputs()
         self.check_output()
-
-    def test_check_output(self):
-        with _test_eager_guard():
-            self.func_check_output()
-        self.func_check_output()
 
 
 if __name__ == '__main__':

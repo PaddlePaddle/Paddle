@@ -19,7 +19,6 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.wrapped_decorator import wrap_decorator
 
 
@@ -46,67 +45,62 @@ def random_var(size, low=-1, high=1, dtype='float32'):
 class TestDygraphTripleGradMatmul(TestCase):
     def test_matmul_triple_grad(self):
         input_numpy = np.ones([3, 3]) * 2
-        with _test_eager_guard():
-            x = paddle.to_tensor(
-                input_numpy, stop_gradient=False, dtype='float32'
-            )
-            y = paddle.to_tensor(
-                input_numpy, stop_gradient=False, dtype='float32'
-            )
-            out = paddle.matmul(x, y, False, False)
+        x = paddle.to_tensor(input_numpy, stop_gradient=False, dtype='float32')
+        y = paddle.to_tensor(input_numpy, stop_gradient=False, dtype='float32')
+        out = paddle.matmul(x, y, False, False)
 
-            new_out_g = paddle.to_tensor(
-                np.ones([3, 3]), stop_gradient=False, dtype='float32'
-            )
-            new_x_g, new_y_g = paddle.grad(
-                [out], [x, y], [new_out_g], retain_graph=True, create_graph=True
-            )
+        new_out_g = paddle.to_tensor(
+            np.ones([3, 3]), stop_gradient=False, dtype='float32'
+        )
+        new_x_g, new_y_g = paddle.grad(
+            [out], [x, y], [new_out_g], retain_graph=True, create_graph=True
+        )
 
-            new_x_g_g = paddle.to_tensor(
-                np.ones([3, 3]), stop_gradient=False, dtype='float32'
-            )
-            new_y_g_g = paddle.to_tensor(
-                np.ones([3, 3]), stop_gradient=False, dtype='float32'
-            )
-            new_a, new_b, new_c = paddle.grad(
-                [new_x_g, new_y_g],
-                [x, y, new_out_g],
-                [new_x_g_g, new_y_g_g],
-                retain_graph=True,
-                create_graph=True,
-            )
+        new_x_g_g = paddle.to_tensor(
+            np.ones([3, 3]), stop_gradient=False, dtype='float32'
+        )
+        new_y_g_g = paddle.to_tensor(
+            np.ones([3, 3]), stop_gradient=False, dtype='float32'
+        )
+        new_a, new_b, new_c = paddle.grad(
+            [new_x_g, new_y_g],
+            [x, y, new_out_g],
+            [new_x_g_g, new_y_g_g],
+            retain_graph=True,
+            create_graph=True,
+        )
 
-            new_a.backward()
+        new_a.backward()
 
-            out_ref = np.ones([3, 3]) * 12.0
-            np.testing.assert_array_equal(out.numpy(), out_ref)
+        out_ref = np.ones([3, 3]) * 12.0
+        np.testing.assert_array_equal(out.numpy(), out_ref)
 
-            new_x_g_ref = np.ones([3, 3]) * 6.0
-            new_y_g_ref = np.ones([3, 3]) * 6.0
-            np.testing.assert_array_equal(new_x_g.numpy(), new_x_g_ref)
-            np.testing.assert_array_equal(new_y_g.numpy(), new_y_g_ref)
+        new_x_g_ref = np.ones([3, 3]) * 6.0
+        new_y_g_ref = np.ones([3, 3]) * 6.0
+        np.testing.assert_array_equal(new_x_g.numpy(), new_x_g_ref)
+        np.testing.assert_array_equal(new_y_g.numpy(), new_y_g_ref)
 
-            new_a_ref = np.ones([3, 3]) * 3.0
-            new_b_ref = np.ones([3, 3]) * 3.0
-            new_c_ref = np.ones([3, 3]) * 12.0
+        new_a_ref = np.ones([3, 3]) * 3.0
+        new_b_ref = np.ones([3, 3]) * 3.0
+        new_c_ref = np.ones([3, 3]) * 12.0
 
-            np.testing.assert_array_equal(new_a.numpy(), new_a_ref)
-            np.testing.assert_array_equal(new_b.numpy(), new_b_ref)
-            np.testing.assert_array_equal(new_c.numpy(), new_c_ref)
+        np.testing.assert_array_equal(new_a.numpy(), new_a_ref)
+        np.testing.assert_array_equal(new_b.numpy(), new_b_ref)
+        np.testing.assert_array_equal(new_c.numpy(), new_c_ref)
 
-            x_grad_ref = np.ones([3, 3]) * 0.0
-            np.testing.assert_array_equal(x.grad.numpy(), x_grad_ref)
+        x_grad_ref = np.ones([3, 3]) * 0.0
+        np.testing.assert_array_equal(x.grad.numpy(), x_grad_ref)
 
-            y_grad_ref = np.ones([3, 3]) * 0.0
-            np.testing.assert_array_equal(y.grad.numpy(), y_grad_ref)
+        y_grad_ref = np.ones([3, 3]) * 0.0
+        np.testing.assert_array_equal(y.grad.numpy(), y_grad_ref)
 
-            new_out_g_ref = np.ones([3, 3]) * 3.0
-            np.testing.assert_array_equal(new_out_g.grad.numpy(), new_out_g_ref)
+        new_out_g_ref = np.ones([3, 3]) * 3.0
+        np.testing.assert_array_equal(new_out_g.grad.numpy(), new_out_g_ref)
 
-            new_x_g_g_ref = np.ones([3, 3]) * 0.0
-            new_y_g_g_ref = np.ones([3, 3]) * 3.0
-            np.testing.assert_array_equal(new_x_g_g.grad.numpy(), new_x_g_g_ref)
-            np.testing.assert_array_equal(new_y_g_g.grad.numpy(), new_y_g_g_ref)
+        new_x_g_g_ref = np.ones([3, 3]) * 0.0
+        new_y_g_g_ref = np.ones([3, 3]) * 3.0
+        np.testing.assert_array_equal(new_x_g_g.grad.numpy(), new_x_g_g_ref)
+        np.testing.assert_array_equal(new_y_g_g.grad.numpy(), new_y_g_g_ref)
 
 
 class TestDygraphTripleGrad(TestCase):
@@ -231,9 +225,6 @@ class TestDygraphTripleGrad(TestCase):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         self.func_exception()
         self.func_example_with_gradient_and_create_graph()
-        with _test_eager_guard():
-            self.func_exception()
-            self.func_example_with_gradient_and_create_graph()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 
@@ -327,9 +318,1022 @@ class TestDygraphTripleGradBradcastCase(TestCase):
     def test_all_cases(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         self.func_example_with_gradient_and_create_graph()
-        with _test_eager_guard():
-            self.func_example_with_gradient_and_create_graph()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+
+
+# d_ddout is none, dtype is float32
+class TestDygraphTripleGradMatmulcase1(TestCase):
+    def setUp(self):
+        self.input_numpy_x = None
+        self.input_numpy_y = None
+        self.input_numpy_dout = None
+        self.input_numpy_ddx = None
+        self.input_numpy_ddy = None
+        self.places = ["cpu"]
+        if paddle.is_compiled_with_cuda():
+            self.places.append("gpu")
+
+    def actual(self):
+        x = paddle.to_tensor(
+            self.input_numpy_x, stop_gradient=False, dtype='float32'
+        )
+        y = paddle.to_tensor(
+            self.input_numpy_y, stop_gradient=False, dtype='float32'
+        )
+        out = paddle.matmul(x, y, False, False)
+
+        dout = paddle.to_tensor(
+            self.input_numpy_dout, stop_gradient=False, dtype='float32'
+        )
+        (dx, dy) = paddle.grad(
+            [out], [x, y], [dout], retain_graph=True, create_graph=True
+        )
+        ddx = paddle.to_tensor(
+            self.input_numpy_ddx, stop_gradient=False, dtype='float32'
+        )
+        ddy = paddle.to_tensor(
+            self.input_numpy_ddy, stop_gradient=False, dtype='float32'
+        )
+        dx_double_grad, dy_double_grad = paddle.grad(
+            [dx, dy],
+            [x, y],
+            [ddx, ddy],
+            retain_graph=True,
+            create_graph=True,
+        )
+        d_x, d_y, d_dout, d_ddx, d_ddy = paddle.grad(
+            [dx_double_grad, dy_double_grad],
+            [x, y, dout, ddx, ddy],
+            retain_graph=False,
+            create_graph=False,
+        )
+        return d_x, d_y, d_dout, d_ddx, d_ddy
+
+    # case1: d_ddout is none, dims != 1
+    def test_matmul_triple_grad_case1(self):
+        def init_data():
+            self.input_numpy_x = np.random.random([3, 3]).astype('float32')
+            self.input_numpy_y = np.random.random([3, 3]).astype('float32')
+            self.input_numpy_dout = np.ones([3, 3], dtype="float32")
+            self.input_numpy_ddx = np.ones([3, 3], dtype="float32")
+            self.input_numpy_ddy = np.ones([3, 3], dtype="float32")
+
+        init_data()
+        d_x_expected = np.zeros([3, 3], dtype="float32")
+        d_y_expected = np.zeros([3, 3], dtype="float32")
+        d_dout_expected = np.ones([3, 3], dtype="float32") * 6
+        d_ddx_expected = np.ones([3, 3], dtype="float32") * 3
+        d_ddy_expected = np.ones([3, 3], dtype="float32") * 3
+        expected_results = (
+            d_x_expected,
+            d_y_expected,
+            d_dout_expected,
+            d_ddx_expected,
+            d_ddy_expected,
+        )
+
+        for place in self.places:
+            paddle.device.set_device(place)
+            actual_results = self.actual()
+            for expected_result, actual_result in zip(
+                expected_results, actual_results
+            ):
+                np.testing.assert_allclose(
+                    expected_result, actual_result, rtol=1e-6
+                )
+
+    # case2: d_ddout is none, dims = 1
+    def test_matmul_triple_grad_case2(self):
+        def init_data():
+            self.input_numpy_x = np.random.random(
+                [
+                    3,
+                ]
+            ).astype('float32')
+            self.input_numpy_y = np.random.random(
+                [
+                    3,
+                ]
+            ).astype('float32')
+            self.input_numpy_dout = np.ones([1], dtype="float32")
+            self.input_numpy_ddx = np.ones([3], dtype="float32")
+            self.input_numpy_ddy = np.ones([3], dtype="float32")
+
+        init_data()
+        d_x_expected = np.zeros(
+            [
+                3,
+            ],
+            dtype="float32",
+        )
+        d_y_expected = np.zeros(
+            [
+                3,
+            ],
+            dtype="float32",
+        )
+        d_dout_expected = np.ones([1], dtype="float32") * 6
+        d_ddx_expected = np.ones(
+            [
+                3,
+            ],
+            dtype="float32",
+        )
+        d_ddy_expected = np.ones(
+            [
+                3,
+            ],
+            dtype="float32",
+        )
+        expected_results = (
+            d_x_expected,
+            d_y_expected,
+            d_dout_expected,
+            d_ddx_expected,
+            d_ddy_expected,
+        )
+
+        for place in self.places:
+            paddle.device.set_device(place)
+            actual_results = self.actual()
+            for expected_result, actual_result in zip(
+                expected_results, actual_results
+            ):
+                np.testing.assert_allclose(
+                    expected_result, actual_result, rtol=1e-6
+                )
+
+    # case3: d_ddout is none , with broadcast
+    def test_matmul_triple_grad_case3(self):
+        def init_data():
+            self.input_numpy_x = np.random.random([3, 1]).astype('float32')
+            self.input_numpy_y = np.random.random(
+                [
+                    1,
+                ]
+            ).astype('float32')
+            self.input_numpy_dout = np.ones([3], dtype="float32")
+            self.input_numpy_ddx = np.ones([3, 1], dtype="float32")
+            self.input_numpy_ddy = np.ones([1], dtype="float32")
+
+        init_data()
+        d_x_expected = np.zeros([3, 1], dtype="float32")
+        d_y_expected = np.zeros([1], dtype="float32")
+        d_dout_expected = (
+            np.ones(
+                [
+                    3,
+                ],
+                dtype="float32",
+            )
+            * 2
+        )
+        d_ddx_expected = np.ones([3, 1], dtype="float32")
+        d_ddy_expected = np.ones([1], dtype="float32") * 3
+        expected_results = (
+            d_x_expected,
+            d_y_expected,
+            d_dout_expected,
+            d_ddx_expected,
+            d_ddy_expected,
+        )
+
+        for place in self.places:
+            paddle.device.set_device(place)
+            actual_results = self.actual()
+            for expected_result, actual_result in zip(
+                expected_results, actual_results
+            ):
+                np.testing.assert_allclose(
+                    expected_result, actual_result, rtol=1e-6
+                )
+
+
+# d_ddout is none, dtype is complex64
+class TestDygraphTripleGradMatmulcase2(TestCase):
+    def setUp(self):
+        self.input_numpy_x = None
+        self.input_numpy_y = None
+        self.input_numpy_dout = None
+        self.input_numpy_ddx = None
+        self.input_numpy_ddy = None
+        self.input_numpy_ddx_conj = None
+        self.input_numpy_ddy_conj = None
+        self.input_numpy_dout_conj = None
+        self.places = ["cpu"]
+        if paddle.is_compiled_with_cuda():
+            self.places.append("gpu")
+
+    def actual(self):
+        x = paddle.to_tensor(
+            self.input_numpy_x, stop_gradient=False, dtype='complex64'
+        )
+        y = paddle.to_tensor(
+            self.input_numpy_y, stop_gradient=False, dtype='complex64'
+        )
+        out = paddle.matmul(x, y, False, False)
+
+        dout = paddle.to_tensor(
+            self.input_numpy_dout, stop_gradient=False, dtype='complex64'
+        )
+        (dx, dy) = paddle.grad(
+            [out], [x, y], [dout], retain_graph=True, create_graph=True
+        )
+        ddx = paddle.to_tensor(
+            self.input_numpy_ddx, stop_gradient=False, dtype='complex64'
+        )
+        ddy = paddle.to_tensor(
+            self.input_numpy_ddy, stop_gradient=False, dtype='complex64'
+        )
+        dx_double_grad, dy_double_grad = paddle.grad(
+            [dx, dy],
+            [x, y],
+            [ddx, ddy],
+            retain_graph=True,
+            create_graph=True,
+        )
+        d_x, d_y, d_dout, d_ddx, d_ddy = paddle.grad(
+            [dx_double_grad, dy_double_grad],
+            [x, y, dout, ddx, ddy],
+            retain_graph=False,
+            create_graph=False,
+        )
+        return d_x, d_y, d_dout, d_ddx, d_ddy
+
+    # case1: no d_ddout, dims = 1, dtype is complex64
+    def test_matmul_triple_grad_case1(self):
+        def init_data():
+            self.input_numpy_x = np.random.random([3]).astype(
+                'float32'
+            ) + 1j * np.random.random(
+                [
+                    3,
+                ]
+            ).astype(
+                'float32'
+            )
+            self.input_numpy_y = np.random.random([3]).astype(
+                'float32'
+            ) + 1j * np.random.random(
+                [
+                    3,
+                ]
+            ).astype(
+                'float32'
+            )
+            self.input_numpy_dout = np.ones(
+                [
+                    1,
+                ],
+                dtype="float32",
+            )
+            self.input_numpy_ddx = np.ones(
+                [
+                    3,
+                ],
+                dtype="float32",
+            )
+            self.input_numpy_ddy = np.ones(
+                [
+                    3,
+                ],
+                dtype="float32",
+            )
+            self.input_numpy_ddx_conj = np.conjugate(self.input_numpy_ddx)
+            self.input_numpy_ddy_conj = np.conjugate(self.input_numpy_ddy)
+            self.input_numpy_dout_conj = np.conjugate(self.input_numpy_dout)
+
+        init_data()
+        d_x_expected = np.zeros(
+            [
+                3,
+            ],
+            dtype="float32",
+        )
+        d_y_expected = np.zeros(
+            [
+                3,
+            ],
+            dtype="float32",
+        )
+        d_dout_expected = np.matmul(
+            self.input_numpy_ddy_conj,
+            np.ones(
+                [
+                    3,
+                ],
+                dtype="float32",
+            ),
+        ) + np.matmul(
+            self.input_numpy_ddx_conj,
+            np.ones(
+                [
+                    3,
+                ],
+                dtype="float32",
+            ),
+        )
+        d_ddx_expected = (
+            np.ones(
+                [
+                    3,
+                ],
+                dtype="float32",
+            )
+            * self.input_numpy_dout_conj[0]
+        )
+        d_ddy_expected = (
+            np.ones(
+                [
+                    3,
+                ],
+                dtype="float32",
+            )
+            * self.input_numpy_dout_conj[0]
+        )
+        expected_results = (
+            d_x_expected,
+            d_y_expected,
+            d_dout_expected,
+            d_ddx_expected,
+            d_ddy_expected,
+        )
+
+        for place in self.places:
+            paddle.device.set_device(place)
+            actual_results = self.actual()
+            for expected_result, actual_result in zip(
+                expected_results, actual_results
+            ):
+                np.testing.assert_allclose(
+                    expected_result, actual_result, rtol=1e-6
+                )
+
+
+# d_ddout is none, d_dx is none, dtype is float32
+class TestDygraphTripleGradMatmulcase3(TestCase):
+    def setUp(self):
+        self.input_numpy_x = None
+        self.input_numpy_y = None
+        self.input_numpy_dout = None
+        self.input_numpy_ddx = None
+        self.input_numpy_ddy = None
+        self.places = ["cpu"]
+        if paddle.is_compiled_with_cuda():
+            self.places.append("gpu")
+
+    def actual(self):
+        x = paddle.to_tensor(
+            self.input_numpy_x, stop_gradient=False, dtype='float32'
+        )
+        y = paddle.to_tensor(
+            self.input_numpy_y, stop_gradient=False, dtype='float32'
+        )
+        out = paddle.matmul(x, y, False, False)
+
+        dout = paddle.to_tensor(
+            self.input_numpy_dout, stop_gradient=False, dtype='float32'
+        )
+        (dx, dy) = paddle.grad(
+            [out], [x, y], [dout], retain_graph=True, create_graph=True
+        )
+        ddx = paddle.to_tensor(
+            self.input_numpy_ddx, stop_gradient=False, dtype='float32'
+        )
+        ddy = paddle.to_tensor(
+            self.input_numpy_ddy, stop_gradient=False, dtype='float32'
+        )
+        (dy_double_grad,) = paddle.grad(
+            [dx, dy],
+            [y],
+            [ddx, ddy],
+            retain_graph=True,
+            create_graph=True,
+        )
+        d_x, d_y, d_dout, d_ddx, d_ddy = paddle.grad(
+            [dy_double_grad],
+            [x, y, dout, ddx, ddy],
+            retain_graph=False,
+            create_graph=False,
+        )
+        return d_x, d_y, d_dout, d_ddx, d_ddy
+
+    # case1: d_ddout is none, d_dx is none, dims != 1
+    def test_matmul_triple_grad_case1(self):
+        def init_data():
+            self.input_numpy_x = np.random.random([3, 3]).astype('float32')
+            self.input_numpy_y = np.random.random([3, 3]).astype('float32')
+            self.input_numpy_dout = np.ones([3, 3], dtype="float32")
+            self.input_numpy_ddx = np.ones([3, 3], dtype="float32")
+            self.input_numpy_ddy = np.ones([3, 3], dtype="float32")
+
+        init_data()
+        d_x_expected = np.zeros([3, 3], dtype="float32")
+        d_y_expected = np.zeros([3, 3], dtype="float32")
+        d_dout_expected = np.ones([3, 3], dtype="float32") * 3
+        d_ddx_expected = np.ones([3, 3], dtype="float32") * 3
+        d_ddy_expected = np.zeros([3, 3], dtype="float32")
+        expected_results = (
+            d_x_expected,
+            d_y_expected,
+            d_dout_expected,
+            d_ddx_expected,
+            d_ddy_expected,
+        )
+
+        for place in self.places:
+            paddle.device.set_device(place)
+            actual_results = self.actual()
+            for expected_result, actual_result in zip(
+                expected_results, actual_results
+            ):
+                np.testing.assert_allclose(
+                    expected_result, actual_result, rtol=1e-6
+                )
+
+    # #case2: d_ddout is none, d_dx is none, dims = 1
+    def test_matmul_triple_grad_case2(self):
+        def init_data():
+            self.input_numpy_x = np.random.random(
+                [
+                    3,
+                ]
+            ).astype('float32')
+            self.input_numpy_y = np.random.random(
+                [
+                    3,
+                ]
+            ).astype('float32')
+            self.input_numpy_dout = np.ones([1], dtype="float32")
+            self.input_numpy_ddx = np.ones([3], dtype="float32")
+            self.input_numpy_ddy = np.ones([3], dtype="float32")
+
+        init_data()
+        d_x_expected = np.zeros(
+            [
+                3,
+            ],
+            dtype="float32",
+        )
+        d_y_expected = np.zeros(
+            [
+                3,
+            ],
+            dtype="float32",
+        )
+        d_dout_expected = np.ones([1], dtype="float32") * 3
+        d_ddx_expected = np.ones(
+            [
+                3,
+            ],
+            dtype="float32",
+        )
+        d_ddy_expected = np.zeros(
+            [
+                3,
+            ],
+            dtype="float32",
+        )
+        expected_results = (
+            d_x_expected,
+            d_y_expected,
+            d_dout_expected,
+            d_ddx_expected,
+            d_ddy_expected,
+        )
+
+        for place in self.places:
+            paddle.device.set_device(place)
+            actual_results = self.actual()
+            for expected_result, actual_result in zip(
+                expected_results, actual_results
+            ):
+                np.testing.assert_allclose(
+                    expected_result, actual_result, rtol=1e-6
+                )
+
+    # #case3: d_ddout is none, d_dx is none , with broadcast
+    def test_matmul_triple_grad_case3(self):
+        def init_data():
+            self.input_numpy_x = np.random.random([3, 1]).astype('float32')
+            self.input_numpy_y = np.random.random(
+                [
+                    1,
+                ]
+            ).astype('float32')
+            self.input_numpy_dout = np.ones([3], dtype="float32")
+            self.input_numpy_ddx = np.ones([3, 1], dtype="float32")
+            self.input_numpy_ddy = np.ones([1], dtype="float32")
+
+        init_data()
+        d_x_expected = np.zeros([3, 1], dtype="float32")
+        d_y_expected = np.zeros([1], dtype="float32")
+        d_dout_expected = np.ones(
+            [
+                3,
+            ],
+            dtype="float32",
+        )
+        d_ddx_expected = np.ones([3, 1], dtype="float32")
+        d_ddy_expected = np.zeros([1], dtype="float32")
+        expected_results = (
+            d_x_expected,
+            d_y_expected,
+            d_dout_expected,
+            d_ddx_expected,
+            d_ddy_expected,
+        )
+
+        for place in self.places:
+            paddle.device.set_device(place)
+            actual_results = self.actual()
+            for expected_result, actual_result in zip(
+                expected_results, actual_results
+            ):
+                np.testing.assert_allclose(
+                    expected_result, actual_result, rtol=1e-6
+                )
+
+
+# d_ddout is none, d_dx is none, dtype is complex64
+class TestDygraphTripleGradMatmulcase4(TestCase):
+    def setUp(self):
+        self.input_numpy_x = None
+        self.input_numpy_y = None
+        self.input_numpy_dout = None
+        self.input_numpy_ddx = None
+        self.input_numpy_ddy = None
+        self.input_numpy_ddx_conj = None
+        self.input_numpy_dout_conj = None
+        self.places = ["cpu"]
+        if paddle.is_compiled_with_cuda():
+            self.places.append("gpu")
+
+    def actual(self):
+        x = paddle.to_tensor(
+            self.input_numpy_x, stop_gradient=False, dtype='complex64'
+        )
+        y = paddle.to_tensor(
+            self.input_numpy_y, stop_gradient=False, dtype='complex64'
+        )
+        out = paddle.matmul(x, y, False, False)
+
+        dout = paddle.to_tensor(
+            self.input_numpy_dout, stop_gradient=False, dtype='complex64'
+        )
+        (dx, dy) = paddle.grad(
+            [out], [x, y], [dout], retain_graph=True, create_graph=True
+        )
+        ddx = paddle.to_tensor(
+            self.input_numpy_ddx, stop_gradient=False, dtype='complex64'
+        )
+        ddy = paddle.to_tensor(
+            self.input_numpy_ddy, stop_gradient=False, dtype='complex64'
+        )
+        (dy_double_grad,) = paddle.grad(
+            [dx, dy],
+            [y],
+            [ddx, ddy],
+            retain_graph=True,
+            create_graph=True,
+        )
+        d_x, d_y, d_dout, d_ddx, d_ddy = paddle.grad(
+            [dy_double_grad],
+            [x, y, dout, ddx, ddy],
+            retain_graph=False,
+            create_graph=False,
+        )
+        return d_x, d_y, d_dout, d_ddx, d_ddy
+
+    # case1: no d_ddout,no d_dx, dims = 1
+    def test_matmul_triple_grad_case1(self):
+        def init_data():
+            self.input_numpy_x = np.random.random([3]).astype(
+                'float32'
+            ) + 1j * np.random.random(
+                [
+                    3,
+                ]
+            ).astype(
+                'float32'
+            )
+            self.input_numpy_y = np.random.random([3]).astype(
+                'float32'
+            ) + 1j * np.random.random(
+                [
+                    3,
+                ]
+            ).astype(
+                'float32'
+            )
+            self.input_numpy_dout = np.ones(
+                [
+                    1,
+                ],
+                dtype="float32",
+            )
+            self.input_numpy_ddx = np.ones(
+                [
+                    3,
+                ],
+                dtype="float32",
+            )
+            self.input_numpy_ddy = np.ones(
+                [
+                    3,
+                ],
+                dtype="float32",
+            )
+            self.input_numpy_ddx_conj = np.conjugate(self.input_numpy_ddx)
+            self.input_numpy_dout_conj = np.conjugate(self.input_numpy_dout)
+
+        init_data()
+        d_x_expected = np.zeros(
+            [
+                3,
+            ],
+            dtype="float32",
+        )
+        d_y_expected = np.zeros(
+            [
+                3,
+            ],
+            dtype="float32",
+        )
+        d_dout_expected = np.matmul(
+            self.input_numpy_ddx_conj,
+            np.ones(
+                [
+                    3,
+                ],
+                dtype="float32",
+            ),
+        )
+        d_ddx_expected = (
+            np.ones(
+                [
+                    3,
+                ],
+                dtype="float32",
+            )
+            * self.input_numpy_dout_conj[0]
+        )
+        d_ddy_expected = np.zeros(
+            [
+                3,
+            ],
+            dtype="float32",
+        )
+        expected_results = (
+            d_x_expected,
+            d_y_expected,
+            d_dout_expected,
+            d_ddx_expected,
+            d_ddy_expected,
+        )
+
+        for place in self.places:
+            paddle.device.set_device(place)
+            actual_results = self.actual()
+            for expected_result, actual_result in zip(
+                expected_results, actual_results
+            ):
+                np.testing.assert_allclose(
+                    expected_result, actual_result, rtol=1e-6
+                )
+
+
+# d_ddout is none, d_dy is none, dtype is float32
+class TestDygraphTripleGradMatmulcase5(TestCase):
+    def setUp(self):
+        self.input_numpy_x = None
+        self.input_numpy_y = None
+        self.input_numpy_dout = None
+        self.input_numpy_ddx = None
+        self.input_numpy_ddy = None
+        self.places = ["cpu"]
+        if paddle.is_compiled_with_cuda():
+            self.places.append("gpu")
+
+    def actual(self):
+        x = paddle.to_tensor(
+            self.input_numpy_x, stop_gradient=False, dtype='float32'
+        )
+        y = paddle.to_tensor(
+            self.input_numpy_y, stop_gradient=False, dtype='float32'
+        )
+        out = paddle.matmul(x, y, False, False)
+
+        dout = paddle.to_tensor(
+            self.input_numpy_dout, stop_gradient=False, dtype='float32'
+        )
+        (dx, dy) = paddle.grad(
+            [out], [x, y], [dout], retain_graph=True, create_graph=True
+        )
+        ddx = paddle.to_tensor(
+            self.input_numpy_ddx, stop_gradient=False, dtype='float32'
+        )
+        ddy = paddle.to_tensor(
+            self.input_numpy_ddy, stop_gradient=False, dtype='float32'
+        )
+        (dx_double_grad,) = paddle.grad(
+            [dx, dy],
+            [x],
+            [ddx, ddy],
+            retain_graph=True,
+            create_graph=True,
+        )
+        d_x, d_y, d_dout, d_ddx, d_ddy = paddle.grad(
+            [dx_double_grad],
+            [x, y, dout, ddx, ddy],
+            retain_graph=False,
+            create_graph=False,
+        )
+        return d_x, d_y, d_dout, d_ddx, d_ddy
+
+    # case1: d_ddout is none, d_dy is none, dims != 1
+    def test_matmul_triple_grad_case1(self):
+        def init_data():
+            self.input_numpy_x = np.random.random([3, 3]).astype('float32')
+            self.input_numpy_y = np.random.random([3, 3]).astype('float32')
+            self.input_numpy_dout = np.ones([3, 3], dtype="float32")
+            self.input_numpy_ddx = np.ones([3, 3], dtype="float32")
+            self.input_numpy_ddy = np.ones([3, 3], dtype="float32")
+
+        init_data()
+        d_x_expected = np.zeros([3, 3], dtype="float32")
+        d_y_expected = np.zeros([3, 3], dtype="float32")
+        d_dout_expected = np.ones([3, 3], dtype="float32") * 3
+        d_ddx_expected = np.zeros([3, 3], dtype="float32") * 3
+        d_ddy_expected = np.ones([3, 3], dtype="float32") * 3
+        expected_results = (
+            d_x_expected,
+            d_y_expected,
+            d_dout_expected,
+            d_ddx_expected,
+            d_ddy_expected,
+        )
+
+        for place in self.places:
+            paddle.device.set_device(place)
+            actual_results = self.actual()
+            for expected_result, actual_result in zip(
+                expected_results, actual_results
+            ):
+                np.testing.assert_allclose(
+                    expected_result, actual_result, rtol=1e-6
+                )
+
+    # #case2: d_ddout is none, d_dy is none, dims = 1
+    def test_matmul_triple_grad_case2(self):
+        def init_data():
+            self.input_numpy_x = np.random.random(
+                [
+                    3,
+                ]
+            ).astype('float32')
+            self.input_numpy_y = np.random.random(
+                [
+                    3,
+                ]
+            ).astype('float32')
+            self.input_numpy_dout = np.ones([1], dtype="float32")
+            self.input_numpy_ddx = np.ones([3], dtype="float32")
+            self.input_numpy_ddy = np.ones([3], dtype="float32")
+
+        init_data()
+        d_x_expected = np.zeros(
+            [
+                3,
+            ],
+            dtype="float32",
+        )
+        d_y_expected = np.zeros(
+            [
+                3,
+            ],
+            dtype="float32",
+        )
+        d_dout_expected = np.ones([1], dtype="float32") * 3
+        d_ddx_expected = np.zeros(
+            [
+                3,
+            ],
+            dtype="float32",
+        )
+        d_ddy_expected = np.ones(
+            [
+                3,
+            ],
+            dtype="float32",
+        )
+        expected_results = (
+            d_x_expected,
+            d_y_expected,
+            d_dout_expected,
+            d_ddx_expected,
+            d_ddy_expected,
+        )
+
+        for place in self.places:
+            paddle.device.set_device(place)
+            actual_results = self.actual()
+            for expected_result, actual_result in zip(
+                expected_results, actual_results
+            ):
+                np.testing.assert_allclose(
+                    expected_result, actual_result, rtol=1e-6
+                )
+
+    # #case3: d_ddout is none, d_dy is none , with broadcast
+    def test_matmul_triple_grad_case3(self):
+        def init_data():
+            self.input_numpy_x = np.random.random([3, 1]).astype('float32')
+            self.input_numpy_y = np.random.random(
+                [
+                    1,
+                ]
+            ).astype('float32')
+            self.input_numpy_dout = np.ones([3], dtype="float32")
+            self.input_numpy_ddx = np.ones([3, 1], dtype="float32")
+            self.input_numpy_ddy = np.ones([1], dtype="float32")
+
+        init_data()
+        d_x_expected = np.zeros([3, 1], dtype="float32")
+        d_y_expected = np.zeros([1], dtype="float32")
+        d_dout_expected = np.ones(
+            [
+                3,
+            ],
+            dtype="float32",
+        )
+        d_ddx_expected = np.zeros([3, 1], dtype="float32")
+        d_ddy_expected = np.ones([1], dtype="float32") * 3
+        expected_results = (
+            d_x_expected,
+            d_y_expected,
+            d_dout_expected,
+            d_ddx_expected,
+            d_ddy_expected,
+        )
+
+        for place in self.places:
+            paddle.device.set_device(place)
+            actual_results = self.actual()
+            for expected_result, actual_result in zip(
+                expected_results, actual_results
+            ):
+                np.testing.assert_allclose(
+                    expected_result, actual_result, rtol=1e-6
+                )
+
+
+# d_ddout is none, d_dy is none, dtype is complex64
+class TestDygraphTripleGradMatmulcase6(TestCase):
+    def setUp(self):
+        self.input_numpy_x = None
+        self.input_numpy_y = None
+        self.input_numpy_dout = None
+        self.input_numpy_ddx = None
+        self.input_numpy_ddy = None
+        self.input_numpy_ddy_conj = None
+        self.input_numpy_dout_conj = None
+        self.places = ["cpu"]
+        if paddle.is_compiled_with_cuda():
+            self.places.append("gpu")
+
+    def actual(self):
+        x = paddle.to_tensor(
+            self.input_numpy_x, stop_gradient=False, dtype='complex64'
+        )
+        y = paddle.to_tensor(
+            self.input_numpy_y, stop_gradient=False, dtype='complex64'
+        )
+        out = paddle.matmul(x, y, False, False)
+
+        dout = paddle.to_tensor(
+            self.input_numpy_dout, stop_gradient=False, dtype='complex64'
+        )
+        (dx, dy) = paddle.grad(
+            [out], [x, y], [dout], retain_graph=True, create_graph=True
+        )
+        ddx = paddle.to_tensor(
+            self.input_numpy_ddx, stop_gradient=False, dtype='complex64'
+        )
+        ddy = paddle.to_tensor(
+            self.input_numpy_ddy, stop_gradient=False, dtype='complex64'
+        )
+        (dx_double_grad,) = paddle.grad(
+            [dx, dy],
+            [x],
+            [ddx, ddy],
+            retain_graph=True,
+            create_graph=True,
+        )
+        d_x, d_y, d_dout, d_ddx, d_ddy = paddle.grad(
+            [dx_double_grad],
+            [x, y, dout, ddx, ddy],
+            retain_graph=False,
+            create_graph=False,
+        )
+        return d_x, d_y, d_dout, d_ddx, d_ddy
+
+    # case1: no d_ddout,no d_dy, dims = 1
+    def test_matmul_triple_grad_case1(self):
+        def init_data():
+            self.input_numpy_x = np.random.random([3]).astype(
+                'float32'
+            ) + 1j * np.random.random(
+                [
+                    3,
+                ]
+            ).astype(
+                'float32'
+            )
+            self.input_numpy_y = np.random.random([3]).astype(
+                'float32'
+            ) + 1j * np.random.random(
+                [
+                    3,
+                ]
+            ).astype(
+                'float32'
+            )
+            self.input_numpy_dout = np.ones(
+                [
+                    1,
+                ],
+                dtype="float32",
+            )
+            self.input_numpy_ddx = np.ones(
+                [
+                    3,
+                ],
+                dtype="float32",
+            )
+            self.input_numpy_ddy = np.ones(
+                [
+                    3,
+                ],
+                dtype="float32",
+            )
+            self.input_numpy_ddy_conj = np.conjugate(self.input_numpy_ddy)
+            self.input_numpy_dout_conj = np.conjugate(self.input_numpy_dout)
+
+        init_data()
+        d_x_expected = np.zeros(
+            [
+                3,
+            ],
+            dtype="float32",
+        )
+        d_y_expected = np.zeros(
+            [
+                3,
+            ],
+            dtype="float32",
+        )
+        d_dout_expected = np.matmul(
+            self.input_numpy_ddy_conj,
+            np.ones(
+                [
+                    3,
+                ],
+                dtype="float32",
+            ),
+        )
+        d_ddx_expected = np.zeros(
+            [
+                3,
+            ],
+            dtype="float32",
+        )
+        d_ddy_expected = (
+            np.ones(
+                [
+                    3,
+                ],
+                dtype="float32",
+            )
+            * self.input_numpy_dout_conj[0]
+        )
+        expected_results = (
+            d_x_expected,
+            d_y_expected,
+            d_dout_expected,
+            d_ddx_expected,
+            d_ddy_expected,
+        )
+
+        for place in self.places:
+            paddle.device.set_device(place)
+            actual_results = self.actual()
+            for expected_result, actual_result in zip(
+                expected_results, actual_results
+            ):
+                np.testing.assert_allclose(
+                    expected_result, actual_result, rtol=1e-6
+                )
 
 
 if __name__ == '__main__':

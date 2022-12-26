@@ -114,7 +114,7 @@ def _copy_context(ref_dist_context):
     clear_all_process_groups()
     ranks = []
     for process_mesh in ref_dist_context._process_meshes:
-        ranks.extend(process_mesh.processes)
+        ranks.extend(process_mesh.process_ids)
     new_process_group(list(set(ranks)))
 
     new_dist_context = DistributedContext()

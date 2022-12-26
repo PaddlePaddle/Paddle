@@ -870,13 +870,13 @@ def _inference_data_parallel_group_for_operator(rank_id, op, dist_context):
             dist_attr = dist_context.get_op_dist_attr_for_program(op)
             process_mesh = dist_attr.process_mesh
             input_dim_mapping = dist_attr.get_input_dims_mapping(input_name)
-            mesh_shape = process_mesh.topology
+            mesh_shape = process_mesh.shape
             # TODO(JZ-LIANG) replace with specific batch size dimension
             batch_size_axis = input_dim_mapping[0]
             if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
                 group_ranks = _get_comm_group(
-                    process_mesh.processes,
-                    process_mesh.topology,
+                    process_mesh.process_ids,
+                    process_mesh.shape,
                     batch_size_axis,
                     rank_id,
                 )

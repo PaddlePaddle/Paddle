@@ -285,7 +285,7 @@ class AutoParallelizer:
             _g_process_group_map.clear()
             _g_process_group_map[0] = ProcessGroup(0, [])
             for process_mesh in self._dist_context._process_meshes:
-                _g_process_group_map[0].add_ranks(process_mesh.processes)
+                _g_process_group_map[0].add_ranks(process_mesh.process_ids)
         return (
             dist_optimize_ops,
             dist_params_grads,
@@ -481,7 +481,7 @@ class AutoParallelizer:
             if dist_context is not None:
                 pg0 = get_process_group(0)
                 for process_mesh in dist_context._process_meshes:
-                    pg0.add_ranks(process_mesh.processes)
+                    pg0.add_ranks(process_mesh.process_ids)
             (
                 dist_optimize_ops,
                 dist_params_grads,

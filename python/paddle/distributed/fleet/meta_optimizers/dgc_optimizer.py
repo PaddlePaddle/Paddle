@@ -19,10 +19,10 @@ from .meta_optimizer_base import MetaOptimizerBase
 __all__ = []
 
 import paddle
-from paddle import framework
 from paddle.common_ops_import import LayerHelper
 from paddle.fluid.clip import GradientClipByNorm, append_gradient_clip_ops
 from paddle.fluid.dygraph import base as imperative_base
+from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.optimizer import Momentum, Optimizer
 from paddle.framework import core
 from paddle.static import create_global_var
@@ -46,7 +46,7 @@ class DGCMomentumOptimizer(Optimizer):
         grad_clip=None,
         name=None,
     ):
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             raise Exception("In dygraph, don't support DGCMomentumOptimizer.")
 
         assert (
