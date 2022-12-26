@@ -61,6 +61,7 @@ void SiluFusePass::ApplyImpl(ir::Graph* graph) const {
 
     OpDesc new_desc;
     new_desc.SetType("swish");
+    new_desc.SetAttr("beta", 1.f);
     new_desc.SetInput("X", {sigmoid_in_node->Name()});
     new_desc.SetOutput("Out", {elementwise_mul_out_node->Name()});
     new_desc.Flush();
