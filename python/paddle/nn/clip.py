@@ -16,6 +16,7 @@ import copy
 import warnings
 
 import paddle
+import paddle.autograd as imperative_base
 from paddle import _C_ops, _legacy_C_ops
 from paddle.common_ops_import import Variable, check_type, default_main_program
 from paddle.fluid import core, framework, layers
@@ -338,7 +339,7 @@ class ClipGradBase:
     def __str__(self):
         raise NotImplementedError()
 
-    @paddle.no_grad
+    @imperative_base.no_grad()
     def _dygraph_clip(self, params_grads):
         raise NotImplementedError
 
@@ -418,7 +419,7 @@ class ClipGradByValue(ClipGradBase):
     def __str__(self):
         return "Clip Gradient By Value, min = %f, max=%f" % (self.min, self.max)
 
-    @paddle.no_grad
+    @imperative_base.no_grad()
     def _dygraph_clip(self, params_grads):
         params_and_grads = []
         for p, g in params_grads:
@@ -520,7 +521,7 @@ class ClipGradByNorm(ClipGradBase):
     def __str__(self):
         return "Gradient Clip By Norm, clip_norm=%f" % self.clip_norm
 
-    @paddle.no_grad
+    @imperative_base.no_grad()
     def _dygraph_clip(self, params_grads):
         params_and_grads = []
         for p, g in params_grads:
@@ -638,7 +639,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
     def __str__(self):
         return "Gradient Clip By GlobalNorm, global_norm=%f" % (self.clip_norm)
 
-    @paddle.no_grad
+    @imperative_base.no_grad()
     def _dygraph_clip(self, params_grads):
         params_and_grads = []
         sum_square_list = []

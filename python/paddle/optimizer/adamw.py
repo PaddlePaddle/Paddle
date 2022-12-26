@@ -23,7 +23,7 @@ from ..fluid import core, framework, unique_name
 from ..fluid.dygraph import base as imperative_base
 from ..fluid.framework import Parameter, Variable
 from ..fluid.layer_helper import LayerHelper
-from ..paddle.nn.clip import GradientClipBase
+from ..nn.clip import GradientClipBase
 from .lr import LRScheduler
 from .optimizer import Optimizer
 

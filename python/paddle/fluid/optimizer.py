@@ -38,13 +38,6 @@ from .backward import (
     _append_grad_suffix_,
     _get_no_grad_set_name,
 )
-from paddle.nn.clip import (
-    GradientClipBase,
-    GradientClipByNorm,
-    error_clip_callback,
-    append_gradient_clip_ops,
-    ClipGradByGlobalNorm,
-)
 from .framework import program_guard
 from .initializer import Constant
 from .layer_helper import LayerHelper
@@ -161,7 +154,7 @@ class Optimizer:
                 )
 
         if grad_clip is not None:
-            if not isinstance(grad_clip, GradientClipBase):
+            if not isinstance(grad_clip, paddle.nn.clip.GradientClipBase):
                 raise TypeError(
                     "'grad_clip' should be an instance of GradientClipBase's derived class"
                 )
@@ -1042,7 +1035,7 @@ class Optimizer:
                     params_grads.append((param, grad_var))
         else:
             if callbacks is None:
-                callbacks = [error_clip_callback]
+                callbacks = [paddle.nn.clip.error_clip_callback]
             else:
                 assert isinstance(callbacks, list)
             program = loss.block.program
@@ -1272,7 +1265,7 @@ class Optimizer:
         # NOTE(zhiqiu): currently, only support ClipGradByGlobalNorm and without regularization.
         if self._flatten_param_grads and self.regularization is None:
             if self._grad_clip is None or isinstance(
-                self._grad_clip, ClipGradByGlobalNorm
+                self._grad_clip, paddle.nn.clip.ClipGradByGlobalNorm
             ):
                 params_grads = self.flatten_param_grads(params_grads)
 
@@ -1280,7 +1273,7 @@ class Optimizer:
         if self._grad_clip is not None:
             params_grads = self._grad_clip(params_grads)
         else:
-            params_grads = append_gradient_clip_ops(params_grads)
+            params_grads = paddle.nn.clip.append_gradient_clip_ops(params_grads)
 
         # Add regularization if any
         params_grads = self.append_regularization_ops(
