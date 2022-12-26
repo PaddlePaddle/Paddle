@@ -130,7 +130,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             && mkdir build && cd build && cmake .. && make -j8'.format(
             self.temp_dir.name, os.getenv('PLUGIN_URL'), os.getenv('PLUGIN_TAG')
         )
-        os.system(cmd)
+        run_cmd(cmd)
 
         # set environment for loading and registering compiled custom kernels
         # only valid in current process
