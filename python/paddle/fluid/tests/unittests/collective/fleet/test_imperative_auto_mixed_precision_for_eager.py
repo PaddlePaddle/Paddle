@@ -197,7 +197,7 @@ class TestAmpScaler(unittest.TestCase):
     def scale(self):
         with fluid.dygraph.guard():
             data = paddle.rand([10, 1024])
-            scaler = paddle.fluid.dygraph.AmpScaler(init_loss_scaling=1024)
+            scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
             scaled_data = scaler.scale(data)
             self.assertEqual(
                 np.array_equal(scaled_data.numpy(), data.numpy() * 1024), True
@@ -223,7 +223,7 @@ class TestAmpScaler(unittest.TestCase):
                 optimizer = fluid.optimizer.SGDOptimizer(
                     learning_rate=0.01, parameter_list=model.parameters()
                 )
-                scaler = fluid.dygraph.AmpScaler(init_loss_scaling=1024)
+                scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
                 data = fluid.dygraph.to_variable(inp_np)
 
                 out = model(data)
@@ -332,7 +332,7 @@ class TestAmpScaler(unittest.TestCase):
             optimizer = fluid.optimizer.SGDOptimizer(
                 learning_rate=0.01, parameter_list=model.parameters()
             )
-            scaler = fluid.dygraph.AmpScaler(init_loss_scaling=1024)
+            scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
             data = fluid.dygraph.to_variable(inp_np)
 
             out = model(data)
@@ -1262,7 +1262,7 @@ class TestResnet(unittest.TestCase):
                 dy_param_init_value[param.name] = param.numpy()
 
             program = None
-            scaler = paddle.fluid.dygraph.AmpScaler(
+            scaler = paddle.amp.AmpScaler(
                 enable=enable_amp, init_loss_scaling=2.0**10
             )
 
