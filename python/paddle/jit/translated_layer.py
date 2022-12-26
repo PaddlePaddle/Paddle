@@ -643,22 +643,13 @@ def _load_persistable_vars_by_program(
         orig_each_name = program_holder._suffix_varname_dict[each_var.name()]
         if _is_parameter(each_var, program_holder.infer_program):
             # create output varbase
-            if framework._in_eager_without_dygraph_check():
-                new_var = framework.EagerParamBase(
-                    shape=each_var.shape(),
-                    dtype=each_var.dtype(),
-                    name=each_var.name(),
-                    type=each_var.type(),
-                    persistable=True,
-                )
-            else:
-                new_var = framework.ParamBase(
-                    shape=each_var.shape(),
-                    dtype=each_var.dtype(),
-                    name=each_var.name(),
-                    type=each_var.type(),
-                    persistable=True,
-                )
+            new_var = framework.ParamBase(
+                shape=each_var.shape(),
+                dtype=each_var.dtype(),
+                name=each_var.name(),
+                type=each_var.type(),
+                persistable=True,
+            )
         else:
             new_var = framework._varbase_creator(
                 type=each_var.type(),
@@ -741,24 +732,12 @@ def _load_persistable_vars(
         # create output varbase
         if extra_var_info[name].get('trainable', None) is not None:
             # use default shape and dtype
-            if framework._in_eager_without_dygraph_check():
-                new_var = framework.EagerParamBase(
-                    shape=[
-                        1
-                    ],  # only to pass check, this shape is not meaningful
-                    dtype=core.VarDesc.VarType.FP32,
-                    name=new_name,
-                    persistable=True,
-                )
-            else:
-                new_var = framework.ParamBase(
-                    shape=[
-                        1
-                    ],  # only to pass check, this shape is not meaningful
-                    dtype=core.VarDesc.VarType.FP32,
-                    name=new_name,
-                    persistable=True,
-                )
+            new_var = framework.ParamBase(
+                shape=[1],  # only to pass check, this shape is not meaningful
+                dtype=core.VarDesc.VarType.FP32,
+                name=new_name,
+                persistable=True,
+            )
         else:
             new_var = framework._varbase_creator(
                 name=new_name, persistable=True
@@ -1420,9 +1399,7 @@ class TranslatedLayer(layers.Layer):
         # the TranslatedLayer object holded var names count started from 0
         with unique_name.guard():
             for name, var in persistable_vars.items():
-                if isinstance(
-                    var, (framework.ParamBase, framework.EagerParamBase)
-                ):
+                if isinstance(var, framework.ParamBase):
                     dy_name = _generate_unique_var_name(PARAMETER_NAME_PREFIX)
                     self._persistable_var_name_dict[name] = dy_name
                     self.add_parameter(dy_name, var)

@@ -92,7 +92,7 @@ class LazyGuard:
     """
     LazyGuard is a wrapper interface for nn.Layer, it forwards the construct
     process of user defined Layer. Meanwhile, it provides necessary API to
-    trigger EagerParamBase Lazy Initialization and get startup Program.
+    trigger ParamBase Lazy Initialization and get startup Program.
     """
 
     def __enter__(self):

@@ -1332,10 +1332,8 @@ class ParameterMetaClass(VariableMetaClass):
     def __instancecheck__(cls, instance):
         t = type(instance)
         if in_dygraph_mode():
-            return issubclass(t, EagerParamBase)
+            return issubclass(t, ParamBase)
         else:
-            if _in_legacy_dygraph():
-                return issubclass(t, ParamBase)
             return issubclass(t, Parameter)
 
 
@@ -3869,7 +3867,7 @@ class Block:
         d = self.desc.find_var(new_name.encode())
         if var_type == "Parameter":
             if in_dygraph_mode():
-                var = EagerParamBase(
+                var = ParamBase(
                     d.shape(),
                     d.dtype(),
                     type=orig_var_type,
@@ -3881,31 +3879,18 @@ class Block:
                     error_clip=error_clip,
                 )
             else:
-                if _in_legacy_dygraph():
-                    var = ParamBase(
-                        d.shape(),
-                        d.dtype(),
-                        type=orig_var_type,
-                        name=new_name,
-                        stop_gradient=stop_gradient,
-                        trainable=trainable,
-                        optimize_attr=optimize_attr,
-                        regularizer=regularizer,
-                        error_clip=error_clip,
-                    )
-                else:
-                    var = Parameter(
-                        self,
-                        d.shape(),
-                        d.dtype(),
-                        type=orig_var_type,
-                        name=new_name,
-                        stop_gradient=stop_gradient,
-                        trainable=trainable,
-                        optimize_attr=optimize_attr,
-                        regularizer=regularizer,
-                        error_clip=error_clip,
-                    )
+                var = Parameter(
+                    self,
+                    d.shape(),
+                    d.dtype(),
+                    type=orig_var_type,
+                    name=new_name,
+                    stop_gradient=stop_gradient,
+                    trainable=trainable,
+                    optimize_attr=optimize_attr,
+                    regularizer=regularizer,
+                    error_clip=error_clip,
+                )
         elif var_type == "Variable":
             var = Variable(
                 self,
@@ -3932,12 +3917,9 @@ class Block:
         global_block = self.program.global_block()
         param = None
         if in_dygraph_mode():
-            param = EagerParamBase(*args, **kwargs)
+            param = ParamBase(*args, **kwargs)
         else:
-            if _in_legacy_dygraph():
-                param = ParamBase(*args, **kwargs)
-            else:
-                param = Parameter(global_block, *args, **kwargs)
+            param = Parameter(global_block, *args, **kwargs)
 
         if 'initializer' in kwargs:
 
@@ -4237,7 +4219,7 @@ class Block:
             assert isinstance(v, Variable)
             new_p = None
             if in_dygraph_mode():
-                new_p = EagerParamBase(
+                new_p = ParamBase(
                     shape=v.shape,
                     dtype=v.dtype,
                     type=v.type,
@@ -4250,35 +4232,21 @@ class Block:
                     name=v.name,
                 )
             else:
-                if _in_legacy_dygraph():
-                    new_p = ParamBase(
-                        shape=v.shape,
-                        dtype=v.dtype,
-                        type=v.type,
-                        lod_level=v.lod_level,
-                        stop_gradient=p.stop_gradient,
-                        trainable=p.trainable,
-                        optimize_attr=p.optimize_attr,
-                        regularizer=p.regularizer,
-                        error_clip=p.error_clip,
-                        name=v.name,
-                    )
-                else:
-                    new_p = Parameter(
-                        block=self,
-                        shape=v.shape,
-                        dtype=v.dtype,
-                        type=v.type,
-                        lod_level=v.lod_level
-                        if v.type == core.VarDesc.VarType.LOD_TENSOR
-                        else None,
-                        stop_gradient=p.stop_gradient,
-                        trainable=p.trainable,
-                        optimize_attr=p.optimize_attr,
-                        regularizer=p.regularizer,
-                        error_clip=p.error_clip,
-                        name=v.name,
-                    )
+                new_p = Parameter(
+                    block=self,
+                    shape=v.shape,
+                    dtype=v.dtype,
+                    type=v.type,
+                    lod_level=v.lod_level
+                    if v.type == core.VarDesc.VarType.LOD_TENSOR
+                    else None,
+                    stop_gradient=p.stop_gradient,
+                    trainable=p.trainable,
+                    optimize_attr=p.optimize_attr,
+                    regularizer=p.regularizer,
+                    error_clip=p.error_clip,
+                    name=v.name,
+                )
             self.vars[new_p.name] = new_p
 
     def _clone_variable(self, var, force_persistable=True):
@@ -6954,9 +6922,15 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
     __repr__ = __str__
 
 
-class ParamBase(core.VarBase):
+if hasattr(core, "eager"):
+    _core_eager_eagertensor = Tensor
+else:
+    _core_eager_eagertensor = object
+
+
+class ParamBase(_core_eager_eagertensor):
     """
-    ParamBase is derived from Tensor( Which is the concept in Dygraph Mode).
+    ParamBase is derived from Tensor( Which is the concept in Eager-Dygraph Mode).
     A ParamBase is a persistable Tensor, and will be updated by optimizers
     after each iteration.
     The training of a neural network is essentially the updating of
@@ -6975,154 +6949,6 @@ class ParamBase(core.VarBase):
             be applied on the ParamBase. Default: None
         do_model_average(bool): True if the model average strategy will
             be applied on this ParamBase.
-        need_clip (bool): Whether the parameter gradient need to be cliped
-            in optimizer. Default is True.
-    """
-
-    @dygraph_only
-    def __init__(self, shape, dtype, **kwargs):
-        if shape is None:
-            raise ValueError("The shape of Parameter should not be None")
-        if dtype is None:
-            raise ValueError("The dtype of Parameter should not be None")
-
-        for each in shape:
-            if each < 0:
-                raise ValueError(
-                    "Each dimension of shape for Parameter must be greater than 0, but received %s"
-                    % list(shape)
-                )
-
-        if dtype is not None:
-            if not isinstance(dtype, core.VarDesc.VarType):
-                dtype = convert_np_dtype_to_dtype_(dtype)
-
-        name = kwargs.get('name', unique_name.generate('_param_base'))
-
-        super().__init__(
-            dtype if dtype else core.VarDesc.VarType.FP32,
-            list(shape) if shape else [],
-            name,
-            core.VarDesc.VarType.LOD_TENSOR,
-            True,
-        )
-
-        trainable = kwargs.get('trainable', True)
-        self.stop_gradient = not trainable
-
-        self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
-
-        self.regularizer = kwargs.get('regularizer', None)
-
-        self.do_model_average = kwargs.get('do_model_average', None)
-
-        self.need_clip = kwargs.get('need_clip', True)
-
-        self.is_distributed = kwargs.get('is_distributed', False)
-        # self.block = default_main_program().global_block()
-
-    @property
-    def trainable(self):
-        return not self.stop_gradient
-
-    @trainable.setter
-    def trainable(self, trainable):
-        if isinstance(trainable, bool):
-            self.stop_gradient = not trainable
-        else:
-            raise ValueError(
-                "The type of trainable MUST be bool, but the type is ",
-                type(trainable),
-            )
-
-    def __str__(self):
-        """
-        Convert a ParamBase object to a readable string.
-
-        Returns(str): A readable string.
-
-        Examples:
-            .. code-block:: python
-
-                import paddle
-                linear = paddle.nn.Linear(3, 3)
-                print(linear.weight)
-                # Parameter containing:
-                # Tensor(shape=[3, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
-                #        [[ 0.48948765,  0.05829060, -0.25524026],
-                #         [-0.70368278,  0.52986908, -0.68742192],
-                #         [-0.54217887,  0.48439729,  0.34082305]])
-        """
-        return "Parameter containing:\n{tensor}".format(
-            tensor=super().__str__()
-        )
-
-    def __deepcopy__(self, memo):
-        """
-        Deep copy parameter, it will always performs Tensor copy.
-
-        Examples:
-            .. code-block:: python
-
-                import paddle
-                import copy
-                linear = paddle.nn.Linear(1, 3)
-                linear_copy = copy.deepcopy(linear)
-
-                print(linear.weight)
-                # Parameter containing:
-                # Tensor(shape=[1, 3], dtype=float32, place=CPUPlace, stop_gradient=False,
-                #     [[-0.30929261, -0.90929240, -1.07851017]])
-
-                print(linear_copy.weight)
-                # Parameter containing:
-                # Tensor(shape=[1, 3], dtype=float32, place=CPUPlace, stop_gradient=False,
-                #     [[-0.30929261, -0.90929240, -1.07851017]])
-
-        """
-        state = copy.deepcopy(self.__dict__, memo)
-        state["name"] = self.name + unique_name.generate("_deepcopy")
-        new_param = ParamBase(self.shape, self.dtype, **state)
-        memo[id(self)] = new_param
-        new_param.copy_(self, True)
-        return new_param
-
-    def _copy_to(self, device, blocking):
-        state = copy.deepcopy(self.__dict__)
-        new_param = ParamBase(self.shape, self.dtype, **state)
-        core.varbase_copy(self, new_param, device, blocking)
-        return new_param
-
-    __repr__ = __str__
-
-
-if hasattr(core, "eager"):
-    _core_eager_eagertensor = Tensor
-else:
-    _core_eager_eagertensor = object
-
-
-class EagerParamBase(_core_eager_eagertensor):
-    """
-    EagerParamBase is derived from Tensor( Which is the concept in Eager-Dygraph Mode).
-    A EagerParamBase is a persistable Tensor, and will be updated by optimizers
-    after each iteration.
-    The training of a neural network is essentially the updating of
-    its EagerParamBase.
-
-    Relative to a general Tensor, a EagerParamBase has several its own
-    member variables:
-
-    Args:
-        trainable(bool): True if the EagerParamBase need to be updated after
-            iterations.
-        optimize_attr(map): EagerParamBase attributes related with optimizing.
-            Currently, it only contains 'learning_rate'.
-            Default: {'learning_rate': 1.0}
-        regularizer(WeightDecayRegularizer): The Regularizer which will
-            be applied on the EagerParamBase. Default: None
-        do_model_average(bool): True if the model average strategy will
-            be applied on this EagerParamBase.
         need_clip (bool): Whether the parameter gradient need to be cliped
             in optimizer. Default is True.
     """
@@ -7212,7 +7038,7 @@ class EagerParamBase(_core_eager_eagertensor):
 
     def __str__(self):
         """
-        Convert a EagerParamBase object to a readable string.
+        Convert a ParamBase object to a readable string.
 
         Returns(str): A readable string.
 
@@ -7257,14 +7083,14 @@ class EagerParamBase(_core_eager_eagertensor):
         """
         state = copy.deepcopy(self.__dict__, memo)
         state["name"] = self.name + unique_name.generate("_deepcopy")
-        new_param = EagerParamBase(self.shape, self.dtype, **state)
+        new_param = ParamBase(self.shape, self.dtype, **state)
         memo[id(self)] = new_param
         new_param.copy_(self, True)
         return new_param
 
     def _copy_to(self, device, blocking):
         state = copy.deepcopy(self.__dict__)
-        new_param = EagerParamBase(self.shape, self.dtype, **state)
+        new_param = ParamBase(self.shape, self.dtype, **state)
         core.eager.tensor_copy(self, new_param, device, blocking)
         return new_param
 

@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 import paddle.fluid.core as core
 from paddle.fluid.framework import (
-    EagerParamBase,
+    ParamBase,
     _current_expected_place,
     in_dygraph_mode,
 )
@@ -262,26 +262,26 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertTrue(egr_tensor12.place._equals(paddle.fluid.CPUPlace()))
         np.testing.assert_array_equal(egr_tensor12.numpy(), x)
 
-        zero_dim_param = EagerParamBase(shape=[], dtype="float32")
+        zero_dim_param = ParamBase(shape=[], dtype="float32")
         self.assertEqual(zero_dim_param.shape, [])
 
         with self.assertRaisesRegexp(
             ValueError, "The shape of Parameter should not be None"
         ):
-            eager_param = EagerParamBase(shape=None, dtype="float32")
+            eager_param = ParamBase(shape=None, dtype="float32")
 
         with self.assertRaisesRegexp(
             ValueError, "The dtype of Parameter should not be None"
         ):
-            eager_param = EagerParamBase(shape=[1, 1], dtype=None)
+            eager_param = ParamBase(shape=[1, 1], dtype=None)
 
         with self.assertRaisesRegexp(
             ValueError,
             "Each dimension of shape for Parameter must be greater than 0, but received /*",
         ):
-            eager_param = EagerParamBase(shape=[-1], dtype="float32")
+            eager_param = ParamBase(shape=[-1], dtype="float32")
 
-        eager_param = EagerParamBase(shape=[1, 1], dtype="float32")
+        eager_param = ParamBase(shape=[1, 1], dtype="float32")
         self.assertTrue(eager_param.trainable)
         eager_param.trainable = False
         self.assertFalse(eager_param.trainable)
@@ -290,7 +290,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         ):
             eager_param.trainable = "False"
 
-        eager_param_2 = EagerParamBase(
+        eager_param_2 = ParamBase(
             shape=paddle.shape(paddle.to_tensor([1, 2, 3, 4])), dtype="float32"
         )
         self.assertTrue(eager_param_2.trainable)

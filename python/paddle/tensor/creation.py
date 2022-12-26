@@ -1956,10 +1956,6 @@ def assign(x, output=None):
                 output = _C_ops.assign(input)
             else:
                 _C_ops.assign_out_(input, output)
-        elif _in_legacy_dygraph():
-            if output is None:
-                output = core.VarBase()
-            _legacy_C_ops.assign(input, output)
         else:
             check_dtype(
                 input.dtype,
@@ -2057,18 +2053,6 @@ def assign(x, output=None):
                 dtype,
                 values,
                 _current_expected_place(),
-            )
-        elif _in_legacy_dygraph():
-            if output is None:
-                output = core.VarBase()
-            _legacy_C_ops.assign_value(
-                output,
-                'shape',
-                list(input.shape),
-                'dtype',
-                dtype,
-                value_name,
-                values,
             )
         else:
             if output is None:

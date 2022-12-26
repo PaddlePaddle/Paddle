@@ -179,7 +179,7 @@ class ConstantInitializer(Initializer):
         block = self._check_block(block)
 
         assert isinstance(var, framework.Variable) or isinstance(
-            var, framework.EagerParamBase
+            var, framework.ParamBase
         )
         assert isinstance(block, framework.Block)
 

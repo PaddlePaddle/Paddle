@@ -478,18 +478,6 @@ def assign(input, output=None):
                 values,
                 _current_expected_place(),
             )
-        elif _in_legacy_dygraph():
-            if output is None:
-                output = core.VarBase()
-            _legacy_C_ops.assign_value(
-                output,
-                'shape',
-                list(input.shape),
-                'dtype',
-                dtype,
-                value_name,
-                values,
-            )
         else:
             if output is None:
                 output = helper.create_variable_for_type_inference(

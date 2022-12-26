@@ -142,9 +142,7 @@ def _convert_into_variable(tensor):
         if new_var is not None:
             assert isinstance(new_var, framework.Variable)
         # Convert ParamBase into Parameter with same attributes in dy2stat.
-        elif isinstance(
-            tensor, (framework.EagerParamBase, framework.ParamBase)
-        ):
+        elif isinstance(tensor, (framework.ParamBase)):
             new_var = tensor._to_static_var(to_parameter=True)
         else:
             # Note(Aurelius84): Convert Tensor in self._buffers into Variable with

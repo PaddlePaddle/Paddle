@@ -88,7 +88,7 @@ class TestOptimizerForTensor(unittest.TestCase):
             optimizer.Adam(learning_rate=self.lr, parameters=x)
 
     def test_create_param_lr_with_1_for_coverage(self):
-        x = paddle.fluid.framework.EagerParamBase(
+        x = paddle.fluid.framework.ParamBase(
             dtype="float32",
             shape=[5, 10],
             lod_level=0,
@@ -107,7 +107,7 @@ class TestOptimizerForTensor(unittest.TestCase):
         opt.step()
 
     def test_create_param_lr_with_no_1_value_for_coverage(self):
-        x = paddle.fluid.framework.EagerParamBase(
+        x = paddle.fluid.framework.ParamBase(
             dtype="float32",
             shape=[5, 10],
             lod_level=0,

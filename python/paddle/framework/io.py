@@ -29,7 +29,6 @@ from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.core.eager import Tensor
 from paddle.fluid.framework import (
-    EagerParamBase,
     ParamBase,
     Program,
     Variable,
@@ -304,17 +303,15 @@ def _pickle_save(obj, f, protocol):
 
     def add_dispatch_table():
         # This is not a good method, because the pickle module has been modified.
-        pickle.dispatch_table[ParamBase] = reduce_varbase
         pickle.dispatch_table[Tensor] = reduce_varbase
-        pickle.dispatch_table[EagerParamBase] = reduce_varbase
+        pickle.dispatch_table[ParamBase] = reduce_varbase
         pickle.dispatch_table[core.LoDTensor] = reduce_LoDTensor
         pickle.dispatch_table.update(dispatch_table_layer)
 
     def pop_dispatch_table():
         pickle.dispatch_table.pop(core.LoDTensor)
-        pickle.dispatch_table.pop(ParamBase)
         pickle.dispatch_table.pop(Tensor)
-        pickle.dispatch_table.pop(EagerParamBase)
+        pickle.dispatch_table.pop(ParamBase)
         for k in dispatch_table_layer:
             pickle.dispatch_table.pop(k)
 
@@ -331,9 +328,8 @@ def _pickle_save(obj, f, protocol):
         pickler = pickle.Pickler(f, protocol)
         pickler.dispatch_table = copyreg.dispatch_table.copy()
         pickler.dispatch_table[core.LoDTensor] = reduce_LoDTensor
-        pickler.dispatch_table[ParamBase] = reduce_varbase
         pickler.dispatch_table[Tensor] = reduce_varbase
-        pickler.dispatch_table[EagerParamBase] = reduce_varbase
+        pickler.dispatch_table[ParamBase] = reduce_varbase
         pickler.dispatch_table.update(dispatch_table_layer)
         pickler.dump(obj)
 

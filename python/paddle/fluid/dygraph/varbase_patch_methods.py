@@ -26,10 +26,9 @@ from .. import unique_name
 from ..framework import (
     Variable,
     Parameter,
-    ParamBase,
     _getitem_impl_,
     _setitem_impl_,
-    EagerParamBase,
+    ParamBase,
     in_dygraph_mode,
 )
 from .base import switch_to_static_graph
@@ -116,7 +115,7 @@ def monkey_patch_varbase():
         # It will fail. So, for propery that different between dynamic and static graph, should not getattr(self, attr, None).
         attr_not_need_keys = ['grad', 'T', 'place', '_place_str']
         param_keys = ['stop_gradient', 'trainable']
-        if isinstance(self, (ParamBase, EagerParamBase)):
+        if isinstance(self, ParamBase):
             attr_kwargs = self.__dict__.copy()
             for key in param_keys:
                 attr_kwargs[key] = getattr(self, key)
@@ -140,7 +139,7 @@ def monkey_patch_varbase():
 
         attr_kwargs.update(kwargs)
 
-        if to_parameter or isinstance(self, (ParamBase, EagerParamBase)):
+        if to_parameter or isinstance(self, ParamBase):
             del attr_kwargs['persistable']
             # NOTE(Aurelius84): All parameters should be placed into global block.
             attr_kwargs['block'] = attr_kwargs['block'].program.global_block()
@@ -858,7 +857,7 @@ def monkey_patch_varbase():
 
     @framework.dygraph_only
     def _set_grad_ivar(self, value):
-        if isinstance(self, EagerParamBase):
+        if isinstance(self, ParamBase):
             self.grad = value
             self._unset_fake_empty()
         else:

@@ -75,8 +75,8 @@ def _cuda_from_cache(key):
 
 
 def _rebuild_tensor(cls, lodtensor, metadata):
-    if cls == paddle.fluid.framework.EagerParamBase:
-        tensor = paddle.fluid.framework.EagerParamBase(
+    if cls == paddle.fluid.framework.ParamBase:
+        tensor = paddle.fluid.framework.ParamBase(
             lodtensor.shape(), lodtensor._dtype(), **metadata
         )
         tensor.value().get_tensor()._share_data_with(lodtensor)
@@ -104,7 +104,7 @@ def _reduce_tensor(tensor):
         or tensor.place.is_gpu_place()
         or tensor.place.is_cuda_pinned_place()
     ):
-        if type(tensor) == paddle.fluid.framework.EagerParamBase:
+        if type(tensor) == paddle.fluid.framework.ParamBase:
             metadata = copy.deepcopy(tensor.__dict__)
         else:
             metadata = (tensor.size, tensor.stop_gradient)
@@ -185,7 +185,5 @@ def init_reductions():
 
     ForkingPickler.register(paddle.Tensor, _reduce_tensor)
     ForkingPickler.register(paddle.fluid.core.eager.Tensor, _reduce_tensor)
-    ForkingPickler.register(
-        paddle.fluid.framework.EagerParamBase, _reduce_tensor
-    )
+    ForkingPickler.register(paddle.fluid.framework.ParamBase, _reduce_tensor)
     ForkingPickler.register(paddle.fluid.core.LoDTensor, _reduce_lodtensor)

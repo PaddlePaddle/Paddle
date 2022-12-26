@@ -31,7 +31,6 @@ from paddle.utils import deprecated
 from ..layers import collective
 from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.framework import (
-    ParamBase,
     _in_legacy_dygraph,
     _non_static_mode,
     in_dygraph_mode,
@@ -382,7 +381,7 @@ def sync_params_buffers(
             )
 
         # is_distributed param not need to sync when in mp mode
-        if isinstance(param, (ParamBase, core.eager.Tensor)):
+        if isinstance(param, (framework.ParamBase, core.eager.Tensor)):
             if is_model_parallel and param.is_distributed:
                 continue
 

@@ -1038,7 +1038,7 @@ class TestVarBase(unittest.TestCase):
 
     def test_to_static_var(self):
         with fluid.dygraph.guard():
-            # Convert VarBase into Variable or Parameter
+            # Convert Tensor into Variable or Parameter
             var_base = fluid.dygraph.to_variable(self.array, name="var_base_1")
             static_var = var_base._to_static_var()
             self._assert_to_static(var_base, static_var)

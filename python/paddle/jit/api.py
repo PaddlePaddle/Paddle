@@ -58,11 +58,10 @@ from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.framework import (
     Block,
-    ParamBase,
     Program,
     Variable,
     Parameter,
-    EagerParamBase,
+    ParamBase,
 )
 from paddle.fluid.framework import (
     _current_expected_place,
@@ -1104,7 +1103,7 @@ def save(layer, path, input_spec=None, **configs):
                     extra_info_dict[
                         'stop_gradient'
                     ] = param_or_buffer.stop_gradient
-                    if isinstance(param_or_buffer, (ParamBase, EagerParamBase)):
+                    if isinstance(param_or_buffer, ParamBase):
                         extra_info_dict['trainable'] = param_or_buffer.trainable
                     extra_var_info[param_or_buffer.name] = extra_info_dict
 

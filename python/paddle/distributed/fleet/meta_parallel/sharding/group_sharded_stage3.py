@@ -26,7 +26,7 @@ from paddle import nn
 from paddle.autograd import PyLayer
 from paddle.distributed import collective
 from paddle.fluid.clip import ClipGradByGlobalNorm
-from paddle.fluid.framework import EagerParamBase
+from paddle.fluid.framework import ParamBase
 
 from .group_sharded_storage import GradStorage
 from .group_sharded_utils import GroupShardedClipGrad, Type, device_guard
@@ -1025,7 +1025,7 @@ def _UnsliceParam(param):
 
 def _TensorWrapper(param):
     varbase = param.fw_storage
-    tmp_param = EagerParamBase(
+    tmp_param = ParamBase(
         shape=varbase.shape, dtype=varbase.dtype, name="slice@" + param.name
     )
     varbase._share_buffer_to(tmp_param)

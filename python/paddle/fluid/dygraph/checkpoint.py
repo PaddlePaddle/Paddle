@@ -21,10 +21,9 @@ from ..framework import (
     _non_static_mode,
     dygraph_only,
     Parameter,
-    ParamBase,
     _varbase_creator,
     _dygraph_tracer,
-    EagerParamBase,
+    ParamBase,
 )
 import pickle
 from . import learning_rate_scheduler
@@ -110,7 +109,7 @@ def save_dygraph(state_dict, model_path):
 
     param_num = 0
     for k, v in state_dict.items():
-        if isinstance(v, (ParamBase, EagerParamBase)):
+        if isinstance(v, ParamBase):
             param_num += 1
 
     if param_num == 0:
