@@ -41,6 +41,10 @@ void ConvKernel(const Context& dev_ctx,
                              dev_ctx.GetDnnAttr("mkldnn_data_type")) ==
                 "bfloat16"
           : false;
+  bool force_fp32_output =
+      dev_ctx.HasDnnAttr("force_fp32_output")
+          ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("force_fp32_output"))
+          : false;
 
   ConvOnednn<T>(dev_ctx,
                 &input,
@@ -57,7 +61,7 @@ void ConvKernel(const Context& dev_ctx,
                 is_BFLOAT16,
                 "",
                 false,
-                false,
+                force_fp32_output,
                 out);
 }
 
