@@ -39,7 +39,7 @@ using framework::SearchFuseResult;
 template <typename T>
 using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -564,12 +564,15 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 #if CUDNN_VERSION >= 7100
-REGISTER_OP_CUDA_KERNEL(
-    conv2d_fusion,
-    ops::CUDNNConvFusionOpKernel<float>,
-    ops::CUDNNConvFusionOpKernel<double>,
-    ops::CUDNNConvFusionOpKernel<paddle::platform::float16>);
+PD_REGISTER_STRUCT_KERNEL(conv2d_fusion,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::CUDNNConvFusionOpKernel,
+                          float,
+                          double,
+                          paddle::platform::float16) {}
 #endif
 #ifdef PADDLE_WITH_HIP
-REGISTER_OP_CUDA_KERNEL(conv2d_fusion, ops::CUDNNConvFusionOpKernel<float>);
+PD_REGISTER_STRUCT_KERNEL(
+    conv2d_fusion, GPU, ALL_LAYOUT, ops::CUDNNConvFusionOpKernel, float) {}
 #endif

@@ -41,6 +41,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/utils/flat_hash_map.h"
 
@@ -290,7 +291,7 @@ class OperatorBase {
                        const platform::Place& place) const = 0;
 };
 
-class ExecutionContext {
+class ExecutionContext : public phi::KernelContext {
  public:
   ExecutionContext(const OperatorBase& op,
                    const Scope& scope,

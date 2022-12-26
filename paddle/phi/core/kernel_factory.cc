@@ -61,6 +61,19 @@ bool KernelFactory::HasCompatiblePhiKernel(const std::string& op_type) const {
   return false;
 }
 
+bool KernelFactory::HasStructPhiKernel(const std::string& op_type) const {
+  auto kernel_iter = kernels_.find(op_type);
+  if (deprecated_op_names.find(op_type) == deprecated_op_names.end() &&
+      kernel_iter != kernels_.end()) {
+    return std::all_of(kernel_iter->second.begin(),
+                       kernel_iter->second.end(),
+                       [](phi::KernelKeyMap::const_reference kernel_pair) {
+                         return kernel_pair.second.IsFuncKernel() == false;
+                       });
+  }
+  return false;
+}
+
 const Kernel& KernelFactory::SelectKernel(const std::string& kernel_name,
                                           const KernelKey& kernel_key) const {
   auto iter = kernels_.find(kernel_name);

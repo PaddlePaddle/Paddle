@@ -341,8 +341,14 @@ struct KernelRegistrar {
     std::string kernel_name(kernel_name_cstr);
     KernelKey kernel_key(
         paddle::experimental::StringToBackend(backend_cstr), layout, dtype);
-    Kernel kernel(kernel_fn, variadic_kernel_fn);
-    args_parse_fn(kernel_key, kernel.mutable_args_def());
+    bool is_function_kernel = true;
+    if (variadic_kernel_fn == nullptr) {
+      is_function_kernel = false;
+    }
+    Kernel kernel(kernel_fn, variadic_kernel_fn, is_function_kernel);
+    if (is_function_kernel) {
+      args_parse_fn(kernel_key, kernel.mutable_args_def());
+    }
     args_def_fn(kernel_key, &kernel);
     if (reg_type == RegType::INNER) {
       KernelFactory::Instance().kernels()[kernel_name][kernel_key] = kernel;
@@ -374,6 +380,14 @@ struct KernelRegistrar {
 #define _PD_ARG_N(args) _PD_ARG_N_EXPAND args
 #define _PD_RESQ_N() 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
 
+#define ARG_PARSE_FUNCTOR(meta_kernel_fn, cpp_dtype, context) \
+  ::phi::KernelArgsParseFunctor<                              \
+      decltype(&meta_kernel_fn<cpp_dtype, context>)>::Parse
+
+#define FUNCTION_KERNEL_INSTANTIATION(meta_kernel_fn, cpp_dtype, context) \
+  template decltype(meta_kernel_fn<cpp_dtype, context>)                   \
+      meta_kernel_fn<cpp_dtype, context>;
+
 /** PD_REGISTER_KERNEL
  *
  * The most frequently used kernel registration macro, used for kernel
@@ -390,10 +404,23 @@ struct KernelRegistrar {
                       ::phi::backend##Context,                                \
                       layout,                                                 \
                       meta_kernel_fn,                                         \
+                      FUNCTION_KERNEL_INSTANTIATION,                          \
+                      ARG_PARSE_FUNCTOR,                                      \
+                      PHI_KERNEL,                                             \
+                      PHI_VARIADIC_KERNEL,                                    \
                       __VA_ARGS__)
 
-#define _PD_REGISTER_KERNEL(                                               \
-    reg_type, kernel_name, backend, context, layout, meta_kernel_fn, ...)  \
+#define _PD_REGISTER_KERNEL(reg_type,                                      \
+                            kernel_name,                                   \
+                            backend,                                       \
+                            context,                                       \
+                            layout,                                        \
+                            meta_kernel_fn,                                \
+                            kernel_instantiation,                          \
+                            arg_parse_functor,                             \
+                            to_kernel,                                     \
+                            to_variadic_kernel,                            \
+                            ...)                                           \
   PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                       \
       PD_REGISTER_tp_kernel_ns_check_##kernel_name##_##backend##_##layout, \
       "PD_REGISTER_KERNEL must be called in global namespace.");           \
@@ -403,12 +430,26 @@ struct KernelRegistrar {
                                     context,                               \
                                     layout,                                \
                                     meta_kernel_fn,                        \
+                                    kernel_instantiation,                  \
+                                    arg_parse_functor,                     \
+                                    to_kernel,                             \
+                                    to_variadic_kernel,                    \
                                     __VA_ARGS__))
 
 #ifndef _WIN32
-#define _PD_REGISTER_2TA_KERNEL(                                            \
-    reg_type, kernel_name, backend, context, layout, meta_kernel_fn, ...)   \
-  PD_KERNEL_INSTANTIATION(meta_kernel_fn, backend, context, __VA_ARGS__);   \
+#define _PD_REGISTER_2TA_KERNEL(reg_type,                                   \
+                                kernel_name,                                \
+                                backend,                                    \
+                                context,                                    \
+                                layout,                                     \
+                                meta_kernel_fn,                             \
+                                kernel_instantiation,                       \
+                                arg_parse_functor,                          \
+                                to_kernel,                                  \
+                                to_variadic_kernel,                         \
+                                ...)                                        \
+  PD_KERNEL_INSTANTIATION(                                                  \
+      meta_kernel_fn, backend, context, kernel_instantiation, __VA_ARGS__); \
   static void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
       const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel);           \
   PD_KERNEL_REGISTRAR_INIT(                                                 \
@@ -419,6 +460,9 @@ struct KernelRegistrar {
       layout,                                                               \
       &__PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout,        \
       meta_kernel_fn,                                                       \
+      arg_parse_functor,                                                    \
+      to_kernel,                                                            \
+      to_variadic_kernel,                                                   \
       __VA_ARGS__);                                                         \
   void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(        \
       const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel)
@@ -435,8 +479,17 @@ struct KernelRegistrar {
  *
  * And msvc can work without template instantiation
  */
-#define _PD_REGISTER_2TA_KERNEL(                                            \
-    reg_type, kernel_name, backend, context, layout, meta_kernel_fn, ...)   \
+#define _PD_REGISTER_2TA_KERNEL(reg_type,                                   \
+                                kernel_name,                                \
+                                backend,                                    \
+                                context,                                    \
+                                layout,                                     \
+                                meta_kernel_fn,                             \
+                                kernel_instantiation,                       \
+                                arg_parse_functor,                          \
+                                to_kernel,                                  \
+                                to_variadic_kernel,                         \
+                                ...)                                        \
   static void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
       const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel);           \
   PD_EXPAND(PD_KERNEL_REGISTRAR_INIT(                                       \
@@ -447,107 +500,143 @@ struct KernelRegistrar {
       layout,                                                               \
       &__PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout,        \
       meta_kernel_fn,                                                       \
+      arg_parse_functor,                                                    \
+      to_kernel,                                                            \
+      to_variadic_kernel,                                                   \
       __VA_ARGS__));                                                        \
   void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(        \
       const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel)
 #endif
 
-#define PD_KERNEL_INSTANTIATION(meta_kernel_fn, backend, context, ...) \
-  _PD_KERNEL_INSTANTIATION(                                            \
-      PD_NARGS(__VA_ARGS__), meta_kernel_fn, backend, context, __VA_ARGS__)
+#define PD_KERNEL_INSTANTIATION(                                 \
+    meta_kernel_fn, backend, context, kernel_instantiation, ...) \
+  _PD_KERNEL_INSTANTIATION(PD_NARGS(__VA_ARGS__),                \
+                           meta_kernel_fn,                       \
+                           backend,                              \
+                           context,                              \
+                           kernel_instantiation,                 \
+                           __VA_ARGS__)
 
-#define _PD_KERNEL_INSTANTIATION(N, meta_kernel_fn, backend, context, ...) \
-  PD_CONCATENATE(_PD_KERNEL_INSTANTIATION_, N)                             \
-  (meta_kernel_fn, backend, context, __VA_ARGS__)
+#define _PD_KERNEL_INSTANTIATION(                                   \
+    N, meta_kernel_fn, backend, context, kernel_instantiation, ...) \
+  PD_CONCATENATE(_PD_KERNEL_INSTANTIATION_, N)                      \
+  (meta_kernel_fn, backend, context, kernel_instantiation, __VA_ARGS__)
 
-#define _PD_KERNEL_INSTANTIATION_1(                     \
-    meta_kernel_fn, backend, context, cpp_dtype)        \
-  template decltype(meta_kernel_fn<cpp_dtype, context>) \
-      meta_kernel_fn<cpp_dtype, context>
-#define _PD_KERNEL_INSTANTIATION_2(                     \
-    meta_kernel_fn, backend, context, cpp_dtype, ...)   \
-  template decltype(meta_kernel_fn<cpp_dtype, context>) \
-      meta_kernel_fn<cpp_dtype, context>;               \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_1(                 \
-      meta_kernel_fn, backend, context, __VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_3(                     \
-    meta_kernel_fn, backend, context, cpp_dtype, ...)   \
-  template decltype(meta_kernel_fn<cpp_dtype, context>) \
-      meta_kernel_fn<cpp_dtype, context>;               \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_2(                 \
-      meta_kernel_fn, backend, context, __VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_4(                     \
-    meta_kernel_fn, backend, context, cpp_dtype, ...)   \
-  template decltype(meta_kernel_fn<cpp_dtype, context>) \
-      meta_kernel_fn<cpp_dtype, context>;               \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_3(                 \
-      meta_kernel_fn, backend, context, __VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_5(                     \
-    meta_kernel_fn, backend, context, cpp_dtype, ...)   \
-  template decltype(meta_kernel_fn<cpp_dtype, context>) \
-      meta_kernel_fn<cpp_dtype, context>;               \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_4(                 \
-      meta_kernel_fn, backend, context, __VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_6(                     \
-    meta_kernel_fn, backend, context, cpp_dtype, ...)   \
-  template decltype(meta_kernel_fn<cpp_dtype, context>) \
-      meta_kernel_fn<cpp_dtype, context>;               \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_5(                 \
-      meta_kernel_fn, backend, context, __VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_7(                     \
-    meta_kernel_fn, backend, context, cpp_dtype, ...)   \
-  template decltype(meta_kernel_fn<cpp_dtype, context>) \
-      meta_kernel_fn<cpp_dtype, context>;               \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_6(                 \
-      meta_kernel_fn, backend, context, __VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_8(                     \
-    meta_kernel_fn, backend, context, cpp_dtype, ...)   \
-  template decltype(meta_kernel_fn<cpp_dtype, context>) \
-      meta_kernel_fn<cpp_dtype, context>;               \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_7(                 \
-      meta_kernel_fn, backend, context, __VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_9(                     \
-    meta_kernel_fn, backend, context, cpp_dtype, ...)   \
-  template decltype(meta_kernel_fn<cpp_dtype, context>) \
-      meta_kernel_fn<cpp_dtype, context>;               \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_8(                 \
-      meta_kernel_fn, backend, context, __VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_10(                    \
-    meta_kernel_fn, backend, context, cpp_dtype, ...)   \
-  template decltype(meta_kernel_fn<cpp_dtype, context>) \
-      meta_kernel_fn<cpp_dtype, context>;               \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_9(                 \
-      meta_kernel_fn, backend, context, __VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_11(                    \
-    meta_kernel_fn, backend, context, cpp_dtype, ...)   \
-  template decltype(meta_kernel_fn<cpp_dtype, context>) \
-      meta_kernel_fn<cpp_dtype, context>;               \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_10(                \
-      meta_kernel_fn, backend, context, __VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_12(                    \
-    meta_kernel_fn, backend, context, cpp_dtype, ...)   \
-  template decltype(meta_kernel_fn<cpp_dtype, context>) \
-      meta_kernel_fn<cpp_dtype, context>;               \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_11(                \
-      meta_kernel_fn, backend, context, __VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_13(                    \
-    meta_kernel_fn, backend, context, cpp_dtype, ...)   \
-  template decltype(meta_kernel_fn<cpp_dtype, context>) \
-      meta_kernel_fn<cpp_dtype, context>;               \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_12(                \
-      meta_kernel_fn, backend, context, __VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_14(                    \
-    meta_kernel_fn, backend, context, cpp_dtype, ...)   \
-  template decltype(meta_kernel_fn<cpp_dtype, context>) \
-      meta_kernel_fn<cpp_dtype, context>;               \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_13(                \
-      meta_kernel_fn, backend, context, __VA_ARGS__))
-#define _PD_KERNEL_INSTANTIATION_15(                    \
-    meta_kernel_fn, backend, context, cpp_dtype, ...)   \
-  template decltype(meta_kernel_fn<cpp_dtype, context>) \
-      meta_kernel_fn<cpp_dtype, context>;               \
-  PD_EXPAND(_PD_KERNEL_INSTANTIATION_14(                \
-      meta_kernel_fn, backend, context, __VA_ARGS__))
+#define _PD_KERNEL_INSTANTIATION_1(                                    \
+    meta_kernel_fn, backend, context, kernel_instantiation, cpp_dtype) \
+  kernel_instantiation(meta_kernel_fn, cpp_dtype, context)
+#define _PD_KERNEL_INSTANTIATION_2(                                         \
+    meta_kernel_fn, backend, context, kernel_instantiation, cpp_dtype, ...) \
+  kernel_instantiation(meta_kernel_fn, cpp_dtype, context)                  \
+      PD_EXPAND(_PD_KERNEL_INSTANTIATION_1(meta_kernel_fn,                  \
+                                           backend,                         \
+                                           context,                         \
+                                           kernel_instantiation,            \
+                                           __VA_ARGS__))
+#define _PD_KERNEL_INSTANTIATION_3(                                         \
+    meta_kernel_fn, backend, context, kernel_instantiation, cpp_dtype, ...) \
+  kernel_instantiation(meta_kernel_fn, cpp_dtype, context)                  \
+      PD_EXPAND(_PD_KERNEL_INSTANTIATION_2(meta_kernel_fn,                  \
+                                           backend,                         \
+                                           context,                         \
+                                           kernel_instantiation,            \
+                                           __VA_ARGS__))
+#define _PD_KERNEL_INSTANTIATION_4(                                         \
+    meta_kernel_fn, backend, context, kernel_instantiation, cpp_dtype, ...) \
+  kernel_instantiation(meta_kernel_fn, cpp_dtype, context)                  \
+      PD_EXPAND(_PD_KERNEL_INSTANTIATION_3(meta_kernel_fn,                  \
+                                           backend,                         \
+                                           context,                         \
+                                           kernel_instantiation,            \
+                                           __VA_ARGS__))
+#define _PD_KERNEL_INSTANTIATION_5(                                         \
+    meta_kernel_fn, backend, context, kernel_instantiation, cpp_dtype, ...) \
+  kernel_instantiation(meta_kernel_fn, cpp_dtype, context)                  \
+      PD_EXPAND(_PD_KERNEL_INSTANTIATION_4(meta_kernel_fn,                  \
+                                           backend,                         \
+                                           context,                         \
+                                           kernel_instantiation,            \
+                                           __VA_ARGS__))
+#define _PD_KERNEL_INSTANTIATION_6(                                         \
+    meta_kernel_fn, backend, context, kernel_instantiation, cpp_dtype, ...) \
+  kernel_instantiation(meta_kernel_fn, cpp_dtype, context)                  \
+      PD_EXPAND(_PD_KERNEL_INSTANTIATION_5(meta_kernel_fn,                  \
+                                           backend,                         \
+                                           context,                         \
+                                           kernel_instantiation,            \
+                                           __VA_ARGS__))
+#define _PD_KERNEL_INSTANTIATION_7(                                         \
+    meta_kernel_fn, backend, context, kernel_instantiation, cpp_dtype, ...) \
+  kernel_instantiation(meta_kernel_fn, cpp_dtype, context)                  \
+      PD_EXPAND(_PD_KERNEL_INSTANTIATION_6(meta_kernel_fn,                  \
+                                           backend,                         \
+                                           context,                         \
+                                           kernel_instantiation,            \
+                                           __VA_ARGS__))
+#define _PD_KERNEL_INSTANTIATION_8(                                         \
+    meta_kernel_fn, backend, context, kernel_instantiation, cpp_dtype, ...) \
+  kernel_instantiation(meta_kernel_fn, cpp_dtype, context)                  \
+      PD_EXPAND(_PD_KERNEL_INSTANTIATION_7(meta_kernel_fn,                  \
+                                           backend,                         \
+                                           context,                         \
+                                           kernel_instantiation,            \
+                                           __VA_ARGS__))
+#define _PD_KERNEL_INSTANTIATION_9(                                         \
+    meta_kernel_fn, backend, context, kernel_instantiation, cpp_dtype, ...) \
+  kernel_instantiation(meta_kernel_fn, cpp_dtype, context)                  \
+      PD_EXPAND(_PD_KERNEL_INSTANTIATION_8(meta_kernel_fn,                  \
+                                           backend,                         \
+                                           context,                         \
+                                           kernel_instantiation,            \
+                                           __VA_ARGS__))
+#define _PD_KERNEL_INSTANTIATION_10(                                        \
+    meta_kernel_fn, backend, context, kernel_instantiation, cpp_dtype, ...) \
+  kernel_instantiation(meta_kernel_fn, cpp_dtype, context)                  \
+      PD_EXPAND(_PD_KERNEL_INSTANTIATION_9(meta_kernel_fn,                  \
+                                           backend,                         \
+                                           context,                         \
+                                           kernel_instantiation,            \
+                                           __VA_ARGS__))
+#define _PD_KERNEL_INSTANTIATION_11(                                        \
+    meta_kernel_fn, backend, context, kernel_instantiation, cpp_dtype, ...) \
+  kernel_instantiation(meta_kernel_fn, cpp_dtype, context)                  \
+      PD_EXPAND(_PD_KERNEL_INSTANTIATION_10(meta_kernel_fn,                 \
+                                            backend,                        \
+                                            context,                        \
+                                            kernel_instantiation,           \
+                                            __VA_ARGS__))
+#define _PD_KERNEL_INSTANTIATION_12(                                        \
+    meta_kernel_fn, backend, context, kernel_instantiation, cpp_dtype, ...) \
+  kernel_instantiation(meta_kernel_fn, cpp_dtype, context)                  \
+      PD_EXPAND(_PD_KERNEL_INSTANTIATION_11(meta_kernel_fn,                 \
+                                            backend,                        \
+                                            context,                        \
+                                            kernel_instantiation,           \
+                                            __VA_ARGS__))
+#define _PD_KERNEL_INSTANTIATION_13(                                        \
+    meta_kernel_fn, backend, context, kernel_instantiation, cpp_dtype, ...) \
+  kernel_instantiation(meta_kernel_fn, cpp_dtype, context)                  \
+      PD_EXPAND(_PD_KERNEL_INSTANTIATION_12(meta_kernel_fn,                 \
+                                            backend,                        \
+                                            context,                        \
+                                            kernel_instantiation,           \
+                                            __VA_ARGS__))
+#define _PD_KERNEL_INSTANTIATION_14(                                        \
+    meta_kernel_fn, backend, context, kernel_instantiation, cpp_dtype, ...) \
+  kernel_instantiation(meta_kernel_fn, cpp_dtype, context)                  \
+      PD_EXPAND(_PD_KERNEL_INSTANTIATION_13(meta_kernel_fn,                 \
+                                            backend,                        \
+                                            context,                        \
+                                            kernel_instantiation,           \
+                                            __VA_ARGS__))
+#define _PD_KERNEL_INSTANTIATION_15(                                        \
+    meta_kernel_fn, backend, context, kernel_instantiation, cpp_dtype, ...) \
+  kernel_instantiation(meta_kernel_fn, cpp_dtype, context)                  \
+      PD_EXPAND(_PD_KERNEL_INSTANTIATION_14(meta_kernel_fn,                 \
+                                            backend,                        \
+                                            context,                        \
+                                            kernel_instantiation,           \
+                                            __VA_ARGS__))
 
 #define PD_KERNEL_REGISTRAR_INIT(reg_type,                   \
                                  kernel_name,                \
@@ -556,6 +645,9 @@ struct KernelRegistrar {
                                  layout,                     \
                                  args_def_fn,                \
                                  meta_kernel_fn,             \
+                                 arg_parse_functor,          \
+                                 to_kernel,                  \
+                                 to_variadic_kernel,         \
                                  ...)                        \
   PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT(PD_NARGS(__VA_ARGS__), \
                                       reg_type,              \
@@ -565,6 +657,9 @@ struct KernelRegistrar {
                                       layout,                \
                                       args_def_fn,           \
                                       meta_kernel_fn,        \
+                                      arg_parse_functor,     \
+                                      to_kernel,             \
+                                      to_variadic_kernel,    \
                                       __VA_ARGS__))
 
 // clang-format off
@@ -579,6 +674,9 @@ struct KernelRegistrar {
                                   layout,                  \
                                   args_def_fn,             \
                                   meta_kernel_fn,          \
+                                  arg_parse_functor,       \
+                                  to_kernel,               \
+                                  to_variadic_kernel,      \
                                   ...)                     \
   PD_EXPAND(PD_CONCATENATE(_PD_KERNEL_REGISTRAR_INIT_, N) ( \
     reg_type,                                              \
@@ -589,11 +687,14 @@ struct KernelRegistrar {
     PD_ID,                                                 \
     args_def_fn,                                           \
     meta_kernel_fn,                                        \
+    arg_parse_functor,                                     \
+    to_kernel,                                             \
+    to_variadic_kernel,                                    \
     __VA_ARGS__))
 
 // clang-format on
 
-#define _PD_KERNEL_REGISTRAR_INIT_1(reg_type,                                  \
+#define _PD_CREATE_REGISTRAR_OBJECT(reg_type,                                  \
                                     kernel_name,                               \
                                     backend,                                   \
                                     context,                                   \
@@ -601,6 +702,9 @@ struct KernelRegistrar {
                                     registrar_id,                              \
                                     args_def_fn,                               \
                                     meta_kernel_fn,                            \
+                                    arg_parse_functor,                         \
+                                    to_kernel,                                 \
+                                    to_variadic_kernel,                        \
                                     cpp_dtype)                                 \
   static const ::phi::KernelRegistrar PD_CONCATENATE(                          \
       __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
@@ -609,445 +713,553 @@ struct KernelRegistrar {
       #backend,                                                                \
       DATALAYOUT(layout),                                                      \
       ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
-      ::phi::KernelArgsParseFunctor<                                           \
-          decltype(&meta_kernel_fn<cpp_dtype, context>)>::Parse,               \
+      arg_parse_functor(meta_kernel_fn, cpp_dtype, context),                   \
       args_def_fn,                                                             \
-      PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                          \
-      PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));                \
+      to_kernel(meta_kernel_fn<cpp_dtype, context>),                           \
+      to_variadic_kernel(meta_kernel_fn<cpp_dtype, context>));
+
+#define _PD_KERNEL_REGISTRAR_INIT_1(reg_type,           \
+                                    kernel_name,        \
+                                    backend,            \
+                                    context,            \
+                                    layout,             \
+                                    registrar_id,       \
+                                    args_def_fn,        \
+                                    meta_kernel_fn,     \
+                                    arg_parse_functor,  \
+                                    to_kernel,          \
+                                    to_variadic_kernel, \
+                                    cpp_dtype)          \
+  _PD_CREATE_REGISTRAR_OBJECT(reg_type,                 \
+                              kernel_name,              \
+                              backend,                  \
+                              context,                  \
+                              layout,                   \
+                              registrar_id,             \
+                              args_def_fn,              \
+                              meta_kernel_fn,           \
+                              arg_parse_functor,        \
+                              to_kernel,                \
+                              to_variadic_kernel,       \
+                              cpp_dtype)                \
   int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() { return 0; }
-#define _PD_KERNEL_REGISTRAR_INIT_2(reg_type,                                  \
-                                    kernel_name,                               \
-                                    backend,                                   \
-                                    context,                                   \
-                                    layout,                                    \
-                                    registrar_id,                              \
-                                    args_def_fn,                               \
-                                    meta_kernel_fn,                            \
-                                    cpp_dtype,                                 \
-                                    ...)                                       \
-  static const ::phi::KernelRegistrar PD_CONCATENATE(                          \
-      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
-      reg_type,                                                                \
-      #kernel_name,                                                            \
-      #backend,                                                                \
-      DATALAYOUT(layout),                                                      \
-      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
-      ::phi::KernelArgsParseFunctor<                                           \
-          decltype(&meta_kernel_fn<cpp_dtype, context>)>::Parse,               \
-      args_def_fn,                                                             \
-      PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                          \
-      PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));                \
-  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_1(reg_type,                              \
-                                        kernel_name,                           \
-                                        backend,                               \
-                                        context,                               \
-                                        layout,                                \
-                                        PD_ID,                                 \
-                                        args_def_fn,                           \
-                                        meta_kernel_fn,                        \
+#define _PD_KERNEL_REGISTRAR_INIT_2(reg_type,               \
+                                    kernel_name,            \
+                                    backend,                \
+                                    context,                \
+                                    layout,                 \
+                                    registrar_id,           \
+                                    args_def_fn,            \
+                                    meta_kernel_fn,         \
+                                    arg_parse_functor,      \
+                                    to_kernel,              \
+                                    to_variadic_kernel,     \
+                                    cpp_dtype,              \
+                                    ...)                    \
+  _PD_CREATE_REGISTRAR_OBJECT(reg_type,                     \
+                              kernel_name,                  \
+                              backend,                      \
+                              context,                      \
+                              layout,                       \
+                              registrar_id,                 \
+                              args_def_fn,                  \
+                              meta_kernel_fn,               \
+                              arg_parse_functor,            \
+                              to_kernel,                    \
+                              to_variadic_kernel,           \
+                              cpp_dtype)                    \
+  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_1(reg_type,           \
+                                        kernel_name,        \
+                                        backend,            \
+                                        context,            \
+                                        layout,             \
+                                        PD_ID,              \
+                                        args_def_fn,        \
+                                        meta_kernel_fn,     \
+                                        arg_parse_functor,  \
+                                        to_kernel,          \
+                                        to_variadic_kernel, \
                                         __VA_ARGS__))
-#define _PD_KERNEL_REGISTRAR_INIT_3(reg_type,                                  \
-                                    kernel_name,                               \
-                                    backend,                                   \
-                                    context,                                   \
-                                    layout,                                    \
-                                    registrar_id,                              \
-                                    args_def_fn,                               \
-                                    meta_kernel_fn,                            \
-                                    cpp_dtype,                                 \
-                                    ...)                                       \
-  static const ::phi::KernelRegistrar PD_CONCATENATE(                          \
-      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
-      reg_type,                                                                \
-      #kernel_name,                                                            \
-      #backend,                                                                \
-      DATALAYOUT(layout),                                                      \
-      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
-      ::phi::KernelArgsParseFunctor<                                           \
-          decltype(&meta_kernel_fn<cpp_dtype, context>)>::Parse,               \
-      args_def_fn,                                                             \
-      PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                          \
-      PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));                \
-  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_2(reg_type,                              \
-                                        kernel_name,                           \
-                                        backend,                               \
-                                        context,                               \
-                                        layout,                                \
-                                        PD_ID,                                 \
-                                        args_def_fn,                           \
-                                        meta_kernel_fn,                        \
+#define _PD_KERNEL_REGISTRAR_INIT_3(reg_type,               \
+                                    kernel_name,            \
+                                    backend,                \
+                                    context,                \
+                                    layout,                 \
+                                    registrar_id,           \
+                                    args_def_fn,            \
+                                    meta_kernel_fn,         \
+                                    arg_parse_functor,      \
+                                    to_kernel,              \
+                                    to_variadic_kernel,     \
+                                    cpp_dtype,              \
+                                    ...)                    \
+  _PD_CREATE_REGISTRAR_OBJECT(reg_type,                     \
+                              kernel_name,                  \
+                              backend,                      \
+                              context,                      \
+                              layout,                       \
+                              registrar_id,                 \
+                              args_def_fn,                  \
+                              meta_kernel_fn,               \
+                              arg_parse_functor,            \
+                              to_kernel,                    \
+                              to_variadic_kernel,           \
+                              cpp_dtype)                    \
+  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_2(reg_type,           \
+                                        kernel_name,        \
+                                        backend,            \
+                                        context,            \
+                                        layout,             \
+                                        PD_ID,              \
+                                        args_def_fn,        \
+                                        meta_kernel_fn,     \
+                                        arg_parse_functor,  \
+                                        to_kernel,          \
+                                        to_variadic_kernel, \
                                         __VA_ARGS__))
-#define _PD_KERNEL_REGISTRAR_INIT_4(reg_type,                                  \
-                                    kernel_name,                               \
-                                    backend,                                   \
-                                    context,                                   \
-                                    layout,                                    \
-                                    registrar_id,                              \
-                                    args_def_fn,                               \
-                                    meta_kernel_fn,                            \
-                                    cpp_dtype,                                 \
-                                    ...)                                       \
-  static const ::phi::KernelRegistrar PD_CONCATENATE(                          \
-      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
-      reg_type,                                                                \
-      #kernel_name,                                                            \
-      #backend,                                                                \
-      DATALAYOUT(layout),                                                      \
-      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
-      ::phi::KernelArgsParseFunctor<                                           \
-          decltype(&meta_kernel_fn<cpp_dtype, context>)>::Parse,               \
-      args_def_fn,                                                             \
-      PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                          \
-      PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));                \
-  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_3(reg_type,                              \
-                                        kernel_name,                           \
-                                        backend,                               \
-                                        context,                               \
-                                        layout,                                \
-                                        PD_ID,                                 \
-                                        args_def_fn,                           \
-                                        meta_kernel_fn,                        \
+#define _PD_KERNEL_REGISTRAR_INIT_4(reg_type,               \
+                                    kernel_name,            \
+                                    backend,                \
+                                    context,                \
+                                    layout,                 \
+                                    registrar_id,           \
+                                    args_def_fn,            \
+                                    meta_kernel_fn,         \
+                                    arg_parse_functor,      \
+                                    to_kernel,              \
+                                    to_variadic_kernel,     \
+                                    cpp_dtype,              \
+                                    ...)                    \
+  _PD_CREATE_REGISTRAR_OBJECT(reg_type,                     \
+                              kernel_name,                  \
+                              backend,                      \
+                              context,                      \
+                              layout,                       \
+                              registrar_id,                 \
+                              args_def_fn,                  \
+                              meta_kernel_fn,               \
+                              arg_parse_functor,            \
+                              to_kernel,                    \
+                              to_variadic_kernel,           \
+                              cpp_dtype)                    \
+  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_3(reg_type,           \
+                                        kernel_name,        \
+                                        backend,            \
+                                        context,            \
+                                        layout,             \
+                                        PD_ID,              \
+                                        args_def_fn,        \
+                                        meta_kernel_fn,     \
+                                        arg_parse_functor,  \
+                                        to_kernel,          \
+                                        to_variadic_kernel, \
                                         __VA_ARGS__))
-#define _PD_KERNEL_REGISTRAR_INIT_5(reg_type,                                  \
-                                    kernel_name,                               \
-                                    backend,                                   \
-                                    context,                                   \
-                                    layout,                                    \
-                                    registrar_id,                              \
-                                    args_def_fn,                               \
-                                    meta_kernel_fn,                            \
-                                    cpp_dtype,                                 \
-                                    ...)                                       \
-  static const ::phi::KernelRegistrar PD_CONCATENATE(                          \
-      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
-      reg_type,                                                                \
-      #kernel_name,                                                            \
-      #backend,                                                                \
-      DATALAYOUT(layout),                                                      \
-      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
-      ::phi::KernelArgsParseFunctor<                                           \
-          decltype(&meta_kernel_fn<cpp_dtype, context>)>::Parse,               \
-      args_def_fn,                                                             \
-      PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                          \
-      PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));                \
-  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_4(reg_type,                              \
-                                        kernel_name,                           \
-                                        backend,                               \
-                                        context,                               \
-                                        layout,                                \
-                                        PD_ID,                                 \
-                                        args_def_fn,                           \
-                                        meta_kernel_fn,                        \
+#define _PD_KERNEL_REGISTRAR_INIT_5(reg_type,               \
+                                    kernel_name,            \
+                                    backend,                \
+                                    context,                \
+                                    layout,                 \
+                                    registrar_id,           \
+                                    args_def_fn,            \
+                                    meta_kernel_fn,         \
+                                    arg_parse_functor,      \
+                                    to_kernel,              \
+                                    to_variadic_kernel,     \
+                                    cpp_dtype,              \
+                                    ...)                    \
+  _PD_CREATE_REGISTRAR_OBJECT(reg_type,                     \
+                              kernel_name,                  \
+                              backend,                      \
+                              context,                      \
+                              layout,                       \
+                              registrar_id,                 \
+                              args_def_fn,                  \
+                              meta_kernel_fn,               \
+                              arg_parse_functor,            \
+                              to_kernel,                    \
+                              to_variadic_kernel,           \
+                              cpp_dtype)                    \
+  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_4(reg_type,           \
+                                        kernel_name,        \
+                                        backend,            \
+                                        context,            \
+                                        layout,             \
+                                        PD_ID,              \
+                                        args_def_fn,        \
+                                        meta_kernel_fn,     \
+                                        arg_parse_functor,  \
+                                        to_kernel,          \
+                                        to_variadic_kernel, \
                                         __VA_ARGS__))
-#define _PD_KERNEL_REGISTRAR_INIT_6(reg_type,                                  \
-                                    kernel_name,                               \
-                                    backend,                                   \
-                                    context,                                   \
-                                    layout,                                    \
-                                    registrar_id,                              \
-                                    args_def_fn,                               \
-                                    meta_kernel_fn,                            \
-                                    cpp_dtype,                                 \
-                                    ...)                                       \
-  static const ::phi::KernelRegistrar PD_CONCATENATE(                          \
-      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
-      reg_type,                                                                \
-      #kernel_name,                                                            \
-      #backend,                                                                \
-      DATALAYOUT(layout),                                                      \
-      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
-      ::phi::KernelArgsParseFunctor<                                           \
-          decltype(&meta_kernel_fn<cpp_dtype, context>)>::Parse,               \
-      args_def_fn,                                                             \
-      PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                          \
-      PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));                \
-  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_5(reg_type,                              \
-                                        kernel_name,                           \
-                                        backend,                               \
-                                        context,                               \
-                                        layout,                                \
-                                        PD_ID,                                 \
-                                        args_def_fn,                           \
-                                        meta_kernel_fn,                        \
+#define _PD_KERNEL_REGISTRAR_INIT_6(reg_type,               \
+                                    kernel_name,            \
+                                    backend,                \
+                                    context,                \
+                                    layout,                 \
+                                    registrar_id,           \
+                                    args_def_fn,            \
+                                    meta_kernel_fn,         \
+                                    arg_parse_functor,      \
+                                    to_kernel,              \
+                                    to_variadic_kernel,     \
+                                    cpp_dtype,              \
+                                    ...)                    \
+  _PD_CREATE_REGISTRAR_OBJECT(reg_type,                     \
+                              kernel_name,                  \
+                              backend,                      \
+                              context,                      \
+                              layout,                       \
+                              registrar_id,                 \
+                              args_def_fn,                  \
+                              meta_kernel_fn,               \
+                              arg_parse_functor,            \
+                              to_kernel,                    \
+                              to_variadic_kernel,           \
+                              cpp_dtype)                    \
+  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_5(reg_type,           \
+                                        kernel_name,        \
+                                        backend,            \
+                                        context,            \
+                                        layout,             \
+                                        PD_ID,              \
+                                        args_def_fn,        \
+                                        meta_kernel_fn,     \
+                                        arg_parse_functor,  \
+                                        to_kernel,          \
+                                        to_variadic_kernel, \
                                         __VA_ARGS__))
-#define _PD_KERNEL_REGISTRAR_INIT_7(reg_type,                                  \
-                                    kernel_name,                               \
-                                    backend,                                   \
-                                    context,                                   \
-                                    layout,                                    \
-                                    registrar_id,                              \
-                                    args_def_fn,                               \
-                                    meta_kernel_fn,                            \
-                                    cpp_dtype,                                 \
-                                    ...)                                       \
-  static const ::phi::KernelRegistrar PD_CONCATENATE(                          \
-      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
-      reg_type,                                                                \
-      #kernel_name,                                                            \
-      #backend,                                                                \
-      DATALAYOUT(layout),                                                      \
-      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
-      ::phi::KernelArgsParseFunctor<                                           \
-          decltype(&meta_kernel_fn<cpp_dtype, context>)>::Parse,               \
-      args_def_fn,                                                             \
-      PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                          \
-      PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));                \
-  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_6(reg_type,                              \
-                                        kernel_name,                           \
-                                        backend,                               \
-                                        context,                               \
-                                        layout,                                \
-                                        PD_ID,                                 \
-                                        args_def_fn,                           \
-                                        meta_kernel_fn,                        \
+#define _PD_KERNEL_REGISTRAR_INIT_7(reg_type,               \
+                                    kernel_name,            \
+                                    backend,                \
+                                    context,                \
+                                    layout,                 \
+                                    registrar_id,           \
+                                    args_def_fn,            \
+                                    meta_kernel_fn,         \
+                                    arg_parse_functor,      \
+                                    to_kernel,              \
+                                    to_variadic_kernel,     \
+                                    cpp_dtype,              \
+                                    ...)                    \
+  _PD_CREATE_REGISTRAR_OBJECT(reg_type,                     \
+                              kernel_name,                  \
+                              backend,                      \
+                              context,                      \
+                              layout,                       \
+                              registrar_id,                 \
+                              args_def_fn,                  \
+                              meta_kernel_fn,               \
+                              arg_parse_functor,            \
+                              to_kernel,                    \
+                              to_variadic_kernel,           \
+                              cpp_dtype)                    \
+  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_6(reg_type,           \
+                                        kernel_name,        \
+                                        backend,            \
+                                        context,            \
+                                        layout,             \
+                                        PD_ID,              \
+                                        args_def_fn,        \
+                                        meta_kernel_fn,     \
+                                        arg_parse_functor,  \
+                                        to_kernel,          \
+                                        to_variadic_kernel, \
                                         __VA_ARGS__))
-#define _PD_KERNEL_REGISTRAR_INIT_8(reg_type,                                  \
-                                    kernel_name,                               \
-                                    backend,                                   \
-                                    context,                                   \
-                                    layout,                                    \
-                                    registrar_id,                              \
-                                    args_def_fn,                               \
-                                    meta_kernel_fn,                            \
-                                    cpp_dtype,                                 \
-                                    ...)                                       \
-  static const ::phi::KernelRegistrar PD_CONCATENATE(                          \
-      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
-      reg_type,                                                                \
-      #kernel_name,                                                            \
-      #backend,                                                                \
-      DATALAYOUT(layout),                                                      \
-      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
-      ::phi::KernelArgsParseFunctor<                                           \
-          decltype(&meta_kernel_fn<cpp_dtype, context>)>::Parse,               \
-      args_def_fn,                                                             \
-      PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                          \
-      PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));                \
-  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_7(reg_type,                              \
-                                        kernel_name,                           \
-                                        backend,                               \
-                                        context,                               \
-                                        layout,                                \
-                                        PD_ID,                                 \
-                                        args_def_fn,                           \
-                                        meta_kernel_fn,                        \
+#define _PD_KERNEL_REGISTRAR_INIT_8(reg_type,               \
+                                    kernel_name,            \
+                                    backend,                \
+                                    context,                \
+                                    layout,                 \
+                                    registrar_id,           \
+                                    args_def_fn,            \
+                                    meta_kernel_fn,         \
+                                    arg_parse_functor,      \
+                                    to_kernel,              \
+                                    to_variadic_kernel,     \
+                                    cpp_dtype,              \
+                                    ...)                    \
+  _PD_CREATE_REGISTRAR_OBJECT(reg_type,                     \
+                              kernel_name,                  \
+                              backend,                      \
+                              context,                      \
+                              layout,                       \
+                              registrar_id,                 \
+                              args_def_fn,                  \
+                              meta_kernel_fn,               \
+                              arg_parse_functor,            \
+                              to_kernel,                    \
+                              to_variadic_kernel,           \
+                              cpp_dtype)                    \
+  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_7(reg_type,           \
+                                        kernel_name,        \
+                                        backend,            \
+                                        context,            \
+                                        layout,             \
+                                        PD_ID,              \
+                                        args_def_fn,        \
+                                        meta_kernel_fn,     \
+                                        arg_parse_functor,  \
+                                        to_kernel,          \
+                                        to_variadic_kernel, \
                                         __VA_ARGS__))
-#define _PD_KERNEL_REGISTRAR_INIT_9(reg_type,                                  \
-                                    kernel_name,                               \
-                                    backend,                                   \
-                                    context,                                   \
-                                    layout,                                    \
-                                    registrar_id,                              \
-                                    args_def_fn,                               \
-                                    meta_kernel_fn,                            \
-                                    cpp_dtype,                                 \
-                                    ...)                                       \
-  static const ::phi::KernelRegistrar PD_CONCATENATE(                          \
-      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
-      reg_type,                                                                \
-      #kernel_name,                                                            \
-      #backend,                                                                \
-      DATALAYOUT(layout),                                                      \
-      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
-      ::phi::KernelArgsParseFunctor<                                           \
-          decltype(&meta_kernel_fn<cpp_dtype, context>)>::Parse,               \
-      args_def_fn,                                                             \
-      PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                          \
-      PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));                \
-  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_8(reg_type,                              \
-                                        kernel_name,                           \
-                                        backend,                               \
-                                        context,                               \
-                                        layout,                                \
-                                        PD_ID,                                 \
-                                        args_def_fn,                           \
-                                        meta_kernel_fn,                        \
+#define _PD_KERNEL_REGISTRAR_INIT_9(reg_type,               \
+                                    kernel_name,            \
+                                    backend,                \
+                                    context,                \
+                                    layout,                 \
+                                    registrar_id,           \
+                                    args_def_fn,            \
+                                    meta_kernel_fn,         \
+                                    arg_parse_functor,      \
+                                    to_kernel,              \
+                                    to_variadic_kernel,     \
+                                    cpp_dtype,              \
+                                    ...)                    \
+  _PD_CREATE_REGISTRAR_OBJECT(reg_type,                     \
+                              kernel_name,                  \
+                              backend,                      \
+                              context,                      \
+                              layout,                       \
+                              registrar_id,                 \
+                              args_def_fn,                  \
+                              meta_kernel_fn,               \
+                              arg_parse_functor,            \
+                              to_kernel,                    \
+                              to_variadic_kernel,           \
+                              cpp_dtype)                    \
+  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_8(reg_type,           \
+                                        kernel_name,        \
+                                        backend,            \
+                                        context,            \
+                                        layout,             \
+                                        PD_ID,              \
+                                        args_def_fn,        \
+                                        meta_kernel_fn,     \
+                                        arg_parse_functor,  \
+                                        to_kernel,          \
+                                        to_variadic_kernel, \
                                         __VA_ARGS__))
-#define _PD_KERNEL_REGISTRAR_INIT_10(reg_type,                                 \
-                                     kernel_name,                              \
-                                     backend,                                  \
-                                     context,                                  \
-                                     layout,                                   \
-                                     registrar_id,                             \
-                                     args_def_fn,                              \
-                                     meta_kernel_fn,                           \
-                                     cpp_dtype,                                \
-                                     ...)                                      \
-  static const ::phi::KernelRegistrar PD_CONCATENATE(                          \
-      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
-      reg_type,                                                                \
-      #kernel_name,                                                            \
-      #backend,                                                                \
-      DATALAYOUT(layout),                                                      \
-      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
-      ::phi::KernelArgsParseFunctor<                                           \
-          decltype(&meta_kernel_fn<cpp_dtype, context>)>::Parse,               \
-      args_def_fn,                                                             \
-      PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                          \
-      PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));                \
-  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_9(reg_type,                              \
-                                        kernel_name,                           \
-                                        backend,                               \
-                                        context,                               \
-                                        layout,                                \
-                                        PD_ID,                                 \
-                                        args_def_fn,                           \
-                                        meta_kernel_fn,                        \
+#define _PD_KERNEL_REGISTRAR_INIT_10(reg_type,              \
+                                     kernel_name,           \
+                                     backend,               \
+                                     context,               \
+                                     layout,                \
+                                     registrar_id,          \
+                                     args_def_fn,           \
+                                     meta_kernel_fn,        \
+                                     arg_parse_functor,     \
+                                     to_kernel,             \
+                                     to_variadic_kernel,    \
+                                     cpp_dtype,             \
+                                     ...)                   \
+  _PD_CREATE_REGISTRAR_OBJECT(reg_type,                     \
+                              kernel_name,                  \
+                              backend,                      \
+                              context,                      \
+                              layout,                       \
+                              registrar_id,                 \
+                              args_def_fn,                  \
+                              meta_kernel_fn,               \
+                              arg_parse_functor,            \
+                              to_kernel,                    \
+                              to_variadic_kernel,           \
+                              cpp_dtype)                    \
+  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_9(reg_type,           \
+                                        kernel_name,        \
+                                        backend,            \
+                                        context,            \
+                                        layout,             \
+                                        PD_ID,              \
+                                        args_def_fn,        \
+                                        meta_kernel_fn,     \
+                                        arg_parse_functor,  \
+                                        to_kernel,          \
+                                        to_variadic_kernel, \
                                         __VA_ARGS__))
-#define _PD_KERNEL_REGISTRAR_INIT_11(reg_type,                                 \
-                                     kernel_name,                              \
-                                     backend,                                  \
-                                     context,                                  \
-                                     layout,                                   \
-                                     registrar_id,                             \
-                                     args_def_fn,                              \
-                                     meta_kernel_fn,                           \
-                                     cpp_dtype,                                \
-                                     ...)                                      \
-  static const ::phi::KernelRegistrar PD_CONCATENATE(                          \
-      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
-      reg_type,                                                                \
-      #kernel_name,                                                            \
-      #backend,                                                                \
-      DATALAYOUT(layout),                                                      \
-      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
-      ::phi::KernelArgsParseFunctor<                                           \
-          decltype(&meta_kernel_fn<cpp_dtype, context>)>::Parse,               \
-      args_def_fn,                                                             \
-      PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                          \
-      PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));                \
-  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_10(reg_type,                             \
-                                         kernel_name,                          \
-                                         backend,                              \
-                                         context,                              \
-                                         layout,                               \
-                                         PD_ID,                                \
-                                         args_def_fn,                          \
-                                         meta_kernel_fn,                       \
+#define _PD_KERNEL_REGISTRAR_INIT_11(reg_type,               \
+                                     kernel_name,            \
+                                     backend,                \
+                                     context,                \
+                                     layout,                 \
+                                     registrar_id,           \
+                                     args_def_fn,            \
+                                     meta_kernel_fn,         \
+                                     arg_parse_functor,      \
+                                     to_kernel,              \
+                                     to_variadic_kernel,     \
+                                     cpp_dtype,              \
+                                     ...)                    \
+  _PD_CREATE_REGISTRAR_OBJECT(reg_type,                      \
+                              kernel_name,                   \
+                              backend,                       \
+                              context,                       \
+                              layout,                        \
+                              registrar_id,                  \
+                              args_def_fn,                   \
+                              meta_kernel_fn,                \
+                              arg_parse_functor,             \
+                              to_kernel,                     \
+                              to_variadic_kernel,            \
+                              cpp_dtype)                     \
+  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_10(reg_type,           \
+                                         kernel_name,        \
+                                         backend,            \
+                                         context,            \
+                                         layout,             \
+                                         PD_ID,              \
+                                         args_def_fn,        \
+                                         meta_kernel_fn,     \
+                                         arg_parse_functor,  \
+                                         to_kernel,          \
+                                         to_variadic_kernel, \
                                          __VA_ARGS__))
-#define _PD_KERNEL_REGISTRAR_INIT_12(reg_type,                                 \
-                                     kernel_name,                              \
-                                     backend,                                  \
-                                     context,                                  \
-                                     layout,                                   \
-                                     registrar_id,                             \
-                                     args_def_fn,                              \
-                                     meta_kernel_fn,                           \
-                                     cpp_dtype,                                \
-                                     ...)                                      \
-  static const ::phi::KernelRegistrar PD_CONCATENATE(                          \
-      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
-      reg_type,                                                                \
-      #kernel_name,                                                            \
-      #backend,                                                                \
-      DATALAYOUT(layout),                                                      \
-      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
-      ::phi::KernelArgsParseFunctor<                                           \
-          decltype(&meta_kernel_fn<cpp_dtype, context>)>::Parse,               \
-      args_def_fn,                                                             \
-      PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                          \
-      PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));                \
-  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_11(reg_type,                             \
-                                         kernel_name,                          \
-                                         backend,                              \
-                                         context,                              \
-                                         layout,                               \
-                                         PD_ID,                                \
-                                         args_def_fn,                          \
-                                         meta_kernel_fn,                       \
+#define _PD_KERNEL_REGISTRAR_INIT_12(reg_type,               \
+                                     kernel_name,            \
+                                     backend,                \
+                                     context,                \
+                                     layout,                 \
+                                     registrar_id,           \
+                                     args_def_fn,            \
+                                     meta_kernel_fn,         \
+                                     arg_parse_functor,      \
+                                     to_kernel,              \
+                                     to_variadic_kernel,     \
+                                     cpp_dtype,              \
+                                     ...)                    \
+  _PD_CREATE_REGISTRAR_OBJECT(reg_type,                      \
+                              kernel_name,                   \
+                              backend,                       \
+                              context,                       \
+                              layout,                        \
+                              registrar_id,                  \
+                              args_def_fn,                   \
+                              meta_kernel_fn,                \
+                              arg_parse_functor,             \
+                              to_kernel,                     \
+                              to_variadic_kernel,            \
+                              cpp_dtype)                     \
+  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_11(reg_type,           \
+                                         kernel_name,        \
+                                         backend,            \
+                                         context,            \
+                                         layout,             \
+                                         PD_ID,              \
+                                         args_def_fn,        \
+                                         meta_kernel_fn,     \
+                                         arg_parse_functor,  \
+                                         to_kernel,          \
+                                         to_variadic_kernel, \
                                          __VA_ARGS__))
-#define _PD_KERNEL_REGISTRAR_INIT_13(reg_type,                                 \
-                                     kernel_name,                              \
-                                     backend,                                  \
-                                     context,                                  \
-                                     layout,                                   \
-                                     registrar_id,                             \
-                                     args_def_fn,                              \
-                                     meta_kernel_fn,                           \
-                                     cpp_dtype,                                \
-                                     ...)                                      \
-  static const ::phi::KernelRegistrar PD_CONCATENATE(                          \
-      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
-      reg_type,                                                                \
-      #kernel_name,                                                            \
-      #backend,                                                                \
-      DATALAYOUT(layout),                                                      \
-      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
-      ::phi::KernelArgsParseFunctor<                                           \
-          decltype(&meta_kernel_fn<cpp_dtype, context>)>::Parse,               \
-      args_def_fn,                                                             \
-      PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                          \
-      PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));                \
-  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_12(reg_type,                             \
-                                         kernel_name,                          \
-                                         backend,                              \
-                                         context,                              \
-                                         layout,                               \
-                                         PD_ID,                                \
-                                         args_def_fn,                          \
-                                         meta_kernel_fn,                       \
+#define _PD_KERNEL_REGISTRAR_INIT_13(reg_type,               \
+                                     kernel_name,            \
+                                     backend,                \
+                                     context,                \
+                                     layout,                 \
+                                     registrar_id,           \
+                                     args_def_fn,            \
+                                     meta_kernel_fn,         \
+                                     arg_parse_functor,      \
+                                     to_kernel,              \
+                                     to_variadic_kernel,     \
+                                     cpp_dtype,              \
+                                     ...)                    \
+  _PD_CREATE_REGISTRAR_OBJECT(reg_type,                      \
+                              kernel_name,                   \
+                              backend,                       \
+                              context,                       \
+                              layout,                        \
+                              registrar_id,                  \
+                              args_def_fn,                   \
+                              meta_kernel_fn,                \
+                              arg_parse_functor,             \
+                              to_kernel,                     \
+                              to_variadic_kernel,            \
+                              cpp_dtype)                     \
+  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_12(reg_type,           \
+                                         kernel_name,        \
+                                         backend,            \
+                                         context,            \
+                                         layout,             \
+                                         PD_ID,              \
+                                         args_def_fn,        \
+                                         meta_kernel_fn,     \
+                                         arg_parse_functor,  \
+                                         to_kernel,          \
+                                         to_variadic_kernel, \
                                          __VA_ARGS__))
-#define _PD_KERNEL_REGISTRAR_INIT_14(reg_type,                                 \
-                                     kernel_name,                              \
-                                     backend,                                  \
-                                     context,                                  \
-                                     layout,                                   \
-                                     registrar_id,                             \
-                                     args_def_fn,                              \
-                                     meta_kernel_fn,                           \
-                                     cpp_dtype,                                \
-                                     ...)                                      \
-  static const ::phi::KernelRegistrar PD_CONCATENATE(                          \
-      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
-      reg_type,                                                                \
-      #kernel_name,                                                            \
-      #backend,                                                                \
-      DATALAYOUT(layout),                                                      \
-      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
-      ::phi::KernelArgsParseFunctor<                                           \
-          decltype(&meta_kernel_fn<cpp_dtype, context>)>::Parse,               \
-      args_def_fn,                                                             \
-      PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                          \
-      PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));                \
-  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_13(reg_type,                             \
-                                         kernel_name,                          \
-                                         backend,                              \
-                                         context,                              \
-                                         layout,                               \
-                                         PD_ID,                                \
-                                         args_def_fn,                          \
-                                         meta_kernel_fn,                       \
+#define _PD_KERNEL_REGISTRAR_INIT_14(reg_type,               \
+                                     kernel_name,            \
+                                     backend,                \
+                                     context,                \
+                                     layout,                 \
+                                     registrar_id,           \
+                                     args_def_fn,            \
+                                     meta_kernel_fn,         \
+                                     arg_parse_functor,      \
+                                     to_kernel,              \
+                                     to_variadic_kernel,     \
+                                     cpp_dtype,              \
+                                     ...)                    \
+  _PD_CREATE_REGISTRAR_OBJECT(reg_type,                      \
+                              kernel_name,                   \
+                              backend,                       \
+                              context,                       \
+                              layout,                        \
+                              registrar_id,                  \
+                              args_def_fn,                   \
+                              meta_kernel_fn,                \
+                              arg_parse_functor,             \
+                              to_kernel,                     \
+                              to_variadic_kernel,            \
+                              cpp_dtype)                     \
+  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_13(reg_type,           \
+                                         kernel_name,        \
+                                         backend,            \
+                                         context,            \
+                                         layout,             \
+                                         PD_ID,              \
+                                         args_def_fn,        \
+                                         meta_kernel_fn,     \
+                                         arg_parse_functor,  \
+                                         to_kernel,          \
+                                         to_variadic_kernel, \
                                          __VA_ARGS__))
-#define _PD_KERNEL_REGISTRAR_INIT_15(reg_type,                                 \
-                                     kernel_name,                              \
-                                     backend,                                  \
-                                     context,                                  \
-                                     layout,                                   \
-                                     registrar_id,                             \
-                                     args_def_fn,                              \
-                                     meta_kernel_fn,                           \
-                                     cpp_dtype,                                \
-                                     ...)                                      \
-  static const ::phi::KernelRegistrar PD_CONCATENATE(                          \
-      __reg_phi_kernel_##kernel_name##_##backend##_##layout##_, registrar_id)( \
-      reg_type,                                                                \
-      #kernel_name,                                                            \
-      #backend,                                                                \
-      DATALAYOUT(layout),                                                      \
-      ::paddle::experimental::CppTypeToDataType<cpp_dtype>::Type(),            \
-      ::phi::KernelArgsParseFunctor<                                           \
-          decltype(&meta_kernel_fn<cpp_dtype, context>)>::Parse,               \
-      args_def_fn,                                                             \
-      PHI_KERNEL(meta_kernel_fn<cpp_dtype, context>),                          \
-      PHI_VARIADIC_KERNEL(meta_kernel_fn<cpp_dtype, context>));                \
-  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_14(reg_type,                             \
-                                         kernel_name,                          \
-                                         backend,                              \
-                                         context,                              \
-                                         layout,                               \
-                                         PD_ID,                                \
-                                         args_def_fn,                          \
-                                         meta_kernel_fn,                       \
+#define _PD_KERNEL_REGISTRAR_INIT_15(reg_type,               \
+                                     kernel_name,            \
+                                     backend,                \
+                                     context,                \
+                                     layout,                 \
+                                     registrar_id,           \
+                                     args_def_fn,            \
+                                     meta_kernel_fn,         \
+                                     arg_parse_functor,      \
+                                     to_kernel,              \
+                                     to_variadic_kernel,     \
+                                     cpp_dtype,              \
+                                     ...)                    \
+  _PD_CREATE_REGISTRAR_OBJECT(reg_type,                      \
+                              kernel_name,                   \
+                              backend,                       \
+                              context,                       \
+                              layout,                        \
+                              registrar_id,                  \
+                              args_def_fn,                   \
+                              meta_kernel_fn,                \
+                              arg_parse_functor,             \
+                              to_kernel,                     \
+                              to_variadic_kernel,            \
+                              cpp_dtype)                     \
+  PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT_14(reg_type,           \
+                                         kernel_name,        \
+                                         backend,            \
+                                         context,            \
+                                         layout,             \
+                                         PD_ID,              \
+                                         args_def_fn,        \
+                                         meta_kernel_fn,     \
+                                         arg_parse_functor,  \
+                                         to_kernel,          \
+                                         to_variadic_kernel, \
                                          __VA_ARGS__))
 /** PD_REGISTER_GENERAL_KERNEL
  *
@@ -1138,6 +1350,10 @@ struct KernelRegistrar {
                       ::phi::backend##Context,         \
                       layout,                          \
                       meta_kernel_fn,                  \
+                      FUNCTION_KERNEL_INSTANTIATION,   \
+                      ARG_PARSE_FUNCTOR,               \
+                      PHI_KERNEL,                      \
+                      PHI_VARIADIC_KERNEL,             \
                       __VA_ARGS__)
 
 /** PD_REGISTER_PLUGIN_KERNEL
@@ -1153,6 +1369,10 @@ struct KernelRegistrar {
                       ::phi::CustomContext,            \
                       layout,                          \
                       meta_kernel_fn,                  \
+                      FUNCTION_KERNEL_INSTANTIATION,   \
+                      ARG_PARSE_FUNCTOR,               \
+                      PHI_KERNEL,                      \
+                      PHI_VARIADIC_KERNEL,             \
                       __VA_ARGS__)
 
 }  // namespace phi
