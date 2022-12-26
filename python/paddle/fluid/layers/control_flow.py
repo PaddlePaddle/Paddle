@@ -50,6 +50,7 @@ from ..data_feeder import (
 from ..backward import _infer_var_data_type_shape_
 import paddle
 from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.core.eager import Tensor
 
 __all__ = [
     'Switch',
@@ -1056,7 +1057,7 @@ def assign_skip_lod_tensor_array(input, output):
                 return True
         return False
 
-    if not isinstance(input, (Variable, core.VarBase)):
+    if not isinstance(input, (Tensor, Variable)):
         if isinstance(output, Variable) and isinstance(
             input, support_ret_buildin_type
         ):

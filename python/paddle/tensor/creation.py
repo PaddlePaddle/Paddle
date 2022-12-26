@@ -23,6 +23,7 @@ import numpy as np
 import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.common_ops_import import fill_constant
+from paddle.fluid.core.eager import Tensor
 
 from ..fluid.data_feeder import (
     check_dtype,
@@ -564,12 +565,9 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
             return data
         elif isinstance(data, (core.LoDTensor, core.Tensor)):
             # should't expose it to users, just for internal use.
-            # convert core.Tensor/core.LoDTensor to VarBase first
+            # convert core.Tensor/core.LoDTensor to Tensor first
             # Currenly, there is no copy when places are same
-            if in_dygraph_mode():
-                data = core.eager.Tensor(data)
-            else:
-                data = paddle.Tensor(data)
+            data = paddle.Tensor(data)
             if not data.place._equals(place):
                 data = data._copy_to(place, False)
             data = _handle_dtype(data, dtype)
@@ -1011,7 +1009,7 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
     """
 
     def _check_attr(attr, message):
-        if isinstance(attr, ((Variable, core.VarBase, core.eager.Tensor))):
+        if isinstance(attr, (Tensor, Variable)):
             assert len(attr.shape) == 1 and attr.shape[0] in [1, -1]
         elif not isinstance(attr, int) or attr < 0:
             raise TypeError("{} should be a non-negative int.".format(message))
@@ -1947,12 +1945,12 @@ def assign(x, output=None):
         input = np.array([input])
     elif isinstance(input, (list, tuple)):
         input = np.array(input)
-    # NOTE(Aurelius84): Why we judge core.VarBase?
-    # In case of @to_static, a VarBase can be as input of `assign`,
+    # NOTE(Aurelius84): Why we judge core.Tensor?
+    # In case of @to_static, a Tensor can be as input of `assign`,
     # but _non_static_mode()==False under @to_static, which means
-    # isinstance(VarBase, Variable) == False. It will cause return None
+    # isinstance(Tensor, Variable) == False. It will cause return None
     # after this api.
-    if isinstance(input, (Variable, core.VarBase, core.eager.Tensor)):
+    if isinstance(input, (Tensor, Variable)):
         if in_dygraph_mode():
             if output is None:
                 output = _C_ops.assign(input)
@@ -2150,7 +2148,7 @@ def _memcpy(input, place=None, output=None):
     helper = LayerHelper('memcpy', **locals())
     check_type(input, 'input', (Variable), 'memcpy')
 
-    if isinstance(input, (Variable, core.VarBase)):
+    if isinstance(input, (Tensor, Variable)):
         check_dtype(
             input.dtype,
             'input',

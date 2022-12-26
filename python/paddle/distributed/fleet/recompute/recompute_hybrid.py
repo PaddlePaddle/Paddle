@@ -15,6 +15,7 @@
 import paddle
 from paddle.autograd import PyLayer
 from paddle.fluid import core, framework
+from paddle.fluid.core.eager import Tensor
 
 from ..meta_parallel.parallel_layers.random import get_rng_state_tracker
 from ..meta_parallel.pp_utils import utils
@@ -213,7 +214,7 @@ class _HPRecomputeFunction(PyLayer):
                     detached_inputs = detach_variable(tuple(inputs))
                     outputs = ctx.run_function(*detached_inputs, **ctx.kwargs)
 
-            if isinstance(outputs, (core.VarBase, core.eager.Tensor)):
+            if isinstance(outputs, Tensor):
                 outputs = (outputs,)
             assert len(outputs) == len(args)
 
@@ -222,7 +223,7 @@ class _HPRecomputeFunction(PyLayer):
 
             for i in range(len(outputs)):
                 if (
-                    isinstance(outputs[i], (core.VarBase, core.eager.Tensor))
+                    isinstance(outputs[i], Tensor)
                     and not outputs[i].stop_gradient
                 ):
                     forward_outputs_with_grad.append(outputs[i])
@@ -238,7 +239,7 @@ class _HPRecomputeFunction(PyLayer):
             grads = tuple(
                 inp._grad_ivar()
                 for inp in detached_inputs
-                if isinstance(inp, (core.VarBase, core.eager.Tensor))
+                if isinstance(inp, Tensor)
             )
             return grads
 

@@ -27,6 +27,7 @@ import paddle.utils as utils
 from paddle import fluid, static
 from paddle.distributed import fleet
 from paddle.fluid import Variable, core
+from paddle.fluid.core.eager import Tensor
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.fluid.executor import _to_name_str, global_scope
 from paddle.fluid.framework import Operator
@@ -268,7 +269,7 @@ class Engine:
                     specs.append(spec)
                 else:
                     specs.append(spec.batch(batch_size))
-            elif isinstance(item, (Variable, core.VarBase, core.eager.Tensor)):
+            elif isinstance(item, (Tensor, Variable)):
                 spec = InputSpec.from_tensor(item, name)
                 _adjust_item_spec(num_shards, spec)
                 if batch_size is None:

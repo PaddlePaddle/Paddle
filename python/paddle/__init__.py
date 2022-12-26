@@ -54,11 +54,7 @@ from .framework.dtype import bfloat16  # noqa: F401
 from .framework.dtype import bool  # noqa: F401
 from .framework.dtype import complex64  # noqa: F401
 from .framework.dtype import complex128  # noqa: F401
-
-if fluid.framework._in_eager_mode_:
-    Tensor = framework.core.eager.Tensor
-else:
-    from .framework import VarBase as Tensor  # noqa: F401
+from .framework.core.eager import Tensor as Tensor  # noqa: F401
 
 Tensor.__qualname__ = 'Tensor'  # noqa: F401
 import paddle.distributed  # noqa: F401

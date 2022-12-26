@@ -4967,5 +4967,4 @@ __METHODS = {
     'tolist': tolist,
 }
 for name, func in __METHODS.items():
-    setattr(core.VarBase, name, func)
     setattr(core.eager.Tensor, name, func)

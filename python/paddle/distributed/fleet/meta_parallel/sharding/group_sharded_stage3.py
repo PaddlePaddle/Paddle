@@ -545,7 +545,7 @@ class GroupShardedStage3(nn.Layer):
                 param, "fw_storage"
             ), "Find {} don't have fw_storage attribute".format(param.name)
 
-            param.fw_storage = _VarBaseWrapper(param)
+            param.fw_storage = _TensorWrapper(param)
             assert param.fw_storage.grad is None
             param.fw_storage._copy_gradient_from(param.bw_storage)
             update_list.append(param)
@@ -1023,7 +1023,7 @@ def _UnsliceParam(param):
     return param
 
 
-def _VarBaseWrapper(param):
+def _TensorWrapper(param):
     varbase = param.fw_storage
     tmp_param = EagerParamBase(
         shape=varbase.shape, dtype=varbase.dtype, name="slice@" + param.name

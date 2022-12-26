@@ -18,7 +18,7 @@ import inspect
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+from paddle.fluid.core.eager import Tensor
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.layers.utils import flatten, pack_sequence_as
@@ -117,7 +117,7 @@ class FunctionSpec:
             if isinstance(input_var, np.ndarray):
                 input_var = paddle.static.InputSpec.from_numpy(input_var)
                 _set_spec_stop_gradient(input_var, True)
-            elif isinstance(input_var, (core.VarBase, core.eager.Tensor)):
+            elif isinstance(input_var, Tensor):
                 stop_gradient = input_var.stop_gradient
                 input_var = paddle.static.InputSpec.from_tensor(input_var)
                 _set_spec_stop_gradient(input_var, stop_gradient)
@@ -336,7 +336,7 @@ def convert_to_input_spec(inputs, input_spec):
         # without specific InputSpec, raise warning.
         if len(inputs) > len(input_spec):
             for rest_input in inputs[len(input_spec) :]:
-                if isinstance(rest_input, (core.VarBase, np.ndarray)):
+                if isinstance(rest_input, (Tensor, np.ndarray)):
                     logging_utils.warn(
                         "The inputs constain `{}` without specificing InputSpec, its shape and dtype will be treated immutable. "
                         "Please specific InputSpec information in `@to_static` if you expect them as mutable inputs.".format(

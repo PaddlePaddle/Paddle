@@ -14,6 +14,7 @@
 
 import paddle
 from paddle.fluid import Variable, core
+from paddle.fluid.core.eager import Tensor
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.framework import convert_np_dtype_to_dtype_, static_only
 from paddle.fluid.layer_helper import LayerHelper
@@ -190,7 +191,7 @@ class InputSpec:
                 print(x_spec)  # InputSpec(shape=(2, 2), dtype=paddle.float32, name=x)
 
         """
-        if isinstance(tensor, (Variable, core.VarBase, core.eager.Tensor)):
+        if isinstance(tensor, (Tensor, Variable)):
             return cls(tensor.shape, tensor.dtype, name or tensor.name)
         else:
             raise ValueError(

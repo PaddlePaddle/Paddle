@@ -36,6 +36,7 @@ import paddle.version as fluid_version
 import warnings
 import functools
 from .variable_index import _getitem_impl_, _setitem_impl_
+from paddle.fluid.core.eager import Tensor
 
 __all__ = [
     'Program',
@@ -112,7 +113,7 @@ _dy2st_enable_standalone_executor_ = os.environ.get(
 
 def _update_monkey_methods(is_eager):
     """
-    Update monkey methods of VarBase or eager.Tensor while
+    Update monkey methods of eager.Tensor while
     switching eager mode and legacy mode.
     """
     from paddle import _C_ops, _legacy_C_ops
@@ -147,10 +148,7 @@ def _update_monkey_methods(is_eager):
 def _switch_tensor_bind_type(is_eager):
     import paddle
 
-    if is_eager:
-        paddle.Tensor = core.eager.Tensor
-    else:
-        paddle.Tensor = core.VarBase
+    paddle.Tensor = Tensor
     paddle.Tensor.__qualname__ = 'Tensor'
 
 
@@ -561,11 +559,11 @@ def _set_pipeline_stage(stage):
 
 
 # NOTE(zhiqiu): This decorator is used for the APIs of Variable which is only
-# used to make Variable and VarBase has same interfaces, like numpy. Since VarBase is not exposed in our
-# official docments, logically, we want to keep VarBase and logically consistent. While, actually,
+# used to make Variable and Tensor has same interfaces, like numpy. Since Tensor is not exposed in our
+# official docments, logically, we want to keep Tensor and logically consistent. While, actually,
 # in our implementation, there some APIs not supported, like numpy, because Variable contains the desc.
 # So, those APIs are listed under class Variable to generate docs only.
-# TODO(zhiqiu): We should make VarBase consistent with Variable in future, for example, by inheritting
+# TODO(zhiqiu): We should make Tensor consistent with Variable in future, for example, by inheritting
 # same base class.
 def _fake_interface_only_(func):
     def __impl__(*args, **kwargs):
@@ -675,11 +673,11 @@ def _set_expected_place(place):
 # TODO(zhiqiu): remove this function.
 def _var_base_to_np(var_base):
     """
-    convert VarBase tp numpy
+    convert Tensor tp numpy
 
     Args:
-        var_base(VarBase) : the VarBase to convert
-    Returns (np.ndarray): the np.ndarray contain the value of VarBase
+        var_base(Tensor) : the Tensor to convert
+    Returns (np.ndarray): the np.ndarray contain the value of Tensor
     """
 
     warnings.warn(
@@ -1296,24 +1294,15 @@ def _varbase_creator(
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if _in_eager_mode_:
-        eager_tensor = core.eager.Tensor(
-            dtype if dtype else core.VarDesc.VarType.FP32,
-            list(shape) if shape else [],
-            name,
-            type if type else core.VarDesc.VarType.LOD_TENSOR,
-            True if persistable else False,
-        )
-        eager_tensor.retain_grads()
-        return eager_tensor
-    else:
-        return core.VarBase(
-            dtype if dtype else core.VarDesc.VarType.FP32,
-            list(shape) if shape else [],
-            name,
-            type if type else core.VarDesc.VarType.LOD_TENSOR,
-            True if persistable else False,
-        )
+    eager_tensor = Tensor(
+        dtype if dtype else core.VarDesc.VarType.FP32,
+        list(shape) if shape else [],
+        name,
+        type if type else core.VarDesc.VarType.LOD_TENSOR,
+        True if persistable else False,
+    )
+    eager_tensor.retain_grads()
+    return eager_tensor
 
 
 def _all_is_type(vals, expected_type):
@@ -1333,10 +1322,8 @@ class VariableMetaClass(type):
     def __instancecheck__(cls, instance):
         t = type(instance)
         if in_dygraph_mode():
-            return issubclass(t, core.eager.Tensor)
+            return issubclass(t, Tensor)
         else:
-            if _in_legacy_dygraph():
-                return issubclass(t, core.VarBase)
             return issubclass(t, Variable)
 
 
@@ -2949,7 +2936,7 @@ class Operator:
                                 in_arg_names.append(arg)
                             elif isinstance(arg, bytes):
                                 in_arg_names.append(arg.decode())
-                            elif isinstance(arg, (Variable, core.VarBase)):
+                            elif isinstance(arg, (Variable, Tensor)):
                                 in_arg_names.append(arg.name)
                             else:
                                 raise TypeError(
@@ -4031,7 +4018,7 @@ class Block:
             from paddle.fluid.dygraph.base import param_guard
 
             op_desc = self.desc.append_op()
-            # NOTE(Aurelius84): In case of @to_static, all VarBase(s) should
+            # NOTE(Aurelius84): In case of @to_static, all Tensor(s) should
             # be converted into Variable(s) with same name and block location.
             # This is ONE and ONLY logic of type transformation of dy2static.
             inputs = kwargs.get("inputs", None)
@@ -7110,7 +7097,7 @@ class ParamBase(core.VarBase):
 
 
 if hasattr(core, "eager"):
-    _core_eager_eagertensor = core.eager.Tensor
+    _core_eager_eagertensor = Tensor
 else:
     _core_eager_eagertensor = object
 
@@ -7160,7 +7147,7 @@ class EagerParamBase(_core_eager_eagertensor):
 
         name = kwargs.get('name', unique_name.generate('_eager_param_base'))
 
-        if isinstance(shape, core.eager.Tensor):
+        if isinstance(shape, Tensor):
             shape = shape.numpy()
 
         super().__init__(

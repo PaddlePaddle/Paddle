@@ -25,6 +25,7 @@ import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import paddle.nn as nn
 import paddle.optimizer as opt
+from paddle.fluid.core.eager import Tensor
 from paddle.fluid.optimizer import Adam
 from paddle.optimizer.lr import LRScheduler
 
@@ -361,7 +362,7 @@ class TestSaveLoadAny(unittest.TestCase):
         self.assertTrue(
             isinstance(
                 t_dygraph,
-                (paddle.fluid.core.VarBase, paddle.fluid.core.eager.Tensor),
+                Tensor,
             )
         )
         np.testing.assert_array_equal(tensor.numpy(), np_dygraph)
@@ -789,14 +790,14 @@ class TestSaveLoadAny(unittest.TestCase):
             self.assertTrue(
                 isinstance(
                     load_tensor3[0],
-                    (fluid.core.VarBase, fluid.core.eager.Tensor),
+                    Tensor,
                 )
             )
             np.testing.assert_array_equal(load_tensor3[0].numpy(), obj3[0])
             self.assertTrue(
                 isinstance(
                     load_tensor3[1],
-                    (fluid.core.VarBase, fluid.core.eager.Tensor),
+                    Tensor,
                 )
             )
             np.testing.assert_array_equal(load_tensor3[1].numpy(), obj3[1])
@@ -805,7 +806,7 @@ class TestSaveLoadAny(unittest.TestCase):
                 self.assertTrue(
                     isinstance(
                         load_tensor3[2]["state_dict"][k],
-                        (fluid.core.VarBase, fluid.core.eager.Tensor),
+                        Tensor,
                     )
                 )
                 np.testing.assert_array_equal(
@@ -816,7 +817,7 @@ class TestSaveLoadAny(unittest.TestCase):
                 self.assertTrue(
                     isinstance(
                         load_tensor3[2]["opt"][k],
-                        (fluid.core.VarBase, fluid.core.eager.Tensor),
+                        Tensor,
                     )
                 )
                 np.testing.assert_array_equal(
@@ -826,7 +827,7 @@ class TestSaveLoadAny(unittest.TestCase):
             self.assertTrue(
                 isinstance(
                     load_tensor4[0],
-                    (fluid.core.VarBase, fluid.core.eager.Tensor),
+                    Tensor,
                 )
             )
             np.testing.assert_array_equal(load_tensor4[0].numpy(), obj4[0])

@@ -24,6 +24,7 @@ from paddle.common_ops_import import (
     check_variable_and_dtype,
     convert_dtype,
 )
+from paddle.fluid.core.eager import Tensor
 from paddle.fluid.framework import Operator, Program, Variable
 
 # Temporary solution, it will be deleted later
@@ -369,7 +370,7 @@ def assign_skip_lod_tensor_array(input, output):
                 return True
         return False
 
-    if not isinstance(input, (Variable, core.VarBase)):
+    if not isinstance(input, (Tensor, Variable)):
         if isinstance(output, Variable) and isinstance(
             input, support_ret_buildin_type
         ):

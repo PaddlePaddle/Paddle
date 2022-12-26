@@ -20,6 +20,7 @@ import numpy as np
 import paddle
 from paddle import _legacy_C_ops
 from paddle.fluid import backward, core, framework, unique_name
+from paddle.fluid.core.eager import Tensor
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.executor import (
@@ -889,26 +890,15 @@ def _construct_params_and_buffers(
 def _valid_vars(vars):
     if vars:
         return vars
-    if framework._in_eager_without_dygraph_check():
-        return [
-            core.eager.Tensor(
-                core.VarDesc.VarType.FP32,
-                [],
-                "Fake_var",
-                core.VarDesc.VarType.RAW,
-                False,
-            )
-        ]
-    else:
-        return [
-            core.VarBase(
-                core.VarDesc.VarType.FP32,
-                [],
-                "Fake_var",
-                core.VarDesc.VarType.RAW,
-                False,
-            )
-        ]
+    return [
+        Tensor(
+            core.VarDesc.VarType.FP32,
+            [],
+            "Fake_var",
+            core.VarDesc.VarType.RAW,
+            False,
+        )
+    ]
 
 
 def _run_dygraph(instance, input, program_holder):
@@ -916,29 +906,20 @@ def _run_dygraph(instance, input, program_holder):
     # 1. prepare inputs, outputs, attrs
     input_vars = []
     for i, value in enumerate(input):
-        if not isinstance(value, (np.ndarray, core.VarBase, core.eager.Tensor)):
+        if not isinstance(value, (np.ndarray, Tensor)):
             raise TypeError(
-                "The type of input in TranslatedLayer must be numpy array or Variable(VarBase), but received %s."
+                "The type of input in TranslatedLayer must be numpy array or Variable(Tensor), but received %s."
                 % type(value)
             )
-        # NOTE: In order to unify the API, firstly convert the input to VarBase
+        # NOTE: In order to unify the API, firstly convert the input to Tensor
         if isinstance(value, np.ndarray):
-            if framework._in_eager_without_dygraph_check():
-                var = core.eager.Tensor(
-                    value=value,
-                    name=program_holder.input_descs[i].name(),
-                    persistable=False,
-                    place=framework._current_expected_place(),
-                    zero_copy=True,
-                )
-            else:
-                var = core.VarBase(
-                    value=value,
-                    name=program_holder.input_descs[i].name(),
-                    persistable=False,
-                    place=framework._current_expected_place(),
-                    zero_copy=True,
-                )
+            var = Tensor(
+                value=value,
+                name=program_holder.input_descs[i].name(),
+                persistable=False,
+                place=framework._current_expected_place(),
+                zero_copy=True,
+            )
         else:
             var = value
             # NOTE: we changed var name here,
@@ -965,55 +946,27 @@ def _run_dygraph(instance, input, program_holder):
 
     output_vars = []
     for var_desc in program_holder.output_descs:
-        if framework._in_eager_without_dygraph_check():
-            var = core.eager.Tensor(
-                dtype=var_desc.dtype(),
-                dims=var_desc.shape(),
-                name=var_desc.name(),
-                type=var_desc.type(),
-                persistable=False,
-            )
-        else:
-            var = core.VarBase(
-                var_desc.dtype(),
-                var_desc.shape(),
-                var_desc.name(),
-                var_desc.type(),
-                False,
-            )
+        var = Tensor(
+            dtype=var_desc.dtype(),
+            dims=var_desc.shape(),
+            name=var_desc.name(),
+            type=var_desc.type(),
+            persistable=False,
+        )
         output_vars.append(var)
 
     # hold forward variables
-    if framework._in_eager_without_dygraph_check():
-        tmp_scope_vec = [program_holder.scope]
-    else:
-        tmp_scope_vec = core.VarBase(
-            core.VarDesc.VarType.FP32,
-            [],
-            "program_out_scope",
-            core.VarDesc.VarType.STEP_SCOPES,
-            True,
-        )
-        tmp_scope_vec.value().set_scope(program_holder.scope)
+    tmp_scope_vec = [program_holder.scope]
 
     double_grad_vars = []
     for var_desc in program_holder.double_grad_descs:
-        if framework._in_eager_without_dygraph_check():
-            var = core.eager.Tensor(
-                dtype=var_desc.dtype(),
-                dims=var_desc.shape(),
-                name=var_desc.name(),
-                type=var_desc.type(),
-                persistable=False,
-            )
-        else:
-            var = core.VarBase(
-                var_desc.dtype(),
-                var_desc.shape(),
-                var_desc.name(),
-                var_desc.type(),
-                False,
-            )
+        var = Tensor(
+            dtype=var_desc.dtype(),
+            dims=var_desc.shape(),
+            name=var_desc.name(),
+            type=var_desc.type(),
+            persistable=False,
+        )
         double_grad_vars.append(var)
 
     # 2. run program by op
@@ -1070,7 +1023,7 @@ def _run_dygraph(instance, input, program_holder):
     # NOTE: [ why need set param's gradient type here ]
     # if user set sparse gradient mode, the param's gradient
     # will be SelectedRows, not LoDTensor. But tracer will just
-    # set param grad VarBase by forward VarBase(LoDTensor)
+    # set param grad Tensor by forward Tensor(LoDTensor)
     # If we don't change grad_var type here, RunProgramOp need
     # transform SelectedRows to LoDTensor forcibly, it may not
     # be user wanted result.
@@ -1473,7 +1426,7 @@ class TranslatedLayer(layers.Layer):
                     dy_name = _generate_unique_var_name(PARAMETER_NAME_PREFIX)
                     self._persistable_var_name_dict[name] = dy_name
                     self.add_parameter(dy_name, var)
-                elif isinstance(var, (core.VarBase, core.eager.Tensor)):
+                elif isinstance(var, Tensor):
                     dy_name = _generate_unique_var_name(BUFFER_NAME_PREFIX)
                     self._persistable_var_name_dict[name] = dy_name
                     self.register_buffer(dy_name, var)

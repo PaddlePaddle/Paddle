@@ -71,6 +71,7 @@ from paddle.fluid.framework import (
 )
 from paddle.fluid.framework import dygraph_only, _non_static_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
+from paddle.fluid.core.eager import Tensor
 
 __all__ = []
 
@@ -361,7 +362,7 @@ class _SaveLoadConfig:
                 % type(input)
             )
             for var in spec:
-                if not isinstance(var, core.VarBase):
+                if not isinstance(var, Tensor):
                     raise TypeError(
                         "The element in config `output_spec` list should be 'Variable', but received element's type is %s."
                         % type(var)
@@ -512,7 +513,7 @@ def _get_input_var_names(inputs, input_spec):
                 # name is None, the input_spec only can be InputSpec
                 raise ValueError(name_none_error % spec)
             elif spec.name not in input_var_names:
-                # the input_spec can be `InputSpec` or `VarBase`
+                # the input_spec can be `InputSpec` or `Tensor`
                 raise ValueError(name_no_exists_error % spec.name)
             else:
                 result_list.append(spec.name)
@@ -944,7 +945,7 @@ def save(layer, path, input_spec=None, **configs):
         for var in flatten(input_spec):
             if isinstance(var, paddle.static.InputSpec):
                 inner_input_spec.append(var)
-            elif isinstance(var, (core.VarBase, core.eager.Tensor, Variable)):
+            elif isinstance(var, (Tensor, Variable)):
                 inner_input_spec.append(
                     paddle.static.InputSpec.from_tensor(var)
                 )
@@ -1122,7 +1123,7 @@ def save(layer, path, input_spec=None, **configs):
 
         # NOTE(chenweihang): [ Get output variables ]
         # the rule is like [ Get input variables name ]. For output var,
-        # we only support VarBase spec, and actually, we only need the
+        # we only support Tensor spec, and actually, we only need the
         # var name of output, and we don't recommended to use output_spec
         # print(concrete_program.main_program)
         # print(concrete_program.outputs, configs.output_spec)

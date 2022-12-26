@@ -556,7 +556,7 @@ class TestSliceApiWithTensor(unittest.TestCase):
             np.testing.assert_array_equal(y_paddle.numpy(), y_np)
 
 
-class TestImperativeVarBaseGetItem(unittest.TestCase):
+class TestImperativeTensorGetItem(unittest.TestCase):
     def test_getitem_with_long(self):
         with fluid.dygraph.guard():
             data = np.random.random((2, 80, 16128)).astype('float32')

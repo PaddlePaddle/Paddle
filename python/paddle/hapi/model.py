@@ -29,6 +29,7 @@ from paddle import fluid
 from paddle.autograd import no_grad
 from paddle.distributed.fleet.base import role_maker
 from paddle.fluid import core
+from paddle.fluid.core.eager import Tensor
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.fluid.executor import global_scope
@@ -60,10 +61,8 @@ def to_list(value):
 
 
 def to_numpy(var):
-    assert isinstance(
-        var, (Variable, fluid.core.VarBase, fluid.core.eager.Tensor)
-    ), "not a variable"
-    if isinstance(var, (fluid.core.VarBase, fluid.core.eager.Tensor)):
+    assert isinstance(var, (Tensor, Variable)), "not a variable"
+    if isinstance(var, Tensor):
         return var.numpy()
     t = global_scope().find_var(var.name).get_tensor()
     return np.array(t)

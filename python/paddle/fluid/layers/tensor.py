@@ -39,6 +39,7 @@ from paddle.utils import deprecated
 
 from .utils import check_shape
 from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.core.eager import Tensor
 
 __all__ = [
     'cast',
@@ -389,12 +390,12 @@ def assign(input, output=None):
         input = numpy.array([input])
     elif isinstance(input, (list, tuple)):
         input = numpy.array(input)
-    # NOTE(Aurelius84): Why we judge core.VarBase?
-    # In case of @to_static, a VarBase can be as input of `assign`,
+    # NOTE(Aurelius84): Why we judge Tensor?
+    # In case of @to_static, a Tensor can be as input of `assign`,
     # but _non_static_mode()==False under @to_static, which means
-    # isinstance(VarBase, Variable) == False. It will cause return None
+    # isinstance(Tensor, Variable) == False. It will cause return None
     # after this api.
-    if isinstance(input, (Variable, core.VarBase)):
+    if isinstance(input, (Tensor, Variable)):
         if _non_static_mode():
             if in_dygraph_mode() and output is None:
                 output = _C_ops.assign(input)
@@ -402,10 +403,7 @@ def assign(input, output=None):
                 _C_ops.assign_out_(input, output)
             else:
                 if output is None:
-                    if _in_legacy_dygraph():
-                        output = core.VarBase()
-                    else:
-                        output = core.eager.Tensor()
+                    output = core.eager.Tensor()
                 _legacy_C_ops.assign(input, output)
         else:
             check_dtype(

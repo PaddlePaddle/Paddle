@@ -26,7 +26,7 @@ def enable_parallel_ssa_executor(enabled=True):
         fluid.core.globals()['FLAGS_enable_parallel_graph'] = enabled
 
 
-class TestParallelExecutorFetchIsolatedVarBase(unittest.TestCase):
+class TestParallelExecutorFetchIsolatedTensor(unittest.TestCase):
     def build_network(self, is_training):
         x = fluid.data(name='x', shape=[-1, 10], dtype='float32')
         y = fluid.data(name='y', shape=[-1, 10], dtype='float32')

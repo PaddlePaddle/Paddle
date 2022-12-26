@@ -42,6 +42,7 @@ from paddle.profiler.utils import in_profiler_mode
 from paddle import _C_ops, _legacy_C_ops
 from paddle.device import get_all_custom_device_type
 from paddle.fluid.framework import _global_flags
+from paddle.fluid.core.eager import Tensor
 
 _grad_scalar = None
 
@@ -89,12 +90,12 @@ def monkey_patch_varbase():
         **Notes**:
             **This API is ONLY available in Dygraph mode**
 
-        Transform a VarBase into static Variable with same attributes. It's a low level interface used
+        Transform a Tensor into static Variable with same attributes. It's a low level interface used
         in dy2static and shall not be called directly.
 
         Args:
-            to_parameter (bool): It takes effect only if the input a VarBase. If set True,
-                                 the VarBase will be converted into framework.Parameters. Otherwise, it will
+            to_parameter (bool): It takes effect only if the input a Tensor. If set True,
+                                 the Tensor will be converted into framework.Parameters. Otherwise, it will
                                  be converted into framework.Variable. Default False.
 
         Examples:
@@ -178,13 +179,9 @@ def monkey_patch_varbase():
                     out = linear(t)  # call with different weight
 
         """
-        if framework._in_eager_mode_:
-            base_tensor = core.eager.Tensor
-        else:
-            base_tensor = core.VarBase
         assert isinstance(
-            value, (np.ndarray, base_tensor, dict, str)
-        ), "Variable set_value function, arguments type only support Variable, numpy, VarBase, dict, string."
+            value, (np.ndarray, Tensor, dict, str)
+        ), "Variable set_value function, arguments type only support Variable, numpy, Tensor, dict, string."
 
         if isinstance(value, (dict, str)):
             assert len(self) == len(
@@ -214,8 +211,7 @@ def monkey_patch_varbase():
                 self.name, self.dtype, dtype
             )
 
-            # NOTE(wuweilong): self could be VarBase or Tensor, the subsequent behavior are defined in different files
-            # if self is VarBase, method value() return Variable that bindded in imperative.cc, get_tensor() bindded in pybind.cc
+            # NOTE(wuweilong): self could be Tensor, the subsequent behavior are defined in different files
             # if self is Tensor, method value() return self that defined in this file, get_tensor() defined in eager_method.cc
             # this Interface behavior will be unifed in the future.
             self.value().get_tensor().set(
@@ -658,7 +654,7 @@ def monkey_patch_varbase():
 
     def __str__(self):
         """
-        Convert a VarBase object to a readable string.
+        Convert a Tensor object to a readable string.
 
         Returns(str): A readable string.
 
@@ -707,10 +703,7 @@ def monkey_patch_varbase():
             raise RuntimeError(
                 "Only Leaf Tensor support the deepcopy at the moment, non-Leaf Tensors contains graph information that does't support deepcopy"
             )
-        if framework._in_eager_mode_:
-            new_varbase = core.eager.Tensor()
-        else:
-            new_varbase = core.VarBase()
+        new_varbase = core.eager.Tensor()
         new_varbase.name = self.name + unique_name.generate("_deepcopy")
         memo[id(self)] = new_varbase
         new_varbase.copy_(self, True)
@@ -1054,27 +1047,20 @@ def monkey_patch_varbase():
         ("to_dense", to_dense),
         ("to_sparse_coo", to_sparse_coo),
     ):
-        if framework._in_eager_mode_:
-            setattr(core.eager.Tensor, method_name, method)
-        else:
-            setattr(core.VarBase, method_name, method)
+        setattr(core.eager.Tensor, method_name, method)
 
-    if framework._in_eager_mode_:
-        setattr(core.eager.Tensor, "_grad_ivar", _grad_ivar)
-        setattr(core.eager.Tensor, "_set_grad_ivar", _set_grad_ivar)
-        setattr(core.eager.Tensor, "value", value)
-        setattr(core.eager.Tensor, "cpu", cpu)
-        setattr(core.eager.Tensor, "cuda", cuda)
-        setattr(core.eager.Tensor, "pin_memory", pin_memory)
-        setattr(core.eager.Tensor, "_slice", _slice)
-        setattr(core.eager.Tensor, "_numel", _numel)
-        setattr(core.eager.Tensor, "_uva", _uva)
-        setattr(core.eager.Tensor, "_clear_data", _clear_data)
-        setattr(core.eager.Tensor, "__hash__", __hash__)
-        setattr(core.eager.Tensor, "_use_gpudnn", _use_gpudnn)
-    else:
-        setattr(core.VarBase, "__name__", "Tensor")
-        setattr(core.VarBase, "grad", grad)
+    setattr(core.eager.Tensor, "_grad_ivar", _grad_ivar)
+    setattr(core.eager.Tensor, "_set_grad_ivar", _set_grad_ivar)
+    setattr(core.eager.Tensor, "value", value)
+    setattr(core.eager.Tensor, "cpu", cpu)
+    setattr(core.eager.Tensor, "cuda", cuda)
+    setattr(core.eager.Tensor, "pin_memory", pin_memory)
+    setattr(core.eager.Tensor, "_slice", _slice)
+    setattr(core.eager.Tensor, "_numel", _numel)
+    setattr(core.eager.Tensor, "_uva", _uva)
+    setattr(core.eager.Tensor, "_clear_data", _clear_data)
+    setattr(core.eager.Tensor, "__hash__", __hash__)
+    setattr(core.eager.Tensor, "_use_gpudnn", _use_gpudnn)
 
     global _already_patch_repr
     if not _already_patch_repr:

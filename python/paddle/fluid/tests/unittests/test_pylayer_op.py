@@ -20,11 +20,6 @@ import paddle
 from paddle.autograd.py_layer import PyLayer
 
 
-class FakeTensor(paddle.fluid.core.VarBase):
-    def __init__(self):
-        pass
-
-
 class TestPyLayer(unittest.TestCase):
     def test_simple_pylayer_multiple_output(self):
         class tanh(PyLayer):

@@ -21,7 +21,7 @@ import paddle.optimizer as optimizer
 from paddle.fluid.framework import _in_legacy_dygraph
 
 
-class TestOptimizerForVarBase(unittest.TestCase):
+class TestOptimizerForTensor(unittest.TestCase):
     def setUp(self):
         self.lr = 0.01
 

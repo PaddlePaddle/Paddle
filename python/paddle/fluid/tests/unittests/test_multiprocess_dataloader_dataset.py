@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid.core.eager import Tensor
 from paddle.io import (
     ChainDataset,
     ComposeDataset,
@@ -82,12 +83,8 @@ class TestTensorDataset(unittest.TestCase):
                 assert len(label) == 1
                 assert input.shape == [1, 3, 4]
                 assert label.shape == [1, 1]
-                assert isinstance(
-                    input, (fluid.core.VarBase, fluid.core.eager.Tensor)
-                )
-                assert isinstance(
-                    label, (fluid.core.VarBase, fluid.core.eager.Tensor)
-                )
+                assert isinstance(input, Tensor)
+                assert isinstance(label, Tensor)
                 assert np.allclose(input.numpy(), input_np[i])
                 assert np.allclose(label.numpy(), label_np[i])
 
@@ -184,12 +181,8 @@ class TestSubsetDataset(unittest.TestCase):
             assert len(label) == 1
             assert input.shape == [1, 3, 4]
             assert label.shape == [1, 1]
-            assert isinstance(
-                input, (fluid.core.VarBase, fluid.core.eager.Tensor)
-            )
-            assert isinstance(
-                label, (fluid.core.VarBase, fluid.core.eager.Tensor)
-            )
+            assert isinstance(input, Tensor)
+            assert isinstance(label, Tensor)
 
         elements_list = list()
         for _, (input, label) in enumerate(dataloader()):
@@ -285,12 +278,8 @@ class TestNumpyMixTensorDataset(TestTensorDataset):
                 assert len(label) == 1
                 assert input.shape == [1, IMAGE_SIZE]
                 assert label.shape == [1, 1]
-                assert isinstance(
-                    input, (fluid.core.VarBase, fluid.core.eager.Tensor)
-                )
-                assert isinstance(
-                    label, (fluid.core.VarBase, fluid.core.eager.Tensor)
-                )
+                assert isinstance(input, Tensor)
+                assert isinstance(label, Tensor)
 
 
 class ComplextDataset(Dataset):
@@ -385,9 +374,7 @@ class TestSingleFieldDataset(unittest.TestCase):
             )
 
             for i, data in enumerate(dataloader()):
-                assert isinstance(
-                    data, (fluid.core.VarBase, fluid.core.eager.Tensor)
-                )
+                assert isinstance(data, Tensor)
                 assert data.shape == [2, 2, 3]
 
     def test_main(self):

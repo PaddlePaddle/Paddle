@@ -20,6 +20,7 @@ import numpy as np
 import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid import core
+from paddle.fluid.core.eager import Tensor
 from paddle.fluid.framework import (
     Variable,
     _current_expected_place,
@@ -389,7 +390,7 @@ class Optimizer:
 
                 if isinstance(load_para, Variable):
                     load_para_np = load_para.numpy()
-                elif isinstance(load_para, core.VarBase):
+                elif isinstance(load_para, Tensor):
                     load_para_np = load_para.numpy()
                 elif isinstance(load_para, np.ndarray):
                     load_para_np = load_para

@@ -969,7 +969,7 @@ class ConcreteProgram:
                         [class_instance] + list(static_inputs)
                     )
 
-                # 2. Gets all ParamBases and buffered VarBases in the function
+                # 2. Gets all ParamBases and buffered Tensors in the function
                 all_parameters_and_buffers = _extract_indeed_params_buffers(
                     class_instance
                 )

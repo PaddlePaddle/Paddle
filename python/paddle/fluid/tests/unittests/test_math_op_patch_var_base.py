@@ -21,7 +21,7 @@ import paddle
 import paddle.fluid as fluid
 
 
-class TestMathOpPatchesVarBase(unittest.TestCase):
+class TestMathOpPatchesTensor(unittest.TestCase):
     def setUp(self):
         self.shape = [10, 1024]
         self.dtype = np.float32

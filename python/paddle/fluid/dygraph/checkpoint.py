@@ -36,6 +36,7 @@ from paddle.jit.translated_layer import (
     _construct_program_holders,
     _construct_params_and_buffers,
 )
+from paddle.fluid.core.eager import Tensor
 
 __all__ = [
     'save_dygraph',
@@ -118,7 +119,7 @@ def save_dygraph(state_dict, model_path):
     model_dict = {}
     name_table = {}
     for k, v in state_dict.items():
-        if isinstance(v, (Variable, core.VarBase, core.eager.Tensor)):
+        if isinstance(v, (Tensor, Variable)):
             model_dict[k] = v.numpy()
             name_table[k] = v.name
         else:
@@ -288,8 +289,8 @@ def load_dygraph(model_path, **configs):
             # variable list in dygraph mode is difficult, we recommend users to use
             # paddle.static.load_program_state in this case
 
-            # Try to load all the files in the directory in VarBase format,
-            # the file name is used as the name of VarBase
+            # Try to load all the files in the directory in Tensor format,
+            # the file name is used as the name of Tensor
             load_var_list = []
 
             # 1. load file names
@@ -301,7 +302,7 @@ def load_dygraph(model_path, **configs):
                     var_name = tmp_var_name.replace("\\", "/")
                     var_name_list.append(var_name)
 
-            # 2. create and load VarBase
+            # 2. create and load Tensor
             with guard():
                 for name in var_name_list:
                     new_var = _varbase_creator(name=name, persistable=True)

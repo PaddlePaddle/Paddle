@@ -27,6 +27,7 @@ import paddle
 # deprecated module import
 from paddle import fluid
 from paddle.fluid import core
+from paddle.fluid.core.eager import Tensor
 from paddle.fluid.framework import (
     EagerParamBase,
     ParamBase,
@@ -60,7 +61,7 @@ def _build_saved_state_dict(state_dict):
     save_dict = {}
     name_table = {}
     for key, value in state_dict.items():
-        if isinstance(value, (Variable, core.VarBase, core.eager.Tensor)):
+        if isinstance(value, (Tensor, Variable)):
             if value.type == core.VarDesc.VarType.VOCAB:
                 save_dict[key] = value.value().get_map_tensor()
             else:
@@ -116,8 +117,8 @@ def _load_state_dict_from_save_inference_model(model_path, config):
 
 
 def _load_state_dict_from_save_params(model_path):
-    # Try to load all the files in the directory in VarBase format,
-    # the file name is used as the name of VarBase
+    # Try to load all the files in the directory in Tensor format,
+    # the file name is used as the name of Tensor
     load_var_list = []
 
     # 1. load file names
@@ -129,7 +130,7 @@ def _load_state_dict_from_save_params(model_path):
             var_name = tmp_var_name.replace("\\", "/")
             var_name_list.append(var_name)
 
-    # 2. create and load VarBase
+    # 2. create and load Tensor
     with fluid.dygraph.guard():
         for name in var_name_list:
             new_var = _varbase_creator(name=name, persistable=True)
@@ -303,18 +304,16 @@ def _pickle_save(obj, f, protocol):
 
     def add_dispatch_table():
         # This is not a good method, because the pickle module has been modified.
-        pickle.dispatch_table[core.VarBase] = reduce_varbase
         pickle.dispatch_table[ParamBase] = reduce_varbase
-        pickle.dispatch_table[core.eager.Tensor] = reduce_varbase
+        pickle.dispatch_table[Tensor] = reduce_varbase
         pickle.dispatch_table[EagerParamBase] = reduce_varbase
         pickle.dispatch_table[core.LoDTensor] = reduce_LoDTensor
         pickle.dispatch_table.update(dispatch_table_layer)
 
     def pop_dispatch_table():
-        pickle.dispatch_table.pop(core.VarBase)
         pickle.dispatch_table.pop(core.LoDTensor)
         pickle.dispatch_table.pop(ParamBase)
-        pickle.dispatch_table.pop(core.eager.Tensor)
+        pickle.dispatch_table.pop(Tensor)
         pickle.dispatch_table.pop(EagerParamBase)
         for k in dispatch_table_layer:
             pickle.dispatch_table.pop(k)
@@ -331,11 +330,9 @@ def _pickle_save(obj, f, protocol):
     else:
         pickler = pickle.Pickler(f, protocol)
         pickler.dispatch_table = copyreg.dispatch_table.copy()
-
-        pickler.dispatch_table[core.VarBase] = reduce_varbase
         pickler.dispatch_table[core.LoDTensor] = reduce_LoDTensor
         pickler.dispatch_table[ParamBase] = reduce_varbase
-        pickler.dispatch_table[core.eager.Tensor] = reduce_varbase
+        pickler.dispatch_table[Tensor] = reduce_varbase
         pickler.dispatch_table[EagerParamBase] = reduce_varbase
         pickler.dispatch_table.update(dispatch_table_layer)
         pickler.dump(obj)
@@ -373,24 +370,21 @@ def _is_state_dict(obj):
                 (
                     fluid.Layer,
                     Program,
-                    core.VarBase,
-                    core.eager.Tensor,
+                    Tensor,
                     core.LoDTensor,
                     core.SelectedRows,
                 ),
             )
 
-        # If the value of a dict is a core.VarBase/LoDTensor or a dict
-        # that does not contain a paddle type(Layer, Program, VarBase, LoDTensor, SelectedRows),
+        # If the value of a dict is a core.Tensor/LoDTensor or a dict
+        # that does not contain a paddle type(Layer, Program, Tensor, LoDTensor, SelectedRows),
         # the dict is considered to be a state_ dict.
         for key, value in obj.items():
             if isinstance(value, dict):
                 for k, v in value.items():
                     if _contain_x(v, condition):
                         return False
-            elif not isinstance(
-                value, (core.VarBase, core.eager.Tensor, core.LoDTensor)
-            ):
+            elif not isinstance(value, (Tensor, core.LoDTensor)):
                 return False
         return True
 
@@ -398,8 +392,8 @@ def _is_state_dict(obj):
 
 
 def _transformed_from_varbase(obj):
-    # In paddle2.1 version, VarBase is saved as tuple(tensor.name, tensor.numpy()).
-    # When executing paddle.load, use this function to determine whether to restore to VarBase/LoDTensor.
+    # In paddle2.1 version, Tensor is saved as tuple(tensor.name, tensor.numpy()).
+    # When executing paddle.load, use this function to determine whether to restore to Tensor/LoDTensor.
     if isinstance(obj, tuple) and len(obj) == 2:
         name_types = str
         if isinstance(obj[0], name_types) and isinstance(obj[1], np.ndarray):
@@ -409,7 +403,7 @@ def _transformed_from_varbase(obj):
 
 def _transformed_from_lodtensor(obj):
     # In paddle2.1 version, LoDTensor is saved as np.array(tensor).
-    # When executing paddle.load, use this function to determine whether to restore to VarBase/LoDTensor.
+    # When executing paddle.load, use this function to determine whether to restore to Tensor/LoDTensor.
     if isinstance(obj, np.ndarray):
         return True
     return False
@@ -481,7 +475,7 @@ def _parse_every_object(obj, condition_func, convert_func):
     else:
         if isinstance(obj, Iterable) and not isinstance(
             obj,
-            (str, np.ndarray, core.VarBase, core.eager.Tensor, core.LoDTensor),
+            (str, np.ndarray, Tensor, core.LoDTensor),
         ):
             raise NotImplementedError(
                 "The iteratable objects supported are tuple, list, dict, OrderedDict, string. But received {}.".format(
@@ -625,7 +619,7 @@ def _save_binary_var(obj, path):
         _save_lod_tensor(obj, path)
     elif isinstance(obj, core.SelectedRows):
         _save_selected_rows(obj, path)
-    elif isinstance(obj, (core.VarBase, core.eager.Tensor)):
+    elif isinstance(obj, Tensor):
         _save_lod_tensor(obj.value().get_tensor(), path)
     else:
         # Since the concept of 'Tensor' is only exposed to users, the error message can only contain tensor instead of 'LoDTensor' or 'SelectedRows'

@@ -28,6 +28,7 @@ from . import unique_name
 from .param_attr import ParamAttr, WeightNormParamAttr
 from . import core
 from .initializer import _global_weight_initializer, _global_bias_initializer
+from paddle.fluid.core.eager import Tensor
 
 __all__ = ['LayerHelperBase']
 
@@ -88,25 +89,15 @@ class LayerHelperBase:
 
         """
         if isinstance(value, np.ndarray):
-            if _in_eager_without_dygraph_check():
-                return core.eager.Tensor(
-                    value,
-                    _current_expected_place(),
-                    False,
-                    False,
-                    name if name else None,
-                    True,
-                )
-            else:
-                py_var = core.VarBase(
-                    value=value,
-                    name=name if name else '',
-                    persistable=False,
-                    place=_current_expected_place(),
-                    zero_copy=False,
-                )
-                return py_var
-        elif isinstance(value, (core.VarBase, Variable, core.eager.Tensor)):
+            return core.eager.Tensor(
+                value,
+                _current_expected_place(),
+                False,
+                False,
+                name if name else None,
+                True,
+            )
+        elif isinstance(value, (Tensor, Variable)):
             return value
         else:
             raise TypeError(

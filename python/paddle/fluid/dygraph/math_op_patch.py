@@ -27,6 +27,7 @@ from .. import framework
 import numpy as np
 import warnings
 from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.core.eager import Tensor
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.UINT8,
@@ -259,11 +260,7 @@ def monkey_patch_math_varbase():
 
             # 2. create varbase for scalar
             lhs_dtype = self.dtype
-            if framework._in_eager_mode_:
-                other_var_should_be = core.eager.Tensor
-            else:
-                other_var_should_be = core.VarBase
-            if not isinstance(other_var, other_var_should_be):
+            if not isinstance(other_var, Tensor):
                 if isinstance(other_var, complex):
                     import paddle
 
@@ -494,14 +491,9 @@ def monkey_patch_math_varbase():
     global _already_patch_varbase
     global _already_patch_eager_tensor
 
-    if framework._in_eager_mode_:
-        local_already_patch = _already_patch_eager_tensor
-        _already_patch_eager_tensor = True
-        local_tensor = core.eager.Tensor
-    else:
-        local_already_patch = _already_patch_varbase
-        _already_patch_varbase = True
-        local_tensor = core.VarBase
+    local_already_patch = _already_patch_eager_tensor
+    _already_patch_eager_tensor = True
+    local_tensor = core.eager.Tensor
 
     if not local_already_patch:
         if framework._in_eager_mode_:

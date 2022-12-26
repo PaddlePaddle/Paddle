@@ -36,6 +36,7 @@ from paddle.fluid.framework import (
     _non_static_mode,
     in_dygraph_mode,
 )
+from paddle.fluid.core.eager import Tensor
 
 __all__ = ["ParallelEnv", "DataParallel"]
 
@@ -374,7 +375,7 @@ def sync_params_buffers(
 ):
     model_vars = []
     for _, param in model._obtain_parameters_buffers().items():
-        if not isinstance(param, (core.VarBase, core.eager.Tensor)):
+        if not isinstance(param, Tensor):
             raise TypeError(
                 "The data type of '%s' must be Varbase or eager.Tensor"
                 % param.name
@@ -594,9 +595,7 @@ class DataParallel(layers.Layer):
         self.find_unused_parameters = find_unused_parameters
         self.grad_need_sync = True
         self.group = group
-        self.var_dtype = (
-            core.eager.Tensor if in_dygraph_mode() else core.VarBase
-        )
+        self.var_dtype = Tensor
 
         # NOTE(chenweihang): The ParallelStrategy here is not strictly a strategy.
         # It just stores some environment variables, which can be constructed by
@@ -721,8 +720,7 @@ class DataParallel(layers.Layer):
             )
 
     def _find_varbase(self, obj):
-        var_type = core.eager.Tensor if in_dygraph_mode() else core.VarBase
-        if isinstance(obj, var_type):
+        if isinstance(obj, Tensor):
             return [obj]
         if isinstance(obj, (list, tuple)):
             return itertools.chain(*map(self._find_varbase, obj))

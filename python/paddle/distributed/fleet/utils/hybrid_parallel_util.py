@@ -16,7 +16,7 @@ import paddle
 from paddle import framework
 
 # (TODO: GhostScreaming) It will be removed later.
-from paddle.fluid import core
+from paddle.fluid.core.eager import Tensor
 from paddle.framework import (
     _in_legacy_dygraph,
     _split_tensors,
@@ -140,7 +140,7 @@ def _broadcast_data_help(data, shape, dtype, hcg):
 def broadcast_input_data(hcg, *inputs, **kwargs):
     cur_device = paddle.get_device()
     for v in inputs:
-        if isinstance(v, (core.VarBase, core.eager.Tensor)):
+        if isinstance(v, Tensor):
             with framework.no_grad():
                 if (
                     "gpu" in cur_device
@@ -155,7 +155,7 @@ def broadcast_input_data(hcg, *inputs, **kwargs):
             logger.error("it doesn't support data type {}".format(type(v)))
 
     for k, v in kwargs.items():
-        if isinstance(v, (core.VarBase, core.eager.Tensor)):
+        if isinstance(v, Tensor):
             with framework.no_grad():
                 if (
                     "gpu" in cur_device

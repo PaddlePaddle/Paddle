@@ -61,6 +61,7 @@ from .dataloader import *
 from . import core
 from paddle.utils import deprecated
 from paddle.fluid.framework import static_only
+from paddle.fluid.core.eager import Tensor
 
 batch = paddle.batch
 
@@ -1905,7 +1906,7 @@ def _pack_loaded_dict(load_obj):
 @static_only
 def _legacy_save(param_dict, model_path, protocol=2):
     def get_tensor(var):
-        if isinstance(var, (core.VarBase, core.eager.Tensor)):
+        if isinstance(var, Tensor):
             return var.numpy()
         elif isinstance(var, core.LoDTensor):
             return np.array(var)
