@@ -58,6 +58,14 @@ std::string DDim::to_str() const {
   return ss.str();
 }
 
+std::size_t DDim::to_hash() const {
+  std::size_t seed = rank_;
+  for (int i = 0; i < rank_; ++i) {
+    seed ^= dim_[i] + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+  }
+  return seed;
+}
+
 struct ProductVisitor {
   template <int D>
   inline int64_t operator()(const Dim<D>& dim) {

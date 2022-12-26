@@ -155,6 +155,8 @@ class DDim {
 
   std::string to_str() const;
 
+  std::size_t to_hash() const;
+
   DDim reshape(std::vector<int>& shape) const;
 
   DDim transpose(const std::vector<int>& axis) const;

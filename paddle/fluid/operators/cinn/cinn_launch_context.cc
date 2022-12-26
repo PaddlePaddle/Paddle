@@ -253,6 +253,8 @@ void CinnLaunchContext::InitializeArguments() {
         framework::DDim(cinn_buffer->dims, cinn_buffer->dimensions).to_str(),
         cinn_tensor->type());
     name2argument_.emplace(arg, cinn_buffer.get());
+    auto paddle_var = cinn2paddle_varmap_.at(arg);
+    paddle2argument_.emplace(paddle_var,cinn_buffer.get());
     hold_buffers_.emplace_back(std::move(cinn_buffer));
   }
   VLOG(4) << "Total argument size:" << name2argument_.size();
@@ -447,17 +449,11 @@ ParallelExecutor* CinnLaunchContext::InitializePE(const platform::Place& place,
 
 cinn_buffer_t* CinnLaunchContext::GetCinnBufferOfVar(
     const std::string& var_name) {
-  auto it = paddle2cinn_varmap_.find(var_name);
-  PADDLE_ENFORCE_NE(
-      it,
-      paddle2cinn_varmap_.end(),
-      platform::errors::InvalidArgument(
-          "Variable(%s) not found in compilation result", var_name));
-  auto res = name2argument_.find(it->second);
+  auto res = paddle2argument_.find(var_name);
   PADDLE_ENFORCE_NE(res,
-                    name2argument_.end(),
+                    paddle2argument_.end(),
                     platform::errors::NotFound(
-                        "Argument(%s) not be initialized", it->second));
+                        "Variable(%s) not found in compilation result", var_name));
   return static_cast<cinn_buffer_t*>(res->second);
 }
 

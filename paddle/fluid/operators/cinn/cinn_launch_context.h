@@ -169,6 +169,9 @@ class CinnLaunchContext {
   // this map saves all execution arguments with their cinn names as key,
   // and it is passed to the Execute interface of a cinn runtime program.
   std::map<std::string, cinn_pod_value_t> name2argument_;
+  // this map saves all execution arguments with paddle variables as key,
+  // this map conbine name2argument_ and paddle2cinn_varmap_
+  std::map<std::string, cinn_pod_value_t> paddle2argument_;
 };
 
 }  // namespace operators::details
