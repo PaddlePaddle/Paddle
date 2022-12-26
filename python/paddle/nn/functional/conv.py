@@ -852,7 +852,7 @@ def conv1d_transpose(
 
         .. math::
 
-           L^\prime_{out} &= (L_{in} - 1) * stride - pad_top - pad_bottom + dilation * (L_f - 1) + 1 + output_padding \\\\
+           L^\prime_{out} &= (L_{in} - 1) * stride - 2 * padding + dilation * (L_f - 1) + 1 \\
            L_{out} &\in [ L^\prime_{out}, L^\prime_{out} + stride ]
 
     Note:
@@ -1157,9 +1157,9 @@ def conv2d_transpose(
 
         ..  math::
 
-           H^\prime_{out} &= (H_{in} - 1) * strides[0] - pad_height_top - pad_height_bottom + dilations[0] * (H_f - 1) + 1 \\\\
-           W^\prime_{out} &= (W_{in} - 1) * strides[1] - pad_width_left - pad_width_right + dilations[1] * (W_f - 1) + 1 \\\\
-           H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[0] ] \\\\
+           H^\prime_{out} &= (H_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (H_f - 1) + 1 \\
+           W^\prime_{out} &= (W_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (W_f - 1) + 1 \\
+           H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[0] ] \\
            W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] ]
 
     Note:
@@ -1460,9 +1460,9 @@ def conv3d(
 
         ..  math::
 
-            D_{out}&= \\frac{(D_{in} + 2 * paddings[0] - (dilations[0] * (D_f - 1) + 1))}{strides[0]} + 1 \\\\
-            H_{out}&= \\frac{(H_{in} + 2 * paddings[1] - (dilations[1] * (H_f - 1) + 1))}{strides[1]} + 1 \\\\
-            W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
+            D_{out}&= \frac{(D_{in} + 2 * paddings[0] - (dilations[0] * (D_f - 1) + 1))}{strides[0]} + 1 \\
+            H_{out}&= \frac{(H_{in} + 2 * paddings[1] - (dilations[1] * (H_f - 1) + 1))}{strides[1]} + 1 \\
+            W_{out}&= \frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
 
     Args:
         x (Tensor): The input is 5-D Tensor with shape [N, C, D, H, W], the data
@@ -1630,10 +1630,10 @@ def conv3d_transpose(
     In the above equation:
 
     * :math:`X`: Input value, a Tensor with NCDHW or NDHWC format.
-    * :math:`W`: Filter value, a Tensor with MCDHW format.
-    * :math:`\\ast`: Convolution operation.
+    * :math:`W`: Filter value, a Tensor with NCDHW format.
+    * :math:`\ast`: Convolution operation.
     * :math:`b`: Bias value, a 2-D Tensor with shape [M, 1].
-    * :math:`\\sigma`: Activation function.
+    * :math:`\sigma`: Activation function.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
     Example:
@@ -1652,36 +1652,36 @@ def conv3d_transpose(
 
         ..  math::
 
-           D^\prime_{out} &= (D_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (D_f - 1) + 1 \\\\
-           H^\prime_{out} &= (H_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (H_f - 1) + 1 \\\\
-           W^\prime_{out} &= (W_{in} - 1) * strides[2] - 2 * paddings[2] + dilations[2] * (W_f - 1) + 1 \\\\
-           D_{out} &\in [ D^\prime_{out}, D^\prime_{out} + strides[0] ] \\\\
-           H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[1] ] \\\\
+           D^\prime_{out} &= (D_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (D_f - 1) + 1 \\
+           H^\prime_{out} &= (H_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (H_f - 1) + 1 \\
+           W^\prime_{out} &= (W_{in} - 1) * strides[2] - 2 * paddings[2] + dilations[2] * (W_f - 1) + 1 \\
+           D_{out} &\in [ D^\prime_{out}, D^\prime_{out} + strides[0] ] \\
+           H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[1] ] \\
            W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[2] ]
 
     Note:
-          The conv3d_transpose can be seen as the backward of the conv3d. For conv3d,
-          when stride > 1, conv3d maps multiple input shape to the same output shape,
-          so for conv3d_transpose, when stride > 1, input shape maps multiple output shape.
-          If output_size is None, :math:`H_{out} = H^\prime_{out}, :math:`H_{out} = \
-          H^\prime_{out}, W_{out} = W^\prime_{out}`; else, the :math:`D_{out}` of the output
-          size must between :math:`D^\prime_{out}` and :math:`D^\prime_{out} + strides[0]`,
-          the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}`
-          and :math:`H^\prime_{out} + strides[1]`, and the :math:`W_{out}` of the output size must
-          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[2]`.
+        The conv3d_transpose can be seen as the backward of the conv3d. For conv3d,
+        when stride > 1, conv3d maps multiple input shape to the same output shape,
+        so for conv3d_transpose, when stride > 1, input shape maps multiple output shape.
+        If output_size is None, :math:`H_{out} = H^\prime_{out}, W_{out} = W^\prime_{out}`;
+        else, the :math:`D_{out}` of the output size must between :math:`D^\prime_{out}` and
+        :math:`D^\prime_{out} + strides[0]`, the :math:`H_{out}` of the output size must
+        between :math:`H^\prime_{out}` and :math:`H^\prime_{out} + strides[1]`, and the
+        :math:`W_{out}` of the output size must between :math:`W^\prime_{out}` and
+        :math:`W^\prime_{out} + strides[2]`.
 
     Args:
-        x(Tensor): The input is 5-D Tensor with shape [N, C, D, H, W] or [N, D, H, W, C], the data type
+        x (Tensor): The input is 5-D Tensor with shape [N, C, D, H, W] or [N, D, H, W, C], the data type
             of input is float32 or float64.
         weight (Tensor): The convolution kernel, a Tensor with shape [C, M/g, kD, kH, kW],
-            where M is the number of filters(output channels), g is the number of groups,
+            where M is the number of filters (output channels), g is the number of groups,
             kD, kH, kW are the filter's depth, height and width respectively.
-        bias (Tensor, optional): The bias, a Tensor of shape [M, ].
-        stride(int|list|tuple, optional): The stride size. It means the stride in transposed convolution.
+        bias (Tensor, optional): The bias, a Tensor of shape [M, ]. Default: None.
+        stride (int|list|tuple, optional): The stride size. It means the stride in transposed convolution.
             If stride is a list/tuple, it must contain three integers, (stride_depth, stride_height,
             stride_width). Otherwise, stride_depth = stride_height = stride_width = stride.
-            Default: stride = 1.
-        padding (string|int|list|tuple, optional): The padding size. It means the number of zero-paddings
+            Default: 1.
+        padding (str|int|list|tuple, optional): The padding size. It means the number of zero-paddings
             on both sides for each dimension. If `padding` is a string, either 'VALID' or
             'SAME' which is the padding algorithm. If padding size is a tuple or list,
             it could be in three forms: `[pad_depth, pad_height, pad_width]` or
@@ -1690,29 +1690,29 @@ def conv3d_transpose(
             `[[0,0], [0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
             when `data_format` is `"NDHWC"`, `padding` can be in the form
             `[[0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
-            Default: padding = 0.
-        output_padding(int|list|tuple, optional): Additional size added to one side
+            Default: 0.
+        output_padding (int|list|tuple, optional): Additional size added to one side
             of each dimension in the output shape. Default: 0.
-        groups(int, optional): The groups number of the Conv3D transpose layer. Inspired by
-            grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
-            when group=2, the first half of the filters is only connected to the
+        groups (int, optional): The groups number of the Conv3D transpose layer. Inspired by
+            grouped convolution in `Alex Krizhevsky's Deep CNN paper <https://papers.nips.cc/paper/2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf>`_, in which
+            when groups = 2, the first half of the filters is only connected to the
             first half of the input channels, while the second half of the
             filters is only connected to the second half of the input channels.
-            Default: groups=1
-        dilation(int|list|tuple, optional): The dilation size. It means the spacing between the kernel points.
+            Default: 1.
+        dilation (int|list|tuple, optional): The dilation size. It means the spacing between the kernel points.
             If dilation is a list/tuple, it must contain three integers, (dilation_depth, dilation_height,
             dilation_width). Otherwise, dilation_depth = dilation_height = dilation_width = dilation.
-            Default: dilation = 1.
-        output_size(int|list|tuple, optional): The output image size. If output size is a
+            Default: 1.
+        output_size (int|list|tuple, optional): The output image size. If output size is a
             list/tuple, it must contain three integers, (image_depth, image_height, image_width).
             None if use filter_size(shape of weight), padding, and stride to calculate output_size.
         data_format (str, optional): Specify the data format of the input, and the data format of the output
             will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
-            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`.
-        name(str, optional): For detailed information, please refer
-           to :ref:`api_guide_Name`. Usually name is no need to set and
-           None by default.
+            When it is `"NCHW"`, the data is stored in the order of: `[batch_size, input_channels, input_height, input_width]`.
+            Default: `"NCHW"`.
+        name (str, optional): For detailed information, please refer
+           to :ref:`api_guide_Name`. Usually name is no need to set.
+           Default: None.
 
     Returns:
         A Tensor representing the conv3d_transpose, whose data
