@@ -710,7 +710,7 @@ class TestMatMulTypePromotion(TestComplexMatMulOp):
 
 
 class TestMatmulop(unittest.TestCase):
-    def func_dygraph_matmul(self):
+    def test_dygraph_matmul(self):
         paddle.disable_static()
 
         np_a = np.random.random((2, 4)).astype(np.float32)
@@ -722,7 +722,7 @@ class TestMatmulop(unittest.TestCase):
         # normal case: tensor @ nparray
         expect_out = np_a @ np_b
         actual_out = tensor_a @ np_b
-        np.testing.assert_allclose(actual_out, expect_out)
+        np.testing.assert_allclose(actual_out, expect_out, rtol=1e-6)
 
         paddle.enable_static()
 
