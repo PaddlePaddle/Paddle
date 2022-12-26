@@ -942,7 +942,7 @@ class TestLayer(LayerTest):
                 lod_level=1,
                 append_batch_size=False,
             )
-            spectralNorm = paddle.nn.SpectralNorm(shape, axis=1, power_iters=2)
+            spectralNorm = paddle.nn.SpectralNorm(shape, dim=1, power_iters=2)
             ret = spectralNorm(Weight)
             static_ret2 = self.get_static_graph_result(
                 feed={
@@ -955,7 +955,7 @@ class TestLayer(LayerTest):
             )[0]
 
         with self.dynamic_graph():
-            spectralNorm = paddle.nn.SpectralNorm(shape, axis=1, power_iters=2)
+            spectralNorm = paddle.nn.SpectralNorm(shape, dim=1, power_iters=2)
             dy_ret = spectralNorm(base.to_variable(input))
             dy_rlt_value = dy_ret.numpy()
 
