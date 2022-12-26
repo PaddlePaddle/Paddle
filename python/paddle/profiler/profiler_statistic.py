@@ -120,7 +120,6 @@ class HostStatisticNode:
         self.self_cpu_time = self.cpu_time
         self.cal_flops()
         for child in self.children_node:
-            child.cal_flops()
             child.cal_statistic()
             self.gpu_time += child.gpu_time
             self.general_gpu_time += child.general_gpu_time
@@ -197,11 +196,6 @@ def _build_layer_from_tree(nodetrees):
         ]:
             return [], 0
 
-        if node.type == TracerEventType.Operator:
-            stat_node = HostStatisticNode(node)
-            stat_node.cal_statistic()
-            return stat_node, stat_node.flops
-
         layer = []
         nflops = 0
         for c in node.children_node:
@@ -210,7 +204,13 @@ def _build_layer_from_tree(nodetrees):
                 nflops += f
                 layer.append(l)
 
-        if node.type == TracerEventType.Forward:
+        if node.type == TracerEventType.Operator:
+            stat_node = HostStatisticNode(node)
+            stat_node.cal_statistic()
+            stat_node.flops = nflops + stat_node.flops
+            return stat_node, stat_node.flops
+
+        elif node.type == TracerEventType.Forward:
             stat_node = HostStatisticNode(node)
             stat_node.cal_statistic()
             stat_node.flops = nflops
@@ -282,7 +282,7 @@ def _gen_layer_flops(node, repeat=1):
                 )
             )
 
-    for n in node[1:]:
+    for n in node:
         print_layer_tree(n)
 
     return "".join(ret)
