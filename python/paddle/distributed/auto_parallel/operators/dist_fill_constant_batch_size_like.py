@@ -61,7 +61,7 @@ class DistributedFillConstantBatchSizeLikeImpl0(DistributedOperatorImpl):
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
-        processes = dist_op.dist_attr.process_mesh.processes
+        processes = dist_op.dist_attr.process_mesh.process_ids
         op_type = dist_op.serial_op.type
         cost_mapping = build_comp_costs_from_descs(
             FillConstantBatchSizeLikeOpCost,
@@ -139,7 +139,7 @@ class DistributedFillConstantBatchSizeLikeImpl0(DistributedOperatorImpl):
         # modify shape attr according to how output are partitioned
         out_name = op.output('Out')[0]
         dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
-        process_mesh_shape = op_dist_attr.process_mesh.topology
+        process_mesh_shape = op_dist_attr.process_mesh.shape
         shape_list = op.attr("shape")
         # modify target shape
         for idx, axis in enumerate(dims_mapping):

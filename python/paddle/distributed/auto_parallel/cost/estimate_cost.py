@@ -190,7 +190,7 @@ class CostEstimator:
                 # Calc dist op cost
                 dist_op = dist_context.get_dist_op_for_program(op)
                 op_dist_attr = dist_op.dist_attr
-                processes = op_dist_attr.process_mesh.processes
+                processes = op_dist_attr.process_mesh.process_ids
 
                 container = get_distributed_operator_impl_container(
                     op_dist_attr.impl_type
@@ -273,8 +273,8 @@ class CostEstimator:
         # This estimation will be improved, now reshard and inplace are not considered.
         # Persist var is not free.
         def _convert_pm_and_dm_to_str(process_mesh, dims_mapping):
-            processes = ",".join([str(x) for x in process_mesh.processes])
-            topology = ",".join([str(x) for x in process_mesh.topology])
+            processes = ",".join([str(x) for x in process_mesh.process_ids])
+            topology = ",".join([str(x) for x in process_mesh.shape])
             dims_mapping = ",".join([str(x) for x in dims_mapping])
             result = processes + topology + dims_mapping
             return result
@@ -318,8 +318,8 @@ class CostEstimator:
                     sizes = DistributedTensor.get_local_sizes(
                         global_sizes,
                         input_dims_mapping,
-                        process_mesh.topology,
-                        process_mesh.processes,
+                        process_mesh.shape,
+                        process_mesh.process_ids,
                     )
                     var_info[var_name][key]["memory"] = self._calculate_bytes(
                         sizes, dtype
@@ -346,8 +346,8 @@ class CostEstimator:
                     sizes = DistributedTensor.get_local_sizes(
                         global_sizes,
                         output_dims_mapping,
-                        process_mesh.topology,
-                        process_mesh.processes,
+                        process_mesh.shape,
+                        process_mesh.process_ids,
                     )
                     var_info[var_name][key]["memory"] = self._calculate_bytes(
                         sizes, dtype
@@ -380,7 +380,7 @@ class CostEstimator:
                 # Not used
                 if var_name + key not in has_used_vars:
                     has_used_vars.add(has_used_var)
-                    for process in process_mesh.processes:
+                    for process in process_mesh.process_ids:
                         if process not in memories:
                             memories[process] = 0
                         memories[process] += var_info[var_name][key]["memory"]
@@ -390,7 +390,7 @@ class CostEstimator:
                         if has_used_var not in can_free_vars:
                             can_free_vars.add(has_used_var)
                             if not var.persistable:
-                                for process in process_mesh.processes:
+                                for process in process_mesh.process_ids:
                                     if process not in can_free_memories:
                                         can_free_memories[process] = 0
                                     can_free_memories[process] += var_info[
@@ -409,7 +409,7 @@ class CostEstimator:
                 # Not used
                 if var_name + key not in has_used_vars:
                     has_used_vars.add(has_used_var)
-                    for process in process_mesh.processes:
+                    for process in process_mesh.process_ids:
                         if process not in memories:
                             memories[process] = 0
                         memories[process] += var_info[var_name][key]["memory"]
@@ -419,7 +419,7 @@ class CostEstimator:
                         if has_used_var not in can_free_vars:
                             can_free_vars.add(has_used_var)
                             if not var.persistable:
-                                for process in process_mesh.processes:
+                                for process in process_mesh.process_ids:
                                     if process not in can_free_memories:
                                         can_free_memories[process] = 0
                                     can_free_memories[process] += var_info[

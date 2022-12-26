@@ -69,6 +69,12 @@ void BindAutoParallel(py::module *m) {
       .def("contains", &ProcessMesh::contains)
       .def(py::self == py::self)
       .def(py::self != py::self)
+      .def("__copy__",
+           [](const ProcessMesh &self) { return ProcessMesh(self); })
+      .def(
+          "__deepcopy__",
+          [](const ProcessMesh &self, py::dict) { return ProcessMesh(self); },
+          py::arg("memo"))
       .def("__str__", &ProcessMesh::to_string);
 
   py::class_<DeviceCapability>(*m, "DeviceCapability")
@@ -131,7 +137,7 @@ void BindAutoParallel(py::module *m) {
                     const std::vector<std::string> &>(),
            py::arg("name"),
            py::arg("shape"),
-           py::arg("process_ids"),
+           py::arg("device_ids"),
            py::arg("dim_names"))
       .def_property_readonly("name", &DeviceMesh::name)
       .def_property_readonly("shape", &DeviceMesh::shape)
@@ -165,6 +171,8 @@ void BindAutoParallel(py::module *m) {
                &DeviceMesh::dim_size))
       .def(py::self == py::self)
       .def(py::self != py::self)
+      .def("__copy__",
+           [](const TensorDistAttr &self) { return TensorDistAttr(self); })
       .def(
           "__deepcopy__",
           [](const TensorDistAttr &self, py::dict) {
@@ -256,6 +264,8 @@ void BindAutoParallel(py::module *m) {
       .def("parse_from_string", &OperatorDistAttr::parse_from_string)
       .def(py::self == py::self)
       .def(py::self != py::self)
+      .def("__copy__",
+           [](const OperatorDistAttr &self) { return OperatorDistAttr(self); })
       .def(
           "__deepcopy__",
           [](const OperatorDistAttr &self, py::dict) {
