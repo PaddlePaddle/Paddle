@@ -676,7 +676,6 @@ class TestParallelDyGraphRunnerBase:
                     type(self).__name__,
                     "begin to prepare context in dygraph with nccl2",
                 )
-                dygraph.parallel.prepare_context(strategy)
                 if not args.find_unused_parameters:
                     model = dygraph.parallel.DataParallel(
                         model, strategy, find_unused_parameters=False

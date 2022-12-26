@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import paddle.distributed.communication.stream as stream
-import paddle.fluid.framework as framework
-from paddle.distributed.communication.group import _get_global_group
 
 
 def scatter(tensor, tensor_list=None, src=0, group=None, sync_op=True):
@@ -61,34 +58,4 @@ def scatter(tensor, tensor_list=None, src=0, group=None, sync_op=True):
             # [1, 2, 3] [10, 11, 12] (2 GPUs, out for rank 0)
             # [4, 5, 6] [4, 5, 6] (2 GPUs, out for rank 1)
     """
-    if not framework._in_legacy_dygraph():
-        return stream.scatter(tensor, tensor_list, src, group, sync_op)
-
-    # code below will be removed after we remove the old dygraph
-    if group is not None and not group.is_member():
-        return
-    ring_id = 0 if group is None else group.id
-    gsrc = src if group is None else group.get_group_rank(src)
-    rank = _get_global_group().rank if group is None else group.rank
-    nranks = _get_global_group().nranks if group is None else group.nranks
-    assert gsrc >= 0, "src rank out of group, need global rank"
-
-    if rank != gsrc:
-        tensor_list = []
-        for _ in range(nranks):
-            tensor_list.append(tensor)
-    temp = paddle.concat(tensor_list, axis=0)
-
-    use_calc_stream = sync_op
-    return framework._legacy_C_ops.c_scatter(
-        temp,
-        tensor,
-        'use_calc_stream',
-        use_calc_stream,
-        'ring_id',
-        ring_id,
-        'nranks',
-        nranks,
-        'root',
-        gsrc,
-    )
+    return stream.scatter(tensor, tensor_list, src, group, sync_op)

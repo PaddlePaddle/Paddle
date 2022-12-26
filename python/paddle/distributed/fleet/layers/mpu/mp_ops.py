@@ -18,13 +18,7 @@ from paddle.common_ops_import import dygraph_utils
 from paddle.distributed import collective
 from paddle.fluid import core
 from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
-from paddle.framework import (
-    LayerHelper,
-    _in_legacy_dygraph,
-    _varbase_creator,
-    in_dygraph_mode,
-    in_dynamic_mode,
-)
+from paddle.framework import LayerHelper, _varbase_creator, in_dygraph_mode
 from paddle.nn import Layer
 
 from ....communication.reduce import ReduceOp, _get_reduce_op
@@ -69,39 +63,29 @@ def _c_identity(tensor, group=None):
                 return dy
 
         return c_identity_eager.apply(tensor)
+    else:
+        op_type = 'c_identity'
+        helper = LayerHelper(op_type, **locals())
+        out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
 
-    elif _in_legacy_dygraph():
-        return _legacy_C_ops.c_identity(
+        check_variable_and_dtype(
             tensor,
-            'use_calc_stream',
-            True,
-            'ring_id',
-            ring_id,
-            'use_model_parallel',
-            True,
+            'tensor',
+            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            '_c_identity',
         )
-    op_type = 'c_identity'
-    helper = LayerHelper(op_type, **locals())
-    out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
 
-    check_variable_and_dtype(
-        tensor,
-        'tensor',
-        ['float16', 'float32', 'float64', 'int32', 'int64'],
-        '_c_identity',
-    )
-
-    helper.append_op(
-        type=op_type,
-        inputs={'X': tensor},
-        outputs={'Out': out},
-        attrs={
-            'ring_id': ring_id,
-            'use_calc_stream': True,
-            'use_model_parallel': True,
-        },
-    )
-    return out
+        helper.append_op(
+            type=op_type,
+            inputs={'X': tensor},
+            outputs={'Out': out},
+            attrs={
+                'ring_id': ring_id,
+                'use_calc_stream': True,
+                'use_model_parallel': True,
+            },
+        )
+        return out
 
 
 def _c_concat(tensor, group=None):
@@ -125,7 +109,7 @@ def _c_concat(tensor, group=None):
     rank = group.rank
     nranks = group.nranks
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
         return _legacy_C_ops.c_concat(
             tensor,
             'ring_id',
@@ -139,31 +123,31 @@ def _c_concat(tensor, group=None):
             'use_model_parallel',
             True,
         )
+    else:
+        op_type = 'c_concat'
+        helper = LayerHelper(op_type, **locals())
+        out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
 
-    op_type = 'c_concat'
-    helper = LayerHelper(op_type, **locals())
-    out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
+        check_variable_and_dtype(
+            tensor,
+            'tensor',
+            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            '_c_concat',
+        )
 
-    check_variable_and_dtype(
-        tensor,
-        'tensor',
-        ['float16', 'float32', 'float64', 'int32', 'int64'],
-        '_c_concat',
-    )
-
-    helper.append_op(
-        type=op_type,
-        inputs={'X': tensor},
-        outputs={'Out': out},
-        attrs={
-            'ring_id': ring_id,
-            'use_calc_stream': True,
-            'use_model_parallel': True,
-            'nranks': nranks,
-            'rank': rank,
-        },
-    )
-    return out
+        helper.append_op(
+            type=op_type,
+            inputs={'X': tensor},
+            outputs={'Out': out},
+            attrs={
+                'ring_id': ring_id,
+                'use_calc_stream': True,
+                'use_model_parallel': True,
+                'nranks': nranks,
+                'rank': rank,
+            },
+        )
+        return out
 
 
 def _c_split(tensor, group=None):
@@ -191,7 +175,7 @@ def _c_split(tensor, group=None):
         else group.nranks
     )
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
         return _legacy_C_ops.c_split(
             tensor,
             'use_calc_stream',
@@ -205,31 +189,31 @@ def _c_split(tensor, group=None):
             'use_model_parallel',
             True,
         )
+    else:
+        op_type = 'c_split'
+        helper = LayerHelper(op_type, **locals())
+        out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
 
-    op_type = 'c_split'
-    helper = LayerHelper(op_type, **locals())
-    out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
+        check_variable_and_dtype(
+            tensor,
+            'tensor',
+            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            '_c_split',
+        )
 
-    check_variable_and_dtype(
-        tensor,
-        'tensor',
-        ['float16', 'float32', 'float64', 'int32', 'int64'],
-        '_c_split',
-    )
-
-    helper.append_op(
-        type=op_type,
-        inputs={'X': tensor},
-        outputs={'Out': out},
-        attrs={
-            'ring_id': ring_id,
-            'use_calc_stream': True,
-            'rank': rank,
-            'nranks': nranks,
-            'use_model_parallel': True,
-        },
-    )
-    return out
+        helper.append_op(
+            type=op_type,
+            inputs={'X': tensor},
+            outputs={'Out': out},
+            attrs={
+                'ring_id': ring_id,
+                'use_calc_stream': True,
+                'rank': rank,
+                'nranks': nranks,
+                'use_model_parallel': True,
+            },
+        )
+        return out
 
 
 def _mp_allreduce(
@@ -286,41 +270,29 @@ def _mp_allreduce(
         return mp_allreduce_eager.apply(
             tensor, group, use_calc_stream, use_model_parallel
         )
+    else:
+        ring_id = 0 if group is None else group.id
+        op_type = 'mp_allreduce_sum'
+        helper = LayerHelper(op_type, **locals())
+        out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
 
-    ring_id = 0 if group is None else group.id
-    if _in_legacy_dygraph():
-        if op == ReduceOp.SUM:
-            return _legacy_C_ops.mp_allreduce_sum_(
-                tensor,
-                'use_calc_stream',
-                use_calc_stream,
-                'ring_id',
-                ring_id,
-            )
-        else:
-            raise ValueError("Unknown parameter: {}.".format(op))
+        check_variable_and_dtype(
+            tensor,
+            'tensor',
+            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            op_type,
+        )
 
-    op_type = 'mp_allreduce_sum'
-    helper = LayerHelper(op_type, **locals())
-    out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
-
-    check_variable_and_dtype(
-        tensor,
-        'tensor',
-        ['float16', 'float32', 'float64', 'int32', 'int64'],
-        op_type,
-    )
-
-    helper.append_op(
-        type=op_type,
-        inputs={'X': tensor},
-        outputs={'Out': out},
-        attrs={
-            'ring_id': ring_id,
-            'use_calc_stream': use_calc_stream,
-        },
-    )
-    return out
+        helper.append_op(
+            type=op_type,
+            inputs={'X': tensor},
+            outputs={'Out': out},
+            attrs={
+                'ring_id': ring_id,
+                'use_calc_stream': use_calc_stream,
+            },
+        )
+        return out
 
 
 def _c_lookup_table(table, index, start_index=0, name=None):
@@ -337,23 +309,23 @@ def _c_lookup_table(table, index, start_index=0, name=None):
     Returns:
         Tensor.
     """
-    if in_dynamic_mode():
+    if in_dygraph_mode():
         return _legacy_C_ops.c_embedding(
             table, index, "start_index", start_index
         )
-
-    op_type = 'c_embedding'
-    helper = LayerHelper(op_type, **locals())
-    dtype = helper.input_dtype(input_param_name='table')
-    check_variable_and_dtype(index, 'input', ['int32', 'int64'], op_type)
-    tmp = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type='c_embedding',
-        inputs={'Ids': index, 'W': table},
-        outputs={'Out': tmp},
-        attrs={"start_index": start_index},
-    )
-    return tmp
+    else:
+        op_type = 'c_embedding'
+        helper = LayerHelper(op_type, **locals())
+        dtype = helper.input_dtype(input_param_name='table')
+        check_variable_and_dtype(index, 'input', ['int32', 'int64'], op_type)
+        tmp = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(
+            type='c_embedding',
+            inputs={'Ids': index, 'W': table},
+            outputs={'Out': tmp},
+            attrs={"start_index": start_index},
+        )
+        return tmp
 
 
 class _Linear(Layer):
@@ -426,7 +398,7 @@ def _c_softmax_with_cross_entropy(
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=-1)
 
-    if in_dynamic_mode():
+    if in_dygraph_mode():
         softmax, loss = _legacy_C_ops.c_softmax_with_cross_entropy(
             logits, label, 'ring_id', ring_id, 'rank', rank, 'nranks', nranks
         )
@@ -434,33 +406,33 @@ def _c_softmax_with_cross_entropy(
             return loss
         else:
             return loss, softmax
+    else:
+        attrs = {
+            'ring_id': ring_id,
+            'rank': rank,
+            'nranks': nranks,
+        }
+        helper = LayerHelper('c_softmax_with_cross_entropy', **locals())
+        softmax = helper.create_variable_for_type_inference(dtype=logits.dtype)
+        loss = helper.create_variable_for_type_inference(dtype=logits.dtype)
+        helper.append_op(
+            type='c_softmax_with_cross_entropy',
+            inputs={'Logits': logits, 'Label': label},
+            outputs={'Softmax': softmax, 'Loss': loss},
+            attrs=attrs,
+        )
 
-    attrs = {
-        'ring_id': ring_id,
-        'rank': rank,
-        'nranks': nranks,
-    }
-    helper = LayerHelper('c_softmax_with_cross_entropy', **locals())
-    softmax = helper.create_variable_for_type_inference(dtype=logits.dtype)
-    loss = helper.create_variable_for_type_inference(dtype=logits.dtype)
-    helper.append_op(
-        type='c_softmax_with_cross_entropy',
-        inputs={'Logits': logits, 'Label': label},
-        outputs={'Softmax': softmax, 'Loss': loss},
-        attrs=attrs,
-    )
+        if return_softmax:
+            return loss, softmax
 
-    if return_softmax:
-        return loss, softmax
-
-    return loss
+        return loss
 
 
 def _linear(x, weight, bias=None, name=None):
     """
     Fuction Linear
     """
-    if in_dynamic_mode():
+    if in_dygraph_mode():
         pre_bias = _varbase_creator(dtype=x.dtype)
         _legacy_C_ops.matmul(
             x,
@@ -827,7 +799,7 @@ def split(
             supported_operations
         )
     )
-    if in_dynamic_mode():
+    if in_dygraph_mode():
         raise ValueError(
             "paddle.distributed.split cannot be used in dynamic "
             "graph mode, plese use ParallelEmbedding, ParallelRowLinear, "

@@ -470,6 +470,20 @@ void* GetWarpCTCDsoHandle() {
 #endif
 }
 
+void* GetWarpRNNTDsoHandle() {
+  std::string warprnnt_dir = "";
+  if (!s_py_site_pkg_path.path.empty()) {
+    warprnnt_dir = s_py_site_pkg_path.path;
+  }
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(warprnnt_dir, "libwarprnnt.dylib");
+#elif defined(_WIN32)
+  return GetDsoHandleFromSearchPath(warprnnt_dir, "warprnnt.dll");
+#else
+  return GetDsoHandleFromSearchPath(warprnnt_dir, "libwarprnnt.so");
+#endif
+}
+
 void* GetNCCLDsoHandle() {
 #ifdef PADDLE_WITH_HIP
   std::string warning_msg(

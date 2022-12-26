@@ -23,6 +23,8 @@ import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 from paddle.nn import BatchNorm, Linear
 
+paddle.enable_static()
+
 
 class TestDygraphLoadStatic(unittest.TestCase):
     def testLoadStaticModel(self):
@@ -34,10 +36,10 @@ class TestDygraphLoadStatic(unittest.TestCase):
         fc_out1 = fluid.layers.fc(a, 10)
         fc_out2 = fluid.layers.fc(a, 20)
 
-        conv_out_1 = fluid.layers.conv2d(
+        conv_out_1 = paddle.static.nn.conv2d(
             conv_in, num_filters=10, filter_size=5, act="relu"
         )
-        conv_out_2 = fluid.layers.conv2d(
+        conv_out_2 = paddle.static.nn.conv2d(
             conv_in, num_filters=10, filter_size=5, act="relu"
         )
 
@@ -62,8 +64,8 @@ class TestDygraphLoadStatic(unittest.TestCase):
         emb_out_2 = fluid.embedding(emb_in, [2000, 200])
 
         layernorm = fluid.data(name="ln", shape=[None, 10], dtype='float32')
-        layernorm_1 = fluid.layers.layer_norm(layernorm)
-        layernorm_2 = fluid.layers.layer_norm(layernorm)
+        layernorm_1 = paddle.static.nn.layer_norm(layernorm)
+        layernorm_2 = paddle.static.nn.layer_norm(layernorm)
 
         nce_in = fluid.data(name="nce_in", shape=[None, 100], dtype='float32')
         nce_label = fluid.data(
@@ -128,8 +130,8 @@ class TestDygraphLoadStatic(unittest.TestCase):
         )
         '''
         spec_norm = fluid.data(name='spec_norm', shape=[2, 8, 32, 32], dtype='float32')
-        spe_norm_out_1 = fluid.layers.spectral_norm(weight=spec_norm, dim=1, power_iters=2)
-        spe_norm_out_2 = fluid.layers.spectral_norm(weight=spec_norm, dim=1, power_iters=2)
+        spe_norm_out_1 = paddle.static.nn.spectral_norm(weight=spec_norm, dim=1, power_iters=2)
+        spe_norm_out_2 = paddle.static.nn.spectral_norm(weight=spec_norm, dim=1, power_iters=2)
         '''
 
         nodes_vector = fluid.data(
