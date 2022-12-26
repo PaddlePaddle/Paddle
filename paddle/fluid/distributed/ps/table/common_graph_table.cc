@@ -1657,7 +1657,7 @@ int32_t GraphTable::load_nodes(const std::string &path, std::string node_type) {
   }
   if (is_parse_node_fail_) {
     VLOG(0) << "Fail to load nodes, path[" << paths[0] << ".."
-            << paths[paths.size() -1] << "] node_type[" << node_type << "]";
+            << paths[paths.size() - 1] << "] node_type[" << node_type << "]";
     return -1;
   }
 

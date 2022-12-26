@@ -23,24 +23,21 @@ namespace operators {
 using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T, typename LodType>
-__global__ void unzipKernel(const T* X,
-                                 const LodType* lod,
-                                 T* Y,
-                                 size_t col_size,
-                                 size_t n) {
+__global__ void unzipKernel(
+    const T* X, const LodType* lod, T* Y, size_t col_size, size_t n) {
   CUDA_KERNEL_LOOP(i, n) {
     int lod_idx = i / col_size;
     if ((lod[lod_idx + 1] - lod[lod_idx]) > 0) {
-        assert((lod[lod_idx + 1] - lod[lod_idx]) == col_size);
-        int x_idx = 0;
-        for (int j = 0; j < lod_idx; ++j) {
-            if ((lod[j + 1] - lod[j]) > 0) {
-                x_idx++;
-            }
+      assert((lod[lod_idx + 1] - lod[lod_idx]) == col_size);
+      int x_idx = 0;
+      for (int j = 0; j < lod_idx; ++j) {
+        if ((lod[j + 1] - lod[j]) > 0) {
+          x_idx++;
         }
-        Y[i] = X[x_idx * col_size + (i % col_size)];
+      }
+      Y[i] = X[x_idx * col_size + (i % col_size)];
     } else {
-        Y[i] = 0;
+      Y[i] = 0;
     }
   }
 }
@@ -65,11 +62,10 @@ class unzipCUDAKernel : public framework::OpKernel<T> {
     // for Input X do not have lod Information.
     auto stream = context.template device_context<phi::GPUContext>().stream();
     unzipKernel<<<(y_numel + PADDLE_CUDA_NUM_THREADS - 1) /
-                             PADDLE_CUDA_NUM_THREADS,
-                         PADDLE_CUDA_NUM_THREADS,
-                         0,
-                         stream>>>(
-          x_data, lod_data, y_data, col_size, y_numel);
+                      PADDLE_CUDA_NUM_THREADS,
+                  PADDLE_CUDA_NUM_THREADS,
+                  0,
+                  stream>>>(x_data, lod_data, y_data, col_size, y_numel);
   }
 };
 
@@ -85,19 +81,20 @@ class unzipGradCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(unzip,
-                        ops::unzipCUDAKernel<float, int>,
-                        ops::unzipCUDAKernel<double, int>,
-                        ops::unzipCUDAKernel<paddle::platform::float16, int>,
-                        ops::unzipCUDAKernel<int, int>,
-                        ops::unzipCUDAKernel<bool, int>,
-                        ops::unzipCUDAKernel<int64_t, int>,
-                        ops::unzipCUDAKernel<float, int64_t>,
-                        ops::unzipCUDAKernel<double, int64_t>,
-                        ops::unzipCUDAKernel<paddle::platform::float16, int64_t>,
-                        ops::unzipCUDAKernel<int, int64_t>,
-                        ops::unzipCUDAKernel<bool, int64_t>,
-                        ops::unzipCUDAKernel<int64_t, int64_t>);
+REGISTER_OP_CUDA_KERNEL(
+    unzip,
+    ops::unzipCUDAKernel<float, int>,
+    ops::unzipCUDAKernel<double, int>,
+    ops::unzipCUDAKernel<paddle::platform::float16, int>,
+    ops::unzipCUDAKernel<int, int>,
+    ops::unzipCUDAKernel<bool, int>,
+    ops::unzipCUDAKernel<int64_t, int>,
+    ops::unzipCUDAKernel<float, int64_t>,
+    ops::unzipCUDAKernel<double, int64_t>,
+    ops::unzipCUDAKernel<paddle::platform::float16, int64_t>,
+    ops::unzipCUDAKernel<int, int64_t>,
+    ops::unzipCUDAKernel<bool, int64_t>,
+    ops::unzipCUDAKernel<int64_t, int64_t>);
 
 REGISTER_OP_CUDA_KERNEL(unzip_grad,
                         ops::unzipGradCUDAKernel<float>,

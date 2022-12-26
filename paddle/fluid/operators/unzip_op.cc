@@ -161,10 +161,9 @@ REGISTER_OPERATOR(unzip,
                   ops::unzipGradOpMaker<paddle::framework::OpDesc>,
                   ops::unzipGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(unzip_grad,
-                  ops::unzipGradientOp);
+REGISTER_OPERATOR(unzip_grad, ops::unzipGradientOp);
 
-REGISTER_OP_CPU_KERNEL(unzip, 
+REGISTER_OP_CPU_KERNEL(unzip,
                        ops::unzipOpKernel<int64_t>,
                        ops::unzipOpKernel<int64_t>);
 

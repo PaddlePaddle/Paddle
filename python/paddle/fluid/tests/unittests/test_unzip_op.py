@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-from math import log
-from math import exp
-from op_test import OpTest
 import unittest
+
+import numpy as np
+from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 
+
 class TestUnzipOp(OpTest):
     """
-        Test unzip op with discrete one-hot labels.
+    Test unzip op with discrete one-hot labels.
     """
 
     def setUp(self):
@@ -31,15 +32,28 @@ class TestUnzipOp(OpTest):
         self.__class__.op_type = "unzip"
         self.__class__.no_need_check_grad = True
 
-        input = [[1.0, 2.0, 3.0, 4.0], [10.0, 20.0, 30.0, 40.0], [100.0, 200.0, 300.0, 400.0]]
+        input = [
+            [1.0, 2.0, 3.0, 4.0],
+            [10.0, 20.0, 30.0, 40.0],
+            [100.0, 200.0, 300.0, 400.0],
+        ]
         lod = [0, 4, 4, 8, 8, 8, 8, 12, 12, 12, 12]
         self.inputs = {
             'X': np.array(input).astype("float64"),
-            'lod': np.array(lod).astype("int64")
+            'lod': np.array(lod).astype("int64"),
         }
-        out = [[1.0, 2.0, 3.0, 4.0], [0.0, 0.0, 0.0, 0.0], [10.0, 20.0, 30.0, 40.0], [0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [100.0, 200.0, 300.0, 400.0], [0.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]]
+        out = [
+            [1.0, 2.0, 3.0, 4.0],
+            [0.0, 0.0, 0.0, 0.0],
+            [10.0, 20.0, 30.0, 40.0],
+            [0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0],
+            [100.0, 200.0, 300.0, 400.0],
+            [0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 0.0],
+        ]
         self.outputs = {'Y': np.array(out, dtype="float64")}
 
     def test_check_output(self):

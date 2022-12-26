@@ -2210,7 +2210,7 @@ def unzip(input, lod):
         input,
         'input',
         ['float16', 'float32', 'float64', 'int', 'bool', 'int64'],
-        'unzip'
+        'unzip',
     )
     check_variable_and_dtype(lod, 'lod', ['int', 'int64'], 'unzip')
     helper.append_op(

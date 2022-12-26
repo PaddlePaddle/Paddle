@@ -916,7 +916,7 @@ class GraphDataGenerator {
   void FillOneStep(uint64_t* start_ids,
                    int etype_id,
                    uint64_t* walk,
-                   uint8_t *walk_ntype,
+                   uint8_t* walk_ntype,
                    int len,
                    NeighborSampleResult& sample_res,  // NOLINT
                    int cur_degree,
@@ -1182,7 +1182,7 @@ class DataFeed {
   virtual void clear_gpu_mem() { gpu_graph_data_generator_.clear_gpu_mem(); }
 
   virtual bool get_epoch_finish() {
-     return gpu_graph_data_generator_.get_epoch_finish();
+    return gpu_graph_data_generator_.get_epoch_finish();
   }
 
   virtual void ResetPathNum() { gpu_graph_data_generator_.ResetPathNum(); }

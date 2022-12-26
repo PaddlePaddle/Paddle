@@ -47,10 +47,10 @@ void GraphGpuWrapper::init_conf(const std::string &first_node_type,
     VLOG(2) << "node_types: " << first_node_type;
     for (auto &type : node_types) {
       auto iter = node_to_id.find(type);
-      PADDLE_ENFORCE_NE(iter,
-                        node_to_id.end(),
-                        platform::errors::NotFound(
-                            "(%s) is not found in node_to_id.", type));
+      PADDLE_ENFORCE_NE(
+          iter,
+          node_to_id.end(),
+          platform::errors::NotFound("(%s) is not found in node_to_id.", type));
       VLOG(2) << "node_to_id[" << type << "] = " << iter->second;
       first_node_type_.push_back(iter->second);
     }
@@ -77,9 +77,10 @@ void GraphGpuWrapper::init_conf(const std::string &first_node_type,
       }
     }
 
-    auto paths = paddle::string::split_string<std::string>(excluded_train_pair, ";");
+    auto paths =
+        paddle::string::split_string<std::string>(excluded_train_pair, ";");
     VLOG(2) << "excluded_train_pair[" << excluded_train_pair << "]";
-    for (auto &path: paths) {
+    for (auto &path : paths) {
       auto nodes = paddle::string::split_string<std::string>(path, "2");
       for (auto &node : nodes) {
         auto iter = node_to_id.find(node);
@@ -425,8 +426,8 @@ int GraphGpuWrapper::load_node_file(std::string name, std::string filepath) {
 }
 
 int GraphGpuWrapper::load_node_file(std::string ntype2files,
-                                     std::string graph_data_local_path,
-                                     int part_num) {
+                                    std::string graph_data_local_path,
+                                    int part_num) {
   return reinterpret_cast<GpuPsGraphTable *>(graph_table)
       ->cpu_graph_table_->parse_node_and_load(
           ntype2files, graph_data_local_path, part_num);
@@ -632,7 +633,10 @@ GraphGpuWrapper::get_edge_type_graph(int gpu_id, int edge_type_len) {
 }
 
 void GraphGpuWrapper::get_node_degree(
-    int gpu_id, int edge_idx, uint64_t* key, int len,
+    int gpu_id,
+    int edge_idx,
+    uint64_t *key,
+    int len,
     std::shared_ptr<phi::Allocation> node_degree) {
   return ((GpuPsGraphTable *)graph_table)
       ->get_node_degree(gpu_id, edge_idx, key, len, node_degree);

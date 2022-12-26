@@ -218,7 +218,8 @@ void PSGPUWrapper::resize_gputask(std::shared_ptr<HeterContext> gpu_task) {
   }
 }
 
-void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task, Dataset* dataset_for_pull) {
+void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task,
+                                Dataset* dataset_for_pull) {
   VLOG(3) << "PSGPUWrapper::BuildGPUPSTask begin";
   platform::Timer timeline;
   timeline.Start();
@@ -341,7 +342,8 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task, Dataset*
               << " seconds.";
     }
   } else {
-    SlotRecordDataset* dataset = reinterpret_cast<SlotRecordDataset*>(dataset_for_pull);
+    SlotRecordDataset* dataset =
+        reinterpret_cast<SlotRecordDataset*>(dataset_for_pull);
     const std::vector<uint64_t>& vec_data = dataset->GetGpuGraphTotalKeys();
     timeline.Start();
     add_key_to_local(vec_data);
@@ -361,7 +363,8 @@ void PSGPUWrapper::add_slot_feature(std::shared_ptr<HeterContext> gpu_task) {
   // 8卡数据分片
   size_t device_num = heter_devices_.size();
   std::vector<std::thread> threads;
-  size_t slot_num = (size_t)slot_num_for_pull_feature_;  // node slot 9008 in slot_vector
+  size_t slot_num =
+      (size_t)slot_num_for_pull_feature_;  // node slot 9008 in slot_vector
   auto& local_dim_keys = gpu_task->feature_dim_keys_;  // [shard_num, 0, keys]]
   double divide_nodeid_cost = 0;
   double get_feature_id_cost = 0;
@@ -532,8 +535,7 @@ void PSGPUWrapper::add_slot_feature(std::shared_ptr<HeterContext> gpu_task) {
   for (size_t i = 0; i < device_num; i++) {
     feature_num += feature_list_size[i];
   }
-  VLOG(1) << "feature_num is " << feature_num << " node_num is "
-          << node_num;
+  VLOG(1) << "feature_num is " << feature_num << " node_num is " << node_num;
 
   size_t set_num = thread_keys_shard_num_;
   std::vector<std::unordered_set<uint64_t>> feature_id_set(set_num);
@@ -644,8 +646,9 @@ void PSGPUWrapper::add_slot_feature(std::shared_ptr<HeterContext> gpu_task) {
 
 void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
   platform::Timer timeline;
-  if (slot_num_for_pull_feature_ > 0 && FLAGS_gpugraph_storage_mode !=
-                          paddle::framework::GpuGraphStorageMode::WHOLE_HBM) {
+  if (slot_num_for_pull_feature_ > 0 &&
+      FLAGS_gpugraph_storage_mode !=
+          paddle::framework::GpuGraphStorageMode::WHOLE_HBM) {
     add_slot_feature(gpu_task);
   }
 
@@ -1325,7 +1328,8 @@ void PSGPUWrapper::start_build_thread() {
 void PSGPUWrapper::pre_build_thread() {
   // prebuild: process load_data
   while (running_) {
-    std::pair<std::shared_ptr<HeterContext>, Dataset*> task = std::make_pair(nullptr, nullptr);
+    std::pair<std::shared_ptr<HeterContext>, Dataset*> task =
+        std::make_pair(nullptr, nullptr);
     std::shared_ptr<HeterContext> gpu_task = nullptr;
     if (!data_ready_channel_->Get(task)) {
       continue;
