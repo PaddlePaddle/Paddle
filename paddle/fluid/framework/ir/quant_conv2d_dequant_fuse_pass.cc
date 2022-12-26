@@ -425,9 +425,10 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
     input_name = "Input";
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "QuantDequantFuse: We only support conv2d, conv2d_fusion, "
-        "conv2d_transpose, fc, mul, matmul, matmul_v2 for "
-        "now."));
+        "QuantDequantFuse: We only support conv2d, conv2d_fusion, fused_conv2d,"
+        "conv2d_transpose, fc, mul, matmul, matmul_v2 for now, but received: "
+        "%s.",
+        quantized_op_type));
   }
   const std::string pattern_name = "dequant_fuse";
   GraphPatternDetector gpd;
