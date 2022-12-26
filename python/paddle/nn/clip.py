@@ -19,7 +19,7 @@ import paddle
 import paddle.autograd as imperative_base
 from paddle import _C_ops, _legacy_C_ops
 from paddle.common_ops_import import Variable, check_type, default_main_program
-from paddle.fluid import core, framework, layers
+from paddle.fluid import core, framework, layers, unique_name
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.framework import (
     LayerHelper,
@@ -28,7 +28,6 @@ from paddle.framework import (
     in_dygraph_mode,
 )
 from paddle.tensor.layer_function_generator import templatedoc
-from paddle.utils import unique_name
 
 __all__ = [
     'set_gradient_clip',
