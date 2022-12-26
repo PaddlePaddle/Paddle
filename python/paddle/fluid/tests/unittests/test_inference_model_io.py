@@ -26,6 +26,7 @@ import paddle.fluid.core as core
 import paddle.fluid.executor as executor
 import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
+from paddle.distributed.io import load_inference_model_distributed
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.io import (
@@ -112,8 +113,12 @@ class TestBook(unittest.TestCase):
         model_1 = InferModel(
             load_inference_model(None, exe, model_str, params_str)
         )
+        model_2 = InferModel(load_inference_model_distributed(MODEL_DIR, exe))
+        model_3 = InferModel(
+            load_inference_model_distributed(None, exe, model_str, params_str)
+        )
 
-        for model in [model_0, model_1]:
+        for model in [model_0, model_1, model_2, model_3]:
             outs = exe.run(
                 model.program,
                 feed={
@@ -134,6 +139,14 @@ class TestBook(unittest.TestCase):
         self.assertRaises(
             ValueError,
             fluid.io.load_inference_model,
+            None,
+            exe,
+            model_str,
+            None,
+        )
+        self.assertRaises(
+            ValueError,
+            load_inference_model_distributed,
             None,
             exe,
             model_str,
@@ -529,6 +542,12 @@ class TestLoadInferenceModelError(unittest.TestCase):
         exe = executor.Executor(place)
         self.assertRaises(
             ValueError, load_inference_model, './test_not_exist_dir', exe
+        )
+        self.assertRaises(
+            ValueError,
+            load_inference_model_distributed,
+            './test_not_exist_dir',
+            exe,
         )
 
 
