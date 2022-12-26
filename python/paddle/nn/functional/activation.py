@@ -658,17 +658,23 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
 
     is_test = not training
 
-    helper = LayerHelper('rrelu', **locals())
-    out = helper.create_variable_for_type_inference(x.dtype)
-    noise = helper.create_variable_for_type_inference(dtype=x.dtype)
-    attrs = {'lower': lower, 'upper': upper, 'is_test': is_test}
-    helper.append_op(
-        type='rrelu',
-        inputs={"X": x},
-        outputs={"Out": out, "Noise": noise},
-        attrs=attrs,
-    )
-    return out
+    if in_dygraph_mode():
+        out, noise = _legacy_C_ops.rrelu(
+            x, 'lower', lower, 'upper', upper, 'is_test', is_test
+        )
+        return out
+    else:
+        helper = LayerHelper('rrelu', **locals())
+        out = helper.create_variable_for_type_inference(x.dtype)
+        noise = helper.create_variable_for_type_inference(dtype=x.dtype)
+        attrs = {'lower': lower, 'upper': upper, 'is_test': is_test}
+        helper.append_op(
+            type='rrelu',
+            inputs={"X": x},
+            outputs={"Out": out, "Noise": noise},
+            attrs=attrs,
+        )
+        return out
 
 
 def relu(x, name=None):
