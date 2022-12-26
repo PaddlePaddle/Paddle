@@ -54,7 +54,7 @@ void FoldKernel(const Context& ctx,
   DDim output_shape =
       make_ddim({n_output_plane, output_sizes[0], output_sizes[1]});
 
-  DDim input_matrix_shape = make_ddim({x_dims[0],
+  DDim input_matrix_shape = make_ddim({1,
                                        kernel_sizes[0],
                                        kernel_sizes[1],
                                        output_height,
@@ -66,9 +66,11 @@ void FoldKernel(const Context& ctx,
   for (int i = 0; i < batch_size; i++) {
     DenseTensor out_batch =
         out->Slice(i, i + 1).Resize(output_shape);  // im size=3
+
     DenseTensor in_batch =
         x.Slice(i, i + 1).Resize(input_matrix_shape);  // col size=5
     col2im(ctx, in_batch, dilations, strides, paddings, &out_batch);
+
   }
 }
 
