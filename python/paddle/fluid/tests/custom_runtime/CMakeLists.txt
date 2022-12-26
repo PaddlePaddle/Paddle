@@ -28,4 +28,6 @@ if(WITH_CUSTOM_DEVICE AND NOT WITH_GPU)
   set_tests_properties(test_custom_cpu_profiler_plugin PROPERTIES TIMEOUT 120)
   set_tests_properties(test_fleet_launch_custom_device PROPERTIES TIMEOUT 120)
   set_tests_properties(test_custom_cpu_to_static PROPERTIES TIMEOUT 120)
+  # Compiling shared library will cost some time, but running process is very fast.
+  set_tests_properties(test_custom_relu_setup PROPERTIES TIMEOUT 250)
 endif()

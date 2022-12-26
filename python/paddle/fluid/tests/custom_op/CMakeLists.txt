@@ -47,23 +47,3 @@ py_test(test_check_abi SRCS test_check_abi.py)
 if(APPLE)
   set_tests_properties(test_custom_simple_slice PROPERTIES TIMEOUT 300)
 endif()
-
-if(WITH_CUSTOM_DEVICE AND NOT WITH_GPU)
-  set(PLUGIN_URL https://github.com/PaddlePaddle/PaddleCustomDevice.git)
-  set(PLUGIN_TAG develop)
-  py_test(
-    test_custom_device_relu_op_setup
-    SRCS test_custom_device_relu_op_setup.py ENVS
-         FLAGS_allocator_strategy=naive_best_fit PLUGIN_URL=${PLUGIN_URL}
-         PLUGIN_TAG=${PLUGIN_TAG})
-
-  # Compiling shared library will cost some time, but running process is very fast.
-  set_tests_properties(test_custom_device_relu_op_setup PROPERTIES TIMEOUT 250)
-  set_tests_properties(test_custom_device_relu_op_setup
-                       PROPERTIES ENVIRONMENT FLAGS_CONVERT_GRAPH_TO_PROGRAM=1)
-  if($ENV{USE_STANDALONE_EXECUTOR})
-    # these test will fail in some server due to PR#42149, temporarily set it use old executor.
-    set_tests_properties(test_custom_device_relu_op_setup
-                         PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
-  endif()
-endif()
