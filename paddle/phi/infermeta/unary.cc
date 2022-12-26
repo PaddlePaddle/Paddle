@@ -1770,7 +1770,7 @@ void KthvalueInferMeta(const MetaTensor& x,
       input_dims.size(),
       0,
       phi::errors::InvalidArgument("input of kthvalue must have >= 0d shape"));
-  if (config.is_runtime) {
+  if (dim_size > 0 && config.is_runtime) {
     PADDLE_ENFORCE_GE(
         input_dims[axis],
         k,
