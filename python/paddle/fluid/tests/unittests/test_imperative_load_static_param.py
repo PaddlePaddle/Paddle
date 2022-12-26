@@ -23,6 +23,8 @@ import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 from paddle.nn import BatchNorm, Linear
 
+paddle.enable_static()
+
 
 class TestDygraphLoadStatic(unittest.TestCase):
     def testLoadStaticModel(self):
@@ -128,8 +130,8 @@ class TestDygraphLoadStatic(unittest.TestCase):
         )
         '''
         spec_norm = fluid.data(name='spec_norm', shape=[2, 8, 32, 32], dtype='float32')
-        spe_norm_out_1 = fluid.layers.spectral_norm(weight=spec_norm, dim=1, power_iters=2)
-        spe_norm_out_2 = fluid.layers.spectral_norm(weight=spec_norm, dim=1, power_iters=2)
+        spe_norm_out_1 = paddle.static.nn.spectral_norm(weight=spec_norm, dim=1, power_iters=2)
+        spe_norm_out_2 = paddle.static.nn.spectral_norm(weight=spec_norm, dim=1, power_iters=2)
         '''
 
         nodes_vector = fluid.data(

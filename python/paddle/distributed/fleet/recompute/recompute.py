@@ -56,16 +56,15 @@ def check_recompute_necessary(inputs):
 
 @contextlib.contextmanager
 def swith_rng_state_tracker(rng_state, tracker):
-    orig_cuda_rng_state = paddle.get_cuda_rng_state()
-    orig_cuda_rng_tracker = get_rng_state_tracker().get_states_tracker()
-
-    paddle.set_cuda_rng_state(rng_state)
+    orig_rng_state = paddle.get_rng_state()
+    orig_rng_tracker = get_rng_state_tracker().get_states_tracker()
+    paddle.set_rng_state(rng_state)
     get_rng_state_tracker().set_states_tracker(tracker)
     try:
         yield
     finally:
-        paddle.set_cuda_rng_state(orig_cuda_rng_state)
-        get_rng_state_tracker().set_states_tracker(orig_cuda_rng_tracker)
+        paddle.set_rng_state(orig_rng_state)
+        get_rng_state_tracker().set_states_tracker(orig_rng_tracker)
 
 
 class LegacyRecomputeFunction(LegacyPyLayer):
@@ -95,15 +94,8 @@ class LegacyRecomputeFunction(LegacyPyLayer):
         # NOTE recompute with restore RNG only support one senario where one process for one cuda gpu.
         # one process with multiple gpu and mix-gpu-cpu senarios are not support
         if ctx.preserve_rng_state:
-            cur_device = paddle.get_device()
-            if 'gpu:' not in cur_device:
-                raise RuntimeError(
-                    "Recompute with RNG perserve is not support current device: {}.".format(
-                        cur_device
-                    )
-                )
-            ctx.fw_cuda_rng_state = paddle.get_cuda_rng_state()
-            ctx.fwd_cuda_rng_state_tracker = (
+            ctx.fw_rng_state = paddle.get_rng_state()
+            ctx.fwd_rng_state_tracker = (
                 get_rng_state_tracker().get_states_tracker()
             )
 
@@ -156,7 +148,7 @@ class LegacyRecomputeFunction(LegacyPyLayer):
             # need restore auto_cast state as well as w/b list
             if ctx.preserve_rng_state:
                 with swith_rng_state_tracker(
-                    ctx.fw_cuda_rng_state, ctx.fwd_cuda_rng_state_tracker
+                    ctx.fw_rng_state, ctx.fwd_rng_state_tracker
                 ):
                     with paddle.amp.auto_cast(
                         enable=ctx.is_fw_autocast,
@@ -244,15 +236,8 @@ class RecomputeFunction(PyLayer):
         # NOTE recompute with restore RNG only support one senario where one process for one cuda gpu.
         # one process with multiple gpu and mix-gpu-cpu senarios are not support
         if ctx.preserve_rng_state:
-            cur_device = paddle.get_device()
-            if 'gpu:' not in cur_device:
-                raise RuntimeError(
-                    "Recompute with RNG perserve is not support current device: {}.".format(
-                        cur_device
-                    )
-                )
-            ctx.fw_cuda_rng_state = paddle.get_cuda_rng_state()
-            ctx.fwd_cuda_rng_state_tracker = (
+            ctx.fw_rng_state = paddle.get_rng_state()
+            ctx.fwd_rng_state_tracker = (
                 get_rng_state_tracker().get_states_tracker()
             )
 
@@ -305,7 +290,7 @@ class RecomputeFunction(PyLayer):
             # need restore auto_cast state as well as w/b list
             if ctx.preserve_rng_state:
                 with swith_rng_state_tracker(
-                    ctx.fw_cuda_rng_state, ctx.fwd_cuda_rng_state_tracker
+                    ctx.fw_rng_state, ctx.fwd_rng_state_tracker
                 ):
                     with paddle.amp.auto_cast(
                         enable=ctx.is_fw_autocast,

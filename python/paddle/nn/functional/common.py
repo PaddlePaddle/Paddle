@@ -950,7 +950,7 @@ def bilinear(x1, x2, weight, bias=None, name=None):
 def dropout(
     x, p=0.5, axis=None, training=True, mode="upscale_in_train", name=None
 ):
-    """
+    r"""
     Dropout is a regularization technique for reducing overfitting by preventing
     neuron co-adaption during training. The dropout operator randomly sets the
     outputs of some units to zero, while upscale others according to the given
@@ -958,22 +958,22 @@ def dropout(
 
     Args:
         x (Tensor): The input tensor. The data type is float32 or float64.
-        p (float|int, optional): Probability of setting units to zero. Default 0.5.
-        axis (int|list|tuple, optional): The axis along which the dropout is performed. Default None.
-        training (bool, optional): A flag indicating whether it is in train phrase or not. Default True.
+        p (float|int, optional): Probability of setting units to zero. Default: 0.5.
+        axis (int|list|tuple, optional): The axis along which the dropout is performed. Default: None.
+        training (bool, optional): A flag indicating whether it is in train phrase or not. Default: True.
         mode(str, optional): ['upscale_in_train'(default) | 'downscale_in_infer'].
 
-            1. upscale_in_train(default), upscale the output at training time
+            1. upscale_in_train (default), upscale the output at training time
 
-                - train: out = input * mask / ( 1.0 - dropout_prob )
-                - inference: out = input
+                - train: :math:`out = input \times \frac{mask}{(1.0 - dropout\_prob)}`
+                - inference: :math:`out = input`
 
             2. downscale_in_infer, downscale the output at inference
 
-                - train: out = input * mask
-                - inference: out = input * (1.0 - dropout_prob)
+                - train: :math:`out = input \times mask`
+                - inference: :math:`out = input \times (1.0 - dropout\_prob)`
 
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional): Name for the operation, Default: None. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         A Tensor representing the dropout, has same shape and data type as `x` .
@@ -1057,8 +1057,8 @@ def dropout(
                  [0 0 0]]
                 Actually this is not what we want because all elements may set to zero~
 
-        When x is a 4d tensor with shape `NCHW`, we can set ``axis=[0,1]`` and the dropout will be performed in channel `N` and `C`, `H` and `W` is tied, i.e. paddle.nn.dropout(x, p, axis=[0,1]) . Please refer to ``paddle.nn.functional.dropout2d`` for more details.
-        Similarly, when x is a 5d tensor with shape `NCDHW`, we can set ``axis=[0,1]`` to perform dropout3d. Please refer to ``paddle.nn.functional.dropout3d`` for more details.
+        When x is a 4d tensor with shape `NCHW`, where `N` is batch size, `C` is the number of channels, H and W are the height and width of the feature, we can set ``axis=[0,1]`` and the dropout will be performed in channel `N` and `C`, `H` and `W` is tied, i.e. paddle.nn.dropout(x, p, axis=[0,1]) . Please refer to ``paddle.nn.functional.dropout2d`` for more details.
+        Similarly, when x is a 5d tensor with shape `NCDHW`, where `D` is the depth of the feature, we can set ``axis=[0,1]`` to perform dropout3d. Please refer to ``paddle.nn.functional.dropout3d`` for more details.
 
         .. code-block:: python
 
@@ -1255,15 +1255,15 @@ def dropout2d(x, p=0.5, training=True, data_format='NCHW', name=None):
     a channel is a 2D feature map with the shape `HW` ). Each channel will be zeroed out independently
     on every forward call with probability `p` using samples from a Bernoulli distribution.
 
-    See ``paddle.nn.functional.dropout`` for more details.
+    See :ref:`api_paddle_nn_functional_dropout` for more details.
 
     Args:
         x (Tensor):  The input is 4-D Tensor with shape [N, C, H, W] or [N, H, W, C].
                      The data type is float32 or float64.
-        p (float): Probability of setting units to zero. Default 0.5.
-        training (bool): A flag indicating whether it is in train phrase or not. Default True.
-        data_format (str, optional): Specify the data format of the input, and the data format of the output will be consistent with that of the input. An optional string from `NCHW` or `NHWC` . The default is `NCHW` . When it is `NCHW` , the data is stored in the order of: [batch_size, input_channels, input_height, input_width].
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        p (float, optional): Probability of setting units to zero. Default: 0.5.
+        training (bool, optional): A flag indicating whether it is in train phrase or not. Default: True.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output will be consistent with that of the input. An optional string from `NCHW` or `NHWC` . When it is `NCHW` , the data is stored in the order of: [batch_size, input_channels, input_height, input_width]. Default: `NCHW` .
+        name (str, optional): Name for the operation, Default: None. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         A Tensor representing the dropout2d, has same shape and data type as `x` .
@@ -1314,15 +1314,15 @@ def dropout3d(x, p=0.5, training=True, data_format='NCDHW', name=None):
     a channel is a 3D feature map with the shape `DHW` ). Each channel will be zeroed out independently
     on every forward call with probability `p` using samples from a Bernoulli distribution.
 
-    See ``paddle.nn.functional.dropout`` for more details.
+    See :ref:`api_paddle_nn_functional_dropout` for more details.
 
     Args:
         x (Tensor):  The input is 5-D Tensor with shape [N, C, D, H, W] or [N, D, H, W, C].
                      The data type is float32 or float64.
-        p (float): Probability of setting units to zero. Default 0.5.
-        training (bool): A flag indicating whether it is in train phrase or not. Default True.
-        data_format (str, optional): Specify the data format of the input, and the data format of the output will be consistent with that of the input. An optional string from ``NCDHW`` or ``NDHWC``. The default is ``NCDHW`` . When it is ``NCDHW`` , the data is stored in the order of: [batch_size, input_channels, input_depth, input_height, input_width].
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        p (float, optional): Probability of setting units to zero. Default: 0.5.
+        training (bool, optional): A flag indicating whether it is in train phrase or not. Default: True.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output will be consistent with that of the input. An optional string from ``NCDHW`` or ``NDHWC``. When it is ``NCDHW`` , the data is stored in the order of: [batch_size, input_channels, input_depth, input_height, input_width]. Default: ``NCDHW`` .
+        name (str, optional): Name for the operation, Default: None. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         A Tensor representing the dropout3d, has same shape and data type with `x` .
