@@ -29,6 +29,7 @@
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/var_helper.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/selected_rows.h"
@@ -75,7 +76,8 @@ template <typename VarType>
 std::shared_ptr<NameVarMap<VarType>> PrepareData(
     const framework::OperatorWithKernel& op,
     const NameVarMap<VarType>& ins,
-    const phi::KernelKey& expected_kernel_key) {
+    const phi::KernelKey& expected_kernel_key,
+    const phi::Place& place) {
   std::shared_ptr<NameVarMap<VarType>> tmp_ins_ptr = nullptr;
   for (const auto& name_pair : ins) {
     for (size_t i = 0; i < name_pair.second.size(); ++i) {
@@ -113,7 +115,7 @@ std::shared_ptr<NameVarMap<VarType>> PrepareData(
           } else {
             phi::DenseTensor out;
             framework::TransformData(
-                expected_kernel_key, kernel_type_for_var, *tensor, &out);
+                expected_kernel_key, kernel_type_for_var, *tensor, &out, place);
             if (framework::NeedTransformDataType(kernel_type_for_var,
                                                  expected_kernel_key)) {
               // To avoid NameVarMap copy construction overhead in general
@@ -202,6 +204,8 @@ class PreparedOp {
            const framework::AttributeMap& default_attrs);
 
   const phi::KernelKey& kernel_key() const { return kernel_key_; }
+
+  const phi::Place& place() const { return dev_ctx_->GetPlace(); }
 
  private:
   const framework::OperatorBase& op_;

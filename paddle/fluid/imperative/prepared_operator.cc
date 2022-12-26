@@ -30,6 +30,7 @@
 #endif
 #include "paddle/fluid/framework/library_type.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 
@@ -332,7 +333,7 @@ PreparedOp PrepareImpl(
               << " | kernel key: " << expected_kernel_key
               << " | kernel: " << phi_kernel;
 
-      if (phi::TransToPhiPlace(expected_kernel_key.backend()) != place) {
+      if (expected_kernel_key.backend() != phi::TransToPhiBackend(place)) {
         dev_ctx = pool.Get(phi::TransToPhiPlace(expected_kernel_key.backend()));
       }
 
@@ -500,7 +501,7 @@ PreparedOp PrepareImpl(
                                  op.Type(),
                                  KernelTypeToString(fluid_kernel_type)));
 
-  if (!(fluid_kernel_type.place_ == place)) {
+  if (!platform::places_are_same_class(fluid_kernel_type.place_ == place)) {
     dev_ctx = pool.Get(fluid_kernel_type.place_);
   }
 

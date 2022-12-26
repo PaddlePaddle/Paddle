@@ -2541,7 +2541,10 @@ Scope* OperatorWithKernel::PrepareData(
                                             : expected_kernel_key,
                     kernel_type_for_var,
                     *tensor_in,
-                    &out);
+                    &out,
+                    new_expected_kernel_key
+                        ? phi::TransToPhiPlace(*new_expected_kernel_key)
+                        : phi::TransToPhiPlace(expected_kernel_key));
       SetTensorToVariable(*var, out, trans_var);
     }
   };
