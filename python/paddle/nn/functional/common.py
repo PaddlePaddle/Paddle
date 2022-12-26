@@ -25,7 +25,7 @@ from ...fluid.data_feeder import (
     check_type,
     check_variable_and_dtype,
 )
-from ...fluid.framework import _non_static_mode, in_dygraph_mode
+from ...fluid.framework import in_dygraph_mode
 from ...tensor import clip, concat, sqrt, sum
 from ...tensor.creation import zeros
 
@@ -923,24 +923,22 @@ def bilinear(x1, x2, weight, bias=None, name=None):
 
     if in_dygraph_mode():
         return _C_ops.bilinear_tensor_product(x1, x2, weight, bias)
-    elif _non_static_mode():
-        return _legacy_C_ops.bilinear_tensor_product(x1, x2, weight, bias)
+    else:
+        check_variable_and_dtype(x1, 'x1', ['float32', 'float64'], 'bilinear')
+        check_variable_and_dtype(x2, 'x2', ['float32', 'float64'], 'bilinear')
 
-    check_variable_and_dtype(x1, 'x1', ['float32', 'float64'], 'bilinear')
-    check_variable_and_dtype(x2, 'x2', ['float32', 'float64'], 'bilinear')
+        inputs = {"X": x1, "Y": x2, "Weight": weight}
+        if bias is not None:
+            inputs["Bias"] = bias
 
-    inputs = {"X": x1, "Y": x2, "Weight": weight}
-    if bias is not None:
-        inputs["Bias"] = bias
+        helper = LayerHelper("bilinear", **locals())
+        out = helper.create_variable_for_type_inference(dtype=x1.dtype)
 
-    helper = LayerHelper("bilinear", **locals())
-    out = helper.create_variable_for_type_inference(dtype=x1.dtype)
+        helper.append_op(
+            type="bilinear_tensor_product", inputs=inputs, outputs={"Out": out}
+        )
 
-    helper.append_op(
-        type="bilinear_tensor_product", inputs=inputs, outputs={"Out": out}
-    )
-
-    return out
+        return out
 
 
 def dropout(
@@ -1114,77 +1112,62 @@ def dropout(
             'downgrade_in_infer' if mode == 'downscale_in_infer' else mode
         )  # semantic transfer
 
-        if _non_static_mode():
+        if in_dygraph_mode():
             if default_main_program().random_seed != 0:
                 seed = default_main_program().random_seed
 
-            if in_dygraph_mode():
-                out, mask = _C_ops.dropout(
-                    x,
-                    None,
-                    p,
-                    not training,
-                    mode,
-                    seed if seed is not None else 0,
-                    seed is not None,
-                )
-
-                return out
-            out, mask = _legacy_C_ops.dropout(
+            out, mask = _C_ops.dropout(
                 x,
-                'dropout_prob',
+                None,
                 p,
-                'is_test',
                 not training,
-                'fix_seed',
-                seed is not None,
-                'seed',
-                seed if seed is not None else 0,
-                'dropout_implementation',
                 mode,
+                seed if seed is not None else 0,
+                seed is not None,
+            )
+
+            return out
+        else:
+            helper = LayerHelper('dropout', **locals())
+            check_variable_and_dtype(
+                x, 'x', ['float16', 'float32', 'float64'], 'dropout'
+            )
+
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
+            mask = helper.create_variable_for_type_inference(
+                dtype=core.VarDesc.VarType.UINT8, stop_gradient=True
+            )
+
+            def get_attrs(prog, dropout_prob, is_test, seed):
+                if (seed is None or seed == 0) and prog.random_seed != 0:
+                    seed = prog.random_seed
+
+                if isinstance(
+                    dropout_prob, Variable
+                ) and not dropout_prob.shape != [1]:
+                    raise TypeError(
+                        "Required p.shape == [1] if type(p) is Variable, but received p.shape = {}".format(
+                            p.shape
+                        )
+                    )
+                attrs = {
+                    'dropout_prob': dropout_prob,
+                    'is_test': is_test,
+                    'fix_seed': seed is not None,
+                    'seed': seed if seed is not None else 0,
+                    'dropout_implementation': mode,
+                }
+                return attrs
+
+            attrs = get_attrs(helper.main_program, p, not training, seed)
+
+            helper.append_op(
+                type='dropout',
+                inputs={'X': [x]},
+                outputs={'Out': [out], 'Mask': [mask]},
+                attrs=attrs,
             )
             return out
-
-        helper = LayerHelper('dropout', **locals())
-        check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'dropout'
-        )
-
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        mask = helper.create_variable_for_type_inference(
-            dtype=core.VarDesc.VarType.UINT8, stop_gradient=True
-        )
-
-        def get_attrs(prog, dropout_prob, is_test, seed):
-            if (seed is None or seed == 0) and prog.random_seed != 0:
-                seed = prog.random_seed
-
-            if isinstance(
-                dropout_prob, Variable
-            ) and not dropout_prob.shape != [1]:
-                raise TypeError(
-                    "Required p.shape == [1] if type(p) is Variable, but received p.shape = {}".format(
-                        p.shape
-                    )
-                )
-            attrs = {
-                'dropout_prob': dropout_prob,
-                'is_test': is_test,
-                'fix_seed': seed is not None,
-                'seed': seed if seed is not None else 0,
-                'dropout_implementation': mode,
-            }
-            return attrs
-
-        attrs = get_attrs(helper.main_program, p, not training, seed)
-
-        helper.append_op(
-            type='dropout',
-            inputs={'X': [x]},
-            outputs={'Out': [out], 'Mask': [mask]},
-            attrs=attrs,
-        )
-        return out
     else:  # sometimes called dropout_nd #TODO: optimize with c++
         if not in_dynamic_mode():
             check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'dropout')
