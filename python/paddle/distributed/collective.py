@@ -18,7 +18,7 @@ import paddle
 
 # (TODO: GhostScreaming) It will be removed later.
 import paddle.fluid.core as core
-from paddle.framework import _non_static_mode, in_dygraph_mode
+from paddle.framework import in_dygraph_mode
 
 from .communication.group import Group, _add_new_group, is_initialized
 from .fleet.layers.mpu.mp_ops import _c_concat  # noqa: F401
@@ -301,7 +301,7 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
     # hang caused by cross-creation of new_group
     tmp = (
         paddle.to_tensor([1], dtype="int32")
-        if _non_static_mode()
+        if in_dygraph_mode()
         else paddle.full([0], 1, dtype="int32")
     )
     paddle.distributed.all_reduce(tmp, sync_op=True)
