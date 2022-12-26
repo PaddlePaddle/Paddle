@@ -150,7 +150,8 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
   int sm_version = prop.major * 10 + prop.minor;
   // Now we only implement cutlass kernel on SM75.
   if (sm_version == 75) {
-    cutlass_enable = (cutlass_enable && true);
+  } else {
+    cutlass_enable = false;
   }
 #endif
 
