@@ -1,4 +1,4 @@
-// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,10 +33,14 @@ void InplaceOpVarPass::ApplyImpl(ir::Graph* graph) const {
   auto is_valid_reshape = [](Node* node) {
     // Some cases need to consider, please refer to
     // https://github.com/PaddlePaddle/Paddle/pull/49146
-    if (node->IsOp() && node->Op()->Type() == "reshape2" &&
-        node->inputs.size() == 1 && !node->inputs[0]->Var()->Persistable() &&
-        node->inputs[0]->outputs.size() == 1) {
-      return true;
+    if (node->IsOp() && node->Op()->Type() == "reshape2") {
+      auto x_name = node->Op()->Input("X").front();
+      for (auto* var_node : node->inputs) {
+        if (var_node->Name() == x_name) {
+          if (!var_node->Var()->Persistable() && var_node->outputs.size() == 1)
+            return true;
+        }
+      }
     }
     return false;
   };
@@ -46,8 +50,8 @@ void InplaceOpVarPass::ApplyImpl(ir::Graph* graph) const {
   std::unordered_set<std::string> var_names, deny_var_names;
   for (auto* node : nodes) {
     if (is_valid_reshape(node)) {
-      var_names.insert(node->inputs[0]->Name());
-      var_names.insert(node->outputs[0]->Name());
+      for (auto n : node->inputs) var_names.insert(n->Name());
+      for (auto n : node->outputs) var_names.insert(n->Name());
     }
   }
   for (size_t i = 1; i < graph->SubGraphsSize(); ++i) {
@@ -72,8 +76,9 @@ void InplaceOpVarPass::ApplyImpl(ir::Graph* graph) const {
     auto* op_node = node->Op();
     auto input_name = op_node->Input("X")[0];
     auto output_name = op_node->Output("Out")[0];
-    if (deny_var_names.count(input_name) || deny_var_names.count(output_name))
+    if (deny_var_names.count(input_name) || deny_var_names.count(output_name)) {
       continue;
+    }
     ++found_subgraph_count;
     for (auto* out_var : node->outputs) {
       if (out_var->Name() == output_name) {
