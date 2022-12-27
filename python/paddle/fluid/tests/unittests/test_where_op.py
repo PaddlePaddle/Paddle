@@ -88,7 +88,9 @@ class TestWhereAPI(unittest.TestCase):
                         name='y', shape=[-1] + self.shape, dtype='float32'
                     )
                     x.stop_gradient = x_stop_gradient
+                    x.desc.set_need_check_feed(False)
                     y.stop_gradient = y_stop_gradient
+                    y.desc.set_need_check_feed(False)
                     result = paddle.where(cond, x, y)
                     append_backward(paddle.mean(result))
                     for use_cuda in [False, True]:
@@ -184,6 +186,8 @@ class TestWhereAPI(unittest.TestCase):
             y = paddle.static.data(
                 name='y', shape=[-1] + y_shape, dtype='float32'
             )
+            x.desc.set_need_check_feed(False)
+            y.desc.set_need_check_feed(False)
             cond_data_tmp = np.random.random(size=cond_shape).astype('float32')
             cond_data = cond_data_tmp < 0.3
             x_data = np.random.random(size=x_shape).astype('float32')

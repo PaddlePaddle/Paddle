@@ -291,6 +291,7 @@ class TestSaveLoadBase(unittest.TestCase):
             init_cell = paddle.static.data(
                 name="init_cell", shape=[-1, 1], dtype='float32'
             )
+            init_cell.desc.set_need_check_feed(False)
 
             static_loss, static_last_hidden, static_last_cell = ptb_model(
                 x, y, init_hidden, init_cell
@@ -416,6 +417,7 @@ class TestSaveLoadPartial(unittest.TestCase):
             init_cell = paddle.static.data(
                 name="init_cell", shape=[-1, 1], dtype='float32'
             )
+            init_cell.desc.set_need_check_feed(False)
 
             static_loss, static_last_hidden, static_last_cell = ptb_model(
                 x, y, init_hidden, init_cell
@@ -554,6 +556,7 @@ class TestSaveLoadSetStateDict(unittest.TestCase):
             init_cell = paddle.static.data(
                 name="init_cell", shape=[-1, 1], dtype='float32'
             )
+            init_cell.desc.set_need_check_feed(False)
 
             static_loss, static_last_hidden, static_last_cell = ptb_model(
                 x, y, init_hidden, init_cell
@@ -675,6 +678,7 @@ class TestProgramStatePartial(unittest.TestCase):
             init_cell = paddle.static.data(
                 name="init_cell", shape=[-1, 1], dtype='float32'
             )
+            init_cell.desc.set_need_check_feed(False)
 
             static_loss, static_last_hidden, static_last_cell = ptb_model(
                 x, y, init_hidden, init_cell
@@ -1002,6 +1006,7 @@ class TestLoadFromOldInterface(unittest.TestCase):
             init_cell = paddle.static.data(
                 name="init_cell", shape=[-1, 1], dtype='float32'
             )
+            init_cell.desc.set_need_check_feed(False)
 
             static_loss, static_last_hidden, static_last_cell = ptb_model(
                 x, y, init_hidden, init_cell

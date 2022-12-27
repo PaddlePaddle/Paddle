@@ -120,11 +120,13 @@ class TestIndexSelectAPI(unittest.TestCase):
         # case 1:
         with program_guard(Program(), Program()):
             x = paddle.static.data(name='x', shape=[-1, 4], dtype='float32')
+            x.desc.set_need_check_feed(False)
             index = paddle.static.data(
                 name='repeats_',
                 shape=[4],
                 dtype='int32',
             )
+            index.desc.set_need_check_feed(False)
             z = paddle.repeat_interleave(x, index, axis=1)
             exe = fluid.Executor(fluid.CPUPlace())
             (res,) = exe.run(
@@ -138,7 +140,7 @@ class TestIndexSelectAPI(unittest.TestCase):
         # case 2:
         repeats = np.array([1, 2, 1]).astype('int32')
         with program_guard(Program(), Program()):
-            x = paddle.static.data(name='x', shape=[-1, 4])
+            x = paddle.static.data(name='x', shape=[-1, 4], dtype="float32")
             index = paddle.static.data(
                 name='repeats_',
                 shape=[3],

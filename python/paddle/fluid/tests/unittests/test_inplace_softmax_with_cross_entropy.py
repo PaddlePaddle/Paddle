@@ -42,11 +42,13 @@ class TestSoftmaxWithXe(unittest.TestCase):
                     shape=[-1, m, n],
                     dtype=self.dtype,
                 )
+                x_d.desc.set_need_check_feed(False)
                 y_d = paddle.static.data(
                     name='y',
                     shape=[-1, m, 1] if not self.soft_label else [m, n],
                     dtype='int64' if not self.soft_label else self.dtype,
                 )
+                y_d.desc.set_need_check_feed(False)
                 z_d, s_d = paddle.nn.functional.softmax_with_cross_entropy(
                     x_d,
                     y_d,

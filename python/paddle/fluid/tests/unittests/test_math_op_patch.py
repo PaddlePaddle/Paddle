@@ -232,8 +232,9 @@ class TestMathOpPatches(unittest.TestCase):
     @prog_scope()
     def test_equal_and_cond(self):
         a = paddle.static.data(name="a", shape=[-1, 1], dtype='float32')
+        a.desc.set_need_check_feed(False)
         b = paddle.static.data(name="b", shape=[-1, 1], dtype='float32')
-
+        b.desc.set_need_check_feed(False)
         one = paddle.ones(shape=[1], dtype='int32')
         zero = fluid.layers.zeros(shape=[1], dtype='int32')
         cond = one == zero
@@ -241,8 +242,8 @@ class TestMathOpPatches(unittest.TestCase):
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
-        a_np = np.array([3, 4, 10, 14, 9, 18]).astype('float')
-        b_np = np.array([3, 4, 11, 15, 8, 18]).astype('float')
+        a_np = np.array([3, 4, 10, 14, 9, 18]).astype('float32')
+        b_np = np.array([3, 4, 11, 15, 8, 18]).astype('float32')
         (c_np,) = exe.run(
             fluid.default_main_program(),
             feed={"a": a_np, "b": b_np},
@@ -253,7 +254,8 @@ class TestMathOpPatches(unittest.TestCase):
 
     @prog_scope()
     def test_neg(self):
-        a = paddle.static.data(name="a", shape=[-1, 10, 1])
+        a = paddle.static.data(name="a", shape=[-1, 10, 1], dtype='float32')
+        a.desc.set_need_check_feed(False)
         b = -a
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -267,6 +269,7 @@ class TestMathOpPatches(unittest.TestCase):
     @prog_scope()
     def test_astype(self):
         a = paddle.static.data(name="a", shape=[-1, 10, 1])
+        a.desc.set_need_check_feed(False)
         b = a.astype('float32')
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)

@@ -355,7 +355,9 @@ class API_TestSplit(unittest.TestCase):
             data1 = paddle.static.data(
                 'data1', shape=[-1, 4, 6, 6], dtype='float64'
             )
+            data1.desc.set_need_check_feed(False)
             data2 = paddle.static.data('data2', shape=[-1, 1], dtype='int32')
+            data2.desc.set_need_check_feed(False)
             x0, x1, x2 = paddle.split(data1, num_or_sections=3, axis=data2)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -376,6 +378,7 @@ class API_TestSplit2(unittest.TestCase):
             data1 = paddle.static.data(
                 'data1', shape=[-1, 4, 6, 6], dtype='float64'
             )
+            data1.desc.set_need_check_feed(False)
             x0, x1, x2 = paddle.split(data1, num_or_sections=3, axis=2)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)

@@ -88,11 +88,13 @@ class TestArgsortOpCPU(unittest.TestCase):
                 name="x", shape=[-1] + list(self.input_shape), dtype=self.dtype
             )
             x.stop_gradient = False
+            x.desc.set_need_check_feed(False)
             label = paddle.static.data(
                 name="label",
                 shape=[-1] + list(self.input_shape),
                 dtype=self.dtype,
             )
+            label.desc.set_need_check_feed(False)
             self.index = paddle.argsort(
                 x=x, axis=self.axis, descending=self.descending
             )

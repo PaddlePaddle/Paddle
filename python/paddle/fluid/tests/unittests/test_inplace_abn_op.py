@@ -54,6 +54,7 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                     dtype=self.dtype,
                 )
                 data.stop_gradient = False
+                data.desc.set_need_check_feed(False)
 
                 bn = paddle.static.nn.batch_norm(
                     data,

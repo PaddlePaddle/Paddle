@@ -33,8 +33,12 @@ class TestExecutor(unittest.TestCase):
             output = paddle.matmul(x=a, y=b)
 
         # Compute with numpy
-        a_np = np.random.random((100, 784)).astype('float32')
-        b_np = np.random.random((784, 100)).astype('float32')
+        a_np = np.random.random((100, 784)).astype('float32').reshape((-1, 784))
+        b_np = (
+            np.random.random((784, 100))
+            .astype('float32')
+            .reshape((-1, 784, 100))
+        )
         out_np = np.dot(a_np, b_np)
 
         place = paddle.CPUPlace()

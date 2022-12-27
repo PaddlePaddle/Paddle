@@ -245,7 +245,9 @@ class TestGatherNdAPI2(unittest.TestCase):
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             input = np.array([[1, 2], [3, 4], [5, 6]])
-            index_1 = np.array([[1]])
+            input = input.reshape((-1, 2))
+            index_1 = np.array([[1]]).astype('int32')
+            index_1 = index_1.reshape((-1, 1))
             (result,) = exe.run(
                 feed={"data1": input, "index": index_1}, fetch_list=[out]
             )

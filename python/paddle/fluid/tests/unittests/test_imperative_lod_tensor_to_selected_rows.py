@@ -166,8 +166,9 @@ class TestDygraphSimpleNet(unittest.TestCase):
                     x = paddle.static.data(
                         name="x", shape=[-1, num_steps], dtype='int64'
                     )
+                    x.desc.set_need_check_feed(False)
                     y = paddle.static.data(name="y", shape=[-1, 1], dtype=dtype)
-
+                    y.desc.set_need_check_feed(False)
                     static_loss = simple_net(x, y)
                     sgd.minimize(static_loss)
                     static_param_updated = dict()

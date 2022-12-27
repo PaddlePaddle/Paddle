@@ -69,6 +69,7 @@ class TestRollAPI(unittest.TestCase):
         # case 1:
         with program_guard(Program(), Program()):
             x = paddle.static.data(name='x', shape=[-1, 3], dtype='float32')
+            x.desc.set_need_check_feed(False)
             z = paddle.roll(x, shifts=1)
             exe = fluid.Executor(fluid.CPUPlace())
             (res,) = exe.run(

@@ -540,12 +540,16 @@ class TestDygraphOCRAttention(unittest.TestCase):
             images = paddle.static.data(
                 name='pixel', shape=[-1] + Config.DATA_SHAPE, dtype='float32'
             )
+            images.desc.set_need_check_feed(False)
             static_label_in = paddle.static.data(
                 name='label_in', shape=[-1, 1], dtype='int64', lod_level=0
             )
+            static_label_in.desc.set_need_check_feed(False)
             static_label_out = paddle.static.data(
                 name='label_out', shape=[-1, 1], dtype='int64', lod_level=0
             )
+            static_label_out.desc.set_need_check_feed(False)
+
             static_label_out.stop_gradient = True
             static_label_out.trainable = False
 

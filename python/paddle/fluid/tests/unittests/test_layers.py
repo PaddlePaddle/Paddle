@@ -605,6 +605,7 @@ class TestLayer(LayerTest):
             data_t = paddle.static.data(
                 name='word', shape=[-1, 1], dtype='int64'
             )
+            data_t.desc.set_need_check_feed(False)
             emb = layers.embedding(
                 input=data_t,
                 size=[dict_size, 32],
@@ -965,7 +966,9 @@ class TestLayer(LayerTest):
                 feed={'pixel': input_array}, fetch_list=[out]
             )[0]
         with self.static_graph():
-            img = layers.data(name='pixel', shape=[3, 2, 2, 2], dtype='float32')
+            img = paddle.static.data(
+                name='pixel', shape=[-1, 3, 2, 2, 2], dtype='float32'
+            )
             conv3d_transpose = paddle.nn.Conv3DTranspose(
                 in_channels=3, out_channels=12, kernel_size=12
             )
@@ -1500,11 +1503,13 @@ class TestBook(LayerTest):
                 )
             if append_batch_size:
                 shape += [-1]
-            return paddle.static.data(
+            data = paddle.static.data(
                 name=name,
                 shape=shape,
                 dtype=dtype,
             )
+            data.desc.set_need_check_feed(False)
+            return data
 
     def make_fit_a_line(self):
         with program_guard(

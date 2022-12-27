@@ -69,10 +69,10 @@ class TestCrossAPI(unittest.TestCase):
     def input_data(self):
         self.data_x = np.array(
             [[1.0, 1.0, 1.0], [2.0, 2.0, 2.0], [3.0, 3.0, 3.0]]
-        )
+        ).astype('float32')
         self.data_y = np.array(
             [[1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]]
-        )
+        ).astype('float32')
 
     def test_cross_api(self):
         self.input_data()

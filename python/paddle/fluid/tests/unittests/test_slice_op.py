@@ -553,8 +553,9 @@ class TestSliceAPI(unittest.TestCase):
         starts = paddle.static.data(
             name='starts', shape=[1, 3], dtype="float32"
         )
+        starts.desc.set_need_check_feed(False)
         ends = paddle.static.data(name='ends', shape=[3], dtype="float32")
-
+        ends.desc.set_need_check_feed(False)
         x = paddle.static.data(
             name="x",
             shape=[3, 4, 5, 6],

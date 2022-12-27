@@ -147,6 +147,8 @@ class TestIgnoreVarNameInWhile(unittest.TestCase):
 
         x = paddle.static.data(name='x', shape=[-1, 1, 4], dtype='float32')
         y = paddle.static.data(name='y', shape=[-1, 1, 1], dtype='float32')
+        x.desc.set_need_check_feed(False)
+        y.desc.set_need_check_feed(False)
         temp = layers.concat(input=[x, y], axis=-1)
         i = layers.fill_constant(shape=[1], value=0, dtype='int32')
         num = layers.fill_constant(shape=[1], value=5, dtype='int32')
