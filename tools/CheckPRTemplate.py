@@ -26,12 +26,6 @@ REPO_TEMPLATE = {
 
 CHECK_NAME = "CheckPRTemplate"
 
-NOT_USING_TEMPLATE = '''❌ The PR is not created using [PR\'s template](https://github.com/PaddlePaddle/Paddle/blob/develop/.github/PULL_REQUEST_TEMPLATE.md). You can refer to this [Demo](https://github.com/PaddlePaddle/Paddle/pull/24877).
-    Please use PR\'s template, it helps save our maintainers\' time so that more developers get helped.'''
-
-PR_CORRECT_DESCRIPTION = '''✅ This PR's description meets the template requirements!
-    Please wait for other CI results.'''
-
 
 def re_rule(body, CHECK_TEMPLATE):
     PR_RE = re.compile(CHECK_TEMPLATE, re.DOTALL)
