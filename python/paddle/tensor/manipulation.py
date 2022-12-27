@@ -3484,6 +3484,7 @@ def reshape(x, shape, name=None):
 
     """
     actual_shape = None
+
     if in_dygraph_mode():
         tmp_tensor_type = core.eager.Tensor
         if isinstance(shape, (list, tuple)):
