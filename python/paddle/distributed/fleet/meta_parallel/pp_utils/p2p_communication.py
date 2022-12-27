@@ -16,8 +16,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid.core as core
-from paddle import _legacy_C_ops
-from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from paddle.fluid.framework import in_dygraph_mode
 
 from ...utils.log_util import logger
 from .utils import number_2_dtype, paddle_2_number
@@ -189,21 +188,7 @@ def _partial_send_op(
     tensor, group, use_calc_stream, ring_id, dst, nranks, rank_id
 ):
     dst_rank_in_group = dst if group is None else group.get_group_rank(dst)
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.partial_send(
-            tensor.detach(),
-            'use_calc_stream',
-            use_calc_stream,
-            'ring_id',
-            ring_id,
-            'peer',
-            dst_rank_in_group,
-            'num',
-            nranks,
-            'id',
-            rank_id,
-        )
-    elif in_dygraph_mode():
+    if in_dygraph_mode():
         group = (
             paddle.distributed.collective._get_default_group()
             if group is None
@@ -234,12 +219,7 @@ def send_partial(
             tensor, group, use_calc_stream, ring_id, dst_rank, nranks, rank_id
         )
     else:
-        if _in_legacy_dygraph():
-            send_op = lambda x, dst, group: paddle.distributed.send(
-                x, dst, group, use_calc_stream
-            )
-        elif in_dygraph_mode():
-            send_op = paddle.distributed.isend
+        send_op = paddle.distributed.isend
         return send_op(tensor.detach(), dst=dst_rank, group=group)
 
 
@@ -247,37 +227,17 @@ def _partial_recv_op(
     tensor, group, use_calc_stream, ring_id, src, nranks, rank_id
 ):
     src_rank_in_group = src if group is None else group.get_group_rank(src)
-    if _in_legacy_dygraph():
-        assert use_calc_stream
-        return _legacy_C_ops.partial_recv(
-            tensor.detach(),
-            'use_calc_stream',
-            use_calc_stream,
-            'ring_id',
-            ring_id,
-            'peer',
-            src_rank_in_group,
-            'num',
-            nranks,
-            'id',
-            rank_id,
-            'dtype',
-            tensor.dtype,
-            'out_shape',
-            tensor.shape,
-        )
-    elif in_dygraph_mode():
-        group = (
-            paddle.distributed.collective._get_default_group()
-            if group is None
-            else group
-        )
-        comm_op = (
-            group.process_group.recv_partial_on_calc_stream
-            if use_calc_stream
-            else group.process_group.recv_partial
-        )
-        return comm_op(tensor, src_rank_in_group, nranks, rank_id)
+    group = (
+        paddle.distributed.collective._get_default_group()
+        if group is None
+        else group
+    )
+    comm_op = (
+        group.process_group.recv_partial_on_calc_stream
+        if use_calc_stream
+        else group.process_group.recv_partial
+    )
+    return comm_op(tensor, src_rank_in_group, nranks, rank_id)
 
 
 def recv_partial(
@@ -297,7 +257,7 @@ def recv_partial(
             tensor, group, use_calc_stream, ring_id, src_rank, nranks, rank_id
         )
     else:
-        if _in_legacy_dygraph() or use_calc_stream:
+        if use_calc_stream:
             recv_op = paddle.distributed.recv
         elif in_dygraph_mode():
             recv_op = paddle.distributed.irecv
@@ -307,30 +267,17 @@ def recv_partial(
 def _partial_allgather_op(
     tensor, group, use_calc_stream, ring_id, nranks, rank_id
 ):
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.partial_allgather_(
-            tensor.detach(),
-            'use_calc_stream',
-            use_calc_stream,
-            'ring_id',
-            ring_id,
-            'nranks',
-            nranks,
-            'rank',
-            rank_id,
-        )
-    elif in_dygraph_mode():
-        group = (
-            paddle.distributed.collective._get_default_group()
-            if group is None
-            else group
-        )
-        comm_op = (
-            group.process_group.all_gather_partial_on_calc_stream
-            if use_calc_stream
-            else group.process_group.all_gather_partial
-        )
-        return comm_op(tensor, tensor, nranks, rank_id)
+    group = (
+        paddle.distributed.collective._get_default_group()
+        if group is None
+        else group
+    )
+    comm_op = (
+        group.process_group.all_gather_partial_on_calc_stream
+        if use_calc_stream
+        else group.process_group.all_gather_partial
+    )
+    return comm_op(tensor, tensor, nranks, rank_id)
 
 
 def allgather_partial(

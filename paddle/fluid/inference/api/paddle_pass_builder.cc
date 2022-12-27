@@ -104,24 +104,27 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "multihead_matmul_roformer_fuse_pass",          //
       "constant_folding_pass",                        //
       "vit_attention_fuse_pass",                      //
-      "trt_skip_layernorm_fuse_pass",                 //
-      "preln_skip_layernorm_fuse_pass",               //
-      "layernorm_shift_partition_fuse_pass",          //
-      "merge_layernorm_fuse_pass",                    //
-      "preln_residual_bias_fuse_pass",                //
-      "preln_layernorm_x_fuse_pass",                  //
-      "reverse_roll_fuse_pass",                       //
-      "conv_bn_fuse_pass",                            //
-      "unsqueeze2_eltwise_fuse_pass",                 //
-      "trt_squeeze2_matmul_fuse_pass",                //
-      "trt_flatten2_matmul_fuse_pass",                //
-      "trt_map_matmul_v2_to_mul_pass",                //
-      "trt_map_matmul_v2_to_matmul_pass",             //
-      "trt_map_matmul_to_mul_pass",                   //
-      "fc_fuse_pass",                                 //
-      "conv_elementwise_add_fuse_pass",               //
-      "remove_padding_recover_padding_pass",          //
-      "delete_remove_padding_recover_padding_pass",   //
+#if defined _WIN32  // Windows CI is TensorRT7.0. Remove this after upgrading.
+#else
+      "trt_skip_layernorm_fuse_pass",    //
+      "preln_skip_layernorm_fuse_pass",  //
+#endif
+      "layernorm_shift_partition_fuse_pass",         //
+      "merge_layernorm_fuse_pass",                   //
+      "preln_residual_bias_fuse_pass",               //
+      "preln_layernorm_x_fuse_pass",                 //
+      "reverse_roll_fuse_pass",                      //
+      "conv_bn_fuse_pass",                           //
+      "unsqueeze2_eltwise_fuse_pass",                //
+      "trt_squeeze2_matmul_fuse_pass",               //
+      "trt_flatten2_matmul_fuse_pass",               //
+      "trt_map_matmul_v2_to_mul_pass",               //
+      "trt_map_matmul_v2_to_matmul_pass",            //
+      "trt_map_matmul_to_mul_pass",                  //
+      "fc_fuse_pass",                                //
+      "conv_elementwise_add_fuse_pass",              //
+      "remove_padding_recover_padding_pass",         //
+      "delete_remove_padding_recover_padding_pass",  //
       // "yolo_box_fuse_pass",      //
       "dense_fc_to_sparse_pass",                //
       "dense_multihead_matmul_to_sparse_pass",  //
@@ -159,6 +162,7 @@ const std::vector<std::string> kLiteSubgraphPasses({
 // support fp16/bf16 precision, temporarily use low precision pass to prevent
 // running errors. After fusion operator supports low precision, delete this.
 const std::vector<std::string> kGpuLowerPrecisionPasses{
+    "identity_scale_op_clean_pass",
     "simplify_with_basic_ops_pass",
     "delete_quant_dequant_linear_op_pass",
     "delete_weight_dequant_linear_op_pass",
@@ -205,8 +209,8 @@ const std::vector<std::string> kCINNCompilerPasses{
 
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
-    //   "identity_scale_op_clean_pass",             //
-    "is_test_pass",                                                     //
+    "identity_scale_op_clean_pass",                                     //
+        "is_test_pass",                                                 //
         "simplify_with_basic_ops_pass",                                 //
         "delete_quant_dequant_linear_op_pass",                          //
         "delete_weight_dequant_linear_op_pass",                         //

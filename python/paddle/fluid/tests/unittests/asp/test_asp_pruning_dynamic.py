@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.contrib.sparsity.asp import ASPHelper
+from paddle.incubate.asp import ASPHelper
 
 
 class MyLayer(paddle.nn.Layer):
@@ -58,9 +58,7 @@ class TestASPDynamicPruningBase(unittest.TestCase):
 
     def set_config(self):
         self.mask_gen_func = 'mask_1d'
-        self.mask_check_func = (
-            paddle.fluid.contrib.sparsity.CheckMethod.CHECK_1D
-        )
+        self.mask_check_func = paddle.incubate.asp.CheckMethod.CHECK_1D
 
     def test_inference_pruning(self):
         self.__pruning_and_checking(False)
@@ -89,13 +87,11 @@ class TestASPDynamicPruningBase(unittest.TestCase):
                     len(param.shape) == 2 and param.shape[0] < 4
                 ):
                     self.assertFalse(
-                        paddle.fluid.contrib.sparsity.check_sparsity(
-                            mat.T, n=2, m=4
-                        )
+                        paddle.incubate.asp.check_sparsity(mat.T, n=2, m=4)
                     )
                 else:
                     self.assertTrue(
-                        paddle.fluid.contrib.sparsity.check_sparsity(
+                        paddle.incubate.asp.check_sparsity(
                             mat.T, func_name=self.mask_check_func, n=2, m=4
                         )
                     )
@@ -104,25 +100,19 @@ class TestASPDynamicPruningBase(unittest.TestCase):
 class TestASPDynamicPruning1D(TestASPDynamicPruningBase):
     def set_config(self):
         self.mask_gen_func = 'mask_1d'
-        self.mask_check_func = (
-            paddle.fluid.contrib.sparsity.CheckMethod.CHECK_1D
-        )
+        self.mask_check_func = paddle.incubate.asp.CheckMethod.CHECK_1D
 
 
 class TestASPDynamicPruning2DBest(TestASPDynamicPruningBase):
     def set_config(self):
         self.mask_gen_func = 'mask_2d_best'
-        self.mask_check_func = (
-            paddle.fluid.contrib.sparsity.CheckMethod.CHECK_2D
-        )
+        self.mask_check_func = paddle.incubate.asp.CheckMethod.CHECK_2D
 
 
 class TestASPDynamicPruning2DGreedy(TestASPDynamicPruningBase):
     def set_config(self):
         self.mask_gen_func = 'mask_2d_greedy'
-        self.mask_check_func = (
-            paddle.fluid.contrib.sparsity.CheckMethod.CHECK_2D
-        )
+        self.mask_check_func = paddle.incubate.asp.CheckMethod.CHECK_2D
 
 
 if __name__ == '__main__':
