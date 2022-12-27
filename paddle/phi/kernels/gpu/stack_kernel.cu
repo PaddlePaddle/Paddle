@@ -70,34 +70,29 @@ struct PointerArray : public DivmodWarpper<IndexT> {
 template <typename Context, typename T, typename IndexT>
 struct PointerToPointer : public DivmodWarpper<IndexT> {
  public:
-  T** data;
+  T** data{nullptr};
   PointerToPointer(const Context& ctx,
                    const std::vector<const DenseTensor*>& x,
                    IndexT num,
-                   IndexT divisor) {
+                   IndexT divisor,
+                   paddle::memory::AllocationPtr& dev_ins_ptr) {
     this->SetDivisor(divisor);
-    auto byte_len = num * sizeof(T*);
     std::vector<const T*> x_datas(num);
     for (int i = 0; i < num; ++i) {
       x_datas[i] = x[i]->data<T>();
     }
-
-    auto tmp_ins_ptr = paddle::memory::Alloc(
+    dev_ins_ptr = paddle::memory::Alloc(
         ctx.GetPlace(),
         num * sizeof(T*),
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
-    *tmp_dev_ins_ptr = std::move(tmp_ins_ptr);
     paddle::memory::Copy(ctx.GetPlace(),
-                         (*tmp_dev_ins_ptr)->ptr(),
+                         dev_ins_ptr->ptr(),
                          phi::CPUPlace(),
                          reinterpret_cast<void*>(x_datas.data()),
-                         x_datas.size() * sizeof(T*),
+                         num * sizeof(T*),
                          ctx.stream());
-    data = reinterpret_cast<T**>((*tmp_dev_ins_ptr)->ptr());
+    data = reinterpret_cast<T**>(dev_ins_ptr->ptr());
   }
-
- private:
-  paddle::memory::AllocationPtr* tmp_dev_ins_ptr{nullptr};
 };
 
 template <typename T, typename IndexT, typename WrapT>
@@ -153,7 +148,9 @@ void LaunchStackCUDAKernelWithIndexType(
         <<<cfg.block_per_grid, cfg.thread_per_block, 0, ctx.stream()>>>(
             ptr_array, x_col, x_row, out_col, dst_data));
     default: {
-      PointerToPointer<Context, T, IndexT> ptr_array(ctx, x, num, x_col);
+      paddle::memory::AllocationPtr dev_ins_ptr{nullptr};
+      PointerToPointer<Context, T, IndexT> ptr_array(
+          ctx, x, num, x_col, dev_ins_ptr);
       StackCUDAKernel<T, IndexT, decltype(ptr_array)>
           <<<cfg.block_per_grid, cfg.thread_per_block, 0, ctx.stream()>>>(
               ptr_array, x_col, x_row, out_col, dst_data);
