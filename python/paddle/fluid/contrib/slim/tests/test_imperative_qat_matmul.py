@@ -33,12 +33,11 @@ from paddle.nn import Sequential
 from paddle.nn import ReLU, ReLU6, LeakyReLU, Sigmoid, Softmax, PReLU
 from paddle.nn import Linear, Conv2D, Softmax, BatchNorm2D, MaxPool2D
 from paddle.fluid.log_helper import get_logger
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn.quant.quant_layers import (
     QuantizedConv2D,
     QuantizedMatmul,
 )
-from paddle.fluid.framework import _test_eager_guard
 from imperative_test_utils import fix_model_dict
 
 paddle.enable_static()
@@ -173,7 +172,9 @@ class TestImperativeQatMatmul(unittest.TestCase):
                 label = fluid.dygraph.to_variable(y_data)
                 out = lenet(img)
                 acc = paddle.static.accuracy(out, label)
-                loss = fluid.layers.cross_entropy(out, label)
+                loss = paddle.nn.functional.cross_entropy(
+                    out, label, reduction='none', use_softmax=False
+                )
                 avg_loss = paddle.mean(loss)
 
                 avg_loss.backward()

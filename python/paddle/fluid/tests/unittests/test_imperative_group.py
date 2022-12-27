@@ -16,11 +16,7 @@ import unittest
 
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.framework import (
-    _in_legacy_dygraph,
-    _test_eager_guard,
-    in_dygraph_mode,
-)
+from paddle.fluid.framework import in_dygraph_mode
 
 
 class TestDataParallelGroup(unittest.TestCase):
@@ -30,8 +26,6 @@ class TestDataParallelGroup(unittest.TestCase):
     def assign_group_by_size(self, *args):
         if in_dygraph_mode():
             return core.eager_assign_group_by_size(*args)
-        elif _in_legacy_dygraph():
-            return core.assign_group_by_size(*args)
 
     def test_construct_group0(self):
         # one dtype & one limit capability
@@ -169,20 +163,6 @@ class TestDataParallelGroup(unittest.TestCase):
             var_list, [False, False, False, True], [300], [1, 0, 2, 3]
         )
         self.assertEqual([[1, 0], [3], [2]], res)
-
-    def test_construct_group_in_legacy_mode(self):
-        with _test_eager_guard():
-            pass
-        self.test_construct_group0()
-        self.test_construct_group1()
-        self.test_construct_group2()
-        self.test_construct_group3()
-        self.test_construct_group4()
-        self.test_construct_group5()
-        self.test_construct_group6()
-        self.test_construct_group7()
-        self.test_construct_group8()
-        self.test_construct_group9()
 
 
 if __name__ == '__main__':

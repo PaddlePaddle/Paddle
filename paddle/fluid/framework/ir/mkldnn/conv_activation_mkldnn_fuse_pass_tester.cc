@@ -165,7 +165,8 @@ void MainTest(std::string activation) {
   int conv_activation_count = 0;
 
   for (auto* node : graph->Nodes()) {
-    if (node->IsOp() && node->Op()->Type() == "conv2d") {
+    if (node->IsOp() && (node->Op()->Type() == "conv2d" ||
+                         node->Op()->Type() == "fused_conv2d")) {
       auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
       EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")));

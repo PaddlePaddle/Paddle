@@ -72,9 +72,13 @@ class StreamAllToAllSingleTestCase:
         if not self._sync_op:
             task.wait()
         if rank == 0:
-            assert np.allclose(out_tensor, result1, rtol=1e-05, atol=1e-05)
+            np.testing.assert_allclose(
+                out_tensor, result1, rtol=1e-05, atol=1e-05
+            )
         else:
-            assert np.allclose(out_tensor, result2, rtol=1e-05, atol=1e-05)
+            np.testing.assert_allclose(
+                out_tensor, result2, rtol=1e-05, atol=1e-05
+            )
 
 
 if __name__ == "__main__":

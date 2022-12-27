@@ -473,27 +473,13 @@ void MatmulDoubleGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& y,
                             const DenseTensor& dout,
-                            const paddle::optional<DenseTensor>& ddx_opt,
-                            const paddle::optional<DenseTensor>& ddy_opt,
+                            const paddle::optional<DenseTensor>& ddx,
+                            const paddle::optional<DenseTensor>& ddy,
                             bool transpose_x,
                             bool transpose_y,
                             DenseTensor* dx,
                             DenseTensor* dy,
                             DenseTensor* ddout) {
-  paddle::optional<DenseTensor> ddx;
-  paddle::optional<DenseTensor> ddy;
-  if (!ddx_opt && (dy || ddout)) {
-    DenseTensor ddx_tmp = phi::FullLike<T, Context>(dev_ctx, x, Scalar(0.0));
-    ddx = paddle::make_optional<DenseTensor>(ddx_tmp);
-  } else {
-    ddx = ddx_opt;
-  }
-  if (!ddy_opt && (dx || ddout)) {
-    DenseTensor ddy_tmp = phi::FullLike<T, Context>(dev_ctx, y, Scalar(0.0));
-    ddy = paddle::make_optional<DenseTensor>(ddy_tmp);
-  } else {
-    ddy = ddy_opt;
-  }
   // Get dims from the input x, y, output_grad
   std::vector<std::int64_t> x_dims = vectorize(x.dims());
   std::vector<std::int64_t> y_dims = vectorize(y.dims());
@@ -506,7 +492,7 @@ void MatmulDoubleGradKernel(const Context& dev_ctx,
   // Case1 : x's or y's dim = 1
   if (x_ndim == 1 && y_ndim == 1) {
     DotDoubleGradFunction<Context, T>()(
-        dev_ctx, &x, &y, &dout, ddx.get_ptr(), ddy.get_ptr(), dx, dy, ddout);
+        dev_ctx, &x, &y, &dout, &ddx, &ddy, dx, dy, ddout);
     return;
   }
 
@@ -608,6 +594,8 @@ void MatmulDoubleGradKernel(const Context& dev_ctx,
                          ddout_flag);
         ddout_flag = true;
       }
+    } else if (!ddx && dy) {
+      FullLikeKernel<T, Context>(dev_ctx, y, Scalar(0.0), y.dtype(), dy);
     }
     if (ddy) {
       auto ddy_mat = ddy.get();
@@ -666,6 +654,12 @@ void MatmulDoubleGradKernel(const Context& dev_ctx,
                          ddout,
                          ddout_flag);
       }
+    } else if (!ddy && dx) {
+      FullLikeKernel<T, Context>(dev_ctx, x, Scalar(0.0), x.dtype(), dx);
+    }
+    if (ddout && !ddx && !ddy) {
+      FullLikeKernel<T, Context>(
+          dev_ctx, dout, Scalar(0.0), dout.dtype(), ddout);
     }
 
     if (dx) {
@@ -821,7 +815,7 @@ void MatmulDoubleGradKernel(const Context& dev_ctx,
       }
     }
     // Reduce sum to get grad by ReduceSum
-    if (dx) {
+    if (dx && dx_help.initialized()) {
       if (dx_reduce_dims.empty()) {
         *dx = std::move(dx_help);
       } else {
@@ -829,8 +823,10 @@ void MatmulDoubleGradKernel(const Context& dev_ctx,
             dev_ctx, dx_help, dx, dx_reduce_dims);
       }
       dx->Resize(x.dims());
+    } else if (dx && !dx_help.initialized()) {
+      FullLikeKernel<T, Context>(dev_ctx, x, Scalar(0.0), x.dtype(), dx);
     }
-    if (dy) {
+    if (dy && dy_help.initialized()) {
       if (dy_reduce_dims.empty()) {
         *dy = std::move(dy_help);
       } else {
@@ -838,6 +834,8 @@ void MatmulDoubleGradKernel(const Context& dev_ctx,
             dev_ctx, dy_help, dy, dy_reduce_dims);
       }
       dy->Resize(y.dims());
+    } else if (dy && !dy_help.initialized()) {
+      FullLikeKernel<T, Context>(dev_ctx, y, Scalar(0.0), y.dtype(), dy);
     }
 
     if (ddout) {
@@ -873,11 +871,11 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& y,
                             const DenseTensor& dout,
-                            const paddle::optional<DenseTensor>& ddx_opt,
-                            const paddle::optional<DenseTensor>& ddy_opt,
-                            const paddle::optional<DenseTensor>& d_dx_opt,
-                            const paddle::optional<DenseTensor>& d_dy_opt,
-                            const paddle::optional<DenseTensor>& d_ddout_opt,
+                            const paddle::optional<DenseTensor>& ddx,
+                            const paddle::optional<DenseTensor>& ddy,
+                            const paddle::optional<DenseTensor>& d_dx,
+                            const paddle::optional<DenseTensor>& d_dy,
+                            const paddle::optional<DenseTensor>& d_ddout,
                             bool transpose_x,
                             bool transpose_y,
                             DenseTensor* out_d_x,
@@ -885,50 +883,6 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
                             DenseTensor* out_d_dout,
                             DenseTensor* out_d_ddx,
                             DenseTensor* out_d_ddy) {
-  paddle::optional<DenseTensor> ddx;
-  paddle::optional<DenseTensor> ddy;
-  paddle::optional<DenseTensor> d_dx;
-  paddle::optional<DenseTensor> d_dy;
-  paddle::optional<DenseTensor> d_ddout;
-
-  if (!ddx_opt && (out_d_y || out_d_dout)) {
-    DenseTensor ddx_tmp =
-        phi::FullLike<T, Context>(dev_ctx, x, static_cast<T>(0.0));
-    ddx = paddle::make_optional<DenseTensor>(ddx_tmp);
-  } else {
-    ddx = ddx_opt;
-  }
-  if (!ddy_opt && (out_d_x || out_d_dout)) {
-    DenseTensor ddy_tmp =
-        phi::FullLike<T, Context>(dev_ctx, y, static_cast<T>(0.0));
-    ddy = paddle::make_optional<DenseTensor>(ddy_tmp);
-  } else {
-    ddy = ddy_opt;
-  }
-
-  if (!d_ddout_opt && (out_d_y || out_d_x || out_d_ddy || out_d_ddx)) {
-    DenseTensor d_ddout_tmp =
-        phi::FullLike<T, Context>(dev_ctx, dout, static_cast<T>(0.0));
-    d_ddout = paddle::make_optional<DenseTensor>(d_ddout_tmp);
-  } else {
-    d_ddout = d_ddout_opt;
-  }
-
-  if (!d_dx_opt && (out_d_ddy || out_d_dout)) {
-    DenseTensor d_dx_tmp =
-        phi::FullLike<T, Context>(dev_ctx, x, static_cast<T>(0.0));
-    d_dx = paddle::make_optional<DenseTensor>(d_dx_tmp);
-  } else {
-    d_dx = d_dx_opt;
-  }
-
-  if (!d_dy_opt && (out_d_ddx || out_d_dout)) {
-    DenseTensor d_dy_tmp =
-        phi::FullLike<T, Context>(dev_ctx, y, static_cast<T>(0.0));
-    d_dy = paddle::make_optional<DenseTensor>(d_dy_tmp);
-  } else {
-    d_dy = d_dy_opt;
-  }
   // Get dims from the input x, y, output_grad
   std::vector<std::int64_t> x_dims = vectorize(x.dims());
   std::vector<std::int64_t> y_dims = vectorize(y.dims());
@@ -944,12 +898,12 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
     DotTripleGradFunction<Context, T>()(dev_ctx,
                                         &x,
                                         &y,
-                                        ddx.get_ptr(),
-                                        ddy.get_ptr(),
-                                        d_dx.get_ptr(),
-                                        d_dy.get_ptr(),
                                         &dout,
-                                        d_ddout.get_ptr(),
+                                        &ddx,
+                                        &ddy,
+                                        &d_dx,
+                                        &d_dy,
+                                        &d_ddout,
                                         out_d_x,
                                         out_d_y,
                                         out_d_dout,
@@ -1047,7 +1001,7 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
       if (out_d_ddy_dims != y_help.dims()) {
         out_d_ddy->Resize(y_help.dims());
       }
-      if (dout_conj.IsInitialized()) {
+      if (!dout_conj.IsInitialized()) {
         dout_conj = Conj<T>(dev_ctx, dout_help);
       }
       x_conj = Conj<T>(dev_ctx, x_help);
@@ -1108,6 +1062,8 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
                            out_d_y,
                            false);
         }
+      } else if (out_d_y) {
+        FullLikeKernel<T, Context>(dev_ctx, y, Scalar(0.0), y.dtype(), out_d_y);
       }
       if (out_d_x && ddy) {
         if (transpose_x && transpose_y) {
@@ -1155,6 +1111,8 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
                            out_d_x,
                            false);
         }
+      } else if (out_d_x) {
+        FullLikeKernel<T, Context>(dev_ctx, x, Scalar(0.0), x.dtype(), out_d_x);
       }
 
       // equations:
@@ -1268,6 +1226,15 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
                            false);
         }
         d_ddy_flag = true;
+      }
+    } else {
+      // d_ddout is none
+      if (out_d_x) {
+        FullLikeKernel<T, Context>(dev_ctx, x, Scalar(0.0), x.dtype(), out_d_x);
+      }
+
+      if (out_d_y) {
+        FullLikeKernel<T, Context>(dev_ctx, y, Scalar(0.0), y.dtype(), out_d_y);
       }
     }
 
@@ -1439,6 +1406,19 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
         out_d_ddy->Resize(out_d_ddy_dims);
       }
     }
+
+    if (out_d_dout && !out_d_dout->IsInitialized()) {
+      FullLikeKernel<T, Context>(
+          dev_ctx, dout, Scalar(0.0), dout.dtype(), out_d_dout);
+    }
+
+    if (out_d_ddx && !out_d_ddx->IsInitialized()) {
+      FullLikeKernel<T, Context>(dev_ctx, x, Scalar(0.0), x.dtype(), out_d_ddx);
+    }
+
+    if (out_d_ddy && !out_d_ddy->IsInitialized()) {
+      FullLikeKernel<T, Context>(dev_ctx, y, Scalar(0.0), y.dtype(), out_d_ddy);
+    }
   } else {
     // Case3: broadcast. It need cost much time to reduce sum for the
     // broadcast and wastes the memory.
@@ -1585,7 +1565,7 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
     }
 
     // Reduce sum to get grad by ReduceSum
-    if (out_d_x) {
+    if (out_d_x && out_dx_help.initialized()) {
       if (dx_reduce_dims.empty()) {
         *out_d_x = std::move(out_dx_help);
       } else {
@@ -1593,9 +1573,11 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
             dev_ctx, out_dx_help, out_d_x, dx_reduce_dims);
       }
       out_d_x->Resize(x.dims());
+    } else if (out_d_x) {
+      FullLikeKernel<T, Context>(dev_ctx, x, Scalar(0.0), x.dtype(), out_d_x);
     }
 
-    if (out_d_y) {
+    if (out_d_y && out_dy_help.initialized()) {
       if (dy_reduce_dims.empty()) {
         *out_d_y = std::move(out_dy_help);
       } else {
@@ -1603,6 +1585,8 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
             dev_ctx, out_dy_help, out_d_y, dy_reduce_dims);
       }
       out_d_y->Resize(y.dims());
+    } else if (out_d_y) {
+      FullLikeKernel<T, Context>(dev_ctx, y, Scalar(0.0), y.dtype(), out_d_y);
     }
 
     // compute d_dout
@@ -1627,6 +1611,11 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
                                    transpose_x,
                                    transpose_y,
                                    true);
+      }
+
+      if (!out_d_dout->initialized()) {
+        FullLikeKernel<T, Context>(
+            dev_ctx, dout, Scalar(0.0), dout.dtype(), out_d_dout);
       }
     }
 
@@ -1735,13 +1724,18 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
                                      true);
         }
       }
-
-      if (dx_reduce_dims.empty()) {
-        *out_d_ddx = std::move(out_d_ddx_help);
+      if (out_d_ddx_help.initialized()) {
+        if (dx_reduce_dims.empty()) {
+          *out_d_ddx = std::move(out_d_ddx_help);
+        } else {
+          ReduceSumForMatmulGrad<Context, T>()(
+              dev_ctx, out_d_ddx_help, out_d_ddx, dx_reduce_dims);
+        }
       } else {
-        ReduceSumForMatmulGrad<Context, T>()(
-            dev_ctx, out_d_ddx_help, out_d_ddx, dx_reduce_dims);
+        FullLikeKernel<T, Context>(
+            dev_ctx, x, Scalar(0.0), x.dtype(), out_d_ddx);
       }
+
       out_d_ddx->Resize(x.dims());
     }
 
@@ -1852,12 +1846,18 @@ void MatmulTripleGradKernel(const Context& dev_ctx,
         }
       }
 
-      if (dy_reduce_dims.empty()) {
-        *out_d_ddy = std::move(out_d_ddy_help);
+      if (out_d_ddy_help.initialized()) {
+        if (dy_reduce_dims.empty()) {
+          *out_d_ddy = std::move(out_d_ddy_help);
+        } else {
+          ReduceSumForMatmulGrad<Context, T>()(
+              dev_ctx, out_d_ddy_help, out_d_ddy, dy_reduce_dims);
+        }
       } else {
-        ReduceSumForMatmulGrad<Context, T>()(
-            dev_ctx, out_d_ddy_help, out_d_ddy, dy_reduce_dims);
+        FullLikeKernel<T, Context>(
+            dev_ctx, y, Scalar(0.0), y.dtype(), out_d_ddy);
       }
+
       out_d_ddy->Resize(y.dims());
     }
   }

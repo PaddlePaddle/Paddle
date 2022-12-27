@@ -22,7 +22,6 @@ import paddle.fluid as fluid
 import paddle.nn.functional as F
 from paddle.fluid import Layer, core
 from paddle.fluid.dygraph import guard, to_variable
-from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 from paddle.nn import Linear
 
 np.set_printoptions(suppress=True)
@@ -416,11 +415,9 @@ class PrePostProcessLayer(Layer):
                 out = self._layer_norm(out)
             elif cmd == "d":  # add dropout
                 if dropout_rate:
-                    out = fluid.layers.dropout(
+                    out = paddle.nn.functional.dropout(
                         out,
-                        dropout_prob=dropout_rate,
-                        seed=ModelHyperParams.dropout_seed,
-                        is_test=False,
+                        p=dropout_rate,
                     )
         return out
 
@@ -436,11 +433,9 @@ class PositionwiseFeedForwardLayer(Layer):
         hidden = self._i2h(x)
         hidden = paddle.nn.functional.relu(hidden)
         if self._dropout_rate:
-            hidden = fluid.layers.dropout(
+            hidden = paddle.nn.functional.dropout(
                 hidden,
-                dropout_prob=self._dropout_rate,
-                seed=ModelHyperParams.dropout_seed,
-                is_test=False,
+                p=self._dropout_rate,
             )
         out = self._h2o(hidden)
         return out
@@ -504,11 +499,9 @@ class MultiHeadAttentionLayer(Layer):
             product += attn_bias
         weights = paddle.nn.functional.softmax(product)
         if self._dropout_rate:
-            weights_droped = fluid.layers.dropout(
+            weights_droped = paddle.nn.functional.dropout(
                 weights,
-                dropout_prob=self._dropout_rate,
-                seed=ModelHyperParams.dropout_seed,
-                is_test=False,
+                p=self._dropout_rate,
             )
             out = paddle.matmul(weights_droped, transpose_v)
         else:
@@ -703,11 +696,9 @@ class PrepareEncoderDecoderLayer(Layer):
         src_pos_emb.stop_gradient = True
         enc_input = src_word_emb + src_pos_emb
         return (
-            fluid.layers.dropout(
+            paddle.nn.functional.dropout(
                 enc_input,
-                dropout_prob=self._dropout_rate,
-                seed=ModelHyperParams.dropout_seed,
-                is_test=False,
+                p=self._dropout_rate,
             )
             if self._dropout_rate
             else enc_input
@@ -1093,8 +1084,8 @@ class TransFormer(Layer):
         predict = self._wrap_decoder_layer(dec_inputs, enc_output)
         if self._label_smooth_eps:
             label_out = F.label_smooth(
-                label=fluid.layers.one_hot(
-                    input=label, depth=self._trg_vocab_size
+                label=paddle.squeeze(
+                    paddle.nn.functional.one_hot(label, self._trg_vocab_size)
                 ),
                 epsilon=self._label_smooth_eps,
             )
@@ -1201,18 +1192,6 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                 dy_param_updated,
             )
 
-        with guard():
-            fluid.set_flags({'FLAGS_sort_sum_gradient': True})
-            if _in_legacy_dygraph():
-                (
-                    dy_avg_cost_value,
-                    dy_sum_cost_value,
-                    dy_predict_value,
-                    dy_token_num_value,
-                    dy_param_init,
-                    dy_param_updated,
-                ) = run_dygraph()
-
         with new_program_scope():
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
@@ -1304,24 +1283,6 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                         static_param_updated[
                             static_param_name_list[k - 4]
                         ] = out[k]
-        if _in_legacy_dygraph():
-            np.testing.assert_array_equal(
-                static_avg_cost_value, dy_avg_cost_value
-            )
-            np.testing.assert_array_equal(
-                static_sum_cost_value, dy_sum_cost_value
-            )
-            np.testing.assert_array_equal(
-                static_predict_value, dy_predict_value
-            )
-            np.testing.assert_array_equal(
-                static_token_num_value, dy_token_num_value
-            )
-
-            for key, value in static_param_init.items():
-                np.testing.assert_array_equal(value, dy_param_init[key])
-            for key, value in static_param_updated.items():
-                np.testing.assert_array_equal(value, dy_param_updated[key])
 
         # compare eager result with imperative result
         with guard():
@@ -1336,15 +1297,14 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
             ) = run_dygraph()
 
         with guard():
-            with _test_eager_guard():
-                (
-                    eager_avg_cost_value,
-                    eager_sum_cost_value,
-                    eager_predict_value,
-                    eager_token_num_value,
-                    eager_param_init,
-                    eager_param_updated,
-                ) = run_dygraph()
+            (
+                eager_avg_cost_value,
+                eager_sum_cost_value,
+                eager_predict_value,
+                eager_token_num_value,
+                eager_param_init,
+                eager_param_updated,
+            ) = run_dygraph()
         np.testing.assert_allclose(
             dy_avg_cost_value, eager_avg_cost_value, rtol=1e-05
         )

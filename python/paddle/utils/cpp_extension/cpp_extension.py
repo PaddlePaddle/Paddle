@@ -429,7 +429,7 @@ class BuildExtension(build_ext):
             obj, src, ext, cc_args, extra_postargs, pp_opts
         ):
             """
-            Monkey patch mechanism to replace inner compiler to custom complie process on Unix platform.
+            Monkey patch mechanism to replace inner compiler to custom compile process on Unix platform.
             """
             # use abspath to ensure no warning and don't remove deepcopy because modify params
             # with dict type is dangerous.

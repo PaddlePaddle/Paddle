@@ -14,8 +14,8 @@
 
 import os
 import site
-from distutils.core import Extension, setup
 
+from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
 
 from paddle.fluid import core

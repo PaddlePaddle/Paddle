@@ -213,6 +213,12 @@ class OperatorDistAttr {
     execution_stream_ = execution_stream;
   }
 
+  int64_t scheduling_priority() const { return scheduling_priority_; }
+
+  void set_scheduling_priority(int64_t scheduling_priority) {
+    scheduling_priority_ = scheduling_priority;
+  }
+
   const std::map<std::string, bool>& annotated() const { return annotated_; }
 
   void set_annotated(const std::map<std::string, bool>& annotated);
@@ -271,6 +277,7 @@ class OperatorDistAttr {
   std::string impl_type_;
   int64_t impl_idx_ = -1;
   std::string execution_stream_;
+  int64_t scheduling_priority_;  // lower value, higher priority, default to 0
   std::map<std::string, bool> annotated_;
 };
 

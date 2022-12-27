@@ -14,13 +14,9 @@
 
 from paddle.utils import gast
 
+from .base_transformer import BaseTransformer
+from .static_analysis import AstNodeWrapper
 from .utils import ast_to_source_code
-from .static_analysis import (
-    AstNodeWrapper,
-)
-from .base_transformer import (
-    BaseTransformer,
-)
 
 __all__ = []
 

@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
-os.environ["FLAGS_enable_eager_mode"] = "0"
 import math
+import os
 import tempfile
 import time
 import unittest
@@ -231,10 +229,10 @@ class TestResnet(unittest.TestCase):
             self.temp_dir.name, "./inference/resnet_v2"
         )
         self.model_filename = (
-            "resnet_v2" + paddle.fluid.dygraph.io.INFER_MODEL_SUFFIX
+            "resnet_v2" + paddle.jit.translated_layer.INFER_MODEL_SUFFIX
         )
         self.params_filename = (
-            "resnet_v2" + paddle.fluid.dygraph.io.INFER_PARAMS_SUFFIX
+            "resnet_v2" + paddle.jit.translated_layer.INFER_PARAMS_SUFFIX
         )
         self.dy_state_dict_save_path = os.path.join(
             self.temp_dir.name, "./resnet_v2.dygraph"
