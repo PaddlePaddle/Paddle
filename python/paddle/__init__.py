@@ -54,8 +54,8 @@ from .framework.dtype import bfloat16  # noqa: F401
 from .framework.dtype import bool  # noqa: F401
 from .framework.dtype import complex64  # noqa: F401
 from .framework.dtype import complex128  # noqa: F401
-from .framework.core.eager import Tensor as Tensor  # noqa: F401
 
+Tensor = framework.core.eager.Tensor
 Tensor.__qualname__ = 'Tensor'  # noqa: F401
 import paddle.distributed  # noqa: F401
 import paddle.sysconfig  # noqa: F401
