@@ -34,17 +34,11 @@ import numpy as np
 
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
 from paddle.device import get_all_custom_device_type
-from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from paddle.fluid.framework import in_dygraph_mode
 
 from ...fluid import dygraph_utils
 from ...fluid.data_feeder import check_variable_and_dtype
-from ...framework import (
-    ParamAttr,
-    _global_flags,
-    _non_static_mode,
-    get_default_dtype,
-    no_grad,
-)
+from ...framework import ParamAttr, _global_flags, get_default_dtype, no_grad
 from .. import Layer
 from .. import functional as F
 from ..functional import batch_norm, instance_norm, layer_norm
@@ -491,20 +485,6 @@ class GroupNorm(Layer):
         variance_out = self._helper.create_variable_for_type_inference(
             dtype=input.dtype, stop_gradient=True
         )
-
-        if _in_legacy_dygraph():
-            pre_act, _, _ = _legacy_C_ops.group_norm(
-                input,
-                self.weight,
-                self.bias,
-                mean_out,
-                variance_out,
-                'epsilon',
-                self._epsilon,
-                'groups',
-                self._num_groups,
-            )
-            return pre_act
 
         inputs = {'X': input}
         if self.bias is not None:
@@ -1005,121 +985,86 @@ class BatchNorm(Layer):
         self._trainable_statistics = trainable_statistics
 
     def forward(self, input):
-        # create output
-        # mean and mean_out share the same memory
-        mean_out = self._mean
-        # variance and variance out share the same memory
-        variance_out = self._variance
-
-        if _non_static_mode():
-            if in_dygraph_mode():
-                batch_norm_out, t1, t2, t3, t4, _ = _C_ops.batch_norm(
-                    input,
-                    self._mean,
-                    self._variance,
-                    self.weight,
-                    self.bias,
-                    not self.training,
-                    self._momentum,
-                    self._epsilon,
-                    self._data_layout,
-                    self._use_global_stats,
-                    self._trainable_statistics,
-                )
-                return dygraph_utils._append_activation_in_dygraph(
-                    batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn
-                )
-
-            elif _in_legacy_dygraph():
-                attrs = (
-                    "momentum",
-                    self._momentum,
-                    "epsilon",
-                    self._epsilon,
-                    "is_test",
-                    not self.training,
-                    "data_layout",
-                    self._data_layout,
-                    "use_mkldnn",
-                    self._use_mkldnn,
-                    "fuse_with_relu",
-                    self._fuse_with_relu,
-                    "use_global_stats",
-                    self._use_global_stats,
-                    'trainable_statistics',
-                    self._trainable_statistics,
-                )
-                batch_norm_out, _, _, _, _, _ = _legacy_C_ops.batch_norm(
-                    input,
-                    self.weight,
-                    self.bias,
-                    self._mean,
-                    self._variance,
-                    None,
-                    mean_out,
-                    variance_out,
-                    *attrs
-                )
-
+        if in_dygraph_mode():
+            batch_norm_out, t1, t2, t3, t4, _ = _C_ops.batch_norm(
+                input,
+                self._mean,
+                self._variance,
+                self.weight,
+                self.bias,
+                not self.training,
+                self._momentum,
+                self._epsilon,
+                self._data_layout,
+                self._use_global_stats,
+                self._trainable_statistics,
+            )
             return dygraph_utils._append_activation_in_dygraph(
                 batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn
             )
+        else:
+            # create output
+            # mean and mean_out share the same memory
+            mean_out = self._mean
+            # variance and variance out share the same memory
+            variance_out = self._variance
+            check_variable_and_dtype(
+                input, 'input', ['float16', 'float32', 'float64'], 'BatchNorm'
+            )
 
-        check_variable_and_dtype(
-            input, 'input', ['float16', 'float32', 'float64'], 'BatchNorm'
-        )
+            attrs = {
+                "momentum": self._momentum,
+                "epsilon": self._epsilon,
+                "is_test": self._is_test,
+                "data_layout": self._data_layout,
+                "use_mkldnn": False,
+                "fuse_with_relu": self._fuse_with_relu,
+                "use_global_stats": self._use_global_stats,
+                "trainable_statistics": self._trainable_statistics,
+            }
 
-        attrs = {
-            "momentum": self._momentum,
-            "epsilon": self._epsilon,
-            "is_test": self._is_test,
-            "data_layout": self._data_layout,
-            "use_mkldnn": False,
-            "fuse_with_relu": self._fuse_with_relu,
-            "use_global_stats": self._use_global_stats,
-            "trainable_statistics": self._trainable_statistics,
-        }
+            inputs = {
+                "X": [input],
+                "Scale": [self.weight],
+                "Bias": [self.bias],
+                "Mean": [self._mean],
+                "Variance": [self._variance],
+            }
 
-        inputs = {
-            "X": [input],
-            "Scale": [self.weight],
-            "Bias": [self.bias],
-            "Mean": [self._mean],
-            "Variance": [self._variance],
-        }
+            saved_mean = self._helper.create_variable_for_type_inference(
+                dtype=self._dtype, stop_gradient=True
+            )
+            saved_variance = self._helper.create_variable_for_type_inference(
+                dtype=self._dtype, stop_gradient=True
+            )
+            reserve_space = self._helper.create_variable_for_type_inference(
+                dtype=self._helper.input_dtype(input), stop_gradient=True
+            )
 
-        saved_mean = self._helper.create_variable_for_type_inference(
-            dtype=self._dtype, stop_gradient=True
-        )
-        saved_variance = self._helper.create_variable_for_type_inference(
-            dtype=self._dtype, stop_gradient=True
-        )
-        reserve_space = self._helper.create_variable_for_type_inference(
-            dtype=self._helper.input_dtype(input), stop_gradient=True
-        )
+            batch_norm_out = (
+                input
+                if self._in_place
+                else self._helper.create_variable_for_type_inference(
+                    self._dtype
+                )
+            )
 
-        batch_norm_out = (
-            input
-            if self._in_place
-            else self._helper.create_variable_for_type_inference(self._dtype)
-        )
+            outputs = {
+                "Y": [batch_norm_out],
+                "MeanOut": [mean_out],
+                "VarianceOut": [variance_out],
+                "SavedMean": [saved_mean],
+                "SavedVariance": [saved_variance],
+            }
+            if reserve_space is not None:
+                outputs["ReserveSpace"] = [reserve_space]
 
-        outputs = {
-            "Y": [batch_norm_out],
-            "MeanOut": [mean_out],
-            "VarianceOut": [variance_out],
-            "SavedMean": [saved_mean],
-            "SavedVariance": [saved_variance],
-        }
-        if reserve_space is not None:
-            outputs["ReserveSpace"] = [reserve_space]
+            self._helper.append_op(
+                type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs
+            )
 
-        self._helper.append_op(
-            type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs
-        )
-
-        # Currently, we don't support inplace in dygraph mode
-        return self._helper.append_activation(batch_norm_out, self._act)
+            # Currently, we don't support inplace in dygraph mode
+            return self._helper.append_activation(batch_norm_out, self._act)
 
 
 class BatchNorm1D(_BatchNormBase):
