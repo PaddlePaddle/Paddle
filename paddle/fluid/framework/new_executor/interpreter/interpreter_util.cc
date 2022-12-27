@@ -34,11 +34,6 @@
 #endif
 
 PADDLE_DEFINE_EXPORTED_bool(
-    new_executor_serial_run,
-    false,
-    "Enable serial execution for standalone executor, used for debug.");
-
-PADDLE_DEFINE_EXPORTED_bool(
     new_executor_log_memory_stats,
     false,
     "Log memory stats after each op runs, just used for debug.");
@@ -118,11 +113,7 @@ void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
                              std::function<void()> fn) {
   // queue_idx=0 : kCpuSync or kGpuSync
   // queue_idx=1 : kGPUAsync
-  // when serial_run, always make queue_idx=1, so only one thread is used
-  size_t queue_idx =
-      (op_func_type == OpFuncType::kGpuAsync || FLAGS_new_executor_serial_run);
-  VLOG(8) << "Add task: " << queue_idx;
-  queue_group_->AddTask(queue_idx, std::move(fn));
+  queue_group_->AddTask(op_func_type == OpFuncType::kGpuAsync, std::move(fn));
 }
 
 bool IsCommunicationOp(const std::string& op_name) {
@@ -584,6 +575,17 @@ void BuildOpFuncList(const platform::Place& place,
         dist_attr->execution_stream() != distributed::auto_parallel::kDefault) {
       op_func_node.execution_stream_ = dist_attr->execution_stream();
     }
+
+    if (dist_attr) {
+      op_func_node.priority_ = dist_attr->scheduling_priority();
+    } else if (interpreter::IsCommunicationOp(op_type)) {
+      // NOTE(Ruibiao): Dispatching computation before communication improves
+      // multi-stream overlap when the time cost of communication less than that
+      // of the calculation (e.g., ResNet50_bs128_pure_fp16 N4C32 training).
+      op_func_node.priority_ = 1;
+    }
+    VLOG(6) << "scheduling priority of " << op_type << " : "
+            << op_func_node.priority_;
 
     SingleStreamGuard single_stream_guard(ops[i]);
 
