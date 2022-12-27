@@ -980,6 +980,20 @@ PADDLE_DEFINE_EXPORTED_bool(enable_pe_launch_cinn,
 
 /*
  * CINN related FLAG
+ * Name: FLAGS_enable_interpretercore_launch_cinn
+ * Since Version: 2.4
+ * Value Range: bool, default=true
+ * Example: FLAGS_enable_interpretercore_launch_cinn=true would execute the CINN
+ * compiled instructions of a paddle graph with InterpreterCore, otherwise with
+ * the CINN compiled runtime program in sequential order.
+ */
+PADDLE_DEFINE_EXPORTED_bool(enable_interpretercore_launch_cinn,
+                            true,
+                            "It controls whether to execute cinn compiled "
+                            "program with InterpreterCore");
+
+/*
+ * CINN related FLAG
  * Name: FLAGS_enable_cinn_auto_tune
  * Since Version: 2.3
  * Value Range: bool, default=false

@@ -175,7 +175,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
-        processes = dist_op.dist_attr.process_mesh.processes
+        processes = dist_op.dist_attr.process_mesh.process_ids
         # embedding need start_index
         cost_mapping = build_comp_costs_from_descs(
             EmbeddingOpCost, ctx, processes, desc_mapping, cluster
@@ -231,7 +231,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         )
 
         process_mesh = dist_attr.process_mesh
-        processes = process_mesh.processes
+        processes = process_mesh.process_ids
         comm_op_cost_list = build_comm_costs_from_descs(
             IdentityOpCost, ctx, processes, c_identity_desc_mapping, cluster
         )
@@ -250,7 +250,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         var_dim_mapping = dist_attr.get_input_dims_mapping(
             backward_op.input("Ids")[0]
         )
-        mesh_shape = process_mesh.topology
+        mesh_shape = process_mesh.shape
         batch_size_axis = var_dim_mapping[0]
         if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
             parallel_axis = batch_size_axis
@@ -390,8 +390,8 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         ), "row_parallel_embedding's row should be divided by a specific mesh axis, but got [{}]".format(
             embedding_row_dim_mapping
         )
-        process_mesh_shape = op_dist_attr.process_mesh.topology
-        process_mesh_group = op_dist_attr.process_mesh.processes
+        process_mesh_shape = op_dist_attr.process_mesh.shape
+        process_mesh_group = op_dist_attr.process_mesh.process_ids
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
         if rank_id not in process_mesh_group:
@@ -539,13 +539,13 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             dim_mapping = param_dist_attr.dims_mapping
 
             # NOTE all not splited axis should be presented in mesh
-            for axis, size in enumerate(process_mesh.topology):
+            for axis, size in enumerate(process_mesh.shape):
                 if size <= 1 or axis in dim_mapping:
                     pass
                 else:
                     group_ranks = _get_comm_group(
-                        process_mesh.processes,
-                        process_mesh.topology,
+                        process_mesh.process_ids,
+                        process_mesh.shape,
                         axis,
                         rank_id,
                     )
@@ -579,7 +579,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         )
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
-        if rank_id not in dist_attr.process_mesh.processes:
+        if rank_id not in dist_attr.process_mesh.process_ids:
             rank_id = _get_corresponding_rank(
                 ctx, dist_attr.process_mesh, rank_id
             )
@@ -623,8 +623,8 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         ), "row_parallel_embedding's row should be divided by a specific mesh axis, but got [{}]".format(
             embedding_row_dim_mapping
         )
-        process_mesh_shape = dist_attr.process_mesh.topology
-        process_mesh_group = dist_attr.process_mesh.processes
+        process_mesh_shape = dist_attr.process_mesh.shape
+        process_mesh_group = dist_attr.process_mesh.process_ids
 
         # A generalized method to caculate embedding offset using cartisian product
         relative_idx = _get_idx_in_axis(
