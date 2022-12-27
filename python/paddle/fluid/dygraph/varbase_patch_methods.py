@@ -200,7 +200,7 @@ def monkey_patch_varbase():
                 self.name, self.shape, value.shape
             )
 
-            if isinstance(value, base_tensor):
+            if isinstance(value, Tensor):
                 dtype = value.dtype
             else:
                 dtype = convert_np_dtype_to_dtype_(value.dtype)
