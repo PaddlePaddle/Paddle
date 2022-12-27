@@ -251,7 +251,7 @@ class PartialProgramLayer:
 
     @switch_to_static_graph
     def _create_forward_backward_train_program(self):
-        whole_program = self.whole_program
+        whole_program = self._train_program
         forward_end_op_index = self._infer_program.desc.block(0).op_size()
         return self._get_forward_backward_program_form(
             whole_program, forward_end_op_index
@@ -259,7 +259,7 @@ class PartialProgramLayer:
 
     @switch_to_static_graph
     def _create_forward_backward_train_amp_program(self):
-        whole_program = self.whole_program
+        whole_program = self._train_amp_program
         forward_end_op_index = self._infer_amp_program.desc.block(0).op_size()
         return self._get_forward_backward_program_form(
             whole_program, forward_end_op_index
@@ -267,7 +267,7 @@ class PartialProgramLayer:
 
     @switch_to_static_graph
     def _create_forward_backward_train_pure_fp16_program(self):
-        whole_program = self.whole_program
+        whole_program = self._train_pure_fp16_program
         forward_end_op_index = self._infer_pure_fp16_program.desc.block(
             0
         ).op_size()
