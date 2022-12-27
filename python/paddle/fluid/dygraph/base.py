@@ -131,6 +131,9 @@ def param_guard(parameters):
         yield
 
 
+PARAMS_CTX = set()
+
+
 def _convert_into_variable(tensor):
     """
     Convert Varbase into Variable.
@@ -145,6 +148,7 @@ def _convert_into_variable(tensor):
             tensor, (framework.EagerParamBase, framework.ParamBase)
         ):
             new_var = tensor._to_static_var(to_parameter=True)
+            PARAMS_CTX.add(tensor)
         else:
             # Note(Aurelius84): Convert VarBase in self._buffers into Variable with
             # same attributes and set persistable=True to allow saving this var.
@@ -159,6 +163,7 @@ def _convert_into_variable(tensor):
             new_var = tensor._to_static_var(
                 to_parameter=False, persistable=is_persistable
             )
+            PARAMS_CTX.add(tensor)
         return new_var
     else:
         return tensor

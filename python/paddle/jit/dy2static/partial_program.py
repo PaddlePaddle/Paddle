@@ -30,7 +30,7 @@ from paddle.fluid.dygraph.amp.auto_cast import (
     _in_amp_guard,
     _in_pure_fp16_guard,
 )
-from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle.fluid.dygraph.base import PARAMS_CTX, switch_to_static_graph
 from paddle.fluid.executor import (
     _is_dy2st_enable_standalone_executor,
     _is_enable_standalone_executor,
@@ -158,6 +158,8 @@ class PartialProgramLayer:
         self._inputs = NestSequence(inputs)
         self._outputs = NestSequence(outputs, need_check=True)
         self._params = parameters if parameters is not None else []
+        if not self._params:
+            self._params.extend(PARAMS_CTX)
 
         self._build_strategy = kwargs.get('build_strategy', BuildStrategy())
         assert isinstance(self._build_strategy, BuildStrategy)
