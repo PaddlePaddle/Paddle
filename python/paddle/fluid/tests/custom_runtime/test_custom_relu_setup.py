@@ -121,16 +121,22 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         # compile so and set to current path
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         self.temp_dir = tempfile.TemporaryDirectory()
+        print("self.temp_dir", self.temp_dir.name)
         cmd = 'cd {} \
             && git clone {} \
             && cd PaddleCustomDevice \
             && git fetch origin \
             && git checkout {} -b dev \
             && cd backends/custom_cpu \
-            && mkdir build && cd build && cmake .. && make -j8'.format(
-            self.temp_dir.name, os.getenv('PLUGIN_URL'), os.getenv('PLUGIN_TAG')
+            && mkdir build && cd build && cmake .. && make -j8 && cd {} && {} custom_relu_setup.py install'.format(
+            self.temp_dir.name,
+            os.getenv('PLUGIN_URL'),
+            os.getenv('PLUGIN_TAG'),
+            cur_dir,
+            sys.executable,
         )
         run_cmd(cmd)
+        print("Custom device installed & custom_relu_setup installed")
 
         # set environment for loading and registering compiled custom kernels
         # only valid in current process
@@ -141,16 +147,8 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             ),
         )
 
-        # compile, install the custom op egg into site-packages under background
-        # Currently custom_device op does not support Windows
-        if os.name == "nt":
-            return
-        cmd = "cd {} && {} custom_relu_setup.py install".format(
-            cur_dir, sys.executable
-        )
-        run_cmd(cmd)
-
         site_dir = site.getsitepackages()[0]
+        print("site_dir", site_dir)
         custom_egg_path = [
             x for x in os.listdir(site_dir) if "custom_relu_module_setup" in x
         ]
