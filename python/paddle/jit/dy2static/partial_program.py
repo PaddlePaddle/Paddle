@@ -158,7 +158,7 @@ class PartialProgramLayer:
         self._inputs = NestSequence(inputs)
         self._outputs = NestSequence(outputs, need_check=True)
         self._params = parameters if parameters is not None else []
-        if not self._params:
+        if isinstance(self._params, (list, tuple)) and not self._params:
             self._params.extend(PARAMS_CTX)
 
         self._build_strategy = kwargs.get('build_strategy', BuildStrategy())
