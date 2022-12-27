@@ -24,8 +24,6 @@ REPO_TEMPLATE = {
     "Paddle": r'''### PR types(.*[^\s].*)### PR changes(.*[^\s].*)### Describe(.*[^\s].*)'''
 }
 
-CHECK_NAME = "CheckPRTemplate"
-
 
 def re_rule(body, CHECK_TEMPLATE):
     PR_RE = re.compile(CHECK_TEMPLATE, re.DOTALL)
