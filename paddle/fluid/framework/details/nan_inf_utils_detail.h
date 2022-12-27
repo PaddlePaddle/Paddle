@@ -108,7 +108,11 @@ HOSTDEVICE void PrintForDifferentLevelFile(const char* debug_info,
                                            int check_nan_inf_level,
                                            const std::string& log_name) {
   int dev_id = 0;
+#ifdef PADDLE_WITH_HIP
+  hipGetDevice(&dev_id);
+#elif PADDLE_WITH_CUDA
   cudaGetDevice(&dev_id);
+#endif
   MkDir("log_dir_nan");
   std::string file_name = "worker_" + log_name + "." + std::to_string(dev_id);
   std::string path = "log_dir_nan/" + file_name;
