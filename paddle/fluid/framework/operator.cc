@@ -1610,11 +1610,11 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 #endif
 
-  auto exe_ctx = ExecutionContext(*this, scope, *dev_ctx, *runtime_ctx);
   // using cache
   if (kernel_type_.get()) {
     dev_ctx = pool.Get(kernel_type_->place_);
   }
+  auto exe_ctx = ExecutionContext(*this, scope, *dev_ctx, *runtime_ctx);
 
 // TODO(Liu-xiandong): Now we are using too much if-else and hard code in XPU
 // device, it's ugly, and we will refactor in the future.
@@ -1850,7 +1850,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           PrepareData(scope,
                       framework::TransOpKernelTypeToPhiKernelKey(*kernel_type_),
                       &transfered_inplace_vars,
-                      runtime_ctx);
+                      runtime_ctx,
+                      dev_ctx->GetPlace());
     }
   }
   // exec scope is the scope that kernel actually executed on.
@@ -1973,6 +1974,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
   phi::KernelKey phi_kernel_key = this->GetExpectedKernelType(ctx);
   auto expected_kernel_key =
       framework::TransPhiKernelKeyToOpKernelType(phi_kernel_key);
+  expected_kernel_key.place_ = ctx.GetPlace();
 
 // NOTE(jiahongyu): PADDLE_WITH_MKLDNN codes are moved outside function
 // GetExpectedKernelType, so that if MKLDNN can be used, the library_type_ and
@@ -2347,7 +2349,8 @@ Scope* OperatorWithKernel::PrepareData(
     const Scope& scope,
     const phi::KernelKey& expected_kernel_key,
     std::vector<std::string>* transfered_inplace_vars,
-    RuntimeContext* ctx) const {
+    RuntimeContext* ctx,
+    const phi::Place& place) const {
   Scope* new_scope = nullptr;
 
   const std::unordered_set<std::string>* no_buffer_ins = nullptr;
@@ -2537,6 +2540,12 @@ Scope* OperatorWithKernel::PrepareData(
 
       // Do transfer
       phi::DenseTensor out;
+      VLOG(1) << "DEBUG old static expected_kernel_key place "
+              << phi::TransToPhiPlace(expected_kernel_key.backend()) << " -> "
+              << (new_expected_kernel_key
+                      ? phi::TransToPhiPlace(new_expected_kernel_key->backend())
+                      : place)
+              << " final place";
       TransformData(
           new_expected_kernel_key ? *new_expected_kernel_key
                                   : expected_kernel_key,
@@ -2545,7 +2554,7 @@ Scope* OperatorWithKernel::PrepareData(
           &out,
           new_expected_kernel_key
               ? phi::TransToPhiPlace(new_expected_kernel_key->backend())
-              : phi::TransToPhiPlace(expected_kernel_key.backend()));
+              : place);
       SetTensorToVariable(*var, out, trans_var);
     }
   };

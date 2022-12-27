@@ -637,6 +637,7 @@ void BuildOpFuncList(const platform::Place& place,
             *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context);
         auto expected_kernel_key = framework::TransPhiKernelKeyToOpKernelType(
             op_with_kernel->GetExpectedKernelType(exec_ctx));
+        expected_kernel_key.place_ = exec_ctx.GetPlace();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         if (op_with_kernel->CanCUDNNBeUsed(exec_ctx,
                                            expected_kernel_key.data_type_)) {

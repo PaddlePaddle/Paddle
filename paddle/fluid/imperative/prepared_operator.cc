@@ -335,8 +335,11 @@ PreparedOp PrepareImpl(
 
       if (expected_kernel_key.backend() != phi::TransToPhiBackend(place)) {
         dev_ctx = pool.Get(phi::TransToPhiPlace(expected_kernel_key.backend()));
+        VLOG(1) << "DEBUG imperative changed place " << place << " -> "
+                << dev_ctx->GetPlace();
       }
-
+      VLOG(1) << "DEBUG imperative place before PreparedOp "
+              << dev_ctx->GetPlace();
       return PreparedOp(op,
                         empty_ctx,
                         expected_kernel_key,
@@ -394,6 +397,9 @@ PreparedOp PrepareImpl(
                 << " | kernel key: " << phi_cpu_kernel_key
                 << " | kernel: " << phi_cpu_kernel;
         auto* cpu_ctx = pool.Get(paddle::platform::CPUPlace());
+        VLOG(1)
+            << "DEBUG imperative place before PreparedOp fallback cpu place "
+            << cpu_ctx->GetPlace();
         return PreparedOp(op,
                           empty_ctx,
                           phi_cpu_kernel_key,
@@ -503,7 +509,12 @@ PreparedOp PrepareImpl(
 
   if (!platform::places_are_same_class(fluid_kernel_type.place_, place)) {
     dev_ctx = pool.Get(fluid_kernel_type.place_);
+    VLOG(1) << "DEBUG imperative changed place fluid" << place << " -> "
+            << dev_ctx->GetPlace();
   }
+
+  VLOG(1) << "DEBUG imperative place before fluid PreparedOp "
+          << dev_ctx->GetPlace();
 
   return PreparedOp(
       op,

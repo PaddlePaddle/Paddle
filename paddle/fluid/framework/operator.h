@@ -683,6 +683,8 @@ class OperatorWithKernel : public OperatorBase {
 
   platform::Place GetExecutionPlace(
       const platform::Place& platform) const override {
+    VLOG(1) << "DEBUG OpWithKernel place diff? input " << platform << " output "
+            << kernel_type_->place_;
     return kernel_type_->place_;
   }
 
@@ -743,7 +745,8 @@ class OperatorWithKernel : public OperatorBase {
   Scope* PrepareData(const Scope& scope,
                      const phi::KernelKey& expected_kernel_key,
                      std::vector<std::string>* transfered_inplace_vars,
-                     RuntimeContext* ctx) const;
+                     RuntimeContext* ctx,
+                     const phi::Place& place) const;
 
   void TransferInplaceVarsBack(const Scope& scope,
                                const std::vector<std::string>& inplace_vars,
