@@ -72,6 +72,10 @@ class MatmulAlgoCache {
     HashMatrixLayoutDesc_(c_desc, &seed, hash_fn);
 
     cublasLtMatmulAlgo_t ret;
+    // FIXME: this code block:
+    // std::lock_guard will call cache_mutex_.unlock() when it is destructed.
+    // The purpose of the braces is to precisely control when it is destructed.
+    // but why does it affect the Nsys of the cublasLtMatmul call.
     {
       std::lock_guard<std::mutex> lock(cache_mutex_);
       auto it = map_.find(seed);
@@ -79,7 +83,6 @@ class MatmulAlgoCache {
         return &(it->second);
       }
     }
-
     cublasLtMatmulPreference_t preference;
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cublasLtMatmulPreferenceCreate(&preference));
@@ -105,10 +108,9 @@ class MatmulAlgoCache {
                                                      heuristic_results.data(),
                                                      &returned_results));
 
-    PADDLE_ENFORCE_GT(
-        returned_results,
-        0,
-        phi::errors::Unavailable("No GEMM epilogue algorithm support!"));
+    PADDLE_ENFORCE_GT(returned_results,
+                      0,
+                      phi::errors::Unavailable("No GEMM algorithm avaliable."));
 
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cublasLtMatmulPreferenceDestroy(preference));
@@ -116,7 +118,7 @@ class MatmulAlgoCache {
     int best_algo_idx = -1;
     float best_algo_time = 0;
 
-    // Run 100 times for warmup
+    // For warmup
     int warmup_algo_idx = 0;
     for (int t = 0; t < 100; t++) {
       cublasStatus_t status =
@@ -141,7 +143,7 @@ class MatmulAlgoCache {
         warmup_algo_idx += 1;
         if (warmup_algo_idx == requested_algo_count_) {
           PADDLE_THROW(
-              phi::errors::Unavailable("No GEMM epilogue algorithm support!"));
+              phi::errors::Unavailable("No GEMM algorithm avaliable."));
         }
       }
     }
@@ -192,12 +194,13 @@ class MatmulAlgoCache {
       }
     }
 
+    // std::cout <<  "Found Best Algo : " << best_algo_idx << std::endl;
+    // std::cout <<  "best_algo_time : " << best_algo_time << std::endl;
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(start_event));
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(stop_event));
 
     if (best_algo_idx == -1) {
-      PADDLE_THROW(
-          phi::errors::Unavailable("No GEMM epilogue algorithm support!"));
+      PADDLE_THROW(phi::errors::Unavailable("No GEMM algorithm avaliable."));
     }
 
     ret = heuristic_results[best_algo_idx].algo;
@@ -522,10 +525,6 @@ struct CublasLtBatchedGEMM<T, phi::GPUContext> {
       scale_type = CUDA_R_64F;
       compute_type = CUBLAS_COMPUTE_64F;
     }
-
-    // int64_t stride_x = M * K;
-    // int64_t stride_y = K * N;
-    // int64_t stride_out = M * N;
 
     // Create operation desciriptor; see cublasLtMatmulDescAttributes_t for
     // details about defaults; This OP we just need to set the transforms for A
