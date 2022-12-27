@@ -525,6 +525,7 @@ bool OperatorDistAttr::verify_input_dist_attr(
 
 bool OperatorDistAttr::verify_output_dist_attr(
     const std::string& name, const TensorDistAttr& dist_attr) const {
+  return true;
   VLOG(4) << "[OperatorDistAttr verify_output_dist_attr] " << name << " "
           << dist_attr.to_string();
   if (!dist_attr.verify()) {
