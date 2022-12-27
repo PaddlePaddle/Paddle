@@ -307,3 +307,21 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
     paddle.distributed.all_reduce(tmp, sync_op=True)
     paddle.distributed.wait(tmp)
     return gp
+
+
+def is_available():
+    """
+    Check whether the distributed package is available.
+
+    Returns:
+        Returns True if the distributed package is available, otherwise False.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            print(paddle.distributed.is_available())
+
+    """
+    return core.is_compiled_with_dist()

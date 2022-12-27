@@ -17,23 +17,23 @@ import unittest
 import test_collective_api_base as test_base
 
 
-class TestCollectiveAllgatherObjectAPI(test_base.TestDistBase):
+class TestCollectiveBroadcastObjectListAPI(test_base.TestDistBase):
     def _setup_config(self):
         pass
 
-    def test_allgather_nccl(self):
+    def test_broadcast_nccl(self):
         self.check_with_place(
-            "collective_allgather_object_api_dygraph.py",
-            "allgather_object",
+            "collective_broadcast_object_list_api_dygraph.py",
+            "broadcast_object_list",
             "nccl",
             static_mode="0",
             dtype="pyobject",
         )
 
-    def test_allgather_gloo_dygraph(self):
+    def test_broadcast_gloo_dygraph(self):
         self.check_with_place(
-            "collective_allgather_object_api_dygraph.py",
-            "allgather_object",
+            "collective_broadcast_object_list_api_dygraph.py",
+            "broadcast_object_list",
             "gloo",
             "3",
             static_mode="0",

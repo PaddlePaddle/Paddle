@@ -124,7 +124,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
-        processes = dist_op.dist_attr.process_mesh.processes
+        processes = dist_op.dist_attr.process_mesh.process_ids
         op_type = dist_op.serial_op.type
         cost_mapping = build_comp_costs_from_descs(
             _g_op_cost_factory[op_type], ctx, processes, desc_mapping, cluster
@@ -141,7 +141,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         )
         dist_attr = dist_op.dist_attr
         process_mesh = dist_attr.process_mesh
-        processes = process_mesh.processes
+        processes = process_mesh.process_ids
         backward_op = dist_op.serial_op
         op_type = backward_op.type
         cost_mapping = build_comp_costs_from_descs(
@@ -157,7 +157,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                     varname, main_block
                 ):
                     var_dim_mapping = dist_attr.get_input_dims_mapping(varname)
-                    mesh_shape = process_mesh.topology
+                    mesh_shape = process_mesh.shape
                     batch_size_axis = var_dim_mapping[0]
                     if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
                         need_gradient_allreduce = True
@@ -172,7 +172,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                         var_dim_mapping = dist_attr.get_input_dims_mapping(
                             varname
                         )
-                        mesh_shape = process_mesh.topology
+                        mesh_shape = process_mesh.shape
                         batch_size_axis = var_dim_mapping[0]
                         parallel_axis = batch_size_axis
                         attrs = {"use_calc_stream": True}
@@ -501,19 +501,19 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                 dims_mapping = param_dist_attr.dims_mapping
 
                 # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
-                if rank_id not in process_mesh.processes:
+                if rank_id not in process_mesh.process_ids:
                     rank_id = _get_corresponding_rank(
                         ctx, process_mesh, rank_id
                     )
 
                 # NOTE all not splited axis should be presented in mesh
-                for axis, size in enumerate(process_mesh.topology):
+                for axis, size in enumerate(process_mesh.shape):
                     if size <= 1 or axis in dims_mapping:
                         pass
                     else:
                         group_ranks = _get_comm_group(
-                            process_mesh.processes,
-                            process_mesh.topology,
+                            process_mesh.process_ids,
+                            process_mesh.shape,
                             axis,
                             rank_id,
                         )
