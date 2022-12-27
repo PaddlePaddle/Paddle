@@ -1365,7 +1365,9 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 #if defined(_WIN32)
   argument_->PartiallyRelease();
 #else
-  if (config_.mkldnn_enabled() || config_.tensorrt_engine_enabled()) {
+  if (config_.mkldnn_enabled() ||
+      (config_.tensorrt_engine_enabled() &&
+       config_.tensorrt_precision_mode_ == AnalysisConfig::Precision::kInt8)) {
     argument_->PartiallyRelease();
   } else {
     argument_.reset(nullptr);
@@ -2334,6 +2336,7 @@ USE_TRT_CONVERTER(anchor_generator);
 USE_TRT_CONVERTER(yolo_box);
 USE_TRT_CONVERTER(yolo_box_head);
 USE_TRT_CONVERTER(arg_max);
+USE_TRT_CONVERTER(arg_min);
 USE_TRT_CONVERTER(roi_align);
 USE_TRT_CONVERTER(affine_channel);
 USE_TRT_CONVERTER(multiclass_nms);

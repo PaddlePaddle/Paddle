@@ -20,7 +20,6 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.op import Operator
 
 
@@ -186,10 +185,6 @@ class TestAdamOpMultipleSteps(OpTest):
             self.inputs['Grad'] = np.random.uniform(-1, 1, (102, 105)).astype(
                 "float32"
             )
-
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_check_output()
 
 
 def adam_step(inputs, attributes):
@@ -613,7 +608,7 @@ class TestAdamOpV2(unittest.TestCase):
         with fluid.program_guard(train_prog, startup):
             with fluid.unique_name.guard():
                 data = fluid.data(name="data", shape=shape)
-                conv = fluid.layers.conv2d(data, 8, 3)
+                conv = paddle.static.nn.conv2d(data, 8, 3)
                 loss = paddle.mean(conv)
 
                 beta1 = paddle.static.create_global_var(
@@ -749,14 +744,6 @@ class TestAdamOpV2(unittest.TestCase):
             out.backward()
             adam.step()
         paddle.enable_static()
-
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_adam_op_dygraph()
-            self.test_adam_op_with_state_dict()
-            self.test_adam_with_grad_clip()
-            self.test_adam_op_with_set_lr()
-            self.test_adam_op_with_sparse_input_and_weight_decay()
 
 
 class TestAdamOptimizer(unittest.TestCase):
@@ -1280,10 +1267,6 @@ class TestMultiTensorAdam(unittest.TestCase):
                 self._check_with_place_amp(place, use_amp)
                 self._check_with_param_arrt(place, use_amp)
                 self._check_with_param_group(place, use_amp)
-
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_main()
 
 
 if __name__ == "__main__":

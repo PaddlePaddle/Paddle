@@ -61,7 +61,7 @@ class DistributedFillConstantBatchSizeLikeImpl0(DistributedOperatorImpl):
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
-        processes = dist_op.dist_attr.process_mesh.processes
+        processes = dist_op.dist_attr.process_mesh.process_ids
         op_type = dist_op.serial_op.type
         cost_mapping = build_comp_costs_from_descs(
             FillConstantBatchSizeLikeOpCost,

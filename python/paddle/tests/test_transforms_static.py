@@ -30,7 +30,7 @@ class TestTransformUnitTestBase(unittest.TestCase):
         self.set_trans_api()
 
     def get_shape(self):
-        return (64, 64, 3)
+        return (3, 64, 64)
 
     def set_trans_api(self):
         self.api = transforms.Resize(size=16)
@@ -140,6 +140,22 @@ class TestRandomCrop_same(TestTransformUnitTestBase):
     def set_trans_api(self):
         self.crop_size = (224, 224)
         self.api = transforms.RandomCrop(self.crop_size)
+
+
+class TestRandomRotation(TestTransformUnitTestBase):
+    def set_trans_api(self):
+        degree = np.random.uniform(-180, 180)
+        eps = 10e-5
+        degree_tuple = (degree - eps, degree + eps)
+        self.api = transforms.RandomRotation(degree_tuple)
+
+
+class TestRandomRotation_expand_True(TestTransformUnitTestBase):
+    def set_trans_api(self):
+        degree = np.random.uniform(-180, 180)
+        eps = 10e-5
+        degree_tuple = (degree - eps, degree + eps)
+        self.api = transforms.RandomRotation(degree_tuple, expand=True, fill=3)
 
 
 if __name__ == "__main__":

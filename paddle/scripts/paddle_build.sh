@@ -2871,8 +2871,11 @@ function parallel_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     pip install hypothesis
-    if [ -d "${PADDLE_ROOT}/build/python/dist/" ]; then
+    if ls ${PADDLE_ROOT}/build/python/dist/*whl >/dev/null 2>&1; then
         pip install ${PADDLE_ROOT}/build/python/dist/*whl
+    fi
+    if ls ${PADDLE_ROOT}/dist/*whl >/dev/null 2>&1; then
+        pip install ${PADDLE_ROOT}/dist/*whl
     fi
     cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/testsuite.py ${PADDLE_ROOT}/build/python
     cp -r ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/white_list ${PADDLE_ROOT}/build/python
@@ -3465,6 +3468,7 @@ function check_coverage_build() {
     set -x
 }
 function run_setup(){
+    
     rm -rf ${PADDLE_ROOT}/build
     # Build script will not fail if *.deb does not exist
     rm *.deb 2>/dev/null || true
@@ -3473,7 +3477,6 @@ function run_setup(){
     # Delete previous built paddle cache
     rm -rf ${PADDLE_ROOT}/build/python/paddle 2>/dev/null || true
     startTime_s=`date +%s`
-
     SYSTEM=`uname -s`
     if [ "$SYSTEM" == "Darwin" ]; then
         echo "Using python abi: $1"
@@ -3667,7 +3670,7 @@ function main() {
     init
     case $CMD in
       build_only)
-        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        run_setup ${PYTHON_ABI:-""} bdist_wheel
         ;;
       build_pr_dev)
         build_pr_and_develop
