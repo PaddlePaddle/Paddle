@@ -29,6 +29,8 @@ for site_packages_path in getsitepackages():
 # Test for extra compile args
 extra_compile_args = {"cc": ["-w", "-g"]}
 
+print("DEBUG setup begin")
+
 setup(
     name="custom_relu_module_setup",
     ext_modules=CppExtension(
@@ -38,3 +40,5 @@ setup(
         verbose=True,
     ),
 )
+
+print("DEBUG setup end")

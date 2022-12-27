@@ -47,6 +47,7 @@ def custom_relu_dynamic(func, device, dtype, np_x, use_func=True):
 
 def custom_relu_static(func, device, dtype, np_x, use_func=True):
     paddle.enable_static()
+    print("DEBUG device ", device)
     paddle.set_device(device)
 
     with static.scope_guard(static.Scope()):
@@ -128,7 +129,9 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             && git fetch origin \
             && git checkout {} -b dev \
             && cd backends/custom_cpu \
-            && mkdir build && cd build && cmake .. && make -j8 && cd {} && {} custom_relu_setup.py install'.format(
+            && mkdir build && cd build && cmake .. && make -j8 \
+            && pip install dist/paddle_custom_cpu*.whl \
+            && cd {} && {} custom_relu_setup.py install'.format(
             self.temp_dir.name,
             os.getenv('PLUGIN_URL'),
             os.getenv('PLUGIN_TAG'),
@@ -137,6 +140,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         )
         run_cmd(cmd)
         print("Custom device installed & custom_relu_setup installed")
+        print(paddle.device.get_all_custom_device_type())
 
         # set environment for loading and registering compiled custom kernels
         # only valid in current process
@@ -169,6 +173,12 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         SEED = 2021
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
+
+    def tearDown(self):
+        run_cmd("pip uninstall paddle_custom_cpu")
+        print("DEBUG uninstall paddle_custom_cpu finish")
+        self.temp_dir.cleanup()
+        del os.environ['CUSTOM_DEVICE_ROOT']
 
     def test_custom_device(self):
         self._test_static()
