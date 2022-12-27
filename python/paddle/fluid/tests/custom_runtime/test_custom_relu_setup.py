@@ -172,7 +172,14 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
-    def test_static(self):
+    def test_custom_device(self):
+        self._test_static()
+        self._test_static_pe()
+        self._test_dynamic()
+        self._test_double_grad_dynamic()
+        self._test_with_dataloader()
+
+    def _test_static(self):
         for device in self.devices:
             for dtype in self.dtypes:
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
@@ -188,7 +195,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                     ),
                 )
 
-    def test_static_pe(self):
+    def _test_static_pe(self):
         for device in self.devices:
             for dtype in self.dtypes:
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
@@ -229,7 +236,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                     ),
                 )
 
-    def test_dynamic(self):
+    def _test_dynamic(self):
         with _test_eager_guard():
             self.func_dynamic()
         self.func_dynamic()
@@ -259,12 +266,12 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                     ),
                 )
 
-    def test_double_grad_dynamic(self):
+    def _test_double_grad_dynamic(self):
         with _test_eager_guard():
             self.func_double_grad_dynamic()
         self.func_double_grad_dynamic()
 
-    def test_with_dataloader(self):
+    def _test_with_dataloader(self):
         for device in self.devices:
             paddle.set_device(device)
             # data loader
