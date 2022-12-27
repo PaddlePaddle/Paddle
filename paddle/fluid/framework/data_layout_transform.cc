@@ -53,7 +53,8 @@ void CastDataLayout::apply() {
 void TransDataLayout(const OpKernelType& kernel_type_for_var,
                      const OpKernelType& expected_kernel_type,
                      const phi::DenseTensor& in,
-                     phi::DenseTensor* out) {
+                     phi::DenseTensor* out,
+                     const phi::Place& place) {
   PADDLE_ENFORCE(
       platform::places_are_same_class(kernel_type_for_var.place_,
                                       expected_kernel_type.place_),
@@ -80,11 +81,10 @@ void TransDataLayout(const OpKernelType& kernel_type_for_var,
   }
 
   out->Resize(phi::make_ddim(dst_dim));
-  out->mutable_data(expected_kernel_type.place_, in.dtype());
+  out->mutable_data(place, in.dtype());
 
-  framework::VisitDataType(
-      framework::TransToProtoVarType(in.dtype()),
-      CastDataLayout(pool.Get(expected_kernel_type.place_), axis, in, out));
+  framework::VisitDataType(framework::TransToProtoVarType(in.dtype()),
+                           CastDataLayout(pool.Get(place), axis, in, out));
 
   out->set_layout(expected_kernel_type.data_layout_);
 }

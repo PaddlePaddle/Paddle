@@ -34,12 +34,12 @@ TEST(DataTransform, DataLayoutFunction) {
                                       phi::DataLayout::kNCHW,
                                       paddle::framework::LibraryType::kPlain);
 
-  paddle::framework::TransDataLayout(kernel_nhwc, kernel_ncwh, in, &out);
+  paddle::framework::TransDataLayout(kernel_nhwc, kernel_ncwh, in, &out, place);
 
   EXPECT_TRUE(out.layout() == phi::DataLayout::kNCHW);
   EXPECT_TRUE(out.dims() == phi::make_ddim({2, 2, 3, 1}));
 
-  TransDataLayout(kernel_ncwh, kernel_nhwc, in, &out);
+  TransDataLayout(kernel_ncwh, kernel_nhwc, in, &out, place);
 
   EXPECT_TRUE(in.layout() == phi::DataLayout::kNHWC);
   EXPECT_TRUE(in.dims() == phi::make_ddim({2, 3, 1, 2}));

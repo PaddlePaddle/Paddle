@@ -352,7 +352,8 @@ PreparedOp PrepareImpl(
         LOG(WARNING) << "DEBUG change place target "
                         "expected_kernel_key.place_ "
                      << expected_kernel_key.place_ << " original " << place;
-        dev_ctx = pool.Get(expected_kernel_key.place_);
+        dev_ctx = pool.Get(phi::TransToPhiPlace(
+            phi::TransToPhiBackend(expected_kernel_key.place_)));
       }
 
       return PreparedOp(op,
@@ -526,7 +527,8 @@ PreparedOp PrepareImpl(
                  << expected_kernel_key.place_ << " original " << place;
   }
   if (!platform::places_are_same_class(expected_kernel_key.place_, place)) {
-    dev_ctx = pool.Get(expected_kernel_key.place_);
+    dev_ctx = pool.Get(phi::TransToPhiPlace(
+        phi::TransToPhiBackend(expected_kernel_key.place_)));
   }
 
   return PreparedOp(op,

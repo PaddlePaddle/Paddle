@@ -96,11 +96,12 @@ void TransformData(const OpKernelType &expected_kernel_type,
       }
     } else {
       // Case3 - transfrom between Non-ONEDNN OPKernels
-      TransDataLayout(kernel_type_for_var, expected_kernel_type, in, &out);
+      TransDataLayout(
+          kernel_type_for_var, expected_kernel_type, in, &out, place);
     }
 #else
     // Case3 - transfrom between Non-ONEDNN OPKernels
-    TransDataLayout(kernel_type_for_var, expected_kernel_type, in, &out);
+    TransDataLayout(kernel_type_for_var, expected_kernel_type, in, &out, place);
 #endif
     transformed = true;
     PassTensorData(&out, &in);

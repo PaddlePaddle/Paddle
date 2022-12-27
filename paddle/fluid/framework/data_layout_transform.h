@@ -57,7 +57,8 @@ std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to);
 void TransDataLayout(const OpKernelType& kernel_type_for_var,
                      const OpKernelType& expected_kernel_type,
                      const phi::DenseTensor& in,
-                     phi::DenseTensor* out);
+                     phi::DenseTensor* out,
+                     const phi::Place& place);
 
 }  // namespace framework
 }  // namespace paddle
