@@ -245,6 +245,10 @@ ReshapeTransposeMatmulMkldnnFusePass::ReshapeTransposeMatmulMkldnnFusePass() {
       .End()
       .AddAttr("trans_y")
       .IsType<bool>()
+      .End()
+      .AddAttr("fuse_activation")
+      .IsType<std::string>()
+      .IsOptional()
       .End();
 }
 

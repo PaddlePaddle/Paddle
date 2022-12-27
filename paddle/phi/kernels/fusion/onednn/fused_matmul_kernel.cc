@@ -448,6 +448,7 @@ void FusedMatmulKernel(const Context &dev_ctx,
                        const DenseTensor &y,
                        bool transpose_x,
                        bool transpose_y,
+                       const std::string &fuse_activation,
                        DenseTensor *out) {
   if (dev_ctx.HasDnnAttr("head_number")) {
     const auto head_number =
@@ -469,12 +470,8 @@ void FusedMatmulKernel(const Context &dev_ctx,
           : false;
 
   bool fuse_relu = false;
-  if (dev_ctx.HasDnnAttr("fuse_activation")) {
-    auto act_type =
-        PADDLE_GET_CONST(std::string, dev_ctx.GetDnnAttr("fuse_activation"));
-    if (act_type == "relu" || act_type == "relu6") {
-      fuse_relu = true;
-    }
+  if (fuse_activation == "relu" || fuse_activation == "relu6") {
+    fuse_relu = true;
   }
 
   auto x_dims = vectorize(GetDimsForInput(dev_ctx, x.dims(), "X"));

@@ -175,6 +175,10 @@ MatmulActivationMkldnnFusePass::MatmulActivationMkldnnFusePass() {
       .End()
       .AddAttr("trans_y")
       .IsType<bool>()
+      .End()
+      .AddAttr("fuse_activation")
+      .IsType<std::string>()
+      .IsOptional()
       .End();
 
   AddOpCompat(OpCompat("abs"))
