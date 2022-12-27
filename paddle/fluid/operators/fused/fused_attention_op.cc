@@ -525,7 +525,8 @@ class FusedAttentionGradOp : public framework::OperatorWithKernel {
                         ctx->GetInputDim("OutLinearW"));
     }
     if (ctx->HasOutput(framework::GradVarName("QKVW"))) {
-      ctx->SetOutputDim(framework::GradVarName("QKVW"), ctx->GetInputDim("QKVW"));
+      ctx->SetOutputDim(framework::GradVarName("QKVW"),
+                        ctx->GetInputDim("QKVW"));
     }
     if (ctx->HasOutput(framework::GradVarName("QKVBias"))) {
       ctx->SetOutputDim(framework::GradVarName("QKVBias"),
@@ -557,7 +558,7 @@ class FusedAttentionGradOp : public framework::OperatorWithKernel {
     }
     if (ctx->HasOutput(framework::GradVarName("QKOut"))) {
       ctx->SetOutputDim(framework::GradVarName("QKOut"),
-                      ctx->GetInputDim("QKOut"));
+                        ctx->GetInputDim("QKOut"));
     }
     if (ctx->HasOutput(framework::GradVarName("SoftmaxOut"))) {
       ctx->SetOutputDim(framework::GradVarName("SoftmaxOut"),
@@ -581,7 +582,6 @@ class FusedAttentionGradOp : public framework::OperatorWithKernel {
                         ctx->GetInputDim("QKVBiasOut"));
     }
     if (ctx->HasOutput(framework::GradVarName("OutLinearOut"))) {
-
       ctx->SetOutputDim(framework::GradVarName("OutLinearOut"),
                         ctx->GetInputDim("OutLinearOut"));
     }

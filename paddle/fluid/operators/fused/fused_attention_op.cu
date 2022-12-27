@@ -373,7 +373,7 @@ template <typename T>
 class FusedAttentionGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    VLOG(1)<<"@@ FusedAttentionGradKernel compute begin";
+    VLOG(1) << "@@ FusedAttentionGradKernel compute begin";
     using U = LayerNormParamType<T>;
     const auto pre_layer_norm = ctx.Attr<bool>("pre_layer_norm");
     const float epsilon = ctx.Attr<float>("epsilon");
@@ -515,20 +515,23 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
     auto *d_ln_2_bias =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("Ln2Bias"));
 
-    auto *d_qkv_weight_data = 
-        (d_qkv_weight == nullptr) ? 
-            nullptr : dev_ctx.template Alloc<T>(
-                d_qkv_weight, d_qkv_weight->numel() * sizeof(T));
+    auto *d_qkv_weight_data =
+        (d_qkv_weight == nullptr)
+            ? nullptr
+            : dev_ctx.template Alloc<T>(d_qkv_weight,
+                                        d_qkv_weight->numel() * sizeof(T));
 
     auto *d_qkv_bias_data =
         (d_qkv_bias == nullptr)
             ? nullptr
             : dev_ctx.template Alloc<T>(d_qkv_bias,
                                         d_qkv_bias->numel() * sizeof(T));
-    auto *d_out_linear_weight_data = 
-        (d_out_linear_weight==nullptr) ? 
-            nullptr : dev_ctx.template Alloc<T>(
-                d_out_linear_weight, d_out_linear_weight->numel() * sizeof(T));
+    auto *d_out_linear_weight_data =
+        (d_out_linear_weight == nullptr)
+            ? nullptr
+            : dev_ctx.template Alloc<T>(
+                  d_out_linear_weight,
+                  d_out_linear_weight->numel() * sizeof(T));
 
     auto *d_out_linear_bias_data =
         (d_out_linear_bias == nullptr)
