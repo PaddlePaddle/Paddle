@@ -108,7 +108,8 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
                                  const std::set<std::string>& skip_gc_vars,
                                  framework::Scope* scope,
                                  bool used_for_jit,
-                                 bool used_for_control_flow_op)
+                                 bool used_for_control_flow_op,
+                                 bool used_for_cinn)
     : place_(place),
       block_(block),
       execution_config_(place, block.OpSize()),
@@ -121,9 +122,9 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
 
   execution_config_.used_for_jit = used_for_jit;
   execution_config_.used_for_control_flow_op = used_for_control_flow_op;
-  execution_config_.create_local_scope = !used_for_jit &&
-                                         FLAGS_new_executor_use_local_scope &&
-                                         !used_for_control_flow_op;
+  execution_config_.create_local_scope =
+      !used_for_jit && FLAGS_new_executor_use_local_scope &&
+      !used_for_control_flow_op && !used_for_cinn;
   execution_config_.skip_gc_vars = skip_gc_vars;
   execution_config_.Log(/*log_level=*/8);
 
@@ -425,8 +426,9 @@ void InterpreterCore::BuildAndCacheInstructionCtx(Instruction* instr_node) {
   }
 
   // set runtime_ctx and infershape_ctx_
-  if (instr_node->OpBase()->Type() == "cinn_launch") {  // OP use scope in
-                                                        // kernel
+  if (instr_node->OpBase()->Type() == "cinn_launch" ||
+      instr_node->OpBase()->Type() == "cinn_instruction_run") {  // OP use scope
+                                                                 // in kernel
     Scope* local_scope = HasLocalScope() ? var_scope_.GetMutableLocalScope()
                                          : var_scope_.GetMutableScope();
     instr_node->ResetContextWithScope(ins_map, outs_map, *local_scope);

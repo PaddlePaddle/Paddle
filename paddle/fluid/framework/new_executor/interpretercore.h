@@ -46,7 +46,8 @@ class InterpreterCore {
                   const std::set<std::string>& skip_gc_vars,
                   Scope* scope,
                   bool used_for_jit = false,
-                  bool used_for_control_flow_op = false);
+                  bool used_for_control_flow_op = false,
+                  bool used_for_cinn = false);
 
   ~InterpreterCore();
 

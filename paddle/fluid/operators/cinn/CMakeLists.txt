@@ -15,6 +15,7 @@ cc_library(
        build_strategy
        device_context
        parallel_executor
+       standalone_executor
        transform_type
        cinn)
 
