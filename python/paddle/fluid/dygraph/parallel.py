@@ -37,49 +37,9 @@ from paddle.fluid.framework import (
     in_dygraph_mode,
 )
 
-__all__ = ["prepare_context", "ParallelEnv", "DataParallel"]
+__all__ = ["ParallelEnv", "DataParallel"]
 
 ParallelStrategy = core.ParallelStrategy
-
-
-@deprecated(since="2.0.0", update_to="paddle.distributed.init_parallel_env")
-def prepare_context(strategy=None):
-    '''
-    :api_attr: imperative
-    '''
-    if strategy is None:
-        strategy = ParallelStrategy()
-        strategy.nranks = Env().nranks
-        strategy.local_rank = Env().local_rank
-        strategy.trainer_endpoints = Env().trainer_endpoints
-        strategy.current_endpoint = Env().current_endpoint
-    if strategy.nranks < 2:
-        return
-    assert (
-        framework._non_static_mode() is True
-    ), "dygraph.prepare_context should be used with dygraph mode."
-    place = framework._current_expected_place()
-    assert (
-        place is not None
-    ), "dygraph.prepare_context should be used in fluid.dygraph.guard(place) guard."
-    if not parallel_helper._is_parallel_ctx_initialized():
-        if isinstance(place, core.CUDAPlace):
-            parallel_helper._set_parallel_ctx(
-                core.NCCLParallelContext(strategy, place)
-            )
-        elif isinstance(place, core.XPUPlace):
-            parallel_helper._set_parallel_ctx(
-                core.BKCLParallelContext(strategy, place)
-            )
-        elif isinstance(place, core.NPUPlace):
-            parallel_helper._set_parallel_ctx(
-                core.HCCLParallelContext(strategy, place)
-            )
-        else:
-            # TODO(Yancey1989): add Gloo Parallel Context to support CPU parallel computation
-            assert "Only support CUDAPlace or XPUPlace or NPUPlace for now."
-        parallel_helper._init_parallel_ctx()
-    return strategy
 
 
 class ParallelEnv:
@@ -723,10 +683,6 @@ class DataParallel(layers.Layer):
         def check_layer_sparse(sublayer):
             if isinstance(sublayer, paddle.nn.layer.common.Embedding):
                 return sublayer._sparse
-            # NOTE(shenliang03):This is for compatibility. If paddle.fluid.dygraph.Embedding
-            # is removed in the future, the check will also be removed here.
-            if isinstance(sublayer, paddle.fluid.dygraph.Embedding):
-                return sublayer._is_sparse
             return False
 
         is_sparse_gradient = [
@@ -875,8 +831,8 @@ class DataParallel(layers.Layer):
 
                 dist.init_parallel_env()
 
-                emb = fluid.dygraph.Embedding([10, 10])
-                emb = fluid.dygraph.DataParallel(emb)
+                emb = paddle.nn.Embedding(10, 10)
+                emb = paddle.fluid.dygraph.DataParallel(emb)
 
                 state_dict = emb.state_dict()
                 paddle.save(state_dict, "paddle_dy.pdparams")
@@ -910,7 +866,7 @@ class DataParallel(layers.Layer):
                 dist.init_parallel_env()
 
                 emb = paddle.nn.Embedding(10, 10)
-                emb = fluid.dygraph.DataParallel(emb)
+                emb = paddle.fluid.dygraph.DataParallel(emb)
 
                 state_dict = emb.state_dict()
                 paddle.save(state_dict, "paddle_dy.pdparams")

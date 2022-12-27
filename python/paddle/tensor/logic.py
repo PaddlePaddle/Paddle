@@ -26,10 +26,9 @@ if _in_eager_mode_:
 else:
     from ..framework import VarBase as Tensor
 
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from paddle.tensor.creation import full
 
-from ..fluid.framework import _in_legacy_dygraph
 from ..framework import LayerHelper, in_dygraph_mode
 
 __all__ = []
@@ -42,53 +41,58 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
             return op(x, y)
         else:
             return op(x)
-    elif _in_legacy_dygraph():
-        op = getattr(_legacy_C_ops, op_name)
-        if binary_op:
-            return op(x, y)
-        else:
-            return op(x)
-    check_variable_and_dtype(
-        x,
-        "x",
-        ["bool", "int8", "int16", "int32", "int64", "float32", "float64"],
-        op_name,
-    )
-    if y is not None:
+    else:
         check_variable_and_dtype(
-            y,
-            "y",
+            x,
+            "x",
             ["bool", "int8", "int16", "int32", "int64", "float32", "float64"],
             op_name,
         )
-    if out is not None:
-        check_type(out, "out", Variable, op_name)
+        if y is not None:
+            check_variable_and_dtype(
+                y,
+                "y",
+                [
+                    "bool",
+                    "int8",
+                    "int16",
+                    "int32",
+                    "int64",
+                    "float32",
+                    "float64",
+                ],
+                op_name,
+            )
+        if out is not None:
+            check_type(out, "out", Variable, op_name)
 
-    helper = LayerHelper(op_name, **locals())
+        helper = LayerHelper(op_name, **locals())
 
-    if binary_op and x.dtype != y.dtype:
-        raise ValueError(
-            "(InvalidArgument) The DataType of %s Op's Variable must be consistent, but received %s and %s."
-            % (op_name, x.dtype, y.dtype)
-        )
+        if binary_op and x.dtype != y.dtype:
+            raise ValueError(
+                "(InvalidArgument) The DataType of %s Op's Variable must be consistent, but received %s and %s."
+                % (op_name, x.dtype, y.dtype)
+            )
 
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        if out is None:
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    if binary_op:
-        helper.append_op(
-            type=op_name, inputs={"X": x, "Y": y}, outputs={"Out": out}
-        )
-    else:
-        helper.append_op(type=op_name, inputs={"X": x}, outputs={"Out": out})
+        if binary_op:
+            helper.append_op(
+                type=op_name, inputs={"X": x, "Y": y}, outputs={"Out": out}
+            )
+        else:
+            helper.append_op(
+                type=op_name, inputs={"X": x}, outputs={"Out": out}
+            )
 
-    return out
+        return out
 
 
 def logical_and(x, y, out=None, name=None):
     r"""
 
-    ``logical_and`` operator computes element-wise logical AND on ``x`` and ``y``, and returns ``out``. ``out`` is N-dim boolean ``Tensor``.
+    Compute element-wise logical AND on ``x`` and ``y``, and return ``out``. ``out`` is N-dim boolean ``Tensor``.
     Each element of ``out`` is calculated by
 
     .. math::
@@ -103,7 +107,7 @@ def logical_and(x, y, out=None, name=None):
     Args:
         x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
         y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
-        out(Tensor): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
+        out(Tensor, optional): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -288,21 +292,19 @@ def is_empty(x, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.is_empty(x)
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.is_empty(x)
+    else:
+        check_variable_and_dtype(
+            x, 'x', ['float32', 'float64', 'int32', 'int64'], 'is_empty'
+        )
+        check_type(name, "name", (str, type(None)), "is_empty")
 
-    check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'is_empty'
-    )
-    check_type(name, "name", (str, type(None)), "is_empty")
-
-    helper = LayerHelper("is_empty", **locals())
-    cond = helper.create_variable_for_type_inference(dtype='bool')
-    cond.stop_gradient = True
-    helper.append_op(
-        type='is_empty', inputs={'X': [x]}, outputs={'Out': [cond]}
-    )
-    return cond
+        helper = LayerHelper("is_empty", **locals())
+        cond = helper.create_variable_for_type_inference(dtype='bool')
+        cond.stop_gradient = True
+        helper.append_op(
+            type='is_empty', inputs={'X': [x]}, outputs={'Out': [cond]}
+        )
+        return cond
 
 
 def equal_all(x, y, name=None):
@@ -336,16 +338,15 @@ def equal_all(x, y, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.equal_all(x, y)
-
-    if paddle.in_dynamic_mode():
-        return _legacy_C_ops.equal_all(x, y)
-
-    helper = LayerHelper("equal_all", **locals())
-    out = helper.create_variable_for_type_inference(dtype='bool')
-    helper.append_op(
-        type='equal_all', inputs={'X': [x], 'Y': [y]}, outputs={'Out': [out]}
-    )
-    return out
+    else:
+        helper = LayerHelper("equal_all", **locals())
+        out = helper.create_variable_for_type_inference(dtype='bool')
+        helper.append_op(
+            type='equal_all',
+            inputs={'X': [x], 'Y': [y]},
+            outputs={'Out': [out]},
+        )
+        return out
 
 
 @templatedoc()
@@ -393,27 +394,24 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
 
     if in_dygraph_mode():
         return _C_ops.allclose(x, y, rtol, atol, equal_nan)
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.allclose(
-            x, y, 'rtol', str(rtol), 'atol', str(atol), 'equal_nan', equal_nan
+    else:
+        check_variable_and_dtype(x, "input", ['float32', 'float64'], 'allclose')
+        check_variable_and_dtype(y, "input", ['float32', 'float64'], 'allclose')
+        check_type(rtol, 'rtol', float, 'allclose')
+        check_type(atol, 'atol', float, 'allclose')
+        check_type(equal_nan, 'equal_nan', bool, 'allclose')
+
+        helper = LayerHelper("allclose", **locals())
+        out = helper.create_variable_for_type_inference(dtype='bool')
+
+        inputs = {'Input': x, 'Other': y}
+        outputs = {'Out': out}
+        attrs = {'rtol': str(rtol), 'atol': str(atol), 'equal_nan': equal_nan}
+        helper.append_op(
+            type='allclose', inputs=inputs, outputs=outputs, attrs=attrs
         )
-    check_variable_and_dtype(x, "input", ['float32', 'float64'], 'allclose')
-    check_variable_and_dtype(y, "input", ['float32', 'float64'], 'allclose')
-    check_type(rtol, 'rtol', float, 'allclose')
-    check_type(atol, 'atol', float, 'allclose')
-    check_type(equal_nan, 'equal_nan', bool, 'allclose')
 
-    helper = LayerHelper("allclose", **locals())
-    out = helper.create_variable_for_type_inference(dtype='bool')
-
-    inputs = {'Input': x, 'Other': y}
-    outputs = {'Out': out}
-    attrs = {'rtol': str(rtol), 'atol': str(atol), 'equal_nan': equal_nan}
-    helper.append_op(
-        type='allclose', inputs=inputs, outputs=outputs, attrs=attrs
-    )
-
-    return out
+        return out
 
 
 @templatedoc()
@@ -457,31 +455,28 @@ def equal(x, y, name=None):
     if in_dygraph_mode():
         return _C_ops.equal(x, y)
     else:
-        if _in_legacy_dygraph():
-            return _legacy_C_ops.equal(x, y)
-        else:
-            check_variable_and_dtype(
-                x,
-                "x",
-                ["bool", "float32", "float64", "int32", "int64"],
-                "equal",
-            )
-            check_variable_and_dtype(
-                y,
-                "y",
-                ["bool", "float32", "float64", "int32", "int64"],
-                "equal",
-            )
-            helper = LayerHelper("equal", **locals())
-            out = helper.create_variable_for_type_inference(dtype='bool')
-            out.stop_gradient = True
+        check_variable_and_dtype(
+            x,
+            "x",
+            ["bool", "float32", "float64", "int32", "int64"],
+            "equal",
+        )
+        check_variable_and_dtype(
+            y,
+            "y",
+            ["bool", "float32", "float64", "int32", "int64"],
+            "equal",
+        )
+        helper = LayerHelper("equal", **locals())
+        out = helper.create_variable_for_type_inference(dtype='bool')
+        out.stop_gradient = True
 
-            helper.append_op(
-                type='equal',
-                inputs={'X': [x], 'Y': [y]},
-                outputs={'Out': [out]},
-            )
-            return out
+        helper.append_op(
+            type='equal',
+            inputs={'X': [x], 'Y': [y]},
+            outputs={'Out': [out]},
+        )
+        return out
 
 
 @templatedoc()
@@ -513,31 +508,28 @@ def greater_equal(x, y, name=None):
     if in_dygraph_mode():
         return _C_ops.greater_equal(x, y)
     else:
-        if _in_legacy_dygraph():
-            return _legacy_C_ops.greater_equal(x, y)
-        else:
-            check_variable_and_dtype(
-                x,
-                "x",
-                ["bool", "float32", "float64", "int32", "int64"],
-                "greater_equal",
-            )
-            check_variable_and_dtype(
-                y,
-                "y",
-                ["bool", "float32", "float64", "int32", "int64"],
-                "greater_equal",
-            )
-            helper = LayerHelper("greater_equal", **locals())
-            out = helper.create_variable_for_type_inference(dtype='bool')
-            out.stop_gradient = True
+        check_variable_and_dtype(
+            x,
+            "x",
+            ["bool", "float32", "float64", "int32", "int64"],
+            "greater_equal",
+        )
+        check_variable_and_dtype(
+            y,
+            "y",
+            ["bool", "float32", "float64", "int32", "int64"],
+            "greater_equal",
+        )
+        helper = LayerHelper("greater_equal", **locals())
+        out = helper.create_variable_for_type_inference(dtype='bool')
+        out.stop_gradient = True
 
-            helper.append_op(
-                type='greater_equal',
-                inputs={'X': [x], 'Y': [y]},
-                outputs={'Out': [out]},
-            )
-            return out
+        helper.append_op(
+            type='greater_equal',
+            inputs={'X': [x], 'Y': [y]},
+            outputs={'Out': [out]},
+        )
+        return out
 
 
 @templatedoc()
@@ -569,31 +561,28 @@ def greater_than(x, y, name=None):
     if in_dygraph_mode():
         return _C_ops.greater_than(x, y)
     else:
-        if _in_legacy_dygraph():
-            return _legacy_C_ops.greater_than(x, y)
-        else:
-            check_variable_and_dtype(
-                x,
-                "x",
-                ["bool", "float32", "float64", "int32", "int64"],
-                "greater_than",
-            )
-            check_variable_and_dtype(
-                y,
-                "y",
-                ["bool", "float32", "float64", "int32", "int64"],
-                "greater_than",
-            )
-            helper = LayerHelper("greater_than", **locals())
-            out = helper.create_variable_for_type_inference(dtype='bool')
-            out.stop_gradient = True
+        check_variable_and_dtype(
+            x,
+            "x",
+            ["bool", "float32", "float64", "int32", "int64"],
+            "greater_than",
+        )
+        check_variable_and_dtype(
+            y,
+            "y",
+            ["bool", "float32", "float64", "int32", "int64"],
+            "greater_than",
+        )
+        helper = LayerHelper("greater_than", **locals())
+        out = helper.create_variable_for_type_inference(dtype='bool')
+        out.stop_gradient = True
 
-            helper.append_op(
-                type='greater_than',
-                inputs={'X': [x], 'Y': [y]},
-                outputs={'Out': [out]},
-            )
-            return out
+        helper.append_op(
+            type='greater_than',
+            inputs={'X': [x], 'Y': [y]},
+            outputs={'Out': [out]},
+        )
+        return out
 
 
 @templatedoc()
@@ -626,31 +615,28 @@ def less_equal(x, y, name=None):
     if in_dygraph_mode():
         return _C_ops.less_equal(x, y)
     else:
-        if _in_legacy_dygraph():
-            return _legacy_C_ops.less_equal(x, y)
-        else:
-            check_variable_and_dtype(
-                x,
-                "x",
-                ["bool", "float32", "float64", "int32", "int64"],
-                "less_equal",
-            )
-            check_variable_and_dtype(
-                y,
-                "y",
-                ["bool", "float32", "float64", "int32", "int64"],
-                "less_equal",
-            )
-            helper = LayerHelper("less_equal", **locals())
-            out = helper.create_variable_for_type_inference(dtype='bool')
-            out.stop_gradient = True
+        check_variable_and_dtype(
+            x,
+            "x",
+            ["bool", "float32", "float64", "int32", "int64"],
+            "less_equal",
+        )
+        check_variable_and_dtype(
+            y,
+            "y",
+            ["bool", "float32", "float64", "int32", "int64"],
+            "less_equal",
+        )
+        helper = LayerHelper("less_equal", **locals())
+        out = helper.create_variable_for_type_inference(dtype='bool')
+        out.stop_gradient = True
 
-            helper.append_op(
-                type='less_equal',
-                inputs={'X': [x], 'Y': [y]},
-                outputs={'Out': [out]},
-            )
-            return out
+        helper.append_op(
+            type='less_equal',
+            inputs={'X': [x], 'Y': [y]},
+            outputs={'Out': [out]},
+        )
+        return out
 
 
 @templatedoc()
@@ -683,31 +669,28 @@ def less_than(x, y, name=None):
     if in_dygraph_mode():
         return _C_ops.less_than(x, y)
     else:
-        if _in_legacy_dygraph():
-            return _legacy_C_ops.less_than(x, y)
-        else:
-            check_variable_and_dtype(
-                x,
-                "x",
-                ["bool", "float32", "float64", "int32", "int64"],
-                "less_than",
-            )
-            check_variable_and_dtype(
-                y,
-                "y",
-                ["bool", "float32", "float64", "int32", "int64"],
-                "less_than",
-            )
-            helper = LayerHelper("less_than", **locals())
-            out = helper.create_variable_for_type_inference(dtype='bool')
-            out.stop_gradient = True
+        check_variable_and_dtype(
+            x,
+            "x",
+            ["bool", "float32", "float64", "int32", "int64"],
+            "less_than",
+        )
+        check_variable_and_dtype(
+            y,
+            "y",
+            ["bool", "float32", "float64", "int32", "int64"],
+            "less_than",
+        )
+        helper = LayerHelper("less_than", **locals())
+        out = helper.create_variable_for_type_inference(dtype='bool')
+        out.stop_gradient = True
 
-            helper.append_op(
-                type='less_than',
-                inputs={'X': [x], 'Y': [y]},
-                outputs={'Out': [out]},
-            )
-            return out
+        helper.append_op(
+            type='less_than',
+            inputs={'X': [x], 'Y': [y]},
+            outputs={'Out': [out]},
+        )
+        return out
 
 
 @templatedoc()
@@ -740,31 +723,28 @@ def not_equal(x, y, name=None):
     if in_dygraph_mode():
         return _C_ops.not_equal(x, y)
     else:
-        if _in_legacy_dygraph():
-            return _legacy_C_ops.not_equal(x, y)
-        else:
-            check_variable_and_dtype(
-                x,
-                "x",
-                ["bool", "float32", "float64", "int32", "int64"],
-                "not_equal",
-            )
-            check_variable_and_dtype(
-                y,
-                "y",
-                ["bool", "float32", "float64", "int32", "int64"],
-                "not_equal",
-            )
-            helper = LayerHelper("not_equal", **locals())
-            out = helper.create_variable_for_type_inference(dtype='bool')
-            out.stop_gradient = True
+        check_variable_and_dtype(
+            x,
+            "x",
+            ["bool", "float32", "float64", "int32", "int64"],
+            "not_equal",
+        )
+        check_variable_and_dtype(
+            y,
+            "y",
+            ["bool", "float32", "float64", "int32", "int64"],
+            "not_equal",
+        )
+        helper = LayerHelper("not_equal", **locals())
+        out = helper.create_variable_for_type_inference(dtype='bool')
+        out.stop_gradient = True
 
-            helper.append_op(
-                type='not_equal',
-                inputs={'X': [x], 'Y': [y]},
-                outputs={'Out': [out]},
-            )
-            return out
+        helper.append_op(
+            type='not_equal',
+            inputs={'X': [x], 'Y': [y]},
+            outputs={'Out': [out]},
+        )
+        return out
 
 
 def is_tensor(x):
@@ -802,41 +782,40 @@ def _bitwise_op(op_name, x, y, out=None, name=None, binary_op=True):
             return op(x, y)
         else:
             return op(x)
-    elif _in_legacy_dygraph():
-        op = getattr(_legacy_C_ops, op_name)
-        if binary_op:
-            return op(x, y)
-        else:
-            return op(x)
-
-    check_variable_and_dtype(
-        x, "x", ["bool", "uint8", "int8", "int16", "int32", "int64"], op_name
-    )
-    if y is not None:
+    else:
         check_variable_and_dtype(
-            y,
-            "y",
+            x,
+            "x",
             ["bool", "uint8", "int8", "int16", "int32", "int64"],
             op_name,
         )
-    if out is not None:
-        check_type(out, "out", Variable, op_name)
+        if y is not None:
+            check_variable_and_dtype(
+                y,
+                "y",
+                ["bool", "uint8", "int8", "int16", "int32", "int64"],
+                op_name,
+            )
+        if out is not None:
+            check_type(out, "out", Variable, op_name)
 
-    helper = LayerHelper(op_name, **locals())
-    if binary_op:
-        assert x.dtype == y.dtype
+        helper = LayerHelper(op_name, **locals())
+        if binary_op:
+            assert x.dtype == y.dtype
 
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        if out is None:
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    if binary_op:
-        helper.append_op(
-            type=op_name, inputs={"X": x, "Y": y}, outputs={"Out": out}
-        )
-    else:
-        helper.append_op(type=op_name, inputs={"X": x}, outputs={"Out": out})
+        if binary_op:
+            helper.append_op(
+                type=op_name, inputs={"X": x, "Y": y}, outputs={"Out": out}
+            )
+        else:
+            helper.append_op(
+                type=op_name, inputs={"X": x}, outputs={"Out": out}
+            )
 
-    return out
+        return out
 
 
 @templatedoc()
@@ -998,24 +977,20 @@ def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
 
     if in_dygraph_mode():
         return _C_ops.isclose(x, y, rtol, atol, equal_nan)
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.isclose(
-            x, y, 'rtol', str(rtol), 'atol', str(atol), 'equal_nan', equal_nan
+    else:
+        check_variable_and_dtype(x, "input", ['float32', 'float64'], 'isclose')
+        check_variable_and_dtype(y, "input", ['float32', 'float64'], 'isclose')
+        check_type(rtol, 'rtol', float, 'isclose')
+        check_type(atol, 'atol', float, 'isclose')
+        check_type(equal_nan, 'equal_nan', bool, 'isclose')
+
+        helper = LayerHelper("isclose", **locals())
+        out = helper.create_variable_for_type_inference(dtype='bool')
+
+        inputs = {'Input': x, 'Other': y}
+        outputs = {'Out': out}
+        attrs = {'rtol': str(rtol), 'atol': str(atol), 'equal_nan': equal_nan}
+        helper.append_op(
+            type='isclose', inputs=inputs, outputs=outputs, attrs=attrs
         )
-
-    check_variable_and_dtype(x, "input", ['float32', 'float64'], 'isclose')
-    check_variable_and_dtype(y, "input", ['float32', 'float64'], 'isclose')
-    check_type(rtol, 'rtol', float, 'isclose')
-    check_type(atol, 'atol', float, 'isclose')
-    check_type(equal_nan, 'equal_nan', bool, 'isclose')
-
-    helper = LayerHelper("isclose", **locals())
-    out = helper.create_variable_for_type_inference(dtype='bool')
-
-    inputs = {'Input': x, 'Other': y}
-    outputs = {'Out': out}
-    attrs = {'rtol': str(rtol), 'atol': str(atol), 'equal_nan': equal_nan}
-    helper.append_op(
-        type='isclose', inputs=inputs, outputs=outputs, attrs=attrs
-    )
-    return out
+        return out

@@ -31,8 +31,6 @@ from paddle.distributed.fleet.base import role_maker
 from paddle.distributed.parallel_env import ParallelEnv
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.fluid.executor import global_scope
 from paddle.fluid.framework import Variable
 from paddle.fluid.framework import _current_expected_place as _get_device
@@ -41,6 +39,7 @@ from paddle.fluid.io import is_belong_to_optimizer
 from paddle.fluid.layers import collective
 from paddle.fluid.layers.utils import flatten
 from paddle.io import DataLoader, Dataset, DistributedBatchSampler
+from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.metric import Metric
 from paddle.static import InputSpec as Input
 

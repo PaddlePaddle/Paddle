@@ -20,7 +20,6 @@ from test_distribution import DistributionNumpy
 import paddle
 from paddle import fluid
 from paddle.distribution import Categorical, Distribution, Normal, Uniform
-from paddle.fluid import layers
 
 np.random.seed(2022)
 
@@ -380,7 +379,7 @@ class DistributionTestError(unittest.TestCase):
         )
 
         value_npdata = np.array([0.8], dtype="float32")
-        value_tensor = layers.create_tensor(dtype="float32")
+        value_tensor = paddle.tensor.create_tensor(dtype="float32")
         self.assertRaises(
             NotImplementedError, distribution.log_prob, value_tensor
         )

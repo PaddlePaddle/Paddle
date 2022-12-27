@@ -98,7 +98,7 @@ class TestDistOpCost(unittest.TestCase):
             ):
                 dist_op = dist_context.get_dist_op_for_program(op)
                 op_dist_attr = dist_op.dist_attr
-                processes = op_dist_attr.process_mesh.processes
+                processes = op_dist_attr.process_mesh.process_ids
                 if is_elementwise_op(op.type):
                     container = get_distributed_operator_impl_container(
                         "elementwise"
@@ -168,9 +168,7 @@ class TestDistOpCost(unittest.TestCase):
                     auto.ProcessMesh([0, 1], dim_names=["x"]),
                     [None, "x"],
                 )
-                out1 = paddle.fluid.layers.matmul(
-                    out, param1
-                )  # [8, 8] [-1, -1]
+                out1 = paddle.matmul(out, param1)  # [8, 8] [-1, -1]
                 tmp_param = paddle.create_parameter(
                     [8, 8], paddle.float32
                 )  # [8, 8] [-1, -1]
@@ -179,10 +177,8 @@ class TestDistOpCost(unittest.TestCase):
                     auto.ProcessMesh([0, 1], dim_names=["x"]),
                     [None, None],
                 )
-                tmp_out = paddle.fluid.layers.matmul(out1, tmp_param)
-                out2 = paddle.fluid.layers.matmul(
-                    tmp_out, param2
-                )  # [8, 4] [-1, 0]
+                tmp_out = paddle.matmul(out1, tmp_param)
+                out2 = paddle.matmul(tmp_out, param2)  # [8, 4] [-1, 0]
 
                 out8 = paddle.transpose(out2, [1, 0])  # [4, 8] [0, -1]
 
@@ -209,7 +205,7 @@ class TestDistOpCost(unittest.TestCase):
         for idx, op in enumerate(ops):
             dist_op = dist_context.get_dist_op_for_program(op)
             op_dist_attr = dist_op.dist_attr
-            processes = op_dist_attr.process_mesh.processes
+            processes = op_dist_attr.process_mesh.process_ids
             if is_elementwise_op(op.type):
                 container = get_distributed_operator_impl_container(
                     "elementwise"
@@ -317,7 +313,7 @@ class TestDistOpCost(unittest.TestCase):
         for idx, op in enumerate(ops):
             dist_op = dist_context.get_dist_op_for_program(op)
             op_dist_attr = dist_op.dist_attr
-            processes = op_dist_attr.process_mesh.processes
+            processes = op_dist_attr.process_mesh.process_ids
             if is_elementwise_op(op.type):
                 container = get_distributed_operator_impl_container(
                     "elementwise"
@@ -387,7 +383,7 @@ class TestDistOpCost(unittest.TestCase):
                     [None, "x"],
                 )
 
-                out1 = paddle.fluid.layers.mul(out, param1)  # [8, 8] [-1, -1]
+                out1 = paddle.matmul(out, param1)  # [8, 8] [-1, -1]
                 tmp_param = paddle.create_parameter(
                     [8, 8], paddle.float32
                 )  # [8, 8] [-1, -1]
@@ -397,10 +393,8 @@ class TestDistOpCost(unittest.TestCase):
                     [None, None],
                 )
 
-                tmp_out = paddle.fluid.layers.mul(out1, tmp_param)
-                out2 = paddle.fluid.layers.mul(
-                    tmp_out, param2
-                )  # [8, 4] [-1, 0]
+                tmp_out = paddle.matmul(out1, tmp_param)
+                out2 = paddle.matmul(tmp_out, param2)  # [8, 4] [-1, 0]
 
                 out8 = paddle.transpose(out2, [1, 0])  # [4, 8] [0, -1]
 
@@ -427,7 +421,7 @@ class TestDistOpCost(unittest.TestCase):
         for idx, op in enumerate(ops):
             dist_op = dist_context.get_dist_op_for_program(op)
             op_dist_attr = dist_op.dist_attr
-            processes = op_dist_attr.process_mesh.processes
+            processes = op_dist_attr.process_mesh.process_ids
             if is_elementwise_op(op.type):
                 container = get_distributed_operator_impl_container(
                     "elementwise"

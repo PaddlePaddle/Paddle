@@ -190,7 +190,7 @@ class DistPassTestBase(unittest.TestCase):
         else:
             output_dir = "test_without_pass_{}".format(pid)
         remove_path_if_exists(output_dir)
-        os.makedirs(output_dir, mode=777)
+        os.makedirs(output_dir, mode=0o777)
 
         input_dump_file = os.path.join(output_dir, 'inputs.bin')
         model_dump_file = os.path.join(output_dir, 'model.bin')
@@ -269,7 +269,7 @@ class DistPassTestBase(unittest.TestCase):
 
 class PassConflictChecker(DistPassTestBase):
     def setUp(self):
-        os.environ['DEBUG'] = '1'  # to save the debug directory
+        os.environ['DEBUG'] = '0'
         super().setUp()
 
     def pass_config(self):

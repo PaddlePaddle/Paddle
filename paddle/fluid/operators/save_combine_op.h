@@ -27,35 +27,161 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/raw_tensor.h"
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/serialization.h"
 
 namespace paddle {
 namespace operators {
+
+inline void SaveToMemory(const std::string& file_path,
+                         const std::ostringstream& ss,
+                         bool save_to_memory,
+                         std::string* output) {
+  if (save_to_memory) {
+    PADDLE_ENFORCE_NE(output,
+                      nullptr,
+                      phi::errors::InvalidArgument(
+                          "Cannot find variable Y for save_combine_op"));
+    *output = ss.str();
+  } else {
+    MkDirRecursively(DirName(file_path).c_str());
+    std::ofstream fout(file_path, std::ios::binary);
+    PADDLE_ENFORCE_EQ(static_cast<bool>(fout),
+                      true,
+                      phi::errors::Unavailable(
+                          "Cannot open %s to save variables.", file_path));
+    fout << ss.str();
+    fout.close();
+  }
+}
+
+template <typename T, typename Context>
+void SaveCombineTensorKernel(const Context& dev_ctx,
+                             const std::vector<const phi::DenseTensor*>& x,
+                             const std::string& file_path,
+                             bool overwrite,
+                             bool save_as_fp16,
+                             bool save_to_memory,
+                             phi::ExtendedTensor* out) {
+  std::string* y = nullptr;
+  if (out != nullptr) {
+    auto raw_out = static_cast<paddle::framework::RawTensor*>(out);
+    y = raw_out->GetMutable<std::string>();
+  }
+
+  bool is_present = FileExists(file_path);
+  if (is_present && !overwrite) {
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
+        "%s exists! Cannot save_combine to it when overwrite is set to "
+        "false.",
+        file_path,
+        overwrite));
+  }
+
+  std::ostringstream ss;
+  PADDLE_ENFORCE_GT(x.size(),
+                    0UL,
+                    phi::errors::InvalidArgument(
+                        "The number of variables to be saved is %d, expect "
+                        "it to be greater than 0.",
+                        x.size()));
+
+  for (size_t i = 0; i < x.size(); i++) {
+    auto& tensor = *(x[i]);
+    PADDLE_ENFORCE_EQ(
+        tensor.IsInitialized(),
+        true,
+        phi::errors::InvalidArgument(
+            "The Tensor with Index (%d) to be saved is not initialized.", i));
+    // Serialize tensors one by one
+    // Check types to see if a fp16 transformation is required
+    auto in_dtype = framework::TransToProtoVarType(tensor.dtype());
+    auto out_dtype = save_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
+    if (in_dtype != out_dtype) {
+      auto place = dev_ctx.GetPlace();
+      auto in_kernel_type = framework::OpKernelType(in_dtype, place);
+      auto out_kernel_type = framework::OpKernelType(out_dtype, place);
+      phi::DenseTensor out;
+      framework::TransDataType(in_kernel_type, out_kernel_type, tensor, &out);
+      // copy LoD info to the new tensor
+      out.set_lod(tensor.lod());
+      phi::SerializeToStream(ss, out, dev_ctx);
+    } else {
+      phi::SerializeToStream(ss, tensor, dev_ctx);
+    }
+  }
+
+  SaveToMemory(file_path, ss, save_to_memory, y);
+}
+
+template <typename T, typename Context>
+void SaveCombineVocabKernel(
+    const Context& dev_ctx,
+    const std::vector<const phi::ExtendedTensor*>& inputs,
+    const std::string& file_path,
+    bool overwrite,
+    bool save_as_fp16,
+    bool save_to_memory,
+    phi::ExtendedTensor* out) {
+  std::string* y = nullptr;
+  if (out != nullptr) {
+    auto raw_out = static_cast<paddle::framework::RawTensor*>(out);
+    y = raw_out->GetMutable<std::string>();
+  }
+
+  std::vector<const framework::Vocab*> x;
+  x.reserve(inputs.size());
+  for (auto input : inputs) {
+    x.push_back(static_cast<const framework::Vocab*>(input));
+  }
+  bool is_present = FileExists(file_path);
+  if (is_present && !overwrite) {
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
+        "%s exists! Cannot save_combine to it when overwrite is set to "
+        "false.",
+        file_path,
+        overwrite));
+  }
+
+  std::ostringstream ss;
+  PADDLE_ENFORCE_GT(x.size(),
+                    0UL,
+                    phi::errors::InvalidArgument(
+                        "The number of variables to be saved is %d, expect "
+                        "it to be greater than 0.",
+                        x.size()));
+
+  for (size_t i = 0; i < x.size(); i++) {
+    auto& tensor = *(x[i]);
+    std::unordered_map<std::string, std::int32_t> data;
+    for (auto it = tensor.begin(); it != tensor.end(); ++it) {
+      std::string t;
+      paddle::framework::ConvertWstrToStr(it->first, &t);
+      data.emplace(t, it->second);
+    }
+    paddle::framework::StringMapToStream(ss, data);
+  }
+
+  SaveToMemory(file_path, ss, save_to_memory, y);
+}
+
 template <typename DeviceContext, typename T>
 class SaveCombineOpKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
+  void Compute(const framework::ExecutionContext& ctx) const override {
     auto place = ctx.GetPlace();
     auto filename = ctx.Attr<std::string>("file_path");
     auto overwrite = ctx.Attr<bool>("overwrite");
     auto save_as_fp16 = ctx.Attr<bool>("save_as_fp16");
     auto save_to_memory = ctx.Attr<bool>("save_to_memory");
-    auto output = ctx.Output<std::string>("Y");
-
-    bool is_present = FileExists(filename);
-    if (is_present && !overwrite) {
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "%s exists! Cannot save_combine to it when overwrite is set to "
-          "false.",
-          filename,
-          overwrite));
-    }
-
-    std::ostringstream ss;
+    auto output = ctx.Output<framework::RawTensor>("Y");
     auto inp_var_names = ctx.InputNames("X");
-    auto &inp_vars = ctx.MultiInputVar("X");
+    auto& inp_vars = ctx.MultiInputVar("X");
+
     PADDLE_ENFORCE_GT(inp_var_names.size(),
                       0UL,
                       platform::errors::InvalidArgument(
@@ -64,8 +190,8 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
                           inp_var_names.size()));
 
     // get device context from pool
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(place);
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto& dev_ctx = *pool.Get(place);
 
     for (size_t i = 0; i < inp_var_names.size(); i++) {
       PADDLE_ENFORCE_NOT_NULL(
@@ -81,58 +207,31 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
               "phi::DenseTensor or Vocab variable, %s has wrong type.",
               inp_var_names[i]));
 
-      if (inp_vars[i]->IsType<phi::DenseTensor>()) {
-        auto &tensor = inp_vars[i]->Get<phi::DenseTensor>();
-        PADDLE_ENFORCE_EQ(
-            tensor.IsInitialized(),
-            true,
-            platform::errors::InvalidArgument(
-                "The Tensor of Variable(%s) to be saved is not initialized.",
-                inp_var_names[i]));
-        // Serialize tensors one by one
-        // Check types to see if a fp16 transformation is required
-        auto in_dtype = framework::TransToProtoVarType(tensor.dtype());
-        auto out_dtype =
-            save_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
-
-        if (in_dtype != out_dtype) {
-          auto in_kernel_type = framework::OpKernelType(in_dtype, place);
-          auto out_kernel_type = framework::OpKernelType(out_dtype, place);
-          phi::DenseTensor out;
-          // copy LoD info to the new tensor
-          out.set_lod(tensor.lod());
-          framework::TransDataType(
-              in_kernel_type, out_kernel_type, tensor, &out);
-          framework::SerializeToStream(ss, out, dev_ctx);
-        } else {
-          framework::SerializeToStream(ss, tensor, dev_ctx);
+      if (inp_vars.size() > 0 && inp_vars[0]->IsType<phi::DenseTensor>()) {
+        std::vector<const phi::DenseTensor*> x(inp_vars.size());
+        for (auto inp_var : inp_vars) {
+          x.push_back(&(inp_var->Get<phi::DenseTensor>()));
         }
+        SaveCombineTensorKernel<T>(dev_ctx,
+                                   x,
+                                   filename,
+                                   overwrite,
+                                   save_as_fp16,
+                                   save_to_memory,
+                                   output);
       } else {
-        auto &tensor = inp_vars[i]->Get<framework::Vocab>();
-        std::unordered_map<std::string, std::int32_t> data;
-        for (auto it = tensor.begin(); it != tensor.end(); ++it) {
-          std::string t;
-          framework::ConvertWstrToStr(it->first, &t);
-          data.emplace(t, it->second);
+        std::vector<const phi::ExtendedTensor*> x(inp_vars.size());
+        for (auto inp_var : inp_vars) {
+          x.push_back(&(inp_var->Get<framework::Vocab>()));
         }
-        framework::StringMapToStream(ss, data);
+        SaveCombineVocabKernel<T>(dev_ctx,
+                                  x,
+                                  filename,
+                                  overwrite,
+                                  save_as_fp16,
+                                  save_to_memory,
+                                  output);
       }
-    }
-    if (save_to_memory) {
-      PADDLE_ENFORCE_NE(output,
-                        nullptr,
-                        platform::errors::InvalidArgument(
-                            "Cannot find variable Y for save_combine_op"));
-      *output = ss.str();
-    } else {
-      MkDirRecursively(DirName(filename).c_str());
-      std::ofstream fout(filename, std::ios::binary);
-      PADDLE_ENFORCE_EQ(static_cast<bool>(fout),
-                        true,
-                        platform::errors::Unavailable(
-                            "Cannot open %s to save variables.", filename));
-      fout << ss.str();
-      fout.close();
     }
   }
 };

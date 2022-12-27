@@ -20,10 +20,10 @@ import string
 import numpy as np
 import opt_einsum
 
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
-from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
+from ..fluid.framework import in_dygraph_mode
 from ..fluid.layer_helper import LayerHelper
 from .linalg import matmul, transpose
 from .manipulation import reshape, squeeze, unsqueeze
@@ -829,38 +829,35 @@ def gen_einsum_op(equation, *operands):
     """
     EinsumOp Python Interface:
     """
-    assert len(operands) <= 2, "Only support two operands in EinsumOp."
+
     if in_dygraph_mode():
         return _C_ops.einsum(operands, equation)[0]
-
-    if _in_legacy_dygraph():
-        # dygraph
-        return _legacy_C_ops.einsum(
-            operands, len(operands), len(operands), 'equation', equation
-        )[0]
-
-    for inp in operands:
-        check_variable_and_dtype(inp, 'dtype', ['float32', 'float64'], 'einsum')
-    check_type(equation, 'equation', str, 'einsum')
-    helper = LayerHelper('einsum', **locals())
-    out = helper.create_variable_for_type_inference(dtype=operands[0].dtype)
-    attrs = dict()
-    attrs['equation'] = equation
-    caches = [
-        helper.create_variable_for_type_inference(dtype=operands[0].dtype)
-        for i in range(len(operands))
-    ]
-    xshape = [
-        helper.create_variable_for_type_inference(dtype=operands[0].dtype)
-        for i in range(len(operands))
-    ]
-    helper.append_op(
-        type='einsum',
-        inputs={'Operands': operands},
-        outputs={'Out': out, "InnerCache": caches, "XShape": xshape},
-        attrs=attrs,
-    )
-    return out
+    else:
+        assert len(operands) <= 2, "Only support two operands in EinsumOp."
+        for inp in operands:
+            check_variable_and_dtype(
+                inp, 'dtype', ['float32', 'float64'], 'einsum'
+            )
+        check_type(equation, 'equation', str, 'einsum')
+        helper = LayerHelper('einsum', **locals())
+        out = helper.create_variable_for_type_inference(dtype=operands[0].dtype)
+        attrs = dict()
+        attrs['equation'] = equation
+        caches = [
+            helper.create_variable_for_type_inference(dtype=operands[0].dtype)
+            for i in range(len(operands))
+        ]
+        xshape = [
+            helper.create_variable_for_type_inference(dtype=operands[0].dtype)
+            for i in range(len(operands))
+        ]
+        helper.append_op(
+            type='einsum',
+            inputs={'Operands': operands},
+            outputs={'Out': out, "InnerCache": caches, "XShape": xshape},
+            attrs=attrs,
+        )
+        return out
 
 
 def einsum(equation, *operands):
@@ -868,7 +865,7 @@ def einsum(equation, *operands):
 
     einsum(equation, *operands)
 
-    The current version of this API should be used in dygraph only mode.
+    The current version of this API should be used in dynamic graph only mode.
 
     Einsum offers a tensor operation API which allows using the Einstein summation
     convention or Einstain notation. It takes as input one or multiple tensors and
@@ -901,20 +898,21 @@ def einsum(equation, *operands):
           dimensions into broadcasting dimensions.
         - Singular labels are called free labels, duplicate are dummy labels. Dummy labeled
           dimensions will be reduced and removed in the output.
-        - Output labels can be explicitly specified on the right hand side of `->` or omitted. In the latter case, the output labels will be inferred from the input labels.
-            - Inference of output labels
-                - Broadcasting label `...`, if present, is put on the leftmost position.
-                - Free labels are reordered alphabetically and put after `...`.
-            - On explicit output labels
-                - If broadcasting is enabled, then `...` must be present.
-                - The output labels can be an empty, an indication to output as a scalar
-                  the sum over the original output.
-                - Non-input labels are invalid.
-                - Duplicate labels are invalid.
-                - For any dummy label which is present for the output, it's promoted to
-                  a free label.
-                - For any free label which is not present for the output, it's lowered to
-                  a dummy label.
+        - Output labels can be explicitly specified on the right hand side of `->` or omitted.
+            In the latter case, the output labels will be inferred from the input labels.
+                - Inference of output labels
+                    - Broadcasting label `...`, if present, is put on the leftmost position.
+                    - Free labels are reordered alphabetically and put after `...`.
+                - On explicit output labels
+                    - If broadcasting is enabled, then `...` must be present.
+                    - The output labels can be an empty, an indication to output as a scalar
+                        the sum over the original output.
+                    - Non-input labels are invalid.
+                    - Duplicate labels are invalid.
+                    - For any dummy label which is present for the output, it's promoted to
+                        a free label.
+                    - For any free label which is not present for the output, it's lowered to
+                        a dummy label.
 
         - Examples
             - '...ij, ...jk', where i and k are free labels, j is dummy. The output label

@@ -33,15 +33,10 @@
 #endif
 #include "paddle/phi/backends/device_manager.h"
 
-// The difference between "sequential_run" and "serial_run":
-// "sequential_run" dispatches OPs one by one according to the sequence in the
-// Program, while "serial_run" ensures that all Ops are scheduled in a singal
-// thread. In standalone executor, "sequential_run" is also "serial_run", while
-// "serial_run" is not necessarily "sequential_run".
-PADDLE_DEFINE_EXPORTED_bool(new_executor_sequential_run,
-                            false,
-                            "Enable sequential execution for standalone "
-                            "executor, only applied to GPU OPs.");
+PADDLE_DEFINE_EXPORTED_bool(
+    new_executor_serial_run,
+    false,
+    "Enable serial execution for standalone executor, used for debug.");
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace,
                             false,
                             "Use inplace in new executor");
@@ -113,7 +108,8 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
                                  const std::set<std::string>& skip_gc_vars,
                                  framework::Scope* scope,
                                  bool used_for_jit,
-                                 bool used_for_control_flow_op)
+                                 bool used_for_control_flow_op,
+                                 bool used_for_cinn)
     : place_(place),
       block_(block),
       execution_config_(place, block.OpSize()),
@@ -126,9 +122,9 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
 
   execution_config_.used_for_jit = used_for_jit;
   execution_config_.used_for_control_flow_op = used_for_control_flow_op;
-  execution_config_.create_local_scope = !used_for_jit &&
-                                         FLAGS_new_executor_use_local_scope &&
-                                         !used_for_control_flow_op;
+  execution_config_.create_local_scope =
+      !used_for_jit && FLAGS_new_executor_use_local_scope &&
+      !used_for_control_flow_op && !used_for_cinn;
   execution_config_.skip_gc_vars = skip_gc_vars;
   execution_config_.Log(/*log_level=*/8);
 
@@ -137,6 +133,15 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
     local_scope_ = local_scope;
   }
   var_scope_.SetLocalScope(local_scope_);
+
+  instruction_prority_less = [this](size_t lhs, size_t rhs) {
+    Priority lhs_prority = vec_instruction_[lhs].GetPriority();
+    Priority rhs_prority = vec_instruction_[rhs].GetPriority();
+    if (lhs_prority == rhs_prority) {
+      return lhs > rhs;
+    }
+    return lhs_prority > rhs_prority;
+  };
 }
 
 InterpreterCore::~InterpreterCore() {
@@ -421,8 +426,9 @@ void InterpreterCore::BuildAndCacheInstructionCtx(Instruction* instr_node) {
   }
 
   // set runtime_ctx and infershape_ctx_
-  if (instr_node->OpBase()->Type() == "cinn_launch") {  // OP use scope in
-                                                        // kernel
+  if (instr_node->OpBase()->Type() == "cinn_launch" ||
+      instr_node->OpBase()->Type() == "cinn_instruction_run") {  // OP use scope
+                                                                 // in kernel
     Scope* local_scope = HasLocalScope() ? var_scope_.GetMutableLocalScope()
                                          : var_scope_.GetMutableScope();
     instr_node->ResetContextWithScope(ins_map, outs_map, *local_scope);
@@ -519,33 +525,37 @@ void InterpreterCore::BuildOperatorDependences() {
   // and set the dependecy_count_
   size_t instr_num = vec_instruction_.size();
   dependecy_count_.resize(instr_num);
-  auto downstream_map = dependency_builder_.Build(
-      vec_instruction_,
-      /*is_sequential_run=*/FLAGS_new_executor_sequential_run);
+  auto downstream_map = dependency_builder_.Build(vec_instruction_);
 
   for (size_t instr_id = 0; instr_id < instr_num; ++instr_id) {
     Instruction& cur_instr = vec_instruction_[instr_id];
     const std::set<size_t>& next_instr_ids = downstream_map[instr_id];
 
-    if (cur_instr.KernelType() == OpFuncType::kGpuAsync) {
+    if (FLAGS_new_executor_serial_run) {
       for (size_t next_instr_id : next_instr_ids) {
-        if (vec_instruction_[next_instr_id].KernelType() ==
-            OpFuncType::kGpuAsync) {
-          cur_instr.AddNextInstrInSameThread(next_instr_id);
-        } else {
-          cur_instr.AddNextInstrInDifferentThread(next_instr_id);
-        }
+        cur_instr.AddNextInstrInSameThread(next_instr_id);
       }
     } else {
-      bool has_instr_in_same_thread = false;
-      for (size_t next_instr_id : next_instr_ids) {
-        if (!has_instr_in_same_thread &&
-            vec_instruction_[next_instr_id].KernelType() !=
-                OpFuncType::kGpuAsync) {
-          cur_instr.AddNextInstrInSameThread(next_instr_id);
-          has_instr_in_same_thread = true;
-        } else {
-          cur_instr.AddNextInstrInDifferentThread(next_instr_id);
+      if (cur_instr.KernelType() == OpFuncType::kGpuAsync) {
+        for (size_t next_instr_id : next_instr_ids) {
+          if (vec_instruction_[next_instr_id].KernelType() ==
+              OpFuncType::kGpuAsync) {
+            cur_instr.AddNextInstrInSameThread(next_instr_id);
+          } else {
+            cur_instr.AddNextInstrInDifferentThread(next_instr_id);
+          }
+        }
+      } else {
+        bool has_instr_in_same_thread = false;
+        for (size_t next_instr_id : next_instr_ids) {
+          if (!has_instr_in_same_thread &&
+              vec_instruction_[next_instr_id].KernelType() !=
+                  OpFuncType::kGpuAsync) {
+            cur_instr.AddNextInstrInSameThread(next_instr_id);
+            has_instr_in_same_thread = true;
+          } else {
+            cur_instr.AddNextInstrInDifferentThread(next_instr_id);
+          }
         }
       }
     }
@@ -578,17 +588,18 @@ void InterpreterCore::Convert(
   for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
     auto& op_func_node = nodes[op_idx];
     auto* dev_ctx_ = stream_analyzer_.ParseDeviceContext(op_func_node);
-    Priority priority =
-        interpreter::IsCommunicationOp(op_func_node.operator_base_->Type())
-            ? Priority::kLowest
-            : Priority::kNormal;
-    vec_instruction_.emplace_back(
-        op_idx, std::move(op_func_node), *dev_ctx_, priority);
+    vec_instruction_.emplace_back(op_idx, std::move(op_func_node), *dev_ctx_);
   }
 
   BuildOperatorDependences();
 
-  stream_analyzer_.ConstructEvents(dependency_builder_, &vec_instruction_);
+  // NOTE(Ruibiao): For cross-step stream synchronization, an event may be
+  // recorded in the first step and waited in the second step. So, in the first
+  // step, the WaitEvent may be called without RecordEvent. Considering that
+  // before the first call to RecordEvent, an Event represents an empty set of
+  // work and WaitEvent always return succeed immediately, we omit the
+  // prelude-record for the first step here.
+  stream_analyzer_.ConstructEvents(&vec_instruction_);
 
   // add event for the input var of jit program, since there are async copied
   // from gpu_pinned place to gpu place on compute stream.
@@ -943,8 +954,12 @@ void InterpreterCore::ExecuteInstructionList(
     if (dependecy_count_[i] == 0) {
       // NOTE(zhiqiu): hot fix for jit input var
       RecordMemcpyD2H(vec_instr.at(i));
-      async_work_queue_->AddTask(vec_instr.at(i).KernelType(),
-                                 [this, i] { RunInstructionAsync(i); });
+      if (FLAGS_new_executor_serial_run) {
+        RunInstructionAsync(i);
+      } else {
+        async_work_queue_->AddTask(vec_instr.at(i).KernelType(),
+                                   [this, i] { RunInstructionAsync(i); });
+      }
     }
   }
 
@@ -970,8 +985,8 @@ void InterpreterCore::ExecuteInstructionList(
   }
 }
 
-void InterpreterCore::RunNextInstructions(
-    const Instruction& instr, std::deque<size_t>* reserved_next_ops) {
+void InterpreterCore::RunNextInstructions(const Instruction& instr,
+                                          SchedulingQueue* reserved_next_ops) {
   platform::RecordEvent record(
       "RunNextInstructions", platform::TracerEventType::UserDefined, 10);
 
@@ -991,21 +1006,21 @@ void InterpreterCore::RunNextInstructions(
 
   for (size_t next_instr_id : instr.NextInstrsInSameThread()) {
     if (IsReady(next_instr_id)) {
-      if (vec_instruction_[next_instr_id].GetPriority() == Priority::kLowest) {
-        reserved_next_ops->push_back(next_instr_id);
-      } else {
-        reserved_next_ops->push_front(next_instr_id);
-      }
+      reserved_next_ops->push(next_instr_id);
     }
   }
 }
 
 void InterpreterCore::RunInstructionAsync(size_t instr_id) {
-  std::deque<size_t> ready_ops;
-  ready_ops.push_back(instr_id);
+  // NOTE(Ruibiao): Due to the uncertain order in multi-threading asynchronous
+  // scheduling, the priority order involved cross-thread scheduling is not
+  // guaranteed. Only Ops scheduled by the same AddTask call have the guarantee
+  // of priority order.
+  SchedulingQueue ready_ops(instruction_prority_less);
+  ready_ops.push(instr_id);
   while (!ready_ops.empty()) {
-    instr_id = ready_ops.front();
-    ready_ops.pop_front();
+    instr_id = ready_ops.top();
+    ready_ops.pop();
     auto& instr_node = vec_instruction_.at(instr_id);
 
     RunInstruction(instr_node);
@@ -1335,24 +1350,24 @@ void InterpreterCore::AnalyseExecuteOrderForTrace() {
   };
 
   std::vector<size_t> trace_order;
-  std::deque<size_t> ready_ops;
+  SchedulingQueue ready_ops(instruction_prority_less);
 
   for (size_t instr_id = 0; instr_id < dependecy_count_.size(); ++instr_id) {
     if (dependecy_count_[instr_id] == 0) {
-      ready_ops.push_back(instr_id);
+      ready_ops.push(instr_id);
     }
   }
 
   while (!ready_ops.empty()) {
-    auto now_id = ready_ops.front();
-    ready_ops.pop_front();
+    size_t now_id = ready_ops.top();
+    ready_ops.pop();
     trace_order.push_back(now_id);
 
     auto next_op_set = op_downstream_map[now_id];
 
     for (size_t next_op_id : next_op_set) {
       if (IsReady(next_op_id)) {
-        ready_ops.push_back(next_op_id);
+        ready_ops.push(next_op_id);
       }
     }
   }

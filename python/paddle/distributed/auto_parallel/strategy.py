@@ -73,6 +73,10 @@ class BaseConfig:
             setattr(result, k, copy.deepcopy(v, memo))
         return result
 
+    def get(self, k, d=None):
+        result_dict = self.to_dict()
+        return result_dict.get(k, d)
+
 
 class RecomputeConfig(BaseConfig):
     def __init__(self, config_dict=None):

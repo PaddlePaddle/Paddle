@@ -83,7 +83,7 @@ class TestAssignApi(unittest.TestCase):
     def test_assign(self):
         main_program = fluid.Program()
         with fluid.program_guard(main_program):
-            x = layers.create_tensor(dtype=self.dtype)
+            x = paddle.tensor.create_tensor(dtype=self.dtype)
             layers.assign(input=self.value, output=x)
 
         exe = fluid.Executor(self.place)

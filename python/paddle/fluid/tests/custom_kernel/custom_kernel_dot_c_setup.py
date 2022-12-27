@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import os
-from distutils.core import Extension, setup
 from distutils.sysconfig import get_python_lib
 
+from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
 
 from paddle.fluid import core

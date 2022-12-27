@@ -19,6 +19,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
+import paddle.nn.functional as F
 from paddle.distributed.parallel_env import (
     _coalesce_tensors,
     _reshape_inplace,
@@ -34,7 +35,7 @@ class MyLayer(fluid.Layer):
         super().__init__(name_scope)
 
     def forward(self, inputs):
-        x = fluid.layers.relu(inputs)
+        x = F.relu(inputs)
         x = paddle.multiply(x, x)
         x = paddle.sum(x)
         return [x]

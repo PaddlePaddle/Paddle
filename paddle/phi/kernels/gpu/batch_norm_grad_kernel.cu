@@ -13,17 +13,17 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/layout_utils.h"
-#include "paddle/fluid/operators/norm_utils.cu.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/batch_norm_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/norm_utils.cu.h"
 #include "paddle/phi/kernels/funcs/norm_utils.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 
@@ -382,6 +382,7 @@ static __global__ void BNBackward2DChannelLastStage2(
     const int N,
     const int HxW,
     const double epsilon,
+    const bool is_test,
     BatchNormParamType<T> *block_data_ptr,
     BatchNormParamType<T> *dscale,
     BatchNormParamType<T> *dbias,
@@ -402,7 +403,8 @@ static __global__ void BNBackward2DChannelLastStage2(
     BatchNormParamType<T> ds_sum = static_cast<BatchNormParamType<T>>(0);
     BatchNormParamType<T> db_sum = static_cast<BatchNormParamType<T>>(0);
     BatchNormParamType<T> mean_val = means[i];
-    BatchNormParamType<T> inv_var_val = variances[i];
+    BatchNormParamType<T> inv_var_val =
+        is_test ? 1.0 / sqrt(variances[i] + epsilon) : variances[i];
 
     for (int j = blockIdx.y * blockDim.y + threadIdx.y; j < inner_size;
          j += inner_loop_stride) {
@@ -558,6 +560,51 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNBackwardData(
                dy_x_sub_mean_sum_val * inv_var_i * inv_var_i / inner_size) *
           scale[i] * inv_var_i;
     }
+  }
+}
+
+template <typename T, typename Context>
+void SetLaunchConfigInfoForChannelLast(const Context &ctx,
+                                       DenseTensor *block_data_tensor,
+                                       DenseTensor *flag_tensor,
+                                       BatchNormParamType<T> **block_data_ptr,
+                                       int **flag_ptr,
+                                       const int N,
+                                       const int H,
+                                       const int W,
+                                       const int D,
+                                       const int C,
+                                       const int block_size,
+                                       dim3 *block,
+                                       dim3 *grid) {
+  const int MAX_GRID_SIZE = 128;
+  const int WARP_SIZE = 32;
+
+  int block_x = std::min(phi::funcs::details::GetLastPow2(C), WARP_SIZE);
+  int block_y = std::min(phi::funcs::details::GetLastPow2(N * H * W * D / 16),
+                         block_size / block_x);
+  if (block_x * block_y != block_size) {
+    block_x =
+        std::min(phi::funcs::details::GetLastPow2(C), block_size / block_y);
+  }
+  int grid_x = (C + block_x - 1) / block_x;
+  int grid_y = std::min((N * H * W * D + block_y * 16 - 1) / (block_y * 16),
+                        MAX_GRID_SIZE);
+
+  block->x = block_x;
+  block->y = block_y;
+  grid->x = grid_x;
+  grid->y = grid_y;
+
+  if (grid->y > 1) {
+    *block_data_tensor =
+        phi::Empty<BatchNormParamType<T>, Context>(ctx, {2 * C * grid->y});
+    *flag_tensor = phi::Empty<int, Context>(ctx, {grid->x});
+
+    *block_data_ptr = block_data_tensor->data<BatchNormParamType<T>>();
+    *flag_ptr = flag_tensor->data<int>();
+    funcs::SetConstant<Context, int> set_zero;
+    set_zero(ctx, flag_tensor, static_cast<int>(0));
   }
 }
 
@@ -858,20 +905,23 @@ void BatchNormGradRawKernel(const Context &ctx,
 //             ctx.GetPlace()),
 //         epsilon, saved_mean_data, saved_var_data));
 #else
-      // CUDNN only support small batch size
-      // const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 131070;
-      const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 10240;
-      const size_t CUDNN_SPATIAL_THRESHOLD = 880801;
-      const bool use_native_kernel =
-          ((x_dims.size() == 2 && N >= CUDNN_PER_ACTIVATION_THRESHOLD) ||
-           (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD));
-      if (use_native_kernel) {
-        if (x_dims.size() == 2) {
+    }
+    // CUDNN only support small batch size
+    // const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 131070;
+    const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 10240;
+    const size_t CUDNN_SPATIAL_THRESHOLD = 880801;
+    bool use_native_nhwc =
+        d_x ? (x_dims.size() == 4 && compute_format == DataLayout::kNHWC)
+            : false;
+    const bool use_native_kernel =
+        ((x_dims.size() == 2 && N >= CUDNN_PER_ACTIVATION_THRESHOLD) ||
+         (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD));
+    if (use_native_nhwc || (d_x && d_scale && d_bias)) {
+      if (use_native_kernel || use_native_nhwc) {
+        if (x_dims.size() == 2 || use_native_nhwc) {
           dim3 block;
           dim3 grid;
           const int block_size = 512;
-          const int MAX_GRID_SIZE = 128;
-          const int WARP_SIZE = 32;
 
           // init intermediate storage
           DenseTensor block_data_tensor;
@@ -884,35 +934,20 @@ void BatchNormGradRawKernel(const Context &ctx,
           BatchNormParamType<T> *block_data_ptr = nullptr;
           int *flag_ptr = nullptr;
 
-          int block_x =
-              std::min(phi::funcs::details::GetLastPow2(C), WARP_SIZE);
-          int block_y =
-              std::min(phi::funcs::details::GetLastPow2(N * H * W * D / 16),
-                       block_size / block_x);
-          if (block_x * block_y != block_size) {
-            block_x = std::min(phi::funcs::details::GetLastPow2(C),
-                               block_size / block_y);
-          }
-          int grid_x = (C + block_x - 1) / block_x;
-          int grid_y =
-              std::min((N * H * W * D + block_y * 16 - 1) / (block_y * 16),
-                       MAX_GRID_SIZE);
+          SetLaunchConfigInfoForChannelLast<T>(ctx,
+                                               &block_data_tensor,
+                                               &flag_tensor,
+                                               &block_data_ptr,
+                                               &flag_ptr,
+                                               N,
+                                               H,
+                                               W,
+                                               D,
+                                               C,
+                                               block_size,
+                                               &block,
+                                               &grid);
 
-          block.x = block_x;
-          block.y = block_y;
-          grid.x = grid_x;
-          grid.y = grid_y;
-
-          if (grid.y > 1) {
-            block_data_tensor = phi::Empty<BatchNormParamType<T>, Context>(
-                ctx, {2 * C * grid.y});
-            flag_tensor = phi::Empty<int, Context>(ctx, {grid.x});
-
-            block_data_ptr = block_data_tensor.data<BatchNormParamType<T>>();
-            flag_ptr = flag_tensor.data<int>();
-            funcs::SetConstant<Context, int> set_zero;
-            set_zero(ctx, &flag_tensor, static_cast<int>(0));
-          }
           // 1. reduce_sum(x) => mean, inv_var
           auto *mean_ptr =
               saved_mean_data == nullptr
@@ -937,6 +972,21 @@ void BatchNormGradRawKernel(const Context &ctx,
                     flag_ptr);
           }
           // 2. reduce_sum(x, dy, mean) => dscale, dbias
+          BatchNormParamType<T> *dscale = nullptr;
+          BatchNormParamType<T> *dbias = nullptr;
+          bool with_scale = false;
+          if (d_scale && d_bias) {
+            dscale = ctx.template Alloc<BatchNormParamType<T>>(d_scale);
+            dbias = ctx.template Alloc<BatchNormParamType<T>>(d_bias);
+          } else {
+            DenseTensor dscale_mem =
+                phi::Empty<BatchNormParamType<T>, Context>(ctx, {C});
+            DenseTensor dbias_mem =
+                phi::Empty<BatchNormParamType<T>, Context>(ctx, {C});
+            dscale = dscale_mem.data<BatchNormParamType<T>>();
+            dbias = dbias_mem.data<BatchNormParamType<T>>();
+          }
+
           BNBackward2DChannelLastStage2<T, block_size>
               <<<grid, block, 0, ctx.stream()>>>(
                   transformed_d_y.template data<T>(),
@@ -947,9 +997,10 @@ void BatchNormGradRawKernel(const Context &ctx,
                   N,
                   H * W * D,
                   epsilon,
+                  false,
                   block_data_ptr,
-                  ctx.template Alloc<BatchNormParamType<T>>(d_scale),
-                  ctx.template Alloc<BatchNormParamType<T>>(d_bias),
+                  dscale,
+                  dbias,
                   flag_ptr);
 
           // 3. elementwise_mul(scale, mean, inv_var, dy, dscale, dbias) => dx
@@ -958,8 +1009,8 @@ void BatchNormGradRawKernel(const Context &ctx,
                   transformed_d_y.template data<T>(),
                   transformed_x.template data<T>(),
                   scale.template data<BatchNormParamType<T>>(),
-                  d_scale->data<BatchNormParamType<T>>(),
-                  d_bias->data<BatchNormParamType<T>>(),
+                  dscale,
+                  dbias,
                   mean_ptr,
                   variance_ptr,
                   C,
@@ -1169,6 +1220,7 @@ void BatchNormGradRawKernel(const Context &ctx,
         paddle::platform::dynload::cudnnDestroyTensorDescriptor(
             bn_param_desc_));
 #endif
+
   } else {
     const auto *running_mean = mean.get_ptr();
     const auto *running_var = variance.get_ptr();
@@ -1235,18 +1287,44 @@ void BatchNormGradRawKernel(const Context &ctx,
                                           d_x->data<T>());
       }
       if (d_scale && d_bias) {
-        KeBNBackwardScaleBias<T, block, phi::DataLayout::kNHWC>
-            <<<grid2, block, 0, stream>>>(
-                d_y->data<T>(),
-                x.data<T>(),
+        dim3 block;
+        dim3 grid;
+        const int block_size = 512;
+
+        // init intermediate storage
+        DenseTensor block_data_tensor;
+        DenseTensor flag_tensor;
+        BatchNormParamType<T> *block_data_ptr = nullptr;
+        int *flag_ptr = nullptr;
+
+        SetLaunchConfigInfoForChannelLast<T>(ctx,
+                                             &block_data_tensor,
+                                             &flag_tensor,
+                                             &block_data_ptr,
+                                             &flag_ptr,
+                                             N,
+                                             H,
+                                             W,
+                                             D,
+                                             C,
+                                             block_size,
+                                             &block,
+                                             &grid);
+        BNBackward2DChannelLastStage2<T, block_size>
+            <<<grid, block, 0, ctx.stream()>>>(
+                transformed_d_y.template data<T>(),
+                transformed_x.template data<T>(),
                 running_mean_data,
                 running_var_data,
-                epsilon,
-                N,
                 C,
+                N,
                 H * W * D,
+                epsilon,
+                true,
+                block_data_ptr,
                 d_scale->data<BatchNormParamType<T>>(),
-                d_bias->data<BatchNormParamType<T>>());
+                d_bias->data<BatchNormParamType<T>>(),
+                flag_ptr);
       }
     }
   }
@@ -1331,24 +1409,23 @@ void BatchNormDoubleGradKernel(
     running_mean = mean.get_ptr();
     running_variance = variance.get_ptr();
   }
-  paddle::operators::NormDoubleGradFunctor<Context, T>(
-      ctx,
-      data_layout,
-      &x,
-      &scale,
-      &y_grad,
-      &saved_mean,
-      &saved_variance,
-      running_mean,
-      running_variance,
-      epsilon,
-      use_global_stats,
-      x_grad_grad.get_ptr(),
-      scale_grad_grad.get_ptr(),
-      bias_grad_grad.get_ptr(),
-      x_grad,
-      scale_grad,
-      y_grad_grad);
+  phi::funcs::NormDoubleGradFunctor<Context, T>(ctx,
+                                                data_layout,
+                                                &x,
+                                                &scale,
+                                                &y_grad,
+                                                &saved_mean,
+                                                &saved_variance,
+                                                running_mean,
+                                                running_variance,
+                                                epsilon,
+                                                use_global_stats,
+                                                x_grad_grad.get_ptr(),
+                                                scale_grad_grad.get_ptr(),
+                                                bias_grad_grad.get_ptr(),
+                                                x_grad,
+                                                scale_grad,
+                                                y_grad_grad);
 }
 
 }  // namespace phi

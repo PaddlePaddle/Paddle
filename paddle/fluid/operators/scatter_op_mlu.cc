@@ -42,7 +42,7 @@ class ScatterMLUKernel : public framework::OpKernel<T> {
                                  GetBasePtr(indices),
                                  mode);
     } else {
-      Tensor tensor_zeros(updates->type());
+      phi::DenseTensor tensor_zeros(updates->type());
       tensor_zeros.mutable_data<T>(updates->dims(), ctx.GetPlace());
       MLUCnnlTensorDesc tensor_zeros_desc(tensor_zeros);
       float value = 0.0;

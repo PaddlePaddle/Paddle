@@ -22,9 +22,6 @@ import paddle.fluid.core as core
 sys.path.append("..")
 from op_test import OpTest
 
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-
 
 class TestMulOp(OpTest):
     def setUp(self):
@@ -55,23 +52,6 @@ class TestMulOp(OpTest):
         self.check_grad(
             ['X'], 'Out', max_relative_error=0.5, no_grad_set=set('Y')
         )
-
-
-class TestMulOpError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-            # The input type of mul_op must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace()
-            )
-            x2 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace()
-            )
-            self.assertRaises(TypeError, fluid.layers.mul, x1, x2)
-            # The input dtype of mul_op must be float32 or float64.
-            x3 = fluid.layers.data(name='x3', shape=[4], dtype="int32")
-            x4 = fluid.layers.data(name='x4', shape=[4], dtype="int32")
-            self.assertRaises(TypeError, fluid.layers.mul, x3, x4)
 
 
 class TestMulOp2(OpTest):
