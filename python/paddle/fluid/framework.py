@@ -1294,15 +1294,24 @@ def _varbase_creator(
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
-    eager_tensor = Tensor(
-        dtype if dtype else core.VarDesc.VarType.FP32,
-        list(shape) if shape else [],
-        name,
-        type if type else core.VarDesc.VarType.LOD_TENSOR,
-        True if persistable else False,
-    )
-    eager_tensor.retain_grads()
-    return eager_tensor
+    if _in_eager_mode_:
+        eager_tensor = core.eager.Tensor(
+            dtype if dtype else core.VarDesc.VarType.FP32,
+            list(shape) if shape else [],
+            name,
+            type if type else core.VarDesc.VarType.LOD_TENSOR,
+            True if persistable else False,
+        )
+        eager_tensor.retain_grads()
+        return eager_tensor
+    else:
+        return core.VarBase(
+            dtype if dtype else core.VarDesc.VarType.FP32,
+            list(shape) if shape else [],
+            name,
+            type if type else core.VarDesc.VarType.LOD_TENSOR,
+            True if persistable else False,
+        )
 
 
 def _all_is_type(vals, expected_type):
