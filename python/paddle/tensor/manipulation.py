@@ -3792,10 +3792,6 @@ def reshape(x, shape, name=None):
         shape.stop_gradient = True
         inputs["Shape"] = shape
     elif isinstance(shape, (list, tuple)):
-        assert len(shape) > 0, (
-            "The size of 'shape' in reshape can't be zero, "
-            "but received %s." % len(shape)
-        )
         attrs["shape"] = get_attr_shape(shape)
         if utils._contain_var(shape):
             inputs['ShapeTensor'] = utils._convert_to_tensor_list(shape)

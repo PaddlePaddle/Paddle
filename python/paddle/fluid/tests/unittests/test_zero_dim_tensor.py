@@ -712,6 +712,105 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.numpy()[3], 2)
         self.assertEqual(out.grad.shape, [5])
 
+    def test_reshape_list(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+
+        out = paddle.reshape(x, [])
+        out.backward()
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.grad.shape, [])
+
+        out = paddle.reshape(x, [1])
+        out.backward()
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(out.shape, [1])
+        self.assertEqual(out.grad.shape, [1])
+
+        out = paddle.reshape(x, [-1])
+        out.backward()
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(out.shape, [1])
+        self.assertEqual(out.grad.shape, [1])
+
+        out = paddle.reshape(x, [-1, 1])
+        out.backward()
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(out.shape, [1, 1])
+        self.assertEqual(out.grad.shape, [1, 1])
+
+    def test_reshape_tensor(self):
+        x = paddle.rand([1, 1])
+        x.stop_gradient = False
+
+        out = paddle.reshape(x, [])
+        out.backward()
+        self.assertEqual(x.grad.shape, [1, 1])
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.grad.shape, [])
+
+        new_shape = paddle.to_tensor((1,))
+        out = paddle.reshape(x, new_shape)
+        out.backward()
+        self.assertEqual(x.grad.shape, [1, 1])
+        self.assertEqual(out.shape, [1])
+        self.assertEqual(out.grad.shape, [1])
+
+        new_shape = paddle.to_tensor((-1,))
+        out = paddle.reshape(x, new_shape)
+        out.backward()
+        self.assertEqual(x.grad.shape, [1, 1])
+        self.assertEqual(out.shape, [1])
+        self.assertEqual(out.grad.shape, [1])
+
+        new_shape = [paddle.to_tensor(-1), paddle.to_tensor(1)]
+        out = paddle.reshape(x, new_shape)
+        out.backward()
+        self.assertEqual(x.grad.shape, [1, 1])
+        self.assertEqual(out.shape, [1, 1])
+        self.assertEqual(out.grad.shape, [1, 1])
+
+    def test_reshape__list(self):
+        x = paddle.rand([])
+        out = paddle.reshape_(x, [])
+        self.assertEqual(out.shape, [])
+
+        out = paddle.reshape_(x, [1])
+        self.assertEqual(out.shape, [1])
+
+        out = paddle.reshape_(x, [-1])
+        self.assertEqual(out.shape, [1])
+
+        out = paddle.reshape_(x, [-1, 1])
+        self.assertEqual(out.shape, [1, 1])
+
+    def test_reshape__tensor(self):
+        x = paddle.rand([1, 1])
+        out = paddle.reshape_(x, [])
+        self.assertEqual(out.shape, [])
+
+        new_shape = paddle.to_tensor((1,))
+        out = paddle.reshape_(x, new_shape)
+        self.assertEqual(out.shape, [1])
+
+        new_shape = paddle.to_tensor((-1,))
+        out = paddle.reshape_(x, new_shape)
+        self.assertEqual(out.shape, [1])
+
+        new_shape = [paddle.to_tensor(-1), paddle.to_tensor(1)]
+        out = paddle.reshape_(x, new_shape)
+        self.assertEqual(out.shape, [1, 1])
+
+    def test_reverse(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+        out = paddle.reverse(x, axis=[])
+        out.backward()
+        self.assertEqual(x.shape, [])
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.grad.shape, [])
+
 
 class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
@@ -913,6 +1012,78 @@ class TestSundryAPIStatic(unittest.TestCase):
         res = self.exe.run(prog, feed={'index': index_data}, fetch_list=[out])
         self.assertEqual(res[0].shape, (5,))
         self.assertEqual(res[0][3], 2)
+
+    @prog_scope()
+    def test_reshape_list(self):
+        x1 = paddle.rand([])
+        x2 = paddle.rand([])
+        x3 = paddle.rand([])
+        x4 = paddle.rand([])
+        x1.stop_gradient = False
+        x2.stop_gradient = False
+        x3.stop_gradient = False
+        x4.stop_gradient = False
+
+        out1 = paddle.reshape(x1, [])
+        paddle.static.append_backward(out1)
+
+        out2 = paddle.reshape(x2, [1])
+        paddle.static.append_backward(out2)
+
+        out3 = paddle.reshape(x3, [-1])
+        paddle.static.append_backward(out3)
+
+        out4 = paddle.reshape(x4, [-1, 1])
+        paddle.static.append_backward(out4)
+
+        program = paddle.static.default_main_program()
+        res1, res2, res3, res4 = self.exe.run(
+            program, fetch_list=[out1, out2, out3, out4]
+        )
+        self.assertEqual(res1.shape, ())
+        self.assertEqual(res2.shape, (1,))
+        self.assertEqual(res3.shape, (1,))
+        self.assertEqual(res4.shape, (1, 1))
+
+    @prog_scope()
+    def test_reshape_tensor(self):
+        x1 = paddle.rand([])
+        x2 = paddle.rand([])
+        x3 = paddle.rand([])
+        x1.stop_gradient = False
+        x2.stop_gradient = False
+        x3.stop_gradient = False
+
+        new_shape = paddle.to_tensor((1,))
+        out1 = paddle.reshape(x1, new_shape)
+        paddle.static.append_backward(out1)
+
+        new_shape = paddle.to_tensor((-1,))
+        out2 = paddle.reshape(x2, new_shape)
+        paddle.static.append_backward(out2)
+
+        new_shape = [paddle.to_tensor(-1), paddle.to_tensor(1)]
+        out3 = paddle.reshape(x3, new_shape)
+        paddle.static.append_backward(out3)
+
+        program = paddle.static.default_main_program()
+        res1, res2, res3 = self.exe.run(program, fetch_list=[out1, out2, out3])
+        self.assertEqual(res1.shape, (1,))
+        self.assertEqual(res2.shape, (1,))
+        self.assertEqual(res3.shape, (1, 1))
+
+    @prog_scope()
+    def test_reverse(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+
+        out = paddle.reverse(x, axis=[])
+        paddle.static.append_backward(out)
+
+        program = paddle.static.default_main_program()
+        res1, res2 = self.exe.run(program, fetch_list=[x, out])
+        self.assertEqual(res1.shape, ())
+        self.assertEqual(res2.shape, ())
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
