@@ -278,8 +278,8 @@ void BindThreadedSSAGraphExecutor::RunMultiDeviceOpAsync(
       }
     } catch (...) {
       error_state = 1;
-      exception_.Catch(std::current_exception());
       ready_ops->Push(nullptr);
+      exception_.Catch(std::current_exception());
     }
     {
       std::lock_guard<std::mutex> lock(mutex_);
@@ -312,8 +312,8 @@ void BindThreadedSSAGraphExecutor::RunOpAsyncMainStream(
       }
     } catch (...) {
       error_state = 1;
-      exception_.Catch(std::current_exception());
       ready_ops->Push(nullptr);
+      exception_.Catch(std::current_exception());
     }
     {
       std::lock_guard<std::mutex> lock(mutex_);
