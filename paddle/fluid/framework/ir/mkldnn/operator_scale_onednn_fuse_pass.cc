@@ -96,6 +96,9 @@ void FuseOperatorScaleOneDNNPass::FuseScale(Graph *graph,
         operator_op->Op()->SetAttr("alpha", matmul_alpha);
       }
     }
+    if (op_type == "matmul_v2") {
+      operator_op->Op()->SetType("fused_matmul");
+    }
     operator_op->Op()->SetAttr("fused_output_scale", scale);
     operator_op->Op()->SetOutput("Out", {scale_out->Name()});
 

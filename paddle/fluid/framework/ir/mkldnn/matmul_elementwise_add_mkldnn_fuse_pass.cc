@@ -66,7 +66,6 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
     }
 
     if (matmul_type == "matmul") {
-      matmul->Op()->SetType("matmul_v2");
       matmul->Op()->SetAttr("trans_x", matmul->Op()->GetAttr("transpose_X"));
       matmul->Op()->SetAttr("trans_y", matmul->Op()->GetAttr("transpose_Y"));
       auto matmul_alpha = matmul->Op()->GetAttrIfExists<float>("alpha");
@@ -75,6 +74,7 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
       }
     }
 
+    matmul->Op()->SetType("fused_matmul");
     matmul->Op()->SetInput("ResidualData", {elementwise_addend->Name()});
     matmul->Op()->SetOutput("Out", {elementwise_add_out->Name()});
 

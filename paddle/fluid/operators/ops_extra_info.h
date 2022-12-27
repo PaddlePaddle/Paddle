@@ -227,7 +227,7 @@ class ExtraInfoUtils {
       g_extra_input_names_map_ = {{"conv2d", {"Bias", "ResidualData"}},
                                   {"conv2d_transpose", {"Bias"}},
                                   {"conv2d_grad", {"Bias"}},
-                                  {"matmul_v2", {"ResidualData"}}};
+                                  {"fused_matmul", {"ResidualData"}}};
   std::vector<std::string> empty_extra_input_names_;
 };
 

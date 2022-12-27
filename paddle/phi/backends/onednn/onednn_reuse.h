@@ -1877,26 +1877,6 @@ class MatmulOneDNNHandler : public OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
     if (scale_out != 1.0f) {
       matmul_attrs.set_output_scales(0, {scale_out});
     }
-    const auto* residual_data = dev_ctx.HasDnnInput("ResidualData")
-                                    ? dev_ctx.GetDnnInput("ResidualData")
-                                    : nullptr;
-
-    if (residual_data) {
-      auto residual_data_tz = vectorize(residual_data->dims());
-      auto residual_data_md = memory::desc(residual_data_tz,
-                                           OneDNNGetDataType<OT>(),
-                                           dnnl::memory::format_tag::any);
-      post_operations.append_binary(dnnl::algorithm::binary_add,
-                                    residual_data_md);
-      if (dev_ctx.HasDnnAttr("Scale_in_eltwise")) {
-        float scale_in_eltwise =
-            PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("Scale_in_eltwise"));
-        float sum_scale = scale_out / scale_in_eltwise;
-        post_operations.append_sum(sum_scale);
-      }
-    }
-
-    AppendActivation(dev_ctx, post_operations);
 
     const float scale_alpha =
         dev_ctx.HasDnnAttr("fused_output_scale")
@@ -1987,16 +1967,6 @@ void ExecuteMatmul(const OneDNNContext& dev_ctx,
       {DNNL_ARG_SRC, *src_memory_p},
       {DNNL_ARG_WEIGHTS, *weights_memory_p},
       {DNNL_ARG_DST, *dst_memory_p}};
-
-  const auto* residual_data = dev_ctx.HasDnnInput("ResidualData")
-                                  ? dev_ctx.GetDnnInput("ResidualData")
-                                  : nullptr;
-
-  if (residual_data) {
-    const auto residual_data_memory_p = handler.AcquireSrcMemory(residual_data);
-    matmul_args.insert({DNNL_ARG_ATTR_MULTIPLE_POST_OP(0) | DNNL_ARG_SRC_1,
-                        *residual_data_memory_p});
-  }
 
   auto& astream = OneDNNContext::tls().get_stream();
   matmul_p->execute(astream, matmul_args);

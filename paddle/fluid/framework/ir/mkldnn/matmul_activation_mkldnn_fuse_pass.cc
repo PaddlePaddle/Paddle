@@ -26,7 +26,7 @@ using string::PrettyLogDetail;
 
 void MatmulActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
   auto act_types = phi::funcs::GetSupportedActivations();
-  auto matmul_types = {"matmul", "matmul_v2"};
+  auto matmul_types = {"matmul", "matmul_v2", "fused_matmul"};
 
   for (const auto& matmul_type : matmul_types)
     for (auto& act_type : act_types) {
@@ -79,7 +79,6 @@ void MatmulActivationMkldnnFusePass::FuseMatmulAct(
     }
 
     if (matmul_type == "matmul") {
-      matmul_op->SetType("fused_matmul");
       matmul_op->SetAttr("trans_x", matmul_op->GetAttr("transpose_X"));
       matmul_op->SetAttr("trans_y", matmul_op->GetAttr("transpose_Y"));
       auto matmul_alpha = matmul_op->GetAttrIfExists<float>("alpha");
@@ -87,6 +86,8 @@ void MatmulActivationMkldnnFusePass::FuseMatmulAct(
         matmul_op->SetAttr("alpha", matmul_alpha);
       }
     }
+
+    matmul_op->SetType("fused_matmul");
     matmul_op->SetAttr("fuse_activation", act_type);
     matmul_op->SetOutput("Out", {activation_out->Name()});
 
@@ -133,6 +134,28 @@ MatmulActivationMkldnnFusePass::MatmulActivationMkldnnFusePass() {
       .End();
 
   AddOpCompat(OpCompat("matmul_v2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddInput(
+          "ResidualData")  // Extra tensor used in matmul+elementwise_add fuse
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("trans_x")
+      .IsType<bool>()
+      .End()
+      .AddAttr("trans_y")
+      .IsType<bool>()
+      .End();
+
+  AddOpCompat(OpCompat("fused_matmul"))
       .AddInput("X")
       .IsTensor()
       .End()
