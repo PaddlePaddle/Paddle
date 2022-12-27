@@ -834,13 +834,14 @@ class GPTForPretraining(nn.Layer):
             x_dims_mapping = ["x"] + [None for i in range(len(x.shape) - 1)]
             w_dims_mapping = ["y"] + [None for i in range(len(w.shape) - 1)]
 
-        if mesh:
-            matmul = auto.shard_op(
-                paddle.matmul, mesh, [x_dims_mapping, w_dims_mapping, None]
-            )
-            logits = matmul(x, w, transpose_y=True)
-        else:
-            logits = paddle.matmul(x, w, transpose_y=True)
+        with paddle.fluid.name_scope('skip_quant'):
+            if mesh:
+                matmul = auto.shard_op(
+                    paddle.matmul, mesh, [x_dims_mapping, w_dims_mapping, None]
+                )
+                logits = matmul(x, w, transpose_y=True)
+            else:
+                logits = paddle.matmul(x, w, transpose_y=True)
 
         if use_cache:
             return logits, cached_kvs

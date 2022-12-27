@@ -45,8 +45,49 @@ def seed(seed):
     if core.is_compiled_with_cuda():
         for i in range(core.get_cuda_device_count()):
             core.default_cuda_generator(i).manual_seed(seed)
+    elif core.is_compiled_with_xpu():
+        for i in range(core.get_xpu_device_count()):
+            core.default_xpu_generator(i).manual_seed(seed)
 
     return core.default_cpu_generator().manual_seed(seed)
+
+
+def get_rng_state(device=None):
+    """
+    Get all random states of random generators of specified device.
+    Args:
+        device(str): This parameter determines the specific running device.
+            It can be ``cpu``, ``gpu``, ``xpu``, Default is None.
+            If None, return the generators of current device (specified by ``set_device``).
+    Returns:
+        GeneratorState:  object.
+    Examples:
+        .. code-block:: python
+            import paddle
+            sts = paddle.get_rng_state()
+    """
+    state_list = []
+    if device is None:
+        place = fluid.framework._current_expected_place()
+    else:
+        place = device._convert_to_place(device)
+
+    if isinstance(place, core.CPUPlace):
+        state_list.append(core.default_cpu_generator().get_state())
+    elif isinstance(place, core.CUDAPlace):
+        for i in range(core.get_cuda_device_count()):
+            state_list.append(core.default_cuda_generator(i).get_state())
+    elif isinstance(place, core.XPUPlace):
+        for i in range(core.get_xpu_device_count()):
+            state_list.append(core.default_xpu_generator(i).get_state())
+    else:
+        raise ValueError(
+            "get_rng_state is not implemented for current device: {}".format(
+                place
+            )
+        )
+
+    return state_list
 
 
 def get_cuda_rng_state():
@@ -73,6 +114,59 @@ def get_cuda_rng_state():
             state_list.append(core.default_cuda_generator(i).get_state())
 
     return state_list
+
+
+def set_rng_state(state_list, device=None):
+    """
+
+    Sets generator state for all device generators.
+
+    Args:
+        state_list(list|tuple): The device states to set back to device generators. state_list is obtained from get_rng_state().
+        device(str): This parameter determines the specific running device.
+            It can be ``cpu``, ``gpu``, ``xpu``, Default is None.
+            If None, return the generators of current device (specified by ``set_device``).
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            sts = paddle.get_rng_state()
+            paddle.set_rng_state(sts)
+
+    """
+    if device is None:
+        place = fluid.framework._current_expected_place()
+    else:
+        place = device._convert_to_place(device)
+
+    if isinstance(place, core.CUDAPlace):
+        if not len(state_list) == core.get_cuda_device_count():
+            raise ValueError(
+                "Length of gpu state list shoule be equal to the gpu device count"
+            )
+        for i in range(core.get_cuda_device_count()):
+            core.default_cuda_generator(i).set_state(state_list[i])
+    elif isinstance(place, core.XPUPlace):
+        if not len(state_list) == core.get_xpu_device_count():
+            raise ValueError(
+                "Length of xpu state list shoule be equal to the xpu device count"
+            )
+        for i in range(core.get_xpu_device_count()):
+            core.default_xpu_generator(i).set_state(state_list[i])
+    elif isinstance(place, core.CPUPlace):
+        if not len(state_list) == 1:
+            raise ValueError("Length of cpu state list shoule be equal to 1")
+        core.default_cpu_generator().set_state(state_list[0])
+    else:
+        raise ValueError(
+            "set_rng_state is not implemented for current device: {}".format(
+                place
+            )
+        )
 
 
 def set_cuda_rng_state(state_list):

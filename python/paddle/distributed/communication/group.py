@@ -235,32 +235,32 @@ def get_group(id=0):
 
 
 def _sync_calc_stream(tensor):
-    if framework._non_static_mode():
+    if framework.in_dygraph_mode():
         return paddle._legacy_C_ops.c_sync_calc_stream(tensor, tensor)
-
-    op_type = 'c_sync_calc_stream'
-    helper = layer_helper.LayerHelper(op_type, **locals())
-    helper.append_op(
-        type=op_type,
-        inputs={'X': [tensor]},
-        outputs={'Out': [tensor]},
-    )
+    else:
+        op_type = 'c_sync_calc_stream'
+        helper = layer_helper.LayerHelper(op_type, **locals())
+        helper.append_op(
+            type=op_type,
+            inputs={'X': [tensor]},
+            outputs={'Out': [tensor]},
+        )
 
 
 def _sync_comm_stream(tensor, ring_id=0):
-    if framework._non_static_mode():
+    if framework.in_dygraph_mode():
         return paddle._legacy_C_ops.c_sync_comm_stream(
             [tensor], [tensor], 'ring_id', ring_id
         )
-
-    op_type = 'c_sync_comm_stream'
-    helper = layer_helper.LayerHelper(op_type, **locals())
-    helper.append_op(
-        type=op_type,
-        inputs={'X': [tensor]},
-        outputs={'Out': [tensor]},
-        attrs={'ring_id': ring_id},
-    )
+    else:
+        op_type = 'c_sync_comm_stream'
+        helper = layer_helper.LayerHelper(op_type, **locals())
+        helper.append_op(
+            type=op_type,
+            inputs={'X': [tensor]},
+            outputs={'Out': [tensor]},
+            attrs={'ring_id': ring_id},
+        )
 
 
 def wait(tensor, group=None, use_calc_stream=True):
@@ -336,18 +336,44 @@ def barrier(group=None):
     ring_id = 0 if group is None else group.id
 
     barrier_tensor = paddle.full([1], 1, dtype="int32")
-    if framework._non_static_mode():
+    if framework.in_dygraph_mode():
         return paddle._legacy_C_ops.barrier(
             barrier_tensor, barrier_tensor, 'ring_id', ring_id
         )
+    else:
+        op_type = 'barrier'
+        if not isinstance(ring_id, int):
+            raise ValueError("The type of 'group' for barrier must be int.")
+        helper = layer_helper.LayerHelper(op_type, **locals())
+        helper.append_op(
+            type=op_type,
+            inputs={'X': [barrier_tensor]},
+            outputs={'Out': [barrier_tensor]},
+            attrs={'ring_id': ring_id},
+        )
 
-    op_type = 'barrier'
-    if not isinstance(ring_id, int):
-        raise ValueError("The type of 'group' for barrier must be int.")
-    helper = layer_helper.LayerHelper(op_type, **locals())
-    helper.append_op(
-        type=op_type,
-        inputs={'X': [barrier_tensor]},
-        outputs={'Out': [barrier_tensor]},
-        attrs={'ring_id': ring_id},
-    )
+
+def get_backend(group=None):
+    """
+    Get the backend of given group.
+
+    Args:
+        group (Group): The group to work on. Use the global group as default.
+
+    Returns:
+        Returns the name of the given group backend.
+
+    Examples:
+        .. code-block:: python
+
+            # required: distributed
+            import paddle
+
+            paddle.distributed.init_parallel_env()
+            paddle.distributed.get_backend() # NCCL
+    """
+    if _warn_cur_rank_not_in_group(group):
+        raise RuntimeError("Invalid group specified")
+
+    group = _get_global_group() if group is None else group
+    return group.backend
