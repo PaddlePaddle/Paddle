@@ -246,6 +246,7 @@ static void xpu_fc_wrapper(xpu::Context* ctx,
                                                        act);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "fc_fusion");
   } else {
+    xpu_wait(ctx->xpu_stream);
     r = xpu::fc_fusion<XPUType, XPUType, XPUType, FCT>(ctx,
                                                        x,
                                                        w,
