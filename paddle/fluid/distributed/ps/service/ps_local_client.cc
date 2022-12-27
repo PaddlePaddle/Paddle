@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/distributed/ps/table/table.h"
 
-//#define pslib_debug_dense_compress
+// #define pslib_debug_dense_compress
 
 namespace paddle {
 namespace distributed {
@@ -125,7 +125,7 @@ int32_t PsLocalClient::Initialize() {
   while (shard_buffer_remain > 0 && region_idx < region_num) {
     auto& region = regions[region_idx];
     if (region.size - region_data_idx >= shard_buffer_remain) {
-      memcpy((void*)(region.data + region_data_idx),
+      memcpy(reinterpret_cast<void*>(region.data + region_data_idx),
              (uint8_t*)(void*)(region_buffer.data()) + index,
              shard_buffer_remain);
       region_data_idx += shard_buffer_remain;
@@ -134,7 +134,7 @@ int32_t PsLocalClient::Initialize() {
       ++region_idx;
       region_data_idx = 0;
     } else {
-      memcpy((void*)(region.data + region_data_idx),
+      memcpy(reinterpret_cast<void*>(region.data + region_data_idx),
              (uint8_t*)(void*)(region_buffer.data()) + index,
              region.size - region_data_idx);
       shard_buffer_remain -= (region.size - region_data_idx);
@@ -230,7 +230,7 @@ int32_t PsLocalClient::Initialize() {
   return done();
 }
 
-//::std::future<int32_t> PsLocalClient::PullSparse(float** select_values,
+// ::std::future<int32_t> PsLocalClient::PullSparse(float** select_values,
 //                                                  size_t table_id,
 //                                                  const uint64_t* keys,
 //                                                  size_t num) {
@@ -271,7 +271,7 @@ int32_t PsLocalClient::Initialize() {
   // std::make_shared<CostTimer>("pslib_downpour_client_pull_sparse");
   // auto local_timer =
   // std::make_shared<CostTimer>("pslib_downpour_client_pull_sparse_local");
-  //将key拆分到各shard请求，并记录原始对应value指针
+  // 将key拆分到各shard请求，并记录原始对应value指针
   auto* table_ptr = GetTable(table_id);
 
   TableContext table_context;

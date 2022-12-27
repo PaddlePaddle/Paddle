@@ -313,6 +313,7 @@ class TestDataset(unittest.TestCase):
         dataset.set_graph_config(graph_config)
         dataset.set_pass_id(0)
         dataset.get_pass_id()
+        dataset.get_epoch_finish()
 
     def test_in_memory_dataset_masterpatch(self):
         """

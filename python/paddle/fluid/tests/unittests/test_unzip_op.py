@@ -21,47 +21,44 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 
-
-class TestUnzipOp(OpTest):
-    """
-    Test unzip op with discrete one-hot labels.
-    """
-
-    def setUp(self):
-        self.op_type = "unzip"
-        self.__class__.op_type = "unzip"
-        self.__class__.no_need_check_grad = True
-
-        input = [
-            [1.0, 2.0, 3.0, 4.0],
-            [10.0, 20.0, 30.0, 40.0],
-            [100.0, 200.0, 300.0, 400.0],
-        ]
-        lod = [0, 4, 4, 8, 8, 8, 8, 12, 12, 12, 12]
-        self.inputs = {
-            'X': np.array(input).astype("float64"),
-            'lod': np.array(lod).astype("int64"),
-        }
-        out = [
-            [1.0, 2.0, 3.0, 4.0],
-            [0.0, 0.0, 0.0, 0.0],
-            [10.0, 20.0, 30.0, 40.0],
-            [0.0, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 0.0],
-            [100.0, 200.0, 300.0, 400.0],
-            [0.0, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 0.0],
-        ]
-        self.outputs = {'Y': np.array(out, dtype="float64")}
-
-    def test_check_output(self):
+class TestUnzipOp(unittest.TestCase):
+    def test_result(self):
         paddle.enable_static()
         if core.is_compiled_with_cuda():
             place = fluid.CUDAPlace(0)
-            self.check_output_with_place(place)
+            x = fluid.data(name='X', shape=[3, 4], dtype='float64')
+            lod = fluid.data(name='lod', shape=[11], dtype='int64')
+            output = paddle.fluid.contrib.layers.unzip(x, lod)
+        
+            input = [
+               [1.0, 2.0, 3.0, 4.0],
+               [10.0, 20.0, 30.0, 40.0],
+               [100.0, 200.0, 300.0, 400.0],
+            ]
+            lod = [0, 4, 4, 8, 8, 8, 8, 12, 12, 12, 12]
 
+            feed = {
+                'X': np.array(input).astype("float64"),
+                'lod': np.array(lod).astype("int64")
+            }
+
+            exe = fluid.Executor(place=place)
+            exe.run(fluid.default_startup_program())
+            res = exe.run(feed=feed, fetch_list=[output])
+            out = [
+                [1.0, 2.0, 3.0, 4.0],
+                [0.0, 0.0, 0.0, 0.0],
+                [10.0, 20.0, 30.0, 40.0],
+                [0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0],
+                [100.0, 200.0, 300.0, 400.0],
+                [0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0],
+            ]
+            out_np = np.array(out, dtype = "float64")
+            assert (res == out_np).all(), "output is not right"
 
 if __name__ == '__main__':
     unittest.main()
