@@ -307,13 +307,13 @@ def linspace(start, stop, num, dtype=None, name=None):
         dtype = convert_np_dtype_to_dtype_(dtype)
     if not isinstance(start, Variable):
         with device_guard("cpu"):
-            tensor_start = fill_constant([1], dtype, start, force_cpu=True)
+            tensor_start = fill_constant([1], dtype, start)
     if not isinstance(stop, Variable):
         with device_guard("cpu"):
-            tensor_stop = fill_constant([1], dtype, stop, force_cpu=True)
+            tensor_stop = fill_constant([1], dtype, stop)
     if not isinstance(num, Variable):
         with device_guard("cpu"):
-            tensor_num = fill_constant([1], 'int32', num, force_cpu=True)
+            tensor_num = fill_constant([1], 'int32', num)
     if in_dygraph_mode():
         return _C_ops.linspace(
             tensor_start,
@@ -1194,19 +1194,19 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
 
     if not isinstance(start, Variable):
         with device_guard("cpu"):
-            start = fill_constant([1], dtype, start, force_cpu=True)
+            start = fill_constant([1], dtype, start)
     elif start.dtype != dtype:
         start = paddle.cast(start, dtype)
 
     if not isinstance(end, Variable):
         with device_guard("cpu"):
-            end = fill_constant([1], dtype, end, force_cpu=True)
+            end = fill_constant([1], dtype, end)
     elif end.dtype != dtype:
         end = paddle.cast(end, dtype)
 
     if not isinstance(step, Variable):
         with device_guard("cpu"):
-            step = fill_constant([1], dtype, step, force_cpu=True)
+            step = fill_constant([1], dtype, step)
     elif step.dtype != dtype:
         step = paddle.cast(step, dtype)
 

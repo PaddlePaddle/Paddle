@@ -40,9 +40,7 @@ class TestProfiler(unittest.TestCase):
             image = fluid.layers.data(name='x', shape=[784], dtype='float32')
             hidden1 = fluid.layers.fc(input=image, size=64, act='relu')
             i = layers.zeros(shape=[1], dtype='int64')
-            counter = fluid.layers.zeros(
-                shape=[1], dtype='int64', force_cpu=True
-            )
+            counter = fluid.layers.zeros(shape=[1], dtype='int64')
             until = layers.fill_constant([1], dtype='int64', value=10)
             data_arr = paddle.tensor.array_write(hidden1, i)
             cond = paddle.less_than(x=counter, y=until)

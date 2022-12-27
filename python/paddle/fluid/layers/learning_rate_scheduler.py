@@ -434,7 +434,6 @@ def piecewise_decay(boundaries, values):
                         shape=[1],
                         dtype='float32',
                         value=float(boundaries[i]),
-                        force_cpu=True,
                     )
                     with switch.case(global_step < boundary_val):
                         tensor.fill_constant(
