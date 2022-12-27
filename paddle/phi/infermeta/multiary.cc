@@ -2207,6 +2207,14 @@ void MultiplexInferMeta(const std::vector<const MetaTensor*>& ins,
         phi::errors::PreconditionNotMet(
             "All the candidate tensors must have the same size."));
   }
+
+  PADDLE_ENFORCE_GE(
+      in_dim[0],
+      ids_dim[0],
+      phi::errors::InvalidArgument("The 2nd-dim of input cannot be smaller "
+                                   "than batchSize of the index tensor."));
+
+  in_dim[0] = ids_dim[0];
   out->set_dims(in_dim);
   out->set_dtype(ins[0]->dtype());
 }
