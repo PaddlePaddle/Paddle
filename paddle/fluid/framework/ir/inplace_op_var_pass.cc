@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/inplace_op_var_pass.h"
 
+#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -71,7 +72,8 @@ void InplaceOpVarPass::ApplyImpl(ir::Graph* graph) const {
   }
 
   // inplace all reshape op.
-  for (auto* node : nodes) {
+  auto topo_nodes = TopologySortOperations(*graph);
+  for (auto* node : topo_nodes) {
     if (!is_valid_reshape(node)) continue;
     auto* op_node = node->Op();
     auto input_name = op_node->Input("X")[0];
