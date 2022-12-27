@@ -1416,7 +1416,7 @@ class ShardingPass(PassBase):
             )
             inter_node_groups = []
             intra_node_groups = []
-            for _ in range(self.comm_stream_num):
+            for _ in range(grad_comm_stream_num):
                 # TODO re-use one origin communicator
                 inter_node_groups.append(
                     new_process_group(inter_node_ranks, force_new_group=True)
