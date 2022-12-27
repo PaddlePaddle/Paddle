@@ -22,12 +22,10 @@ import unittest
 
 
 class TrtConvertSumTest(TrtLayerAutoScanTest):
-
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
-
         def generate_input1(batch):
             if self.dims == 4:
                 return np.ones([batch, 3, 24, 24]).astype(np.float32)
@@ -61,99 +59,101 @@ class TrtConvertSumTest(TrtLayerAutoScanTest):
         for dims in [1, 2, 3, 4]:
             for batch in [1, 4]:
                 self.dims = dims
-                ops_config = [{
-                    "op_type": "sum",
-                    "op_inputs": {
-                        "X": ["input1", "input2", "input3"]
-                    },
-                    "op_outputs": {
-                        "Out": ["output"]
-                    },
-                    "op_attrs": {}
-                }]
+                ops_config = [
+                    {
+                        "op_type": "sum",
+                        "op_inputs": {"X": ["input1", "input2", "input3"]},
+                        "op_outputs": {"Out": ["output"]},
+                        "op_attrs": {},
+                    }
+                ]
                 ops = self.generate_op_config(ops_config)
                 program_config = ProgramConfig(
                     ops=ops,
                     weights={},
                     inputs={
-                        "input1":
-                        TensorConfig(data_gen=partial(generate_input1, batch)),
-                        "input2":
-                        TensorConfig(data_gen=partial(generate_input2, batch)),
-                        "input3":
-                        TensorConfig(data_gen=partial(generate_input3, batch))
+                        "input1": TensorConfig(
+                            data_gen=partial(generate_input1, batch)
+                        ),
+                        "input2": TensorConfig(
+                            data_gen=partial(generate_input2, batch)
+                        ),
+                        "input3": TensorConfig(
+                            data_gen=partial(generate_input3, batch)
+                        ),
                     },
-                    outputs=["output"])
+                    outputs=["output"],
+                )
 
                 yield program_config
 
     def sample_predictor_configs(
-            self, program_config) -> (paddle_infer.Config, List[int], float):
-
+        self, program_config
+    ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape():
             if self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
                     "input1": [1, 3, 24, 24],
                     "input2": [1, 3, 24, 24],
-                    "input3": [1, 3, 24, 24]
+                    "input3": [1, 3, 24, 24],
                 }
                 self.dynamic_shape.max_input_shape = {
                     "input1": [4, 3, 48, 48],
                     "input2": [4, 3, 48, 48],
-                    "input3": [4, 3, 48, 48]
+                    "input3": [4, 3, 48, 48],
                 }
                 self.dynamic_shape.opt_input_shape = {
                     "input1": [1, 3, 24, 24],
                     "input2": [1, 3, 24, 24],
-                    "input3": [1, 3, 24, 24]
+                    "input3": [1, 3, 24, 24],
                 }
             elif self.dims == 3:
                 self.dynamic_shape.min_input_shape = {
                     "input1": [1, 3, 24],
                     "input2": [1, 3, 24],
-                    "input3": [1, 3, 24]
+                    "input3": [1, 3, 24],
                 }
                 self.dynamic_shape.max_input_shape = {
                     "input1": [4, 3, 48],
                     "input2": [4, 3, 48],
-                    "input3": [4, 3, 48]
+                    "input3": [4, 3, 48],
                 }
                 self.dynamic_shape.opt_input_shape = {
                     "input1": [1, 3, 24],
                     "input2": [1, 3, 24],
-                    "input3": [1, 3, 24]
+                    "input3": [1, 3, 24],
                 }
             elif self.dims == 2:
                 self.dynamic_shape.min_input_shape = {
                     "input1": [1, 24],
                     "input2": [1, 24],
-                    "input3": [1, 24]
+                    "input3": [1, 24],
                 }
                 self.dynamic_shape.max_input_shape = {
                     "input1": [4, 48],
                     "input2": [4, 48],
-                    "input3": [4, 48]
+                    "input3": [4, 48],
                 }
                 self.dynamic_shape.opt_input_shape = {
                     "input1": [1, 24],
                     "input2": [1, 24],
-                    "input3": [1, 24]
+                    "input3": [1, 24],
                 }
             elif self.dims == 1:
                 self.dynamic_shape.min_input_shape = {
                     "input1": [24],
                     "input2": [24],
-                    "input3": [24]
+                    "input3": [24],
                 }
                 self.dynamic_shape.max_input_shape = {
                     "input1": [48],
                     "input2": [48],
-                    "input3": [48]
+                    "input3": [48],
                 }
                 self.dynamic_shape.opt_input_shape = {
                     "input1": [24],
                     "input2": [24],
-                    "input3": [24]
+                    "input3": [24],
                 }
 
         def clear_dynamic_shape():
@@ -162,7 +162,7 @@ class TrtConvertSumTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(dynamic_shape):
-            if (self.dims == 1 and not dynamic_shape):
+            if self.dims == 1 and not dynamic_shape:
                 return 0, 5
             return 1, 4
 
@@ -170,17 +170,19 @@ class TrtConvertSumTest(TrtLayerAutoScanTest):
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            False), 1e-5
+            False
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            False), 1e-5
+            False
+        ), 1e-3
 
         # for dynamic_shape
         generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(True), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(True), 1e-3
 
     def test(self):
         self.run_test()
@@ -188,12 +190,10 @@ class TrtConvertSumTest(TrtLayerAutoScanTest):
 
 # special case when sum having olny one input
 class TrtConvertSumTest1(TrtLayerAutoScanTest):
-
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
-
         def generate_input1(batch):
             if self.dims == 4:
                 return np.ones([batch, 3, 24, 24]).astype(np.float32)
@@ -207,31 +207,31 @@ class TrtConvertSumTest1(TrtLayerAutoScanTest):
         for dims in [1, 2, 3, 4]:
             for batch in [1, 4]:
                 self.dims = dims
-                ops_config = [{
-                    "op_type": "sum",
-                    "op_inputs": {
-                        "X": ["input1"]
-                    },
-                    "op_outputs": {
-                        "Out": ["output"]
-                    },
-                    "op_attrs": {}
-                }]
+                ops_config = [
+                    {
+                        "op_type": "sum",
+                        "op_inputs": {"X": ["input1"]},
+                        "op_outputs": {"Out": ["output"]},
+                        "op_attrs": {},
+                    }
+                ]
                 ops = self.generate_op_config(ops_config)
                 program_config = ProgramConfig(
                     ops=ops,
                     weights={},
                     inputs={
-                        "input1":
-                        TensorConfig(data_gen=partial(generate_input1, batch)),
+                        "input1": TensorConfig(
+                            data_gen=partial(generate_input1, batch)
+                        ),
                     },
-                    outputs=["output"])
+                    outputs=["output"],
+                )
 
                 yield program_config
 
     def sample_predictor_configs(
-            self, program_config) -> (paddle_infer.Config, List[int], float):
-
+        self, program_config
+    ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape():
             if self.dims == 4:
                 self.dynamic_shape.min_input_shape = {"input1": [1, 3, 24, 24]}
@@ -268,7 +268,7 @@ class TrtConvertSumTest1(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(dynamic_shape):
-            if (self.dims == 1 and not dynamic_shape):
+            if self.dims == 1 and not dynamic_shape:
                 return 0, 3
             return 1, 2
 
@@ -276,17 +276,19 @@ class TrtConvertSumTest1(TrtLayerAutoScanTest):
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            False), 1e-5
+            False
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            False), 1e-5
+            False
+        ), 1e-3
 
         # for dynamic_shape
         generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(True), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(True), 1e-3
 
     def test(self):
         self.run_test()

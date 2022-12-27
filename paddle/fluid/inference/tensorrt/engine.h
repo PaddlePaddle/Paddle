@@ -294,15 +294,6 @@ class TensorRTEngine {
 
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
   nvinfer1::IExecutionContext* context() {
-#ifndef PADDLE_WITH_TESTING
-    PADDLE_ENFORCE_GT(
-        predictor_id_per_thread,
-        -1,
-        platform::errors::InvalidArgument(
-            "thread local var predictor_id_per_thread must be "
-            "initialized to >= 0, but now predictor_id_per_thread = %d",
-            predictor_id_per_thread));
-#endif
     std::unique_lock<std::mutex> lock(mutex_);
     if (infer_context_.find(predictor_id_per_thread) == infer_context_.end()) {
       PADDLE_ENFORCE_NOT_NULL(
@@ -329,15 +320,6 @@ class TensorRTEngine {
 
   int GetProfileIndex() {
     if (max_profile_num_ > 1) {
-#ifndef PADDLE_WITH_TESTING
-      PADDLE_ENFORCE_GT(
-          predictor_id_per_thread,
-          -1,
-          platform::errors::InvalidArgument(
-              "thread local var predictor_id_per_thread must be "
-              "initialized to >= 0, but now predictor_id_per_thread = %d",
-              predictor_id_per_thread));
-#endif
       std::unique_lock<std::mutex> lock(mutex_);
       return profile_index_[predictor_id_per_thread];
     } else {
@@ -356,15 +338,6 @@ class TensorRTEngine {
         infer_engine_,
         platform::errors::InvalidArgument(
             "You should build engine first and then set the context."));
-#ifndef PADDLE_WITH_TESTING
-    PADDLE_ENFORCE_GT(
-        predictor_id_per_thread,
-        -1,
-        platform::errors::InvalidArgument(
-            "thread local var predictor_id_per_thread must be "
-            "initialized to >= 0, but now predictor_id_per_thread = %d",
-            predictor_id_per_thread));
-#endif
     std::unique_lock<std::mutex> lock(mutex_);
     infer_context_[predictor_id_per_thread].reset(nullptr);
     infer_context_.erase(predictor_id_per_thread);
