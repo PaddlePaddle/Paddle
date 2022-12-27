@@ -1075,6 +1075,21 @@ void FlattenWithXShapeInferMeta(const MetaTensor& x,
                                 MetaTensor* xshape) {
   auto x_dims = x.dims();
   int in_dims_size = x_dims.size();
+
+  if (in_dims_size == 0) {
+    const auto& out_dims = phi::make_ddim(std::vector<int32_t>{1});
+    out->set_dims(out_dims);
+    out->set_dtype(x.dtype());
+    out->set_layout(x.layout());
+
+    if (xshape) {
+      xshape->set_dims(phi::make_ddim(std::vector<int64_t>{0}));
+      xshape->share_lod(x);
+    }
+
+    return;
+  }
+
   if (start_axis < 0) {
     start_axis = start_axis + in_dims_size;
   }

@@ -295,5 +295,19 @@ class TestDygraphInplaceFlattenPython(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestFlattenOpZeroDims(TestFlattenOp):
+    def init_test_case(self):
+        self.in_shape = list()
+        self.start_axis = 0
+        self.stop_axis = -1
+        self.new_shape = 1
+
+    def init_attrs(self):
+        self.attrs = {
+            "start_axis": self.start_axis,
+            "stop_axis": self.stop_axis,
+        }
+
+
 if __name__ == "__main__":
     unittest.main()

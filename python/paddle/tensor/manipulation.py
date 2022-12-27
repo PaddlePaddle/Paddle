@@ -1680,28 +1680,38 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
         )
 
     x_dim = len(x.shape)
-    if (
-        not (isinstance(start_axis, int))
-        or (start_axis > x_dim - 1)
-        or start_axis < -x_dim
-    ):
-        raise ValueError(
-            "The start_axis should be a int, and in range [-rank(x), rank(x))"
-        )
-    if (
-        not (isinstance(stop_axis, int))
-        or (stop_axis > x_dim - 1)
-        or stop_axis < -x_dim
-    ):
-        raise ValueError(
-            "The stop_axis should be a int, and in range [-rank(x), rank(x))"
-        )
-    if start_axis < 0:
-        start_axis = start_axis + x_dim
-    if stop_axis < 0:
-        stop_axis = stop_axis + x_dim
-    if start_axis > stop_axis:
-        raise ValueError("The stop_axis should be larger than stat_axis")
+    if x_dim == 0:
+        if not (isinstance(start_axis, int)) or start_axis not in [0, -1]:
+            raise ValueError(
+                "The start_axis should be int, and should be 0 or -1 when the input tensor is a 0D-Tensor"
+            )
+        if not (isinstance(stop_axis, int)) or stop_axis not in [0, -1]:
+            raise ValueError(
+                "The stop_axis should be int, and should be 0 or -1 when the input tensor is a 0D-Tensor"
+            )
+    else:
+        if (
+            not (isinstance(start_axis, int))
+            or (start_axis > x_dim - 1)
+            or start_axis < -x_dim
+        ):
+            raise ValueError(
+                "The start_axis should be a int, and in range [-rank(x), rank(x))"
+            )
+        if (
+            not (isinstance(stop_axis, int))
+            or (stop_axis > x_dim - 1)
+            or stop_axis < -x_dim
+        ):
+            raise ValueError(
+                "The stop_axis should be a int, and in range [-rank(x), rank(x))"
+            )
+        if start_axis < 0:
+            start_axis = start_axis + x_dim
+        if stop_axis < 0:
+            stop_axis = stop_axis + x_dim
+        if start_axis > stop_axis:
+            raise ValueError("The stop_axis should be larger than stat_axis")
 
     if in_dygraph_mode():
         return _C_ops.flatten(x, start_axis, stop_axis)
