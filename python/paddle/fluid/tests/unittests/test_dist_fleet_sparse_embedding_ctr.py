@@ -230,11 +230,11 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
             )
             dnn_out = dnn_pool
             for i, dim in enumerate(dnn_layer_dims[1:]):
-                fc = fluid.layers.fc(
-                    input=dnn_out,
+                fc = paddle.static.nn.fc(
+                    x=dnn_out,
                     size=dim,
-                    act="relu",
-                    param_attr=fluid.ParamAttr(
+                    activation="relu",
+                    weight_attr=fluid.ParamAttr(
                         initializer=fluid.initializer.Constant(value=0.01)
                     ),
                     name='dnn-fc-%d' % i,
@@ -256,7 +256,9 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
                 input=lr_embbding, pool_type="sum"
             )
             merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
-            predict = fluid.layers.fc(input=merge_layer, size=2, act='softmax')
+            predict = paddle.static.nn.fc(
+                x=merge_layer, size=2, activation='softmax'
+            )
             return datas, predict
 
         reader = paddle.batch(fake_ctr_reader(), batch_size=4)

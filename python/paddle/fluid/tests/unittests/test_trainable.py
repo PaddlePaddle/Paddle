@@ -24,8 +24,8 @@ import paddle.fluid as fluid
 def test_trainable():
     x = fluid.layers.data(name='image', shape=[784], dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-    feature = fluid.layers.fc(
-        input=x, size=10, param_attr=fluid.ParamAttr(trainable=False)
+    feature = paddle.static.nn.fc(
+        x, size=10, weight_attr=fluid.ParamAttr(trainable=False)
     )
     loss = paddle.nn.functional.cross_entropy(
         input=feature, label=label, reduction='none', use_softmax=False

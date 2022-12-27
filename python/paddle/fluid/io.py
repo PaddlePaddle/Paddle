@@ -511,7 +511,7 @@ def save_params(executor, dirname, main_program=None, filename=None):
             image = fluid.data(name='img', shape=[None, 28, 28], dtype='float32')
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
             feeder = fluid.DataFeeder(feed_list=[image, label], place=fluid.CPUPlace())
-            predict = fluid.layers.fc(input=image, size=10, act='softmax')
+            predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
 
             loss = paddle.nn.functional.cross_entropy(
                 input=predict, label=label,
@@ -750,7 +750,7 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
             feeder = fluid.DataFeeder(feed_list=[image, label], place=fluid.CPUPlace())
 
-            predict = fluid.layers.fc(input=image, size=10, act='softmax')
+            predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
             loss = paddle.nn.functional.cross_entropy(
                 input=predict, label=label,
                 reduction='none', use_softmax=False
@@ -1384,7 +1384,7 @@ def save_inference_model(
             image = fluid.data(name='img', shape=[None, 28, 28], dtype='float32')
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
             feeder = fluid.DataFeeder(feed_list=[image, label], place=fluid.CPUPlace())
-            predict = fluid.layers.fc(input=image, size=10, act='softmax')
+            predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
 
             loss = paddle.nn.functional.cross_entropy(
                 input=predict, label=label,

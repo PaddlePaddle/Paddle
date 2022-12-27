@@ -33,7 +33,7 @@ class TestDataLoaderEarlyReset(unittest.TestCase):
         self.iterable = True
 
     def build_network(self):
-        y = fluid.layers.fc(self.x, size=10)
+        y = paddle.static.nn.fc(self.x, size=10)
         loss = paddle.mean(y)
 
         optimizer = fluid.optimizer.SGD(learning_rate=1e-3)

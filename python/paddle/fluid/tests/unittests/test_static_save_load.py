@@ -423,7 +423,7 @@ class TestSaveLoadPartial(unittest.TestCase):
 
             test_program = fluid.default_main_program().clone(for_test=True)
 
-            add_1 = fluid.layers.fc(
+            add_1 = paddle.static.nn.fc(
                 static_last_hidden,
                 size=hidden_size,
                 num_flatten_dims=2,
@@ -682,7 +682,7 @@ class TestProgramStatePartial(unittest.TestCase):
 
             test_program = fluid.default_main_program().clone(for_test=True)
 
-            add_1 = fluid.layers.fc(
+            add_1 = paddle.static.nn.fc(
                 static_last_hidden,
                 size=hidden_size,
                 num_flatten_dims=2,
@@ -856,8 +856,8 @@ class TestVariableInit(unittest.TestCase):
     def test_variable_init(self):
 
         x = fluid.data(name="x", shape=[10, 10], dtype='float32')
-        y = fluid.layers.fc(x, 10)
-        z = fluid.layers.fc(y, 10)
+        y = paddle.static.nn.fc(x, 10)
+        z = paddle.static.nn.fc(y, 10)
 
         place = self.set_place()
         exe = fluid.Executor(place)
@@ -1479,7 +1479,7 @@ class TestProgramStateOldSave(unittest.TestCase):
 
             test_program = fluid.default_main_program().clone(for_test=True)
 
-            add_1 = fluid.layers.fc(
+            add_1 = paddle.static.nn.fc(
                 static_last_hidden,
                 size=hidden_size,
                 num_flatten_dims=2,
@@ -1651,7 +1651,7 @@ class TestProgramStateOldSaveSingleModel(unittest.TestCase):
 
             test_program = fluid.default_main_program().clone(for_test=True)
 
-            add_1 = fluid.layers.fc(
+            add_1 = paddle.static.nn.fc(
                 static_last_hidden,
                 size=hidden_size,
                 num_flatten_dims=2,

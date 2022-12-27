@@ -33,8 +33,8 @@ def simple_fc_net(use_feed):
     x, y = _feed_data_helper()
     hidden_layer = 4
     for _ in range(hidden_layer):
-        x = fluid.layers.fc(input=x, size=20, act='relu')
-    y_predict = fluid.layers.fc(input=x, size=10, act='softmax')
+        x = paddle.static.nn.fc(x, size=20, activation='relu')
+    y_predict = paddle.static.nn.fc(x, size=10, activation='softmax')
     cost = paddle.nn.functional.cross_entropy(
         input=y_predict, label=y, reduction='none', use_softmax=False
     )
@@ -45,11 +45,11 @@ def simple_fc_net(use_feed):
 def fc_with_inplace_net(use_feed):
     assert use_feed
     x, y = _feed_data_helper()
-    fc = fluid.layers.fc(input=x, size=20, act='relu')
-    fc = fluid.layers.fc(input=fc, size=10, act='relu')
+    fc = paddle.static.nn.fc(x=x, size=20, activation='relu')
+    fc = paddle.static.nn.fc(x=fc, size=10, activation='relu')
     reshape = paddle.reshape(x=fc, shape=[-1, 2, 5])
     reshape = paddle.reshape(x=reshape, shape=[-1, 5, 2])
-    y_predict = fluid.layers.fc(input=reshape, size=10, act='softmax')
+    y_predict = paddle.static.nn.fc(x=reshape, size=10, activation='softmax')
     cost = paddle.nn.functional.cross_entropy(
         input=y_predict, label=y, reduction='none', use_softmax=False
     )

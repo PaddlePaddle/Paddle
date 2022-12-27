@@ -21,15 +21,17 @@ import paddle.fluid as fluid
 def simple_fc_net_with_inputs(img, label, class_num=10):
     hidden = img
     for _ in range(2):
-        hidden = fluid.layers.fc(
+        hidden = paddle.static.nn.fc(
             hidden,
             size=100,
-            act='relu',
+            activation='relu',
             bias_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=1.0)
             ),
         )
-    prediction = fluid.layers.fc(hidden, size=class_num, act='softmax')
+    prediction = paddle.static.nn.fc(
+        hidden, size=class_num, activation='softmax'
+    )
     loss = paddle.nn.functional.cross_entropy(
         input=prediction, label=label, reduction='none', use_softmax=False
     )
@@ -46,10 +48,10 @@ def simple_fc_net(use_feed=None):
 def batchnorm_fc_with_inputs(img, label, class_num=10):
     hidden = img
     for _ in range(2):
-        hidden = fluid.layers.fc(
+        hidden = paddle.static.nn.fc(
             hidden,
             size=200,
-            act='relu',
+            activation='relu',
             bias_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=1.0)
             ),
@@ -57,7 +59,9 @@ def batchnorm_fc_with_inputs(img, label, class_num=10):
 
         hidden = paddle.static.nn.batch_norm(input=hidden)
 
-    prediction = fluid.layers.fc(hidden, size=class_num, act='softmax')
+    prediction = paddle.static.nn.fc(
+        hidden, size=class_num, activation='softmax'
+    )
     loss = paddle.nn.functional.cross_entropy(
         input=prediction, label=label, reduction='none', use_softmax=False
     )
@@ -94,9 +98,11 @@ def bow_net(
     )
     bow = fluid.layers.sequence_pool(input=emb, pool_type='sum')
     bow_tanh = paddle.tanh(bow)
-    fc_1 = fluid.layers.fc(input=bow_tanh, size=hid_dim, act="tanh")
-    fc_2 = fluid.layers.fc(input=fc_1, size=hid_dim2, act="tanh")
-    prediction = fluid.layers.fc(input=[fc_2], size=class_dim, act="softmax")
+    fc_1 = paddle.static.nn.fc(x=bow_tanh, size=hid_dim, activation="tanh")
+    fc_2 = paddle.static.nn.fc(x=fc_1, size=hid_dim2, activation="tanh")
+    prediction = paddle.static.nn.fc(
+        x=[fc_2], size=class_dim, activation="softmax"
+    )
     cost = paddle.nn.functional.cross_entropy(
         input=prediction, label=label, reduction='none', use_softmax=False
     )

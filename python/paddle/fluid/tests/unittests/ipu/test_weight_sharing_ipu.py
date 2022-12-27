@@ -63,8 +63,8 @@ class TestWeightSharing(IPUOpTest):
                 is_sparse=False,
             )
         with paddle.static.ipu_shard_guard(index=1, stage=1):
-            z = paddle.fluid.layers.fc(
-                input=y, size=768, param_attr=paddle.fluid.ParamAttr(name="fc")
+            z = paddle.static.nn.fc(
+                x=y, size=768, weight_attr=paddle.fluid.ParamAttr(name="fc")
             )
         with paddle.static.ipu_shard_guard(index=0, stage=2):
             out = paddle.matmul(

@@ -66,7 +66,7 @@ class TestFleet1(unittest.TestCase):
                 is_distributed=True,
                 param_attr=fluid.ParamAttr(name="embedding"),
             )
-            fc = fluid.layers.fc(input=emb, size=1, act=None)
+            fc = paddle.static.nn.fc(x=emb, size=1, activation=None)
             label = fluid.layers.data(
                 name="click",
                 shape=[-1, 1],

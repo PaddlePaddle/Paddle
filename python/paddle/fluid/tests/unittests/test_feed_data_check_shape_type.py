@@ -63,9 +63,11 @@ class TestFeedData(unittest.TestCase):
 
         hidden = in_data
         for hidden_size in hidden_sizes:
-            hidden = fluid.layers.fc(hidden, size=hidden_size)
+            hidden = paddle.static.nn.fc(hidden, size=hidden_size)
 
-        predict_label = fluid.layers.fc(hidden, size=class_num, act='softmax')
+        predict_label = paddle.static.nn.fc(
+            hidden, size=class_num, activation='softmax'
+        )
         loss = paddle.mean(
             paddle.nn.functional.cross_entropy(
                 input=predict_label,

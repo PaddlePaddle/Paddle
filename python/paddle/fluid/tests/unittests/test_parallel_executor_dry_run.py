@@ -80,8 +80,10 @@ class TestMNISTDryRun(TestBase):
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
         hidden = img
         for _ in range(10):
-            hidden = fluid.layers.fc(input=img, size=200, act='tanh')
-        prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
+            hidden = paddle.static.nn.fc(x=img, size=200, activation='tanh')
+        prediction = paddle.static.nn.fc(
+            x=hidden, size=10, activation='softmax'
+        )
         loss = paddle.nn.functional.cross_entropy(
             input=prediction, label=label, reduction='none', use_softmax=False
         )

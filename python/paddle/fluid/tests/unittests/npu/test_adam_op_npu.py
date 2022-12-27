@@ -260,8 +260,8 @@ class TestNet(unittest.TestCase):
             sum = paddle.add(a, b)
             z = paddle.pow(sum, 2.0)
 
-            fc_1 = fluid.layers.fc(input=z, size=128)
-            prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
+            fc_1 = paddle.static.nn.fc(x=z, size=128)
+            prediction = paddle.static.nn.fc(x=fc_1, size=2, activation='softmax')
 
             cost = paddle.nn.functional.cross_entropy(input=prediction, label=label, reduction='none', use_softmax=False)
             loss = paddle.mean(cost)
@@ -343,9 +343,9 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
                 sum = paddle.add(a, b)
                 z = paddle.pow(sum, 2.0)
 
-                fc_1 = fluid.layers.fc(input=z, size=2, param_attr=weight_attr1)
-                prediction = fluid.layers.fc(
-                    input=fc_1, size=2, param_attr=weight_attr2, act='softmax'
+                fc_1 = paddle.static.nn.fc(x=z, size=2, weight_attr=weight_attr1)
+                prediction = paddle.static.nn.fc(
+                    x=fc_1, size=2, weight_attr=weight_attr2, activation='softmax'
                 )
 
                 cost = paddle.nn.functional.cross_entropy(input=prediction, label=label, reduction='none', use_softmax=False)

@@ -38,9 +38,13 @@ class TestASPStaticPruningBase(unittest.TestCase):
             hidden = paddle.static.nn.conv2d(
                 input=img, num_filters=2, filter_size=3, padding=2, act="relu"
             )
-            hidden = fluid.layers.fc(input=hidden, size=32, act='softmax')
-            hidden = fluid.layers.fc(input=hidden, size=3, act='softmax')
-            prediction = fluid.layers.fc(input=hidden, size=3, act='softmax')
+            hidden = paddle.static.nn.fc(
+                x=hidden, size=32, activation='softmax'
+            )
+            hidden = paddle.static.nn.fc(x=hidden, size=3, activation='softmax')
+            prediction = paddle.static.nn.fc(
+                x=hidden, size=3, activation='softmax'
+            )
             return img, label, prediction
 
         with fluid.program_guard(self.main_program, self.startup_program):

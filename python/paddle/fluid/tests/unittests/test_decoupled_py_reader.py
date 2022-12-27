@@ -54,17 +54,17 @@ def simple_fc_net(places, use_legacy_py_reader, use_double_buffer):
             )
             hidden = image
             for hidden_size in [10, 20, 30]:
-                hidden = fluid.layers.fc(
+                hidden = paddle.static.nn.fc(
                     hidden,
                     size=hidden_size,
-                    act='tanh',
+                    activation='tanh',
                     bias_attr=fluid.ParamAttr(
                         initializer=fluid.initializer.Constant(value=1.0)
                     ),
                 )
 
-            predict_label = fluid.layers.fc(
-                hidden, size=CLASS_NUM, act='softmax'
+            predict_label = paddle.static.nn.fc(
+                hidden, size=CLASS_NUM, activation='softmax'
             )
             loss = paddle.mean(
                 paddle.nn.functional.cross_entropy(

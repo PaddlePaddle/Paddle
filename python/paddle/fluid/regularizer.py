@@ -76,8 +76,8 @@ class L2DecayRegularizer(WeightDecayRegularizer):
             with fluid.program_guard(main_prog, startup_prog):
                 data = fluid.layers.data(name='image', shape=[3, 28, 28], dtype='float32')
                 label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-                hidden = fluid.layers.fc(input=data, size=128, act='relu')
-                prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
+                hidden = paddle.static.nn.fc(x=data, size=128, activation='relu')
+                prediction = paddle.static.nn.fc(x=hidden, size=10, activation='softmax')
                 loss = paddle.nn.functional.cross_entropy(
                     input=prediction, label=label,
                     reduction='none', use_softmax=False
@@ -101,9 +101,9 @@ class L2DecayRegularizer(WeightDecayRegularizer):
 
             # set L1 regularization in fluid.ParamAttr
             w_param = fluid.ParamAttr(regularizer=l1)
-            hidden1 = fluid.layers.fc(x, 8, param_attr=w_param)  # fc_0.w_0(L1), fc_0.b_0
-            hidden2 = fluid.layers.fc(hidden1, 16, param_attr=w_param)   # fc_1.w_0(L1), fc_1.b_0
-            predict = fluid.layers.fc(hidden2, 32)    # fc_3.w_0, fc_3.b_0
+            hidden1 = paddle.static.nn.fc(x, 8, weight_attr=w_param)  # fc_0.w_0(L1), fc_0.b_0
+            hidden2 = paddle.static.nn.fc(hidden1, 16, weight_attr=w_param)   # fc_1.w_0(L1), fc_1.b_0
+            predict = paddle.static.nn.fc(hidden2, 32)    # fc_3.w_0, fc_3.b_0
             avg_loss = paddle.mean(predict)
 
             # set L2 regularization in optimizer
@@ -195,8 +195,8 @@ class L1DecayRegularizer(WeightDecayRegularizer):
             with fluid.program_guard(main_prog, startup_prog):
                 data = fluid.layers.data(name='image', shape=[3, 28, 28], dtype='float32')
                 label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-                hidden = fluid.layers.fc(input=data, size=128, act='relu')
-                prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
+                hidden = paddle.static.nn.fc(x=data, size=128, activation='relu')
+                prediction = paddle.static.nn.fc(x=hidden, size=10, activation='softmax')
                 loss = paddle.nn.functional.cross_entropy(
                     input=prediction, label=label,
                     reduction='none', use_softmax=False
@@ -219,9 +219,9 @@ class L1DecayRegularizer(WeightDecayRegularizer):
 
             # set L1 regularization in fluid.ParamAttr
             w_param = fluid.ParamAttr(regularizer=l1)
-            hidden1 = fluid.layers.fc(x, 8, param_attr=w_param)  # fc_0.w_0(L1), fc_0.b_0
-            hidden2 = fluid.layers.fc(hidden1, 16, param_attr=w_param)  # fc_1.w_0(L1), fc_1.b_0
-            predict = fluid.layers.fc(hidden2, 32)   # fc_3.w_0, fc_3.b_0
+            hidden1 = paddle.static.nn.fc(x, 8, weight_attr=w_param)  # fc_0.w_0(L1), fc_0.b_0
+            hidden2 = paddle.static.nn.fc(hidden1, 16, weight_attr=w_param)  # fc_1.w_0(L1), fc_1.b_0
+            predict = paddle.static.nn.fc(hidden2, 32)   # fc_3.w_0, fc_3.b_0
             avg_loss = paddle.mean(predict)
 
             # set L2 regularization in optimizer
@@ -289,10 +289,11 @@ class L1DecayRegularizer(WeightDecayRegularizer):
 # We short the class name, since users will use the regulaizer with the package
 # name. The sample code:
 #
+# import paddle
 # import paddle.fluid as fluid
 #
-# hidden = fluid.layers.fc(...,
-#                          param_attr=fluid.regularizer.Xavier())
+# hidden = paddle.static.nn.fc(...,
+#                          weight_attr=fluid.regularizer.Xavier())
 #
 # It is no need to add a `Regularizer` as the class suffix
 L1Decay = L1DecayRegularizer

@@ -1164,8 +1164,8 @@ class TestRecomputeOptimizer(unittest.TestCase):
             drop_res = paddle.nn.functional.dropout(
                 input_x, p=0.5, name="dropout_with_seed_cpu"
             )
-            prediction = fluid.layers.fc(
-                input=[drop_res], size=2, act='softmax'
+            prediction = paddle.static.nn.fc(
+                x=[drop_res], size=2, activation='softmax'
             )
             cost = paddle.nn.functional.cross_entropy(
                 input=prediction,
@@ -1226,8 +1226,8 @@ class TestRecomputeOptimizerCUDA(unittest.TestCase):
             drop_res = paddle.nn.functional.dropout(
                 input_x, p=0.5, name="dropout_with_seed_gpu"
             )
-            prediction = fluid.layers.fc(
-                input=[drop_res], size=2, act='softmax'
+            prediction = paddle.static.nn.fc(
+                x=[drop_res], size=2, activation='softmax'
             )
             cost = paddle.nn.functional.cross_entropy(
                 input=prediction,

@@ -37,10 +37,10 @@ class TestFleetFP16CompressOptimizer(unittest.TestCase):
                 name="y", shape=[1], dtype='int64'
             )
 
-            fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
-            fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
-            prediction = paddle.fluid.layers.fc(
-                input=[fc_2], size=2, act='softmax'
+            fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
+            fc_2 = paddle.static.nn.fc(x=fc_1, size=64, activation='tanh')
+            prediction = paddle.static.nn.fc(
+                x=[fc_2], size=2, activation='softmax'
             )
             cost = paddle.nn.functional.cross_entropy(
                 input=prediction,

@@ -53,11 +53,11 @@ def cnn_model(data):
     ]
     scale = (2.0 / (param_shape[0] ** 2 * SIZE)) ** 0.5
 
-    predict = fluid.layers.fc(
-        input=conv_pool_2,
+    predict = paddle.static.nn.fc(
+        x=conv_pool_2,
         size=SIZE,
-        act="softmax",
-        param_attr=fluid.param_attr.ParamAttr(
+        activation="softmax",
+        weight_attr=fluid.param_attr.ParamAttr(
             initializer=fluid.initializer.NormalInitializer(
                 loc=0.0, scale=scale
             )
@@ -187,11 +187,13 @@ class TestCloneWithStopGradient(unittest.TestCase):
         startup_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
             img = fluid.layers.data(name='image', shape=[784])
-            hidden1 = fluid.layers.fc(input=img, size=200, act='relu')
+            hidden1 = paddle.static.nn.fc(x=img, size=200, activation='relu')
             hidden1.stop_gradient = True
             hidden2 = paddle.nn.functional.dropout(hidden1, p=0.5)
             loss = paddle.nn.functional.cross_entropy(
-                input=fluid.layers.fc(hidden2, size=10, act='softmax'),
+                input=paddle.static.nn.fc(
+                    hidden2, size=10, activation='softmax'
+                ),
                 label=fluid.layers.data(name='label', shape=[1], dtype='int64'),
                 reduction='none',
                 use_softmax=False,
@@ -214,7 +216,7 @@ class TestCloneWithStopGradientInSubBlock(unittest.TestCase):
         with fluid.program_guard(train_program, startup_program):
             img = fluid.layers.data(name='image', shape=[784])
             true = paddle.ones(shape=[1], dtype="float32")
-            hidden1 = fluid.layers.fc(input=img, size=200, act='relu')
+            hidden1 = paddle.static.nn.fc(x=img, size=200, activation='relu')
             hidden1.stop_gradient = True
 
             cond = paddle.equal(true, true)
@@ -231,7 +233,9 @@ class TestCloneWithStopGradientInSubBlock(unittest.TestCase):
             hidden2 = paddle.static.nn.cond(cond, true_fn, false_fn)
 
             loss = paddle.nn.functional.cross_entropy(
-                input=fluid.layers.fc(hidden2, size=10, act='softmax'),
+                input=paddle.static.nn.fc(
+                    hidden2, size=10, activation='softmax'
+                ),
                 label=fluid.layers.data(name='label', shape=[1], dtype='int64'),
                 reduction='none',
                 use_softmax=False,
@@ -257,7 +261,7 @@ class TestCloneWithRaise(unittest.TestCase):
         with fluid.program_guard(train_program, startup_program):
             img = fluid.layers.data(name='image', shape=[784])
             true = paddle.ones(shape=[1], dtype="float32")
-            hidden1 = fluid.layers.fc(input=img, size=200, act='relu')
+            hidden1 = paddle.static.nn.fc(x=img, size=200, activation='relu')
             hidden1.stop_gradient = True
 
             cond = paddle.equal(true, true)
@@ -273,7 +277,9 @@ class TestCloneWithRaise(unittest.TestCase):
 
             hidden2 = paddle.static.nn.cond(cond, true_fn, false_fn)
             loss = paddle.nn.functional.cross_entropy(
-                input=fluid.layers.fc(hidden2, size=10, act='softmax'),
+                input=paddle.static.nn.fc(
+                    hidden2, size=10, activation='softmax'
+                ),
                 label=fluid.layers.data(name='label', shape=[1], dtype='int64'),
                 reduction='none',
                 use_softmax=False,

@@ -72,11 +72,11 @@ class TestDistCTR2x2(TestDistRunnerBase):
         )
         dnn_out = dnn_pool
         for i, dim in enumerate(dnn_layer_dims[1:]):
-            fc = fluid.layers.fc(
-                input=dnn_out,
+            fc = paddle.static.nn.fc(
+                x=dnn_out,
                 size=dim,
-                act="relu",
-                param_attr=fluid.ParamAttr(
+                activation="relu",
+                weight_attr=fluid.ParamAttr(
                     initializer=fluid.initializer.Constant(value=0.01)
                 ),
                 name='dnn-fc-%d' % i,
@@ -98,7 +98,9 @@ class TestDistCTR2x2(TestDistRunnerBase):
 
         merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
 
-        predict = fluid.layers.fc(input=merge_layer, size=2, act='softmax')
+        predict = paddle.static.nn.fc(
+            x=merge_layer, size=2, activation='softmax'
+        )
         acc = paddle.static.accuracy(input=predict, label=label)
         auc_var, batch_auc_var, auc_states = paddle.static.auc(
             input=predict, label=label

@@ -128,10 +128,10 @@ class ErrorClipByValue(BaseErrorClipAttr):
             with fluid.program_guard(main_program=prog):
                 image = fluid.layers.data(
                     name='x', shape=[784], dtype='float32')
-                hidden1 = fluid.layers.fc(input=image, size=128, act='relu')
-                hidden2 = fluid.layers.fc(input=hidden1, size=64, act='relu')
-                predict = fluid.layers.fc(
-                    input=hidden2, size=10, act='softmax')
+                hidden1 = paddle.static.nn.fc(x=image, size=128, activation='relu')
+                hidden2 = paddle.static.nn.fc(x=hidden1, size=64, activation='relu')
+                predict = paddle.static.nn.fc(
+                    x=hidden2, size=10, activation='softmax')
                 label = fluid.layers.data(name='y', shape=[1], dtype='int64')
                 cost = paddle.nn.functional.cross_entropy(input=predict, label=label, reduction='none', use_softmax=False)
                 avg_cost = paddle.mean(cost)
@@ -782,15 +782,16 @@ def set_gradient_clip(clip, param_list=None, program=None):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
 
             def network():
                 image = fluid.data(name='image', shape=[
                                    None, 28], dtype='float32')
                 param_attr1 = fluid.ParamAttr("fc1_param")
-                fc1 = fluid.layers.fc(image, size=10, param_attr=param_attr1)
+                fc1 = paddle.static.nn.fc(image, size=10, weight_attr=param_attr1)
                 param_attr2 = fluid.ParamAttr("fc2_param")
-                fc2 = fluid.layers.fc(fc1, size=10, param_attr=param_attr2)
+                fc2 = paddle.static.nn.fc(fc1, size=10, weight_attr=param_attr2)
                 loss = fluid.layers.reduce_mean(fc2)
                 return loss
 

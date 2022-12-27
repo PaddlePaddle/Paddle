@@ -130,7 +130,7 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
         sum_result.persistable = True
         tmp = paddle.unsqueeze(sum_result, axis=[0])
         tmp = paddle.expand(tmp, [10, -1])
-        fc = layers.fc(tmp, size=256)
+        fc = paddle.static.nn.fc(tmp, size=256)
         loss = paddle.mean(sum_result)
 
         optim = fluid.optimizer.Adam(learning_rate=1e-3)

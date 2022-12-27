@@ -106,7 +106,7 @@ class TestCompiledProgramError(unittest.TestCase):
             name='image', shape=[1, 28, 28], dtype='float32'
         )
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-        prediction = fluid.layers.fc(input=img, size=10, act='softmax')
+        prediction = paddle.static.nn.fc(x=img, size=10, activation='softmax')
         loss = paddle.nn.functional.cross_entropy(
             input=prediction, label=label, reduction='none', use_softmax=False
         )

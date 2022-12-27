@@ -68,7 +68,7 @@ class AutoCheckpointBase(unittest.TestCase):
             image = fluid.data(name='image', shape=[-1, 4, 4], dtype='float32')
             label = fluid.data(name='label', shape=[-1, 1], dtype='int64')
 
-            fc_tmp = fluid.layers.fc(image, size=CLASS_NUM)
+            fc_tmp = paddle.static.nn.fc(image, size=CLASS_NUM)
             cross_entropy = paddle.nn.functional.softmax_with_cross_entropy(
                 fc_tmp, label
             )
