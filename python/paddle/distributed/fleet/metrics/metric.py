@@ -242,7 +242,7 @@ def mae(abserr, total_ins_num, scope=None, util=None):
         .. code-block:: python
 
           # in model.py
-          sqrerr, abserr, prob, q, pos, total = paddle.static.ctr_metric_bundle(similarity_norm, fluid.layers.cast(x=label, dtype='float32'))
+          sqrerr, abserr, prob, q, pos, total = paddle.static.ctr_metric_bundle(similarity_norm, fluid.layers.cast(x=label, dtype='int64'))
 
           # in train.py, after train or infer
           res = np.array(scope.find_var(abserr.name).get_tensor())
@@ -292,7 +292,7 @@ def rmse(sqrerr, total_ins_num, scope=None, util=None):
         .. code-block:: python
 
           # in model.py
-          sqrerr, abserr, prob, q, pos, total = paddle.static.ctr_metric_bundle(similarity_norm, fluid.layers.cast(x=label, dtype='float32'))
+          sqrerr, abserr, prob, q, pos, total = paddle.static.ctr_metric_bundle(similarity_norm, fluid.layers.cast(x=label, dtype='int64'))
 
           # in train.py, after train or infer
           res = np.array(scope.find_var(sqrerr.name).get_tensor())
@@ -342,7 +342,7 @@ def mse(sqrerr, total_ins_num, scope=None, util=None):
         .. code-block:: python
 
           # in model.py
-          sqrerr, abserr, prob, q, pos, total = paddle.static.ctr_metric_bundle(similarity_norm, fluid.layers.cast(x=label, dtype='float32'))
+          sqrerr, abserr, prob, q, pos, total = paddle.static.ctr_metric_bundle(similarity_norm, fluid.layers.cast(x=label, dtype='int64'))
 
           # in train.py, after train or infer
           metric = np.array(scope.find_var(sqrerr.name).get_tensor())
