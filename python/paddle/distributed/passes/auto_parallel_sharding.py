@@ -996,16 +996,16 @@ class ShardingPass(PassBase):
                             type_ = "recv_v2"
                             slot_name = 'Out'
                             # FIXME a fake shape for coalesce_var
-                            if len(broadcast_var.shape) >= 1:
-                                out_shape = broadcast_var.shape
-                            else:
-                                out_shape = [1]
+                            # if len(broadcast_var.shape) >= 1:
+                            #     out_shape = broadcast_var.shape
+                            # else:
+                            #     out_shape = [1]
                             new_op = main_block._insert_op_without_sync(
                                 index=idx,
                                 type=type_,
                                 outputs={slot_name: broadcast_var},
                                 attrs={
-                                    'out_shape': out_shape,
+                                    # 'out_shape': out_shape,
                                     'dtype': broadcast_var.dtype,
                                     OP_ROLE_KEY: OpRole.Optimize,
                                     'use_calc_stream': True,

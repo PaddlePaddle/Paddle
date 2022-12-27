@@ -142,12 +142,10 @@ class ProcessGroup:
             print("trainer_endpoints: {}".format(strategy.trainer_endpoints))
             strategy.current_endpoint = genv.current_endpoint
             print("current_endpoint: {}".format(strategy.current_endpoint))
-            strategy.nrings = 1
-            print("wait 25 sec")
             import time
 
-            time.sleep(25)
-
+            time.sleep(5)
+            strategy.nrings = 1
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(genv.device_id)
                 print("Call NCCLParallelContext")
@@ -171,7 +169,7 @@ class ProcessGroup:
             )
             # use legacy ops
             _legacy_C_ops.c_allreduce_sum_(
-                tmp, 'use_calc_stream', True, 'ring_id', 0
+                tmp, 'use_calc_stream', True, 'ring_id', self.id
             )
             _legacy_C_ops.c_sync_calc_stream(tmp, tmp)
             paddle.enable_static()
