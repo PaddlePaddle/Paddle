@@ -169,8 +169,8 @@ class TestUserDefinedActPreprocess(unittest.TestCase):
         fixed_state = {}
         param_init_map = {}
         for name, param in lenet.named_parameters():
-            p_shape = param.numpy().shape
-            p_value = param.numpy()
+            p_shape = np.array(param).shape
+            p_value = np.array(param)
             if name.endswith("bias"):
                 value = np.zeros_like(p_value).astype('float32')
             else:
@@ -216,8 +216,8 @@ class TestUserDefinedActPreprocess(unittest.TestCase):
                     loss = nn.functional.loss.cross_entropy(out, label)
                     avg_loss = paddle.mean(loss)
                     avg_loss.backward()
-                    adam.minimize(avg_loss)
-                    model.clear_gradients()
+                    adam.step()
+                    adam.clear_grad()
                     if batch_id % 50 == 0:
                         _logger.info(
                             "Train | At epoch {} step {}: loss = {:}, acc= {:}".format(

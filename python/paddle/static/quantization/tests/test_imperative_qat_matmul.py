@@ -176,8 +176,8 @@ class TestImperativeQatMatmul(unittest.TestCase):
                 avg_loss = paddle.mean(loss)
 
                 avg_loss.backward()
-                optimizer.minimize(avg_loss)
-                lenet.clear_gradients()
+                optimizer.step()
+                optimizer.clear_grad()
 
                 if batch_id % 100 == 0:
                     _logger.info(
