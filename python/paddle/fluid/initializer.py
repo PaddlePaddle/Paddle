@@ -495,27 +495,6 @@ class TruncatedNormalInitializer(Initializer):
                 out_var._share_underline_tensor_to(var)
             return None
 
-        if _in_legacy_dygraph():
-            out_var = _legacy_C_ops.truncated_gaussian_random(
-                'shape',
-                var.shape,
-                'dtype',
-                out_dtype,
-                'mean',
-                self._mean,
-                'std',
-                self._std_dev,
-                'seed',
-                self._seed,
-            )
-            if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
-                var_tmp = _legacy_C_ops.cast(
-                    out_var, 'in_dtype', out_var.dtype, 'out_dtype', var.dtype
-                )
-                var_tmp._share_underline_tensor_to(var)
-            else:
-                out_var._share_underline_tensor_to(var)
-            return None
         else:
             op = block.append_op(
                 type="truncated_gaussian_random",
@@ -840,16 +819,7 @@ class MSRAInitializer(Initializer):
             if var.dtype == VarDesc.VarType.FP16 or (
                 var.dtype == VarDesc.VarType.BF16 and not self._uniform
             ):
-                if in_dygraph_mode():
-                    var_tmp = _C_ops.cast(out_var, var.dtype)
-                elif _in_legacy_dygraph():
-                    var_tmp = _legacy_C_ops.cast(
-                        out_var,
-                        'in_dtype',
-                        out_var.dtype,
-                        'out_dtype',
-                        var.dtype,
-                    )
+                var_tmp = _C_ops.cast(out_var, var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
@@ -1145,16 +1115,7 @@ class NumpyArrayInitializer(Initializer):
                 _current_expected_place(),
             )
             if var.dtype in [VarDesc.VarType.FP16, VarDesc.VarType.BF16]:
-                if in_dygraph_mode():
-                    var_tmp = _C_ops.cast(out_var, var.dtype)
-                elif _in_legacy_dygraph():
-                    var_tmp = _legacy_C_ops.cast(
-                        out_var,
-                        'in_dtype',
-                        out_var.dtype,
-                        'out_dtype',
-                        var.dtype,
-                    )
+                var_tmp = _C_ops.cast(out_var, var.dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
