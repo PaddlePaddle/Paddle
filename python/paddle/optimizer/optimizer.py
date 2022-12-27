@@ -1133,10 +1133,6 @@ class Optimizer:
         )
 
         flatten_param.stop_gradient = False
-        # flatten_param.trainable = True
-        # flatten_param.optimize_attr = need_flatten_params[0].optimize_attr
-        # flatten_param.regularizer = need_flatten_params[0].regularizer
-
         flatten_grad = self.helper.create_global_variable(
             name='flatten_grad',
             persistable=True,
@@ -1258,9 +1254,6 @@ class Optimizer:
                 framework.default_startup_program(),
             ):
                 # NOTE(zhiqiu): currently, only support ClipGradByGlobalNorm and without regularization.
-                print("yoki1: ", self._flatten_param_grads)
-                print("yoki2: ", self.regularization)
-                print("yoki3: ", self._grad_clip)
                 if self._flatten_param_grads and self.regularization is None:
                     if self._grad_clip is None or isinstance(
                         self._grad_clip, ClipGradByGlobalNorm
