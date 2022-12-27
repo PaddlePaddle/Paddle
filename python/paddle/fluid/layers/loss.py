@@ -22,7 +22,6 @@ from ..layer_helper import LayerHelper
 from ..framework import (
     Variable,
     static_only,
-    in_dygraph_mode,
 )
 from .. import core
 from ..data_feeder import check_variable_and_dtype, check_type

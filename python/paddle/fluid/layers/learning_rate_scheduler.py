@@ -27,7 +27,13 @@ import paddle
 from . import control_flow
 from . import nn
 from . import tensor
-from ..framework import default_main_program, Parameter, unique_name, name_scope
+from ..framework import (
+    default_main_program,
+    Parameter,
+    unique_name,
+    name_scope,
+    in_dygraph_mode,
+)
 from ..framework import Variable
 from ..dygraph import learning_rate_scheduler as imperate_lr
 from ..data_feeder import check_variable_and_dtype, check_type

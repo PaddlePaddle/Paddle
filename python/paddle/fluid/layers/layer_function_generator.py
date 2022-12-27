@@ -28,7 +28,6 @@ from ..framework import (
 )
 from ..layer_helper import LayerHelper
 from ..data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import in_dygraph_mode
 from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
