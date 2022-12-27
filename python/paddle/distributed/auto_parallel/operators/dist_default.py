@@ -39,6 +39,7 @@ from .common import (
 )
 
 __op_not_need_param_init__ = ["while", "cond"]
+__op_has_shape_attr__ = ["fill_constant_batch_size_like", "fill_constant"]
 
 
 def prim_operator_data_parallel_functor(ctx, src_op):
@@ -476,7 +477,11 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         for output_name in src_op.desc.output_names():
             dist_op_desc.set_output(output_name, kwargs[output_name])
 
-        if src_op.has_attr('shape'):
+        if (
+            src_op.has_attr('shape')
+            and src_op.attr('shape')
+            and src_op.type in __op_has_shape_attr__
+        ):
             shape_list = src_op.attr('shape')
             Out_var = main_block._var_recursive(kwargs['Out'][0])
             op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
