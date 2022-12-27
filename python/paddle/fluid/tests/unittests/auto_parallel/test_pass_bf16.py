@@ -21,7 +21,10 @@ import paddle
 import paddle.fluid.core as core
 import paddle.nn as nn
 from paddle.distributed.fleet import auto
+from paddle.fluid.contrib.mixed_precision.bf16.amp_utils import _valid_types
+from paddle.fluid.contrib.mixed_precision.fp16_utils import find_true_prev_op
 from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.static import InputSpec
 from paddle.vision.datasets import MNIST
 
 paddle.enable_static()
@@ -35,19 +38,6 @@ def apply_pass(use_bf16=False):
         amp = strategy.amp
         amp.enable = True
         amp.enable_bf16 = True
-        amp.custom_bf16_list = {
-            'elementwise_add',
-            'scale',
-            'relu',
-            'bias_add',
-            'reshape2',
-        }
-        amp.custom_fp32_list = {
-            'pool2d',
-            'reduce_mean',
-            'matmul_v2',
-            'conv2d',
-        }
     return strategy
 
 
@@ -74,28 +64,19 @@ def reset_prog():
 class Model(nn.Layer):
     def __init__(self):
         super().__init__()
-        self.conv1 = nn.Conv2D(1, 6, 3, 1, 1)
-        self.relu1 = nn.ReLU()
-        self.maxpool1 = nn.MaxPool2D(2, 2)
-        self.conv2 = nn.Conv2D(6, 16, 5, 1, 0)
-        self.relu2 = nn.ReLU()
-        self.maxpool2 = nn.MaxPool2D(2, 2)
         self.flatten = nn.Flatten()
-        self.fc1 = nn.Linear(400, 120)
-        self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 10)
+        self.fc1 = nn.Linear(784, 120)
+        self.relu1 = nn.ReLU()
+        self.fc2 = nn.Linear(120, 10)
 
     def forward(self, input):
         input.stop_gradient = True
-        x = self.maxpool1(self.relu1(self.conv1(input)))
-        x = self.maxpool2(self.relu2(self.conv2(x)))
-        x = self.flatten(x)
-        return self.fc3(self.fc2(self.fc1(x)))
+        x = self.flatten(input)
+        x = self.relu1(self.fc1(x))
+        x = self.fc2(x)
+        return x
 
 
-@unittest.skipIf(
-    not core.supports_bfloat16(), 'place does not support BF16 evaluation'
-)
 class TestBF16Pass(unittest.TestCase):
     def setUp(self):
         self.rtol = 1e-5
@@ -134,6 +115,98 @@ class TestBF16Pass(unittest.TestCase):
             ),
         )
 
+    def check_program(self, program):
+        bf16_op_list = {
+            "matmul_v2",
+            "elementwise_add",
+            "relu",
+            "elementwise_add_grad",
+            "matmul_v2_grad",
+            "relu_grad",
+        }
+
+        fp32_op_list = {
+            "flatten_contiguous_range",
+            "reduce_mean",
+            "softmax_with_cross_entropy",
+            "fill_constant",
+            "reduce_mean_grad",
+            "softmax_with_cross_entropy_grad",
+        }
+
+        for block in program.blocks:
+            for op in block.ops:
+                if op not in bf16_op_list and op not in fp32_op_list:
+                    continue
+
+                for in_name in op.input_names:
+                    for in_var_name in op.input(in_name):
+                        var = None
+                        try:
+                            var = block.var(in_var_name)
+                        except ValueError as e:
+                            var = block._var_recursive(in_var_name)
+                        if var is None or var.type not in _valid_types:
+                            break
+
+                        if op.type in bf16_op_list:
+                            assert var.dtype == core.VarDesc.VarType.BF16
+                            if "cast_bf16" in in_var_name:
+                                if "@GRAD" in in_var_name:
+                                    tmp_in_var_name = in_var_name[
+                                        : in_var_name.find("@GRAD")
+                                    ]
+                                else:
+                                    tmp_in_var_name = in_var_name
+                                prev_op = find_true_prev_op(
+                                    block.ops, op, tmp_in_var_name
+                                )
+                                assert prev_op is not None
+                                assert prev_op.type == "cast"
+                                for in_name in prev_op.input_names:
+                                    for in_var_name in prev_op.input(in_name):
+                                        var = block.var(in_var_name)
+                                        assert (
+                                            var.dtype
+                                            == core.VarDesc.VarType.FP32
+                                        )
+
+                        elif op.type in fp32_op_list:
+                            if (
+                                op.type == "softmax_with_cross_entropy"
+                                or op.type == "softmax_with_cross_entropy_grad"
+                            ) and in_var_name == "label0":
+                                continue
+                            assert var.dtype == core.VarDesc.VarType.FP32
+                            if "cast_fp32" in in_var_name:
+                                prev_op = find_true_prev_op(
+                                    block.ops, op, tmp_in_var_name
+                                )
+                                assert prev_op is not None
+                                assert prev_op.type == "cast"
+                                for in_name in prev_op.input_names:
+                                    for in_var_name in prev_op.input(in_name):
+                                        var = block.var(in_var_name)
+                                        assert (
+                                            var.dtype
+                                            == core.VarDesc.VarType.BF16
+                                        )
+
+                for out_name in op.output_names:
+                    for out_var_name in op.output(out_name):
+                        var = None
+                        try:
+                            var = block.var(out_var_name)
+                        except ValueError as e:
+                            var = block._var_recursive(out_var_name)
+
+                        if var is None or var.type not in _valid_types:
+                            break
+                        if op.type in bf16_op_list:
+                            assert var.dtype == core.VarDesc.VarType.BF16
+                        elif op.type in fp32_op_list:
+                            assert var.dtype == core.VarDesc.VarType.FP32
+
     def test_bf16_pass(self):
         fp32_engine = self.get_engine()
         history = fp32_engine.fit(
@@ -142,12 +215,15 @@ class TestBF16Pass(unittest.TestCase):
         fp32_losses = np.array(history.history["loss"])
 
         bf16_o1_engine = self.get_engine(True)
-        (
-            bf16_o1_engine._inputs_spec,
-            bf16_o1_engine._labels_spec,
-        ) = bf16_o1_engine._prepare_data_spec(self.dataset, 1, self.batch_size)
-        bf16_o1_engine._prepare_program("train")
-        # print(bf16_o1_engine._dist_main_progs["train"])
+        inputs_spec = [InputSpec([None, 1, 28, 28], 'float32', 'input0')]
+        labels_spec = [InputSpec([None, 1], 'int64', 'label0')]
+        bf16_o1_engine.prepare(
+            inputs_spec=inputs_spec, labels_spec=labels_spec, mode="train"
+        )
+        self.check_program(bf16_o1_engine._dist_main_progs["train"][0])
+        print("BF16!check program successfully!")
+        # print(bf16_o1_engine._dist_main_progs["train"][0])
+
         # history = bf16_o1_engine.fit(
         #     self.dataset, 1, batch_size=self.batch_size, steps_per_epoch=10
         # )
