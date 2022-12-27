@@ -787,22 +787,25 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
 
     if in_dygraph_mode():
         return _C_ops.sum(input, dim, None, keep_dim)
-    attrs = {'dim': dim, 'keep_dim': keep_dim, 'reduce_all': reduce_all}
-    check_variable_and_dtype(
-        input,
-        'input',
-        ['float16', 'float32', 'float64', 'int32', 'int64'],
-        'reduce_sum',
-    )
-    helper = LayerHelper('reduce_sum', **locals())
-    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    helper.append_op(
-        type='reduce_sum',
-        inputs={'X': input},
-        outputs={'Out': out},
-        attrs=attrs,
-    )
-    return out
+    else:
+        attrs = {'dim': dim, 'keep_dim': keep_dim, 'reduce_all': reduce_all}
+        check_variable_and_dtype(
+            input,
+            'input',
+            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            'reduce_sum',
+        )
+        helper = LayerHelper('reduce_sum', **locals())
+        out = helper.create_variable_for_type_inference(
+            dtype=helper.input_dtype()
+        )
+        helper.append_op(
+            type='reduce_sum',
+            inputs={'X': input},
+            outputs={'Out': out},
+            attrs=attrs,
+        )
+        return out
 
 
 def autoincreased_step_counter(counter_name=None, begin=1, step=1):
@@ -942,47 +945,58 @@ def unsqueeze(input, axes, name=None):
 
 
 def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
-    if _in_dygraph_mode():
+    if in_dygraph_mode():
         op = getattr(_legacy_C_ops, op_name)
         if binary_op:
             return op(x, y)
         else:
             return op(x)
-    check_variable_and_dtype(
-        x,
-        "x",
-        ["bool", "int8", "int16", "int32", "int64", "float32", "float64"],
-        op_name,
-    )
-    if y is not None:
+    else:
         check_variable_and_dtype(
-            y,
-            "y",
+            x,
+            "x",
             ["bool", "int8", "int16", "int32", "int64", "float32", "float64"],
             op_name,
         )
-    if out is not None:
-        check_type(out, "out", Variable, op_name)
+        if y is not None:
+            check_variable_and_dtype(
+                y,
+                "y",
+                [
+                    "bool",
+                    "int8",
+                    "int16",
+                    "int32",
+                    "int64",
+                    "float32",
+                    "float64",
+                ],
+                op_name,
+            )
+        if out is not None:
+            check_type(out, "out", Variable, op_name)
 
-    helper = LayerHelper(op_name, **locals())
+        helper = LayerHelper(op_name, **locals())
 
-    if binary_op and x.dtype != y.dtype:
-        raise ValueError(
-            "(InvalidArgument) The DataType of %s Op's Variable must be consistent, but received %s and %s."
-            % (op_name, x.dtype, y.dtype)
-        )
+        if binary_op and x.dtype != y.dtype:
+            raise ValueError(
+                "(InvalidArgument) The DataType of %s Op's Variable must be consistent, but received %s and %s."
+                % (op_name, x.dtype, y.dtype)
+            )
 
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        if out is None:
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    if binary_op:
-        helper.append_op(
-            type=op_name, inputs={"X": x, "Y": y}, outputs={"Out": out}
-        )
-    else:
-        helper.append_op(type=op_name, inputs={"X": x}, outputs={"Out": out})
+        if binary_op:
+            helper.append_op(
+                type=op_name, inputs={"X": x, "Y": y}, outputs={"Out": out}
+            )
+        else:
+            helper.append_op(
+                type=op_name, inputs={"X": x}, outputs={"Out": out}
+            )
 
-    return out
+        return out
 
 
 @templatedoc()

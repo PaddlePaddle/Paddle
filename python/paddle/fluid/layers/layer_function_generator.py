@@ -272,6 +272,11 @@ def generate_activation_fn(op_type):
         if in_dygraph_mode() and hasattr(_C_ops, op_type):
             op = getattr(_C_ops, op_type)
             return op(x)
+        # TODO(dev): Because some ops' yaml has not been migrated.
+        # Replace it with _in_legacy_dygraph while all yaml work is done.
+        if in_dygraph_mode() and hasattr(_legacy_C_ops, op_type):
+            op = getattr(_legacy_C_ops, op_type)
+            return op(x)
 
         if op_type not in ["abs", "exp", "square"]:
             check_variable_and_dtype(
@@ -323,12 +328,13 @@ def generate_inplace_fn(inplace_op_type):
         if in_dygraph_mode():
             op = getattr(_legacy_C_ops, inplace_op_type)
             return op(x)
-        warnings.warn(
-            "In static mode, {}() is the same as {}() and does not perform inplace operation.".format(
-                inplace_op_type, origin_op_type
+        else:
+            warnings.warn(
+                "In static mode, {}() is the same as {}() and does not perform inplace operation.".format(
+                    inplace_op_type, origin_op_type
+                )
             )
-        )
-        return generate_activation_fn(origin_op_type)(x, name)
+            return generate_activation_fn(origin_op_type)(x, name)
 
     func.__name__ = inplace_op_type
     func.__doc__ = """
