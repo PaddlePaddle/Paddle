@@ -37,42 +37,16 @@ void LogSoftmaxGradKernel(const Context& dev_ctx,
     return;
   }
 
-  if (out.numel() != 0) {
-    auto out_shape = phi::vectorize<int>(out.dims());
-    dev_ctx.template Alloc<T>(x_grad);
-    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-    T* tmp_ptr = RAII_GUARD.alloc_l3_or_gm<T>(out_grad.numel());
-    T* tmp2_ptr = RAII_GUARD.alloc_l3_or_gm<T>(out_grad.numel());
-    PADDLE_ENFORCE_NE(
-        tmp_ptr, nullptr, phi::errors::External("no enough memory in xpu"));
-    PADDLE_ENFORCE_NE(
-        tmp2_ptr, nullptr, phi::errors::External("no enough memory in xpu"));
-
-    int r = xpu::exp<XPUType>(dev_ctx.x_context(),
-                              reinterpret_cast<const XPUType*>(out.data<T>()),
-                              reinterpret_cast<XPUType*>(tmp_ptr),
-                              out_grad.numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "exp");
-    r = xpu::reciprocal<XPUType>(dev_ctx.x_context(),
-                                 reinterpret_cast<const XPUType*>(tmp_ptr),
-                                 reinterpret_cast<XPUType*>(tmp2_ptr),
-                                 out_grad.numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "reciprocal");
-    r = xpu::mul<XPUType>(dev_ctx.x_context(),
-                          reinterpret_cast<const XPUType*>(tmp2_ptr),
-                          reinterpret_cast<const XPUType*>(out_grad.data<T>()),
-                          reinterpret_cast<XPUType*>(tmp2_ptr),
-                          out_grad.numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "mul");
-    r = xpu::softmax_grad<XPUType>(
-        dev_ctx.x_context(),
-        reinterpret_cast<const XPUType*>(tmp_ptr),
-        reinterpret_cast<const XPUType*>(tmp2_ptr),
-        reinterpret_cast<XPUType*>(x_grad->data<T>()),
-        out_shape,
-        axis);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "softmax_grad");
-  }
+  auto out_shape = phi::vectorize<int>(out.dims());
+  dev_ctx.template Alloc<T>(x_grad);
+  int r = xpu::log_softmax_grad(
+      dev_ctx.x_context(),
+      reinterpret_cast<const XPUType*>(out.data<T>()),
+      reinterpret_cast<const XPUType*>(out_grad.data<T>()),
+      reinterpret_cast<XPUType*>(x_grad->data<T>()),
+      out_shape,
+      axis);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "log_softmax_grad");
 }
 
 }  // namespace phi

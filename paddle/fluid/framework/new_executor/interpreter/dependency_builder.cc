@@ -17,6 +17,13 @@
 #include <queue>
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 
+PADDLE_DEFINE_EXPORTED_bool(
+    add_dependency_for_communication_op,
+    true,
+    "Whether to add dependency for communication Ops. It is just a temporary "
+    "FLAGS especially for auto parallel to avoid the concurrency damage by the "
+    "communication dependency added in standalone executor.");
+
 // The difference between "sequential_run" and "serial_run":
 // "sequential_run" dispatches OPs one by one according to the sequence in the
 // Program, while "serial_run" ensures that all Ops are scheduled in a singal
@@ -71,7 +78,11 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilder::Build(
   }
 
   AddDependencyForCoalesceTensorOp();
-  AddDependencyForCommunicationOp();
+
+  if (FLAGS_add_dependency_for_communication_op) {
+    AddDependencyForCommunicationOp();
+  }
+
   AddDependencyForRandomOp();
   AddDependencyForReadOp();
 

@@ -140,15 +140,17 @@ __global__ void prune_token_keep_order(const T* tokens,
                                        int32_t new_sequnce_length,
                                        const int32_t padding_token_length,
                                        const int32_t* token_index,
-                                       T* output) {
+                                       T* output0,
+                                       int32_t* output1) {
   int batch = blockIdx.x;
   int index = 0;
   for (int i = 0; i < pre_sequnce_length; ++i) {
     if (token_index[batch * padding_token_length + i] < new_sequnce_length) {
-      output[(batch * new_sequnce_length + index) * gridDim.y * blockDim.x +
-             blockIdx.y * blockDim.x + threadIdx.x] =
+      output0[(batch * new_sequnce_length + index) * gridDim.y * blockDim.x +
+              blockIdx.y * blockDim.x + threadIdx.x] =
           tokens[(batch * pre_sequnce_length + i) * gridDim.y * blockDim.x +
                  blockIdx.y * blockDim.x + threadIdx.x];
+      output1[batch * new_sequnce_length + index] = i;
       index++;
     }
   }
@@ -273,7 +275,8 @@ bool FusedTokenPrunePluginDynamic::supportsFormatCombination(
       const nvinfer1::PluginTensorDesc& prev = in_out[0];
       return in.type == prev.type && in.format == prev.format;
     } else {
-      return in.format == nvinfer1::TensorFormat::kLINEAR;
+      return in.type == nvinfer1::DataType::kINT32 &&
+             in.format == nvinfer1::TensorFormat::kLINEAR;
     }
   }
 }
@@ -457,6 +460,7 @@ int FusedTokenPrunePluginDynamic::enqueue(
       const float* scores = static_cast<const float*>(inputs[0]);  // reduce sum
       const float* tokens = static_cast<const float*>(inputs[1]);  // X
       float* output0 = static_cast<float*>(outputs[0]);
+      int32_t* output1 = static_cast<int32_t*>(outputs[1]);
       int32_t padding_token_length;
       if (pre_sequnce_length <= 64) {
         padding_token_length = 64;
@@ -533,7 +537,8 @@ int FusedTokenPrunePluginDynamic::enqueue(
                                                      new_sequnce_length,
                                                      padding_token_length,
                                                      token_index_,
-                                                     output0);
+                                                     output0,
+                                                     output1);
       } else {
         const dim3 num_blocks(B, pre_sequnce_length, length / num_threads);
         prune_token_change_order<float>
@@ -548,6 +553,7 @@ int FusedTokenPrunePluginDynamic::enqueue(
       const half* scores = static_cast<const half*>(inputs[0]);  // reduce sum
       const half* tokens = static_cast<const half*>(inputs[1]);  // X
       half* output0 = static_cast<half*>(outputs[0]);
+      int32_t* output1 = static_cast<int32_t*>(outputs[1]);
       int32_t padding_token_length;
       if (pre_sequnce_length <= 64) {
         padding_token_length = 64;
@@ -624,7 +630,8 @@ int FusedTokenPrunePluginDynamic::enqueue(
                                                      new_sequnce_length,
                                                      padding_token_length,
                                                      token_index_,
-                                                     output0);
+                                                     output0,
+                                                     output1);
       } else {
         const dim3 num_blocks(B, pre_sequnce_length, length / num_threads);
         prune_token_change_order<half>
