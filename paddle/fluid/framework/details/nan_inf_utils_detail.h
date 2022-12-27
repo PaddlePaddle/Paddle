@@ -13,15 +13,23 @@
 // limitations under the License.
 
 #pragma once
-
-#include <sys/file.h>
+#include <fstream>
+#include <iostream>
 #include <string>
-
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
+
+#ifdef _WIN32
+#include <direct.h>
+#include <io.h>
+#define MKDIR(path) _mkdir(path)
+#else
+#include <sys/stat.h>
+#define MKDIR(path) mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)
+#endif
 
 DECLARE_int32(check_nan_inf_level);
 namespace paddle {
@@ -113,7 +121,7 @@ HOSTDEVICE void PrintForDifferentLevelFile(const char* debug_info,
 #elif PADDLE_WITH_CUDA
   cudaGetDevice(&dev_id);
 #endif
-  MkDir("log_dir_nan");
+  MKDIR("log_dir_nan");
   std::string file_name = "worker_" + log_name + "." + std::to_string(dev_id);
   std::string path = "log_dir_nan/" + file_name;
   std::ofstream outfile(path, std::ios::app);
@@ -121,11 +129,6 @@ HOSTDEVICE void PrintForDifferentLevelFile(const char* debug_info,
     return;
   }
 
-  int nfd = open(path.c_str(), O_WRONLY | O_CREAT);
-  int error = flock(nfd, LOCK_SH | LOCK_NB);
-  if (error == -1) {
-    return;
-  }
   if (num_nan > 0 || num_inf > 0) {
     outfile << "[PRECISION] [ERROR] in " << debug_info
             << ", numel=" << static_cast<long long>(numel)      // NOLINT
@@ -142,7 +145,6 @@ HOSTDEVICE void PrintForDifferentLevelFile(const char* debug_info,
             << ", mean=" << static_cast<float>(mean_value) << std::endl;
   }
   outfile.close();
-  flock(nfd, LOCK_UN);
 }
 
 template <typename T>
