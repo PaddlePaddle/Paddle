@@ -254,7 +254,7 @@ inline void TransposeQKV_v2(const int batch,
                           head_num,
                           head_size,
                           1024));
-    TransposeQkvKernel_v2<float> 1,1,max_seq, headsize
+    TransposeQkvKernel_v2<float>
         <<<grid, block, 0, stream>>>(head_size, input, output, output_2);
   }
 }
@@ -561,6 +561,7 @@ int RoformerNovarlenPlugin::enqueue(
                                                  n_q,
                                                  head_size_);  // k
     */
+
     auto *device_ctx = static_cast<phi::GPUContext *>(
         platform::DeviceContextPool::Instance().Get(
             platform::CUDAPlace(device_id)));
