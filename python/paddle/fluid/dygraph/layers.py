@@ -56,6 +56,8 @@ from paddle.fluid.core import VarDesc
 from paddle.fluid.dygraph import no_grad
 import paddle.utils.deprecated as deprecated
 
+Tensor = paddle.fluid.core.eager.Tensor
+
 __all__ = ['Layer']
 
 _first_cap_re = re.compile('(.)([A-Z][a-z]+)')
@@ -838,7 +840,7 @@ class Layer:
             raise KeyError("The name of buffer can not be empty.")
         elif hasattr(self, name) and name not in self._buffers:
             raise KeyError("attribute '{}' already exists.".format(name))
-        elif tensor is not None and not (type(tensor) == core.eager.Tensor):
+        elif tensor is not None and not (type(tensor) == Tensor):
             raise TypeError(
                 "The registered buffer should be a Paddle.Tensor, but received {}.".format(
                     type(tensor).__name__
@@ -1324,7 +1326,7 @@ class Layer:
                             )
                         elif (
                             _buffers[name] is None
-                            or type(getattr(self, name)) == core.eager.Tensor
+                            or type(getattr(self, name)) == Tensor
                         ):
                             _buffers[name] = assign(value)
                         else:
