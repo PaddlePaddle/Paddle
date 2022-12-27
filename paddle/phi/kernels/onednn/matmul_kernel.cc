@@ -101,15 +101,6 @@ void MatmulKernel(const Context &dev_ctx,
           ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("force_fp32_output"))
           : false;
 
-  bool fuse_relu = false;
-  if (dev_ctx.HasDnnAttr("fuse_activation")) {
-    auto act_type =
-        PADDLE_GET_CONST(std::string, dev_ctx.GetDnnAttr("fuse_activation"));
-    if (act_type == "relu" || act_type == "relu6") {
-      fuse_relu = true;
-    }
-  }
-
   auto x_dims = vectorize(x.dims());
   auto y_dims = vectorize(y.dims());
 
@@ -126,9 +117,6 @@ void MatmulKernel(const Context &dev_ctx,
         dev_ctx, x, y, x_bd_dims, y_bd_dims, transpose_x, transpose_y, out);
   } else if (is_bfloat16) {
     funcs::ExecuteMatmul<T, paddle::platform::bfloat16>(
-        dev_ctx, x, y, x_bd_dims, y_bd_dims, transpose_x, transpose_y, out);
-  } else if (fuse_relu) {
-    funcs::ExecuteMatmul<T, uint8_t>(
         dev_ctx, x, y, x_bd_dims, y_bd_dims, transpose_x, transpose_y, out);
   } else {
     funcs::ExecuteMatmul<T, int8_t>(
