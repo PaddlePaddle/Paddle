@@ -885,7 +885,9 @@ class ShardingPass(PassBase):
         # cross all nodes. instead we break it down to two ring
         # inter node ring: with only "global_world_size / rank_per_node" ranks in this ring
         # intra node ring: with rank within one node
-        if self.enable_hierarchical_comm:
+        # it is negative optimization now, to be tuning in future.
+        enable_hierarchical_comm = False
+        if enable_hierarchical_comm:
             # NOTE so far we only support Isomorphic cluster with 8 ranks per node
 
             # create communicators
@@ -1295,12 +1297,15 @@ class ShardingPass(PassBase):
         # analyze dependencies
         dep_map = {}
         reduce_op_count = 0
+        grad_comm_op_to_stream_idx = {}
         for idx, op in enumerate(ops):
             if is_data_parallel_reduce_op(op):
 
                 if op.type == "c_allreduce_sum":
                     continue
-
+                grad_comm_op_to_stream_idx[op] = (
+                    reduce_op_count % grad_comm_stream_num
+                )
                 comm_group = self.grad_comm_group_stream_pairs[
                     reduce_op_count % grad_comm_stream_num
                 ]["comm_group"]
@@ -1374,31 +1379,95 @@ class ShardingPass(PassBase):
                 )
                 depend_op.dist_attr.execution_stream = comm_stream
 
-        # hierarchical comm
-        # if self.enable_hierarchical_comm:
-        #     # NOTE so far we only support Isomorphic cluster with 8 ranks per node
+        # hierarchical grad comm
+        if self.enable_hierarchical_comm:
+            # NOTE so far we only support Isomorphic cluster with 8 ranks per node
+            # TODO unifiy here create communicators
+            # create communicators
+            nranks_per_node = 8
+            assert self.sharding_world_size % nranks_per_node == 0
+            global_group = sharding_info.group
+            global_ranks = global_group.ranks
+            relative_idx_in_node = self.global_rank % nranks_per_node
+            node_idx = self.global_rank // nranks_per_node
+            inter_node_ranks = [
+                rank
+                for rank in global_ranks
+                if rank % nranks_per_node == relative_idx_in_node
+            ]
+            _logger.info(
+                "current global rank idx: {}.".format(self.global_rank)
+            )
+            _logger.info(
+                "local inter node ranks idx: {}.".format(inter_node_ranks)
+            )
+            assert (
+                len(inter_node_ranks)
+                == self.sharding_world_size // nranks_per_node
+            )
+            intra_node_ranks = [
+                rank
+                for rank in global_ranks
+                if rank // nranks_per_node == node_idx
+            ]
+            assert len(intra_node_ranks) == nranks_per_node
+            _logger.info(
+                "local intra node ranks idx: {}.".format(intra_node_ranks)
+            )
+            inter_node_groups = []
+            intra_node_groups = []
+            for _ in range(self.comm_stream_num):
+                # TODO re-use one origin communicator
+                inter_node_groups.append(
+                    new_process_group(inter_node_ranks, force_new_group=True)
+                )
+                intra_node_groups.append(
+                    new_process_group(intra_node_ranks, force_new_group=True)
+                )
 
-        #     # TODO unifiy here create communicators
-        #     nranks_per_node = 8
-        #     assert self.sharding_world_size % self.nranks_per_node == 0
-        #     global_group = sharding_info.group
-        #     global_ranks = global_group.ranks
-        #     relative_idx_in_node = self.global_rank % nranks_per_node
-        #     node_idx = self.global_rank // nranks_per_node
-        #     inter_node_ranks = [
-        #         rank
-        #         for rank in global_ranks
-        #         if rank % nranks_per_node == relative_idx_in_node
-        #     ]
-        #     assert (
-        #         len(inter_node_ranks) == self.sharding_world_size // nranks_per_node
-        #     )
-        #     intra_node_ranks = [
-        #         rank
-        #         for rank in global_ranks
-        #         if rank // nranks_per_node == node_idx
-        #     ]
-        #     assert len(intra_node_ranks) == nranks_per_node
+            # update program
+            for idx, op in reversed(list(enumerate(block.ops))):
+                if is_data_parallel_reduce_op(op):
+                    assert op.type == "c_reduce_sum"
+                    grad_comm_stream_idx = grad_comm_op_to_stream_idx[op]
+                    inter_node_group = inter_node_groups[grad_comm_stream_idx]
+                    intra_node_group = intra_node_groups[grad_comm_stream_idx]
+
+                    reduce_varname = op.output("Out")[0]
+                    if self.enable_overlap:
+                        comm_stream = op.dist_attr.execution_stream
+                    dst_rank = int(op.attr("root_id"))
+
+                    in_peer = False
+                    if dst_rank % nranks_per_node == relative_idx_in_node:
+                        in_peer = True
+                    intra_node_dst = dst_rank % nranks_per_node
+
+                    op._set_attr('ring_id', intra_node_group.id)
+                    op._set_attr('root_id', intra_node_dst)
+
+                    if in_peer:
+                        inter_node_dst = dst_rank // nranks_per_node
+                        new_op = block._insert_op_without_sync(
+                            idx + 1,
+                            type='c_reduce_sum',
+                            inputs={"X": reduce_varname},
+                            outputs={
+                                "Out": reduce_varname,
+                            },
+                            attrs={
+                                'ring_id': inter_node_group.id,
+                                'root_id': inter_node_dst,
+                                'use_calc_stream': True,
+                                OP_ROLE_KEY: OpRole.Backward,
+                            },
+                        )
+                        new_op._set_attr(
+                            'op_namescope', str('/') + ParallelMode.DataParallel
+                        )
+
+                        if self.enable_overlap:
+                            new_op.dist_attr.execution_stream = comm_stream
 
         block._sync_with_cpp()
 
