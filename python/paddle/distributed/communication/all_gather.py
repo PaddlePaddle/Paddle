@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import io
-import pickle
-
 import numpy as np
 
 import paddle
-import paddle.distributed as dist
 import paddle.distributed.communication.stream as stream
 import paddle.fluid.framework as framework
+
+from .serialization_utils import (
+    convert_object_to_tensor,
+    convert_tensor_to_object,
+)
 
 
 def all_gather(tensor_list, tensor, group=None, sync_op=True):
@@ -64,52 +65,7 @@ def all_gather(tensor_list, tensor, group=None, sync_op=True):
             print(tensor_list)
             # [[[4, 5, 6], [4, 5, 6]], [[1, 2, 3], [1, 2, 3]]] (2 GPUs)
     """
-    if not framework._in_legacy_dygraph():
-        return stream.all_gather(tensor_list, tensor, group, sync_op)
-
-    # NOTE: uncomment code below when having fully complex support
-    # def convert_to_complex(list_of_tensor):
-    #     list_of_complex = []
-    #     for tensor in list_of_tensor:
-    #         list_of_complex.append(paddle.as_complex(tensor))
-    #     return list_of_complex
-
-    # is_input_complex = (tensor.dtype == paddle.complex64
-    #                     or tensor.dtype == paddle.complex128)
-    # if is_input_complex:
-    #     tensor = paddle.as_real(tensor)
-
-    # code below will be removed after we remove the old dygraph
-    if group is not None and not group.is_member():
-        return
-
-    ring_id = 0 if group is None else group.id
-    nranks = dist.get_world_size()
-    out = paddle._legacy_C_ops.c_allgather(
-        tensor,
-        'use_calc_stream',
-        sync_op,
-        'ring_id',
-        ring_id,
-        'nranks',
-        nranks,
-    )
-    tensor_list.clear()
-    tensor_list.extend(paddle.split(out, nranks, 0))
-
-
-def _convert_object_to_tensor(obj):
-    _pickler = pickle.Pickler
-    f = io.BytesIO()
-    _pickler(f).dump(obj)
-    data = np.frombuffer(f.getvalue(), dtype=np.uint8)
-    tensor = paddle.to_tensor(data)
-    return tensor, tensor.numel()
-
-
-def _convert_tensor_to_object(tensor, len_of_tensor):
-    _unpickler = pickle.Unpickler
-    return _unpickler(io.BytesIO(tensor.numpy()[:len_of_tensor])).load()
+    return stream.all_gather(tensor_list, tensor, group, sync_op)
 
 
 def all_gather_object(object_list, obj, group=None):
@@ -149,7 +105,7 @@ def all_gather_object(object_list, obj, group=None):
         framework.in_dygraph_mode()
     ), "all_gather_object doesn't support static graph mode."
 
-    tensor, len_of_tensor = _convert_object_to_tensor(obj)
+    tensor, len_of_tensor = convert_object_to_tensor(obj)
 
     # gather len_of_tensor from all ranks
     list_len_of_tensor = []
@@ -167,5 +123,5 @@ def all_gather_object(object_list, obj, group=None):
     all_gather(tensor_list, input_tensor, group)
     for i, tensor in enumerate(tensor_list):
         object_list.append(
-            _convert_tensor_to_object(tensor, list_len_of_tensor[i])
+            convert_tensor_to_object(tensor, list_len_of_tensor[i])
         )

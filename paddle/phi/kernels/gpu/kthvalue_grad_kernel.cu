@@ -16,7 +16,6 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/top_k_function_cuda.h"
 
 namespace phi {
@@ -44,15 +43,8 @@ void KthvalueGradKernel(const Context& dev_ctx,
                         DenseTensor* d_x) {
   const auto& in_dims = x.dims();
   auto out_dims = indices.dims();
-  T* x_grad_data = dev_ctx.template Alloc<T>(d_x);
-  // For 0D Tensor
-  if (in_dims.size() == 0) {
-    phi::funcs::set_constant(dev_ctx, d_x, 1.0);
-    return;
-  }
-
   if (axis < 0) axis += in_dims.size();
-
+  T* x_grad_data = dev_ctx.template Alloc<T>(d_x);
   const T* out_grad_data = d_out.data<T>();
   const int64_t* indices_data = indices.data<int64_t>();
   int pre, n, post;

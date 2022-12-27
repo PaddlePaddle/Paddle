@@ -30,6 +30,7 @@ from paddle.distributed.fleet.base.topology import ParallelMode  # noqa: F401
 
 from .collective import split  # noqa: F401
 from .collective import new_group  # noqa: F401
+from .collective import is_available
 from .collective import destroy_process_group_custom
 from .communication import (
     stream,
@@ -40,9 +41,11 @@ from .communication import (
     alltoall,
     alltoall_single,
     broadcast,
+    broadcast_object_list,
     reduce,
     send,
     scatter,
+    scatter_object_list,
     isend,
     recv,
     irecv,
@@ -54,6 +57,7 @@ from .communication import (
     get_group,
     wait,
     barrier,
+    get_backend,
 )  # noqa: F401
 
 from .auto_parallel import shard_op  # noqa: F401
@@ -82,7 +86,9 @@ __all__ = [  # noqa
     "spawn",
     "launch",
     "scatter",
+    "scatter_object_list",
     "broadcast",
+    "broadcast_object_list",
     "ParallelEnv",
     "new_group",
     "init_parallel_env",
@@ -115,6 +121,8 @@ __all__ = [  # noqa
     "isend",
     "irecv",
     "reduce_scatter",
+    "is_available",
+    "get_backend",
     "destroy_process_group_custom",
 ]
 

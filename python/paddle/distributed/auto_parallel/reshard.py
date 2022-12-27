@@ -829,7 +829,7 @@ class Remover:
                                 )
                             ).process_mesh
                         )
-                        if rank_id in process_mesh.processes:
+                        if rank_id in process_mesh.process_ids:
                             need_save.append(var_name)
                     if not need_save:
                         remove_op_idx.append(idx)
@@ -845,7 +845,7 @@ class Remover:
                 if op_dist_attr is not None:
                     op_process_mesh = op_dist_attr.process_mesh
                     if (
-                        rank_id not in op_process_mesh.processes
+                        rank_id not in op_process_mesh.process_ids
                         and op.type not in not_remove_op_ref
                     ):
                         remove_op_idx.append(idx)
@@ -1408,9 +1408,11 @@ class Resharder:
         op_process_mesh = dist_op.dist_attr.process_mesh
 
         for process_mesh in self.dist_context.process_meshes:
-            if set(process_mesh.processes) & (
-                set(op_process_mesh.processes)
-            ) and len(process_mesh.processes) < len(op_process_mesh.processes):
+            if set(process_mesh.process_ids) & (
+                set(op_process_mesh.process_ids)
+            ) and len(process_mesh.process_ids) < len(
+                op_process_mesh.process_ids
+            ):
                 process_meshes.append(process_mesh)
 
         # it means the process mesh is not a union when process meshes is null
@@ -1438,13 +1440,13 @@ class Resharder:
 
         source_dims_mapping = tensor_dist_attr.dims_mapping
         source_process_mesh = tensor_dist_attr.process_mesh
-        source_process_group = source_process_mesh.processes
-        source_process_shape = source_process_mesh.topology
+        source_process_group = source_process_mesh.process_ids
+        source_process_shape = source_process_mesh.shape
 
         target_process_mesh = dist_attr[0]
         target_dims_mapping = dist_attr[1]
-        target_process_group = target_process_mesh.processes
-        target_process_shape = target_process_mesh.topology
+        target_process_group = target_process_mesh.process_ids
+        target_process_shape = target_process_mesh.shape
 
         if source_tensor.shape[0] < 0:
             assert source_tensor.shape[0] == -1
@@ -2141,9 +2143,11 @@ class Resharder:
         dist_attr = dist_op.dist_attr
         op_process_mesh = dist_attr.process_mesh
         for process_mesh in self.dist_context.process_meshes:
-            if set(process_mesh.processes) & (
-                set(op_process_mesh.processes)
-            ) and len(process_mesh.processes) < len(op_process_mesh.processes):
+            if set(process_mesh.process_ids) & (
+                set(op_process_mesh.process_ids)
+            ) and len(process_mesh.process_ids) < len(
+                op_process_mesh.process_ids
+            ):
                 process_meshes.append(process_mesh)
 
         # it means that the process mesh is not a union when process meshes is none
@@ -2176,12 +2180,12 @@ class Resharder:
         if process_mesh_count > 1:
             global_process_mesh_idx = None
             for process_mesh in self.dist_context.process_meshes:
-                for process in process_mesh.processes:
+                for process in process_mesh.process_ids:
                     processes.add(process)
             for idx, process_mesh in enumerate(
                 self.dist_context.process_meshes
             ):
-                if len(set(process_mesh.processes)) == len(processes):
+                if len(set(process_mesh.process_ids)) == len(processes):
                     global_process_mesh_idx = idx
                     break
 
@@ -2191,7 +2195,7 @@ class Resharder:
                 for i, mesh in enumerate(self.dist_context.process_meshes):
                     if i == idx:
                         continue
-                    if set(mesh.processes) < set(global_mesh.processes):
+                    if set(mesh.process_ids) < set(global_mesh.process_ids):
                         is_removed = True
 
                 if is_removed:
@@ -2330,8 +2334,8 @@ class Resharder:
                         # deal with union tensor
                         if is_union_process_mesh_tensor:
                             # if op process mesh is subset of union tensor process mesh, need no reshard
-                            if set(input_attr[0].processes) <= set(
-                                dist_tensor.dist_attr.process_mesh.processes
+                            if set(input_attr[0].process_ids) <= set(
+                                dist_tensor.dist_attr.process_mesh.process_ids
                             ):
                                 continue
 
@@ -2525,14 +2529,14 @@ class Resharder:
                         dist_tensor, output_attr, False
                     ):
                         tensor_processes = set(
-                            tensor_process_mesh.processes
+                            tensor_process_mesh.process_ids
                         ) - (
-                            set(tensor_process_mesh.processes)
-                            & set(output_attr[0].processes)
+                            set(tensor_process_mesh.process_ids)
+                            & set(output_attr[0].process_ids)
                         )
                         if tensor_processes:
                             if len(tensor_processes) != len(
-                                output_attr[0].processes
+                                output_attr[0].process_ids
                             ):
                                 if dist_tensor.dist_attr.dims_mapping.count(
                                     -1
@@ -2555,13 +2559,15 @@ class Resharder:
                                         recv_rank = tensor_process
                                         actual_index = index
                                         if index >= len(
-                                            output_attr[0].processes
+                                            output_attr[0].process_ids
                                         ):
                                             actual_index = (
                                                 index
-                                                - len(output_attr[0].processes)
-                                            ) % len(output_attr[0].processes)
-                                        item = output_attr[0].processes[
+                                                - len(
+                                                    output_attr[0].process_ids
+                                                )
+                                            ) % len(output_attr[0].process_ids)
+                                        item = output_attr[0].process_ids[
                                             actual_index
                                         ]
                                         if recv_rank == item:
@@ -2591,7 +2597,7 @@ class Resharder:
                                     tensor_processes
                                 ):
                                     recv_rank = tensor_process
-                                    item = output_attr[0].processes[index]
+                                    item = output_attr[0].process_ids[index]
                                     if recv_rank == item:
                                         continue
                                     if self.rank_id == item:

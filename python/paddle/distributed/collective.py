@@ -18,7 +18,7 @@ import paddle
 
 # (TODO: GhostScreaming) It will be removed later.
 import paddle.fluid.core as core
-from paddle.framework import _non_static_mode, in_dygraph_mode
+from paddle.framework import in_dygraph_mode
 
 from .communication.group import Group, _add_new_group, is_initialized
 from .fleet.layers.mpu.mp_ops import _c_concat  # noqa: F401
@@ -301,7 +301,7 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
     # hang caused by cross-creation of new_group
     tmp = (
         paddle.to_tensor([1], dtype="int32")
-        if _non_static_mode()
+        if in_dygraph_mode()
         else paddle.full([0], 1, dtype="int32")
     )
     paddle.distributed.all_reduce(tmp, sync_op=True)
@@ -309,13 +309,29 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
     return gp
 
 
+def is_available():
+    """
+    Check whether the distributed package is available.
+
+    Returns:
+        Returns True if the distributed package is available, otherwise False.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            print(paddle.distributed.is_available())
+
+    """
+    return core.is_compiled_with_dist()
+
+
 def destroy_process_group_custom():
     """
 
-    Destory the custom process group.
+    Destory the custom process group. Designed for CustomDevice.
 
-    Args:
-        gid (int): The process group id. Default value : 0.
 
     """
     if 'npu' in paddle.device.get_all_custom_device_type():
