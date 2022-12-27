@@ -225,22 +225,6 @@ class XPUTestFlattenOp(XPUOpTestWrapper):
         def test_check_grad(self):
             pass
 
-    class TestFlattenOpZeroDims(TestFlattenOp):
-        def init_test_case(self):
-            self.in_shape = ()
-            self.start_axis = 0
-            self.stop_axis = -1
-            self.new_shape = 1
-
-        def init_attrs(self):
-            self.attrs = {
-                "start_axis": self.start_axis,
-                "stop_axis": self.stop_axis,
-            }
-
-        def test_check_grad(self):
-            pass
-
 
 class TestFlatten2OpError(unittest.TestCase):
     def test_errors(self):
