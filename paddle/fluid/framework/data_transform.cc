@@ -113,7 +113,12 @@ void TransformData(const phi::KernelKey &expected_kernel_type,
 
   // do device transform
   if (expected_kernel_type.backend() != kernel_type_for_var.backend()) {
-    TransDataDevice(in, place, &out);
+    if (expected_kernel_type.backend() == phi::TransToPhiBackend(place)) {
+      TransDataDevice(in, place, &out);
+    } else {
+      TransDataDevice(
+          in, phi::TransToPhiPlace(expected_kernel_type.backend()), &out);
+    }
     transformed = true;
     PassTensorData(&out, &in);
   }
