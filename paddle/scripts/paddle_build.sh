@@ -3468,8 +3468,6 @@ function check_coverage_build() {
     set -x
 }
 function run_setup(){
-    
-    rm -rf ${PADDLE_ROOT}/build
     # Build script will not fail if *.deb does not exist
     rm *.deb 2>/dev/null || true
     # Delete previous built egg packages
