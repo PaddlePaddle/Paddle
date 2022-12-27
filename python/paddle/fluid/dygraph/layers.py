@@ -56,7 +56,7 @@ from paddle.fluid.core import VarDesc
 from paddle.fluid.dygraph import no_grad
 import paddle.utils.deprecated as deprecated
 
-Tensor = paddle.fluid.core.eager.Tensor
+Tensor = core.eager.Tensor
 
 __all__ = ['Layer']
 
