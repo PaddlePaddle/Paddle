@@ -154,7 +154,7 @@ class DistributedPNormImpl(DistributedOperatorImpl):
                 output_name
             )
 
-        if rank_id not in op_dist_attr.process_mesh.processes:
+        if rank_id not in op_dist_attr.process_mesh.process_ids:
             rank_id = _get_corresponding_rank(
                 ctx, op_dist_attr.process_mesh, rank_id
             )
@@ -164,8 +164,8 @@ class DistributedPNormImpl(DistributedOperatorImpl):
         for axis in range(len(in_dims_mapping)):
             if in_dims_mapping[axis] != -1:
                 break
-        process_mesh_shape = op_dist_attr.process_mesh.topology
-        process_mesh_group = op_dist_attr.process_mesh.processes
+        process_mesh_shape = op_dist_attr.process_mesh.shape
+        process_mesh_group = op_dist_attr.process_mesh.process_ids
         group_ranks = _get_comm_group(
             process_mesh_group, process_mesh_shape, axis, rank_id
         )
@@ -301,8 +301,8 @@ class DistributedPNormImpl(DistributedOperatorImpl):
         ctx.set_op_dist_attr_for_program(p_norm_grad_op, op_dist_attr)
 
         # 2. insert slice op
-        process_mesh_shape = op_dist_attr.process_mesh.topology
-        process_mesh_group = op_dist_attr.process_mesh.processes
+        process_mesh_shape = op_dist_attr.process_mesh.shape
+        process_mesh_group = op_dist_attr.process_mesh.process_ids
         dims_mapping = [0] + [-1 for _ in range(len(new_X_grad.shape) - 1)]
         from ..reshard import Resharder
 

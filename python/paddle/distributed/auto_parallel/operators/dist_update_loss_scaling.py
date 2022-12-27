@@ -79,7 +79,7 @@ class DistributedUpdateLossScalingImpl(DistributedOperatorImpl):
             str(backward_op)
         )
 
-        assert rank_id in dist_attr.process_mesh.processes
+        assert rank_id in dist_attr.process_mesh.process_ids
 
         assert 'X' in kwargs, "input [{}] is not given".format('X')
         assert 'FoundInfinite' in kwargs, "input [{}] is not given".format(
@@ -154,7 +154,7 @@ class DistributedUpdateLossScalingImpl(DistributedOperatorImpl):
                 rank_id
                 in ctx.get_tensor_dist_attr_for_program(
                     main_block._var_recursive(varname)
-                ).process_mesh.processes
+                ).process_mesh.process_ids
             ):
                 filter_vars.append(varname)
 

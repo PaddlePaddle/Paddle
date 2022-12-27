@@ -498,7 +498,7 @@ class UtilBase:
                 inference_program,
                 feed_target_names,
                 fetch_targets,
-            ) = paddle.fluid.io.load_inference_model(
+            ) = paddle.distributed.io.load_inference_model_distributed(
                 config.dump_model_dir,
                 exe,
                 model_filename=model_filename,
