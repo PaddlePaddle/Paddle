@@ -482,6 +482,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
             op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
             dim_mapping = op_dist_attr.get_output_dims_mapping(Out_var.name)
             process_mesh_shape = op_dist_attr.process_mesh.topology
+            assert len(shape_list) == len(dim_mapping)
             # modify target shape
             for idx, axis in enumerate(dim_mapping):
                 if axis >= 0:
