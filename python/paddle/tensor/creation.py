@@ -610,7 +610,7 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
             value=data,
             place=place,
             persistable=False,
-            zero_copy=False,
+            zero_copy=True,
             name=None,
             stop_gradient=stop_gradient,
         )
@@ -619,7 +619,7 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
             value=data,
             place=place,
             persistable=False,
-            zero_copy=False,
+            zero_copy=True,
             stop_gradient=stop_gradient,
         )
 

@@ -128,7 +128,7 @@ void EmptyStringTensorInitializer(TensorObject* self,
 void InitTensorWithNumpyValue(TensorObject* self,
                               const py::object& array,
                               const paddle::platform::Place& place,
-                              bool zero_copy = false) {
+                              bool zero_copy = true) {
   PADDLE_ENFORCE_EQ(
       self->tensor.defined(),
       true,
@@ -288,8 +288,9 @@ int ParseBooleanArgs(std::string key,
                      std::unordered_map<std::string, Py_ssize_t> kw_order_map,
                      PyObject* args,
                      bool flag_kwargs,
-                     Py_ssize_t args_num) {
-  int res = -1;
+                     Py_ssize_t args_num,
+                     int default_res = -1) {
+  int res = default_res;
 
   if (kw_order_map[key] <= args_num) {
     res = static_cast<int>(CastPyArg2AttrBoolean(
@@ -358,24 +359,27 @@ void AutoInitTensorByPyArray(TensorObject* py_tensor_ptr,
   paddle::platform::Place place =
       egr::Controller::Instance().GetExpectedPlace();
   bool persistable = false;
-  bool zero_copy = false;
+  bool zero_copy = true;
   std::string act_name = "";
   int stop_gradient = -1;
 
   numpy_value =
       ParsePyArray(kws_map, kw_order_map, args, flag_kwargs, args_num);
   place = ParsePlace(kws_map, kw_order_map, args, flag_kwargs, args_num);
-  persistable =
-      (1 ==
-       ParseBooleanArgs(
-           "persistable", kws_map, kw_order_map, args, flag_kwargs, args_num));
+  persistable = (1 == ParseBooleanArgs("persistable",
+                                       kws_map,
+                                       kw_order_map,
+                                       args,
+                                       flag_kwargs,
+                                       args_num,
+                                       -1));
   zero_copy =
       (1 ==
        ParseBooleanArgs(
-           "zero_copy", kws_map, kw_order_map, args, flag_kwargs, args_num));
+           "zero_copy", kws_map, kw_order_map, args, flag_kwargs, args_num, 1));
   act_name = ParseName(kws_map, kw_order_map, args, flag_kwargs, args_num);
   stop_gradient = ParseBooleanArgs(
-      "stop_gradient", kws_map, kw_order_map, args, flag_kwargs, args_num);
+      "stop_gradient", kws_map, kw_order_map, args, flag_kwargs, args_num, -1);
 
   EmptyTensorInitializer(
       py_tensor_ptr, act_name, place, persistable, stop_gradient);
