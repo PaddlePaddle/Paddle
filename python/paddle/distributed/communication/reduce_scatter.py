@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle.distributed.communication.stream as stream
-import paddle.fluid.framework as framework
 from paddle.distributed.communication.reduce import ReduceOp
 from paddle.distributed.communication.stream.reduce_scatter import (
     _reduce_scatter_base as _reduce_scatter_base_stream,
@@ -62,15 +61,14 @@ def reduce_scatter(
             # [8, 10] (2 GPUs, out for rank 1)
 
     """
-    if not framework._in_legacy_dygraph():
-        return stream.reduce_scatter(
-            tensor,
-            tensor_list,
-            op=op,
-            group=group,
-            sync_op=sync_op,
-            use_calc_stream=False,
-        )
+    return stream.reduce_scatter(
+        tensor,
+        tensor_list,
+        op=op,
+        group=group,
+        sync_op=sync_op,
+        use_calc_stream=False,
+    )
 
 
 def _reduce_scatter_base(
@@ -111,12 +109,11 @@ def _reduce_scatter_base(
             # [5, 7] (2 GPUs, out for rank 1)
 
     """
-    if not framework._in_legacy_dygraph():
-        return _reduce_scatter_base_stream(
-            output,
-            input,
-            op=op,
-            group=group,
-            sync_op=sync_op,
-            use_calc_stream=False,
-        )
+    return _reduce_scatter_base_stream(
+        output,
+        input,
+        op=op,
+        group=group,
+        sync_op=sync_op,
+        use_calc_stream=False,
+    )

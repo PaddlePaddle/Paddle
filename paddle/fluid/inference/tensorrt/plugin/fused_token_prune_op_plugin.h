@@ -93,12 +93,33 @@ class FusedTokenPrunePluginDynamic : public DynamicPluginTensorRT {
                        int nb_outputs) TRT_NOEXCEPT override {
     max_batchs_ = in[1].max.d[0];
     max_token_length_ = in[1].max.d[1];
+    int32_t padding_token_length;
+    if (max_token_length_ <= 64) {
+      padding_token_length = 64;
+    } else if (max_token_length_ <= 128) {
+      padding_token_length = 128;
+    } else if (max_token_length_ <= 256) {
+      padding_token_length = 256;
+    } else if (max_token_length_ <= 384) {
+      padding_token_length = 384;
+    } else if (max_token_length_ <= 512) {
+      padding_token_length = 512;
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Token_prune'token_length(max) must <= 512"));
+    }
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(&pruned_token_lengths_,
                                           (max_batchs_ + 1) * sizeof(int32_t)));
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(
-        &token_index_, max_batchs_ * max_token_length_ * sizeof(int32_t)));
+        &token_index_, max_batchs_ * padding_token_length * sizeof(int32_t)));
+    int32_t type_size = 4;
+    if (in[0].desc.type == nvinfer1::DataType::kHALF) {
+      type_size = 2;
+    } else {
+      type_size = 4;
+    }
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(
-        &padding_scores_, max_batchs_ * max_token_length_ * sizeof(half)));
+        &padding_scores_, max_batchs_ * padding_token_length * type_size));
   }
 
   size_t getWorkspaceSize(const nvinfer1::PluginTensorDesc* inputs,
@@ -129,7 +150,7 @@ class FusedTokenPrunePluginDynamic : public DynamicPluginTensorRT {
   int32_t* token_index_;
   int32_t max_batchs_;
   int32_t max_token_length_;
-  half* padding_scores_;
+  void* padding_scores_;
 };
 
 class FusedTokenPrunePluginDynamicCreator : public nvinfer1::IPluginCreator {
