@@ -882,8 +882,7 @@ def crop(x, shape=None, offsets=None, name=None):
                 offsets_attr.append(-1)
             else:
                 _attr_offsets_check(dim)
-                temp_out = helper.create_variable_for_type_inference('int32')
-                fill_constant([1], 'int32', dim, force_cpu=True, out=temp_out)
+                temp_out = paddle.full([1], dim, 'int32')
                 new_offsets_tensor.append(temp_out)
                 offsets_attr.append(dim)
         ipts['OffsetsTensor'] = new_offsets_tensor
@@ -906,10 +905,7 @@ def crop(x, shape=None, offsets=None, name=None):
                 shape_attr.append(0)
             else:
                 _attr_shape_check(dim_size)
-                temp_out = helper.create_variable_for_type_inference('int32')
-                fill_constant(
-                    [1], 'int32', dim_size, force_cpu=True, out=temp_out
-                )
+                temp_out = fill_constant([1], dim_size, 'int32')
                 new_shape_tensor.append(temp_out)
                 shape_attr.append(dim_size)
         ipts['ShapeTensor'] = new_shape_tensor
@@ -2137,10 +2133,7 @@ def split(x, num_or_sections, axis=0, name=None):
                         % idx
                     )
                     unk_dim_idx = idx
-                temp_out = helper.create_variable_for_type_inference('int32')
-                fill_constant(
-                    [1], 'int32', dim_size, force_cpu=True, out=temp_out
-                )
+                temp_out = paddle.full([1], dim_size, 'int32')
                 tensor_list.append(temp_out)
         return tensor_list
 
@@ -4081,8 +4074,7 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
                 new_list_tensor.append(dim)
             else:
                 assert isinstance(dim, int)
-                temp_out = helper.create_variable_for_type_inference('int32')
-                fill_constant([1], 'int32', dim, force_cpu=True, out=temp_out)
+                temp_out = paddle.full([1], dim, 'int32')
                 new_list_tensor.append(temp_out)
         return new_list_tensor
 

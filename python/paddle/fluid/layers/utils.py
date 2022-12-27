@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+import paddle
 import copy
 import numpy as np
 from ..framework import Block, Variable, _non_static_mode
@@ -391,7 +392,7 @@ def get_shape_tensor_inputs(inputs, attrs, shape, op_type):
                     dim = cast(x=dim, dtype='int32')
                 shape_tensor_list.append(dim)
             else:
-                temp_out = fill_constant([1], 'int32', dim, force_cpu=True)
+                temp_out = paddle.full([1], dim, 'int32')
                 shape_tensor_list.append(temp_out)
         return shape_tensor_list
 
@@ -429,7 +430,7 @@ def _convert_to_tensor_list(old_list, dtype="int32"):
             new_list_tensor.append(ele)
         else:
             assert isinstance(ele, int)
-            temp_out = fill_constant([1], dtype, ele, force_cpu=True)
+            temp_out = paddle.full([1], ele, dtype)
             new_list_tensor.append(temp_out)
     return new_list_tensor
 

@@ -1309,14 +1309,20 @@ class TestGradientTruncated(unittest.TestCase):
             # test stop_gradient
             value.stop_gradient = True
             x.stop_gradient = False
-            start = paddle.fluid.layers.fill_constant(
-                [1], "int32", 5, force_cpu=True
+            start = paddle.full(
+                [1],
+                5,
+                "int32",
             )
-            end = paddle.fluid.layers.fill_constant(
-                [1], "int32", 0, force_cpu=True
+            end = paddle.full(
+                [1],
+                0,
+                "int32",
             )
-            step = paddle.fluid.layers.fill_constant(
-                [1], "int32", -2, force_cpu=True
+            step = paddle.full(
+                [1],
+                -2,
+                "int32",
             )
 
             inputs = {
@@ -1374,15 +1380,9 @@ class TestGradientTruncated(unittest.TestCase):
             value = paddle.fluid.layers.fill_constant([1], "float32", 1)
             x.stop_gradient = True
             value.stop_gradient = False
-            start = paddle.fluid.layers.fill_constant(
-                [1], "int32", 0, force_cpu=True
-            )
-            end = paddle.fluid.layers.fill_constant(
-                [1], "int32", 5, force_cpu=True
-            )
-            step = paddle.fluid.layers.fill_constant(
-                [1], "int32", 3, force_cpu=True
-            )
+            start = paddle.full([1], 0, "int32")
+            end = paddle.full([1], 5, "int32")
+            step = paddle.full([1], 3, "int32")
 
             inputs = {
                 'Input': x,

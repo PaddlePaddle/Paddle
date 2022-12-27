@@ -693,9 +693,7 @@ class TestFusedMultiTransformerOp(OpTest):
                 assert self.query_length == self.cache_length
                 cache_kv[:] = 0
             else:
-                time_step = layers.fill_constant(
-                    shape=[1], dtype="int32", value=0, force_cpu=True
-                )
+                time_step = paddle.full(shape=[1], dtype="int32", fill_value=0)
                 time_step_feed = self.cache_length
 
         if self.has_pre_cache:

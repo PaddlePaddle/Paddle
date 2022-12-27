@@ -430,11 +430,10 @@ def piecewise_decay(boundaries, values):
 
             with control_flow.Switch() as switch:
                 for i in range(len(boundaries)):
-                    boundary_val = tensor.fill_constant(
+                    boundary_val = paddle.full(
                         shape=[1],
                         dtype='float32',
-                        value=float(boundaries[i]),
-                        force_cpu=True,
+                        fill_value=float(boundaries[i]),
                     )
                     with switch.case(global_step < boundary_val):
                         tensor.fill_constant(
