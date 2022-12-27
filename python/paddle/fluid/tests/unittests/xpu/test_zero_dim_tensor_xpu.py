@@ -530,7 +530,7 @@ class TestSundryAPI(unittest.TestCase):
         out = paddle.flatten(x, start_axis=start_axis, stop_axis=stop_axis)
         out.backward()
 
-        self.assertEqual(out.shape, (1,))
+        self.assertEqual(out.shape, [1])
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
