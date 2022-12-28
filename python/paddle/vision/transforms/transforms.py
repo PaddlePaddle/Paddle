@@ -861,8 +861,6 @@ class ContrastTransform(BaseTransform):
 
     def __init__(self, value, keys=None):
         super().__init__(keys)
-        if value < 0:
-            raise ValueError("contrast value should be non-negative")
         self.value = _check_input(value, 'contrast')
 
     def _apply_image(self, img):
