@@ -2360,6 +2360,25 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
     }
 
+    if (op_type == "not_equal") {
+#if !IS_TRT_VERSION_GE(8000)
+      VLOG(3) << "compare is not supported when TensorRT < 8.0";
+      return false;
+#else
+      int axis = PADDLE_GET_CONST(int, desc.GetAttr("axis"));
+      if (axis == 0) {
+        return false;
+      }
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+#endif
+    }
+
     if (op_type == "layernorm_shift_partition") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the layernorm_shift_partition does not support "
@@ -2493,6 +2512,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_max",
       "elementwise_floordiv",
       "equal",
+      "not_equal",
       "less_than",
       "greater_than",
       "logical_or",
@@ -2639,6 +2659,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_max",
       "elementwise_floordiv",
       "equal",
+      "not_equal",
       "less_than",
       "greater_than",
       "logical_or",
