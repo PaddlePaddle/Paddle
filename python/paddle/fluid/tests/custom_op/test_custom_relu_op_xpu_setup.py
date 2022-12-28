@@ -227,7 +227,7 @@ class TestNewCustomOpXpuSetUpInstall(unittest.TestCase):
             np.testing.assert_allclose(
                 out,
                 pd_out,
-                atol=1e-3,
+                atol=1e-2,
                 err_msg='custom op out: {},\n paddle api out: {}'.format(
                     out, pd_out
                 ),
@@ -282,7 +282,7 @@ class TestNewCustomOpXpuSetUpInstall(unittest.TestCase):
             np.testing.assert_allclose(
                 predict,
                 predict_infer,
-                atol=1e-3,
+                atol=1e-2,
                 err_msg='custom op predict: {},\n custom op infer predict: {}'.format(
                     predict, predict_infer
                 ),
@@ -316,7 +316,7 @@ class TestNewCustomOpXpuSetUpInstall(unittest.TestCase):
             predict,
             predict_infer,
             rtol=5e-5,
-            atol=1e-3,
+            atol=1e-2,
             err_msg="custom op predict: {},\n custom op infer predict: {}".format(
                 predict, predict_infer
             ),
@@ -371,7 +371,7 @@ class TestNewCustomOpXpuSetUpInstall(unittest.TestCase):
             np.testing.assert_allclose(
                 out,
                 pd_out,
-                atol=1e-3,
+                atol=1e-2,
                 err_msg='custom op out: {},\n paddle api out: {}'.format(
                     out, pd_out
                 ),
