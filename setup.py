@@ -857,13 +857,16 @@ def get_package_data_and_package_dir():
             + '/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh',
             libs_path,
         )
-        shutil.copy(
-            env_dict.get("CINN_INCLUDE_DIR") + '/cinn/runtime/cuda/float16.h',
-            libs_path,
-        )
         package_data['paddle.libs'] += ['libcinnapi.so']
         package_data['paddle.libs'] += ['cinn_cuda_runtime_source.cuh']
-        package_data['paddle.libs'] += ['float16.h']
+
+        cinn_fp16_file = (
+            env_dict.get("CINN_INCLUDE_DIR") + '/cinn/runtime/cuda/float16.h'
+        )
+        if os.path.exists(cinn_fp16_file):
+            shutil.copy(cinn_fp16_file, libs_path)
+            package_data['paddle.libs'] += ['float16.h']
+
         if env_dict.get("CMAKE_BUILD_TYPE") == 'Release' and os.name != 'nt':
             command = (
                 "patchelf --set-rpath '$ORIGIN/' %s/" % libs_path
@@ -948,11 +951,11 @@ def get_package_data_and_package_dir():
                         "command: %s" % command,
                     )
         shutil.copy(env_dict.get("XPU_API_LIB"), libs_path)
-        shutil.copy(env_dict.get("XPU_RT_LIB"), libs_path)
-        package_data['paddle.libs'] += [
-            env_dict.get("XPU_API_LIB_NAME"),
-            env_dict.get("XPU_RT_LIB_NAME"),
-        ]
+        package_data['paddle.libs'] += [env_dict.get("XPU_API_LIB_NAME")]
+        xpu_rt_lib_list = glob.glob(env_dict.get("XPU_RT_LIB") + '*')
+        for xpu_rt_lib_file in xpu_rt_lib_list:
+            shutil.copy(xpu_rt_lib_file, libs_path)
+            package_data['paddle.libs'] += [os.path.basename(xpu_rt_lib_file)]
 
     if env_dict.get("WITH_XPU_BKCL") == 'ON':
         shutil.copy(env_dict.get("XPU_BKCL_LIB"), libs_path)

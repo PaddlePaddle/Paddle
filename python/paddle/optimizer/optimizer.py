@@ -18,13 +18,12 @@ from collections import defaultdict
 import numpy as np
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from paddle.fluid import core
 from paddle.fluid.framework import (
     Variable,
     _current_expected_place,
     _in_eager_without_dygraph_check,
-    _in_legacy_dygraph,
     default_main_program,
     device_guard,
     in_dygraph_mode,
@@ -534,17 +533,6 @@ class Optimizer:
                     current_lr.dtype,
                     place,
                 )
-
-            elif _in_legacy_dygraph():
-                _legacy_C_ops.fill_constant(
-                    current_lr,
-                    'value',
-                    float(value),
-                    'dtype',
-                    current_lr.dtype,
-                    'shape',
-                    list(current_lr.shape),
-                )
             else:
                 global_block = framework.default_main_program().global_block()
                 global_block.append_op(
@@ -1042,28 +1030,16 @@ class Optimizer:
         if self._dtype is None:
             self._dtype = loss.dtype
 
-        if framework._non_static_mode():
+        if framework.in_dygraph_mode():
             parameter_list = parameters if parameters else self._parameter_list
 
-            if framework.in_dygraph_mode():
-                # It is very time-consuming to call c++ functions in a loop on the python side.
-                # We put this part of the code on the c++ side to improve the speed in eager mode.
-                params_grads = []
-                grads = core.eager.get_all_grads(parameter_list)
-                for index, grad in enumerate(grads):
-                    if grad is not None:
-                        params_grads.append((parameter_list[index], grad))
-            else:
-                # Keep the original code to support legacy mode.
-                # Delete the else branch when the legacy mode exits.
-                params_grads = []
-                for param in parameter_list:
-                    if param.stop_gradient:
-                        continue
-                    if param._grad_ivar() is not None:
-                        # create gradient tensor
-                        grad_var = param._grad_ivar()
-                        params_grads.append((param, grad_var))
+            # It is very time-consuming to call c++ functions in a loop on the python side.
+            # We put this part of the code on the c++ side to improve the speed in eager mode.
+            params_grads = []
+            grads = core.eager.get_all_grads(parameter_list)
+            for index, grad in enumerate(grads):
+                if grad is not None:
+                    params_grads.append((parameter_list[index], grad))
         else:
             if callbacks is None:
                 callbacks = [error_clip_callback]
@@ -1207,28 +1183,26 @@ class Optimizer:
 
         if framework.in_dygraph_mode():
             return _C_ops.add_n([grad, regularization_term])
-        elif framework._in_legacy_dygraph():
-            return _legacy_C_ops.sum([grad, regularization_term])
+        else:
+            new_grad = grad
+            if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
+                # FIXME(zcd): If the grad is SELECTED_ROWS, after regularization,
+                # the grad's type and name will be changed. But the gradient's name
+                # is used in ParallelExecutor Reduce mode, so I add a flag for
+                # the new_grad here.
+                new_grad = grad.block.create_var(
+                    name=grad.name + core.kNewGradSuffix(),
+                    dtype=param.dtype,
+                    shape=param.shape,
+                    lod_level=param.lod_level,
+                    type=core.VarDesc.VarType.LOD_TENSOR,
+                )
 
-        new_grad = grad
-        if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
-            # FIXME(zcd): If the grad is SELECTED_ROWS, after regularization,
-            # the grad's type and name will be changed. But the gradient's name
-            # is used in ParallelExecutor Reduce mode, so I add a flag for
-            # the new_grad here.
-            new_grad = grad.block.create_var(
-                name=grad.name + core.kNewGradSuffix(),
-                dtype=param.dtype,
-                shape=param.shape,
-                lod_level=param.lod_level,
-                type=core.VarDesc.VarType.LOD_TENSOR,
-            )
+            inputs = {"X": [grad, regularization_term]}
+            outputs = {"Out": [new_grad]}
+            grad.block.append_op(type='sum', inputs=inputs, outputs=outputs)
 
-        inputs = {"X": [grad, regularization_term]}
-        outputs = {"Out": [new_grad]}
-        grad.block.append_op(type='sum', inputs=inputs, outputs=outputs)
-
-        return new_grad
+            return new_grad
 
     def append_regularization_ops(
         self, parameters_and_grads, regularization=None

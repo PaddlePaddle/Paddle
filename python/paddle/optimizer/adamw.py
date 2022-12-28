@@ -18,7 +18,7 @@ from collections.abc import Callable
 
 import paddle
 
-from .. import _C_ops, _legacy_C_ops
+from .. import _C_ops
 from ..fluid import core, framework, unique_name
 from ..fluid.clip import GradientClipBase
 from ..fluid.dygraph import base as imperative_base
@@ -473,7 +473,7 @@ class AdamW(Optimizer):
         lr = self._create_param_lr(param_and_grad)
 
         # create the adamw optimize op
-        if framework._non_static_mode():
+        if framework.in_dygraph_mode():
             lr_ratio_ = (
                 1.0
                 if self._lr_ratio is None
@@ -491,126 +491,90 @@ class AdamW(Optimizer):
                 else self._beta2.numpy().item(0)
             )
 
-            if framework.in_dygraph_mode():
-                found_inf = self._get_auxiliary_var('found_inf')
-                _, _, _, _, _, _ = _C_ops.adamw_(
-                    param_and_grad[0],
-                    param_and_grad[1],
-                    lr,
-                    moment1,
-                    moment2,
-                    beta1_pow_acc,
-                    beta2_pow_acc,
-                    master_weight,
-                    found_inf,
-                    _beta1,
-                    _beta2,
-                    self._epsilon,
-                    lr_ratio_,
-                    self._weight_decay,
-                    with_decay,
-                    self._lazy_mode,
-                    1000,
-                    find_master,
-                    False,
-                )
-            else:
-                _, _, _, _, _, _ = _legacy_C_ops.adamw(
-                    param_and_grad[0],
-                    param_and_grad[1],
-                    lr,
-                    moment1,
-                    moment2,
-                    beta1_pow_acc,
-                    beta2_pow_acc,
-                    master_weight,
-                    param_and_grad[0],
-                    moment1,
-                    moment2,
-                    beta1_pow_acc,
-                    beta2_pow_acc,
-                    master_weight,
-                    'epsilon',
-                    self._epsilon,
-                    'lazy_mode',
-                    self._lazy_mode,
-                    'min_row_size_to_use_multithread',
-                    1000,
-                    'beta1',
-                    _beta1,
-                    'beta2',
-                    _beta2,
-                    "with_decay",
-                    with_decay,
-                    'coeff',
-                    self._weight_decay,
-                    'multi_precision',
-                    find_master,
-                    'lr_ratio',
-                    lr_ratio_,
-                )
+            found_inf = self._get_auxiliary_var('found_inf')
+            _, _, _, _, _, _ = _C_ops.adamw_(
+                param_and_grad[0],
+                param_and_grad[1],
+                lr,
+                moment1,
+                moment2,
+                beta1_pow_acc,
+                beta2_pow_acc,
+                master_weight,
+                found_inf,
+                _beta1,
+                _beta2,
+                self._epsilon,
+                lr_ratio_,
+                self._weight_decay,
+                with_decay,
+                self._lazy_mode,
+                1000,
+                find_master,
+                False,
+            )
             return None
-
-        inputs = {
-            "Param": [param_and_grad[0]],
-            "Grad": [param_and_grad[1]],
-            "LearningRate": [lr],
-            "Moment1": [moment1],
-            "Moment2": [moment2],
-            "Beta1Pow": [beta1_pow_acc],
-            "Beta2Pow": [beta2_pow_acc],
-        }
-
-        # Pass found_inf to adamw, to skip update for not only param, but also momentum and beta_pow
-        found_inf = self._get_auxiliary_var('found_inf')
-
-        if found_inf:
-            inputs['SkipUpdate'] = found_inf
-
-        outputs = {
-            "ParamOut": [param_and_grad[0]],
-            "Moment1Out": [moment1],
-            "Moment2Out": [moment2],
-            "Beta1PowOut": [beta1_pow_acc],
-            "Beta2PowOut": [beta2_pow_acc],
-        }
-        attrs = {
-            "lazy_mode": self._lazy_mode,
-            "min_row_size_to_use_multithread": 1000,
-            "multi_precision": find_master,
-            "with_decay": with_decay,
-            "coeff": self._weight_decay,
-            "lr_ratio": 1.0
-            if self._lr_ratio is None
-            else self._lr_ratio(param_and_grad[0]),
-        }
-
-        if isinstance(self._beta1, Variable):
-            inputs['Beta1Tensor'] = self._beta1
         else:
-            attrs['beta1'] = self._beta1
-        if isinstance(self._beta2, Variable):
-            inputs['Beta2Tensor'] = self._beta2
-        else:
-            attrs['beta2'] = self._beta2
-        if isinstance(self._epsilon, Variable):
-            inputs['EpsilonTensor'] = self._epsilon
-        else:
-            attrs['epsilon'] = self._epsilon
+            inputs = {
+                "Param": [param_and_grad[0]],
+                "Grad": [param_and_grad[1]],
+                "LearningRate": [lr],
+                "Moment1": [moment1],
+                "Moment2": [moment2],
+                "Beta1Pow": [beta1_pow_acc],
+                "Beta2Pow": [beta2_pow_acc],
+            }
 
-        if find_master:
-            inputs["MasterParam"] = master_weight
-            outputs["MasterParamOut"] = master_weight
+            # Pass found_inf to adamw, to skip update for not only param, but also momentum and beta_pow
+            found_inf = self._get_auxiliary_var('found_inf')
 
-        adamw_op = block.append_op(
-            type=self.type,
-            inputs=inputs,
-            outputs=outputs,
-            attrs=attrs,
-            stop_gradient=True,
-        )
+            if found_inf:
+                inputs['SkipUpdate'] = found_inf
 
-        return adamw_op
+            outputs = {
+                "ParamOut": [param_and_grad[0]],
+                "Moment1Out": [moment1],
+                "Moment2Out": [moment2],
+                "Beta1PowOut": [beta1_pow_acc],
+                "Beta2PowOut": [beta2_pow_acc],
+            }
+            attrs = {
+                "lazy_mode": self._lazy_mode,
+                "min_row_size_to_use_multithread": 1000,
+                "multi_precision": find_master,
+                "with_decay": with_decay,
+                "coeff": self._weight_decay,
+                "lr_ratio": 1.0
+                if self._lr_ratio is None
+                else self._lr_ratio(param_and_grad[0]),
+            }
+
+            if isinstance(self._beta1, Variable):
+                inputs['Beta1Tensor'] = self._beta1
+            else:
+                attrs['beta1'] = self._beta1
+            if isinstance(self._beta2, Variable):
+                inputs['Beta2Tensor'] = self._beta2
+            else:
+                attrs['beta2'] = self._beta2
+            if isinstance(self._epsilon, Variable):
+                inputs['EpsilonTensor'] = self._epsilon
+            else:
+                attrs['epsilon'] = self._epsilon
+
+            if find_master:
+                inputs["MasterParam"] = master_weight
+                outputs["MasterParamOut"] = master_weight
+
+            adamw_op = block.append_op(
+                type=self.type,
+                inputs=inputs,
+                outputs=outputs,
+                attrs=attrs,
+                stop_gradient=True,
+            )
+
+            return adamw_op
 
     def __str__(self):
         return " ".join(["Weight Decay, params:", ",".join(self._params_name)])

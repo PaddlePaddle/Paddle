@@ -88,8 +88,9 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
   }
 
   // Convert the CINN runtime program to a Paddle graph
-  runtime_graph_ = std::make_unique<framework::ir::Graph>(
-      BuildCompiledProgram(graph, compiled_obj));
+  runtime_program_desc_ = BuildCompiledProgram(graph, compiled_obj);
+  runtime_graph_ =
+      std::make_unique<framework::ir::Graph>(*runtime_program_desc_.get());
   auto& outer_varinfo = graph.Get<Name2VarInfoMap>(kMemOptVarInfoFromMainGraph);
   runtime_graph_->SetNotOwned<Name2VarInfoMap>(kMemOptVarInfoFromMainGraph,
                                                &outer_varinfo);
@@ -100,6 +101,7 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
     // that means it can be erased after graph execution
     if (!outer_varinfo.count(var_name)) {
       skip_eager_vars_.emplace_back(var_name);
+      skip_gc_vars_.insert(var_name);
     }
   };
   std::for_each(
@@ -313,12 +315,14 @@ void CinnLaunchContext::AssignInternalVariable(const std::string& var_name) {
       });
 }
 
-framework::ProgramDesc CinnLaunchContext::BuildCompiledProgram(
+std::unique_ptr<framework::ProgramDesc> CinnLaunchContext::BuildCompiledProgram(
     const framework::ir::Graph& graph, const CinnCompiledObject& compiled_obj) {
   CinnRuntimeProgram* runtime_program = compiled_obj.runtime_program.get();
   // Step 0: Create an empty program_desc, there will be only one block
-  framework::ProgramDesc program_desc;
-  auto* block = program_desc.MutableBlock(0);
+  // framework::ProgramDesc program_desc;
+  std::unique_ptr<framework::ProgramDesc> program_desc(
+      new framework::ProgramDesc());
+  auto* block = program_desc->MutableBlock(0);
   const std::vector<std::unique_ptr<CinnInstruction>>& instructions =
       runtime_program->GetRunInstructions();
 
@@ -443,6 +447,46 @@ ParallelExecutor* CinnLaunchContext::InitializePE(const platform::Place& place,
         place, framework::paddle2cinn::TransToPaddleDataType(buffer->type));
   }
   return parallel_executor_.get();
+}
+
+framework::InterpreterCore* CinnLaunchContext::InitializeInterpreterCore(
+    const platform::Place& place, framework::Scope* scope) {
+  if (!interpreter_core_ || scope != cached_scope_) {
+    VLOG(1) << "interpreter_core_ is null or scope != cached_scope_: "
+               "interpreter_core_: "
+            << interpreter_core_.get() << "; scope: " << scope
+            << "; cached_scope_: " << cached_scope_;
+    for (auto&& var_name : internal_var_names_) {
+      auto* var = scope->FindVar(var_name);
+      if (var != nullptr) {
+        continue;
+      }
+      framework::InitializeVariable(scope->Var(var_name),
+                                    framework::proto::VarType::LOD_TENSOR);
+    }
+    if (!interpreter_core_) {
+      interpreter_core_ = std::make_unique<framework::InterpreterCore>(
+          place,
+          runtime_program_desc_->Block(0),
+          skip_gc_vars_,
+          scope,
+          /*used_for_jit*/ false,
+          /*used_for_control_flow_op*/ false,
+          /*used_for_cinn*/ true);
+    } else {
+      interpreter_core_->reset_scope(scope);
+    }
+    UpdateCapturedEnv(*scope, place);
+  }
+  for (auto&& var_name : initialized_beforehand_vars_) {
+    auto* var = scope->GetVar(var_name);
+    auto* buffer = GetCinnBufferOfVar(var_name);
+    auto dim = framework::DDim(buffer->dims, buffer->dimensions);
+    var->GetMutable<phi::DenseTensor>()->Resize(dim);
+    var->GetMutable<phi::DenseTensor>()->mutable_data(
+        place, framework::paddle2cinn::TransToPaddleDataType(buffer->type));
+  }
+  return interpreter_core_.get();
 }
 
 cinn_buffer_t* CinnLaunchContext::GetCinnBufferOfVar(
