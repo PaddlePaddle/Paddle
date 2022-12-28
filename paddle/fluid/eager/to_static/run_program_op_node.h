@@ -798,11 +798,6 @@ class GradNodeRunProgram : public egr::GradNodeBase {
                           "out_grad_names_.size() should be equal."));
     for (size_t i = 0; i < out_grad_names_.size(); ++i) {
       hooked_grads[0][i].set_name(out_grad_names_[i]);
-
-      // if (hooked_grads[0][i].name() == "linear_7.tmp_1@GRAD") {
-      //   hooked_grads[0][i].set_name("linear_7.tmp_1@GRAD_1");
-      // }
-
       VLOG(1) << "hooked_grads: " << hooked_grads[0][i].name();
     }
     RunProgramGradAPI(x_,
