@@ -2715,7 +2715,20 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
   proto::VarType::Type dafault_data_type =
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
+
+  std::vector<std::string> sup_tensor_attrs;
+  for (auto& attr : Info().Proto().attrs()) {
+    if (attr.support_tensor()) {
+      sup_tensor_attrs.emplace_back(attr.name());
+    }
+  }
+
   for (auto* name : ctx.InNameList()) {
+    if (std::find(sup_tensor_attrs.begin(), sup_tensor_attrs.end(), *name) !=
+        sup_tensor_attrs.end()) {
+      continue;
+    }
+
     if (ctx.InputSize(*name) == 1UL) {
       ParseInputDataType(ctx.InputVar(*name), *name, &data_type);
     } else {
