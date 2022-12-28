@@ -12,16 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ... import core
-from ... import framework
-from ... import layers
-from ... import global_scope
+import collections
+import logging
+
+import numpy as np
+
+from ... import core, framework, global_scope
 from ...log_helper import get_logger
 from ...wrapped_decorator import signature_safe_contextmanager
 from .fp16_lists import AutoMixedPrecisionLists
-import collections
-import logging
-import numpy as np
 
 __all__ = ["fp16_guard", "cast_model_to_fp16", "cast_parameters_to_fp16"]
 

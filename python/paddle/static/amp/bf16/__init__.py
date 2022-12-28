@@ -1,4 +1,4 @@
-#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserve.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,15 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from . import amp_lists
+from . import amp_utils
 from . import decorator
-from .decorator import *
-from . import fp16_lists
-from .fp16_lists import *
-from . import fp16_utils
-from .fp16_utils import *
-from . import bf16
 
 __all__ = []
 __all__ += decorator.__all__
-__all__ += fp16_lists.__all__
-__all__ += fp16_utils.__all__
+__all__ += amp_lists.__all__
+__all__ += amp_utils.__all__

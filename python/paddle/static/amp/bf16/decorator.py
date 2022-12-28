@@ -12,22 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from paddle.fluid import (
-    core,
-    default_main_program,
-    layers,
-    program_guard,
-    unique_name,
-)
-from .amp_utils import (
-    rewrite_program_bf16,
-    cast_model_to_bf16,
-    cast_parameters_to_bf16,
-)
-from .amp_lists import AutoMixedPrecisionListsBF16
 import types
 import warnings
+
+import paddle
+from paddle.fluid import core, default_main_program, program_guard, unique_name
+
+from .amp_lists import AutoMixedPrecisionListsBF16
+from .amp_utils import (
+    cast_model_to_bf16,
+    cast_parameters_to_bf16,
+    rewrite_program_bf16,
+)
 
 __all__ = ["decorate_bf16"]
 

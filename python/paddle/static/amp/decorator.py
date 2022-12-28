@@ -12,24 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ... import core
-from ... import default_main_program
-from ... import default_startup_program
-from ... import framework
-from ... import layers
-from ... import program_guard
-from ... import unique_name
-from . import fp16_utils
-from .fp16_utils import rewrite_program
-from .fp16_utils import cast_model_to_fp16
-from .fp16_utils import cast_parameters_to_fp16
-from .fp16_utils import update_role_var_grad
-from .fp16_lists import AutoMixedPrecisionLists
-from .amp_nn import check_finite_and_unscale
-from .amp_nn import update_loss_scaling
 import types
 import warnings
+
 import paddle
+from paddle.fluid import (
+    core,
+    default_main_program,
+    default_startup_program,
+    layers,
+    program_guard,
+    unique_name,
+)
+
+from .amp_nn import check_finite_and_unscale, update_loss_scaling
+from .fp16_lists import AutoMixedPrecisionLists
+from .fp16_utils import (
+    cast_model_to_fp16,
+    cast_parameters_to_fp16,
+    rewrite_program,
+    update_role_var_grad,
+)
 
 __all__ = ["decorate"]
 

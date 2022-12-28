@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.data_feeder import check_variable_and_dtype, check_type
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import Variable, in_dygraph_mode
-from paddle.fluid import core
 from paddle import _C_ops
+from paddle.fluid import core
+from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
+from paddle.fluid.framework import Variable, in_dygraph_mode
+from paddle.fluid.layer_helper import LayerHelper
 
 __all__ = ['check_finite_and_unscale', 'update_loss_scaling']
 
