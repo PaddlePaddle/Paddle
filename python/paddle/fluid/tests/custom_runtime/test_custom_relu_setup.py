@@ -122,6 +122,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         # compile so and set to current path
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         self.temp_dir = tempfile.TemporaryDirectory()
+        print("cur_dir", cur_dir)
         print("self.temp_dir", self.temp_dir.name)
         cmd = 'cd {} \
             && git clone {} \
@@ -159,6 +160,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         assert len(custom_egg_path) == 1, "Matched egg number is %d." % len(
             custom_egg_path
         )
+        print("custom_egg_path", custom_egg_path[0])
         sys.path.append(os.path.join(site_dir, custom_egg_path[0]))
 
         # usage: import the package directly
