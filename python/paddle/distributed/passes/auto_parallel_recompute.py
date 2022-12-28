@@ -290,17 +290,17 @@ class RecomputePass(PassBase):
             return
 
         for i, (idx1, idx2) in enumerate(segments):
-            logging.info(
+            logging.debug(
                 "recompute segment[{}/{}]".format(i + 1, len(segments))
             )
-            logging.info(
+            logging.debug(
                 "segment start op: [{}]: [{}] [{}]".format(
                     rc_state.ops[idx1].type,
                     rc_state.ops[idx1].input_arg_names,
                     rc_state.ops[idx1].output_arg_names,
                 )
             )
-            logging.info(
+            logging.debug(
                 "segment end op: [{}]: [{}] [{}]".format(
                     rc_state.ops[idx2 - 1].type,
                     rc_state.ops[idx2 - 1].input_arg_names,

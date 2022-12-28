@@ -80,9 +80,9 @@ def init_all_process_groups(cur_rank):
     for process_group in all_process_groups:
         if cur_rank in process_group.ranks:
             process_group.instantiate()
-            logger.info("Inited group {}".format(str(process_group)))
+            logger.info("Group Inited {}".format(str(process_group)))
         else:
-            logger.info("Skiped group {}".format(str(process_group)))
+            logger.info("Group Skiped {}".format(str(process_group)))
         auto_utils.naive_barrier()
 
 
