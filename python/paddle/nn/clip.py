@@ -214,7 +214,7 @@ def _cast_to_mp_type_if_enabled(x):
 
 def _squared_l2_norm(x):
     r"""
-    This OP returns the squared L2 norm of a tensor.
+    Return the squared L2 norm of a tensor.
     """
 
     x = _cast_to_mp_type_if_enabled(x)
@@ -901,8 +901,6 @@ class ClipGradByGlobalNorm(ClipGradBase):
 @framework.dygraph_not_support
 def set_gradient_clip(clip, param_list=None, program=None):
     """
-    :api_attr: Static Graph
-
     Warning:
 
         This API must be used after building network, and before ``minimize`` ,
