@@ -194,6 +194,7 @@ class TestWhereAPI(unittest.TestCase):
             )
             x.desc.set_need_check_feed(False)
             y.desc.set_need_check_feed(False)
+            cond.desc.set_need_check_feed(False)
             cond_data_tmp = np.random.random(size=cond_shape).astype('float32')
             cond_data = cond_data_tmp < 0.3
             x_data = np.random.random(size=x_shape).astype('float32')

@@ -1353,15 +1353,21 @@ class TestLayer(LayerTest):
 
     def test_crop_tensor(self):
         with self.static_graph():
-            x = paddle.static.data(name="x1", shape=[-1, 6, 5, 8])
+            x = paddle.static.data(
+                name="x1", shape=[-1, 6, 5, 8], dtype="float32"
+            )
 
-            dim1 = paddle.static.data(name="dim1", shape=[1])
-            dim2 = paddle.static.data(name="dim2", shape=[1])
+            dim1 = paddle.static.data(name="dim1", shape=[1], dtype="float32")
+            dim2 = paddle.static.data(name="dim2", shape=[1], dtype="float32")
             crop_shape1 = (1, 2, 4, 4)
-            crop_shape2 = paddle.static.data(name="crop_shape", shape=[4])
+            crop_shape2 = paddle.static.data(
+                name="crop_shape", shape=[4], dtype="float32"
+            )
             crop_shape3 = [-1, dim1, dim2, 4]
             crop_offsets1 = [0, 0, 1, 0]
-            crop_offsets2 = paddle.static.data(name="crop_offset", shape=[4])
+            crop_offsets2 = paddle.static.data(
+                name="crop_offset", shape=[4], dtype="float32"
+            )
             crop_offsets3 = [0, dim1, dim2, 0]
 
             out1 = paddle.crop(x, shape=crop_shape1, offsets=crop_offsets1)
