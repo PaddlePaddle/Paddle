@@ -859,6 +859,14 @@ def get_package_data_and_package_dir():
         )
         package_data['paddle.libs'] += ['libcinnapi.so']
         package_data['paddle.libs'] += ['cinn_cuda_runtime_source.cuh']
+
+        cinn_fp16_file = (
+            env_dict.get("CINN_INCLUDE_DIR") + '/cinn/runtime/cuda/float16.h'
+        )
+        if os.path.exists(cinn_fp16_file):
+            shutil.copy(cinn_fp16_file, libs_path)
+            package_data['paddle.libs'] += ['float16.h']
+
         if env_dict.get("CMAKE_BUILD_TYPE") == 'Release' and os.name != 'nt':
             command = (
                 "patchelf --set-rpath '$ORIGIN/' %s/" % libs_path
