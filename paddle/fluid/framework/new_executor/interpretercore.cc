@@ -188,6 +188,35 @@ interpreter::CostInfo InterpreterCore::DryRun(
   return cost_info;
 }
 
+void InterpreterCore::RunImpl() {
+  // For the program that only run once, it is no need to
+  // create work_queue, so the async_work_queue_ is created
+  // until the second step run.
+  async_work_queue_ = GetWorkQueue();
+
+  // lazy initialization of gc, do not create gc is the program only run once
+  if (!gc_) {
+    gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
+  }
+
+  if (execution_config_.used_for_jit && (sync_op_num_ == 0)) {
+    VLOG(4) << "Tracing Instruction List";
+    TraceInstructionList(vec_instruction_);
+  } else {
+    ExecuteInstructionList(vec_instruction_);
+  }
+#ifdef PADDLE_WITH_ASCEND_CL
+  if (platform::is_npu_place(place_)) {
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  }
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (platform::is_custom_place(place_)) {
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  }
+#endif
+}
+
 paddle::framework::FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<phi::DenseTensor>& feed_tensors) {
@@ -201,33 +230,9 @@ paddle::framework::FetchList InterpreterCore::Run(
   Prepare(feed_names, feed_tensors, is_build);
 
   if (is_build) {
-    // For the program that only run once, it is no need to
-    // create work_queue, so the async_work_queue_ is created
-    // until the second step run.
-    async_work_queue_ = GetWorkQueue();
-
-    // lazy initialization of gc, do not create gc is the program only run once
-    if (!gc_) {
-      gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
-    }
-
-    if (execution_config_.used_for_jit && (sync_op_num_ == 0)) {
-      VLOG(4) << "Tracing Instruction List";
-      TraceInstructionList(vec_instruction_);
-    } else {
-      ExecuteInstructionList(vec_instruction_);
-    }
-#ifdef PADDLE_WITH_ASCEND_CL
-    if (platform::is_npu_place(place_)) {
-      platform::DeviceContextPool::Instance().Get(place_)->Wait();
-    }
-#endif
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-    if (platform::is_custom_place(place_)) {
-      platform::DeviceContextPool::Instance().Get(place_)->Wait();
-    }
-#endif
+    RunImpl();
   }
+
   if (HasLocalScope()) {
     ClearLoDTensorArrayInLocalScope();
   }
@@ -255,7 +260,7 @@ paddle::framework::FetchList InterpreterCore::Run(
         block_, &var_scope_, HasLocalScope());
 
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
-    paddle::framework::interpreter::BuildOpFuncList(
+    auto skip_run = paddle::framework::interpreter::BuildOpFuncList(
         place_,
         block_,
         execution_config_.skip_gc_vars,
@@ -268,33 +273,12 @@ paddle::framework::FetchList InterpreterCore::Run(
     Convert(&op_func_nodes);
     is_build_ = true;
     UpdateSyncOpNum();
+    if (skip_run) {
+      VLOG(4) << "RUN impl";
+      RunImpl();
+    }
   } else {
-    // For the program that only run once, it is no need to
-    // create work_queue, so the async_work_queue_ is created
-    // until the second step run.
-    async_work_queue_ = GetWorkQueue();
-
-    // lazy initialization of gc, do not create gc is the program only run once
-    if (!gc_) {
-      gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
-    }
-
-    if (execution_config_.used_for_jit && (sync_op_num_ == 0)) {
-      VLOG(4) << "Tracing Instruction List";
-      TraceInstructionList(vec_instruction_);
-    } else {
-      ExecuteInstructionList(vec_instruction_);
-    }
-#ifdef PADDLE_WITH_ASCEND_CL
-    if (platform::is_npu_place(place_)) {
-      platform::DeviceContextPool::Instance().Get(place_)->Wait();
-    }
-#endif
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-    if (platform::is_custom_place(place_)) {
-      platform::DeviceContextPool::Instance().Get(place_)->Wait();
-    }
-#endif
+    RunImpl();
   }
 
   if (HasLocalScope()) {
@@ -1197,7 +1181,7 @@ void InterpreterCore::Prepare(const std::vector<std::string>& feed_names,
         block_, &var_scope_, HasLocalScope());
     FeedInput();
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
-    paddle::framework::interpreter::BuildOpFuncList(
+    auto skip_run = paddle::framework::interpreter::BuildOpFuncList(
         place_,
         block_,
         execution_config_.skip_gc_vars,
@@ -1210,6 +1194,10 @@ void InterpreterCore::Prepare(const std::vector<std::string>& feed_names,
     Convert(&op_func_nodes);
     UpdateSyncOpNum();
     is_build_ = true;
+    if (skip_run) {
+      VLOG(4) << "RUN impl";
+      RunImpl();
+    }
   }
   // NOTE: Because feed_tensor will be GC after
   // paddle::framework::BuildOpFuncList, so we should

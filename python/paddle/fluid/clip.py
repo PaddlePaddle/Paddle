@@ -23,7 +23,7 @@ from . import core
 from . import name_scope
 from .dygraph import base as imperative_base
 from .data_feeder import check_variable_and_dtype
-from .framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
+from .framework import in_dygraph_mode
 from .layer_helper import LayerHelper
 from .framework import default_main_program
 from paddle import _C_ops, _legacy_C_ops
@@ -78,18 +78,16 @@ def _squared_l2_norm(x):
 
     if in_dygraph_mode():
         return _C_ops.squared_l2_norm(x)
-    elif _in_legacy_dygraph():
-        return _legacy_C_ops.squared_l2_norm(x)
+    else:
+        op_type = 'squared_l2_norm'
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], op_type)
+        helper = LayerHelper(op_type, **locals())
+        out = helper.create_variable_for_type_inference(x.dtype)
 
-    op_type = 'squared_l2_norm'
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], op_type)
-    helper = LayerHelper(op_type, **locals())
-    out = helper.create_variable_for_type_inference(x.dtype)
-
-    inputs = {"X": x}
-    outputs = {'Out': out}
-    helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
-    return out
+        inputs = {"X": x}
+        outputs = {'Out': out}
+        helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
+        return out
 
 
 class BaseErrorClipAttr:
@@ -196,7 +194,7 @@ class ClipGradBase:
         raise NotImplementedError
 
     def __call__(self, params_grads):
-        if framework._non_static_mode():
+        if in_dygraph_mode():
             return self._dygraph_clip(params_grads)
         else:
             for p, g in params_grads:

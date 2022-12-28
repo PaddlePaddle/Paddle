@@ -539,16 +539,6 @@
   kernel :
     func : fmin_grad
 
-- backward_op : frame_grad
-  forward : frame(Tensor x, int frame_length, int hop_length, int axis) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, int frame_length, int hop_length, int axis)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : frame_grad
-
 - backward_op : frobenius_norm_grad
   forward : frobenius_norm(Tensor x, int64_t[] axis,  bool keep_dim,  bool reduce_all) -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad, int64_t[] axis,  bool keep_dim,  bool reduce_all)
@@ -569,17 +559,6 @@
   kernel :
     data_type: x
     func : gather_grad
-  no_need_buffer : x
-
-- backward_op : gather_nd_grad
-  forward : gather_nd (Tensor x, Tensor index) -> Tensor(out)
-  args : (Tensor x, Tensor index, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : gather_nd_grad
   no_need_buffer : x
 
 - backward_op : group_norm_grad
@@ -992,16 +971,6 @@
   kernel :
     func : norm_grad
 
-- backward_op : overlap_add_grad
-  forward : overlap_add(Tensor x, int hop_length, int axis) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, int hop_length, int axis)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : OverlapAddGradInferMeta
-  kernel :
-    func : overlap_add_grad
-    data_type : x
-
 - backward_op : p_norm_grad
   forward : p_norm(Tensor x,  float porder,  int axis,  float epsilon,  bool keepdim,  bool asvector=false) -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad,  float porder,  int axis,  float epsilon,  bool keepdim,  bool asvector)
@@ -1054,15 +1023,6 @@
     param: [out_grad, paddings, pad_value]
   no_need_buffer : x
   backward : pad_double_grad
-
-- backward_op : pixel_shuffle_grad
-  forward : pixel_shuffle (Tensor x, int upscale_factor, str data_format) -> Tensor(out)
-  args : (Tensor out_grad, int upscale_factor, str data_format)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : PixelShuffleGradInferMeta
-  kernel :
-    func : pixel_shuffle_grad
 
 - backward_op : pool2d_double_grad
   forward : pool2d_grad(Tensor x, Tensor out, Tensor grad_out, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm) -> Tensor(grad_x)
