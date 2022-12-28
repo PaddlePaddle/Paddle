@@ -32,7 +32,7 @@ extra_compile_args = {"cc": ["-w", "-g"]}
 print("DEBUG setup begin")
 
 setup(
-    name="custom_relu_module_setup",
+    name="custom_device_relu_module_setup",
     ext_modules=CppExtension(
         sources=["custom_relu_op.cc"],
         include_dirs=paddle_includes,

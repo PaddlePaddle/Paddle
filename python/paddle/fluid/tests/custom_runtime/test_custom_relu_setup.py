@@ -132,14 +132,14 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             && cd backends/custom_cpu \
             && mkdir build && cd build && cmake .. && make -j8 \
             && pip install dist/paddle_custom_cpu*.whl \
-            && cd {} && {} custom_relu_setup.py install'.format(
+            && cd {} && {} custom_device_relu_setup.py install'.format(
             self.temp_dir.name,
             os.getenv('PLUGIN_URL'),
             os.getenv('PLUGIN_TAG'),
             cur_dir,
             sys.executable,
         )
-        run_cmd(cmd)
+        os.system(cmd)
         print("Custom device installed & custom_relu_setup installed")
         print(paddle.device.get_all_custom_device_type())
 
@@ -156,7 +156,9 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         site_dir = site.getsitepackages()[0]
         print("site_dir", site_dir)
         custom_egg_path = [
-            x for x in os.listdir(site_dir) if "custom_relu_module_setup" in x
+            x
+            for x in os.listdir(site_dir)
+            if "custom_device_relu_module_setup" in x
         ]
         assert len(custom_egg_path) == 1, "Matched egg number is %d." % len(
             custom_egg_path
@@ -165,9 +167,9 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         sys.path.append(os.path.join(site_dir, custom_egg_path[0]))
 
         # usage: import the package directly
-        import custom_relu_module_setup
+        import custom_device_relu_module_setup
 
-        self.custom_op = custom_relu_module_setup.custom_relu
+        self.custom_op = custom_device_relu_module_setup.custom_relu
 
         self.dtypes = ["float32", "float64"]
         self.devices = ["custom_cpu"]
