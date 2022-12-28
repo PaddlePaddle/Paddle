@@ -1214,8 +1214,6 @@ def get_setup_parameters():
         'paddle.fluid.contrib.slim.quantization',
         'paddle.fluid.contrib.slim.quantization.imperative',
         'paddle.fluid.contrib.extend_optimizer',
-        'paddle.fluid.contrib.mixed_precision',
-        'paddle.fluid.contrib.mixed_precision.bf16',
         'paddle.fluid.contrib.layers',
         'paddle.fluid.transpiler',
         'paddle.fluid.transpiler.details',
