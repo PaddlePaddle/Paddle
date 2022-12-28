@@ -43,12 +43,12 @@ class CudnnConvDescManager {
   }
 
   struct CudnnCacheInfo {
-    phi::backends::gpu::TensorDescriptor x_desc;
-    phi::backends::gpu::FilterDescriptor w_desc;
-    phi::backends::gpu::TensorDescriptor b_desc;
-    phi::backends::gpu::TensorDescriptor o_desc;
-    phi::backends::gpu::ConvolutionDescriptor conv_desc;
-    phi::backends::gpu::ActivationDescriptor act_desc;
+    phi::backends::gpu::TensorDescriptor* x_desc;
+    phi::backends::gpu::FilterDescriptor* w_desc;
+    phi::backends::gpu::TensorDescriptor* b_desc;
+    phi::backends::gpu::TensorDescriptor* o_desc;
+    phi::backends::gpu::ConvolutionDescriptor* conv_desc;
+    phi::backends::gpu::ActivationDescriptor* act_desc;
     size_t workspace_size;
     cudnnConvolutionFwdAlgo_t algo;
 
@@ -57,6 +57,15 @@ class CudnnConvDescManager {
     std::vector<int> input_pad;
     std::vector<int> new_input_shape_vec;
     bool is_sys_pad;
+
+    ~CudnnCacheInfo() {
+      if (x_desc) delete x_desc;
+      if (w_desc) delete w_desc;
+      if (b_desc) delete b_desc;
+      if (o_desc) delete o_desc;
+      if (conv_desc) delete conv_desc;
+      if (act_desc) delete act_desc;
+    }
   };
 
   CudnnCacheInfo* GetCudnnCacheInfo(
@@ -110,28 +119,30 @@ class CudnnConvDescManager {
     if (!cudnn_conv_cache_.count(hash_key)) {
       std::lock_guard<std::mutex> lock(cache_mutex_);
       if (!cudnn_conv_cache_.count(hash_key)) {
-        CudnnCacheInfo cache_info;
-
-        cache_info.x_desc = GetTensorDescInfo(input_dims, input_dtype, format);
-        cache_info.w_desc = GetFilterDescInfo(filter_dims, input_dtype, format);
-        cache_info.b_desc = GetTensorDescInfo(bias_dims, input_dtype, format);
-        cache_info.o_desc = GetTensorDescInfo(output_dims, input_dtype, format);
-        cache_info.conv_desc =
+        cudnn_conv_cache_[hash_key] = CudnnCacheInfo();
+        cudnn_conv_cache_[hash_key].x_desc =
+            GetTensorDescInfo(input_dims, input_dtype, format);
+        cudnn_conv_cache_[hash_key].w_desc =
+            GetFilterDescInfo(filter_dims, input_dtype, format);
+        cudnn_conv_cache_[hash_key].o_desc =
+            GetTensorDescInfo(output_dims, input_dtype, format);
+        cudnn_conv_cache_[hash_key].b_desc =
+            GetTensorDescInfo(bias_dims, input_dtype, format);
+        cudnn_conv_cache_[hash_key].conv_desc =
             GetConvDescInfo(paddings, strides, dilations, groups, dtype);
-        cache_info.act_desc = GetActivationDescInfo(act, value_max);
+        cudnn_conv_cache_[hash_key].act_desc =
+            GetActivationDescInfo(act, value_max);
 
         size_t workspace_size;
         cudnnConvolutionFwdAlgo_t algo;
         search_func(&algo,
                     &workspace_size,
-                    cache_info.x_desc.desc(),
-                    cache_info.w_desc.desc(),
-                    cache_info.o_desc.desc(),
-                    cache_info.conv_desc.desc());
-        cache_info.workspace_size = workspace_size;
-        cache_info.algo = algo;
-
-        cudnn_conv_cache_[hash_key] = std::move(cache_info);
+                    cudnn_conv_cache_[hash_key].x_desc->desc(),
+                    cudnn_conv_cache_[hash_key].w_desc->desc(),
+                    cudnn_conv_cache_[hash_key].o_desc->desc(),
+                    cudnn_conv_cache_[hash_key].conv_desc->desc());
+        cudnn_conv_cache_[hash_key].workspace_size = workspace_size;
+        cudnn_conv_cache_[hash_key].algo = algo;
       }
     }
 
@@ -269,46 +280,46 @@ class CudnnConvDescManager {
   }
 
  private:
-  phi::backends::gpu::TensorDescriptor GetTensorDescInfo(
+  phi::backends::gpu::TensorDescriptor* GetTensorDescInfo(
       const std::vector<int>& input_dims,
       phi::DataType input_dtype,
       cudnnTensorFormat_t input_format) {
-    phi::backends::gpu::TensorDescriptor desc;
-    desc.set(
+    auto* desc = new phi::backends::gpu::TensorDescriptor();
+    desc->set(
         input_dims, input_format, backends::gpu::ToCudnnDataType(input_dtype));
     return desc;
   }
 
-  phi::backends::gpu::FilterDescriptor GetFilterDescInfo(
+  phi::backends::gpu::FilterDescriptor* GetFilterDescInfo(
       const std::vector<int>& input_dims,
       phi::DataType input_dtype,
       cudnnTensorFormat_t input_format) {
-    phi::backends::gpu::FilterDescriptor desc;
-    desc.set(
+    auto* desc = new phi::backends::gpu::FilterDescriptor();
+    desc->set(
         input_dims, input_format, backends::gpu::ToCudnnDataType(input_dtype));
     return desc;
   }
 
-  phi::backends::gpu::ConvolutionDescriptor GetConvDescInfo(
+  phi::backends::gpu::ConvolutionDescriptor* GetConvDescInfo(
       const std::vector<int>& paddings,
       const std::vector<int>& strides,
       const std::vector<int>& dilations,
       int groups,
       cudnnDataType_t dtype) {
-    phi::backends::gpu::ConvolutionDescriptor conv_desc;
-    conv_desc.set(dtype,
-                  paddings,
-                  strides,
-                  dilations,
-                  paddle::platform::AllowTF32Cudnn(),
-                  groups);
-    return conv_desc;
+    auto* desc = new phi::backends::gpu::ConvolutionDescriptor();
+    desc->set(dtype,
+              paddings,
+              strides,
+              dilations,
+              paddle::platform::AllowTF32Cudnn(),
+              groups);
+    return desc;
   }
 
-  phi::backends::gpu::ActivationDescriptor GetActivationDescInfo(
+  phi::backends::gpu::ActivationDescriptor* GetActivationDescInfo(
       const std::string& act,
       double value_max = std::numeric_limits<double>::max()) {
-    phi::backends::gpu::ActivationDescriptor desc;
+    auto* desc = new phi::backends::gpu::ActivationDescriptor();
     cudnnActivationMode_t mode;
     double relu_ceiling = 0.0;
     if (act == "identity") {
@@ -329,7 +340,7 @@ class CudnnConvDescManager {
       PADDLE_THROW(phi::errors::Unimplemented(
           "Unknown CUDNN activation string: %s.", act));
     }
-    desc.set(mode, relu_ceiling);
+    desc->set(mode, relu_ceiling);
     return desc;
   }
 
@@ -528,12 +539,12 @@ void ConvFusionKernel(const Context& ctx,
       search_func,
       activation);
 
-  auto x_desc = cudnn_cache_info->x_desc.desc();
-  auto w_desc = cudnn_cache_info->w_desc.desc();
-  auto b_desc = cudnn_cache_info->b_desc.desc();
-  auto o_desc = cudnn_cache_info->o_desc.desc();
-  auto cudnn_conv_desc = cudnn_cache_info->conv_desc.desc();
-  auto act_desc = cudnn_cache_info->act_desc.desc();
+  auto x_desc = cudnn_cache_info->x_desc->desc();
+  auto w_desc = cudnn_cache_info->w_desc->desc();
+  auto b_desc = cudnn_cache_info->b_desc->desc();
+  auto o_desc = cudnn_cache_info->o_desc->desc();
+  auto cudnn_conv_desc = cudnn_cache_info->conv_desc->desc();
+  auto act_desc = cudnn_cache_info->act_desc->desc();
   auto algo = cudnn_cache_info->algo;
   auto workspace_size = cudnn_cache_info->workspace_size;
 
