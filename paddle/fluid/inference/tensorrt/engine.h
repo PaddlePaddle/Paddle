@@ -802,6 +802,8 @@ class TRTEngineManager {
   }
 
   void updateContextMemorySize(size_t mem_size, PredictorID predictor_id) {
+    VLOG(3) << "TensorRT engine context memory size is " << mem_size
+            << " in predictor id " << predictor_id;
     bool size_updated{false};
 
     {
@@ -825,7 +827,6 @@ class TRTEngineManager {
     if (context_memorys_.count(predictor_id) == 0) {
       auto context_memory =
           memory::Alloc(place, max_ctx_mem_size_ + alignment, stream);
-      // context_memory_[predictor_id].reset(context_memory.release());
       context_memorys_[predictor_id] = std::move(context_memory);
     }
     return getAlignedMemory(context_memorys_[predictor_id]->ptr(), alignment);

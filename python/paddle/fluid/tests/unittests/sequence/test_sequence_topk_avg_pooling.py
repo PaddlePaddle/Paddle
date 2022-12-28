@@ -18,8 +18,6 @@ from copy import deepcopy
 
 import numpy as np
 
-import paddle
-
 sys.path.append("../")
 from op_test import OpTest
 
@@ -164,35 +162,6 @@ class TestSequenceTopkAvgPoolingOpCase1(TestSequenceTopkAvgPoolingOp):
         row = [36]
         col = [48]
         self.init_data(topks, channel_num, row, col, dim)
-
-    def test_api(self):
-        import paddle.fluid as fluid
-
-        x = paddle.static.data(name='x', shape=[-1, 1], lod_level=1)
-        row = paddle.static.data(name='row', shape=[-1, 10], lod_level=1)
-        col = paddle.static.data(name='col', shape=[-1, 10], lod_level=1)
-        topk_avg = fluid.contrib.sequence_topk_avg_pooling(
-            input=x, row=row, col=col, topks=[1, 3, 5], channel_num=5
-        )
-
-        place = fluid.CPUPlace()
-        x_tensor = fluid.create_lod_tensor(
-            np.random.rand(45, 1).astype('float32'), [[30, 15]], place
-        )
-        row_tensor = fluid.create_lod_tensor(
-            np.random.rand(5, 10).astype('float32'), [[2, 3]], place
-        )
-        col_tensor = fluid.create_lod_tensor(
-            np.random.rand(4, 10).astype('float32'), [[3, 1]], place
-        )
-
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        ret = exe.run(
-            feed={'x': x_tensor, 'row': row_tensor, 'col': col_tensor},
-            fetch_list=[topk_avg],
-            return_numpy=False,
-        )
 
 
 if __name__ == '__main__':
