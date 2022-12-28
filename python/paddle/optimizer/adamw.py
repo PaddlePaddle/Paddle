@@ -88,6 +88,9 @@ class AdamW(Optimizer):
             different semantics with the original Adam algorithm and may lead to different result.
             The default value is False.
         multi_precision (bool, optional): Whether to use multi-precision during weight updating. Default is false.
+        flatten_param_grads (bool, optional): Whether to flatten all parameters and gradients. Default is false.
+        align_size (int, optional): The alignment size when flatten parameters and gradients. Default is -1, which means
+            use same align_size as allocator.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.

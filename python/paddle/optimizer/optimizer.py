@@ -124,6 +124,11 @@ class Optimizer:
             some derived class of ``GradientClipBase`` . There are three cliping strategies \
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , \
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
+        flatten_param_grads (bool, optional): Whether to flatten all the parameters and grads.
+                If true, the parameters and gradients will be coalesce to contiguous mempry,
+                and the grad_clip ops / optimizer ops will be fuse to one operator.
+        align_size (int, optional): The alignment size when flatten parameters and gradients. Default is -1, which means
+            use same align_size as allocator.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
