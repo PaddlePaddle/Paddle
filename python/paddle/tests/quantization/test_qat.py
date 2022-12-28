@@ -82,13 +82,15 @@ class TestQAT(unittest.TestCase):
         quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
         q_config = QuantConfig(activation=quanter, weight=quanter)
         qat = QAT(q_config)
+        print(model)
         quant_model = qat.quantize(model)
+        print(quant_model)
         quanter_count = 0
         for _layer in quant_model.sublayers(True):
-            print(type(_layer))
             if isinstance(_layer, FakeQuanterWithAbsMaxObserverLayer):
                 quanter_count += 1
-        self.assertEqual(quanter_count, 9)
+        self.assertEqual(quanter_count, 14)
+
         for _, data in enumerate(loader):
             out = quant_model(data)
             out.backward()

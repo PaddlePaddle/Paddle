@@ -23,7 +23,10 @@ from .factory import QuanterFactory
 from .wrapper import ObserveWrapper
 
 # TODO: Implement quanted layer and fill the mapping dict
-DEFAULT_QAT_LAYER_MAPPINGS: Dict[Layer, Layer] = {}
+DEFAULT_QAT_LAYER_MAPPINGS: Dict[Layer, Layer] = {
+    nn.Linear: nn.quant.qat.QuantedLinear,
+    nn.Conv2D: nn.quant.qat.QuantedConv2D,
+}
 
 DEFAULT_LEAVES = [nn.ReLU, nn.AvgPool2D]
 

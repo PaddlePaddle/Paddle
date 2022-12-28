@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from symbol import import_as_name
 from ..fluid.contrib.slim.quantization.imperative.ptq_config import (
     PTQConfig,
     default_ptq_config,
