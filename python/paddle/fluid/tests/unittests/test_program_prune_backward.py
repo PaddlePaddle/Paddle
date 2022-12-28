@@ -55,7 +55,7 @@ def simple_fc_net_with_accuracy(use_feed):
 def cond_net(use_feed=None):
     x = fluid.layers.data(name="x", shape=[4], dtype='float32')
     label = fluid.layers.data('label', shape=[1], dtype='int64')
-    prediction = paddle.static.nn.fc(input=x, size=1, activation=None)
+    prediction = paddle.static.nn.fc(x, size=1, activation=None)
 
     def loss1(pred, label):
         x = fluid.layers.data(name="x", shape=[4], dtype='float32')
@@ -84,7 +84,7 @@ def cond_net(use_feed=None):
 def optimization_in_cond_net(with_optimize=False):
     x = fluid.layers.data(name="x", shape=[4], dtype='float32')
     label = fluid.layers.data('label', shape=[1], dtype='int64')
-    prediction = paddle.static.nn.fc(input=x, size=1, activation=None)
+    prediction = paddle.static.nn.fc(x, size=1, activation=None)
 
     def loss1(opt, pred, label, with_optimize):
         x = fluid.layers.data(name="x", shape=[4], dtype='float32')

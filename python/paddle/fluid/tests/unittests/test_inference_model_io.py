@@ -190,7 +190,7 @@ class TestSaveInferenceModel(unittest.TestCase):
         with program_guard(program, init_program):
             x = layers.data(name='x', shape=[2], dtype='float32')
             y = layers.data(name='y', shape=[1], dtype='int32')
-            predict = fluid.paddle.static.nn.fc(x, size=2, activation='softmax')
+            predict = paddle.static.nn.fc(x, size=2, activation='softmax')
             acc = paddle.static.accuracy(input=predict, label=y)
             auc_var, batch_auc_var, auc_states = paddle.static.auc(
                 input=predict, label=y
