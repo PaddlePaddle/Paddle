@@ -13,51 +13,44 @@
 # limitations under the License.
 
 import collections
-from paddle.utils import gast
 import inspect
 import textwrap
 import threading
 import weakref
 
-from paddle.fluid import framework
-from paddle.fluid import _non_static_mode
-from paddle.nn.common import layers
+from paddle.fluid import _non_static_mode, framework
 from paddle.fluid.data_feeder import check_type
+from paddle.fluid.dygraph import layers
+from paddle.fluid.dygraph.base import param_guard, switch_to_static_graph
 from paddle.fluid.layers.utils import flatten
-from paddle.fluid.dygraph.base import param_guard
-from paddle.fluid.dygraph.base import switch_to_static_graph
-from . import error
-from . import logging_utils
-from .origin_info import (
-    attach_origin_info,
-    create_and_update_origin_info_map,
-    update_op_callstack_with_origin_info,
-)
+from paddle.utils import gast
 
-from .partial_program import (
-    partial_program_from,
-)
-from .utils import (
-    ast_to_func,
-    ast_to_source_code,
-    func_to_source_code,
-    input_specs_compatible,
-    type_name,
-    unwrap,
-    make_hashable,
-    ALREADY_D2S,
-)
+from . import error, logging_utils
+from .ast_transformer import DygraphToStaticAst
 from .function_spec import (
     FunctionSpec,
     _hash_spec_names,
     get_buffers,
     get_parameters,
 )
+from .origin_info import (
+    attach_origin_info,
+    create_and_update_origin_info_map,
+    update_op_callstack_with_origin_info,
+)
+from .partial_program import partial_program_from
+from .utils import (
+    ALREADY_D2S,
+    ast_to_func,
+    ast_to_source_code,
+    func_to_source_code,
+    input_specs_compatible,
+    make_hashable,
+    type_name,
+    unwrap,
+)
 
-
-from .ast_transformer import DygraphToStaticAst
-
-__all__ = ['ProgramTranslator', 'convert_to_static']
+__all__ = []
 
 # For each traced function, we set `max_traced_program_count` = 10 to consider caching performance.
 # Once exceeding the threshold, we will raise warning to users to make sure the conversion is as expected.

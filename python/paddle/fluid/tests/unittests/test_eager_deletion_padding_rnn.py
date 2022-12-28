@@ -20,8 +20,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-from paddle.fluid import ParamAttr
-from paddle.fluid.contrib.layers import basic_lstm
 from paddle.fluid.executor import Executor
 from paddle.fluid.layers.control_flow import StaticRNN as PaddingRNN
 
@@ -85,7 +83,7 @@ class RNNConfig:
         else:
             raise ValueError('Unsupported model_type.')
 
-        if rnn_model not in ('static', 'padding', 'cudnn', 'basic_lstm'):
+        if rnn_model not in ('static', 'padding', 'cudnn'):
             raise ValueError('Unsupported rnn_model.')
 
         self.batch_size = 12
@@ -167,7 +165,7 @@ def lm_model(
                 bias = bias_arr[k]
 
                 nn = layers.concat([input, pre_hidden], 1)
-                gate_input = layers.matmul(x=nn, y=weight_1)
+                gate_input = paddle.matmul(x=nn, y=weight_1)
 
                 gate_input = paddle.add(gate_input, bias)
                 i = paddle.slice(
@@ -206,10 +204,10 @@ def lm_model(
                 input = m
 
                 if dropout is not None and dropout > 0.0:
-                    input = layers.dropout(
+                    input = paddle.nn.functional.dropout(
                         input,
-                        dropout_prob=dropout,
-                        dropout_implementation='upscale_in_train',
+                        p=dropout,
+                        mode='upscale_in_train',
                     )
 
             rnn.step_output(input)
@@ -277,8 +275,8 @@ def lm_model(
             cell_array.append(pre_cell)
 
         res = []
-        sliced_inputs = layers.split(
-            input_embedding, num_or_sections=len, dim=1
+        sliced_inputs = paddle.split(
+            input_embedding, num_or_sections=len, axis=1
         )
 
         for index in range(len):
@@ -291,10 +289,12 @@ def lm_model(
                 bias = bias_arr[k]
 
                 nn = layers.concat([input, pre_hidden], 1)
-                gate_input = layers.matmul(x=nn, y=weight_1)
+                gate_input = paddle.matmul(x=nn, y=weight_1)
 
                 gate_input = paddle.add(gate_input, bias)
-                i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
+                i, j, f, o = paddle.split(
+                    gate_input, num_or_sections=4, axis=-1
+                )
 
                 c = pre_cell * paddle.nn.functional.sigmoid(
                     f
@@ -306,10 +306,10 @@ def lm_model(
                 input = m
 
                 if dropout is not None and dropout > 0.0:
-                    input = layers.dropout(
+                    input = paddle.nn.functional.dropout(
                         input,
-                        dropout_prob=dropout,
-                        dropout_implementation='upscale_in_train',
+                        p=dropout,
+                        mode='upscale_in_train',
                     )
 
             res.append(input)
@@ -384,10 +384,10 @@ def lm_model(
 
     x_emb = paddle.reshape(x_emb, shape=[-1, num_steps, hidden_size])
     if dropout is not None and dropout > 0.0:
-        x_emb = layers.dropout(
+        x_emb = paddle.nn.functional.dropout(
             x_emb,
-            dropout_prob=dropout,
-            dropout_implementation='upscale_in_train',
+            p=dropout,
+            mode='upscale_in_train',
         )
 
     if rnn_model == "padding":
@@ -403,38 +403,6 @@ def lm_model(
             len=num_steps,
             init_hidden=init_hidden_reshape,
             init_cell=init_cell_reshape,
-        )
-    elif rnn_model == "cudnn":
-        x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
-        rnn_out, last_hidden, last_cell = layers.lstm(
-            x_emb,
-            init_hidden_reshape,
-            init_cell_reshape,
-            num_steps,
-            hidden_size,
-            num_layers,
-            is_bidirec=False,
-            default_initializer=fluid.initializer.UniformInitializer(
-                low=-init_scale, high=init_scale
-            ),
-        )
-        rnn_out = paddle.transpose(rnn_out, perm=[1, 0, 2])
-    elif rnn_model == "basic_lstm":
-        rnn_out, last_hidden, last_cell = basic_lstm(
-            x_emb,
-            init_hidden,
-            init_cell,
-            hidden_size,
-            num_layers=num_layers,
-            batch_first=True,
-            dropout_prob=dropout,
-            param_attr=ParamAttr(
-                initializer=fluid.initializer.UniformInitializer(
-                    low=-init_scale, high=init_scale
-                )
-            ),
-            bias_attr=ParamAttr(initializer=fluid.initializer.Constant(0.0)),
-            forget_bias=0.0,
         )
     else:
         print("type not support")
@@ -459,7 +427,7 @@ def lm_model(
         ),
     )
 
-    projection = layers.matmul(rnn_out, softmax_weight)
+    projection = paddle.matmul(rnn_out, softmax_weight)
     projection = paddle.add(projection, softmax_bias)
     projection = paddle.reshape(projection, shape=[-1, vocab_size])
 
@@ -542,7 +510,7 @@ class PaddingRNNTestBase(unittest.TestCase):
                     )
                 )
 
-                self.learning_rate = fluid.layers.create_global_var(
+                self.learning_rate = paddle.static.create_global_var(
                     name="learning_rate",
                     shape=[1],
                     value=1.0,

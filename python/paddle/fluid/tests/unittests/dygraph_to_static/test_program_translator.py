@@ -28,7 +28,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.jit.dy2static as _jst
 from paddle.jit import ProgramTranslator
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
 from paddle.jit.dy2static.utils import func_to_source_code
 from paddle.utils import gast
 
@@ -42,16 +42,16 @@ np.random.seed(0)
 def simple_func(x, weight_numpy):
     x = fluid.dygraph.to_variable(x)
     w = fluid.dygraph.to_variable(weight_numpy)
-    y = fluid.layers.matmul(x, w)
+    y = paddle.matmul(x, w)
     z = paddle.mean(y)
     return z
 
 
-@declarative
+@to_static
 def decorated_simple_func(x, weight_numpy):
     x = fluid.dygraph.to_variable(x)
     w = fluid.dygraph.to_variable(weight_numpy)
-    y = fluid.layers.matmul(x, w)
+    y = paddle.matmul(x, w)
     z = paddle.mean(y)
     return z
 
@@ -109,7 +109,9 @@ class StaticCode1:
 
         def true_fn_1():
             nonlocal __return_0, __return_1, __return_value_0, loss
-            loss = fluid.layers.cross_entropy(x_v, label)
+            loss = paddle.nn.functional.cross_entropy(
+                x_v, label, reduction='none', use_softmax=False
+            )
             __return_0 = _jst.create_bool_as_type(label is not None, True)
             __return_value_0 = loss
             return
@@ -178,7 +180,9 @@ class StaticCode2:
 
         def true_fn_3():
             nonlocal __return_2, __return_3, __return_value_1, loss
-            loss = fluid.layers.cross_entropy(x_v, label)
+            loss = paddle.nn.functional.cross_entropy(
+                x_v, label, reduction='none', use_softmax=False
+            )
             __return_2 = _jst.create_bool_as_type(label is not None, True)
             __return_value_1 = loss
             return
@@ -201,8 +205,8 @@ class StaticCode2:
         return __return_value_1
 
 
-class NetWithError(paddle.nn.Layer):
-    @declarative
+class NetWithError(fluid.dygraph.layers.Layer):
+    @to_static
     def forward(self, x):
         linear = paddle.nn.Linear(32, 64)
         y = linear(x)
@@ -439,5 +443,4 @@ class TestRemoveCommentInDy2St(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

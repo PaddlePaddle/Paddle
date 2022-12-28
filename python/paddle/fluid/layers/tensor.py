@@ -12,25 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import math
 import numpy
 import warnings
 
 from ..layer_helper import LayerHelper
-from ..param_attr import ParamAttr
-from ..initializer import Initializer
 from ..framework import (
     _current_expected_place,
     convert_np_dtype_to_dtype_,
     _non_static_mode,
     _varbase_creator,
-    device_guard,
     _in_legacy_dygraph,
     in_dygraph_mode,
-    _get_paddle_place,
 )
 from ..framework import Variable
-from ..initializer import Constant
 from ..core import VarDesc
 from .. import core
 from .layer_function_generator import templatedoc
@@ -47,10 +41,7 @@ from .utils import check_shape
 from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
-    'create_tensor',
-    'create_global_var',
     'cast',
-    'tensor_array_to_tensor',
     'concat',
     'sums',
     'assign',
@@ -60,128 +51,6 @@ __all__ = [
     'argmax',
     'zeros',
 ]
-
-
-def create_tensor(dtype, name=None, persistable=False):
-    """
-    Create a variable, which will hold a Tensor with data type dtype.
-
-    Args:
-        dtype(string|numpy.dtype): the data type of Tensor to be created, the
-            data type is bool, float16, float32, float64, int8, int16, int32 and int64.
-        name(string, optional): The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
-        persistable(bool): Set the persistable flag of the create tensor.
-            default value is False.
-
-    Returns:
-        Variable: The tensor to be created according to dtype.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          tensor = fluid.layers.create_tensor(dtype='float32')
-    """
-    check_dtype(
-        dtype,
-        'dtype',
-        [
-            'bool',
-            'float16',
-            'float32',
-            'float64',
-            'int8',
-            'int32',
-            'int32',
-            'int64',
-        ],
-        'create_tensor',
-    )
-    helper = LayerHelper("create_tensor", **locals())
-    return helper.create_variable(
-        name=helper.name, dtype=dtype, persistable=persistable
-    )
-
-
-def create_global_var(
-    shape, value, dtype, persistable=False, force_cpu=False, name=None
-):
-    """
-    This function creates a new tensor variable with value in the global block(block 0).
-
-    Parameters:
-        shape (list[int]|tuple[int]): Shape of the variable
-        value (float): The value of the variable. The new created
-                      variable will be filled with it.
-        dtype (str): Data type of the variable
-        persistable (bool, optional): If this variable is persistable.
-                           Default: False
-        force_cpu (bool, optional): Force this variable to be on CPU.
-                         Default: False
-        name (str, optional): For detailed information, please refer to
-           :ref:`api_guide_Name` . Usually name is no need to set and None by default.
-
-    Returns:
-        Variable: The created Variable
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            paddle.enable_static()
-            var = paddle.static.create_global_var(shape=[2,3], value=1.0, dtype='float32',
-                                           persistable=True, force_cpu=True, name='new_var')
-    """
-    check_type(
-        shape, 'shape', (list, tuple, numpy.ndarray), 'create_global_var'
-    )
-    for item in shape:
-        check_type(
-            item,
-            'item of shape',
-            (
-                int,
-                numpy.uint8,
-                numpy.int8,
-                numpy.int16,
-                numpy.int32,
-                numpy.int64,
-            ),
-            'create_global_var',
-        )
-
-    check_dtype(
-        dtype,
-        'dtype',
-        [
-            'bool',
-            'float16',
-            'float32',
-            'float64',
-            'int8',
-            'int16',
-            'int32',
-            'int64',
-            'uint8',
-            'uint16',
-        ],
-        'create_global_var',
-    )
-
-    helper = LayerHelper("global_var", **locals())
-    var = helper.create_global_variable(
-        dtype=dtype,
-        shape=shape,
-        persistable=persistable,
-        name=name,
-        stop_gradient=True,
-    )
-    helper.set_variable_initializer(
-        var, initializer=Constant(value=float(value), force_cpu=force_cpu)
-    )
-
-    return var
 
 
 def cast(x, dtype):
@@ -389,122 +258,6 @@ def concat(input, axis=0, name=None):
             type='concat', inputs=inputs, outputs={'Out': [out]}, attrs=attrs
         )
     return out
-
-
-def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
-    r"""
-    This function concatenates or stacks all tensors in the input LoDTensorArray
-    along the axis mentioned and returns that as the output.
-
-    For Example:
-
-    .. code-block:: text
-
-        Case 1:
-
-            Given:
-
-                input.data = {[[0.6, 0.1, 0.3],
-                               [0.5, 0.3, 0.2]],
-                              [[1.3],
-                               [1.8]],
-                              [[2.3, 2.1],
-                               [2.5, 2.4]]}
-
-                axis = 1, use_stack = False
-
-            Then:
-
-                output.data = [[0.6, 0.1, 0.3, 1.3, 2.3, 2.1],
-                               [0.5, 0.3, 0.2, 1.8, 2.5, 2.4]]
-
-                output_index.data = [3, 1, 2]
-
-        Case 2:
-
-            Given:
-
-                input.data = {[[0.6, 0.1],
-                               [0.5, 0.3]],
-                              [[0.3, 1.3],
-                               [0.2, 1.8]],
-                              [[2.3, 2.1],
-                               [2.5, 2.4]]}
-
-                axis = 1, use_stack = True
-
-            Then:
-
-                output.data = [[[0.6, 0.1]
-                                [0.3, 1.3]
-                                [2.3, 2.1],
-                               [[0.5, 0.3]
-                                [0.2, 1.8]
-                                [2.5, 2.4]]]
-
-                output_index.data = [2, 2, 2]
-
-    Args:
-        input(Variable): A LodTensorArray variable.
-        axis(int): The axis along which the tensors in attr::`input` will be
-            concatenated or stacked.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                       will be named automatically.
-        use_stack(bool): Act as concat_op or stack_op. For stack mode, all
-            tensors in the tensor array must have the same shape.
-
-    Returns:
-        Variable: The concatenated or stacked tensor variable.
-        Variable: A 1-D tensor variable with int32 data type. The data in this \
-            tensor contains all input including tensors' sizes along the axis.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-            x0 = fluid.layers.assign(np.random.rand(2, 2).astype("float32"))
-            x1 = fluid.layers.assign(np.random.rand(2, 2).astype("float32"))
-            i = fluid.layers.fill_constant(shape=[1], dtype="int64", value=0)
-            array = fluid.layers.create_array(dtype='float32')
-            fluid.layers.array_write(x0, i, array)
-            fluid.layers.array_write(x1, i + 1, array)
-            output, output_index = fluid.layers.tensor_array_to_tensor(input=array)
-    """
-    if _non_static_mode():
-        assert isinstance(
-            input, list
-        ), "The 'input' in tensor_array_to_tensor must be list"
-        from .nn import concat
-        from ..dygraph import to_variable
-        from paddle import stack
-
-        op = stack if use_stack else concat
-        res = op(input, axis=axis)
-        sizes = to_variable(
-            numpy.array(list(map(lambda x: int(x.shape[axis]), input)))
-        )
-        return res, sizes
-
-    check_type(input, 'input', (list, Variable), 'tensor_array_to_tensor')
-    if isinstance(input, list):
-        for i, input_x in enumerate(input):
-            check_type(
-                input_x,
-                'input[' + str(i) + ']',
-                Variable,
-                'tensor_array_to_tensor',
-            )
-    helper = LayerHelper('tensor_array_to_tensor', **locals())
-    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    out_index = helper.create_variable_for_type_inference(dtype="int32")
-    helper.append_op(
-        type='tensor_array_to_tensor',
-        inputs={'X': input},
-        outputs={'Out': [out], 'OutIndex': [out_index]},
-        attrs={'axis': axis, 'use_stack': use_stack},
-    )
-    return out, out_index
 
 
 def sums(input, out=None):

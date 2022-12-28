@@ -16,11 +16,10 @@ import unittest
 from collections import OrderedDict
 
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestLayerDict(unittest.TestCase):
-    def func_layer_dict(self):
+    def test_layer_dict(self):
         layers = OrderedDict(
             [
                 ('conv1d', paddle.nn.Conv1D(3, 2, 3)),
@@ -92,12 +91,7 @@ class TestLayerDict(unittest.TestCase):
         layers_dicts.update(list_format_layers)
         check_layer_dict()
 
-    def test_layer_dict(self):
-        with _test_eager_guard():
-            self.func_layer_dict()
-        self.func_layer_dict()
-
-    def func_layer_dict_error_inputs(self):
+    def test_layer_dict_error_inputs(self):
         layers = [
             ('conv1d', paddle.nn.Conv1D(3, 2, 3), "conv1d"),
             ('conv2d', paddle.nn.Conv2D(3, 2, 3)),
@@ -107,11 +101,6 @@ class TestLayerDict(unittest.TestCase):
         self.assertRaises(ValueError, layers_dicts.update, layers)
 
         self.assertRaises(AssertionError, layers_dicts.update, 1)
-
-    def test_layer_dict_error_inputs(self):
-        with _test_eager_guard():
-            self.func_layer_dict_error_inputs()
-        self.func_layer_dict_error_inputs()
 
 
 if __name__ == '__main__':

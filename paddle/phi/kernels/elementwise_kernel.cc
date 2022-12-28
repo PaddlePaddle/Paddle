@@ -378,7 +378,9 @@ PD_REGISTER_KERNEL(multiply,
                    ALL_LAYOUT,
                    phi::MultiplyKernel,
                    phi::dtype::float16,
-                   float) {}
+                   float,
+                   int,
+                   int64_t) {}
 PD_REGISTER_KERNEL(subtract,
                    XPU,
                    ALL_LAYOUT,
@@ -413,18 +415,4 @@ PD_REGISTER_KERNEL(elementwise_pow,
                    phi::ElementwisePowKernel,
                    float,
                    phi::dtype::float16) {}
-#endif
-
-#if defined PADDLE_WITH_MKLDNN
-PD_REGISTER_KERNEL(subtract,
-                   OneDNN,
-                   ONEDNN,
-                   phi::SubtractKernel,
-                   float,
-                   phi::dtype::bfloat16,
-                   int8_t,
-                   uint8_t) {}
-
-PD_REGISTER_KERNEL(
-    divide, OneDNN, ONEDNN, phi::DivideKernel, float, phi::dtype::bfloat16) {}
 #endif

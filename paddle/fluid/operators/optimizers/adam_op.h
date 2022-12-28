@@ -19,8 +19,6 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 class AdamOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;

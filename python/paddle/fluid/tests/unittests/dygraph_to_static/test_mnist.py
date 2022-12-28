@@ -24,9 +24,8 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.optimizer import AdamOptimizer
+from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import Linear
 
 SEED = 2020
@@ -69,13 +68,10 @@ class SimpleImgConvPool(paddle.nn.Layer):
             bias_attr=None,
         )
 
-        self._pool2d = paddle.fluid.dygraph.nn.Pool2D(
-            pool_size=pool_size,
-            pool_type=pool_type,
-            pool_stride=pool_stride,
-            pool_padding=pool_padding,
-            global_pooling=global_pooling,
-            use_cudnn=use_cudnn,
+        self._pool2d = paddle.nn.MaxPool2D(
+            kernel_size=pool_size,
+            stride=pool_stride,
+            padding=pool_padding,
         )
 
     def forward(self, inputs):
@@ -111,7 +107,9 @@ class MNIST(paddle.nn.Layer):
         x = self.inference(inputs)
         if label is not None:
             acc = paddle.static.accuracy(input=x, label=label)
-            loss = fluid.layers.cross_entropy(x, label)
+            loss = paddle.nn.functional.cross_entropy(
+                x, label, reduction='none', use_softmax=False
+            )
             avg_loss = paddle.mean(loss)
 
             return x, acc, avg_loss
@@ -171,17 +169,6 @@ class TestMNISTWithToStatic(TestMNIST):
                 dygraph_loss, static_loss
             ),
         )
-        with _test_eager_guard():
-            dygraph_loss = self.train_dygraph()
-            static_loss = self.train_static()
-            np.testing.assert_allclose(
-                dygraph_loss,
-                static_loss,
-                rtol=1e-05,
-                err_msg='dygraph is {}\n static_res is \n{}'.format(
-                    dygraph_loss, static_loss
-                ),
-            )
 
     def test_mnist_declarative_cpu_vs_mkldnn(self):
         dygraph_loss_cpu = self.train_dygraph()

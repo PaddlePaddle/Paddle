@@ -66,9 +66,9 @@ class SubNetWithDict(paddle.nn.Layer):
             v = 0.2 * cache_v + v
             cache["k"], cache["v"] = k, v
 
-        weight = fluid.layers.matmul(x=q, y=k, transpose_y=True)
+        weight = paddle.matmul(x=q, y=k, transpose_y=True)
         weight = paddle.nn.functional.softmax(weight)
-        out = fluid.layers.matmul(weight, v)
+        out = paddle.matmul(weight, v)
 
         return out
 
@@ -97,8 +97,8 @@ class MainNetWithDict(paddle.nn.Layer):
             ),
         }
         # TODO(Aurelius84): The following code will be converted into:
-        # max_len = layers.cond(layers.shape(input)[0] != max_len,
-        #                       lambda: layers.shape(input)[0], lambda: max_len)
+        # max_len = paddle.static.nn.cond(paddle.shape(input)[0] != max_len,
+        #                       lambda: paddle.shape(input)[0], lambda: max_len)
         # But max_len should be wrapped into tensor, which is not supported.
 
         # Comment out this line of code for now.

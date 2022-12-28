@@ -20,9 +20,9 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Embedding
 from paddle.jit import ProgramTranslator
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
+from paddle.nn import Embedding
 
 
 def fake_text():
@@ -227,9 +227,9 @@ class SkipGram(paddle.nn.Layer):
         self.embedding_size = embedding_size
 
         self.embedding = Embedding(
-            size=[self.vocab_size, self.embedding_size],
-            dtype='float32',
-            param_attr=fluid.ParamAttr(
+            self.vocab_size,
+            self.embedding_size,
+            weight_attr=fluid.ParamAttr(
                 name='embedding_para',
                 initializer=fluid.initializer.UniformInitializer(
                     low=-0.5 / self.embedding_size,
@@ -239,9 +239,9 @@ class SkipGram(paddle.nn.Layer):
         )
 
         self.embedding_out = Embedding(
-            size=[self.vocab_size, self.embedding_size],
-            dtype='float32',
-            param_attr=fluid.ParamAttr(
+            self.vocab_size,
+            self.embedding_size,
+            weight_attr=fluid.ParamAttr(
                 name='embedding_out_para',
                 initializer=fluid.initializer.UniformInitializer(
                     low=-0.5 / self.embedding_size,
@@ -250,7 +250,7 @@ class SkipGram(paddle.nn.Layer):
             ),
         )
 
-    @declarative
+    @to_static
     def forward(self, center_words, target_words, label):
         center_words_emb = self.embedding(center_words)
         target_words_emb = self.embedding_out(target_words)
@@ -332,5 +332,4 @@ class TestWord2Vec(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

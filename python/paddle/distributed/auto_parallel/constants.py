@@ -54,7 +54,7 @@ set_field_default_config(BASE, "reinit", False)  # Only for debug
 #########################################
 RECOMPUTE = "recompute"
 set_field_default_config(RECOMPUTE, "enable", False)
-set_field_default_config(RECOMPUTE, "checkpoints", None)
+set_field_default_config(RECOMPUTE, "checkpoints", [])
 set_field_default_config(RECOMPUTE, "no_recompute_segments", [])
 set_field_default_config(RECOMPUTE, "enable_tuning", False)
 
@@ -107,18 +107,17 @@ set_field_default_config(QAT, "weight_bits", 8)
 set_field_default_config(QAT, "activation_bits", 8)
 set_field_default_config(QAT, "not_quant_pattern", ['skip_quant'])
 set_field_default_config(QAT, "algo", None)
+set_field_default_config(QAT, "onnx_format", True)
 
 # #########################################
 # auto tuning configuration
 # #########################################
 TUNING = "tuning"
 set_field_default_config(TUNING, "enable", False)
-set_field_default_config(TUNING, "batch_size", 1)
-set_field_default_config(TUNING, "dataset", None)
 set_field_default_config(TUNING, "profile_start_step", 1)
 set_field_default_config(TUNING, "profile_end_step", 1)
 set_field_default_config(TUNING, "run_after_tuning", True)
-set_field_default_config(TUNING, "verbose", True)
+set_field_default_config(TUNING, "debug", False)
 
 #########################################
 # dataset configuration

@@ -19,9 +19,10 @@ from darknet import ConvBNLayer, DarkNet53_conv_body
 
 import paddle
 import paddle.fluid as fluid
+from paddle import _legacy_C_ops
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
 
 
 class AttrDict(dict):
@@ -203,7 +204,7 @@ class Upsample(paddle.nn.Layer):
 
     def forward(self, inputs):
         # get dynamic upsample output shape
-        shape_nchw = fluid.layers.shape(inputs)
+        shape_nchw = paddle.shape(inputs)
         shape_hw = paddle.slice(shape_nchw, axes=[0], starts=[2], ends=[4])
         shape_hw.stop_gradient = True
         in_shape = fluid.layers.cast(shape_hw, dtype='int32')
@@ -211,9 +212,10 @@ class Upsample(paddle.nn.Layer):
         out_shape.stop_gradient = True
 
         # reisze by actual_shape
-        out = fluid.layers.resize_nearest(
-            input=inputs, scale=self.scale, actual_shape=out_shape
+        out = paddle.nn.functional.interpolate(
+            x=inputs, size=out_shape, mode='nearest'
         )
+
         return out
 
 
@@ -275,7 +277,7 @@ class YOLOv3(paddle.nn.Layer):
                 self.route_blocks_2.append(route)
             self.upsample = Upsample()
 
-    @declarative
+    @to_static
     def forward(
         self,
         inputs,
@@ -313,7 +315,7 @@ class YOLOv3(paddle.nn.Layer):
         for i, out in enumerate(self.outputs):
             anchor_mask = cfg.anchor_masks[i]
             if self.is_train:
-                loss = fluid.layers.yolov3_loss(
+                loss = paddle.vision.ops.yolo_loss(
                     x=out,
                     gt_box=self.gtbox,
                     gt_label=self.gtlabel,
@@ -332,7 +334,7 @@ class YOLOv3(paddle.nn.Layer):
                 for m in anchor_mask:
                     mask_anchors.append(cfg.anchors[2 * m])
                     mask_anchors.append(cfg.anchors[2 * m + 1])
-                boxes, scores = fluid.layers.yolo_box(
+                boxes, scores = paddle.vision.ops.yolo_box(
                     x=out,
                     img_size=self.im_shape,
                     anchors=mask_anchors,
@@ -350,7 +352,7 @@ class YOLOv3(paddle.nn.Layer):
             yolo_boxes = fluid.layers.concat(self.boxes, axis=1)
             yolo_scores = fluid.layers.concat(self.scores, axis=2)
 
-            pred = fluid.layers.multiclass_nms(
+            pred = _legacy_C_ops.multiclass_nms(
                 bboxes=yolo_boxes,
                 scores=yolo_scores,
                 score_threshold=cfg.valid_thresh,

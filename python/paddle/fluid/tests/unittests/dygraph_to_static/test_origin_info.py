@@ -15,7 +15,7 @@
 import sys
 import unittest
 
-from paddle.jit.api import declarative
+from paddle.jit.api import to_static
 from paddle.jit.dy2static import DygraphToStaticAst
 from paddle.jit.dy2static.origin_info import (
     ORIGI_INFO,
@@ -43,13 +43,13 @@ def nested_func(x):
     return result
 
 
-@declarative
+@to_static
 def decorated_func(x):
     return x
 
 
-@declarative
-@declarative
+@to_static
+@to_static
 def decorated_func2(x):
     return x
 

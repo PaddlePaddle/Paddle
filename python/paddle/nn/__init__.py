@@ -106,6 +106,7 @@ from .layer.loss import KLDivLoss  # noqa: F401
 from .layer.loss import MarginRankingLoss  # noqa: F401
 from .layer.loss import MultiLabelSoftMarginLoss
 from .layer.loss import CTCLoss  # noqa: F401
+from .layer.loss import RNNTLoss  # noqa: F401
 from .layer.loss import SmoothL1Loss  # noqa: F401
 from .layer.loss import HingeEmbeddingLoss  # noqa: F401
 from .layer.loss import CosineEmbeddingLoss  # noqa: F401
@@ -285,6 +286,7 @@ __all__ = [  # noqa
     'Silu',
     'Conv2DTranspose',
     'CTCLoss',
+    'RNNTLoss',
     'ThresholdedReLU',
     'AdaptiveAvgPool2D',
     'MaxPool1D',

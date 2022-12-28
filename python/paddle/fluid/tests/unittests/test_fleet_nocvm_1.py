@@ -16,6 +16,8 @@
 import os
 import unittest
 
+import paddle
+
 
 class TestFleet1(unittest.TestCase):
     """
@@ -73,7 +75,7 @@ class TestFleet1(unittest.TestCase):
                 append_batch_size=False,
             )
             label_cast = fluid.layers.cast(label, dtype='float32')
-            cost = fluid.layers.log_loss(fc, label_cast)
+            cost = paddle.nn.functional.log_loss(fc, label_cast)
         try:
             adam = fluid.optimizer.Adam(learning_rate=0.000005)
             adam = fleet.distributed_optimizer(

@@ -29,6 +29,7 @@ from paddle.distributed.fleet.base.topology import ParallelMode  # noqa: F401
 
 from .collective import split  # noqa: F401
 from .collective import new_group  # noqa: F401
+from .collective import is_available  # noqa: F401
 
 from .communication import (
     stream,
@@ -39,9 +40,11 @@ from .communication import (
     alltoall,
     alltoall_single,
     broadcast,
+    broadcast_object_list,
     reduce,
     send,
     scatter,
+    scatter_object_list,
     isend,
     recv,
     irecv,
@@ -53,6 +56,7 @@ from .communication import (
     get_group,
     wait,
     barrier,
+    get_backend,
 )  # noqa: F401
 
 from .auto_parallel import shard_op  # noqa: F401
@@ -64,6 +68,9 @@ from .entry_attr import ProbabilityEntry  # noqa: F401
 from .entry_attr import CountFilterEntry  # noqa: F401
 from .entry_attr import ShowClickEntry  # noqa: F401
 
+# (TODO: GhostScreaming) It needs migration of ParallelEnv. However,
+# it's hard to migrate APIs in paddle.fluid.dygraph.parallel completely.
+# It will be replaced later.
 from paddle.fluid.dygraph.parallel import ParallelEnv  # noqa: F401
 
 from . import cloud_utils  # noqa: F401
@@ -78,7 +85,9 @@ __all__ = [  # noqa
     "spawn",
     "launch",
     "scatter",
+    "scatter_object_list",
     "broadcast",
+    "broadcast_object_list",
     "ParallelEnv",
     "new_group",
     "init_parallel_env",
@@ -111,4 +120,6 @@ __all__ = [  # noqa
     "isend",
     "irecv",
     "reduce_scatter",
+    "is_available",
+    "get_backend",
 ]

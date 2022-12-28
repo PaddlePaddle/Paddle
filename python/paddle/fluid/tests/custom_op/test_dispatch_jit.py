@@ -19,7 +19,6 @@ import numpy as np
 from utils import extra_cc_args, paddle_includes
 
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 from paddle.utils.cpp_extension import get_build_directory, load
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 
@@ -43,7 +42,7 @@ class TestJitDispatch(unittest.TestCase):
     def setUp(self):
         paddle.set_device('cpu')
 
-    def run_dispatch_test_impl(self, func, dtype):
+    def run_dispatch_test(self, func, dtype):
         np_x = np.ones([2, 2]).astype(dtype)
         x = paddle.to_tensor(np_x)
         out = func(x)
@@ -55,11 +54,6 @@ class TestJitDispatch(unittest.TestCase):
             np_out,
             err_msg='custom op x: {},\n custom op out: {}'.format(np_x, np_out),
         )
-
-    def run_dispatch_test(self, func, dtype):
-        with _test_eager_guard():
-            self.run_dispatch_test_impl(func, dtype)
-        self.run_dispatch_test_impl(func, dtype)
 
     def test_dispatch_integer(self):
         dtypes = ["int32", "int64", "int8", "uint8", "int16"]
