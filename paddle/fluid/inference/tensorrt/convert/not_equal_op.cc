@@ -77,7 +77,8 @@ class NotEqualOpConverter : public OpConverter {
     }
     layer = TRT_ENGINE_ADD_LAYER(
         engine_, ElementWise, *X, *Y, nvinfer1::ElementWiseOperation::kEQUAL);
-    layer = engine_->network()->addUnary(layer->getOutput(0), nvinfer1::UnaryOperation::NOT)
+    layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Unary, *layer->getOutput(0), nvinfer1::UnaryOperation::kNOT);
     RreplenishLayerAndOutput(layer, "not_equal", {output_name}, test_mode);
 #else
     PADDLE_THROW(
