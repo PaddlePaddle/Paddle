@@ -120,6 +120,7 @@ def _c_allgather(x, nranks, ring_id=0, use_calc_stream=False):
         task = group.process_group.all_gather(x, out)
         task.wait()
         return out
+
     else:
         helper = LayerHelper(op_type, **locals())
         out_shape = list(x.shape[:])

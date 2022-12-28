@@ -19,6 +19,7 @@ from ..layer_helper import LayerHelper
 from ..framework import (
     _current_expected_place,
     convert_np_dtype_to_dtype_,
+    _non_static_mode,
     _varbase_creator,
     in_dygraph_mode,
 )
@@ -79,52 +80,58 @@ def cast(x, dtype):
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
         return _C_ops.cast(x, dtype)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'bool',
-                'float16',
-                'float32',
-                'float64',
-                'int16',
-                'int32',
-                'int64',
-                'uint8',
-                'uint16',
-            ],
-            'cast',
-        )
-        check_dtype(
-            dtype,
-            'dtype',
-            [
-                'bool',
-                'float16',
-                'float32',
-                'float64',
-                'int8',
-                'int16',
-                'int32',
-                'int64',
-                'uint8',
-                'uint16',
-            ],
-            'cast',
-        )
 
-        helper = LayerHelper('cast', **locals())
-        out = helper.create_variable_for_type_inference(
-            dtype=dtype, stop_gradient=x.stop_gradient
-        )
-        helper.append_op(
-            type='cast',
-            inputs={'X': [x]},
-            outputs={'Out': [out]},
-            attrs={'in_dtype': x.dtype, 'out_dtype': out.dtype},
-        )
+    if _non_static_mode():
+        if not isinstance(dtype, core.VarDesc.VarType):
+            dtype = convert_np_dtype_to_dtype_(dtype)
+        out = _legacy_C_ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
         return out
+
+    check_variable_and_dtype(
+        x,
+        'x',
+        [
+            'bool',
+            'float16',
+            'float32',
+            'float64',
+            'int16',
+            'int32',
+            'int64',
+            'uint8',
+            'uint16',
+        ],
+        'cast',
+    )
+    check_dtype(
+        dtype,
+        'dtype',
+        [
+            'bool',
+            'float16',
+            'float32',
+            'float64',
+            'int8',
+            'int16',
+            'int32',
+            'int64',
+            'uint8',
+            'uint16',
+        ],
+        'cast',
+    )
+
+    helper = LayerHelper('cast', **locals())
+    out = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=x.stop_gradient
+    )
+    helper.append_op(
+        type='cast',
+        inputs={'X': [x]},
+        outputs={'Out': [out]},
+        attrs={'in_dtype': x.dtype, 'out_dtype': out.dtype},
+    )
+    return out
 
 
 def concat(input, axis=0, name=None):
@@ -183,6 +190,7 @@ def concat(input, axis=0, name=None):
             input = [t for t in input if t.shape.count(0) == 0]
         out = _C_ops.concat(input, axis)
         return out
+
     else:
         check_type(input, 'input', (list, tuple, Variable), 'concat')
         if not isinstance(input, Variable):
@@ -379,15 +387,19 @@ def assign(input, output=None):
         input = numpy.array(input)
     # NOTE(Aurelius84): Why we judge core.VarBase?
     # In case of @to_static, a VarBase can be as input of `assign`,
-    # but in_dygraph_mode()==False under @to_static, which means
+    # but _non_static_mode()==False under @to_static, which means
     # isinstance(VarBase, Variable) == False. It will cause return None
     # after this api.
     if isinstance(input, (Variable, core.VarBase)):
-        if in_dygraph_mode():
-            if output is None:
+        if _non_static_mode():
+            if in_dygraph_mode() and output is None:
                 output = _C_ops.assign(input)
-            else:
+            elif in_dygraph_mode() and output is not None:
                 _C_ops.assign_out_(input, output)
+            else:
+                if output is None:
+                    output = core.eager.Tensor()
+                _legacy_C_ops.assign(input, output)
         else:
             check_dtype(
                 input.dtype,
@@ -476,7 +488,7 @@ def assign(input, output=None):
                 },
             )
 
-    if is_inplace and in_dygraph_mode():
+    if is_inplace and _non_static_mode():
         output._bump_inplace_version()
 
     return output
@@ -560,6 +572,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             _C_ops.full_(out, shape, float(value), dtype, place)
             out.stop_gradient = True
             return out
+
     else:
         helper = LayerHelper("fill_constant", **locals())
         inputs = {}
@@ -669,29 +682,29 @@ def fill_constant_batch_size_like(
         )
         out.stop_gradient = True
         return out
+
+    helper = LayerHelper("fill_constant_batch_size_like", **locals())
+    out = helper.create_variable_for_type_inference(dtype=dtype)
+    attrs = {
+        'shape': shape,
+        'dtype': out.dtype,
+        'value': float(value),
+        'input_dim_idx': input_dim_idx,
+        'output_dim_idx': output_dim_idx,
+        'force_cpu': force_cpu,
+    }
+    if convert_dtype(dtype) in ['int64', 'int32']:
+        attrs['str_value'] = str(int(value))
     else:
-        helper = LayerHelper("fill_constant_batch_size_like", **locals())
-        out = helper.create_variable_for_type_inference(dtype=dtype)
-        attrs = {
-            'shape': shape,
-            'dtype': out.dtype,
-            'value': float(value),
-            'input_dim_idx': input_dim_idx,
-            'output_dim_idx': output_dim_idx,
-            'force_cpu': force_cpu,
-        }
-        if convert_dtype(dtype) in ['int64', 'int32']:
-            attrs['str_value'] = str(int(value))
-        else:
-            attrs['str_value'] = str(float(value))
-        helper.append_op(
-            type='fill_constant_batch_size_like',
-            inputs={'Input': input},
-            outputs={'Out': [out]},
-            attrs=attrs,
-        )
-        out.stop_gradient = True
-        return out
+        attrs['str_value'] = str(float(value))
+    helper.append_op(
+        type='fill_constant_batch_size_like',
+        inputs={'Input': input},
+        outputs={'Out': [out]},
+        attrs=attrs,
+    )
+    out.stop_gradient = True
+    return out
 
 
 def argmin(x, axis=0):
