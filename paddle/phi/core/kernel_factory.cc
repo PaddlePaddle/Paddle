@@ -23,7 +23,7 @@
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/utils/string/string_helper.h"
 
-DECLARE_bool(low_precision_op_list);
+DECLARE_int32(low_precision_op_list);
 DECLARE_bool(enable_api_kernel_fallback);
 
 namespace phi {
