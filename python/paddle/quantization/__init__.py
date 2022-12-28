@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from symbol import import_as_name
 from ..fluid.contrib.slim.quantization.imperative.ptq_config import (
     PTQConfig,
     default_ptq_config,
@@ -49,9 +50,11 @@ from ..fluid.contrib.slim.quantization.imperative.qat import (
 from .config import QuantConfig
 from .base_quanter import BaseQuanter
 from .factory import quanter
+from .qat import QAT
 
 __all__ = [
     "QuantConfig",
     "BaseQuanter",
     "quanter",
+    "QAT",
 ]
