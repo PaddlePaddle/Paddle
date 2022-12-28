@@ -132,6 +132,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             && cd backends/custom_cpu \
             && mkdir build && cd build && cmake .. && make -j8 \
             && pip install dist/paddle_custom_cpu*.whl \
+            && python -c "import paddle; print(paddle.device.get_all_custom_device_type())" \
             && cd {} && {} custom_device_relu_setup.py install'.format(
             self.temp_dir.name,
             os.getenv('PLUGIN_URL'),
@@ -181,17 +182,24 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         print("DEBUG setup finished")
 
     def tearDown(self):
+        print("DEBUG begin tearDown")
         run_cmd("pip uninstall paddle_custom_cpu")
         print("DEBUG uninstall paddle_custom_cpu finish")
         self.temp_dir.cleanup()
         del os.environ['CUSTOM_DEVICE_ROOT']
 
     def test_custom_device(self):
+        print("DEBUG begin test ")
         self._test_static()
+        print("DEBUG finish test _test_static")
         self._test_static_pe()
+        print("DEBUG finish test _test_static_pe")
         self._test_dynamic()
+        print("DEBUG finish test _test_dynamic")
         self._test_double_grad_dynamic()
+        print("DEBUG finish test _test_double_grad_dynamic")
         self._test_with_dataloader()
+        print("DEBUG finish test _test_with_dataloader")
 
     def _test_static(self):
         for device in self.devices:
