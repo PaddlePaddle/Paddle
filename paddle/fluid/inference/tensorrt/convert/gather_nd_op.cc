@@ -56,7 +56,7 @@ class GatherNdOpConverter : public OpConverter {
     engine_->SetITensor(output_name, layer->getOutput(0));
     layer_name += output_name;
     if (test_mode) {
-      engine_->DeclareOutput(output_name);
+      engine_->DeclareOutput(output_name, nvinfer1::DataType::kFLOAT);
     }
     layer->setName((layer_name + ")").c_str());
 #endif

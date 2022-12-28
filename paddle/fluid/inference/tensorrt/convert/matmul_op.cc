@@ -186,7 +186,7 @@ class MatMulOpConverter : public OpConverter {
         engine_->SetITensor(output_name, scale_out);
         if (test_mode) {  // the test framework can not determine which is the
                           // output, so place the declaration inside.
-          engine_->DeclareOutput(output_name);
+          engine_->DeclareOutput(output_name, nvinfer1::DataType::kFLOAT);
         }
       }
     }

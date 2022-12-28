@@ -384,7 +384,8 @@ nvinfer1::ITensor *TensorRTEngine::DeclareInput(const std::string &name,
 
 void TensorRTEngine::DeclareOutput(const nvinfer1::ILayer *layer,
                                    int offset,
-                                   const std::string &name) {
+                                   const std::string &name,
+                                   nvinfer1::DataType dtype) {
   auto *output = layer->getOutput(offset);
   SetITensor(name, output);
   PADDLE_ENFORCE_NOT_NULL(
@@ -405,9 +406,11 @@ void TensorRTEngine::DeclareOutput(const nvinfer1::ILayer *layer,
       platform::errors::InvalidArgument(
           "The output %s of TRT engine should be the output of the network.",
           name));
+  output->setType(dtype);
 }
 
-void TensorRTEngine::DeclareOutput(const std::string &name) {
+void TensorRTEngine::DeclareOutput(const std::string &name,
+                                   nvinfer1::DataType dtype) {
   auto *output = TensorRTEngine::GetITensor(name);
   PADDLE_ENFORCE_NOT_NULL(
       output,
@@ -421,6 +424,7 @@ void TensorRTEngine::DeclareOutput(const std::string &name) {
                         "of the network at the same time.",
                         name));
   network()->markOutput(*output);
+  output->setType(dtype);
 }
 void TensorRTEngine::DeleteITensor(const std::string &name,
                                    nvinfer1::ITensor *tensor) {

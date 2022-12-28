@@ -161,7 +161,7 @@ class Pool3dOpConverter : public OpConverter {
       layer->getOutput(0)->setName(output_name.c_str());
       engine_->SetITensor(output_name, layer->getOutput(0));
       if (test_mode) {
-        engine_->DeclareOutput(output_name);
+        engine_->DeclareOutput(output_name, nvinfer1::DataType::kFLOAT);
       }
       return;
     }
@@ -175,7 +175,7 @@ class Pool3dOpConverter : public OpConverter {
       layer->getOutput(0)->setName(output_name.c_str());
       engine_->SetITensor(output_name, layer->getOutput(0));
       if (test_mode) {
-        engine_->DeclareOutput(output_name);
+        engine_->DeclareOutput(output_name, nvinfer1::DataType::kFLOAT);
       }
       return;
     }

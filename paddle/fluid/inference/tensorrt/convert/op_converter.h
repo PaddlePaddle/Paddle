@@ -337,7 +337,8 @@ class OpConverter {
                               optim_input_shape[i],
                               platform::errors::InvalidArgument(
                                   "The dim (%d) of the min_input_shape and "
-                                  "optim_input_shape should be same."));
+                                  "optim_input_shape should be same.",
+                                  i));
           }
         }
         engine->DeclareInput(
@@ -364,7 +365,20 @@ class OpConverter {
     framework::proto::BlockDesc* block_proto = block_desc->Proto();
     ConvertBlock(*block_proto, parameters, scope, engine);
     for (auto& output : outputs) {
-      engine->DeclareOutput(output);
+      auto* var = block_desc->FindVar(output);
+      PADDLE_ENFORCE_NOT_NULL(
+          var,
+          platform::errors::NotFound("no variable called %s in block.",
+                                     output.c_str()));
+      PADDLE_ENFORCE_EQ(
+          var->GetType(),
+          FluidDT::VarType_Type_LOD_TENSOR,
+          platform::errors::InvalidArgument(
+              "The output tensor in TensorRT subgraph should be LoDTensor"));
+      engine->DeclareOutput(
+          output,
+          FluidDataType2TRT(
+              var->Proto()->type().lod_tensor().tensor().data_type()));
     }
     engine->FreezeNetwork();
     engine->ClearWeights();
@@ -591,7 +605,8 @@ class OpConverter {
       layer->getOutput(i)->setName(output_tensor_names[i].c_str());
       engine_->SetITensor(output_tensor_names[i], layer->getOutput(i));
       if (test_mode) {
-        engine_->DeclareOutput(output_tensor_names[i]);
+        engine_->DeclareOutput(output_tensor_names[i],
+                               nvinfer1::DataType::kFLOAT);
       }
       layer_name += output_tensor_names[i];
       if (i != num_out - 1) layer_name += ", ";

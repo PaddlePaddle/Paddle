@@ -243,7 +243,7 @@ class Pool2dOpConverter : public OpConverter {
       layer->getOutput(0)->setName(output_name.c_str());
       engine_->SetITensor(output_name, layer->getOutput(0));
       if (test_mode) {
-        engine_->DeclareOutput(output_name);
+        engine_->DeclareOutput(output_name, nvinfer1::DataType::kFLOAT);
       }
       return;
     }
@@ -261,7 +261,7 @@ class Pool2dOpConverter : public OpConverter {
       engine_->SetITensor(output_name, pool_layer->getOutput(0));
       layer = pool_layer;
       if (test_mode) {
-        engine_->DeclareOutput(output_name);
+        engine_->DeclareOutput(output_name, nvinfer1::DataType::kFLOAT);
       }
       return;
     }

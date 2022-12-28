@@ -138,7 +138,7 @@ void ConvertConv3d(TensorRTEngine* engine,
   engine->SetITensor(output_name, layer->getOutput(0));
 
   if (test_mode) {
-    engine->DeclareOutput(output_name);
+    engine->DeclareOutput(output_name, nvinfer1::DataType::kFLOAT);
   }
 }
 

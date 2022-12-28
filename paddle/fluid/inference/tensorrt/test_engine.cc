@@ -95,7 +95,7 @@ TEST_F(TensorRTEngineTest, add_layer) {
                           platform::errors::InvalidArgument(
                               "TRT fully connected layer building failed."));
 
-  engine_->DeclareOutput(fc_layer, 0, "y");
+  engine_->DeclareOutput(fc_layer, 0, "y", nvinfer1::DataType::kFLOAT);
   LOG(INFO) << "freeze network";
   engine_->FreezeNetwork();
   ASSERT_EQ(engine_->engine()->getNbBindings(), 2);
@@ -150,7 +150,7 @@ TEST_F(TensorRTEngineTest, add_layer_multi_dim) {
                           platform::errors::InvalidArgument(
                               "TRT fully connected layer building failed."));
 
-  engine_->DeclareOutput(fc_layer, 0, "y");
+  engine_->DeclareOutput(fc_layer, 0, "y", nvinfer1::DataType::kFLOAT);
   engine_->FreezeNetwork();
   ASSERT_EQ(engine_->engine()->getNbBindings(), 2);
 
@@ -202,7 +202,7 @@ TEST_F(TensorRTEngineTest, test_conv2d) {
   conv_layer->setStride(nvinfer1::DimsHW{1, 1});
   conv_layer->setPadding(nvinfer1::DimsHW{1, 1});
 
-  engine_->DeclareOutput(conv_layer, 0, "y");
+  engine_->DeclareOutput(conv_layer, 0, "y", nvinfer1::DataType::kFLOAT);
   engine_->FreezeNetwork();
   ASSERT_EQ(engine_->engine()->getNbBindings(), 2);
 
@@ -259,7 +259,7 @@ TEST_F(TensorRTEngineTest, test_pool2d) {
   pool_layer->setStride(nvinfer1::DimsHW{1, 1});
   pool_layer->setPadding(nvinfer1::DimsHW{0, 0});
 
-  engine_->DeclareOutput(pool_layer, 0, "y");
+  engine_->DeclareOutput(pool_layer, 0, "y", nvinfer1::DataType::kFLOAT);
   engine_->FreezeNetwork();
   ASSERT_EQ(engine_->engine()->getNbBindings(), 2);
 

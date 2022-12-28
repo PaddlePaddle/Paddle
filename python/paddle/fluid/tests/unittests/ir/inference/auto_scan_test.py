@@ -14,6 +14,7 @@
 
 import abc
 import enum
+import inspect
 import logging
 import os
 import shutil
@@ -182,25 +183,21 @@ class AutoScanTest(unittest.TestCase):
         ops = []
         for i in range(len(ops_config)):
             op_config = ops_config[i]
-            if 'outputs_dtype' in op_config:
-                ops.append(
-                    OpConfig(
-                        type=op_config['op_type'],
-                        inputs=op_config['op_inputs'],
-                        outputs=op_config['op_outputs'],
-                        attrs=op_config['op_attrs'],
-                        outputs_dtype=op_config['outputs_dtype'],
-                    )
+            outputs_dtype = op_config.get(
+                'outputs_dtype',
+                inspect.signature(OpConfig.__init__)
+                .parameters['outputs_dtype']
+                .default,
+            )
+            ops.append(
+                OpConfig(
+                    type=op_config['op_type'],
+                    inputs=op_config['op_inputs'],
+                    outputs=op_config['op_outputs'],
+                    attrs=op_config['op_attrs'],
+                    outputs_dtype=outputs_dtype,
                 )
-            else:
-                ops.append(
-                    OpConfig(
-                        type=op_config['op_type'],
-                        inputs=op_config['op_inputs'],
-                        outputs=op_config['op_outputs'],
-                        attrs=op_config['op_attrs'],
-                    )
-                )
+            )
         return ops
 
     @abc.abstractmethod

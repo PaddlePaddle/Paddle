@@ -287,9 +287,10 @@ class TensorRTEngine {
   // name.
   void DeclareOutput(const nvinfer1::ILayer* layer,
                      int offset,
-                     const std::string& name);
+                     const std::string& name,
+                     nvinfer1::DataType dtype);
   // Set the itensor_map_[name] as the network's output, and set its name.
-  void DeclareOutput(const std::string& name);
+  void DeclareOutput(const std::string& name, nvinfer1::DataType dtype);
   void ClearTensorMap() { itensor_map_.clear(); }
 
   void DeleteITensor(const std::string& name, nvinfer1::ITensor* tensor);

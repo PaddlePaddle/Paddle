@@ -124,7 +124,7 @@ TEST_F(TensorRTDynamicShapeValueEngineTest, test_trt_dynamic_shape_value) {
   PADDLE_ENFORCE_NOT_NULL(
       layer,
       platform::errors::InvalidArgument("TRT shuffle layer building failed."));
-  engine_->DeclareOutput(layer, 0, "y");
+  engine_->DeclareOutput(layer, 0, "y", nvinfer1::DataType::kFLOAT);
   engine_->FreezeNetwork();
   ASSERT_EQ(engine_->engine()->getNbBindings(), 3);
 
@@ -292,7 +292,7 @@ TEST_F(TensorRTDynamicEngineTest, test_spmm) {
       fc_layer,
       platform::errors::InvalidArgument("TRT SPMM layer building failed."));
 
-  engine_->DeclareOutput(fc_layer, 0, "y");
+  engine_->DeclareOutput(fc_layer, 0, "y", nvinfer1::DataType::kFLOAT);
   engine_->FreezeNetwork();
   ASSERT_EQ(engine_->engine()->getNbBindings(), 2);
 
@@ -443,7 +443,8 @@ TEST_F(TensorRTDynamicTestFusedTokenPrune, test_fused_token_prune) {
   std::vector<std::string> output_tensor_names{"out_slimmed_x", "out_cls_inds"};
   for (size_t i = 0; i < 2; i++) {
     layer->getOutput(i)->setName(output_tensor_names[i].c_str());
-    engine_->DeclareOutput(layer, i, output_tensor_names[i]);
+    engine_->DeclareOutput(
+        layer, i, output_tensor_names[i], nvinfer1::DataType::kFLOAT);
   }
   engine_->FreezeNetwork();
 
