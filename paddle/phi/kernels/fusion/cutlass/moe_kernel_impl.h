@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 
 namespace phi {
-
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
 static const float HALF_FLT_MAX = 65504.F;
 static const float HALF_FLT_MIN = -65504.F;
 static inline size_t AlignTo16(const size_t& input) {
@@ -775,5 +775,5 @@ __global__ void initialize_moe_routing_kernel(
     }
   }
 }
-
+#endif
 }  // namespace phi

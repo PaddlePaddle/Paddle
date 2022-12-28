@@ -39,6 +39,7 @@
 namespace phi {
 
 namespace {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
 inline int getSMVersion() {
   const int device = phi::backends::gpu::GetCurrentDeviceId();
   const phi::gpuDeviceProp prop =
@@ -119,11 +120,11 @@ struct Epilogue<ElementType,
       ElementAccumulator,
       cutlass::epilogue::thread::ScaleType::Nothing>;
 };
-
+#endif
 }  // namespace
 
 namespace fusion {
-
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
 template <typename T>
 void InitExpertChoiceRouteKernelLauncher(
     int* expert_for_source_row,
@@ -657,7 +658,7 @@ void finalize_moe_routing_kernelLauncher(
         ec_route);
   }
 }
-
+#endif
 template <typename T, typename Context>
 void MoeKernel(const Context& ctx,
                const DenseTensor& x,
@@ -668,6 +669,7 @@ void MoeKernel(const Context& ctx,
                const DenseTensor& bias1,
                const std::string& act_type,
                DenseTensor* output) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
   const T* input_activations = x.data<T>();
   T* gating_output = const_cast<T*>(gate.data<T>());
   const T* fc1_expert_weights = bmm0.data<T>();
@@ -902,6 +904,10 @@ void MoeKernel(const Context& ctx,
                                       k,
                                       true,
                                       ctx.stream());
+#else
+  PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+      "Currently only support cuda arch >= 700"));
+#endif
 }
 
 }  // namespace fusion
