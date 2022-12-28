@@ -425,18 +425,19 @@ __global__ void RotrayKernel(const T *inputact,
 			     int s, //seqlen len
 			     int n, //number of head
 			     int h, //hidden dim
-                             const int nElement,
-                             const int lastdim) {
+			     int max_seq, //max_seq
+                             const int nElement) {
+  const int lastdim = h;
   const int index = blockIdx.x * blockDim.x + threadIdx.x;
   int step = (size_t)gridDim.x * blockDim.x;
   if (index >= nElement) return;
   const int half_lastdim = lastdim / 2;
   for (int i = index; i < nElement; i += step)
   {
-	  int bs_index = i / (n*h);
-	  int seq_index = bs_index % s;
+	  int sh_index = i % (s * h);
+	  int seq_index = sh_index / h;
 	  int h_index = i % h;
-	  int cos_index = seq_index * s + h_index;
+          int cos_index = seq_index * max_seq + h_index;
 
 	  T left = input1[cos_index] * inputact[i];
           int col = index % lastdim;
@@ -482,6 +483,7 @@ int RoformerNovarlenPlugin::enqueue(
   // input[0], (B, S, 3 * N * H, 1, 1)
   int batch = input_dims.d[0];
   int seq_len = input_dims.d[1];
+  int max_seq = input_desc[1].dims.d[2];
   phi::DenseTensor multihead_temp_tensor;
   // masks
   int scratch_size = batch * head_number_ * seq_len * seq_len * 1;
@@ -546,9 +548,9 @@ int RoformerNovarlenPlugin::enqueue(
 						 batch,
 						 seq_len,
 						 head_number_,
-						 head_size,
-                                                 2*n_q,
-                                                 head_size_);  // q + k
+						 head_size_,
+						 max_seq,
+                                                 2*n_q);  // q + k
     /*
     RotrayKernel<<<blocks, threads, 0, stream>>>(tmp_roformer_ptr + n_q,
                                                  input_cos_data,
@@ -636,24 +638,29 @@ int RoformerNovarlenPlugin::enqueue(
     int n_q = seq_len * head_number_ * head_size_ * batch;
     constexpr int threads = 128;
     int blocks = (n_q + threads - 1) / threads;
-
+    const int small_blcoks = 256;
     // where to insert
     //********************
     const half *input_cos_data = static_cast<const half *>(inputs[1]);
     const half *input_sin_data = static_cast<const half *>(inputs[2]);
-    RotrayKernel<<<blocks, threads, 0, stream>>>(tmp_roformer_ptr,
+    RotrayKernel<<<small_blocks, threads, 0, stream>>>(tmp_roformer_ptr,
                                                  input_cos_data,
                                                  input_sin_data,
                                                  tptr,
-                                                 n_q,
-                                                 head_size_);  // q
+						 batch,
+						 seq_len,
+						 head_number_,
+						 head_size_,
+						 max_seq,
+                                                 2*n_q);  // q +k
+    /*
     RotrayKernel<<<blocks, threads, 0, stream>>>(tmp_roformer_ptr + n_q,
                                                  input_cos_data,
                                                  input_sin_data,
                                                  tptr + n_q,
                                                  n_q,
                                                  head_size_);  // k
-
+    */
     apply_scale<<<blocks, threads, 0, stream>>>(
         tptr, static_cast<half>(scale_), n_q);
 
