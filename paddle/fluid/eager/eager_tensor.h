@@ -136,7 +136,8 @@ class VariableCompatTensor
 
   void* AllocateFrom(phi::Allocator* allocator,
                      phi::DataType dtype,
-                     size_t requested_size = 0) override {
+                     size_t requested_size = 0,
+                     bool fake_alloc = false) override {
     PADDLE_THROW(paddle::platform::errors::Unavailable(
         "VariableCompatTensor does not support `AllocateFrom` method."));
   }
