@@ -34,7 +34,7 @@ bool DataTranferHelper::apply(const phi::KernelKey& kernel_type_for_var,
                               std::vector<OpFuncNode>* op_func_nodes,
                               bool use_local_scope,
                               bool is_fetch_v2,
-                              const phi::Place& tensor_place,
+                              const phi::DenseTensor* tensor,
                               bool skip_run) {
   bool is_transferred = false;
   auto* src_var_name = &var_name;
@@ -74,9 +74,27 @@ bool DataTranferHelper::apply(const phi::KernelKey& kernel_type_for_var,
     is_transferred = true;
   }
   // 3. device transform
-  if (need_device_transform(
-          kernel_type_for_var, tensor_place, expected_kernel_key, place_)) {
-    auto src_place = tensor_place;
+  if (is_fetch_v2) {
+    if (tensor->IsInitialized() && tensor->place() != phi::CPUPlace()) {
+      auto src_place = tensor->place();
+      auto dst_place = phi::CPUPlace();
+      auto op = TransferDevice(*src_var_name,
+                               new_var_name,
+                               src_place,
+                               dst_place,
+                               var_scope_,
+                               scope_);
+      if (op) {
+        RunAndConstructOpFuncNode(
+            op, *src_var_name, *new_var_name, op_func_nodes, skip_run);
+      }
+      is_transferred = true;
+    }
+  } else if (need_device_transform(kernel_type_for_var,
+                                   tensor->place(),
+                                   expected_kernel_key,
+                                   place_)) {
+    auto src_place = tensor->place();
     auto dst_place = place_;
 
     auto op = TransferDevice(
@@ -542,7 +560,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
             new_op_func_nodes,
             use_local_scope,
             op_base->Type() == "fetch_v2",
-            tensor_in->place(),
+            tensor_in,
             skip_run);
       }
 

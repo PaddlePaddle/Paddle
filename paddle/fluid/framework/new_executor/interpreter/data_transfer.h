@@ -41,7 +41,7 @@ class DataTranferHelper {
              std::vector<OpFuncNode>* new_op_func_nodes,
              bool use_local_scope,
              bool is_fetch_v2,
-             const phi::Place& tensor_place,
+             const phi::DenseTensor* tensor,
              bool skip_run = false);
 
   void RunAndConstructShareNode(const std::string& src_var_name,
