@@ -187,6 +187,8 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         print("DEBUG uninstall paddle_custom_cpu finish")
         self.temp_dir.cleanup()
         del os.environ['CUSTOM_DEVICE_ROOT']
+        print("DEBUG finish tearDown")
+        exit()
 
     def test_custom_device(self):
         print("DEBUG begin test ")
