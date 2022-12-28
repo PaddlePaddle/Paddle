@@ -263,7 +263,7 @@ class TestPostTrainingKLForMnist(TestPostTrainingQuantization):
     def test_post_training_kl(self):
         model_name = "mnist_model"
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_model_combined.tar.gz"
-        data_md5 = "5284a6cd4aa395f61bda828f0f574f8a"
+        data_md5 = "a49251d3f555695473941e5a725c6014"
         algo = "KL"
         round_type = "round"
         quantizable_op_type = ["conv2d", "depthwise_conv2d", "mul"]
@@ -297,7 +297,7 @@ class TestPostTraininghistForMnist(TestPostTrainingQuantization):
     def test_post_training_hist(self):
         model_name = "mnist_model"
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_model_combined.tar.gz"
-        data_md5 = "5284a6cd4aa395f61bda828f0f574f8a"
+        data_md5 = "a49251d3f555695473941e5a725c6014"
         algo = "hist"
         round_type = "round"
         quantizable_op_type = ["conv2d", "depthwise_conv2d", "mul"]
@@ -331,7 +331,7 @@ class TestPostTrainingmseForMnist(TestPostTrainingQuantization):
     def test_post_training_mse(self):
         model_name = "mnist_model"
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_model_combined.tar.gz"
-        data_md5 = "5284a6cd4aa395f61bda828f0f574f8a"
+        data_md5 = "a49251d3f555695473941e5a725c6014"
         algo = "mse"
         round_type = "round"
         quantizable_op_type = ["conv2d", "depthwise_conv2d", "mul"]
@@ -365,7 +365,7 @@ class TestPostTrainingemdForMnist(TestPostTrainingQuantization):
     def test_post_training_mse(self):
         model_name = "mnist_model"
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_model_combined.tar.gz"
-        data_md5 = "5284a6cd4aa395f61bda828f0f574f8a"
+        data_md5 = "a49251d3f555695473941e5a725c6014"
         algo = "emd"
         round_type = "round"
         quantizable_op_type = ["conv2d", "depthwise_conv2d", "mul"]
@@ -399,7 +399,7 @@ class TestPostTrainingavgForMnist(TestPostTrainingQuantization):
     def test_post_training_avg(self):
         model_name = "mnist_model"
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_model_combined.tar.gz"
-        data_md5 = "5284a6cd4aa395f61bda828f0f574f8a"
+        data_md5 = "a49251d3f555695473941e5a725c6014"
         algo = "avg"
         round_type = "round"
         quantizable_op_type = ["conv2d", "depthwise_conv2d", "mul"]
@@ -433,7 +433,7 @@ class TestPostTrainingAbsMaxForMnist(TestPostTrainingQuantization):
     def test_post_training_abs_max(self):
         model_name = "mnist_model"
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_model_combined.tar.gz"
-        data_md5 = "5284a6cd4aa395f61bda828f0f574f8a"
+        data_md5 = "a49251d3f555695473941e5a725c6014"
         algo = "abs_max"
         round_type = "round"
         quantizable_op_type = ["conv2d", "mul"]
@@ -467,7 +467,7 @@ class TestPostTrainingmseAdaroundForMnist(TestPostTrainingQuantization):
     def test_post_training_mse(self):
         model_name = "mnist_model"
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_model_combined.tar.gz"
-        data_md5 = "5284a6cd4aa395f61bda828f0f574f8a"
+        data_md5 = "a49251d3f555695473941e5a725c6014"
         algo = "mse"
         round_type = "adaround"
         quantizable_op_type = ["conv2d", "depthwise_conv2d", "mul"]
@@ -503,7 +503,7 @@ class TestPostTrainingKLAdaroundForMnist(TestPostTrainingQuantization):
     def test_post_training_kl(self):
         model_name = "mnist_model"
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_model_combined.tar.gz"
-        data_md5 = "5284a6cd4aa395f61bda828f0f574f8a"
+        data_md5 = "a49251d3f555695473941e5a725c6014"
         algo = "KL"
         round_type = "adaround"
         quantizable_op_type = ["conv2d", "depthwise_conv2d", "mul"]
@@ -537,7 +537,7 @@ class TestPostTrainingmseForMnistONNXFormat(TestPostTrainingQuantization):
     def test_post_training_mse_onnx_format(self):
         model_name = "mnist_model"
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_model_combined.tar.gz"
-        data_md5 = "5284a6cd4aa395f61bda828f0f574f8a"
+        data_md5 = "a49251d3f555695473941e5a725c6014"
         algo = "mse"
         round_type = "round"
         quantizable_op_type = ["conv2d", "depthwise_conv2d", "mul"]
@@ -575,7 +575,7 @@ class TestPostTrainingmseForMnistONNXFormatFullQuant(
     def test_post_training_mse_onnx_format_full_quant(self):
         model_name = "mnist_model"
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_model_combined.tar.gz"
-        data_md5 = "5284a6cd4aa395f61bda828f0f574f8a"
+        data_md5 = "a49251d3f555695473941e5a725c6014"
         algo = "mse"
         round_type = "round"
         quantizable_op_type = ["conv2d", "depthwise_conv2d", "mul"]
@@ -611,7 +611,7 @@ class TestPostTrainingavgForMnistSkipOP(TestPostTrainingQuantization):
     def test_post_training_avg_skip_op(self):
         model_name = "mnist_model"
         data_url = "http://paddle-inference-dist.bj.bcebos.com/int8/mnist_model_combined.tar.gz"
-        data_md5 = "5284a6cd4aa395f61bda828f0f574f8a"
+        data_md5 = "a49251d3f555695473941e5a725c6014"
         algo = "avg"
         round_type = "round"
         quantizable_op_type = ["conv2d", "depthwise_conv2d", "mul"]

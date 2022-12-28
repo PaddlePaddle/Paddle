@@ -106,7 +106,7 @@ def transform_and_save_int8_model(
                     inference_program,
                     feed_target_names,
                     fetch_targets,
-                ] = paddle.static.load_inference_model(original_path, exe)
+                ] = paddle.fluid.io.load_inference_model(original_path, exe)
             else:
                 [
                     inference_program,
