@@ -713,15 +713,6 @@
     func : fmin
   backward : fmin_grad
 
-- op : frame
-  args : (Tensor x, int frame_length, int hop_length, int axis)
-  output : Tensor(out)
-  infer_meta :
-    func : FrameInferMeta
-  kernel :
-    func : frame
-  backward : frame_grad
-
 - op : frobenius_norm
   args : (Tensor x, int64_t[] axis,  bool keep_dim,  bool reduce_all)
   output : Tensor(out)
@@ -791,16 +782,6 @@
     func : gather
     data_type: x
   backward : gather_grad
-
-- op : gather_nd
-  args : (Tensor x, Tensor index)
-  output : Tensor
-  infer_meta :
-    func : GatherNdInferMeta
-  kernel :
-    func : gather_nd
-    data_type : x
-  backward : gather_nd_grad
 
 - op : gaussian
   args : (IntArray shape, float mean, float std, int seed, DataType dtype, Place place={})
@@ -919,15 +900,6 @@
   optional : scale, bias
   intermediate : saved_mean, saved_variance
   backward : instance_norm_grad
-
-- op : isclose
-  args : (Tensor x, Tensor y, Scalar rtol, Scalar atol,  bool equal_nan)
-  output : Tensor(out)
-  infer_meta :
-    func : ValueCompareInferMeta
-    param: [x, y]
-  kernel :
-    func : isclose
 
 - op : kldiv_loss
   args : (Tensor x, Tensor label, str reduction)
@@ -1374,15 +1346,6 @@
   output : Tensor(out)
   invoke : full_like(x, 1, dtype, place)
 
-- op : overlap_add
-  args: (Tensor x, int hop_length, int axis)
-  output: Tensor
-  infer_meta:
-    func: OverlapAddInferMeta
-  kernel:
-    func: overlap_add
-  backward: overlap_add_grad
-
 - op : p_norm
   args : (Tensor x,  float porder,  int axis,  float epsilon,  bool keepdim,  bool asvector=false)
   output : Tensor(out)
@@ -1409,15 +1372,6 @@
   kernel :
     func : pad3d
   backward : pad3d_grad
-
-- op : pixel_shuffle
-  args : (Tensor x, int upscale_factor, str data_format)
-  output : Tensor
-  infer_meta :
-    func : PixelShuffleInferMeta
-  kernel :
-    func : pixel_shuffle
-  backward : pixel_shuffle_grad
 
 - op : pool2d
   args : (Tensor x, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)

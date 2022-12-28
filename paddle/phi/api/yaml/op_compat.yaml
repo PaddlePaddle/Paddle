@@ -578,6 +578,13 @@
   outputs :
     out : Y
 
+- op : frame
+  backward : frame_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : frobenius_norm
   backward : frobenius_norm_grad
   extra :
@@ -591,6 +598,13 @@
   backward : gather_grad
   extra :
     attrs : [bool overwrite = true]
+
+- op : gather_nd
+  backward : gather_nd_grad
+  inputs :
+    {x : X, index : Index}
+  outputs :
+    out : Out
 
 - op : gather_tree
   inputs :
@@ -700,6 +714,19 @@
     x : X
   outputs :
     out : Out
+
+- op : isclose
+  inputs :
+    {x : Input, y : Other}
+  outputs :
+    out : Out
+  scalar :
+    rtol :
+      data_type : std::string
+      tensor_name : Rtol
+    atol :
+      data_type : std::string
+      tensor_name : Atol
 
 - op : isfinite (isfinite_v2)
   inputs :
@@ -937,6 +964,13 @@
   outputs :
     {out : Out, total_weight : Total_weight}
 
+- op : overlap_add
+  backward : overlap_add_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : pad2d
   backward : pad2d_grad
   extra :
@@ -951,6 +985,13 @@
   backward : partial_sum_grad
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : pixel_shuffle
+  backward : pixel_shuffle_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : poisson
   inputs :

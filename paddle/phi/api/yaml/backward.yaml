@@ -523,6 +523,26 @@
     data_type : out_grad
   no_need_buffer : x
 
+- backward_op : frame_grad
+  forward : frame(Tensor x, int frame_length, int hop_length, int axis=-1) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int frame_length, int hop_length, int axis)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : frame_grad
+
+- backward_op : gather_nd_grad
+  forward : gather_nd (Tensor x, Tensor index) -> Tensor(out)
+  args : (Tensor x, Tensor index, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : GatherNdGradInferMeta
+  kernel :
+    func : gather_nd_grad
+  no_need_buffer : x
+
 - backward_op : gelu_grad
   forward : gelu(Tensor x,  bool approximate) -> Tensor(out)
   args : (Tensor x, Tensor out_grad,  bool approximate)
@@ -841,6 +861,25 @@
     func : nll_loss_grad
     data_type : input
   optional : weight
+
+- backward_op : overlap_add_grad
+  forward : overlap_add(Tensor x, int hop_length, int axis) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int hop_length, int axis)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : OverlapAddGradInferMeta
+  kernel :
+    func : overlap_add_grad
+    data_type : x
+
+- backward_op : pixel_shuffle_grad
+  forward : pixel_shuffle (Tensor x, int upscale_factor=1, str data_format="NCHW") -> Tensor(out)
+  args : (Tensor out_grad, int upscale_factor, str data_format)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : PixelShuffleGradInferMeta
+  kernel :
+    func : pixel_shuffle_grad
 
 - backward_op : poisson_grad
   forward : poisson (Tensor x) -> Tensor(out)
