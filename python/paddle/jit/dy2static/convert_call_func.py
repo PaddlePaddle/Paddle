@@ -24,10 +24,10 @@ import types
 
 import numpy
 
-from paddle.fluid.dygraph.container import Sequential
 from paddle.fluid.dygraph.layers import Layer
 from paddle.jit.dy2static.logging_utils import TranslatorLogger
 from paddle.jit.dy2static.utils import is_paddle_func, unwrap
+from paddle.nn import Sequential
 
 from .convert_operators import (
     convert_enumerate,
