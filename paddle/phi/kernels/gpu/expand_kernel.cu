@@ -18,7 +18,23 @@
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/expand_kernel_impl.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
+
+namespace phi {
+
+template <typename T, typename Context>
+void ExpandKernel(const Context& ctx,
+                  const DenseTensor& x,
+                  const IntArray& shape,
+                  DenseTensor* out) {
+  ctx.template Alloc<T>(out);
+  std::vector<const DenseTensor*> ins = {&x};
+  std::vector<DenseTensor*> outs = {out};
+  phi::funcs::BroadcastKernel<ElementwiseType::kUnary, T, T>(
+      ctx, ins, &outs, -1, kps::IdentityFunctor<T>());
+}
+
+}  // namespace phi
 
 PD_REGISTER_KERNEL(expand,
                    GPU,
@@ -27,6 +43,7 @@ PD_REGISTER_KERNEL(expand,
                    float,
                    double,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int,
                    int64_t,
                    bool) {}
