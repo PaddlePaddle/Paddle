@@ -144,7 +144,7 @@ void PSGPUWrapper::add_key_to_local(const std::vector<uint64_t>& vec_data) {
          iter++) {
       uint64_t cur_key = *iter;
       int shard_id = cur_key % thread_keys_shard_num_;
-      // TODO: feasign <-> slot <-> multi_dim
+      // TODO(lxsbupt): feasign <-> slot <-> multi_dim
       this->thread_dim_keys_[i][shard_id][0].insert(cur_key);
     }
   };
@@ -1550,7 +1550,7 @@ void PSGPUWrapper::HbmToSparseTable() {
         float* gpu_val =
             reinterpret_cast<float*>(test_build_values + local_offset);
 #ifdef PADDLE_WITH_PSLIB
-        // TODO: PSLIB DumpFill
+        // TODO(lxsbupt): PSLIB DumpFill
 #endif
 #ifdef PADDLE_WITH_PSCORE
         accessor_wrapper_ptr->DumpFill(gpu_val, cpu_table_accessor_, mf_dim);
