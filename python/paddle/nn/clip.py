@@ -29,6 +29,8 @@ from paddle.framework import (
 )
 from paddle.tensor.layer_function_generator import templatedoc
 
+__all__ = []
+
 
 @templatedoc()
 def clip_by_norm(x, max_norm, name=None):
@@ -599,6 +601,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
     Args:
         clip_norm (float): The maximum norm value.
         group_name (str, optional): The group name for this clip. Default value is ``default_group``.
+        auto_skip_clip (bool, optional): skip clipping gradient. Default value is ``False``.
 
     Examples:
         .. code-block:: python

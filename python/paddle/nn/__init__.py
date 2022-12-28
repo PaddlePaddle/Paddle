@@ -19,9 +19,9 @@ from .layer.container import LayerList  # noqa: F401
 from .layer.container import ParameterList  # noqa: F401
 from ..fluid.dygraph.container import Sequential  # noqa: F401
 
-from paddle.nn.clip import ClipGradByGlobalNorm  # noqa: F401
-from paddle.nn.clip import ClipGradByNorm  # noqa: F401
-from paddle.nn.clip import ClipGradByValue  # noqa: F401
+from .clip import ClipGradByGlobalNorm  # noqa: F401
+from .clip import ClipGradByNorm  # noqa: F401
+from .clip import ClipGradByValue  # noqa: F401
 from .decode import BeamSearchDecoder  # noqa: F401
 from .decode import dynamic_decode  # noqa: F401
 from .layer.activation import CELU  # noqa: F401
