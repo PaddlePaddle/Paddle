@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+from collections import OrderedDict
 from functools import reduce
 
 import paddle
@@ -1461,7 +1462,7 @@ class Resharder:
             if not serial
             else source_tensor.shape
         )
-        op_desc_seq = {}
+        op_desc_seq = OrderedDict()
 
         # TODO: if the target process group has the same process with source process group
         if set(target_process_group).intersection(
@@ -1721,6 +1722,20 @@ class Resharder:
     def parse_op_desc(
         self, block, op_desc_seq, var_name, reshard_op, dist_attr
     ):
+        # Parse all communicator groups for all ranks
+        # Ensure every rank has a global view of communicator groups for entire cluters
+        # therefore when initialize communicators for pipeline parallel, every rank could
+        # conduct a correct global synchronization.
+        for rank_id in op_desc_seq:
+            op_desc_list = op_desc_seq[rank_id]
+            for op_desc in op_desc_list:
+                if isinstance(op_desc, AllGatherOpDesc):
+                    new_process_group(op_desc.groups)
+                elif isinstance(op_desc, SendOpDesc):
+                    new_process_group([op_desc.src, op_desc.dst])
+                elif isinstance(op_desc, RecvOpDesc):
+                    new_process_group([op_desc.src, op_desc.dst])
+
         """Parse op desc sequence and insert op in the block"""
         tensor_list = []
         partition_tensor_list = []

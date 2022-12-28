@@ -2299,3 +2299,22 @@ def use_standalone_executor():
         'True',
         'true',
     ]
+
+
+def naive_barrier(comm_id=0):
+    """
+    perform a naive barrier(use allreduce) for all ranks within communication group.
+    """
+    paddle.disable_static()
+    paddle.set_device('gpu:%d' % paddle.distributed.ParallelEnv().dev_id)
+    tmp = (
+        paddle.to_tensor([1], dtype="int32")
+        if in_dygraph_mode()
+        else fill_constant([0], dtype="int32", value="1")
+    )
+    # use legacy ops
+    _legacy_C_ops.c_allreduce_sum_(
+        tmp, 'use_calc_stream', True, 'ring_id', comm_id
+    )
+    _legacy_C_ops.c_sync_calc_stream(tmp, tmp)
+    paddle.enable_static()

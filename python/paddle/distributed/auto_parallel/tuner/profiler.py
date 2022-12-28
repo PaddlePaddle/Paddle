@@ -24,7 +24,7 @@ from paddle.distributed.auto_parallel.dist_loader import (
     DistributedDataLoaderFromGenerator,
 )
 from paddle.distributed.auto_parallel.process_group import (
-    get_all_process_groups,
+    init_all_process_groups,
     new_process_group,
 )
 from paddle.distributed.collective import _get_global_env
@@ -87,12 +87,7 @@ def init_process_groups(group_map, rank):
         new_process_group(ranks=ranks, group_id=group_id)
 
     # TODO should instantiate global group first
-    all_process_groups = get_all_process_groups()
-    for process_group in all_process_groups:
-        if rank not in process_group.ranks:
-            continue
-        print(process_group)
-        process_group.instantiate()
+    init_all_process_groups()
 
 
 def get_cpp_error_type(error):
