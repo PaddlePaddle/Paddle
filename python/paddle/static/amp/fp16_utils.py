@@ -17,9 +17,10 @@ import logging
 
 import numpy as np
 
-from ... import core, framework, global_scope
-from ...log_helper import get_logger
-from ...wrapped_decorator import signature_safe_contextmanager
+from paddle.fluid import core, framework, global_scope
+from paddle.fluid.log_helper import get_logger
+from paddle.fuild.wrapped_decorator import signature_safe_contextmanager
+
 from .fp16_lists import AutoMixedPrecisionLists
 
 __all__ = ["fp16_guard", "cast_model_to_fp16", "cast_parameters_to_fp16"]

@@ -19,9 +19,10 @@ import struct
 
 import numpy as np
 
-from .... import core, framework, global_scope
-from ....log_helper import get_logger
-from ....wrapped_decorator import signature_safe_contextmanager
+from paddle.fluid import core, framework, global_scope
+from paddle.fluid.log_helper import get_logger
+from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+
 from ..fp16_utils import (
     _rename_arg,
     _rename_op_input,

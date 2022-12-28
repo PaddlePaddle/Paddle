@@ -14,7 +14,7 @@
 
 import copy
 
-from ... import core
+from paddle.fluid import core
 
 __all__ = ["CustomOpLists", "AutoMixedPrecisionLists"]
 
