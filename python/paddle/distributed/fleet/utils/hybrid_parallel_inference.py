@@ -207,7 +207,7 @@ class HybridParallelInferenceHelper:
             self._device = "gpu"
         assert self._device, "Only gpu and npu are supported."
 
-        assert not in_dygraph_mode(), "Only static mode is supported."
+        assert not in_dygraph_mode(), "Only static graph mode is supported."
 
         op_maker = core.op_proto_and_checker_maker
         self._op_role = op_maker.OpRole
