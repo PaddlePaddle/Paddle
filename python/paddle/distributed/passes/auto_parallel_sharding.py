@@ -89,8 +89,10 @@ class ShardingPass(PassBase):
         self.set_attr("sharding_degree", None)  # for parallelizer
         self.set_attr("degree", None)  # for parallelizer_v2
         self.set_attr("enable_overlap", None)
-        self.set_attr("comm_stream_num", None)
-        self.set_attr("bucket_size_numel", None)
+        self.set_attr("param_comm_stream_num", None)
+        self.set_attr("grad_comm_stream_num", None)
+        self.set_attr("param_bucket_size_numel", None)
+        self.set_attr("grad_bucket_size_numel", None)
         self.set_attr("partition_algor", None)
         self.set_attr("enable_hierarchical_comm", None)
         self.set_attr("params_grads", [])
@@ -128,9 +130,13 @@ class ShardingPass(PassBase):
             return False
         if self.get_attr("enable_overlap") is None:
             return False
-        if self.get_attr("comm_stream_num") is None:
+        if self.get_attr("param_comm_stream_num") is None:
             return False
-        if self.get_attr("bucket_size_numel") is None:
+        if self.get_attr("grad_comm_stream_num") is None:
+            return False
+        if self.get_attr("param_bucket_size_numel") is None:
+            return False
+        if self.get_attr("grad_bucket_size_numel") is None:
             return False
         if self.get_attr("partition_algor") is None:
             return False
@@ -149,15 +155,21 @@ class ShardingPass(PassBase):
         self.stage = int(self.get_attr("stage"))
         self.global_rank = int(self.get_attr("global_rank"))
         self.enable_overlap = self.get_attr("enable_overlap")
-        self.comm_stream_num = int(self.get_attr("comm_stream_num"))
+        self.param_comm_stream_num = int(self.get_attr("param_comm_stream_num"))
+        self.grad_comm_stream_num = int(self.get_attr("grad_comm_stream_num"))
         self.enable_hierarchical_comm = self.get_attr(
             "enable_hierarchical_comm"
         )
-        if self.comm_stream_num > 1:
+        if self.param_comm_stream_num > 1 or self.grad_comm_stream_num > 1:
             assert (
                 self.enable_overlap
             ), "multiple comm stream need enable_overlap to be True"
-        self.bucket_size_numel = int(self.get_attr("bucket_size_numel"))
+        self.param_bucket_size_numel = int(
+            self.get_attr("param_bucket_size_numel")
+        )
+        self.grad_bucket_size_numel = int(
+            self.get_attr("grad_bucket_size_numel")
+        )
         self.partition_algor = self.get_attr("partition_algor")
 
         params_grads = self.get_attr("params_grads")
@@ -244,7 +256,8 @@ class ShardingPass(PassBase):
             # sharding hybrid data parallel: partial sharding param within
             if dp_group.nranks > self.sharding_world_size:
                 self.sharding_hybrid_dp = True
-                assert self.comm_stream_num < 2
+                assert self.param_comm_stream_num < 2
+                assert self.grad_comm_stream_num < 2
                 assert (
                     len(self.dp_groups) == 1
                 ), "hybrid sharding and data parallelism are supported only when there is excatly one data parallel group in the network"
@@ -459,7 +472,7 @@ class ShardingPass(PassBase):
 
     def _insert_optimizer_broadcasts(self, main_block, startup_block):
 
-        if self.stage > 2 or self.bucket_size_numel > 1:
+        if self.stage > 2 or self.param_bucket_size_numel > 1:
             return
 
         for sharding_info in self.sharding_infos:
@@ -683,7 +696,7 @@ class ShardingPass(PassBase):
 
         with paddle.static.program_guard(main_program, startup_program):
             self._gradient_sync_optimization(sharding_info)
-            if self.bucket_size_numel > 1:
+            if self.param_bucket_size_numel > 1:
                 if self.stage == 2:
                     self._fuse_overlap_parameter_comm_stage_two(sharding_info)
                 elif self.stage == 3:
@@ -691,10 +704,15 @@ class ShardingPass(PassBase):
 
     def _gradient_sync_optimization(self, sharding_info):
 
+        if self.grad_bucket_size_numel <= 1 and (not self.enable_overlap):
+            return
+
         main_block = default_main_program().global_block()
         startup_block = default_startup_program().global_block()
         coalesce_to_group_map, grad_name_to_group_map = self._group_grads(
-            main_block, sharding_info
+            main_block,
+            sharding_info,
+            max_fuse_numel=self.grad_bucket_size_numel,
         )
         self._overlap_grad_comm(
             main_block,
@@ -709,12 +727,12 @@ class ShardingPass(PassBase):
         startup_block = default_startup_program().global_block()
 
         group_to_param_map, param_to_group_map = group_param(
-            sharding_info, self.bucket_size_numel
+            sharding_info, self.param_bucket_size_numel
         )
         _logger.info("Sharding Stage2 Optimization:")
         _logger.info(
-            "Bucket size is [{}], [{}] Parameters are fused into [{}] Buckets".format(
-                self.bucket_size_numel,
+            "Param Bucket size is [{}], [{}] Parameters are fused into [{}] Buckets".format(
+                self.param_bucket_size_numel,
                 len(param_to_group_map.keys()),
                 len(group_to_param_map.keys()),
             )
@@ -729,7 +747,7 @@ class ShardingPass(PassBase):
             # 2. allow more than two streams and open to be config
             self.param_comm_group_stream_pairs = []
             ranks = sharding_info.group.ranks
-            for i in range(self.comm_stream_num):
+            for i in range(self.param_comm_stream_num):
                 if i == 0:
                     group = sharding_info.group
                 else:
@@ -743,6 +761,11 @@ class ShardingPass(PassBase):
                         "comm_stream": stream,
                     }
                 )
+            _logger.info(
+                "Parameter Communication would use [{}] streams.".format(
+                    self.param_comm_stream_num
+                )
+            )
             self.op_to_stream_idx = {}
 
         for i, param_group in enumerate(group_to_param_map.keys()):
@@ -781,18 +804,24 @@ class ShardingPass(PassBase):
             else:
                 param_group.coalesce_var = param_group.vars[0]
             _logger.info(
-                "Bucket[{}] size [{}]MB : {}".format(
+                "Bucket[{}] size [{}]MB.".format(
                     i,
                     sum([get_var_size(p) for p in param_group.vars]),
+                )
+            )
+            _logger.debug(
+                "Bucket[{}] parameters: {}.".format(
+                    i,
                     [p.name for p in param_group.vars],
                 )
             )
+
             broadcast_var_to_group_map[
                 param_group.coalesce_var.name
             ] = param_group
 
             # TODO revise me to manager stream and comm
-            comm_stream_idx = i % self.comm_stream_num
+            comm_stream_idx = i % self.param_comm_stream_num
             comm_group = self.param_comm_group_stream_pairs[comm_stream_idx][
                 'comm_group'
             ]
@@ -835,11 +864,11 @@ class ShardingPass(PassBase):
                     comm_stream = op.dist_attr.execution_stream
 
                 # FIXME remove me when upgrade to multi-comm version
-                if len(dep_map.keys()) < self.comm_stream_num:
+                if len(dep_map.keys()) < self.param_comm_stream_num:
                     op = _get_broadcast_first_depend_op(main_block)
                     prior_var = main_block.vars[op.output("ParamOut")[0]]
                 else:
-                    pre_op = main_block.ops[i - self.comm_stream_num]
+                    pre_op = main_block.ops[i - self.param_comm_stream_num]
                     assert is_sharding_param_broadcast_op(
                         pre_op
                     ), "Unexpected: sharding broadcast pre op should be broadcast."
@@ -880,154 +909,12 @@ class ShardingPass(PassBase):
                 if self.enable_overlap:
                     depend_op.dist_attr.execution_stream = comm_stream
 
-        # hierarchical communication
-        # NOTE if communication cross nodes via low bandwith, it is costly to have a global ring for all ranks
-        # cross all nodes. instead we break it down to two ring
-        # inter node ring: with only "global_world_size / rank_per_node" ranks in this ring
-        # intra node ring: with rank within one node
-        # it is negative optimization now, to be tuning in future.
-        enable_hierarchical_comm = False
-        if enable_hierarchical_comm:
-            # NOTE so far we only support Isomorphic cluster with 8 ranks per node
-
-            # create communicators
-            nranks_per_node = 8
-            assert self.sharding_world_size % nranks_per_node == 0
-            global_group = sharding_info.group
-            global_ranks = global_group.ranks
-            relative_idx_in_node = self.global_rank % nranks_per_node
-            node_idx = self.global_rank // nranks_per_node
-            inter_node_ranks = [
-                rank
-                for rank in global_ranks
-                if rank % nranks_per_node == relative_idx_in_node
-            ]
-            _logger.info(
-                "current global rank idx: {}.".format(self.global_rank)
-            )
-            _logger.info(
-                "local inter node ranks idx: {}.".format(inter_node_ranks)
-            )
-            assert (
-                len(inter_node_ranks)
-                == self.sharding_world_size // nranks_per_node
-            )
-            intra_node_ranks = [
-                rank
-                for rank in global_ranks
-                if rank // nranks_per_node == node_idx
-            ]
-            assert len(intra_node_ranks) == nranks_per_node
-            _logger.info(
-                "local intra node ranks idx: {}.".format(intra_node_ranks)
-            )
-            inter_node_groups = []
-            intra_node_groups = []
-            for _ in range(self.comm_stream_num):
-                # TODO re-use one origin communicator
-                inter_node_groups.append(
-                    new_process_group(inter_node_ranks, force_new_group=True)
-                )
-                intra_node_groups.append(
-                    new_process_group(intra_node_ranks, force_new_group=True)
-                )
-
-            # update program
-            for idx, op in reversed(list(enumerate(main_block.ops))):
-                if is_sharding_param_broadcast_op(op):
-                    comm_stream_idx = self.op_to_stream_idx[op]
-                    inter_node_group = inter_node_groups[comm_stream_idx]
-                    intra_node_group = intra_node_groups[comm_stream_idx]
-
-                    broadcast_varname = op.output("Out")[0]
-                    if self.enable_overlap:
-                        comm_stream = op.dist_attr.execution_stream
-
-                    if broadcast_varname in broadcast_var_to_group_map:
-                        param_group = broadcast_var_to_group_map[
-                            broadcast_varname
-                        ]
-                        src_rank = param_group.rank
-
-                    else:
-                        src_rank = sharding_info.get_var_rank(broadcast_varname)
-                    in_peer = src_rank % nranks_per_node == relative_idx_in_node
-
-                    intra_node_src = src_rank % nranks_per_node
-
-                    if in_peer:
-                        # inter_node_src = src_rank // nranks_per_node
-                        # new_op = main_block._insert_op_without_sync(
-                        #     idx,
-                        #     type="c_broadcast",
-                        #     inputs={"X": broadcast_varname},
-                        #     outputs={
-                        #         "Out": broadcast_varname,
-                        #     },
-                        #     attrs={
-                        #         'ring_id': inter_node_group.id,
-                        #         'root': inter_node_src,
-                        #         'use_calc_stream': True,
-                        #         OP_ROLE_KEY: OpRole.Optimize,
-                        #     },
-                        # )
-                        # new_op._set_attr(
-                        #     'op_namescope', str('/') + ParallelMode.DataParallel
-                        # )
-                        # FIXME  only support 2 nodes
-                        if self.global_rank // nranks_per_node == 0:
-                            peer = 1
-                        else:
-                            peer = 0
-                        broadcast_var = main_block.vars[broadcast_varname]
-                        if src_rank == self.global_rank:
-                            type_ = "send_v2"
-                            slot_name = 'X'
-                            new_op = main_block._insert_op_without_sync(
-                                index=idx,
-                                type=type_,
-                                inputs={slot_name: broadcast_var},
-                                attrs={
-                                    OP_ROLE_KEY: OpRole.Optimize,
-                                    'use_calc_stream': True,
-                                    'peer': peer,
-                                    'ring_id': inter_node_group.id,
-                                },
-                            )
-                        else:
-                            type_ = "recv_v2"
-                            slot_name = 'Out'
-                            # FIXME a fake shape for coalesce_var
-                            # if len(broadcast_var.shape) >= 1:
-                            #     out_shape = broadcast_var.shape
-                            # else:
-                            #     out_shape = [1]
-                            new_op = main_block._insert_op_without_sync(
-                                index=idx,
-                                type=type_,
-                                outputs={slot_name: broadcast_var},
-                                attrs={
-                                    # 'out_shape': out_shape,
-                                    'dtype': broadcast_var.dtype,
-                                    OP_ROLE_KEY: OpRole.Optimize,
-                                    'use_calc_stream': True,
-                                    'peer': peer,
-                                    'ring_id': inter_node_group.id,
-                                },
-                            )
-
-                        if self.enable_overlap:
-                            new_op.dist_attr.execution_stream = comm_stream
-
-                    op._set_attr('ring_id', intra_node_group.id)
-                    op._set_attr('root', intra_node_src)
-
         main_block._sync_with_cpp()
 
     def _fuse_overlap_parameter_comm_stage_three(self, sharding_info):
         pass
 
-    def _group_grads(self, block, sharding_info, max_fuse_numel=None):
+    def _group_grads(self, block, sharding_info, max_fuse_numel=1):
         """
         conditions for gradients to be grouped:
             1. group size < max_fuse_numel
@@ -1048,12 +935,13 @@ class ShardingPass(PassBase):
         gradients inside same group would be fuse into one coalesce tensor
         """
         ops = block.ops
-        if max_fuse_numel is None:
+        if max_fuse_numel <= 1:
             # numel for transformer layer
-            h = 4096 + 1
-            ffn_numel = 2 * (4 * h) * h
-            mha_numel = 3 * h * h + h * h
-            max_fuse_numel = ffn_numel + mha_numel
+            # h = 4096 + 1
+            # ffn_numel = 2 * (4 * h) * h
+            # mha_numel = 3 * h * h + h * h
+            # max_fuse_numel = ffn_numel + mha_numel
+            max_fuse_numel = 1
 
         first_backward_op = None
         for op in ops:
@@ -1273,12 +1161,8 @@ class ShardingPass(PassBase):
         self.grad_comm_group_stream_pairs = []
         ranks = sharding_info.group.ranks
         # NOTE since the gradient synchronization has calculation, there would be computation
-        # competition between backward calculation. therefore we limit the gradient communication
-        # up to 2, regardless the user configuration.
-        grad_comm_stream_num = 1
-        if self.comm_stream_num > 1:
-            grad_comm_stream_num = 2
-        for i in range(grad_comm_stream_num):
+        # competition between backward calculation. therefore should limit the number of stream used.
+        for i in range(self.grad_comm_stream_num):
             if i == 0:
                 group = sharding_info.group
             else:
@@ -1303,15 +1187,14 @@ class ShardingPass(PassBase):
 
                 if op.type == "c_allreduce_sum":
                     continue
-                grad_comm_op_to_stream_idx[op] = (
-                    reduce_op_count % grad_comm_stream_num
-                )
-                comm_group = self.grad_comm_group_stream_pairs[
-                    reduce_op_count % grad_comm_stream_num
-                ]["comm_group"]
-                comm_stream = self.grad_comm_group_stream_pairs[
-                    reduce_op_count % grad_comm_stream_num
-                ]["comm_stream"]
+                stream_idx = reduce_op_count % self.grad_comm_stream_num
+                grad_comm_op_to_stream_idx[op] = stream_idx
+                comm_group = self.grad_comm_group_stream_pairs[stream_idx][
+                    "comm_group"
+                ]
+                comm_stream = self.grad_comm_group_stream_pairs[stream_idx][
+                    "comm_stream"
+                ]
 
                 reduce_varname = op.output("Out")[0]
                 grad_group = coalesce_to_group_map[reduce_varname]
@@ -1395,6 +1278,9 @@ class ShardingPass(PassBase):
                 for rank in global_ranks
                 if rank % nranks_per_node == relative_idx_in_node
             ]
+            _logger.info(
+                "Sharding Gradient Hierarchical Communication Optimization."
+            )
             _logger.info(
                 "current global rank idx: {}.".format(self.global_rank)
             )
