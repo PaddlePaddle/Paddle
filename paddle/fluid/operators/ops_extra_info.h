@@ -220,8 +220,7 @@ class ExtraInfoUtils {
   std::unordered_map<std::string, std::vector<std::string>>
       g_extra_input_names_map_ = {{"conv2d", {"Bias", "ResidualData"}},
                                   {"conv2d_transpose", {"Bias"}},
-                                  {"conv2d_grad", {"Bias"}},
-                                  {"fused_matmul", {"ResidualData"}}};
+                                  {"conv2d_grad", {"Bias"}}};
   std::vector<std::string> empty_extra_input_names_;
 };
 

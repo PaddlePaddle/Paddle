@@ -168,6 +168,9 @@ class FusedMatmulOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "tensor of shape (d0, d1 ... M, K)");
     AddInput("Y", "tensor of shape (d0, d1 ... K, N)");
+    AddInput("ResidualData", "tensor of shape (d0, d1 ... K, N)")
+        .AsDispensable()
+        .AsExtra();
     AddOutput("Out", "tensor of shape (d0, d1 ... M, N)");
     AddAttr<bool>("trans_x",
                   "Set true to transpose the last two dimensions of X before "

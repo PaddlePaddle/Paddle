@@ -115,8 +115,7 @@ MatmulActivationMkldnnFusePass::MatmulActivationMkldnnFusePass() {
       .AddInput("Y")
       .IsTensor()
       .End()
-      .AddInput(
-          "ResidualData")  // Extra tensor used in matmul+elementwise_add fuse
+      .AddInput("ResidualData")
       .IsTensor()
       .IsOptional()
       .End()
@@ -140,8 +139,7 @@ MatmulActivationMkldnnFusePass::MatmulActivationMkldnnFusePass() {
       .AddInput("Y")
       .IsTensor()
       .End()
-      .AddInput(
-          "ResidualData")  // Extra tensor used in matmul+elementwise_add fuse
+      .AddInput("ResidualData")
       .IsTensor()
       .IsOptional()
       .End()
@@ -162,8 +160,7 @@ MatmulActivationMkldnnFusePass::MatmulActivationMkldnnFusePass() {
       .AddInput("Y")
       .IsTensor()
       .End()
-      .AddInput(
-          "ResidualData")  // Extra tensor used in matmul+elementwise_add fuse
+      .AddInput("ResidualData")
       .IsTensor()
       .IsOptional()
       .End()

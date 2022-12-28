@@ -31,6 +31,7 @@ class FusedMatmulOneDNNHandler
     : public funcs::OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
  public:
   FusedMatmulOneDNNHandler(const OneDNNContext &dev_ctx,
+                           const DenseTensor *residual_data,
                            const std::vector<int64_t> &x_org_dims,
                            const std::vector<int64_t> &y_org_dims,
                            bool trans_x,
@@ -109,7 +110,7 @@ class FusedMatmulOneDNNHandler
     auto out_md =
         memory::desc(out_ddims, funcs::OneDNNGetDataType<OT>(), out_strides);
 
-    const auto matmul_attrs = CreateMatmulAttrs(dev_ctx);
+    const auto matmul_attrs = CreateMatmulAttrs(dev_ctx, residual_data);
 
     this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
   }
@@ -136,7 +137,8 @@ class FusedMatmulOneDNNHandler
     return alpha;
   }
 
-  dnnl::primitive_attr CreateMatmulAttrs(const OneDNNContext &dev_ctx) {
+  dnnl::primitive_attr CreateMatmulAttrs(const OneDNNContext &dev_ctx,
+                                         const DenseTensor *residual_data) {
     dnnl::primitive_attr matmul_attrs;
     dnnl::post_ops post_operations;
 
@@ -144,9 +146,6 @@ class FusedMatmulOneDNNHandler
     if (scale_out != 1.0f) {
       matmul_attrs.set_output_scales(0, {scale_out});
     }
-    const auto *residual_data = dev_ctx.HasDnnInput("ResidualData")
-                                    ? dev_ctx.GetDnnInput("ResidualData")
-                                    : nullptr;
 
     if (residual_data) {
       auto residual_data_tz = vectorize(residual_data->dims());
@@ -294,6 +293,7 @@ template <typename T, typename T_out>
 void ExecuteFusedMatmul(const OneDNNContext &dev_ctx,
                         const DenseTensor &x,
                         const DenseTensor &y,
+                        const DenseTensor *residual_data,
                         const std::vector<int64_t> &x_dims,
                         const std::vector<int64_t> &y_dims,
                         bool trans_x,
@@ -304,6 +304,7 @@ void ExecuteFusedMatmul(const OneDNNContext &dev_ctx,
                         const std::vector<int> &fused_transpose_Out,
                         DenseTensor *out) {
   FusedMatmulOneDNNHandler<T, T, T_out> handler(dev_ctx,
+                                                residual_data,
                                                 x_dims,
                                                 y_dims,
                                                 trans_x,
@@ -322,10 +323,6 @@ void ExecuteFusedMatmul(const OneDNNContext &dev_ctx,
       {DNNL_ARG_SRC, *src_memory_p},
       {DNNL_ARG_WEIGHTS, *weights_memory_p},
       {DNNL_ARG_DST, *dst_memory_p}};
-
-  const auto *residual_data = dev_ctx.HasDnnInput("ResidualData")
-                                  ? dev_ctx.GetDnnInput("ResidualData")
-                                  : nullptr;
 
   if (residual_data) {
     const auto residual_data_memory_p = handler.AcquireSrcMemory(residual_data);
@@ -410,6 +407,7 @@ template <typename T, typename Context>
 void FusedMatmulKernel(const Context &dev_ctx,
                        const DenseTensor &x,
                        const DenseTensor &y,
+                       const paddle::optional<DenseTensor> &residual_data,
                        bool transpose_x,
                        bool transpose_y,
                        const std::string &fuse_activation,
@@ -467,6 +465,7 @@ void FusedMatmulKernel(const Context &dev_ctx,
     ExecuteFusedMatmul<T, float>(dev_ctx,
                                  x,
                                  y,
+                                 residual_data.get_ptr(),
                                  x_bd_dims,
                                  y_bd_dims,
                                  transpose_x,
@@ -480,6 +479,7 @@ void FusedMatmulKernel(const Context &dev_ctx,
     ExecuteFusedMatmul<T, paddle::platform::bfloat16>(dev_ctx,
                                                       x,
                                                       y,
+                                                      residual_data.get_ptr(),
                                                       x_bd_dims,
                                                       y_bd_dims,
                                                       transpose_x,
@@ -493,6 +493,7 @@ void FusedMatmulKernel(const Context &dev_ctx,
     ExecuteFusedMatmul<T, uint8_t>(dev_ctx,
                                    x,
                                    y,
+                                   residual_data.get_ptr(),
                                    x_bd_dims,
                                    y_bd_dims,
                                    transpose_x,
@@ -506,6 +507,7 @@ void FusedMatmulKernel(const Context &dev_ctx,
     ExecuteFusedMatmul<T, int8_t>(dev_ctx,
                                   x,
                                   y,
+                                  residual_data.get_ptr(),
                                   x_bd_dims,
                                   y_bd_dims,
                                   transpose_x,
