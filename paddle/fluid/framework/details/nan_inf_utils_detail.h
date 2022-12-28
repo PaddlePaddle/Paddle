@@ -125,6 +125,7 @@ HOSTDEVICE void PrintForDifferentLevelFile(const char* debug_info,
   std::string file_name = "worker_" + log_name + "." + std::to_string(dev_id);
   std::string path = "log_dir_nan/" + file_name;
   std::ofstream outfile(path, std::ios::app);
+
   if (!outfile.is_open()) {
     return;
   }
