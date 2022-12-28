@@ -1737,8 +1737,8 @@ class Flatten(Layer):
         self.start_axis = start_axis
         self.stop_axis = stop_axis
 
-    def forward(self, x):
+    def forward(self, input):
         out = paddle.flatten(
-            x, start_axis=self.start_axis, stop_axis=self.stop_axis
+            input, start_axis=self.start_axis, stop_axis=self.stop_axis
         )
         return out
