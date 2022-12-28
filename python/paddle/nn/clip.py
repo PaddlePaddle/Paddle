@@ -137,7 +137,7 @@ def merge_selected_rows(x, name=None):
 @templatedoc()
 def get_tensor_from_selected_rows(x, name=None):
     """
-    This operator gets tensor data from input with SelectedRows type, and outputs a LoDTensor.
+    Get tensor data from input with SelectedRows type, and outputs a Tensor.
 
     .. code-block:: text
 
