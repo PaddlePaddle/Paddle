@@ -373,7 +373,6 @@ template <typename T>
 class FusedAttentionGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    VLOG(1) << "@@ FusedAttentionGradKernel compute begin";
     using U = LayerNormParamType<T>;
     const auto pre_layer_norm = ctx.Attr<bool>("pre_layer_norm");
     const float epsilon = ctx.Attr<float>("epsilon");
