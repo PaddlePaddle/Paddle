@@ -984,6 +984,13 @@ def conv1d_transpose(
             )
         )
 
+    if len(weight.shape) != 3:
+        raise ValueError(
+            'Input weight should be 3D tensor, but received weight with the shape of {}'.format(
+                weight.shape
+            )
+        )
+
     op_type = 'conv2d_transpose'
     num_filters = weight.shape[1]
     if (
