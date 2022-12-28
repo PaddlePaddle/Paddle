@@ -776,5 +776,6 @@ __global__ void initialize_moe_routing_kernel(
     }
   }
 }
+
 }  // namespace phi
 #endif
