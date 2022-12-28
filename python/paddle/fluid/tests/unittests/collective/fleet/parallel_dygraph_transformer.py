@@ -932,8 +932,8 @@ class TransFormer(Layer):
         predict = self._wrap_decoder_layer(dec_inputs, enc_output)
         if self._label_smooth_eps:
             label_out = F.label_smooth(
-                label=fluid.layers.one_hot(
-                    input=label, depth=self._trg_vocab_size
+                label=paddle.squeeze(
+                    paddle.nn.functional.one_hot(label, self._trg_vocab_size)
                 ),
                 epsilon=self._label_smooth_eps,
             )

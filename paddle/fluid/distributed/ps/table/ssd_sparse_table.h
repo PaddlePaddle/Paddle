@@ -21,6 +21,41 @@
 namespace paddle {
 namespace distributed {
 
+class MemRegion {
+ public:
+  MemRegion() {
+    _cap = 2 * 1024 * 1024;
+    _buf = reinterpret_cast<char*>(malloc(_cap));
+    _cur = 0;
+    _file_idx = -1;
+  }
+  virtual ~MemRegion() { free(_buf); }
+  bool buff_remain(int len) {
+    if (_cap - _cur < len) {
+      return false;
+    } else {
+      return true;
+    }
+  }
+  char* acquire(int len) {
+    if (_cap - _cur < len) {
+      return nullptr;
+    } else {
+      char* ret = _buf + _cur;
+      _cur += len;
+      return ret;
+    }
+  }
+  void reset() {
+    _cur = 0;
+    _file_idx = -1;
+  }
+  int _cap;
+  int _cur;
+  int _file_idx;
+  char* _buf;
+};
+
 class SSDSparseTable : public MemorySparseTable {
  public:
   typedef SparseTableShard<uint64_t, FixedFeatureValue> shard_type;
@@ -38,27 +73,34 @@ class SSDSparseTable : public MemorySparseTable {
   int32_t Push(TableContext& context) override;
 
   int32_t PullSparse(float* pull_values, const uint64_t* keys, size_t num);
-  int32_t PullSparsePtr(char** pull_values, const uint64_t* keys, size_t num);
+  int32_t PullSparsePtr(int shard_id,
+                        char** pull_values,
+                        const uint64_t* keys,
+                        size_t num,
+                        uint16_t pass_id);
   int32_t PushSparse(const uint64_t* keys, const float* values, size_t num);
   int32_t PushSparse(const uint64_t* keys, const float** values, size_t num);
 
   int32_t Flush() override { return 0; }
-  virtual int32_t Shrink(const std::string& param) override;
-  virtual void Clear() override {
+  int32_t Shrink(const std::string& param) override;
+  void Clear() override {
     for (int i = 0; i < _real_local_shard_num; ++i) {
       _local_shards[i].clear();
     }
   }
 
-  virtual int32_t Save(const std::string& path,
-                       const std::string& param) override;
-  virtual int32_t SaveCache(
+  int32_t Save(const std::string& path, const std::string& param) override;
+  int32_t SaveWithString(const std::string& path, const std::string& param);
+  int32_t SaveWithStringMultiOutput(const std::string& path,
+                                    const std::string& param);
+  int32_t SaveWithBinary(const std::string& path, const std::string& param);
+  int32_t SaveCache(
       const std::string& path,
       const std::string& param,
       paddle::framework::Channel<std::pair<uint64_t, std::string>>&
           shuffled_channel) override;
-  virtual double GetCacheThreshold() override { return _local_show_threshold; }
-  virtual int64_t CacheShuffle(
+  double GetCacheThreshold() override { return _local_show_threshold; }
+  int64_t CacheShuffle(
       const std::string& path,
       const std::string& param,
       double cache_threshold,
@@ -67,20 +109,25 @@ class SSDSparseTable : public MemorySparseTable {
       paddle::framework::Channel<std::pair<uint64_t, std::string>>&
           shuffled_channel,
       const std::vector<Table*>& table_ptrs) override;
-  //加载path目录下数据
-  virtual int32_t Load(const std::string& path,
-                       const std::string& param) override;
-  //加载path目录下数据[start_idx, end_idx)
-  virtual int32_t Load(size_t start_idx,
-                       size_t end_idx,
-                       const std::vector<std::string>& file_list,
-                       const std::string& param);
+  // 加载path目录下数据
+  int32_t Load(const std::string& path, const std::string& param) override;
+  int32_t LoadWithString(size_t file_start_idx,
+                         size_t end_idx,
+                         const std::vector<std::string>& file_list,
+                         const std::string& param);
+  int32_t LoadWithBinary(const std::string& path, int param);
   int64_t LocalSize();
+
+  std::pair<int64_t, int64_t> PrintTableStat() override;
+
+  int32_t CacheTable(uint16_t pass_id) override;
 
  private:
   RocksDBHandler* _db;
   int64_t _cache_tk_size;
   double _local_show_threshold{0.0};
+  std::vector<paddle::framework::Channel<std::string>> _fs_channel;
+  std::mutex _table_mutex;
 };
 
 }  // namespace distributed

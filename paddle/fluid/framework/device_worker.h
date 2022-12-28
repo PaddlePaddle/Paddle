@@ -242,6 +242,7 @@ class DeviceWorker {
   ChannelWriter<std::string> writer_;
   const size_t tensor_iterator_thread_num = 16;
   platform::DeviceContext* dev_ctx_ = nullptr;
+  int thread_num_;
 };
 
 class CPUWorkerBase : public DeviceWorker {
@@ -289,6 +290,7 @@ class HogwildWorker : public CPUWorkerBase {
   HogwildWorkerParameter param_;
   std::vector<std::string> skip_ops_;
   std::map<std::string, int> stat_var_name_map_;
+  static std::atomic<uint64_t> worker_num_stat_;
 };
 
 class DownpourWorker : public HogwildWorker {

@@ -70,6 +70,7 @@ set(COMMON_KERNEL_DEPS
     matrix_inverse
     matrix_solve
     phi_dynload_warpctc
+    phi_dynload_warprnnt
     sequence_padding
     sequence_scale
     fft
@@ -103,6 +104,12 @@ file(
   "sparse/gpu/*.cu"
   "strings/gpu/*.cu"
   "fusion/gpu/*.cu")
+
+if(WITH_CUTLASS)
+  file(GLOB cutlass_cu "fusion/cutlass/default_moe_fc_traits.h"
+       "fusion/cutlass/linear_combination_ft_gelu.h" "fusion/cutlass/moe*")
+  list(APPEND kernel_cu ${cutlass_cu})
+endif()
 
 if(WITH_MKLDNN)
   file(
