@@ -45,7 +45,7 @@ class ExpandV2Op : public framework::OperatorWithKernel {
       const phi::DenseTensor& tensor,
       const phi::KernelKey& expected_kernel_type) const override {
     if (var_name == "expand_shapes_tensor" || var_name == "Shape") {
-      return expected_kernel_type;
+      return phi::KernelKey();
     }
     return phi::KernelKey(
         tensor.place(), tensor.layout(), expected_kernel_type.dtype());
@@ -162,7 +162,7 @@ class ExpandV2GradOp : public framework::OperatorWithKernel {
       const phi::DenseTensor& tensor,
       const phi::KernelKey& expected_kernel_type) const override {
     if (var_name == "expand_shapes_tensor" || var_name == "Shape") {
-      return expected_kernel_type;
+      return phi::KernelKey();
     }
     return phi::KernelKey(
         tensor.place(), tensor.layout(), expected_kernel_type.dtype());

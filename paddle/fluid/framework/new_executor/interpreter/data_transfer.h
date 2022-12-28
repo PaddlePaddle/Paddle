@@ -34,13 +34,14 @@ class DataTranferHelper {
                     Scope* local_scope)
       : place_(place), var_scope_(var_scope), scope_(local_scope) {}
 
-  bool apply(const OpKernelType& kernel_type_for_var,
-             const OpKernelType& expected_kernel_key,
+  bool apply(const phi::KernelKey& kernel_type_for_var,
+             const phi::KernelKey& expected_kernel_key,
              const std::string& var_name,
              std::string* new_var_name,
              std::vector<OpFuncNode>* new_op_func_nodes,
              bool use_local_scope,
-             bool is_fetch_v2);
+             bool is_fetch_v2,
+             const phi::Place& tensor_place);
 
   void RunAndConstructShareNode(const std::string& src_var_name,
                                 const std::string& dst_var_name,
@@ -74,29 +75,29 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
                                  std::vector<OpFuncNode>* op_func_nodes,
                                  framework::Scope* local_scope);
 
-inline bool need_device_transform(const OpKernelType& kernel_type_for_var,
-                                  const OpKernelType& expected_kernel_key) {
-  auto& src_place = kernel_type_for_var.place_;
-  auto& dst_place = expected_kernel_key.place_;
-  if (platform::is_same_place(src_place, dst_place) ||
-      (platform::is_cuda_pinned_place(src_place) &&
-       platform::is_cpu_place(dst_place))) {
+inline bool need_device_transform(const phi::KernelKey& kernel_type_for_var,
+                                  const phi::Place& tensor_place,
+                                  const phi::KernelKey& expected_kernel_key,
+                                  const phi::Place& expected_place) {
+  if (kernel_type_for_var.backend() == phi::Backend::ALL_BACKEND ||
+      platform::is_same_place(tensor_place, expected_place) ||
+      (platform::is_cuda_pinned_place(tensor_place) &&
+       platform::is_cpu_place(expected_place))) {
     return false;
   }
   return true;
 }
 
-inline bool need_dtype_transform(const OpKernelType& kernel_type_for_var,
-                                 const OpKernelType& expected_kernel_key) {
-  return framework::NeedTransformDataType(
-      framework::TransOpKernelTypeToPhiKernelKey(kernel_type_for_var),
-      framework::TransOpKernelTypeToPhiKernelKey(expected_kernel_key));
+inline bool need_dtype_transform(const phi::KernelKey& kernel_type_for_var,
+                                 const phi::KernelKey& expected_kernel_key) {
+  return framework::NeedTransformDataType(kernel_type_for_var,
+                                          expected_kernel_key);
 }
 
-inline bool need_layout_transform(const OpKernelType& kernel_type_for_var,
-                                  const OpKernelType& expected_kernel_key) {
-  return framework::NeedTransformLayout(kernel_type_for_var.data_layout_,
-                                        expected_kernel_key.data_layout_);
+inline bool need_layout_transform(const phi::KernelKey& kernel_type_for_var,
+                                  const phi::KernelKey& expected_kernel_key) {
+  return framework::NeedTransformLayout(kernel_type_for_var.layout(),
+                                        expected_kernel_key.layout());
 }
 
 std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,

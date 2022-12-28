@@ -181,10 +181,10 @@ class SliceOp : public framework::OperatorWithKernel {
       const phi::DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (var_name == "StartsTensor" || var_name == "EndsTensor") {
-      return expected_kernel_type;
+      return phi::KernelKey();
     }
     if (var_name == "StartsTensorList" || var_name == "EndsTensorList") {
-      return expected_kernel_type;
+      return phi::KernelKey();
     }
     return phi::KernelKey(
         tensor.place(), tensor.layout(), expected_kernel_type.dtype());
@@ -349,10 +349,10 @@ class SliceOpGrad : public framework::OperatorWithKernel {
       const phi::DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (var_name == "StartsTensor" || var_name == "EndsTensor") {
-      return expected_kernel_type;
+      return phi::KernelKey();
     }
     if (var_name == "StartsTensorList" || var_name == "EndsTensorList") {
-      return expected_kernel_type;
+      return phi::KernelKey();
     }
     return phi::KernelKey(
         tensor.place(), tensor.layout(), expected_kernel_type.dtype());

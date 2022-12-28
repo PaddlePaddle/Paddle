@@ -45,7 +45,7 @@ class UpdateLossScalingOp : public framework::OperatorWithKernel {
       const phi::KernelKey& expected_kernel_type) const override {
 #ifndef PADDLE_WITH_XPU
     if (var_name == "FoundInfinite" || var_name == "StopUpdate") {
-      return expected_kernel_type;
+      return phi::KernelKey();
     }
 #endif
     return framework::OperatorWithKernel::GetKernelTypeForVar(

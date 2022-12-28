@@ -36,7 +36,7 @@ class MergedAdamOp : public framework::OperatorWithKernel {
       const phi::KernelKey& expected_kernel_type) const override {
     if (var_name == "Beta1Pow" || var_name == "Beta2Pow" ||
         var_name == "SkipUpdate") {
-      return expected_kernel_type;
+      return phi::KernelKey();
     } else {
       return phi::KernelKey(
           tensor.place(), tensor.layout(), expected_kernel_type.dtype());

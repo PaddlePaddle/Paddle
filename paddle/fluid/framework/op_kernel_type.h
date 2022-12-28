@@ -116,6 +116,9 @@ inline bool NeedTransformDataType(const phi::KernelKey& l,
 
 inline bool backends_are_same_class(const phi::Backend& l,
                                     const phi::Backend& r) {
+  if (l == phi::Backend::ALL_BACKEND || r == phi::Backend::ALL_BACKEND) {
+    return true;
+  }
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   size_t num_backends = static_cast<size_t>(phi::Backend::NUM_BACKENDS);
   if (static_cast<size_t>(l) > num_backends &&

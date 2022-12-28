@@ -178,7 +178,7 @@ class FusedMultiTransformerINT8Op : public framework::OperatorWithKernel {
       const phi::KernelKey &expected_kernel_type) const override {
     if (var_name == "TimeStep") {
       VLOG(10) << "var_name:" << var_name << " need not to transform";
-      return expected_kernel_type;
+      return phi::KernelKey();
     }
     return phi::KernelKey(
         tensor.place(), tensor.layout(), expected_kernel_type.dtype());

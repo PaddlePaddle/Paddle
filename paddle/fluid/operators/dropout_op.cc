@@ -40,7 +40,7 @@ class DropoutOp : public framework::OperatorWithKernel {
     if (var_name == "Seed") {
       VLOG(10) << "var_name:" << var_name
                << " does not need to transform in dropout op";
-      return expected_kernel_type;
+      return phi::KernelKey();
     }
 
     return phi::KernelKey(

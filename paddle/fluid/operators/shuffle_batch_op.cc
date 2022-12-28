@@ -66,7 +66,7 @@ class ShuffleBatchOp : public framework::OperatorWithKernel {
       const phi::DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (var_name == "Seed") {
-      return expected_kernel_type;
+      return phi::KernelKey();
     }
     return framework::OperatorWithKernel::GetKernelTypeForVar(
         var_name, tensor, expected_kernel_type);

@@ -46,7 +46,7 @@ class FillAnyLikeOp : public framework::OperatorWithKernel {
       const std::string &var_name,
       const phi::DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
-    return phi::KernelKey(expected_kernel_type.backend(),
+    return phi::KernelKey(phi::Backend::ALL_BACKEND,
                           tensor.layout(),
                           expected_kernel_type.dtype());
   }

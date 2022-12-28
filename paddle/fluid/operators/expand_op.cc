@@ -88,7 +88,7 @@ class ExpandOp : public framework::OperatorWithKernel {
       const phi::DenseTensor& tensor,
       const phi::KernelKey& expected_kernel_type) const override {
     if (var_name == "expand_times_tensor" || var_name == "ExpandTimes") {
-      return expected_kernel_type;
+      return phi::KernelKey();
     }
     return phi::KernelKey(
         tensor.place(), tensor.layout(), expected_kernel_type.dtype());
@@ -217,7 +217,7 @@ class ExpandGradOp : public framework::OperatorWithKernel {
       const phi::DenseTensor& tensor,
       const phi::KernelKey& expected_kernel_type) const override {
     if (var_name == "expand_times_tensor") {
-      return expected_kernel_type;
+      return phi::KernelKey();
     }
     return phi::KernelKey(
         tensor.place(), tensor.layout(), expected_kernel_type.dtype());

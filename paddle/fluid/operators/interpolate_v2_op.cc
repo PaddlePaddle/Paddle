@@ -468,7 +468,7 @@ class InterpolateV2Op : public framework::OperatorWithKernel {
 
     if (var_name == "OutSize" || var_name == "SizeTensor" ||
         var_name == "Scale") {
-      return expected_kernel_type;
+      return phi::KernelKey();
     }
     return phi::KernelKey(
         tensor.place(), tensor.layout(), expected_kernel_type.dtype());
@@ -704,7 +704,7 @@ class InterpolateV2OpGrad : public framework::OperatorWithKernel {
       const phi::KernelKey& expected_kernel_type) const override {
     if (var_name == "OutSize" || var_name == "SizeTensor" ||
         var_name == "Scale") {
-      return expected_kernel_type;
+      return phi::KernelKey();
     }
     return phi::KernelKey(
         tensor.place(), tensor.layout(), expected_kernel_type.dtype());

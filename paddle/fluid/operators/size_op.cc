@@ -35,7 +35,7 @@ class SizeOp : public framework::OperatorWithKernel {
       const std::string& var_name,
       const phi::DenseTensor& tensor,
       const phi::KernelKey& expected_kernel_type) const override {
-    return expected_kernel_type;
+    return phi::KernelKey();
   }
 };
 

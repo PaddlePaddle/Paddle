@@ -82,7 +82,7 @@ class CAllReduceOp : public framework::OperatorWithKernel {
       const phi::DenseTensor& tensor,
       const phi::KernelKey& expected_kernel_type) const {
     if (var_name == "Cond") {
-      return expected_kernel_type;
+      return phi::KernelKey();
     } else {
       return phi::KernelKey(
           tensor.place(), tensor.layout(), expected_kernel_type.dtype());
